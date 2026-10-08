@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
-import Modal from '@/app/components/Modal.vue';
-import { createEventBus } from '@n8n/utils/event-bus';
+import { computed, ref } from 'vue';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nText,
+} from '@n8n/design-system';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const props = defineProps<{
 	modalName: string;
@@ -29,9 +36,10 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const uiStore = useUIStore();
 
-const modalBus = ref(createEventBus());
 const selectedCredentialId = ref<string | null>(props.data.initialValue);
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const displayName = computed(() => props.data.displayName);
 const title = computed(
@@ -82,42 +90,45 @@ function onCredentialModalOpened(credentialId?: string) {
 	});
 }
 
+async function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
 function onConfirm() {
 	if (selectedCredentialId.value) {
 		props.data.onSelect(selectedCredentialId.value);
-		modalBus.value.emit('close');
+		void closeDialog();
 	}
 }
 
 function onCancel() {
-	modalBus.value.emit('close');
+	void closeDialog();
 }
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		:event-bus="modalBus"
-		:custom-class="$style.credentialSelectorModal"
-		width="50%"
-		:center="true"
-		max-width="460px"
-		min-height="250px"
-		:append-to-body="data.appendToBody"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:stacked="data.appendToBody === true"
+		:container-class="$style.credentialSelectorModal"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
+		<N8nDialogHeader>
 			<div :class="$style.header">
 				<CredentialIcon
 					:credential-type-name="data.credentialType"
 					:size="24"
 					:class="$style.icon"
 				/>
-				<N8nHeading size="medium" tag="h2" :class="$style.title">
-					{{ title }}
-				</N8nHeading>
+				<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 			</div>
-		</template>
-		<template #content>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<div :class="$style.content">
 				<N8nText size="small" color="text-base">
 					{{ description }}
@@ -140,8 +151,8 @@ function onCancel() {
 					/>
 				</div>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton variant="subtle" @click="onCancel">
 					{{ data.cancelLabel ?? i18n.baseText('chatHub.credentials.selector.cancel') }}
@@ -150,8 +161,8 @@ function onCancel() {
 					{{ data.confirmLabel ?? i18n.baseText('chatHub.credentials.selector.confirm') }}
 				</N8nButton>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
@@ -159,7 +170,6 @@ function onCancel() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--sm) 0;
 }
 
 .footer {
@@ -193,9 +203,8 @@ function onCancel() {
 }
 
 .credentialSelectorModal {
-	:global(.el-dialog__body),
-	:global(.modal-content) {
-		overflow: visible;
-	}
+	overflow: visible;
+	/* No height token matches the previous 250px dialog min-height. */
+	min-height: 250px;
 }
 </style>

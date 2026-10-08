@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
-import { N8nHeading, N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nDialog, N8nDialogBody } from '@n8n/design-system';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { useI18n } from '@n8n/i18n';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { useUIStore } from '@/app/stores/ui.store';
-import { ref, computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, computed, onMounted, watch, nextTick, useTemplateRef } from 'vue';
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 
@@ -30,8 +28,8 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const modalEventBus = createEventBus();
 const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const versionForm = useTemplateRef<InstanceType<typeof WorkflowVersionForm>>('versionForm');
 
@@ -54,22 +52,35 @@ onMounted(() => {
 	if (props.data.description) {
 		description.value = props.data.description;
 	}
-
-	modalEventBus.on('opened', onModalOpened);
 });
 
-onBeforeUnmount(() => {
-	modalEventBus.off('opened', onModalOpened);
-});
+watch(
+	modalOpen,
+	(open) => {
+		if (!open) return;
+		void nextTick(() => {
+			void nextTick(() => {
+				onModalOpened();
+			});
+		});
+	},
+	{ immediate: true },
+);
 
-const closeModal = () => {
-	uiStore.closeModal(props.modalName);
-};
-
-const onCancel = () => {
+const onCancel = (): boolean | void => {
 	props.data.eventBus.emit('cancel');
-	closeModal();
 };
+
+async function closeDialog() {
+	if (uiStore.modalsById[props.modalName]?.open !== true) return;
+	const shouldClose = await onCancel();
+	if (shouldClose === false) return;
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 const handleSubmit = () => {
 	if (versionName.value.trim().length === 0) {
@@ -85,19 +96,15 @@ const handleSubmit = () => {
 </script>
 
 <template>
-	<Modal
-		width="500px"
-		max-height="85vh"
-		:name="modalName"
-		:event-bus="modalEventBus"
-		:center="true"
-		:before-close="onCancel"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:container-class="$style.dialog"
+		:header="data.modalTitle"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<N8nHeading size="xlarge">{{ data.modalTitle }}</N8nHeading>
-		</template>
-		<template #content>
-			<div :class="$style.content">
+		<N8nDialogBody>
+			<div :class="$style.content" :data-test-id="`${modalName}-modal`">
 				<WorkflowVersionForm
 					ref="versionForm"
 					v-model:version-name="versionName"
@@ -112,7 +119,7 @@ const handleSubmit = () => {
 						:disabled="submitting"
 						:label="i18n.baseText('generic.cancel')"
 						:data-test-id="`${modalName}-cancel-button`"
-						@click="onCancel"
+						@click="closeDialog"
 					/>
 					<N8nButton
 						:loading="submitting"
@@ -123,14 +130,22 @@ const handleSubmit = () => {
 					/>
 				</div>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 <style lang="scss" module>
+.dialog {
+	display: flex;
+	flex-direction: column;
+	max-height: 85vh;
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+	min-height: 0;
+	overflow-y: auto;
 }
 
 .actions {

@@ -1,16 +1,27 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { EXPERIMENT_TEMPLATE_RECO_V3_KEY } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
-import { ref, watchEffect } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 import { usePersonalizedTemplatesV3Store } from '../stores/personalizedTemplatesV3.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import TemplateCard from './TemplateCard.vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nCard, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
+import {
+	N8nCard,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nIcon,
+	N8nSpinner,
+	N8nText,
+} from '@n8n/design-system';
 
 const uiStore = useUIStore();
+const modalOpen = computed(
+	() => uiStore.modalsById[EXPERIMENT_TEMPLATE_RECO_V3_KEY]?.open === true,
+);
 const templatesStore = useTemplatesStore();
 const {
 	getHubSpotData,
@@ -20,9 +31,13 @@ const {
 } = usePersonalizedTemplatesV3Store();
 const locale = useI18n();
 
-const closeModal = () => {
+async function closeDialog() {
 	uiStore.closeModal(EXPERIMENT_TEMPLATE_RECO_V3_KEY);
-};
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 const openTemplateRepository = () => {
 	trackTemplatesRepoClickFromModal();
@@ -58,60 +73,58 @@ watchEffect(async () => {
 </script>
 
 <template>
-	<Modal
-		:name="EXPERIMENT_TEMPLATE_RECO_V3_KEY"
-		min-width="min(800px, 90vw)"
-		max-height="90vh"
-		:class="$style.modal"
-		@close="closeModal"
-		@canceled="closeModal"
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:container-class="$style.modal"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<div :class="$style.header">
-				<N8nText tag="h1" size="large" :bold="true">
-					{{ locale.baseText('experiments.personalizedTemplatesV3.recommendedForYou') }}
-				</N8nText>
-			</div>
-		</template>
-		<template #content>
-			<div v-if="isLoadingTemplates" :class="$style.loading">
-				<N8nSpinner size="small" />
-				<N8nText size="small">{{
-					locale.baseText('experiments.personalizedTemplatesV3.loadingTemplates')
-				}}</N8nText>
-			</div>
-			<div v-else>
-				<div :class="$style.templates">
-					<TemplateCard v-for="template in templates" :key="template.id" :template="template" />
+		<N8nDialogHeader>
+			<N8nDialogTitle>
+				{{ locale.baseText('experiments.personalizedTemplatesV3.recommendedForYou') }}
+			</N8nDialogTitle>
+		</N8nDialogHeader>
+		<N8nDialogBody>
+			<div :class="$style.scrollBody">
+				<div v-if="isLoadingTemplates" :class="$style.loading">
+					<N8nSpinner size="small" />
+					<N8nText size="small">{{
+						locale.baseText('experiments.personalizedTemplatesV3.loadingTemplates')
+					}}</N8nText>
 				</div>
-				<N8nCard :class="[$style.footerCard]" @click="openTemplateRepository">
-					<div :class="$style.footerContent">
-						<div :class="$style.footerText">
-							<N8nText size="medium" :bold="true" class="mr-s" color="text-light">
-								{{ locale.baseText('experiments.personalizedTemplatesV3.couldntFind') }}
-							</N8nText>
-							<N8nText size="small" :class="'mt-2xs'">
-								{{ locale.baseText('experiments.personalizedTemplatesV3.browseAllTemplates') }}
-							</N8nText>
-						</div>
-						<div :class="$style.footerIcon">
-							<N8nIcon icon="external-link" size="medium" />
-						</div>
+				<div v-else>
+					<div :class="$style.templates">
+						<TemplateCard v-for="template in templates" :key="template.id" :template="template" />
 					</div>
-				</N8nCard>
+					<N8nCard :class="[$style.footerCard]" @click="openTemplateRepository">
+						<div :class="$style.footerContent">
+							<div :class="$style.footerText">
+								<N8nText size="medium" :bold="true" class="mr-s" color="text-light">
+									{{ locale.baseText('experiments.personalizedTemplatesV3.couldntFind') }}
+								</N8nText>
+								<N8nText size="small" :class="'mt-2xs'">
+									{{ locale.baseText('experiments.personalizedTemplatesV3.browseAllTemplates') }}
+								</N8nText>
+							</div>
+							<div :class="$style.footerIcon">
+								<N8nIcon icon="external-link" size="medium" />
+							</div>
+						</div>
+					</N8nCard>
+				</div>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.modal {
+.modal.modal {
 	background-color: var(--color--background--light-3);
 }
 
-.header {
-	border-bottom: 1px solid var(--border-color);
-	padding-bottom: var(--spacing--sm);
+.scrollBody {
+	overflow: auto;
+	max-height: calc(90vh - var(--spacing--3xl));
 }
 
 .templates {

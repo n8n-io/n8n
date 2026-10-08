@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
 
-import { N8nButton, N8nFormInput, N8nCallout, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nFormInput,
+	N8nText,
+} from '@n8n/design-system';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { ElRow } from 'element-plus';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -52,7 +59,8 @@ const allWorkflowsHint = computed(() => {
 });
 
 const toast = useToast();
-const modalBus = createEventBus();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const onSubmit = async () => {
 	try {
@@ -83,24 +91,27 @@ const onSubmit = async () => {
 	} catch (e) {
 		toast.showError(e, i18n.baseText('executionStopManyModal.error.failure'));
 	} finally {
-		modalBus.emit('close');
+		void closeDialog();
 	}
 };
 
-function closeModal() {
-	modalBus.emit('close');
+function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
 }
 </script>
 
 <template>
-	<Modal
-		max-width="540px"
-		:title="i18n.baseText('executionStopManyModal.title')"
-		:event-bus="modalBus"
-		:name="props.modalName"
-		:center="true"
+	<N8nDialog
+		:open="modalOpen"
+		size="large"
+		:header="i18n.baseText('executionStopManyModal.title')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<div :class="$style.container">
 				<ElRow v-if="activeFilterHint" :class="$style.vertPadding">
 					<N8nCallout theme="info">
@@ -145,14 +156,14 @@ function closeModal() {
 					/>
 				</ElRow>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					variant="subtle"
 					:label="i18n.baseText('executionStopManyModal.button.close')"
 					data-test-id="sme-close-button"
-					@click="closeModal"
+					@click="closeDialog"
 				/>
 				<N8nButton
 					:disabled="!checkWaiting && !checkRunning && !checkQueued"
@@ -162,8 +173,8 @@ function closeModal() {
 					@click="onSubmit"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>

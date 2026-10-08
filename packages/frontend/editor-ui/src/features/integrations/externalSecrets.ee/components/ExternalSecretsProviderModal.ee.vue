@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import Modal from '@/app/components/Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useExternalSecretsProvider } from '@/features/integrations/externalSecrets.ee/composables/useExternalSecretsProvider';
@@ -20,7 +20,17 @@ import ExternalSecretsProviderConnectionSwitch from './ExternalSecretsProviderCo
 import { createEventBus } from '@n8n/utils/event-bus';
 import { I18nT } from 'vue-i18n';
 
-import { N8nButton, N8nCallout, N8nLink, N8nNotice } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogClose,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nLink,
+	N8nNotice,
+} from '@n8n/design-system';
 const props = defineProps<{
 	data: { eventBus: EventBus; name: string };
 }>();
@@ -33,6 +43,11 @@ const defaultProviderData: Record<string, Partial<ExternalSecretsProviderData>> 
 		environment: 'public',
 	},
 };
+
+const uiStore = useUIStore();
+const modalOpen = computed(
+	() => uiStore.modalsById[EXTERNAL_SECRETS_PROVIDER_MODAL_KEY]?.open === true,
+);
 
 const externalSecretsStore = useExternalSecretsStore();
 const toast = useToast();
@@ -164,22 +179,32 @@ async function onBeforeClose() {
 async function onConnectionStateChange() {
 	await testConnection();
 }
+
+async function closeDialog() {
+	if ((await onBeforeClose()) === false) return;
+	uiStore.closeModal(EXTERNAL_SECRETS_PROVIDER_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 </script>
 
 <template>
-	<Modal
-		id="external-secrets-provider-modal"
-		width="812px"
-		:title="provider?.displayName"
-		:event-bus="data.eventBus"
-		:name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY"
-		:before-close="onBeforeClose"
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:show-close-button="false"
+		:container-class="$style.providerDialog"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<div v-if="provider" :class="$style.header">
+		<N8nDialogHeader v-if="provider">
+			<div :class="$style.header">
 				<div :class="$style.providerTitle">
 					<ExternalSecretsProviderImage :provider="provider" class="mr-xs" />
-					<span>{{ provider.displayName }}</span>
+					<N8nDialogTitle as-child>
+						<span>{{ provider.displayName }}</span>
+					</N8nDialogTitle>
 				</div>
 				<div :class="$style.providerActions">
 					<ExternalSecretsProviderConnectionSwitch
@@ -204,13 +229,12 @@ async function onConnectionStateChange() {
 							)
 						}}
 					</N8nButton>
+					<N8nDialogClose />
 				</div>
 			</div>
-		</template>
-
-		<template #content>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<div v-if="provider" :class="$style.container">
-				<hr class="mb-l" />
 				<div v-if="connectionState !== 'initializing'" class="mb-l">
 					<N8nCallout
 						v-if="connectionState === 'connected' || connectionState === 'tested'"
@@ -282,8 +306,8 @@ async function onConnectionStateChange() {
 					/>
 				</form>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
@@ -319,28 +343,24 @@ async function onConnectionStateChange() {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
+
+	:global([data-test-id='dialog-close-button']) {
+		position: static;
+		margin-left: var(--spacing--xs);
+	}
+}
+
+.providerDialog {
+	header {
+		display: flex;
+		align-items: center;
+		flex-direction: row;
+	}
 }
 
 .footer {
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
-}
-</style>
-
-<style lang="scss">
-#external-secrets-provider-modal {
-	.el-dialog__header {
-		display: flex;
-		align-items: center;
-		flex-direction: row;
-	}
-
-	.el-dialog__headerbtn {
-		position: relative;
-		top: unset;
-		right: unset;
-		margin-left: var(--spacing--xs);
-	}
 }
 </style>

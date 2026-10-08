@@ -24,7 +24,6 @@ import WorkflowHistoryList from '../components/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '../components/WorkflowHistoryContent.vue';
 import WorkflowHistoryDiff from './WorkflowHistoryDiff.vue';
 import WorkflowPublishTimelineContent from '../components/WorkflowPublishTimelineContent.vue';
-import Modal from '@/app/components/Modal.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -36,7 +35,14 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nBadge, N8nHeading, N8nIcon, N8nTabs } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nDialog,
+	N8nDialogBody,
+	N8nHeading,
+	N8nIcon,
+	N8nTabs,
+} from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
@@ -553,7 +559,11 @@ const onDiffVersionsChange = async ({
 	await router.push(createCompareRoute(sourceVersionId, targetVersionId));
 };
 
-const closeCompareView = async () => {
+const historyDiffModalOpen = computed(
+	() => uiStore.modalsById[WORKFLOW_HISTORY_DIFF_MODAL_KEY]?.open === true,
+);
+
+const closeCompareView = async (): Promise<boolean | void> => {
 	if (uiStore.modalsById[WORKFLOW_HISTORY_DIFF_MODAL_KEY]?.open) {
 		uiStore.closeModal(WORKFLOW_HISTORY_DIFF_MODAL_KEY);
 	}
@@ -569,6 +579,21 @@ const closeCompareView = async () => {
 		query,
 	});
 };
+
+async function closeHistoryDiffDialog() {
+	if (uiStore.modalsById[WORKFLOW_HISTORY_DIFF_MODAL_KEY]?.open !== true) return;
+	const shouldClose = await closeCompareView();
+	if (shouldClose === false) return;
+	uiStore.closeModal(WORKFLOW_HISTORY_DIFF_MODAL_KEY);
+}
+
+function onHistoryDiffOpenUpdate(open: boolean) {
+	if (!open) void closeHistoryDiffDialog();
+}
+
+function preventHistoryDiffEscape(event: KeyboardEvent) {
+	event.preventDefault();
+}
 
 watchEffect(() => {
 	const shouldOpenDiffModal = Boolean(
@@ -683,30 +708,29 @@ watchEffect(async () => {
 				@action="onAction"
 			/>
 		</div>
-		<Modal
+		<N8nDialog
 			v-if="isWorkflowDiffsEnabled && diffWithVersionId && versionId"
-			:name="WORKFLOW_HISTORY_DIFF_MODAL_KEY"
-			:custom-class="$style.workflowHistoryDiffModal"
-			height="100%"
-			width="100%"
-			max-width="100%"
-			max-height="100%"
-			:close-on-press-escape="false"
-			:show-close="false"
-			:before-close="closeCompareView"
+			:open="historyDiffModalOpen"
+			size="cover"
+			:show-close-button="false"
+			:container-class="$style.workflowHistoryDiffModal"
+			@update:open="onHistoryDiffOpenUpdate"
+			@escape-key-down="preventHistoryDiffEscape"
 		>
-			<template #content>
-				<WorkflowHistoryDiff
-					:key="`${versionId}:${diffWithVersionId}`"
-					:workflow-id="workflowId"
-					:source-workflow-version-id="diffWithVersionId"
-					:target-workflow-version-id="versionId"
-					:available-versions="workflowHistory"
-					@versions-change="onDiffVersionsChange"
-					@close="closeCompareView"
-				/>
-			</template>
-		</Modal>
+			<N8nDialogBody>
+				<div :class="$style.workflowHistoryDiffBody" data-test-id="workflowHistoryDiff-modal">
+					<WorkflowHistoryDiff
+						:key="`${versionId}:${diffWithVersionId}`"
+						:workflow-id="workflowId"
+						:source-workflow-version-id="diffWithVersionId"
+						:target-workflow-version-id="versionId"
+						:available-versions="workflowHistory"
+						@versions-change="onDiffVersionsChange"
+						@close="closeCompareView"
+					/>
+				</div>
+			</N8nDialogBody>
+		</N8nDialog>
 	</div>
 </template>
 <style module lang="scss">
@@ -780,22 +804,19 @@ watchEffect(async () => {
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
-.workflowHistoryDiffModal {
+.workflowHistoryDiffModal.workflowHistoryDiffModal {
+	display: flex;
+	flex-direction: column;
 	margin-bottom: 0;
+	padding: 0;
+	--n8n-dialog-content--padding: 0;
 	border-radius: 0;
+	overflow: hidden;
+}
 
-	:global(.el-dialog__header) {
-		display: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	:global(.el-dialog__body) {
-		padding: 0;
-	}
-
-	:global(.el-dialog__headerbtn) {
-		display: none;
-	}
+.workflowHistoryDiffBody {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
 }
 </style>

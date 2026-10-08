@@ -11,8 +11,9 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
-	N8nHeading,
+	N8nDialogTitle,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
@@ -696,10 +697,6 @@ function handleOpenChange(value: boolean): void {
 	emit('update:open', value);
 }
 
-function preventOutsideClose(event: Event): void {
-	event.preventDefault();
-}
-
 // Reka's focus trap otherwise focuses the first tabbable field, which makes a
 // filterable select open its dropdown as soon as the wizard appears. Focus the
 // dialog itself instead so keyboard navigation still starts inside it.
@@ -738,589 +735,605 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 		:show-close-button="!busy && step !== 'done'"
 		:aria-label="i18n.baseText('instanceAi.onboarding.wizard.ariaLabel')"
 		:data-test-id="dialogTestId"
+		:close-on-overlay-click="false"
 		@update:open="handleOpenChange"
-		@interact-outside="preventOutsideClose"
 		@open-auto-focus="focusDialogInsteadOfFirstField"
 	>
-		<div :class="$style.body">
-			<template v-if="step === 'model'">
-				<div>
-					<N8nHeading tag="h2" size="large" bold>
-						{{ i18n.baseText('instanceAi.onboarding.model.title') }}
-					</N8nHeading>
-					<N8nText tag="p" :class="$style.description">
-						{{ i18n.baseText('instanceAi.onboarding.model.lede') }}
-					</N8nText>
-				</div>
+		<N8nDialogBody>
+			<div :class="$style.body">
+				<template v-if="step === 'model'">
+					<div>
+						<N8nDialogTitle>
+							{{ i18n.baseText('instanceAi.onboarding.model.title') }}
+						</N8nDialogTitle>
+						<N8nText tag="p" :class="$style.description">
+							{{ i18n.baseText('instanceAi.onboarding.model.lede') }}
+						</N8nText>
+					</div>
 
-				<N8nCallout v-if="modelConnectionLocked" theme="warning">
-					<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
-					{{ i18n.baseText('instanceAi.onboarding.env.description') }}
-					<N8nLink :to="ENV_DOCS_URL" size="small" new-window>
-						{{ i18n.baseText('instanceAi.onboarding.env.docs') }}
-					</N8nLink>
-				</N8nCallout>
+					<N8nCallout v-if="modelConnectionLocked" theme="warning">
+						<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
+						{{ i18n.baseText('instanceAi.onboarding.env.description') }}
+						<N8nLink :to="ENV_DOCS_URL" size="small" new-window>
+							{{ i18n.baseText('instanceAi.onboarding.env.docs') }}
+						</N8nLink>
+					</N8nCallout>
 
-				<N8nInputLabel
-					v-if="showExistingCredentialSelect"
-					:class="$style.compactLabel"
-					:label="i18n.baseText('instanceAi.onboarding.existingConnection.label')"
-					input-name="assistant-existing-model-credential"
-				>
-					<N8nSelect
-						id="assistant-existing-model-credential"
-						:model-value="selectedExistingCredentialId"
-						:teleported="true"
-						:data-test-id="existingCredentialTestId"
-						@update:model-value="selectExistingCredential"
-					>
-						<N8nOption v-if="!readOnly" value="" :label="editableConnectionLabel" />
-						<N8nOption
-							v-for="credential in compatibleCredentials"
-							:key="credential.id"
-							:value="credential.id"
-							:label="existingCredentialLabel(credential)"
-						/>
-					</N8nSelect>
-				</N8nInputLabel>
-
-				<div :class="$style.fields">
 					<N8nInputLabel
+						v-if="showExistingCredentialSelect"
 						:class="$style.compactLabel"
-						:label="i18n.baseText('instanceAi.onboarding.model.provider')"
-						input-name="assistant-model-provider"
+						:label="i18n.baseText('instanceAi.onboarding.existingConnection.label')"
+						input-name="assistant-existing-model-credential"
 					>
-						<N8nInput
-							v-if="modelConnectionLocked || readOnly || selectedExistingCredentialId"
-							id="assistant-model-provider"
-							:model-value="
-								selectedExistingCredential
-									? credentialProviderLabel(selectedExistingCredential)
-									: STATIC_SECRET_MASK
-							"
-							disabled
-							:data-test-id="surface === 'settings' ? 'n8n-agent-model-provider-input' : undefined"
-						/>
 						<N8nSelect
-							v-else
-							id="assistant-model-provider"
-							:model-value="modelProvider"
+							id="assistant-existing-model-credential"
+							:model-value="selectedExistingCredentialId"
 							:teleported="true"
-							:data-test-id="
-								surface === 'settings'
-									? 'n8n-agent-model-provider-select'
-									: 'assistant-model-provider'
-							"
-							@update:model-value="selectModelProvider"
+							:data-test-id="existingCredentialTestId"
+							@update:model-value="selectExistingCredential"
 						>
+							<N8nOption v-if="!readOnly" value="" :label="editableConnectionLabel" />
 							<N8nOption
-								v-for="provider in INSTANCE_AI_MODEL_PROVIDERS"
-								:key="provider.id"
-								:value="provider.id"
-								:label="modelProviderLabel(provider)"
+								v-for="credential in compatibleCredentials"
+								:key="credential.id"
+								:value="credential.id"
+								:label="existingCredentialLabel(credential)"
 							/>
 						</N8nSelect>
 					</N8nInputLabel>
 
-					<N8nInputLabel
+					<div :class="$style.fields">
+						<N8nInputLabel
+							:class="$style.compactLabel"
+							:label="i18n.baseText('instanceAi.onboarding.model.provider')"
+							input-name="assistant-model-provider"
+						>
+							<N8nInput
+								v-if="modelConnectionLocked || readOnly || selectedExistingCredentialId"
+								id="assistant-model-provider"
+								:model-value="
+									selectedExistingCredential
+										? credentialProviderLabel(selectedExistingCredential)
+										: STATIC_SECRET_MASK
+								"
+								disabled
+								:data-test-id="
+									surface === 'settings' ? 'n8n-agent-model-provider-input' : undefined
+								"
+							/>
+							<N8nSelect
+								v-else
+								id="assistant-model-provider"
+								:model-value="modelProvider"
+								:teleported="true"
+								:data-test-id="
+									surface === 'settings'
+										? 'n8n-agent-model-provider-select'
+										: 'assistant-model-provider'
+								"
+								@update:model-value="selectModelProvider"
+							>
+								<N8nOption
+									v-for="provider in INSTANCE_AI_MODEL_PROVIDERS"
+									:key="provider.id"
+									:value="provider.id"
+									:label="modelProviderLabel(provider)"
+								/>
+							</N8nSelect>
+						</N8nInputLabel>
+
+						<N8nInputLabel
+							v-if="
+								modelProvider === 'custom' &&
+								!modelConnectionLocked &&
+								!selectedExistingCredentialId
+							"
+							:class="$style.compactLabel"
+							:label="i18n.baseText('instanceAi.onboarding.model.baseUrl')"
+							input-name="assistant-model-base-url"
+						>
+							<N8nInput
+								id="assistant-model-base-url"
+								v-model="modelBaseUrl"
+								class="ph-no-capture"
+								type="text"
+								autocomplete="off"
+								:spellcheck="false"
+								placeholder="http://ollama.internal:11434/v1"
+								data-test-id="assistant-model-base-url"
+							/>
+						</N8nInputLabel>
+
+						<N8nInputLabel
+							:class="$style.compactLabel"
+							:label="i18n.baseText('instanceAi.onboarding.model.apiKey')"
+							input-name="assistant-model-api-key"
+						>
+							<N8nInput
+								id="assistant-model-api-key"
+								v-model="modelApiKey"
+								class="ph-no-capture"
+								type="password"
+								autocomplete="off"
+								:spellcheck="false"
+								:disabled="
+									modelConnectionLocked || readOnly || Boolean(selectedExistingCredentialId)
+								"
+								:placeholder="
+									modelConnectionLocked || readOnly || selectedExistingCredentialId
+										? STATIC_SECRET_MASK
+										: modelConfig.placeholder
+								"
+								:data-test-id="
+									surface === 'settings'
+										? 'n8n-agent-model-api-key-input'
+										: 'assistant-model-api-key'
+								"
+							/>
+						</N8nInputLabel>
+
+						<N8nInputLabel
+							:class="$style.compactLabel"
+							:label="i18n.baseText('instanceAi.onboarding.model.model')"
+							input-name="assistant-model-name"
+						>
+							<N8nSelect
+								v-if="modelOptions.length && !modelNameLocked"
+								id="assistant-model-name"
+								:model-value="modelName"
+								:teleported="true"
+								filterable
+								:disabled="readOnly"
+								:data-test-id="
+									surface === 'settings' ? 'n8n-agent-model-name-input' : 'assistant-model-name'
+								"
+								@update:model-value="modelName = String($event ?? '')"
+							>
+								<N8nOption
+									v-for="model in modelOptions"
+									:key="model.id"
+									:value="model.id"
+									:label="
+										model.recommended
+											? `${model.name} · ${i18n.baseText('instanceAi.onboarding.recommended')}`
+											: model.name
+									"
+								/>
+							</N8nSelect>
+							<N8nInput
+								v-else
+								id="assistant-model-name"
+								v-model="modelName"
+								class="ph-no-capture"
+								:disabled="modelNameLocked || readOnly"
+								:placeholder="modelNameLocked ? STATIC_SECRET_MASK : 'qwen3-coder'"
+								:spellcheck="false"
+								:data-test-id="
+									surface === 'settings' ? 'n8n-agent-model-name-input' : 'assistant-model-name'
+								"
+							/>
+						</N8nInputLabel>
+						<N8nText
+							v-if="modelProvider === 'anthropic' && !modelNameLocked"
+							step="xs"
+							color="text-light"
+							:class="$style.fieldHint"
+						>
+							{{ i18n.baseText('instanceAi.onboarding.model.anthropicHint') }}
+						</N8nText>
+					</div>
+
+					<N8nCallout
 						v-if="
 							modelProvider === 'custom' && !modelConnectionLocked && !selectedExistingCredentialId
 						"
-						:class="$style.compactLabel"
-						:label="i18n.baseText('instanceAi.onboarding.model.baseUrl')"
-						input-name="assistant-model-base-url"
+						theme="warning"
+						icon="triangle-alert"
 					>
-						<N8nInput
-							id="assistant-model-base-url"
-							v-model="modelBaseUrl"
-							class="ph-no-capture"
-							type="text"
-							autocomplete="off"
-							:spellcheck="false"
-							placeholder="http://ollama.internal:11434/v1"
-							data-test-id="assistant-model-base-url"
-						/>
-					</N8nInputLabel>
+						{{ i18n.baseText('instanceAi.onboarding.model.weakModelWarning') }}
+					</N8nCallout>
+				</template>
 
+				<template v-else-if="step === 'sandbox'">
+					<div>
+						<N8nDialogTitle>
+							{{ i18n.baseText('instanceAi.onboarding.sandbox.title') }}
+						</N8nDialogTitle>
+						<N8nText tag="p" :class="$style.description">
+							{{ i18n.baseText('instanceAi.onboarding.sandbox.lede') }}
+						</N8nText>
+					</div>
+					<N8nCallout v-if="sandboxEnvManaged" theme="warning">
+						<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
+						{{ i18n.baseText('instanceAi.onboarding.env.description') }}
+					</N8nCallout>
 					<N8nInputLabel
+						v-if="showExistingCredentialSelect"
 						:class="$style.compactLabel"
-						:label="i18n.baseText('instanceAi.onboarding.model.apiKey')"
-						input-name="assistant-model-api-key"
-					>
-						<N8nInput
-							id="assistant-model-api-key"
-							v-model="modelApiKey"
-							class="ph-no-capture"
-							type="password"
-							autocomplete="off"
-							:spellcheck="false"
-							:disabled="modelConnectionLocked || readOnly || Boolean(selectedExistingCredentialId)"
-							:placeholder="
-								modelConnectionLocked || readOnly || selectedExistingCredentialId
-									? STATIC_SECRET_MASK
-									: modelConfig.placeholder
-							"
-							:data-test-id="
-								surface === 'settings' ? 'n8n-agent-model-api-key-input' : 'assistant-model-api-key'
-							"
-						/>
-					</N8nInputLabel>
-
-					<N8nInputLabel
-						:class="$style.compactLabel"
-						:label="i18n.baseText('instanceAi.onboarding.model.model')"
-						input-name="assistant-model-name"
+						:label="i18n.baseText('instanceAi.onboarding.existingConnection.label')"
+						input-name="assistant-existing-sandbox-credential"
 					>
 						<N8nSelect
-							v-if="modelOptions.length && !modelNameLocked"
-							id="assistant-model-name"
-							:model-value="modelName"
+							id="assistant-existing-sandbox-credential"
+							:model-value="selectedExistingCredentialId"
 							:teleported="true"
-							filterable
-							:disabled="readOnly"
-							:data-test-id="
-								surface === 'settings' ? 'n8n-agent-model-name-input' : 'assistant-model-name'
-							"
-							@update:model-value="modelName = String($event ?? '')"
+							:data-test-id="existingCredentialTestId"
+							@update:model-value="selectExistingCredential"
 						>
+							<N8nOption v-if="!readOnly" value="" :label="editableConnectionLabel" />
 							<N8nOption
-								v-for="model in modelOptions"
-								:key="model.id"
-								:value="model.id"
-								:label="
-									model.recommended
-										? `${model.name} · ${i18n.baseText('instanceAi.onboarding.recommended')}`
-										: model.name
-								"
+								v-for="credential in compatibleCredentials"
+								:key="credential.id"
+								:value="credential.id"
+								:label="existingCredentialLabel(credential)"
 							/>
 						</N8nSelect>
-						<N8nInput
-							v-else
-							id="assistant-model-name"
-							v-model="modelName"
-							class="ph-no-capture"
-							:disabled="modelNameLocked || readOnly"
-							:placeholder="modelNameLocked ? STATIC_SECRET_MASK : 'qwen3-coder'"
-							:spellcheck="false"
-							:data-test-id="
-								surface === 'settings' ? 'n8n-agent-model-name-input' : 'assistant-model-name'
-							"
-						/>
 					</N8nInputLabel>
-					<N8nText
-						v-if="modelProvider === 'anthropic' && !modelNameLocked"
-						step="xs"
-						color="text-light"
-						:class="$style.fieldHint"
+					<N8nRadioGroup
+						v-if="!sandboxEnvManaged && !readOnly && !selectedExistingCredentialId"
+						:model-value="sandboxProvider ?? undefined"
+						orientation="vertical"
+						:class="$style.joinedCards"
+						:data-test-id="surface === 'settings' ? 'n8n-agent-sandbox-provider-select' : undefined"
+						@update:model-value="selectSandboxProvider"
 					>
-						{{ i18n.baseText('instanceAi.onboarding.model.anthropicHint') }}
-					</N8nText>
-				</div>
-
-				<N8nCallout
-					v-if="
-						modelProvider === 'custom' && !modelConnectionLocked && !selectedExistingCredentialId
-					"
-					theme="warning"
-					icon="triangle-alert"
-				>
-					{{ i18n.baseText('instanceAi.onboarding.model.weakModelWarning') }}
-				</N8nCallout>
-			</template>
-
-			<template v-else-if="step === 'sandbox'">
-				<div>
-					<N8nHeading tag="h2" size="large" bold>
-						{{ i18n.baseText('instanceAi.onboarding.sandbox.title') }}
-					</N8nHeading>
-					<N8nText tag="p" :class="$style.description">
-						{{ i18n.baseText('instanceAi.onboarding.sandbox.lede') }}
-					</N8nText>
-				</div>
-				<N8nCallout v-if="sandboxEnvManaged" theme="warning">
-					<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
-					{{ i18n.baseText('instanceAi.onboarding.env.description') }}
-				</N8nCallout>
-				<N8nInputLabel
-					v-if="showExistingCredentialSelect"
-					:class="$style.compactLabel"
-					:label="i18n.baseText('instanceAi.onboarding.existingConnection.label')"
-					input-name="assistant-existing-sandbox-credential"
-				>
-					<N8nSelect
-						id="assistant-existing-sandbox-credential"
-						:model-value="selectedExistingCredentialId"
-						:teleported="true"
-						:data-test-id="existingCredentialTestId"
-						@update:model-value="selectExistingCredential"
-					>
-						<N8nOption v-if="!readOnly" value="" :label="editableConnectionLabel" />
-						<N8nOption
-							v-for="credential in compatibleCredentials"
-							:key="credential.id"
-							:value="credential.id"
-							:label="existingCredentialLabel(credential)"
-						/>
-					</N8nSelect>
-				</N8nInputLabel>
-				<N8nRadioGroup
-					v-if="!sandboxEnvManaged && !readOnly && !selectedExistingCredentialId"
-					:model-value="sandboxProvider ?? undefined"
-					orientation="vertical"
-					:class="$style.joinedCards"
-					:data-test-id="surface === 'settings' ? 'n8n-agent-sandbox-provider-select' : undefined"
-					@update:model-value="selectSandboxProvider"
-				>
-					<div
-						v-for="provider in INSTANCE_AI_SANDBOX_PROVIDERS"
-						:key="provider.id"
-						:class="$style.optionCard"
-						:data-test-id="`assistant-sandbox-${provider.id}`"
-						@click="selectSandboxProvider(provider.id)"
-					>
-						<N8nRadioGroupItem
-							:id="`assistant-sandbox-radio-${provider.id}`"
-							:value="provider.id"
-							:aria-label="provider.onboardingLabel"
-							:class="$style.optionControl"
-						/>
-						<span :class="$style.optionCopy">
-							<span :class="$style.optionTitle">
-								<N8nText bold step="sm">{{ provider.onboardingLabel }}</N8nText>
-								<N8nBadge
-									:variant="provider.id === 'n8n-sandbox' ? 'secondary' : 'outline'"
-									:class="$style.optionBadge"
-								>
+						<div
+							v-for="provider in INSTANCE_AI_SANDBOX_PROVIDERS"
+							:key="provider.id"
+							:class="$style.optionCard"
+							:data-test-id="`assistant-sandbox-${provider.id}`"
+							@click="selectSandboxProvider(provider.id)"
+						>
+							<N8nRadioGroupItem
+								:id="`assistant-sandbox-radio-${provider.id}`"
+								:value="provider.id"
+								:aria-label="provider.onboardingLabel"
+								:class="$style.optionControl"
+							/>
+							<span :class="$style.optionCopy">
+								<span :class="$style.optionTitle">
+									<N8nText bold step="sm">{{ provider.onboardingLabel }}</N8nText>
+									<N8nBadge
+										:variant="provider.id === 'n8n-sandbox' ? 'secondary' : 'outline'"
+										:class="$style.optionBadge"
+									>
+										{{
+											provider.id === 'n8n-sandbox'
+												? i18n.baseText('instanceAi.onboarding.sandbox.freeRecommended')
+												: i18n.baseText('instanceAi.onboarding.sandbox.paid')
+										}}
+									</N8nBadge>
+								</span>
+								<N8nText color="text-base" step="sm" :class="$style.optionDescription">
 									{{
 										provider.id === 'n8n-sandbox'
-											? i18n.baseText('instanceAi.onboarding.sandbox.freeRecommended')
-											: i18n.baseText('instanceAi.onboarding.sandbox.paid')
+											? i18n.baseText('instanceAi.onboarding.sandbox.n8nDescription')
+											: i18n.baseText('instanceAi.onboarding.sandbox.daytonaDescription')
 									}}
-								</N8nBadge>
+								</N8nText>
 							</span>
-							<N8nText color="text-base" step="sm" :class="$style.optionDescription">
-								{{
-									provider.id === 'n8n-sandbox'
-										? i18n.baseText('instanceAi.onboarding.sandbox.n8nDescription')
-										: i18n.baseText('instanceAi.onboarding.sandbox.daytonaDescription')
-								}}
-							</N8nText>
-						</span>
-					</div>
-				</N8nRadioGroup>
+						</div>
+					</N8nRadioGroup>
 
-				<div
-					v-if="!sandboxEnvManaged && sandboxProvider === 'n8n-sandbox'"
-					:class="$style.fields"
-					:data-test-id="surface === 'settings' ? 'n8n-agent-sandbox-connection-fields' : undefined"
-				>
-					<N8nText step="xs">
-						{{ i18n.baseText('instanceAi.onboarding.sandbox.installDescription') }}
-						<N8nLink :to="SANDBOX_DOCS_URL" new-window>
-							{{ i18n.baseText('instanceAi.onboarding.sandbox.installLink') }}
-						</N8nLink>
-					</N8nText>
-					<N8nInputLabel
-						:class="$style.compactLabel"
-						:label="i18n.baseText('instanceAi.onboarding.sandbox.serviceUrl')"
-						input-name="assistant-sandbox-url"
-					>
-						<N8nInput
-							id="assistant-sandbox-url"
-							v-model="sandboxServiceUrl"
-							class="ph-no-capture"
-							type="text"
-							autocomplete="off"
-							:spellcheck="false"
-							placeholder="http://sandbox.internal:3200"
-							data-test-id="assistant-sandbox-url"
-						/>
-					</N8nInputLabel>
-					<N8nInputLabel
-						v-if="!selectedExistingCredentialId"
-						:class="$style.compactLabel"
-						:label="i18n.baseText('instanceAi.onboarding.sandbox.apiKey')"
-						input-name="assistant-sandbox-api-key"
-					>
-						<N8nInput
-							id="assistant-sandbox-api-key"
-							v-model="sandboxApiKey"
-							class="ph-no-capture"
-							type="password"
-							autocomplete="off"
-							:spellcheck="false"
-							:placeholder="i18n.baseText('instanceAi.onboarding.sandbox.apiKeyPlaceholder')"
-							:data-test-id="
-								surface === 'settings'
-									? 'n8n-agent-sandbox-api-key-input'
-									: 'assistant-sandbox-api-key'
-							"
-						/>
-					</N8nInputLabel>
-				</div>
-				<div
-					v-else-if="
-						!sandboxEnvManaged &&
-						sandboxProvider === 'daytona' &&
-						!selectedExistingCredentialId &&
-						!isProxyDaytonaSelection
-					"
-					:class="$style.fields"
-					:data-test-id="surface === 'settings' ? 'n8n-agent-sandbox-connection-fields' : undefined"
-				>
-					<N8nInputLabel
-						:class="$style.compactLabel"
-						:label="i18n.baseText('instanceAi.onboarding.sandbox.apiKey')"
-						input-name="assistant-daytona-api-key"
-					>
-						<N8nInput
-							id="assistant-daytona-api-key"
-							v-model="daytonaApiKey"
-							class="ph-no-capture"
-							type="password"
-							autocomplete="off"
-							:spellcheck="false"
-							placeholder="dtn_…"
-							data-test-id="assistant-daytona-api-key"
-						/>
-					</N8nInputLabel>
-					<N8nText step="xs" color="text-light">
-						{{ i18n.baseText('instanceAi.onboarding.sandbox.daytonaKey') }}
-						<N8nLink to="https://app.daytona.io" new-window>
-							{{ i18n.baseText('instanceAi.onboarding.sandbox.daytonaDashboard') }} </N8nLink
-						>.
-					</N8nText>
-				</div>
-			</template>
-
-			<template v-else-if="step === 'search'">
-				<div>
-					<N8nHeading tag="h2" size="large" bold>
-						{{ i18n.baseText('instanceAi.onboarding.search.title') }}
-					</N8nHeading>
-					<N8nText tag="p" :class="$style.description">
-						{{ i18n.baseText('instanceAi.onboarding.search.lede') }}
-					</N8nText>
-				</div>
-				<N8nCallout v-if="searchEnvManaged" theme="warning">
-					<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
-					{{ i18n.baseText('instanceAi.onboarding.env.description') }}
-				</N8nCallout>
-				<N8nInputLabel
-					v-if="showExistingCredentialSelect"
-					:class="$style.compactLabel"
-					:label="i18n.baseText('instanceAi.onboarding.existingConnection.label')"
-					input-name="assistant-existing-search-credential"
-				>
-					<N8nSelect
-						id="assistant-existing-search-credential"
-						:model-value="selectedExistingCredentialId"
-						:teleported="true"
-						:data-test-id="existingCredentialTestId"
-						@update:model-value="selectExistingCredential"
-					>
-						<N8nOption v-if="!readOnly" value="" :label="editableConnectionLabel" />
-						<N8nOption
-							v-for="credential in compatibleCredentials"
-							:key="credential.id"
-							:value="credential.id"
-							:label="existingCredentialLabel(credential)"
-						/>
-					</N8nSelect>
-				</N8nInputLabel>
-				<N8nRadioGroup
-					v-if="!searchEnvManaged && !readOnly && !selectedExistingCredentialId"
-					:model-value="searchProvider ?? undefined"
-					orientation="vertical"
-					:class="$style.joinedCards"
-					:data-test-id="surface === 'settings' ? 'n8n-agent-search-provider-select' : undefined"
-					@update:model-value="selectSearchProvider"
-				>
 					<div
-						v-for="provider in [
-							...INSTANCE_AI_SEARCH_PROVIDERS,
-							{
-								id: 'disabled' as const,
-								label: i18n.baseText('instanceAi.onboarding.search.disable'),
-							},
-						]"
-						:key="provider.id"
-						:class="$style.optionCard"
-						:data-test-id="`assistant-search-${provider.id}`"
-						@click="selectSearchProvider(provider.id)"
-					>
-						<N8nRadioGroupItem
-							:id="`assistant-search-radio-${provider.id}`"
-							:value="provider.id"
-							:aria-label="provider.label"
-							:class="$style.optionControl"
-						/>
-						<span :class="$style.optionCopy">
-							<span :class="$style.optionTitle">
-								<N8nText bold step="sm">{{ provider.label }}</N8nText>
-								<N8nBadge
-									v-if="provider.id === 'searxng'"
-									variant="secondary"
-									:class="$style.optionBadge"
-								>
-									{{ i18n.baseText('instanceAi.onboarding.search.free') }}
-								</N8nBadge>
-							</span>
-							<N8nText color="text-base" step="sm" :class="$style.optionDescription">
-								{{
-									provider.id === 'searxng'
-										? i18n.baseText('instanceAi.onboarding.search.searxngDescription')
-										: provider.id === 'brave'
-											? i18n.baseText('instanceAi.onboarding.search.braveDescription')
-											: i18n.baseText('instanceAi.onboarding.search.disabledDescription')
-								}}
-							</N8nText>
-						</span>
-					</div>
-				</N8nRadioGroup>
-				<div
-					v-if="
-						!searchEnvManaged &&
-						!selectedExistingCredentialId &&
-						searchProvider &&
-						searchProvider !== 'disabled'
-					"
-					:class="$style.fields"
-					:data-test-id="surface === 'settings' ? 'n8n-agent-search-connection-fields' : undefined"
-				>
-					<N8nText v-if="searchProvider === 'searxng'" step="xs">
-						{{ i18n.baseText('instanceAi.onboarding.search.installDescription') }}
-						<N8nLink :to="SEARCH_DOCS_URL" new-window>
-							{{ i18n.baseText('instanceAi.onboarding.search.installLink') }} </N8nLink
-						>,
-						{{ i18n.baseText('instanceAi.onboarding.search.searxngInstallSuffix') }}
-					</N8nText>
-					<N8nText v-else step="xs">
-						{{ i18n.baseText('instanceAi.onboarding.search.braveKeyDescription') }}
-						<N8nLink :to="BRAVE_SEARCH_KEYS_URL" new-window>
-							{{ i18n.baseText('instanceAi.onboarding.search.braveKeyLink') }} </N8nLink
-						>,
-						{{ i18n.baseText('instanceAi.onboarding.search.braveKeySuffix') }}
-					</N8nText>
-					<N8nInputLabel
-						:class="$style.compactLabel"
-						:label="
-							searchProvider === 'brave'
-								? i18n.baseText('instanceAi.onboarding.search.apiKey')
-								: i18n.baseText('instanceAi.onboarding.search.instanceUrl')
+						v-if="!sandboxEnvManaged && sandboxProvider === 'n8n-sandbox'"
+						:class="$style.fields"
+						:data-test-id="
+							surface === 'settings' ? 'n8n-agent-sandbox-connection-fields' : undefined
 						"
-						input-name="assistant-search-value"
 					>
-						<N8nInput
-							id="assistant-search-value"
-							v-model="searchInput"
-							class="ph-no-capture"
-							:type="searchProvider === 'brave' ? 'password' : 'text'"
-							autocomplete="off"
-							:spellcheck="false"
-							:placeholder="searchProvider === 'brave' ? 'BSA…' : 'http://searxng.internal:8080'"
-							data-test-id="assistant-search-value"
-						/>
-					</N8nInputLabel>
-				</div>
-			</template>
+						<N8nText step="xs">
+							{{ i18n.baseText('instanceAi.onboarding.sandbox.installDescription') }}
+							<N8nLink :to="SANDBOX_DOCS_URL" new-window>
+								{{ i18n.baseText('instanceAi.onboarding.sandbox.installLink') }}
+							</N8nLink>
+						</N8nText>
+						<N8nInputLabel
+							:class="$style.compactLabel"
+							:label="i18n.baseText('instanceAi.onboarding.sandbox.serviceUrl')"
+							input-name="assistant-sandbox-url"
+						>
+							<N8nInput
+								id="assistant-sandbox-url"
+								v-model="sandboxServiceUrl"
+								class="ph-no-capture"
+								type="text"
+								autocomplete="off"
+								:spellcheck="false"
+								placeholder="http://sandbox.internal:3200"
+								data-test-id="assistant-sandbox-url"
+							/>
+						</N8nInputLabel>
+						<N8nInputLabel
+							v-if="!selectedExistingCredentialId"
+							:class="$style.compactLabel"
+							:label="i18n.baseText('instanceAi.onboarding.sandbox.apiKey')"
+							input-name="assistant-sandbox-api-key"
+						>
+							<N8nInput
+								id="assistant-sandbox-api-key"
+								v-model="sandboxApiKey"
+								class="ph-no-capture"
+								type="password"
+								autocomplete="off"
+								:spellcheck="false"
+								:placeholder="i18n.baseText('instanceAi.onboarding.sandbox.apiKeyPlaceholder')"
+								:data-test-id="
+									surface === 'settings'
+										? 'n8n-agent-sandbox-api-key-input'
+										: 'assistant-sandbox-api-key'
+								"
+							/>
+						</N8nInputLabel>
+					</div>
+					<div
+						v-else-if="
+							!sandboxEnvManaged &&
+							sandboxProvider === 'daytona' &&
+							!selectedExistingCredentialId &&
+							!isProxyDaytonaSelection
+						"
+						:class="$style.fields"
+						:data-test-id="
+							surface === 'settings' ? 'n8n-agent-sandbox-connection-fields' : undefined
+						"
+					>
+						<N8nInputLabel
+							:class="$style.compactLabel"
+							:label="i18n.baseText('instanceAi.onboarding.sandbox.apiKey')"
+							input-name="assistant-daytona-api-key"
+						>
+							<N8nInput
+								id="assistant-daytona-api-key"
+								v-model="daytonaApiKey"
+								class="ph-no-capture"
+								type="password"
+								autocomplete="off"
+								:spellcheck="false"
+								placeholder="dtn_…"
+								data-test-id="assistant-daytona-api-key"
+							/>
+						</N8nInputLabel>
+						<N8nText step="xs" color="text-light">
+							{{ i18n.baseText('instanceAi.onboarding.sandbox.daytonaKey') }}
+							<N8nLink to="https://app.daytona.io" new-window>
+								{{ i18n.baseText('instanceAi.onboarding.sandbox.daytonaDashboard') }} </N8nLink
+							>.
+						</N8nText>
+					</div>
+				</template>
 
-			<template v-else>
-				<div :class="$style.done">
-					<N8nIcon icon="circle-check" :size="32" :class="$style.successIcon" />
-					<N8nHeading tag="h2" size="large" align="center" bold>
-						{{ i18n.baseText('instanceAi.onboarding.done.title') }}
-					</N8nHeading>
-					<div v-if="!composeFastPath" :class="$style.summary">
-						<button
-							v-for="item in [
+				<template v-else-if="step === 'search'">
+					<div>
+						<N8nDialogTitle>
+							{{ i18n.baseText('instanceAi.onboarding.search.title') }}
+						</N8nDialogTitle>
+						<N8nText tag="p" :class="$style.description">
+							{{ i18n.baseText('instanceAi.onboarding.search.lede') }}
+						</N8nText>
+					</div>
+					<N8nCallout v-if="searchEnvManaged" theme="warning">
+						<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
+						{{ i18n.baseText('instanceAi.onboarding.env.description') }}
+					</N8nCallout>
+					<N8nInputLabel
+						v-if="showExistingCredentialSelect"
+						:class="$style.compactLabel"
+						:label="i18n.baseText('instanceAi.onboarding.existingConnection.label')"
+						input-name="assistant-existing-search-credential"
+					>
+						<N8nSelect
+							id="assistant-existing-search-credential"
+							:model-value="selectedExistingCredentialId"
+							:teleported="true"
+							:data-test-id="existingCredentialTestId"
+							@update:model-value="selectExistingCredential"
+						>
+							<N8nOption v-if="!readOnly" value="" :label="editableConnectionLabel" />
+							<N8nOption
+								v-for="credential in compatibleCredentials"
+								:key="credential.id"
+								:value="credential.id"
+								:label="existingCredentialLabel(credential)"
+							/>
+						</N8nSelect>
+					</N8nInputLabel>
+					<N8nRadioGroup
+						v-if="!searchEnvManaged && !readOnly && !selectedExistingCredentialId"
+						:model-value="searchProvider ?? undefined"
+						orientation="vertical"
+						:class="$style.joinedCards"
+						:data-test-id="surface === 'settings' ? 'n8n-agent-search-provider-select' : undefined"
+						@update:model-value="selectSearchProvider"
+					>
+						<div
+							v-for="provider in [
+								...INSTANCE_AI_SEARCH_PROVIDERS,
 								{
-									id: 'model' as const,
-									label: i18n.baseText('instanceAi.onboarding.model.label'),
-									description: i18n.baseText('instanceAi.onboarding.model.description'),
-									value: modelValue,
-								},
-								{
-									id: 'sandbox' as const,
-									label: i18n.baseText('instanceAi.onboarding.sandbox.label'),
-									description: i18n.baseText('instanceAi.onboarding.sandbox.description'),
-									value: sandboxValue,
-								},
-								{
-									id: 'search' as const,
-									label: i18n.baseText('instanceAi.onboarding.search.label'),
-									description: i18n.baseText('instanceAi.onboarding.search.description'),
-									value: props.searchValue,
+									id: 'disabled' as const,
+									label: i18n.baseText('instanceAi.onboarding.search.disable'),
 								},
 							]"
-							:key="item.id"
-							type="button"
-							:class="$style.summaryRow"
-							@click="emit('edit', item.id)"
+							:key="provider.id"
+							:class="$style.optionCard"
+							:data-test-id="`assistant-search-${provider.id}`"
+							@click="selectSearchProvider(provider.id)"
 						>
-							<span :class="$style.summaryCopy">
-								<N8nText bold>{{ item.label }}</N8nText>
-								<N8nText step="xs" color="text-light">{{ item.description }}</N8nText>
+							<N8nRadioGroupItem
+								:id="`assistant-search-radio-${provider.id}`"
+								:value="provider.id"
+								:aria-label="provider.label"
+								:class="$style.optionControl"
+							/>
+							<span :class="$style.optionCopy">
+								<span :class="$style.optionTitle">
+									<N8nText bold step="sm">{{ provider.label }}</N8nText>
+									<N8nBadge
+										v-if="provider.id === 'searxng'"
+										variant="secondary"
+										:class="$style.optionBadge"
+									>
+										{{ i18n.baseText('instanceAi.onboarding.search.free') }}
+									</N8nBadge>
+								</span>
+								<N8nText color="text-base" step="sm" :class="$style.optionDescription">
+									{{
+										provider.id === 'searxng'
+											? i18n.baseText('instanceAi.onboarding.search.searxngDescription')
+											: provider.id === 'brave'
+												? i18n.baseText('instanceAi.onboarding.search.braveDescription')
+												: i18n.baseText('instanceAi.onboarding.search.disabledDescription')
+									}}
+								</N8nText>
 							</span>
-							<N8nText step="xs" color="text-light" :class="$style.mono">
-								{{ item.value }}
-							</N8nText>
-							<N8nIcon icon="chevron-right" size="small" color="text-light" />
-						</button>
-					</div>
-					<N8nText size="small" color="text-light" align="center">
-						{{ i18n.baseText('instanceAi.onboarding.done.footnote') }}
-					</N8nText>
-					<N8nButton
-						v-if="composeFastPath"
-						variant="solid"
-						:label="primaryLabel"
-						data-test-id="wizard-primary"
-						:class="$style.inlineDoneAction"
-						@click="handlePrimary"
-					/>
-				</div>
-			</template>
-
-			<Transition name="onboarding-callout">
-				<N8nCallout
-					v-if="success"
-					theme="success"
-					icon="circle-check"
-					data-test-id="assistant-verification-success"
-				>
-					{{ successMessage }}
-				</N8nCallout>
-			</Transition>
-
-			<Transition name="onboarding-callout">
-				<N8nCallout
-					v-if="failure"
-					theme="danger"
-					icon="circle-x"
-					:data-test-id="
-						surface === 'settings'
-							? `${settingsTestPrefix}-credential-test-error`
-							: 'assistant-verification-error'
-					"
-				>
-					<div>
-						{{ i18n.baseText(failureKey) }}
-						<div
-							v-if="failureDetail"
-							:class="$style.failureDetail"
-							data-test-id="assistant-verification-error-details"
-						>
-							{{
-								i18n.baseText('instanceAi.onboarding.verification.errorDetails', {
-									interpolate: { details: failureDetail },
-								})
-							}}
 						</div>
+					</N8nRadioGroup>
+					<div
+						v-if="
+							!searchEnvManaged &&
+							!selectedExistingCredentialId &&
+							searchProvider &&
+							searchProvider !== 'disabled'
+						"
+						:class="$style.fields"
+						:data-test-id="
+							surface === 'settings' ? 'n8n-agent-search-connection-fields' : undefined
+						"
+					>
+						<N8nText v-if="searchProvider === 'searxng'" step="xs">
+							{{ i18n.baseText('instanceAi.onboarding.search.installDescription') }}
+							<N8nLink :to="SEARCH_DOCS_URL" new-window>
+								{{ i18n.baseText('instanceAi.onboarding.search.installLink') }} </N8nLink
+							>,
+							{{ i18n.baseText('instanceAi.onboarding.search.searxngInstallSuffix') }}
+						</N8nText>
+						<N8nText v-else step="xs">
+							{{ i18n.baseText('instanceAi.onboarding.search.braveKeyDescription') }}
+							<N8nLink :to="BRAVE_SEARCH_KEYS_URL" new-window>
+								{{ i18n.baseText('instanceAi.onboarding.search.braveKeyLink') }} </N8nLink
+							>,
+							{{ i18n.baseText('instanceAi.onboarding.search.braveKeySuffix') }}
+						</N8nText>
+						<N8nInputLabel
+							:class="$style.compactLabel"
+							:label="
+								searchProvider === 'brave'
+									? i18n.baseText('instanceAi.onboarding.search.apiKey')
+									: i18n.baseText('instanceAi.onboarding.search.instanceUrl')
+							"
+							input-name="assistant-search-value"
+						>
+							<N8nInput
+								id="assistant-search-value"
+								v-model="searchInput"
+								class="ph-no-capture"
+								:type="searchProvider === 'brave' ? 'password' : 'text'"
+								autocomplete="off"
+								:spellcheck="false"
+								:placeholder="searchProvider === 'brave' ? 'BSA…' : 'http://searxng.internal:8080'"
+								data-test-id="assistant-search-value"
+							/>
+						</N8nInputLabel>
 					</div>
-				</N8nCallout>
-			</Transition>
-		</div>
+				</template>
+
+				<template v-else>
+					<div :class="$style.done">
+						<N8nIcon icon="circle-check" :size="32" :class="$style.successIcon" />
+						<N8nDialogTitle>
+							{{ i18n.baseText('instanceAi.onboarding.done.title') }}
+						</N8nDialogTitle>
+						<div v-if="!composeFastPath" :class="$style.summary">
+							<button
+								v-for="item in [
+									{
+										id: 'model' as const,
+										label: i18n.baseText('instanceAi.onboarding.model.label'),
+										description: i18n.baseText('instanceAi.onboarding.model.description'),
+										value: modelValue,
+									},
+									{
+										id: 'sandbox' as const,
+										label: i18n.baseText('instanceAi.onboarding.sandbox.label'),
+										description: i18n.baseText('instanceAi.onboarding.sandbox.description'),
+										value: sandboxValue,
+									},
+									{
+										id: 'search' as const,
+										label: i18n.baseText('instanceAi.onboarding.search.label'),
+										description: i18n.baseText('instanceAi.onboarding.search.description'),
+										value: props.searchValue,
+									},
+								]"
+								:key="item.id"
+								type="button"
+								:class="$style.summaryRow"
+								@click="emit('edit', item.id)"
+							>
+								<span :class="$style.summaryCopy">
+									<N8nText bold>{{ item.label }}</N8nText>
+									<N8nText step="xs" color="text-light">{{ item.description }}</N8nText>
+								</span>
+								<N8nText step="xs" color="text-light" :class="$style.mono">
+									{{ item.value }}
+								</N8nText>
+								<N8nIcon icon="chevron-right" size="small" color="text-light" />
+							</button>
+						</div>
+						<N8nText size="small" color="text-light" align="center">
+							{{ i18n.baseText('instanceAi.onboarding.done.footnote') }}
+						</N8nText>
+						<N8nButton
+							v-if="composeFastPath"
+							variant="solid"
+							:label="primaryLabel"
+							data-test-id="wizard-primary"
+							:class="$style.inlineDoneAction"
+							@click="handlePrimary"
+						/>
+					</div>
+				</template>
+
+				<Transition name="onboarding-callout">
+					<N8nCallout
+						v-if="success"
+						theme="success"
+						icon="circle-check"
+						data-test-id="assistant-verification-success"
+					>
+						{{ successMessage }}
+					</N8nCallout>
+				</Transition>
+
+				<Transition name="onboarding-callout">
+					<N8nCallout
+						v-if="failure"
+						theme="danger"
+						icon="circle-x"
+						:data-test-id="
+							surface === 'settings'
+								? `${settingsTestPrefix}-credential-test-error`
+								: 'assistant-verification-error'
+						"
+					>
+						<div>
+							{{ i18n.baseText(failureKey) }}
+							<div
+								v-if="failureDetail"
+								:class="$style.failureDetail"
+								data-test-id="assistant-verification-error-details"
+							>
+								{{
+									i18n.baseText('instanceAi.onboarding.verification.errorDetails', {
+										interpolate: { details: failureDetail },
+									})
+								}}
+							</div>
+						</div>
+					</N8nCallout>
+				</Transition>
+			</div>
+		</N8nDialogBody>
 
 		<N8nDialogFooter
 			v-if="!(step === 'done' && composeFastPath)"
@@ -1547,10 +1560,6 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 	position: relative;
 	align-items: center;
 	justify-content: space-between;
-}
-
-.body + .footer {
-	margin: var(--spacing--sm) calc(var(--spacing--lg) * -1) calc(var(--spacing--lg) * -1);
 	padding: var(--spacing--sm) var(--spacing--md);
 	border-top: var(--border-width--base) var(--border-style--base) var(--border-color--subtle);
 }

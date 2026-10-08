@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { useUIStore } from '@/app/stores/ui.store';
+import { N8nButton, N8nDialog, N8nDialogBody, N8nDialogFooter, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
@@ -23,7 +23,11 @@ const mcp = useMcp();
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 const experimentStore = useExposeAllWorkflowsToMcpStore();
+const uiStore = useUIStore();
 const modalBus = createEventBus();
+const modalOpen = computed(
+	() => uiStore.modalsById[EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY]?.open === true,
+);
 
 const isSaving = ref(false);
 const closedByAction = ref(false);
@@ -75,7 +79,16 @@ function successToast(workflowCount: number, agentCount: number) {
 	};
 }
 
-async function onExposeAll(close: () => void) {
+async function closeDialog() {
+	uiStore.closeModal(EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY);
+	modalBus.emit('closed');
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
+async function onExposeAll() {
 	isSaving.value = true;
 	try {
 		const [workflowsResponse, agentsResponse] = await Promise.all([
@@ -94,7 +107,7 @@ async function onExposeAll(close: () => void) {
 			...successToast(workflowsResponse.updatedCount, agentsResponse?.updatedCount ?? 0),
 		});
 		await props.data.onExposed?.();
-		close();
+		await closeDialog();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.error.title'));
 	} finally {
@@ -102,10 +115,10 @@ async function onExposeAll(close: () => void) {
 	}
 }
 
-function onNotNow(close: () => void) {
+function onNotNow() {
 	closedByAction.value = true;
 	experimentStore.trackDeclined();
-	close();
+	void closeDialog();
 }
 
 function onModalClosed() {
@@ -124,45 +137,35 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<Modal
-		:name="EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY"
-		:title="modalCopy.title"
-		width="480px"
-		:event-bus="modalBus"
-		:closeOnClickModal="false"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="modalCopy.title"
+		:close-on-overlay-click="false"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<N8nText color="text-base" data-test-id="expose-all-workflows-mcp-description">
 				{{ modalCopy.description }}
 			</N8nText>
-		</template>
-		<template #footer="{ close }">
-			<div :class="$style.footer">
-				<N8nButton
-					variant="subtle"
-					size="small"
-					:label="i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.notNow')"
-					:disabled="isSaving"
-					data-test-id="expose-all-workflows-mcp-not-now-button"
-					@click="onNotNow(close)"
-				/>
-				<N8nButton
-					variant="solid"
-					size="small"
-					:label="modalCopy.confirm"
-					:loading="isSaving"
-					data-test-id="expose-all-workflows-mcp-confirm-button"
-					@click="onExposeAll(close)"
-				/>
-			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton
+				variant="subtle"
+				size="small"
+				:label="i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.notNow')"
+				:disabled="isSaving"
+				data-test-id="expose-all-workflows-mcp-not-now-button"
+				@click="onNotNow"
+			/>
+			<N8nButton
+				variant="solid"
+				size="small"
+				:label="modalCopy.confirm"
+				:loading="isSaving"
+				data-test-id="expose-all-workflows-mcp-confirm-button"
+				@click="onExposeAll"
+			/>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
-
-<style module lang="scss">
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
-}
-</style>

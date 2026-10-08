@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nButton, N8nInlineTextEdit } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nInlineTextEdit,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INode } from 'n8n-workflow';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 
 const props = defineProps<{
@@ -19,13 +26,18 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const contentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
 const isValid = ref(false);
 const nodeName = ref(props.data.node?.name ?? '');
 
-function closeDialog() {
+async function closeDialog() {
 	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
 }
 
 function handleConfirm() {
@@ -56,8 +68,8 @@ function handleNodeNameUpdate(name: string) {
 </script>
 
 <template>
-	<Modal v-if="data.node" :name="modalName" width="780px">
-		<template #header>
+	<N8nDialog v-if="data.node" :open="modalOpen" size="2xlarge" @update:open="onDialogOpenUpdate">
+		<N8nDialogHeader>
 			<div :class="$style.header">
 				<NodeIcon
 					v-if="contentRef?.nodeTypeDescription"
@@ -66,15 +78,17 @@ function handleNodeNameUpdate(name: string) {
 					:circle="true"
 					:class="$style.icon"
 				/>
-				<N8nInlineTextEdit
-					:model-value="nodeName"
-					:max-width="400"
-					:class="$style.title"
-					@update:model-value="handleChangeName"
-				/>
+				<N8nDialogTitle>
+					<N8nInlineTextEdit
+						:model-value="nodeName"
+						:max-width="400"
+						:class="$style.title"
+						@update:model-value="handleChangeName"
+					/>
+				</N8nDialogTitle>
 			</div>
-		</template>
-		<template #content>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<div :class="$style.contentWrapper">
 				<NodeToolSettingsContent
 					ref="contentRef"
@@ -84,8 +98,8 @@ function handleNodeNameUpdate(name: string) {
 					@update:node-name="handleNodeNameUpdate"
 				/>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton variant="subtle" @click="handleCancel">
 					{{ i18n.baseText('chatHub.toolSettings.cancel') }}
@@ -94,8 +108,8 @@ function handleNodeNameUpdate(name: string) {
 					{{ i18n.baseText('chatHub.toolSettings.confirm') }}
 				</N8nButton>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
@@ -112,10 +126,6 @@ function handleNodeNameUpdate(name: string) {
 }
 
 .title {
-	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--regular);
-	line-height: var(--line-height--lg);
-	color: var(--color--text--shade-1);
 	flex: 1;
 	min-width: 0;
 }

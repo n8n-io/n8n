@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { useMcpJsonNudgeEligibility } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility';
 import type { McpJsonNudgeAction } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 import McpClientLogoCards from '@/features/ai/mcpAccess/components/McpClientLogoCards.vue';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
+import { useUIStore } from '@/app/stores/ui.store';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nText,
+} from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -28,7 +35,9 @@ const i18n = useI18n();
 const router = useRouter();
 const telemetry = useTelemetry();
 const eligibility = useMcpJsonNudgeEligibility();
+const uiStore = useUIStore();
 const modalBus = createEventBus();
+const modalOpen = computed(() => uiStore.modalsById[MCP_JSON_NUDGE_MODAL_KEY]?.open === true);
 
 const closedByAction = ref(false);
 const dontShowAgain = ref(false);
@@ -51,18 +60,27 @@ function onDontShowAgainChange(value: boolean) {
 	}
 }
 
-function onConnect(close: () => void) {
+async function closeDialog() {
+	uiStore.closeModal(MCP_JSON_NUDGE_MODAL_KEY);
+	modalBus.emit('closed');
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
+function onConnect() {
 	closedByAction.value = true;
 	telemetry.track(TELEMETRY_EVENT.MCP.MCP_NUDGE_CONNECT_CLICKED, { surface: props.data.surface });
 	void router.push({ name: MCP_SETTINGS_VIEW });
-	close();
+	void closeDialog();
 }
 
-function onSkip(close: () => void) {
+function onSkip() {
 	closedByAction.value = true;
 	telemetry.track(TELEMETRY_EVENT.MCP.MCP_NUDGE_SKIPPED, { surface: props.data.surface });
 	void props.data.onContinue?.();
-	close();
+	void closeDialog();
 }
 
 // × / esc / click-outside: the user did not pick an action, so the original
@@ -84,21 +102,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<Modal :name="MCP_JSON_NUDGE_MODAL_KEY" :title="title" width="480px" :event-bus="modalBus">
-		<template #content>
+	<N8nDialog :open="modalOpen" size="medium" :header="title" @update:open="onDialogOpenUpdate">
+		<N8nDialogBody>
 			<McpClientLogoCards :class="$style.logoCards" />
 			<N8nText color="text-base">
 				{{ i18n.baseText('experiments.mcpJsonNudge.modal.body') }}
 			</N8nText>
-		</template>
-		<template #footer="{ close }">
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nCheckbox
 					:model-value="dontShowAgain"
 					data-test-id="mcp-json-nudge-dont-show-again"
 					@update:model-value="onDontShowAgainChange"
 				>
-					<template #label>{{ i18n.baseText('generic.dontShowAgain') }}</template>
+					<template #label> {{ i18n.baseText('generic.dontShowAgain') }}</template>
 				</N8nCheckbox>
 				<div :class="$style.actions">
 					<N8nButton
@@ -106,25 +124,25 @@ onBeforeUnmount(() => {
 						size="small"
 						:label="i18n.baseText('experiments.mcpJsonNudge.modal.skip')"
 						data-test-id="mcp-json-nudge-skip-button"
-						@click="onSkip(close)"
+						@click="onSkip"
 					/>
 					<N8nButton
 						variant="solid"
 						size="small"
 						:label="i18n.baseText('experiments.mcpJsonNudge.modal.connect')"
 						data-test-id="mcp-json-nudge-connect-button"
-						@click="onConnect(close)"
+						@click="onConnect"
 					/>
 				</div>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
 .logoCards {
-	/* The tiles rotate ±8deg; Modal's content area clips (overflow: hidden,
-	   near-zero inline padding), so the rotated corners need breathing room. */
+	/* The tiles rotate ±8deg; the dialog content clips rotated corners when
+	   padding is tight, so they need breathing room. */
 	padding: var(--spacing--xs) var(--spacing--md);
 	margin-bottom: var(--spacing--xs);
 }
@@ -134,6 +152,7 @@ onBeforeUnmount(() => {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
+	width: 100%;
 }
 
 .actions {

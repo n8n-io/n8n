@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { WORKFLOW_DIFF_MODAL_KEY } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import type { IWorkflowDb } from '@/Interface';
 import type { SourceControlledFileStatus } from '@n8n/api-types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -16,7 +16,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nDialog, N8nDialogBody, N8nIcon, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	data: {
@@ -28,7 +28,9 @@ const props = defineProps<{
 }>();
 
 const toast = useToast();
+const uiStore = useUIStore();
 const $style = useCssModule();
+const modalOpen = computed(() => uiStore.modalsById[WORKFLOW_DIFF_MODAL_KEY]?.open === true);
 const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
@@ -45,7 +47,7 @@ const manualAsyncConfiguration = {
 
 const isClosed = ref(false);
 
-const handleBeforeClose = () => {
+const handleBeforeClose = (): boolean | void => {
 	if (isClosed.value) return;
 	isClosed.value = true;
 
@@ -58,6 +60,21 @@ const handleBeforeClose = () => {
 		void router.replace({ query: newQuery });
 	}
 };
+
+async function closeDialog() {
+	if (uiStore.modalsById[WORKFLOW_DIFF_MODAL_KEY]?.open !== true) return;
+	const shouldClose = await handleBeforeClose();
+	if (shouldClose === false) return;
+	uiStore.closeModal(WORKFLOW_DIFF_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
+function preventEscapeDismiss(event: KeyboardEvent) {
+	event.preventDefault();
+}
 
 const handleEscapeKey = (event: KeyboardEvent) => {
 	if (event.key === 'Escape') {
@@ -125,6 +142,7 @@ const targetLabel = computed(() =>
 );
 
 onMounted(async () => {
+	props.data.eventBus.on('close', closeDialog);
 	document.addEventListener('keydown', handleEscapeKey, true);
 	await nodeTypesStore.loadNodeTypesIfNotLoaded();
 	void remote.execute();
@@ -137,97 +155,94 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+	props.data.eventBus.off('close', closeDialog);
 	document.removeEventListener('keydown', handleEscapeKey, true);
 });
 </script>
 
 <template>
-	<Modal
-		:event-bus="data.eventBus"
-		:name="WORKFLOW_DIFF_MODAL_KEY"
-		:custom-class="$style.workflowDiffModal"
-		height="100%"
-		width="100%"
-		max-width="100%"
-		max-height="100%"
-		:close-on-press-escape="false"
-		:show-close="false"
-		@before-close="handleBeforeClose"
+	<N8nDialog
+		:open="modalOpen"
+		size="cover"
+		:show-close-button="false"
+		:container-class="$style.workflowDiffModal"
+		@update:open="onDialogOpenUpdate"
+		@escape-key-down="preventEscapeDismiss"
 	>
-		<template #content>
-			<WorkflowDiffView
-				:source-workflow="sourceWorkflow"
-				:target-workflow="targetWorkflow"
-				:source-label="sourceLabel"
-				:target-label="targetLabel"
-				:show-back-button="true"
-				source="push_pull_modal"
-				@back="handleBeforeClose"
-			>
-				<template #sourceLabel>
-					<N8nText
-						v-if="sourceWorkFlow.state.value"
-						color="text-dark"
-						size="small"
-						:class="$style.sourceBadge"
-					>
-						<N8nIcon v-if="sourceWorkFlow.state.value.remote" icon="git-branch" />
-						{{ sourceLabel }}
-					</N8nText>
-				</template>
-				<template #sourceEmptyText>
-					<N8nText v-if="sourceWorkFlow.state.value?.remote" color="text-base">{{
-						isSourceWorkflowNew
-							? i18n.baseText('workflowDiff.newWorkflow.remote')
-							: i18n.baseText('workflowDiff.deletedWorkflow.remote')
-					}}</N8nText>
-					<N8nText v-else color="text-base">{{
-						isSourceWorkflowNew
-							? i18n.baseText('workflowDiff.newWorkflow.database')
-							: i18n.baseText('workflowDiff.deletedWorkflow.database')
-					}}</N8nText>
-				</template>
-				<template #targetLabel>
-					<N8nText
-						v-if="targetWorkFlow.state.value"
-						color="text-dark"
-						size="small"
-						:class="$style.sourceBadge"
-					>
-						<N8nIcon v-if="targetWorkFlow.state.value.remote" icon="git-branch" />
-						{{ targetLabel }}
-					</N8nText>
-				</template>
-				<template #targetEmptyText>
-					<N8nText v-if="targetWorkFlow.state.value?.remote" color="text-base">{{
-						i18n.baseText('workflowDiff.deletedWorkflow.remote')
-					}}</N8nText>
-					<N8nText v-else color="text-base">{{
-						i18n.baseText('workflowDiff.deletedWorkflow.database')
-					}}</N8nText>
-				</template>
-			</WorkflowDiffView>
-		</template>
-	</Modal>
+		<N8nDialogBody>
+			<div :class="$style.diffBody" data-test-id="workflowDiff-modal">
+				<WorkflowDiffView
+					:source-workflow="sourceWorkflow"
+					:target-workflow="targetWorkflow"
+					:source-label="sourceLabel"
+					:target-label="targetLabel"
+					:show-back-button="true"
+					source="push_pull_modal"
+					@back="handleBeforeClose"
+				>
+					<template #sourceLabel>
+						<N8nText
+							v-if="sourceWorkFlow.state.value"
+							color="text-dark"
+							size="small"
+							:class="$style.sourceBadge"
+						>
+							<N8nIcon v-if="sourceWorkFlow.state.value.remote" icon="git-branch" />
+							{{ sourceLabel }}
+						</N8nText>
+					</template>
+					<template #sourceEmptyText>
+						<N8nText v-if="sourceWorkFlow.state.value?.remote" color="text-base">{{
+							isSourceWorkflowNew
+								? i18n.baseText('workflowDiff.newWorkflow.remote')
+								: i18n.baseText('workflowDiff.deletedWorkflow.remote')
+						}}</N8nText>
+						<N8nText v-else color="text-base">{{
+							isSourceWorkflowNew
+								? i18n.baseText('workflowDiff.newWorkflow.database')
+								: i18n.baseText('workflowDiff.deletedWorkflow.database')
+						}}</N8nText>
+					</template>
+					<template #targetLabel>
+						<N8nText
+							v-if="targetWorkFlow.state.value"
+							color="text-dark"
+							size="small"
+							:class="$style.sourceBadge"
+						>
+							<N8nIcon v-if="targetWorkFlow.state.value.remote" icon="git-branch" />
+							{{ targetLabel }}
+						</N8nText>
+					</template>
+					<template #targetEmptyText>
+						<N8nText v-if="targetWorkFlow.state.value?.remote" color="text-base">{{
+							i18n.baseText('workflowDiff.deletedWorkflow.remote')
+						}}</N8nText>
+						<N8nText v-else color="text-base">{{
+							i18n.baseText('workflowDiff.deletedWorkflow.database')
+						}}</N8nText>
+					</template>
+				</WorkflowDiffView>
+			</div>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
-.workflowDiffModal {
+.workflowDiffModal.workflowDiffModal {
+	display: flex;
+	flex-direction: column;
 	margin-bottom: 0;
+	padding: 0;
+	--n8n-dialog-content--padding: 0;
 	border-radius: 0;
+	overflow: hidden;
+}
 
-	:global(.el-dialog__header) {
-		display: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	:global(.el-dialog__body) {
-		padding: 0;
-	}
-	:global(.el-dialog__headerbtn) {
-		display: none;
-	}
+.diffBody {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
 }
 
 .sourceBadge {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, defineComponent, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import {
 	N8nDialog,
+	N8nDialogBody,
 	N8nIcon,
 	N8nInput,
 	N8nRecycleScroller,
@@ -95,6 +96,14 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const modalTitle = computed(() => props.title ?? i18n.baseText('tools.connection.title'));
 const containerComponent = computed(() => (props.embedded ? 'div' : N8nDialog));
+// Embedded mode is not a dialog. Skip N8nDialogBody so the panel has no dialog padding.
+const SlotOnly = defineComponent({
+	name: 'SlotOnly',
+	setup(_, { slots }) {
+		return () => slots.default?.();
+	},
+});
+const bodyComponent = computed(() => (props.embedded ? SlotOnly : N8nDialogBody));
 const containerProps = computed(() =>
 	props.embedded
 		? {}
@@ -340,139 +349,143 @@ function handleOpenChange(value: boolean) {
 		data-test-id="tools-connection-modal"
 		@update:open="handleOpenChange"
 	>
-		<div :class="$style.body">
-			<ToolSettingsView
-				v-if="detailItem && detailMode === 'settings'"
-				:key="detailItem.id"
-				:item="detailItem"
-				:hide-back-button="hideBackButton"
-				@back="closeDetail"
-				@close="handleOpenChange(false)"
-				@disconnect="emit('disconnect', $event)"
-				@save="(item, settings) => emit('save', item, settings)"
-				@select-credential="
-					(item, authType, credentialId) => emit('select-credential', item, authType, credentialId)
-				"
-				@credential-dropdown-open="emit('credential-dropdown-open', $event)"
-				@first-credential-connect="emit('first-credential-connect', $event)"
-				@new-credential-connect="emit('new-credential-connect', $event)"
-			>
-				<template v-if="$slots['settings-body']" #body="slotProps">
-					<slot name="settings-body" v-bind="slotProps" />
-				</template>
-			</ToolSettingsView>
-			<ToolDetailView
-				v-else-if="detailItem"
-				:item="detailItem"
-				:hide-back-button="hideBackButton"
-				@back="closeDetail"
-				@close="handleOpenChange(false)"
-				@select-credential="
-					(item, authType, credentialId) => emit('select-credential', item, authType, credentialId)
-				"
-				@credential-dropdown-open="emit('credential-dropdown-open', $event)"
-				@first-credential-connect="emit('first-credential-connect', $event)"
-				@new-credential-connect="emit('new-credential-connect', $event)"
-			>
-				<template v-if="$slots['detail-body']" #body="slotProps">
-					<slot name="detail-body" v-bind="slotProps" />
-				</template>
-			</ToolDetailView>
-			<template v-else>
-				<N8nInput
-					ref="searchInputRef"
-					v-model="searchQuery"
-					:placeholder="searchPlaceholder"
-					clearable
-					data-test-id="tools-connection-search"
-					:class="$style.searchInput"
+		<component :is="bodyComponent">
+			<div :class="$style.body">
+				<ToolSettingsView
+					v-if="detailItem && detailMode === 'settings'"
+					:key="detailItem.id"
+					:item="detailItem"
+					:hide-back-button="hideBackButton"
+					@back="closeDetail"
+					@close="handleOpenChange(false)"
+					@disconnect="emit('disconnect', $event)"
+					@save="(item, settings) => emit('save', item, settings)"
+					@select-credential="
+						(item, authType, credentialId) =>
+							emit('select-credential', item, authType, credentialId)
+					"
+					@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+					@first-credential-connect="emit('first-credential-connect', $event)"
+					@new-credential-connect="emit('new-credential-connect', $event)"
 				>
-					<template #prefix>
-						<N8nIcon icon="search" />
+					<template v-if="$slots['settings-body']" #body="slotProps">
+						<slot name="settings-body" v-bind="slotProps" />
 					</template>
-				</N8nInput>
-
-				<N8nTabs
-					v-if="tabsVisible"
-					:model-value="activeCategory"
-					:options="tabOptions"
-					size="small"
-					variant="modern"
-					justified
-					:class="$style.tabs"
-					data-test-id="tools-connection-tabs"
-					@update:model-value="selectCategory"
-				/>
-
-				<button
-					v-if="showCreateAction && createAction"
-					type="button"
-					:class="$style.createRow"
-					:disabled="createActionLoading"
-					:aria-busy="createActionLoading"
-					:data-test-id="createAction.testId ?? 'tools-connection-create'"
-					@click="emit('create')"
+				</ToolSettingsView>
+				<ToolDetailView
+					v-else-if="detailItem"
+					:item="detailItem"
+					:hide-back-button="hideBackButton"
+					@back="closeDetail"
+					@close="handleOpenChange(false)"
+					@select-credential="
+						(item, authType, credentialId) =>
+							emit('select-credential', item, authType, credentialId)
+					"
+					@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+					@first-credential-connect="emit('first-credential-connect', $event)"
+					@new-credential-connect="emit('new-credential-connect', $event)"
 				>
-					<span :class="$style.createIcon" aria-hidden="true">
-						<N8nIcon
-							:icon="createActionLoading ? 'loader-circle' : 'plus'"
-							:size="20"
-							:spin="createActionLoading"
-						/>
-					</span>
-					<span :class="$style.createText">
-						<N8nText tag="span" bold>
-							{{ createAction.label }}
-						</N8nText>
-						<N8nText v-if="createAction.description" tag="span" size="small" color="text-light">
-							{{ createAction.description }}
-						</N8nText>
-					</span>
-				</button>
-
-				<div :class="$style.listWrapper">
-					<template v-if="isListEmpty">
-						<div :class="$style.empty" data-test-id="tools-connection-empty">
-							<N8nText color="text-light">{{ resolvedEmptyMessage }}</N8nText>
-						</div>
-						<div v-if="isMcpCategory || showSuggestionFooter" :class="$style.suggestionRow">
-							<slot name="suggestion-footer" />
-						</div>
+					<template v-if="$slots['detail-body']" #body="slotProps">
+						<slot name="detail-body" v-bind="slotProps" />
 					</template>
-					<N8nRecycleScroller
-						v-else
-						ref="scrollerRef"
-						:items="flattenedRows"
-						:item-size="ITEM_HEIGHT"
-						item-key="key"
-						:class="[$style.scroller, persistentScrollbar && $style.persistentScrollbar]"
+				</ToolDetailView>
+				<template v-else>
+					<N8nInput
+						ref="searchInputRef"
+						v-model="searchQuery"
+						:placeholder="searchPlaceholder"
+						clearable
+						data-test-id="tools-connection-search"
+						:class="$style.searchInput"
 					>
-						<template #default="{ item: row }">
-							<ToolRow
-								v-if="'item' in row"
-								:item="row.item"
-								:show-connect-action="props.showConnectActions"
-								:connect-label="props.connectLabel?.(row.item)"
-								:connect-aria-label="props.connectAriaLabel?.(row.item)"
-								:connected-label="props.connectedLabel?.(row.item)"
-								@open-detail="openDetail($event)"
-								@connect="emit('connect', $event)"
-								@select-credential="
-									(item, authType, credentialId) =>
-										emit('select-credential', item, authType, credentialId)
-								"
-								@credential-dropdown-open="emit('credential-dropdown-open', $event)"
-								@first-credential-connect="emit('first-credential-connect', $event)"
-								@new-credential-connect="emit('new-credential-connect', $event)"
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+
+					<N8nTabs
+						v-if="tabsVisible"
+						:model-value="activeCategory"
+						:options="tabOptions"
+						size="small"
+						variant="modern"
+						justified
+						:class="$style.tabs"
+						data-test-id="tools-connection-tabs"
+						@update:model-value="selectCategory"
+					/>
+
+					<button
+						v-if="showCreateAction && createAction"
+						type="button"
+						:class="$style.createRow"
+						:disabled="createActionLoading"
+						:aria-busy="createActionLoading"
+						:data-test-id="createAction.testId ?? 'tools-connection-create'"
+						@click="emit('create')"
+					>
+						<span :class="$style.createIcon" aria-hidden="true">
+							<N8nIcon
+								:icon="createActionLoading ? 'loader-circle' : 'plus'"
+								:size="20"
+								:spin="createActionLoading"
 							/>
-							<div v-else :class="$style.suggestionRow">
+						</span>
+						<span :class="$style.createText">
+							<N8nText tag="span" bold>
+								{{ createAction.label }}
+							</N8nText>
+							<N8nText v-if="createAction.description" tag="span" size="small" color="text-light">
+								{{ createAction.description }}
+							</N8nText>
+						</span>
+					</button>
+
+					<div :class="$style.listWrapper">
+						<template v-if="isListEmpty">
+							<div :class="$style.empty" data-test-id="tools-connection-empty">
+								<N8nText color="text-light">{{ resolvedEmptyMessage }}</N8nText>
+							</div>
+							<div v-if="isMcpCategory || showSuggestionFooter" :class="$style.suggestionRow">
 								<slot name="suggestion-footer" />
 							</div>
 						</template>
-					</N8nRecycleScroller>
-				</div>
-			</template>
-		</div>
+						<N8nRecycleScroller
+							v-else
+							ref="scrollerRef"
+							:items="flattenedRows"
+							:item-size="ITEM_HEIGHT"
+							item-key="key"
+							:class="[$style.scroller, persistentScrollbar && $style.persistentScrollbar]"
+						>
+							<template #default="{ item: row }">
+								<ToolRow
+									v-if="'item' in row"
+									:item="row.item"
+									:show-connect-action="props.showConnectActions"
+									:connect-label="props.connectLabel?.(row.item)"
+									:connect-aria-label="props.connectAriaLabel?.(row.item)"
+									:connected-label="props.connectedLabel?.(row.item)"
+									@open-detail="openDetail($event)"
+									@connect="emit('connect', $event)"
+									@select-credential="
+										(item, authType, credentialId) =>
+											emit('select-credential', item, authType, credentialId)
+									"
+									@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+									@first-credential-connect="emit('first-credential-connect', $event)"
+									@new-credential-connect="emit('new-credential-connect', $event)"
+								/>
+								<div v-else :class="$style.suggestionRow">
+									<slot name="suggestion-footer" />
+								</div>
+							</template>
+						</N8nRecycleScroller>
+					</div>
+				</template>
+			</div>
+		</component>
 	</component>
 </template>
 

@@ -1,19 +1,42 @@
 <script lang="ts" setup>
-import Modal from '@/app/components/Modal.vue';
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { useUIStore } from '@/app/stores/ui.store';
 
-import { N8nButton, N8nLink, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nLink,
+	N8nText,
+} from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	data: { title: string; footerButtonAction: () => void };
 }>();
 
 const i18n = useI18n();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 </script>
 
 <template>
-	<Modal width="500px" :title="props.data.title" :name="props.modalName">
-		<template #content>
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="props.data.title"
+		@update:open="onDialogOpenUpdate"
+	>
+		<N8nDialogBody>
 			<N8nText>
 				{{ i18n.baseText('executionsList.debug.paywall.content') }}
 				<br />
@@ -23,15 +46,15 @@ const i18n = useI18n();
 					{{ i18n.baseText('executionsList.debug.paywall.link.text') }}
 				</N8nLink>
 			</N8nText>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton @click="props.data.footerButtonAction">
 					{{ i18n.baseText('generic.seePlans') }}
 				</N8nButton>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">

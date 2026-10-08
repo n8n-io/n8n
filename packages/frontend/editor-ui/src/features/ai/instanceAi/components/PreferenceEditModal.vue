@@ -6,6 +6,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nFormInput,
 	N8nIcon,
@@ -270,65 +271,67 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 		data-test-id="instance-ai-preference-modal"
 		@update:open="onOpenChange"
 	>
-		<div :class="$style.form">
-			<N8nFormInput
-				v-model="draft"
-				name="content"
-				type="textarea"
-				focus-initially
-				required
-				:label="i18n.baseText('instanceAi.preferenceCard.modal.textLabel')"
-				:autosize="{ minRows: 3, maxRows: 8 }"
-				:maxlength="AI_PREFERENCE_CONTENT_MAX_LENGTH"
-				:validate-on-blur="false"
-				:validation-rules="contentValidationRules"
-				:disabled="busy"
-				data-test-id="instance-ai-preference-modal-text"
-			/>
-			<N8nText
-				:class="$style.counter"
-				size="small"
-				color="text-light"
-				data-test-id="instance-ai-preference-modal-counter"
-			>
-				{{ draft.length }} / {{ AI_PREFERENCE_CONTENT_MAX_LENGTH }}
-			</N8nText>
-
-			<N8nInputLabel
-				:label="i18n.baseText('instanceAi.preferenceCard.modal.scopeLabel')"
-				color="text-dark"
-			>
-				<N8nSelect
-					v-model="scopeDraft"
-					size="large"
+		<N8nDialogBody>
+			<div :class="$style.form">
+				<N8nFormInput
+					v-model="draft"
+					name="content"
+					type="textarea"
+					focus-initially
+					required
+					:label="i18n.baseText('instanceAi.preferenceCard.modal.textLabel')"
+					:autosize="{ minRows: 3, maxRows: 8 }"
+					:maxlength="AI_PREFERENCE_CONTENT_MAX_LENGTH"
+					:validate-on-blur="false"
+					:validation-rules="contentValidationRules"
 					:disabled="busy"
-					:teleported="false"
-					data-test-id="instance-ai-preference-modal-scope"
-					@update:model-value="scopeTouched = true"
+					data-test-id="instance-ai-preference-modal-text"
+				/>
+				<N8nText
+					:class="$style.counter"
+					size="small"
+					color="text-light"
+					data-test-id="instance-ai-preference-modal-counter"
 				>
-					<template #prefix>
-						<N8nText v-if="selectedIcon.type === 'emoji'" :class="$style.emoji">{{
-							selectedIcon.value
-						}}</N8nText>
-						<N8nIcon v-else :icon="selectedIcon.value" />
-					</template>
-					<N8nOption
-						v-for="option in scopeOptions"
-						:key="option.value"
-						:value="option.value"
-						:label="option.label"
-					/>
-				</N8nSelect>
-			</N8nInputLabel>
+					{{ draft.length }} / {{ AI_PREFERENCE_CONTENT_MAX_LENGTH }}
+				</N8nText>
 
-			<N8nCallout
-				v-if="errorMessage"
-				theme="danger"
-				data-test-id="instance-ai-preference-modal-error"
-			>
-				{{ errorMessage }}
-			</N8nCallout>
-		</div>
+				<N8nInputLabel
+					:label="i18n.baseText('instanceAi.preferenceCard.modal.scopeLabel')"
+					color="text-dark"
+				>
+					<N8nSelect
+						v-model="scopeDraft"
+						size="large"
+						:disabled="busy"
+						:teleported="false"
+						data-test-id="instance-ai-preference-modal-scope"
+						@update:model-value="scopeTouched = true"
+					>
+						<template #prefix>
+							<N8nText v-if="selectedIcon.type === 'emoji'" :class="$style.emoji">{{
+								selectedIcon.value
+							}}</N8nText>
+							<N8nIcon v-else :icon="selectedIcon.value" />
+						</template>
+						<N8nOption
+							v-for="option in scopeOptions"
+							:key="option.value"
+							:value="option.value"
+							:label="option.label"
+						/>
+					</N8nSelect>
+				</N8nInputLabel>
+
+				<N8nCallout
+					v-if="errorMessage"
+					theme="danger"
+					data-test-id="instance-ai-preference-modal-error"
+				>
+					{{ errorMessage }}
+				</N8nCallout>
+			</div>
+		</N8nDialogBody>
 
 		<N8nDialogFooter>
 			<N8nButton

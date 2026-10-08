@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { FROM_AI_PARAMETERS_MODAL_KEY } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { FormFieldValueUpdate } from '@n8n/design-system';
-import { N8nButton, N8nCallout, N8nFormInputs, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nFormInputs,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAgentRequestStore, type IAgentRequest } from '@n8n/stores/useAgentRequestStore';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { ElCol, ElRow } from 'element-plus';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -34,8 +41,9 @@ const inputs = ref<{
 }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const uiStore = useUIStore();
 const ndvStore = injectNDVStore();
-const modalBus = createEventBus();
+const modalOpen = computed(() => uiStore.modalsById[FROM_AI_PARAMETERS_MODAL_KEY]?.open === true);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
@@ -54,9 +62,13 @@ const parentNode = computed(() => {
 
 const { getToolName, parameters, error, updateSelectedTool } = useToolParameters({ node });
 
-const onClose = () => {
-	modalBus.emit('close');
-};
+function closeDialog() {
+	uiStore.closeModal(FROM_AI_PARAMETERS_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
 
 const onExecute = async () => {
 	if (!node.value) return;
@@ -108,7 +120,7 @@ const onExecute = async () => {
 		destinationNode: { nodeName: node.value.name, mode: 'inclusive' },
 	});
 
-	onClose();
+	closeDialog();
 };
 
 // Add handler for tool selection change
@@ -122,48 +134,49 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 </script>
 
 <template>
-	<Modal
-		max-width="540px"
-		:title="
+	<N8nDialog
+		:open="modalOpen"
+		size="large"
+		:header="
 			i18n.baseText('fromAiParametersModal.title', { interpolate: { nodeName: node?.name || '' } })
 		"
-		:event-bus="modalBus"
-		:name="FROM_AI_PARAMETERS_MODAL_KEY"
-		:center="true"
-		:close-on-click-modal="false"
+		:close-on-overlay-click="false"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template v-if="error" #content>
-			<N8nCallout v-if="error" theme="danger">
+		<N8nDialogBody v-if="error">
+			<N8nCallout theme="danger">
 				{{ error.message }}
 			</N8nCallout>
+		</N8nDialogBody>
+		<template v-else>
+			<N8nDialogBody>
+				<ElCol>
+					<ElRow :class="$style.row">
+						<N8nText data-testid="from-ai-parameters-modal-description">
+							{{
+								i18n.baseText('fromAiParametersModal.description', {
+									interpolate: { parentNodeName: parentNode || '' },
+								})
+							}}
+						</N8nText>
+					</ElRow>
+				</ElCol>
+				<ElCol>
+					<ElRow :class="$style.row">
+						<N8nFormInputs
+							v-if="parameters.length"
+							ref="inputs"
+							:inputs="parameters"
+							:column-view="true"
+							data-test-id="from-ai-parameters-modal-inputs"
+							@submit="onExecute"
+							@update="onUpdate"
+						></N8nFormInputs>
+					</ElRow>
+				</ElCol>
+			</N8nDialogBody>
 		</template>
-		<template v-else #content>
-			<ElCol>
-				<ElRow :class="$style.row">
-					<N8nText data-testid="from-ai-parameters-modal-description">
-						{{
-							i18n.baseText('fromAiParametersModal.description', {
-								interpolate: { parentNodeName: parentNode || '' },
-							})
-						}}
-					</N8nText>
-				</ElRow>
-			</ElCol>
-			<ElCol>
-				<ElRow :class="$style.row">
-					<N8nFormInputs
-						v-if="parameters.length"
-						ref="inputs"
-						:inputs="parameters"
-						:column-view="true"
-						data-test-id="from-ai-parameters-modal-inputs"
-						@submit="onExecute"
-						@update="onUpdate"
-					></N8nFormInputs>
-				</ElRow>
-			</ElCol>
-		</template>
-		<template v-if="!error" #footer>
+		<N8nDialogFooter v-if="!error">
 			<N8nButton
 				data-test-id="execute-workflow-button"
 				icon="flask-conical"
@@ -171,8 +184,8 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 				float="right"
 				@click="onExecute"
 			/>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
