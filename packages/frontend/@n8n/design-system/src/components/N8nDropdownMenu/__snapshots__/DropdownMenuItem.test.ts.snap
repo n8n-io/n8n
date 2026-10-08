@@ -267,17 +267,17 @@ exports[`N8nDropdownMenuItem > rendering > should render sub-menu trigger when h
   <svg
     aria-hidden="true"
     class="n8n-icon sub-indicator"
-    data-icon="chevron-right"
+    data-icon="chevron-right-12"
     fill="currentColor"
     focusable="false"
-    height="16px"
+    height="12px"
     role="img"
-    viewBox="0 0 16 16"
-    width="16px"
+    viewBox="0 0 12 12"
+    width="12px"
     xmlns="http://www.w3.org/2000/svg"
   >
     <path
-      d="m10.608 7-5.67 5.67-.795-.795L9.018 7 4.142 2.125l.795-.795z"
+      d="m4.424.576 5 5L9.849 6l-.425.424-5 5-.424.425L3.151 11l.425-.424L8.152 6 3.576 1.424 3.151 1 4 .151z"
     />
   </svg>
   
