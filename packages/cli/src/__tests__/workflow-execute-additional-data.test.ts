@@ -604,7 +604,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			describe('sub-workflow progress', () => {
 				const push = mockInstance(Push);
-				const executionsConfig = Container.get(ExecutionsConfig);
 				const parentNode: INode = {
 					id: 'parent-node',
 					name: 'Execute Sub-workflow',
@@ -631,12 +630,12 @@ describe('WorkflowExecuteAdditionalData', () => {
 					);
 
 				beforeEach(() => {
-					executionsConfig.subworkflowProgressEnabled = true;
+					vi.stubEnv('N8N_ENV_FEAT_SUBWORKFLOW_PROGRESS', 'true');
 					push.send.mockClear();
 				});
 
 				afterEach(() => {
-					executionsConfig.subworkflowProgressEnabled = false;
+					vi.unstubAllEnvs();
 				});
 
 				it("sends progress to the parent's editor session", async () => {

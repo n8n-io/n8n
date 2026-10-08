@@ -208,10 +208,14 @@ describe('Execution Lifecycle Hooks', () => {
 
 	let lifecycleHooks: ExecutionLifecycleHooks;
 
+	afterAll(() => {
+		vi.unstubAllEnvs();
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		executionsConfig.preExecuteErrorCreatesExecution = false;
-		executionsConfig.subworkflowProgressEnabled = false;
+		vi.stubEnv('N8N_ENV_FEAT_SUBWORKFLOW_PROGRESS', undefined);
 		userRepository.findOne.mockResolvedValue(mock<User>());
 		redactionProxy.processExecution.mockImplementation(async (execution) => execution);
 		workflowData.settings = {};
@@ -2141,7 +2145,7 @@ describe('Execution Lifecycle Hooks', () => {
 			}
 
 			beforeEach(() => {
-				executionsConfig.subworkflowProgressEnabled = true;
+				vi.stubEnv('N8N_ENV_FEAT_SUBWORKFLOW_PROGRESS', 'true');
 				push.send.mockReset();
 			});
 
@@ -2253,7 +2257,7 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 
 			it('does not register push hooks when the env feature flag is off', async () => {
-				executionsConfig.subworkflowProgressEnabled = false;
+				vi.stubEnv('N8N_ENV_FEAT_SUBWORKFLOW_PROGRESS', 'false');
 				const hooks = buildHooks();
 
 				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);

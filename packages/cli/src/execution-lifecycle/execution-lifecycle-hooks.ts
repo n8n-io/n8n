@@ -1,5 +1,5 @@
 import type { PushPayload } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { isEnvFeatureEnabled, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -999,7 +999,7 @@ export function getLifecycleHooksForSubExecutions(
 		parentExecution &&
 		parentNode &&
 		parentPushRef &&
-		Container.get(ExecutionsConfig).subworkflowProgressEnabled
+		isEnvFeatureEnabled('N8N_ENV_FEAT_SUBWORKFLOW_PROGRESS')
 	) {
 		hookFunctionsPushSubExecution(hooks, workflowData, parentExecution, parentNode, parentPushRef);
 	}
