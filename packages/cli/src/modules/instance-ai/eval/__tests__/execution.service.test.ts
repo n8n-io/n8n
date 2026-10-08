@@ -1314,6 +1314,88 @@ describe('EvalExecutionService', () => {
 	// ── Parameter issue patching ─────────────────────────────────────
 
 	describe('parameter issue patching', () => {
+		it.each([
+			{
+				mappingMode: 'defineBelow',
+				value: { row_number: '={{ $json.row_number }}', PRD: '={{ $json.prd }}' },
+			},
+			{ mappingMode: 'autoMapInputData', value: null },
+		])('keeps Sheets matching columns through mock execution with $mappingMode', async (mapper) => {
+			const { Workflow: RealWorkflow } =
+				await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow');
+			const sheetsType = {
+				description: {
+					properties: [
+						{ displayName: 'Resource', name: 'resource', type: 'string', default: 'sheet' },
+						{ displayName: 'Operation', name: 'operation', type: 'string', default: 'update' },
+						{ displayName: 'Document', name: 'documentId', type: 'string', default: '' },
+						{ displayName: 'Sheet', name: 'sheetName', type: 'string', default: '' },
+						{
+							displayName: 'Columns',
+							name: 'columns',
+							type: 'resourceMapper',
+							default: { mappingMode: 'defineBelow', value: null },
+							displayOptions: {
+								show: { resource: ['sheet'], operation: ['update'] },
+								hide: { sheetName: [''] },
+							},
+						},
+					],
+				} as unknown as INodeTypeDescription,
+			};
+			nodeTypes.getByNameAndVersion.mockImplementation((type) =>
+				type === 'n8n-nodes-base.googleSheets'
+					? sheetsType
+					: { description: { properties: [] } as unknown as INodeTypeDescription },
+			);
+			const workflowEntity = makeWorkflowEntity({
+				nodes: [
+					makeStartNode(),
+					{
+						id: 'node-2',
+						name: 'Google Sheets',
+						type: 'n8n-nodes-base.googleSheets',
+						typeVersion: 4.7,
+						position: [200, 0],
+						parameters: {
+							resource: 'sheet',
+							operation: 'update',
+							documentId: { __rl: true, mode: 'list', value: '' },
+							sheetName: { __rl: true, mode: 'list', value: '' },
+							columns: { ...mapper, schema: [], matchingColumns: ['row_number'] },
+						},
+					} as INode,
+				],
+				connections: {
+					Webhook: {
+						main: [[{ node: 'Google Sheets', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+			});
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(workflowEntity as never);
+
+			const normalize = (nodes: INode[]) =>
+				new RealWorkflow({
+					id: workflowEntity.id,
+					name: workflowEntity.name,
+					nodes: structuredClone(nodes),
+					connections: workflowEntity.connections,
+					active: false,
+					nodeTypes,
+				}).nodes['Google Sheets'].parameters;
+
+			// Without the eval setup, workflow construction hides columns until a sheet is selected.
+			expect(normalize(workflowEntity.nodes).columns).toBeUndefined();
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+			const sentNodes = workflowRunner.run.mock.calls[0][0].workflowData.nodes;
+			const columns = normalize(sentNodes).columns;
+			expect(columns).toMatchObject({
+				matchingColumns: ['row_number'],
+				mappingMode: mapper.mappingMode,
+			});
+		});
+
 		it('keeps missing required parameters visible as failed config issues after synthesis', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
 			nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
