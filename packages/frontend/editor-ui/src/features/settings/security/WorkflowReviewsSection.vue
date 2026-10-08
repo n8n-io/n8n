@@ -45,7 +45,8 @@ async function persist(value: boolean): Promise<void> {
 		if (response.workflowReviews) {
 			enabled.value = response.workflowReviews.enabled;
 			settingsStore.setWorkflowReviewsPolicy(response.workflowReviews);
-			await settingsStore.getSettings();
+			// Refresh Inbox availability without changing the result of the saved policy.
+			void settingsStore.getSettings().catch(() => undefined);
 		}
 		showToast({
 			type: 'success',

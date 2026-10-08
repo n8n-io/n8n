@@ -21,9 +21,7 @@ function section(
 		items: [],
 		loading: false,
 		loadingMore: false,
-		hasLoaded: true,
 		hasMore: false,
-		hasLoadedMore: false,
 		error: null,
 		partial: false,
 		...props,
@@ -77,33 +75,29 @@ function intersect(isIntersecting = true) {
 	onIntersect([{ isIntersecting } as IntersectionObserverEntry], {} as IntersectionObserver);
 }
 
-it('offers one refresh after either group loads older pages', () => {
-	const { getAllByRole, emitted } = renderComponent({
+it('shows one initial skeleton without empty group headers', () => {
+	const { getAllByTestId, queryByTestId } = renderComponent({
+		props: {
+			sections: [section('waiting', { loading: true }), section('authored', { loading: true })],
+		},
+	});
+	expect(getAllByTestId('inbox-list-skeleton')).toHaveLength(1);
+	expect(queryByTestId('inbox-section-header')).not.toBeInTheDocument();
+});
+it('offers one retry when the first load fails without rows', () => {
+	const { getAllByRole, queryByTestId, emitted } = renderComponent({
 		props: {
 			sections: [
-				section('waiting', { hasLoadedMore: true }),
-				section('authored', { hasLoadedMore: true }),
+				section('waiting', { error: new Error('Request failed') }),
+				section('authored', { error: new Error('Request failed') }),
 			],
 		},
 	});
-	const buttons = getAllByRole('button', { name: 'Refresh' });
+	const buttons = getAllByRole('button', { name: 'Retry' });
 	expect(buttons).toHaveLength(1);
 	buttons[0].click();
-	expect(emitted('refresh')).toEqual([[]]);
-});
-it('does not offer refresh before loading older pages', () => {
-	expect(renderComponent().queryByRole('button', { name: 'Refresh' })).not.toBeInTheDocument();
-});
-it.each(['loading', 'loadingMore'] as const)('disables refresh while a group is %s', (loading) => {
-	const { getByRole } = renderComponent({
-		props: {
-			sections: [
-				section('waiting', { hasLoadedMore: true }),
-				section('authored', { [loading]: true }),
-			],
-		},
-	});
-	expect(getByRole('button', { name: 'Refresh' })).toBeDisabled();
+	expect(emitted('retryActiveTab')).toEqual([[]]);
+	expect(queryByTestId('inbox-section-header')).not.toBeInTheDocument();
 });
 it('hides healthy empty groups without hiding a failed group or healthy rows', () => {
 	const { queryByRole, getByRole, emitted } = renderComponent({

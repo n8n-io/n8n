@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useEventListener, useResizeObserver } from '@vueuse/core';
+import { useResizeObserver } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { inject, onMounted, ref, watch } from 'vue';
 
@@ -27,12 +27,6 @@ const initialScrollApplied = ref(false);
 let prependAnchor: { element: Element; top: number } | null = null;
 
 const enteringIds = ref<ReadonlySet<string>>(new Set());
-
-useEventListener(scrollContainer, 'scroll', () => {
-	const container = scrollContainer.value;
-	if (container)
-		store.isAtBottom = container.scrollHeight - container.clientHeight - container.scrollTop <= 1;
-});
 
 function scrollToBottom() {
 	const container = scrollContainer.value;

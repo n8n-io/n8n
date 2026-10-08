@@ -23,7 +23,6 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 	const loading = ref(false);
 	const loadingMore = ref(false);
 	const posting = ref(false);
-	const isAtBottom = ref(true);
 	const error = ref<Error | null>(null);
 	// Held here, not in the composer: switching to the Changes tab unmounts it, and a
 	// half-typed comment must survive that.
@@ -51,7 +50,6 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		// previous review's feed.
 		if (switchedReview) {
 			postSeq++;
-			isAtBottom.value = true;
 			entries.value = [];
 			posting.value = false;
 			draft.value = '';
@@ -104,7 +102,6 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 			if (requestSeq !== feedRequestSeq || currentReviewId.value !== reviewId) return;
 
 			entries.value = [...response.data, ...entries.value];
-			isAtBottom.value = false;
 			nextCursor.value = response.nextCursor;
 			// A page that returns nothing ends the walk: keeping `hasMore` would re-arm the
 			// sentinel on an unchanged list and intersect forever.
@@ -117,18 +114,6 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 				loadingMore.value = false;
 			}
 		}
-	}
-
-	async function refreshFeedIfIdle(reviewId: string) {
-		if (
-			currentReviewId.value !== reviewId ||
-			!isAtBottom.value ||
-			loading.value ||
-			loadingMore.value ||
-			posting.value
-		)
-			return;
-		await fetchFeed(reviewId);
 	}
 
 	/**
@@ -168,7 +153,6 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		feedRequestSeq += 1;
 		postSeq++;
 		currentReviewId.value = null;
-		isAtBottom.value = true;
 		entries.value = [];
 		nextCursor.value = null;
 		hasMore.value = false;
@@ -188,8 +172,6 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		loading,
 		loadingMore,
 		posting,
-		isAtBottom,
-		refreshFeedIfIdle,
 		error,
 		draft,
 		decisionNote,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { InboxItem, InboxState } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nTabs } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nLoading, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useIntersectionObserver } from '@vueuse/core';
 import { computed, useTemplateRef } from 'vue';
@@ -23,25 +23,26 @@ const emit = defineEmits<{
 	'update:active-tab': [state: InboxState];
 	loadMore: [section: InboxSectionKey];
 	retry: [section: InboxSectionKey];
+	retryActiveTab: [];
 	refreshSection: [section: InboxSectionKey];
-	refresh: [];
 }>();
 const i18n = useI18n();
 const { isCollapsed, toggleSection } = useReviewInboxSectionCollapse();
+const loading = computed(() => props.sections.some((section) => section.loading));
+const hasUsableRows = computed(() => props.sections.some((section) => section.items.length > 0));
+const showInitialLoadError = computed(
+	() =>
+		!hasUsableRows.value &&
+		props.sections.some((section) => section.error !== null) &&
+		!props.sections.some((section) => section.partial),
+);
 const visibleSections = computed(() =>
 	props.sections.filter(
 		(section) =>
-			!section.hasLoaded ||
-			section.loading ||
-			section.error ||
-			section.partial ||
-			section.items.length > 0 ||
-			section.hasMore,
+			!loading.value &&
+			!showInitialLoadError.value &&
+			(section.error || section.partial || section.items.length > 0 || section.hasMore),
 	),
-);
-const hasLoadedMore = computed(() => props.sections.some((section) => section.hasLoadedMore));
-const refreshing = computed(() =>
-	props.sections.some((section) => section.loading || section.loadingMore),
 );
 const listRef = useTemplateRef<HTMLElement>('list');
 const loadMoreSentinel = useTemplateRef<HTMLElement>('loadMoreSentinel');
@@ -50,7 +51,7 @@ const canAutoLoad = computed(() => {
 	return (
 		props.activeTab === 'closed' &&
 		closed?.hasMore &&
-		!closed.loading &&
+		!loading.value &&
 		!closed.loadingMore &&
 		!closed.error
 	);
@@ -77,29 +78,42 @@ const tabs = computed(() => [
 function onTabChange(value: string | number | boolean) {
 	if (value === 'open' || value === 'closed') emit('update:active-tab', value);
 }
+
+function onListBackgroundClick() {
+	if (props.selectedKey) emit('clear');
+}
 </script>
 
 <template>
 	<aside :class="$style.sidebar" data-test-id="inbox-list">
 		<div :class="$style.title">
 			<N8nHeading bold tag="h2" size="xlarge">{{ i18n.baseText('inbox.title') }}</N8nHeading>
-			<N8nButton
-				v-if="hasLoadedMore"
-				size="mini"
-				variant="subtle"
-				:disabled="refreshing"
-				:label="i18n.baseText('generic.refresh')"
-				@click="emit('refresh')"
+		</div>
+		<div :class="$style.header">
+			<N8nTabs
+				:model-value="activeTab"
+				:options="tabs"
+				variant="modern"
+				data-test-id="inbox-tabs"
+				@update:model-value="onTabChange"
 			/>
 		</div>
-		<N8nTabs
-			:model-value="activeTab"
-			:options="tabs"
-			variant="modern"
-			data-test-id="inbox-tabs"
-			@update:model-value="onTabChange"
-		/>
-		<div ref="list" :class="$style.list" @click.self="emit('clear')">
+		<div ref="list" :class="$style.list" @click.self="onListBackgroundClick">
+			<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="inbox-list-skeleton" />
+			<div
+				v-else-if="showInitialLoadError"
+				:class="$style.sectionError"
+				role="alert"
+				data-test-id="inbox-list-error"
+			>
+				<N8nText color="danger" size="small">{{ i18n.baseText('inbox.loadError') }}</N8nText>
+				<N8nButton
+					variant="subtle"
+					size="mini"
+					:label="i18n.baseText('generic.retry')"
+					@click="emit('retryActiveTab')"
+				/>
+			</div>
 			<InboxListSection
 				v-for="section in visibleSections"
 				:key="section.key"
@@ -121,26 +135,55 @@ function onTabChange(value: string | number | boolean) {
 .sidebar {
 	display: flex;
 	flex-direction: column;
+	width: 100%;
 	min-width: 0;
 	height: 100%;
-	border-right: var(--border);
-	padding-right: var(--spacing--md);
+	border-right: var(--border-width) solid var(--border-color);
 }
+
 .title {
 	display: flex;
-	justify-content: space-between;
 	align-items: center;
 	min-height: var(--spacing--2xl);
-	padding-bottom: var(--spacing--sm);
+	padding: 0 var(--spacing--md) var(--spacing--sm) 0;
 }
+
+.header {
+	position: relative;
+	display: flex;
+	align-items: center;
+	height: var(--review-tab-bar--height, var(--height--sm));
+	padding-right: var(--spacing--md);
+	margin-bottom: var(--review-tab-bar--gap);
+
+	&::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: var(--spacing--md);
+		bottom: calc(-1 * var(--review-tab-bar--indicator-overhang) - var(--border-width));
+		border-bottom: var(--border-width) solid var(--border-color);
+	}
+}
+
 .list {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+	min-width: 0;
 	overflow-y: auto;
-	padding-block: var(--spacing--sm);
+	padding: 0 var(--spacing--md) var(--spacing--md) 0;
 }
+
+.sectionError {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	padding: 0 var(--spacing--2xs);
+}
+
 .sentinel {
 	flex-shrink: 0;
 	height: var(--border-width);

@@ -9,10 +9,10 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defineStore } from 'pinia';
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref } from 'vue';
 
 import { fetchInbox, fetchInboxSummary } from './inbox.api';
-import { INBOX_PAGE_LIMIT, type InboxSectionKey } from './inbox.constants';
+import { INBOX_PAGE_LIMIT, type InboxItemChange, type InboxSectionKey } from './inbox.constants';
 import { toError } from './reviews/workflowReviews.utils';
 
 const sourceTypes: InboxSourceType[] = ['workflow_review', 'self_healing_result'];
@@ -22,7 +22,6 @@ type ListState = {
 	nextCursor: string | null;
 	hasMore: boolean;
 	hasLoaded: boolean;
-	hasLoadedMore: boolean;
 	loading: boolean;
 	loadingMore: boolean;
 	error: Error | null;
@@ -50,7 +49,6 @@ export function createInboxListSlice(
 		nextCursor: null,
 		hasMore: false,
 		hasLoaded: false,
-		hasLoadedMore: false,
 		loading: false,
 		loadingMore: false,
 		error: null,
@@ -64,7 +62,6 @@ export function createInboxListSlice(
 		onPage?.(page, append);
 		onDisabledSources(page.disabledSources);
 		state.hasLoaded = true;
-		state.hasLoadedMore = append;
 		state.items = append ? [...state.items, ...page.data] : page.data;
 		state.nextCursor = page.nextCursor;
 		state.hasMore = page.hasMore;
@@ -72,9 +69,11 @@ export function createInboxListSlice(
 		state.failedSources = page.failedSources;
 	}
 
-	async function fetchList({ background = false } = {}) {
-		if (background && (state.loading || state.loadingMore || state.hasLoadedMore)) return;
+	async function fetchList() {
 		const seq = ++requestSeq;
+		state.items = [];
+		state.nextCursor = null;
+		state.hasMore = false;
 		state.loading = true;
 		state.loadingMore = false;
 		state.error = null;
@@ -115,21 +114,10 @@ export function createInboxListSlice(
 		state.items = state.items.filter((item) => !types.includes(item.type));
 	}
 
-	function invalidateSourceSet(types: InboxSourceType[]) {
-		requestSeq++;
-		removeSources(types);
-		state.hasLoadedMore = false;
-		state.nextCursor = null;
-		state.hasMore = false;
-		state.loading = false;
-		state.loadingMore = false;
-	}
-
 	function reset() {
 		requestSeq++;
 		state.items = [];
 		state.hasLoaded = false;
-		state.hasLoadedMore = false;
 		state.nextCursor = null;
 		state.hasMore = false;
 		state.loading = false;
@@ -144,7 +132,6 @@ export function createInboxListSlice(
 		fetchList,
 		loadMore,
 		removeSources,
-		invalidateSourceSet,
 		reset,
 		async retry() {
 			if (state.failedRequest === 'loadMore') await loadMore();
@@ -157,15 +144,11 @@ export const useInboxStore = defineStore('inbox', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const activeTab = ref<InboxState>('open');
-	const isActive = ref(false);
 	const openCount = ref<number | null>(null);
 	const closedCount = ref<number | null>(null);
-	const summaryPartial = ref(false);
 	const disabledSources = ref<InboxSourceType[]>([]);
 	const enabled = computed(() => settingsStore.settings.inbox?.enabled === true);
-	const activeViews: Array<() => Promise<void>> = [];
 	let summaryRequestSeq = 0;
-	let summaryPending: Promise<void> | undefined;
 
 	function removeDisabledSources(types: InboxSourceType[]) {
 		if (types.length === 0) return;
@@ -235,10 +218,6 @@ export const useInboxStore = defineStore('inbox', () => {
 				list.items.length === 0,
 		),
 	);
-	const countsAreComplete = computed(
-		() => !summaryPartial.value && (!isActive.value || (!partial.value && !hasError.value)),
-	);
-	const badgeCount = computed(() => (countsAreComplete.value ? openCount.value : null));
 
 	async function fetchSummary() {
 		if (!enabled.value) return;
@@ -249,45 +228,37 @@ export const useInboxStore = defineStore('inbox', () => {
 			removeDisabledSources(summary.disabledSources);
 			openCount.value = summary.counts?.open ?? null;
 			closedCount.value = summary.counts?.closed ?? null;
-			summaryPartial.value = summary.partial;
 		} catch (error) {
 			if (seq !== summaryRequestSeq) return;
 			removeDisabledSources(disabledTypesFromError(error));
 			openCount.value = null;
 			closedCount.value = null;
-			summaryPartial.value = true;
 		}
 	}
 
-	async function refreshListAndSummary({ background = false } = {}) {
+	async function refreshListAndSummary() {
 		if (!enabled.value) return;
-		// Each group decides whether it can refresh without interrupting its reader.
-		const requests = activeLists.value.map(async (list) => await list.fetchList({ background }));
-		if (!background || !summaryPending) {
-			const summary = fetchSummary();
-			summaryPending = summary;
-			void summary.finally(() => {
-				if (summaryPending === summary) summaryPending = undefined;
-			});
-			requests.push(summary);
+		await Promise.all([
+			...activeLists.value.map(async (list) => await list.fetchList()),
+			fetchSummary(),
+		]);
+	}
+
+	function reconcileItemChange(change: InboxItemChange) {
+		for (const list of Object.values(lists)) {
+			const item = list.items.find((row) => row.type === change.type && row.id === change.id);
+			if (!item) continue;
+			if (change.state) item.state = change.state;
+			if (change.updatedAt) item.updatedAt = change.updatedAt;
+			if (item.type === 'workflow_review' && change.decision) item.decision = change.decision;
+			if (change.unavailable || item.state !== activeTab.value) {
+				list.items = list.items.filter((row) => row !== item);
+			}
 		}
-		await Promise.allSettled(requests);
-	}
-
-	function activate(refreshDetail: () => Promise<void> = async () => {}) {
-		activeViews.push(refreshDetail);
-		isActive.value = true;
-		return () => {
-			const index = activeViews.indexOf(refreshDetail);
-			if (index !== -1) activeViews.splice(index, 1);
-			isActive.value = activeViews.length > 0;
-		};
-	}
-
-	async function refreshVisibleInbox() {
-		if (!isActive.value || document.hidden || !enabled.value) return;
-		await refreshListAndSummary({ background: true });
-		if (isActive.value && !document.hidden && enabled.value) await activeViews.at(-1)?.();
+		if (change.state === 'closed') {
+			if (openCount.value !== null) openCount.value = Math.max(0, openCount.value - 1);
+			if (closedCount.value !== null) closedCount.value++;
+		}
 	}
 
 	async function setActiveTab(tab: InboxState) {
@@ -302,32 +273,10 @@ export const useInboxStore = defineStore('inbox', () => {
 		for (const list of Object.values(lists)) list.reset();
 		openCount.value = null;
 		closedCount.value = null;
-		summaryPartial.value = false;
 		const settings = settingsStore.settings.inbox;
 		const available = [...(settings?.availableTypes ?? []), ...(settings?.failedTypes ?? [])];
 		disabledSources.value = sourceTypes.filter((type) => !available.includes(type));
 	}
-
-	watch(
-		() => {
-			const settings = settingsStore.settings.inbox;
-			return `${settings?.enabled}:${settings?.availableTypes.join(',')}:${settings?.failedTypes.join(',')}`;
-		},
-		() => {
-			const settings = settingsStore.settings.inbox;
-			const available = [...(settings?.availableTypes ?? []), ...(settings?.failedTypes ?? [])];
-			const disabled = sourceTypes.filter((type) => !available.includes(type));
-			summaryRequestSeq++;
-			openCount.value = null;
-			closedCount.value = null;
-			for (const list of Object.values(lists)) list.invalidateSourceSet(disabled);
-			disabledSources.value = disabled;
-			if (!settings?.enabled) {
-				for (const list of Object.values(lists)) list.reset();
-			} else void refreshVisibleInbox();
-		},
-		{ immediate: true },
-	);
 
 	return {
 		lists,
@@ -339,17 +288,13 @@ export const useInboxStore = defineStore('inbox', () => {
 		hasError,
 		partial,
 		isEmpty,
-		isActive,
 		enabled,
 		openCount,
 		closedCount,
 		disabledSources,
-		countsAreComplete,
-		badgeCount,
 		fetchSummary,
 		refreshListAndSummary,
-		activate,
-		refreshVisibleInbox,
+		reconcileItemChange,
 		setActiveTab,
 		reset,
 	};

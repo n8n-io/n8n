@@ -58,8 +58,6 @@ const config: KnipConfig = {
 				'@dotenvx/dotenvx',
 				// scripts/instance-seeding resolves it from packages/cli by path.
 				'flatted',
-				// seedInbox.mjs resolves decorator metadata from packages/cli by path.
-				'reflect-metadata',
 				// scripts/generate-emoji-data.mjs is a manual generator; install emojibase-data ad hoc.
 				'emojibase-data',
 				// Only named in JSDoc type imports; @stryker-mutator/core provides it.

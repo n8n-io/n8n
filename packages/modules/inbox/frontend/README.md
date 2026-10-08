@@ -6,9 +6,8 @@ Open has two groups: Waiting for review and Authored by you. Assistant results g
 in Waiting for review. Each group has its own cursor, Load more button, and retry.
 Closed is a flat list with infinite scroll. Group collapse state persists per user.
 
-After the user loads older pages, automatic refresh keeps that group in place.
-Other groups, counts, and the selected detail continue to refresh. The Refresh
-button reloads the first page of each active group and starts new cursor chains.
+Review decisions update the loaded rows and counts in place. Approving a selected
+review opens the Closed tab, as before.
 
 Self-healing detail UI remains gated by the disabled-by-default self-healing rollout. AST-1518 replaces the explicit unavailable detail state.
 

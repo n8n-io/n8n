@@ -46,7 +46,6 @@ const review = computed(() => {
 
 let isMounted = false;
 let selectionRevision = 0;
-let refreshing = false;
 
 function ownsSelection(id: string, revision = selectionRevision) {
 	return (
@@ -105,42 +104,6 @@ watch(detailNotFound, (notFound) => {
 	props.onItemChange({ type: 'workflow_review', id: props.reviewId, unavailable: true });
 });
 
-async function refresh() {
-	const id = props.reviewId;
-	const revision = selectionRevision;
-
-	if (
-		!ownsSelection(id, revision) ||
-		document.hidden ||
-		refreshing ||
-		deciding.value ||
-		detailLoading.value ||
-		activityStore.posting ||
-		activityStore.loading ||
-		activityStore.loadingMore
-	) {
-		return;
-	}
-
-	refreshing = true;
-
-	try {
-		await loadDetail(id, revision);
-
-		if (!ownsSelection(id, revision) || detailNotFound.value) {
-			return;
-		}
-
-		if (activityStore.currentReviewId !== id && detail.value?.id === id) {
-			await activityStore.fetchFeed(id);
-		} else {
-			await activityStore.refreshFeedIfIdle(id);
-		}
-	} finally {
-		refreshing = false;
-	}
-}
-
 function asSentence(message: string) {
 	const trimmed = message.trim();
 	return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
@@ -159,8 +122,8 @@ async function onDecide(input: WorkflowReviewDecisionInput) {
 	deciding.value = true;
 
 	try {
-		const { autoPublish, state } = await reviewStore.decideOnReview(id, input);
-		onItemChange({ type: 'workflow_review', id, state });
+		const { autoPublish, state, decision, updatedAt } = await reviewStore.decideOnReview(id, input);
+		onItemChange({ type: 'workflow_review', id, state, decision, updatedAt });
 
 		if (!ownsSelection(id, revision)) {
 			return;
@@ -214,29 +177,38 @@ onMounted(() => {
 onBeforeUnmount(() => {
 	isMounted = false;
 });
-
-defineExpose({ refresh });
 </script>
 
 <template>
 	<section :class="$style.detail" data-test-id="workflow-review-detail">
-		<div :class="$style.columnTitle" data-test-id="workflow-review-request-title-row">
-			<template v-if="review && !detailNotFound">
+		<div :class="$style.columnTitle">
+			<div
+				v-if="review && !detailNotFound"
+				:class="$style.reviewTitle"
+				data-test-id="workflow-review-request-title-row"
+			>
 				<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" />
 				<N8nHeading bold tag="h2" size="xlarge" data-test-id="workflow-review-request-title">{{
 					review.title
 				}}</N8nHeading>
-			</template>
+			</div>
 		</div>
 		<div :class="$style.mainBody">
-			<N8nEmptyState
+			<div
 				v-if="detailNotFound"
-				:icon="alertIcon"
-				:heading="i18n.baseText('workflowReviews.detail.notFound.title')"
-				:description="i18n.baseText('workflowReviews.detail.notFound.body')"
+				:class="$style.emptyStateWrapper"
 				data-test-id="workflow-review-detail-not-found"
-			/>
-			<N8nLoading v-else-if="detailLoading" :loading="true" :rows="3" />
+			>
+				<N8nEmptyState
+					:class="$style.emptyState"
+					:icon="alertIcon"
+					:heading="i18n.baseText('workflowReviews.detail.notFound.title')"
+					:description="i18n.baseText('workflowReviews.detail.notFound.body')"
+				/>
+			</div>
+			<div v-else-if="detailLoading" :class="$style.detailSkeleton">
+				<N8nLoading :loading="true" :rows="3" />
+			</div>
 			<WorkflowReviewDetailTabs
 				v-else-if="review"
 				:review="review"
@@ -245,24 +217,25 @@ defineExpose({ refresh });
 				@update:tab="emit('update:tab', $event)"
 				@decide="onDecide"
 			/>
-			<N8nEmptyState
+			<div
 				v-else-if="loadFailed"
-				:icon="alertIcon"
-				:heading="i18n.baseText('workflowReviews.error.load')"
-				:button-text="i18n.baseText('generic.retry')"
+				:class="$style.emptyStateWrapper"
 				data-test-id="workflow-review-detail-load-error"
-				@click:button="refresh"
-			/>
+			>
+				<N8nEmptyState
+					:class="$style.emptyState"
+					:icon="alertIcon"
+					:heading="i18n.baseText('workflowReviews.error.load')"
+					:button-text="i18n.baseText('generic.retry')"
+					@click:button="loadDetail(reviewId, selectionRevision)"
+				/>
+			</div>
 		</div>
 	</section>
 </template>
 
 <style lang="scss" module>
 .detail {
-	--review-tab-bar--height: var(--height--sm);
-	--review-tab-bar--indicator-overhang: var(--spacing--sm);
-	--review-activity--max-width: 45rem;
-	--review-callout--max-width: 34rem;
 	display: flex;
 	flex: 1;
 	flex-direction: column;
@@ -272,14 +245,36 @@ defineExpose({ refresh });
 .columnTitle {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
 	min-height: var(--spacing--2xl);
 	padding-bottom: var(--spacing--sm);
+}
+
+.reviewTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 
 .mainBody {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
+}
+
+.detailSkeleton {
+	max-width: var(--review-activity--max-width);
+}
+
+.emptyStateWrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+}
+
+.emptyStateWrapper .emptyState {
+	border: none;
+	padding: 0;
 }
 </style>

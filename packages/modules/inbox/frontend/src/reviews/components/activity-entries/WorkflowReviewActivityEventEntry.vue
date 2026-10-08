@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { WorkflowReviewActivityEntry, WorkflowReviewClosedReason } from '@n8n/api-types';
-import { N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nText, N8nTimeAgo } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
 import { I18nT } from 'vue-i18n';
 
-import TimeAgo from '../../TimeAgo.vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { getVersionLabel } from '@n8n/composables/useWorkflowVersionLabel';
 
 import { ReviewLinkedWorkflowsKey, type ReviewLinkedWorkflowContext } from '../../constants';
@@ -33,6 +33,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const rootStore = useRootStore();
 
 const linkedWorkflows = inject(
 	ReviewLinkedWorkflowsKey,
@@ -212,7 +213,7 @@ const actorName = computed(() =>
 				<I18nT :keypath="closedCallout.bodyKey" scope="global">
 					<template #timestamp>
 						<time :datetime="entry.createdAt">
-							<TimeAgo :date="entry.createdAt" />
+							<N8nTimeAgo :date="entry.createdAt" :locale="rootStore.defaultLocale" />
 						</time>
 					</template>
 				</I18nT>
@@ -272,7 +273,7 @@ const actorName = computed(() =>
 				</N8nText>
 				<N8nText size="medium" color="text-light" :class="$style.timeStamp">
 					<time :datetime="entry.createdAt">
-						<TimeAgo :date="entry.createdAt" />
+						<N8nTimeAgo :date="entry.createdAt" :locale="rootStore.defaultLocale" />
 					</time>
 				</N8nText>
 			</div>

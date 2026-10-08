@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { WorkflowReviewActivityEntry, WorkflowReviewActivityMessage } from '@n8n/api-types';
-import { N8nText } from '@n8n/design-system';
+import { N8nText, N8nTimeAgo } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import TimeAgo from '../../TimeAgo.vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { formatActorName } from '../../workflowReviews.utils';
 import WorkflowReviewActivityActorAvatar from './WorkflowReviewActivityActorAvatar.vue';
@@ -13,6 +13,7 @@ defineProps<{
 }>();
 
 const i18n = useI18n();
+const rootStore = useRootStore();
 
 function authorName(message: WorkflowReviewActivityMessage): string {
 	return formatActorName(
@@ -42,7 +43,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 							data-test-id="workflow-review-activity-comment-time"
 							:class="$style.timeStamp"
 						>
-							<TimeAgo :date="message.createdAt" />
+							<N8nTimeAgo :date="message.createdAt" :locale="rootStore.defaultLocale" />
 						</time>
 					</N8nText>
 				</div>

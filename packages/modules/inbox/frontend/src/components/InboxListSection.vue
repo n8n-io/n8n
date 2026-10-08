@@ -13,9 +13,7 @@ export type InboxListSection = {
 	items: InboxItem[];
 	loading: boolean;
 	loadingMore: boolean;
-	hasLoaded: boolean;
 	hasMore: boolean;
-	hasLoadedMore: boolean;
 	error: Error | null;
 	partial: boolean;
 };
@@ -59,7 +57,7 @@ function sectionTitle(key: 'waiting' | 'authored') {
 				size="small"
 				:class="[$style.chevron, { [$style.chevronCollapsed]: collapsed }]"
 			/>
-			<N8nText bold size="small">{{ sectionTitle(section.key) }}</N8nText>
+			<N8nText bold size="small" color="text-base">{{ sectionTitle(section.key) }}</N8nText>
 		</button>
 		<div
 			:id="`inbox-section-${section.key}`"
@@ -71,11 +69,6 @@ function sectionTitle(key: 'waiting' | 'authored') {
 			:aria-label="section.key === 'closed' ? i18n.baseText('inbox.tabs.closed') : undefined"
 		>
 			<template v-if="!collapsed">
-				<N8nLoading
-					v-if="section.loading && section.items.length === 0"
-					:loading="true"
-					:rows="3"
-				/>
 				<InboxListItem
 					v-for="item in section.items"
 					:key="`${item.type}:${item.id}`"
@@ -86,6 +79,9 @@ function sectionTitle(key: 'waiting' | 'authored') {
 			</template>
 		</div>
 		<template v-if="!collapsed">
+			<div v-if="section.loadingMore" :class="$style.loadingMore">
+				<N8nLoading :loading="true" :rows="1" />
+			</div>
 			<div v-if="section.partial" :class="$style.notice" role="status" data-test-id="inbox-partial">
 				<N8nText size="small">{{ i18n.baseText('inbox.partial') }}</N8nText>
 				<N8nButton
@@ -96,7 +92,7 @@ function sectionTitle(key: 'waiting' | 'authored') {
 				/>
 			</div>
 			<div v-if="section.error" :class="$style.notice" role="alert" data-test-id="inbox-list-error">
-				<N8nText size="small">{{ i18n.baseText('inbox.loadError') }}</N8nText>
+				<N8nText color="danger" size="small">{{ i18n.baseText('inbox.loadError') }}</N8nText>
 				<N8nButton
 					size="mini"
 					variant="subtle"
@@ -115,11 +111,6 @@ function sectionTitle(key: 'waiting' | 'authored') {
 				data-test-id="inbox-load-more"
 				@click="emit('loadMore')"
 			/>
-			<N8nLoading
-				v-if="section.key === 'closed' && section.loadingMore"
-				:loading="true"
-				:rows="1"
-			/>
 		</template>
 	</div>
 </template>
@@ -130,7 +121,9 @@ function sectionTitle(key: 'waiting' | 'authored') {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	min-width: 0;
 }
+
 .sectionHeader {
 	display: flex;
 	align-items: center;
@@ -150,6 +143,7 @@ function sectionTitle(key: 'waiting' | 'authored') {
 	outline: var(--border-width) solid var(--focus--border-color);
 }
 .chevron {
+	transition: transform var(--duration--snappy) ease;
 	color: var(--color--text--tint-1);
 }
 .chevronCollapsed {
@@ -160,9 +154,14 @@ function sectionTitle(key: 'waiting' | 'authored') {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
-	padding-block: var(--spacing--xs);
+	padding: 0 var(--spacing--2xs);
 }
+
 .loadMore {
 	align-self: center;
+}
+
+.loadingMore {
+	padding: var(--spacing--sm);
 }
 </style>

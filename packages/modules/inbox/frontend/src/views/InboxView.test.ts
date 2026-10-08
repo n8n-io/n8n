@@ -13,7 +13,6 @@ import InboxView from './InboxView.vue';
 vi.mock('@n8n/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({ set: vi.fn() }),
 }));
-const refreshDetail = vi.fn();
 const detailMounted = vi.fn();
 let reportChange: (change: InboxItemChange) => void;
 const router = createRouter({
@@ -53,10 +52,9 @@ const renderOptions = {
 					},
 				},
 				emits: ['update:tab'],
-				setup(props, { expose }) {
+				setup(props) {
 					detailMounted(props.reviewId);
 					reportChange = props.onItemChange;
-					expose({ refresh: refreshDetail });
 				},
 				template: `<div data-test-id="review-detail" :data-id="reviewId" :data-tab="tab" :data-title="listItem?.title">
      <button data-test-id="select-changes-tab" @click="$emit('update:tab', 'changes')" />
@@ -88,7 +86,6 @@ beforeEach(async () => {
 	store.refreshListAndSummary.mockResolvedValue(undefined);
 	store.fetchSummary.mockResolvedValue(undefined);
 	store.setActiveTab.mockResolvedValue(undefined);
-	refreshDetail.mockResolvedValue(undefined);
 });
 
 it('refreshes the list and summary on mount', async () => {
@@ -171,8 +168,11 @@ it('removes only the unavailable identity from both lists and keeps its detail s
 	const { getByTestId } = renderComponent();
 	reportChange({ type: 'workflow_review', id: 'req-1', unavailable: true });
 	await waitAllPromises();
-	expect(store.lists.waiting.items).toEqual([resultItem()]);
-	expect(store.lists.closed.items).toEqual([]);
+	expect(store.reconcileItemChange).toHaveBeenCalledWith({
+		type: 'workflow_review',
+		id: 'req-1',
+		unavailable: true,
+	});
 	expect(store.fetchSummary).toHaveBeenCalledOnce();
 	expect(getByTestId('review-detail')).toHaveAttribute('data-id', 'req-1');
 });
@@ -210,19 +210,24 @@ it('follows a selected item to Closed after its detail reports the new state', a
 	store.refreshListAndSummary.mockClear();
 	reportChange({ type: 'workflow_review', id: 'req-1', state: 'closed' });
 	await waitAllPromises();
-	expect(store.refreshListAndSummary).toHaveBeenCalledOnce();
+	expect(store.refreshListAndSummary).not.toHaveBeenCalled();
+	expect(store.reconcileItemChange).toHaveBeenCalledWith({
+		type: 'workflow_review',
+		id: 'req-1',
+		state: 'closed',
+	});
 	expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-1?state=closed');
 });
 
 it.each([undefined, 'open'] as const)(
-	'refreshes without navigation for state %s',
+	'reconciles without navigation for state %s',
 	async (state) => {
 		await router.replace('/inbox/reviews/req-1');
 		renderComponent();
 		store.refreshListAndSummary.mockClear();
 		reportChange({ type: 'workflow_review', id: 'req-1', state });
 		await waitAllPromises();
-		expect(store.refreshListAndSummary).toHaveBeenCalledOnce();
+		expect(store.refreshListAndSummary).toHaveBeenCalledTimes(state ? 0 : 1);
 		expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-1');
 	},
 );
@@ -248,7 +253,8 @@ it.each(['select-other-review', 'select-result'])(
 		store.refreshListAndSummary.mockClear();
 		finishOldDecision({ type: 'workflow_review', id: 'req-1', state: 'closed' });
 		await waitAllPromises();
-		expect(store.refreshListAndSummary).toHaveBeenCalledOnce();
+		expect(store.refreshListAndSummary).not.toHaveBeenCalled();
+		expect(store.reconcileItemChange).toHaveBeenCalledOnce();
 		expect(router.currentRoute.value.fullPath).toBe(path);
 	},
 );
@@ -260,25 +266,6 @@ it('ignores callbacks after the Inbox view unmounts', async () => {
 	store.refreshListAndSummary.mockClear();
 	reportChange({ type: 'workflow_review', id: 'req-1', state: 'closed' });
 	expect(store.refreshListAndSummary).not.toHaveBeenCalled();
-});
-
-it('dereferences the current detail entry for background refresh', async () => {
-	await router.replace('/inbox/reviews/req-1');
-	const { getByTestId, unmount } = renderComponent();
-	const refreshSelected = store.activate.mock.calls[0][0];
-	await refreshSelected?.();
-	expect(refreshDetail).toHaveBeenCalledOnce();
-	getByTestId('select-result').click();
-	await waitAllPromises();
-	await refreshSelected?.();
-	expect(refreshDetail).toHaveBeenCalledOnce();
-	getByTestId('select-review').click();
-	await waitAllPromises();
-	await refreshSelected?.();
-	expect(refreshDetail).toHaveBeenCalledTimes(2);
-	unmount();
-	await refreshSelected?.();
-	expect(refreshDetail).toHaveBeenCalledTimes(2);
 });
 
 it('leaves another page unchanged when an old entry reports a tab or item change', async () => {
@@ -395,4 +382,19 @@ it('restarts a partial group after a page failure while retaining exact page ret
 	expect(waiting.partial).toBe(false);
 	expect(waiting.error).toBeNull();
 	expect(waiting.nextCursor).toBeNull();
+});
+
+it('does not reload the Inbox on a timer or window focus', async () => {
+	vi.useFakeTimers();
+	try {
+		const { unmount } = renderComponent();
+		store.refreshListAndSummary.mockClear();
+		await vi.advanceTimersByTimeAsync(60_000);
+		window.dispatchEvent(new Event('focus'));
+		document.dispatchEvent(new Event('visibilitychange'));
+		expect(store.refreshListAndSummary).not.toHaveBeenCalled();
+		unmount();
+	} finally {
+		vi.useRealTimers();
+	}
 });

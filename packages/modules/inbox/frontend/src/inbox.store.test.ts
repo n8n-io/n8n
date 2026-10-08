@@ -2,7 +2,6 @@ import type { InboxItem, InboxSelfHealingItem, ListInboxResponse } from '@n8n/ap
 import { ResponseError } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { nextTick } from 'vue';
 
 import * as api from './inbox.api';
 import { createInboxListSlice, useInboxStore } from './inbox.store';
@@ -68,7 +67,7 @@ beforeEach(() => {
 });
 
 describe('Inbox list requests', () => {
-	it('keeps existing rows during refresh and after a transient refresh failure', async () => {
+	it('restarts from the first page and exposes a failed reload', async () => {
 		const pending = createDeferredPromise<ListInboxResponse>();
 		const request = vi
 			.fn()
@@ -76,11 +75,11 @@ describe('Inbox list requests', () => {
 			.mockReturnValueOnce(pending.promise);
 		const slice = createInboxListSlice(request, vi.fn());
 		await slice.fetchList();
-		const refresh = slice.fetchList({ background: true });
-		expect(slice.items.map((item) => item.id)).toEqual(['first']);
+		const refresh = slice.fetchList();
+		expect(slice.items).toEqual([]);
 		pending.reject(new Error('temporarily unavailable'));
 		await refresh;
-		expect(slice.items.map((item) => item.id)).toEqual(['first']);
+		expect(slice.items).toEqual([]);
 		expect(slice.error).toBeInstanceOf(Error);
 	});
 
@@ -150,33 +149,6 @@ describe('shared Inbox state', () => {
 		await store.refreshListAndSummary();
 		expect(store.lists.waiting.items).toHaveLength(1);
 		expect(store.openCount).toBeNull();
-		expect(store.badgeCount).toBeNull();
-	});
-
-	it('invalidates pending lists and summaries when a source is disabled', async () => {
-		const list = createDeferredPromise<ListInboxResponse>();
-		const summary = createDeferredPromise<Awaited<ReturnType<typeof api.fetchInboxSummary>>>();
-		waitingOrClosedRequest.mockReturnValueOnce(list.promise);
-		vi.mocked(api.fetchInboxSummary).mockReturnValueOnce(summary.promise);
-		const store = useInboxStore();
-		const request = store.refreshListAndSummary();
-		useSettingsStore().settings.inbox = {
-			enabled: true,
-			availableTypes: ['workflow_review'],
-			failedTypes: [],
-		};
-		await nextTick();
-		list.resolve(page([result('hidden')]));
-		summary.resolve({
-			counts: { open: 99, closed: 0 },
-			partial: false,
-			failedSources: [],
-			disabledSources: [],
-		});
-		await request;
-		expect(store.lists.waiting.items).toEqual([]);
-		expect(store.openCount).toBeNull();
-		expect(store.disabledSources).toContain('self_healing_result');
 	});
 
 	it('clears disabled-source rows from both tabs even when all reads fail', async () => {
@@ -194,20 +166,6 @@ describe('shared Inbox state', () => {
 		expect(store.lists.closed.items).toEqual([]);
 		expect(store.disabledSources).toEqual(['self_healing_result']);
 	});
-
-	it('does not overlap background refreshes or load-more', async () => {
-		const pending = createDeferredPromise<ListInboxResponse>();
-		waitingOrClosedRequest.mockReturnValueOnce(pending.promise);
-		const store = useInboxStore();
-		const first = store.refreshListAndSummary({ background: true });
-		await store.refreshListAndSummary({ background: true });
-		expect(waitingOrClosedRequest).toHaveBeenCalledTimes(1);
-		pending.resolve(page());
-		await first;
-		store.lists.waiting.loadingMore = true;
-		await store.refreshListAndSummary({ background: true });
-		expect(waitingOrClosedRequest).toHaveBeenCalledTimes(1);
-	});
 });
 
 it('allows a source to recover on a fresh page without a settings reload', async () => {
@@ -220,23 +178,6 @@ it('allows a source to recover on a fresh page without a settings reload', async
 	await store.refreshListAndSummary();
 	expect(store.disabledSources).not.toContain('self_healing_result');
 	expect(store.lists.waiting.items[0].id).toBe('recovered');
-});
-
-it('refreshes the latest mounted detail and keeps it active when an older view unmounts', async () => {
-	const store = useInboxStore();
-	const oldDetail = vi.fn().mockResolvedValue(undefined);
-	const currentDetail = vi.fn().mockResolvedValue(undefined);
-	const leaveOld = store.activate(oldDetail);
-	const leaveCurrent = store.activate(currentDetail);
-	leaveOld();
-	await store.refreshVisibleInbox();
-	expect(store.isActive).toBe(true);
-	expect(oldDetail).not.toHaveBeenCalled();
-	expect(currentDetail).toHaveBeenCalledOnce();
-	leaveCurrent();
-	await store.refreshVisibleInbox();
-	expect(store.isActive).toBe(false);
-	expect(currentDetail).toHaveBeenCalledOnce();
 });
 
 it('allows a source first seen on a later page when settings were stale', async () => {
@@ -271,60 +212,6 @@ it('allows a source first seen on a later page when settings were stale', async 
 	expect(store.lists.waiting.items.at(-1)?.id).toBe('review');
 });
 
-it('preserves loaded pages during passive refresh while updating counts and detail', async () => {
-	waitingOrClosedRequest
-		.mockResolvedValueOnce(page([result('first')], { hasMore: true, nextCursor: 'second' }))
-		.mockResolvedValueOnce(page([result('older')], { hasMore: true, nextCursor: 'third' }))
-		.mockResolvedValueOnce(page([result('latest')], { hasMore: true, nextCursor: 'fresh' }));
-	const store = useInboxStore();
-	const refreshDetail = vi.fn().mockResolvedValue(undefined);
-	store.activate(refreshDetail);
-	await store.refreshListAndSummary();
-	await store.lists.waiting.loadMore();
-	vi.mocked(api.fetchInboxSummary).mockClear();
-	await store.refreshVisibleInbox();
-	expect(waitingOrClosedRequest).toHaveBeenCalledTimes(2);
-	expect(store.lists.waiting.items.map((item) => item.id)).toEqual(['first', 'older']);
-	expect(store.lists.waiting.nextCursor).toBe('third');
-	expect(authoredRequest).toHaveBeenCalledTimes(2);
-	expect(api.fetchInboxSummary).toHaveBeenCalledOnce();
-	expect(refreshDetail).toHaveBeenCalledOnce();
-	await store.refreshListAndSummary();
-	expect(waitingOrClosedRequest).toHaveBeenLastCalledWith(
-		expect.anything(),
-		expect.objectContaining({ cursor: undefined }),
-	);
-	expect(store.lists.waiting.items.map((item) => item.id)).toEqual(['latest']);
-	expect(store.lists.waiting.nextCursor).toBe('fresh');
-	expect(store.lists.waiting.hasLoadedMore).toBe(false);
-});
-
-it('reloads an expanded group after its source settings change', async () => {
-	waitingOrClosedRequest
-		.mockResolvedValueOnce(page([result('first')], { hasMore: true, nextCursor: 'second' }))
-		.mockResolvedValueOnce(page([result('older')], { hasMore: true, nextCursor: 'third' }))
-		.mockResolvedValueOnce(page([result('latest')], { hasMore: true, nextCursor: 'fresh' }));
-	const store = useInboxStore();
-	store.activate();
-	await store.refreshListAndSummary();
-	await store.lists.waiting.loadMore();
-	useSettingsStore().settings.inbox = {
-		enabled: true,
-		availableTypes: ['self_healing_result'],
-		failedTypes: [],
-	};
-	await vi.waitFor(() => {
-		expect(waitingOrClosedRequest).toHaveBeenCalledTimes(3);
-		expect(store.lists.waiting.items.map((item) => item.id)).toEqual(['latest']);
-		expect(store.lists.waiting.nextCursor).toBe('fresh');
-	});
-	expect(waitingOrClosedRequest).toHaveBeenLastCalledWith(
-		expect.anything(),
-		expect.objectContaining({ cursor: undefined }),
-	);
-	expect(store.lists.waiting.hasMore).toBe(true);
-});
-
 it('starts a new cursor chain to recover a failed source after paging', async () => {
 	const partial = { partial: true, failedSources: ['workflow_review' as const] };
 	const request = vi
@@ -342,19 +229,14 @@ it('starts a new cursor chain to recover a failed source after paging', async ()
 	const slice = createInboxListSlice(request, vi.fn());
 	await slice.fetchList();
 	await slice.loadMore();
-	await slice.fetchList({ background: true });
-	expect(request).toHaveBeenCalledTimes(2);
-	expect(slice.partial).toBe(true);
 	await slice.fetchList();
-	expect(slice.items).toHaveLength(2);
-	expect(slice.nextCursor).toBe('partial-third');
-	expect(slice.hasLoadedMore).toBe(true);
+	expect(slice.items).toEqual([]);
+	expect(slice.nextCursor).toBeNull();
 	await slice.retry();
 	expect(request).toHaveBeenLastCalledWith();
 	expect(slice.items.map((item) => item.id)).toEqual(['recovered']);
 	expect(slice.nextCursor).toBe('complete-second');
 	expect(slice.partial).toBe(false);
-	expect(slice.hasLoadedMore).toBe(false);
 });
 
 it('continues healthy-source pagination when a summary disables another source', async () => {
@@ -431,20 +313,6 @@ it('keeps each Open group cursor and retry independent', async () => {
 	expect(store.lists.authored.items.map((item) => item.id)).toEqual(['authored', 'older']);
 });
 
-it('refreshes an idle group while its sibling has a request in flight', async () => {
-	const pending = createDeferredPromise<ListInboxResponse>();
-	waitingOrClosedRequest.mockReturnValueOnce(pending.promise);
-	const store = useInboxStore();
-	const first = store.refreshListAndSummary({ background: true });
-	await vi.waitFor(() => expect(store.lists.authored.loading).toBe(false));
-	authoredRequest.mockResolvedValueOnce(page([reviewItem('new-authored')]));
-	await store.refreshListAndSummary({ background: true });
-	expect(waitingOrClosedRequest).toHaveBeenCalledOnce();
-	expect(store.lists.authored.items.map((item) => item.id)).toEqual(['new-authored']);
-	pending.resolve(page());
-	await first;
-});
-
 it('requires both groups to be successfully empty before showing the Open empty state', async () => {
 	const store = useInboxStore();
 	expect(store.isEmpty).toBe(false);
@@ -498,3 +366,45 @@ function reviewItem(id: string): InboxItem {
 		updatedAt: '2026-01-01T00:00:00.000Z',
 	};
 }
+
+it('updates a review decision without discarding loaded pages', async () => {
+	const store = useInboxStore();
+	store.lists.waiting.items = [reviewItem('first'), reviewItem('older'), result('assistant')];
+	store.lists.waiting.nextCursor = 'next-page';
+	store.reconcileItemChange({
+		type: 'workflow_review',
+		id: 'older',
+		state: 'open',
+		decision: 'changes_requested',
+		updatedAt: '2026-01-02T00:00:00.000Z',
+	});
+	expect(store.lists.waiting.items).toHaveLength(3);
+	expect(store.lists.waiting.items[1]).toMatchObject({ decision: 'changes_requested' });
+	expect(store.lists.waiting.nextCursor).toBe('next-page');
+	expect(api.fetchInbox).not.toHaveBeenCalled();
+});
+
+it('removes an approved review from Open and updates the counts', async () => {
+	const store = useInboxStore();
+	store.openCount = 2;
+	store.closedCount = 1;
+	store.lists.waiting.items = [reviewItem('review'), result('review')];
+	store.reconcileItemChange({
+		type: 'workflow_review',
+		id: 'review',
+		state: 'closed',
+		decision: 'approved',
+	});
+	expect(store.lists.waiting.items).toEqual([result('review')]);
+	expect(store.openCount).toBe(1);
+	expect(store.closedCount).toBe(2);
+});
+
+it('removes only an unavailable item with the same source and ID', () => {
+	const store = useInboxStore();
+	store.lists.waiting.items = [reviewItem('review'), result('review')];
+	store.lists.closed.items = [reviewItem('review')];
+	store.reconcileItemChange({ type: 'workflow_review', id: 'review', unavailable: true });
+	expect(store.lists.waiting.items).toEqual([result('review')]);
+	expect(store.lists.closed.items).toEqual([]);
+});

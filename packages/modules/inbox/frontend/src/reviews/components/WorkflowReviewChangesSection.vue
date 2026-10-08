@@ -12,8 +12,9 @@ import omit from 'lodash/omit';
 import { computed } from 'vue';
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 
-const WorkflowDiffView = computed(() => componentRegistry.get('workflow-diff'));
 import { getVersionLabel } from '@n8n/composables/useWorkflowVersionLabel';
+
+const WorkflowDiffView = computed(() => componentRegistry.get('workflow-diff'));
 
 const props = defineProps<{
 	workflow: WorkflowReviewRequestWorkflowDetail;
@@ -171,14 +172,15 @@ const targetLabel = computed(() =>
 	top: var(--spacing--xs);
 	left: var(--spacing--xs);
 	z-index: 1;
-	border: var(--border);
-	height: var(--height--md);
-	display: inline-flex;
+	border-radius: var(--radius--3xs);
+	border: var(--border-width) solid var(--color--foreground--tint-1);
+	background: var(--color--foreground--tint-2);
+	display: flex;
+	height: calc(var(--height--md) - var(--spacing--5xs));
+	padding: 0 var(--spacing--xs);
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--radius);
-	background: var(--background--surface);
+	align-self: stretch;
 }
 
 .statusDot {

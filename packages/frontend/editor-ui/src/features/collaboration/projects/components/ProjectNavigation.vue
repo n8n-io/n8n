@@ -24,7 +24,7 @@ import {
 } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
-import { INBOX_VIEW, useInboxStore } from '@n8n/frontend-module-inbox';
+import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
 import {
 	AGENT_N8N_CHAT_VIEW,
 	AGENT_N8N_CHAT_RECENT_THREADS_LIMIT,
@@ -211,22 +211,13 @@ function onChatItemClick(item: RecentChatItem): void {
 	agentTelemetry.trackClickedSidebarItem({ item: 'chat', chatType: item.kind });
 }
 
-const inboxStore = useInboxStore();
 const isInboxVisible = computed(() => settingsStore.settings.inbox?.enabled === true);
-watch(
-	isInboxVisible,
-	(visible) => {
-		if (visible) void inboxStore.fetchSummary();
-	},
-	{ immediate: true },
-);
 
 const inbox = computed<IMenuItem>(() => ({
 	id: 'inbox',
 	icon: 'inbox',
 	label: locale.baseText('inbox.title'),
 	route: { to: { name: INBOX_VIEW } },
-	notification: inboxStore.badgeCount !== null && inboxStore.badgeCount > 0,
 }));
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',

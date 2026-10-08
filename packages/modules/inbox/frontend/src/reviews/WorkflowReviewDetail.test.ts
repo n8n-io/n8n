@@ -7,7 +7,6 @@ import { useToast } from '@n8n/composables/useToast';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createTestingPinia } from '@pinia/testing';
-import { defineComponent, ref } from 'vue';
 
 import { useReviewActivityStore } from './reviewActivity.store';
 import { useReviewDetailStore } from './reviewDetail.store';
@@ -63,7 +62,6 @@ beforeEach(() => {
 	activityStore = mockedStore(useReviewActivityStore);
 	activityStore.currentReviewId = 'req-1';
 	activityStore.fetchFeed.mockResolvedValue(undefined);
-	activityStore.refreshFeedIfIdle.mockResolvedValue(undefined);
 });
 
 describe('review decisions', () => {
@@ -319,26 +317,6 @@ describe('review decisions', () => {
 	});
 });
 
-function renderRefreshable() {
-	const entry = ref<{ refresh: () => Promise<void> } | null>(null);
-	const Host = defineComponent({
-		components: { WorkflowReviewDetail },
-		setup: () => ({ entry, onItemChange }),
-		template:
-			'<WorkflowReviewDetail ref="entry" review-id="req-1" :on-item-change="onItemChange" />',
-	});
-	const rendered = createComponentRenderer(Host, {
-		global: {
-			stubs: {
-				WorkflowReviewActivityFeed: true,
-				WorkflowReviewDecisionPopover: true,
-				WorkflowReviewCommentComposer: true,
-			},
-		},
-	})();
-	return { ...rendered, refresh: async () => await entry.value?.refresh() };
-}
-
 describe('review detail ownership', () => {
 	it('loads the selected review and activity on entry', async () => {
 		renderComponent();
@@ -384,68 +362,6 @@ describe('review detail ownership', () => {
 		expect(getByTestId('workflow-review-request-title')).toBeInTheDocument();
 	});
 
-	it('keeps cached detail visible when a background request fails', async () => {
-		const { refresh, getByTestId, queryByTestId } = renderRefreshable();
-		await waitAllPromises();
-		reviewStore.fetchDetail.mockRejectedValueOnce(new Error('timeout'));
-		await refresh();
-		expect(getByTestId('workflow-review-request-title')).toBeInTheDocument();
-		expect(queryByTestId('workflow-review-detail-load-error')).not.toBeInTheDocument();
-		expect(onItemChange).not.toHaveBeenCalled();
-	});
-
-	it('restores activity when a previously unavailable review becomes readable', async () => {
-		const { refresh } = renderRefreshable();
-		await waitAllPromises();
-		reviewStore.detail = null;
-		reviewStore.detailNotFound = true;
-		await waitAllPromises();
-		activityStore.currentReviewId = null;
-		activityStore.fetchFeed.mockClear();
-		reviewStore.fetchDetail.mockImplementationOnce(async () => {
-			reviewStore.detail = createDetail();
-			reviewStore.detailNotFound = false;
-		});
-		await refresh();
-		expect(activityStore.fetchFeed).toHaveBeenCalledWith('req-1');
-	});
-
-	it('refreshes detail and delegates activity scroll protection to the activity store', async () => {
-		const { refresh } = renderRefreshable();
-		await waitAllPromises();
-		reviewStore.fetchDetail.mockClear();
-		activityStore.fetchFeed.mockClear();
-		await refresh();
-		expect(reviewStore.fetchDetail).toHaveBeenCalledWith('req-1');
-		expect(activityStore.refreshFeedIfIdle).toHaveBeenCalledWith('req-1');
-		expect(activityStore.fetchFeed).not.toHaveBeenCalled();
-	});
-
-	it.each(['posting', 'loading', 'loadingMore'] as const)(
-		'skips background refresh while activity is %s',
-		async (busy) => {
-			const { refresh } = renderRefreshable();
-			await waitAllPromises();
-			reviewStore.fetchDetail.mockClear();
-			activityStore[busy] = true;
-			await refresh();
-			expect(reviewStore.fetchDetail).not.toHaveBeenCalled();
-		},
-	);
-
-	it('does not overlap background detail refreshes', async () => {
-		const pending = createDeferredPromise<undefined>();
-		const { refresh } = renderRefreshable();
-		await waitAllPromises();
-		reviewStore.fetchDetail.mockClear();
-		reviewStore.fetchDetail.mockReturnValueOnce(pending.promise);
-		const first = refresh();
-		await refresh();
-		expect(reviewStore.fetchDetail).toHaveBeenCalledOnce();
-		pending.resolve(undefined);
-		await first;
-	});
-
 	it('keeps the new selection and its note when an old selection completes', async () => {
 		const pending = createDeferredPromise<DecideWorkflowReviewRequestResponse>();
 		reviewStore.clearDetail.mockImplementation(() => {
@@ -469,6 +385,8 @@ describe('review detail ownership', () => {
 			type: 'workflow_review',
 			id: 'req-1',
 			state: 'closed',
+			decision: 'approved',
+			updatedAt: '2024-01-02T00:00:00.000Z',
 		});
 	});
 
@@ -495,6 +413,8 @@ describe('review detail ownership', () => {
 			type: 'workflow_review',
 			id: 'req-1',
 			state: 'closed',
+			decision: 'approved',
+			updatedAt: '2024-01-02T00:00:00.000Z',
 		});
 		expect(activityStore.clearDecisionNote).not.toHaveBeenCalled();
 		expect(activityStore.fetchFeed).not.toHaveBeenCalled();

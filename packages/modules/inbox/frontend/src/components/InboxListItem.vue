@@ -17,6 +17,7 @@ defineProps<{ item: InboxItem; selected: boolean }>();
 const emit = defineEmits<{ select: [] }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
+
 function outcomeLabel(item: InboxSelfHealingItem) {
 	switch (item.outcome) {
 		case 'fix_ready':
@@ -49,9 +50,15 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 					:class="$style.assistantAvatar"
 					data-test-id="inbox-assistant-avatar"
 				/>
-				<N8nText bold tag="h3" :class="$style.cardTitle">{{
-					item.type === 'workflow_review' ? item.title : item.summary
-				}}</N8nText>
+				<N8nText
+					bold
+					tag="h3"
+					:class="[
+						$style.cardTitle,
+						{ [$style.assistantTitle]: item.type === 'self_healing_result' },
+					]"
+					>{{ item.type === 'workflow_review' ? item.title : item.summary }}</N8nText
+				>
 				<WorkflowReviewStatusDot
 					v-if="item.type === 'workflow_review'"
 					:state="item.state"
@@ -78,9 +85,11 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 						><N8nIcon icon="workflow" size="small" /><span>{{ item.workflowName }}</span></span
 					>
 				</N8nBadge>
-				<N8nText :class="$style.time" size="xsmall" color="text-light"
-					><N8nTimeAgo :date="item.createdAt" :locale="rootStore.defaultLocale"
-				/></N8nText>
+				<div :class="$style.metaActions">
+					<N8nText :class="$style.time" size="xsmall" color="text-light">
+						<N8nTimeAgo :date="item.createdAt" :locale="rootStore.defaultLocale" />
+					</N8nText>
+				</div>
 			</div>
 		</div>
 	</N8nCard>
@@ -91,11 +100,16 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 	cursor: pointer;
 	padding: var(--spacing--xs);
 	align-items: stretch;
-	border: var(--border);
+	border: var(--border-width) solid var(--border-color);
 }
-.card:hover:not(.selected),
+
+.card:hover:not(.selected) {
+	background-color: var(--background--hover);
+	border-color: transparent;
+}
+
 .selected {
-	background: var(--background--active);
+	background-color: var(--background--active);
 	border-color: transparent;
 }
 .card:focus-visible {
@@ -104,6 +118,7 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 .cardContent {
 	display: flex;
 	flex-direction: column;
+	align-items: flex-start;
 	gap: var(--spacing--2xs);
 	min-width: 0;
 	width: 100%;
@@ -111,18 +126,23 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 .cardHeader {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	width: 100%;
 	min-width: 0;
 }
 .cardTitle {
-	flex: 1;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	min-width: 0;
 	font-size: var(--font-size--sm);
 }
+
+.assistantTitle {
+	flex: 1;
+}
+
 .assistantAvatar {
 	flex-shrink: 0;
 }
@@ -159,9 +179,15 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 		min-width: 0;
 	}
 }
-.time {
+.metaActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
 	margin-left: auto;
 	flex-shrink: 0;
+}
+
+.time {
 	white-space: nowrap;
 }
 .statusDot {
