@@ -24,8 +24,12 @@ function readClaim(
 	}
 }
 
-function nonEmptyString(value: unknown): string | undefined {
+function nonEmptyStringExact(value: unknown): string | undefined {
 	return typeof value === 'string' && value.trim() !== '' ? value : undefined;
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+	return nonEmptyStringExact(value)?.trim();
 }
 
 function toScopes(value: unknown): string[] {
@@ -63,7 +67,7 @@ export function translateClaims(
 	mapping: ClaimMapping,
 	logger: Logger,
 ): Result<ExternalIdentity> {
-	const subject = nonEmptyString(
+	const subject = nonEmptyStringExact(
 		Object.hasOwn(claims, mapping.subject) ? claims[mapping.subject] : undefined,
 	);
 	if (subject === undefined) {
