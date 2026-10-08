@@ -1,0 +1,25 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/node-type-usage.ts
+  s_71ad2034164515::t_808fe49b16e23e 3-7,21-29,37-38,40-41,46-53
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-requirements.extractor.test.ts
+  s_71ad2034164515::t_808fe49b16e23e 159
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_71ad2034164515::t_55164888bc8582 3,61-73,77-82,86-91
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_71ad2034164515::t_36ed7ad2262eb0 84-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1dd121a6d9dcaa3912c673165cb86d04bf4ab0ea",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
