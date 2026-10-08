@@ -55,6 +55,8 @@ export interface N8nChatInputProps {
 	submitDisabled?: boolean;
 	sendButtonTestId?: string;
 	stopButtonTestId?: string;
+	/** Test id for the native textarea. Fallthrough attrs land on the wrapper. */
+	inputTestId?: string;
 }
 
 const INFINITE_CREDITS = -1;
@@ -78,6 +80,7 @@ const props = withDefaults(defineProps<N8nChatInputProps>(), {
 	submitDisabled: undefined,
 	sendButtonTestId: 'send-message-button',
 	stopButtonTestId: 'send-message-button',
+	inputTestId: undefined,
 });
 
 const emit = defineEmits<{
@@ -348,6 +351,7 @@ defineExpose({
 				<textarea
 					ref="textareaRef"
 					v-model="textValue"
+					:data-test-id="inputTestId"
 					:class="[
 						$style.textarea,
 						{

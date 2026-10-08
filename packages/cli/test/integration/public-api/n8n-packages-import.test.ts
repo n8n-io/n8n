@@ -22,6 +22,10 @@ import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 
+// Must run before `setupTestServer`, which constructs the controller with this mock.
+const credentialTypesMock = mockInstance(CredentialTypes);
+credentialTypesMock.recognizes.mockReturnValue(true);
+
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 let owner: User;
@@ -29,9 +33,6 @@ let ownerPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	const credentialTypesMock = mockInstance(CredentialTypes);
-	credentialTypesMock.recognizes.mockReturnValue(true);
-
 	// Register node types so imports pass the default fail-on-missing-node-type check.
 	await utils.initNodeTypes();
 
@@ -152,7 +153,6 @@ describe('POST /n8n-packages/import', () => {
 
 	test('rejects import when the API key lacks workflow:import scope', async () => {
 		const limitedOwner = await createOwnerWithApiKey({ scopes: ['workflow:export'] });
-		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 		const tarBuffer = await buildImportPackage();
 
 		const response = await testServer
@@ -162,10 +162,6 @@ describe('POST /n8n-packages/import', () => {
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(403);
-		expect(emitSpy).toHaveBeenCalledWith(
-			'n8n-package-import-failed',
-			expect.objectContaining({ reason: 'access-denied' }),
-		);
 	});
 
 	test('rejects import into a project the caller has no access to', async () => {
@@ -265,6 +261,7 @@ describe('POST /n8n-packages/import', () => {
 			dataTables: {
 				matched: 0,
 				created: 0,
+				updated: 0,
 			},
 			variables: {
 				matched: [],
@@ -323,7 +320,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('missingNodeTypeMode', 'fail')
 			.field('dataTableMatchingMode', 'by-id')
 			.field('dataTableMissingMode', 'must-preexist')
-			.field('dataTableSchemaConflictPolicy', 'fail')
+			.field('dataTableSchemaConflictPolicy', 'overwrite')
 			.field('variableMissingMode', 'create-with-value')
 			.field('variableConflictPolicy', 'overwrite')
 			.field('variableParentPolicy', 'project')
@@ -333,6 +330,19 @@ describe('POST /n8n-packages/import', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
+	test('accepts overwrite-non-destructive as the data table schema conflict policy', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', ownerPersonalProject.id)
+			.field('workflowConflictPolicy', 'fail')
+			.field('dataTableSchemaConflictPolicy', 'overwrite-non-destructive')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
 	});
 
 	test('rejects an unsupported dataTableMissingMode value', async () => {

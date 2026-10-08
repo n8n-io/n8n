@@ -60,18 +60,21 @@ export interface BuildTeamsManifestOptions {
 /**
  * Teams delivers only @mentions in a shared conversation unless the app asks to
  * read everything there. Each name is paired with the scope it depends on, so a
- * permission cannot be emitted without its surface.
+ * permission cannot be emitted without its surface. `conversationType` is the
+ * surface as Teams reports it on an activity.
  */
-const READ_PERMISSIONS = [
+export const READ_PERMISSIONS = [
 	{
 		setting: 'readAllChannelMessages',
 		requires: 'teamChannels',
 		name: 'ChannelMessage.Read.Group',
+		conversationType: 'channel',
 	},
 	{
 		setting: 'readAllGroupMessages',
 		requires: 'groupChats',
 		name: 'ChatMessage.Read.Chat',
+		conversationType: 'groupChat',
 	},
 ] as const;
 
@@ -100,7 +103,7 @@ export class TeamsManifestService {
 				name: this.truncate('n8n', LIMITS.developerName),
 				websiteUrl: 'https://n8n.io',
 				privacyUrl: 'https://n8n.io/legal/privacy',
-				termsOfUseUrl: 'https://n8n.io/legal/terms',
+				termsOfUseUrl: 'https://n8n.io/legal/',
 			},
 			name: {
 				short: this.truncate(appName, LIMITS.shortName),

@@ -18,6 +18,7 @@ import {
 	onBeforeUnmount,
 	onMounted,
 	onUnmounted,
+	provide,
 	ref,
 	watch,
 } from 'vue';
@@ -27,15 +28,17 @@ import type {
 	InstanceAiPrefillPayload,
 	InstanceAiThreadSummary,
 } from '@n8n/api-types';
-import { N8nHeading, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { getThreadDisplayTitle } from '../instanceAi.threadRuntime';
 import { provideThread, useInstanceAiStore } from '../instanceAi.store';
 import { useAgentMutationRefresh } from '../composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
 	provisionSubjectThread,
 	stashPendingComposerDraft,
@@ -47,7 +50,11 @@ import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from '../components/InstanceAiConversation.vue';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
-import { threadTargetsSubject, type InstanceAiEmbedSubject } from './instanceAiEmbed.types';
+import {
+	INSTANCE_AI_EMBED_SUBJECT_KEY,
+	threadTargetsSubject,
+	type InstanceAiEmbedSubject,
+} from './instanceAiEmbed.types';
 
 const props = defineProps<{
 	subject: InstanceAiEmbedSubject;
@@ -62,7 +69,6 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:threadId': [threadId: string];
 	'update:building': [building: boolean];
-	'update:processing': [processing: boolean];
 	close: [];
 }>();
 
@@ -72,11 +78,24 @@ const slots = defineSlots<{
 }>();
 
 const i18n = useI18n();
+const { isCtrlKeyPressed } = useDeviceSupport();
 const toast = useToast();
 const router = useRouter();
 const store = useInstanceAiStore();
 const subject = computed(() => props.subject);
 const { threads } = useInstanceAiEmbedThreads(subject);
+provide(INSTANCE_AI_EMBED_SUBJECT_KEY, subject);
+
+// No preview panel here: artifact cards and chips open their resource in a new
+// tab, so the host page (and this conversation) stays put.
+function openInNewTab(path: string): boolean {
+	window.open(path, '_blank', 'noopener');
+	return true;
+}
+provide('openWorkflowPreview', (id: string) => openInNewTab(`/workflow/${id}`));
+provide('openAgentPreview', (id: string, projectId: string) =>
+	openInNewTab(`/projects/${projectId}/agents/${id}`),
+);
 // Scopes the header's popover history to this panel's subject — a stable
 // function reference so the list's `filter` prop doesn't re-run on every render.
 function threadFilter(thread: InstanceAiThreadSummary): boolean {
@@ -342,7 +361,6 @@ watch(
 onUnmounted(() => {
 	// A host closing the panel mid-build must not stay locked forever.
 	emit('update:building', false);
-	emit('update:processing', false);
 	if (props.threadId && props.threadId !== handedOffThreadId) store.disposeRuntime(props.threadId);
 });
 
@@ -404,26 +422,11 @@ const currentThreadTitle = computed<string | undefined>(() => {
 const ThreadScope = defineComponent({
 	name: 'InstanceAiChatPanelThreadScope',
 	props: { threadId: { type: String, required: true } },
-	emits: ['thread-missing', 'update:building', 'update:processing'],
+	emits: ['thread-missing', 'update:building'],
 	setup(scopeProps, { emit: scopeEmit }) {
 		const runtime = provideThread(scopeProps.threadId);
 		useAgentMutationRefresh(runtime);
 		const buildingArtifactIds = useBuildingArtifactIds(runtime);
-		const isPreparingSend = ref(false);
-		async function beforeConversationSend() {
-			isPreparingSend.value = true;
-			try {
-				await props.beforeSend?.();
-			} finally {
-				isPreparingSend.value = false;
-			}
-		}
-		watch(
-			() => isPreparingSend.value || runtime.isSendingMessage || runtime.isStreaming,
-			(processing) => scopeEmit('update:processing', processing),
-			{ immediate: true },
-		);
-		onUnmounted(() => scopeEmit('update:processing', false));
 		watch(
 			() => buildingArtifactIds.value.has(props.subject.id),
 			(value) => scopeEmit('update:building', value),
@@ -440,28 +443,47 @@ const ThreadScope = defineComponent({
 					// Forward the live subject so the chat-input context chip follows a
 					// host rename instead of the snapshot stashed at thread mint.
 					subject: props.subject,
-					beforeSend: props.beforeSend ? beforeConversationSend : undefined,
+					beforeSend: props.beforeSend,
 					onThreadMissing: () => scopeEmit('thread-missing'),
 				},
 				slots.empty ? { empty: slots.empty } : undefined,
 			);
 	},
 });
+
+/** Handle shortcuts locally instead of useKeybindings because ChatInput has canvas paste protection. */
+function handleCloseShortcut(event: KeyboardEvent) {
+	if (
+		event.defaultPrevented ||
+		event.isComposing ||
+		event.shiftKey ||
+		event.altKey ||
+		(event.target instanceof Element && event.target.closest('[role="dialog"]'))
+	) {
+		return;
+	}
+
+	const isEscape = event.key === 'Escape' && !event.ctrlKey && !event.metaKey;
+	const isToggleShortcut = event.key.toLowerCase() === 'j' && isCtrlKeyPressed(event);
+	if (!isEscape && !isToggleShortcut) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+	emit('close');
+}
 </script>
 
 <template>
-	<div :class="$style.panel" data-test-id="instance-ai-embed-panel">
+	<div :class="$style.panel" data-test-id="instance-ai-embed-panel" @keydown="handleCloseShortcut">
 		<InstanceAiViewHeader
+			:title="currentThreadTitle"
 			:thread-id="activeThreadId"
 			:thread-list="{ filter: threadFilter, navigate: false, disabled: building }"
 			@select="onThreadSelect"
 			@deleted="onThreadDeleted"
 		>
-			<template #title>
-				<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.title">
-					{{ currentThreadTitle }}
-				</N8nHeading>
-			</template>
 			<template #actions>
 				<N8nTooltip
 					:content="i18n.baseText('instanceAi.thread.new')"
@@ -494,21 +516,21 @@ const ThreadScope = defineComponent({
 						@click="openFullAssistant"
 					/>
 				</N8nTooltip>
-				<N8nTooltip
-					:content="i18n.baseText('instanceAi.embed.close')"
+				<KeyboardShortcutTooltip
 					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
+					:label="i18n.baseText('generic.close')"
+					:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
 				>
 					<N8nIconButton
 						icon="x"
 						variant="ghost"
 						size="small"
 						icon-size="large"
-						:aria-label="i18n.baseText('instanceAi.embed.close')"
+						:aria-label="i18n.baseText('generic.close')"
 						data-test-id="instance-ai-embed-close"
 						@click="emit('close')"
 					/>
-				</N8nTooltip>
+				</KeyboardShortcutTooltip>
 			</template>
 		</InstanceAiViewHeader>
 		<div :class="$style.body">
@@ -519,7 +541,6 @@ const ThreadScope = defineComponent({
 				:class="$style.conversation"
 				@thread-missing="mintThread"
 				@update:building="onBuildingChange"
-				@update:processing="emit('update:processing', $event)"
 			/>
 		</div>
 	</div>
@@ -536,12 +557,6 @@ const ThreadScope = defineComponent({
 	height: 100%;
 	min-height: 0;
 	min-width: 0;
-}
-
-.title {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 .body {

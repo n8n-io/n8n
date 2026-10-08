@@ -43,6 +43,7 @@ describe('EnterpriseWorkflowService', () => {
 			mock(), // workflowPublishHistoryRepository
 			mock(), // workflowMutationHooks
 			mock(), // policyEnforcementService
+			mock(), // credentialsPermissionChecker
 		);
 	});
 
@@ -325,6 +326,20 @@ describe('EnterpriseWorkflowService', () => {
 
 		test('Should not flag a deeply nested inline sub-workflow when the credential is accessible', () => {
 			const workflow = getWorkflow({ addNodeWithDeeplyNestedInlineCred: true });
+			const nodesWithInaccessibleCreds = service.getNodesWithInaccessibleCreds(workflow, [
+				FIRST_CREDENTIAL_ID,
+			]);
+			expect(nodesWithInaccessibleCreds).toHaveLength(0);
+		});
+
+		test('Should flag an agent node referencing an inaccessible credential in its inline agent parameter', () => {
+			const workflow = getWorkflow({ addNodeWithInlineAgentCred: true });
+			const nodesWithInaccessibleCreds = service.getNodesWithInaccessibleCreds(workflow, []);
+			expect(nodesWithInaccessibleCreds).toHaveLength(1);
+		});
+
+		test('Should not flag an agent node when the inline agent credential is accessible', () => {
+			const workflow = getWorkflow({ addNodeWithInlineAgentCred: true });
 			const nodesWithInaccessibleCreds = service.getNodesWithInaccessibleCreds(workflow, [
 				FIRST_CREDENTIAL_ID,
 			]);

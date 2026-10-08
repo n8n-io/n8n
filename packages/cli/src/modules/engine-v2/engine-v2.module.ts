@@ -47,15 +47,15 @@ export class EngineV2Module implements ModuleInterface {
 		await Container.get(EngineControlPlaneServer).start();
 
 		const logger = Container.get(Logger).scoped('engine-v2');
-		const { EngineV2WebhookResponder } = await import(
-			'@/services/engine-v2-webhook-responder.service.js'
+		const { EngineV2WebhookResponseRegistry } = await import(
+			'./webhook-response/webhook-response-registry.service.js'
 		);
 
 		if (engineConfig.mode === 'in-process') {
 			// Hand both endpoints over before the engine starts. A short run can answer
 			// before `startExecution` returns, and responses are not replayed.
 			const { responseSender, responseReceiver } = await this.initInMemoryResponseChannel(logger);
-			Container.get(EngineV2WebhookResponder).useReceiver(responseReceiver);
+			Container.get(EngineV2WebhookResponseRegistry).useReceiver(responseReceiver);
 			this.responseSender = responseSender;
 			this.responseReceiver = responseReceiver;
 
@@ -68,7 +68,7 @@ export class EngineV2Module implements ModuleInterface {
 				'./response-channel/redis-execution-response-channel.js'
 			);
 			const responseReceiver = await startRedisExecutionResponseReceiver(logger);
-			Container.get(EngineV2WebhookResponder).useReceiver(responseReceiver);
+			Container.get(EngineV2WebhookResponseRegistry).useReceiver(responseReceiver);
 			this.responseReceiver = responseReceiver;
 		}
 

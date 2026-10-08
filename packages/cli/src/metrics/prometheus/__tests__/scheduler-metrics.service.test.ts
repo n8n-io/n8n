@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
-import type { ScheduledTaskMetricSnapshot, ScheduledTaskRepository } from '@n8n/db';
+import type { DbConnection, ScheduledTaskMetricSnapshot, ScheduledTaskRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 import type { Mock } from 'vitest';
@@ -11,9 +11,15 @@ import { PrometheusSchedulerMetricsService } from '../scheduler-metrics.service'
 
 import type { CacheService } from '@n8n/backend-services';
 
+import { CachedMetricQueryFactory } from '../cached-metric-query';
+import { DatabaseMetricQueryService } from '../database-metric-query.service';
+
 vi.mock('prom-client');
 
 describe('PrometheusSchedulerMetricsService', () => {
+	const dbConnection = mock<DbConnection>({
+		connectionState: { connected: true, migrated: true },
+	});
 	const config = mockInstance(PrometheusMetricsConfig, {
 		prefix: 'n8n_',
 		includeSchedulerMetrics: true,
@@ -50,8 +56,14 @@ describe('PrometheusSchedulerMetricsService', () => {
 		service = new PrometheusSchedulerMetricsService(
 			config,
 			instanceSettings,
-			cacheService,
-			taskRepository,
+			new DatabaseMetricQueryService(
+				new CachedMetricQueryFactory(cacheService, dbConnection),
+				mock(),
+				mock(),
+				mock(),
+				taskRepository,
+				mock(),
+			),
 		);
 
 		sharedCounterInc = vi.fn();
@@ -128,6 +140,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 					'n8n_scheduler_orphaned_jobs_deleted_total',
 					'n8n_scheduler_jobs_revived_total',
 					'n8n_scheduler_tasks_lease_lost_total',
+					'n8n_scheduler_lease_renewals_total',
 				]),
 			);
 
@@ -338,6 +351,16 @@ describe('PrometheusSchedulerMetricsService', () => {
 			expect(inc).toHaveBeenCalledWith({ task_type: 'workflow:poll-trigger' }, 1);
 			expect(inc).toHaveBeenCalledTimes(1);
 		});
+
+		it('increments the lease-renewal counter by task type and result', () => {
+			service.recordLeaseRenewal('system-task', 'renewed');
+			service.recordLeaseRenewal('system-task', 'lost');
+
+			const inc = counterIncFor('n8n_scheduler_lease_renewals_total');
+			expect(inc).toHaveBeenCalledWith({ task_type: 'system-task', result: 'renewed' }, 1);
+			expect(inc).toHaveBeenCalledWith({ task_type: 'system-task', result: 'lost' }, 1);
+			expect(inc).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe('push metrics before init', () => {
@@ -357,6 +380,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 			service.recordPruned(1);
 			service.recordReconciled(1, 1, 1);
 			service.recordLeaseLost('workflow');
+			service.recordLeaseRenewal('workflow', 'renewed');
 
 			expect(sharedCounterInc).not.toHaveBeenCalled();
 			expect(mockHistogramObserve).not.toHaveBeenCalled();

@@ -112,6 +112,40 @@ describe('CredentialsRepository sealed writes', () => {
 		});
 	});
 
+	describe('updateDataIfUnchanged', () => {
+		// The runtime token write-back has no policy context, so this path takes no clearance.
+		it('writes ciphertext only while the row still holds the expected ciphertext', async () => {
+			entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+			const written = await repository.updateDataIfUnchanged(
+				'cred-1',
+				'oAuth2Api',
+				'ciphertext-read',
+				'ciphertext-new',
+			);
+
+			expect(written).toBe(true);
+			expect(entityManager.update).toHaveBeenCalledExactlyOnceWith(
+				CredentialsEntity,
+				{ id: 'cred-1', type: 'oAuth2Api', data: 'ciphertext-read' },
+				{ data: 'ciphertext-new', updatedAt: expect.any(Date) },
+			);
+		});
+
+		it('reports a row that changed in between as not written', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+			const written = await repository.updateDataIfUnchanged(
+				'cred-1',
+				'oAuth2Api',
+				'ciphertext-read',
+				'ciphertext-new',
+			);
+
+			expect(written).toBe(false);
+		});
+	});
+
 	describe('instance credential writes', () => {
 		it('saveInstanceCredential requires a clearance for the type', async () => {
 			const credential = newCredential('slackApi');

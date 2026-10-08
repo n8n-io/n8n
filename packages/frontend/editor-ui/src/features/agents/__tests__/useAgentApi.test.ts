@@ -1,17 +1,27 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
+import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-client';
 
 import {
 	cancelAgentChatExecution,
+	cancelAgentChatRun,
+	deleteN8nChatThread,
 	getAgentBackgroundJobs,
+	getAgentBudgetSpend,
 	getAgentChatQueue,
+	getN8nChatAgent,
+	getN8nChatThread,
 	removeAgentQueuedMessage,
+	reorderAgentQueuedMessage,
+	resumeAgentBackgroundJob,
 	steerAgentQueuedMessage,
+	stopAgentBackgroundJobs,
 	updateAgentQueuedMessage,
 	getChatMessages,
 	listAgents,
 	listAgentsPage,
+	listN8nChatAgents,
+	listN8nChatThreads,
 	duplicateAgent,
 } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
@@ -19,6 +29,7 @@ import type { AgentResource, AgentJsonConfig } from '../types';
 vi.mock('@n8n/rest-api-client', () => ({
 	getFullApiResponse: vi.fn(),
 	makeRestApiRequest: vi.fn(),
+	request: vi.fn(),
 }));
 
 const restApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
@@ -86,21 +97,90 @@ describe('useAgentApi', () => {
 		});
 	});
 
-	it('encodes the background task route identifiers', async () => {
+	it.each([
+		{ request: getAgentBackgroundJobs, method: 'GET', suffix: '' },
+		{ request: stopAgentBackgroundJobs, method: 'POST', suffix: '/stop' },
+	])('encodes background task identifiers for $method', async ({ request, method, suffix }) => {
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ tasks: [] });
-		await getAgentBackgroundJobs(restApiContext, 'project/1', 'agent/1', 'agent:chat#1');
+		await request(restApiContext, 'project/1', 'agent/1', 'agent:chat#1');
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			restApiContext,
-			'GET',
-			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/background-tasks',
+			method,
+			`/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/background-tasks${suffix}`,
 		);
 	});
 
-	it('encodes the queue route identifiers for listing, editing, removal, and steering', async () => {
+	describe('background task routes on both channels', () => {
+		it.each([
+			{ request: getAgentBackgroundJobs, method: 'GET', suffix: '' },
+			{ request: stopAgentBackgroundJobs, method: 'POST', suffix: '/stop' },
+		])(
+			'builds the n8n-chat background-tasks URL for $method',
+			async ({ request, method, suffix }) => {
+				vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ tasks: [] });
+				await request(restApiContext, 'project-1', 'agent-1', 'thread-1', 'n8n-chat');
+				expect(makeRestApiRequest).toHaveBeenCalledWith(
+					restApiContext,
+					method,
+					`/projects/project-1/agents/v2/agent-1/n8n-chat/thread-1/background-tasks${suffix}`,
+				);
+			},
+		);
+
+		it('defaults resumeAgentBackgroundJob to the chat channel and switches to n8n-chat', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue(undefined);
+			const payload = { runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } };
+
+			await resumeAgentBackgroundJob(restApiContext, 'project-1', 'agent-1', 'thread-1', payload);
+			await resumeAgentBackgroundJob(
+				restApiContext,
+				'project-1',
+				'agent-1',
+				'thread-1',
+				payload,
+				'n8n-chat',
+			);
+
+			expect(vi.mocked(makeRestApiRequest).mock.calls).toEqual([
+				[
+					restApiContext,
+					'POST',
+					'/projects/project-1/agents/v2/agent-1/chat/thread-1/background-tasks/resume',
+					payload,
+				],
+				[
+					restApiContext,
+					'POST',
+					'/projects/project-1/agents/v2/agent-1/n8n-chat/thread-1/background-tasks/resume',
+					payload,
+				],
+			]);
+		});
+	});
+
+	it('requests the monthly budget spend for the agent', async () => {
+		const spend = { spentUsd: 42.5 };
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(spend);
+
+		const result = await getAgentBudgetSpend(restApiContext, 'project-1', 'agent-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'GET',
+			'/projects/project-1/agents/v2/agent-1/budget',
+		);
+		expect(result).toBe(spend);
+	});
+
+	it('encodes the queue route identifiers for listing, editing, removal, reordering, and steering', async () => {
 		const args = [restApiContext, 'project/1', 'agent/1', 'agent:chat#1'] as const;
 		await getAgentChatQueue(...args);
 		await updateAgentQueuedMessage(...args, 'queue/1', { message: 'edited' });
 		await removeAgentQueuedMessage(...args, 'queue/1');
+		await reorderAgentQueuedMessage(...args, 'queue/1', {
+			targetQueueId: 'queue/2',
+			expectedQueueIds: ['queue/1', 'queue/2'],
+		});
 		await steerAgentQueuedMessage(...args, 'queue/1', { executionId: 'A' });
 
 		const path = '/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/queue';
@@ -108,6 +188,12 @@ describe('useAgentApi', () => {
 			[restApiContext, 'GET', path],
 			[restApiContext, 'PATCH', `${path}/queue%2F1`, { message: 'edited' }],
 			[restApiContext, 'DELETE', `${path}/queue%2F1`],
+			[
+				restApiContext,
+				'POST',
+				`${path}/queue%2F1/reorder`,
+				{ targetQueueId: 'queue/2', expectedQueueIds: ['queue/1', 'queue/2'] },
+			],
 			[restApiContext, 'POST', `${path}/queue%2F1/steer`, { executionId: 'A' }],
 		]);
 	});
@@ -118,6 +204,8 @@ describe('useAgentApi', () => {
 
 			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'agent-1:chat:bot-1-2#1');
 
+			// Relative to `restApiContext.baseUrl` — makeRestApiRequest prepends it itself,
+			// so an endpoint that already carried `/rest` would double it in production.
 			expect(makeRestApiRequest).toHaveBeenCalledWith(
 				restApiContext,
 				'GET',
@@ -142,6 +230,174 @@ describe('useAgentApi', () => {
 			'DELETE',
 			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/executions/execution%2F1',
 		);
+	});
+
+	describe('n8n Chat channel', () => {
+		it('switches the queue, messages, and stop routes to n8n-chat', async () => {
+			const args = [restApiContext, 'project-1', 'agent-1', 'thread-1'] as const;
+			await getAgentChatQueue(...args, 'n8n-chat');
+			await updateAgentQueuedMessage(...args, 'queue-1', { message: 'edited' }, 'n8n-chat');
+			await removeAgentQueuedMessage(...args, 'queue-1', 'n8n-chat');
+			await reorderAgentQueuedMessage(
+				...args,
+				'queue-1',
+				{ targetQueueId: 'queue-2', expectedQueueIds: ['queue-1', 'queue-2'] },
+				'n8n-chat',
+			);
+			await steerAgentQueuedMessage(...args, 'queue-1', { executionId: 'execution-1' }, 'n8n-chat');
+			await getChatMessages(...args, 'n8n-chat');
+			await cancelAgentChatExecution(...args, 'execution-1', 'n8n-chat');
+			await cancelAgentChatRun(restApiContext, 'project-1', 'agent-1', 'run-1', 'n8n-chat');
+
+			// Relative paths only: makeRestApiRequest prepends `restApiContext.baseUrl` itself.
+			const path = '/projects/project-1/agents/v2/agent-1/n8n-chat/thread-1';
+			expect(vi.mocked(makeRestApiRequest).mock.calls).toEqual([
+				[restApiContext, 'GET', `${path}/queue`],
+				[restApiContext, 'PATCH', `${path}/queue/queue-1`, { message: 'edited' }],
+				[restApiContext, 'DELETE', `${path}/queue/queue-1`],
+				[
+					restApiContext,
+					'POST',
+					`${path}/queue/queue-1/reorder`,
+					{ targetQueueId: 'queue-2', expectedQueueIds: ['queue-1', 'queue-2'] },
+				],
+				[restApiContext, 'POST', `${path}/queue/queue-1/steer`, { executionId: 'execution-1' }],
+				[restApiContext, 'GET', `${path}/messages`],
+				[restApiContext, 'DELETE', `${path}/executions/execution-1`],
+				[restApiContext, 'DELETE', '/projects/project-1/agents/v2/agent-1/n8n-chat/runs/run-1'],
+			]);
+		});
+	});
+
+	describe('getN8nChatAgent', () => {
+		it('fetches one agent from the cross-project n8n Chat route', async () => {
+			const item = { id: 'agent-1', name: 'Support', project: { id: 'p1', name: 'Team' } };
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce(item);
+
+			const result = await getN8nChatAgent(restApiContext, 'agent/1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/agents/v2/n8n-chat/agents/agent%2F1',
+			);
+			expect(result).toBe(item);
+		});
+	});
+
+	describe('getN8nChatThread', () => {
+		it('fetches one thread from the cross-project n8n Chat route', async () => {
+			const summary = {
+				id: 'thread/1',
+				title: 'Refund status',
+				updatedAt: '2025-01-02T00:00:00.000Z',
+				agent: { id: 'agent-1', name: 'Support', projectId: 'project-1' },
+			};
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce(summary);
+
+			const result = await getN8nChatThread(restApiContext, 'thread/1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/agents/v2/n8n-chat/threads/thread%2F1',
+			);
+			expect(result).toBe(summary);
+		});
+	});
+
+	describe('deleteN8nChatThread', () => {
+		it('deletes one of the own n8n Chat threads', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ success: true });
+
+			const result = await deleteN8nChatThread(restApiContext, 'project-1', 'agent-1', 'thread/1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'DELETE',
+				'/projects/project-1/agents/v2/agent-1/n8n-chat/thread%2F1',
+			);
+			expect(result).toEqual({ success: true });
+		});
+	});
+
+	describe('listN8nChatAgents', () => {
+		it('always filters by availableInChat, forwards paging and sort, and trims the query', async () => {
+			const response = {
+				count: 1,
+				data: [{ id: 'agent-1', name: 'Support', project: { id: 'p1', name: 'Team' } }],
+			};
+			vi.mocked(getFullApiResponse).mockResolvedValueOnce(response);
+
+			const result = await listN8nChatAgents(restApiContext, {
+				query: '  support  ',
+				skip: 10,
+				take: 50,
+				sortBy: 'usage:desc',
+			});
+
+			expect(getFullApiResponse).toHaveBeenCalledWith(restApiContext, 'GET', '/agents/v2', {
+				filter: { availableInChat: true, query: 'support' },
+				skip: 10,
+				take: 50,
+				sortBy: 'usage:desc',
+			});
+			expect(result).toBe(response);
+		});
+
+		it('omits the query from the filter when blank — not given, empty, or whitespace-only', async () => {
+			vi.mocked(getFullApiResponse).mockResolvedValue({ count: 0, data: [] });
+
+			await listN8nChatAgents(restApiContext, { skip: 0, take: 50 });
+			await listN8nChatAgents(restApiContext, { query: '   ', skip: 0, take: 50 });
+
+			expect(getFullApiResponse).toHaveBeenNthCalledWith(1, restApiContext, 'GET', '/agents/v2', {
+				filter: { availableInChat: true },
+				skip: 0,
+				take: 50,
+				sortBy: undefined,
+			});
+			expect(getFullApiResponse).toHaveBeenNthCalledWith(2, restApiContext, 'GET', '/agents/v2', {
+				filter: { availableInChat: true },
+				skip: 0,
+				take: 50,
+				sortBy: undefined,
+			});
+		});
+	});
+
+	describe('listN8nChatThreads', () => {
+		it('reads the full response body, not just the data key, so nextCursor survives', async () => {
+			const response = {
+				data: [
+					{
+						id: 'thread-1',
+						title: 'Support question',
+						updatedAt: '2025-01-02T00:00:00.000Z',
+						agent: { id: 'agent-1', name: 'Support', projectId: 'project-1' },
+					},
+				],
+				nextCursor: '2025-01-02T00:00:00.000Z',
+			};
+			vi.mocked(request).mockResolvedValueOnce(response);
+
+			const result = await listN8nChatThreads(restApiContext, { limit: 20, cursor: 'cursor-1' });
+
+			expect(request).toHaveBeenCalledWith({
+				method: 'GET',
+				baseURL: restApiContext.baseUrl,
+				endpoint: '/agents/v2/n8n-chat/threads',
+				headers: { 'push-ref': restApiContext.pushRef },
+				data: { limit: 20, cursor: 'cursor-1', agentId: undefined },
+			});
+			expect(result).toBe(response);
+		});
+
+		it('throws on a response body with the wrong shape', async () => {
+			vi.mocked(request).mockResolvedValueOnce({ data: [], nextCursor: 123 });
+
+			await expect(listN8nChatThreads(restApiContext, { limit: 20 })).rejects.toThrow();
+		});
 	});
 
 	describe('duplicateAgent', () => {

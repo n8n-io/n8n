@@ -1,4 +1,4 @@
-import type { InterruptibleToolContext } from '@n8n/agents';
+import type { InterruptibleToolContext, ToolApprovalContext } from '@n8n/agents';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
@@ -979,6 +979,29 @@ describe('integration tools', () => {
 		);
 	});
 
+	it.each([
+		['a silent result', { ok: true, silent: true }, true],
+		[
+			'a batch with a silent result',
+			{ results: [{ action: 'do_not_respond', result: { ok: true, silent: true } }] },
+			true,
+		],
+		['a normal result', { ok: true }, false],
+		[
+			'a batch with a refused silence',
+			{ results: [{ action: 'do_not_respond', result: { ok: false } }] },
+			false,
+		],
+	])('ends the turn after %s: %s', (_label, output, expected) => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+
+		expect(tool.endsTurn?.(output)).toBe(expected);
+	});
+
 	it('action tool schema accepts Slack emoji reaction actions', () => {
 		const tool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({
@@ -1611,6 +1634,97 @@ describe('integration tools', () => {
 			action: 'send_channel_message' as const,
 			input: { channelId: 'slack:C999', message: { text: 'Hi' } },
 		};
+
+		it('limits a session allowance to its connection and action, including batches', async () => {
+			const approvedKeys = new Set<string>();
+			const getDisplayArgs = vi.fn().mockReturnValue({ message: { text: '[REDACTED]' } });
+			const approvalContext: ToolApprovalContext = {
+				approvedKeys,
+				getDisplayArgs,
+				onDecision: vi.fn<ToolApprovalContext['onDecision']>(async (key) => {
+					approvedKeys.add(key);
+				}),
+			};
+			const { tool, actionExecutor } = approvalTool({ ...slackA, approval: { mode: 'global' } });
+			const ctx = makeInterruptibleCtx({ approvalContext });
+			await tool.handler!(sendToChannel, ctx);
+			expect(getDisplayArgs).toHaveBeenCalledWith(tool.name, sendToChannel.input);
+			expect(ctx.suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					supportsSessionApproval: true,
+					args: { message: { text: '[REDACTED]' } },
+				}),
+				expect.anything(),
+			);
+			expect(actionExecutor.execute).not.toHaveBeenCalled();
+			await tool.handler!(
+				sendToChannel,
+				makeInterruptibleCtx({
+					approvalContext,
+					suspendPayload: vi.mocked(ctx.suspend).mock.calls[0][0],
+					resumeData: { approved: true, scope: 'session' },
+				}),
+			);
+			expect(approvalContext.onDecision).toHaveBeenCalledWith(
+				'["integration_action","slack:cred-a","send_channel_message"]',
+				{ approved: true, scope: 'session' },
+			);
+			expect(actionExecutor.execute).toHaveBeenCalledWith(
+				expect.objectContaining({ input: sendToChannel.input }),
+			);
+
+			const result = await tool.handler!(
+				{
+					actions: [
+						{
+							action: 'send_channel_message',
+							input: { channelId: 'slack:COTHER', message: { text: 'Later' } },
+						},
+						{ action: 'send_dm', input: { userId: 'slack:U1', message: { text: 'Hi' } } },
+					],
+				},
+				ctx,
+			);
+			expect(result).toMatchObject({
+				results: [
+					{ action: 'send_channel_message', result: { ok: true } },
+					{ action: 'send_dm', result: { ok: false, error: { code: 'ACTION_NEEDS_APPROVAL' } } },
+				],
+			});
+			expect(actionExecutor.execute).toHaveBeenCalledTimes(2);
+
+			const other = approvalTool({ ...slackB, approval: { mode: 'global' } });
+			const otherCtx = makeInterruptibleCtx({ approvalContext });
+			await other.tool.handler!(sendToChannel, otherCtx);
+			expect(otherCtx.suspend).toHaveBeenCalled();
+			expect(other.actionExecutor.execute).not.toHaveBeenCalled();
+		});
+
+		it.each(['save fails', 'run is canceled'])(
+			'does not execute an action when the %s',
+			async (reason) => {
+				const { tool, actionExecutor } = approvalTool(slackWithApproval);
+				const controller = new AbortController();
+				const ctx = makeInterruptibleCtx({
+					abortSignal: controller.signal,
+					approvalContext: {
+						approvedKeys: new Set(),
+						onDecision: async () => {
+							if (reason === 'save fails') throw new Error(reason);
+							controller.abort(new Error(reason));
+						},
+					},
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_channel_message',
+						args: sendToChannel.input,
+					},
+					resumeData: { approved: true, scope: 'session' },
+				});
+				await expect(tool.handler!(sendToChannel, ctx)).rejects.toThrow(reason);
+				expect(actionExecutor.execute).not.toHaveBeenCalled();
+			},
+		);
 
 		it('suspends for approval instead of running a gated action', async () => {
 			const { tool, actionExecutor } = approvalTool(slackWithApproval);

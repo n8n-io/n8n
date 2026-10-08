@@ -1,7 +1,9 @@
 import {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ApplySelectionDto,
 	ContinueApplyPackageDto,
+	ContinueApplySelectionDto,
 	PromotePackageDto,
 	applyPackageResultSchema,
 } from '../promotion-operations.dto';
@@ -36,6 +38,11 @@ describe('ContinueApplyPackageDto', () => {
 		expect(ContinueApplyPackageDto.parse({ expectedSource: source })).toEqual({
 			expectedSource: source,
 		});
+	});
+
+	it('accepts a confirmation of destructive data table changes', () => {
+		const body = { expectedSource, confirmDestructiveChanges: true };
+		expect(ContinueApplyPackageDto.parse(body)).toEqual(body);
 	});
 
 	it.each([
@@ -80,8 +87,88 @@ describe('ApplyPackageDto', () => {
 		{ force: true },
 		{ expectedSource: {} },
 		{ expectedSource: { ...expectedSource, commitSha: 'HEAD' } },
+		{ expectedSource, confirmDestructiveChanges: true },
 	])('rejects unsupported or incomplete fields: %j', (body) => {
 		expect(ApplyPackageDto.safeParse(body).success).toBe(false);
+	});
+});
+
+describe.each([
+	{ name: 'ApplySelectionDto', dto: ApplySelectionDto },
+	{ name: 'ContinueApplySelectionDto', dto: ContinueApplySelectionDto },
+])('$name', ({ dto }) => {
+	const workflowIds = ['workflow1', 'workflow2'];
+	const expectedSource = { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) };
+
+	it('rejects an empty workflow list', () => {
+		expect(dto.safeParse({ workflowIds: [], expectedSource }).success).toBe(false);
+	});
+
+	it('rejects a workflow list with duplicate ids', () => {
+		expect(dto.safeParse({ workflowIds: ['workflow1', 'workflow1'], expectedSource }).success).toBe(
+			false,
+		);
+	});
+
+	it('accepts a non-empty workflow list', () => {
+		expect(dto.parse({ workflowIds, expectedSource })).toEqual({ workflowIds, expectedSource });
+	});
+
+	it('rejects unknown fields', () => {
+		expect(dto.safeParse({ workflowIds, expectedSource, force: true }).success).toBe(false);
+	});
+
+	it.each(['a'.repeat(40), 'b'.repeat(64)])('accepts commit identity %s', (commitSha) => {
+		const source = { ...expectedSource, commitSha };
+		expect(dto.parse({ workflowIds, expectedSource: source })).toEqual({
+			workflowIds,
+			expectedSource: source,
+		});
+	});
+
+	it.each([
+		'HEAD',
+		'main~1',
+		'a'.repeat(7),
+		'a'.repeat(39),
+		'a'.repeat(41),
+		'a'.repeat(63),
+		'a'.repeat(65),
+		'A'.repeat(40),
+		'g'.repeat(40),
+	])('rejects commit identity %s', (commitSha) => {
+		expect(
+			dto.safeParse({ workflowIds, expectedSource: { ...expectedSource, commitSha } }).success,
+		).toBe(false);
+	});
+});
+
+describe('ApplySelectionDto', () => {
+	it('accepts a request without a source', () => {
+		const workflowIds = ['workflow1'];
+		expect(ApplySelectionDto.parse({ workflowIds })).toEqual({ workflowIds });
+	});
+
+	it('rejects a confirmation of destructive data table changes', () => {
+		expect(
+			ApplySelectionDto.safeParse({ workflowIds: ['workflow1'], confirmDestructiveChanges: true })
+				.success,
+		).toBe(false);
+	});
+});
+
+describe('ContinueApplySelectionDto', () => {
+	it('requires the reviewed source', () => {
+		expect(ContinueApplySelectionDto.safeParse({ workflowIds: ['workflow1'] }).success).toBe(false);
+	});
+
+	it('accepts a confirmation of destructive data table changes', () => {
+		const body = {
+			workflowIds: ['workflow1'],
+			expectedSource: { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) },
+			confirmDestructiveChanges: true,
+		};
+		expect(ContinueApplySelectionDto.parse(body)).toEqual(body);
 	});
 });
 

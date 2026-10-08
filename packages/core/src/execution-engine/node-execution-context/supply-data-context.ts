@@ -157,7 +157,19 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.abortSignal,
 			this.parentNode,
 		);
-		context.addInputData(NodeConnectionTypes.AiTool, replacements.inputData);
+		void context
+			.addExecutionDataFunctions(
+				'input',
+				replacements.inputData,
+				NodeConnectionTypes.AiTool,
+				context.node.name,
+				context.getNextRunIndex(),
+			)
+			.catch((error: Error) => {
+				context.logger.warn(
+					`There was a problem logging input data of node "${context.node.name}": ${error.message}`,
+				);
+			});
 		return context;
 	}
 

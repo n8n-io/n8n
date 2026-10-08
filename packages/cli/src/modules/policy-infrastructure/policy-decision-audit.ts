@@ -55,6 +55,9 @@ export type PolicyDecisionAudit = {
 	/** `null` for a create, which has no id yet — read `workflowName` instead. */
 	workflowId?: string | null;
 	workflowName?: string;
+	/** Same rule as `workflowId`: `null` for a create. */
+	agentId?: string | null;
+	agentName?: string;
 	/** `null` for a credential create, which has no id yet — read `credentialType` instead. */
 	credentialId?: string | null;
 	credentialType?: string;
@@ -103,27 +106,33 @@ function targetOf(context: AnyPolicyContext) {
 		};
 	}
 
-	// contentImport: the one point whose context can be either shape.
-	if ('transport' in context) {
-		if ('credential' in context) {
-			return {
-				credentialId: context.credential.id,
-				credentialType: context.credential.type,
-				projectId: context.projectId,
-			};
-		}
-
+	if ('credential' in context && 'targetProjectId' in context) {
 		return {
-			workflowId: policedWorkflowId(context),
-			workflowName: context.workflow.name,
+			credentialId: context.credential.id,
+			credentialType: context.credential.type,
+			projectId: context.targetProjectId,
+		};
+	}
+
+	// A credential save or transfer returned above, so this is a credential import.
+	if ('credential' in context) {
+		return {
+			credentialId: context.credential.id,
+			credentialType: context.credential.type,
 			projectId: context.projectId,
 		};
+	}
+
+	const projectId = 'targetProjectId' in context ? context.targetProjectId : context.projectId;
+
+	if (context.workflow.artifactKind === 'agent') {
+		return { agentId: policedWorkflowId(context), agentName: context.workflow.name, projectId };
 	}
 
 	return {
 		workflowId: policedWorkflowId(context),
 		workflowName: context.workflow.name,
-		projectId: 'targetProjectId' in context ? context.targetProjectId : context.projectId,
+		projectId,
 	};
 }
 

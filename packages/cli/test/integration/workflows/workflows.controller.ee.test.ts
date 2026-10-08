@@ -12,7 +12,13 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { Project, User, WorkflowWithSharingsMetaDataAndCredentials } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	Project,
+	User,
+	WorkflowEntity,
+	WorkflowWithSharingsMetaDataAndCredentials,
+} from '@n8n/db';
 import {
 	ProjectRepository,
 	WorkflowHistoryRepository,
@@ -952,6 +958,73 @@ describe('GET /workflows/:workflowId', () => {
 				},
 			]);
 		});
+
+		describe('the Owner in a team-project workflow', () => {
+			const ownerSees = async (
+				credentialId: string,
+				teamProject: Project,
+				sharedWith: Project[] = [],
+			) => {
+				const workflow = await createWorkflow(
+					makeWorkflow({
+						withPinData: false,
+						withCredential: { id: credentialId, name: 'Credential' },
+					}),
+					teamProject,
+				);
+				if (sharedWith.length > 0) {
+					await shareWorkflowWithProjects(
+						workflow,
+						sharedWith.map((project) => ({ project })),
+					);
+				}
+				const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+				const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
+				return responseWorkflow.usedCredentials?.[0]?.currentUserCanUse;
+			};
+
+			test('cannot use a personal credential that nobody shared with the project', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const credential = await saveCredential(randomCredentialPayload(), { user: member });
+
+				expect(await ownerSees(credential.id, teamProject)).toBe(false);
+			});
+
+			test('can use a credential shared with another team project the workflow is in', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const salesProject = await createTeamProject('Sales', member);
+				const credential = await saveCredential(randomCredentialPayload(), { user: member });
+				await shareCredentialWithProjects(credential, [salesProject]);
+
+				expect(await ownerSees(credential.id, teamProject, [salesProject])).toBe(true);
+			});
+
+			test('cannot use the personal credential of someone the workflow is shared with', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const credential = await saveCredential(randomCredentialPayload(), { user: member });
+				const memberPersonalProject = await getPersonalProject(member);
+
+				expect(await ownerSees(credential.id, teamProject, [memberPersonalProject])).toBe(false);
+			});
+
+			test('can use a credential shared with the project', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const credential = await saveCredential(randomCredentialPayload(), { user: member });
+				await shareCredentialWithProjects(credential, [teamProject]);
+
+				expect(await ownerSees(credential.id, teamProject)).toBe(true);
+			});
+
+			test('can use a credential shared with everyone', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const credential = await saveCredential(
+					{ ...randomCredentialPayload(), isGlobal: true },
+					{ user: member },
+				);
+
+				expect(await ownerSees(credential.id, teamProject)).toBe(true);
+			});
+		});
 	});
 });
 
@@ -1283,6 +1356,126 @@ describe('PATCH /workflows/:workflowId', () => {
 				);
 			},
 		);
+
+		describe('credentials in an agent node parameter', () => {
+			// The agent node keeps the model credential and its tool credentials in
+			// the hidden `inlineAgent` parameter, not in `node.credentials`.
+			const OWNER_INSTRUCTIONS = 'Answer questions about the docs.';
+			const EDITOR_INSTRUCTIONS = 'Summarize the input.';
+
+			let ownerModelCredential: CredentialsEntity;
+			let ownerToolCredential: CredentialsEntity;
+			let memberCredential: CredentialsEntity;
+			let sharedWorkflow: WorkflowEntity;
+
+			const agentNode = (id: string, inlineAgent: unknown) =>
+				({
+					id,
+					name: id,
+					type: 'n8n-nodes-base.messageAnAgent',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: { agentSource: 'inline', inlineAgent },
+				}) as unknown as INode;
+
+			const inlineAgent = (credential: string, instructions: string, extra: object = {}) => ({
+				config: { model: 'gpt-4o-mini', credential, instructions, ...extra },
+			});
+
+			const ownerAgentNode = () =>
+				agentNode('agent-1', inlineAgent(ownerModelCredential.id, OWNER_INSTRUCTIONS));
+
+			const patchAsMember = async (nodes: INode[]) =>
+				await authMemberAgent
+					.patch(`/workflows/${sharedWorkflow.id}`)
+					.send({ versionId: sharedWorkflow.versionId, nodes });
+
+			const storedNodes = async () =>
+				(await workflowRepository.findOneByOrFail({ id: sharedWorkflow.id })).nodes;
+
+			beforeAll(async () => {
+				ownerModelCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+				ownerToolCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+				memberCredential = await saveCredential(randomCredentialPayload(), { user: member });
+			});
+
+			beforeEach(async () => {
+				sharedWorkflow = await createWorkflow({ nodes: [ownerAgentNode()] }, owner);
+				await shareWorkflowWithUsers(sharedWorkflow, [member]);
+			});
+
+			it('keeps the stored agent node when the editor cannot use its credential', async () => {
+				const edited = agentNode(
+					'agent-1',
+					inlineAgent(ownerModelCredential.id, EDITOR_INSTRUCTIONS),
+				);
+
+				// The node id matches the stored node, so the guard restores it.
+				const response = await patchAsMember([edited]);
+
+				expect(response.statusCode).toBe(200);
+				expect((await storedNodes())[0].parameters).toEqual(ownerAgentNode().parameters);
+			});
+
+			it('rejects a new agent node whose credential is not shared with the editor', async () => {
+				const planted = agentNode(
+					'agent-2',
+					inlineAgent(ownerModelCredential.id, EDITOR_INSTRUCTIONS),
+				);
+
+				const response = await patchAsMember([ownerAgentNode(), planted]);
+
+				expect(response.statusCode).toBe(400);
+				expect(await storedNodes()).toHaveLength(1);
+			});
+
+			it('rejects a node tool credential that is not shared with the editor', async () => {
+				const planted = agentNode(
+					'agent-2',
+					inlineAgent(memberCredential.id, EDITOR_INSTRUCTIONS, {
+						tools: [
+							{
+								type: 'node',
+								name: 'fetch',
+								node: {
+									nodeType: 'n8n-nodes-base.httpRequest',
+									nodeParameters: { url: 'https://example.com/hook' },
+									credentials: {
+										httpBearerAuth: { id: ownerToolCredential.id, name: 'Owner token' },
+									},
+								},
+							},
+						],
+					}),
+				);
+
+				const response = await patchAsMember([ownerAgentNode(), planted]);
+
+				expect(response.statusCode).toBe(400);
+				expect(await storedNodes()).toHaveLength(1);
+			});
+
+			it('reads the credential id from a JSON-encoded parameter', async () => {
+				const planted = agentNode(
+					'agent-2',
+					JSON.stringify(inlineAgent(ownerModelCredential.id, EDITOR_INSTRUCTIONS)),
+				);
+
+				const response = await patchAsMember([ownerAgentNode(), planted]);
+
+				expect(response.statusCode).toBe(400);
+				expect(await storedNodes()).toHaveLength(1);
+			});
+
+			it("saves a new agent node that uses the editor's own credential", async () => {
+				const own = agentNode('agent-3', inlineAgent(memberCredential.id, EDITOR_INSTRUCTIONS));
+
+				const response = await patchAsMember([ownerAgentNode(), own]);
+
+				expect(response.statusCode).toBe(200);
+				expect(await storedNodes()).toHaveLength(2);
+			});
+		});
 
 		it('Should succeed but prevent modifying node attributes other than position, name and disabled', async () => {
 			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });

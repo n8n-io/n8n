@@ -12,9 +12,15 @@ import { AgentApprovalSchema, AgentTeamsSettingsSchema } from './agent-integrati
 import { AgentVectorStoreConfigSchema, AgentJsonConfigSchema } from './agent-json-config.schema';
 import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
+import { N8N_CHAT_INTEGRATION_TYPE } from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
+import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
 import { Z } from '../zod-class';
+
+export class AgentsSettingsDto extends Z.class({
+	enabled: z.boolean(),
+}) {}
 
 export const AGENTS_LIST_SORT_OPTIONS = [
 	'name:asc',
@@ -23,6 +29,10 @@ export const AGENTS_LIST_SORT_OPTIONS = [
 	'createdAt:desc',
 	'updatedAt:asc',
 	'updatedAt:desc',
+	// Ranks by the requesting user's n8n Chat thread count per agent. Only the
+	// chat-filtered list supplies usage counts; other consumers of this sort
+	// option fall back to createdAt desc.
+	'usage:desc',
 ] as const;
 
 export const AGENT_SESSION_STATUSES = [
@@ -45,6 +55,7 @@ export const AGENT_SESSION_ORIGINS = [
 	'telegram',
 	'linear',
 	'discord',
+	'whatsapp',
 	'teams',
 ] as const;
 
@@ -55,6 +66,7 @@ const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
 		availableInMCP: z.boolean().optional(),
+		availableInChat: z.boolean().optional(),
 	})
 	.strict();
 
@@ -107,6 +119,16 @@ export type AgentSessionQueryFilters = Pick<
 	ListAgentSessionsQueryDto,
 	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
 >;
+
+/** Cross-agent n8n Chat thread list: cursor + limit only, no status/origin/scope filters. */
+export class ListN8nChatThreadsQueryDto extends Z.class({
+	// The cursor is a thread's `updatedAt` ISO string (see `paginateByUpdatedAt`).
+	cursor: z.string().datetime().optional(),
+	limit: z.string().optional(),
+	/** Filters threads to one agent. */
+	agentId: z.string().min(1).max(128).optional(),
+	search: threadTitleSearchSchema,
+}) {}
 
 export class AgentProviderModelsQueryDto extends Z.class({
 	credentialId: z.string().min(1).max(64).optional(),
@@ -276,6 +298,11 @@ export class AgentChatQueueSteerDto extends Z.class({
 	executionId: z.string().min(1).max(36),
 }) {}
 
+export class AgentChatQueueReorderDto extends Z.class({
+	targetQueueId: z.string().regex(/^[1-9]\d*$/),
+	expectedQueueIds: z.array(z.string().regex(/^[1-9]\d*$/)).min(2),
+}) {}
+
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),
@@ -288,13 +315,9 @@ export class AgentChatResumeDto extends Z.class({
 	resumeData: z.unknown(),
 }) {}
 
-/**
- * Envelope check for the connect body. The channel itself is validated against
- * the per-platform integration schema, which is where `settings` is checked.
- */
-export class AgentConnectIntegrationDto extends Z.class({
+const agentConnectIntegrationShape = {
 	type: z.string().min(1),
-	credentialId: z.string().min(1),
+	credentialId: z.string(),
 	/**
 	 * Credential of the same type this channel takes over from. Swapping in one
 	 * request keeps the agent from ever holding two live channels or none.
@@ -302,7 +325,36 @@ export class AgentConnectIntegrationDto extends Z.class({
 	replaces: z.object({ credentialId: z.string().min(1) }).optional(),
 	/** Channel actions that need approval before they run. */
 	approval: AgentApprovalSchema.optional(),
-}) {}
+};
+
+/**
+ * Envelope check for the connect body. The channel itself is validated against
+ * the per-platform integration schema, which is where `settings` is checked.
+ * n8n Chat is the one channel without a credential, so it takes an empty `credentialId`.
+ */
+const agentConnectIntegrationSchema = z
+	.object(agentConnectIntegrationShape)
+	.refine(
+		(value) =>
+			value.type === N8N_CHAT_INTEGRATION_TYPE
+				? value.credentialId === ''
+				: value.credentialId.length > 0,
+		{ message: 'credentialId is required, except for n8n Chat', path: ['credentialId'] },
+	);
+
+export class AgentConnectIntegrationDto extends Z.class(agentConnectIntegrationShape) {
+	constructor(data: z.infer<typeof agentConnectIntegrationSchema>) {
+		super(agentConnectIntegrationSchema.parse(data));
+	}
+
+	static override safeParse(data: unknown) {
+		return agentConnectIntegrationSchema.safeParse(data);
+	}
+
+	static override parse(data: unknown) {
+		return agentConnectIntegrationSchema.parse(data);
+	}
+}
 
 /**
  * The package is downloaded in the setup before the channel is connected, so

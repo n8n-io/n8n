@@ -1,3 +1,5 @@
+import { isKeyOf } from './utils';
+
 // ============================================================================
 // Deep Lazy Proxy System
 // ============================================================================
@@ -312,7 +314,10 @@ export function createDeepLazyProxy(
 				return arrayLength;
 			}
 
-			if (prop in targetObj) {
+			if (
+				isKeyOf(targetObj, prop) ||
+				(prop in targetObj && (isArray || !resolveObjectKeys().includes(prop)))
+			) {
 				return targetObj[prop];
 			}
 

@@ -22,7 +22,18 @@ breaking-changes/
          ...
       index.ts                # Side-effect imports for all rules
    database/
-      entities/               # migration_finding + migration_finding_sync tables
+      entities/               # migration_finding, migration_finding_sync, migration_workflow_owner tables
+      repositories/           # Use-case-named DB access (BaseRepository + OperationContext)
+   sync/
+      migration-finding-diff.ts  # Pure diff of scan hits against stored findings
+      migration-finding-sync.service.ts  # Runs a scan and writes the diff, one transaction per batch
+      migration-finding-sync.listener.ts # Re-checks one workflow on create, save, publish, and pull
+   query/
+      migration-finding-query.service.ts  # Shapes finding table reads into the report response types
+   triage/
+      migration-finding-triage.service.ts # Sets the status a user picks for a finding
+   group-nodes-by-type.ts                   # Nodes grouped by type, as workflow rules expect
+   summarize-execution-statistics.ts        # Run count and last run from statistics rows
    breaking-changes.service.ts              # Detection orchestration
    breaking-changes.rule-registry.service.ts # Rule management
    breaking-changes.controller.ts           # REST API
@@ -120,6 +131,25 @@ Returns:
  "shouldCache": false
 }
 ```
+
+### Set the Status of a Finding
+```
+PATCH /breaking-changes/report/:ruleId/workflows/:workflowId
+```
+
+Body:
+```json
+{ "status": "wont_fix" }
+```
+
+Sets the status of the finding of one workflow rule on one workflow. A user can set `open` or `wont_fix`. The rule's metadata gives the target version. The route needs the `breakingChanges:migrate` scope and returns no data.
+
+- A `wont_fix` finding counts as resolved. The overview gives each rule its `open` count in `nbAffectedWorkflows` and its `wont_fix` count in `nbWontFixWorkflows`.
+- The overview keeps a rule with only `wont_fix` findings, with a count of zero. Its detail page is the only place to set them back to `open`.
+- The rule detail lists `open` and `wont_fix` findings, each with its `status`.
+- When a scan no longer detects a `wont_fix` finding, the sync marks it `fixed`.
+- The route returns 404 when the rule is unknown or is not a workflow rule.
+- The route returns 404 when the finding does not exist or is in a status that only the scan sets, for example `fixed`. This is also true when a sync marks the finding `fixed` during the request.
 
 ## Rule Impact
 

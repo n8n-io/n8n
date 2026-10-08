@@ -82,13 +82,15 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
+		finishedAt: null,
 		...overrides,
 	};
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
-		finishExecution: vi.fn().mockResolvedValue(true),
+		finishExecution: vi.fn().mockResolvedValue(null),
+		cancelExecution: vi.fn().mockResolvedValue(null),
 		refreshLiveStatus: vi.fn(),
 	};
 }
@@ -112,6 +114,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		completeStep: vi.fn().mockResolvedValue(true),
 		failStep: vi.fn().mockResolvedValue(true),
 		cancelPendingSteps: vi.fn(),
+		cancelStep: vi.fn().mockResolvedValue(true),
 		loadStepsByKeys: vi
 			.fn()
 			.mockResolvedValue({ [at('trigger')]: stepRow('trigger', 'completed', [{}]) }),
@@ -174,9 +177,10 @@ describe('StepReadyHandler', () => {
 				mode: 'production',
 				iteration: 0,
 				callerContext: { hostMode: 'trigger' },
+				responseExpectation: { kind: 'none' },
 			},
 			// The step can answer the caller while it runs.
-			respond: { send: expect.any(Function) },
+			respond: { send: expect.any(Function), chunk: expect.any(Function) },
 		});
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
 		expect(stepStore.failStep).not.toHaveBeenCalled();
@@ -205,17 +209,19 @@ describe('StepReadyHandler', () => {
 	});
 
 	it.each([
-		['stepResponse', true],
-		['runEnd', false],
-		['none', false],
+		['stepResponse', 'response'],
+		['stream', 'chunk'],
+		['runEnd', undefined],
+		['none', undefined],
 	] as const)(
 		'gives the step an emitter that obeys the stored expectation %s',
-		async (kind, sends) => {
+		async (kind, sentType) => {
 			const responseSender: ExecutionResponseSender = { send: vi.fn(), stop: vi.fn() };
 			const executor: IStepExecutor = {
 				execute: vi.fn(async (request) => {
 					await Promise.resolve();
 					request.respond.send(() => ({ ok: true }));
+					request.respond.chunk(() => ({ ok: true }));
 					return { outputs: [[{ json: { ok: true } }]] };
 				}),
 			};
@@ -230,9 +236,14 @@ describe('StepReadyHandler', () => {
 
 			await handler.handle(event);
 
-			if (sends) {
+			expect(executor.execute).toHaveBeenCalledWith(
+				expect.objectContaining({
+					context: expect.objectContaining({ responseExpectation: { kind } }) as unknown,
+				}),
+			);
+			if (sentType) {
 				expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
-					type: 'response',
+					type: sentType,
 					executionId: 'exec-1',
 					payload: { ok: true },
 				});
@@ -544,23 +555,29 @@ describe('StepReadyHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
-	it('claims the step but runs nothing when the execution is no longer running', async () => {
-		// the claim already happened, so the step stays `running` for
-		// reconciliation (CAT-2938) to resolve — nothing is recorded or announced
+	it('settles a claimed step as cancelled when its execution has ended, announcing nothing', async () => {
+		// the claim already happened, so the row would otherwise sit `running`
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
 		const executor = makeExecutor();
-		const handler = makeHandler(makeExecutionStore({ status: 'cancelled' }), stepStore, queue, {
-			v1StepExecutor: executor,
-		});
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			makeExecutionStore({ status: 'cancelled' }),
+			stepStore,
+			queue,
+			{ v1StepExecutor: executor },
+			lifecycleEventPublisher,
+		);
 
 		await handler.handle(event);
 
 		expect(stepStore.claimStep).toHaveBeenCalledWith('step-a');
+		expect(stepStore.cancelStep).toHaveBeenCalledExactlyOnceWith('step-a');
 		expect(executor.execute).not.toHaveBeenCalled();
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 
 	it('runs the step when the execution is waiting', async () => {

@@ -1,7 +1,7 @@
 import type { User } from '@n8n/db';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import { ForbiddenError } from '@n8n/errors';
 
 /**

@@ -1,4 +1,5 @@
 export {
+	DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT,
 	SystemTask,
 	intervalFromMilliseconds,
 	intervalFromSeconds,
@@ -9,6 +10,7 @@ export {
 export type {
 	SystemTaskClass,
 	SystemTaskEffects,
+	SystemTaskRunContext,
 	SystemTaskRunOptions,
 	SystemTaskSchedule,
 } from './system-task';

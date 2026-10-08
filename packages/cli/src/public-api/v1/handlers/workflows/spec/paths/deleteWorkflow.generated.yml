@@ -31,6 +31,8 @@ responses:
               nullable: true
             active:
               type: boolean
+              description: Deprecated. Check whether `activeVersionId` is not null instead.
+              deprecated: true
             activeVersionId:
               type: string
               nullable: true

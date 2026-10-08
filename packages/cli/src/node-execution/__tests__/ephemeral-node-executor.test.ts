@@ -21,6 +21,8 @@ import {
 import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 import {
 	AGENT_PROVIDER_NODE_WHITELIST,
@@ -97,6 +99,7 @@ describe('EphemeralNodeExecutor', () => {
 	const credentialsRepository = mockInstance(CredentialsRepository);
 	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
 	const logger = mockInstance(Logger);
+	const policyEnforcementService = mockInstance(PolicyEnforcementService);
 	// Node execution constructs `SSHClientsManager` via DI, whose constructor does
 	// `logger.scoped(...)` and registers a `process.on('exit')` shutdown handler. Without a real
 	// return here, `scoped()` is undefined and the handler throws at worker teardown — an uncaught
@@ -108,6 +111,7 @@ describe('EphemeralNodeExecutor', () => {
 		credentialsRepository,
 		sharedCredentialsRepository,
 		logger,
+		policyEnforcementService,
 	);
 
 	const toolDescription: INodeTypeDescription = {
@@ -703,6 +707,132 @@ describe('EphemeralNodeExecutor', () => {
 		});
 	});
 
+	describe('node type policy', () => {
+		const blocked = () =>
+			new PolicyViolationError([
+				{
+					kind: 'node-type-unavailable',
+					checkId: 'node-type-availability',
+					message: 'Node type "n8n-nodes-base.dateTimeTool" is blocked by an instance policy',
+					subject: 'n8n-nodes-base.dateTimeTool',
+					subjectType: 'nodeType',
+					scope: 'instance',
+				},
+			]);
+
+		// The workflow it calls is policed when it starts; the stand-in node never runs.
+		it('does not police an expression evaluation, which runs no node', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+			} as unknown as INodeType);
+
+			await expect(
+				executor.evaluateExpressions(
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.toolWorkflow',
+						nodeTypeVersion: 2.2,
+						nodeParameters: {},
+						projectId: 'p-1',
+					},
+					{},
+					[],
+				),
+			).resolves.toEqual({});
+			expect(policyEnforcementService.enforceWorkflowStart).not.toHaveBeenCalled();
+		});
+
+		it('polices the node as a one-node workflow in the tool project', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute: vi.fn().mockResolvedValue([[{ json: { ok: true } }]]),
+			} as unknown as INodeType);
+
+			await executor.executeInline({
+				nodeType: 'n8n-nodes-base.dateTimeTool',
+				nodeTypeVersion: 2,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(policyEnforcementService.enforceWorkflowStart).toHaveBeenCalledWith(
+				{
+					workflow: {
+						id: null,
+						name: 'Target Node',
+						nodes: [
+							expect.objectContaining({ type: 'n8n-nodes-base.dateTimeTool', typeVersion: 2 }),
+						],
+						artifactKind: 'agent',
+					},
+					projectId: 'p-1',
+				},
+				{ kind: 'system', reason: 'execution' },
+			);
+		});
+
+		it('returns a tool error and never runs a blocked node', async () => {
+			const execute = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(blocked());
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.dateTimeTool',
+				nodeTypeVersion: 2,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(result).toEqual({
+				status: 'error',
+				data: [],
+				error: expect.stringContaining('is blocked by an instance policy'),
+			});
+			expect(execute).not.toHaveBeenCalled();
+		});
+
+		it('never runs supplyData for a blocked native tool node', async () => {
+			const supplyData = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(blocked());
+
+			const result = await executor.executeInline({
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [{ json: { input: 'n8n' } }],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('error');
+			expect(supplyData).not.toHaveBeenCalled();
+		});
+
+		it('skips schema introspection for a blocked node instead of failing the agent build', async () => {
+			const supplyData = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(blocked());
+
+			const result = await executor.introspectSupplyDataToolSchema({
+				projectId: 'p-1',
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+			});
+
+			expect(result).toBeNull();
+			expect(supplyData).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('introspectSupplyDataToolSchema', () => {
 		it('returns the schema a structured tool exposes', async () => {
 			const schema = { type: 'object', properties: { query: { type: 'string' } } };
@@ -947,7 +1077,7 @@ describe('EphemeralNodeExecutor', () => {
 		});
 	});
 
-	it('resolves expressions when invoking a supplyData tool with the VM engine', async () => {
+	it('resolves expressions in standalone tool contexts with the VM engine', async () => {
 		await Expression.initExpressionEngine({
 			engine: 'vm',
 			bridgeTimeout: 1000,
@@ -993,6 +1123,38 @@ describe('EphemeralNodeExecutor', () => {
 				status: 'success',
 				data: [{ json: { response: 2 } }],
 			});
+
+			mockGetBase.mockResolvedValue({ variables: { increment: '3' } });
+			const tool = {
+				nodeType: '@n8n/n8n-nodes-langchain.toolWorkflow',
+				nodeTypeVersion: 2.2,
+				nodeParameters: {},
+				projectId: 'p-1',
+			};
+			await expect(
+				executor.evaluateExpressions(
+					tool,
+					{
+						count: '={{ $json.count + Number($vars.increment) }}',
+						options: '={{ { enabled: true, items: [1, 2] } }}',
+						date: '={{ $now.toISODate() }}',
+					},
+					[{ json: { count: 4 } }],
+				),
+			).resolves.toEqual({
+				count: 7,
+				options: { enabled: true, items: [1, 2] },
+				date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+			});
+			await expect(
+				executor.evaluateExpressions(tool, { broken: '={{ 1 + }}' }, []),
+			).rejects.toThrow('Cannot resolve input "broken"');
+			// A failed expression must release the single isolate for the next call.
+			await expect(
+				executor.evaluateExpressions(tool, { count: '={{ $json.count }}' }, [
+					{ json: { count: 9 } },
+				]),
+			).resolves.toEqual({ count: 9 });
 		} finally {
 			await Expression.disposeExpressionEngine();
 		}

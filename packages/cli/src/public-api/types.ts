@@ -1,15 +1,7 @@
 import type {
-	AddDataTableColumnDto,
-	AddDataTableRowsDto,
-	UpdateDataTableColumnDto,
-	UpdateDataTableRowDto,
-	UpsertDataTableRowDto,
-	PublicCreateDestination,
 	UpdateOtelSettingsDto,
 	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
-	UpdateLdapConfigurationDto,
-	LdapSyncDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 
@@ -26,39 +18,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 		lastId?: string;
 	}
 >;
-export declare namespace WorkflowRequest {
-	type Activate = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{ versionId?: string; name?: string; description?: string },
-		{}
-	>;
-	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
-}
-
-export declare namespace PackageRequest {
-	type Import = AuthenticatedRequest<
-		{},
-		{},
-		{ projectId?: string; folderId?: string },
-		Record<string, never>
-	>;
-
-	type ImportSelection = AuthenticatedRequest<
-		{},
-		{},
-		{
-			selectedProjectId?: string;
-			// Multipart text fields carrying JSON-string arrays; parsed by the DTO.
-			selectedWorkflowIds?: string;
-			deletedWorkflowIds?: string;
-			workflowConflictPolicy?: string;
-			workflowIdPolicy?: string;
-		},
-		Record<string, never>
-	>;
-}
-
 export declare namespace UserRequest {
 	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
 
@@ -121,56 +80,6 @@ export interface IJsonSchema {
 }
 
 // ----------------------------------
-//           /data-tables
-// ----------------------------------
-
-export declare namespace DataTableRequest {
-	type GetRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-			search?: string;
-		}
-	>;
-
-	type InsertRows = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableRowsDto, {}>;
-
-	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
-
-	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
-
-	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type DeleteRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			filter?: string;
-			returnData?: string | boolean;
-			dryRun?: string | boolean;
-		}
-	>;
-
-	type CreateColumn = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableColumnDto, {}>;
-
-	type DeleteColumn = AuthenticatedRequest<{ dataTableId: string; columnId: string }, {}, {}, {}>;
-
-	type UpdateColumn = AuthenticatedRequest<
-		{ dataTableId: string; columnId: string },
-		{},
-		UpdateDataTableColumnDto,
-		{}
-	>;
-}
-
-// ----------------------------------
 //           /community-packages
 // ----------------------------------
 
@@ -179,25 +88,6 @@ export declare namespace CommunityPackageRequest {
 	type List = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{ name: string }, {}, { version?: string }>;
 	type Uninstall = AuthenticatedRequest<{ name: string }>;
-}
-
-export declare namespace LogStreamingRequest {
-	type GetEventTypes = AuthenticatedRequest;
-	type GetDestinations = AuthenticatedRequest;
-	type GetDestination = AuthenticatedRequest<{ id: string }>;
-	type CreateDestination = AuthenticatedRequest<{}, {}, PublicCreateDestination>;
-	type UpdateDestination = AuthenticatedRequest<{ id: string }, {}, PublicCreateDestination>;
-	type TestDestination = AuthenticatedRequest<{ id: string }>;
-	type DeleteDestination = AuthenticatedRequest<{ id: string }>;
-}
-
-// ----------------------------------
-//        /settings/sso/saml
-// ----------------------------------
-
-export declare namespace SsoSamlRequest {
-	type Get = AuthenticatedRequest;
-	type Update = AuthenticatedRequest<{}, {}, UpdateSamlConfigurationDto>;
 }
 
 // ----------------------------------
@@ -210,12 +100,10 @@ export declare namespace OtelSettingsRequest {
 }
 
 // ----------------------------------
-//        /settings/ldap
+//        /settings/sso/saml
 // ----------------------------------
 
-export declare namespace LdapRequest {
-	type GetConfig = AuthenticatedRequest;
-	type UpdateConfig = AuthenticatedRequest<{}, {}, UpdateLdapConfigurationDto>;
-	type GetSync = PaginatedRequest;
-	type RunSync = AuthenticatedRequest<{}, {}, LdapSyncDto>;
+export declare namespace SsoSamlRequest {
+	type Get = AuthenticatedRequest;
+	type Update = AuthenticatedRequest<{}, {}, UpdateSamlConfigurationDto>;
 }

@@ -49,6 +49,11 @@ export type {
 	DropdownMenuPlacement,
 } from './N8nDropdownMenu/DropdownMenu.types';
 export { default as N8nAlert } from './N8nAlert';
+export {
+	default as N8nApprovalCard,
+	type ApprovalCardLabels,
+	type ApprovalOption,
+} from './N8nApprovalCard';
 export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
 export { BADGE_SIZE, BADGE_VARIANT } from './N8nBadge/Badge.type';
@@ -120,6 +125,8 @@ export { default as N8nSettingsPageHeader } from './N8nSettingsPageHeader';
 export type { SettingsPageHeaderProps } from './N8nSettingsPageHeader';
 export { default as N8nSettingsRow } from './N8nSettingsRow';
 export type { SettingsRowProps, SettingsRowLayout } from './N8nSettingsRow';
+export { default as N8nSettingsRowButton } from './N8nSettingsRowButton';
+export type { SettingsRowButtonProps } from './N8nSettingsRowButton';
 export { default as N8nSettingsRowConfigure } from './N8nSettingsRowConfigure';
 export type { SettingsRowConfigureProps } from './N8nSettingsRowConfigure';
 export { default as N8nSettingsRowGroup } from './N8nSettingsRowGroup';
@@ -202,7 +209,13 @@ export { default as N8nInlineTextEdit } from './N8nInlineTextEdit';
 export { default as N8nScrollArea } from './N8nScrollArea';
 export * from './DateRangePicker';
 export { default as N8nCommandBar } from './N8nCommandBar';
-export type { CommandBarItem } from './N8nCommandBar/types';
+export type {
+	CommandBarItem,
+	CommandBarItemIcon,
+	CommandBarSection,
+	CommandBarSelectOptions,
+	CommandBarTab,
+} from './N8nCommandBar/types';
 export * from './N8nDialog';
 export * from './N8nAlertDialog';
 export { default as N8nVisuallyHidden } from './N8nVisuallyHidden';

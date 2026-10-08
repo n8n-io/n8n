@@ -18,6 +18,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { DatabaseMetricQueryService } from '@/metrics/prometheus/database-metric-query.service';
 import { PrometheusMetricsService } from '@/metrics/prometheus/prometheus.service';
 import { PrometheusSystemTaskMetricsService } from '@/metrics/prometheus/system-task-metrics.service';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
@@ -35,7 +36,6 @@ import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
-import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import { Start } from '../start';
@@ -85,12 +85,12 @@ describe('Start system task metrics', () => {
 		mockInstance(TestWebhooks);
 		mockInstance(ExecutionsPruningService);
 		mockInstance(WorkflowHistoryCompactionService);
-		mockInstance(WorkflowStatisticsRollupService);
 		mockInstance(EnqueuedExecutionRecoveryService);
 		mockInstance(DurableScheduler);
 		mockInstance(SystemTaskJobRegistrar);
 		mockInstance(SystemTaskScheduledJobOwner);
 		mockInstance(SettingsRepository, { findBy: async () => [] });
+		mockInstance(DatabaseMetricQueryService);
 		activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
 		// Keep the real system task collector. Other collectors are outside this test.

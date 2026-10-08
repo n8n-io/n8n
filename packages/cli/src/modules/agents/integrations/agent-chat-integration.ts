@@ -9,7 +9,7 @@ import type { Thread, Author, Message } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
-import type { SuspendComponent } from './component-mapper';
+import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
 import type { SlackThreadContext } from './platforms/slack/slack-bridge-behavior';
 import {
 	resolveIntegrationActionDefinitions,
@@ -58,6 +58,23 @@ export interface AgentIntegrationRemovalContext {
 /** Response shape returned by `handleUnauthenticatedWebhook`. */
 export interface UnauthenticatedWebhookResponse {
 	status: number;
+	body: unknown;
+	/**
+	 * Send `body` as plain text instead of JSON-encoding it. Meta's WhatsApp
+	 * webhook handshake expects the raw `hub.challenge` value back verbatim —
+	 * JSON-encoding a string wraps it in quotes, which Meta then treats as a
+	 * mismatch. Slack's `url_verification` challenge, by contrast, is echoed
+	 * back as JSON, so this defaults to JSON to keep that behavior unchanged.
+	 */
+	raw?: boolean;
+}
+
+/** Context handed to `handleUnauthenticatedWebhook` for a request with no live connection yet. */
+export interface UnauthenticatedWebhookContext {
+	agentId: string;
+	method: string;
+	query: Readonly<Record<string, string | string[] | undefined>>;
+	headers: Readonly<Record<string, string | string[] | undefined>>;
 	body: unknown;
 }
 
@@ -136,9 +153,9 @@ export interface BridgeExecutionContext {
 	forceBuffered?: boolean;
 	statusHandle?: BridgeStatusHandle;
 	/**
-	 * Platform-fetched conversation context (e.g. prior Slack thread messages)
-	 * that the bridge prepends to the agent input message. Undefined when the
-	 * platform did not surface any context for this message.
+	 * Platform context that the bridge prepends to the agent input message,
+	 * such as prior Slack thread messages or a Teams note that the reply is
+	 * optional. Undefined when the platform has none for this message.
 	 */
 	historyContext?: string;
 }
@@ -165,6 +182,8 @@ export interface BridgeMessageContextParams {
 	 * thread context that the agent has never seen.
 	 */
 	isNewMention: boolean;
+	/** True when the message arrived in a thread the agent already joined. */
+	inSubscribedThread?: boolean;
 	/**
 	 * The turn's reply policy ('required' when the platform has none).
 	 * Platforms use 'optional' to skip reply-signalling side effects
@@ -276,6 +295,20 @@ export abstract class AgentChatIntegration {
 	readonly deleteActionMessageBeforeResume: boolean = true;
 
 	/**
+	 * Minutes of inactivity after which this platform starts a fresh session by
+	 * default, when the channel's own `sessionIdleTimeoutMinutes` setting is
+	 * unset. Every platform lets the user configure that setting explicitly;
+	 * this only supplies the value used before they ever touch it. `null`
+	 * (default) means no idle-based rotation until the user opts in.
+	 *
+	 * WhatsApp overrides this because it has no native "/new" slash command
+	 * equivalent that reliably reaches the bridge, so a sensible default reset
+	 * threshold matters more there than on platforms with an explicit reset
+	 * command.
+	 */
+	readonly defaultSessionIdleTimeoutMinutes: number | null = null;
+
+	/**
 	 * True to deliver a suspension card only to the user whose turn raised it,
 	 * so the rest of a channel never sees it. Delivery-scoped only: nothing
 	 * verifies who clicks. The card still goes to the whole conversation where
@@ -341,17 +374,23 @@ export abstract class AgentChatIntegration {
 	 * (i.e. before credentials are configured). The canonical case is Slack's
 	 * `url_verification` challenge — sent when the user creates a Slack app
 	 * from the manifest, before they have pasted bot token / signing secret
-	 * into n8n. Without this hook, the standard handler returns 404 and the
-	 * user has to manually re-verify URLs after configuring the credential.
+	 * into n8n. WhatsApp's Meta app verification handshake (GET with
+	 * `hub.mode`/`hub.verify_token`/`hub.challenge`) is the other: its verify
+	 * token is derivable from the agent ID alone, so it needs no credential
+	 * either. Without this hook, the standard handler returns 404 and the user
+	 * has to connect (and, for WhatsApp, publish) the agent before Meta's
+	 * "Verify and save" can succeed.
 	 *
-	 * Implementations inspect the parsed JSON body; return a response to send
-	 * back, or undefined to fall through to the standard 404.
+	 * Implementations inspect the request; return a response to send back, or
+	 * undefined to fall through to the standard 404.
 	 *
 	 * Security note: this hook bypasses signature verification, so it must
 	 * only echo non-sensitive data (e.g. a challenge token sent by the caller
 	 * in the request itself).
 	 */
-	handleUnauthenticatedWebhook?(body: unknown): UnauthenticatedWebhookResponse | undefined;
+	handleUnauthenticatedWebhook?(
+		context: UnauthenticatedWebhookContext,
+	): UnauthenticatedWebhookResponse | undefined;
 
 	/**
 	 * Resolve platform-specific routing before selecting a connected adapter.
@@ -440,9 +479,15 @@ export abstract class AgentChatIntegration {
 	/**
 	 * Optional per-platform component normalization (applied before toCard).
 	 * Convert unsupported types into close-enough equivalents — e.g. Telegram
-	 * turns select options into individual buttons.
+	 * turns select options into individual buttons. A platform that folds
+	 * several buttons into one native control (the opposite direction, e.g.
+	 * WhatsApp's list) should use `context.wrapResumeValue` — see
+	 * {@link NormalizeComponentsContext}.
 	 */
-	normalizeComponents?(components: SuspendComponent[]): SuspendComponent[];
+	normalizeComponents?(
+		components: SuspendComponent[],
+		context: NormalizeComponentsContext,
+	): SuspendComponent[];
 
 	/**
 	 * Optional per-platform thread ID formatting.
@@ -518,6 +563,18 @@ export abstract class AgentChatIntegration {
 	shouldSubscribeToNewMention?(params: {
 		thread: Thread<unknown, unknown>;
 		message: Message<unknown>;
+	}): boolean;
+
+	/**
+	 * Whether a message that does not mention the bot should run the agent,
+	 * in a subscribed thread or not. Only platforms that deliver every message
+	 * implement this (Teams with read-all permissions). Without it the bridge
+	 * runs every subscribed follow-up and never listens for other messages.
+	 */
+	shouldHandleUnmentionedMessage?(params: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+		integration: AgentIntegrationConfig;
 	}): boolean;
 
 	/**

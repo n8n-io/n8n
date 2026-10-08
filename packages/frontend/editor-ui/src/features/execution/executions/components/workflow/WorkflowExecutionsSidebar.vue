@@ -195,6 +195,7 @@ const goToUpgrade = () => {
 				@update:model-value="onAutoRefreshChange"
 			/>
 			<ExecutionsFilter
+				:initial-filters="executionsStore.filters"
 				popover-side="right"
 				popover-align="start"
 				:workflow-id="props.workflow?.id"

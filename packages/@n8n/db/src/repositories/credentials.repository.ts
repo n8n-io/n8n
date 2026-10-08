@@ -2,7 +2,7 @@ import { assertClearedFor, credentialContentSubject, credentialSubject } from '@
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import { DataSource, ILike, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
@@ -53,6 +53,7 @@ export type CredentialSharingRelation =
 // every shared project would multiply the joined rows by the project sizes.
 const DEFAULT_CREDENTIAL_RELATIONS: CredentialSharingRelation[] = ['shared', 'shared.project'];
 
+// oxlint-disable-next-line typescript/no-deprecated
 type CredentialsListQueryOptions = ListQuery.Options & {
 	includeData?: boolean;
 	/** Also match global credentials, so they page, count and filter like every other row. */
@@ -247,6 +248,29 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	}
 
 	/**
+	 * Writes re-encrypted credential data only while the row still holds `expectedData`, the
+	 * ciphertext the caller decrypted. Returns false when another write landed in between, so the
+	 * caller can drop a value it derived from content that is no longer stored.
+	 *
+	 * Ciphertext only, like the runtime OAuth token write-back: a payload that cannot carry
+	 * `type` stays off the sealed `credentialSave` path.
+	 */
+	async updateDataIfUnchanged(
+		id: string,
+		type: string,
+		expectedData: string,
+		data: string,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			CredentialsEntity,
+			{ id, type, data: expectedData },
+			{ data, updatedAt: new Date() },
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
 	 * Persists an imported credential row, gated on a clearance for `contentImport`. Binds to the
 	 * id when there is one, else to the type hash, same as `WorkflowRepository`.
 	 */
@@ -418,7 +442,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		const { filter, select, take, skip, sortBy } = listQueryOptions;
 
 		if (typeof filter?.name === 'string' && filter?.name !== '') {
-			filter.name = Like(`%${filter.name}%`);
+			filter.name = ILike(`%${filter.name}%`);
 		}
 
 		if (typeof filter?.type === 'string' && filter?.type !== '') {
@@ -577,6 +601,11 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		projectId: string,
 	): Promise<CredentialsEntity[]> {
 		return await this.findBy({ name, type, usageScope: 'project', shared: { projectId } });
+	}
+
+	/** Find credentials of any of the given types, scoped to a specific project. */
+	async findByTypesInProject(types: string[], projectId: string): Promise<CredentialsEntity[]> {
+		return await this.findBy({ type: In(types), usageScope: 'project', shared: { projectId } });
 	}
 
 	/**

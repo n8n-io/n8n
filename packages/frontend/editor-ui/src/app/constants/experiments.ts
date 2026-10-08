@@ -1,4 +1,5 @@
 import {
+	AGENTS_N8N_CHAT_FLAG,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
@@ -86,6 +87,11 @@ export const WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT = createExperiment('086_workflo
 export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
 	'082_instance_ai_proactive_agent',
 );
+// Flag key assigned when the PostHog flag is created — follow the
+// `n8n:experiments` skill to create it and fill in the real key here.
+export const INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT = createExperiment(
+	'<flag-key>_test_agent_preview',
+);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT = createExperiment(
 	'085_instance_ai_prompt_suggestions_v2',
@@ -118,13 +124,7 @@ export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
 	'089_instance_ai_split_empty_state',
 );
 
-export const INSTANCE_AI_BROWSER_USE_EXPERIMENT = createExperiment('090_instance_ai_browser_use');
-
 export const INSTANCE_AI_COMPUTER_USE_EXPERIMENT = createExperiment('091_instance_ai_computer_use');
-
-export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT = createExperiment(
-	'094_instance_ai_browser_credential_setup',
-);
 
 export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
 	'095_expose_all_workflows_to_mcp',
@@ -165,6 +165,16 @@ export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
 	'119_surface_assistant_on_workflow_error',
 );
 
+export const AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT = createExperiment(
+	'120_agents_empty_state_templates',
+);
+
+export const AGENTS_N8N_CHAT_EXPERIMENT = createExperiment(AGENTS_N8N_CHAT_FLAG, {
+	control: 'control',
+	variantA: 'variant-a',
+	variantB: 'variant-b',
+});
+
 export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
 	AI_ASSISTANT_AT_MENTIONS_EXPERIMENT.name,
@@ -196,9 +206,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
-	INSTANCE_AI_BROWSER_USE_EXPERIMENT.name,
 	INSTANCE_AI_COMPUTER_USE_EXPERIMENT.name,
-	INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.name,
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,
@@ -208,4 +216,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	MCP_JSON_NUDGE_EXPERIMENT.name,
 	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
+	AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.name,
+	INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name,
+	AGENTS_N8N_CHAT_EXPERIMENT.name,
 ];

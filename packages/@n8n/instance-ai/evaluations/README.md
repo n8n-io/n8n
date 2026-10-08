@@ -349,6 +349,7 @@ on disk. Losing this field turns it into a normal attachment test.
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
 | `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | No | Set on the **target n8n instance** (note: no `N8N_` prefix) to enable the builder's `web-search` action. Unset = the action returns zero results, which reads to the agent as "nothing found". A licensed instance with `N8N_AI_ASSISTANT_BASE_URL` set routes search through the AI proxy instead and ignores this key |
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | No | Set to `true` on the target n8n instance to capture orchestrator LLM steps and workflow code for the eval LLM debug report (`workflow-eval-llm-debug.html`). Off by default. |
+| `N8N_INSTANCE_AI_EVAL_INSTANCE` | No | Set to `true` on a throwaway eval instance, never on a daily dev instance. Feature flags then come only from env overrides (`N8N_FEATURE_FLAG_OVERRIDES`, `N8N_INSTANCE_AI_*_ENABLED`): every flag-gated feature runs its default arm unless a run turns it on, instead of each fresh instance drawing its own flags from the live PostHog rollout. It also lets an eval run reset Remove Duplicates history between scenarios. `run-eval-lanes.sh` and LangTracer's eval n8n containers (compose bundle, Kubernetes pool) set it. A dispatcher pointed at an n8n you start yourself does not: set it on that n8n. When a feature reaches 100% rollout, delete its flag from the code or add it to the eval overrides, or evals keep testing the old path. |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
 
@@ -563,6 +564,72 @@ Verbose output lists each trial's completed tool calls with argument previews.
 For data-table routing, look for `load_skill(skillId="data-table-manager")`
 and `data-tables(action="list")`, and verify there are no planning,
 workflow-builder, or spawned-agent entries in the spawned-agent section.
+
+### Routing mode
+
+Routing mode measures which route the orchestrator takes for a request: build
+an Agent, build a workflow, do the task once, debug, answer, ask a question,
+do many tasks, or decline. Before each tool call that is not read-only, a judge
+reads what the Assistant did so far and stops the trial when it has picked a
+route. Read-only calls (loading a skill, reading nodes, credentials or docs,
+searching the web) skip the judge. A trial takes seconds, not minutes.
+
+```bash
+pnpm eval:discovery --cases-dir <dir> --timeout 120000
+```
+
+The runner reads each `route-<slug>.json` file in `<dir>`. A case is in the
+format that LangTracer exports. The tags give the expected route:
+
+- `routing` marks the file as a routing case.
+- `bucket:<route>` is the main expected route. The summary groups cases by it.
+- `accepts:<token>` is another route that passes. A case can have more than
+  one. The bucket always passes, except `bucket:clarify`: a clarify case must
+  list the questions that pass, for example `accepts:clarify:open`. A token
+  can add a steer: `<route>:agent` passes a steer toward an Agent, and
+  `<route>:open` passes any steer except workflow only. This works for
+  `clarify` and `answer`.
+
+A case can add a second user turn with only `[stage directions]`: the facts
+that a user proxy uses to answer a question, for example
+`[Customers message the shop all day and want answers.]`. The proxy answers
+up to 2 accepted questions, and the trial passes only on the route after the
+last answer. If the proxy finds no question to answer in a text reply, the
+trial is graded on that question. `after:<route>` gives the routes that pass
+after an answer.
+Without it, the accepted routes without a steer pass. A further question passes
+when it steers to an `after` artifact.
+A `bucket:clarify` case with stage directions needs an `after:<route>` tag.
+
+A case can start with state. The stub instance and the thread then hold it
+before the turn:
+
+```json
+{
+	"complexity": "simple",
+	"tags": ["routing", "bucket:debug"],
+	"seed": {
+		"mode": "inline",
+		"workflows": [{ "id": "wf-1", "name": "Sync orders", "nodes": [], "connections": {} }],
+		"priorRuns": [{ "workflow": "wf-1", "hints": "The HTTP Request node returned 401." }]
+	},
+	"credentials": [{ "type": "slackApi" }],
+	"conversation": [{ "role": "user", "text": "It failed again.", "attach": { "workflow": "wf-1" } }],
+	"processExpectations": ["Routes to debug"]
+}
+```
+
+- `seed.messages` are earlier messages in the thread.
+- `seed.workflows` and `seed.dataTables` are on the instance.
+- `seed.priorRuns` are failed runs. `hints` is the error of the run.
+- `attach` is the workflow or Agent (from `seed.agents`) the user has open. The
+  turn sends it in the same `<thread-context>` block as production.
+- `credentials` are accounts. Each account passes its connection test, unless
+  it is `blank` or `valid: false`.
+
+The stub instance cannot replay a LangSmith thread, sign in to a browser, or
+hold folders or projects. The runner skips cases that need them and prints
+their ids.
 
 ## Pairwise evals
 

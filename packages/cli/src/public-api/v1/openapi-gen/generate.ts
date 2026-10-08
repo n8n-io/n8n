@@ -15,6 +15,7 @@ import {
 	type NamedResponseDto,
 	type SchemaResolver,
 } from './decorator-routes';
+import { applySchemaModifiers } from './schema-modifiers';
 
 const COMPONENT_SCHEMA_REF = /^#\/components\/schemas\/(.+)$/;
 const SHARED_SCHEMA_DIR = 'shared/spec/schemas';
@@ -88,6 +89,8 @@ export function buildArtifactsFromRegistry(
 		openapi: '3.0.0',
 		info: { title: 'throwaway', version: '0.0.0' },
 	});
+
+	applySchemaModifiers(document);
 
 	const artifacts: GeneratedArtifact[] = [];
 

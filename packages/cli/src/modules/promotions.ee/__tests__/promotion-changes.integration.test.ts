@@ -40,6 +40,7 @@ import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
 import { PromotionConfigRepository } from '../database/repositories/promotion-config.repository';
+import { PromotionConnectionProjectRepository } from '../database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionsService } from '../promotions.service';
@@ -60,6 +61,7 @@ const server = setupTestServer({
 let remoteFolder: string;
 
 beforeEach(async () => {
+	await Container.get(PromotionConnectionProjectRepository).delete({});
 	await Container.get(PromotionConfigRepository).delete({});
 	await Container.get(PromotionConnectionRepository).delete({});
 	await Container.get(PromotionProviderRepository).delete({});
@@ -134,6 +136,48 @@ async function remoteHead(): Promise<string> {
 	return (await simpleGit(remoteFolder).revparse(['main'])).trim();
 }
 
+/** The source a preview reports for a connection created by `createConnection`. */
+async function sourceOf(connectionId: string, direction: PromotionDirection) {
+	const config = await Container.get(PromotionConfigRepository).findByConnectionAndDirection(
+		connectionId,
+		direction,
+	);
+	return { configId: config?.id, branchName: 'main' };
+}
+
+it('previews against the connection linked to the project, not the instance one', async () => {
+	const owner = await createOwner();
+	const linked = await createTeamProject('Linked', owner);
+	const other = await createTeamProject('Other', owner);
+	const instance = await createConnection();
+	const projectConnection = await Container.get(PromotionConnectionRepository).insertConnection({
+		name: 'Project',
+		scope: 'projects',
+		providerId: instance.providerId,
+		target: { schemaVersion: 1, remoteUrl: remoteFolder },
+	});
+	const projectConfig = await Container.get(PromotionConfigRepository).insertConfig({
+		connectionId: projectConnection.id,
+		direction: 'promote',
+		name: 'Promote',
+		settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
+	});
+	await Container.get(PromotionConnectionProjectRepository).linkProject(
+		linked.id,
+		projectConnection.id,
+	);
+	await Container.get(PromotionsService).clone(projectConnection.id, 'promote');
+	const agent = server.authAgentFor(owner);
+
+	const linkedPreview = await agent.get(`/promotions/${linked.id}/changes/promote`).expect(200);
+	expect(linkedPreview.body.data.source).toEqual({
+		configId: projectConfig.id,
+		branchName: 'production',
+	});
+	const otherPreview = await agent.get(`/promotions/${other.id}/changes/promote`).expect(200);
+	expect(otherPreview.body.data.source).toEqual(await sourceOf(instance.id, 'promote'));
+}, 30_000);
+
 it('lists new, changed, moved, archived, restored and deleted workflows through the endpoint', async () => {
 	const owner = await createOwner();
 	const project = await createTeamProject('Preview', owner);
@@ -162,6 +206,7 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	});
 	expect((await agent.get(endpoint).expect(200)).body.data).toEqual({
 		commitSha: await remoteHead(),
+		source: await sourceOf(connection.id, 'promote'),
 		changes: [],
 	});
 
@@ -407,6 +452,10 @@ it('detects variable and data table changes without reporting shadowed or unrela
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
 	await variables.update(scoped.id, { value: 'changed project' });
 	await Container.get(VariablesService).updateCache();
+	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
+	// The workflow falls back to the global variable.
+	await variables.delete(scoped.id);
+	await Container.get(VariablesService).updateCache();
 	await tables.addColumn(table.id, project.id, { name: 'total', type: 'number' });
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
 		expect.objectContaining({ id: withTable.id, status: 'modified', dependencyCount: 1 }),
@@ -416,7 +465,7 @@ it('detects variable and data table changes without reporting shadowed or unrela
 		commitMessage: 'Dependencies',
 		canExportVariableValues: true,
 	});
-	await variables.delete([scoped.id, global.id]);
+	await variables.delete(global.id);
 	await Container.get(VariablesService).updateCache();
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
 		expect.objectContaining({ id: withVariable.id, status: 'modified', dependencyCount: 1 }),
@@ -462,15 +511,17 @@ it('lists what applying the branch changes on this instance, named and archived 
 	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
 
 	const synced = await agent.get(applyEndpoint).expect(200);
-	expect(synced.body.data).toEqual({ commitSha: baseline, changes: [] });
+	expect(synced.body.data).toEqual({
+		commitSha: baseline,
+		source: await sourceOf(connection.id, 'apply'),
+		changes: [],
+	});
 
 	await workflows.update(renamed.id, { name: 'Local name', settings: { executionOrder: 'v1' } });
 	await workflows.update(archived.id, { isArchived: false });
 	await workflows.delete(incoming.id);
 	const outgoing = await createWorkflow({ name: 'Outgoing', nodes: [], connections: {} }, project);
-	await Container.get(VariablesRepository).update(variable.id, {
-		value: 'https://after.example.com',
-	});
+	await Container.get(VariablesRepository).delete(variable.id);
 	await Container.get(VariablesService).updateCache();
 
 	const response = await agent.get(applyEndpoint).expect(200);
@@ -523,8 +574,54 @@ it('lists what applying the branch changes on this instance, named and archived 
 		canExportVariableValues: true,
 	});
 	const after = await agent.get(applyEndpoint).expect(200);
-	expect(after.body.data).toEqual({ commitSha: await remoteHead(), changes: [] });
+	expect(after.body.data).toEqual({
+		commitSha: await remoteHead(),
+		source: await sourceOf(connection.id, 'apply'),
+		changes: [],
+	});
 	expect(after.body.data.commitSha).not.toBe(baseline);
+}, 30_000);
+
+it('counts a variable on apply only when this instance lacks it in the scope of the branch', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Destination', owner);
+	const promoted = await createVariable('API_URL', 'https://source.example.com');
+	await Container.get(VariablesService).updateCache();
+	const dependent = await buildWorkflowReferencingVariables({
+		name: 'Dependent',
+		project,
+		variableNames: ['API_URL'],
+	});
+	const connection = await createConnection(['promote', 'apply']);
+	await Container.get(PromotionsService).promote(connection.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	const agent = server.authAgentFor(owner);
+	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
+	const variables = Container.get(VariablesRepository);
+
+	// A binding creates the variable with a new ID and the destination's own value.
+	await variables.delete(promoted.id);
+	const bound = await createVariable('API_URL', 'https://destination.example.com');
+	await Container.get(VariablesService).updateCache();
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
+
+	// A project variable that shadows the global one leaves the global out of this instance export.
+	await variables.save({
+		id: 'ProjectUrl',
+		key: 'API_URL',
+		value: 'https://project.example.com',
+		project,
+	});
+	await Container.get(VariablesService).updateCache();
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
+
+	await variables.delete(bound.id);
+	await Container.get(VariablesService).updateCache();
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([
+		expect.objectContaining({ id: dependent.id, status: 'modified', dependencyCount: 1 }),
+	]);
 }, 30_000);
 
 it('answers for a destination that has only an apply configuration', async () => {
@@ -564,6 +661,7 @@ it('answers for a destination that has only an apply configuration', async () =>
 	const response = await agent.get(applyEndpoint).expect(200);
 	expect(response.body.data).toEqual({
 		commitSha: await remoteHead(),
+		source: await sourceOf(connection.id, 'apply'),
 		changes: [expect.objectContaining({ id: workflow.id, name: 'Local only', status: 'new' })],
 	});
 	await agent.get(endpoint).expect(400);

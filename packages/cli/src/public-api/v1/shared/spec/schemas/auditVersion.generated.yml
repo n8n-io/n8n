@@ -4,8 +4,7 @@ properties:
     type: string
   nodes:
     type: array
-    items:
-      nullable: true
+    items: {}
   createdAt:
     type: string
   description:

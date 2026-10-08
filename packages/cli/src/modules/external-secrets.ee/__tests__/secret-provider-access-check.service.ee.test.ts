@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 
 import { SecretsProviderAccessCheckService } from '../secret-provider-access-check.service.ee';
 
