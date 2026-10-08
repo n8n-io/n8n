@@ -38,8 +38,6 @@ export function inboxItemLocation(item: InboxItem, route?: InboxRoute): RouteLoc
 	const next: LocationQuery = { ...route?.query };
 	const selected = route ? selectionFromRoute(route) : null;
 	if (selected?.type !== item.type || selected.id !== item.id) delete next.tab;
-	delete next.type;
-	delete next.itemId;
 	delete next.projectId;
 	delete next.workflowId;
 	if (item.type === 'self_healing_result') {

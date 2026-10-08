@@ -98,7 +98,7 @@ function onSelect(item: InboxItem) {
 function onClearSelection() {
 	if (!isOnInbox()) return;
 	const query = { ...route.query };
-	for (const key of ['type', 'itemId', 'projectId', 'workflowId', 'tab']) delete query[key];
+	for (const key of ['projectId', 'workflowId', 'tab']) delete query[key];
 	void router.replace({ name: INBOX_VIEW, query });
 }
 function onActiveTabChange(tab: 'open' | 'closed') {

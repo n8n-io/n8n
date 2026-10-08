@@ -28,21 +28,11 @@ const result = {
 	completedAt: '',
 } as const;
 
-it.each([
-	['/reviews/review-1', '/inbox/reviews/review-1'],
-	['/inbox?type=workflow_review&itemId=review-1', '/inbox/reviews/review-1'],
-	[
-		'/inbox?type=self_healing_result&itemId=result-1&projectId=project&workflowId=workflow',
-		'/inbox/assistant-results/result-1',
-	],
-])('redirects %s and preserves filters and the detail tab', async (legacyUrl, path) => {
+it('redirects an old review link and preserves filters and the detail tab', async () => {
 	const router = createInboxRouter();
-	await router.push(
-		`${legacyUrl}${legacyUrl.includes('?') ? '&' : '?'}state=closed&tab=changes&filter=a&filter=b`,
-	);
-	expect(router.currentRoute.value.path).toBe(path);
+	await router.push('/reviews/review-1?state=closed&tab=changes&filter=a&filter=b');
+	expect(router.currentRoute.value.path).toBe('/inbox/reviews/review-1');
 	expect(router.currentRoute.value.query).toEqual({
-		...(path.includes('assistant-results') ? { projectId: 'project', workflowId: 'workflow' } : {}),
 		state: 'closed',
 		tab: 'changes',
 		filter: ['a', 'b'],
@@ -71,15 +61,6 @@ it.each([
 	const router = createInboxRouter();
 	await router.push(path);
 	expect(selectionFromRoute(router.currentRoute.value)).toEqual(selection);
-});
-
-it('uses the item in the path when stale selection query parameters exist', async () => {
-	const router = createInboxRouter();
-	await router.push('/inbox/reviews/review-1?type=self_healing_result&itemId=old');
-	expect(selectionFromRoute(router.currentRoute.value)).toEqual({
-		type: 'workflow_review',
-		id: 'review-1',
-	});
 });
 
 it.each(['', '?projectId=project', '?workflowId=workflow'])(

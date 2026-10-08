@@ -3,19 +3,9 @@ import type { RouteRecordSingleView } from 'vue-router';
 
 const inboxView = {
 	component: async () => await import('./views/InboxView.vue'),
-	async beforeEnter(to) {
+	async beforeEnter() {
 		const { useSettingsStore } = await import('@n8n/stores/settings.store');
-		if (useSettingsStore().settings.inbox?.enabled !== true) return '/';
-		const { type, itemId, ...query } = to.query;
-		if (to.name === 'Inbox' && typeof itemId === 'string' && itemId) {
-			if (type === 'workflow_review') {
-				return { name: 'WorkflowReviewRequestsView', params: { reviewId: itemId }, query };
-			}
-			if (type === 'self_healing_result') {
-				return { name: 'InboxAssistantResult', params: { resultId: itemId }, query };
-			}
-		}
-		return;
+		return useSettingsStore().settings.inbox?.enabled === true || '/';
 	},
 	meta: { layout: 'default', middleware: ['authenticated', 'custom'] },
 } satisfies Pick<RouteRecordSingleView, 'component' | 'beforeEnter' | 'meta'>;
