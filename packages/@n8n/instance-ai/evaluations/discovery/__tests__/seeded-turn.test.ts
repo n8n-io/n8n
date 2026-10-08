@@ -1,9 +1,4 @@
-import {
-	buildReplyTurn,
-	buildTurnMessage,
-	createSeededMemory,
-	STUB_PROJECT_ID,
-} from '../seeded-turn';
+import { buildTurnMessage, createSeededThread, STUB_PROJECT_ID } from '../seeded-turn';
 import type { DiscoveryScenario } from '../types';
 
 const seed = {
@@ -55,51 +50,22 @@ describe('buildTurnMessage', () => {
 	});
 });
 
-describe('buildReplyTurn', () => {
-	it('sends the reply with the first turn as history and no attachment', () => {
-		const first = { userMessage: 'Why did it fail?', seed, attach: { workflow: 'wf-report' } };
+describe('createSeededThread', () => {
+	it('holds the earlier messages in a new thread', async () => {
+		const { id, memory } = await createSeededThread(seed.messages);
 
-		const reply = buildReplyTurn(first, 'Which run?', 'The 6am run.');
-
-		expect(reply.userMessage).toBe('The 6am run.');
-		expect(reply.attach).toBeUndefined();
-		expect(reply.seed?.workflows).toEqual(seed.workflows);
-		expect(reply.seed?.messages.map(({ role, content }) => [role, content])).toEqual([
-			['user', seed.messages[0].content],
-			['user', [{ type: 'text', text: buildTurnMessage(first) }]],
-			['assistant', [{ type: 'text', text: 'Which run?' }]],
-		]);
-	});
-
-	it('makes a seed when the first turn has none, and keeps both turns for a second reply', () => {
-		const first: DiscoveryScenario = { userMessage: 'Hi' };
-
-		const reply = buildReplyTurn(first, 'What do you need?', 'A report.');
-		const second = buildReplyTurn(reply, 'Daily or weekly?', 'Daily.');
-
-		expect(second.seed?.messages.map(({ role }) => role)).toEqual([
-			'user',
-			'assistant',
-			'user',
-			'assistant',
-		]);
-	});
-});
-
-describe('createSeededMemory', () => {
-	it('returns no memory without earlier messages', async () => {
-		expect(await createSeededMemory('thread-1', 'user-1', [])).toBeUndefined();
-	});
-
-	it('holds the earlier messages in the thread', async () => {
-		const memory = await createSeededMemory('thread-1', 'user-1', seed.messages);
-
-		const messages = await memory?.getMessages('thread-1');
+		const messages = await memory.getMessages(id);
 		expect(messages).toHaveLength(1);
-		expect(messages?.[0]).toMatchObject({
+		expect(messages[0]).toMatchObject({
 			id: 'm1',
 			role: 'user',
 			createdAt: new Date('2026-10-01T10:00:00.000Z'),
 		});
+	});
+
+	it('starts an empty thread without earlier messages', async () => {
+		const { id, memory } = await createSeededThread();
+
+		expect(await memory.getMessages(id)).toEqual([]);
 	});
 });

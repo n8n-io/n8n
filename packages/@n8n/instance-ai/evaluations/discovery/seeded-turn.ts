@@ -1,14 +1,15 @@
 // ---------------------------------------------------------------------------
 // What a seeded routing case adds to the orchestrator's turn. An open workflow
 // or Agent goes in the same `<thread-context>` block as production. Earlier
-// messages, and the first turn of a reply, go into memory as thread history.
+// messages go into memory as thread history.
 // ---------------------------------------------------------------------------
 
 import { Memory, type AgentDbMessage, type BuiltMemory } from '@n8n/agents';
 import { jsonParse } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 
 import type { DiscoveryScenario } from './types';
-import { CaseSeedSchema } from '../harness/schema';
+import { STUB_USER_ID } from '../harness/stub-services';
 // Deep relative import, like the node-definition resolver in harness/stub-services.ts:
 // the eval must render the exact block production renders. A follow-up PR moves
 // these builders into this package.
@@ -45,46 +46,27 @@ export function buildTurnMessage({ userMessage, attach, seed }: DiscoveryScenari
 	return [block, userMessage].filter(Boolean).join('\n\n');
 }
 
-/**
- * The user's reply as the next turn. The first turn's message and the
- * Assistant's text become thread history. The reply has no attachment.
- */
-export function buildReplyTurn<T extends DiscoveryScenario>(
-	scenario: T,
-	assistantText: string,
-	reply: string,
-): T {
-	// The schema expands the `{role, text}` shorthand and orders the timestamps.
-	const history = CaseSeedSchema.parse({
-		mode: 'inline',
-		messages: [
-			...(scenario.seed?.messages ?? []),
-			{ role: 'user', text: buildTurnMessage(scenario) },
-			{ role: 'assistant', text: assistantText },
-		],
-	});
-	if (history.mode !== 'inline') throw new Error('A reply turn needs an inline seed');
-	const seed = scenario.seed ? { ...scenario.seed, messages: history.messages } : history;
-	return { ...scenario, userMessage: reply, attach: undefined, seed };
+/** An in-memory thread. Each turn of one conversation goes on in it, so later turns see the earlier ones. */
+export interface SeededThread {
+	id: string;
+	memory: BuiltMemory;
 }
 
-/** An in-memory thread that holds the seeded messages, or none when there are none. */
-export async function createSeededMemory(
-	threadId: string,
-	resourceId: string,
+/** A new thread that holds the earlier messages. */
+export async function createSeededThread(
 	messages: NonNullable<DiscoveryScenario['seed']>['messages'] = [],
-): Promise<BuiltMemory | undefined> {
-	if (messages.length === 0) return undefined;
+): Promise<SeededThread> {
+	const id = 'discovery-thread-' + nanoid(6);
 	const { memory } = new Memory().build();
-	await memory.saveThread({ id: threadId, resourceId });
+	await memory.saveThread({ id, resourceId: STUB_USER_ID });
 	await memory.saveMessages({
-		threadId,
-		resourceId,
+		threadId: id,
+		resourceId: STUB_USER_ID,
 		// The case schema checked the envelope; the store keeps the rest verbatim.
 		messages: messages.map((message) => ({
 			...jsonParse<AgentDbMessage>(JSON.stringify(message)),
 			createdAt: new Date(message.createdAt),
 		})),
 	});
-	return memory;
+	return { id, memory };
 }

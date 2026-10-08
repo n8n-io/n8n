@@ -16,18 +16,13 @@
 // Routing mode (`--cases-dir`) loads `route-*.json` cases from that folder, in
 // the format LangTracer exports. A judge ends each trial as soon as the
 // Assistant picks a route. When a case has stage directions, the user proxy
-// answers one accepted question first: on the card in the same run, or as a
-// reply turn after a question in text. The CLI prints a pass rate per bucket.
+// answers up to 2 accepted questions: on the card in the same run, or in a
+// reply turn of the same thread after a question in text. The CLI prints a pass rate per bucket.
 // It always exits 0: it measures routing and does not gate a merge.
 // ---------------------------------------------------------------------------
 
-import {
-	runDiscoveryScenario,
-	runOrchestratorTurn,
-	type DiscoveryRunResult,
-	type OrchestratorTurnResult,
-} from './runner';
-import { buildReplyTurn } from './seeded-turn';
+import { runDiscoveryScenario, runOrchestratorTurn, type DiscoveryRunResult } from './runner';
+import { createSeededThread } from './seeded-turn';
 import type { DiscoveryTestCase } from './types';
 import { buildResumeData, toConfirmationData } from '../../src/runtime/confirmation-payload';
 import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
@@ -46,7 +41,6 @@ import {
 	createRouteWatcher,
 	MAX_ANSWERS,
 	routeLabel,
-	traceSteps,
 	trialPasses,
 	type RouteResolution,
 } from '../routing/grade';
@@ -309,46 +303,9 @@ function printSummary(aggregates: ScenarioAggregate[], args: CliArgs): void {
 // Routing mode
 // ---------------------------------------------------------------------------
 
-/** Runs one routing turn under a fresh route watcher. */
-async function runRoutingTurn(
-	args: CliArgs,
-	scenario: RoutingCase,
-	proxy?: UserProxyLlm,
-	maxAnswers?: number,
-	earlierEvents: CapturedEvent[] = [],
-): Promise<{ turn: OrchestratorTurnResult; resolution: RouteResolution }> {
-	const watcher = createRouteWatcher(
-		judgeRoute,
-		proxy ? (question) => canReplyTo(scenario, question) : undefined,
-		maxAnswers,
-	);
-	const turn = await runOrchestratorTurn({
-		scenario,
-		modelId: args.modelId,
-		maxSteps: args.maxSteps,
-		timeoutMs: args.timeoutMs,
-		stopBeforeTool: watcher.beforeToolCall,
-		...(proxy
-			? {
-					answerQuestions: async (suspension, events) => {
-						proxy.ingestEvents([...earlierEvents, ...events]);
-						const answer = await proxy.respondToConfirmation({
-							timestamp: Date.now(),
-							type: 'confirmation-request',
-							data: { payload: suspension.suspendPayload },
-						});
-						return buildResumeData(toConfirmationData(answer));
-					},
-				}
-			: {}),
-		...(args.nodesJsonPath ? { nodesJsonPath: args.nodesJsonPath } : {}),
-	});
-	return { turn, resolution: await watcher.resolve(turn) };
-}
-
 /**
  * One routing trial. A question in text ends the turn, so the user proxy
- * replies in a new turn with the earlier turns as history.
+ * replies in a new turn of the same thread.
  */
 async function runRoutingTrial(args: CliArgs, routingCase: RoutingCase) {
 	const proxy = routingCase.direction
@@ -359,6 +316,8 @@ async function runRoutingTrial(args: CliArgs, routingCase: RoutingCase) {
 				],
 			})
 		: undefined;
+	// A reply turn reads the earlier turns from the thread, with their question cards and answers.
+	const thread = proxy ? await createSeededThread(routingCase.seed?.messages) : undefined;
 	let scenario = routingCase;
 	// The text question that the last reply answered, with the questions before it.
 	let earlier: RouteResolution | undefined;
@@ -367,31 +326,55 @@ async function runRoutingTrial(args: CliArgs, routingCase: RoutingCase) {
 	const events: CapturedEvent[] = [];
 	for (;;) {
 		const used = earlier ? answeredQuestions(earlier) + 1 : 0;
-		const run = await runRoutingTurn(args, scenario, proxy, MAX_ANSWERS - used, events);
-		durationMs += run.turn.durationMs;
-		const resolution = earlier ? afterQuestion(run.resolution, earlier) : run.resolution;
+		const watcher = createRouteWatcher(
+			judgeRoute,
+			proxy ? (question) => canReplyTo(routingCase, question) : undefined,
+			MAX_ANSWERS - used,
+		);
+		const turn = await runOrchestratorTurn({
+			scenario,
+			modelId: args.modelId,
+			maxSteps: args.maxSteps,
+			timeoutMs: args.timeoutMs,
+			stopBeforeTool: watcher.beforeToolCall,
+			...(proxy
+				? {
+						thread,
+						answerQuestions: async (suspension, turnEvents) => {
+							proxy.ingestEvents([...events, ...turnEvents]);
+							const answer = await proxy.respondToConfirmation({
+								timestamp: Date.now(),
+								type: 'confirmation-request',
+								data: { payload: suspension.suspendPayload },
+							});
+							return buildResumeData(toConfirmationData(answer));
+						},
+					}
+				: {}),
+			...(args.nodesJsonPath ? { nodesJsonPath: args.nodesJsonPath } : {}),
+		});
+		const turnResolution = await watcher.resolve(turn);
+		durationMs += turn.durationMs;
+		const resolution = earlier ? afterQuestion(turnResolution, earlier) : turnResolution;
 		const result = {
-			turn: { ...run.turn, durationMs },
+			turn: { ...turn, durationMs },
 			resolution,
 			passed: trialPasses(routingCase, resolution),
 		};
 		if (
 			!proxy ||
 			answeredQuestions(resolution) >= MAX_ANSWERS ||
-			run.turn.streamStatus !== 'completed' ||
-			!canReplyTo(routingCase, run.resolution)
+			turn.streamStatus !== 'completed' ||
+			!canReplyTo(routingCase, turnResolution)
 		) {
 			return result;
 		}
-		events.push(...run.turn.events);
+		events.push(...turn.events);
 		proxy.ingestEvents(events);
 		const reply = await proxy.decideFollowUp();
 		// ponytail: a proxy that sees nothing to answer leaves the trial graded on the question.
 		if (reply.kind !== 'followUp') return result;
-		const assistantText = traceSteps(run.turn.instanceEvents)
-			.flatMap((step) => (step.kind === 'text' ? [step.text] : []))
-			.join('\n\n');
-		scenario = buildReplyTurn(scenario, assistantText, reply.message);
+		scenario = { ...routingCase, userMessage: reply.message, attach: undefined };
 		earlier = resolution;
 	}
 }

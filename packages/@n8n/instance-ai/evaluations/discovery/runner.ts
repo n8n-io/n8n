@@ -37,7 +37,7 @@ import {
 import { credentialAutoSetupResponder } from './credential-approval';
 import { evaluateDiscoveryTrial } from './expected-tools-invoked';
 import { resolveStreamStatus } from './stream-status';
-import { buildTurnMessage, createSeededMemory } from './seeded-turn';
+import { buildTurnMessage, createSeededThread, type SeededThread } from './seeded-turn';
 import { createStubLocalMcpServer } from './stub-local-mcp';
 import {
 	createMcpConnectResponder,
@@ -143,6 +143,8 @@ export interface OrchestratorTurnOptions extends Omit<DiscoveryRunOptions, 'scen
 		suspension: SuspensionInfo,
 		events: CapturedEvent[],
 	) => Promise<Record<string, unknown>>;
+	/** The thread of the earlier turns of the same conversation. Unset starts a new thread. */
+	thread?: SeededThread;
 }
 
 export interface OrchestratorTurnResult {
@@ -217,13 +219,12 @@ export async function runOrchestratorTurn(
 		};
 
 		mcpManager = new StubMcpClientManager(createStubMcpToolRegistry(mcpState ?? {}));
-		const threadId = 'discovery-thread-' + nanoid(6);
+		const seedMessages = options.scenario.seed?.messages ?? [];
+		const thread =
+			options.thread ??
+			(seedMessages.length > 0 ? await createSeededThread(seedMessages) : undefined);
+		const threadId = thread?.id ?? 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
-		const memory = await createSeededMemory(
-			threadId,
-			context.userId,
-			options.scenario.seed?.messages,
-		);
 
 		const approvalResponders: ApprovalResponder[] = [
 			credentialAutoSetupResponder,
@@ -253,9 +254,9 @@ export async function runOrchestratorTurn(
 			orchestrationContext,
 			mcpServers: stubMcpServerConfigs(mcpState ?? {}),
 			mcpManager,
-			// Memory only for seeded earlier messages: discovery measures first-step tool dispatch.
+			// Memory only for a thread with history: discovery measures first-step tool dispatch.
 			memoryConfig: {},
-			...(memory ? { memory } : {}),
+			...(thread ? { memory: thread.memory } : {}),
 			thinkingEnabled: false,
 		});
 
@@ -274,7 +275,7 @@ export async function runOrchestratorTurn(
 		const streamSource = normalizeStreamSource(
 			await agent.stream(buildTurnMessage(options.scenario), {
 				maxIterations: maxSteps,
-				...(memory ? { persistence: { threadId, resourceId: context.userId } } : {}),
+				...(thread ? { persistence: { threadId, resourceId: context.userId } } : {}),
 				abortSignal: abortController.signal,
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
