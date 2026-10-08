@@ -42,6 +42,15 @@ const workflowLineageConflict: BlockingIssue = {
 	],
 };
 
+const credentialPolicyViolation: BlockingIssue = {
+	type: 'credential-policy-violation',
+	sourceId: 'c1',
+	name: 'Prod GitHub',
+	credentialType: 'githubApi',
+	usedByWorkflows: ['w1'],
+	violations: [{ kind: 'test-denial', checkId: 'test.check', message: 'Not allowed' }],
+};
+
 const tagUnresolved = (
 	kind: 'rename-drift' | 'name-collision' | 'invalid-name',
 ): BlockingIssue => ({
@@ -70,6 +79,11 @@ describe('toImportBlockedError', () => {
 
 	it('still maps credential-only blocks to 422', () => {
 		const error = toImportBlockedError([credentialUnresolved]);
+		expect(error).toBeInstanceOf(UnprocessableRequestError);
+	});
+
+	it('maps a credential-policy-violation to 422', () => {
+		const error = toImportBlockedError([credentialPolicyViolation]);
 		expect(error).toBeInstanceOf(UnprocessableRequestError);
 	});
 

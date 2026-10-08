@@ -513,3 +513,35 @@ oneOf:
         type: array
         items:
           $ref: '../../../../shared/spec/schemas/policyViolation.yml'
+  - type: object
+    description: >
+      A credential the import would write that the credential-save policy
+      refused, for example a stub of a credential type this instance does not
+      allow. The import stops before any writes.
+    required:
+      - type
+      - sourceId
+      - credentialType
+      - usedByWorkflows
+      - violations
+    properties:
+      type:
+        type: string
+        enum:
+          - credential-policy-violation
+      sourceId:
+        type: string
+        description: Credential id as it appears in the package.
+      name:
+        type: string
+      credentialType:
+        type: string
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: Package workflow ids that use this credential.
+      violations:
+        type: array
+        items:
+          $ref: '../../../../shared/spec/schemas/policyViolation.yml'

@@ -581,6 +581,15 @@ export type BlockingIssue =
 			sourceWorkflowId: string;
 			name: string;
 			violations: PolicyViolation[];
+	  }
+	| {
+			/** A credential write the import would make that the `credentialSave` policy refused. */
+			type: 'credential-policy-violation';
+			sourceId: string;
+			name?: string;
+			credentialType: string;
+			usedByWorkflows: string[];
+			violations: PolicyViolation[];
 	  };
 
 /**

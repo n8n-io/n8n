@@ -31,6 +31,14 @@ type BlockingIssue =
 	  }
 	| { type: 'folder-removal-forbidden'; folderId: string; name: string; projectId: string }
 	| { type: 'credential-unresolved'; kind: string; sourceId: string; usedByWorkflows: string[] }
+	| {
+			type: 'credential-policy-violation';
+			sourceId: string;
+			name?: string;
+			credentialType: string;
+			usedByWorkflows: string[];
+			violations: Array<{ message: string }>;
+	  }
 	| { type: 'variable-unresolved'; name: string; usedByWorkflows: string[] }
 	| { type: 'variable-conflict'; name: string; projectId?: string; usedByWorkflows: string[] }
 	| {
@@ -125,6 +133,13 @@ function formatIssue(issue: unknown): string {
 	if (it.type === 'credential-unresolved') {
 		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
 		return `credential ${it.sourceId} unresolved (${it.kind}), used by workflow(s) ${usedBy}`;
+	}
+	if (it.type === 'credential-policy-violation') {
+		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
+		const reasons = Array.isArray(it.violations)
+			? it.violations.map(({ message }) => message).join('; ')
+			: '';
+		return `credential "${it.name ?? it.sourceId}" (${it.sourceId}, ${it.credentialType}) refused by policy: ${reasons}, used by workflow(s) ${usedBy}`;
 	}
 	if (it.type === 'variable-unresolved') {
 		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';

@@ -1,4 +1,4 @@
-import { credentialBlockingFailures } from '../credential-missing-mode';
+import { credentialBlockingFailures, credentialsToStub } from '../credential-missing-mode';
 import { createFailure } from '../credential.types';
 
 describe('credentialBlockingFailures', () => {
@@ -67,5 +67,44 @@ describe('credentialBlockingFailures', () => {
 				}),
 			).toEqual([unknownType, sourceNotFound]);
 		});
+	});
+});
+
+describe('credentialsToStub', () => {
+	const notFound = (id: string, usedByWorkflows = ['wf-1']) =>
+		createFailure({ id, name: id, type: 'githubApi', usedByWorkflows }, 'not_found');
+
+	it('stubs nothing under must-preexist', () => {
+		expect(
+			credentialsToStub('must-preexist', { successes: new Map(), failures: [notFound('cred-1')] }),
+		).toEqual([]);
+	});
+
+	it('stubs only not_found failures without an explicit binding target', () => {
+		const stubbable = notFound('cred-1');
+		const bound = { ...notFound('cred-2'), targetId: 'target-missing' };
+		const unknownType = createFailure(
+			{ id: 'cred-3', name: 'X', type: 'bad', usedByWorkflows: ['wf-1'] },
+			'unknown_type',
+		);
+
+		expect(
+			credentialsToStub('create-stub', {
+				successes: new Map(),
+				failures: [stubbable, bound, unknownType],
+			}),
+		).toEqual([stubbable]);
+	});
+
+	it('keeps one failure per source id, in first-seen order', () => {
+		const repeated = notFound('cred-1', ['wf-3']);
+		const other = notFound('cred-2');
+
+		expect(
+			credentialsToStub('create-stub', {
+				successes: new Map(),
+				failures: [notFound('cred-1', ['wf-1']), other, repeated],
+			}),
+		).toEqual([repeated, other]);
 	});
 });

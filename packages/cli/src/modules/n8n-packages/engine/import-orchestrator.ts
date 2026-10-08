@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
@@ -67,6 +68,7 @@ import type {
 } from '../n8n-packages.types';
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
 import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
+import { CredentialSavePolicyGate } from './credential-save-policy';
 import { toImportBlockedError } from './import-blocked.error';
 import { assertDataTableWritesAllowed, assertVariableWritesAllowed } from './import-gates';
 
@@ -137,6 +139,7 @@ export class ImportOrchestrator {
 		private readonly workflowRemover: WorkflowRemover,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly contentImportPolicyGate: ContentImportPolicyGate,
+		private readonly credentialSavePolicyGate: CredentialSavePolicyGate,
 		private readonly nodeTypes: NodeTypes,
 		private readonly licenseState: LicenseState,
 	) {}
@@ -257,11 +260,18 @@ export class ImportOrchestrator {
 			(nodeType) => this.nodeTypes.getSupportedVersions(nodeType),
 		);
 
+		const actor: PolicyActor = { kind: 'user', user: context.user };
 		const refusedByPolicy = await this.contentImportPolicyGate.refusedWorkflows(
 			workflowPlan.items,
 			context.projectId,
 			contentImportTransport(input.importSource),
-			{ kind: 'user', user: context.user },
+			actor,
+		);
+		const refusedStubs = await this.credentialSavePolicyGate.refusedStubs(
+			credentialRequest,
+			credentialPlan,
+			context.projectId,
+			actor,
 		);
 
 		const blockingIssues = this.collectBlockingIssues({
@@ -279,7 +289,7 @@ export class ImportOrchestrator {
 			missingNodeTypeMode: options.missingNodeTypeMode,
 		});
 
-		blockingIssues.push(...refusedByPolicy);
+		blockingIssues.push(...refusedByPolicy, ...refusedStubs);
 
 		return {
 			input,

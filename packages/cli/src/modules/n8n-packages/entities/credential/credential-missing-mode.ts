@@ -28,6 +28,26 @@ export function credentialBlockingFailures(
 	return BLOCKING_FAILURES[mode](resolution);
 }
 
+/**
+ * The stubs the import creates: one stubbable `not_found` failure per source id (the last one
+ * seen), and none unless the mode is `create-stub`. Apply writes these and the plan checks them
+ * against policy, so both read this one list.
+ */
+export function credentialsToStub(
+	mode: CredentialMissingMode,
+	resolution: CredentialResolution,
+): CredentialResolutionFailure[] {
+	if (mode !== 'create-stub') return [];
+
+	return [
+		...new Map(
+			resolution.failures
+				.filter((failure) => canStubNotFoundFailure(failure))
+				.map((failure) => [failure.sourceId, failure] as const),
+		).values(),
+	];
+}
+
 /** Package workflow ids that should not be published because they use stubbed credentials. */
 export function workflowsBlockedFromPublish(
 	requirements: PackageCredentialRequirement[] | undefined,
