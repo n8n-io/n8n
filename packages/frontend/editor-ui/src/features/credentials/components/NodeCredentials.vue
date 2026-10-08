@@ -35,6 +35,7 @@ import {
 	AI_GATEWAY_UNSUPPORTED_NODE_TYPES,
 	ChatHubToolContextKey,
 	CREDENTIAL_ONLY_NODE_PREFIX,
+	GATEWAY_CREDITS_DOCS_URL,
 } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
@@ -1489,7 +1490,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					<N8nTooltip
 						as-child
 						placement="top"
-						:content="i18n.baseText('aiGateway.picker.gatewayCreditsOnly')"
+						:content-class="$style.gatewayCreditsTooltip"
+						:content="
+							i18n.baseText('aiGateway.picker.gatewayCreditsOnly', {
+								interpolate: { docURL: GATEWAY_CREDITS_DOCS_URL },
+							})
+						"
 					>
 						<div :class="$style.gatewayCreditsOnly" data-test-id="node-credentials-gateway-only">
 							<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
@@ -2028,6 +2034,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 	color: var(--color--text--shade-1);
 	cursor: default;
+}
+
+// As wide as the parameter hint tooltips, so it reads as part of the field.
+:global(.n8n-tooltip).gatewayCreditsTooltip {
+	max-width: 400px;
 }
 
 .selectContainer {
