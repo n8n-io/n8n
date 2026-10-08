@@ -574,6 +574,7 @@ export const updatedIconSet = {
 	webhook: Webhook,
 
 	// brand-only
+	'arrow-to-bracket-right': BrandLogIn,
 	// 12px glyph for 12px slots; the 16px set blurs when scaled down
 	'robot-12': BrandRobot12,
 	'n8n-assistant': BrandN8nAssistant,
