@@ -3,6 +3,7 @@ import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types'
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
+import { randomUUID } from 'node:crypto';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { Agent } from '../entities/agent.entity';
@@ -600,5 +601,43 @@ export class AgentRepository extends BaseRepository<Agent> {
 			agent.updatedAt = updatedAt;
 		}
 		return won;
+	}
+
+	/**
+	 * A skill that these agents follow got a new saved version. Give each agent that is in
+	 * sync with its published version a new draft version id, so it shows unpublished
+	 * changes. One conditional UPDATE per agent and no read first, so a concurrent draft
+	 * edit cannot make the skill save fail. `revision` does not move: a draft edit also
+	 * moves `versionId` away from `activeVersionId`, so neither write undoes the other.
+	 * Returns the agents it changed.
+	 */
+	async markDraftChangedIfInSync(
+		agentIds: string[],
+		ctx: OperationContext = {},
+	): Promise<string[]> {
+		const changed: string[] = [];
+		for (const id of agentIds) {
+			const result = await this.managerFor(ctx)
+				.createQueryBuilder()
+				.update(Agent)
+				.set({ versionId: randomUUID() })
+				.where('id = :id', { id })
+				.andWhere('"versionId" = "activeVersionId"')
+				.execute();
+			if ((result.affected ?? 0) > 0) changed.push(id);
+		}
+		return changed;
+	}
+
+	/** The project of each agent, to send an update push to the right project. */
+	async findProjectIdsByIds(
+		ids: string[],
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
+		if (ids.length === 0) return [];
+		return await this.managerFor(ctx).find(Agent, {
+			where: { id: In(ids) },
+			select: ['id', 'projectId'],
+		});
 	}
 }
