@@ -3,7 +3,7 @@ import type { AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, OperationalError } from '@n8n/errors';
 import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -646,6 +646,7 @@ export class SystemAgentExecutionService {
 		let status: SystemAgentTurnStatus = 'completed';
 		let executionId = admission?.executionId;
 		let error: unknown;
+		const formatError = (raw: unknown) => this.formatTurnError(handle, thread, raw);
 		try {
 			const stream = this.turnExecutionService.execute({
 				admittedExecution: admission,
@@ -658,9 +659,12 @@ export class SystemAgentExecutionService {
 					executionId = id;
 				},
 				prepare,
+				formatError,
 			});
 			for await (const chunk of stream) {
-				emitChunkEvents(chunk, send);
+				const errorText = chunk.type === 'error' ? formatError(chunk.error) : undefined;
+				if (errorText !== undefined) send({ type: 'error', message: errorText });
+				else emitChunkEvents(chunk, send);
 				if (chunk.type === 'tool-call-suspended') status = 'suspended';
 				if (chunk.type === 'error' && status !== 'suspended') {
 					status = 'errored';
@@ -671,6 +675,10 @@ export class SystemAgentExecutionService {
 		} catch (caught) {
 			error = caught;
 			status = abortSignal.aborted ? 'cancelled' : 'errored';
+			const errorText = formatError(caught);
+			// The queue consumer sends the message of the thrown error to the client.
+			// Carry the formatted text, so that the live view matches the stored error.
+			if (errorText !== undefined) throw new OperationalError(errorText, { cause: caught });
 			throw caught;
 		} finally {
 			const execution = executionId
@@ -689,6 +697,29 @@ export class SystemAgentExecutionService {
 			if (status !== 'suspended' && status !== 'cancelled') {
 				send({ type: 'done', sessionId: thread.id, executionId: executionId ?? '' });
 			}
+		}
+	}
+
+	/**
+	 * The user-facing text of a turn error from the provider hook. Returns
+	 * `undefined` to keep the raw error: when there is no hook, when the hook
+	 * gives no text, or when the hook throws.
+	 */
+	private formatTurnError(
+		handle: SystemAgentTurnHandle,
+		thread: AgentExecutionThread,
+		error: unknown,
+	): string | undefined {
+		if (!handle.formatError) return undefined;
+		try {
+			const text = handle.formatError(error);
+			return text ? text : undefined;
+		} catch (formatError) {
+			this.logger.warn('System agent error formatter failed', {
+				threadId: thread.id,
+				error: formatError,
+			});
+			return undefined;
 		}
 	}
 }
