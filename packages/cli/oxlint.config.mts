@@ -64,6 +64,8 @@ const engineV2ModuleOnlyImport = {
 
 const METRICS_DATABASE_IMPORT_MESSAGE =
 	'Use DatabaseMetricQueryService for metrics database reads.';
+const METRICS_CLI_IMPORT_MESSAGE =
+	'Metrics collectors import only reviewed cli modules. Use DatabaseMetricQueryService for metrics database reads.';
 
 export default defineConfig({
 	extends: [backendConfig],
@@ -538,6 +540,32 @@ export default defineConfig({
 								allowImportNames: ['toGaugeValue'],
 								allowTypeImports: true,
 								message: METRICS_DATABASE_IMPORT_MESSAGE,
+							},
+							{
+								group: ['**/*.repository', '**/*.repository.*'],
+								allowTypeImports: true,
+								message: METRICS_DATABASE_IMPORT_MESSAGE,
+							},
+							{
+								group: [
+									'@/**',
+									'../**',
+									// gitignore cannot re-include a file under an excluded folder, so re-include each folder first.
+									'!@/constants',
+									'!@/eventbus/',
+									'!@/eventbus/message-event-bus/',
+									'!@/eventbus/message-event-bus/message-event-bus',
+									'!@/events/',
+									'!@/events/maps/',
+									'!@/events/maps/system-task-metrics.event-map',
+									'!@/modules/',
+									'!@/modules/instance-ai/',
+									'!@/modules/instance-ai/instance-ai-run-probe',
+									'!@/services/',
+									'!@/services/database-independent-routes.service',
+								],
+								allowTypeImports: true,
+								message: METRICS_CLI_IMPORT_MESSAGE,
 							},
 						],
 					},
