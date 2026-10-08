@@ -3,6 +3,7 @@ import {
 	N8nButton,
 	N8nCheckbox,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogDescription,
 	N8nDialogFooter,
 } from '@n8n/design-system';
@@ -41,16 +42,18 @@ const chooseReview = () => {
 		:header="i18n.baseText('workflowReviews.publishChoice.title')"
 		@update:open="emit('update:open', $event)"
 	>
-		<N8nDialogDescription :class="$style.description">
-			{{ i18n.baseText('workflowReviews.publishChoice.description') }}
-		</N8nDialogDescription>
+		<N8nDialogBody>
+			<N8nDialogDescription :class="$style.description">
+				{{ i18n.baseText('workflowReviews.publishChoice.description') }}
+			</N8nDialogDescription>
+		</N8nDialogBody>
 		<N8nDialogFooter data-test-id="workflow-publish-choice-dialog" :class="$style.footer">
 			<N8nCheckbox
 				v-model="publishChoiceDismissed"
 				data-test-id="workflow-publish-choice-dont-show-again"
 				:class="$style.dontShowAgain"
 			>
-				<template #label>{{ i18n.baseText('generic.dontShowAgain') }}</template>
+				<template #label> {{ i18n.baseText('generic.dontShowAgain') }}</template>
 			</N8nCheckbox>
 			<div :class="$style.actions">
 				<N8nButton
