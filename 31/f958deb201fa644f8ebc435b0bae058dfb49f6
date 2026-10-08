@@ -1,0 +1,54 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_2ed659fa6b1ae7::t_589f0836f44163 726-730
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiQuestions.vue
+  s_2ed659fa6b1ae7::t_589f0836f44163 27-28,59-68,70,283,561
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_2ed659fa6b1ae7::t_21ccc8e8e6095c 189-195,197,199-200,202,208-209,214-219
+  s_2ed659fa6b1ae7::t_910de1a01a2804 198
+  s_2ed659fa6b1ae7::t_2c243cdba406e2 220
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_2ed659fa6b1ae7::t_7ec18cc6545995 632-635,643,780-797,817-819
+packages/@n8n/instance-ai/src/index.ts
+  s_2ed659fa6b1ae7::t_7ec18cc6545995 313-314
+  s_2ed659fa6b1ae7::t_910de1a01a2804 2-3
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_2ed659fa6b1ae7::t_7ec18cc6545995 11,19,36-37,51,91-92,94-95,99-101,107,110
+  s_2ed659fa6b1ae7::t_fa8ac7d5163189 23-24,88-90,93,96-98
+  s_2ed659fa6b1ae7::t_e27ffc09be5742 47,49,73
+  s_2ed659fa6b1ae7::t_589f0836f44163 52-70,72,74-81,192
+  s_2ed659fa6b1ae7::t_910de1a01a2804 18,20,82-83,102-105,108-109
+  s_2ed659fa6b1ae7::t_8ecd57b1cada39 50
+  s_2ed659fa6b1ae7::t_deb7bbd52547af 193
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_2ed659fa6b1ae7::t_7ec18cc6545995 204,4042
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_2ed659fa6b1ae7::t_1c656ed937a5cd 30-32
+  s_2ed659fa6b1ae7::t_21ccc8e8e6095c 28-29,40-41,47,55-56,62
+  s_2ed659fa6b1ae7::t_910de1a01a2804 4-8,18-20,23-26,36-39
+packages/@n8n/instance-ai/package.json
+  s_2ed659fa6b1ae7::t_910de1a01a2804 36
+packages/@n8n/instance-ai/onboarding/cloud-form.yaml
+  s_2ed659fa6b1ae7::t_e27ffc09be5742 4-9,25-27,32-34
+  s_2ed659fa6b1ae7::t_7ec18cc6545995 1-3,10-24,28-31,35-68
+packages/@n8n/instance-ai/onboarding/role-and-tools.yaml
+  s_2ed659fa6b1ae7::t_7ec18cc6545995 1-3,8-47
+  s_2ed659fa6b1ae7::t_e27ffc09be5742 4-7
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2ed659fa6b1ae7::t_7ec18cc6545995 7388-7389
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "31f958deb201fa644f8ebc435b0bae058dfb49f6",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

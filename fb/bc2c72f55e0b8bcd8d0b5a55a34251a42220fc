@@ -1,0 +1,14 @@
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  h_f8b427917eda26 93,95,134,141,166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fbbc2c72f55e0b8bcd8d0b5a55a34251a42220fc",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

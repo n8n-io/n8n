@@ -1,0 +1,49 @@
+packages/@n8n/engine/docs/adr/ADR-20260902-steps-declare-waits.md
+  s_9c30e64d236bdf::t_cf338d02d7a082 9-12,21-22,27-28,47-69,75-76,91-93,97-98,100-101,119-125,129-130,140-141,143,150-153,167-173,178-179,186-192
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_9c30e64d236bdf::t_9f39d24c83000e 7,174-263
+packages/@n8n/engine/src/database/migrations/1778529600000-CreateWorkflowExecution.ts
+  s_9c30e64d236bdf::t_ba8005e231c639 43-44
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_9c30e64d236bdf::t_e27322c0e90595 1,18-20,55-56,58,63-90
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_9c30e64d236bdf::t_2bfe813c918ecb 31
+packages/@n8n/engine/src/execution/__tests__/start-execution.service.test.ts
+  s_9c30e64d236bdf::t_d330d9e5456bcd 32
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_9c30e64d236bdf::t_5882919afa815d 240,271-273
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_9c30e64d236bdf::t_eee8ab034a2a4f 86,520-540,755-756,768-769
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_9c30e64d236bdf::t_1a14489fafc6aa 68,478-505
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_9c30e64d236bdf::t_f754f0010b8067 58-59,62-76
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_9c30e64d236bdf::t_9b67687aa8b697 3-21
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_9c30e64d236bdf::t_6d318088372239 16,76-80,139-145
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-execution-read.test.ts
+  s_9c30e64d236bdf::t_9f9aadf687c951 60,67-69,79-97
+packages/@n8n/node-engine-compatibility/src/v1-execution-read.ts
+  s_9c30e64d236bdf::t_92d7d5fb4e2fd7 35-41,47
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_9c30e64d236bdf::t_3cfac765272ae2 75,78-79,227
+packages/cli/src/executions/engine-v2-mapping.ts
+  s_9c30e64d236bdf::t_ba94a3b4f7cbde 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cf029de3db58b1efc64bf6d709e03e1a40280c65",
+  "prompts": {},
+  "sessions": {
+    "s_9c30e64d236bdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f103e602-540f-4c9e-a1e6-ff3bee67124c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

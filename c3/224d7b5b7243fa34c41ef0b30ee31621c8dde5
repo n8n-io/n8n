@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/CreateWorkflowRow.vue
+  s_7000cd54115292::t_35703ac8c5746a 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3224d7b5b7243fa34c41ef0b30ee31621c8dde5",
+  "prompts": {},
+  "sessions": {
+    "s_7000cd54115292": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c992-ff25-740b-bb65-8292b2f2ed80",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

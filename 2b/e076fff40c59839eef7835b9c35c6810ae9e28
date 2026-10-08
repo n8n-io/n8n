@@ -1,0 +1,183 @@
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  s_13d2093edecceb::t_11f6254fb0a0db 1,30
+  s_13d2093edecceb::t_95c44f03de7e95 19,21,99,162
+  s_13d2093edecceb::t_3d260c8b4ff083 53
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_13d2093edecceb::t_1699ef9ac823a2 1,5-6
+packages/cli/src/modules/agents/builder/model-lookup.types.ts
+  s_13d2093edecceb::t_95c44f03de7e95 1-4
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_13d2093edecceb::t_11f6254fb0a0db 540
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_13d2093edecceb::t_c33aeb4a9331ac 71,106-107,113
+packages/cli/src/modules/agents/agent-default-model-resolver.service.ts
+  s_13d2093edecceb::t_3d260c8b4ff083 40,82,108,131
+  s_13d2093edecceb::t_11f6254fb0a0db 2
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-managed-setup.service.ts
+  s_13d2093edecceb::t_2a306a8cb90761 38
+  s_13d2093edecceb::t_a7b6e17a5ce63c 369,776
+packages/cli/src/modules/agents/agent-mcp-access.service.ts
+  s_13d2093edecceb::t_c33aeb4a9331ac 9
+  s_13d2093edecceb::t_693c764c1f72c8 37
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_13d2093edecceb::t_9a20f0b0b031e8 27,70
+  s_13d2093edecceb::t_693c764c1f72c8 60
+packages/cli/src/modules/agents/integrations/integration-helpers.ts
+  s_13d2093edecceb::t_9a20f0b0b031e8 4,6
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_13d2093edecceb::t_a7b6e17a5ce63c 25,76,169,186,237,275,299,337
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_13d2093edecceb::t_95c44f03de7e95 18,41
+  s_13d2093edecceb::t_3d260c8b4ff083 24,357
+  s_13d2093edecceb::t_11f6254fb0a0db 1,22
+packages/cli/src/modules/agents/tool-registry.ts
+  s_13d2093edecceb::t_11f6254fb0a0db 22-23
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_13d2093edecceb::t_3d260c8b4ff083 101
+  s_13d2093edecceb::t_693c764c1f72c8 65
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_13d2093edecceb::t_3d260c8b4ff083 206,270
+  s_13d2093edecceb::t_ddc5f0b142cc52 14
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_13d2093edecceb::t_3d260c8b4ff083 135
+  s_13d2093edecceb::t_693c764c1f72c8 1-6,289
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_13d2093edecceb::t_693c764c1f72c8 26-34
+  s_13d2093edecceb::t_3d260c8b4ff083 628
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_13d2093edecceb::t_ddc5f0b142cc52 19,29
+  s_13d2093edecceb::t_9a20f0b0b031e8 27
+packages/cli/src/modules/agents/agent-knowledge-retrieval.ts
+  s_13d2093edecceb::t_693c764c1f72c8 199-202
+  s_13d2093edecceb::t_ddc5f0b142cc52 203-204,215,228,275
+packages/cli/src/modules/agents/builder/interactive/configure-channel.tool.ts
+  s_13d2093edecceb::t_95c44f03de7e95 14,22
+packages/cli/src/modules/agents/utils/execution-failure-summary.ts
+  s_13d2093edecceb::t_3c74aa48812dc1 1
+  s_13d2093edecceb::t_1699ef9ac823a2 51
+packages/cli/src/modules/agents/builder/interactive/setup-tool.types.ts
+  s_13d2093edecceb::t_95c44f03de7e95 1-22
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_13d2093edecceb::t_1699ef9ac823a2 1,12,65
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_13d2093edecceb::t_1699ef9ac823a2 54
+  s_13d2093edecceb::t_27f090a4777fb3 1
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_13d2093edecceb::t_9a20f0b0b031e8 173-179,181-191,195
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_13d2093edecceb::t_3d260c8b4ff083 21,62
+  s_13d2093edecceb::t_95c44f03de7e95 11
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_13d2093edecceb::t_3d260c8b4ff083 121,157
+  s_13d2093edecceb::t_693c764c1f72c8 21
+  s_13d2093edecceb::t_95c44f03de7e95 15
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_13d2093edecceb::t_c33aeb4a9331ac 15-19,94
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_13d2093edecceb::t_c33aeb4a9331ac 14,108
+packages/cli/src/modules/agents/agents-tools.service.ts
+  s_13d2093edecceb::t_ddc5f0b142cc52 22,203
+  s_13d2093edecceb::t_693c764c1f72c8 3-6
+packages/cli/src/modules/agents/entities/agent-memory-entry.entity.ts
+  s_13d2093edecceb::t_1699ef9ac823a2 24
+  s_13d2093edecceb::t_693c764c1f72c8 1
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_13d2093edecceb::t_693c764c1f72c8 23-26
+  s_13d2093edecceb::t_c33aeb4a9331ac 64,301
+  s_13d2093edecceb::t_3c74aa48812dc1 75,78,80-96,115,133,172,179,192,204
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_13d2093edecceb::t_9a20f0b0b031e8 20,24,524-525
+  s_13d2093edecceb::t_693c764c1f72c8 517-518
+packages/@n8n/api-types/src/agents/types.ts
+  s_13d2093edecceb::t_1699ef9ac823a2 9-10,366
+packages/cli/src/modules/agents/utils/inbound-attachments.ts
+  s_13d2093edecceb::t_c33aeb4a9331ac 4
+packages/cli/src/modules/agents/types/agent-chat-attachment.ts
+  s_13d2093edecceb::t_1699ef9ac823a2 1-7
+packages/cli/src/modules/agents/utils/agent-runtime-assets.ts
+  s_13d2093edecceb::t_3892f34c8d6e73 6-7
+packages/cli/src/modules/agents/entities/agent-observation-lock.entity.ts
+  s_13d2093edecceb::t_3c74aa48812dc1 1
+  s_13d2093edecceb::t_1699ef9ac823a2 15
+packages/cli/src/modules/agents/agents.service.ts
+  s_13d2093edecceb::t_c33aeb4a9331ac 42,212
+  s_13d2093edecceb::t_693c764c1f72c8 307
+  s_13d2093edecceb::t_11f6254fb0a0db 10,52
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_13d2093edecceb::t_693c764c1f72c8 2,30-33
+  s_13d2093edecceb::t_c33aeb4a9331ac 20-21,28,66,89,234
+packages/cli/src/modules/agents/utils/agent-channel.ts
+  s_13d2093edecceb::t_9a20f0b0b031e8 1-6
+  s_13d2093edecceb::t_693c764c1f72c8 14
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_13d2093edecceb::t_3892f34c8d6e73 3,22
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_13d2093edecceb::t_3c74aa48812dc1 298
+  s_13d2093edecceb::t_3892f34c8d6e73 4,90,99-105,108,111,155,170-179
+  s_13d2093edecceb::t_693c764c1f72c8 497-499,521-523
+  s_13d2093edecceb::t_11f6254fb0a0db 84,243
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_13d2093edecceb::t_693c764c1f72c8 22-25
+  s_13d2093edecceb::t_3892f34c8d6e73 63
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_13d2093edecceb::t_c33aeb4a9331ac 24-29,209
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_13d2093edecceb::t_c33aeb4a9331ac 19-20
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_13d2093edecceb::t_a7b6e17a5ce63c 376,614,625,656,908,1181
+  s_13d2093edecceb::t_693c764c1f72c8 34-39,417,565
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_13d2093edecceb::t_c33aeb4a9331ac 24-25
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_13d2093edecceb::t_1f2e1a3a9c9df9 18,128
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_13d2093edecceb::t_3892f34c8d6e73 20-29,68
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_13d2093edecceb::t_95c44f03de7e95 17
+  s_13d2093edecceb::t_3d260c8b4ff083 134,153
+packages/cli/src/modules/agents/sub-agents/sub-agent-source-resolver.ts
+  s_13d2093edecceb::t_3892f34c8d6e73 15,27
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_13d2093edecceb::t_693c764c1f72c8 10-13
+  s_13d2093edecceb::t_3892f34c8d6e73 1,22,27
+packages/cli/src/modules/agents/workflow-agent-stream.ts
+  s_13d2093edecceb::t_11f6254fb0a0db 20
+packages/cli/src/modules/agents/agent-knowledge-commands.ts
+  s_13d2093edecceb::t_ddc5f0b142cc52 29
+packages/cli/src/modules/agents/builder/interactive/__tests__/ask-credential.tool.test.ts
+  s_13d2093edecceb::t_95c44f03de7e95 12,40-41
+packages/cli/src/modules/agents/entities/agent-history.entity.ts
+  s_13d2093edecceb::t_1699ef9ac823a2 37
+packages/cli/src/modules/agents/entities/agent-observation.entity.ts
+  s_13d2093edecceb::t_1699ef9ac823a2 19,31
+  s_13d2093edecceb::t_3c74aa48812dc1 1
+packages/cli/src/modules/agents/integrations/integration-context-query-executor.ts
+  s_13d2093edecceb::t_a7b6e17a5ce63c 9,27
+packages/cli/src/modules/agents/agent-run-tracing.service.ts
+  s_13d2093edecceb::t_3d260c8b4ff083 1,114
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_13d2093edecceb::t_3c74aa48812dc1 1
+  s_13d2093edecceb::t_1699ef9ac823a2 7
+packages/cli/src/modules/agents/agent-runtime-instrumentation.ts
+  s_13d2093edecceb::t_2a306a8cb90761 5
+  s_13d2093edecceb::t_3d260c8b4ff083 10
+  s_13d2093edecceb::t_c7f2f0086382f4 6
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_13d2093edecceb::t_c33aeb4a9331ac 31,462
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2be076fff40c59839eef7835b9c35c6810ae9e28",
+  "prompts": {},
+  "sessions": {
+    "s_13d2093edecceb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ca37-ecdf-7873-bb4a-4b31a09f7aab",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

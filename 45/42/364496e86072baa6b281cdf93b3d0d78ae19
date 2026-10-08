@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_f50ed99474289b::t_7f4fda449a4323 152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4542364496e86072baa6b281cdf93b3d0d78ae19",
+  "prompts": {},
+  "sessions": {
+    "s_f50ed99474289b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e59ae28-0653-4c74-8b5c-e519abe925f6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/@n8n/api-types/src/schemas/folder.schema.ts
+  s_e2fe02ac72cd34::t_11e3ef03303be8 5
+packages/@n8n/api-types/src/dto/folders/folder-public.dto.ts
+  s_e2fe02ac72cd34::t_04937be943d720 112-115
+  s_e2fe02ac72cd34::t_daefd3a1bac44f 23-27
+  s_e2fe02ac72cd34::t_b25e437f49ab61 158-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "300bfe777c29869157880b6e961becacab56c40b",
+  "prompts": {},
+  "sessions": {
+    "s_e2fe02ac72cd34": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4ea637f3-0df4-41f9-a7d4-760e18b4fbb5",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

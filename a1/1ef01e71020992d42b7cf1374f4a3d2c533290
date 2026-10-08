@@ -1,0 +1,33 @@
+packages/@n8n/instance-ai/docs/prompt-profiles.md
+  s_19fd6642294ae3::t_31f0f0c29e3d99 12-24
+packages/@n8n/instance-ai/src/prompts/__tests__/prompt-profiles.test.ts
+  s_19fd6642294ae3::t_969ad31854e5a8 83-105
+packages/@n8n/instance-ai/src/agent/communication-style.prompt.ts
+  s_19fd6642294ae3::t_b7ff784ec8a915 58-131
+packages/@n8n/instance-ai/src/prompts/prompt-profiles.ts
+  s_19fd6642294ae3::t_a7e5dfe2c17e2c 6-9
+  s_19fd6642294ae3::t_18e327e3fb8fee 24-25,28
+  s_19fd6642294ae3::t_bb86a82de8ba3e 60-65
+  s_19fd6642294ae3::t_1c14bd06c30369 116-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a11ef01e71020992d42b7cf1374f4a3d2c533290",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_19fd6642294ae3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4631dfd-075c-445c-80e8-97d30beb6751",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 packages/frontend/@n8n/eslint-plugin-design-system/src/rules/prefers-reduced-motion.test.ts
-  s_51b74b4c66402b::t_854cab25f5ed9f 66-69,71-72,75-77,116-118,122-123,125-128,132-133,135-138,142-143,145-148,150
+  s_51b74b4c66402b::t_854cab25f5ed9f 66-69,71-72,75-77,78-91,116-118,122-123,125-128,132-133,135-138,142-143,145-148,146-148,150
 packages/frontend/@n8n/eslint-plugin-design-system/src/rules/prefers-reduced-motion.ts
-  s_51b74b4c66402b::t_854cab25f5ed9f 166-178,185-188
+  s_51b74b4c66402b::t_854cab25f5ed9f 166-178,170-178,185-188
 ---
 {
   "schema_version": "authorship/3.0.0",

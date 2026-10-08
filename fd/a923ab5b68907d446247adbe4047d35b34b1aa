@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/app/composables/useWorkflowActivate.ts
+  s_e552d11f918e5a::t_7ecce7f7533ee9 283-285,288-290,298
+packages/frontend/editor-ui/src/app/composables/useWorkflowActivate.test.ts
+  s_e552d11f918e5a::t_c5eadfd0c860f5 245
+  s_e552d11f918e5a::t_351722d3e40613 266-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fda923ab5b68907d446247adbe4047d35b34b1aa",
+  "prompts": {},
+  "sessions": {
+    "s_e552d11f918e5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36c373f5-f94b-4ab1-972d-f835cc02edc6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

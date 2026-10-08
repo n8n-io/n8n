@@ -1,0 +1,14 @@
+packages/@n8n/decorators/src/system-task/system-task.ts
+  h_32d8cd6a0d6aad 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "02bd018297d944a63b6cae6aa5863a2fbacf3da9",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

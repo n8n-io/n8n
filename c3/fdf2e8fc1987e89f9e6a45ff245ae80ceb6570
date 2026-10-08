@@ -1,0 +1,68 @@
+packages/cli/src/public-api/v1/openapi-gen/data-tables.schemas.ts
+  s_d8ed300529e078::t_0ce9784eba278e 1-15
+packages/cli/package.json
+  s_f9d60b7dffc85f::t_4aabbd01e19e14 129
+packages/cli/scripts/build.mjs
+  s_f9d60b7dffc85f::t_8f2e29e5ebc0a4 3
+  s_f9d60b7dffc85f::t_8f5ccecc85888d 24-28
+  s_f9d60b7dffc85f::t_d5252b4db55a7e 67-90
+.github/WORKFLOWS.md
+  s_d8ed300529e078::t_0b007398bc7a18 182
+packages/@n8n/api-types/src/schemas/data-table.schema.ts
+  s_f9d60b7dffc85f::t_92fec924db1870 7-12
+  s_f9d60b7dffc85f::t_4ac00d71ca54a1 29-33
+packages/cli/src/public-api/v1/openapi.yml
+  s_f9d60b7dffc85f::t_2c07f2026fe18e 137
+packages/@n8n/api-types/src/dto/data-table/list-data-table-query.dto.ts
+  s_f9d60b7dffc85f::t_c4d0cf647751cd 64-65
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_f9d60b7dffc85f::t_36b70fe8875493 12
+  s_f9d60b7dffc85f::t_316eeb786cf9f6 35
+  s_f9d60b7dffc85f::t_7d111ec9ea28dd 1-5,9,11,13-16,25-34,36,51-53,55-59,61-65,67,69-70,87-88,102,107
+  s_f9d60b7dffc85f::t_a60a128c2842b4 7,10,54,60,66,68,108
+  s_d8ed300529e078::t_59895742fe4883 6,8,17-24,37-50,71-86,90-91,104-106
+  s_f9d60b7dffc85f::t_9b79efae324943 89,92-101,103
+pnpm-workspace.yaml
+  s_f9d60b7dffc85f::t_30b936d34102bc 22
+packages/@n8n/api-types/src/dto/data-table/public-api-create-data-table.dto.ts
+  s_f9d60b7dffc85f::t_e556715d9f9d4d 9,12-17
+packages/cli/src/public-api/v1/openapi-gen/zod-extend.ts
+  s_f9d60b7dffc85f::t_014f936497aea2 1-8
+.github/workflows/util-sync-api-docs.yml
+  s_d8ed300529e078::t_6177e14a63ff4b 116-119
+  s_d8ed300529e078::t_1f8ae0690e91b5 12-17
+  s_d8ed300529e078::t_361c4db22fb608 42-46
+packages/cli/src/public-api/v1/openapi-gen/data-tables.path.ts
+  s_f9d60b7dffc85f::t_75c2158da7ccd7 9-12,23,25-40,43-103,105-152
+  s_d8ed300529e078::t_1a70aaf2d71d81 1-8,13-22,24
+  s_d8ed300529e078::t_b0fd2f2ce753c2 104
+  s_d8ed300529e078::t_f787b5f4a9cbe7 41-42
+packages/cli/src/public-api/v1/handlers/data-tables/spec/schemas/createDataTableRequest.generated.yml
+  s_d8ed300529e078::t_f419abf85c99bc 7,16-18,21-25,27-28,32-36,39-40
+pnpm-lock.yaml
+  s_d8ed300529e078::t_971e6644a7b7f5 48-50,3863-3865,6947-6951,19051-19053,22579-22583,22868-22872,37952-37955,42254-42255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3fdf2e8fc1987e89f9e6a45ff245ae80ceb6570",
+  "prompts": {},
+  "sessions": {
+    "s_d8ed300529e078": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecbddea-2084-4432-846e-23aea5392cb3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_f9d60b7dffc85f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e16436a0-4aea-405a-9d63-9ee57ae102ee",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

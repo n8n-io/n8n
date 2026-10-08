@@ -1,0 +1,19 @@
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_3eca03038a0537::t_8c37c83b520564 919-922
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2a7be4972d2a55fa380551a647e9ac5abbdeb18a",
+  "prompts": {},
+  "sessions": {
+    "s_3eca03038a0537": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2362364-f41b-4475-afee-1c30f348c01b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

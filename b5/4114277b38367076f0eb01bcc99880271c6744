@@ -1,0 +1,70 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1211055aa32911::t_5322bf262986ca 8772
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsModal.spec.ts
+  s_1211055aa32911::t_7a8dfdd2d54bf3 119-120
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_1211055aa32911::t_af03e74ea6470e 4,587
+  s_1211055aa32911::t_5322bf262986ca 3,69,73,278-279,285-286,293,344,493-494,509,581-586,588
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_1211055aa32911::t_5322bf262986ca 7,28-32,80
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_1211055aa32911::t_5322bf262986ca 297,374
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_1211055aa32911::t_f72f9a39225ede 196-198
+  s_1211055aa32911::t_7a8dfdd2d54bf3 53-60,71,77,104,165-175
+  s_1211055aa32911::t_1ed473a9b87b46 176-177
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_1211055aa32911::t_5322bf262986ca 466-470
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue
+  s_1211055aa32911::t_5322bf262986ca 14,151-156,161-169,201-204,254,321
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  s_1211055aa32911::t_442d99c10edcf9 167-168
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVectorStoresModal.test.ts
+  s_1211055aa32911::t_2bf109351c61c4 223
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_1211055aa32911::t_5322bf262986ca 930
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresModal.vue
+  s_1211055aa32911::t_5322bf262986ca 123-126,435-436,438
+  s_1211055aa32911::t_442d99c10edcf9 453-454
+.agents/skills/agent-modal-design/SKILL.md
+  s_1211055aa32911::t_5322bf262986ca 23
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_1211055aa32911::t_7a8dfdd2d54bf3 233,244,394,396-397,589-603,610,615-633
+  s_1211055aa32911::t_46e79976543440 328-329
+  s_1211055aa32911::t_48e9b384a6fa0f 634
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentJsonImportModal.spec.ts
+  s_1211055aa32911::t_7a8dfdd2d54bf3 122
+packages/frontend/editor-ui/src/features/agents/__tests__/utils/AgentModalTestStub.ts
+  s_1211055aa32911::t_7a8dfdd2d54bf3 38,50,52-57,75
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_1211055aa32911::t_1980d8bd43c89a 258,263,270
+  s_1211055aa32911::t_aadfc9bc35555a 245-256
+  s_1211055aa32911::t_400ad96efcc2e8 143,149,291,293,299,305,308,312,326,348-350,355,358,379,381,404,411,431,439,448,464,466,479,491
+  s_1211055aa32911::t_af03e74ea6470e 142,148
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelListItem.vue
+  s_1211055aa32911::t_5322bf262986ca 202
+.agents/skills/agent-modal-design/reference.md
+  s_1211055aa32911::t_5322bf262986ca 19
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_1211055aa32911::t_442d99c10edcf9 45-56,59,288-293
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_1211055aa32911::t_7a8dfdd2d54bf3 2912,2926
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillFileNav.vue
+  s_1211055aa32911::t_442d99c10edcf9 219-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b54114277b38367076f0eb01bcc99880271c6744",
+  "prompts": {},
+  "sessions": {
+    "s_1211055aa32911": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c500-f15a-7422-92f7-4133f49bfe35",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

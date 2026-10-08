@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/capabilities.manifest.test.ts
+  s_0d9368421a3b54::t_a4aeffabcd28e3 11,13,17-19,84,118-120,123
+packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+  s_0d9368421a3b54::t_a3b20195d3842f 7,38-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "362c004a4f54251485d3fbe8c52bb3cd2411d991",
+  "prompts": {},
+  "sessions": {
+    "s_0d9368421a3b54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a31bf31b-d089-494c-956e-440a9c409594",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

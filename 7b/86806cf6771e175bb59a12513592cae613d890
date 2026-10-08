@@ -1,0 +1,45 @@
+packages/cli/test/integration/database/repositories/execution.repository.test.ts
+  s_0686997241549e::t_59843c2a5670bd 9
+  s_0686997241549e::t_51185bd2841c97 197
+  s_0686997241549e::t_9c7a8bcb1116d3 10
+packages/cli/src/modules/otel/__tests__/support/otel-integration-utils.ts
+  s_0686997241549e::t_78015e1480b55c 121
+  s_0686997241549e::t_b7af79cc332add 29
+packages/cli/test/integration/public-api/executions.test.ts
+  s_47080b12b810aa::t_43b503bb2403b5 194-197
+packages/cli/src/events/maps/relay.event-map.ts
+  s_0686997241549e::t_2faa65e0b31e7d 662
+  s_0686997241549e::t_ada8cd9e3e459b 33
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_0686997241549e::t_5c083ad8f24776 439
+  s_0686997241549e::t_168e4d3458b4b0 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7b86806cf6771e175bb59a12513592cae613d890",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0686997241549e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9fc307c6-60e8-405c-9da2-7a5bd1011278",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    },
+    "s_47080b12b810aa": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "75af0996-bfb5-4162-af0d-d5dc75bfe383",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

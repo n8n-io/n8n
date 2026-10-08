@@ -1,0 +1,14 @@
+.agents/skills/public-api/SKILL.md
+  h_ed1b2d65e81e8e 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "830afb73673d10fa43bcd2a8857f3b378e2cb753",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

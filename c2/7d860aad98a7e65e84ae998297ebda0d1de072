@@ -1,0 +1,25 @@
+packages/core/eslint.config.mjs
+  s_4d4515bb8fac55::t_0fae158f611899 46
+turbo.json
+  s_4d4515bb8fac55::t_0fae158f611899 98-100,107-112
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/get-additional-keys.test.ts
+  s_4d4515bb8fac55::t_0fae158f611899 80
+packages/core/src/execution-engine/__tests__/routing-node.test.ts
+  s_4d4515bb8fac55::t_0fae158f611899 849,2752-2753,2762,2772,2783,2801,2811,2822,2832,2839,2853,2876,2898,2912,2932,2942,2966,2988
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c27d860aad98a7e65e84ae998297ebda0d1de072",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

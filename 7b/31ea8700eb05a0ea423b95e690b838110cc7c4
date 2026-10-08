@@ -1,0 +1,42 @@
+packages/cli/test/integration/public-api/community-packages.test.ts
+  s_9baa1e4b52dd7f::t_609bc347c4bcf4 208-223
+  s_9baa1e4b52dd7f::t_74352d116bf99f 322,353-380,384,387-389,404-418
+  s_9baa1e4b52dd7f::t_5f7d7eb7bac1bc 234-243
+  s_9baa1e4b52dd7f::t_8cb4833293bcb1 259-265,277-293,303-320
+  s_9baa1e4b52dd7f::t_69a04ac92ea32d 321
+  s_9baa1e4b52dd7f::t_93800913aac10d 323
+packages/@n8n/api-types/src/dto/index.ts
+  s_9baa1e4b52dd7f::t_65b5c8f5b537c8 265-266,268
+packages/cli/src/public-api/v1/controllers/community-packages.public.controller.ts
+  s_9baa1e4b52dd7f::t_5504914c2d584c 3-4,6,17,21-22,53-93
+  s_9baa1e4b52dd7f::t_f68d34cf4fab2d 94
+packages/cli/test/integration/public-api/executions.test.ts
+  s_9baa1e4b52dd7f::t_0dfa3f8c8a6f40 50
+packages/@n8n/api-types/src/dto/community-packages/community-package-public.openapi.ts
+  s_9baa1e4b52dd7f::t_b0f782094ec197 1-25
+packages/@n8n/api-types/src/dto/community-packages/community-package-public.dto.ts
+  s_9baa1e4b52dd7f::t_0b518b0c9f7bc5 5-8
+  s_9baa1e4b52dd7f::t_e0da56ecbce1a0 41-42,46-62
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/installPackage.generated.yml
+  s_9baa1e4b52dd7f::t_a5620b67f64dc0 1-13,15-31,37,39-70,72-86
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/updatePackage.generated.yml
+  s_9baa1e4b52dd7f::t_4c1f1f1673a96f 1-12,14-32,36-89
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_9baa1e4b52dd7f::t_b7c639a737955d 9-10,12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7b31ea8700eb05a0ea423b95e690b838110cc7c4",
+  "prompts": {},
+  "sessions": {
+    "s_9baa1e4b52dd7f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c1fe859e-22f1-46c1-9764-8579979b9830",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

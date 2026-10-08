@@ -1,0 +1,70 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_89ffeedfd03265::t_a85c1cec817064 4,93,96
+  s_89ffeedfd03265::t_758af910db52a6 92
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_89ffeedfd03265::t_074592de7015b8 197-198
+  s_89ffeedfd03265::t_2592823d0c1d62 187-189
+  s_89ffeedfd03265::t_6798ec37e9a646 193-195
+  s_89ffeedfd03265::t_758af910db52a6 191-192
+  s_89ffeedfd03265::t_3b3ba3d0f8d928 196
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_89ffeedfd03265::t_cfe699f2ca9f4d 573,575-581,593,610-621
+  s_89ffeedfd03265::t_a74542cd3f98b2 582
+  s_89ffeedfd03265::t_06bd72bea66847 23,228,591-592,622-623,1358-1361,1393,1397
+  s_89ffeedfd03265::t_f00acd9997ae08 1362-1392,1395-1396,1398-1431,1433-1441,1443-1444,1446-1451
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.vue
+  s_89ffeedfd03265::t_2592823d0c1d62 47-48,72-73,75,77-79,172-179
+  s_89ffeedfd03265::t_074592de7015b8 133
+  s_89ffeedfd03265::t_423d18c6cb3153 74,76
+  s_89ffeedfd03265::t_6cf183cdda0eca 128
+  s_89ffeedfd03265::t_05bb1fa7e4663a 115
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.test.ts
+  s_89ffeedfd03265::t_074592de7015b8 77,82
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_89ffeedfd03265::t_2592823d0c1d62 43
+  s_89ffeedfd03265::t_24313edfe3fb1d 3,48
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_89ffeedfd03265::t_2592823d0c1d62 615
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_89ffeedfd03265::t_90aa111cdfe4f4 390-394,397-399
+  s_89ffeedfd03265::t_6798ec37e9a646 262-265,267-269,271,273-274,280,282-284,287,867,869-871,874-875,881-882,887,891-893
+  s_89ffeedfd03265::t_a85c1cec817064 40,868,872-873,876-879
+  s_89ffeedfd03265::t_fce98dcef50b24 880,883-886,888-890,894-896,898
+  s_89ffeedfd03265::t_758af910db52a6 270,272,275-279,281,285-286,372,384,395-396,401,403,418
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_89ffeedfd03265::t_20d490a44273ca 11-26
+  s_89ffeedfd03265::t_4cf9806a5a2a87 2-3
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_89ffeedfd03265::t_2592823d0c1d62 385
+packages/frontend/editor-ui/src/features/agents/__tests__/ApprovalCard.test.ts
+  s_89ffeedfd03265::t_4cf9806a5a2a87 1-85,95,97-112
+  s_89ffeedfd03265::t_20d490a44273ca 86-94,96
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_89ffeedfd03265::t_3093adf82b14f1 3
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_89ffeedfd03265::t_3093adf82b14f1 759-760
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_89ffeedfd03265::t_3093adf82b14f1 353
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_89ffeedfd03265::t_f00acd9997ae08 735-751,753-758,760-774,776-781
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_89ffeedfd03265::t_6cf183cdda0eca 3,10-11
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_89ffeedfd03265::t_cce14cb55852f1 28,206-208,211-212,214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "db71379c2d36424f7ddecd1fdb5619e3bcc6094e",
+  "prompts": {},
+  "sessions": {
+    "s_89ffeedfd03265": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4e6-37cc-73b3-8f7b-279d3f0c3020",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

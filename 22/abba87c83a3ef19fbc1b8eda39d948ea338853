@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_c4a4e9a494a612::t_7d01adf950e87a 1155-1156
+  s_c4a4e9a494a612::t_3c6e81855b874e 81-82,118,226,527,901,1038-1043,1138,1145-1154,1207
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 47-60,62-77,80-82
+  s_c4a4e9a494a612::t_90bd6b3a0f7916 61
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 1064-1068
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 393,397,401,414-417,429-444,460-462
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 120-136
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 65
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 453-454,1101,1104,1137
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 1063-1069,1097-1103,1111,1117,2652,2661-2662,3027-3061
+  s_c4a4e9a494a612::t_87bc60fac0e12c 3062
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 6,109-124
+  s_c4a4e9a494a612::t_b1d2387373b11f 125-126
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 140-161,164-167,169,374,381-401
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 604
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "22abba87c83a3ef19fbc1b8eda39d948ea338853",
+  "prompts": {},
+  "sessions": {
+    "s_c4a4e9a494a612": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c931-0a24-7242-93f9-890df461d8e8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

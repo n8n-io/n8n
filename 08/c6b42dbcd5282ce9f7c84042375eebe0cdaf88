@@ -1,0 +1,18 @@
+packages/cli/src/public-api/constants.ts
+  h_5d40c27a8fdfd1 1-2
+packages/cli/src/public-api/public-api-controller.registry.ts
+  h_5d40c27a8fdfd1 18,28
+packages/cli/src/public-api/v1/shared/middlewares/global.middleware.ts
+  h_5d40c27a8fdfd1 2,14,175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "08c6b42dbcd5282ce9f7c84042375eebe0cdaf88",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

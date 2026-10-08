@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  ai_agent 117-131
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  ai_agent 63-65
+packages/frontend/editor-ui/src/app/components/TimeAgo.vue
+  ai_agent 4-5,8,13-14,19,25-35,38-40
+packages/frontend/editor-ui/src/app/components/__tests__/TimeAgo.test.ts
+  ai_agent 1-56
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 8811
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  ai_agent 53,244-253,467-469
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.test.ts
+  ai_agent 104-116
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.ts
+  ai_agent 14,53,89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c0c078a8630bf03a1f3021f3198b26672e5e9a70",
+  "prompts": {}
+}

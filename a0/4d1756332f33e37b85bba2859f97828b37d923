@@ -1,0 +1,27 @@
+packages/@n8n/workflow-sdk/src/ast-interpreter/interpreter.ts
+  s_1afdf26712d274::t_14acb3656b08ce 26-27
+  s_1afdf26712d274::t_6a9da8a611a167 981-989
+  s_1afdf26712d274::t_85de1f44aa2fc1 491-492
+  s_1afdf26712d274::t_393048a8d89248 539-552
+packages/@n8n/workflow-sdk/src/ast-interpreter/validators.ts
+  s_1afdf26712d274::t_e94c2d0903da13 353-395
+packages/@n8n/workflow-sdk/src/ast-interpreter/interpreter.test.ts
+  s_1afdf26712d274::t_c2963b6b823aa2 580-585
+  s_1afdf26712d274::t_d500c2b9b8bace 558-579,586-605
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a04d1756332f33e37b85bba2859f97828b37d923",
+  "prompts": {},
+  "sessions": {
+    "s_1afdf26712d274": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cd7f9fc-8b78-476b-a457-2884cc096ef0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f0db97e87be686::t_22bfcf286f8df6 2439
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePopover.test.ts
+  s_f0db97e87be686::t_2a99d27c821397 10-11,79-93
+  s_f0db97e87be686::t_22bfcf286f8df6 18,20
+packages/modules/type-availability-policies/frontend/src/components/ContactInstanceAdminButton.test.ts
+  s_f0db97e87be686::t_22bfcf286f8df6 1-47
+packages/modules/type-availability-policies/frontend/src/components/ContactInstanceAdminButton.vue
+  s_f0db97e87be686::t_22bfcf286f8df6 1-6,8-19,23-26,43
+  s_f0db97e87be686::t_e8d43dd0b31511 7,27-42,44-50
+  s_f0db97e87be686::t_1cdc3612c6b17e 20-22
+packages/modules/type-availability-policies/frontend/README.md
+  s_f0db97e87be686::t_22bfcf286f8df6 30-35
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePopover.vue
+  s_f0db97e87be686::t_22bfcf286f8df6 3,8,73,75,80-83
+  s_f0db97e87be686::t_1cdc3612c6b17e 34-37,74
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePanel.vue
+  s_f0db97e87be686::t_22bfcf286f8df6 5,7,44-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a9e754668ebd2c1b7df03faa4b9d6e1b0e23c92e",
+  "prompts": {},
+  "sessions": {
+    "s_f0db97e87be686": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "536eefbb-4485-4caa-88d9-a6f9ff917471",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

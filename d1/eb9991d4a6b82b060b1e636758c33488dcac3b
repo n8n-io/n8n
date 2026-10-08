@@ -1,0 +1,221 @@
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_77655ca8fe3a59::t_358fd53ad47445 8-13,116,722,724,726-758,787-812
+  s_77655ca8fe3a59::t_f393f62234250e 813-814
+  s_77655ca8fe3a59::t_114b5ea08627d8 29-30,97-98,815-816,818-835,838,840-848,871-896,898-935,937-940,1119-1120
+  s_77655ca8fe3a59::t_d5ab68f61197a5 117
+  s_77655ca8fe3a59::t_b19cb5779550a1 936
+  s_77655ca8fe3a59::t_bc05224e022b25 897
+  s_77655ca8fe3a59::t_171c2fa81956dc 836-837,839
+  s_77655ca8fe3a59::t_cc8ad89cf3a131 118
+  s_77655ca8fe3a59::t_d364794131f188 725,817
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 107
+  s_77655ca8fe3a59::t_a01760ef447896 723
+  s_77655ca8fe3a59::t_e0adb9107b30a9 119
+  s_13d0f2e1be0144::t_b151515fb3d7ab 849-870
+  s_13d0f2e1be0144::t_3a749f6a5e3653 733
+  s_13d0f2e1be0144::t_628f61ba36032d 759-786
+packages/@n8n/engine/src/execution/step-store.ts
+  s_77655ca8fe3a59::t_0f5e9556ae5333 14-15,17
+  s_77655ca8fe3a59::t_1c2a27d8ded0c0 1-4,6-9,122-123,125-128
+  s_77655ca8fe3a59::t_f30b8d089332b1 5,39-42,129-131,134-137,141-143
+  s_77655ca8fe3a59::t_16a1410184b3db 69-74,144,148-159
+  s_77655ca8fe3a59::t_743511542137d8 16,174-178,184-188
+  s_77655ca8fe3a59::t_9caf467b4037fc 124,132-133,138-140,145-147,179-183
+  s_77655ca8fe3a59::t_e0adb9107b30a9 160-170
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  s_77655ca8fe3a59::t_fb4f2278d3a257 59-62
+  s_77655ca8fe3a59::t_c8d093896a57c3 55-56,58,63-73
+  s_77655ca8fe3a59::t_7b782f847e963a 2
+  s_77655ca8fe3a59::t_48475961c37042 1,46-48,50-52
+  s_77655ca8fe3a59::t_115c2e1dfcfc22 49,57
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_8245f0254336b3 98,105-107,109-110,241-251,253,255-267,269-279
+  s_77655ca8fe3a59::t_bc07f837f2d49e 376-377
+  s_77655ca8fe3a59::t_59f71e31b0df56 282-332
+  s_77655ca8fe3a59::t_0d21260073fa3c 70-71,76-83,96,102,108,268
+  s_77655ca8fe3a59::t_d364794131f188 252,254
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 333-377
+  s_77655ca8fe3a59::t_a01760ef447896 97
+  s_77655ca8fe3a59::t_32915d36ff0226 240
+  s_13d0f2e1be0144::t_3a749f6a5e3653 240,271-272
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_77655ca8fe3a59::t_f6b700aecb9b64 27
+  s_77655ca8fe3a59::t_e476629ce94188 11-12,14-17,50-56
+  s_77655ca8fe3a59::t_650a0a8de08d01 13,63-65
+  s_13d0f2e1be0144::t_a7870e6851e4a2 57-62
+packages/@n8n/engine/src/execution/index.ts
+  s_77655ca8fe3a59::t_f6b700aecb9b64 18
+  s_77655ca8fe3a59::t_69463c902d44ff 14
+  s_77655ca8fe3a59::t_501c78acb2fc37 30
+  s_77655ca8fe3a59::t_02d2ceec59d420 37-41
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_f8cf71a8d4b0d9 1070,1083-1087
+  s_77655ca8fe3a59::t_ac47e95a4f5f21 384-388,390-400,401-449
+  s_77655ca8fe3a59::t_c1bde97d1c962d 6-11,78,80,450-463,466-490,492-506,530-531,542-543,554
+  s_77655ca8fe3a59::t_12807a03cc223d 555
+  s_77655ca8fe3a59::t_d364794131f188 389,491
+  s_77655ca8fe3a59::t_cc8ad89cf3a131 79,508-528,530-532,539-543,546-549,550,554-560,566-600,605
+  s_77655ca8fe3a59::t_6aa5072812dc38 561-565,601-604
+  s_77655ca8fe3a59::t_72ad0d21d1fc64 606
+  s_77655ca8fe3a59::t_a047f619210f06 634,641
+  s_77655ca8fe3a59::t_c161c3eaa7c5cb 608-622,625-633,635-640,642-658,660,663-666,671,673-674
+  s_77655ca8fe3a59::t_c5158c5bae9ebc 659,661-662,667-670,672
+  s_77655ca8fe3a59::t_babed0e2a665a4 708,729-733,741,744-747,753-763
+  s_77655ca8fe3a59::t_e54c281708ed21 764-765
+  s_77655ca8fe3a59::t_a01760ef447896 464-465,507,607,623-624
+  s_77655ca8fe3a59::t_d31e89b55c8393 529,533-538,544-545,551-553
+  s_77655ca8fe3a59::t_f3349bed94c9d4 675-707
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_77655ca8fe3a59::t_0c100d36629ed2 98
+  s_77655ca8fe3a59::t_c1bde97d1c962d 84-85
+  s_77655ca8fe3a59::t_d5ab68f61197a5 99
+  s_77655ca8fe3a59::t_cc8ad89cf3a131 100
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 103,228,445,462
+  s_77655ca8fe3a59::t_d31e89b55c8393 86
+  s_77655ca8fe3a59::t_e0adb9107b30a9 101
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_77655ca8fe3a59::t_f6b700aecb9b64 96,122,134
+  s_77655ca8fe3a59::t_19f83ce102e350 101,105-109,111-116
+  s_77655ca8fe3a59::t_c4f5938570bb21 97-98,100,117-121,135-138
+  s_77655ca8fe3a59::t_d6c6a3fe1c1182 122-128
+  s_77655ca8fe3a59::t_b6ad9f19c285a7 34-35,53-56,99,102-104,110,130-133
+  s_13d0f2e1be0144::t_3a749f6a5e3653 3-4
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_77655ca8fe3a59::t_0f5e9556ae5333 32,35-38
+  s_77655ca8fe3a59::t_f684464c3ac721 2,17,22,39,101-104,114-116,118,121-128,136,138-139,143,161,166,181-187,197
+  s_77655ca8fe3a59::t_69463c902d44ff 401
+  s_77655ca8fe3a59::t_9caf91e2de4abe 94-97,106-107,108-113,177-179,390-393,395-400,402-405
+  s_77655ca8fe3a59::t_309154d04e3773 85-91,137
+  s_77655ca8fe3a59::t_115c2e1dfcfc22 162-165,394
+  s_13d0f2e1be0144::t_267efcc9a0463b 66-73
+  s_13d0f2e1be0144::t_3a749f6a5e3653 75-78,137-138
+  s_13d0f2e1be0144::t_980bfed939aee4 188-196
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_77655ca8fe3a59::t_0c100d36629ed2 46
+  s_77655ca8fe3a59::t_d5ab68f61197a5 47
+  s_77655ca8fe3a59::t_cc8ad89cf3a131 48
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 51
+  s_77655ca8fe3a59::t_e0adb9107b30a9 49
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_77655ca8fe3a59::t_be9a267feb7a72 10,189-198,284-288,290
+  s_77655ca8fe3a59::t_72559d0e816c09 134-137,140
+  s_77655ca8fe3a59::t_545b544c2663ab 9,45-52,166,179-180,199,202-204,289
+  s_77655ca8fe3a59::t_501c78acb2fc37 209-212
+  s_77655ca8fe3a59::t_56e4caac351c39 19,53,205-208,213-235
+  s_77655ca8fe3a59::t_743511542137d8 249-253
+  s_77655ca8fe3a59::t_115c2e1dfcfc22 138-139,200-201
+  s_77655ca8fe3a59::t_e0adb9107b30a9 236-248
+packages/@n8n/engine/src/index.ts
+  s_77655ca8fe3a59::t_051088ddfb175e 112
+  s_77655ca8fe3a59::t_69463c902d44ff 106
+  s_77655ca8fe3a59::t_501c78acb2fc37 95
+packages/@n8n/engine/src/execution/__tests__/wait-sweeper.test.ts
+  s_77655ca8fe3a59::t_c9c08fb5cd8fbe 1-27,29,31-63,66-121,125-146,209-212,358-369
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 30
+  s_77655ca8fe3a59::t_a01760ef447896 64
+  s_77655ca8fe3a59::t_78830e4d9f1434 65,122-124,147-203,206-224
+  s_77655ca8fe3a59::t_11f45f728b61b2 28,229-256,260-292,340-355
+  s_77655ca8fe3a59::t_3981f9baab2c51 257-259
+  s_77655ca8fe3a59::t_8d8d61a214d9e5 314,317,324,331,337
+  s_77655ca8fe3a59::t_4c63b1be6220ba 293-313,315-316,318-323,325-330,334-336,338-339
+  s_77655ca8fe3a59::t_1ce0a69b4180cb 332-333
+  s_77655ca8fe3a59::t_d6013f274fb6cf 204-205
+  s_77655ca8fe3a59::t_718d837227242f 356-357
+packages/@n8n/engine/src/execution/wait-sweeper.ts
+  s_77655ca8fe3a59::t_3573e521e235af 100-102,110
+  s_77655ca8fe3a59::t_40239a488961d2 1-28,32-40,42-45,47,52-54,74-75,96-99,111-134
+  s_77655ca8fe3a59::t_309154d04e3773 103-109
+  s_77655ca8fe3a59::t_0607acddc945e6 46
+  s_77655ca8fe3a59::t_a5b2fc315236aa 29-31,41,48-51,55-84,87-92
+  s_77655ca8fe3a59::t_dd12c7499db79f 93-95
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_77655ca8fe3a59::t_164c3994451250 17,51-52,80,119,134,144
+  s_77655ca8fe3a59::t_44a1b3a0d6aff9 141-143
+packages/@n8n/engine/docs/adr/ADR-20260902-steps-declare-waits.md
+  s_77655ca8fe3a59::t_75b63c053b01f6 1-8,37-39,124-127,154-156,224-226,230-231
+  s_77655ca8fe3a59::t_fb61571784b3ba 19-24,30,40-42,44-54,83-87,128-137,146-148,157-159,161-162,171,175-178,201-203,204,212
+  s_77655ca8fe3a59::t_017255aad7506d 89-90,94-101,106-107,112,113-115,119-120,120,123,124
+  s_77655ca8fe3a59::t_ae4e16f6fe37dd 87
+  s_77655ca8fe3a59::t_89a4935a8c9412 188,192-193,197-200
+  s_77655ca8fe3a59::t_5c8ced0da71a29 31-32
+  s_77655ca8fe3a59::t_932644df19e0e6 29
+  s_13d0f2e1be0144::t_56fff09f2ea9a8 179-180
+  s_13d0f2e1be0144::t_2ae87efc35a707 103-105,138-140,160,189-191,194-196,209-211,213-214
+  s_13d0f2e1be0144::t_70ed1fdde50ae7 91,227-229
+  s_13d0f2e1be0144::t_6adb64a5977e48 92,102,232
+  s_13d0f2e1be0144::t_0daf6bf3144762 83-87
+  s_13d0f2e1be0144::t_051f4f6bff6997 9-17,26-28,33-36,55-56,68-78
+  s_13d0f2e1be0144::t_e32e437931e0b2 79-82
+  s_13d0f2e1be0144::t_49ff7db61dbeac 108-111,116-118,121-122
+  s_13d0f2e1be0144::t_d478b75b0a5bc2 93
+  s_13d0f2e1be0144::t_4fbb1d9a15d252 141-145,149-153
+  s_13d0f2e1be0144::t_f0f63bf429cf76 163-167,172-174,205
+  s_13d0f2e1be0144::t_5d839fb0d96f5e 186-187,206-208
+  s_13d0f2e1be0144::t_12f4b9a4960c35 181-185,215-223
+packages/@n8n/engine/docs/adr/ADR-20260828-trigger-settlement-before-execution.md
+  s_77655ca8fe3a59::t_75b63c053b01f6 1-63
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_77655ca8fe3a59::t_4f3e820e0746cd 1,49-53,290-292
+  s_77655ca8fe3a59::t_a01760ef447896 48
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-execution-read.test.ts
+  s_77655ca8fe3a59::t_0f87c376ac02fd 66-68
+  s_13d0f2e1be0144::t_18cd50c0763379 66-68
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_77655ca8fe3a59::t_743511542137d8 95
+  s_13d0f2e1be0144::t_3a749f6a5e3653 56,72
+packages/@n8n/node-engine-compatibility/src/v1-execution-read.ts
+  s_77655ca8fe3a59::t_44a1b3a0d6aff9 33-38
+  s_13d0f2e1be0144::t_18cd50c0763379 35-38
+packages/@n8n/engine/src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts
+  s_77655ca8fe3a59::t_110db020ab8968 35-55,85-90,104
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 58
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 75,78
+packages/@n8n/engine/src/database/migrations/1778529600000-CreateWorkflowExecution.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 43
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 1,53
+packages/testing/playwright/tests/e2e/workflows/editor/execution/execution.spec.ts
+  s_2f8eada33084f0::t_fe51330c3cba51 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d1eb9991d4a6b82b060b1e636758c33488dcac3b",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_2f8eada33084f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e77b7309-b373-4986-b2d3-46ff8c1ab10e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_691719f04965a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abcde464-1c00-4bc6-9f2b-1b8ad5c76471",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

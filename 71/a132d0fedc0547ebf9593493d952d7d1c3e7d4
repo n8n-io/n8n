@@ -1,0 +1,23 @@
+packages/cli/src/scheduling/system-tasks/system-task-overlap-reporter.ts
+  s_e27992d4b7fd6a::t_9b4bb015a2f548 8
+packages/cli/src/scheduling/system-tasks/system-task-type.ts
+  s_e27992d4b7fd6a::t_9b4bb015a2f548 11
+packages/cli/test/integration/scheduling/durable-scheduler-lifecycle.test.ts
+  s_e27992d4b7fd6a::t_9b4bb015a2f548 155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "71a132d0fedc0547ebf9593493d952d7d1c3e7d4",
+  "prompts": {},
+  "sessions": {
+    "s_e27992d4b7fd6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35f3a7ae-9444-407f-baeb-614f25b5e6e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

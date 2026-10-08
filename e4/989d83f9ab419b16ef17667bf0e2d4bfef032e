@@ -1,0 +1,71 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/module.descriptor.test.ts
+  s_bc92c7e8a354c5::t_47fda70711f0c3 101
+  s_bc92c7e8a354c5::t_64943e12aa815c 1-100,102-103
+  s_bc92c7e8a354c5::t_afd0c49a3e4243 104-106
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/mcpExposeAllOffer.ts
+  s_bc92c7e8a354c5::t_dd68b73aeb4ba1 1-11
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer.test.ts
+  s_bc92c7e8a354c5::t_89a592b98e0d03 1-57
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPAgentsSelect.vue
+  s_bc92c7e8a354c5::t_d01c9f11129952 120
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts
+  s_bc92c7e8a354c5::t_e5a0aedbe25813 5,74,77,122-126,148,526,533,539-540,548,550-551,619,629,639,649,663
+  s_bc92c7e8a354c5::t_804ee48432dc73 6-7,75-76
+packages/frontend/editor-ui/src/features/ai/mcpAccess/module.descriptor.ts
+  s_bc92c7e8a354c5::t_5561702b157f88 3,78-80,84-89
+packages/frontend/editor-ui/src/app/modals.manifest.test.ts
+  s_bc92c7e8a354c5::t_4cd2e93ec22843 4,12-14,77-105,107
+  s_bc92c7e8a354c5::t_8b6d1e11687731 106,108
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue
+  s_bc92c7e8a354c5::t_c082cd7a52d796 5,26,36,133,153,218-221
+packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+  s_bc92c7e8a354c5::t_561d9edc65e585 10,46-56,60
+packages/frontend/editor-ui/src/app/modals.manifest.ts
+  s_bc92c7e8a354c5::t_5211ef83dcc475 3-5,25-40
+  s_bc92c7e8a354c5::t_4cd2e93ec22843 15-16
+  s_bc92c7e8a354c5::t_37020f473cd303 41-43
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.vue
+  s_bc92c7e8a354c5::t_fa8a533f4a2f79 26,37,134,197-200
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue
+  s_bc92c7e8a354c5::t_d01c9f11129952 123
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.test.ts
+  s_bc92c7e8a354c5::t_63c0739a56f88f 5,12-13,42,50-55,68,89,183,212,214-216,242-257
+  s_bc92c7e8a354c5::t_619d5afe2b8d64 258-260
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.test.ts
+  s_bc92c7e8a354c5::t_10112a9c66640c 1,46,59-61
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_bc92c7e8a354c5::t_2ca1f9ae9124cb 5,48-49,158,324
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/index.ts
+  s_bc92c7e8a354c5::t_dd68b73aeb4ba1 1
+packages/frontend/editor-ui/src/app/capabilities.manifest.test.ts
+  s_bc92c7e8a354c5::t_e555a540989c95 11-12,14,16,19-25,140-165
+  s_bc92c7e8a354c5::t_0ba2c7d15a6b75 166
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_bc92c7e8a354c5::t_e8421c2a795c1b 53
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectAgentsModal.vue
+  s_bc92c7e8a354c5::t_d01c9f11129952 4-5,12,15-16,27-35,37,42,48,60,64-66,70-75,77-110
+packages/frontend/@n8n/frontend-module-sdk/src/types/capability.ts
+  s_bc92c7e8a354c5::t_dd68b73aeb4ba1 23-32
+packages/frontend/editor-ui/src/app/init/index.ts
+  s_bc92c7e8a354c5::t_5211ef83dcc475 7,252
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.test.ts
+  s_bc92c7e8a354c5::t_f6b7aa2e390bde 11,48-52,190,213,215-217
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.vue
+  s_bc92c7e8a354c5::t_38c76ba02a5da1 4-5,11,14-15,26-34,36,41,47,59,63-65,69-74,76-87,89-98,100-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e4989d83f9ab419b16ef17667bf0e2d4bfef032e",
+  "prompts": {},
+  "sessions": {
+    "s_bc92c7e8a354c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc1157de-8f47-4713-bdfb-a52867a41957",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

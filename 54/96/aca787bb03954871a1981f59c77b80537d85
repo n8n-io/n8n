@@ -1,0 +1,14 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  h_9b272a633435fb 270,272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5496aca787bb03954871a1981f59c77b80537d85",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

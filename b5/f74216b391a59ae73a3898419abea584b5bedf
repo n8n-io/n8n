@@ -1,0 +1,41 @@
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_782619aac31c26::t_0a554471da041b 17,52,94,97-109,118,127,154-163,173-181,248-249,252
+  s_782619aac31c26::t_e6e1393e28fe41 9
+  s_782619aac31c26::t_633db67555b029 250-251
+packages/cli/test/integration/agents/agent-conversation-state.test.ts
+  s_782619aac31c26::t_122e2d31520edd 5,11
+  s_782619aac31c26::t_e6e1393e28fe41 53,56
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_782619aac31c26::t_e6e1393e28fe41 4,17,36,41,44,56,68,80,94,101,111,141,156,195-228
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_782619aac31c26::t_e6e1393e28fe41 173,347,360-366,433-436,439
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_782619aac31c26::t_e6e1393e28fe41 2,4,17,22,30,34-35,47,55,63,66,69-70
+packages/cli/test/integration/agents/agent-checkpoint-pruning.task.integration.test.ts
+  s_782619aac31c26::t_e6e1393e28fe41 51-56,151-160
+  s_782619aac31c26::t_042a423ec81cc9 15
+  s_782619aac31c26::t_122e2d31520edd 6
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_782619aac31c26::t_633db67555b029 17-20
+  s_782619aac31c26::t_0a554471da041b 1,3,8-10,21-27,56,58-59,67-74,82-91
+packages/cli/test/integration/agents/agent-session-fence.test.ts
+  s_782619aac31c26::t_042a423ec81cc9 14,16,149-187,190
+  s_782619aac31c26::t_cd2721d470a069 1
+  s_782619aac31c26::t_fc2859da643dfd 188-189,191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b5f74216b391a59ae73a3898419abea584b5bedf",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

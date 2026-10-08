@@ -1,0 +1,19 @@
+packages/cli/test/migration/1789985459329-add-concurrency-limit-to-scheduled-job.test.ts
+  s_6e7f0d659dff8d::t_1db8743bbf9d80 13,132-134,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fbd1481e8252ce313662e069ce2327d14773cb4c",
+  "prompts": {},
+  "sessions": {
+    "s_6e7f0d659dff8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5eec9a19-26e2-4511-a811-20bf863425db",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

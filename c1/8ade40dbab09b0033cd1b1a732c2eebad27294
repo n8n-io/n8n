@@ -1,0 +1,86 @@
+packages/frontend/editor-ui/src/app/composables/usePostMessageHandler.test.ts
+  s_5db5c2f06b4ea1::t_072e541d03325d 915-936
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.test.ts
+  s_5db5c2f06b4ea1::t_6fe4a79634bd90 25,146-153,155-156,158
+  s_5db5c2f06b4ea1::t_45687ad2d17927 154
+  s_5db5c2f06b4ea1::t_e409d983506119 2
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeRenderer.vue
+  s_5db5c2f06b4ea1::t_b40df32f778cf6 8,31-32
+  s_5db5c2f06b4ea1::t_4d296005f6521a 33
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  s_5db5c2f06b4ea1::t_2465b26c452473 118-119
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  s_5db5c2f06b4ea1::t_5657a324eb3efb 293-296,300,307,371-378
+  s_5db5c2f06b4ea1::t_fd2adc50665c04 298-299,305
+  s_5db5c2f06b4ea1::t_283ffbb52205d1 42,46,297,301-304,306,308-311
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_5db5c2f06b4ea1::t_6b8b6297be209a 647-660
+  s_5db5c2f06b4ea1::t_eb87097c9ca440 45-48
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.vue
+  s_5db5c2f06b4ea1::t_b40df32f778cf6 98-99
+packages/frontend/editor-ui/src/app/css/plugins/_vueflow.scss
+  s_5db5c2f06b4ea1::t_8402eba847c445 53-54
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.test.ts
+  s_5db5c2f06b4ea1::t_fdcc0d2f034654 130-152
+packages/frontend/editor-ui/src/app/utils/postMessageUtils.ts
+  s_5db5c2f06b4ea1::t_8dca71026323b0 10-12,16-17
+  s_5db5c2f06b4ea1::t_08d7d89484791a 15
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.ts
+  s_5db5c2f06b4ea1::t_05666a72eac60e 17,598-599
+  s_5db5c2f06b4ea1::t_61168d263122b8 600-601
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffContent.vue
+  s_5db5c2f06b4ea1::t_4ffa749a6a611c 73-75,118-120
+  s_5db5c2f06b4ea1::t_38b92dfb249023 71-72,121-122
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeWebpage.vue
+  s_5db5c2f06b4ea1::t_6f42ba02ed7b64 1,3-12,21-28,30-50,54-71,83-86,113-118,120-157,160-165,167,169-172,174-263
+  s_5db5c2f06b4ea1::t_b320d0b107b8dd 2,19-20,72-77,79-82,87-112,173
+  s_5db5c2f06b4ea1::t_c409b54ceb865e 51-53
+  s_5db5c2f06b4ea1::t_fdd5ba6344686c 78,119
+  s_5db5c2f06b4ea1::t_b57f8482ca86ce 13-16,158,166
+  s_5db5c2f06b4ea1::t_369ece98b6f7b0 17-18,29,159,168
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_5db5c2f06b4ea1::t_f048f7ab1db29a 65,131-140,172-173
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_5db5c2f06b4ea1::t_25012f7130a84a 13-19
+  s_5db5c2f06b4ea1::t_828e837d40d9ce 737-766
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeWebpage.test.ts
+  s_5db5c2f06b4ea1::t_95d0e35b0ab029 141-145
+  s_5db5c2f06b4ea1::t_1af8a1a4307046 44-49
+  s_5db5c2f06b4ea1::t_9ef26d0ff166cd 2-13,15-17,20-35,37-43,50-61,64-65,69-71,73-136,138-140,146,161-162,164-169,171-179,181-253,255-264
+  s_5db5c2f06b4ea1::t_a310b8690928e2 1,14,18-19,36,62-63,66-68,72,137,147-160,163,170,180,254
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.test.ts
+  s_5db5c2f06b4ea1::t_e92e1a18f12ba9 389
+  s_5db5c2f06b4ea1::t_2392060100ae2e 37-53,66-70,82-83,169,351-388,390-397
+  s_5db5c2f06b4ea1::t_80cb197f101a38 398
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.ts
+  s_5db5c2f06b4ea1::t_05666a72eac60e 33,49,51-52,59,65,67-68
+  s_5db5c2f06b4ea1::t_10d065efbf0297 1-6
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeRenderer.test.ts
+  s_5db5c2f06b4ea1::t_fdcc0d2f034654 105-129
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_5db5c2f06b4ea1::t_b61fe594e53d83 110,149,233-236,1940-1943,2014-2015
+  s_5db5c2f06b4ea1::t_8402eba847c445 223
+  s_5db5c2f06b4ea1::t_30494d84a0c477 2016
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/__snapshots__/CanvasNodeWebpage.test.ts.snap
+  s_5db5c2f06b4ea1::t_be1916b3528ba7 1-24
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.test.ts
+  s_5db5c2f06b4ea1::t_f19ee407f64489 374-393
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffContent.test.ts
+  s_5db5c2f06b4ea1::t_8daf030fe80b73 7-12,23-24,31,37-41,102,222-261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c18ade40dbab09b0033cd1b1a732c2eebad27294",
+  "prompts": {},
+  "sessions": {
+    "s_5db5c2f06b4ea1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d572c3e7-d213-4d7e-b48c-199fda4de48e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
