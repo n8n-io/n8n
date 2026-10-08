@@ -100,16 +100,17 @@ export class UserService {
 		}
 	}
 
-	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
-		const user = await this.userRepository.findOneOrFail({ where: { id: userId } });
+	/**
+	 * Merge the given keys into the stored settings of a user. The repository
+	 * reads and writes in one transaction, so overlapping calls that change
+	 * different keys keep both changes.
+	 */
+	async updateSettings(userId: string, newSettings: Partial<IUserSettings>): Promise<void> {
+		const settings = await this.userRepository.updateSettingsLocked(userId, newSettings, {});
 
-		if (user.settings) {
-			Object.assign(user.settings, newSettings);
-		} else {
-			user.settings = newSettings;
+		if (!settings) {
+			throw new NotFoundError('User not found');
 		}
-
-		await this.userRepository.save(user);
 	}
 
 	async findUserWithAuthIdentities(userId: string): Promise<User> {

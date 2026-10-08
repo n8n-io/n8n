@@ -5,18 +5,23 @@ import type {
 	DeepPartial,
 	EntityManager,
 	FindOptionsWhere,
+	Repository,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
-import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
+import type { IUserSettings } from 'n8n-workflow';
 
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
 import { GLOBAL_OWNER_ROLE } from '../constants';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
+import { BaseRepository } from './base-repository';
 
 @Service()
-export class UserRepository extends Repository<User> {
-	constructor(dataSource: DataSource) {
-		super(User, dataSource.manager);
+export class UserRepository extends BaseRepository<User> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(User, dataSource.manager, transactionRunner);
 	}
 
 	async findManyByIds(
@@ -122,6 +127,36 @@ export class UserRepository extends Repository<User> {
 				throw error;
 			}
 			return 'changed';
+		});
+	}
+
+	/**
+	 * Merge `patch` into the stored settings of a user (top-level keys) and
+	 * return the result, or `null` when no user has this id. The read and the
+	 * write share one transaction, so an overlapping merge cannot drop the keys
+	 * of this one. Postgres locks the row; SQLite runs one write transaction at a time.
+	 */
+	async updateSettingsLocked(
+		userId: string,
+		patch: Partial<IUserSettings>,
+		ctx: OperationContext,
+	): Promise<IUserSettings | null> {
+		return await this.runInTransaction(ctx, async (manager) => {
+			const user = await manager.findOne(User, {
+				where: { id: userId },
+				select: ['id', 'settings'],
+				lock:
+					manager.connection.options.type === 'postgres'
+						? { mode: 'pessimistic_write' }
+						: undefined,
+			});
+			if (!user) return null;
+
+			const settings: IUserSettings = { ...user.settings, ...patch };
+			// `update` suffices: the personal-project subscriber needs `save` only
+			// when the name or the email changes.
+			await manager.update(User, { id: userId }, { settings });
+			return settings;
 		});
 	}
 
