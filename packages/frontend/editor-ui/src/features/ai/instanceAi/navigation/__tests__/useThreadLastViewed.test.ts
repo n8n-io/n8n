@@ -282,6 +282,22 @@ describe('useThreadLastViewed', () => {
 		window.dispatchEvent(new StorageEvent('storage', { key: null }));
 		expect(shown.value).toBeUndefined();
 	});
+
+	it('keeps reading views from other tabs after another reader unmounts', () => {
+		const threadViewScope = effectScope();
+		threadViewScope.run(() => useThreadLastViewed());
+		const sidebarScope = effectScope();
+		const sidebar = sidebarScope.run(() => useThreadLastViewed());
+		const shown = computed(() => sidebar?.lastViewedAt('thread-a'));
+		expect(shown.value).toBeUndefined();
+
+		threadViewScope.stop();
+		storage.set(keyFor('user-1'), JSON.stringify({ 'thread-a': NOW }));
+		window.dispatchEvent(new StorageEvent('storage', { key: keyFor('user-1') }));
+
+		expect(shown.value).toBe(NOW);
+		sidebarScope.stop();
+	});
 });
 
 describe('useMarkThreadViewed', () => {

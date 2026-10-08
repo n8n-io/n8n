@@ -48,8 +48,10 @@ const unreadable = (given: string) =>
 const NOT_A_SCHEDULE =
 	'Ignored the cron expression, because the workflow does not start with a schedule trigger.';
 
-// A valid five-field cron that is longer than the card shows: sixty minute values.
-const LONG_CRON = `${Array.from({ length: 60 }, (_, minute) => minute).join(',')} 8 * * *`;
+// Valid five-field crons of exactly 100 and 101 characters, at the limit of the card.
+const MINUTES = Array.from({ length: 34 }, (_, minute) => minute).join(',');
+const CRON_OF_100 = `${MINUTES} 18 * * *`;
+const CRON_OF_101 = `${MINUTES} 18 10 * *`;
 
 describe('isFiveFieldCron', () => {
 	it.each(['0 8 * * 1-5', '*/5 * * * *', '30 23 1 * *'])('accepts %j', (cron) => {
@@ -87,14 +89,19 @@ describe('triggerCronOf', () => {
 			['a cron that is not text', 8],
 			['a cron with seconds', '0 0 8 * * 1-5'],
 			['words', 'every weekday at 8'],
-			['a cron that is longer than the card shows', LONG_CRON],
+			['a cron that is longer than the card shows', CRON_OF_101],
 		])('returns nothing for %s', (_label, expression) => {
 			expect(cronOf(cronRule(expression))).toBeUndefined();
 		});
 
-		it('rejects the long cron only because of its length', () => {
-			expect(isFiveFieldCron(LONG_CRON)).toBe(true);
-			expect(LONG_CRON.length).toBeGreaterThan(100);
+		it('reads a cron of 100 characters, the most that the card shows', () => {
+			expect(CRON_OF_100).toHaveLength(100);
+			expect(cronOf(cronRule(CRON_OF_100))).toBe(CRON_OF_100);
+		});
+
+		it('rejects the cron of 101 characters only because of its length', () => {
+			expect(CRON_OF_101).toHaveLength(101);
+			expect(isFiveFieldCron(CRON_OF_101)).toBe(true);
 		});
 	});
 

@@ -223,6 +223,10 @@ const rows = computed(() => recentThreads.value.map(toRow));
 		color: var(--text-color--subtle);
 		text-decoration: none;
 	}
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
 }
 
 @media (hover: hover) {

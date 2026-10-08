@@ -79,7 +79,9 @@ function onStorage(event: StorageEvent) {
  */
 export function useThreadLastViewed() {
 	const usersStore = useUsersStore();
-	useEventListener(window, 'storage', onStorage);
+	// A new function for each caller: the DOM adds the same function only once, so the first
+	// caller that unmounts would remove the listener of all the others.
+	useEventListener(window, 'storage', (event) => onStorage(event));
 
 	function lastViewedAt(threadId: string): string | undefined {
 		const userId = usersStore.currentUserId;

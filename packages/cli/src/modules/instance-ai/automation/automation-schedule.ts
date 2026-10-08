@@ -18,12 +18,11 @@ export type CronChoice = { cron?: string; warning?: string };
 /**
  * One rule of a Schedule Trigger, with the defaults that n8n adds when it runs the workflow.
  * The stored workflow leaves out each value that is the same as its default. The bounds are
- * those of the node, so a value that n8n refuses gives no cron.
+ * those of the node, so a value that n8n refuses gives no cron. A rule of seconds is not in the
+ * list, because it runs more than once a minute and no five-field cron can say that.
  */
 const scheduleRuleSchema = z.object({
-	field: z
-		.enum(['cronExpression', 'seconds', 'minutes', 'hours', 'days', 'weeks', 'months'])
-		.default('days'),
+	field: z.enum(['cronExpression', 'minutes', 'hours', 'days', 'weeks', 'months']).default('days'),
 	expression: z.string().default(''),
 	minutesInterval: z.number().int().min(1).max(59).default(5),
 	hoursInterval: z.number().int().min(1).max(23).default(1),
@@ -75,7 +74,6 @@ function everyStep(step: number): string {
  */
 const CRON_OF_RULE: Record<ScheduleRule['field'], (rule: ScheduleRule) => string | undefined> = {
 	cronExpression: (rule) => cronOfExpression(rule.expression),
-	seconds: () => undefined,
 	minutes: ({ minutesInterval: step }) =>
 		60 % step === 0 ? `${everyStep(step)} * * * *` : undefined,
 	hours: ({ hoursInterval: step, triggerAtMinute }) =>
