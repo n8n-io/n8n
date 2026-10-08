@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_a8961f8cd25ec8::t_06ec2e0141d978 531-535
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.ts
+  s_a8961f8cd25ec8::t_06ec2e0141d978 7,75,144,148,198,203-213,215
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.test.ts
+  s_a8961f8cd25ec8::t_30372a4e33613d 14-18,25-31,47,80,89,106,140,163,174,184,196,215,237,264,282,296,302
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.types.ts
+  s_a8961f8cd25ec8::t_06ec2e0141d978 26-31
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_a8961f8cd25ec8::t_8e2489d65a066b 112,119,122,126,135-137
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsFlow.vue
+  s_a8961f8cd25ec8::t_06ec2e0141d978 9,18
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_a8961f8cd25ec8::t_8e2489d65a066b 666,684
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.vue
+  s_a8961f8cd25ec8::t_06ec2e0141d978 195
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_a8961f8cd25ec8::t_06ec2e0141d978 18,29
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.test.ts
+  s_a8961f8cd25ec8::t_7f47d3d4104c61 22-24,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b40dad68c091064dc989590abcde7daee812cd78",
+  "prompts": {},
+  "sessions": {
+    "s_a8961f8cd25ec8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "428cacae-79b0-4711-9ae5-4ed9a0792a50",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
