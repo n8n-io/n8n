@@ -25,6 +25,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_agents_scope | CHECK | CHECK (((scope)::text = ANY ((ARRAY['project'::character varying, 'instance'::character varying])::text[]))) |
+| CHK_agents_scope_project | CHECK | CHECK ((((scope)::text = 'instance'::text) = ("projectId" IS NULL))) |
 | FK_940597dfe9753375309ce6aeea0 | FOREIGN KEY | FOREIGN KEY ("activeVersionId") REFERENCES agent_history("versionId") ON DELETE SET NULL |
 | FK_a30d560207c4071d98aa03c179c | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_9c653f28ae19c5884d5baf6a1d9 | PRIMARY KEY | PRIMARY KEY (id) |

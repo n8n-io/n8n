@@ -137,6 +137,20 @@ describe('AddInstanceScopeToAgents migration', () => {
 		});
 	});
 
+	it('rejects a scope that does not match the project', async () => {
+		await runSingleMigration(migrationName);
+
+		await withContext(async (context) => {
+			const projectId = await insertProject(context);
+			// A project agent needs a project.
+			await expect(insertAgent(context, null)).rejects.toThrow();
+			await expect(insertAgent(context, null, 'project')).rejects.toThrow();
+			// An instance agent belongs to no project.
+			await expect(insertAgent(context, projectId, 'instance')).rejects.toThrow();
+			expect(await readIds(context, 'agents')).toEqual([]);
+		});
+	});
+
 	it('rejects an agent without a project before the migration', async () => {
 		await withContext(async (context) => {
 			await expect(insertAgent(context, null)).rejects.toThrow();
