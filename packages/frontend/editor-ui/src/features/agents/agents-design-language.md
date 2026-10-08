@@ -100,10 +100,10 @@ design work.
 | Area       | Rule                                                                                                                         |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                      |
-| Header     | Keep the header's bottom divider. Put Back on the left and Close on the right.                                               |
+| Header     | Keep Back on the left and Close on the right. Do not add a divider under the header. |
 | Title      | Use an editable local name when the asset supports one. Do not add an asset icon.                                            |
-| Body       | Let `AgentModal` own the outer body inset. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
-| Footer     | Do not add a divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                       |
+| Body       | Let `AgentModal` own the outer body inset. Match the header: `--spacing--md` vertical and `--spacing--lg` horizontal. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
+| Footer     | Use the same inset as the header. Do not add a divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                       |
 | Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                              |
 
 Use CSS variables for all sizes, spacing, colors, and motion. Do not add a new
