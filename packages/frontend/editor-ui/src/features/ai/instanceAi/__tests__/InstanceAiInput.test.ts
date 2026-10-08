@@ -423,6 +423,52 @@ describe('InstanceAiInput', () => {
 		expect(emitted().submit).toBeUndefined();
 	});
 
+	it('does not submit when credits are exhausted', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: false,
+				isOutOfCredits: true,
+				suggestions,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		expect(textbox).toBeDisabled();
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		expect(emitted().submit).toBeUndefined();
+	});
+
+	it('submits on Enter while credits remain', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: false,
+				isOutOfCredits: false,
+				suggestions,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Keep going');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		expect(emitted().submit?.[0]?.[0]).toBe('Keep going');
+	});
+
+	it('keeps stop available while a run is streaming and credits are exhausted', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: true,
+				isOutOfCredits: true,
+				suggestions,
+			},
+		});
+
+		await userEvent.click(getByRole('button', { name: 'Stop' }));
+
+		expect(emitted().stop).toHaveLength(1);
+	});
+
 	it('does not change the placeholder when hovering the quick examples trigger', async () => {
 		const { getByRole, getByTestId } = renderComponent({
 			props: {

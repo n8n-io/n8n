@@ -113,6 +113,7 @@ const props = withDefaults(
 		mentionArtifacts?: readonly WorkflowArtifactReference[];
 		mentionActiveWorkflowId?: string;
 		reservedAttachmentCount?: number;
+		isOutOfCredits?: boolean;
 	}>(),
 	{
 		isStreaming: false,
@@ -133,6 +134,7 @@ const props = withDefaults(
 		mentionArtifacts: () => [],
 		mentionActiveWorkflowId: undefined,
 		reservedAttachmentCount: 0,
+		isOutOfCredits: false,
 	},
 );
 
@@ -534,6 +536,7 @@ function resetDraftComposer({ keepAttachments = false } = {}) {
 
 /** The single submission gate — `canSubmit` is this predicate over the draft. */
 function canSubmitMessage(message: string, attachmentCount = 0) {
+	if (props.isOutOfCredits) return false;
 	if (isBusy.value || isGatedBySetup.value) return false;
 	// Plan feedback travels as a plain string, so an attachment cannot carry it.
 	if (props.isAwaitingPlanReview) return message.length > 0;
@@ -907,7 +910,7 @@ const resizable = computed(() => {
 			:placeholder="placeholder"
 			:is-streaming="props.isAwaitingPlanReview ? false : props.isStreaming"
 			:can-submit="canSubmit"
-			:disabled="isGatedBySetup || isPreparingSubmission"
+			:disabled="isGatedBySetup || isPreparingSubmission || props.isOutOfCredits"
 			:autosize="resizable"
 			:button-label="props.submitLabel"
 			:active-requires-focus="props.submitActiveRequiresFocus"

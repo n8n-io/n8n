@@ -164,6 +164,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	 */
 	const showCreditWarning = computed(() => isLowCredits.value || quotaLocked.value);
 
+	/** Send is blocked. A positive low balance stays a dismissible warning. */
+	const isOutOfCredits = computed(() => quotaLocked.value || creditsRemaining.value === 0);
+
 	// --- Credits push handling ---
 
 	// Applies an `updateInstanceAiCredits` push. The instance-ai module descriptor
@@ -486,6 +489,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		isLowCredits,
 		quotaLocked,
 		showCreditWarning,
+		isOutOfCredits,
 
 		// Thread-list actions
 		deleteThread,

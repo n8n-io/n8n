@@ -355,6 +355,7 @@ const InstanceAiInputStub = defineComponent({
 		contextualSuggestion: { type: String, required: false, default: null },
 		placeholder: { type: String, required: false },
 		mentionsEnabled: { type: Boolean, required: false },
+		isOutOfCredits: { type: Boolean, required: false },
 	},
 	emits: ['submit'],
 	setup(props, { emit, expose, slots }) {
@@ -487,6 +488,11 @@ const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-mentions-enabled' },
 					String(props.mentionsEnabled),
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-out-of-credits' },
+					String(Boolean(props.isOutOfCredits)),
 				),
 				h(
 					'button',
@@ -1020,6 +1026,28 @@ describe('InstanceAiEmptyView', () => {
 		await flushPromises();
 
 		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
+	});
+
+	it('blocks the composer when credits are gone and does not let the banner be dismissed', () => {
+		store.isOutOfCredits = true;
+		store.showCreditWarning = true;
+
+		const { getByTestId, queryByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-out-of-credits')).toHaveTextContent('true');
+		expect(getByTestId('credit-warning-banner')).toHaveTextContent("You've run out of AI credits");
+		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
+	});
+
+	it('blocks the composer when the quota is locked', () => {
+		store.isOutOfCredits = true;
+		store.quotaLocked = true;
+		store.showCreditWarning = true;
+
+		const { getByTestId, queryByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-out-of-credits')).toHaveTextContent('true');
+		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
 	});
 
 	it('keeps the free nudge mounted and reveals it after the credit warning is dismissed', async () => {

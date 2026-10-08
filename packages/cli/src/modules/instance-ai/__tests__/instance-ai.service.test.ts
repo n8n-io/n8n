@@ -270,6 +270,7 @@ import {
 	loadInstanceAiPromptSkills,
 	resumeAgentRun,
 	streamAgentRun,
+	isQuotaExhaustedError,
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
@@ -5454,6 +5455,39 @@ describe('InstanceAiService — planned task settlement', () => {
 			expect.objectContaining({
 				type: 'agent-completed',
 				payload: { role: 'builder', result: '', status: 'cancelled' },
+			}),
+		);
+	});
+
+	it('stops a background builder as out of credits when the thread is cancelled for quota', async () => {
+		const { service } = createSettlementService();
+
+		service.cancelRun('thread-a', 'quota_exhausted');
+		await flush();
+
+		const abortReason = service.backgroundTasks.cancelThread.mock.calls[0]?.[1];
+		expect(isQuotaExhaustedError(abortReason)).toBe(true);
+		expect(service.eventBus.publish).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({
+				type: 'error',
+				agentId: 'orchestrator-task-run-1',
+				payload: expect.objectContaining({
+					code: 'quota_exhausted',
+					content: expect.stringContaining('credits'),
+				}),
+			}),
+		);
+		expect(service.eventBus.publish).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({
+				type: 'agent-completed',
+				payload: expect.objectContaining({
+					role: 'builder',
+					result: '',
+					status: 'error',
+					error: expect.stringContaining('credits'),
+				}),
 			}),
 		);
 	});
