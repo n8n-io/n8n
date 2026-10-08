@@ -421,6 +421,36 @@ describe('ExecutionRecorder', () => {
 			expect(timelineEntry).toMatchObject({ output: { error: '[REDACTED]' } });
 		});
 	});
+
+	describe('host events', () => {
+		it('records a host event between the text segments around it', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'before' });
+			recorder.recordHostEvent('test.notice', { level: 'info' });
+			recorder.record({ type: 'text-delta', id: 't2', delta: 'after' });
+
+			const { timeline } = recorder.getMessageRecord();
+			expect(timeline.map((event) => event.type)).toEqual(['text', 'host-event', 'text']);
+			expect(timeline[1]).toMatchObject({
+				type: 'host-event',
+				name: 'test.notice',
+				payload: { level: 'info' },
+			});
+		});
+
+		it('sanitizes the payload and returns the recorded event', () => {
+			const recorder = new ExecutionRecorder();
+
+			const recorded = recorder.recordHostEvent('test.notice', {
+				apiKey: 'secret-api-key',
+				message: 'ok',
+			});
+
+			expect(recorded.payload).toEqual({ apiKey: '[REDACTED]', message: 'ok' });
+			expect(recorder.getMessageRecord().timeline).toEqual([recorded]);
+		});
+	});
 });
 
 function wfTool(name: string, id: string, wfName: string, trigger = 'manual'): BuiltTool {

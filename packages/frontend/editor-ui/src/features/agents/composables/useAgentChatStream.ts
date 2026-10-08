@@ -1191,6 +1191,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				applyForwardedChildChunk(found.tc.childProgress, event.chunk);
 				break;
 			}
+			case 'host-event': {
+				// Keep the event on the turn. The host renders it by name; the chat
+				// renders nothing for it by itself.
+				const msg = ensureCurrent(session);
+				msg.hostEvents = [
+					...(msg.hostEvents ?? []),
+					{ id: crypto.randomUUID(), name: event.name, payload: event.payload },
+				];
+				break;
+			}
 			case 'message':
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.

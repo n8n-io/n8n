@@ -12,6 +12,7 @@ import type { AgentExecutionThread } from '../entities/agent-execution-thread.en
 import type { ToolRegistry } from '../tool-registry';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
+import type { SystemAgentHostEventEmitter } from './system-agent-host-events';
 
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
@@ -23,6 +24,13 @@ interface SystemAgentTurnBase<TLease> {
 	abortSignal: AbortSignal;
 	/** The lease from the provider's workspace source. It is not set when the provider has no source. */
 	workspace?: TLease;
+	/**
+	 * Send a custom event to the chat during this turn. The runtime streams it
+	 * as a `host-event` SSE event and records it with the turn, so history
+	 * shows it again after a reload. The provider can keep the callback for
+	 * its tools and hooks until the turn settles. Later events are dropped.
+	 */
+	emitHostEvent: SystemAgentHostEventEmitter;
 }
 
 export interface SystemAgentStartTurn<TLease = unknown> extends SystemAgentTurnBase<TLease> {

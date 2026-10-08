@@ -264,6 +264,13 @@ export type TimelineEvent =
 			toolCallId: string;
 			response: unknown;
 			timestamp: number;
+	  }
+	| {
+			/** A custom event that a system-agent provider emitted during the turn. */
+			type: 'host-event';
+			name: string;
+			payload: unknown;
+			timestamp: number;
 	  };
 
 /**
@@ -364,6 +371,25 @@ export class ExecutionRecorder {
 			response: sanitizeExecutionLogValue(response),
 			timestamp: Date.now(),
 		});
+	}
+
+	/**
+	 * Record a custom host event at its position in the turn. The payload is
+	 * sanitized like other recorded values, because history returns it to the
+	 * client as it is stored. Returns the recorded event, so that the live
+	 * stream can send the same payload.
+	 */
+	recordHostEvent(name: string, payload: unknown): Extract<TimelineEvent, { type: 'host-event' }> {
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		const event: Extract<TimelineEvent, { type: 'host-event' }> = {
+			type: 'host-event',
+			name,
+			payload: sanitizeExecutionLogValue(payload),
+			timestamp: Date.now(),
+		};
+		this.appendCompletedEvent(event);
+		return event;
 	}
 
 	/** Feed a stream chunk into the recorder. */

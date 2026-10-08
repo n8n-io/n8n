@@ -209,6 +209,29 @@ describe('AgentChatMessageList', () => {
 		wrapper.unmount();
 	});
 
+	it('renders nothing for host events without a host renderer', () => {
+		const user: ChatMessage = { id: 'u1', role: 'user', content: 'Hi', status: 'success' };
+		const reply: ChatMessage = { id: 'a1', role: 'assistant', content: 'Done', status: 'success' };
+		const hostEvents = [{ id: 'h1', name: 'test.unknown', payload: { n: 1 } }];
+		const render = (messages: ChatMessage[]) => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages, messagingState: 'idle' },
+			});
+			const html = wrapper.html();
+			wrapper.unmount();
+			return html;
+		};
+
+		expect(render([user, { ...reply, hostEvents }])).toBe(render([user, reply]));
+		expect(
+			render([
+				user,
+				{ id: 'a2', role: 'assistant', content: '', status: 'success', hostEvents },
+				reply,
+			]),
+		).toBe(render([user, reply]));
+	});
+
 	it('keeps the budget notice and action when the plan progress call is hidden', async () => {
 		const initial = planView();
 		const previous = { ...planMessage(initial), content: 'Starting research.' };

@@ -19,6 +19,42 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 }
 
 describe('execution-to-message-mapper', () => {
+	it('maps a host event to a host-event content part in its position', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'success',
+				timeline: [
+					{
+						type: 'host-event',
+						name: 'test.notice',
+						payload: { level: 'info' },
+						timestamp: 50,
+					},
+					{ type: 'text', content: 'Done', timestamp: 100, endTime: 120 },
+				],
+			}),
+		);
+
+		expect(result.find(({ role }) => role === 'assistant')?.content).toEqual([
+			{ type: 'host-event', name: 'test.notice', payload: { level: 'info' } },
+			{ type: 'text', text: 'Done' },
+		]);
+	});
+
+	it('keeps an assistant message that has only a host event', () => {
+		const result = executionsToMessagesDto([
+			execution({
+				status: 'success',
+				timeline: [{ type: 'host-event', name: 'test.notice', payload: null, timestamp: 50 }],
+			}),
+		]);
+
+		expect(result.map(({ role, content }) => ({ role, content }))).toEqual([
+			{ role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+			{ role: 'assistant', content: [{ type: 'host-event', name: 'test.notice', payload: null }] },
+		]);
+	});
+
 	it('splits assistant output around stable additional user messages', () => {
 		const inputD = {
 			id: 'steer-d',
