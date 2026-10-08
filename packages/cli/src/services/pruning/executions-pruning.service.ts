@@ -50,6 +50,7 @@ export class ExecutionsPruningService {
 
 		while (!signal.aborted) {
 			const refs = await this.executionRepository.findSoftDeletedExecutions();
+			if (signal.aborted) break;
 			deletedCount += await this.hardDeleteBatch(refs, signal);
 
 			if (refs.length < this.executionRepository.hardDeletionBatchSize) break;
