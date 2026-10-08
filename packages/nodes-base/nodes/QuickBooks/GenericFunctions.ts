@@ -85,17 +85,6 @@ export async function quickBooksApiRequest(
 	}
 }
 
-async function getCount(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: IHttpRequestMethods,
-	endpoint: string,
-	qs: IDataObject,
-): Promise<any> {
-	const responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, {});
-
-	return responseData.QueryResponse.totalCount;
-}
-
 /**
  * Make an authenticated API request to QuickBooks and return all results.
  */
@@ -107,35 +96,26 @@ export async function quickBooksApiRequestAllItems(
 	body: IDataObject,
 	resource: string,
 ): Promise<any> {
-	let responseData;
+	let page: IDataObject[];
 	let startPosition = 1;
 	const maxResults = 1000;
 	const returnData: IDataObject[] = [];
 
-	const maxCountQuery = {
-		query: `SELECT COUNT(*) FROM ${resource}`,
-	} as IDataObject;
-
-	const maxCount = await getCount.call(this, method, endpoint, maxCountQuery);
-
 	const originalQuery = qs.query as string;
+	const nonResource = originalQuery.split(' ')?.pop();
+	const propertyName =
+		nonResource === 'CreditMemo' || nonResource === 'Term' || nonResource === 'TaxCode'
+			? nonResource
+			: capitalCase(resource);
 
 	do {
 		qs.query = `${originalQuery} MAXRESULTS ${maxResults} STARTPOSITION ${startPosition}`;
-		responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, body);
-		try {
-			const nonResource = originalQuery.split(' ')?.pop();
-			if (nonResource === 'CreditMemo' || nonResource === 'Term' || nonResource === 'TaxCode') {
-				returnData.push(...(responseData.QueryResponse[nonResource] as IDataObject[]));
-			} else {
-				returnData.push(...(responseData.QueryResponse[capitalCase(resource)] as IDataObject[]));
-			}
-		} catch (error) {
-			return [];
-		}
+		const responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, body);
+		page = responseData.QueryResponse[propertyName] ?? [];
+		returnData.push(...page);
 
 		startPosition += maxResults;
-	} while (maxCount > returnData.length);
+	} while (page.length === maxResults);
 
 	return returnData;
 }
