@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/builder/builder-thread-metadata.ts
+  s_fcc77b2931f263::t_f843aa21daf2e4 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6001848b08791f8621753df6153b295f1cefcbd7",
+  "prompts": {},
+  "sessions": {
+    "s_fcc77b2931f263": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95e12481-8f3d-4649-a397-a7b2425a401f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
