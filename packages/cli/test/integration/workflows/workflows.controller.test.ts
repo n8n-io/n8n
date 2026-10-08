@@ -5389,7 +5389,7 @@ describe('POST /workflows/:workflowId/run', () => {
 				objectContaining({
 					triggerOutputs: [[{ json: { from: 'earlier' } }]],
 					seededSteps: {
-						[setNode?.id ?? '']: [[{ json: { pinned: true }, pairedItem: { item: 0 } }]],
+						[setNode?.id ?? '']: [[[{ json: { pinned: true }, pairedItem: { item: 0 } }]]],
 					},
 				}),
 			);
