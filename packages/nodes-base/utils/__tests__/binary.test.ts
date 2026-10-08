@@ -19,7 +19,7 @@ vi.mock('@e965/xlsx', () => ({
 
 vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
 	getDocument: vi.fn(),
-	version: '5.4.296',
+	version: '6.3.289',
 }));
 
 describe('convertJsonToSpreadsheetBinary', () => {
@@ -119,6 +119,36 @@ describe('extractDataFromPDF', () => {
 			// @ts-expect-error - Intentionally deleting for test cleanup
 			delete globalThis.DOMMatrix;
 		}
+	});
+
+	it('should return custom document info entries as a plain object', async () => {
+		const mockDocument = {
+			numPages: 0,
+			getMetadata: vi.fn().mockResolvedValue({
+				info: { Title: 'Report', Custom: new Map([['Department', 'Finance']]) },
+				metadata: null,
+			}),
+			getPage: vi.fn(),
+		};
+		const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+		(getDocument as Mock).mockReturnValue({
+			promise: Promise.resolve(mockDocument),
+		});
+		helpers.assertBinaryData.mockReturnValue({
+			data: Buffer.from('fake pdf content').toString(BINARY_ENCODING),
+			mimeType: 'application/pdf',
+		});
+
+		const result = await extractDataFromPDF.call(
+			executeFunctions,
+			'data',
+			undefined,
+			undefined,
+			true,
+			0,
+		);
+
+		expect(result.info).toEqual({ Title: 'Report', Custom: { Department: 'Finance' } });
 	});
 
 	describe('DOMMatrix polyfill', () => {

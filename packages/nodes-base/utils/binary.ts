@@ -181,12 +181,16 @@ export async function extractDataFromPDF(
 	);
 	const document = await readPDF({
 		password,
-		isEvalSupported: false,
 		data: new Uint8Array(buffer),
 	}).promise;
-	const { info, metadata } = await document
+	const { info: documentInfo, metadata } = await document
 		.getMetadata()
 		.catch(() => ({ info: null, metadata: null }));
+	// pdfjs-dist returns custom info entries as a Map, which JSON serializes as an empty object.
+	const info =
+		documentInfo && 'Custom' in documentInfo && documentInfo.Custom instanceof Map
+			? { ...documentInfo, Custom: Object.fromEntries(documentInfo.Custom) }
+			: documentInfo;
 
 	const pages = [];
 	if (maxPages !== 0) {
