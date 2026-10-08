@@ -3,10 +3,13 @@ import type { RouteRecordSingleView } from 'vue-router';
 
 const inboxView = {
 	component: async () => await import('./views/InboxView.vue'),
+
 	async beforeEnter() {
 		const { useSettingsStore } = await import('@n8n/stores/settings.store');
+
 		return useSettingsStore().settings.inbox?.enabled === true || '/';
 	},
+
 	meta: { layout: 'default', middleware: ['authenticated', 'custom'] },
 } satisfies Pick<RouteRecordSingleView, 'component' | 'beforeEnter' | 'meta'>;
 
@@ -16,16 +19,22 @@ export const InboxModule = defineFrontendModule({
 	description: 'Workflow reviews and saved Assistant results.',
 	icon: 'inbox',
 	routes: [
+		// Keep legacy /reviews links working after the move to Inbox.
 		{
 			path: '/reviews/:reviewRequestId?',
-			redirect: (to) =>
-				typeof to.params.reviewRequestId === 'string' && to.params.reviewRequestId
-					? {
-							name: 'WorkflowReviewRequestsView',
-							params: { reviewId: to.params.reviewRequestId },
-							query: to.query,
-						}
-					: { name: 'Inbox', query: to.query },
+			redirect: (to) => {
+				const reviewId = to.params.reviewRequestId;
+
+				if (typeof reviewId === 'string' && reviewId) {
+					return {
+						name: 'WorkflowReviewRequestsView',
+						params: { reviewId },
+						query: to.query,
+					};
+				}
+
+				return { name: 'Inbox', query: to.query };
+			},
 		},
 		{
 			...inboxView,

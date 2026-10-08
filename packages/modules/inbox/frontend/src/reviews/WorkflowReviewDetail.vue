@@ -24,21 +24,26 @@ const props = withDefaults(
 	{ tab: 'activity' },
 );
 const emit = defineEmits<{ 'update:tab': [tab: WorkflowReviewDetailTab] }>();
+
 const reviewStore = useReviewDetailStore();
 const activityStore = useReviewActivityStore();
 const { detail, detailLoading, detailNotFound } = storeToRefs(reviewStore);
+
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
+
 const deciding = ref(false);
 const loadFailed = ref(false);
 const alertIcon = { type: 'icon', value: 'circle-alert' } as const;
-const review = computed(() =>
-	detail.value?.id === props.reviewId
-		? detail.value
-		: props.listItem?.id === props.reviewId
-			? props.listItem
-			: null,
-);
+
+const review = computed(() => {
+	if (detail.value?.id === props.reviewId) {
+		return detail.value;
+	}
+
+	return props.listItem?.id === props.reviewId ? props.listItem : null;
+});
+
 let isMounted = false;
 let selectionRevision = 0;
 let refreshing = false;
@@ -53,7 +58,10 @@ function ownsSelection(id: string, revision = selectionRevision) {
 }
 
 function handleLoadError(error: unknown, id: string, revision: number) {
-	if (!ownsSelection(id, revision)) return;
+	if (!ownsSelection(id, revision)) {
+		return;
+	}
+
 	loadFailed.value = true;
 	showError(error, i18n.baseText('workflowReviews.error.load'));
 }
@@ -61,7 +69,10 @@ function handleLoadError(error: unknown, id: string, revision: number) {
 async function loadDetail(id: string, revision: number) {
 	try {
 		await reviewStore.fetchDetail(id);
-		if (ownsSelection(id, revision)) loadFailed.value = false;
+
+		if (ownsSelection(id, revision)) {
+			loadFailed.value = false;
+		}
 	} catch (error) {
 		handleLoadError(error, id, revision);
 	}
@@ -73,10 +84,12 @@ watch(
 		// A new entry owns these stores. An older layout must not reset them on unmount.
 		reviewStore.clearDetail();
 		activityStore.reset();
+
 		selectionRevision = reviewStore.selectionRevision;
 		const revision = selectionRevision;
 		deciding.value = false;
 		loadFailed.value = false;
+
 		void loadDetail(id, revision);
 		void activityStore.fetchFeed(id);
 	},
@@ -84,7 +97,10 @@ watch(
 );
 
 watch(detailNotFound, (notFound) => {
-	if (!notFound || !ownsSelection(props.reviewId)) return;
+	if (!notFound || !ownsSelection(props.reviewId)) {
+		return;
+	}
+
 	activityStore.reset();
 	props.onItemChange({ type: 'workflow_review', id: props.reviewId, unavailable: true });
 });
@@ -92,6 +108,7 @@ watch(detailNotFound, (notFound) => {
 async function refresh() {
 	const id = props.reviewId;
 	const revision = selectionRevision;
+
 	if (
 		!ownsSelection(id, revision) ||
 		document.hidden ||
@@ -101,12 +118,19 @@ async function refresh() {
 		activityStore.posting ||
 		activityStore.loading ||
 		activityStore.loadingMore
-	)
+	) {
 		return;
+	}
+
 	refreshing = true;
+
 	try {
 		await loadDetail(id, revision);
-		if (!ownsSelection(id, revision) || detailNotFound.value) return;
+
+		if (!ownsSelection(id, revision) || detailNotFound.value) {
+			return;
+		}
+
 		if (activityStore.currentReviewId !== id && detail.value?.id === id) {
 			await activityStore.fetchFeed(id);
 		} else {
@@ -125,16 +149,26 @@ function asSentence(message: string) {
 async function onDecide(input: WorkflowReviewDecisionInput) {
 	const id = props.reviewId;
 	const revision = selectionRevision;
-	if (!ownsSelection(id, revision) || deciding.value) return;
+
+	if (!ownsSelection(id, revision) || deciding.value) {
+		return;
+	}
+
 	// The Inbox can reconcile this result after the viewer selects another source.
 	const onItemChange = props.onItemChange;
 	deciding.value = true;
+
 	try {
 		const { autoPublish, state } = await reviewStore.decideOnReview(id, input);
 		onItemChange({ type: 'workflow_review', id, state });
-		if (!ownsSelection(id, revision)) return;
+
+		if (!ownsSelection(id, revision)) {
+			return;
+		}
+
 		activityStore.clearDecisionNote(input.note ?? '');
 		void activityStore.fetchFeed(id);
+
 		if (state === 'closed') {
 			void loadDetail(id, revision);
 		}
@@ -157,21 +191,30 @@ async function onDecide(input: WorkflowReviewDecisionInput) {
 		}
 	} catch (error) {
 		onItemChange({ type: 'workflow_review', id });
-		if (!ownsSelection(id, revision)) return;
+
+		if (!ownsSelection(id, revision)) {
+			return;
+		}
+
 		showError(error, i18n.baseText('workflowReviews.decision.error.title'));
+
 		// Another reviewer can decide first. Keep the note while loading the current result.
 		await Promise.all([loadDetail(id, revision), activityStore.fetchFeed(id)]);
 	} finally {
-		if (ownsSelection(id, revision)) deciding.value = false;
+		if (ownsSelection(id, revision)) {
+			deciding.value = false;
+		}
 	}
 }
 
 onMounted(() => {
 	isMounted = true;
 });
+
 onBeforeUnmount(() => {
 	isMounted = false;
 });
+
 defineExpose({ refresh });
 </script>
 
@@ -225,6 +268,7 @@ defineExpose({ refresh });
 	flex-direction: column;
 	min-height: 0;
 }
+
 .columnTitle {
 	display: flex;
 	align-items: center;
@@ -232,6 +276,7 @@ defineExpose({ refresh });
 	min-height: var(--spacing--2xl);
 	padding-bottom: var(--spacing--sm);
 }
+
 .mainBody {
 	flex: 1;
 	min-height: 0;
