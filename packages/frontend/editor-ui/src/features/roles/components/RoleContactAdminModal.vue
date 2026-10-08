@@ -1,10 +1,16 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { ElDialog } from 'element-plus';
-import { N8nLink, N8nText } from '@n8n/design-system';
+import {
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nLink,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
-import { APP_MODALS_ELEMENT_ID, CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
+import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
 
 const props = withDefaults(
 	defineProps<{
@@ -32,19 +38,13 @@ const bodyKey = computed(() =>
 </script>
 
 <template>
-	<ElDialog
-		v-model="visible"
-		width="400"
-		:show-close="true"
-		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
-	>
-		<template #header>
-			<N8nText tag="span" size="large" :bold="true">
+	<N8nDialog v-model:open="visible" size="medium">
+		<N8nDialogHeader>
+			<N8nDialogTitle>
 				{{ i18n.baseText(titleKey) }}
-			</N8nText>
-		</template>
-
-		<div :class="$style.content">
+			</N8nDialogTitle>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<N8nText tag="p" size="medium">
 				<I18nT :keypath="bodyKey" tag="span">
 					<template #documentation>
@@ -54,12 +54,6 @@ const bodyKey = computed(() =>
 					</template>
 				</I18nT>
 			</N8nText>
-		</div>
-	</ElDialog>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
-
-<style lang="scss" module>
-.content {
-	padding: 0;
-}
-</style>
