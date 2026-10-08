@@ -84,7 +84,7 @@ export const coloringStateField = StateField.define<DecorationSet>({
 					colorings = colorings.map(transaction.changes);
 					// Clean up zero-length decorations left behind by the synthetic insert/delete
 					if (colorings.size > 0) {
-						const surviving: Range<Decoration>[] = [];
+						const surviving: Array<Range<Decoration>> = [];
 						const cursor = colorings.iter();
 						while (cursor.value !== null) {
 							if (cursor.from !== cursor.to) {
