@@ -1,10 +1,16 @@
 import { googleApiCredentialTest } from 'n8n-nodes-base/google-service-account';
-import { NodeHelpers, Workflow, type INode, type INodeTypes } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	Workflow,
+	type INode,
+	type INodeTypes,
+	type ISupplyDataFunctions,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EmbeddingsGoogleVertex } from '../../nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node';
 import { LmChatGoogleVertex } from '../../nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node';
-import { searchGoogleProjects } from '../google-vertex';
+import { resolveGoogleVertexCredentials, searchGoogleProjects } from '../google-vertex';
 
 const { searchProjects, close, ProjectsClient } = vi.hoisted(() => {
 	const searchProjects = vi.fn();
@@ -22,6 +28,29 @@ const { searchProjects, close, ProjectsClient } = vi.hoisted(() => {
 });
 
 vi.mock('@google-cloud/resource-manager', () => ({ ProjectsClient }));
+
+describe('Google Vertex credential project', () => {
+	it.each([
+		{ project: undefined, projectId: 'saved-project', expected: 'saved-project' },
+		{ project: '__custom__', projectId: 'manual-project', expected: 'manual-project' },
+		{ project: 'selected-project', projectId: 'old-manual-project', expected: 'selected-project' },
+	])('uses project $expected for selector $project', async ({ project, projectId, expected }) => {
+		const context = mock<ISupplyDataFunctions>();
+		context.getCredentials.mockResolvedValue({
+			email: 'service@example.com',
+			privateKey: 'test-key',
+			region: 'global',
+			...(project === undefined ? {} : { project }),
+			projectId,
+		});
+		context.getNodeParameter.mockImplementation((name) =>
+			name === 'authentication' ? 'googleVertexAiApi' : '',
+		);
+		await expect(resolveGoogleVertexCredentials(context, 0)).resolves.toMatchObject({
+			projectId: expected,
+		});
+	});
+});
 
 describe('Google project discovery', () => {
 	const credentials = Object.freeze({

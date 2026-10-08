@@ -50,10 +50,11 @@ describe('CredentialOptionsService', () => {
 		displayName: 'Google Vertex AI',
 		properties: [
 			{
-				name: 'projectId',
-				displayName: 'Project ID',
-				type: 'string',
-				default: '',
+				name: 'project',
+				displayName: 'Project',
+				type: 'options',
+				options: [{ name: 'Custom', value: '__custom__' }],
+				default: '__custom__',
 				typeOptions: { loadOptionsMethod: 'projects' },
 			},
 		],
@@ -61,7 +62,7 @@ describe('CredentialOptionsService', () => {
 	};
 	const request: CredentialOptionsRequestDto = {
 		type: type.name,
-		propertyName: 'projectId',
+		propertyName: 'project',
 		data: { email: 'service@example.com', privateKey: 'draft-key' },
 		paginationToken: 'page-two',
 	};

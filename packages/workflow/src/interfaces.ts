@@ -2029,8 +2029,8 @@ export interface INodePropertyTypeOptions {
 	editor?: EditorType; // Supported by: string
 	editorIsReadOnly?: boolean; // Supported by: string
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
-	loadOptionsDependsOn?: string[]; // Supported by: options, credential strings
-	loadOptionsMethod?: string; // Supported by: options, credential strings
+	loadOptionsDependsOn?: string[]; // Supported by: options
+	loadOptionsMethod?: string; // Supported by: options
 	loadOptions?: ILoadOptions; // Supported by: options
 	maxValue?: number; // Supported by: number
 	minValue?: number; // Supported by: number

@@ -71,7 +71,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 			<!-- Why form? to break up inputs, to prevent Chrome autofill -->
 			<N8nNotice v-if="parameter.type === 'notice'" :content="parameter.displayName" />
 			<CredentialOptionsInput
-				v-else-if="parameter.type === 'string' && parameter.typeOptions?.loadOptionsMethod"
+				v-else-if="parameter.type === 'options' && parameter.typeOptions?.loadOptionsMethod"
 				v-bind="props"
 				:parameter="parameter"
 				:model-value="String(credentialDataValues[parameter.name] ?? '')"

@@ -10,6 +10,8 @@ import {
 
 import { resolveVertexLocation } from '../nodes/llms/gemini-common/vertex-location';
 
+export const GOOGLE_VERTEX_CUSTOM_PROJECT = '__custom__';
+
 export const googleVertexCredentials: INodeCredentialDescription[] = [
 	{
 		name: 'googleApi',
@@ -45,7 +47,8 @@ export async function resolveGoogleVertexCredentials(
 	const credentials = await context.getCredentials(credentialType);
 	let projectId: unknown;
 	if (credentialType === 'googleVertexAiApi') {
-		projectId = credentials.projectId;
+		const project = credentials.project ?? GOOGLE_VERTEX_CUSTOM_PROJECT;
+		projectId = project === GOOGLE_VERTEX_CUSTOM_PROJECT ? credentials.projectId : project;
 		if (typeof projectId === 'string') {
 			projectId = projectId.trim();
 		}
