@@ -1,24 +1,14 @@
 import { defineNode, defineResource, ref, t } from '@n8n/node-sdk';
-import { compat, credential } from '@n8n/node-sdk/credentials';
+import { credential } from '@n8n/node-sdk/credentials';
 
-import { githubToken } from './credentials';
-
-const DEFAULT_SERVER = 'https://api.github.com';
+import { githubOAuth2, githubToken } from './credentials';
 
 export const github = defineNode({
 	id: 'github',
 	displayName: 'GitHub',
 	// The scopes are GitHub OAuth scopes. A token with fine-grained permissions maps to them.
 	credential: credential({
-		types: [
-			githubToken,
-			// The legacy type stays the definition: its OAuth2 endpoints depend on the server.
-			compat('githubOAuth2Api', {
-				id: 'github.oauth2',
-				fields: { server: t.str().default(DEFAULT_SERVER) },
-				baseUrl: '{server}',
-			}),
-		],
+		types: [githubToken, githubOAuth2],
 		scopes: {
 			repo: 'Read and write repositories',
 			'admin:repo_hook': 'Create and delete repository webhooks',

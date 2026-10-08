@@ -73,7 +73,7 @@ export function versionsOf(actionId: string, dir: string): DigestedVersion[] {
 /** The ids of the actions, triggers and providers with a bundle in the embedded store `dir`. */
 export const bundledIdsOf = (dir: string) =>
 	catalogOf(dir).flatMap(({ id, kind, bundle }) =>
-		bundle === undefined || kind === 'sdk' ? [] : [id],
+		bundle === undefined || kind === 'sdk' || kind === 'credential' ? [] : [id],
 	);
 
 /** The credential manifests in the embedded store `dir`, with the blob file of each one. */

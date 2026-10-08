@@ -342,6 +342,45 @@ describe('credential types of the node contracts package', () => {
 		]);
 	});
 
+	it('give githubOAuth2Api the OAuth2 data of the legacy class, with the endpoints from derive', async () => {
+		const [contract, legacy] = await Promise.all([loaded(true), loaded(false)]);
+		const oauth2Of = async ({ helper }: typeof contract, server?: string) =>
+			await helper.applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{ clientId: 'client-1', clientSecret: 'secret-1', ...(server ? { server } : {}) },
+				'githubOAuth2Api',
+				'internal',
+			);
+
+		expect(contract.instance.knownCredentials.githubOAuth2Api.sourcePath).toContain(NEXT);
+		expect(contract.credentialTypes.getParentTypes('githubOAuth2Api')).toEqual(['oAuth2Api']);
+		expect(contract.credentialTypes.getSupportedNodes('githubOAuth2Api')).toEqual(
+			expect.arrayContaining(['n8n-nodes-base.github', 'n8n-nodes-base.githubTrigger']),
+		);
+		const enterprise = await oauth2Of(contract, 'https://ghe.example.com/api/v3');
+		expect(enterprise).toMatchObject({
+			authUrl: 'https://ghe.example.com/login/oauth/authorize',
+			accessTokenUrl: 'https://ghe.example.com/login/oauth/access_token',
+			scope:
+				'repo,admin:repo_hook,admin:org,admin:org_hook,gist,notifications,user,write:packages,read:packages,delete:packages,workflow',
+		});
+		const keys = [
+			'grantType',
+			'server',
+			'authUrl',
+			'accessTokenUrl',
+			'scope',
+			'authQueryParameters',
+			'authentication',
+		];
+		const pick = (data: ICredentialDataDecryptedObject) =>
+			Object.fromEntries(keys.map((key) => [key, data[key]]));
+		expect(pick(enterprise)).toEqual(
+			pick(await oauth2Of(legacy, 'https://ghe.example.com/api/v3')),
+		);
+		expect(pick(await oauth2Of(contract))).toEqual(pick(await oauth2Of(legacy)));
+	});
+
 	it('keep the legacy classes with node contracts off', async () => {
 		const { instance, credentialTypes, helper } = await loaded(false);
 

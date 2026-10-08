@@ -1416,6 +1416,36 @@
 			"documentationUrl": "github"
 		},
 		{
+			"name": "githubOAuth2Api",
+			"extends": ["oAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-integrations.githubIssueCreate",
+				"@n8n/nodes-integrations.githubIssueCreateComment",
+				"@n8n/nodes-integrations.githubIssueGet",
+				"@n8n/nodes-integrations.githubIssueGetAll",
+				"@n8n/nodes-integrations.githubIssueUpdate",
+				"@n8n/nodes-integrations.githubRepositoryEvent",
+				"n8n-nodes-base.github",
+				"n8n-nodes-base.githubTrigger"
+			],
+			"properties": [
+				"grantType",
+				"authUrl",
+				"accessTokenUrl",
+				"scope",
+				"authQueryParameters",
+				"authentication",
+				"server",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"iconUrl": {
+				"light": "icons/n8n-nodes-base/dist/nodes/Github/github.svg",
+				"dark": "icons/n8n-nodes-base/dist/nodes/Github/github.dark.svg"
+			},
+			"documentationUrl": "github"
+		},
+		{
 			"name": "gmailOAuth2",
 			"extends": ["googleOAuth2Api"],
 			"supportedNodes": [
@@ -2008,6 +2038,25 @@
 			"supportedNodes": ["n8n-nodes-base.facebookTrigger"]
 		},
 		"githubApi": {
+			"supportedNodes": [
+				"@n8n/nodes-integrations.githubIssueCreate",
+				"@n8n/nodes-integrations.githubIssueCreateComment",
+				"@n8n/nodes-integrations.githubIssueCreateCommentTool",
+				"@n8n/nodes-integrations.githubIssueCreateTool",
+				"@n8n/nodes-integrations.githubIssueGet",
+				"@n8n/nodes-integrations.githubIssueGetAll",
+				"@n8n/nodes-integrations.githubIssueGetAllTool",
+				"@n8n/nodes-integrations.githubIssueGetTool",
+				"@n8n/nodes-integrations.githubIssueUpdate",
+				"@n8n/nodes-integrations.githubIssueUpdateTool",
+				"@n8n/nodes-integrations.githubRepositoryEvent",
+				"n8n-nodes-base.github",
+				"n8n-nodes-base.githubTool",
+				"n8n-nodes-base.githubTrigger"
+			]
+		},
+		"githubOAuth2Api": {
+			"extends": ["oAuth2Api"],
 			"supportedNodes": [
 				"@n8n/nodes-integrations.githubIssueCreate",
 				"@n8n/nodes-integrations.githubIssueCreateComment",

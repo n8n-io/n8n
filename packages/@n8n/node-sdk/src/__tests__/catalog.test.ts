@@ -38,12 +38,12 @@ describe('contractCatalogOf', () => {
 
 describe('embeddedCompatTypeOf', () => {
 	it('reads a compat type with its fields and base URL from an embedded bundle', () => {
-		expect(embeddedCompatTypeOf(firstParty, 'githubOAuth2Api')).toMatchObject({
-			name: 'githubOAuth2Api',
+		expect(embeddedCompatTypeOf(firstParty, 'microsoftTeamsOAuth2Api')).toMatchObject({
+			name: 'microsoftTeamsOAuth2Api',
 			scheme: { kind: 'compat' },
-			baseUrl: '{server}',
+			baseUrl: '{graphApiBaseUrl}',
 		});
-		expect(embeddedCompatTypeOf(firstParty, 'githubApi')).toBeUndefined();
+		expect(embeddedCompatTypeOf(firstParty, 'githubOAuth2Api')).toBeUndefined();
 		expect(embeddedCompatTypeOf(firstParty, 'unknownApi')).toBeUndefined();
 	});
 });

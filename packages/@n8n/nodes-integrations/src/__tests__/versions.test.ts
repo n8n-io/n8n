@@ -303,8 +303,12 @@ describe('bundled versions', () => {
 		expect(byId.get('gmail.message.send')).toMatchObject({
 			credentials: { 'gmail.oauth2': '^1.0.0' },
 		});
+		expect(byId.get('github.issue.getAll')?.credentials).toEqual({
+			'github.token': '^1.0.0',
+			'github.oauth2': '^1.0.0',
+		});
 		// A compat credential type has no credential manifest, so no pin.
-		expect(byId.get('github.issue.getAll')?.credentials).toEqual({ 'github.token': '^1.0.0' });
+		expect(byId.get('microsoftTeams.chatMessage.create')?.credentials).toBeUndefined();
 	});
 
 	it('keep the contract hash of each action whose form stores a widget value', () => {
