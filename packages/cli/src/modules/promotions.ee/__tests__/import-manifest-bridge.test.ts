@@ -105,6 +105,15 @@ describe('import-manifest-bridge', () => {
 		await writeTree({
 			'manifest.json': leftoverManifest({
 				requirements: {
+					variables: [
+						{
+							name: 'REGION',
+							usedBy: [
+								{ kind: 'workflow', id: 'w1' },
+								{ kind: 'agent', id: 'w2' },
+							],
+						},
+					],
 					tags: [
 						{
 							id: 't-shared',
@@ -131,6 +140,15 @@ describe('import-manifest-bridge', () => {
 				sourceId: 'inst-1',
 				requirements: {
 					tags: [{ id: 't-shared', name: 'production', usedBy: [{ kind: 'workflow', id: 'w2' }] }],
+					variables: [
+						{
+							name: 'REGION',
+							usedBy: [
+								{ kind: 'workflow', id: 'w2' },
+								{ kind: 'agent', id: 'w1' },
+							],
+						},
+					],
 				},
 			}),
 			sourceId: 'inst-test',
@@ -139,6 +157,15 @@ describe('import-manifest-bridge', () => {
 		const written = packageManifestSchema.parse(
 			JSON.parse(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')),
 		);
+		expect(written.requirements?.variables).toEqual([
+			{
+				name: 'REGION',
+				usedBy: [
+					{ kind: 'workflow', id: 'w1' },
+					{ kind: 'workflow', id: 'w2' },
+				],
+			},
+		]);
 		expect(written.requirements?.tags).toEqual([
 			{
 				id: 't-shared',

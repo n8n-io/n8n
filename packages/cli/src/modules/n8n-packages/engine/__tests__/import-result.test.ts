@@ -22,8 +22,10 @@ describe('identifyRequirements', () => {
 		expect(identifyRequirements(undefined, [prepared('W1')])).toBeUndefined();
 	});
 
-	it('keeps only in-scope workflows and drops requirements that no in-scope workflow uses', () => {
+	it('keeps only selected workflow consumers, even when an Agent has the same ID', () => {
 		const requirements = [requirement('credA', ['W1', 'W2']), requirement('credB', ['W3'])];
+		requirements[0].usedBy.push({ kind: 'agent', id: 'W1' });
+		requirements[1].usedBy.push({ kind: 'agent', id: 'W1' });
 
 		const scoped = identifyRequirements(requirements, [prepared('W1')]);
 

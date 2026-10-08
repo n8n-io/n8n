@@ -44,7 +44,7 @@ import { policyViolationSchema } from '../../schemas/policy-violation.schema';
 
 export const packageRequirementConsumerSchema = z
 	.object({
-		kind: z.literal('workflow'),
+		kind: z.enum(['workflow', 'agent']),
 		id: z.string().min(1),
 	})
 	.openapi('PackageRequirementConsumer');

@@ -83,16 +83,85 @@ describe('packageRequirementsSchema', () => {
 		expect(() => packageRequirementsSchema.parse(requirements)).toThrow();
 	});
 
+	describe.each([
+		['credentials', { id: 'cred-1', name: 'Model', type: 'openAiApi' }],
+		['workflows', { id: 'wf-1' }],
+		['agents', { id: 'agent-1' }],
+		['dataTables', { id: 'table-1', name: 'Customers' }],
+		['variables', { name: 'REGION' }],
+		['nodeTypes', { type: 'n8n-nodes-base.set', typeVersion: 3 }],
+	])('%s consumer attribution', (collection, requirement) => {
+		it.each([
+			{ usedBy: [{ kind: 'agent', id: 'consumer' }] },
+			{
+				usedBy: [
+					{ kind: 'workflow', id: 'consumer' },
+					{ kind: 'agent', id: 'consumer' },
+				],
+			},
+		])('accepts Agent and mixed consumers: %j', ({ usedBy }) => {
+			const input = { [collection]: [{ ...requirement, usedBy }] };
+			expect(packageRequirementsSchema.parse(input)).toEqual(input);
+		});
+
+		it.each([{}, { usedBy: [] }])('rejects missing consumers: %j', (usage) => {
+			expect(() =>
+				packageRequirementsSchema.parse({ [collection]: [{ ...requirement, ...usage }] }),
+			).toThrow();
+		});
+	});
+
 	it.each([
-		{},
-		{ usedBy: [] },
 		{ usedBy: [{ kind: 'project', id: 'consumer' }] },
 		{ usedBy: [{ kind: 'workflow', id: '' }] },
 		{ usedBy: ['wf-1'] },
 		{ usedByWorkflows: ['wf-1'] },
+		{ usedByWorkflows: [], usedByAgents: ['agent-1'] },
 	])('rejects invalid or legacy consumer references: %j', (usage) => {
 		expect(() =>
 			packageRequirementsSchema.parse({ variables: [{ name: 'REGION', ...usage }] }),
 		).toThrow();
+	});
+
+	it('restricts tag consumers to workflows', () => {
+		expect(() =>
+			packageRequirementsSchema.parse({
+				tags: [{ id: 'tag-1', name: 'production', usedBy: [{ kind: 'agent', id: 'agent-1' }] }],
+			}),
+		).toThrow();
+	});
+
+	it('accepts an ID-only credential for Agent consumers', () => {
+		const requirements = {
+			credentials: [{ id: 'cred-1', usedBy: [{ kind: 'agent', id: 'agent-1' }] }],
+		};
+		expect(packageRequirementsSchema.parse(requirements)).toEqual(requirements);
+	});
+
+	it.each([{ name: 'Model' }, { type: 'openAiApi' }, {}])(
+		'requires credential names and types for mixed consumers: %j',
+		(fields) => {
+			expect(() =>
+				packageRequirementsSchema.parse({
+					credentials: [
+						{
+							id: 'cred-1',
+							...fields,
+							usedBy: [
+								{ kind: 'workflow', id: 'wf-1' },
+								{ kind: 'agent', id: 'agent-1' },
+							],
+						},
+					],
+				}),
+			).toThrow(/required for workflow consumers/);
+		},
+	);
+
+	it('rejects duplicate Agent requirement ids', () => {
+		const agent = { id: 'agent-1', usedBy: [{ kind: 'agent', id: 'agent-consumer' }] };
+		expect(() => packageRequirementsSchema.parse({ agents: [agent, agent] })).toThrow(
+			/Duplicate Agent id/,
+		);
 	});
 });
