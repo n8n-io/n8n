@@ -1,11 +1,13 @@
 import { z } from 'zod';
 
 import type * as AgentRuntimeModule from '../../runtime/loop/agent-runtime';
+import { isZodSchema } from '../../utils/zod';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
 	getInlineDelegateSubAgentToolOptions,
+	type CreateDelegateSubAgentToolOptions,
 	type DelegateSubAgentCancelRequest,
 	type DelegateSubAgentResumeRequest,
 	type DelegateSubAgentRunner,
@@ -202,6 +204,55 @@ describe('delegate sub-agent routing', () => {
 		expect(hostRunSubAgent).toHaveBeenCalledOnce();
 		expect(runtimeConfigs).toHaveLength(0);
 	});
+
+	it.each([undefined, 'foreground', 'background'] as const)(
+		'routes mode %s after the SDK rebuild and preserves its model output',
+		async (mode) => {
+			const runSubAgent = vi.fn<DelegateSubAgentRunner>().mockResolvedValue({
+				status: 'completed',
+				answer: 'child answer',
+			});
+			const receipt = { status: 'started', jobId: 'job-1' } as const;
+			const runBackgroundSubAgent = vi
+				.fn<NonNullable<CreateDelegateSubAgentToolOptions['runBackgroundSubAgent']>>()
+				.mockResolvedValue(receipt);
+			const agent = new Agent('parent')
+				.model('openai', 'gpt-4o-mini')
+				.instructions('Delegate bounded work.')
+				.tool(
+					createDelegateSubAgentTool({
+						runSubAgent,
+						runBackgroundSubAgent,
+						toModelOutput: (output) => output.answer,
+					}),
+				);
+			const config = await buildAgentConfig(agent);
+			const tool = config.tools?.find(
+				(candidate) => candidate.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+			);
+			if (!tool?.handler || !isZodSchema(tool.inputSchema)) {
+				throw new Error('Expected a delegation tool with an input schema');
+			}
+			const input = tool.inputSchema.parse({ ...delegateInput, mode });
+			const context = {
+				runId: 'parent-run-1',
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			};
+			const output = await tool.handler(input, context);
+
+			if (mode === 'background') {
+				expect(output).toEqual(receipt);
+				expect(tool.toModelOutput?.(output)).toEqual(receipt);
+				expect(runBackgroundSubAgent).toHaveBeenCalledWith(input, context);
+				expect(runSubAgent).not.toHaveBeenCalled();
+			} else {
+				expect(output).toMatchObject({ status: 'completed', answer: 'child answer' });
+				expect(tool.toModelOutput?.(output)).toBe('child answer');
+				expect(runBackgroundSubAgent).not.toHaveBeenCalled();
+			}
+			expect(runtimeConfigs).toHaveLength(0);
+		},
+	);
 
 	it('prefers host resume and cancellation handlers for inline delegations', async () => {
 		const hostResumeSubAgent = vi.fn().mockResolvedValue({
