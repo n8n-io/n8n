@@ -4587,6 +4587,7 @@ describe('TelemetryEventRelay', () => {
 								recommendations: [],
 								migratable: false,
 								nbAffectedWorkflows: 4,
+								nbWontFixWorkflows: 1,
 							},
 						],
 					},
