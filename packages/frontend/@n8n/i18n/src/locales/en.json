@@ -7903,6 +7903,7 @@
 	"instanceAi.automation.proposal.title": "Want this to happen automatically?",
 	"instanceAi.automation.proposal.titleKeep": "Keep this as a workflow?",
 	"instanceAi.automation.proposal.titleUpdate": "Make your changes live?",
+	"instanceAi.automation.proposal.titleKeepLive": "Keep this automation?",
 	"instanceAi.automation.status.live": "It's on now.",
 	"instanceAi.automation.status.liveWithChanges": "It's on now. Your latest changes aren't live yet.",
 	"instanceAi.automation.note.cannotTurnOn": "You can't turn it on from here. It stays off until someone turns it on.",

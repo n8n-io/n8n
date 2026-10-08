@@ -5,7 +5,10 @@ import { computed, useTemplateRef } from 'vue';
 // The `data-test-id` and other attributes go to the input, not to the wrapper.
 defineOptions({ inheritAttrs: false });
 
-/** One labelled text or password input with optional help text and an error line. */
+/**
+ * One labelled text or password input with optional help text and an error line.
+ * Autocomplete is off, so a password manager does not offer to save or fill an access token.
+ */
 const props = withDefaults(
 	defineProps<{
 		id: string;
@@ -14,17 +17,12 @@ const props = withDefaults(
 		placeholder?: string;
 		help?: string;
 		error?: string;
-		autocomplete?: string;
-		maxlength?: number;
 	}>(),
 	{
 		type: 'text',
 		placeholder: '',
 		help: undefined,
 		error: undefined,
-		// A password manager must not offer to save or fill an access token.
-		autocomplete: 'off',
-		maxlength: undefined,
 	},
 );
 
@@ -54,8 +52,7 @@ defineExpose({ focus: () => input.value?.focus() });
 				v-bind="$attrs"
 				:type="type"
 				:placeholder="placeholder"
-				:autocomplete="autocomplete"
-				:maxlength="maxlength"
+				autocomplete="off"
 				required
 				:aria-invalid="error ? 'true' : undefined"
 				:aria-describedby="describedBy"

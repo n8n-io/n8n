@@ -479,8 +479,7 @@
 		},
 		{
 			"parameters": {
-				"mode": "chooseBranch",
-				"useDataOfInput": 1
+				"mode": "chooseBranch"
 			},
 			"id": "d83490b0-7f84-4b1d-a6f7-c3a83e20cce2",
 			"name": "Repro and workspace done",
@@ -489,7 +488,9 @@
 			"position": [
 				2280,
 				0
-			]
+			],
+			"notes": "Waits for the failing test and the workspace.",
+			"notesInFlow": true
 		},
 		{
 			"parameters": {
@@ -1499,7 +1500,7 @@
 						{
 							"id": "c36883ca-b76c-4ce4-a2f9-309d5b9b3602",
 							"name": "summary",
-							"value": "={{ 'After minimising, the check is ' + ($json.structuredContent?.check ?? 'unknown') + ', the failing test is ' + ($json.structuredContent?.test ?? 'unknown') + ' and the change has ' + ($json.structuredContent?.changes ?? []).reduce((total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0), 0) + ' changed lines (budget ' + $('Read factory ticket').first().json.diffBudget + ', approved by the critic ' + ($('Get diff').last().json.structuredContent?.changes ?? []).reduce((total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0), 0) + ').' }}",
+							"value": "={{ 'After minimising, the check is ' + ($json.structuredContent?.check ?? 'unknown') + ', the failing test is ' + ($json.structuredContent?.test ?? 'unknown') + ' and the change has ' + ($json.structuredContent?.changes ?? []).reduce((total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0), 0) + ' changed lines (budget ' + $('Read factory ticket').first().json.diffBudget + ', the critic approved ' + ($('Get diff').last().json.structuredContent?.changes ?? []).reduce((total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0), 0) + ').' }}",
 							"type": "string"
 						}
 					]

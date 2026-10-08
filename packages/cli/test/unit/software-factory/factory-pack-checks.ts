@@ -146,13 +146,26 @@ export function runIndexLimit(filterValue: unknown): number | undefined {
 	return limits.length > 0 ? Math.min(...limits) : undefined;
 }
 
-/** The `$runIndex` limit of one output of an If or Switch (rules mode) node. */
+/** The output index that a Switch option `fallbackOutput` names, if it names a rule output. */
+function fallbackOutputIndex(options: unknown): number | undefined {
+	const fallback = isRecord(options) ? options.fallbackOutput : undefined;
+	if (typeof fallback === 'number') return fallback;
+	return typeof fallback === 'string' && /^\d+$/.test(fallback) ? Number(fallback) : undefined;
+}
+
+/**
+ * The `$runIndex` limit of one output of an If or Switch (rules mode) node. A Switch output that
+ * is also the fallback output has no limit: items that match no rule reach it too.
+ */
 export function outputRunIndexLimit(node: INode, outputIndex: number): number | undefined {
 	if (node.type === 'n8n-nodes-base.if') {
 		return outputIndex === 0 ? runIndexLimit(node.parameters.conditions) : undefined;
 	}
-	const rules: unknown = node.parameters.rules;
-	if (node.type !== 'n8n-nodes-base.switch' || !isRecord(rules)) return undefined;
+	const { mode = 'rules', rules, options } = node.parameters;
+	if (node.type !== 'n8n-nodes-base.switch' || mode !== 'rules' || !isRecord(rules)) {
+		return undefined;
+	}
+	if (fallbackOutputIndex(options) === outputIndex) return undefined;
 	const rule: unknown = Array.isArray(rules.values) ? rules.values[outputIndex] : undefined;
 	return isRecord(rule) ? runIndexLimit(rule.conditions) : undefined;
 }

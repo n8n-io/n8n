@@ -86,6 +86,23 @@ export function triggerLineKey(trigger: Trigger): AutomationTriggerLine | undefi
 	};
 }
 
+/**
+ * A readable name for an IANA zone, for example "Eastern Time" for America/New_York. The generic
+ * name stays the same in summer and winter, as the schedule does. The browser can lack a zone that
+ * the server knows, so the fallback is the zone id with spaces in place of underscores.
+ */
+export function timezoneLabel(timezone: string, locale?: string): string {
+	try {
+		const name = new Intl.DateTimeFormat(locale, { timeZone: timezone, timeZoneName: 'longGeneric' })
+			.formatToParts(new Date())
+			.find((part) => part.type === 'timeZoneName')?.value;
+		if (name) return name;
+	} catch {
+		// Intl rejects a zone or a locale that it does not know.
+	}
+	return timezone.replaceAll('_', ' ');
+}
+
 /** The text for the first reason of a local recommendation. */
 export function placeReasonKey(
 	recommended: Recommendation,
@@ -166,12 +183,15 @@ export function placeOf(proposal: Proposal): AutomationPlace {
 const ACTIVATION_COPY = {
 	off: {
 		title: 'instanceAi.automation.proposal.title',
+		keep: 'instanceAi.automation.proposal.titleKeep',
 		activate: 'instanceAi.automation.action.turnOn',
 		save: 'instanceAi.automation.action.saveOff',
 		note: 'instanceAi.automation.note.cannotTurnOn',
 	},
 	live: {
 		title: 'instanceAi.automation.proposal.titleUpdate',
+		// The status line says "It's on now", so the title does not call it a workflow to keep.
+		keep: 'instanceAi.automation.proposal.titleKeepLive',
 		activate: 'instanceAi.automation.action.makeLive',
 		save: 'instanceAi.automation.action.saveKeepLive',
 		note: 'instanceAi.automation.note.cannotMakeLive',
@@ -198,9 +218,8 @@ function offersActivation(proposal: Proposal): boolean {
 
 /** The card asks to keep the workflow when it cannot turn it on or the saved version is live. */
 export function titleKey(proposal: Proposal): BaseTextKey {
-	return offersActivation(proposal)
-		? activationCopy(proposal).title
-		: 'instanceAi.automation.proposal.titleKeep';
+	const copy = activationCopy(proposal);
+	return offersActivation(proposal) ? copy.title : copy.keep;
 }
 
 /** The line that says that a version of the workflow is live now. */

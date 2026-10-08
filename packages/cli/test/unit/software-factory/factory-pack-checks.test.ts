@@ -314,6 +314,34 @@ describe('runIndexLimit', () => {
 		expect([0, 1].map((index) => outputRunIndexLimit(ifNode, index))).toEqual([2, undefined]);
 		expect(outputRunIndexLimit(otherNode, 0)).toBeUndefined();
 	});
+
+	describe('Switch options', () => {
+		const limited = filter([runIndexCondition('lt', 2)]);
+		const switchWith = (parameters: Record<string, unknown>) =>
+			makeNode('Route', 'n8n-nodes-base.switch', {
+				rules: { values: [{ conditions: filter([otherCondition]) }, { conditions: limited }] },
+				...parameters,
+			});
+
+		it.each([
+			['the fallback output', { options: { fallbackOutput: 1 } }],
+			['the fallback output, stored as text', { options: { fallbackOutput: '1' } }],
+			['expression mode', { mode: 'expression' }],
+		])('finds no limit on a rule output that is %s', (_case, parameters) => {
+			expect(outputRunIndexLimit(switchWith(parameters), 1)).toBeUndefined();
+		});
+
+		it.each([
+			['an extra fallback output', { options: { fallbackOutput: 'extra' } }],
+			['a fallback on another output', { options: { fallbackOutput: 0 } }],
+			['no fallback output', { options: { fallbackOutput: 'none' } }],
+			// An item reaches a rule output only when that rule matches, also with this option.
+			['all matching outputs', { options: { allMatchingOutputs: true } }],
+			['rules mode', { mode: 'rules' }],
+		])('keeps the limit of a rule output with %s', (_case, parameters) => {
+			expect(outputRunIndexLimit(switchWith(parameters), 1)).toBe(2);
+		});
+	});
 });
 
 describe('findWriteAccess', () => {

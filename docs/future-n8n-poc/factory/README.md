@@ -27,45 +27,45 @@ import it.
 
 ```mermaid
 flowchart LR
-    T["Linear Trigger<br/>label: factory"] --> AC{"Acceptance<br/>criteria?"}
-    AC -- no --> O["Outcome"]
-    AC -- yes --> P["Plan<br/>planner, read-only"]
+    T["Linear Trigger<br/>label: factory"] --> S{"Critic separate and<br/>acceptance criteria?"}
+    S -- no --> O["Outcome"]
+    S -- yes --> P["Plan<br/>planner, read-only"]
     P --> H{"Person<br/>approves?"}
     H -- change the plan --> P
-    H -- reject or no answer --> O
+    H -- "reject, no answer or no plan" --> O
     H -- approve --> R["Draft failing test<br/>planner"]
     H -- approve --> W["Prepare workspace<br/>coding_prepare"]
     R --> M(("Merge"))
     W --> M
     M --> I["Implement<br/>implementer"]
-    I --> V{"Verify<br/>coding_check"}
-    V -- "failed, at most 3 retries" --> I
+    I --> V{"Verify: check and<br/>failing test"}
+    V -- "failed, at most 3 retries in a run" --> I
     V -- stop --> O
     V -- passed --> C["Fresh critic<br/>other agent, new session"]
     C -- "request changes, at most 2 rounds" --> I
-    C -- "block, error or no verdict" --> O
-    C -- approve --> MI["Minimise<br/>implementer"]
-    MI --> RV{"Re-verify and<br/>diff budget"}
+    C -- "block, error, no verdict or no diff" --> O
+    C -- approve --> MI["Minimise<br/>remove only"]
+    MI --> RV{"Re-verify, budget<br/>and no growth"}
     RV -- fails --> O
-    RV -- passes --> PR["Push branch and<br/>open draft PR"]
+    RV -- passes --> PR["Push branch, confirm the push<br/>and open a draft PR"]
     PR --> O
     O --> L["Linear comment and<br/>factory_runs row"]
 ```
 
 ## The steps
 
-| #   | Step         | Nodes                                                                              | What the step does                                                                                                                                                                                                                                                                                                                              |
-| --- | ------------ | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Intake       | Linear Trigger, Factory settings, Read factory ticket, Has acceptance criteria?    | Starts a run when an issue is created with the `factory` label or gets the label later. Reads the acceptance criteria and the diff budget. Stops when the ticket has no acceptance criteria.                                                                                                                                                    |
-| 2   | Plan         | Plan                                                                               | The planner reads the code with read-only GitHub tools and returns a structured plan: summary, steps, files, tests, risks and an estimate of changed lines.                                                                                                                                                                                     |
-| 3   | Approval     | Ask for plan approval, Plan decision, Revise plan                                  | Slack sends the plan to a person and waits up to 3 days. The person approves the plan, asks for changes or rejects the ticket. "Change the plan" sends the feedback back to the planner in the same session.                                                                                                                                    |
-| 4   | Prep         | Draft failing test, Prepare workspace, Repro and workspace done, Prep ready?       | Two independent branches prepare the work. The planner drafts one failing test. The coding workspace clones the repository and runs the setup command. The run continues only when both are ready. n8n runs the two branches one after the other. With a background setup job (item 4 below), the setup runs while the planner writes the test. |
-| 5   | Implement    | Implementation request, Implement                                                  | The implementer adds the failing test, confirms that it fails and makes the smallest change that makes it pass.                                                                                                                                                                                                                                 |
-| 6   | Verify       | Verify, Check result, Fix the failing check                                        | A deterministic check runs the check command of the coding config. When the check fails, the implementer gets the end of the check log. The loop stops after 3 retries.                                                                                                                                                                         |
-| 7   | Fresh critic | Get diff, Critic input, Fresh critic, Critic verdict, Address critic findings      | A different agent reviews the diff in a new session. Its input is only the ticket, the acceptance criteria, the plan, the diff and the check result. It returns `{ verdict, findings[{ path, line, severity, body }], scopeCreep[] }`. "request_changes" goes back to the implementer, at most 2 times.                                         |
-| 8   | Minimise     | Minimise, Re-verify, Ready for PR?                                                 | The implementer removes scope creep and changes that the criteria do not need. The check runs again. The change must pass, must not be empty and must stay inside the diff budget.                                                                                                                                                              |
-| 9   | Pull request | Push branch, Open draft PR                                                         | The branch is pushed and the GitHub node opens a **draft** pull request. A person reviews and merges it. CI runs on the pull request.                                                                                                                                                                                                           |
-| 10  | Report       | Outcome nodes, Run record, Report on ticket, Ensure factory_runs table, Record run | Every run ends in one outcome. The outcome goes to the ticket as a Linear comment and to one row in the `factory_runs` data table.                                                                                                                                                                                                              |
+| #   | Step         | Nodes                                                                                    | What the step does                                                                                                                                                                                                                                                                                                        |
+| --- | ------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Intake       | Linear Trigger, Factory settings, Read factory ticket, Critic is separate?, Has acceptance criteria? | A run starts when an issue gets the `factory` label. The run stops when the critic is also an author. It also stops when the ticket has no acceptance criteria. The step reads the criteria and the diff budget.                                                                                                     |
+| 2   | Plan         | Plan, Plan ready?                                                                        | The planner reads the code with read-only GitHub tools. It returns a structured plan: summary, steps, files, tests, risks and an estimate of changed lines. A plan without a summary or steps stops the run.                                                                                                              |
+| 3   | Approval     | Ask for plan approval, Plan decision, Revise plan                                        | Slack sends the plan to a person and waits up to 3 days. The person approves the plan, asks for changes or rejects the ticket. "Change the plan" sends the feedback back to the planner in the same session.                                                                                                              |
+| 4   | Prep         | Draft failing test, Prepare workspace, Repro and workspace done, Prep ready?             | The planner drafts one failing test and the command that runs it. The coding workspace clones the repository and runs the setup command. The run continues only when both are ready. n8n runs the two branches one after the other. With a background setup job, the setup runs while the planner writes the test. |
+| 5   | Implement    | Implementation request, Implement                                                        | The implementer adds the failing test and confirms that it fails. Then it makes the smallest change that makes the test pass.                                                                                                                                                                                             |
+| 6   | Verify       | Verify, Check result, Fix the failing check                                              | A deterministic step runs the check command of the coding config and the command of the failing test. Both must pass. When one fails, the implementer gets the end of the log. A run has 3 retries in total.                                                                                                              |
+| 7   | Fresh critic | Get diff, Has a diff?, Critic input, Fresh critic, Critic verdict, Address critic findings | A different agent reviews the diff in a new session. Its input is only the ticket, the acceptance criteria, the plan, the diff and the verify result. It returns `{ verdict, findings[{ path, line, severity, body }], scopeCreep[] }`. "request_changes" goes back to the implementer, at most 2 times.      |
+| 8   | Minimise     | Minimise, Re-verify, Ready for PR?                                                       | The implementer removes scope creep and changes that the criteria do not need. It adds and rewrites nothing. The check and the failing test run again. The change must pass, must not be empty, must stay inside the diff budget and must not grow.                                                                     |
+| 9   | Pull request | Push branch, Branch pushed?, Open draft PR                                               | The branch of the run is pushed. A gate confirms the push. Then the GitHub node opens a **draft** pull request. A person reviews and merges it. CI runs on the pull request.                                                                                                                                              |
+| 10  | Report       | Outcome nodes, Run record, Report on ticket, Ensure factory_runs table, Record run       | Every run ends in one outcome. The outcome goes to the ticket as a Linear comment and to one row in the `factory_runs` data table.                                                                                                                                                                                        |
 
 The critic findings use the same `path:line (new version)` format as the review
 comments of the coding view, so the implementer reads them the same way.
@@ -77,19 +77,40 @@ comments of the coding view, so the implementer reads them the same way.
   the run.
 - **Diff budget.** The default is 400 changed lines. A `budget:<lines>` label on
   the ticket replaces it. A change outside the budget gets no pull request.
-- **Tests must run.** Only a `passed` result of the deterministic check
-  continues. An agent cannot report its own check result.
+- **The check and the failing test must pass.** The check command of the coding
+  config is `pnpm agent:typecheck` by default. So the check alone runs no tests.
+  For this reason, the same deterministic step also runs the command of the
+  failing test. Only a `passed` result of both continues. An agent cannot
+  report its own result.
 - **Critic fails closed.** Only an explicit `approve` with no blocker or major
   findings and a diff that is not empty opens a pull request. A critic error, a
   missing verdict, `block` or a third request for changes stops the run.
-- **Author and critic are separate.** The critic is a different agent. It gets
-  a new session for each review, it cannot read the data of other nodes and its
-  input holds no output of the implementer.
-- **Repair caps.** At most 3 check retries and 2 critic repair rounds.
+- **Author and critic are separate.** The critic is a different agent. At the
+  start of the run, a gate compares the agents of the nodes. The run stops when
+  the Fresh critic node uses the agent of Plan, Draft failing test, Implement or
+  Minimise. The critic gets a new session for each review. It cannot read the
+  data of other nodes. Its input holds no output of the implementer.
+- **Minimise only removes.** After the critic approves, nobody reviews the
+  change again. So Minimise can only remove changes. The change after Minimise
+  must not have more changed lines than the change that the critic approved.
+  The pull request lists the remaining critic findings for the person who
+  reviews it.
+- **Repair caps.** A run has 3 check retries in total, also across critic
+  rounds. A run also has 2 critic repair rounds. When the check fails 3 times
+  before the first review, a failed check after a critic round stops the run.
+- **One branch for each run.** The branch name holds the ticket and the
+  execution id, for example `factory/eng-42-1234`. Two runs for one ticket never
+  share a branch.
 - **A person merges.** The factory opens draft pull requests only.
 
 Each gate checks for positive evidence. When a step fails or returns nothing,
 the gate sends the run to an outcome, never to the next step.
+
+This is necessary because of how n8n handles errors. A node can fail as a
+whole, for example when it cannot connect. Then n8n sends the input item of the
+node to its success output, also with "Continue (using error output)". So the
+success output alone is no proof that a step worked. Each gate reads the result
+of the step before it.
 
 ## Import the pack
 
@@ -132,7 +153,8 @@ id, the name and the rest of the file as `config`.
 3. On each Message an Agent node, choose the agent:
    - **Plan** and **Draft failing test**: Factory planner.
    - **Implement** and **Minimise**: Factory implementer.
-   - **Fresh critic**: Factory critic. Never choose the implementer here.
+   - **Fresh critic**: Factory critic. Never choose the implementer here. The
+     gate **Critic is separate?** stops each run when you do.
 
    The coding nodes (Prepare workspace, Verify, Get diff, Re-verify, Push
    branch) use the agent of the **Implement** node.
@@ -152,10 +174,23 @@ The workflow creates the `factory_runs` data table on its first run. It has
 these columns: `ticket`, `ticketUrl`, `status`, `summary`, `criticVerdict`,
 `linesChanged` (number), `prUrl`, `executionId` and `finishedAt` (date).
 
+The `status` column holds one of these values:
+
+| Status                        | Meaning                                                                                |
+| ----------------------------- | -------------------------------------------------------------------------------------- |
+| `setup_error`                 | The Fresh critic node uses no agent or the agent of an author step.                    |
+| `missing_acceptance_criteria` | The ticket has no acceptance criteria.                                                 |
+| `plan_not_approved`           | The person rejected the ticket, or nobody answered in 3 days.                          |
+| `step_failed`                 | A step failed, or a gate found no usable result of the step before it.                 |
+| `check_failed`                | The check or the failing test did not pass, and no retry is left or allowed.           |
+| `critic_blocked`              | The critic did not approve, returned no verdict or asked for a third round of changes. |
+| `not_ready_for_pr`            | After Minimise, the change failed, was empty, grew or was over the budget.             |
+| `draft_pr_opened`             | The factory opened a draft pull request.                                               |
+
 ## Write a factory ticket
 
 Put the acceptance criteria below a heading or a bold line named "Acceptance
-criteria". Each criterion is one list item.
+criteria". Each criterion is one item of the first list below it.
 
 ```markdown
 Show the number of runs on the workflow card.
@@ -167,6 +202,13 @@ Show the number of runs on the workflow card.
 - A unit test covers both cases.
 ```
 
+The factory reads the list with these rules:
+
+- Text before the list is not a criterion.
+- An indented item or line adds to the criterion above it.
+- An empty checkbox item is not a criterion.
+- The next heading, bold line or other text ends the list.
+
 Add the `factory` label to start a run. Add `budget:200` to set a diff budget
 of 200 changed lines.
 
@@ -174,61 +216,74 @@ of 200 changed lines.
 
 The template calls four MCP tools that n8n does not have yet:
 
-| Tool             | Input                                        | Result                                                                                                                                                                                                                                                                  |
-| ---------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `coding_prepare` | `agentId`, `session`, `branch`, `baseBranch` | Clones the repository of the coding config into the sandbox of the session, creates the branch, runs the setup command. Returns `phase` (`ready` on success).                                                                                                           |
-| `coding_check`   | `agentId`, `session`                         | Runs the check command. Returns `check`, `checkExitCode`, `changes[{ path, status, additions, deletions }]` and `logTail`, with the field names of `AgentCodingStatus` in [agent-coding.schema.ts](../../../packages/@n8n/api-types/src/agents/agent-coding.schema.ts). |
-| `coding_diff`    | `agentId`, `session`                         | Returns the unified `diff` of the branch against its base and `changes`.                                                                                                                                                                                                |
-| `coding_push`    | `agentId`, `session`, `branch`, `message`    | Commits all changes with the bot identity and pushes the branch.                                                                                                                                                                                                        |
+| Tool             | Input                                        | Result                                                                                                                                                                                                                                                                    |
+| ---------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `coding_prepare` | `agentId`, `session`, `branch`, `baseBranch` | Clones the repository of the coding config into the sandbox of the session. Creates the branch and runs the setup command. Returns `phase` (`ready` on success).                                                                                                           |
+| `coding_check`   | `agentId`, `session`, `testCommand`          | Runs the check command of the coding config, then `testCommand`. Returns `check`, `checkExitCode`, `test`, `testExitCode`, `changes[{ path, status, additions, deletions }]` and `logTail`. `test` and `testExitCode` describe `testCommand`. `logTail` is the end of the log of the first command that failed. |
+| `coding_diff`    | `agentId`, `session`                         | Returns the unified `diff` of the branch against its base and `changes`.                                                                                                                                                                                                  |
+| `coding_push`    | `agentId`, `session`, `branch`, `message`    | Commits all changes with the bot identity and pushes the branch. Returns `pushed` (`true` after a push), the `branch` and the `commit` hash.                                                                                                                               |
+
+`check`, `checkExitCode`, `changes` and `phase` use the field names of
+`AgentCodingStatus` in
+[agent-coding.schema.ts](../../../packages/@n8n/api-types/src/agents/agent-coding.schema.ts).
+`test` uses the same values as `check`.
 
 Until these tools exist, the MCP Client nodes fail. The run then ends with the
-outcome `step_failed` before any pull request. These items are missing:
+outcome "prep failed" (status `step_failed`) before any pull request. These
+items are missing:
 
 1. **Coding operations that a workflow can call.** The coding service
    ([agent-coding.service.ts](../../../packages/cli/src/modules/agents/agent-coding.service.ts))
    binds every call to the `n8n-user` sandbox principal of the person in the
-   coding view. Only session-authenticated internal REST routes expose it
-   (`/rest/projects/:projectId/agents/v2/:agentId/coding/*`, see
+   coding view. Only internal REST routes with a browser session expose it:
+   `/rest/projects/:projectId/agents/v2/:agentId/coding/*` (see
    [agent-coding.controller.ts](../../../packages/cli/src/modules/agents/agent-coding.controller.ts)).
    There is no public API route and no MCP tool. The operations already exist
-   as REST actions (`prepare`, `check`, `commit`, `push`, the status route and
-   the per-file diff route). Each one must become an MCP capability that takes
-   the sandbox of a workflow session, with the project scopes `agent:read` and
-   `agent:execute`.
+   as REST actions: `prepare`, `check`, `commit`, `push`, the status route and
+   the diff route for each file. Each operation must become an MCP capability.
+   The capability takes the sandbox of a workflow session. It needs the project
+   scopes `agent:read` and `agent:execute`. `coding_check` runs `testCommand` in
+   the sandbox of the session, with the same rights as the commands of the
+   agent.
 2. **A sandbox identity for each workflow execution.** This exists in part. A
    Message an Agent node without a session key runs in the sandbox of the
-   `workflow-execution` principal, one sandbox per execution. A custom session
-   key switches to the `project-session` principal (see
+   `workflow-execution` principal, one sandbox for each execution. A custom
+   session key switches to the `project-session` principal (see
    [agent-sandbox-principal.ts](../../../packages/cli/src/modules/agents/agent-sandbox-principal.ts)
    and [workflow-execute-additional-data.ts](../../../packages/cli/src/workflow-execute-additional-data.ts)).
    So the session key controls both the conversation and the sandbox. The
    template uses the session key `factory-<execution id>-implement` for
-   **Implement**, **Minimise** and all coding tools, so that they share one
-   sandbox. In the workflow path the implementer works in the default checkout
-   of that sandbox, and nothing can create that checkout yet: without it the
-   agent stops with "Prepare the repository in the coding view before sending a
-   coding task" (see
+   **Implement**, **Minimise** and all coding tools. So they share one sandbox.
+   In the workflow path, the implementer works in the default checkout of that
+   sandbox. Nothing can create that checkout yet. Without it, the agent stops
+   with "Prepare the repository in the coding view before sending a coding
+   task" (see
    [agent-runtime-reconstruction.service.ts](../../../packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts)).
-   A live factory needs a sandbox scope that the workflow sets on its own, for
-   example one sandbox for each factory run, apart from the conversation.
+   A live factory needs a sandbox scope that the workflow sets itself. An
+   example is one sandbox for each factory run, apart from the conversation.
 3. **A bot git identity.** The commit action uses a fixed identity:
    `n8n coding demo` with the email `coding-demo@example.com`. A live factory
-   needs a configured bot name and email for each agent or instance, and a push
+   needs a bot name and email for each agent or instance. It also needs a push
    credential that belongs to the bot, not to a person.
 4. **Long-running checks with background and poll.** The coding service already
    runs setup and checks in the background, and the coding view polls the
    status. Setup and the check of the n8n monorepo can take up to 30 minutes. A
-   workflow cannot hold one MCP call open that long: the MCP request timeout,
-   the execution timeout and process restarts end it. The template waits up to
-   30 minutes for each coding call so that the shape stays simple. A live
-   factory needs durable jobs: a start call returns a job id, a Wait node and a
-   status call poll it, and the result survives a restart.
+   workflow cannot hold one MCP call open for that time. The MCP request
+   timeout, the execution timeout and process restarts end it. The template
+   waits up to 30 minutes for each coding call, so that the shape stays simple.
+   A live factory needs durable jobs. A start call returns a job id. A Wait node
+   and a status call poll the job. The result survives a restart.
+5. **Proof that the failing test fails before the change.** The implementer
+   confirms this, but no deterministic step checks it. A live factory can run
+   `coding_check` once after the implementer adds the test and before it
+   changes the code. Only a `failed` test result may continue.
 
 ## MCP & up
 
-Every factory step should become one MCP capability, defined once with
-`defineCapability` ([capability.ts](../../../packages/cli/src/services/capabilities/capability.ts))
-and offered on both surfaces: external MCP clients and the n8n Assistant. Then
+Every factory step should become one MCP capability. Define each capability
+once with `defineCapability`
+([capability.ts](../../../packages/cli/src/services/capabilities/capability.ts)).
+Offer it on both surfaces: external MCP clients and the n8n Assistant. Then
 Claude Code, Codex, an agent or this workflow can run the same step with the
 same permission checks.
 
@@ -246,25 +301,39 @@ same permission checks.
 
 ## Validation
 
-[software-factory-template-pack.test.ts](../../../packages/cli/test/unit/software-factory/software-factory-template-pack.test.ts)
-validates the pack. Run it from `packages/cli`:
+These tests validate the pack. Run them from `packages/cli`:
 
 ```bash
 pnpm test test/unit/software-factory
 ```
 
-The test checks that:
+- [software-factory-template-pack.test.ts](../../../packages/cli/test/unit/software-factory/software-factory-template-pack.test.ts)
+  checks the structure of the workflow and the agent files.
+- [software-factory-template-gates.test.ts](../../../packages/cli/test/unit/software-factory/software-factory-template-gates.test.ts)
+  decides each gate with sample results.
+- [software-factory-template-steps.test.ts](../../../packages/cli/test/unit/software-factory/software-factory-template-steps.test.ts)
+  runs the Code nodes and the expressions of the steps and the outcomes.
+
+The tests run the expressions and the Code nodes with the expression engine and
+the data proxy of n8n. So `$('Node')` reads the same output and run as in a
+real execution.
+
+The tests check that:
 
 - the workflow is a valid body for the public API, and each node type and
   version exists in this repository, with valid parameters;
+- n8n keeps each parameter when it loads the workflow;
 - each connection names nodes that exist, and the trigger reaches each node;
+- each expression reads the success output of the nodes that it names;
 - each loop has a person or a retry limit of 3 or less;
-- a pull request needs the acceptance criteria, the plan approval, the final
-  check and an explicit approval of the fresh critic;
-- the critic input holds only the ticket, the plan, the diff and the check
+- a pull request needs each gate, and each gate stops a step that failed as a
+  whole;
+- the critic input holds only the ticket, the plan, the diff and the verify
   result;
 - each credential is a placeholder with a name and no id;
-- the code of the Code nodes reads tickets and builds run records correctly;
+- the Code nodes read tickets and build run records correctly;
+- each MCP Client node sends the input that the tool table above shows, and
+  each result field that the workflow reads is in that table;
 - each agent file passes the agent JSON config schema with no unknown keys,
   and the checks that run when an agent is saved;
 - the critic and the planner have no write tools, and the implementer uses the

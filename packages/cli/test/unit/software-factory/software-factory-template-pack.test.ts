@@ -40,26 +40,25 @@ import {
 	AGENT_FILES,
 	FACTORY_DIR,
 	WORKFLOW_FILE,
-	evaluateParameter,
-	loadBuiltinNodeTypes,
 	nodeByName,
-	passesFilter,
 	readPackJson,
 	readPackText,
-	readTemplateWorkflow,
-	runCodeNode,
 	type AgentFile,
-	type TemplateRun,
 } from './factory-pack-files';
+import {
+	PULL_REQUEST_NODE,
+	agentNodes,
+	builtinNodeTypes,
+	runtime,
+	ticketOutput,
+	workflow,
+} from './factory-pack-fixtures';
 
 const MAX_RETRIES = 3;
 /** Message an Agent stores `workflow:project-<36-char id>:<session key>` in a 128-char column. */
 const SESSION_KEY_MAX_LENGTH = 74;
-const MESSAGE_AN_AGENT = 'n8n-nodes-base.messageAnAgent';
-const PULL_REQUEST_NODE = 'Open draft PR';
 
-const workflow = readTemplateWorkflow();
-const nodeTypeParser = new NodeTypeParser(loadBuiltinNodeTypes());
+const nodeTypeParser = new NodeTypeParser(builtinNodeTypes);
 
 const isTrigger = (node: INode) =>
 	nodeTypeParser.getLeanNodeType(node.type, node.typeVersion)?.group.includes('trigger') ?? false;
@@ -79,8 +78,6 @@ const reachesPullRequest = (drop: OutputSelector) => {
 	);
 };
 
-const agentNodes = () => workflow.nodes.filter((node) => node.type === MESSAGE_AN_AGENT);
-
 function sessionKeyOf(node: INode): string {
 	const advanced: unknown = node.parameters.advanced;
 	const session = isRecord(advanced) && isRecord(advanced.session) ? advanced.session.session : {};
@@ -99,36 +96,18 @@ function assignmentsOf(node: INode) {
 		.parse(node.parameters);
 }
 
-/** Node names that a parameter value reads with `$('<name>')`. */
-function referencedNodes(value: unknown): string[] {
-	return [...JSON.stringify(value).matchAll(/\$\('([^']+)'\)/g)].map((match) => match[1]);
+/** Calls of `$('<name>')` in a parameter value, with the method and the arguments after them. */
+function nodeReferences(value: unknown) {
+	return [...JSON.stringify(value).matchAll(/\$\('([^']+)'\)(?:\.(\w+)(\(\))?)?/g)].map(
+		([, name, method, noArguments]) => ({ name, method, noArguments: noArguments !== undefined }),
+	);
 }
 
-/** The output that a Switch (rules mode) node sends an item to: a rule index or the fallback. */
-function routeOf(switchName: string, run: TemplateRun): number | 'fallback' {
-	const rules = z
-		.object({ rules: z.object({ values: z.array(z.object({ conditions: z.unknown() })) }) })
-		.parse(nodeByName(workflow, switchName).parameters).rules.values;
-	const index = rules.findIndex((rule) => passesFilter(rule.conditions, run));
-	return index === -1 ? 'fallback' : index;
-}
-
-const passesIf = (ifName: string, run: TemplateRun) =>
-	passesFilter(nodeByName(workflow, ifName).parameters.conditions, run);
+const referencedNodes = (value: unknown) => nodeReferences(value).map(({ name }) => name);
 
 function readAgent(file: AgentFile): AgentJsonConfig {
 	return AgentJsonConfigSchema.parse(readPackJson(file));
 }
-
-const ticketOutput = {
-	ticketId: 'issue-42',
-	ticket: 'ENG-42',
-	title: 'Show the run count',
-	acceptanceCriteria: ['The card shows the number of runs.'],
-	diffBudget: 100,
-	branch: 'factory/eng-42',
-	runKey: 'factory-1234',
-};
 
 describe('software factory template pack', () => {
 	describe('workflow', () => {
@@ -160,6 +139,13 @@ describe('software factory template pack', () => {
 			});
 
 			expect(invalid).toEqual([]);
+		});
+
+		it('keeps every parameter when n8n loads the workflow', () => {
+			// n8n drops parameters that its node definition does not show for the other values.
+			for (const node of workflow.nodes) {
+				expect(runtime.parametersOf(node.name)).toMatchObject(node.parameters);
+			}
 		});
 
 		it('connects only nodes that exist', () => {
@@ -196,6 +182,27 @@ describe('software factory template pack', () => {
 				]),
 			);
 		});
+
+		it('names other nodes only with fixed names, so that renaming a node updates them', () => {
+			const dynamic = workflow.nodes.filter((node) =>
+				/\$\((?!'|\\")/.test(JSON.stringify(node.parameters)),
+			);
+
+			expect(dynamic.map((node) => node.name)).toEqual([]);
+		});
+
+		it('reads the success output of each node that it names without an output index', () => {
+			// Without an index, n8n reads the output through which the reading node is connected.
+			// Behind an error output, that is the error output, which is empty after a success.
+			const errorOutputReads = workflow.nodes.flatMap((node) =>
+				nodeReferences(node.parameters)
+					.filter(({ method, noArguments }) => noArguments && ['first', 'last', 'all'].includes(method ?? ''))
+					.filter(({ name }) => runtime.defaultOutputIndex(node.name, name) !== 0)
+					.map(({ name }) => `${node.name} reads ${name}`),
+			);
+
+			expect(errorOutputReads).toEqual([]);
+		});
 	});
 
 	describe('gates', () => {
@@ -203,7 +210,7 @@ describe('software factory template pack', () => {
 			expect(findUnboundedCycles(workflow, isLoopBound)).toEqual([]);
 			// Without the bounds, the plan loop and the repair loop stay.
 			expect(findUnboundedCycles(workflow, () => false)).toEqual([
-				['Ask for plan approval', 'Plan', 'Plan decision', 'Revise plan'],
+				['Ask for plan approval', 'Plan', 'Plan decision', 'Plan ready?', 'Revise plan'],
 				[
 					'Address critic findings',
 					'Check result',
@@ -212,6 +219,7 @@ describe('software factory template pack', () => {
 					'Fix the failing check',
 					'Fresh critic',
 					'Get diff',
+					'Has a diff?',
 					'Implement',
 					'Verify',
 				],
@@ -221,108 +229,25 @@ describe('software factory template pack', () => {
 		it('opens a pull request only when each gate passes', () => {
 			expect(reachesPullRequest(() => false)).toBe(true);
 
+			// A node that fails as a whole sends its input item to its success output. So each gate
+			// reads the result of the step before it, and the pull request needs every gate.
 			const gates = [
+				'Critic is separate?',
 				'Has acceptance criteria?',
+				'Plan ready?',
 				'Plan decision',
 				'Prep ready?',
 				'Check result',
+				'Has a diff?',
 				'Critic verdict',
 				'Ready for PR?',
+				'Branch pushed?',
 			];
 			const bypassed = gates.filter((gate) =>
 				reachesPullRequest((source, index) => source === gate && index === 0),
 			);
 
 			expect(bypassed).toEqual([]);
-		});
-
-		it('needs acceptance criteria', () => {
-			const run = (criteria: string[]) => ({
-				json: { ...ticketOutput, acceptanceCriteria: criteria },
-			});
-
-			expect(passesIf('Has acceptance criteria?', run(['One']))).toBe(true);
-			expect(passesIf('Has acceptance criteria?', run([]))).toBe(false);
-		});
-
-		it('continues after the approval only on an explicit approval', () => {
-			const decide = (data?: Record<string, string>) =>
-				routeOf('Plan decision', { json: data ? { data } : {} });
-
-			expect(decide({ decision: 'Approve the plan' })).toBe(0);
-			expect(decide({ decision: 'Change the plan', feedback: 'Smaller' })).toBe(1);
-			expect(decide({ decision: 'Reject the ticket' })).toBe('fallback');
-			// The wait time ran out: Slack resumes without a decision.
-			expect(decide()).toBe('fallback');
-		});
-
-		it('starts the implementation only when the workspace and the failing test are ready', () => {
-			const prep = (phase: unknown, testPath: unknown) =>
-				passesIf('Prep ready?', {
-					nodes: {
-						'Prepare workspace': { structuredContent: { phase } },
-						'Draft failing test': { structuredOutput: { testPath } },
-					},
-				});
-
-			expect(prep('ready', 'packages/a/a.test.ts')).toBe(true);
-			expect(prep('error', 'packages/a/a.test.ts')).toBe(false);
-			expect(prep('ready', '')).toBe(false);
-			expect(prep(undefined, undefined)).toBe(false);
-		});
-
-		it('retries a failed check at most 3 times and never retries a missing result', () => {
-			const check = (result: unknown, runIndex: number) =>
-				routeOf('Check result', { json: { structuredContent: result }, runIndex });
-
-			expect(check({ check: 'passed' }, 3)).toBe(0);
-			expect([0, 1, 2].map((runIndex) => check({ check: 'failed' }, runIndex))).toEqual([1, 1, 1]);
-			expect(check({ check: 'failed' }, 3)).toBe('fallback');
-			expect(check({ check: 'not_started' }, 0)).toBe('fallback');
-			expect(check(undefined, 0)).toBe('fallback');
-		});
-
-		it('continues after the critic only on an explicit approval without serious findings', () => {
-			const review = (
-				structuredOutput: unknown,
-				options: { diff?: string; runIndex?: number } = {},
-			) =>
-				routeOf('Critic verdict', {
-					json: { structuredOutput },
-					nodes: { 'Critic input': { diff: options.diff ?? 'diff --git a/a.ts b/a.ts' } },
-					runIndex: options.runIndex ?? 0,
-				});
-			const finding = (severity: string) => ({ path: 'a.ts', line: 1, severity, body: 'Fix it' });
-
-			expect(review({ verdict: 'approve', findings: [finding('minor')], scopeCreep: [] })).toBe(0);
-			expect(review({ verdict: 'approve', findings: [finding('major')], scopeCreep: [] })).toBe(
-				'fallback',
-			);
-			expect(review({ verdict: 'approve', findings: [finding('blocker')], scopeCreep: [] })).toBe(
-				'fallback',
-			);
-			expect(review({ verdict: 'approve', findings: [], scopeCreep: [] }, { diff: '' })).toBe(
-				'fallback',
-			);
-			expect(review({ verdict: 'request_changes', findings: [], scopeCreep: [] })).toBe(1);
-			expect(
-				review({ verdict: 'request_changes', findings: [], scopeCreep: [] }, { runIndex: 2 }),
-			).toBe('fallback');
-			expect(review({ verdict: 'block', findings: [], scopeCreep: [] })).toBe('fallback');
-			expect(review(null)).toBe('fallback');
-		});
-
-		it('opens a pull request only for a passing change that is not empty and fits the budget', () => {
-			const ready = (check: string, additions: number, deletions: number) =>
-				passesIf('Ready for PR?', {
-					json: { structuredContent: { check, changes: [{ path: 'a.ts', additions, deletions }] } },
-					nodes: { 'Read factory ticket': ticketOutput },
-				});
-
-			expect(ready('passed', 60, 40)).toBe(true);
-			expect(ready('passed', 61, 40)).toBe(false);
-			expect(ready('passed', 0, 0)).toBe(false);
-			expect(ready('failed', 1, 0)).toBe(false);
 		});
 
 		it('opens the pull request as a draft', () => {
@@ -359,7 +284,7 @@ describe('software factory template pack', () => {
 
 		it('starts a new session for each review and cannot read other nodes', () => {
 			const keyAt = (node: INode, runIndex: number) =>
-				evaluateParameter(sessionKeyOf(node), {
+				runtime.evaluate(node.name, sessionKeyOf(node), {
 					nodes: { 'Read factory ticket': ticketOutput },
 					runIndex,
 				});
@@ -395,23 +320,6 @@ describe('software factory template pack', () => {
 				'body',
 			]);
 		});
-
-		it('sends its findings to the implementer in the review format of the coding view', () => {
-			const [request] = assignmentsOf(nodeByName(workflow, 'Address critic findings')).assignments
-				.assignments;
-			const text = evaluateParameter(request.value, {
-				json: {
-					structuredOutput: {
-						verdict: 'request_changes',
-						findings: [{ path: 'src/a.ts', line: 12, severity: 'major', body: 'Handle null.' }],
-						scopeCreep: ['Renamed b.ts'],
-					},
-				},
-			});
-
-			expect(text).toContain('src/a.ts:12 (new version)\n[major] Handle null.');
-			expect(text).toContain('Remove this scope creep:\n- Renamed b.ts');
-		});
 	});
 
 	describe('Message an Agent nodes', () => {
@@ -438,7 +346,7 @@ describe('software factory template pack', () => {
 		it('use session keys that fit the thread id column', () => {
 			const longest = { ...ticketOutput, runKey: `factory-${'9'.repeat(20)}` };
 			for (const node of agentNodes()) {
-				const key = evaluateParameter(sessionKeyOf(node), {
+				const key = runtime.evaluate(node.name, sessionKeyOf(node), {
 					nodes: { 'Read factory ticket': longest },
 					runIndex: 99,
 				});
@@ -478,7 +386,7 @@ describe('software factory template pack', () => {
 			const outcomes = workflow.nodes.filter((node) => node.name.startsWith('Outcome: '));
 			const edges = listEdges(workflow.connections);
 
-			expect(outcomes).toHaveLength(7);
+			expect(outcomes).toHaveLength(9);
 			for (const outcome of outcomes) {
 				expect(edges).toContainEqual({
 					source: outcome.name,
@@ -488,188 +396,6 @@ describe('software factory template pack', () => {
 				});
 			}
 		});
-	});
-});
-
-describe('software factory template code', () => {
-	const codeOf = (name: string) => z.string().parse(nodeByName(workflow, name).parameters.jsCode);
-	const factoryLabel = { id: 'label-factory', name: 'factory' };
-	const description = [
-		'Show the number of runs on the workflow card.',
-		'',
-		'## Acceptance criteria',
-		'- The card shows the number of runs.',
-		'* [ ] The number is 0 without runs.',
-		'1. A unit test covers both cases.',
-		'',
-		'## Notes',
-		'- Not a criterion.',
-	].join('\n');
-
-	const issueEvent = (
-		event: Record<string, unknown> = {},
-		issue: Record<string, unknown> = {},
-	) => ({
-		action: 'create',
-		type: 'Issue',
-		url: 'https://linear.app/acme/issue/ENG-42',
-		data: {
-			id: 'issue-42',
-			identifier: 'ENG-42',
-			title: 'Show the run count',
-			description,
-			url: 'https://linear.app/acme/issue/ENG-42/show-the-run-count',
-			labels: [factoryLabel],
-			...issue,
-		},
-		...event,
-	});
-
-	const readTicket = (event: Record<string, unknown>) =>
-		runCodeNode(codeOf('Read factory ticket'), {
-			nodes: { 'Linear Trigger': event, 'Factory settings': { defaultDiffBudget: 400 } },
-			executionId: '1234',
-		});
-
-	const ticketItems = z.array(
-		z.object({
-			json: z.object({ acceptanceCriteria: z.array(z.string()), diffBudget: z.number() }),
-		}),
-	);
-
-	it('starts a run for a new issue with the factory label', () => {
-		expect(readTicket(issueEvent())).toEqual([
-			{
-				json: {
-					ticketId: 'issue-42',
-					ticket: 'ENG-42',
-					title: 'Show the run count',
-					description,
-					url: 'https://linear.app/acme/issue/ENG-42/show-the-run-count',
-					acceptanceCriteria: [
-						'The card shows the number of runs.',
-						'The number is 0 without runs.',
-						'A unit test covers both cases.',
-					],
-					diffBudget: 400,
-					branch: 'factory/eng-42',
-					runKey: 'factory-1234',
-				},
-			},
-		]);
-	});
-
-	it('starts a run when an update adds the factory label', () => {
-		const event = issueEvent({ action: 'update', updatedFrom: { labelIds: ['label-other'] } });
-
-		expect(readTicket(event)).toHaveLength(1);
-	});
-
-	it.each([
-		[
-			'an update that keeps the label',
-			{ action: 'update', updatedFrom: { labelIds: ['label-factory'] } },
-			{},
-		],
-		[
-			'an update that does not change labels',
-			{ action: 'update', updatedFrom: { title: 'Old' } },
-			{},
-		],
-		['an issue without the label', {}, { labels: [{ id: 'label-bug', name: 'bug' }] }],
-		['an issue without labels', {}, { labels: undefined }],
-		['a removed issue', { action: 'remove' }, {}],
-		['a comment event', { type: 'Comment' }, {}],
-	])('ignores %s', (_case, event, issue) => {
-		expect(readTicket(issueEvent(event, issue))).toEqual([]);
-	});
-
-	it.each([
-		['no section', 'Fix the bug.\n- A list item outside a section.', []],
-		['an empty section', '## Acceptance criteria\n\n## Notes\n- Not a criterion.', []],
-		[
-			'a bold heading',
-			'**Acceptance criteria:**\n- First\n- Second\n**Out of scope**\n- Third',
-			['First', 'Second'],
-		],
-		[
-			'another heading level and checked items',
-			'### ACCEPTANCE CRITERIA\n- [x] Done\n- [ ] Open',
-			['Done', 'Open'],
-		],
-	])('reads the acceptance criteria of a description with %s', (_case, text, criteria) => {
-		const [item] = ticketItems.parse(readTicket(issueEvent({}, { description: text })));
-
-		expect(item.json.acceptanceCriteria).toEqual(criteria);
-	});
-
-	it('reads the acceptance criteria of the example ticket in the README', () => {
-		const example = /```markdown\n([\s\S]*?)```/.exec(readPackText('README.md'))?.[1];
-		const [item] = ticketItems.parse(readTicket(issueEvent({}, { description: example })));
-
-		expect(item.json.acceptanceCriteria).toEqual([
-			'The workflow card shows the number of runs in the last 7 days.',
-			'The number is 0 for a workflow without runs.',
-			'A unit test covers both cases.',
-		]);
-	});
-
-	it.each([
-		['budget:150', 150],
-		['Budget:75', 75],
-		['budget:0', 400],
-		['budget:many', 400],
-	])('takes the diff budget from the label %s', (name, budget) => {
-		const labels = [factoryLabel, { id: 'label-budget', name }];
-		const [item] = ticketItems.parse(readTicket(issueEvent({}, { labels })));
-
-		expect(item.json.diffBudget).toBe(budget);
-	});
-
-	const ticket = { ticket: 'ENG-42', url: 'https://linear.app/acme/issue/ENG-42' };
-	const records = z.array(z.object({ json: z.record(z.unknown()) })).length(1);
-
-	it('builds the run record from the outcome and the last check', () => {
-		const changes = [
-			{ path: 'a.ts', status: 'M', additions: 10, deletions: 4 },
-			{ path: 'b.ts', status: 'A', additions: 6, deletions: 0 },
-		];
-		const [record] = records.parse(
-			runCodeNode(codeOf('Run record'), {
-				nodes: {
-					'Read factory ticket': ticket,
-					Verify: { structuredContent: { check: 'passed', changes: [{ additions: 99 }] } },
-					'Re-verify': { structuredContent: { check: 'passed', changes } },
-					'Fresh critic': { structuredOutput: { verdict: 'approve' } },
-				},
-				json: { status: 'draft_pr_opened', summary: 'Opened', prUrl: 'https://example.com/pr/1' },
-				executionId: '77',
-			}),
-		);
-
-		expect(record.json).toEqual({
-			ticket: 'ENG-42',
-			ticketUrl: ticket.url,
-			status: 'draft_pr_opened',
-			summary: 'Opened',
-			criticVerdict: 'approve',
-			linesChanged: 20,
-			prUrl: 'https://example.com/pr/1',
-			executionId: '77',
-			finishedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
-		});
-	});
-
-	it('records no changed lines and no verdict when the run stops before the check', () => {
-		const [record] = records.parse(
-			runCodeNode(codeOf('Run record'), {
-				nodes: { 'Read factory ticket': ticket },
-				json: { status: 'missing_acceptance_criteria', summary: 'No criteria' },
-				executionId: '78',
-			}),
-		);
-
-		expect(record.json).toMatchObject({ criticVerdict: '', linesChanged: 0, prUrl: '' });
 	});
 });
 

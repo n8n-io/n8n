@@ -78,6 +78,13 @@ describe('TemplateRuntime', () => {
 			expect(runtime.evaluate('Done', "={{ $('Step').last().json.result }}", succeeded)).toBe('ok');
 		});
 
+		it('finds the output that n8n reads by default with its own search', () => {
+			expect(runtime.defaultOutputIndex('Record', 'Step')).toBe(1);
+			expect(runtime.defaultOutputIndex('Done', 'Step')).toBe(0);
+			// A node that is not behind the referenced node reads output 0.
+			expect(runtime.defaultOutputIndex('Step', 'Done')).toBe(0);
+		});
+
 		it('gives a Code node the same data proxy', () => {
 			expect(runtime.runCode('Record', succeeded)).toEqual([
 				{ json: { last: null, success: { result: 'ok' } } },

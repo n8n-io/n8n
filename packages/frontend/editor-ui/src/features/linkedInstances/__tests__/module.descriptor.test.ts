@@ -143,7 +143,11 @@ describe('LinkedInstancesModule', () => {
 			const isAllowed = () => {
 				const { router, resolved } = resolveSettingsRoute();
 				const check = resolved.meta.middlewareOptions?.custom;
-				return check?.({ to: resolved, from: router.currentRoute.value, next: vi.fn() });
+				return check?.({
+					to: { ...resolved, name: LINKED_INSTANCES_SETTINGS_VIEW },
+					from: router.currentRoute.value,
+					next: vi.fn(),
+				});
 			};
 
 			it('puts the page under the settings route and keeps the scope check', () => {

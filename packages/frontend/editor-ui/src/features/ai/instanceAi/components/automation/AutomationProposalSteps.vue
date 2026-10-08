@@ -39,7 +39,9 @@ const moreText = computed(() =>
 </script>
 
 <template>
+	<!-- Safari drops the list role of a list without bullets, so the role is explicit. -->
 	<ul
+		role="list"
 		:class="$style.steps"
 		:aria-label="i18n.baseText('instanceAi.automation.steps.label')"
 		data-test-id="automation-proposal-steps"

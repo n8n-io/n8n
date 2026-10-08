@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { waitFor, within } from '@testing-library/vue';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -9,13 +9,19 @@ import AutomationProposalSteps from '../AutomationProposalSteps.vue';
 
 const SLACK = 'n8n-nodes-base.slack';
 
-const slackType = {
+// A plain description without iconUrl, so NodeIcon draws the font icon and no image file.
+const slackType: INodeTypeDescription = {
 	name: SLACK,
 	displayName: 'Slack',
+	description: 'Send messages to Slack',
+	group: ['output'],
 	version: 1,
 	icon: 'fa:hashtag',
 	defaults: { name: 'Slack' },
-} as INodeTypeDescription;
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
+	properties: [],
+};
 
 const renderSteps = createComponentRenderer(AutomationProposalSteps);
 

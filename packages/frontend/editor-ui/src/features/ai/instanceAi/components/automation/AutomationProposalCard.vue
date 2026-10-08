@@ -18,6 +18,7 @@ import {
 	decisionFor,
 	hiddenStepCount,
 	liveStatusKey,
+	timezoneLabel,
 	titleKey,
 	triggerLineKey,
 	visibleSteps,
@@ -64,9 +65,10 @@ const triggerText = computed(() => {
 	if (!('cron' in line)) return i18n.baseText(line.key);
 	const description = describeSchedule(line.cron);
 	if (!description) return i18n.baseText(line.fallbackKey);
+	const timezone = line.timezone === undefined ? '' : timezoneLabel(line.timezone, i18n.locale);
 	// cronstrue starts with a capital ("At 08:00"), and the copy puts it mid-sentence.
 	return i18n.baseText(line.key, {
-		interpolate: { description: lowerFirst(description), timezone: line.timezone ?? '' },
+		interpolate: { description: lowerFirst(description), timezone },
 	});
 });
 
