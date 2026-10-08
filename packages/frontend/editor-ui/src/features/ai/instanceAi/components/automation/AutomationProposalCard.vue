@@ -3,7 +3,7 @@
  * The card of `propose_automation`: what starts the workflow, its steps, where it runs and
  * who can see it. Each button sends a `capabilityDecision` with values that the card offered.
  */
-import { computed, ref, useId, watch } from 'vue';
+import { computed, nextTick, ref, useId, useTemplateRef, watch } from 'vue';
 import type { AutomationProposalCard, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nText, type ButtonVariant } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -71,9 +71,22 @@ const answeredAction = computed(() => {
 	return decision === undefined ? undefined : actionOf(decision);
 });
 
-// A failed answer opens the same card again, so its buttons must work again.
-watch(answeredAction, (now, before) => {
-	if (before !== undefined && now === undefined) submitted.value = false;
+const openCard = useTemplateRef<InstanceType<typeof N8nCard>>('openCard');
+
+/** True when no element of the page has focus, for example after the focused one went away. */
+function isFocusLost(): boolean {
+	const active = document.activeElement;
+	return active === null || active === document.body || !active.isConnected;
+}
+
+// A failed answer opens the same card again, so its buttons must work again. The outcome had
+// focus and goes away, so focus moves to the card. Focus that the user moved elsewhere stays.
+watch(answeredAction, async (now, before) => {
+	if (before === undefined || now !== undefined) return;
+	submitted.value = false;
+	await nextTick();
+	const element: unknown = openCard.value?.$el;
+	if (element instanceof HTMLElement && isFocusLost()) element.focus({ preventScroll: true });
 });
 
 function choose(action: AutomationAction) {
@@ -94,9 +107,11 @@ function choose(action: AutomationAction) {
 	/>
 	<N8nCard
 		v-else
+		ref="openCard"
 		:class="$style.card"
 		role="group"
 		:aria-labelledby="titleId"
+		tabindex="-1"
 		data-test-id="automation-proposal-card"
 	>
 		<div :class="$style.body">
@@ -166,12 +181,16 @@ function choose(action: AutomationAction) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus' as focus;
+
 // The same container as the other Assistant cards in InstanceAiConfirmationCard.vue.
 .card {
 	--card--padding: 0;
 	border: 0;
 	background-color: var(--color--background--light-3);
 	box-shadow: var(--shadow--sm), var(--shadow--outline);
+
+	@include focus.focus-visible-ring;
 }
 
 .body {

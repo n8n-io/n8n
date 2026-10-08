@@ -205,6 +205,53 @@ describe('useAgentChatStream — answers of this session', () => {
 		expect(keepsResolvedCard(automationCard(hook))).toBe(false);
 	});
 
+	it.each([
+		['with a start event', TURN.slice(0, 2)],
+		// The n8n Assistant streams the turn of an answer without a start event.
+		['without a start event', TURN.slice(1, 2)],
+	])(
+		'keeps the answer when the turn fails after the tool ran (%s)',
+		async (_name, before: AgentSseEvent[]) => {
+			fetchMock.mockResolvedValue(
+				sseResponse([...before, { type: 'error', message: 'The model provider failed' }]),
+			);
+			const hook = await openChat();
+
+			await hook.resume(RESUME);
+			await flushPromises();
+
+			expect(hook.messages.value[0].toolCalls?.[0].output).toEqual(TOOL_RESULT);
+			expect(automationCard(hook).resolvedValue).toEqual(TURN_ON);
+			expect(keepsResolvedCard(automationCard(hook))).toBe(true);
+
+			pushExecutionUpdate();
+			await flushPromises();
+
+			expect(automationCard(hook).resolvedValue).toEqual(TURN_ON);
+			expect(keepsResolvedCard(automationCard(hook))).toBe(true);
+		},
+	);
+
+	it('does not put back an answer when the stream fails before the server takes it', async () => {
+		fetchMock.mockResolvedValue(
+			sseResponse([{ type: 'error', message: 'This action is no longer waiting for input' }]),
+		);
+		// Someone else answered first, with "Save".
+		getChatMessages
+			.mockReset()
+			.mockResolvedValueOnce(WAITING)
+			.mockResolvedValue(answered({ ...TOOL_RESULT, active: false }));
+		const hook = await openChat();
+
+		await hook.resume(RESUME);
+		await flushPromises();
+		pushExecutionUpdate();
+		await flushPromises();
+
+		expect(automationCard(hook).resolvedValue).toEqual({ ...TOOL_RESULT, active: false });
+		expect(keepsResolvedCard(automationCard(hook))).toBe(false);
+	});
+
 	it('opens the card again when the history says that it still waits', async () => {
 		fetchMock.mockResolvedValue(
 			sseResponse([{ type: 'error', message: 'This action is no longer waiting for input' }]),

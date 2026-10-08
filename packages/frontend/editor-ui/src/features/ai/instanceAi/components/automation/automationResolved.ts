@@ -33,11 +33,14 @@ export type AutomationResolvedKind =
 	| 'not-live'
 	| 'saved'
 	| 'saved-live'
+	| 'saved-manual'
+	| 'saved-locked'
 	| 'not-saved'
 	| 'failed'
 	| 'declined';
 
-export type AutomationResolvedTone = 'success' | 'warning' | 'neutral';
+/** `pending` waits for the tool result. `neutral` ends the card without a result to report. */
+export type AutomationResolvedTone = 'success' | 'warning' | 'pending' | 'neutral';
 
 export interface AutomationResolvedStatus {
 	kind: AutomationResolvedKind;
@@ -58,12 +61,12 @@ const RESOLVED_VIEWS: Record<AutomationResolvedKind, ResolvedView> = {
 	},
 	'turning-on': {
 		messageKey: 'instanceAi.automation.resolved.turningOn',
-		tone: 'neutral',
+		tone: 'pending',
 		showsLink: true,
 	},
 	'making-live': {
 		messageKey: 'instanceAi.automation.resolved.makingLive',
-		tone: 'neutral',
+		tone: 'pending',
 		showsLink: true,
 	},
 	'not-on': {
@@ -79,6 +82,16 @@ const RESOLVED_VIEWS: Record<AutomationResolvedKind, ResolvedView> = {
 	saved: { messageKey: 'instanceAi.automation.resolved.saved', tone: 'success', showsLink: true },
 	'saved-live': {
 		messageKey: 'instanceAi.automation.resolved.savedLive',
+		tone: 'success',
+		showsLink: true,
+	},
+	'saved-manual': {
+		messageKey: 'instanceAi.automation.resolved.savedManual',
+		tone: 'success',
+		showsLink: true,
+	},
+	'saved-locked': {
+		messageKey: 'instanceAi.automation.resolved.savedLocked',
 		tone: 'success',
 		showsLink: true,
 	},
@@ -136,13 +149,19 @@ function activateKind(
 	return outcome.active ? 'not-live' : 'not-on';
 }
 
+/**
+ * The state after "Save". It keeps a live version running: the result says if one is live, else
+ * the card does. Only "saved" tells the user to turn the workflow on. A manual workflow has no
+ * trigger, and the card says that it cannot turn on a locked workflow, so they get other copy.
+ */
 function saveKind(
 	proposal: AutomationProposalCard,
 	outcome: OpenOutcome | undefined,
 ): AutomationResolvedKind {
-	// "Save" keeps a live version running. The result says if one is live, else the card does.
 	const live = outcome?.kind === 'kept' ? outcome.active : proposal.active;
-	return live ? 'saved-live' : 'saved';
+	if (live) return 'saved-live';
+	if (proposal.trigger.kind === 'manual') return 'saved-manual';
+	return proposal.canActivate ? 'saved' : 'saved-locked';
 }
 
 function resolvedKind(

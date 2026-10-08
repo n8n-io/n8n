@@ -2,8 +2,14 @@ import fc from 'fast-check';
 import type { IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { binaryDiff, changesOf, unifiedDiff, type DiffFile } from './factory-pack-diffs';
-import { configured, ticketOutput, workflow } from './factory-pack-fixtures';
+import { binaryDiff, changesOf, sha256Of, unifiedDiff, type DiffFile } from './factory-pack-diffs';
+import {
+	configured,
+	earlierNodes,
+	FAILING_TEST_FILE,
+	ticketOutput,
+	workflow,
+} from './factory-pack-fixtures';
 
 /**
  * The diff gates. "Check the diff" stops a diff that does not show every changed file before the
@@ -12,21 +18,38 @@ import { configured, ticketOutput, workflow } from './factory-pack-fixtures';
 
 const READY = 0;
 const NOT_READY = 1;
+const NO_RESULT = 'fallback';
 
 const diffFacts = z
-	.array(z.object({ json: z.object({ diffProblems: z.array(z.string()) }) }))
+	.array(
+		z.object({ json: z.object({ diffProblems: z.array(z.string()), testListed: z.boolean() }) }),
+	)
 	.length(1);
 
 /** The problems that "Check the diff" finds in the result of Get diff. */
 function problemsOf(structuredContent: IDataObject): string[] {
-	const item = configured.runCode('Check the diff', {
-		json: { structuredContent },
-	});
-	return diffFacts.parse(item)[0].json.diffProblems;
+	return checkedDiffOf(structuredContent).diffProblems;
 }
 
-/** Runs "Compare with approved change" and routes its facts through "Ready for PR?". */
+/** The facts that "Check the diff" gives "Has a diff?" for the result of Get diff. */
+function checkedDiffOf(structuredContent: IDataObject) {
+	const item = configured.runCode('Check the diff', {
+		json: { structuredContent },
+		nodes: { 'Draft failing test': earlierNodes['Draft failing test'] },
+	});
+	return diffFacts.parse(item)[0].json;
+}
+
+/**
+ * Runs "Compare with approved change" and routes its facts through "Ready for PR?". The
+ * minimised result holds the hash of its diff, as coding_diff returns it, unless a test sets
+ * `diffSha256` to another value.
+ */
 function compare(parts: { approved: IDataObject; minimised: IDataObject; checked?: IDataObject }) {
+	const minimised = {
+		diffSha256: sha256Of(String(parts.minimised.diff ?? '')),
+		...parts.minimised,
+	};
 	const facts = z
 		.array(
 			z.object({
@@ -37,6 +60,7 @@ function compare(parts: { approved: IDataObject; minimised: IDataObject; checked
 					changedLines: z.number(),
 					approvedLines: z.number(),
 					diffBudget: z.number(),
+					testListed: z.boolean(),
 					unreviewed: z.array(z.string()),
 				}),
 			}),
@@ -46,19 +70,21 @@ function compare(parts: { approved: IDataObject; minimised: IDataObject; checked
 			configured.runCode('Compare with approved change', {
 				nodes: {
 					'Read factory ticket': ticketOutput,
+					'Draft failing test': earlierNodes['Draft failing test'],
 					'Get diff': { structuredContent: parts.approved },
 					'Re-verify': {
 						structuredContent: parts.checked ?? {
 							check: 'passed',
 							test: 'passed',
-							changes: parts.minimised.changes,
+							changes: minimised.changes,
 						},
 					},
-					'Get minimised diff': { structuredContent: parts.minimised },
+					'Get minimised diff': { structuredContent: minimised },
 				},
 			}),
 		)[0].json;
 	return {
+		facts,
 		unreviewed: facts.unreviewed,
 		changedLines: facts.changedLines,
 		route: configured.routeOf('Ready for PR?', { json: facts }),
@@ -82,6 +108,16 @@ describe('software factory diff gates', () => {
 
 		it('shows no problem for an empty change, which "Has a diff?" then stops', () => {
 			expect(problemsOf({ diff: '', changes: [] })).toEqual([]);
+		});
+
+		it('reports whether the listed changes hold the failing test', () => {
+			const withTest = [...files, FAILING_TEST_FILE];
+			const testOf = (changes: DiffFile[]) =>
+				checkedDiffOf({ diff: unifiedDiff(changes), changes: changesOf(changes) }).testListed;
+
+			expect(testOf(withTest)).toBe(true);
+			expect(testOf(files)).toBe(false);
+			expect(testOf([{ path: `${FAILING_TEST_FILE.path}.bak`, lines: ['+x();'] }])).toBe(false);
 		});
 
 		it('lists each listed file that the diff leaves out', () => {
@@ -342,9 +378,11 @@ describe('software factory diff gates', () => {
 				'+++ b/src/a.ts',
 				unifiedDiff(approved).split('\n').slice(4).join('\n'),
 			].join('\n');
+			const diff = [modeChange, unifiedDiff([FAILING_TEST_FILE])].join('\n');
+			const changes = [...changesOf(approved), ...changesOf([FAILING_TEST_FILE])];
 			const result = compare({
-				approved: { diff: modeChange, changes: changesOf(approved) },
-				minimised: { diff: modeChange, changes: changesOf(approved) },
+				approved: { diff, changes },
+				minimised: { diff, changes },
 			});
 
 			expect(result.route).toBe(READY);
@@ -354,14 +392,65 @@ describe('software factory diff gates', () => {
 		it('accepts a name with a space in the minimised diff, as it accepts it in the approved diff', () => {
 			const spaced: DiffFile[] = [{ path: 'my file.ts', lines: ['+const a = 1;'] }];
 			const tabbed = unifiedDiff(spaced).replace(/^(?:---|\+\+\+) .*$/gm, (line) => line + '\t');
+			const diff = [tabbed, unifiedDiff([FAILING_TEST_FILE])].join('\n');
+			const changes = [...changesOf(spaced), ...changesOf([FAILING_TEST_FILE])];
 			const result = compare({
-				approved: { diff: tabbed, changes: changesOf(spaced) },
-				minimised: { diff: tabbed, changes: changesOf(spaced) },
+				approved: { diff, changes },
+				minimised: { diff, changes },
 			});
 
 			expect(result.route).toBe(READY);
 			expect(result.unreviewed).toEqual([]);
 		});
+
+		it('stops when Minimise removes the failing test, though every other change is reviewed', () => {
+			const withTest = [...approved, FAILING_TEST_FILE];
+			const result = compare({
+				approved: { diff: unifiedDiff(withTest), changes: changesOf(withTest) },
+				minimised: { diff: unifiedDiff(approved), changes: changesOf(approved) },
+			});
+
+			expect(result.facts.testListed).toBe(false);
+			expect(result.unreviewed).toEqual([]);
+			expect(result.route).toBe(NOT_READY);
+		});
+
+		it('sends a check after Minimise that is not final to "No result", as "Check result" does', () => {
+			const withTest = [...approved, FAILING_TEST_FILE];
+			const routeWith = (state: IDataObject) =>
+				compare({
+					approved: { diff: unifiedDiff(withTest), changes: changesOf(withTest) },
+					minimised: { diff: unifiedDiff(withTest), changes: changesOf(withTest) },
+					checked: { ...state, changes: changesOf(withTest) },
+				});
+
+			expect(routeWith({ check: 'running', test: 'passed' }).route).toBe(NO_RESULT);
+			expect(routeWith({ check: 'passed', test: 'not_started' }).route).toBe(NO_RESULT);
+			expect(routeWith({ check: 'passed', test: 'passed' }).route).toBe(READY);
+			expect(routeWith({ check: 'failed', test: 'passed' }).route).toBe(NOT_READY);
+		});
+
+		it.each([
+			['no hash', undefined],
+			['a hash of another length', 'a'.repeat(40)],
+			['a hash in capitals', 'A'.repeat(64)],
+		])(
+			'sends a minimised diff with %s to "No result", so that no change is pushed unchecked',
+			(_case, hash) => {
+				const withTest = [...approved, FAILING_TEST_FILE];
+				const result = compare({
+					approved: { diff: unifiedDiff(withTest), changes: changesOf(withTest) },
+					minimised: {
+						diff: unifiedDiff(withTest),
+						changes: changesOf(withTest),
+						diffSha256: hash,
+					},
+				});
+
+				expect(result.facts.hasResult).toBe(false);
+				expect(result.route).toBe(NO_RESULT);
+			},
+		);
 
 		it('stops when the check after Minimise lists other changes than the minimised diff', () => {
 			const result = compare({

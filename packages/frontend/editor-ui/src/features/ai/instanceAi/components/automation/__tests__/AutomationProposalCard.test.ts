@@ -1,6 +1,6 @@
 import { defineComponent, h, nextTick, ref, type PropType, type Ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import type {
 	AutomationProposalCard as Proposal,
@@ -469,6 +469,49 @@ describe('AutomationProposalCard after the answer', () => {
 		);
 	});
 
+	it('says that a saved manual workflow is in the workflows, without asking to turn it on', async () => {
+		const { getByTestId, getByRole } = renderAnswered(undefined, {
+			proposal: makeManualProposal(),
+		});
+
+		await fireEvent.click(getByRole('button', { name: 'Save workflow' }));
+
+		const status = getByTestId('automation-proposal-resolved-status');
+		expect(status).toHaveTextContent('Saved. "Morning digest" is in your workflows.');
+		expect(status).not.toHaveTextContent('turn it on');
+		expect(getByTestId('automation-proposal-open-workflow')).toHaveAttribute(
+			'href',
+			'/workflow/wf-1',
+		);
+	});
+
+	it('says that a saved workflow stays off until someone turns it on, as the card said', async () => {
+		const proposal = makeProposal({
+			canActivate: false,
+			offered: { target: ['local'], activate: [false] },
+		});
+		const { getByTestId, getByRole } = renderAnswered(undefined, { proposal });
+		expect(getByTestId('automation-proposal-note')).toHaveTextContent(
+			'It stays off until someone turns it on.',
+		);
+
+		await fireEvent.click(getByRole('button', { name: 'Save workflow' }));
+
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+			'Saved. "Morning digest" stays off until someone turns it on.',
+		);
+		expect(getByTestId('automation-proposal-open-workflow')).toBeInTheDocument();
+	});
+
+	it('says that a schedule it cannot describe runs at set times', () => {
+		const proposal = makeProposal({ trigger: { kind: 'schedule', cron: 'not a cron' } });
+		const { getByTestId } = renderAnswered(TURN_ON, { proposal });
+
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+			`It's on. "Morning digest" runs at set times on This computer.`,
+		);
+	});
+
 	it('says "Not automated." for "Not now", without a link', () => {
 		const { getByTestId, queryByRole, queryByTestId } = renderAnswered(DECLINE);
 
@@ -482,14 +525,20 @@ describe('AutomationProposalCard after the answer', () => {
 		const call = ref(toolCall({ result: TURN_ON }));
 		const { getByTestId } = renderAnswered(TURN_ON, { call });
 		const status = getByTestId('automation-proposal-resolved-status');
+		const iconOf = () => getByTestId('automation-proposal-resolved').querySelector('[data-icon]');
 
 		expect(status).toHaveTextContent('Turning it on…');
 		expect(getByTestId('automation-proposal-open-workflow')).toBeInTheDocument();
+		// The waiting state holds the place of the icon, so the text does not move later.
+		expect(iconOf()).toHaveAttribute('data-icon', 'loader-circle');
+		expect(iconOf()?.closest('[aria-hidden="true"]')).not.toBeNull();
+		expect(status.querySelector('[role="status"]')).toBeNull();
 
 		call.value = toolCall({ result: { ...KEPT, active: true } });
 		await nextTick();
 
 		expect(status).toHaveTextContent(`It's on. "Morning digest" runs at 08:00`);
+		expect(iconOf()).toHaveAttribute('data-icon', 'circle-check');
 	});
 
 	it('says that the workflow was saved but is off when the result is not active', async () => {
@@ -582,6 +631,22 @@ describe('AutomationProposalCard after the answer', () => {
 		expect(getByTestId('automation-proposal-resolved')).not.toHaveFocus();
 	});
 
+	it('leaves focus where the user moved it when the chat takes a failed answer back', async () => {
+		const state = ref<unknown>(undefined);
+		const { getByTestId } = renderAnswered(undefined, { state });
+		const elsewhere = document.body.appendChild(document.createElement('button'));
+
+		await fireEvent.click(getByTestId('automation-proposal-turn-on'));
+		elsewhere.focus();
+		state.value = undefined;
+		await nextTick();
+		await nextTick();
+
+		expect(getByTestId('automation-proposal-card')).toBeInTheDocument();
+		expect(elsewhere).toHaveFocus();
+		elsewhere.remove();
+	});
+
 	it('lets the user answer again when the chat takes a failed answer back', async () => {
 		const state = ref<unknown>(undefined);
 		const { getByTestId, queryByTestId } = renderAnswered(undefined, { state });
@@ -593,6 +658,8 @@ describe('AutomationProposalCard after the answer', () => {
 		await nextTick();
 
 		expect(queryByTestId('automation-proposal-resolved')).not.toBeInTheDocument();
+		// The outcome had focus. Focus moves to the card, not to the page.
+		await waitFor(() => expect(getByTestId('automation-proposal-card')).toHaveFocus());
 		for (const testId of [
 			'automation-proposal-turn-on',
 			'automation-proposal-save',

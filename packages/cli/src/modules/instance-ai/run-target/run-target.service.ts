@@ -49,7 +49,7 @@ export class RunTargetService {
 		const stored = storedRunTargetOf(defaults);
 		// Defaults without a target come from a chat that started before run targets existed.
 		if (stored === undefined && isRecord(defaults)) return LOCAL_RUN_TARGET;
-		const target = stored ?? (await this.storeFirstTarget(thread.id, ownerId, request?.runTarget));
+		const target = stored ?? (await this.storeFirstTarget(thread, ownerId, request?.runTarget));
 		if (target.kind === 'local' || isSharedThread(thread)) return LOCAL_RUN_TARGET;
 		if (await this.findLink(ownerId, target.instanceId)) return target;
 		return await this.dropLostLink(thread, ownerId, target);
@@ -57,14 +57,17 @@ export class RunTargetService {
 
 	/** Stores the target of the first message. Concurrent first messages keep the first write. */
 	private async storeFirstTarget(
-		threadId: string,
+		thread: AgentExecutionThread,
 		ownerId: string,
 		requested: RunTarget | undefined,
 	): Promise<InstanceAiThreadRunTarget> {
-		const candidate = await this.chosenTarget(ownerId, requested);
+		// A shared chat never takes a remote target, so none is stored for it.
+		const candidate = isSharedThread(thread)
+			? LOCAL_RUN_TARGET
+			: await this.chosenTarget(ownerId, requested);
 		let kept = candidate;
 		await patchThread(this.memory.getImplementation(ASSISTANT_AGENT_ID), {
-			threadId,
+			threadId: thread.id,
 			update: ({ metadata }) => {
 				const current = metadata?.[ASSISTANT_TURN_DEFAULTS_KEY];
 				kept = keepFirstRunTarget(current, candidate);

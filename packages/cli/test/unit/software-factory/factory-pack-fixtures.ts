@@ -1,5 +1,6 @@
 import type { INode } from 'n8n-workflow';
 
+import type { DiffFile } from './factory-pack-diffs';
 import { loadBuiltinNodeTypes, nodeByName, readTemplateWorkflow } from './factory-pack-files';
 import { TemplateRuntime, nodeTypesOf } from './factory-pack-runtime';
 
@@ -59,9 +60,18 @@ export const settingsOutput = {
 	defaultDiffBudget: 400,
 };
 
+/** The failing test that the planner drafts: its path must be one of the changed files of a run. */
+export const FAILING_TEST_PATH = 'packages/cli/test/unit/run-count.test.ts';
+
+/** The failing test as a file of a change, with the one line that the planner drafts. */
+export const FAILING_TEST_FILE: DiffFile = {
+	path: FAILING_TEST_PATH,
+	lines: ["+it('counts runs', () => {});"],
+};
+
 export const failingTestOutput = {
 	structuredOutput: {
-		testPath: 'packages/cli/test/unit/run-count.test.ts',
+		testPath: FAILING_TEST_PATH,
 		testCode: "it('counts runs', () => {});",
 		runCommand: 'pnpm --filter n8n test test/unit/run-count.test.ts',
 		expectedFailure: 'The count does not exist yet.',

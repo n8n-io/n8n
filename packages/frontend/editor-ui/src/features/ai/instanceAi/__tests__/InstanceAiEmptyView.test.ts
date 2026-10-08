@@ -80,6 +80,8 @@ const {
 	appSettingsStoreMock: {
 		isCloudDeployment: false,
 		settings: { releaseChannel: 'stable' },
+		// The run target picker asks this in Power mode. No module is on unless a test says so.
+		isModuleActive: (_moduleName: string) => false,
 	},
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({
 		type: 'prompt',

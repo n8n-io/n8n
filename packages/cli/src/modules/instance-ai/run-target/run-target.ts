@@ -5,7 +5,8 @@ import { z } from 'zod';
 /** Thread metadata keys with this prefix belong to the server. A client write to them is dropped. */
 const SERVER_METADATA_PREFIX = 'assistant';
 
-export const LOCAL_RUN_TARGET: InstanceAiThreadRunTarget = { kind: 'local' };
+/** Shared by every local answer, so it is frozen. */
+export const LOCAL_RUN_TARGET: InstanceAiThreadRunTarget = Object.freeze({ kind: 'local' });
 
 const storedRunTargetSchema = z.discriminatedUnion('kind', [
 	z.object({ kind: z.literal('local') }),

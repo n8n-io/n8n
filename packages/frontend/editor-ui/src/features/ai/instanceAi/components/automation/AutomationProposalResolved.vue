@@ -24,10 +24,13 @@ const props = defineProps<{
 	takesFocus?: boolean;
 }>();
 
-const TONE_ICONS: Record<AutomationResolvedTone, IconName | undefined> = {
+// Every state has an icon, so the text does not move when the result arrives. "Not now" ends
+// the card without a result to report, so it shows a neutral sign.
+const TONE_ICONS: Record<AutomationResolvedTone, IconName> = {
 	success: 'circle-check',
 	warning: 'triangle-alert',
-	neutral: undefined,
+	pending: 'loader-circle',
+	neutral: 'circle-minus',
 };
 
 const i18n = useI18n();
@@ -42,10 +45,6 @@ const outcome = computed(() => {
 });
 
 const status = computed(() => resolvedStatus(props.action, props.proposal, outcome.value));
-// "Not now" ends the card without a result to report, so it shows a neutral sign.
-const icon = computed<IconName | undefined>(() =>
-	status.value.kind === 'declined' ? 'circle-minus' : TONE_ICONS[status.value.tone],
-);
 const trigger = computed(() => triggerText(props.proposal.trigger, 'clause'));
 const place = computed(() => placeName(placeOf(props.proposal)));
 const workflowRoute = computed(() => ({
@@ -70,7 +69,14 @@ onMounted(() => {
 		data-test-id="automation-proposal-resolved"
 	>
 		<div :class="$style.row">
-			<N8nIcon v-if="icon" :icon="icon" :class="$style.icon" aria-hidden="true" />
+			<span :class="$style.iconSlot" aria-hidden="true">
+				<N8nIcon
+					:icon="TONE_ICONS[status.tone]"
+					:spin="status.tone === 'pending'"
+					size="medium"
+					:class="$style.icon"
+				/>
+			</span>
 			<N8nText
 				:id="statusId"
 				tag="p"
@@ -121,15 +127,25 @@ onMounted(() => {
 	@include focus.focus-visible-ring;
 }
 
-// The link stays at the end of the line; a long sentence wraps beside it.
+// The link stays at the end of the line; a long sentence wraps beside it. The icon and the
+// link line up with the first line of the sentence, so the row uses the size of that text.
 .row {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: var(--spacing--xs);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--lg);
+}
+
+// One line high, so the icon is centred on the first line.
+.iconSlot {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	height: calc(var(--font-size--2xs) * var(--line-height--lg));
 }
 
 .icon {
-	flex-shrink: 0;
 	color: var(--icon-color);
 }
 

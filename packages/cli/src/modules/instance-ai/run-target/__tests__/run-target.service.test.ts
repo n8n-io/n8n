@@ -146,6 +146,20 @@ describe('RunTargetService', () => {
 			});
 		});
 
+		it('stores local for a shared chat, so a shared chat never takes a remote target', async () => {
+			const { memory, thread } = createMemory();
+			const service = createService(memory);
+
+			const target = await forTurn(service, chatThread({ accessScope: 'project' }), undefined, {
+				kind: 'linked',
+				instanceId: LINK_ID,
+			});
+
+			expect(target).toEqual({ kind: 'local' });
+			expect(store.getForUser).not.toHaveBeenCalled();
+			expect(defaultsOf(thread)).toEqual({ runTarget: { kind: 'local' } });
+		});
+
 		it('runs locally without a link lookup when the module is off', async () => {
 			moduleRegistry.isActive.mockReturnValue(false);
 			const { memory, thread } = createMemory();

@@ -1,23 +1,67 @@
+import { isRecord } from '@n8n/utils/is-record';
 import Handlebars from 'handlebars';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { createSendAndWaitMessageBody } from 'n8n-nodes-base/dist/nodes/Slack/V2/GenericFunctions';
 import { z } from 'zod';
 
-import { configured, earlierNodes, parameterOf, ticketOutput } from './factory-pack-fixtures';
+import { nodeByName } from './factory-pack-files';
+import {
+	configured,
+	earlierNodes,
+	parameterOf,
+	ticketOutput,
+	workflow,
+} from './factory-pack-fixtures';
 import type { TemplateRun } from './factory-pack-runtime';
 
-/** The plan approval of the template: the Slack message and the review page, run by n8n. */
+/**
+ * The plan approval of the template: the Slack message and the review page. The Slack message
+ * goes through the send-and-wait code of the Slack node, which decodes HTML entities once.
+ */
 
+const APPROVAL = 'Ask for plan approval';
 const FORM_TEMPLATE = path.resolve(__dirname, '../../../templates/form-trigger.handlebars');
-const HTML_TEXT_ENTITIES: Partial<Record<string, string>> = { amp: '&', lt: '<', gt: '>' };
 
 const textOf = (nodeName: string, value: unknown, run: TemplateRun) =>
 	z.string().parse(configured.evaluate(nodeName, value, run));
 
-/** The text that a browser shows for escaped HTML text: each entity back to its character. */
-const shownText = (html: string) =>
-	html.replace(/&(amp|lt|gt);/g, (entity, name: string) => HTML_TEXT_ENTITIES[name] ?? entity);
+/**
+ * The context that the Slack node gets for the approval: each parameter with its expressions
+ * evaluated, as the workflow engine gives them to the node.
+ */
+function slackContextOf(run: TemplateRun): IExecuteFunctions {
+	const parameters: IDataObject = configured.parametersOf(APPROVAL);
+	const parameterNamed = (name: string): unknown =>
+		name
+			.split('.')
+			.reduce<unknown>((value, key) => (isRecord(value) ? value[key] : undefined), parameters);
+
+	return {
+		getNodeParameter: (
+			name: string,
+			_itemIndex: number,
+			fallback?: unknown,
+			options?: { extractValue?: boolean },
+		) => {
+			const raw = parameterNamed(name);
+			if (raw === undefined) return fallback;
+			const value = configured.evaluate(APPROVAL, raw, run);
+			return options?.extractValue && isRecord(value) ? value.value : value;
+		},
+		getNode: () => ({ typeVersion: nodeByName(workflow, APPROVAL).typeVersion }),
+		getExecutionId: () => '1',
+		getSignedResumeUrl: () => 'https://n8n.example.com/resume',
+	} as unknown as IExecuteFunctions;
+}
+
+/** The text of the plan section that Slack receives for the approval message. */
+function sentTextOf(run: TemplateRun): string {
+	const section = createSendAndWaitMessageBody(slackContextOf(run)).blocks[1];
+	if (section?.type !== 'section') throw new Error('The Slack message has no text section');
+	return section.text.text;
+}
 
 /** The page of the form template that shows the description, rendered with the description. */
 function reviewPageOf(description: string): string {
@@ -28,8 +72,12 @@ function reviewPageOf(description: string): string {
 	return Handlebars.compile(line)({ formDescription: description });
 }
 
+/** The text that a browser shows for escaped HTML text: each entity back to its character. */
+const HTML_TEXT_ENTITIES: Partial<Record<string, string>> = { amp: '&', lt: '<', gt: '>' };
+const shownText = (html: string) =>
+	html.replace(/&(amp|lt|gt);/g, (entity, name: string) => HTML_TEXT_ENTITIES[name] ?? entity);
+
 describe('plan approval', () => {
-	const APPROVAL = 'Ask for plan approval';
 	const planRun = (structuredOutput: IDataObject, ticket: IDataObject = ticketOutput) => ({
 		json: { structuredOutput },
 		nodes: { ...earlierNodes, 'Read factory ticket': ticket },
@@ -57,8 +105,7 @@ describe('plan approval', () => {
 	};
 
 	it('keeps the Slack message of a maximal plan within the 3000 characters of one section', () => {
-		// The cut counts the escaped characters, so the limit holds for any text.
-		const text = textOf(APPROVAL, parameterOf(APPROVAL, 'message'), planRun(longPlan, hugeTicket));
+		const text = sentTextOf(planRun(longPlan, hugeTicket));
 
 		expect(text.length).toBeLessThanOrEqual(3000);
 		expect(text).toContain('review the plan for ENG-');
@@ -67,34 +114,45 @@ describe('plan approval', () => {
 	it('keeps the Slack message within 3000 characters when every character is escaped', () => {
 		const plan = { ...longPlan, summary: '<'.repeat(5000) };
 		const ticket = { ...hugeTicket, title: '&'.repeat(5000), url: '<'.repeat(5000) };
-		const text = textOf(APPROVAL, parameterOf(APPROVAL, 'message'), planRun(plan, ticket));
 
-		expect(text.length).toBeLessThanOrEqual(3000);
+		expect(sentTextOf(planRun(plan, ticket)).length).toBeLessThanOrEqual(3000);
 	});
 
-	it('escapes the markup of the plan and the ticket in the Slack message', () => {
+	it('shows the markup of the plan and the ticket as text, so that Slack shows no mention or link', () => {
 		const plan = { ...longPlan, summary: 'Stop <!channel> & <https://evil.example|click>.' };
 		const ticket = { ...ticketOutput, title: 'Fix <b> & "x"' };
-		const text = textOf(APPROVAL, parameterOf(APPROVAL, 'message'), planRun(plan, ticket));
+		const text = sentTextOf(planRun(plan, ticket));
 
 		expect(text).toContain('Stop &lt;!channel&gt; &amp; &lt;https://evil.example|click&gt;.');
 		expect(text).toContain('Fix &lt;b&gt; &amp; "x"');
 		expect(text).not.toMatch(/[<>]/);
+		expect(text).not.toContain('<!channel>');
+		expect(text).not.toContain('<https://evil.example|click>');
+	});
+
+	it('shows an entity that the ticket holds as the same text', () => {
+		const text = sentTextOf(planRun(longPlan, { ...ticketOutput, title: 'Show &lt;b&gt; &amp;' }));
+
+		expect(text).toContain('Show &amp;lt;b&amp;gt; &amp;amp;');
 	});
 
 	it('cuts the escaped text at the limit and never leaves a part of an entity', () => {
-		const text = textOf(
-			APPROVAL,
-			parameterOf(APPROVAL, 'message'),
-			planRun({ ...longPlan, summary: '<'.repeat(1200) }),
-		);
+		const text = sentTextOf(planRun({ ...longPlan, summary: '<'.repeat(1200) }));
 
 		expect(text).toContain(`${'&lt;'.repeat(250)}...`);
 		expect(text).not.toMatch(/&(?!amp;|lt;|gt;)/);
 	});
 
+	it('counts an escaped ampersand as the five characters that Slack shows', () => {
+		const text = sentTextOf(planRun({ ...longPlan, summary: '&'.repeat(400) }));
+
+		// The summary has 1000 characters, so 200 ampersands fit: each is "&amp;" in the text.
+		expect(text).toContain(`${'&amp;'.repeat(200)}...`);
+		expect(text).not.toContain('&amp;'.repeat(201));
+	});
+
 	it('states the counts and the estimate, and leaves the steps to the review page', () => {
-		const text = textOf(APPROVAL, parameterOf(APPROVAL, 'message'), planRun(longPlan));
+		const text = sentTextOf(planRun(longPlan));
 
 		expect(text).toContain('*Steps*: 60. *Files*: 60. *Tests*: 40. *Risks*: 1.');
 		expect(text).toContain('*Estimated changed lines*: 50000 of 100.');

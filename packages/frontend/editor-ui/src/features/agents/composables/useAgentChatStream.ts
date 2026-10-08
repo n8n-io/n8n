@@ -594,6 +594,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		terminalEventReceived: boolean;
 		/** Set when the error text is the server's reason for a refusal. It can name users. */
 		serverRefusal?: boolean;
+		/** Set by the first event that is not an error: the server took the request. */
+		started?: boolean;
 		/**
 		 * Cursor pointing at the ChatMessage currently being filled by
 		 * text/reasoning/tool-input events. `start-step` / `finish-step`
@@ -1357,6 +1359,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					} catch {
 						continue;
 					}
+					if (event.type !== 'error') session.started = true;
 					const result =
 						event.type === 'execution-started' && session.needsStartValidation
 							? await handleDelayedExecutionStart(event, session)
@@ -1389,13 +1392,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	type StreamOutcome = 'completed' | 'failed' | 'aborted' | 'busy' | 'detached';
+	/** `started` tells a turn that failed after the server took the request from a refusal. */
+	type PostResult = { outcome: StreamOutcome; rejection?: ChatRejection; started?: boolean };
 
 	async function postAndConsume(
 		url: string,
 		body: Record<string, unknown>,
 		onAccepted?: () => void,
 		userMessage?: ChatMessage,
-	): Promise<{ outcome: StreamOutcome; rejection?: ChatRejection }> {
+	): Promise<PostResult> {
 		const controller = new AbortController();
 		const session: StreamSession = {
 			controller,
@@ -1449,10 +1454,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			finalizeStream(session);
 			if (!session.errorEmitted) session.onAccepted?.();
-			return { outcome: session.errorEmitted ? 'failed' : 'completed' };
+			return { outcome: session.errorEmitted ? 'failed' : 'completed', started: session.started };
 		} catch (error) {
 			if (!isCurrent() || controller.signal.aborted) return { outcome: 'aborted' };
-			if (session.errorEmitted) return { outcome: 'failed' };
+			if (session.errorEmitted) return { outcome: 'failed', started: session.started };
 			if (session.userMessage && !session.queueId && !session.executionId)
 				showError(error, locale.baseText('agents.chat.queue.sendError'));
 			// A lost response cannot tell us whether the server accepted or finished the turn.
@@ -1491,7 +1496,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		response: Response,
 		session: StreamSession,
 		isCurrent: () => boolean,
-	): Promise<{ outcome: StreamOutcome; rejection?: ChatRejection }> {
+	): Promise<PostResult> {
 		const rejection = await readChatRejection(response);
 		if (!isCurrent() || session.controller.signal.aborted) return { outcome: 'aborted' };
 		session.serverRefusal = rejection.message !== undefined;
@@ -1644,12 +1649,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
 		rememberAnswer(payload);
-		const { outcome, rejection } = await postAndConsume(
+		const { outcome, rejection, started } = await postAndConsume(
 			url,
 			{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },
 			onAccepted,
 		);
-		forgetRefusedAnswer(payload, outcome);
+		forgetRefusedAnswer(payload, outcome, started);
 		let reconciled = false;
 		if (outcome === 'failed' || outcome === 'busy') {
 			reconciled = await refreshHistory();
@@ -1688,9 +1693,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (!('cancelled' in payload)) sessionAnswers.set(payload.toolCallId, payload.resumeData);
 	}
 
-	/** The server did not take this answer, so the history must not show it. */
-	function forgetRefusedAnswer(payload: ResumePayload, outcome: StreamOutcome): void {
-		if (outcome === 'failed' || outcome === 'busy') sessionAnswers.delete(payload.toolCallId);
+	/**
+	 * The server did not take this answer, so the history must not show it. A turn that fails
+	 * after the server took the answer (for example a model error after the tool ran) keeps it.
+	 */
+	function forgetRefusedAnswer(payload: ResumePayload, outcome: StreamOutcome, started = false) {
+		if (outcome === 'busy' || (outcome === 'failed' && !started)) {
+			sessionAnswers.delete(payload.toolCallId);
+		}
 	}
 
 	/** A failed card answer. A steering message that cancels a card is not an answer. */

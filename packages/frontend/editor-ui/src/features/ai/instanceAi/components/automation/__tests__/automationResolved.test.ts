@@ -113,6 +113,12 @@ describe('toolOutcome', () => {
 describe('resolvedStatus', () => {
 	const offProposal = makeProposal();
 	const liveProposal = makeProposal({ active: true, hasUnpublishedChanges: true });
+	const manualProposal = makeManualProposal();
+	// The user may not publish, or an admin blocked publishing for the Assistant.
+	const lockedProposal = makeProposal({
+		canActivate: false,
+		offered: { target: ['local'], activate: [false] },
+	});
 
 	it.each([
 		['decline', offProposal, undefined, 'declined'],
@@ -144,20 +150,42 @@ describe('resolvedStatus', () => {
 		['save', offProposal, kept(true), 'saved-live'],
 		['save', offProposal, REFUSED, 'not-saved'],
 		['save', liveProposal, FAILED, 'failed'],
+		// A manual workflow cannot be turned on, so "Save" does not ask the user to.
+		['save', manualProposal, undefined, 'saved-manual'],
+		['save', manualProposal, WAITING, 'saved-manual'],
+		['save', manualProposal, kept(false), 'saved-manual'],
+		['save', manualProposal, REFUSED, 'not-saved'],
+		// The card said that it cannot turn the workflow on, so "Save" does not ask either.
+		['save', lockedProposal, undefined, 'saved-locked'],
+		['save', lockedProposal, WAITING, 'saved-locked'],
+		['save', lockedProposal, kept(false), 'saved-locked'],
+		['save', lockedProposal, FAILED, 'failed'],
+		// A live version keeps running, whatever the trigger or the rights.
+		['save', manualProposal, kept(true), 'saved-live'],
+		['save', makeProposal({ canActivate: false, active: true }), undefined, 'saved-live'],
+		['save', makeProposal({ canActivate: false, active: true }), kept(false), 'saved-locked'],
 	] as const)('"%s" with outcome %#: %s', (action, proposal, outcome, kind) => {
 		expect(resolvedStatus(action, proposal, outcome).kind).toBe(kind);
 	});
 
 	it.each([
 		{ kind: 'on', action: 'activate', outcome: kept(true), tone: 'success', showsLink: true },
-		{ kind: 'turning-on', action: 'activate', outcome: WAITING, tone: 'neutral', showsLink: true },
+		{ kind: 'turning-on', action: 'activate', outcome: WAITING, tone: 'pending', showsLink: true },
 		{ kind: 'not-on', action: 'activate', outcome: kept(false), tone: 'warning', showsLink: true },
 		{ kind: 'saved', action: 'save', outcome: undefined, tone: 'success', showsLink: true },
+		{ kind: 'saved-manual', action: 'save', outcome: undefined, tone: 'success', showsLink: true },
+		{ kind: 'saved-locked', action: 'save', outcome: undefined, tone: 'success', showsLink: true },
 		{ kind: 'not-saved', action: 'save', outcome: REFUSED, tone: 'warning', showsLink: false },
 		{ kind: 'failed', action: 'save', outcome: FAILED, tone: 'warning', showsLink: true },
 		{ kind: 'declined', action: 'decline', outcome: undefined, tone: 'neutral', showsLink: false },
 	] as const)('shows "$kind" with its tone and link', ({ kind, action, outcome, ...view }) => {
-		expect(resolvedStatus(action, makeProposal(), outcome)).toMatchObject({ kind, ...view });
+		const proposals: Partial<Record<string, Proposal>> = {
+			'saved-manual': makeManualProposal(),
+			'saved-locked': makeProposal({ canActivate: false }),
+		};
+		const proposal = proposals[kind] ?? makeProposal();
+
+		expect(resolvedStatus(action, proposal, outcome)).toMatchObject({ kind, ...view });
 	});
 
 	it.each([
@@ -169,6 +197,8 @@ describe('resolvedStatus', () => {
 		['not-live', 'instanceAi.automation.resolved.notLive'],
 		['saved', 'instanceAi.automation.resolved.saved'],
 		['saved-live', 'instanceAi.automation.resolved.savedLive'],
+		['saved-manual', 'instanceAi.automation.resolved.savedManual'],
+		['saved-locked', 'instanceAi.automation.resolved.savedLocked'],
 		['not-saved', 'instanceAi.automation.resolved.notSaved'],
 		['failed', 'instanceAi.automation.resolved.failed'],
 		['declined', 'instanceAi.automation.resolved.declined'],
@@ -183,6 +213,8 @@ describe('resolvedStatus', () => {
 			'not-live': ['activate', kept(true, true), makeProposal()],
 			saved: ['save', kept(false), makeProposal()],
 			'saved-live': ['save', kept(true), makeProposal()],
+			'saved-manual': ['save', kept(false), makeManualProposal()],
+			'saved-locked': ['save', kept(false), makeProposal({ canActivate: false })],
 			'not-saved': ['save', REFUSED, makeProposal()],
 			failed: ['activate', FAILED, makeProposal()],
 			declined: ['decline', undefined, makeProposal()],
@@ -219,7 +251,7 @@ describe('resolvedStatus', () => {
 
 	it('keeps the "runs" clause for every other state, also without a trigger line', () => {
 		expect(resolvedStatus('save', makeManualProposal(), kept(false)).messageKey).toBe(
-			'instanceAi.automation.resolved.saved',
+			'instanceAi.automation.resolved.savedManual',
 		);
 		expect(resolvedStatus('activate', makeManualProposal(), WAITING).messageKey).toBe(
 			'instanceAi.automation.resolved.turningOn',
@@ -237,6 +269,7 @@ const proposalArb = fc
 	.record({
 		active: fc.boolean(),
 		hasUnpublishedChanges: fc.boolean(),
+		canActivate: fc.boolean(),
 		trigger: triggerArb,
 		offered: fc.record({
 			target: fc.uniqueArray(fc.constantFrom('local', 'cloud-1'), { minLength: 1 }),
@@ -304,6 +337,22 @@ describe('answered card properties', () => {
 				expect(status.kind === 'not-saved').toBe(refused);
 				expect(status.kind === 'failed').toBe(answered && outcome?.kind === 'failed');
 				expect(status.showsLink).toBe(answered && !refused);
+			}),
+		);
+	});
+
+	it('asks the user to turn a saved workflow on only when the user can', () => {
+		fc.assert(
+			fc.property(proposalArb, outcomeArb, (p, outcome) => {
+				const { kind } = resolvedStatus('save', p, outcome);
+				if (outcome?.kind === 'refused' || outcome?.kind === 'failed') return;
+				const live = outcome?.kind === 'kept' ? outcome.active : p.active;
+				const canTurnOn = p.trigger.kind !== 'manual' && p.canActivate;
+
+				expect(['saved', 'saved-live', 'saved-manual', 'saved-locked']).toContain(kind);
+				expect(kind === 'saved-live').toBe(live);
+				expect(kind === 'saved').toBe(!live && canTurnOn);
+				expect(kind === 'saved-manual').toBe(!live && p.trigger.kind === 'manual');
 			}),
 		);
 	});

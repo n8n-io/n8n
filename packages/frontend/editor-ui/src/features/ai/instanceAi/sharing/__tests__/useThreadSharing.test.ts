@@ -68,7 +68,10 @@ function renderConversation(toolCalls: ToolCall[]) {
 	const Host = defineComponent({
 		setup() {
 			const transcript: ChatMessage[] = [{ id: 'm-1', role: 'assistant', content: '', toolCalls }];
-			const sharing = provideThreadSharing({ id: THREAD_ID, projectId: PROJECT_ID }, () => transcript);
+			const sharing = provideThreadSharing(
+				{ id: THREAD_ID, projectId: PROJECT_ID },
+				() => transcript,
+			);
 			onResumeFailed = sharing.onResumeFailed;
 			return () => h(Probe, { toolCalls });
 		},

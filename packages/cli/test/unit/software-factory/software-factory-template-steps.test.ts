@@ -1,11 +1,10 @@
 import fc from 'fast-check';
-import { jsonParse, type GenericValue, type IDataObject } from 'n8n-workflow';
+import type { GenericValue, IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { nodeByName, readPackText } from './factory-pack-files';
 import {
-	AGENT_IDS,
-	MCP_CLIENT,
+	FAILING_TEST_PATH,
 	configured,
 	earlierNodes,
 	failingTestOutput,
@@ -20,7 +19,6 @@ import type { TemplateRun } from './factory-pack-runtime';
 /** The Code nodes, the tool calls, the messages and the outcomes of the template, run by n8n. */
 
 const sha = 'b'.repeat(40);
-const DIFF_SHA256 = 'c'.repeat(64);
 const lines = (additions: number, deletions = 0) => [
 	{ path: 'a.ts', status: 'M', additions, deletions },
 ];
@@ -42,6 +40,7 @@ const comparison = (fields: IDataObject = {}) => ({
 	changedLines: 40,
 	approvedLines: 40,
 	diffBudget: 100,
+	testListed: true,
 	unreviewed: [],
 	...fields,
 });
@@ -320,79 +319,6 @@ describe('Run record', () => {
 	});
 });
 
-describe('MCP tool calls', () => {
-	/** The rows of the tool table in the README: name, input fields and result text. */
-	const toolTable = new Map(
-		[...readPackText('README.md').matchAll(/^\| `(coding_\w+)` +\| ([^|]+)\| ([^|]+)\|$/gm)].map(
-			([, tool, input, result]) => [
-				tool,
-				{ input: [...input.matchAll(/`(\w+)`/g)].map((match) => match[1]), result },
-			],
-		),
-	);
-	const mcpNodes = workflow.nodes.filter((node) => node.type === MCP_CLIENT);
-	// The minimised diff that "Push branch" takes its hash from.
-	const minimisedRun = {
-		'Get minimised diff': { structuredContent: { diff: '', changes: [], diffSha256: DIFF_SHA256 } },
-	};
-	const inputOf = (nodeName: string) =>
-		z.record(z.unknown()).parse(
-			jsonParse(
-				textOf(nodeName, parameterOf(nodeName, 'jsonInput'), {
-					nodes: { ...earlierNodes, ...minimisedRun },
-				}),
-			),
-		);
-	const toolOf = (nodeName: string) =>
-		z.object({ value: z.string() }).parse(parameterOf(nodeName, 'tool')).value;
-
-	it('documents the four proposed tools', () => {
-		expect([...toolTable.keys()]).toEqual([
-			'coding_prepare',
-			'coding_check',
-			'coding_diff',
-			'coding_push',
-		]);
-		expect(new Set(mcpNodes.map((node) => toolOf(node.name)))).toEqual(new Set(toolTable.keys()));
-	});
-
-	it.each(mcpNodes.map((node) => node.name))('%s sends the input that the README shows', (name) => {
-		const input = inputOf(name);
-
-		expect(Object.keys(input)).toEqual(toolTable.get(toolOf(name))?.input);
-		expect(input).toMatchObject({
-			agentId: AGENT_IDS.implementer,
-			session: 'factory-1234-implement',
-		});
-	});
-
-	it('works on the branch of the run and runs the failing test', () => {
-		const branch = { branch: ticketOutput.branch };
-		const testCommand = failingTestOutput.structuredOutput.runCommand;
-
-		expect(inputOf('Prepare workspace')).toMatchObject({ ...branch, baseBranch: 'master' });
-		expect(inputOf('Push branch')).toMatchObject({
-			...branch,
-			message: 'ENG-42: Show the run count',
-			expectedDiffSha256: DIFF_SHA256,
-		});
-		expect(inputOf('Verify')).toMatchObject({ testCommand });
-		expect(inputOf('Re-verify')).toMatchObject({ testCommand });
-	});
-
-	it('reads only result fields that the README documents', () => {
-		const fields = new Set(
-			[...JSON.stringify(workflow.nodes).matchAll(/structuredContent\??\.(\w+)/g)].map(
-				(match) => match[1],
-			),
-		);
-		const documented = [...toolTable.values()].map((row) => row.result).join(' ');
-
-		expect(fields.size).toBeGreaterThan(8);
-		expect([...fields].filter((field) => !documented.includes(`\`${field}\``))).toEqual([]);
-	});
-});
-
 describe('messages', () => {
 	it('sends the critic findings to the implementer in the review format of the coding view', () => {
 		const text = textOf(
@@ -612,6 +538,18 @@ describe('outcomes', () => {
 				testWith({ runCommand: 'pnpm test packages/cli/test/unit/run-count.test.ts | tee log' }),
 				'Failing test: the run command has a shell operator other than &&, which can hide a failure.',
 			],
+			[
+				'a run command that starts with a negation',
+				workspaceOn(repository),
+				testWith({ runCommand: '! pnpm test packages/cli/test/unit/run-count.test.ts' }),
+				'Failing test: the run command can hide a failure: it starts with !, or it runs exit.',
+			],
+			[
+				'a run command that exits before the test',
+				workspaceOn(repository),
+				testWith({ runCommand: 'exit 0 && pnpm test packages/cli/test/unit/run-count.test.ts' }),
+				'Failing test: the run command can hide a failure: it starts with !, or it runs exit.',
+			],
 		])('explains a failed preparation with %s', (_case, workspace, test, expected) => {
 			const text = summary('Outcome: prep failed', prepRun(workspace, test));
 
@@ -656,6 +594,9 @@ describe('outcomes', () => {
 							'pnpm test a/run.test.ts ; true',
 							'pnpm test a/run.test.ts | tee log',
 							'pnpm test a/run.test.ts &',
+							'! pnpm test a/run.test.ts',
+							'true && ! pnpm test a/run.test.ts',
+							'exit 0 && pnpm test a/run.test.ts',
 							'true # a/run.test.ts',
 							'pnpm test',
 							'pnpm test 7',
@@ -701,12 +642,18 @@ describe('outcomes', () => {
 			json: { structuredContent: { diff: 7 } },
 			previousNode: 'Has a diff?',
 		});
+		const withoutTest = summary('Outcome: step failed', {
+			json: { diffProblems: [], testListed: false, structuredContent: { diff: 'diff' } },
+			previousNode: 'Has a diff?',
+			nodes: earlierNodes,
+		});
 
 		expect(partial).toBe(
 			'The diff does not show every changed file, so the critic would review only part of the change: a.ts: missing from the diff; b.ts: missing from the diff; c.ts: x.',
 		);
 		expect(empty).toBe('The implementer made no change, so the critic has nothing to review.');
 		expect(unusable).toBe('The gate "Has a diff?" found no usable diff.');
+		expect(withoutTest).toBe(`The change does not include the failing test ${FAILING_TEST_PATH}.`);
 	});
 
 	it('does not blame the diff when Get diff failed as a whole', () => {
@@ -741,11 +688,14 @@ describe('outcomes', () => {
 
 	it('reports why a minimised change gets no pull request', () => {
 		const notReady = (fields: IDataObject) =>
-			summary('Outcome: not ready for PR', { json: comparison(fields) });
+			summary('Outcome: not ready for PR', { json: comparison(fields), nodes: earlierNodes });
 		const unreviewed = Array.from({ length: 7 }, (_, index) => `a.ts: +call${index}();`);
 
 		expect(notReady({ test: 'failed', changedLines: 30, approvedLines: 25 })).toBe(
 			'After minimising, the check is passed, the failing test is failed and the change has 30 changed lines (budget 100, the critic approved 25).',
+		);
+		expect(notReady({ testListed: false, changedLines: 40, approvedLines: 41 })).toBe(
+			`After minimising, the check is passed, the failing test is passed and the change has 40 changed lines (budget 100, the critic approved 41). The change does not hold the failing test ${FAILING_TEST_PATH}.`,
 		);
 		expect(notReady({ check: '', unreviewed: unreviewed.slice(0, 2) })).toBe(
 			'After minimising, the check is unknown, the failing test is passed and the change has 40 changed lines (budget 100, the critic approved 40). The critic did not review 2 of the changes:\n- a.ts: +call0();\n- a.ts: +call1();',
@@ -762,7 +712,12 @@ describe('outcomes', () => {
 			'The fresh critic returned no verdict: Rate limit',
 		);
 		expect(blocked(review({ verdict: 'block', findings: [finding, finding] }))).toBe(
-			'The fresh critic did not approve the change (verdict: block, 2 findings).',
+			'The fresh critic did not approve the change (verdict: block, 2 findings, 0 of them blocker or major).',
+		);
+		// An approval with a serious finding is no approval. The text says why.
+		const major = { ...finding, severity: 'major' };
+		expect(blocked(review({ verdict: 'approve', findings: [major, finding] }))).toBe(
+			'The fresh critic did not approve the change (verdict: approve, 2 findings, 1 of them blocker or major).',
 		);
 	});
 

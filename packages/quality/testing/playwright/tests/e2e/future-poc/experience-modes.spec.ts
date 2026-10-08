@@ -431,9 +431,10 @@ test.describe(
 			);
 
 			await openInMode(n8n, 'simple');
-			await expect(n8n.experienceModes.getChatStateMark(readyChat.id)).toBeVisible({
-				timeout: CHAT_TIMEOUT_MS,
-			});
+			await expect(
+				n8n.experienceModes.getSidebarMenuItem('Ready chat, Ready to review'),
+			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
+			await expect(n8n.experienceModes.getChatStateMark(readyChat.id)).toBeVisible();
 			await expect(
 				n8n.experienceModes.getSidebarMenuItem('Approval chat, Waiting for you'),
 			).toBeVisible();

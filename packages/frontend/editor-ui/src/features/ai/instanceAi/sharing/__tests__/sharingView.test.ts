@@ -304,7 +304,9 @@ describe('answerAuthorship', () => {
 			['the cancelled state', { state: 'cancelled' as const }],
 		])('names nobody, from %s', (_, cancelled) => {
 			expect(answerAuthorship({ approvedBy: other, ...cancelled }, OWNER.id, true)).toBeUndefined();
-			expect(answerAuthorship({ approvedBy: viewer, ...cancelled }, OWNER.id, true)).toBeUndefined();
+			expect(
+				answerAuthorship({ approvedBy: viewer, ...cancelled }, OWNER.id, true),
+			).toBeUndefined();
 			expect(answerAuthorship({ declinedBy: other, ...cancelled }, OWNER.id, true)).toBeUndefined();
 		});
 

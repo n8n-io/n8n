@@ -480,6 +480,25 @@ describe('software factory agents', () => {
 	});
 });
 
+/** The rows of each table of a Markdown text: the lines that start with a pipe, indented or not. */
+function tablesOf(markdown: string): string[][] {
+	const tables: string[][] = [];
+	let rows: string[] = [];
+	for (const line of markdown.split('\n')) {
+		const row = line.trim();
+		if (row.startsWith('|')) rows.push(row);
+		else if (rows.length > 0) {
+			tables.push(rows);
+			rows = [];
+		}
+	}
+	if (rows.length > 0) tables.push(rows);
+	return tables;
+}
+
+/** The cells of a row. An escaped pipe, `\\|`, is part of a cell, as GitHub renders it. */
+const cellCountOf = (row: string) => row.replace(/\\\|/g, '').split('|').length - 2;
+
 describe('software factory README', () => {
 	it('links only to files that exist', () => {
 		const links = [...readPackText('README.md').matchAll(/\]\(([^)\s]+)\)/g)]
@@ -488,5 +507,16 @@ describe('software factory README', () => {
 
 		expect(links.length).toBeGreaterThan(5);
 		expect(links.filter((link) => !existsSync(path.join(FACTORY_DIR, link)))).toEqual([]);
+	});
+
+	it('gives every row of each table the cells of its header, so that GitHub renders the table', () => {
+		// GitHub renders a table only when each row has as many cells as the header.
+		const tables = tablesOf(readPackText('README.md'));
+
+		expect(tables.length).toBeGreaterThan(5);
+		for (const rows of tables) {
+			const header = cellCountOf(rows[0]);
+			expect(rows.map(cellCountOf)).toEqual(rows.map(() => header));
+		}
 	});
 });

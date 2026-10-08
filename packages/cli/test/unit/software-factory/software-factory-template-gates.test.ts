@@ -2,7 +2,7 @@ import fc from 'fast-check';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { binaryDiff, changesOf, unifiedDiff, type DiffFile } from './factory-pack-diffs';
+import { binaryDiff, changesOf, sha256Of, unifiedDiff, type DiffFile } from './factory-pack-diffs';
 import { nodeByName } from './factory-pack-files';
 import type { TemplateRun } from './factory-pack-runtime';
 import {
@@ -11,6 +11,7 @@ import {
 	configured,
 	earlierNodes,
 	failingTestOutput,
+	FAILING_TEST_FILE,
 	runtime,
 	settingsOutput,
 	ticketOutput,
@@ -58,6 +59,7 @@ const comparisonFacts = z
 				changedLines: z.number(),
 				approvedLines: z.number(),
 				diffBudget: z.number(),
+				testListed: z.boolean(),
 				unreviewed: z.array(z.string()),
 			}),
 		}),
@@ -68,11 +70,22 @@ const comparisonFacts = z
 function readyForPr(nodes: Record<string, IDataObject>) {
 	const facts = comparisonFacts.parse(
 		configured.runCode('Compare with approved change', {
-			nodes: { 'Read factory ticket': ticketOutput, ...nodes },
+			nodes: {
+				'Read factory ticket': ticketOutput,
+				'Draft failing test': failingTestOutput,
+				...nodes,
+			},
 		}),
 	)[0].json;
 	return { facts, route: configured.routeOf('Ready for PR?', { json: facts }) };
 }
+
+/** The result of coding_diff for the files: the diff, its changes and the hash of the diff. */
+const diffResultOf = (files: DiffFile[]) => ({
+	diff: unifiedDiff(files),
+	changes: changesOf(files),
+	diffSha256: sha256Of(unifiedDiff(files)),
+});
 
 /** The run after Minimise: the approved diff, the minimised diff and the check of the minimised change. */
 function minimised(
@@ -80,13 +93,9 @@ function minimised(
 	{ approved, check = {} }: { approved: DiffFile[]; check?: IDataObject },
 ) {
 	return readyForPr({
-		'Get diff': {
-			structuredContent: { diff: unifiedDiff(approved), changes: changesOf(approved) },
-		},
+		'Get diff': { structuredContent: diffResultOf(approved) },
 		'Re-verify': checkResult({ changes: changesOf(after), ...check }),
-		'Get minimised diff': {
-			structuredContent: { diff: unifiedDiff(after), changes: changesOf(after) },
-		},
+		'Get minimised diff': { structuredContent: diffResultOf(after) },
 	});
 }
 
@@ -252,6 +261,21 @@ describe('software factory gates', () => {
 				ready,
 				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts\ntrue' }),
 			],
+			[
+				'a negation of the test, which passes when the test fails',
+				ready,
+				testWith({ testPath: 'pkg/a.test.ts', runCommand: '! pnpm test pkg/a.test.ts' }),
+			],
+			[
+				'a negation after a chain',
+				ready,
+				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'true && ! pnpm test pkg/a.test.ts' }),
+			],
+			[
+				'a command that exits before the test',
+				ready,
+				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'exit 0 && pnpm test pkg/a.test.ts' }),
+			],
 			['the planner failed', ready, { error: 'The agent stopped.' }],
 			['the planner returned no test', ready, { structuredOutput: null }],
 		])('stops when %s', (_case, workspace, test) => {
@@ -327,10 +351,19 @@ describe('software factory gates', () => {
 	});
 
 	it('reviews only a change that has a diff, and that shows every changed file', () => {
-		// "Check the diff" puts the problems of the diff in diffProblems. Any problem stops the run.
-		const hasDiff = (structuredContent?: IDataObject, diffProblems: GenericValue = []) =>
+		// "Check the diff" puts the problems of the diff in diffProblems, and whether the change holds
+		// the failing test in testListed. Any problem stops the run.
+		const hasDiff = (
+			structuredContent?: IDataObject,
+			diffProblems: GenericValue = [],
+			testListed: GenericValue = true,
+		) =>
 			configured.passesIf('Has a diff?', {
-				json: { ...(structuredContent ? { structuredContent } : {}), diffProblems },
+				json: {
+					...(structuredContent ? { structuredContent } : {}),
+					diffProblems,
+					testListed,
+				},
 			});
 		const diff = { diff: 'diff --git a/a.ts b/a.ts', changes: lines(1) };
 
@@ -341,6 +374,9 @@ describe('software factory gates', () => {
 		expect(hasDiff(diff, ['a.ts: missing from the diff'])).toBe(false);
 		// A check result that is not a list of problems is no result.
 		expect(hasDiff(diff, 'none')).toBe(false);
+		// A change without the failing test, or with a fact of another type, goes no further.
+		expect(hasDiff(diff, [], false)).toBe(false);
+		expect(hasDiff(diff, [], 'yes')).toBe(false);
 	});
 
 	it('continues after the critic only on an explicit approval without serious findings', () => {
@@ -358,8 +394,15 @@ describe('software factory gates', () => {
 			review({ verdict: 'approve', findings, scopeCreep: [] });
 
 		expect(approval([finding('minor'), finding('nit')])).toBe(0);
-		expect(approval([finding('major')])).toBe('fallback');
-		expect(approval([finding('blocker')])).toBe('fallback');
+		// A blocker or major finding asks for a repair round, as request_changes does.
+		expect(approval([finding('major')])).toBe(1);
+		expect(approval([finding('blocker'), finding('minor')])).toBe(1);
+		expect(
+			review({ verdict: 'approve', findings: [finding('major')], scopeCreep: [] }, { runIndex: 1 }),
+		).toBe(1);
+		expect(
+			review({ verdict: 'approve', findings: [finding('major')], scopeCreep: [] }, { runIndex: 2 }),
+		).toBe('fallback');
 		expect(approval([finding()])).toBe('fallback');
 		expect(approval('none')).toBe('fallback');
 		expect(review({ verdict: 'approve', findings: [], scopeCreep: [] }, { diff: '' })).toBe(
@@ -379,9 +422,10 @@ describe('software factory gates', () => {
 		const NO_RESULT = 'fallback';
 		const added = (count: number, prefix = 'line') =>
 			Array.from({ length: count }, (_, index) => `+const ${prefix}${index} = ${index};`);
+		// The change holds the failing test, as the gate "Compare with approved change" requires.
 		const approved = [
 			{ path: 'a.ts', lines: ['+const a = 1;', '+const b = 2;', ' context', '-const old = 0;'] },
-			{ path: 'a.test.ts', lines: ["+it('counts', () => {});"] },
+			FAILING_TEST_FILE,
 		];
 
 		it('sends each route to its step or outcome', () => {
@@ -394,26 +438,70 @@ describe('software factory gates', () => {
 
 		it('opens a pull request for the approved change and for a change that only lost parts', () => {
 			const unchanged = minimised(approved, { approved });
-			const smaller = minimised([{ path: 'a.ts', lines: ['+const a = 1;', ' context'] }], {
-				approved,
-			});
+			const smaller = minimised(
+				[{ path: 'a.ts', lines: ['+const a = 1;', ' context'] }, FAILING_TEST_FILE],
+				{ approved },
+			);
 
-			expect(unchanged).toMatchObject({ route: READY, facts: { changedLines: 4, unreviewed: [] } });
-			expect(smaller).toMatchObject({ route: READY, facts: { changedLines: 1, approvedLines: 4 } });
+			expect(unchanged).toMatchObject({
+				route: READY,
+				facts: { changedLines: 4, testListed: true, unreviewed: [] },
+			});
+			expect(smaller).toMatchObject({ route: READY, facts: { changedLines: 2, approvedLines: 4 } });
 		});
 
 		it.each([
 			['the check failed', { check: 'failed' }],
 			['the failing test failed', { test: 'failed' }],
-			['the test result is missing', { test: undefined }],
 			['the changes are not a list', { changes: 'many' }],
 		])('stops when %s', (_case, check) => {
 			expect(minimised(approved, { approved, check }).route).toBe(NOT_READY);
 		});
 
+		it.each([
+			['the check is still running', { check: 'running' }],
+			['the test did not run', { test: 'not_started' }],
+			['the test result is missing', { test: undefined }],
+		])(
+			'sends a result after Minimise with %s to "No result", as "Check result" does',
+			(_case, check) => {
+				expect(minimised(approved, { approved, check }).route).toBe('fallback');
+			},
+		);
+
+		it('stops when Minimise removes the failing test, though the rest of the change is reviewed', () => {
+			const result = minimised([{ path: 'a.ts', lines: ['+const a = 1;', ' context'] }], {
+				approved,
+			});
+
+			expect(result.route).toBe(NOT_READY);
+			expect(result.facts).toMatchObject({ testListed: false, unreviewed: [] });
+		});
+
+		it.each([
+			['no hash', undefined],
+			['a hash that is not 64 hexadecimal characters', 'a'.repeat(40)],
+			['a hash in capitals', 'A'.repeat(64)],
+		])(
+			'sends a minimised diff with %s to "No result", so no change is pushed unchecked',
+			(_case, hash) => {
+				const result = readyForPr({
+					'Get diff': { structuredContent: diffResultOf(approved) },
+					'Re-verify': checkResult({ changes: changesOf(approved) }),
+					'Get minimised diff': {
+						structuredContent: { ...diffResultOf(approved), diffSha256: hash },
+					},
+				});
+
+				expect(result.facts.hasResult).toBe(false);
+				expect(result.route).toBe('fallback');
+			},
+		);
+
 		it('stops when the change is empty or over the budget', () => {
-			const atBudget = [{ path: 'a.ts', lines: added(100) }];
-			const overBudget = [{ path: 'a.ts', lines: added(101) }];
+			// The failing test adds one line, so the change at the budget has 99 more lines.
+			const atBudget = [{ path: 'a.ts', lines: added(99) }, FAILING_TEST_FILE];
+			const overBudget = [{ path: 'a.ts', lines: added(100) }, FAILING_TEST_FILE];
 
 			expect(minimised([], { approved }).route).toBe(NOT_READY);
 			expect(minimised(atBudget, { approved: atBudget }).route).toBe(READY);
@@ -535,7 +623,13 @@ describe('software factory gates', () => {
 					},
 					// The check lists the changes of the minimised diff, as coding_check does.
 					'Re-verify': checkResult({ changes }),
-					'Get minimised diff': { structuredContent: { diff: minimisedDiff, changes } },
+					'Get minimised diff': {
+						structuredContent: {
+							diff: minimisedDiff,
+							changes,
+							diffSha256: sha256Of(minimisedDiff),
+						},
+					},
 				}).route;
 
 			// The same binary file, the binary file removed, and other content in the binary file.
@@ -550,6 +644,7 @@ describe('software factory gates', () => {
 		});
 
 		it('opens a pull request for any change that only removes parts of the approved change', () => {
+			// The failing test is kept on both sides: removing it is tested on its own.
 			const line = fc
 				.tuple(
 					fc.constantFrom('+', '-', ' '),
@@ -565,29 +660,29 @@ describe('software factory gates', () => {
 
 			fc.assert(
 				fc.property(files, fc.nat(), (generated, pick) => {
-					const before = generated.map((f) => ({
-						path: f.path,
-						lines: f.lines.map(([text]) => text),
-					}));
-					const after = generated
-						.filter((f) => f.kept)
-						.map((f) => ({
-							path: f.path,
-							lines: f.lines.filter(([, kept]) => kept).map(([text]) => text),
-						}));
+					const before = [
+						...generated.map((f) => ({ path: f.path, lines: f.lines.map(([text]) => text) })),
+						FAILING_TEST_FILE,
+					];
+					const after = [
+						...generated
+							.filter((f) => f.kept)
+							.map((f) => ({
+								path: f.path,
+								lines: f.lines.filter(([, kept]) => kept).map(([text]) => text),
+							})),
+						FAILING_TEST_FILE,
+					];
 					const removedOnly = minimised(after, { approved: before });
 
-					expect(removedOnly.facts.unreviewed).toEqual([]);
-					expect(removedOnly.route).toBe(removedOnly.facts.changedLines > 0 ? READY : NOT_READY);
+					expect(removedOnly.facts).toMatchObject({ testListed: true, unreviewed: [] });
+					expect(removedOnly.route).toBe(READY);
 
 					// One added line that the critic did not review stops the run.
-					const target = after.length > 0 ? pick % after.length : -1;
-					const withExtra =
-						target === -1
-							? [{ path: 'new.ts', lines: ['+unreviewed();'] }]
-							: after.map((f, index) =>
-									index === target ? { ...f, lines: [...f.lines, '+unreviewed();'] } : f,
-								);
+					const target = pick % after.length;
+					const withExtra = after.map((f, index) =>
+						index === target ? { ...f, lines: [...f.lines, '+unreviewed();'] } : f,
+					);
 
 					expect(minimised(withExtra, { approved: before }).route).toBe(NOT_READY);
 				}),

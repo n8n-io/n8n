@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 /** Unified diffs and lists of changes that the tests of the software factory template build. */
 
 /** One file of a unified diff: its path and the lines of its one hunk (added, deleted and context). */
@@ -32,3 +34,6 @@ export const changesOf = (files: DiffFile[]) =>
 		additions: body.filter((line) => line.startsWith('+')).length,
 		deletions: body.filter((line) => line.startsWith('-')).length,
 	}));
+
+/** The SHA-256 hash in hex of a diff, as `coding_diff` returns it in `diffSha256`. */
+export const sha256Of = (text: string) => createHash('sha256').update(text).digest('hex');
