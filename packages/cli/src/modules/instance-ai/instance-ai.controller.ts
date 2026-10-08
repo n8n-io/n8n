@@ -1199,6 +1199,9 @@ export class InstanceAiController {
 		if (payload.mockScenarios) {
 			this.instanceAiService.setEvalMockScenarios(payload.threadId, payload.mockScenarios);
 		}
+		if (payload.mockLookups) {
+			this.instanceAiService.setEvalMockLookups(payload.threadId, payload.mockLookups);
+		}
 		return { ok: true };
 	}
 

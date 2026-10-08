@@ -1,6 +1,7 @@
 import {
 	credentialDescriptionSchema,
 	findSeedFolderIssues,
+	instanceAiEvalMockLookupSchema,
 	instanceAiEvalSeedDataTableSchema,
 } from '@n8n/api-types';
 import { z } from 'zod';
@@ -170,6 +171,16 @@ const evalTestCaseObjectSchema = z
 		tags: z.array(z.string()),
 		triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
 		executionScenarios: z.array(ExecutionScenarioSchema).optional(),
+		/**
+		 * Declared answers of the design-time field lookups of the build, e.g. the properties of a
+		 * Notion database or the header row of a sheet. The mock of the thread gives a declared answer
+		 * without an LLM call, and sends other lookups to the LLM mock. Keep the fields consistent
+		 * with the `dataSetup` of the scenarios: verification runs use the same thread mock.
+		 * Each entry has the `loadOptions` method (the resource id of the contract, e.g.
+		 * `notion.database`), the `resourceIds` that a node parameter value must contain, and the
+		 * `fields` in the format of the field lookup of the contract (`{ name, value }`).
+		 */
+		lookups: z.array(instanceAiEvalMockLookupSchema).optional(),
 		messageBudget: z.number().int().positive().optional(),
 		/** Optional case override. Unset cases use the suite mode or control. */
 		buildMode: z.enum(['progressive', 'default']).optional(),

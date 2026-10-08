@@ -504,6 +504,11 @@ export class InstanceAiAdapterService {
 			/** Eval-only: the LLM mock that answers resource lookups and verification runs of the
 			 *  thread. Resolves to `undefined` outside an eval thread. */
 			getEvalMockHandler?: () => Promise<EvalLlmMockHandler | undefined>;
+			/** Eval-only: the answer that the case declares for a resource lookup of the thread, or
+			 *  `undefined`. A declared answer replaces the LLM mock of that lookup. */
+			getEvalLookupAnswer?: (
+				params: ExploreResourcesParams,
+			) => ExploreResourcesResult['results'] | undefined;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
@@ -547,6 +552,7 @@ export class InstanceAiAdapterService {
 			resumeAgentBuild = false,
 			shouldBypassCredentialTest,
 			getEvalMockHandler,
+			getEvalLookupAnswer,
 			agentId,
 			configEvalsEnabled,
 			setupPanelVariant,
@@ -597,7 +603,7 @@ export class InstanceAiAdapterService {
 				getEvalMockHandler,
 			),
 			credentialService,
-			nodeService: this.createNodeAdapter(user, getEvalMockHandler),
+			nodeService: this.createNodeAdapter(user, getEvalMockHandler, getEvalLookupAnswer),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			...(configEvalsEnabled && this.evaluationConfigService
 				? {
@@ -3837,6 +3843,9 @@ export class InstanceAiAdapterService {
 	private createNodeAdapter(
 		user: User,
 		getEvalMockHandler?: () => Promise<EvalLlmMockHandler | undefined>,
+		getEvalLookupAnswer?: (
+			params: ExploreResourcesParams,
+		) => ExploreResourcesResult['results'] | undefined,
 	): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
@@ -4212,6 +4221,8 @@ export class InstanceAiAdapterService {
 			},
 
 			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {
+				const declared = getEvalLookupAnswer?.(params);
+				if (declared) return { results: declared, mocked: true };
 				const evalMockHandler = await getEvalMockHandler?.();
 				const result = await this.nodeResourceExplorerService.exploreResources(
 					user,

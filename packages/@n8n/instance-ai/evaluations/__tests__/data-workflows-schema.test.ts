@@ -82,6 +82,26 @@ describe('EvalTestCaseSchema', () => {
 		expect(parsed.title).toBe('Short name');
 	});
 
+	it('accepts declared lookup answers', () => {
+		const lookups = [
+			{
+				method: 'googleSheets.sheetName',
+				resourceIds: ['1QwErTy', 'Closed deals'],
+				fields: [{ name: 'Deal', value: 'Deal' }],
+			},
+		];
+		const parsed = EvalTestCaseSchema.parse({ ...validFixture(), lookups });
+		expect(parsed.lookups).toEqual(lookups);
+	});
+
+	it.each([
+		{ method: 'notion.database', resourceIds: [], fields: [] },
+		{ method: 'notion.database', resourceIds: ['db'], fields: [{ name: 'Stage' }] },
+		{ method: 'notion.database', resourceIds: ['db'], fields: [], nodeType: 'notion' },
+	])('rejects a malformed lookup answer %#', (lookup) => {
+		expect(() => EvalTestCaseSchema.parse({ ...validFixture(), lookups: [lookup] })).toThrow();
+	});
+
 	it('rejects an empty conversation', () => {
 		expect(() => EvalTestCaseSchema.parse({ ...validFixture(), conversation: [] })).toThrow();
 	});

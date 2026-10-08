@@ -34,6 +34,7 @@ import {
 	type InstanceContextInjection,
 	type InstanceContextReach,
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
+	type InstanceAiEvalMockLookup,
 	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
@@ -1356,6 +1357,11 @@ export class InstanceAiService {
 		this.evalDesignTimeMocks.setScenarios(threadId, scenarios);
 	}
 
+	/** The eval case's declared lookup answers, for the design-time mock of the thread. */
+	setEvalMockLookups(threadId: string, lookups: readonly InstanceAiEvalMockLookup[]): void {
+		this.evalDesignTimeMocks.setLookups(threadId, lookups);
+	}
+
 	/** What observational memory holds for a thread: the live observations and the
 	 *  compaction cursor. An eval asserts on these rows instead of parsing the
 	 *  rendered system prompt. Refuses a thread the caller does not own, so the
@@ -2592,6 +2598,7 @@ export class InstanceAiService {
 					threadId,
 					async () => await this.userRequestsOf(threadId),
 				),
+			getEvalLookupAnswer: (params) => this.evalDesignTimeMocks.lookupAnswer(threadId, params),
 			configEvalsEnabled,
 			setupPanelVariant,
 			mcpConnectionsAvailable,

@@ -1047,6 +1047,24 @@ describe('InstanceAiController', () => {
 			expect(instanceAiService.setEvalMockScenarios).toHaveBeenCalledWith(THREAD_ID, mockScenarios);
 		});
 
+		it('should give the declared lookup answers of the case to the design-time mock', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const mockLookups = [
+				{
+					method: 'notion.database',
+					resourceIds: ['8d2f4a6b-1c3e-4f5a-9b7d-2e4f6a8c0b1d'],
+					fields: [{ name: 'Stage', value: 'Stage|select' }],
+				},
+			];
+
+			await controller.setThreadCredentialAllowlist(req, res, {
+				...payload,
+				mockLookups,
+			} as InstanceAiEvalCredentialAllowlistRequest);
+
+			expect(instanceAiService.setEvalMockLookups).toHaveBeenCalledWith(THREAD_ID, mockLookups);
+		});
+
 		it('should keep the scenarios of the thread when the pin omits them', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 
@@ -1057,6 +1075,7 @@ describe('InstanceAiController', () => {
 			);
 
 			expect(instanceAiService.setEvalMockScenarios).not.toHaveBeenCalled();
+			expect(instanceAiService.setEvalMockLookups).not.toHaveBeenCalled();
 		});
 
 		it('should reject a thread that does not exist', async () => {

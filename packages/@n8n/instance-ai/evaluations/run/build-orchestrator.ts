@@ -119,6 +119,7 @@ export type BuildArgs = Pick<
 	| 'credentials'
 	| 'seed'
 	| 'executionScenarios'
+	| 'lookups'
 	| 'outcomeExpectations'
 	// Load-bearing, not metadata: the credential-setup lane is selected from
 	// this, and a build that never receives it silently runs without a browser —
@@ -747,6 +748,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						credentials: entry.credentials,
 						seed: entry.seed,
 						executionScenarios: entry.executionScenarios,
+						lookups: entry.lookups,
 						outcomeExpectations: entry.outcomeExpectations,
 						credentialFixture: entry.credentialFixture,
 						timeoutMs,

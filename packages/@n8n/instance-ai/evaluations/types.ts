@@ -6,6 +6,7 @@ import type {
 	AgentSkill,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalMockLookup,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiRunDebugResponse,
 	InstanceAiPromptConfiguration,
@@ -245,6 +246,8 @@ export interface WorkflowTestCase {
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
 	/** Optional — a build-only case is graded by process/outcome expectations instead. */
 	executionScenarios?: ExecutionScenario[];
+	/** Declared answers of the design-time field lookups. See `harness/schema.ts`. */
+	lookups?: InstanceAiEvalMockLookup[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
 	/** Optional case override. Unset cases use the suite mode or control. */

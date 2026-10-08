@@ -198,6 +198,20 @@ describe('createBuildOrchestrator', () => {
 		);
 	});
 
+	it("forwards the case's lookups to the build", async () => {
+		const lookups = [{ method: 'notion.database', resourceIds: ['db-1'], fields: [] }];
+		const tracedBuild = vi.fn().mockResolvedValue(okBuild());
+		const orchestrator = createBuildOrchestrator(
+			makeDeps([makeLane(1, tracedBuild)], {
+				testCaseByFileSlug: new Map([['case-a', baseCase({ lookups })]]),
+			}),
+		);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(tracedBuild).toHaveBeenCalledWith(expect.objectContaining({ lookups }));
+	});
+
 	it("forwards the case's requiresMemoryCompaction to the build", async () => {
 		// Same invisible-to-tsc hazard: dropped, it never compacts and reads as an agent miss.
 		const tracedBuild = vi.fn().mockResolvedValue(okBuild());

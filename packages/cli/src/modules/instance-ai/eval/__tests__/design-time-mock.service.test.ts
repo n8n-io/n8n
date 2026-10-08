@@ -99,6 +99,79 @@ describe('EvalDesignTimeMockService', () => {
 		);
 	});
 
+	describe('lookupAnswer', () => {
+		const databaseId = '8d2f4a6b-1c3e-4f5a-9b7d-2e4f6a8c0b1d';
+		const fields = [
+			{ name: 'Name', value: 'Name|title' },
+			{ name: 'Stage', value: 'Stage|select' },
+		];
+		const sheetFields = [{ name: 'Deal', value: 'Deal' }];
+		const lookups = [
+			{ method: 'notion.database', resourceIds: [databaseId], fields },
+			{
+				method: 'googleSheets.sheetName',
+				resourceIds: ['1QwErTy', 'Closed deals'],
+				fields: sheetFields,
+			},
+		];
+		const notionLookup = {
+			methodName: 'notion.database',
+			methodType: 'loadOptions' as const,
+			currentNodeParameters: {
+				database: { __rl: true, mode: 'url', value: `https://www.notion.so/Deals-${databaseId}` },
+			},
+		};
+
+		it('gives the declared fields of a lookup whose node parameters hold the resource IDs', () => {
+			allowlists.set('thread-1', []);
+			service.setLookups('thread-1', lookups);
+
+			expect(service.lookupAnswer('thread-1', notionLookup)).toEqual(fields);
+			expect(
+				service.lookupAnswer('thread-1', {
+					methodName: 'googleSheets.sheetName',
+					methodType: 'loadOptions',
+					currentNodeParameters: {
+						spreadsheet: '1QwErTy',
+						sheet: { mode: 'name', name: ['Closed deals'] },
+					},
+				}),
+			).toEqual(sheetFields);
+		});
+
+		it('gives nothing for a lookup that the case does not declare', () => {
+			allowlists.set('thread-1', []);
+			service.setLookups('thread-1', lookups);
+
+			expect(
+				service.lookupAnswer('thread-1', {
+					...notionLookup,
+					currentNodeParameters: { database: '0123456789abcdef0123456789abcdef' },
+				}),
+			).toBeUndefined();
+			expect(
+				service.lookupAnswer('thread-1', { ...notionLookup, methodType: 'listSearch' }),
+			).toBeUndefined();
+			expect(
+				service.lookupAnswer('thread-1', {
+					methodName: 'googleSheets.sheetName',
+					methodType: 'loadOptions',
+					currentNodeParameters: { spreadsheet: '1QwErTy', sheet: 'Open deals' },
+				}),
+			).toBeUndefined();
+			expect(service.lookupAnswer('thread-2', notionLookup)).toBeUndefined();
+		});
+
+		it('gives nothing outside an eval thread or after the thread is cleared', () => {
+			service.setLookups('thread-1', lookups);
+			expect(service.lookupAnswer('thread-1', notionLookup)).toBeUndefined();
+
+			allowlists.set('thread-1', []);
+			service.clearThread('thread-1');
+			expect(service.lookupAnswer('thread-1', notionLookup)).toBeUndefined();
+		});
+	});
+
 	it('mocks without context when the request cannot be read', async () => {
 		allowlists.set('thread-1', []);
 

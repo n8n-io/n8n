@@ -527,6 +527,7 @@ export {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	instanceAiEvalSeedDataTableSchema,
+	instanceAiEvalMockLookupSchema,
 	instanceAiEvalSeedAgentSchema,
 	instanceAiEvalSeedFolderSchema,
 	instanceAiEvalSeedArtifactIdSchema,
@@ -710,6 +711,7 @@ export type {
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiEvalSeedDataTable,
+	InstanceAiEvalMockLookup,
 	InstanceAiEvalSeedAgent,
 	InstanceAiEvalSeedFolder,
 } from './schemas/instance-ai.schema';

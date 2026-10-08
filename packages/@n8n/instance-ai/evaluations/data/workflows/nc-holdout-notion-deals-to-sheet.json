@@ -28,6 +28,29 @@
 			"successCriteria": "The Notion query filter is Stage select equals Won. Then two rows are appended: Deal 'Acme renewal', Amount 12000, Close date '2026-08-14', Owner email 'dana@acme.test'; and Deal 'Globex pilot', Amount 4500.5, Close date '2026-08-20', Owner email 'fox@acme.test'. A date with a time part, an empty, undefined or '[object Object]' value, or a value in the wrong column FAILS."
 		}
 	],
+	"lookups": [
+		{
+			"method": "notion.database",
+			"resourceIds": ["8d2f4a6b-1c3e-4f5a-9b7d-2e4f6a8c0b1d"],
+			"fields": [
+				{ "name": "Name", "value": "Name|title" },
+				{ "name": "Stage", "value": "Stage|select" },
+				{ "name": "Amount", "value": "Amount|number" },
+				{ "name": "Close date", "value": "Close date|date" },
+				{ "name": "Owner", "value": "Owner|people" }
+			]
+		},
+		{
+			"method": "googleSheets.sheetName",
+			"resourceIds": ["1QwErTyUiOpAsDfGhJkLzXcVbNm0987654321", "Closed deals"],
+			"fields": [
+				{ "name": "Deal", "value": "Deal" },
+				{ "name": "Amount", "value": "Amount" },
+				{ "name": "Close date", "value": "Close date" },
+				{ "name": "Owner email", "value": "Owner email" }
+			]
+		}
+	],
 	"outcomeExpectations": [
 		"The Notion node filters on Stage select equals Won.",
 		"The Google Sheets node appends to the 'Closed deals' tab and maps Deal, Amount, Close date and Owner email from the simplified Notion values."

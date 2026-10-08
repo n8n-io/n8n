@@ -506,6 +506,8 @@ export interface BuildWorkflowConfig {
 	/** Execution scenarios whose declared `seedDataTables` are created + row-seeded
 	 *  after a successful build, before any scenario runs. */
 	executionScenarios?: ExecutionScenario[];
+	/** Declared answers of the design-time field lookups, sent with the credential pin. */
+	lookups?: WorkflowTestCase['lookups'];
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
 	/** Data tables present before any build on this lane — the only ones the
@@ -778,6 +780,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				seededCredentialIds,
 				bypassCredentialTestIds,
 				(config.executionScenarios ?? []).map(({ name, dataSetup }) => ({ name, dataSetup })),
+				config.lookups,
 			);
 		} catch (error: unknown) {
 			// Only a missing endpoint (older backend) may degrade to the legacy

@@ -1862,6 +1862,7 @@ function createNodeAdapterServiceForTests(
 		credentialsService?: Record<string, unknown>;
 		credentialsFinderService?: Record<string, unknown>;
 		executeNodeService?: Record<string, unknown>;
+		nodeResourceExplorerService?: Record<string, unknown>;
 	},
 ) {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1902,7 +1903,9 @@ function createNodeAdapterServiceForTests(
 		>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+		(options?.nodeResourceExplorerService ?? {}) as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[17],
 
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
@@ -2020,6 +2023,64 @@ describe('nodeService.resourceLookupTimeoutMs', () => {
 		expect(await budgetOf(async () => handler)).toBe(EVAL_MOCK_LOOKUP_TIMEOUT_MS);
 		expect(await budgetOf(async () => undefined)).toBeUndefined();
 		expect(await budgetOf()).toBeUndefined();
+	});
+});
+
+describe('nodeService.exploreResources in an eval thread', () => {
+	const params = {
+		nodeType: '@n8n/nodes-integrations.notionDatabasePageGetAll',
+		version: 1,
+		methodName: 'notion.database',
+		methodType: 'loadOptions' as const,
+		credentialType: 'notionApi',
+		credentialId: 'cred-1',
+		currentNodeParameters: { database: '8d2f4a6b-1c3e-4f5a-9b7d-2e4f6a8c0b1d' },
+	};
+	const declared = [{ name: 'Stage', value: 'Stage|select' }];
+
+	const setUp = () => {
+		const nodeResourceExplorerService = {
+			exploreResources: vi
+				.fn()
+				.mockResolvedValue({ results: [{ name: 'Owner', value: 'Owner|people' }] }),
+		};
+		const { service, mockUser } = createNodeAdapterServiceForTests([], {
+			nodeResourceExplorerService,
+		});
+		const handler: EvalLlmMockHandler = vi.fn();
+		const getEvalMockHandler = vi.fn(async () => handler);
+		const getEvalLookupAnswer = vi.fn((lookup: { methodName: string }) =>
+			lookup.methodName === 'notion.database' ? declared : undefined,
+		);
+		const { nodeService } = service.createContext(mockUser, {
+			getEvalMockHandler,
+			getEvalLookupAnswer,
+		});
+		return { nodeService, nodeResourceExplorerService, handler, getEvalMockHandler, mockUser };
+	};
+
+	it('gives a declared lookup answer without the LLM mock', async () => {
+		const { nodeService, nodeResourceExplorerService, getEvalMockHandler } = setUp();
+
+		const result = await nodeService.exploreResources?.(params);
+
+		expect(result).toEqual({ results: declared, mocked: true });
+		expect(getEvalMockHandler).not.toHaveBeenCalled();
+		expect(nodeResourceExplorerService.exploreResources).not.toHaveBeenCalled();
+	});
+
+	it('sends an undeclared lookup to the LLM mock', async () => {
+		const { nodeService, nodeResourceExplorerService, handler, mockUser } = setUp();
+		const undeclared = { ...params, methodName: 'googleSheets.sheetName' };
+
+		const result = await nodeService.exploreResources?.(undeclared);
+
+		expect(result).toEqual({ results: [{ name: 'Owner', value: 'Owner|people' }], mocked: true });
+		expect(nodeResourceExplorerService.exploreResources).toHaveBeenCalledWith(
+			mockUser,
+			undeclared,
+			handler,
+		);
 	});
 });
 

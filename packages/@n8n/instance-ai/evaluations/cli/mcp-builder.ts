@@ -179,6 +179,8 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	tags: 'supported',
 	triggerType: 'supported',
 	executionScenarios: 'supported',
+	// Only speeds up the lookups of an orchestrator build. A `claude` build makes none.
+	lookups: 'supported',
 	// Caps user-proxy follow-ups in the orchestrator chat loop — simply doesn't
 	// apply to a single-shot `claude` build, so it is NOT flagged.
 	messageBudget: 'supported',

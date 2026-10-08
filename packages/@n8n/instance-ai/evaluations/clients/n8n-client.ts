@@ -15,6 +15,7 @@ import type {
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalMockLookup,
 	InstanceAiRunDebugResponse,
 	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiThreadDebugRunsResponse,
@@ -968,6 +969,7 @@ export class N8nClient {
 		credentialIds: string[],
 		bypassCredentialTest?: string[],
 		mockScenarios?: Array<{ name: string; dataSetup: string }>,
+		mockLookups?: InstanceAiEvalMockLookup[],
 	): Promise<void> {
 		await this.fetch('/rest/instance-ai/eval/thread-credential-allowlist', {
 			method: 'POST',
@@ -979,6 +981,7 @@ export class N8nClient {
 				...(bypassCredentialTest?.length ? { bypassCredentialTest } : {}),
 				// The design-time mock answers the build's HTTP with data that agrees with these.
 				...(mockScenarios?.length ? { mockScenarios } : {}),
+				...(mockLookups?.length ? { mockLookups } : {}),
 			},
 		});
 	}

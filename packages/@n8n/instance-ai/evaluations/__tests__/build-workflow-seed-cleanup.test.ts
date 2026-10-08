@@ -242,6 +242,29 @@ describe('buildWorkflow design-time mock scenarios', () => {
 				{ name: 'found', dataSetup: 'GET /users returns {ids: [1]}' },
 				{ name: 'empty', dataSetup: 'GET /users returns {ids: []}' },
 			],
+			undefined,
+		);
+	});
+
+	it('sends the declared lookup answers of the case with the credential pin', async () => {
+		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+		const client = makeClient({ setThreadCredentialAllowlist });
+		const lookups = [
+			{
+				method: 'notion.database',
+				resourceIds: ['db-1'],
+				fields: [{ name: 'A', value: 'A|title' }],
+			},
+		];
+
+		await buildWorkflow({ client, ...baseConfig, lookups });
+
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			expect.any(String),
+			[],
+			[],
+			[{ name: 'scenario', dataSetup: 'setup' }],
+			lookups,
 		);
 	});
 });
@@ -268,6 +291,7 @@ describe('buildWorkflow declared credentials', () => {
 			['cred-seeded'],
 			['cred-seeded'],
 			[{ name: 'scenario', dataSetup: 'setup' }],
+			undefined,
 		);
 	});
 
@@ -296,6 +320,7 @@ describe('buildWorkflow declared credentials', () => {
 			['cred-blank'],
 			[],
 			[{ name: 'scenario', dataSetup: 'setup' }],
+			undefined,
 		);
 	});
 
@@ -321,6 +346,7 @@ describe('buildWorkflow declared credentials', () => {
 			['cred-working', 'cred-broken'],
 			['cred-working'],
 			[{ name: 'scenario', dataSetup: 'setup' }],
+			undefined,
 		);
 	});
 });

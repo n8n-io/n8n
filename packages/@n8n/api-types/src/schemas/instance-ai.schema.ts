@@ -3011,6 +3011,30 @@ export class InstanceAiEvalAgentExecutionRequest extends Z.class({
 	timeoutMs: z.number().int().min(30_000).max(3_600_000).optional(),
 }) {}
 
+/**
+ * A declared answer of a field lookup in an eval thread. A field lookup is the `loadOptions`
+ * method of a node contract that gives the fields of a resource, e.g. the properties of a Notion
+ * database. The design-time mock gives `fields` for a lookup of `method` whose node parameters
+ * hold each of `resourceIds`, and makes no LLM call.
+ */
+export const instanceAiEvalMockLookupSchema = z
+	.object({
+		/** The `loadOptions` method: the resource id of the contract, e.g. `notion.database`. */
+		method: z.string().min(1).max(200),
+		/**
+		 * The resource IDs that the lookup reads, e.g. the database ID, or the spreadsheet ID and the
+		 * tab name. A node parameter value must contain each one.
+		 */
+		resourceIds: z.array(z.string().min(1).max(500)).min(1).max(10),
+		/** The fields in the format of the field lookup of the contract, e.g. `Stage|select`. */
+		fields: z
+			.array(z.object({ name: z.string().min(1).max(500), value: z.string().max(500) }).strict())
+			.max(500),
+	})
+	.strict();
+
+export type InstanceAiEvalMockLookup = z.infer<typeof instanceAiEvalMockLookupSchema>;
+
 export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	threadId: z.string().uuid(),
 	/**
@@ -3037,6 +3061,11 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 		.array(z.object({ name: z.string().max(200), dataSetup: z.string().max(20_000) }))
 		.max(20)
 		.optional(),
+	/**
+	 * The declared field lookup answers of the case. The design-time mock of the thread gives them
+	 * without an LLM call. Omitted keeps the answers that the thread has.
+	 */
+	mockLookups: z.array(instanceAiEvalMockLookupSchema).max(50).optional(),
 }) {}
 
 /** The id an authored seed gives a data table, agent or folder. ≥8 chars: the

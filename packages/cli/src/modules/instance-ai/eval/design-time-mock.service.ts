@@ -1,5 +1,8 @@
+import type { InstanceAiEvalMockLookup } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import type { ExploreResourcesParams } from '@n8n/instance-ai';
+import { isRecord } from '@n8n/utils/is-record';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
@@ -44,6 +47,16 @@ export function designTimeScenarioHints(scenarios: readonly DesignTimeMockScenar
 		: text;
 }
 
+/** The string values in `value`, at any depth. */
+const stringsOf = (value: unknown): string[] =>
+	typeof value === 'string'
+		? [value]
+		: Array.isArray(value)
+			? value.flatMap(stringsOf)
+			: isRecord(value)
+				? Object.values(value).flatMap(stringsOf)
+				: [];
+
 /**
  * How long a build waits for a mocked resource lookup. One LLM mock call takes 10-30 s and a
  * lookup can make two. The default budget of a real API cuts the lookup off every time.
@@ -77,6 +90,8 @@ export class EvalDesignTimeMockService {
 
 	private readonly scenariosByThread = new Map<string, readonly DesignTimeMockScenario[]>();
 
+	private readonly lookupsByThread = new Map<string, readonly InstanceAiEvalMockLookup[]>();
+
 	constructor(private readonly credentialAllowlists: EvalThreadCredentialAllowlistService) {}
 
 	/**
@@ -109,8 +124,40 @@ export class EvalDesignTimeMockService {
 		this.byThread.delete(threadId);
 	}
 
+	/** The declared field lookup answers of the case that the thread builds for. */
+	setLookups(threadId: string, lookups: readonly InstanceAiEvalMockLookup[]): void {
+		this.lookupsByThread.set(threadId, lookups);
+	}
+
+	/**
+	 * The declared fields of a field lookup in an eval thread, or `undefined` when the case declares
+	 * no answer. A node parameter can hold a resource ID in a URL, so a value that contains the ID
+	 * matches.
+	 */
+	lookupAnswer(
+		threadId: string,
+		{
+			methodName,
+			methodType,
+			currentNodeParameters,
+		}: Pick<ExploreResourcesParams, 'methodName' | 'methodType' | 'currentNodeParameters'>,
+	): InstanceAiEvalMockLookup['fields'] | undefined {
+		if (methodType !== 'loadOptions' || this.credentialAllowlists.get(threadId) === undefined) {
+			return undefined;
+		}
+		const values = stringsOf(currentNodeParameters);
+		return this.lookupsByThread
+			.get(threadId)
+			?.find(
+				({ method, resourceIds }) =>
+					method === methodName &&
+					resourceIds.every((id) => values.some((value) => value.includes(id))),
+			)?.fields;
+	}
+
 	clearThread(threadId: string): void {
 		this.byThread.delete(threadId);
 		this.scenariosByThread.delete(threadId);
+		this.lookupsByThread.delete(threadId);
 	}
 }
