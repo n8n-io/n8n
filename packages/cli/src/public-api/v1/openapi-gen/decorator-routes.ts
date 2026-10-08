@@ -20,8 +20,7 @@ import {
 	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
 
-import { addObjectTypeToObjectUnions } from './object-union-type';
-import { stripUntypedNullable } from './untyped-nullable';
+import { applySchemaModifiers } from './schema-modifiers';
 
 const REQUEST_BODY_COMPONENT = 'RequestBody';
 
@@ -195,10 +194,7 @@ export function buildRequestBodyJsonSchema(
 	const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
 	const schema = components?.schemas?.[REQUEST_BODY_COMPONENT];
 
-	// Keep in sync with `buildArtifactsFromRegistry`, both convert the same DTOs to OpenAPI
-	// and `/discover` serves this schema straight from a route at runtime.
-	stripUntypedNullable(schema);
-	addObjectTypeToObjectUnions(schema);
+	applySchemaModifiers(schema);
 
 	return isRecord(schema) ? schema : undefined;
 }
