@@ -589,6 +589,7 @@ export class UserService {
 
 		let transfereeId;
 		let transfereeProject: Project | null = null;
+		const ownershipTransferService = await this.getOwnershipTransferService();
 
 		if (transferId) {
 			transfereeProject = await this.projectService.findProject(transferId);
@@ -603,7 +604,6 @@ export class UserService {
 
 			transfereeId = transferee.id;
 
-			const ownershipTransferService = await this.getOwnershipTransferService();
 			await ownershipTransferService.enforceTransferPolicy(
 				personalProjectToDelete.id,
 				transfereeProject.id,
@@ -642,9 +642,13 @@ export class UserService {
 		// user tables) before the project is removed, so they are not orphaned by
 		// the FK cascade. The transfer case is handled by the transfer above.
 		if (!transfereeProject) {
-			const ownershipTransferService = await this.getOwnershipTransferService();
 			await ownershipTransferService.deleteModuleOwnedResources([personalProjectToDelete.id]);
 		}
+
+		// Private module resources (e.g. system agent sessions) belong to the
+		// user, not to a project. Delete them also on transfer, and before the
+		// delete transaction, which sets their owner column to null.
+		await ownershipTransferService.deleteUserOwnedModuleResources([userToDelete.id]);
 
 		await this.getManager().transaction(async (trx) => {
 			await trx.delete(AuthIdentity, { userId: userToDelete.id });

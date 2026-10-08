@@ -115,4 +115,18 @@ export class OwnershipTransferService {
 			}
 		}
 	}
+
+	/**
+	 * Remove the private module resources of the given users, for example
+	 * their private system agent sessions. Call it before the users are
+	 * deleted, with or without a transferee: private resources do not move to
+	 * the transferee, and after the delete their owner column is null.
+	 */
+	async deleteUserOwnedModuleResources(userIds: string[]): Promise<void> {
+		for (const userId of userIds) {
+			for (const handler of this.transferHandlers.getAll()) {
+				await handler.deleteAllForUser?.(userId);
+			}
+		}
+	}
 }
