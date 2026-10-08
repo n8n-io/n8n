@@ -18,8 +18,16 @@ export function testAgentOfferKey(agentId: string): string {
  * prose. Requiring one capability is what makes the suggestion land at the
  * moment the design describes ("your agent is set up") rather than the moment
  * the row was created.
+ *
+ * `forceWorthTesting` is the operator override (`N8N_FORCE_AGENT_WORTH_TESTING`,
+ * surfaced as `settings.evaluation.forceAgentWorthTesting`) — when `true` it
+ * short-circuits the check below entirely.
  */
-export function isAgentWorthTesting(summary: AgentCapabilitySummary | null): boolean {
+export function isAgentWorthTesting(
+	summary: AgentCapabilitySummary | null,
+	forceWorthTesting = false,
+): boolean {
+	if (forceWorthTesting) return true;
 	if (!summary?.model) return false;
 	return summary.tools.length + summary.skills.length > 0;
 }

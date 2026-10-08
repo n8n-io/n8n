@@ -53,6 +53,7 @@ export {
 export type { DiscoverDataPublic } from './discover/discover-public.dto';
 
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
+export { UpdateMigrationFindingStatusRequestDto } from './breaking-changes/update-migration-finding-status-request.dto';
 
 export {
 	AuditPublicDto,
@@ -336,12 +337,17 @@ export {
 export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
 export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
 export {
-	PublicCreateDestinationDto,
-	PublicDestinationResponseDto,
-	type PublicCreateDestination,
-	type PublicDestinationType,
-} from './log-streaming/public-destination.dto';
-export { LogStreamingEventTypesPublicDto } from './log-streaming/log-streaming-public.dto';
+	LogStreamingDestinationListPublicDto,
+	LogStreamingDestinationPublicDto,
+	LogStreamingEventTypesPublicDto,
+	LogStreamingTestResultPublicDto,
+	CreateLogStreamingDestinationPublicDto,
+	UpdateLogStreamingDestinationPublicDto,
+	type LogStreamingDestinationPublic,
+	type CreateLogStreamingDestinationPublic,
+	type UpdateLogStreamingDestinationPublic,
+	type LogStreamingDestinationPublicType,
+} from './log-streaming/log-streaming-public.dto';
 
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 
@@ -521,6 +527,10 @@ export {
 	workflowHistoryListItemSchema,
 } from './workflow-history/workflow-history-list-item.dto';
 export { ListWorkflowHistoryQueryDto } from './workflow-history/list-workflow-history-query.dto';
+export {
+	WorkflowPublishTimelineQueryDto,
+	WORKFLOW_HISTORY_DEFAULT_TAKE,
+} from './workflow-history/workflow-publish-timeline-query.dto';
 export {
 	WorkflowVersionHistoryListPublicDto,
 	workflowVersionListItemPublicSchema,

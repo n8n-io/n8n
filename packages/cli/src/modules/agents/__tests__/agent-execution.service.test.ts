@@ -390,6 +390,35 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
+		it('derives acceptsSteering from the explicit flag, not from previewChat', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			const execution = mock<AgentExecution>({ id: 'execution-1' });
+			agentExecutionRepository.create.mockReturnValue(execution);
+			agentExecutionRepository.saveInContext.mockResolvedValue(execution);
+
+			await service.startExecutionRecording(
+				{
+					access: previewAccess,
+					resourceId: 'user-1',
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+					previewChat: false,
+					acceptsSteering: true,
+				},
+				new Date(100),
+			);
+
+			expect(agentExecutionRepository.create).toHaveBeenCalledWith(
+				expect.objectContaining({ acceptsSteering: true }),
+			);
+		});
+
 		it('keeps an execution alive until finalization and then synchronizes its title', async () => {
 			vi.useFakeTimers();
 			const titleLookupStarted = createDeferredPromise();

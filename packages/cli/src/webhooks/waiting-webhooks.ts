@@ -445,6 +445,8 @@ export class WaitingWebhooks implements IWebhookManager {
 						}
 						resolve(data);
 					},
+					undefined,
+					{ storedAt: execution.storedAt },
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {

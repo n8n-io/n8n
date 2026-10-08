@@ -25,6 +25,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
@@ -897,6 +898,34 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+		});
+
+		it('should name the restricted node before its parameter issues', () => {
+			const restrictedNodeWithIssues: INodeUi = {
+				id: 'http-1',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [200, 0],
+				parameters: {},
+				disabled: false,
+				issues: { parameters: { url: ['Parameter "URL" is required.'] } },
+			};
+			workflowDocumentStore.setNodes([triggerNode, restrictedNodeWithIssues]);
+			workflowDocumentStore.setConnections({
+				[triggerNode.name]: {
+					main: [[{ node: restrictedNodeWithIssues.name, type: 'main', index: 0 }]],
+				},
+			});
+			mockRestrictedNodeTypes({ [restrictedNodeWithIssues.type]: 'instance' });
+
+			const { getByTestId, getByText, queryByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(
+				getByText(/An administrator blocked 'HTTP Request' on this instance/),
+			).toBeInTheDocument();
+			expect(queryByText(/node has issues/)).not.toBeInTheDocument();
 		});
 
 		it('should show publish button enabled when there are unpublished changes (versionId mismatch)', () => {
