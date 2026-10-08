@@ -553,6 +553,7 @@ export default defineConfig(
 							group: [
 								'@/**',
 								'../**',
+								'./../**',
 								// gitignore cannot re-include a file under an excluded folder, so re-include each folder first.
 								'!@/constants',
 								'!@/eventbus/',
