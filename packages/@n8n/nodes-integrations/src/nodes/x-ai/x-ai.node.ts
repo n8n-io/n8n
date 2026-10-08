@@ -5,6 +5,7 @@ const BASE_URL = 'https://api.x.ai/v1';
 
 export const xAiKey = defineCredential({
 	id: 'xAi.apiKey',
+	version: '1.0.0',
 	legacyName: 'xAiApi',
 	displayName: 'xAi',
 	docs: 'xai',

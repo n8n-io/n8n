@@ -3,15 +3,15 @@
 // JS realm, so this code is not a trust boundary: the sidecar links only the granted imports,
 // and the host checks every call and every output.
 import { sdk, source } from 'n8n:js-guest/bundle@1.0.0';
-import type * as wit from 'n8n:node-contract/capabilities@2.11.0';
+import type * as wit from 'n8n:node-contract/capabilities@2.12.0';
 import {
 	request as witRequest,
 	type HttpError as WitHttpError,
 	type HttpFailure,
 	type HttpRequest as WitHttpRequest,
-} from 'n8n:node-contract/http@2.11.0';
-import { log as witLog } from 'n8n:node-contract/log@2.11.0';
-import { get as witCredential } from 'n8n:node-contract/run-credential@2.11.0';
+} from 'n8n:node-contract/http@2.12.0';
+import { log as witLog } from 'n8n:node-contract/log@2.12.0';
+import { get as witCredential } from 'n8n:node-contract/run-credential@2.12.0';
 import { OperationalError, safeRegex, UserError } from 'n8n-workflow';
 
 import { isHttpError, type Action, type Http, type HttpRequest, type Trigger } from '../src/define';

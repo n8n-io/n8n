@@ -8,6 +8,7 @@ export const node = defineNode({
 		types: [
 			defineCredential({
 				id: 'acmeTasks.apiKey',
+				version: '1.0.0',
 				legacyName: 'acmeTasksApi',
 				displayName: 'Acme Tasks API',
 				fields: { apiKey: field.secret('API Key') },

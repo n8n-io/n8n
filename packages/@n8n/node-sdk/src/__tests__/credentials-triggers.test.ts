@@ -11,6 +11,7 @@ import { mockHttp, runAction } from '../testing';
 
 const tasksApi = defineCredential({
 	id: 'tasks.token',
+	version: '1.0.0',
 	legacyName: 'tasksApi',
 	displayName: 'Tasks API',
 	fields: { token: field.secret('Access Token'), signingSecret: t.str().optional() },

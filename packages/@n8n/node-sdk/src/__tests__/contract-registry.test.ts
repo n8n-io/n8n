@@ -14,6 +14,7 @@ import {
 } from '../entry/registry';
 import { defineNode, t } from '../index';
 import { credential, defineCredential, field } from '../entry/credentials';
+import type { NativeManifest } from '../manifest';
 import { packAction, packCredential, packNative, packSdkRuntime, type PackedAction } from '../pack';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -44,7 +45,7 @@ import {
 	type StoredVersion,
 } from '../contract-registry';
 import { npmDeprecate, npmDigestOf, npmPackageOf, npmPublish } from '../npm';
-import { storeRecordOf } from '../store';
+import { storeRecordOf, type StoreManifest } from '../store';
 import { sha256 } from '../version';
 import { fakeNpmRegistry, type FakeNpmRegistry } from './fake-npm-registry';
 
@@ -82,6 +83,7 @@ export const echo = defineNode({ id: 'demo', displayName: 'Demo', credentials: [
 
 const pingToken = defineCredential({
 	id: 'ping.token',
+	version: '1.0.0',
 	legacyName: 'pingApi',
 	displayName: 'Ping API',
 	fields: { token: field.secret('Token') },
@@ -89,7 +91,7 @@ const pingToken = defineCredential({
 	baseUrl: 'https://api.ping.test',
 });
 
-/** A native trigger that pins `ping.token@1`. */
+/** A native trigger that pins `ping.token` at `^1.0.0`. */
 const pingCalled = defineNode({
 	id: 'ping',
 	displayName: 'Ping',
@@ -108,6 +110,7 @@ import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 const pingToken = defineCredential({
 	id: 'ping.token',
+	version: '1.0.0',
 	legacyName: 'pingApi',
 	displayName: 'Ping API',
 	fields: { token: field.secret('Token') },
@@ -960,15 +963,61 @@ describe('importContractStore and exportContractStore', () => {
 			},
 		]);
 		await expect(importDir(dir, noKeys)).rejects.toThrow(
-			'ping.called@1.0.0 pins the credential ping.token@1',
+			'ping.called@1.0.0 pins the credential ping.token@^1.0.0, but n8n has no credential manifest of that id and range',
 		);
 		expect(instance.current.rows.size).toBe(0);
+	});
+
+	describe('a credential pin', () => {
+		const storedOf = (manifest: StoreManifest): StoredVersion => {
+			const manifestText = manifestTextOf(manifest);
+			return {
+				id: manifest.id,
+				version: manifest.semver,
+				kind: manifest.kind,
+				manifest: `sha256:${sha256(manifestText)}`,
+				manifestText,
+				origin: 'private',
+			};
+		};
+		const pingCredential = (version: `${number}.${number}.${number}`) => {
+			const manifest = packCredential({ ...pingToken, semver: version });
+			if (!manifest) throw new Error('ping.token has no manifest');
+			return storedOf(manifest);
+		};
+		const admitPinned = async (
+			credentials: NativeManifest['credentials'],
+			version: `${number}.${number}.${number}`,
+		) =>
+			await admitVersions(instance.current.store, [
+				pingCredential(version),
+				storedOf({ ...packNative(pingCalled), credentials }),
+			]);
+
+		it('resolves by a credential version in its range', async () => {
+			expect(packNative(pingCalled).credentials).toEqual({ 'ping.token': '^1.0.0' });
+			expect(await admitPinned({ 'ping.token': '>=1.1 <3' }, '2.3.0')).toHaveLength(2);
+		});
+
+		it('refuses a credential version out of its range', async () => {
+			await expect(admitPinned({ 'ping.token': '>=1.1 <3' }, '1.0.0')).rejects.toThrow(
+				'ping.called@1.0.0 pins the credential ping.token@>=1.1 <3, but n8n has no credential manifest of that id and range',
+			);
+			expect(instance.current.rows.size).toBe(0);
+		});
+
+		it('reads an old pin <id>@<major> as ^<major>', async () => {
+			await expect(admitPinned(['ping.token@2'], '1.4.0')).rejects.toThrow(
+				'pins the credential ping.token@^2,',
+			);
+			expect(await admitPinned(['ping.token@1'], '1.4.0')).toHaveLength(2);
+		});
 	});
 
 	it('admits a version whose pinned credential manifest n8n bundles', async () => {
 		const [head] = versionsOf('notion.user.get');
 		if (!head) throw new Error('notion.user.get is not bundled');
-		expect(head.manifest.credentials).toContain('notion.token@1');
+		expect(head.manifest.credentials).toMatchObject({ 'notion.token': '^1.0.0' });
 		const manifestText = manifestTextOf(head.manifest);
 		const admitted = await admitVersions(instance.current.store, [
 			{
@@ -1167,7 +1216,10 @@ describe('contractStore with triggers and credentials', () => {
 
 	it('takes a trigger version and the credential manifest it pins from the registry', async () => {
 		const { trigger, credential, pin } = await publishPing();
-		expect(trigger.manifest).toMatchObject({ kind: 'trigger', credentials: ['ping.token@1'] });
+		expect(trigger.manifest).toMatchObject({
+			kind: 'trigger',
+			credentials: { 'ping.token': '^1.0.0' },
+		});
 		const store = storeOf();
 		expect((await store.locked('ping.pinged', pin)).manifest).toEqual(trigger.manifest);
 
@@ -1186,7 +1238,7 @@ describe('contractStore with triggers and credentials', () => {
 		const { pin } = await publishPing();
 		const store = storeOf({ keys: noKeys });
 		await expect(store.locked('ping.pinged', pin)).rejects.toThrow(
-			'ping.pinged@1.0.0 pins the credential ping.token@1',
+			'ping.pinged@1.0.0 pins the credential ping.token@^1.0.0',
 		);
 		expect(instance.current.rows.size).toBe(0);
 		expect((await store.credentials()).has('pingApi')).toBe(false);

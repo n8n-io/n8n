@@ -8,6 +8,7 @@ export const node = defineNode({
 		types: [
 			defineCredential({
 				id: 'inventory.apiKey',
+				version: '1.0.0',
 				legacyName: 'inventoryApi',
 				displayName: 'Inventory API',
 				fields: { apiKey: field.secret('API Key') },

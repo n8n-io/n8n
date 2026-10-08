@@ -3,7 +3,7 @@
  * trigger, provider, credential or the SDK runtime. `scripts/spec.ts` writes these schemas to
  * `spec/manifest.schema.json`, and `parseManifest` reads with them.
  */
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import type {
 	AnyCredentialType,
@@ -20,7 +20,7 @@ import { Schema, t, type AnySchema, type Infer, type JsonSchema } from './schema
 import { matches } from './validate';
 import type { StoreDeprecation, StoreRecord, StoreRevoke, StoreYank } from './store';
 import type { Signature, WebhookEndpoint } from './triggers';
-import type { NodeContractVersion, SdkPin, VersionManifest } from './version';
+import type { CredentialPins, NodeContractVersion, SdkPin, VersionManifest } from './version';
 
 const constant = <const V extends string | number | boolean>(value: V) =>
 	new Schema<V>({ const: value }, false);
@@ -30,6 +30,7 @@ const SINCE_2_6 = { 'x-n8n-since': '2.6.0' } as const satisfies JsonSchema;
 const SINCE_2_7 = { 'x-n8n-since': '2.7.0' } as const satisfies JsonSchema;
 const SINCE_2_10 = { 'x-n8n-since': '2.10.0' } as const satisfies JsonSchema;
 const SINCE_2_11 = { 'x-n8n-since': '2.11.0' } as const satisfies JsonSchema;
+const SINCE_2_12 = { 'x-n8n-since': '2.12.0' } as const satisfies JsonSchema;
 
 /**
  * A reader ignores a top-level field it does not know, so a newer SDK can add an annotation.
@@ -73,11 +74,19 @@ const digest = () => t.str().with({ pattern: '^sha256:[0-9a-f]{64}$' });
 
 const names = () => t.arr(t.str());
 
-/** `<id>@<major>` of each credential type with a credential manifest, e.g. `notion.token@1`. */
+/** The pins of the credential types with a credential manifest, see `CredentialPins`. */
 const credentialPins = () =>
-	t
-		.arr(t.str().with({ pattern: '^[^.@]+\\.[^.@]+@\\d+$' }))
-		.describe('`<id>@<major>` of each credential type with a credential manifest.');
+	fits<CredentialPins>()(
+		t.union(
+			t
+				.record(t.str())
+				.describe('The semver range of each credential type with a credential manifest, by id.')
+				.with(SINCE_2_12),
+			t
+				.arr(t.str().with({ pattern: '^[^.@]+\\.[^.@]+@\\d+$' }))
+				.describe('`<id>@<major>` of each credential type with a credential manifest.'),
+		),
+	);
 
 const flow = typed<ContractDocument['flow']>()(
 	t.obj({
@@ -360,7 +369,7 @@ export interface CredentialManifest {
 	readonly id: string;
 	/** The n8n type name. Saved credentials and workflows refer to it. */
 	readonly name: string;
-	/** `major.minor.patch` of the credential type. Actions pin the major. */
+	/** `major.minor.patch` of the credential type. Actions pin a range. */
 	readonly semver: string;
 	/** The lowest Node Contract version that has what the type uses. */
 	readonly nodeContract: NodeContractVersion;
@@ -422,8 +431,8 @@ export interface NativeManifest {
 	readonly semver: string;
 	/** The lowest Node Contract version that has native manifests. */
 	readonly nodeContract: NodeContractVersion;
-	/** `<id>@<major>` of each credential type with a credential manifest. Absent when none has one. */
-	readonly credentials?: readonly string[];
+	/** The pins of the credential types with a credential manifest. Absent when none has one. */
+	readonly credentials?: CredentialPins;
 	/** The normative hash of `contract`, see `contractHash`. */
 	readonly contractHash: string;
 	/** The contract document of the version. */
@@ -514,7 +523,7 @@ export const storeRecordSchema = typed<StoreRecord>()(
 			manifest: digest(),
 			bundle: digest().optional(),
 			contractHash: hex().optional(),
-			credentials: names().optional(),
+			credentials: credentialPins().optional(),
 			permissions: t.obj({ egress: names(), imports: names() }).optional(),
 			native: t.str().optional(),
 			name: t.str().optional(),
@@ -583,7 +592,8 @@ export const manifestJsonSchema = (version: string) => ({
 /** The credential manifest that pack writes. A compat type has none. */
 export function credentialManifestOf(type: AnyCredentialType): CredentialManifest | undefined {
 	const { scheme: typeScheme } = type;
-	if (typeScheme.kind === 'compat' || type.semver === undefined) return undefined;
+	if (typeScheme.kind === 'compat') return undefined;
+	if (type.semver === undefined) throw new UserError(`The credential ${type.id} has no version`);
 	return {
 		kind: 'credential',
 		id: type.id,

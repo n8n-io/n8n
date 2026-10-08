@@ -29,6 +29,7 @@ import { canonicalJson } from './schema';
 import {
 	addStatusToStore,
 	addToStore,
+	credentialRangesOf,
 	embeddedStoreDirOf,
 	isVersionManifest,
 	storeBlobFileOf,
@@ -453,7 +454,7 @@ const parsedCredentialsOf = (rows: ReadonlyArray<Pick<StoredManifest, 'manifestT
 async function assertPinsResolve(store: InstanceStore, added: readonly StoredVersion[]) {
 	const pinning = added.flatMap((version) => {
 		const manifest = pinningManifestOf(version);
-		return manifest?.credentials?.length ? [{ version, manifest }] : [];
+		return manifest?.credentials ? [{ version, manifest }] : [];
 	});
 	if (pinning.length === 0) return;
 	const known = [
@@ -469,7 +470,7 @@ async function assertPinsResolve(store: InstanceStore, added: readonly StoredVer
 	});
 	if (unresolved.length > 0) {
 		throw new UserError(
-			`${unresolved.join('; ')}, but n8n has no credential manifest of that id and major. Add the credential manifest to the store first, e.g. with "n8n contracts:import".`,
+			`${unresolved.join('; ')}, but n8n has no credential manifest of that id and range. Add the credential manifest to the store first, e.g. with "n8n contracts:import".`,
 		);
 	}
 }
@@ -743,10 +744,10 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		});
 
 	/**
-	 * The credential manifests that a version pins, from the registry, unless n8n bundles the id
-	 * and major or the store has them. A pin that the registry lacks fails the admission. A
-	 * manifest with a bad signature fails the download. Without a key, nothing comes: the node
-	 * pin anchors the version only, not a credential manifest.
+	 * The credential manifests that a version pins, from the registry: the newest version in the
+	 * range, unless n8n bundles or the store has one in the range. A pin that the registry lacks
+	 * fails the admission. A manifest with a bad signature fails the download. Without a key,
+	 * nothing comes: the node pin anchors the version only, not a credential manifest.
 	 */
 	const pinnedCredentials = async (manifest: VersionManifest): Promise<StoredVersion[]> => {
 		if (!hasKey(keys)) return [];
@@ -756,9 +757,9 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		const registry = registryOf();
 		const found = await Promise.all(
 			missing.map(async (pin) => {
-				const [id = '', major = ''] = pin.split('@');
+				const [id = '', range = ''] = pin.split('@');
 				const record = (await registry.records(id))
-					.filter(({ version }) => parseSemver(version).major === Number(major))
+					.filter(({ version }) => satisfies(version, range))
 					.sort((a, b) => compareSemver(a.version, b.version))
 					.at(-1);
 				const read = record && (await registry.readManifest(record));
@@ -1313,13 +1314,9 @@ export async function importContractStore(
 	return added;
 }
 
-/** The `<id>@<major>` pins of the credentials that a stored version uses. */
-const credentialPinsOf = (version: StoredVersion) => pinningManifestOf(version)?.credentials ?? [];
-
-const credentialPinOf = ({ manifestText }: StoredVersion) => {
-	const { id, semver } = parseCredentialManifest(manifestText);
-	return `${id}@${parseSemver(semver).major}`;
-};
+/** The `[id, range]` pins of the credentials that a stored version uses. */
+const credentialPinsOf = (version: StoredVersion) =>
+	credentialRangesOf(pinningManifestOf(version)?.credentials);
 
 /**
  * Writes the stored versions that `include` accepts to `dir`, in the store layout, with the
@@ -1334,12 +1331,13 @@ export async function exportContractStore(
 ): Promise<StoreRecord[]> {
 	const all = await store.versions();
 	const included = all.filter(include);
-	const pins = new Set(included.flatMap(credentialPinsOf));
+	const pins = included.flatMap(credentialPinsOf);
 	const sdks = new Set(included.flatMap((version) => sdkPinOf(version) ?? []));
 	const pinned = all.filter(
 		(version) =>
 			!included.includes(version) &&
-			((version.kind === 'credential' && pins.has(credentialPinOf(version))) ||
+			((version.kind === 'credential' &&
+				pins.some(([id, range]) => id === version.id && satisfies(version.version, range))) ||
 				(version.kind === 'sdk' && sdks.has(runtimeDigestOf(version)))),
 	);
 	const versions = [...included, ...pinned].sort(

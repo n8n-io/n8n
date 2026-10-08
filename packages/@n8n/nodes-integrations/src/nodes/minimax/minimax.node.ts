@@ -5,6 +5,7 @@ const INTERNATIONAL = 'https://api.minimax.io/v1';
 
 export const minimaxKey = defineCredential({
 	id: 'minimax.apiKey',
+	version: '1.0.0',
 	legacyName: 'minimaxApi',
 	displayName: 'MiniMax',
 	docs: 'minimax',

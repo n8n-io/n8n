@@ -5,6 +5,7 @@ const DEFAULT_URL = 'https://api.openai.com/v1';
 
 export const openAiKey = defineCredential({
 	id: 'openAi.apiKey',
+	version: '1.0.0',
 	legacyName: 'openAiApi',
 	displayName: 'OpenAI',
 	docs: 'openai',

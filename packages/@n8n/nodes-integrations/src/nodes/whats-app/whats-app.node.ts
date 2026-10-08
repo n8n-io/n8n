@@ -17,6 +17,7 @@ const GRAPH_API = 'https://graph.facebook.com/v13.0';
 
 export const whatsAppToken = defineCredential({
 	id: 'whatsApp.token',
+	version: '1.0.0',
 	legacyName: 'whatsAppApi',
 	displayName: 'WhatsApp API',
 	docs: 'whatsapp',

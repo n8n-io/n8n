@@ -5,6 +5,7 @@ const DEFAULT_URL = 'https://api.anthropic.com';
 
 export const anthropicKey = defineCredential({
 	id: 'anthropic.apiKey',
+	version: '1.0.0',
 	legacyName: 'anthropicApi',
 	displayName: 'Anthropic',
 	docs: 'anthropic',

@@ -28,6 +28,7 @@ import { mockHttp, runAction } from '../testing';
 
 const notionToken = defineCredential({
 	id: 'notion.token',
+	version: '1.0.0',
 	legacyName: 'notionApi',
 	displayName: 'Notion API',
 	fields: { apiKey: field.secret('Internal Integration Secret') },
@@ -42,6 +43,7 @@ export const gmailOAuth2 = compat('gmailOAuth2', { hosts: ['gmail.googleapis.com
 
 export const regional = defineCredential({
 	id: 'acme.apiKey',
+	version: '1.0.0',
 	displayName: 'Acme API',
 	fields: {
 		apiKey: field.secret('API Key'),

@@ -1288,6 +1288,7 @@ describe('batch and named outputs', () => {
 describe('credentials in a run', () => {
 	const acmeToken = defineCredential({
 		id: 'acme.token',
+		version: '1.0.0',
 		legacyName: 'acmeApi',
 		displayName: 'Acme API',
 		fields: {

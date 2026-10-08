@@ -43,6 +43,7 @@ export const echo = defineNode({ id: 'demo', displayName: 'Demo' }).action('echo
 
 const token = defineCredential({
 	id: 'demo.token',
+	version: '1.0.0',
 	legacyName: 'demoApi',
 	displayName: 'Demo API',
 	fields: { token: field.secret('Token') },
@@ -59,7 +60,7 @@ const tokenWith = (spec: {
 		id: 'demo.token',
 		legacyName: 'demoApi',
 		displayName: spec.displayName ?? 'Demo API',
-		version: spec.version,
+		version: spec.version ?? '1.0.0',
 		fields: { token: field.secret('Token') },
 		auth: (a) => a.bearer('token'),
 		baseUrl: 'https://a.example.com',
@@ -245,23 +246,23 @@ describe('unresolvedCredentialPinsOf', () => {
 		return manifest;
 	};
 
-	it('pins the credential id and major', () => {
-		expect(pinning().credentials).toEqual(['demo.token@1']);
+	it('pins the credential id at ^<version>', () => {
+		expect(pinning().credentials).toEqual({ 'demo.token': '^1.0.0' });
 	});
 
-	it('resolves a pin only by a credential manifest of its id and major', () => {
+	it('resolves a pin only by a credential manifest of its id in its range', () => {
 		const manifest = pinning();
 		expect(unresolvedCredentialPinsOf(manifest, [credentialOf(token)])).toEqual([]);
-		expect(unresolvedCredentialPinsOf(manifest, [])).toEqual(['demo.token@1']);
+		expect(unresolvedCredentialPinsOf(manifest, [])).toEqual(['demo.token@^1.0.0']);
 		expect(
 			unresolvedCredentialPinsOf(manifest, [credentialOf(tokenWith({ version: '2.0.0' }))]),
-		).toEqual(['demo.token@1']);
+		).toEqual(['demo.token@^1.0.0']);
 	});
 
 	it('does not resolve a pin by a credential type that the contract does not list', () => {
 		const manifest = pinning();
 		const other = { ...manifest, contract: { ...manifest.contract, credentials: ['otherApi'] } };
-		expect(unresolvedCredentialPinsOf(other, [credentialOf(token)])).toEqual(['demo.token@1']);
+		expect(unresolvedCredentialPinsOf(other, [credentialOf(token)])).toEqual(['demo.token@^1.0.0']);
 	});
 });
 
@@ -359,6 +360,7 @@ describe('credentialChangeOf', () => {
 		packCredential(
 			defineCredential({
 				id: 'demo.token',
+				version: '1.0.0',
 				displayName: 'Demo API',
 				...(doc ? { docs: doc } : {}),
 				fields,

@@ -4,6 +4,7 @@ import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 /** The Meta app. The legacy trigger node reads the secret to verify each delivery. */
 export const whatsAppApp = defineCredential({
 	id: 'whatsApp.app',
+	version: '1.0.0',
 	legacyName: 'whatsAppTriggerApi',
 	displayName: 'WhatsApp OAuth API',
 	docs: 'whatsapp',

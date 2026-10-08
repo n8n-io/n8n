@@ -45,11 +45,18 @@ export { parseSemver, type Semver } from './define';
  * and `errorOf`: the error expression that the host checks each response with.
  * 2.11.0 adds the SDK runtime: a bundle imports `@n8n/node-sdk` and `@n8n/node-sdk/credentials`
  * from the host, and its manifest pins the runtime with `sdk: { version, digest }`.
+ * 2.12.0 pins each credential type by a semver range: `credentials: { "notion.token": "^1.2.0" }`.
  */
 export type NodeContractVersion = `${number}.${number}.${number}`;
 
 /** The newest version this host implements. */
-export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.11.0';
+export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.12.0';
+
+/**
+ * The credential pins of a manifest. Since 2.12.0 the semver range of each credential type by id,
+ * e.g. `{ "notion.token": "^1.2.0" }`. Before, `<id>@<major>`, e.g. `notion.token@1`.
+ */
+export type CredentialPins = Readonly<Record<string, string>> | readonly string[];
 
 /** The Node Contract version that added the HTTP guest. An older host reads its config as JS. */
 export const HTTP_GUEST_NODE_CONTRACT: NodeContractVersion = '2.10.0';
@@ -161,11 +168,10 @@ export interface VersionManifest {
 	 */
 	readonly sdk?: string | SdkPin;
 	/**
-	 * `<id>@<major>` of each credential type of `contract.credentials` that has a credential
-	 * manifest, e.g. `notion.token@1`. A compat type has none: its legacy class defines it. Absent
-	 * when none has one.
+	 * The pins of the credential types of `contract.credentials` that have a credential manifest.
+	 * A compat type has none: its legacy class defines it. Absent when none has one.
 	 */
-	readonly credentials?: readonly string[];
+	readonly credentials?: CredentialPins;
 	/** The normative hash, see `contractHash`. */
 	readonly contractHash: string;
 	/** The hex SHA-256 of the bundle bytes. */

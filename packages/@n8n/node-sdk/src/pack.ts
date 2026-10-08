@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, rmSync } from 'node:fs';
 import type { BuildOptions, BuildResult, Plugin } from 'esbuild';
 import path from 'node:path';
 import { toHostname, UnexpectedError, UserError } from 'n8n-workflow';
+import { validRange } from 'semver';
 
 import type { AnyCredentialType } from './credentials';
 import { replyContractOf, toContract, type Action, type Trigger } from './define';
@@ -45,7 +46,6 @@ import {
 	NODE_CONTRACT_VERSION,
 	parseManifest,
 	parseNativeManifest,
-	parseSemver,
 	requiredNodeContractOf,
 	sha256,
 	type NodeContractVersion,
@@ -72,11 +72,24 @@ export function sdkVersion(): string {
 	return version;
 }
 
-/** `<id>@<major>` of each credential type that has a credential manifest. */
-const credentialPinsOf = (action: Action | Trigger) =>
-	(action.node.credential?.types ?? []).flatMap(({ id, semver }) =>
-		semver === undefined ? [] : [`${id}@${parseSemver(semver).major}`],
+/**
+ * The semver range of each credential type that has a credential manifest, by id: the range of
+ * `.range()`, else `^<version>`. `undefined` when no type has a manifest.
+ */
+function credentialPinsOf(action: Action | Trigger): Record<string, string> | undefined {
+	const pins = (action.node.credential?.types ?? []).flatMap(
+		({ id, scheme, semver, versionRange }): Array<[string, string]> => {
+			if (scheme.kind === 'compat') return [];
+			if (semver === undefined) throw new UserError(`The credential ${id} has no version`);
+			const range = versionRange ?? `^${semver}`;
+			if (validRange(range) === null) {
+				throw new UserError(`The range ${range} of the credential ${id} is not valid`);
+			}
+			return [[id, range]];
+		},
 	);
+	return pins.length > 0 ? Object.fromEntries(pins) : undefined;
+}
 
 /**
  * The globals of Node, and the CommonJS names `__dirname` and `__filename`, that the sandbox guest
@@ -193,6 +206,9 @@ export interface PackedSdkRuntime {
 
 /** The Node Contract version that added the SDK runtime. */
 const SDK_NODE_CONTRACT: NodeContractVersion = '2.11.0';
+
+/** The Node Contract version that pins credential types by semver range. */
+const CREDENTIAL_RANGES_NODE_CONTRACT: NodeContractVersion = '2.12.0';
 
 /** The build settings of a bundle and of the SDK runtime. The same source gives the same bytes. */
 const BUILD_OPTIONS = {
@@ -337,6 +353,7 @@ export async function packAction(
 		required,
 		...(imported.includes(VALIDATOR_MODULE) ? ['2.9.0' as const] : []),
 		...(runtimeSdk ? [SDK_NODE_CONTRACT] : []),
+		...(credentials ? [CREDENTIAL_RANGES_NODE_CONTRACT] : []),
 	];
 	const manifest: VersionManifest = {
 		kind: manifestKindOf(contract),
@@ -351,7 +368,7 @@ export async function packAction(
 					},
 				}
 			: {}),
-		...(credentials.length ? { credentials } : {}),
+		...(credentials ? { credentials } : {}),
 		contractHash: contractHash(contract),
 		bundleHash,
 		...(errorOf ? { errorOf } : {}),
@@ -399,8 +416,8 @@ export async function packHttpGuest(
 		kind: manifestKindOf(contract),
 		id: action.id,
 		semver: semverOf(action),
-		nodeContract: HTTP_GUEST_NODE_CONTRACT,
-		...(credentials.length ? { credentials } : {}),
+		nodeContract: credentials ? CREDENTIAL_RANGES_NODE_CONTRACT : HTTP_GUEST_NODE_CONTRACT,
+		...(credentials ? { credentials } : {}),
 		contractHash: contractHash(contract),
 		bundleHash,
 		guest: 'http',
@@ -567,8 +584,8 @@ export function packNative(source: Action | Trigger): NativeManifest {
 		kind,
 		id: source.id,
 		semver: semverOf(source),
-		nodeContract: '2.5.0',
-		...(credentials.length ? { credentials } : {}),
+		nodeContract: credentials ? CREDENTIAL_RANGES_NODE_CONTRACT : '2.5.0',
+		...(credentials ? { credentials } : {}),
 		contractHash: contractHash(contract),
 		contract,
 		native: { type: binding.type, version: binding.version },

@@ -51,7 +51,7 @@ const tokenWith = (spec: { hosts?: string[]; displayName?: string; version?: '1.
 		id: 'demo.token',
 		legacyName: 'demoApi',
 		displayName: spec.displayName ?? 'Demo API',
-		version: spec.version,
+		version: spec.version ?? '1.0.0',
 		fields: { token: field.secret('Token') },
 		auth: (a) => a.bearer('token'),
 		baseUrl: 'https://a.example.com',

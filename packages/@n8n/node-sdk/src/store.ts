@@ -22,6 +22,7 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 import { UnexpectedError, UserError } from 'n8n-workflow';
+import { satisfies } from 'semver';
 
 import {
 	parseCredentialManifest,
@@ -38,7 +39,7 @@ import {
 	compareSemver,
 	parseManifest,
 	parseNativeManifest,
-	parseSemver,
+	type CredentialPins,
 	type NodeContractVersion,
 	type VersionManifest,
 } from './version';
@@ -53,23 +54,35 @@ export type StoreManifest = VersionManifest | CredentialManifest | NativeManifes
 export const isVersionManifest = (manifest: StoreManifest): manifest is VersionManifest =>
 	manifest.kind !== 'credential' && manifest.kind !== 'sdk' && !('native' in manifest);
 
+/** The `[id, range]` of each credential pin. An old pin `<id>@<major>` reads as `^<major>`. */
+export const credentialRangesOf = (pins: CredentialPins = {}): Array<[string, string]> =>
+	Array.isArray(pins)
+		? pins.map((pin) => {
+				const [id = '', major = ''] = pin.split('@');
+				return [id, `^${major}`];
+			})
+		: Object.entries(pins);
+
 /**
- * The credential pins of a manifest that none of `credentials` resolves, e.g. to refuse the
- * version when a store takes it. A pin `<id>@<major>` needs a credential manifest of that id and
- * major whose n8n type name the contract lists.
+ * The credential pins of a manifest that none of `credentials` resolves, as `<id>@<range>`, e.g. to
+ * refuse the version when a store takes it. A pin needs a credential manifest of that id, with a
+ * version in the range, whose n8n type name the contract lists.
  */
 export function unresolvedCredentialPinsOf(
 	manifest: Pick<VersionManifest | NativeManifest, 'credentials' | 'contract'>,
 	credentials: readonly CredentialManifest[],
 ): string[] {
-	return (manifest.credentials ?? []).filter(
-		(pin) =>
-			!credentials.some(
-				({ id, semver, name }) =>
-					pin === `${id}@${parseSemver(semver).major}` &&
-					manifest.contract.credentials.includes(name),
-			),
-	);
+	return credentialRangesOf(manifest.credentials)
+		.filter(
+			([pinned, range]) =>
+				!credentials.some(
+					({ id, semver, name }) =>
+						id === pinned &&
+						satisfies(semver, range) &&
+						manifest.contract.credentials.includes(name),
+				),
+		)
+		.map(([id, range]) => `${id}@${range}`);
 }
 
 /** One version line of `index/<id>.ndjson`. The build writes the fields up to `name`. */
@@ -88,8 +101,8 @@ export interface StoreRecord {
 	readonly bundle?: string;
 	/** The contract hash of the manifest. A credential has none. */
 	readonly contractHash?: string;
-	/** `<id>@<major>` of each credential type that the version pins. */
-	readonly credentials?: readonly string[];
+	/** The credential pins of the manifest. */
+	readonly credentials?: CredentialPins;
 	/** What the version may reach, sorted, so that a host can decide before it downloads. */
 	readonly permissions?: {
 		/** The hosts of the contract. */

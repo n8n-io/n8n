@@ -3,6 +3,7 @@ import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 export const supabaseKey = defineCredential({
 	id: 'supabase.secretKey',
+	version: '1.0.0',
 	legacyName: 'supabaseApi',
 	displayName: 'Supabase API',
 	docs: 'supabase',

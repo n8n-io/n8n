@@ -7,6 +7,7 @@ import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
  */
 export const facebookApp = defineCredential({
 	id: 'facebook.app',
+	version: '1.0.0',
 	legacyName: 'facebookGraphAppApi',
 	displayName: 'Facebook Graph API (App)',
 	docs: 'facebookapp',
@@ -26,6 +27,7 @@ export const facebookApp = defineCredential({
 /** The Facebook app with OAuth2. It extends the legacy type that holds the Graph API scopes. */
 export const facebookAppOAuth2 = defineCredential({
 	id: 'facebookApp.oauth2',
+	version: '1.0.0',
 	legacyName: 'facebookGraphAppOAuth2Api',
 	displayName: 'Facebook Graph (App) OAuth2 API',
 	docs: 'facebookapp',

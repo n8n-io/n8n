@@ -569,10 +569,11 @@ export interface CredentialType<Name extends string = string, F extends Shape = 
 	/** The n8n type name. Saved credentials and workflows refer to it, so it never changes. */
 	readonly name: Name;
 	/**
-	 * `major.minor.patch` from the source. Actions pin the major. A compat type has none: its
-	 * legacy class defines it.
+	 * `major.minor.patch` from the source. A compat type has none: its legacy class defines it.
 	 */
 	readonly semver?: string;
+	/** The versions of the type that the action takes, from `.range()`. Absent: `^<semver>`. */
+	readonly versionRange?: string;
 	/** The type name in the n8n UI, e.g. `Notion API`. */
 	readonly displayName: string;
 	/** The n8n docs page of the type. */
@@ -1045,6 +1046,7 @@ const checked = <T extends AnyCredentialType>(type: T): T => {
  * ```ts
  * export const notionToken = defineCredential({
  *   id: 'notion.token',
+ *   version: '1.0.0',
  *   legacyName: 'notionApi',
  *   displayName: 'Notion API',
  *   fields: { apiKey: field.secret('Internal Integration Secret') },
@@ -1070,10 +1072,8 @@ export function defineCredential<
 	 * `major.minor.patch`. Bump the major when stored data or a saved workflow can break: a new
 	 * required field, a new host, a new scheme. Bump the minor for an additive change, e.g. a new
 	 * optional field, and the patch for a change of text only.
-	 *
-	 * @defaultValue `'1.0.0'`
 	 */
-	readonly version?: `${number}.${number}.${number}`;
+	readonly version: `${number}.${number}.${number}`;
 	/** The type name in the n8n UI, e.g. `Notion API`. */
 	readonly displayName: string;
 	/** The n8n docs page, e.g. `notion`. */
@@ -1127,15 +1127,18 @@ export function defineCredential<
 	readonly legacyParent?: string;
 	/** Stored fields with an old name: n8n reads `{ old: 'new' }` as `new`. */
 	readonly renamed?: { readonly [old: string]: FieldName<F> };
-}): CredentialType<Name, F> {
+}): CredentialType<Name, F> & {
+	/** The type for an action that takes the versions of `range`, e.g. `'>=1.1 <3'`. */
+	range(range: string): CredentialType<Name, F>;
+} {
 	// `Name` is `legacyName`, or `Id` without it. tsc cannot link the default, so a guard narrows.
 	const name: string = spec.legacyName ?? spec.id;
 	const isName = (value: string): value is Name => value === name;
 	if (!isName(name)) throw new UserError(`Credential ${spec.id}: no name`);
-	return checked({
+	const type = checked({
 		id: spec.id,
 		name,
-		semver: spec.version ?? '1.0.0',
+		semver: spec.version,
 		displayName: spec.displayName,
 		...(spec.docs ? { documentationUrl: spec.docs } : {}),
 		...(spec.fields ? { fields: spec.fields } : {}),
@@ -1147,6 +1150,7 @@ export function defineCredential<
 		...(spec.legacyParent ? { legacyParent: spec.legacyParent } : {}),
 		...(spec.renamed ? { renamed: spec.renamed } : {}),
 	});
+	return { ...type, range: (versionRange) => ({ ...type, versionRange }) };
 }
 
 /**

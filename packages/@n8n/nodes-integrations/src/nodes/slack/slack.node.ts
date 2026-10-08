@@ -18,6 +18,7 @@ import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 export const slackToken = defineCredential({
 	id: 'slack.token',
+	version: '1.0.0',
 	legacyName: 'slackApi',
 	displayName: 'Slack API',
 	docs: 'slack',

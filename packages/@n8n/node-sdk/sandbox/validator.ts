@@ -2,7 +2,7 @@
 // `src/validator.ts`, so ajv stays in the host. Each call is one `schema.validate` host call, so
 // a caller validates a whole page, not each item of it. The value crosses as JSON text, so give
 // only JSON values: `undefined` in a list becomes `null`, and a function or a BigInt can throw.
-import { validate as witValidate } from 'n8n:node-contract/schema@2.11.0';
+import { validate as witValidate } from 'n8n:node-contract/schema@2.12.0';
 
 import type { validate as hostValidate } from '../src/validator';
 

@@ -746,7 +746,7 @@ const demo = defineNode({
 	id: 'demo',
 	displayName: 'Demo',
 	credential: credential({
-		types: [defineCredential({ id: 'demo.token', legacyName: 'demoApi', displayName: 'Demo', fields: { server: str(), token: field.secret('Token') }, baseUrl: '{server}', auth: (a) => a.bearer('token') })],
+		types: [defineCredential({ id: 'demo.token', version: '1.0.0', legacyName: 'demoApi', displayName: 'Demo', fields: { server: str(), token: field.secret('Token') }, baseUrl: '{server}', auth: (a) => a.bearer('token') })],
 	}),
 });
 export const read = demo.action('read', {
@@ -983,10 +983,10 @@ describe('published versions', () => {
 				toVersionedNodeType([packedOf({ ...manifest, nodeContract }, bundle)], runtime);
 
 			expect(() => typeOf('3.0.0')).toThrow(
-				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.11.0.',
+				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.12.0.',
 			);
-			expect(() => typeOf('2.12.0')).toThrow('needs Node Contract 2.12.0');
-			expect(() => typeOf('2.11.0')).not.toThrow();
+			expect(() => typeOf('2.13.0')).toThrow('needs Node Contract 2.13.0');
+			expect(() => typeOf('2.12.0')).not.toThrow();
 			expect(() => typeOf('2.10.0')).not.toThrow();
 			expect(() => typeOf('2.8.0')).not.toThrow();
 			expect(() => typeOf('2.7.0')).not.toThrow();
@@ -999,7 +999,7 @@ describe('published versions', () => {
 			expect(() => typeOf('2.0.3')).not.toThrow();
 
 			expect(() => typeOf('1.0.0', hostRuntime({ nodeContractRange: '>=1.0.0 <3.0.0' }))).toThrow(
-				'needs Node Contract 1.0.0. This host runs >=1.0.0 <3.0.0 and implements 2.11.0.',
+				'needs Node Contract 1.0.0. This host runs >=1.0.0 <3.0.0 and implements 2.12.0.',
 			);
 			// The range also applies at run time, to a version the registry loader picks.
 			const picking = hostRuntime({
@@ -1052,9 +1052,9 @@ describe('published versions', () => {
 			expect(() => evaluateBundle(bundle, '3.0.0', runtime)).toThrow(
 				'This host cannot run Node Contract 3.0.0',
 			);
-			expect(() => evaluateBundle(bundle, '2.12.0', runtime)).toThrow('cannot run');
+			expect(() => evaluateBundle(bundle, '2.13.0', runtime)).toThrow('cannot run');
 			expect(() => evaluateBundle(bundle, '1.0.0', runtime)).toThrow(
-				'This host cannot run Node Contract 1.0.0. It implements 2.11.0.',
+				'This host cannot run Node Contract 1.0.0. It implements 2.12.0.',
 			);
 			expect(() => evaluateBundle(bundle, NODE_CONTRACT_VERSION)).toThrow(
 				'A packed action cannot import @n8n/node-sdk',

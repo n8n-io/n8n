@@ -19,6 +19,7 @@ export function googleOAuth2<
 }) {
 	return defineCredential({
 		id: spec.id,
+		version: '1.0.0',
 		legacyName: spec.legacyName,
 		displayName: spec.displayName,
 		docs: 'google/oauth-single-service',

@@ -1,4 +1,4 @@
-package n8n:node-contract@2.11.0;
+package n8n:node-contract@2.12.0;
 
 /// What the bundle of a `run` lookup exports. A lookup lists the resources that a user can
 /// pick, for example the channels of a workspace. A declarative lookup (a request and an item

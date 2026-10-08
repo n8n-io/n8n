@@ -40,6 +40,7 @@ const SECRET = 'key-secret-1';
 
 const acmeToken = defineCredential({
 	id: 'acme.token',
+	version: '1.0.0',
 	legacyName: 'acmeApi',
 	displayName: 'Acme API',
 	fields: { account: field.text('Account ID'), apiKey: field.secret('API Key') },

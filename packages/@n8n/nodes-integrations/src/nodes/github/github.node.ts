@@ -5,6 +5,7 @@ const DEFAULT_SERVER = 'https://api.github.com';
 
 export const githubToken = defineCredential({
 	id: 'github.token',
+	version: '1.0.0',
 	legacyName: 'githubApi',
 	displayName: 'GitHub API',
 	docs: 'github',

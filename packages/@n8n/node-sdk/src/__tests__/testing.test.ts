@@ -8,6 +8,7 @@ import { mockHttp, runAction, sendRequest } from '../testing';
 
 const todoApi = defineCredential({
 	id: 'todo.token',
+	version: '1.0.0',
 	legacyName: 'todoApi',
 	displayName: 'Todo API',
 	fields: { workspace: field.text('Workspace'), apiKey: field.secret('API Key') },
@@ -57,6 +58,7 @@ describe('credential types', () => {
 	it('project an API key to an n8n type with generic authentication', () => {
 		const keyed = defineCredential({
 			id: 'key.apiKey',
+			version: '1.0.0',
 			legacyName: 'keyApi',
 			displayName: 'Key API',
 			fields: { apiKey: field.secret('API Key') },
@@ -290,6 +292,7 @@ describe('sendRequest', () => {
 describe('runAction with an exchange credential', () => {
 	const sessionApi = defineCredential({
 		id: 'session.login',
+		version: '1.0.0',
 		legacyName: 'sessionApi',
 		displayName: 'Session API',
 		fields: {

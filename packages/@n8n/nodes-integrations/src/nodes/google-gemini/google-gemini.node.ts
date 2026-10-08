@@ -3,6 +3,7 @@ import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 export const geminiKey = defineCredential({
 	id: 'googleGemini.apiKey',
+	version: '1.0.0',
 	legacyName: 'googlePalmApi',
 	displayName: 'Google Gemini(PaLM) Api',
 	docs: 'google',

@@ -563,6 +563,7 @@ describe('credentialHostsOf', () => {
 	it('keeps allowedDomains when a custom signer builds new options', async () => {
 		const signed = defineCredential({
 			id: 'signed.custom',
+			version: '1.0.0',
 			legacyName: 'signedApi',
 			displayName: 'Signed API',
 			hosts: ['api.signed.test'],

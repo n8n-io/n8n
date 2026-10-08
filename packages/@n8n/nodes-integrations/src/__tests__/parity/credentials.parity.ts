@@ -73,6 +73,7 @@ const AnthropicApi = langchain('AnthropicApi');
 // Shape proofs: these three types are not ported, so they live here and not in a node folder.
 const zendeskToken = defineCredential({
 	id: 'zendesk.token',
+	version: '1.0.0',
 	legacyName: 'zendeskApi',
 	displayName: 'Zendesk API',
 	docs: 'zendesk',
@@ -91,6 +92,7 @@ const zendeskToken = defineCredential({
 
 const datadogApiKey = defineCredential({
 	id: 'datadog.apiKey',
+	version: '1.0.0',
 	legacyName: 'datadogApi',
 	displayName: 'Datadog API',
 	docs: 'datadog',
@@ -109,6 +111,7 @@ const datadogApiKey = defineCredential({
 
 const trelloApiKey = defineCredential({
 	id: 'trello.apiKey',
+	version: '1.0.0',
 	legacyName: 'trelloApi',
 	displayName: 'Trello API',
 	docs: 'trello',
@@ -130,6 +133,7 @@ const trelloApiKey = defineCredential({
 // The exchange port: no ported node uses an exchange type yet, so it lives here.
 const metabaseSession = defineCredential({
 	id: 'metabase.session',
+	version: '1.0.0',
 	legacyName: 'metabaseApi',
 	displayName: 'Metabase API',
 	docs: 'metabase',

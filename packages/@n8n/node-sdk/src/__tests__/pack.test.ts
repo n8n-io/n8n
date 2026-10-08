@@ -43,6 +43,7 @@ it('credentialTypesOf lists each credential type id once', () => {
 	const token = () =>
 		defineCredential({
 			id: 'probe.token',
+			version: '1.0.0',
 			displayName: 'Probe',
 			fields: { token: field.secret('Token') },
 			auth: (a) => a.apply({ headers: { Authorization: 'Bearer {token}' } }),
@@ -149,6 +150,48 @@ describe('packAction', () => {
 		expect(manifest.contract).not.toHaveProperty('ui');
 		await expect(pack("'x'", '', "ui: { order: 'value' },")).rejects.toThrow(
 			'has a ui block that is not valid',
+		);
+	});
+
+	it('pins each credential type at ^<version> or at its .range(), since Node Contract 2.12.0', async () => {
+		const header = `import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
+const token = defineCredential({ id: 'probe.token', version: '1.2.0', displayName: 'Probe', fields: { token: field.secret('Token') }, auth: (a) => a.bearer('token') });`;
+		const credentialOf = (types: string) => `credential: credential({ types: [${types}] }),`;
+		const packWith = async (types: string) => {
+			const entry = path.join(dirs.root, `${Math.random().toString(36).slice(2)}.ts`);
+			const source = probeSource("'x'", header).replace(
+				"displayName: 'Probe' }",
+				`displayName: 'Probe', ${credentialOf(types)} }`,
+			);
+			await writeFile(entry, source);
+			return (await packAction(entry, 'probeAction')).manifest;
+		};
+		expect(await packWith('token')).toMatchObject({
+			nodeContract: '2.12.0',
+			credentials: { 'probe.token': '^1.2.0' },
+		});
+		expect((await packWith("token.range('>=1.1 <3')")).credentials).toEqual({
+			'probe.token': '>=1.1 <3',
+		});
+		await expect(packWith("token.range('one')")).rejects.toThrow(
+			'The range one of the credential probe.token is not valid',
+		);
+		await expect(packWith('{ ...token, semver: undefined }')).rejects.toThrow(
+			'The credential probe.token has no version',
+		);
+	});
+
+	it('refuses to pack a credential type without a version', () => {
+		const token = defineCredential({
+			id: 'probe.token',
+			version: '1.0.0',
+			displayName: 'Probe',
+			fields: { token: field.secret('Token') },
+			auth: (a) => a.bearer('token'),
+		});
+		expect(packCredential(token)?.semver).toBe('1.0.0');
+		expect(() => packCredential({ ...token, semver: undefined })).toThrow(
+			'The credential probe.token has no version',
 		);
 	});
 
@@ -502,6 +545,7 @@ import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 const token = defineCredential({
 	id: 'demo.token',
+	version: '1.0.0',
 	displayName: 'Demo',
 	fields: { token: field.secret('Token') },
 	auth: (a) => a.none(),

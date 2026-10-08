@@ -1,6 +1,6 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"$id": "urn:n8n:node-contract:manifest@2.11.0",
+	"$id": "urn:n8n:node-contract:manifest@2.12.0",
 	"title": "n8n Node Contract manifest",
 	"description": "Generated from src/manifest.ts by scripts/spec.ts. Do not edit. `x-n8n-since` is the Node Contract version that added a field. The `contract.input` and `contract.output` schemas follow the contract format of the SDK.",
 	"oneOf": [
@@ -50,12 +50,24 @@
 					"x-n8n-since": "2.5.0"
 				},
 				"credentials": {
-					"type": "array",
-					"items": {
-						"type": "string",
-						"pattern": "^[^.@]+\\.[^.@]+@\\d+$"
-					},
-					"description": "`<id>@<major>` of each credential type with a credential manifest.",
+					"anyOf": [
+						{
+							"type": "object",
+							"additionalProperties": {
+								"type": "string"
+							},
+							"description": "The semver range of each credential type with a credential manifest, by id.",
+							"x-n8n-since": "2.12.0"
+						},
+						{
+							"type": "array",
+							"items": {
+								"type": "string",
+								"pattern": "^[^.@]+\\.[^.@]+@\\d+$"
+							},
+							"description": "`<id>@<major>` of each credential type with a credential manifest."
+						}
+					],
 					"x-n8n-since": "2.5.0"
 				},
 				"errorOf": {
@@ -1135,12 +1147,24 @@
 					"pattern": "^\\d+\\.\\d+\\.\\d+$"
 				},
 				"credentials": {
-					"type": "array",
-					"items": {
-						"type": "string",
-						"pattern": "^[^.@]+\\.[^.@]+@\\d+$"
-					},
-					"description": "`<id>@<major>` of each credential type with a credential manifest."
+					"anyOf": [
+						{
+							"type": "object",
+							"additionalProperties": {
+								"type": "string"
+							},
+							"description": "The semver range of each credential type with a credential manifest, by id.",
+							"x-n8n-since": "2.12.0"
+						},
+						{
+							"type": "array",
+							"items": {
+								"type": "string",
+								"pattern": "^[^.@]+\\.[^.@]+@\\d+$"
+							},
+							"description": "`<id>@<major>` of each credential type with a credential manifest."
+						}
+					]
 				},
 				"contractHash": {
 					"type": "string",

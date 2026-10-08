@@ -4,6 +4,7 @@ const baseUrl = 'https://api.notion.com/v1';
 
 export const notionToken = defineCredential({
 	id: 'notion.token',
+	version: '1.0.0',
 	legacyName: 'notionApi',
 	displayName: 'Notion API',
 	docs: 'notion',
@@ -15,6 +16,7 @@ export const notionToken = defineCredential({
 
 export const notionOAuth2 = defineCredential({
 	id: 'notion.oauth2',
+	version: '1.0.0',
 	legacyName: 'notionOAuth2Api',
 	displayName: 'Notion OAuth2 API',
 	docs: 'notion',

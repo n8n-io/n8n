@@ -227,8 +227,16 @@ describe('bundled versions', () => {
 		const versions = Object.fromEntries(
 			packed.manifests.map(({ id, nodeContract }) => [id, nodeContract]),
 		);
-		// Each bundle imports the SDK runtime from the host, which has it since 2.11.0.
-		expect(versions).toEqual(Object.fromEntries(source.contracts.map(({ id }) => [id, '2.11.0'])));
+		// Each bundle imports the SDK runtime from the host, which has it since 2.11.0. A version
+		// that pins a credential range needs 2.12.0.
+		const pinning = new Set(
+			packed.manifests.flatMap(({ id, credentials }) => (credentials ? [id] : [])),
+		);
+		expect(versions).toEqual(
+			Object.fromEntries(
+				source.contracts.map(({ id }) => [id, pinning.has(id) ? '2.12.0' : '2.11.0']),
+			),
+		);
 	});
 
 	describe('match spec/manifest.schema.json of node-sdk', () => {
@@ -282,19 +290,21 @@ describe('bundled versions', () => {
 		});
 	});
 
-	it('record the kind and the credential major of each version', () => {
+	it('record the kind and the credential ranges of each version', () => {
 		const byId = new Map(packed.manifests.map((manifest) => [manifest.id, manifest]));
 		expect(byId.get('slack.message.send')).toMatchObject({
 			kind: 'action',
-			credentials: ['slack.token@1'],
+			credentials: { 'slack.token': '^1.0.0' },
 		});
 		expect(byId.get('openAi.chatModel')).toMatchObject({ kind: 'provider' });
 		expect(source.triggers.map(({ id }) => byId.get(id)?.kind)).toEqual(
 			source.triggers.map(() => 'trigger'),
 		);
-		expect(byId.get('gmail.message.send')).toMatchObject({ credentials: ['gmail.oauth2@1'] });
+		expect(byId.get('gmail.message.send')).toMatchObject({
+			credentials: { 'gmail.oauth2': '^1.0.0' },
+		});
 		// A compat credential type has no credential manifest, so no pin.
-		expect(byId.get('github.issue.getAll')?.credentials).toEqual(['github.token@1']);
+		expect(byId.get('github.issue.getAll')?.credentials).toEqual({ 'github.token': '^1.0.0' });
 	});
 
 	it('keep the contract hash of each action whose form stores a widget value', () => {
@@ -328,7 +338,7 @@ describe('bundled versions', () => {
 
 	it('pin only credential manifests that the embedded store holds', () => {
 		const pinning = [...packed.manifests, ...packed.natives];
-		expect(pinning.filter(({ credentials }) => credentials?.length).length).toBeGreaterThan(40);
+		expect(pinning.filter(({ credentials }) => credentials).length).toBeGreaterThan(40);
 		expect(
 			pinning.flatMap((manifest) =>
 				unresolvedCredentialPinsOf(manifest, packed.credentials).map(

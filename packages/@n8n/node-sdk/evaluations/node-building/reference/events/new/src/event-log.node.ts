@@ -8,6 +8,7 @@ export const node = defineNode({
 		types: [
 			defineCredential({
 				id: 'eventLog.apiKey',
+				version: '1.0.0',
 				legacyName: 'eventLogApi',
 				displayName: 'Event Log API',
 				fields: { apiKey: field.secret('API Key') },
