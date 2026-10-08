@@ -1,3 +1,11 @@
+## [2.42.5](https://github.com/n8n-io/n8n/compare/n8n@2.42.4...n8n@2.42.5) (2026-10-08)
+
+
+### Bug Fixes
+
+* **editor:** Show the Agent artifact while the builder creates it ([#40551](https://github.com/n8n-io/n8n/issues/40551)) ([e825e75](https://github.com/n8n-io/n8n/commit/e825e75840cb65f6f9814b8e3848230bdfaa1130))
+
+
 ## [2.42.4](https://github.com/n8n-io/n8n/compare/n8n@2.42.3...n8n@2.42.4) (2026-10-07)
 
 
