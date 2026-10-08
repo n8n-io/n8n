@@ -193,6 +193,38 @@ const agentPublish = {
 };
 
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
+	AGENT_TEAMS_SETUP_STEP: {
+		name: 'Agent Teams setup step',
+		description:
+			"One step of the recommended Microsoft Teams setup finished or failed. Tells us which rung of the bot ladder people actually land on, which is the question the ladder exists to answer: n8n can only create the bot when the tenant has an Azure subscription, and a Microsoft 365 tenant does not come with one. `outcome: 'failed'` carries a `reason` naming the wall that was hit, never the message.",
+		properties: z.object({
+			agent_id: z.string(),
+			project_id: z.string(),
+			user_id: z.string(),
+			step: z
+				.enum(['connect', 'create_app', 'create_bot', 'availability', 'install'])
+				.describe('Which step of the recommended setup this reports'),
+			outcome: z.enum(['succeeded', 'failed']),
+			bot_route: z
+				.enum(['provisioned', 'manual'])
+				.optional()
+				.describe(
+					"Only on the bot step. 'provisioned' means n8n created it through Azure; 'manual' means the user was sent to make it themselves.",
+				),
+			install_route: z
+				.enum(['published', 'submitted', 'upload'])
+				.optional()
+				.describe(
+					"Only on the install step. 'submitted' means the account could not publish directly and the app went in for review.",
+				),
+			reason: z
+				.string()
+				.optional()
+				.describe(
+					'A fixed code for why the step failed, such as blocked_by_policy or cannot_register_apps. Never a message, which could carry tenant detail.',
+				),
+		}),
+	},
 	USER_RESPONDED_TO_AGENT_TOOL_APPROVAL: {
 		name: 'User responded to agent tool approval',
 		description:
