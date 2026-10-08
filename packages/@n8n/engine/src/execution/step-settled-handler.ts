@@ -120,26 +120,18 @@ export class StepSettledHandler {
 			execution.id,
 			decisionKeys(execution.graph, loops, step, terminalIterations),
 		);
-		const { toQueue, toSkip } = decideSuccessors(
+		const { toRun, toSeed, toSkip } = decideSuccessors(
 			execution.graph,
 			loops,
 			step,
 			steps,
 			terminalIterations,
 		);
-		if (toQueue.length === 0 && toSkip.length === 0) return 0;
+		if (toRun.length === 0 && toSeed.length === 0 && toSkip.length === 0) return 0;
 
-		// A seeded node settles the moment the run reaches it: its row is created
-		// completed, with the outputs the caller supplied for that pass, and
-		// announced as settled like a skip. Planned here rather than at start, so
-		// its successors see every ancestor settled first, as they would had it
-		// run. A seeded node whose inputs are all dead is skipped like any other:
-		// the outputs stand in for a run, and there would have been none.
-		const seededIds = new Set(
-			execution.graph.nodes.filter((node) => node.seeded).map((node) => node.id),
-		);
-		const toRun = toQueue.filter((key) => !seededIds.has(key.nodeId));
-		const toSeed = toQueue.filter((key) => seededIds.has(key.nodeId));
+		// Seeded steps had their outputs passed in at execution start, so we just
+		// write them to the step store and announce completion rather than
+		// enqueueing them to run.
 		const seededOutputs = await this.executionStore.loadSeededOutputs(execution.id, toSeed);
 
 		// One batch, so a settlement's consequence lands atomically and a fan-out
