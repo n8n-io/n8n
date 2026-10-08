@@ -87,10 +87,10 @@ async function consumeStream(
 			signal: options.signal,
 			logger: options.logger,
 			onActivity: options.onActivity,
-			onTextDelta: () => {
+			onResponseChunk: () => {
 				if (firstResponseRecorded) return;
 				firstResponseRecorded = true;
-				// Not awaited: the span must not delay the first token for the user.
+				// Not awaited: the span must not delay the first chunk for the user.
 				void emitBuilderMetric(undefined, 'first_response', { success: true, phase });
 			},
 			stopSignal: options.stopSignal,

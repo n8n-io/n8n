@@ -32,7 +32,7 @@ import { createBuildAgentTool } from '../build-agent.tool';
 import type { BuilderRequiredArtifact } from '../builder-required-artifact';
 
 vi.mock('../agent-build-metrics', () => ({
-	emitAgentBuildMetrics: vi.fn(async () => await Promise.resolve()),
+	emitAgentBuildMetrics: vi.fn(),
 	withAgentStreamMetrics: vi.fn((_context: unknown, turn: unknown) => turn),
 }));
 
@@ -605,6 +605,9 @@ describe('build-agent tool', () => {
 				'cancelled',
 			);
 			expect(delegate.resolveAgentName).not.toHaveBeenCalled();
+			expect(emitAgentBuildMetrics).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'agent-1', outcome: 'cancelled', configUpdated: false }),
+			);
 			const completed = publishedEvents.find((event) => event.type === 'agent-completed');
 			expect(completed && 'payload' in completed ? completed.payload : undefined).toEqual({
 				role: 'agent-builder',
@@ -2073,7 +2076,7 @@ describe('build-agent tool', () => {
 			expect(payload).toMatchObject({ builderCheckpoint: { configUpdated: true } });
 		});
 
-		it('records the user wait time on the resumed pass and stamps the next suspension', async () => {
+		it('records no pass for a re-suspension and stamps the next suspension', async () => {
 			vi.useFakeTimers({ now: 100_000 });
 			try {
 				const { context, delegate } = makeContext();
@@ -2102,13 +2105,8 @@ describe('build-agent tool', () => {
 					},
 				);
 
-				expect(emitAgentBuildMetrics).toHaveBeenCalledWith(
-					expect.objectContaining({
-						outcome: 'suspended',
-						configUpdated: true,
-						userWaitMs: 30_000,
-					}),
-				);
+				// A suspended pass reports its result after the resume, like `workflow_build`.
+				expect(emitAgentBuildMetrics).not.toHaveBeenCalled();
 				const payload = suspend.mock.calls[0][0] as { builderCheckpoint: Record<string, unknown> };
 				expect(payload.builderCheckpoint).toMatchObject({ suspendedAt: 100_000 });
 				expect(payload.builderCheckpoint).not.toHaveProperty('userWaitMs');

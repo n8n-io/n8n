@@ -340,9 +340,9 @@ describe('executeResumableStream', () => {
 		expect(onActivity).toHaveBeenCalledTimes(2);
 	});
 
-	it('calls onTextDelta only for text deltas', async () => {
+	it('calls onResponseChunk for text, reasoning and tool starts, before publishing', async () => {
 		const eventBus = createEventBus();
-		const onTextDelta = vi.fn(() => {
+		const onResponseChunk = vi.fn(() => {
 			expect(eventBus.publish).not.toHaveBeenCalledWith(
 				'thread-1',
 				expect.objectContaining({ type: 'text-delta' }),
@@ -353,7 +353,12 @@ describe('executeResumableStream', () => {
 			agent: {},
 			stream: {
 				runId: 'agent-run-1',
-				fullStream: fromChunks([{ type: 'reasoning-delta', delta: 'Thinking' }, textChunk('Hi')]),
+				fullStream: fromChunks([
+					{ type: 'start-step' },
+					{ type: 'reasoning-delta', delta: 'Thinking' },
+					{ type: 'tool-input-start', toolCallId: 'call-1', toolName: 'list_workflows' },
+					textChunk('Hi'),
+				]),
 			},
 			context: {
 				threadId: 'thread-1',
@@ -362,12 +367,12 @@ describe('executeResumableStream', () => {
 				eventBus,
 				signal: new AbortController().signal,
 				logger: createLogger(),
-				onTextDelta,
+				onResponseChunk,
 			},
 			control: { mode: 'manual' },
 		});
 
-		expect(onTextDelta).toHaveBeenCalledTimes(1);
+		expect(onResponseChunk).toHaveBeenCalledTimes(3);
 	});
 
 	it('assigns stable response IDs from native start-step chunks', async () => {

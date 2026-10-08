@@ -541,8 +541,9 @@ async function runBuilderConsumeLoop(params: {
 		dedupeBase,
 	} = params;
 
-	const recordPass = async (outcome: AgentBuildOutcome, configUpdated: boolean) =>
-		await emitAgentBuildMetrics({
+	// Detached: the metric never delays the tool result or a cancel.
+	const recordPass = (outcome: AgentBuildOutcome, configUpdated: boolean) =>
+		emitAgentBuildMetrics({
 			context,
 			delegate,
 			agentId: target.agentId,
@@ -567,7 +568,7 @@ async function runBuilderConsumeLoop(params: {
 				...(target.name ? { name: target.name } : {}),
 			});
 		}
-		await recordPass(output.ok ? 'completed' : 'failed', output.configUpdated === true);
+		recordPass(output.ok ? 'completed' : 'failed', output.configUpdated === true);
 		return { ...output, agentChange };
 	};
 
@@ -617,7 +618,7 @@ async function runBuilderConsumeLoop(params: {
 				...targetIdentity(target),
 			});
 		}
-		await recordPass('failed', carriedConfigUpdated);
+		recordPass('failed', carriedConfigUpdated);
 		throw error;
 	}
 
@@ -632,6 +633,7 @@ async function runBuilderConsumeLoop(params: {
 		publishAgentBuilderCancelled(context, builderAgentId);
 		await failTraceRun(context, traceRun, cancelled);
 		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
+		recordPass('cancelled', carriedConfigUpdated || didUpdateConfig(result.workSummary));
 		throw cancelled;
 	}
 
@@ -719,7 +721,7 @@ async function runBuilderConsumeLoop(params: {
 		result.usage?.usage ?? [],
 		'suspended',
 	);
-	await recordPass('suspended', configUpdatedSoFar);
+	// No `agent_build` for a suspended pass: the resumed pass records the result.
 	return await ctx.suspend({
 		...parsedSuspendPayload.data,
 		requestId: nanoid(),

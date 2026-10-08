@@ -1127,6 +1127,34 @@ function isLiveTraceHandle(
 }
 
 /** Whether {@link emitTraceOnlyChildRun} would export a run, so callers can skip costly payloads. */
+function trackBackgroundOperation(
+	runtime: ProductOtelTraceRuntime,
+	operation: Promise<unknown>,
+): void {
+	if (runtime.shutdown) return;
+	runtime.backgroundOperations.add(operation);
+	void operation
+		.catch(() => undefined)
+		.finally(() => runtime.backgroundOperations.delete(operation));
+}
+
+/**
+ * Keep the trace that `emitTraceOnlyChildRun` would export to open until
+ * `operation` settles, so detached work can still record its child run.
+ * Prefers the ambient trace for the same reason `emitTraceOnlyChildRun` does.
+ */
+export function keepTraceOpenUntilSettled(
+	fallbackTracing: InstanceAiTraceContext | undefined,
+	operation: Promise<unknown>,
+): void {
+	const currentTrace = getCurrentProductTrace();
+	if (currentTrace) {
+		trackBackgroundOperation(currentTrace.runtime, operation);
+		return;
+	}
+	if (isLiveTraceHandle(fallbackTracing)) fallbackTracing.keepOpenUntilSettled?.(operation);
+}
+
 export function canEmitTraceOnlyChildRun(fallbackTracing: InstanceAiTraceContext | undefined) {
 	const currentTrace = getCurrentProductTrace();
 	return (
@@ -1373,13 +1401,7 @@ function createTraceContext(
 		finishRun,
 		failRun,
 		onMemoryTaskEvent,
-		keepOpenUntilSettled: (operation) => {
-			if (otelRuntime.shutdown) return;
-			otelRuntime.backgroundOperations.add(operation);
-			void operation
-				.catch(() => undefined)
-				.finally(() => otelRuntime.backgroundOperations.delete(operation));
-		},
+		keepOpenUntilSettled: (operation) => trackBackgroundOperation(otelRuntime, operation),
 		...(telemetryFactory ? { getTelemetry: telemetryFactory } : {}),
 		wrapTools: (tools, traceOptions) => {
 			if (ctx.replayMode === 'replay' && ctx.traceIndex && ctx.idRemapper) {

@@ -2,7 +2,11 @@ import { AGENT_BUILDER_TEST_TOOL_NAME, type InstanceAiAgentActivity } from '@n8n
 import { z } from 'zod';
 
 import { hasConfigMutationMarker } from '../../stream/work-summary-accumulator';
-import { canEmitBuilderMetric, emitBuilderMetric } from '../../tracing/builder-metric-event';
+import {
+	canEmitBuilderMetric,
+	detachBuilderMetricWork,
+	emitBuilderMetric,
+} from '../../tracing/builder-metric-event';
 import type {
 	AgentValidationSummary,
 	BuilderTurnStream,
@@ -10,8 +14,12 @@ import type {
 	OrchestrationContext,
 } from '../../types';
 
-/** `suspended`: the pass stopped for user input and the build continues after the resume. */
-export type AgentBuildOutcome = 'completed' | 'failed' | 'suspended';
+/**
+ * A pass that suspends for user input is not recorded: like a suspended
+ * `workflow_build`, it reports its real result after the resume.
+ * `cancelled`: the user stopped the run before the pass settled.
+ */
+export type AgentBuildOutcome = 'completed' | 'failed' | 'cancelled';
 
 /** Same `operation` values as the `workflow_build` metric, so one query can group both. */
 function toBuildOperation(activity: InstanceAiAgentActivity): 'create' | 'update' {
@@ -20,10 +28,12 @@ function toBuildOperation(activity: InstanceAiAgentActivity): 'create' | 'update
 
 /**
  * Records the outcome of one builder pass (`agent_build`). After a pass that
- * settled and changed the config, it also records whether the agent now passes
+ * completed and changed the config, it also records whether the agent now passes
  * the Publish validation with at least one capability (`agent_verification`).
+ * All of it runs detached: a metric must not delay the tool result or a cancel,
+ * and the trace stays open until the work settles so the spans still export.
  */
-export async function emitAgentBuildMetrics(args: {
+export function emitAgentBuildMetrics(args: {
 	context: OrchestrationContext;
 	delegate: InstanceAiBuilderDelegate;
 	agentId: string;
@@ -32,42 +42,44 @@ export async function emitAgentBuildMetrics(args: {
 	configUpdated: boolean;
 	/** Time the user took to answer the suspension that this pass resumes. */
 	userWaitMs?: number;
-}): Promise<void> {
+}): void {
 	const { context, delegate, agentId, activity, outcome, configUpdated, userWaitMs } = args;
+	// No trace, no work: the validation costs a draft read and credential checks.
+	if (!canEmitBuilderMetric(context.tracing)) return;
 	const operation = toBuildOperation(activity);
 
-	await emitBuilderMetric(context.tracing, 'agent_build', {
-		success: outcome !== 'failed',
-		outcome,
-		agent_id: agentId,
-		operation,
-		activity,
-		config_updated: configUpdated,
-		user_wait_ms: userWaitMs,
-	});
+	detachBuilderMetricWork(context.tracing, async () => {
+		await emitBuilderMetric(context.tracing, 'agent_build', {
+			success: outcome === 'completed',
+			outcome,
+			agent_id: agentId,
+			operation,
+			activity,
+			config_updated: configUpdated,
+			user_wait_ms: userWaitMs,
+		});
 
-	// No trace, no validation: it costs a draft read and credential checks.
-	// A suspended pass is not finished, so its draft is not validated yet.
-	if (!canEmitBuilderMetric(context.tracing) || !configUpdated || outcome === 'suspended') return;
-	let validation: AgentValidationSummary | undefined;
-	try {
-		validation = await delegate.validateAgent?.(agentId);
-	} catch (error) {
-		context.logger.debug(
-			`[agent-build-metrics] validation for ${agentId} failed: ${error instanceof Error ? error.message : String(error)}`,
-		);
-		return;
-	}
-	if (!validation) return;
-	await emitBuilderMetric(context.tracing, 'agent_verification', {
-		success: validation.valid && validation.capabilityCount > 0,
-		valid: validation.valid,
-		issue_codes: validation.issueCodes.join(','),
-		issue_count: validation.issueCount,
-		capability_count: validation.capabilityCount,
-		agent_id: agentId,
-		operation,
-		activity,
+		if (!configUpdated || outcome !== 'completed') return;
+		let validation: AgentValidationSummary | undefined;
+		try {
+			validation = await delegate.validateAgent?.(agentId);
+		} catch (error) {
+			context.logger.debug(
+				`[agent-build-metrics] validation for ${agentId} failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			return;
+		}
+		if (!validation) return;
+		await emitBuilderMetric(context.tracing, 'agent_verification', {
+			success: validation.valid && validation.capabilityCount > 0,
+			valid: validation.valid,
+			issue_codes: validation.issueCodes.join(','),
+			issue_count: validation.issueCount,
+			capability_count: validation.capabilityCount,
+			agent_id: agentId,
+			operation,
+			activity,
+		});
 	});
 }
 

@@ -10,10 +10,20 @@ import type {
 } from '../../../types';
 import { emitAgentBuildMetrics, withAgentStreamMetrics } from '../agent-build-metrics';
 
+const detached: Array<Promise<void>> = [];
+
 vi.mock('../../../tracing/builder-metric-event', () => ({
 	emitBuilderMetric: vi.fn(async () => await Promise.resolve()),
 	canEmitBuilderMetric: vi.fn((tracing: unknown) => tracing !== undefined),
+	detachBuilderMetricWork: vi.fn((_tracing: unknown, work: () => Promise<void>) => {
+		detached.push(work().catch(() => undefined));
+	}),
 }));
+
+/** Settle the work that `emitAgentBuildMetrics` ran detached from the caller. */
+async function flushDetached(): Promise<void> {
+	await Promise.all(detached.splice(0));
+}
 
 const tracing = {} as InstanceAiTraceContext;
 
@@ -58,7 +68,7 @@ describe('emitAgentBuildMetrics', () => {
 			capabilityCount: 2,
 		});
 
-		await emitAgentBuildMetrics({
+		emitAgentBuildMetrics({
 			context: makeContext(),
 			delegate,
 			agentId: 'agent-1',
@@ -67,6 +77,8 @@ describe('emitAgentBuildMetrics', () => {
 			configUpdated: true,
 			userWaitMs: 1200,
 		});
+
+		await flushDetached();
 
 		expect(emitBuilderMetric).toHaveBeenCalledWith(tracing, 'agent_build', {
 			success: true,
@@ -101,7 +113,7 @@ describe('emitAgentBuildMetrics', () => {
 			capabilityCount,
 		});
 
-		await emitAgentBuildMetrics({
+		emitAgentBuildMetrics({
 			context: makeContext(),
 			delegate,
 			agentId: 'agent-1',
@@ -109,6 +121,7 @@ describe('emitAgentBuildMetrics', () => {
 			outcome: 'completed',
 			configUpdated: true,
 		});
+		await flushDetached();
 
 		expect(vi.mocked(emitBuilderMetric).mock.calls[0][2].user_wait_ms).toBeUndefined();
 		expect(emitBuilderMetric).toHaveBeenCalledWith(
@@ -124,40 +137,52 @@ describe('emitAgentBuildMetrics', () => {
 	});
 
 	it.each([
-		{
-			name: 'the config did not change',
-			configUpdated: false,
-			withTracing: true,
-			outcome: 'failed',
-		},
-		{ name: 'the pass has no trace', configUpdated: true, withTracing: false, outcome: 'failed' },
-		{ name: 'the pass suspended', configUpdated: true, withTracing: true, outcome: 'suspended' },
-	] as const)('skips validation when $name', async ({ configUpdated, withTracing, outcome }) => {
+		{ name: 'the config did not change', configUpdated: false, outcome: 'failed' },
+		{ name: 'the pass was cancelled', configUpdated: true, outcome: 'cancelled' },
+	] as const)('skips validation when $name', async ({ configUpdated, outcome }) => {
 		const { delegate, validateAgent } = makeDelegate();
 
-		await emitAgentBuildMetrics({
-			context: makeContext(withTracing),
+		emitAgentBuildMetrics({
+			context: makeContext(),
 			delegate,
 			agentId: 'agent-1',
 			activity: 'editing',
 			outcome,
 			configUpdated,
 		});
+		await flushDetached();
 
 		expect(validateAgent).not.toHaveBeenCalled();
 		expect(emitBuilderMetric).toHaveBeenCalledTimes(1);
 		expect(emitBuilderMetric).toHaveBeenCalledWith(
-			withTracing ? tracing : undefined,
+			tracing,
 			'agent_build',
-			expect.objectContaining({ success: outcome === 'suspended', outcome }),
+			expect.objectContaining({ success: false, outcome }),
 		);
+	});
+
+	it('does nothing when the pass has no trace', async () => {
+		const { delegate, validateAgent } = makeDelegate();
+
+		emitAgentBuildMetrics({
+			context: makeContext(false),
+			delegate,
+			agentId: 'agent-1',
+			activity: 'editing',
+			outcome: 'completed',
+			configUpdated: true,
+		});
+		await flushDetached();
+
+		expect(validateAgent).not.toHaveBeenCalled();
+		expect(emitBuilderMetric).not.toHaveBeenCalled();
 	});
 
 	it('records no verification when the agent no longer exists', async () => {
 		const { delegate, validateAgent } = makeDelegate();
 		validateAgent.mockResolvedValue(undefined);
 
-		await emitAgentBuildMetrics({
+		emitAgentBuildMetrics({
 			context: makeContext(),
 			delegate,
 			agentId: 'agent-1',
@@ -165,6 +190,7 @@ describe('emitAgentBuildMetrics', () => {
 			outcome: 'completed',
 			configUpdated: true,
 		});
+		await flushDetached();
 
 		expect(validateAgent).toHaveBeenCalledWith('agent-1');
 		expect(emitBuilderMetric).toHaveBeenCalledTimes(1);
@@ -175,7 +201,7 @@ describe('emitAgentBuildMetrics', () => {
 		const { delegate, validateAgent } = makeDelegate();
 		validateAgent.mockRejectedValue(new Error('db down'));
 
-		await emitAgentBuildMetrics({
+		emitAgentBuildMetrics({
 			context: makeContext(),
 			delegate,
 			agentId: 'agent-1',
@@ -183,6 +209,7 @@ describe('emitAgentBuildMetrics', () => {
 			outcome: 'completed',
 			configUpdated: true,
 		});
+		await flushDetached();
 
 		expect(emitBuilderMetric).toHaveBeenCalledTimes(1);
 		expect(emitBuilderMetric).toHaveBeenCalledWith(tracing, 'agent_build', expect.anything());

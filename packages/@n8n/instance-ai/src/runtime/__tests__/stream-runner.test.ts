@@ -285,14 +285,14 @@ describe('streamAgentRun', () => {
 		await expect(source.text).resolves.toBe('All good');
 	});
 
-	it('records first_response once, on the first text delta', async () => {
+	it('records first_response once, on the first response chunk', async () => {
 		const mockedExecuteResumableStream = vi.mocked(executeResumableStream);
 		mockedExecuteResumableStream.mockClear();
 		vi.mocked(emitBuilderMetric).mockClear();
 		mockedExecuteResumableStream.mockImplementation(async ({ context }) => {
 			expect(emitBuilderMetric).not.toHaveBeenCalled();
-			context.onTextDelta?.();
-			context.onTextDelta?.();
+			context.onResponseChunk?.();
+			context.onResponseChunk?.();
 			return { status: 'completed', agentRunId: 'agent-run-1', workSummary: emptyWorkSummary };
 		});
 		const agent = {

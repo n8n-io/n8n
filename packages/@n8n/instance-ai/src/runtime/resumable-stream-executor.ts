@@ -18,6 +18,13 @@ import type { SuspensionInfo } from '../utils/stream-helpers';
 
 type ConfirmationRequestEvent = Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 
+/** Event types that show the user the agent has started to respond. */
+const RESPONSE_CHUNK_TYPES: ReadonlyArray<InstanceAiEvent['type']> = [
+	'text-delta',
+	'reasoning-delta',
+	'tool-input-start',
+];
+
 export interface ResumableStreamSource {
 	runId?: string;
 	fullStream: AsyncIterable<unknown>;
@@ -38,8 +45,8 @@ export interface ResumableStreamContext {
 	signal: AbortSignal;
 	logger: Logger;
 	onActivity?: () => void;
-	/** Called for each text delta, just before its event is published. */
-	onTextDelta?: () => void;
+	/** Called for each response chunk (text, reasoning, tool start), just before its event is published. */
+	onResponseChunk?: () => void;
 	/** Stop consuming after the current chunk has been mapped and published. */
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
 }
@@ -436,7 +443,11 @@ async function consumeStreamPass(args: {
 		if ((mappedEvent && !isDeltaChunk) || isFinishStep) syntheticSegmentId = undefined;
 
 		const events = mappedEvent ? [mappedEvent] : [];
-		if (mappedEvent?.type === 'text-delta') options.context.onTextDelta?.();
+		// The first thing the user sees the agent do: answer text, visible reasoning
+		// or the start of a tool call.
+		if (mappedEvent && RESPONSE_CHUNK_TYPES.includes(mappedEvent.type)) {
+			options.context.onResponseChunk?.();
+		}
 
 		const published = publishEvents(events, {
 			suspension,

@@ -5,7 +5,11 @@
  * `thread_id`, `run_id` and `model_id` from its parent span.
  */
 
-import { canEmitTraceOnlyChildRun, emitTraceOnlyChildRun } from './langsmith-tracing';
+import {
+	canEmitTraceOnlyChildRun,
+	emitTraceOnlyChildRun,
+	keepTraceOpenUntilSettled,
+} from './langsmith-tracing';
 import type { InstanceAiTraceContext } from '../types';
 
 export const BUILDER_METRIC_TAG = 'builder-metric';
@@ -27,6 +31,18 @@ export type BuilderMetricFields = { success: boolean } & Record<string, BuilderM
 /** Whether a builder metric would be exported. Use it to skip work that only feeds a metric. */
 export function canEmitBuilderMetric(tracing: InstanceAiTraceContext | undefined): boolean {
 	return canEmitTraceOnlyChildRun(tracing);
+}
+
+/**
+ * Run work that only feeds a builder metric without blocking the caller. The
+ * trace stays open until the work settles, so the metric still exports.
+ */
+export function detachBuilderMetricWork(
+	tracing: InstanceAiTraceContext | undefined,
+	work: () => Promise<void>,
+): void {
+	const operation = work().catch(() => undefined);
+	keepTraceOpenUntilSettled(tracing, operation);
 }
 
 export async function emitBuilderMetric(
