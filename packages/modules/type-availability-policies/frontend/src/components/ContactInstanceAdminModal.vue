@@ -59,7 +59,6 @@ function mailtoHref(email: string): string {
 		:header="i18n.baseText('typeAvailabilityPolicies.contactAdmin.title')"
 		:description="description"
 		size="medium"
-		stacked
 		data-test-id="contact-instance-admin-modal"
 	>
 		<N8nLoading v-if="isLoading" :rows="2" variant="p" :class="$style.body" />

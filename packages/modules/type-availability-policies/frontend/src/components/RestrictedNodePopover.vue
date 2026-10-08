@@ -2,27 +2,20 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { unrefElement, useActiveElement, useElementHover, type MaybeElement } from '@vueuse/core';
-import { computed, ref, watch } from 'vue';
+import { unrefElement, useElementHover, useFocusWithin, type MaybeElement } from '@vueuse/core';
+import { computed, ref } from 'vue';
 
-import { useExclusiveOpen } from '../composables/useExclusiveOpen';
 import { SCOPE_LABEL_KEY } from '../type-availability-policies.constants';
 import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
 
-const props = withDefaults(
-	defineProps<{
-		nodeTypeName: string;
-		scope?: NodeTypeAvailabilityScope;
-		/** The list row the popover explains. It opens beside this element, not beside the lock. */
-		anchor?: MaybeElement;
-		/** Keyboard-active without DOM focus, such as a virtual list selection. */
-		active?: boolean;
-		side?: 'top' | 'right' | 'bottom' | 'left';
-		align?: 'start' | 'center' | 'end';
-		sideOffset?: number;
-	}>(),
-	{ scope: undefined, anchor: undefined, side: 'left', align: 'center', sideOffset: 24 },
-);
+const props = defineProps<{
+	nodeTypeName: string;
+	scope?: NodeTypeAvailabilityScope;
+	/** The list row the popover explains. It opens beside this element, not beside the lock. */
+	anchor?: MaybeElement;
+	/** Keyboard-active without DOM focus, such as a virtual list selection. */
+	active?: boolean;
+}>();
 
 /** Leaving waits this long before closing, so the pointer can cross the gap to the popover. */
 const HOVER_GRACE_MS = 200;
@@ -33,18 +26,12 @@ const anchorElement = computed(() => unrefElement(props.anchor) ?? undefined);
 const contentRef = ref<HTMLElement | null>(null);
 const anchorHovered = useElementHover(anchorElement, { delayLeave: HOVER_GRACE_MS });
 const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS });
-watch(contentRef, (content) => {
-	if (!content) contentHovered.value = false;
-});
 const isContactAdminOpen = ref(false);
-const activeElement = useActiveElement();
-const anchorFocused = computed(() =>
-	Boolean(anchorElement.value?.contains(activeElement.value ?? null)),
-);
-const contentFocused = computed(() =>
-	Boolean(contentRef.value?.contains(activeElement.value ?? null)),
-);
-const wantsOpen = computed(
+// Content is teleported, so focus in it is outside the anchor.
+// Close for the contact-admin dialog, which this would otherwise cover.
+const { focused: anchorFocused } = useFocusWithin(anchorElement);
+const { focused: contentFocused } = useFocusWithin(contentRef);
+const open = computed(
 	() =>
 		!isContactAdminOpen.value &&
 		(anchorHovered.value ||
@@ -53,7 +40,6 @@ const wantsOpen = computed(
 			contentFocused.value ||
 			props.active),
 );
-const open = useExclusiveOpen(wantsOpen);
 
 const scopeKey = computed<BaseTextKey>(
 	() =>
@@ -67,9 +53,9 @@ const scopeKey = computed<BaseTextKey>(
 		<!-- The tool pickers render this inside a modal. -->
 		<N8nPopover
 			:open="open"
-			:side="props.side"
-			:align="props.align"
-			:side-offset="props.sideOffset"
+			side="left"
+			align="center"
+			:side-offset="24"
 			:reference="anchorElement"
 			:suppress-auto-focus="true"
 			:content-class="$style.card"
