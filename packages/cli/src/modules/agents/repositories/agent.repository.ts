@@ -56,7 +56,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 		});
 	}
 
-	async findForExport(agentIds: string[], projectIds: string[] | null): Promise<Agent[]> {
+	async findForExport(
+		agentIds: string[],
+		projectIds: string[] | null,
+		options: { includeActiveVersion: boolean },
+	): Promise<Agent[]> {
 		if (agentIds.length === 0 || projectIds?.length === 0) return [];
 		// Keep both ID filters below the database parameter limit.
 		const projectBatches = projectIds === null ? [null] : chunkIds([...new Set(projectIds)]);
@@ -65,7 +69,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 			for (const projects of projectBatches) {
 				const found = await this.find({
 					where: { id: In(ids), ...(projects === null ? {} : { projectId: In(projects) }) },
-					relations: { activeVersion: true },
+					relations: { activeVersion: options.includeActiveVersion },
 				});
 				agents.push(...found);
 			}

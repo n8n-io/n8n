@@ -23,6 +23,7 @@ import {
 import { ProjectShellExporter } from '../project/project-shell.exporter';
 import { addRequirementUsage } from '../requirement-source';
 import { mergeRequirements } from '../requirements.types';
+import { needsActiveVersion } from '../workflow/workflow-version-policy';
 
 interface PreparedSelection {
 	snapshot: PreparedAgentExport;
@@ -75,7 +76,11 @@ export class AgentSelectionExporter {
 			return result;
 		}
 
-		await this.findAccessibleProjects(request.user, projectIds);
+		// Existing project targets have already passed project export authorization.
+		const selectedProjects = await this.findAccessibleProjects(
+			request.user,
+			projectIds.filter((id) => !result.projectTargetsById.has(id)),
+		);
 		// Resolve Agent services only after the module check.
 		const { AgentRepository } = await import('@/modules/agents/repositories/agent.repository.js');
 		const { AgentExporter } = await import('./agent.exporter.js');
@@ -83,7 +88,9 @@ export class AgentSelectionExporter {
 		const prepared = await this.prepareSelection(request, Container.get(AgentRepository), exporter);
 		this.assertAgentDependenciesIncluded(request, prepared);
 
-		if (projectIds.length > 0) await this.addProjectShells(request, prepared, result);
+		if (projectIds.length > 0) {
+			await this.addProjectShells(request, prepared, result, selectedProjects);
+		}
 		for (const { snapshot } of prepared) {
 			const prefix = projectIds.length > 0 ? result.projectTargetsById.get(snapshot.projectId) : '';
 			result.agentEntries.push(await exporter.write(snapshot, request.writer, prefix));
@@ -126,7 +133,9 @@ export class AgentSelectionExporter {
 		const policy = request.agentVersionPolicy ?? WorkflowVersionPolicy.Latest;
 		while (pending.length > 0) {
 			const ids = pending.splice(0);
-			const agents = await repository.findForExport(ids, exportableProjects);
+			const agents = await repository.findForExport(ids, exportableProjects, {
+				includeActiveVersion: needsActiveVersion(policy),
+			});
 			await assertEveryRequestedEntityAccessible(
 				'Agent',
 				ids,
@@ -185,18 +194,27 @@ export class AgentSelectionExporter {
 		request: AgentSelectionExportRequest,
 		prepared: PreparedSelection[],
 		result: AgentSelectionExportResult,
+		selectedProjects: Project[],
 	): Promise<void> {
-		const projectIds = [...new Set(prepared.map(({ snapshot }) => snapshot.projectId))].filter(
-			(id) => !result.projectTargetsById.has(id),
+		const projectIds = new Set(
+			prepared
+				.map(({ snapshot }) => snapshot.projectId)
+				.filter((id) => !result.projectTargetsById.has(id)),
 		);
-		if (projectIds.length === 0) return;
-		const projects = await this.findAccessibleProjects(request.user, projectIds);
+		if (projectIds.size === 0) return;
+		const selectedProjectIds = new Set(selectedProjects.map(({ id }) => id));
+		const dependencyProjects = await this.findAccessibleProjects(
+			request.user,
+			[...projectIds].filter((id) => !selectedProjectIds.has(id)),
+		);
 		const context = {
 			writer: request.writer,
 			projectEntries: result.projectEntries,
 			projectTargetsById: result.projectTargetsById,
 		};
-		for (const project of projects) await this.projectShellExporter.export(project, context);
+		for (const project of [...selectedProjects, ...dependencyProjects]) {
+			if (projectIds.has(project.id)) await this.projectShellExporter.export(project, context);
+		}
 	}
 
 	private collectAgentRequirements(prepared: PreparedSelection[]): PackageAgentRequirement[] {

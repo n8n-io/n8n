@@ -82,9 +82,12 @@ describe('AgentRepository', () => {
 	});
 
 	describe('package export reads', () => {
-		it.each(['global', 'project'] as const)(
-			'reads large Agent selections with %s access',
-			async (access) => {
+		it.each([
+			{ access: 'global', includeActiveVersion: false },
+			{ access: 'project', includeActiveVersion: true },
+		])(
+			'reads large Agent selections with $access access',
+			async ({ access, includeActiveVersion }) => {
 				const first = await createAgent();
 				const last = await createAgent();
 				const otherProject = await createTeamProject();
@@ -103,10 +106,14 @@ describe('AgentRepository', () => {
 				const expectedIds =
 					access === 'global' ? [first.id, last.id, other.id] : [first.id, last.id];
 
-				const agents = await agentRepo.findForExport(ids, projects);
+				const agents = await agentRepo.findForExport(ids, projects, { includeActiveVersion });
 
 				expect(agents.map(({ id }) => id)).toEqual(expectedIds.sort());
-				expect(agents.find(({ id }) => id === last.id)?.activeVersion?.versionId).toBe(versionId);
+				const exportedLast = agents.find(({ id }) => id === last.id);
+				expect(exportedLast?.activeVersionId).toBe(versionId);
+				expect(exportedLast?.activeVersion?.versionId).toBe(
+					includeActiveVersion ? versionId : undefined,
+				);
 				expect(await agentRepo.findExistingIds(ids)).toEqual(
 					new Set([first.id, last.id, other.id]),
 				);
@@ -126,7 +133,9 @@ describe('AgentRepository', () => {
 				projectId,
 			];
 
-			const agents = await agentRepo.findForExport([first.id, last.id, hidden.id], projectIds);
+			const agents = await agentRepo.findForExport([first.id, last.id, hidden.id], projectIds, {
+				includeActiveVersion: false,
+			});
 
 			expect(agents.map(({ id }) => id)).toEqual([first.id, last.id].sort());
 			expect(await agentRepo.findIdsInProjectsForExport(projectIds)).toEqual(

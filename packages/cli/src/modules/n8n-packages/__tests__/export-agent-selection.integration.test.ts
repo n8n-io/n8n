@@ -13,6 +13,7 @@ import { AgentDefinitionService } from '@/modules/agents/agent-definition.servic
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { ProjectService } from '@/services/project.service.ee';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -24,6 +25,7 @@ import {
 	PackageEntityNotFoundError,
 	PackageExportBlockedError,
 } from '../entities/package-export.errors';
+import { ProjectShellExporter } from '../entities/project/project-shell.exporter';
 import { AutoIncludedWorkflowResolver } from '../entities/workflow/auto-included-workflow-resolver';
 import { assertStaticSubWorkflowsIncluded } from '../entities/workflow/static-sub-workflow-requirements';
 import { WorkflowDependencyResolver } from '../entities/workflow/workflow-dependency-resolver';
@@ -112,9 +114,10 @@ async function publish(agent: Agent) {
 	});
 }
 
-it.each(['loose', 'project'] as const)(
+it.each(['loose', 'project', 'existing project'] as const)(
 	'selects a %s dependency graph without repeating Agents',
 	async (placement) => {
+		const wholeProjects = placement !== 'loose';
 		const user = await createMember();
 		await linkUserToProject(user, project, 'project:viewer');
 		const dependencyRole = await createCustomRoleWithScopeSlugs([
@@ -142,22 +145,33 @@ it.each(['loose', 'project'] as const)(
 			project,
 		);
 		await createWorkflow({ id: parent.id, nodes: [executeWorkflowNode(nested.id)] }, otherProject);
+		const context = {
+			writer: new CapturingWriter(),
+			projectEntries: [],
+			projectTargetsById: new Map<string, string>(),
+		};
+		if (placement === 'existing project') {
+			await Container.get(ProjectShellExporter).export(project, context);
+		}
+		const findProjects = vi.spyOn(Container.get(ProjectService), 'findProjectsByIdsForUser');
 		const result = await exporter.export({
 			user,
-			writer: new CapturingWriter(),
-			...(placement === 'project'
+			writer: context.writer,
+			projectTargetsById: context.projectTargetsById,
+			...(wholeProjects
 				? { projectIds: [project.id] }
 				: { agentIds: [parent.id, parent.id], workflowIds: [nested.id] }),
 			missingAgentDependencyPolicy: 'include-in-package',
 		});
 		expect(result.agentIds).toEqual([parent.id, child.id]);
 		expect(result.counts.agents).toBe(2);
-		expect(result.projectEntries.map(({ id }) => id)).toEqual(
-			placement === 'project' ? [project.id, otherProject.id] : [],
-		);
+		const expectedProjectIds = wholeProjects ? [otherProject.id] : [];
+		if (placement === 'project') expectedProjectIds.unshift(project.id);
+		expect(result.projectEntries.map(({ id }) => id)).toEqual(expectedProjectIds);
+		expect(findProjects.mock.calls.flatMap(([, ids]) => ids)).toEqual(expectedProjectIds);
 		for (const entry of result.agentEntries) {
 			const projectId = entry.id === parent.id ? project.id : otherProject.id;
-			const prefix = placement === 'project' ? `${result.projectTargetsById.get(projectId)}/` : '';
+			const prefix = wholeProjects ? `${result.projectTargetsById.get(projectId)}/` : '';
 			expect(entry.target.startsWith(`${prefix}agents/`)).toBe(true);
 		}
 		const requirements = await Container.get(WorkflowDependencyResolver).resolve({
@@ -171,7 +185,7 @@ it.each(['loose', 'project'] as const)(
 				agentId: parent.id,
 				projectId: project.id,
 				referencedWorkflowId: parent.id,
-				origin: placement === 'project' ? 'project' : 'top-level',
+				origin: wholeProjects ? 'project' : 'top-level',
 			},
 			{ workflowId: nested.id, referencedWorkflowId: parent.id },
 			{ workflowId: parent.id, referencedWorkflowId: nested.id },
