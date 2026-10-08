@@ -1,3 +1,6 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Mock } from 'vitest';
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
@@ -5,7 +8,7 @@ import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { jsonParse, type ICredentialType, type INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -80,8 +83,16 @@ describe('FrontendService', () => {
 		userManagement: {
 			password: { minLength: 8 },
 		},
+		ai: { allowSendingParameterValues: true },
 		aiAssistant: { baseUrl: '' },
 		aiGateway: { enabled: false },
+		evaluation: {
+			collectionsEnabled: false,
+			configEvalsEnabled: false,
+			agentEvalsEnabled: false,
+			agentEvalsRunTimeoutMinutes: 60,
+			forceAgentWorthTesting: false,
+		},
 		queue: { workerPool: { enabled: false } },
 	});
 
@@ -187,7 +198,7 @@ describe('FrontendService', () => {
 	});
 
 	const aiUsageService = mock<AiUsageService>({
-		getAiUsageSettings: vi.fn().mockResolvedValue(true),
+		isParameterValueSharingAllowed: vi.fn().mockResolvedValue(true),
 	});
 
 	const workflowRepository = mock<WorkflowRepository>({
@@ -237,6 +248,7 @@ describe('FrontendService', () => {
 		originalEnv = { ...process.env };
 		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = false;
+		globalConfig.endpoints.frontendHealthCheckTimeoutMs = 5000;
 		globalConfig.aiAssistant.baseUrl = '';
 		globalConfig.aiGateway.enabled = false;
 		licenseState.isAiGatewayLicensed.mockReturnValue(false);
@@ -277,6 +289,15 @@ describe('FrontendService', () => {
 					settingsMode: 'authenticated',
 				}),
 			);
+		});
+
+		it('should expose the configured health check timeout', async () => {
+			globalConfig.endpoints.frontendHealthCheckTimeoutMs = 1500;
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.healthCheckTimeoutMs).toBe(1500);
 		});
 
 		it('should expose excluded node types from NODES_EXCLUDE', async () => {
@@ -544,6 +565,18 @@ describe('FrontendService', () => {
 			// Community tier would otherwise be 1; the license override lifts
 			// it to 4.
 			expect(settings.evaluationConcurrencyLimit).toBe(4);
+		});
+
+		it('surfaces the forceAgentWorthTesting operator override', async () => {
+			globalConfig.evaluation = {
+				...globalConfig.evaluation,
+				forceAgentWorthTesting: true,
+			} as GlobalConfig['evaluation'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.evaluation.forceAgentWorthTesting).toBe(true);
 		});
 
 		it('should surface whether custom OpenTelemetry span attributes are licensed', async () => {
@@ -870,6 +903,31 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(false);
+		});
+	});
+
+	describe('ai.allowSendingParameterValues setting', () => {
+		afterEach(() => {
+			globalConfig.ai.allowSendingParameterValues = true;
+		});
+
+		it('should use the effective value from AiUsageService', async () => {
+			const { service } = createMockService();
+			aiUsageService.isParameterValueSharingAllowed.mockResolvedValueOnce(false);
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowSendingParameterValues).toBe(false);
+		});
+
+		it('should fall back to the env value when the stored value cannot be read', async () => {
+			const { service } = createMockService();
+			globalConfig.ai.allowSendingParameterValues = false;
+			aiUsageService.isParameterValueSharingAllowed.mockRejectedValueOnce(new Error('DB error'));
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowSendingParameterValues).toBe(false);
 		});
 	});
 
@@ -1239,6 +1297,51 @@ describe('FrontendService', () => {
 			} finally {
 				writeStaticJSONSpy.mockRestore();
 			}
+		});
+
+		describe('concurrent calls', () => {
+			let cacheDir: string;
+
+			const createNodes = (count: number) =>
+				Array.from({ length: count }, (_, index) => ({
+					name: `n8n-nodes-base.node${index}`,
+					version: 1,
+					description: 'x'.repeat(200),
+				}));
+
+			const readTypesFile = (name: string) =>
+				jsonParse<unknown>(readFileSync(join(cacheDir, 'types', `${name}.json`), 'utf-8'));
+
+			beforeEach(() => {
+				cacheDir = mkdtempSync(join(tmpdir(), 'n8n-frontend-types-'));
+				Object.assign(instanceSettings, { staticCacheDir: cacheDir });
+			});
+
+			afterEach(() => {
+				rmSync(cacheDir, { recursive: true, force: true });
+				Object.assign(instanceSettings, { staticCacheDir: '/tmp/test-cache' });
+			});
+
+			it('should leave complete types files when calls overlap', async () => {
+				const largeNodes = createNodes(5000);
+				const smallNodes = createNodes(1);
+				const collectTypes = loadNodesAndCredentials.collectTypes as Mock;
+				collectTypes.mockReturnValueOnce(new Promise(() => {}));
+
+				const { service } = createMockService();
+
+				for (let attempt = 0; attempt < 10; attempt++) {
+					collectTypes
+						.mockResolvedValueOnce({ nodes: largeNodes, credentials: [] })
+						.mockResolvedValueOnce({ nodes: smallNodes, credentials: [] });
+
+					await Promise.all([service.generateTypes(), service.generateTypes()]);
+
+					expect([largeNodes, smallNodes]).toContainEqual(readTypesFile('nodes'));
+					expect(readTypesFile('credentials')).toEqual([]);
+					expect(readTypesFile('node-versions')).toEqual(expect.any(Array));
+				}
+			});
 		});
 	});
 });

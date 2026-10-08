@@ -26,6 +26,7 @@ export const defaultSettings: FrontendSettings = {
 	endpointWebhookTest: '',
 	endpointWebhookWaiting: '',
 	endpointHealth: '/healthz',
+	healthCheckTimeoutMs: 5000,
 	enterprise: {
 		sharing: false,
 		ldap: false,
@@ -194,6 +195,7 @@ export const defaultSettings: FrontendSettings = {
 		collectionsEnabled: false,
 		configEvalsEnabled: false,
 		agentEvalsEnabled: false,
+		forceAgentWorthTesting: false,
 	},
 	activeModules: [],
 	canvasOnly: false,

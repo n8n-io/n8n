@@ -41,6 +41,17 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain('policy-infrastructure');
 	});
 
+	it('should list inbound-auth-core before the modules that inject its contracts', () => {
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		const core = eligible.indexOf('inbound-auth-core');
+
+		expect(core).toBeGreaterThanOrEqual(0);
+		for (const consumer of ['oauth-server', 'mcp', 'token-exchange'] as const) {
+			expect(eligible).toContain(consumer);
+			expect(eligible.indexOf(consumer)).toBeGreaterThan(core);
+		}
+	});
+
 	it('should allow opting out of policy-infrastructure via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'policy-infrastructure';
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('policy-infrastructure');
@@ -62,6 +73,7 @@ describe('eligibleModules', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'policy-infrastructure',
+			'inbound-auth-core',
 			'external-secrets',
 			'community-packages',
 			'data-table',
@@ -92,7 +104,7 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
-			'inbound-auth-core',
+			'scim',
 		]);
 	});
 
@@ -100,6 +112,7 @@ describe('eligibleModules', () => {
 		process.env.N8N_ENABLED_MODULES = 'type-availability-policies';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'policy-infrastructure',
+			'inbound-auth-core',
 			'insights',
 			'external-secrets',
 			'community-packages',
@@ -131,7 +144,7 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
-			'inbound-auth-core',
+			'scim',
 			'type-availability-policies',
 		]);
 	});
@@ -175,6 +188,72 @@ describe('loadModules', () => {
 		await moduleRegistry.loadModules([]);
 
 		expect(moduleRegistry.entities).toEqual([]);
+	});
+
+	describe('packaged modules', () => {
+		const newRegistry = () => {
+			const ModuleClass = { entities: vi.fn().mockReturnValue([]) };
+			const moduleMetadata = mock<ModuleMetadata>({
+				getClasses: vi.fn().mockReturnValue([ModuleClass]),
+			});
+			Container.get = vi.fn().mockReturnValue(ModuleClass);
+
+			return new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+		};
+
+		it('should load a module from the manifest instead of the filesystem', async () => {
+			const importPackagedModule = vi.fn().mockResolvedValue({});
+			const moduleRegistry = newRegistry();
+			moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+			await moduleRegistry.loadModules(['insights']);
+
+			expect(importPackagedModule).toHaveBeenCalledTimes(1);
+		});
+
+		it('should wrap a packaged module import failure', async () => {
+			const importError = new Error('Package import failed');
+			const moduleRegistry = newRegistry();
+			moduleRegistry.registerPackagedModules({
+				insights: vi.fn().mockRejectedValue(importError),
+			});
+
+			const loading = moduleRegistry.loadModules(['insights']);
+
+			await expect(loading).rejects.toThrow(ModuleLoadError);
+			await expect(loading).rejects.toThrow(importError.message);
+		});
+
+		it('should use the filesystem route for a module that is not in the manifest', async () => {
+			const importPackagedModule = vi.fn().mockResolvedValue({});
+			const moduleRegistry = newRegistry();
+			moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+			await expect(moduleRegistry.loadModules(['otel'])).rejects.toThrow(MissingModuleError);
+			expect(importPackagedModule).not.toHaveBeenCalled();
+		});
+
+		it('should load an eligible packaged module', async () => {
+			const importPackagedModule = vi.fn().mockResolvedValue({});
+			const moduleRegistry = newRegistry();
+			vi.spyOn(moduleRegistry, 'eligibleModules', 'get').mockReturnValue(['insights']);
+			moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+			await moduleRegistry.loadModules();
+
+			expect(importPackagedModule).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not load an ineligible packaged module', async () => {
+			const importPackagedModule = vi.fn().mockResolvedValue({});
+			const moduleRegistry = newRegistry();
+			vi.spyOn(moduleRegistry, 'eligibleModules', 'get').mockReturnValue([]);
+			moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+			await moduleRegistry.loadModules();
+
+			expect(importPackagedModule).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('entrypoint resolution', () => {

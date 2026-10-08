@@ -310,6 +310,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new ConflictError(message);
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (execution.finished) {
 			const { workflowData } = execution;
 			const { nodes } = this.createWorkflow(workflowData);
@@ -444,6 +445,8 @@ export class WaitingWebhooks implements IWebhookManager {
 						}
 						resolve(data);
 					},
+					undefined,
+					{ storedAt: execution.storedAt },
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {

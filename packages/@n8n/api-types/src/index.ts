@@ -3,6 +3,7 @@ export type * from './datetime';
 export * from './dto';
 export type * from './push';
 export type * from './scaling';
+export type * from './process-internals';
 export * from './frontend-settings';
 export type * from './user';
 export type * from './consent';
@@ -23,6 +24,7 @@ export * from './workflow-review-activity';
 export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
 export * from './workflow-publish-blocked-details';
+export * from './workflow-execution-block-cause';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -164,6 +166,7 @@ export {
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,
 	folderIdParamSchema,
+	logStreamingDestinationIdParamSchema,
 	projectIdParamSchema,
 	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
@@ -230,6 +233,7 @@ export {
 } from './schemas/source-controlled-file.schema';
 
 export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
+export { publicApiUploadedFileSchema } from './schemas/public-api-uploaded-file.schema';
 
 export {
 	policyCheckFailureSchema,
@@ -329,16 +333,20 @@ export type {
 	BreakingChangeWorkflowIssue,
 	BreakingChangeInstanceRuleResult,
 	BreakingChangeWorkflowRuleResult,
+	BreakingChangeRuleDetailWorkflow,
+	BreakingChangeRuleDetailResult,
 	BreakingChangeReportResult,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
 	MigrationFindingStatus,
+	MigrationFindingTriageStatus,
 	WorkflowMigrationResult,
 } from './schemas/breaking-changes.schema';
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
 	migrationFindingStatusSchema,
+	migrationFindingTriageStatusSchema,
 } from './schemas/breaking-changes.schema';
 
 export type {
@@ -409,6 +417,7 @@ export {
 	channelConfigSchema,
 	mcpConnectServerSchema,
 	mcpConnectRequestSchema,
+	testListenerCardSchema,
 	mcpConnectResumeSchema,
 	credentialPlaceholderDefSchema,
 	credentialRequestSchema,
@@ -824,6 +833,9 @@ export {
 	agentEvalColumnMappingSchema,
 	agentEvalRunStatusSchema,
 	agentEvalResultStatusSchema,
+	agentEvalVerdictStatusSchema,
+	agentEvalVerdictOutcomeSchema,
+	agentEvalVerdictSchema,
 	agentEvalVoteSchema,
 	createAgentEvalDatasetSchema,
 	updateAgentEvalDatasetSchema,
@@ -840,11 +852,20 @@ export {
 	agentEvalDraftCaseSchema,
 	generateDraftCasesOptionsSchema,
 	GenerateDraftCasesOptionsDto,
+	createDraftDatasetOptionsSchema,
+	CreateDraftDatasetOptionsDto,
+	previewRunOptionsSchema,
+	PreviewRunOptionsDto,
+	rerunResultOptionsSchema,
+	RerunResultOptionsDto,
 } from './schemas/agent-evals.schema';
 export type {
 	AgentEvalColumnMapping,
 	AgentEvalRunStatus,
 	AgentEvalResultStatus,
+	AgentEvalVerdictStatus,
+	AgentEvalVerdictOutcome,
+	AgentEvalVerdict,
 	AgentEvalVote,
 	AgentEvalCorrection,
 	CreateAgentEvalDatasetDto,
@@ -862,6 +883,11 @@ export type {
 	AgentEvalDraftCase,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
+	CreateDraftDatasetOptions,
+	CreateDraftDatasetResult,
+	PreviewRunOptions,
+	PreviewRunResult,
+	RerunResultOptions,
 } from './schemas/agent-evals.schema';
 
 export {
@@ -921,3 +947,6 @@ export type {
 	SerializedCursor,
 } from './dto/executions/execution-list-pagination';
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
+
+export type * from './workflow-suggestions';
+export * from './self-healing-results';

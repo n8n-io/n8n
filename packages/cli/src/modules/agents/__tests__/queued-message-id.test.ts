@@ -1,10 +1,13 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { QueuedIntegrationMessage, QueuedPreviewMessage } from '../types/agent-queued-message';
+import type {
+	QueuedIntegrationMessage,
+	QueuedUserChatMessage,
+} from '../types/agent-queued-message';
 import { queuedMessageId } from '../utils/queued-message-id';
 
 describe('queuedMessageId', () => {
-	const preview: QueuedPreviewMessage = {
+	const preview: QueuedUserChatMessage = {
 		kind: 'preview',
 		userId: 'user-1',
 		messageId: 'C4B02D7B-2088-41CE-9C6B-FAF8C7B83D8A',
@@ -34,6 +37,12 @@ describe('queuedMessageId', () => {
 				messageId: preview.messageId!.toLowerCase(),
 			}),
 		).toBe('14926758-36d7-5db0-a865-962afe3ad861');
+	});
+
+	it('separates n8n Chat submissions from Preview submissions', () => {
+		expect(queuedMessageId('agent-1', 'session-1', { ...preview, kind: 'n8n_chat' })).not.toBe(
+			queuedMessageId('agent-1', 'session-1', preview),
+		);
 	});
 
 	it('separates Preview agents, users, sessions, and submissions', () => {

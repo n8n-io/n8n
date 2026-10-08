@@ -8,7 +8,7 @@
 | disabled | boolean | false | false |  |  |  |
 | email | varchar(255) |  | true |  |  |  |
 | firstName | varchar(32) |  | true |  |  |  |
-| id | uuid | gen_random_uuid() | false | [public.activity_event](public.activity_event.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_eval_rating](public.agent_eval_rating.md) [public.agent_eval_run](public.agent_eval_run.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_history](public.agent_history.md) [public.ai_preference](public.ai_preference.md) [public.auth_identity](public.auth_identity.md) [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.chat_hub_tools](public.chat_hub_tools.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.evaluation_collection](public.evaluation_collection.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) [public.instance_ai_thread_tabs](public.instance_ai_thread_tabs.md) [public.oauth_access_tokens](public.oauth_access_tokens.md) [public.oauth_authorization_codes](public.oauth_authorization_codes.md) [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) [public.oauth_user_consents](public.oauth_user_consents.md) [public.project](public.project.md) [public.project_relation](public.project_relation.md) [public.trusted_source_identity](public.trusted_source_identity.md) [public.user_api_keys](public.user_api_keys.md) [public.user_favorites](public.user_favorites.md) [public.workflow_builder_session](public.workflow_builder_session.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_review_activity](public.workflow_review_activity.md) [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) [public.workflow_review_request](public.workflow_review_request.md) [public.workflow_review_request_authors](public.workflow_review_request_authors.md) [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.activity_event](public.activity_event.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_eval_rating](public.agent_eval_rating.md) [public.agent_eval_run](public.agent_eval_run.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_history](public.agent_history.md) [public.ai_preference](public.ai_preference.md) [public.auth_identity](public.auth_identity.md) [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.chat_hub_tools](public.chat_hub_tools.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.evaluation_collection](public.evaluation_collection.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) [public.instance_ai_thread_tabs](public.instance_ai_thread_tabs.md) [public.migration_workflow_owner](public.migration_workflow_owner.md) [public.oauth_access_tokens](public.oauth_access_tokens.md) [public.oauth_authorization_codes](public.oauth_authorization_codes.md) [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) [public.oauth_user_consents](public.oauth_user_consents.md) [public.project](public.project.md) [public.project_relation](public.project_relation.md) [public.self_healing_result](public.self_healing_result.md) [public.trusted_source_identity](public.trusted_source_identity.md) [public.user_api_keys](public.user_api_keys.md) [public.user_favorites](public.user_favorites.md) [public.workflow_builder_session](public.workflow_builder_session.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_review_activity](public.workflow_review_activity.md) [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) [public.workflow_review_request](public.workflow_review_request.md) [public.workflow_review_request_authors](public.workflow_review_request_authors.md) [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) [public.workflow_suggestion](public.workflow_suggestion.md) [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) |  |  |
 | lastActiveAt | date |  | true |  |  |  |
 | lastName | varchar(32) |  | true |  |  |  |
 | mfaEnabled | boolean | false | false |  |  |  |
@@ -65,12 +65,16 @@ erDiagram
 "public.instance_ai_pending_confirmations" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_thread_tabs" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;assignedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.oauth_access_tokens" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.oauth_authorization_codes" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.oauth_refresh_tokens" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.oauth_user_consents" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.project" }o--o| "public.user" : "FOREIGN KEY (#quot;creatorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.project_relation" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.self_healing_result" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.self_healing_result" }o--o| "public.user" : "FOREIGN KEY (#quot;dismissedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.trusted_source_identity" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.user_api_keys" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.user_favorites" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -83,6 +87,8 @@ erDiagram
 "public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;closedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_review_request_authors" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.workflow_review_request_reviewers" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.workflow_suggestion" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.workflow_suggestion_activity" }o--o| "public.user" : "FOREIGN KEY (#quot;actorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.user" }o--|| "public.role" : "FOREIGN KEY (#quot;roleSlug#quot;) REFERENCES role(slug)"
 
 "public.user" {
@@ -299,6 +305,15 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }
+"public.migration_workflow_owner" {
+  timestamp_3__with_time_zone assignedAt
+  uuid assignedById FK
+  timestamp_3__with_time_zone createdAt
+  varchar_16_ source
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
+  varchar_36_ workflowId FK
+}
 "public.oauth_access_tokens" {
   varchar clientId FK
   varchar token
@@ -353,6 +368,23 @@ erDiagram
   varchar role FK
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
+}
+"public.self_healing_result" {
+  uuid backgroundUserId FK
+  timestamp_3__with_time_zone completedAt
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone dismissedAt
+  uuid dismissedById FK
+  varchar_36_ executionId
+  varchar_36_ id
+  varchar_16_ outcome
+  varchar_36_ projectId FK
+  text report
+  varchar_36_ suggestionId FK
+  text summary
+  timestamp_3__with_time_zone updatedAt
+  json usage
+  varchar_36_ workflowId FK
 }
 "public.trusted_source_identity" {
   timestamp_3__with_time_zone createdAt
@@ -440,6 +472,33 @@ erDiagram
 "public.workflow_review_request_reviewers" {
   uuid userId FK
   varchar_36_ workflowReviewRequestId FK
+}
+"public.workflow_suggestion" {
+  varchar_32_ appliedAction
+  uuid appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
+  uuid backgroundUserId FK
+  timestamp_3__with_time_zone closedAt
+  varchar_16_ closedReason
+  timestamp_3__with_time_zone createdAt
+  json expectedBaseline
+  varchar_36_ id
+  json payload
+  varchar_36_ projectId FK
+  varchar_16_ resultKind
+  varchar_16_ state
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+}
+"public.workflow_suggestion_activity" {
+  varchar_16_ action
+  uuid actorId FK
+  varchar_16_ author
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_36_ suggestionId FK
+  timestamp_3__with_time_zone updatedAt
 }
 "public.role" {
   timestamp_3__with_time_zone createdAt

@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
-import { useRecentResources } from './useRecentResources';
+import type { RouteLocationNormalized } from 'vue-router';
+import { createTestingPinia } from '@pinia/testing';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { HTTP_REQUEST_NODE_TYPE, SLACK_NODE_TYPE, VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -8,10 +14,8 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
-import { VIEWS } from '@/app/constants';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
+import { useRecentResources } from './useRecentResources';
 
 const recentNodesRef = ref<Record<string, Array<{ nodeId: string; openedAt: number }>>>({});
 
@@ -36,21 +40,21 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 	}),
 }));
 
-const mockRouterResolve = vi.fn((route) => ({ fullPath: `/workflow/${route.params.workflowId}` }));
-const mockCurrentRoute = ref({
+const mockRouterResolve = vi.fn((location: { params: { workflowId: string } }) => ({
+	href: `/workflow/${location.params.workflowId}`,
+}));
+const mockCurrentRoute = ref<{ name: string; params: Record<string, string> }>({
 	name: VIEWS.WORKFLOW,
 	params: { workflowId: 'workflow-1' },
 });
 
-vi.mock('vue-router', async (importOriginal) => {
-	return {
-		...(await importOriginal()),
-		useRouter: () => ({
-			resolve: mockRouterResolve,
-			currentRoute: mockCurrentRoute,
-		}),
-	};
-});
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
+	useRouter: () => ({
+		resolve: mockRouterResolve,
+		currentRoute: mockCurrentRoute,
+	}),
+}));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -59,575 +63,338 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
+const workflowRoute = (
+	params: Record<string, string>,
+	query: Record<string, string> = {},
+	name: string = VIEWS.WORKFLOW,
+) => ({ name, params, query }) as unknown as RouteLocationNormalized;
+
+const nodesById = {
+	'node-1': createTestNode({ id: 'node-1', name: 'Fetch data', type: HTTP_REQUEST_NODE_TYPE }),
+	'node-2': createTestNode({ id: 'node-2', name: 'Notify team', type: SLACK_NODE_TYPE }),
+};
+
+const isKnownNodeId = (nodeId: string): nodeId is keyof typeof nodesById => nodeId in nodesById;
+
+const nodeTypeDisplayNames: Record<string, string> = {
+	[HTTP_REQUEST_NODE_TYPE]: 'HTTP Request',
+	[SLACK_NODE_TYPE]: 'Slack',
+};
+
 describe('useRecentResources', () => {
-	let mockWorkflowsStore: ReturnType<typeof useWorkflowsStore>;
-	let mockWorkflowsListStore: ReturnType<typeof useWorkflowsListStore>;
-	let mockNodeTypesStore: ReturnType<typeof useNodeTypesStore>;
+	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 	let recentWorkflowsStore: ReturnType<typeof useRecentWorkflowsStore>;
+
+	const openWorkflows = (
+		trackResourceOpened: (to: RouteLocationNormalized) => void,
+		workflowIds: string[],
+	) => {
+		for (const workflowId of workflowIds) {
+			trackResourceOpened(workflowRoute({ workflowId }));
+		}
+	};
+
+	const recentWorkflowIds = (items: Array<{ id: string }>) =>
+		items.filter((item) => item.id.startsWith('recent-workflow')).map((item) => item.id);
 
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		vi.clearAllMocks();
 		let openedAt = 0;
 		vi.spyOn(Date, 'now').mockImplementation(() => ++openedAt);
-		setActivePinia(createTestingPinia({ stubActions: false }));
+		createTestingPinia({ stubActions: false });
 
-		// Reset storage data
 		recentNodesRef.value = {};
+		mockCurrentRoute.value = { name: VIEWS.WORKFLOW, params: { workflowId: 'workflow-1' } };
 
-		mockWorkflowsStore = useWorkflowsStore();
-		mockWorkflowsStore.workflowId = 'workflow-1';
-		mockWorkflowsListStore = useWorkflowsListStore();
-		mockNodeTypesStore = useNodeTypesStore();
+		mockedStore(useWorkflowsStore).workflowId = 'workflow-1';
+
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		nodeTypesStore.getNodeType = (name: string) =>
+			({ name, displayName: nodeTypeDisplayNames[name] }) as INodeTypeDescription;
+
+		workflowsListStore = mockedStore(useWorkflowsListStore);
+		vi.spyOn(workflowsListStore, 'searchWorkflows').mockResolvedValue([]);
+
 		recentWorkflowsStore = useRecentWorkflowsStore();
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
-		Object.defineProperty(workflowDocumentStore, 'findNodeByPartialId', {
-			value: vi.fn((nodeId: string) => {
-				if (nodeId === 'node-1') {
-					return { id: 'node-1', name: 'Test Node 1', type: 'n8n-nodes-base.httpRequest' };
-				}
-				if (nodeId === 'node-2') {
-					return { id: 'node-2', name: 'Test Node 2', type: 'n8n-nodes-base.slack' };
-				}
-				return null;
-			}),
-		});
-
-		Object.defineProperty(mockWorkflowsListStore, 'getWorkflowById', {
-			value: vi.fn((workflowId: string) => {
-				if (workflowId === 'workflow-1') {
-					return { id: 'workflow-1', name: 'Workflow 1' };
-				}
-				if (workflowId === 'workflow-2') {
-					return { id: 'workflow-2', name: 'Workflow 2' };
-				}
-				if (workflowId === 'workflow-3') {
-					return { id: 'workflow-3', name: 'Workflow 3' };
-				}
-				return null;
-			}),
-		});
-
-		Object.defineProperty(mockWorkflowsListStore, 'fetchWorkflow', {
-			value: vi.fn(),
-		});
-
-		Object.defineProperty(mockNodeTypesStore, 'getNodeType', {
-			value: vi.fn((type: string) => ({
-				name: type,
-				displayName: type.split('.').pop(),
-			})),
-		});
+		vi.spyOn(workflowDocumentStore, 'findNodeByPartialId').mockImplementation((nodeId) =>
+			isKnownNodeId(nodeId) ? nodesById[nodeId] : undefined,
+		);
 
 		Object.defineProperty(window, 'location', {
 			value: { href: '' },
-		});
-
-		vi.clearAllMocks();
-	});
-
-	describe('node tracking via trackResourceOpened', () => {
-		it('should add node to the top of recent list for workflow', () => {
-			const { trackResourceOpened } = useRecentResources();
-
-			const route = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			trackResourceOpened(route);
-
-			expect(recentNodesRef.value['workflow-1']).toHaveLength(1);
-			expect(recentNodesRef.value['workflow-1'][0].nodeId).toBe('node-1');
-			expect(recentNodesRef.value['workflow-1'][0].openedAt).toBeTypeOf('number');
-		});
-
-		it('should move existing node to the top when reopened', () => {
-			const { trackResourceOpened } = useRecentResources();
-
-			const route1 = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			const route2 = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1', nodeId: 'node-2' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			trackResourceOpened(route1);
-			trackResourceOpened(route2);
-			trackResourceOpened(route1);
-
-			expect(recentNodesRef.value['workflow-1']).toHaveLength(2);
-			expect(recentNodesRef.value['workflow-1'][0].nodeId).toBe('node-1');
-			expect(recentNodesRef.value['workflow-1'][1].nodeId).toBe('node-2');
-		});
-
-		it('should limit recent nodes per workflow to MAX_RECENT_ITEMS (5)', () => {
-			const { trackResourceOpened } = useRecentResources();
-
-			for (let i = 1; i <= 7; i++) {
-				const route = {
-					name: VIEWS.WORKFLOW,
-					params: { workflowId: 'workflow-1', nodeId: `node-${i}` },
-					query: {},
-				} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-				trackResourceOpened(route);
-			}
-
-			expect(recentNodesRef.value['workflow-1']).toHaveLength(5);
-			expect(recentNodesRef.value['workflow-1'][0].nodeId).toBe('node-7');
-			expect(recentNodesRef.value['workflow-1'][4].nodeId).toBe('node-3');
-		});
-
-		it('should maintain separate lists for different workflows', () => {
-			const { trackResourceOpened } = useRecentResources();
-
-			const route1 = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			const route2 = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-2', nodeId: 'node-2' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			trackResourceOpened(route1);
-			trackResourceOpened(route2);
-
-			expect(recentNodesRef.value['workflow-1']).toHaveLength(1);
-			expect(recentNodesRef.value['workflow-1'][0].nodeId).toBe('node-1');
-			expect(recentNodesRef.value['workflow-2']).toHaveLength(1);
-			expect(recentNodesRef.value['workflow-2'][0].nodeId).toBe('node-2');
+			writable: true,
 		});
 	});
 
 	describe('trackResourceOpened', () => {
-		it('should register workflow when navigating to workflow view', () => {
+		it('registers the workflow when a workflow route opens', () => {
 			const { trackResourceOpened } = useRecentResources();
 
-			const route = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1' }));
 
-			trackResourceOpened(route);
-
-			expect(recentWorkflowsStore.globalRecentWorkflowOpens).toHaveLength(1);
-			expect(recentWorkflowsStore.globalRecentWorkflowOpens[0].id).toBe('workflow-1');
+			expect(recentWorkflowsStore.globalRecentWorkflowOpens.map(({ id }) => id)).toEqual([
+				'workflow-1',
+			]);
+			expect(recentNodesRef.value).toEqual({});
 		});
 
-		it('should register both workflow and node when nodeId is present', () => {
+		it('registers the workflow and the node when the route has a node id', () => {
 			const { trackResourceOpened } = useRecentResources();
 
-			const route = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: 'node-1' }));
 
-			trackResourceOpened(route);
-
-			expect(recentWorkflowsStore.globalRecentWorkflowOpens).toHaveLength(1);
-			expect(recentWorkflowsStore.globalRecentWorkflowOpens[0].id).toBe('workflow-1');
-			expect(recentNodesRef.value['workflow-1']).toHaveLength(1);
-			expect(recentNodesRef.value['workflow-1'][0].nodeId).toBe('node-1');
+			expect(recentWorkflowsStore.globalRecentWorkflowOpens.map(({ id }) => id)).toEqual([
+				'workflow-1',
+			]);
+			expect(recentNodesRef.value['workflow-1']).toEqual([
+				{ nodeId: 'node-1', openedAt: expect.any(Number) },
+			]);
 		});
 
-		it('should not register workflow when query.new is "true"', () => {
+		it('moves a reopened node to the top of the recent nodes', () => {
 			const { trackResourceOpened } = useRecentResources();
 
-			const route = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1' },
-				query: { new: 'true' },
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: 'node-1' }));
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: 'node-2' }));
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: 'node-1' }));
 
-			trackResourceOpened(route);
-
-			expect(recentWorkflowsStore.globalRecentWorkflowOpens).toHaveLength(0);
+			expect(recentNodesRef.value['workflow-1'].map(({ nodeId }) => nodeId)).toEqual([
+				'node-1',
+				'node-2',
+			]);
 		});
 
-		it('should not register workflow when creating new workflow', () => {
+		it('keeps at most 5 recent nodes for each workflow', () => {
 			const { trackResourceOpened } = useRecentResources();
 
-			const route = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'new' },
-				query: { new: 'true' },
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
+			for (let index = 1; index <= 7; index++) {
+				trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: `node-${index}` }));
+			}
 
-			trackResourceOpened(route);
-
-			expect(recentWorkflowsStore.globalRecentWorkflowOpens).toHaveLength(0);
+			expect(recentNodesRef.value['workflow-1'].map(({ nodeId }) => nodeId)).toEqual([
+				'node-7',
+				'node-6',
+				'node-5',
+				'node-4',
+				'node-3',
+			]);
 		});
 
-		it('should not register anything when route is not a workflow view', () => {
+		it('keeps a separate recent node list for each workflow', () => {
 			const { trackResourceOpened } = useRecentResources();
 
-			const route = {
-				name: 'OTHER_VIEW',
-				params: { workflowId: 'workflow-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: 'node-1' }));
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-2', nodeId: 'node-2' }));
 
-			trackResourceOpened(route);
+			expect(recentNodesRef.value['workflow-1'].map(({ nodeId }) => nodeId)).toEqual(['node-1']);
+			expect(recentNodesRef.value['workflow-2'].map(({ nodeId }) => nodeId)).toEqual(['node-2']);
+		});
 
-			expect(recentWorkflowsStore.globalRecentWorkflowOpens).toHaveLength(0);
+		it('does not register a new workflow', () => {
+			const { trackResourceOpened } = useRecentResources();
+
+			trackResourceOpened(workflowRoute({ workflowId: 'new' }, { new: 'true' }));
+
+			expect(recentWorkflowsStore.globalRecentWorkflowOpens).toEqual([]);
+		});
+
+		it('does not register routes outside the workflow view', () => {
+			const { trackResourceOpened } = useRecentResources();
+
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1' }, {}, VIEWS.WORKFLOWS));
+
+			expect(recentWorkflowsStore.globalRecentWorkflowOpens).toEqual([]);
 		});
 	});
 
-	describe('recentResourceCommands', () => {
-		beforeEach(() => {
-			mockCurrentRoute.value = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1' },
-			};
-		});
-
-		it('should return command items for recent nodes in current workflow', () => {
+	describe('recent node items', () => {
+		it('returns the recent nodes of the current workflow with the most recent first', () => {
 			const { trackResourceOpened, commands } = useRecentResources();
 
-			const route1 = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: 'node-1' }));
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: 'node-2' }));
 
-			const route2 = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1', nodeId: 'node-2' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
+			const nodeItems = commands.value.filter((item) => item.id.startsWith('recent-node'));
 
-			trackResourceOpened(route1);
-			trackResourceOpened(route2);
-
-			const items = commands.value;
-			const nodeItems = items.filter((item) => item.id.startsWith('recent-node'));
-
-			expect(nodeItems).toHaveLength(2);
-			// node-2 is most recent since it was tracked last
-			expect(nodeItems[0].id).toBe('recent-node-workflow-1-node-2');
-			expect(nodeItems[0].title).toBe('generic.openResource');
-			expect(nodeItems[1].id).toBe('recent-node-workflow-1-node-1');
-			expect(nodeItems[0].section).toBe('commandBar.sections.recent');
+			expect(nodeItems.map((item) => item.id)).toEqual([
+				'recent-node-workflow-1-node-2',
+				'recent-node-workflow-1-node-1',
+			]);
+			expect(nodeItems[1]).toEqual(
+				expect.objectContaining({
+					title: 'Fetch data',
+					description: 'HTTP Request',
+					section: 'commandBar.sections.recent',
+					icon: {
+						component: NodeIcon,
+						props: {
+							nodeType: { name: HTTP_REQUEST_NODE_TYPE, displayName: 'HTTP Request' },
+							size: 16,
+						},
+					},
+				}),
+			);
 		});
 
-		it('should filter out nodes that no longer exist', () => {
+		it('skips nodes that no longer exist in the workflow', () => {
 			const { trackResourceOpened, commands } = useRecentResources();
 
-			const route1 = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: 'node-1' }));
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: 'deleted-node' }));
 
-			const route2 = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1', nodeId: 'nonexistent-node' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			trackResourceOpened(route1);
-			trackResourceOpened(route2);
-
-			const items = commands.value;
-			const nodeItems = items.filter((item) => item.id.startsWith('recent-node'));
-
-			expect(nodeItems).toHaveLength(1);
-			expect(nodeItems[0].id).toBe('recent-node-workflow-1-node-1');
+			expect(commands.value.map((item) => item.id)).toEqual(['recent-node-workflow-1-node-1']);
 		});
 
-		it('should call setNodeActive when node item handler is executed', () => {
+		it('opens the node when the item handler runs', async () => {
 			const { trackResourceOpened, commands } = useRecentResources();
 
-			const route = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			trackResourceOpened(route);
-
-			const items = commands.value;
-			const nodeItem = items.find((item) => item.id === 'recent-node-workflow-1-node-1');
-
-			expect(nodeItem).toBeDefined();
-			void nodeItem?.handler?.();
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: 'node-1' }));
+			await commands.value[0].handler?.();
 
 			expect(mockSetNodeActive).toHaveBeenCalledWith('node-1', 'command_bar');
 		});
 
-		it('should return command items for recent workflows', () => {
+		it('returns no node items outside the workflow view', () => {
 			const { trackResourceOpened, commands } = useRecentResources();
 
-			// Track workflows by navigating to them
-			trackResourceOpened({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0]);
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: 'node-1' }));
+			mockCurrentRoute.value = { name: VIEWS.WORKFLOWS, params: {} };
 
-			trackResourceOpened({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-2' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0]);
-
-			const items = commands.value;
-			const workflowItems = items.filter((item) => item.id.startsWith('recent-workflow'));
-
-			expect(workflowItems).toHaveLength(2);
-			expect(workflowItems[0].id).toBe('recent-workflow-workflow-2');
-			expect(workflowItems[0].title).toBe('generic.openResource');
-			expect(workflowItems[1].id).toBe('recent-workflow-workflow-1');
-			expect(workflowItems[1].title).toBe('generic.openResource');
+			expect(commands.value).toEqual([]);
 		});
 
-		it('should limit workflow items to MAX_RECENT_WORKFLOWS_TO_DISPLAY (3)', () => {
+		it('returns no node items when the current workflow has no recent nodes', () => {
 			const { trackResourceOpened, commands } = useRecentResources();
 
-			// Track 5 workflows
-			for (let i = 1; i <= 5; i++) {
-				trackResourceOpened({
-					name: VIEWS.WORKFLOW,
-					params: { workflowId: `workflow-${i}` },
-					query: {},
-				} as unknown as Parameters<typeof trackResourceOpened>[0]);
-			}
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1', nodeId: 'node-1' }));
+			mockCurrentRoute.value = { name: VIEWS.WORKFLOW, params: { workflowId: 'workflow-2' } };
 
-			const items = commands.value;
-			const workflowItems = items.filter((item) => item.id.startsWith('recent-workflow'));
-
-			// workflow-4 and workflow-5 don't exist in store, so only 3 will be shown
-			expect(workflowItems.length).toBeLessThanOrEqual(3);
-		});
-
-		it('should filter out workflows that no longer exist in store', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
-
-			trackResourceOpened({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0]);
-
-			trackResourceOpened({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'nonexistent-workflow' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0]);
-
-			const items = commands.value;
-			const workflowItems = items.filter((item) => item.id.startsWith('recent-workflow'));
-
-			expect(workflowItems).toHaveLength(1);
-			expect(workflowItems[0].id).toBe('recent-workflow-workflow-1');
-		});
-
-		it('should use unnamed workflow text when workflow has no name', () => {
-			mockWorkflowsListStore.getWorkflowById = vi.fn((workflowId: string) => {
-				if (workflowId === 'workflow-unnamed') {
-					return { id: 'workflow-unnamed', name: '' } as unknown as ReturnType<
-						typeof mockWorkflowsListStore.getWorkflowById
-					>;
-				}
-				return null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>;
-			}) as typeof mockWorkflowsListStore.getWorkflowById;
-
-			const { trackResourceOpened, commands } = useRecentResources();
-
-			trackResourceOpened({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-unnamed' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0]);
-
-			const items = commands.value;
-			const workflowItem = items.find((item) => item.id === 'recent-workflow-workflow-unnamed');
-
-			expect(workflowItem?.title).toBe('generic.openResource');
-		});
-
-		it('should navigate using window.location.href when workflow item handler is executed', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
-
-			trackResourceOpened({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0]);
-
-			const items = commands.value;
-			const workflowItem = items.find((item) => item.id === 'recent-workflow-workflow-1');
-
-			expect(workflowItem).toBeDefined();
-			void workflowItem?.handler?.();
-
-			expect(mockRouterResolve).toHaveBeenCalledWith({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1' },
-			});
-			expect(window.location.href).toBe('/workflow/workflow-1');
-		});
-
-		it('should not show recent nodes when not in workflow view', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
-
-			const route = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			trackResourceOpened(route);
-
-			mockCurrentRoute.value = {
-				name: 'OTHER_VIEW' as unknown as VIEWS,
-				params: { workflowId: '' },
-			};
-
-			const items = commands.value;
-			const nodeItems = items.filter((item) => item.id.startsWith('recent-node'));
-
-			expect(nodeItems).toHaveLength(0);
-		});
-
-		it('should not show recent nodes when current workflow has no recent nodes', () => {
-			const { trackResourceOpened, commands } = useRecentResources();
-
-			const route = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			trackResourceOpened(route);
-
-			mockCurrentRoute.value = {
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-2' },
-			};
-
-			const items = commands.value;
-			const nodeItems = items.filter((item) => item.id.startsWith('recent-node'));
-
-			expect(nodeItems).toHaveLength(0);
+			expect(commands.value).toEqual([]);
 		});
 	});
 
 	describe('initialize', () => {
-		it('should fetch workflows that are not in store', async () => {
+		it('does not request workflows when no workflow was opened', async () => {
+			const { initialize } = useRecentResources();
+
+			await initialize?.();
+
+			expect(workflowsListStore.searchWorkflows).not.toHaveBeenCalled();
+		});
+
+		it('resolves the recent workflows with one request', async () => {
 			const { trackResourceOpened, initialize } = useRecentResources();
+			openWorkflows(trackResourceOpened, ['workflow-1', 'workflow-2', 'workflow-3']);
 
-			// Mock getWorkflowById to return null for workflow-4
-			mockWorkflowsListStore.getWorkflowById = vi.fn((workflowId: string) => {
-				if (workflowId === 'workflow-1' || workflowId === 'workflow-2') {
-					return {
-						id: workflowId,
-						name: `Workflow ${workflowId.split('-')[1]}`,
-					} as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>;
-				}
-				return null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>;
-			}) as typeof mockWorkflowsListStore.getWorkflowById;
+			await initialize?.();
 
-			// Track workflows via trackResourceOpened
-			trackResourceOpened({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0]);
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledTimes(1);
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith({
+				ids: ['workflow-3', 'workflow-2', 'workflow-1'],
+				isArchived: false,
+				select: ['id', 'name'],
+				options: { skip: 0, take: 3, includeScopes: false },
+			});
+		});
 
-			trackResourceOpened({
+		it('lists the returned workflows in recent-open order', async () => {
+			mockCurrentRoute.value = { name: VIEWS.WORKFLOWS, params: {} };
+			workflowsListStore.searchWorkflows.mockResolvedValue([
+				createTestWorkflow({ id: 'workflow-2' }),
+				createTestWorkflow({ id: 'workflow-4' }),
+				createTestWorkflow({ id: 'workflow-1' }),
+			]);
+			const { trackResourceOpened, initialize, commands } = useRecentResources();
+			openWorkflows(trackResourceOpened, ['workflow-1', 'workflow-2', 'workflow-3', 'workflow-4']);
+
+			await initialize?.();
+
+			expect(recentWorkflowIds(commands.value)).toEqual([
+				'recent-workflow-workflow-4',
+				'recent-workflow-workflow-2',
+				'recent-workflow-workflow-1',
+			]);
+		});
+
+		it('excludes the current workflow', async () => {
+			workflowsListStore.searchWorkflows.mockResolvedValue([
+				createTestWorkflow({ id: 'workflow-1' }),
+				createTestWorkflow({ id: 'workflow-2' }),
+			]);
+			const { trackResourceOpened, initialize, commands } = useRecentResources();
+			openWorkflows(trackResourceOpened, ['workflow-1', 'workflow-2']);
+
+			await initialize?.();
+
+			expect(recentWorkflowIds(commands.value)).toEqual(['recent-workflow-workflow-2']);
+		});
+
+		it('shows at most 5 workflows', async () => {
+			const workflowIds = Array.from({ length: 7 }, (_, index) => `workflow-${index + 1}`);
+			mockCurrentRoute.value = { name: VIEWS.WORKFLOWS, params: {} };
+			workflowsListStore.searchWorkflows.mockResolvedValue(
+				workflowIds.map((id) => createTestWorkflow({ id })),
+			);
+			const { trackResourceOpened, initialize, commands } = useRecentResources();
+			openWorkflows(trackResourceOpened, workflowIds);
+
+			await initialize?.();
+
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith(
+				expect.objectContaining({
+					ids: ['workflow-7', 'workflow-6', 'workflow-5', 'workflow-4', 'workflow-3', 'workflow-2'],
+				}),
+			);
+			expect(recentWorkflowIds(commands.value)).toEqual([
+				'recent-workflow-workflow-7',
+				'recent-workflow-workflow-6',
+				'recent-workflow-workflow-5',
+				'recent-workflow-workflow-4',
+				'recent-workflow-workflow-3',
+			]);
+		});
+
+		it('keeps the previous workflows when the request fails', async () => {
+			workflowsListStore.searchWorkflows.mockResolvedValueOnce([
+				createTestWorkflow({ id: 'workflow-2' }),
+			]);
+			const { trackResourceOpened, initialize, commands } = useRecentResources();
+			openWorkflows(trackResourceOpened, ['workflow-2']);
+			await initialize?.();
+
+			workflowsListStore.searchWorkflows.mockRejectedValueOnce(new Error('Request failed'));
+			await initialize?.();
+
+			expect(recentWorkflowIds(commands.value)).toEqual(['recent-workflow-workflow-2']);
+		});
+
+		it('creates workflow items that link to the workflow and open it', async () => {
+			workflowsListStore.searchWorkflows.mockResolvedValue([
+				createTestWorkflow({ id: 'workflow-2', name: 'Sync contacts' }),
+			]);
+			const { trackResourceOpened, initialize, commands } = useRecentResources();
+			openWorkflows(trackResourceOpened, ['workflow-2']);
+			await initialize?.();
+
+			const [workflowItem] = commands.value;
+			await workflowItem.handler?.();
+
+			expect(workflowItem).toEqual({
+				id: 'recent-workflow-workflow-2',
+				title: 'Sync contacts',
+				section: 'commandBar.sections.recent',
+				icon: { type: 'icon', value: 'workflow' },
+				href: '/workflow/workflow-2',
+				handler: expect.any(Function),
+			});
+			expect(mockRouterResolve).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
 				params: { workflowId: 'workflow-2' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0]);
-
-			trackResourceOpened({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-4' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0]);
-
-			await initialize();
-
-			// Should only fetch workflow-4 since workflow-1 and workflow-2 are in store
-			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledWith('workflow-4');
-			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledTimes(1);
-		});
-
-		it('should only fetch up to MAX_RECENT_WORKFLOWS_TO_DISPLAY (3) workflows', async () => {
-			const { trackResourceOpened, initialize } = useRecentResources();
-
-			mockWorkflowsListStore.getWorkflowById = vi.fn(
-				() => null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>,
-			) as typeof mockWorkflowsListStore.getWorkflowById;
-
-			// Track 5 workflows
-			for (let i = 1; i <= 5; i++) {
-				trackResourceOpened({
-					name: VIEWS.WORKFLOW,
-					params: { workflowId: `workflow-${i}` },
-					query: {},
-				} as unknown as Parameters<typeof trackResourceOpened>[0]);
-			}
-
-			await initialize();
-
-			// Should only try to fetch the first 3
-			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledTimes(3);
-			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledWith('workflow-5');
-			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledWith('workflow-4');
-			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledWith('workflow-3');
-		});
-
-		it('should handle fetch errors gracefully', async () => {
-			const { trackResourceOpened, initialize } = useRecentResources();
-
-			mockWorkflowsListStore.getWorkflowById = vi.fn(
-				() => null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>,
-			) as typeof mockWorkflowsListStore.getWorkflowById;
-			mockWorkflowsListStore.fetchWorkflow = vi.fn().mockRejectedValue(new Error('Fetch failed'));
-
-			trackResourceOpened({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0]);
-
-			// Should not throw
-			await expect(initialize()).resolves.not.toThrow();
-		});
-
-		it('should not fetch workflows that are already in store', async () => {
-			const { trackResourceOpened, initialize } = useRecentResources();
-
-			trackResourceOpened({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-1' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0]);
-
-			trackResourceOpened({
-				name: VIEWS.WORKFLOW,
-				params: { workflowId: 'workflow-2' },
-				query: {},
-			} as unknown as Parameters<typeof trackResourceOpened>[0]);
-
-			await initialize();
-
-			expect(mockWorkflowsListStore.fetchWorkflow).not.toHaveBeenCalled();
+			});
+			expect(window.location.href).toBe('/workflow/workflow-2');
 		});
 	});
 });

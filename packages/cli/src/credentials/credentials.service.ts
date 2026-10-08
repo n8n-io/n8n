@@ -1,6 +1,6 @@
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, RoleService, CredentialsFinderService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import {
 	Project,
@@ -76,7 +76,6 @@ import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialDescriptionsService } from './credential-descriptions.service';
@@ -84,7 +83,6 @@ import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
 } from './credential-dependency.service';
-import { CredentialsFinderService } from './credentials-finder.service';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 import { InstanceCredentialUseRegistry } from './instance-credential-use.registry';
 import {
@@ -95,6 +93,34 @@ import {
 
 /** Sentinel placed at every leaf of a redacted httpCustomAuth JSON shape */
 const CUSTOM_AUTH_JSON_REDACTED_VALUE = '***';
+
+const CLIENT_CREDENTIALS_GRANT_TYPE = 'clientCredentials';
+
+/**
+ * Fields the authorization server reads to mint a client-credentials token. A
+ * change to any of them makes the stored token the previous client's.
+ */
+const CLIENT_CREDENTIALS_TOKEN_FIELDS = [
+	'grantType',
+	'clientId',
+	'clientCredentialType',
+	'clientSecret',
+	'privateKey',
+	'certificate',
+	'accessTokenUrl',
+	'scope',
+	'additionalBodyProperties',
+] as const;
+
+/**
+ * Normalizes a credential field for comparison. The editor omits a displayed
+ * field holding its default, so an absent, null and empty value all read as
+ * "the user left it empty".
+ */
+function comparableCredentialField(value: unknown): string {
+	if (value === undefined || value === null) return '';
+	return typeof value === 'object' ? JSON.stringify(value) : String(value);
+}
 
 function parseHttpUrl(value: unknown): URL | undefined {
 	if (typeof value !== 'string') return undefined;
@@ -678,9 +704,9 @@ export class CredentialsService {
 
 	/**
 	 * The ids, among `candidateCredentials`, that the user can use here only
-	 * via the personal route: owned by the user's own personal project, where
-	 * the user also belongs to the workflow's/project's project(s). See
-	 * {@link isCredSharingEnabled}.
+	 * via the personal route: granted to the user's own personal project (owned
+	 * by it, or shared with it directly), where the user also belongs to the
+	 * workflow's/project's project(s). See {@link isCredSharingEnabled}.
 	 */
 	private async findPersonalRouteCredentialIds(
 		user: User,
@@ -691,14 +717,12 @@ export class CredentialsService {
 		const personalProject = await this.projectService.getPersonalProject(user);
 		if (!personalProject) return new Set();
 
-		const ownedCredentialIds = new Set(
+		const personalGrantCredentialIds = new Set(
 			candidateCredentials
-				.filter((c) =>
-					c.shared.some((s) => s.role === 'credential:owner' && s.projectId === personalProject.id),
-				)
+				.filter((c) => c.shared.some((s) => s.projectId === personalProject.id))
 				.map((c) => c.id),
 		);
-		if (ownedCredentialIds.size === 0) return ownedCredentialIds;
+		if (personalGrantCredentialIds.size === 0) return personalGrantCredentialIds;
 
 		const targetProjectIds =
 			'workflowId' in options
@@ -709,7 +733,7 @@ export class CredentialsService {
 			targetProjectIds.includes(relation.projectId),
 		);
 
-		return userIsMemberOfTargetProject ? ownedCredentialIds : new Set();
+		return userIsMemberOfTargetProject ? personalGrantCredentialIds : new Set();
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
@@ -861,15 +885,23 @@ export class CredentialsService {
 		// Keep oauth / DCR fields unless the caller replaces the blob or clears the token
 		// (e.g. Static→Private toggle).
 		if (dataMerge !== 'replace' && !options?.clearOauthTokenData) {
-			if (decryptedData.oauthTokenData) {
-				// @ts-expect-error data is typed as encrypted string
-				updateData.data.oauthTokenData = decryptedData.oauthTokenData;
-			}
+			// Runs before the token decision, so a DCR-owned field the UI never showed
+			// counts as unchanged rather than as the user re-pointing the credential.
 			this.restoreHiddenDcrFields(
 				existingCredential.type,
 				updateData.data as unknown as ICredentialDataDecryptedObject,
 				decryptedData,
 			);
+			if (
+				decryptedData.oauthTokenData &&
+				!this.reissuesClientCredentialsToken(
+					updateData.data as unknown as ICredentialDataDecryptedObject,
+					decryptedData,
+				)
+			) {
+				// @ts-expect-error data is typed as encrypted string
+				updateData.data.oauthTokenData = decryptedData.oauthTokenData;
+			}
 		}
 
 		if (updateData.data) {
@@ -879,6 +911,34 @@ export class CredentialsService {
 			);
 		}
 		return updateData;
+	}
+
+	/**
+	 * Whether the update points a client-credentials grant at a different OAuth
+	 * client, which makes the stored token belong to the previous one. Carrying it
+	 * forward would keep every later request on the old client, because the grant
+	 * only fetches a token when none is stored. Dropping it is free for this grant:
+	 * the next execution mints a fresh token without any user action.
+	 *
+	 * A grant type that moves in or out of `clientCredentials` counts as a change
+	 * too, since a token from one grant never applies to the other.
+	 */
+	private reissuesClientCredentialsToken(
+		dataToSave: ICredentialDataDecryptedObject,
+		storedData: ICredentialDataDecryptedObject,
+	): boolean {
+		if (
+			dataToSave.grantType !== CLIENT_CREDENTIALS_GRANT_TYPE &&
+			storedData.grantType !== CLIENT_CREDENTIALS_GRANT_TYPE
+		) {
+			return false;
+		}
+
+		return CLIENT_CREDENTIALS_TOKEN_FIELDS.some(
+			(field) =>
+				comparableCredentialField(dataToSave[field]) !==
+				comparableCredentialField(storedData[field]),
+		);
 	}
 
 	/**
@@ -966,6 +1026,36 @@ export class CredentialsService {
 		});
 
 		await this.update(credential.id, newCredentialData, actor, decryptedData);
+	}
+
+	/**
+	 * Decrypts a stored credential whose secret is about to leave n8n, such as a test call to its
+	 * provider. Refuses what the credential policy blocks; `decrypt` stays for display and rewrite.
+	 * Omit `projectId` to judge on the owning project. Pass `null` when the caller already found
+	 * no owner: only instance policy applies, and the lookup is skipped.
+	 */
+	async decryptForUse(
+		credential: CredentialsEntity,
+		actor: PolicyActor,
+		projectId?: string | null,
+	): Promise<ICredentialDataDecryptedObject> {
+		const judgedProjectId =
+			projectId === undefined
+				? ((await this.findCredentialOwningProject(credential.id))?.id ?? null)
+				: projectId;
+		await this.enforceCredentialUse(credential, actor, judgedProjectId);
+		return await this.decrypt(credential, true);
+	}
+
+	private async enforceCredentialUse(
+		credential: Pick<ICredentialsDecrypted, 'id' | 'type'>,
+		actor: PolicyActor,
+		projectId: string | null,
+	) {
+		await this.policyEnforcementService.enforceCredentialDecrypt(
+			{ credentialType: credential.type, credentialId: credential.id, consumer: null, projectId },
+			actor,
+		);
 	}
 
 	/**
@@ -1428,7 +1518,7 @@ export class CredentialsService {
 			throw new CredentialNotFoundError(credentialId);
 		}
 
-		const credentials = await this.prepareCredentialsForTest({ storedCredential });
+		const credentials = await this.prepareCredentialsForTest({ storedCredential, user });
 		return await this.test(user.id, credentials);
 	}
 
@@ -1443,6 +1533,8 @@ export class CredentialsService {
 		if (!storedCredential) {
 			if (credentials.id === '' && hasGlobalScope(user, 'credential:manageInstance')) {
 				this.validateInstanceCredentialData(credentials.data ?? {});
+				// Nothing stored is decrypted, but the test still calls the blocked type's provider.
+				await this.enforceCredentialUse(credentials, { kind: 'user', user }, null);
 				return await this.test(user.id, credentials);
 			}
 			throw new CredentialNotFoundError(credentials.id);
@@ -1474,7 +1566,7 @@ export class CredentialsService {
 			throw new CredentialNotFoundError(credentialId);
 		}
 
-		const data = await this.decrypt(storedCredential, true);
+		const data = await this.decryptForUse(storedCredential, { kind: 'user', user });
 
 		// Expressions and non-HTTP values are refused, not resolved.
 		const testTarget = parseHttpUrl(data.testUrl);
@@ -2339,10 +2431,21 @@ export class CredentialsService {
 		credentialsToTest,
 	}: {
 		storedCredential: CredentialsEntity;
-		user?: User;
+		user: User;
 		credentialsToTest?: ICredentialsDecrypted;
 	}): Promise<ICredentialsDecrypted> {
-		const decryptedData = await this.decrypt(storedCredential, true);
+		// The tester picks its test from the posted type, so it must match the stored secrets.
+		if (credentialsToTest && credentialsToTest.type !== storedCredential.type) {
+			throw new BadRequestError('The credential type does not match the stored credential');
+		}
+
+		// Find the owning project to prevent leakage of other project data.
+		const owningProject = await this.findCredentialOwningProject(storedCredential.id);
+		const decryptedData = await this.decryptForUse(
+			storedCredential,
+			{ kind: 'user', user },
+			owningProject?.id ?? null,
+		);
 		const mergedCredentials: ICredentialsDecrypted = credentialsToTest
 			? deepCopy(credentialsToTest)
 			: {
@@ -2352,8 +2455,6 @@ export class CredentialsService {
 					data: decryptedData,
 				};
 
-		// Find the owning project to prevent leakage of other project data.
-		const owningProject = await this.findCredentialOwningProject(storedCredential.id);
 		if (!owningProject) {
 			mergedCredentials.homeProject = undefined;
 		} else {
@@ -2367,7 +2468,7 @@ export class CredentialsService {
 			};
 		}
 
-		if (user && credentialsToTest) {
+		if (credentialsToTest) {
 			await this.replaceCredentialContentsForSharee(
 				user,
 				storedCredential,

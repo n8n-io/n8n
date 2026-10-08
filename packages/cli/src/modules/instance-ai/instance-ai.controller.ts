@@ -1312,6 +1312,7 @@ export class InstanceAiController {
 			createdAgentIds = await this.evalThreadRestore.restoreAgents(
 				agents,
 				projectId,
+				req.user,
 				idMap,
 				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
 			);

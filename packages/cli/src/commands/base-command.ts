@@ -52,7 +52,6 @@ import { PostHogClient } from '@/posthog';
 import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -454,6 +453,22 @@ export abstract class BaseCommand<F = never> {
 			}
 		}
 
+		await this.initBinaryDataBlobManagers({
+			s3: isS3WriteMode || isExecutionDataS3Mode,
+			azure: isAzureWriteMode || isExecutionDataAzureMode,
+		});
+
+		await binaryDataService.init();
+	}
+
+	/**
+	 * Registers the S3 and Azure binary data managers for every configured store.
+	 * A store that fails to connect is skipped, unless `required` names it: then the
+	 * process exits, because a mode that writes to it cannot work without it.
+	 */
+	protected async initBinaryDataBlobManagers(required: { s3: boolean; azure: boolean }) {
+		const binaryDataService = Container.get(BinaryDataService);
+
 		try {
 			const objectStoreService = await this.initObjectStoreIfConfigured();
 			if (objectStoreService) {
@@ -463,7 +478,7 @@ export abstract class BaseCommand<F = never> {
 				);
 			}
 		} catch {
-			if (isS3WriteMode || isExecutionDataS3Mode) {
+			if (required.s3) {
 				this.logger.error('Failed to connect to S3. Please check your S3 configuration.');
 				process.exit(1);
 			}
@@ -478,15 +493,13 @@ export abstract class BaseCommand<F = never> {
 				);
 			}
 		} catch {
-			if (isAzureWriteMode || isExecutionDataAzureMode) {
+			if (required.azure) {
 				this.logger.error(
 					'Failed to connect to Azure Blob storage. Please check your Azure configuration.',
 				);
 				process.exit(1);
 			}
 		}
-
-		await binaryDataService.init();
 	}
 
 	protected async initObjectStoreIfConfigured() {
@@ -561,10 +574,6 @@ export abstract class BaseCommand<F = never> {
 	 */
 	async initPolicyEnforcement() {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, POLICY_MODULES);
-	}
-
-	initWorkflowHistory() {
-		Container.get(WorkflowHistoryManager).init();
 	}
 
 	async cleanupTestRunner() {

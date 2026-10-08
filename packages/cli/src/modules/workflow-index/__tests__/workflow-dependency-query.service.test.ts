@@ -6,9 +6,9 @@ import type {
 	WorkflowDependencyRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { chunkIds } from '@n8n/db';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { RoleService } from '@/services/role.service';
+import { type CredentialsFinderService, type RoleService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { mock } from 'vitest-mock-extended';
 
@@ -145,6 +145,131 @@ describe('WorkflowDependencyQueryService', () => {
 				type: 'workflowParent',
 				projectId: undefined,
 			});
+		});
+	});
+
+	describe('getResourceDependencies with a credential the user cannot see', () => {
+		beforeEach(() => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+			dependencyRepository.find.mockResolvedValue([
+				mock({ workflowId: 'wf-1', dependencyType: 'credentialId', dependencyKey: 'cred-1' }),
+			]);
+			credentialsRepository.find.mockResolvedValue([mock({ id: 'cred-1', name: 'Personal Cred' })]);
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([
+				mock({ id: 'cred-1' }),
+			]);
+		});
+
+		it('lists its name as unavailable when asked to', async () => {
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user, {
+				listUnavailableCredentials: true,
+			});
+
+			expect(result['wf-1']).toEqual({
+				dependencies: [
+					{ id: 'cred-1', name: 'Personal Cred', type: 'credentialId', unavailable: true },
+				],
+				inaccessibleCount: 0,
+			});
+		});
+
+		it('lists a credential the user can see but cannot use as unavailable', async () => {
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
+				new Set(['cred-1']),
+			);
+
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user, {
+				listUnavailableCredentials: true,
+			});
+
+			expect(result['wf-1'].dependencies).toEqual([
+				{ id: 'cred-1', name: 'Personal Cred', type: 'credentialId', unavailable: true },
+			]);
+		});
+
+		it('lists a credential the user can use as a normal dependency', async () => {
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
+				new Set(['cred-1']),
+			);
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([]);
+
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user, {
+				listUnavailableCredentials: true,
+			});
+
+			expect(result['wf-1'].dependencies).toEqual([
+				{ id: 'cred-1', name: 'Personal Cred', type: 'credentialId' },
+			]);
+		});
+
+		it('counts it as hidden when not asked to list it', async () => {
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user);
+
+			expect(result['wf-1']).toEqual({ dependencies: [], inaccessibleCount: 1 });
+		});
+
+		it('counts it as hidden when credential sharing is disabled', async () => {
+			isCredSharingEnabledMock.mockReturnValue(false);
+
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user, {
+				listUnavailableCredentials: true,
+			});
+
+			expect(result['wf-1']).toEqual({ dependencies: [], inaccessibleCount: 1 });
+		});
+	});
+
+	describe('getFolderDependencies', () => {
+		// This block stubs `getResourceDependencies` on the shared service instance, so the spy has
+		// to be undone for the suite above, which exercises it for real.
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('queries every chunk and deduplicates dependencies across them', async () => {
+			// One id more than a single batch holds, so the loop has to run more than once.
+			const workflowIds = Array.from({ length: 10_001 }, (_, index) => `wf-${index}`);
+			const chunks = chunkIds(workflowIds);
+			// Guard the fixture: the point of the test is lost if this is a single batch.
+			expect(chunks.length).toBeGreaterThan(1);
+
+			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(workflowIds);
+
+			const sharedTable = { type: 'dataTableId' as const, id: 'dt-shared', name: 'Customers' };
+			const getResourceDependencies = vi
+				.spyOn(service, 'getResourceDependencies')
+				.mockImplementation(async (ids) => ({
+					// Every chunk reports the same table plus one of its own.
+					[ids[0]]: {
+						dependencies: [
+							sharedTable,
+							{ type: 'dataTableId' as const, id: `dt-${ids.length}`, name: `Table ${ids.length}` },
+						],
+						inaccessibleCount: 0,
+					},
+				}));
+
+			const result = await service.getFolderDependencies('project-1', 'folder-1', user);
+
+			expect(getResourceDependencies).toHaveBeenCalledTimes(chunks.length);
+			// Each id is queried exactly once, in order — no chunk dropped or repeated.
+			expect(getResourceDependencies.mock.calls.flatMap(([ids]) => ids)).toEqual(workflowIds);
+
+			expect(result.filter((dep) => dep.id === sharedTable.id)).toHaveLength(1);
+			expect(result.map((dep) => dep.id).sort()).toEqual(
+				[sharedTable.id, ...chunks.map((chunk) => `dt-${chunk.length}`)].sort(),
+			);
+		});
+
+		it('does not query when the folder holds no workflows the user can read', async () => {
+			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+			const getResourceDependencies = vi.spyOn(service, 'getResourceDependencies');
+
+			await expect(service.getFolderDependencies('project-1', 'folder-1', user)).resolves.toEqual(
+				[],
+			);
+			expect(getResourceDependencies).not.toHaveBeenCalled();
 		});
 	});
 });

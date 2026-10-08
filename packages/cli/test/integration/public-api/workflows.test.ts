@@ -1056,6 +1056,22 @@ describe('GET /workflows/:id', () => {
 			}),
 		]);
 	});
+
+	test('should return every publish event of the active version in order', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		const events = (
+			response.body.activeVersion.workflowPublishHistory as Array<{ event: string }>
+		).map(({ event }) => event);
+		expect(events).toEqual(['activated', 'deactivated', 'activated']);
+	});
 });
 
 describe('GET /workflows/:id/:versionId', () => {
@@ -1073,6 +1089,7 @@ describe('GET /workflows/:id/:versionId', () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/version-123');
 
 		expect(response.statusCode).toBe(404);
+		expect(response.headers.deprecation).toBe('@1787702400');
 		// The deprecated path keeps one message for both cases. Callers may match on it.
 		expect(response.body.message).toBe('Version not found');
 	});
@@ -1109,6 +1126,9 @@ describe('GET /workflows/:id/:versionId', () => {
 		await createWorkflowHistoryItem(workflow.id, versionData);
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/${versionId}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBe('@1787702400');
 
 		const body = response.body as Partial<WorkflowHistory>;
 		expect(body).toEqual({

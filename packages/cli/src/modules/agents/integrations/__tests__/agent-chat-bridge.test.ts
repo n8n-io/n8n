@@ -105,6 +105,8 @@ function makeBot() {
 	const handlers: {
 		mention?: (thread: unknown, message: unknown) => Promise<void>;
 		subscribed?: (thread: unknown, message: unknown) => Promise<void>;
+		newMessage?: (thread: unknown, message: unknown) => Promise<void>;
+		newMessagePattern?: RegExp;
 		action?: (event: unknown) => Promise<void>;
 		slashCommand?: (event: unknown) => Promise<void>;
 	} = {};
@@ -119,6 +121,14 @@ function makeBot() {
 		},
 		onSubscribedMessage: (h: typeof handlers.subscribed) => {
 			handlers.subscribed = async (thread, message) => {
+				threads.set((thread as FakeThread).id, thread);
+				await h?.(thread, message);
+				await drainQueuedMessages.get(bot)?.();
+			};
+		},
+		onNewMessage: (pattern: RegExp, h: typeof handlers.newMessage) => {
+			handlers.newMessagePattern = pattern;
+			handlers.newMessage = async (thread, message) => {
 				threads.set((thread as FakeThread).id, thread);
 				await h?.(thread, message);
 				await drainQueuedMessages.get(bot)?.();
@@ -1564,14 +1574,23 @@ describe('AgentChatBridge — consumeStream', () => {
 			componentMapper.toCard.mockImplementationOnce(
 				async (payload, _runId, _toolCallId, _schema, shorten) => {
 					expect(payload.title).toBe('Research: Approval required');
+					expect(payload.components).toContainEqual({
+						type: 'button',
+						label: 'Allow for this session',
+						value: 'session',
+					});
 					if (!shorten) throw new Error('Expected callback encoder');
-					for (const approved of [true, false]) {
-						const callback = await shorten('unused', JSON.stringify({ approved }));
+					for (const decision of [
+						{ approved: true },
+						{ approved: false },
+						{ approved: true, scope: 'session' },
+					]) {
+						const callback = await shorten('unused', JSON.stringify(decision));
 						expect(Buffer.byteLength(callback.id)).toBeLessThanOrEqual(64);
 						expect(parseBackgroundApprovalAction(callback.id)).toEqual({
 							runId: `background-job-${jobId}`,
 							toolCallId: token,
-							resumeData: { approved },
+							resumeData: decision,
 						});
 					}
 					return { type: 'card', children: [] };
@@ -1586,7 +1605,11 @@ describe('AgentChatBridge — consumeStream', () => {
 					runId: 'child-run',
 					toolCallId: 'child-tool',
 					toolName: 'send_email',
-					suspendPayload: { type: 'approval', toolName: 'send_email' },
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_email',
+						supportsSessionApproval: true,
+					},
 				},
 			});
 			expect(thread.post).toHaveBeenCalledExactlyOnceWith({ card: { type: 'card', children: [] } });
@@ -3813,5 +3836,243 @@ describe('AgentChatBridge — Slack thread history', () => {
 		// The full 2000-char message is not surfaced; it is cut to 1500 chars + ellipsis.
 		expect(call.modelMessage).not.toContain(longText);
 		expect(call.modelMessage).toContain(`${'a'.repeat(1500)}…`);
+	});
+});
+
+/** Stands in for a platform that delivers every message, such as Teams with RSC. */
+class ListeningTestIntegration extends AgentChatIntegration {
+	readonly type = 'test-listening';
+	readonly credentialTypes: string[] = [];
+	readonly supportedComponents: readonly RichCardComponentType[] = [];
+	readonly description = '';
+	readonly displayLabel = 'Test Listening';
+	readonly displayIcon = 'circle';
+	// Teams buffers outside DMs, which is where messages without a mention arrive.
+	readonly disableStreaming = true;
+	shouldHandleUnmentionedMessage({ message }: { message: { text: string } }): boolean {
+		return message.text !== 'ignore me';
+	}
+	getReplyExpectation({ message }: { message: { isMention?: boolean } }): 'required' | 'optional' {
+		return message.isMention ? 'required' : 'optional';
+	}
+	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
+		return {};
+	}
+}
+
+describe('AgentChatBridge — un-mentioned messages', () => {
+	const componentMapper = mock<ComponentMapper>();
+	const logger = mock<Logger>();
+	const finish: StreamChunk = { type: 'finish', finishReason: 'stop' };
+
+	beforeEach(() => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new ListeningTestIntegration());
+		registry.register(new StreamingTestIntegration());
+		Container.set(ChatIntegrationRegistry, registry);
+		mockSessionGenerations();
+	});
+
+	afterEach(() => {
+		Container.reset();
+		vi.clearAllMocks();
+	});
+
+	function makeBridge(type: string) {
+		const { bot, handlers } = makeBot();
+		const executor = makeAgentExecutor([finish]);
+		const queue = mock<AgentMessageQueueService>();
+		queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
+		new AgentChatBridge(
+			bot as unknown as ChatBotLike,
+			'agent-1',
+			executor as never,
+			componentMapper,
+			logger,
+			'project-1',
+			{ type, credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+			undefined,
+			undefined,
+			undefined,
+			queue,
+		);
+		return { handlers, queue };
+	}
+
+	it('does not listen for un-mentioned messages when the platform has no hook', () => {
+		const { handlers } = makeBridge('test-streaming');
+
+		expect(handlers.newMessage).toBeUndefined();
+	});
+
+	it('listens for every un-mentioned message when the platform has the hook', () => {
+		const { handlers } = makeBridge('test-listening');
+
+		expect(handlers.newMessagePattern?.test('')).toBe(true);
+		expect(handlers.newMessagePattern?.test('any\ntext')).toBe(true);
+	});
+
+	it('enqueues one turn for an accepted message, without subscribing the thread', async () => {
+		const { handlers, queue } = makeBridge('test-listening');
+		const thread = makeThread();
+
+		await handlers.newMessage!(thread, {
+			id: 'm1',
+			text: 'hello there',
+			author: { userId: 'u1', userName: 'user1' },
+		});
+
+		expect(queue.enqueue).toHaveBeenCalledTimes(1);
+		expect(thread.subscribe).not.toHaveBeenCalled();
+	});
+
+	it('drops a message the platform does not accept', async () => {
+		const { handlers, queue } = makeBridge('test-listening');
+
+		await handlers.newMessage!(makeThread(), {
+			id: 'm1',
+			text: 'ignore me',
+			author: { userId: 'u1', userName: 'user1' },
+		});
+
+		expect(queue.enqueue).not.toHaveBeenCalled();
+	});
+
+	it('asks the platform before running an un-mentioned follow-up in a subscribed thread', async () => {
+		const { handlers, queue } = makeBridge('test-listening');
+		const author = { userId: 'u1', userName: 'user1' };
+
+		await handlers.subscribed!(makeThread(), { id: 'm1', text: 'ignore me', author });
+		expect(queue.enqueue).not.toHaveBeenCalled();
+
+		await handlers.subscribed!(makeThread(), {
+			id: 'm2',
+			text: 'ignore me',
+			isMention: true,
+			author,
+		});
+		expect(queue.enqueue).toHaveBeenCalledTimes(1);
+	});
+
+	describe('errors in a turn whose reply was optional', () => {
+		function makeFailingBridge(executor: ReturnType<typeof makeAgentExecutor>) {
+			const { bot, handlers } = makeBot();
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				executor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'test-listening', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+			);
+			return handlers;
+		}
+
+		const author = { userId: 'u1', userName: 'user1' };
+
+		it('does not post a thrown error when nobody mentioned the agent', async () => {
+			const executor = makeAgentExecutor([finish]);
+			executor.executeForChatPublished.mockImplementation(() => {
+				throw new Error('provider down');
+			});
+			const handlers = makeFailingBridge(executor);
+			const thread = makeThread();
+
+			await handlers.newMessage!(thread, { id: 'm1', text: 'hello there', author });
+
+			expect(executor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('does not post a streamed error when nobody mentioned the agent', async () => {
+			const handlers = makeFailingBridge(
+				makeAgentExecutor([
+					{ type: 'error', error: new Error('provider down') },
+					{ type: 'finish', finishReason: 'error' },
+				]),
+			);
+			const thread = makeThread();
+
+			await handlers.newMessage!(thread, { id: 'm1', text: 'hello there', author });
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('does not post an error when a reply the agent chose to send fails to post', async () => {
+			const handlers = makeFailingBridge(
+				makeAgentExecutor([
+					{ type: 'text-delta', id: 't1', delta: 'hi there' },
+					{ type: 'finish', finishReason: 'stop' },
+				] as StreamChunk[]),
+			);
+			const thread = makeThread();
+			thread.post.mockRejectedValue(new Error('Teams refused the post'));
+
+			await handlers.newMessage!(thread, { id: 'm1', text: 'hello there', author });
+
+			const posted = thread.post.mock.calls.map(([arg]) => arg);
+			expect(posted.filter((arg) => typeof arg === 'string' && arg.startsWith('⚠️'))).toEqual([]);
+		});
+
+		it('does not post an error when an unaddressed follow-up fails before it is queued', async () => {
+			const { handlers, queue } = makeBridge('test-listening');
+			queue.enqueue.mockRejectedValue(new Error('queue down'));
+			const thread = makeThread();
+
+			await handlers.subscribed!(thread, { id: 'm1', text: 'hello there', author });
+
+			expect(queue.enqueue).toHaveBeenCalledTimes(1);
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('posts the error when a mentioned follow-up fails before it is queued', async () => {
+			const { handlers, queue } = makeBridge('test-listening');
+			queue.enqueue.mockRejectedValue(new Error('queue down'));
+			const thread = makeThread();
+
+			await handlers.subscribed!(thread, { id: 'm1', text: 'hello', isMention: true, author });
+
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it('still posts the error when the agent was mentioned', async () => {
+			const executor = makeAgentExecutor([finish]);
+			executor.executeForChatPublished.mockImplementation(() => {
+				throw new Error('provider down');
+			});
+			const handlers = makeFailingBridge(executor);
+			const thread = makeThread();
+
+			await handlers.subscribed!(thread, { id: 'm1', text: 'hello', isMention: true, author });
+
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+	});
+
+	it('ignores /new from a message that does not mention the agent', async () => {
+		const { handlers, queue } = makeBridge('test-listening');
+		const thread = makeThread();
+
+		await handlers.newMessage!(thread, {
+			id: 'm1',
+			text: '/new',
+			author: { userId: 'u1', userName: 'user1' },
+		});
+
+		expect(queue.enqueue).not.toHaveBeenCalled();
+		expect(thread.post).not.toHaveBeenCalled();
+	});
+
+	it('runs every subscribed follow-up when the platform has no hook', async () => {
+		const { handlers, queue } = makeBridge('test-streaming');
+
+		await handlers.subscribed!(makeThread(), {
+			id: 'm1',
+			text: 'ignore me',
+			author: { userId: 'u1', userName: 'user1' },
+		});
+
+		expect(queue.enqueue).toHaveBeenCalledTimes(1);
 	});
 });

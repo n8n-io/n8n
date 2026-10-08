@@ -55,7 +55,8 @@ type TemplateName =
 	| 'api-key-revoked'
 	| 'mcp-client-revoked'
 	| 'email-change-requested'
-	| 'email-change-completed';
+	| 'email-change-completed'
+	| 'agent-budget-alert';
 
 @Service()
 export class UserManagementMailer {
@@ -179,6 +180,29 @@ export class UserManagementMailer {
 				revokedBy: formatRevokedBy(revoker),
 				revokedAt: formatRevokedAt(new Date()),
 				mcpSettingsUrl: `${baseUrl}/settings/mcp`,
+			}),
+		});
+	}
+
+	async agentBudgetAlert(data: {
+		email: string;
+		firstName?: string | null;
+		agentName: string;
+		agentUrl: string;
+		alertThresholdPercent: number;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const template = await this.getTemplate('agent-budget-alert');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: 'Your agent reached its monthly budget alert',
+			body: template({
+				...this.basePayload,
+				firstName: data.firstName || 'there',
+				agentName: data.agentName,
+				agentUrl: data.agentUrl,
+				percent: data.alertThresholdPercent,
 			}),
 		});
 	}

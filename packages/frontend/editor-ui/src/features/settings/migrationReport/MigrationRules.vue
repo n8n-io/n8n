@@ -17,14 +17,17 @@ import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAsyncState } from '@vueuse/core';
 import { computed, ref, useCssModule } from 'vue';
+import { I18nT } from 'vue-i18n';
 import orderBy from 'lodash/orderBy';
 import ImpactTag from './components/ImpactTag.vue';
 import EmptyTab from './components/EmptyTab.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useI18n } from '@n8n/i18n';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
-import type { BreakingChangeRuleImpact } from '@n8n/api-types';
+import type { BreakingChangeLightReportResult, BreakingChangeRuleImpact } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { BREAKING_CHANGES_DOCUMENTATION_URL } from './constants';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -33,7 +36,10 @@ const i18n = useI18n();
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const currentTab = ref('workflow-issues');
-const shouldShowRefreshButton = ref(false);
+
+// A user who can edit every workflow sees the whole instance and may refresh it.
+// Everyone else sees the workflows they can edit, and the instance issues are not theirs.
+const canManageReport = hasPermission(['rbac'], { rbac: { scope: 'workflow:update' } });
 
 const versionQuery = MIGRATION_REPORT_TARGET_VERSION
 	? { version: MIGRATION_REPORT_TARGET_VERSION }
@@ -42,39 +48,46 @@ const versionQuery = MIGRATION_REPORT_TARGET_VERSION
 const targetVersionMajor = MIGRATION_REPORT_TARGET_VERSION?.slice(1) ?? '2';
 const targetVersionDisplay = `${targetVersionMajor}.0.0`;
 
+type WorkflowRuleResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
+
+// A rule with only won't fix findings has no open findings left, so it counts as resolved.
+function isOpenRule(rule: WorkflowRuleResult) {
+	return rule.nbAffectedWorkflows > 0;
+}
+
 const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = false) => {
 	if (refresh) {
 		const response = await breakingChangesApi.refreshReport(rootStore.restApiContext, versionQuery);
 		// set tab based on available issues
 		if (
-			response.report.workflowResults.length === 0 &&
+			!response.report.workflowResults.some(isOpenRule) &&
 			response.report.instanceResults.length > 0
 		) {
 			currentTab.value = 'instance-issues';
 		}
-		shouldShowRefreshButton.value = response.shouldCache;
 
 		return response;
 	}
-	const response = await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
-	shouldShowRefreshButton.value = response.shouldCache;
-
-	return response;
+	return await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
 }, undefined);
+
+const openWorkflowRulesCount = computed(
+	() => state.value?.report.workflowResults.filter(isOpenRule).length ?? 0,
+);
 
 async function refreshReport() {
 	await execute(0, true);
 }
 
 const tabs = computed(() => {
+	const workflowIssues = {
+		label: i18n.baseText('settings.migrationReport.tabs.workflowIssues'),
+		value: 'workflow-issues',
+		tag: openWorkflowRulesCount.value ? String(openWorkflowRulesCount.value) : undefined,
+	};
+	if (!canManageReport) return [workflowIssues];
 	return [
-		{
-			label: i18n.baseText('settings.migrationReport.tabs.workflowIssues'),
-			value: 'workflow-issues',
-			tag: state.value?.report.workflowResults.length
-				? String(state.value.report.workflowResults.length)
-				: undefined,
-		},
+		workflowIssues,
 		{
 			label: i18n.baseText('settings.migrationReport.tabs.instanceIssues'),
 			value: 'instance-issues',
@@ -129,12 +142,13 @@ const impactOrder: Record<BreakingChangeRuleImpact, number> = {
 	capabilityRemoved: 3,
 };
 
+// Resolved rules come last. They stay listed so a user can open them and undo a won't fix.
 const sortedWorkflowResults = computed(() => {
 	if (!state.value?.report.workflowResults) return [];
 	return orderBy(
 		state.value.report.workflowResults,
-		[(issue) => impactOrder[issue.ruleImpact]],
-		['asc'],
+		[(issue) => (isOpenRule(issue) ? 0 : 1), (issue) => impactOrder[issue.ruleImpact]],
+		['asc', 'asc'],
 	);
 });
 
@@ -166,6 +180,16 @@ const sortedInstanceResults = computed(() => {
 			docs-leading-text=""
 		/>
 		<div>
+			<N8nText
+				v-if="!canManageReport"
+				tag="p"
+				size="small"
+				color="text-light"
+				class="mb-s"
+				data-test-id="migration-report-scope-note"
+			>
+				{{ i18n.baseText('settings.migrationReport.scopeNote') }}
+			</N8nText>
 			<div v-if="state" :class="$style.Progress">
 				<div
 					:class="$style.ProgressTrack"
@@ -184,15 +208,29 @@ const sortedInstanceResults = computed(() => {
 			</div>
 			<div :class="$style.ActionBar">
 				<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
-				<N8nButton
-					variant="subtle"
-					v-if="shouldShowRefreshButton"
-					:label="i18n.baseText('settings.migrationReport.refreshButton')"
-					icon="refresh-cw"
-					:loading="isLoading"
-					:disabled="isLoading"
-					@click="refreshReport"
-				/>
+				<div :class="$style.RefreshGroup">
+					<N8nText
+						v-if="state?.report.generatedAt"
+						size="small"
+						color="text-light"
+						data-test-id="migration-report-last-synced"
+					>
+						<I18nT keypath="settings.migrationReport.lastSynced" tag="span" scope="global">
+							<template #time>
+								<TimeAgo :date="state.report.generatedAt.toString()" />
+							</template>
+						</I18nT>
+					</N8nText>
+					<N8nButton
+						v-if="canManageReport"
+						variant="subtle"
+						:label="i18n.baseText('settings.migrationReport.refreshButton')"
+						icon="refresh-cw"
+						:loading="isLoading"
+						:disabled="isLoading"
+						@click="refreshReport"
+					/>
+				</div>
 			</div>
 
 			<N8nSettingsRowGroup v-if="isLoading">
@@ -206,7 +244,7 @@ const sortedInstanceResults = computed(() => {
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 			<template v-else-if="currentTab === 'workflow-issues'">
-				<template v-if="state?.report.workflowResults.length === 0">
+				<template v-if="state && openWorkflowRulesCount === 0">
 					<EmptyTab>
 						<template #title>{{
 							i18n.baseText('settings.migrationReport.emptyWorkflowIssues.title')
@@ -218,7 +256,7 @@ const sortedInstanceResults = computed(() => {
 						}}</template>
 					</EmptyTab>
 				</template>
-				<N8nSettingsRowGroup v-else>
+				<N8nSettingsRowGroup v-if="sortedWorkflowResults.length > 0">
 					<N8nSettingsRow v-for="issue in sortedWorkflowResults" :key="issue.ruleId">
 						<template #info>
 							<div :class="$style.CardTitleContainer">
@@ -259,9 +297,11 @@ const sortedInstanceResults = computed(() => {
 							>
 								<span :class="$style.NoLineBreak">
 									{{
-										i18n.baseText('settings.migrationReport.workflowsCount', {
-											interpolate: { count: issue.nbAffectedWorkflows },
-										})
+										isOpenRule(issue)
+											? i18n.baseText('settings.migrationReport.workflowsCount', {
+													interpolate: { count: issue.nbAffectedWorkflows },
+												})
+											: i18n.baseText('settings.migrationReport.resolved')
 									}}
 									<N8nIcon icon="chevron-right" :size="24" />
 								</span>
@@ -361,6 +401,12 @@ const sortedInstanceResults = computed(() => {
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: var(--spacing--sm);
+}
+
+.RefreshGroup {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
 }
 
 .PLoading {

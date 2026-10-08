@@ -44,6 +44,13 @@ import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
 
+export type WorkflowIdsQuery = { query: string; parameters: Record<string, unknown> };
+
+// oxlint-disable-next-line typescript/no-deprecated - Waiting for debt to be payed
+type WorkflowListQueryOptions = ListQuery.Options & {
+	workflowIdsIn?: WorkflowIdsQuery | null;
+};
+
 type ResourceType = 'folder' | 'workflow';
 
 /**
@@ -211,8 +218,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	async get(
 		where: FindOptionsWhere<WorkflowEntity>,
 		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },
+		ctx: OperationContext = {},
 	) {
-		return await this.findOne({
+		return await this.managerFor(ctx).findOne(WorkflowEntity, {
 			where,
 			relations: options?.relations,
 		});
@@ -453,6 +461,22 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 	}
 
+	async findByIdInContext(workflowId: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).findOne(WorkflowEntity, {
+			where: { id: workflowId },
+		});
+	}
+
+	async findForContentUpdate(workflowId: string, ctx: OperationContext) {
+		const manager = this.managerFor(ctx);
+		const lockRows = manager.connection.options.type === 'postgres' && !!ctx.trx;
+		return await manager.findOne(WorkflowEntity, {
+			where: { id: workflowId },
+			// Allow transfer FK checks while the transfer holds the owner row.
+			lock: lockRows ? { mode: 'for_no_key_update' } : undefined,
+		});
+	}
+
 	async findByIds(workflowIds: string[], { fields }: { fields?: string[] } = {}) {
 		if (workflowIds.length === 0) {
 			return [];
@@ -589,7 +613,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private buildBaseUnionQuery(
 		workflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		accessibleProjectIds?: string[],
 	) {
 		// Common fields for both folders and workflows
@@ -606,12 +630,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			folderFilter.name = folderFilter.query;
 		}
 
-		const folderQueryParameters: ListQuery.Options = {
+		const folderQueryParameters: WorkflowListQueryOptions = {
 			select: commonFields,
 			filter: folderFilter,
 		};
 
-		const workflowQueryParameters: ListQuery.Options = {
+		const workflowQueryParameters: WorkflowListQueryOptions = {
 			select: {
 				...commonFields,
 				description: true,
@@ -678,7 +702,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	async getWorkflowsAndFoldersUnion(
 		workflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		accessibleProjectIds?: string[],
 	) {
 		const { baseQuery, sortByColumn, sortByDirection } = this.buildBaseUnionQuery(
@@ -765,7 +789,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	async getWorkflowsAndFoldersCount(
 		workflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		accessibleProjectIds?: string[],
 	) {
 		const { skip, take, ...baseQueryParameters } = options;
@@ -787,7 +811,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	async getWorkflowsAndFoldersWithCount(
 		workflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		accessibleProjectIds?: string[],
 	) {
 		if (
@@ -839,7 +863,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		callableForParentWorkflowId?: string,
 	) {
 		if (
@@ -897,7 +921,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		callableForParentWorkflowId?: string,
 	) {
 		const { baseQuery, sortByColumn, sortByDirection } =
@@ -931,7 +955,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		callableForParentWorkflowId?: string,
 	) {
 		const { skip, take, ...baseQueryParameters } = options;
@@ -961,7 +985,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		callableForParentWorkflowId?: string,
 	) {
 		// Common fields for both folders and workflows
@@ -978,12 +1002,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			folderFilter.name = folderFilter.query;
 		}
 
-		const folderQueryParameters: ListQuery.Options = {
+		const folderQueryParameters: WorkflowListQueryOptions = {
 			select: commonFields,
 			filter: folderFilter,
 		};
 
-		const workflowQueryParameters: ListQuery.Options = {
+		const workflowQueryParameters: WorkflowListQueryOptions = {
 			select: {
 				...commonFields,
 				description: true,
@@ -993,6 +1017,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				name: true,
 			},
 			filter: options.filter,
+			workflowIdsIn: options.workflowIdsIn,
 		};
 
 		// For union, we need to have the same columns, so add NULL as description for folders
@@ -1092,7 +1117,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	@TimedQuery()
 	async getMany(
 		workflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 	): Promise<WorkflowListResult['workflows']> {
 		if (workflowIds.length === 0) {
 			return [];
@@ -1104,7 +1129,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	async getManyAndCount(
 		sharedWorkflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 	): Promise<WorkflowListResult> {
 		if (sharedWorkflowIds.length === 0) {
 			return { workflows: [], count: 0 };
@@ -1129,7 +1154,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		callableForParentWorkflowId?: string,
 	): Promise<WorkflowListResult> {
 		const query = this.getManyQueryWithSharingSubquery(
@@ -1156,7 +1181,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		callableForParentWorkflowId?: string,
 	): SelectQueryBuilder<WorkflowEntity> {
 		const qb = this.createQueryBuilder('workflow');
@@ -1203,6 +1228,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		this.applyFilters(qb, filtersToApply);
 		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
+		this.applyWorkflowIdsInFilter(qb, options.workflowIdsIn);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
@@ -1304,11 +1330,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(user, sharingOptions);
 	}
 
-	getManyQuery(workflowIds: string[], options: ListQuery.Options = {}) {
+	getManyQuery(workflowIds: string[], options: WorkflowListQueryOptions = {}) {
 		const qb = this.createBaseQuery(workflowIds);
 
 		this.applyFilters(qb, options.filter);
 		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
+		this.applyWorkflowIdsInFilter(qb, options.workflowIdsIn);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
@@ -1329,7 +1356,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyFilters(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter?: ListQuery.Options['filter'],
+		filter?: WorkflowListQueryOptions['filter'],
 	): void {
 		this.applyIdsFilter(qb, filter);
 		this.applyNameFilter(qb, filter);
@@ -1344,7 +1371,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyIdsFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (filter?.ids === undefined) return;
 
@@ -1357,7 +1384,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyAvailableInMCPFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (typeof filter?.availableInMCP === 'boolean') {
 			applyWorkflowBooleanSettingFilter(
@@ -1464,7 +1491,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	 */
 	private applyNameFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (typeof filter?.name === 'string' && filter.name.trim() !== '') {
 			qb.andWhere('workflow.name LIKE :name', { name: `%${filter.name.trim()}%` });
@@ -1480,7 +1507,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyParentFolderFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (filter?.parentFolderId === PROJECT_ROOT) {
 			qb.andWhere('workflow.parentFolderId IS NULL');
@@ -1501,7 +1528,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyActiveFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (typeof filter?.active === 'boolean') {
 			if (filter.active) {
@@ -1514,7 +1541,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyIsArchivedFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (typeof filter?.isArchived === 'boolean') {
 			qb.andWhere('workflow.isArchived = :isArchived', { isArchived: filter.isArchived });
@@ -1523,7 +1550,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyTagsFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (isStringArray(filter?.tags) && filter.tags.length > 0) {
 			const subQuery = qb
@@ -1544,7 +1571,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyProjectFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (typeof filter?.projectId === 'string' && filter.projectId !== '') {
 			qb.innerJoin('workflow.shared', 'shared').andWhere('shared.projectId = :projectId', {
@@ -1555,7 +1582,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyNodeTypesFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		const nodeTypes = isStringArray(filter?.nodeTypes) ? filter.nodeTypes : [];
 
@@ -1574,6 +1601,19 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.where('dep.dependencyType = :depType', { depType: 'nodeType' })
 			.andWhere('dep.dependencyKey IN (:...nodeTypes)', { nodeTypes })
 			.andWhere('dep.publishedVersionId IS NULL');
+	}
+
+	private applyWorkflowIdsInFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		workflowIdsIn: WorkflowIdsQuery | null | undefined,
+	): void {
+		if (workflowIdsIn === undefined) return;
+		if (workflowIdsIn === null) {
+			qb.andWhere('1 = 0');
+			return;
+		}
+
+		qb.andWhere(`workflow.id IN (${workflowIdsIn.query})`, workflowIdsIn.parameters);
 	}
 
 	private applyOwnedByRelation(
@@ -1732,7 +1772,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyPagination(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		options: ListQuery.Options,
+		options: WorkflowListQueryOptions,
 	): void {
 		if (options?.take) {
 			qb.skip(options.skip ?? 0).take(options.take);

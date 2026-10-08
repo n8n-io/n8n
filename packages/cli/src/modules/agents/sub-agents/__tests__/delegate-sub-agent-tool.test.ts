@@ -351,6 +351,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			incrementTokenCount: vi.fn(),
 		};
 		const tool = createN8nDelegateSubAgentTool({
+			runBackgroundSubAgent: async () => ({ status: 'started', jobId: 'background-job-1' }),
 			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },

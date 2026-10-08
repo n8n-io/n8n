@@ -8,6 +8,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
 import type { AgentMessageQueueService, ClaimedAgentMessage } from '../agent-message-queue.service';
@@ -32,6 +33,7 @@ describe('AgentMessageQueueConsumer', () => {
 	const users = mock<UserRepository>();
 	const chatExecutions = mock<AgentChatExecutionService>();
 	const integrations = mock<ChatIntegrationService>();
+	const orchestrator = mock<AgentExecutionOrchestratorService>();
 	const sender = { send: vi.fn(), close: vi.fn(async () => {}) };
 	let consumer: AgentMessageQueueConsumer;
 
@@ -112,6 +114,7 @@ describe('AgentMessageQueueConsumer', () => {
 			mock<CredentialsService>(),
 			chatExecutions,
 			integrations,
+			orchestrator,
 			mockLogger(),
 		);
 	});
@@ -175,6 +178,84 @@ describe('AgentMessageQueueConsumer', () => {
 		await vi.waitFor(() =>
 			expect(queue.settle).toHaveBeenCalledWith('first', first.admission.executionId),
 		);
+	});
+
+	it('forwards a budget notice from the preview run to the stream', async () => {
+		const item = claim('session');
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		testRuns.executePreparedDraftRun.mockImplementation(async (input) => {
+			input.onBudgetNotice?.();
+			return {
+				status: 'completed',
+				response: '',
+				executionId: input.admittedExecution!.executionId,
+			};
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(sender.send).toHaveBeenCalledWith({ type: 'budget-notice', code: 'budget.alert' });
+	});
+
+	it('runs n8n Chat messages against the published agent on the claimed execution', async () => {
+		const item = claim('session');
+		item.payload = { kind: 'n8n_chat', message: 'input', resourceId: 'n8n-chat:user' };
+		item.item.payload = { kind: 'n8n_chat' };
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		orchestrator.executeForN8nChatPublished.mockImplementation(async function* () {
+			yield { type: 'text-delta', id: 'text', delta: 'hi' };
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(chatExecutions.register).toHaveBeenCalledWith(
+			expect.objectContaining({ userId: 'user', surface: 'n8n-chat' }),
+			expect.any(AbortController),
+		);
+		expect(orchestrator.executeForN8nChatPublished).toHaveBeenCalledWith(
+			expect.objectContaining({
+				user: expect.objectContaining({ id: 'user' }),
+				memory: { threadId: 'session', resourceId: 'n8n-chat:user' },
+				sessionMode: 'existing',
+				admittedExecution: item.admission,
+			}),
+		);
+		expect(testRuns.prepareDraftRun).not.toHaveBeenCalled();
+		expect(sender.send).toHaveBeenCalledWith({
+			type: 'done',
+			sessionId: 'session',
+			executionId: item.admission.executionId,
+		});
+		expect(queue.recordFailure).not.toHaveBeenCalled();
+	});
+
+	it('does not finish an n8n Chat turn that suspended for HITL', async () => {
+		const item = claim('session');
+		item.payload = { kind: 'n8n_chat', message: 'input', resourceId: 'n8n-chat:user' };
+		item.item.payload = { kind: 'n8n_chat' };
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		orchestrator.executeForN8nChatPublished.mockImplementation(async function* () {
+			yield {
+				type: 'tool-call-suspended',
+				toolCallId: 'call-1',
+				toolName: 'ask_questions',
+				runId: 'run-1',
+				suspendPayload: { type: 'questions', questions: [] },
+			};
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(sender.send).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'tool-call-suspended' }),
+		);
+		expect(sender.send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
 	});
 
 	it.each([

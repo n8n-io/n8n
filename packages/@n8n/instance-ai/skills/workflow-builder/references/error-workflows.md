@@ -1,3 +1,11 @@
+---
+name: error-workflows
+description: >-
+  Load before creating, assigning, or changing a workflow-level error workflow
+  (`settings.errorWorkflow`), including the error-workflow follow-up after a
+  primary workflow is published.
+---
+
 # Workflow-Level Error Workflows
 
 n8n has no global or instance-wide error workflow setting. Error workflows are

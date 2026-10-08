@@ -5,8 +5,16 @@ import { type INodeUi } from '@/Interface';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { useI18n } from '@n8n/i18n';
 import { type INodeTypeDescription } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import { isChatNode } from '@/app/utils/aiUtils';
+import { useNodeIconSource } from '@/app/composables/useNodeIconSource';
+import {
+	FULL_LUMA_RANGE,
+	LUMA_MATRIX,
+	getLumaRemapTable,
+	measureIconLumaRange,
+	type LumaRange,
+} from '../../../iconLuma.utils';
 
 import { N8nActionDropdown, N8nButton, type ActionDropdownItem } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -31,6 +39,8 @@ const props = withDefaults(
 		 * primary CTA (e.g. in the Instance AI artifact or the demo view, where
 		 * the canvas isn't the primary surface). */
 		type?: 'primary' | 'secondary';
+		/** Why the button is disabled, shown in place of the shortcut tooltip. */
+		disabledReason?: string;
 		getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
 	}>(),
 	{ type: 'primary' },
@@ -56,6 +66,8 @@ const label = computed(() => {
 
 	return i18n.baseText('nodeView.runButtonText.executingWorkflow');
 });
+// Picking an item runs it, so the menu shows no selection state.
+// The button's trigger icon and tooltip show the current trigger.
 const actions = computed(() =>
 	props.triggerNodes
 		.filter((node) => (props.includeChatTrigger ? true : !isChatNode(node)))
@@ -69,7 +81,6 @@ const actions = computed(() =>
 			label: truncateBeforeLast(node.name, 50),
 			disabled: !!node.disabled || props.executing,
 			id: node.name,
-			checked: props.selectedTriggerNodeName === node.name,
 		})),
 );
 const isSplitButton = computed(
@@ -97,6 +108,35 @@ const tooltipLabel = computed(() =>
 const buttonSize = computed(() => props.size ?? 'large');
 const triggerIconSize = computed(() => (buttonSize.value === 'large' ? 20 : 16));
 
+// On the primary button, luminosity alone turns darker icon parts brown and hides
+// parts close to the button's own brightness. Remap each image icon's measured
+// tonal range into a light band first, so every icon ends up as a warm tint.
+const TRIGGER_ICON_LUMA_FLOOR = 0.7;
+const triggerIconFilterId = useId();
+const triggerIconSource = useNodeIconSource(() => currentTriggerNodeType.value);
+// Font icons already use the button text color, so only image icons get a treatment
+const isTriggerIconImage = computed(() => triggerIconSource.value?.type === 'file');
+const triggerIconRemapSrc = computed(() =>
+	props.type === 'primary' && triggerIconSource.value?.type === 'file'
+		? triggerIconSource.value.src
+		: undefined,
+);
+const triggerIconLumaRange = ref<LumaRange>(FULL_LUMA_RANGE);
+const triggerIconRemapTable = computed(() =>
+	getLumaRemapTable(triggerIconLumaRange.value, TRIGGER_ICON_LUMA_FLOOR),
+);
+
+watch(
+	triggerIconRemapSrc,
+	async (src) => {
+		triggerIconLumaRange.value = FULL_LUMA_RANGE;
+		if (!src) return;
+		const range = await measureIconLumaRange(src);
+		if (range && src === triggerIconRemapSrc.value) triggerIconLumaRange.value = range;
+	},
+	{ immediate: true },
+);
+
 function getNodeTypeByName(name: string): INodeTypeDescription | null {
 	const node = props.triggerNodes.find((trigger) => trigger.name === name);
 
@@ -115,10 +155,20 @@ function onSelectTriggerNode(name: string) {
 
 <template>
 	<div :class="[$style.component, isSplitButton ? $style.split : '']">
+		<svg v-if="triggerIconRemapSrc" :class="$style.filterDefs" aria-hidden="true">
+			<filter :id="triggerIconFilterId" color-interpolation-filters="sRGB">
+				<feColorMatrix type="matrix" :values="LUMA_MATRIX" />
+				<feComponentTransfer>
+					<feFuncR type="table" :tableValues="triggerIconRemapTable" />
+					<feFuncG type="table" :tableValues="triggerIconRemapTable" />
+					<feFuncB type="table" :tableValues="triggerIconRemapTable" />
+				</feComponentTransfer>
+			</filter>
+		</svg>
 		<KeyboardShortcutTooltip
-			:label="tooltipLabel"
-			:shortcut="{ metaKey: true, keys: ['↵'] }"
-			:disabled="executing || hideTooltip"
+			:label="disabledReason || tooltipLabel"
+			:shortcut="disabledReason ? undefined : { metaKey: true, keys: ['↵'] }"
+			:disabled="!disabledReason && (executing || hideTooltip)"
 		>
 			<N8nButton
 				:variant="buttonVariant"
@@ -136,7 +186,11 @@ function onSelectTriggerNode(name: string) {
 			>
 				<template v-if="currentTriggerNodeType" #icon>
 					<NodeIcon
-						:class="$style.triggerIcon"
+						:class="[
+							$style.triggerIcon,
+							{ [$style.secondaryTriggerIcon]: type === 'secondary' && isTriggerIconImage },
+						]"
+						:style="triggerIconRemapSrc ? { filter: `url(#${triggerIconFilterId})` } : undefined"
 						:size="triggerIconSize"
 						:node-type="currentTriggerNodeType"
 						data-test-id="execute-workflow-button-trigger-icon"
@@ -201,6 +255,18 @@ function onSelectTriggerNode(name: string) {
 	// Tint font icons with the button text color and tone image icons to match the button
 	--node-creator--icon--color: currentColor;
 	mix-blend-mode: luminosity;
+}
+
+.secondaryTriggerIcon {
+	// Luminosity on the neutral button leaves grayscale icons; lift their contrast a little
+	filter: contrast(1.2);
+}
+
+.filterDefs {
+	position: absolute;
+	width: 0;
+	height: 0;
+	overflow: hidden;
 }
 
 .component .chevron {

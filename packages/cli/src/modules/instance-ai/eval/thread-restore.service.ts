@@ -285,6 +285,7 @@ export class EvalThreadRestoreService {
 	async restoreAgents(
 		agents: InstanceAiEvalSeedAgent[],
 		projectId: string,
+		user: User,
 		dataTableIdMap: Map<string, string> = new Map(),
 		allowedCredentialIds?: Set<string>,
 	): Promise<string[]> {
@@ -311,6 +312,7 @@ export class EvalThreadRestoreService {
 				// `create` refuses a colliding id rather than overwriting, so a seed can
 				// never clobber an agent that already exists.
 				await agentsService.create(projectId, schema.name, {
+					actor: { kind: 'user', user },
 					id: agent.id,
 					schema,
 					...(agent.skills ? { skills: agent.skills } : {}),
@@ -589,6 +591,7 @@ export class EvalThreadRestoreService {
 
 		await this.workflowRepo.runInTransaction({ policyCleared: cleared }, async (em, ctx) => {
 			if (stored) {
+				// oxlint-disable-next-line typescript/no-deprecated
 				const { name, nodes, connections, active, versionId, parentFolder } = entity;
 				await this.workflowRepo.updateContent(
 					workflow.id,

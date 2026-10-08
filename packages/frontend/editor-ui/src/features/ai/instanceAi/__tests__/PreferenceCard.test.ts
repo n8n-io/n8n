@@ -119,8 +119,14 @@ function renderHistory(overrides: Partial<InstanceAiToolCallState> = {}) {
 	});
 }
 
+/** Expands the card, which starts collapsed on every turn. */
+async function openCard() {
+	await userEvent.click(screen.getByTestId('instance-ai-preference-card-header'));
+}
+
 /** Opens the modal and returns its textarea. The test id sits on the N8nFormInput wrapper. */
 async function openModal(): Promise<HTMLTextAreaElement> {
+	await openCard();
 	await userEvent.click(screen.getByTestId('instance-ai-preference-card-edit'));
 	const wrapper = await screen.findByTestId('instance-ai-preference-modal-text');
 	return wrapper.querySelector('textarea')!;
@@ -176,15 +182,19 @@ describe('PreferenceCard', () => {
 	});
 
 	describe('the row', () => {
-		it('reads "Preference saved" and is expanded on the active turn', () => {
+		it('reads "Preference saved just for you" and starts collapsed on the active turn', async () => {
 			renderActive();
+			const header = screen.getByTestId('instance-ai-preference-card-header');
+			expect(screen.getByText('instanceAi.preferenceCard.saved.justForYou')).toBeInTheDocument();
+			expect(header).toHaveAttribute('aria-expanded', 'false');
 
-			expect(screen.getByText('instanceAi.preferenceCard.saved')).toBeInTheDocument();
-			expect(screen.getByTestId('instance-ai-preference-card-header')).toHaveAttribute(
-				'aria-expanded',
-				'true',
-			);
-			expect(screen.getByTestId('instance-ai-preference-card-text')).toHaveTextContent(STORED_TEXT);
+			await openCard();
+
+			expect(header).toHaveAttribute('aria-expanded', 'true');
+			// The saved text reads as a quoted sentence, in the thinking trace's color.
+			const text = screen.getByTestId('instance-ai-preference-card-text');
+			expect(text).toHaveTextContent(`“${STORED_TEXT}”`);
+			expect(text).toHaveClass('text');
 		});
 
 		it('is collapsed in history, and the chevron opens it read-only', async () => {
@@ -199,21 +209,32 @@ describe('PreferenceCard', () => {
 			expect(screen.queryByTestId('instance-ai-preference-card-edit')).toBeNull();
 		});
 
-		it('the chevron collapses the active turn too', async () => {
+		it('the chevron closes the active turn again', async () => {
 			renderActive();
 			const header = screen.getByTestId('instance-ai-preference-card-header');
+			await openCard();
 
 			await userEvent.click(header);
 
 			expect(header).toHaveAttribute('aria-expanded', 'false');
 		});
 
+		it('carries no icon on a saved row, so the header reads like the thinking traces', () => {
+			renderActive();
+			const header = screen.getByTestId('instance-ai-preference-card-header');
+
+			// Only the chevron icon stays. No bookmark, no warning.
+			const icons = header.querySelectorAll('[data-icon]');
+			expect(Array.from(icons).map((icon) => icon.getAttribute('data-icon'))).toEqual([
+				'chevron-right',
+			]);
+		});
+
 		// The user reopened the card on the active turn, then sent another message.
 		it('collapses when the turn moves into history, whatever the chevron did before', async () => {
 			const { rerender } = renderActive();
 			const header = screen.getByTestId('instance-ai-preference-card-header');
-			await userEvent.click(header);
-			await userEvent.click(header);
+			await openCard();
 			expect(header).toHaveAttribute('aria-expanded', 'true');
 
 			await rerender({ toolCall: toolCall(), runId: 'run-1', readOnly: true });
@@ -229,19 +250,8 @@ describe('PreferenceCard', () => {
 
 			expect(screen.getByText('instanceAi.preferenceCard.removed')).toBeInTheDocument();
 		});
-	});
 
-	describe('the compact card', () => {
-		it('names "Just you" for a user-scoped row and links to the settings page', () => {
-			renderActive();
-
-			expect(screen.getByTestId('instance-ai-preference-card-scope')).toHaveTextContent(
-				'instanceAi.preferenceCard.appliesTo:{"scope":"settings.context.preferences.scope.user"}',
-			);
-			expect(screen.getByTestId('instance-ai-preference-card-manage')).toBeInTheDocument();
-		});
-
-		it('names the project once a fact moved the row into one', () => {
+		it('names the project it was saved to in the header', () => {
 			renderActive({
 				preferenceCard: {
 					state: 'edited',
@@ -250,16 +260,12 @@ describe('PreferenceCard', () => {
 					projectId: 'thread-project',
 				},
 			});
-
-			// The mock's baseText renders `key:{json}`; the outer appliesTo call re-encodes
-			// this scope string as JSON, which escapes its quotes. Assert on the key and the
-			// interpolated name separately rather than on the brittle escaped literal.
-			const scope = screen.getByTestId('instance-ai-preference-card-scope');
-			expect(scope).toHaveTextContent('instanceAi.preferenceCard.scope.project');
-			expect(scope).toHaveTextContent('Marketing');
+			const header = screen.getByTestId('instance-ai-preference-card-header');
+			expect(header).toHaveTextContent('instanceAi.preferenceCard.saved.forProject');
+			expect(header).toHaveTextContent('Marketing');
 		});
 
-		it('calls a personal project by its kind, not its email-shaped name', () => {
+		it('names a personal project by its kind, not its email-shaped name', () => {
 			renderActive({
 				preferenceCard: {
 					state: 'edited',
@@ -268,14 +274,37 @@ describe('PreferenceCard', () => {
 					projectId: 'personal-1',
 				},
 			});
-
-			expect(screen.getByTestId('instance-ai-preference-card-scope')).toHaveTextContent(
-				'settings.context.preferences.scope.personalProject',
-			);
+			const header = screen.getByTestId('instance-ai-preference-card-header');
+			expect(header).toHaveTextContent('instanceAi.preferenceCard.saved.forProject');
+			expect(header).toHaveTextContent('instanceAi.preferenceCard.saved.namePersonalProject');
 		});
 
-		it('falls back to "This project" for the thread\'s own project when the store does not know it', () => {
+		it('falls back to a neutral name for a project the store does not know', () => {
+			renderActive({
+				preferenceCard: {
+					state: 'edited',
+					content: STORED_TEXT,
+					scope: 'project',
+					projectId: 'gone',
+				},
+			});
+			const header = screen.getByTestId('instance-ai-preference-card-header');
+			expect(header).toHaveTextContent('instanceAi.preferenceCard.saved.forProject');
+			expect(header).toHaveTextContent('instanceAi.preferenceCard.saved.nameAnotherProject');
+		});
+
+		it('names just the reader for a user-scoped row, with no project name', () => {
+			renderActive();
+			const header = screen.getByTestId('instance-ai-preference-card-header');
+			expect(header).toHaveTextContent('instanceAi.preferenceCard.saved.justForYou');
+			expect(header).not.toHaveTextContent('instanceAi.preferenceCard.saved.forProject');
+		});
+	});
+
+	describe('the compact card', () => {
+		it('falls back to "this project" for the thread\'s own project when the store does not know it', () => {
 			// Review focus 5: an unknown project must not throw or show an id.
+			mockedStore(useProjectsStore).myProjects = [] as never;
 			renderActive({
 				preferenceCard: {
 					state: 'edited',
@@ -286,11 +315,9 @@ describe('PreferenceCard', () => {
 			});
 
 			// `thread-project` is the thread's, so "this project" is true of it even unnamed.
-			mockedStore(useProjectsStore).myProjects = [] as never;
-
-			expect(screen.getByTestId('instance-ai-preference-card-scope')).toHaveTextContent(
-				'instanceAi.preferenceCard.scope.project',
-			);
+			const header = screen.getByTestId('instance-ai-preference-card-header');
+			expect(header).toHaveTextContent('instanceAi.preferenceCard.saved.forProject');
+			expect(header).toHaveTextContent('instanceAi.preferenceCard.saved.nameThisProject');
 		});
 
 		// Only the thread's project is "this project". A row can sit in another one, and saying
@@ -310,25 +337,10 @@ describe('PreferenceCard', () => {
 				},
 			});
 
-			const scope = screen.getByTestId('instance-ai-preference-card-scope');
-			expect(scope).toHaveTextContent('instanceAi.preferenceCard.scope.otherProject');
-			expect(scope).toHaveTextContent('Sales');
-			expect(scope).not.toHaveTextContent('instanceAi.preferenceCard.scope.project:');
-		});
-
-		it("falls back to a neutral label for an unknown project that is not the thread's", () => {
-			renderActive({
-				preferenceCard: {
-					state: 'edited',
-					content: STORED_TEXT,
-					scope: 'project',
-					projectId: 'gone',
-				},
-			});
-
-			expect(screen.getByTestId('instance-ai-preference-card-scope')).toHaveTextContent(
-				'instanceAi.preferenceCard.scope.otherProjectFallback',
-			);
+			const header = screen.getByTestId('instance-ai-preference-card-header');
+			expect(header).toHaveTextContent('instanceAi.preferenceCard.saved.forProject');
+			expect(header).toHaveTextContent('Sales');
+			expect(header).not.toHaveTextContent('instanceAi.preferenceCard.saved.nameThisProject');
 		});
 
 		it('names everyone on the instance after a move to instance scope', () => {
@@ -341,27 +353,27 @@ describe('PreferenceCard', () => {
 				},
 			});
 
-			expect(screen.getByTestId('instance-ai-preference-card-scope')).toHaveTextContent(
-				'settings.context.preferences.scope.instance',
-			);
+			expect(screen.getByText('instanceAi.preferenceCard.saved.globally')).toBeInTheDocument();
 		});
 
-		it('keeps "Manage preferences" and drops "Edit" in history', async () => {
+		it('offers no links in history', async () => {
 			renderHistory();
-			await userEvent.click(screen.getByTestId('instance-ai-preference-card-header'));
+			await openCard();
 
-			expect(screen.getByTestId('instance-ai-preference-card-manage')).toBeInTheDocument();
 			expect(screen.queryByTestId('instance-ai-preference-card-edit')).toBeNull();
+			expect(screen.queryByTestId('instance-ai-preference-card-manage')).toBeNull();
 		});
 
-		it('shows the saved text without a strike-through', () => {
+		it('shows the saved text without a strike-through', async () => {
 			renderActive();
+			await openCard();
 
 			expect(screen.getByTestId('instance-ai-preference-card-text')).not.toHaveClass('removedText');
 		});
 
-		it('strikes the saved text through and offers no link once removed', () => {
+		it('strikes the saved text through and offers no link once removed', async () => {
 			renderActive({ preferenceCard: { state: 'undone' } });
+			await openCard();
 
 			const text = screen.getByTestId('instance-ai-preference-card-text');
 			expect(text).toHaveTextContent(STORED_TEXT);
@@ -372,8 +384,9 @@ describe('PreferenceCard', () => {
 
 		// Save "A", edit to "B", remove: the struck-out text is "B", the one the user
 		// removed, not the "A" the tool result still holds.
-		it('strikes the edited text through when the preference was edited before removal', () => {
+		it('strikes the edited text through when the preference was edited before removal', async () => {
 			renderActive({ preferenceCard: { state: 'undone', content: 'Keep replies brief.' } });
+			await openCard();
 
 			const text = screen.getByTestId('instance-ai-preference-card-text');
 			expect(text).toHaveTextContent('Keep replies brief.');
@@ -387,8 +400,9 @@ describe('PreferenceCard', () => {
 			expect(screen.queryByTestId('instance-ai-preference-card')).toBeNull();
 		});
 
-		it('shows the edited text after an edit fact', () => {
+		it('shows the edited text after an edit fact', async () => {
 			renderActive({ preferenceCard: { state: 'edited', content: 'Keep replies brief.' } });
+			await openCard();
 
 			expect(screen.getByTestId('instance-ai-preference-card-text')).toHaveTextContent(
 				'Keep replies brief.',
@@ -406,8 +420,9 @@ describe('PreferenceCard', () => {
 			},
 		};
 
-		it('reads "Preference not saved" and shows the attempted text with the server message', () => {
+		it('reads "Preference not saved" and shows the attempted text with the server message', async () => {
 			renderActive(refused);
+			await openCard();
 
 			expect(screen.getByText('instanceAi.preferenceCard.notSaved')).toBeInTheDocument();
 			expect(screen.getByTestId('instance-ai-preference-card-text')).toHaveTextContent(STORED_TEXT);
@@ -416,24 +431,33 @@ describe('PreferenceCard', () => {
 			);
 		});
 
-		it('offers "Manage preferences" but no "Edit", because nothing was saved', () => {
+		it('keeps the warning icon on the row, unlike a saved one', () => {
 			renderActive(refused);
+			const header = screen.getByTestId('instance-ai-preference-card-header');
 
-			expect(screen.getByTestId('instance-ai-preference-card-manage')).toBeInTheDocument();
-			expect(screen.queryByTestId('instance-ai-preference-card-edit')).toBeNull();
-			expect(screen.queryByText(/instanceAi\.preferenceCard\.appliesTo/)).toBeNull();
+			expect(header.querySelector('[data-icon="triangle-alert"]')).not.toBeNull();
 		});
 
-		it('falls back to a generic line when the result carries no message', () => {
+		it('offers no links, because nothing was saved', async () => {
+			renderActive(refused);
+			await openCard();
+
+			expect(screen.queryByTestId('instance-ai-preference-card-edit')).toBeNull();
+			expect(screen.queryByTestId('instance-ai-preference-card-manage')).toBeNull();
+		});
+
+		it('falls back to a generic line when the result carries no message', async () => {
 			renderActive({ ...refused, result: { ok: false, reason: 'failed' } });
+			await openCard();
 
 			expect(screen.getByTestId('instance-ai-preference-card-error')).toHaveTextContent(
 				'instanceAi.preferenceCard.notSavedFallback',
 			);
 		});
 
-		it('shows the refusal when the tool threw, without the internal error text', () => {
+		it('shows the refusal when the tool threw, without the internal error text', async () => {
 			renderActive({ ...refused, result: undefined, error: 'ECONNREFUSED' });
+			await openCard();
 
 			expect(screen.getByText('instanceAi.preferenceCard.notSaved')).toBeInTheDocument();
 			const error = screen.getByTestId('instance-ai-preference-card-error');
@@ -441,13 +465,14 @@ describe('PreferenceCard', () => {
 			expect(error).not.toHaveTextContent('ECONNREFUSED');
 		});
 
-		it('reads "Preference not confirmed" when the run ended with the call in flight', () => {
+		it('reads "Preference not confirmed" when the run ended with the call in flight', async () => {
 			renderActive({
 				...refused,
 				result: undefined,
 				error: 'Interrupted by a process restart',
 				interrupted: true,
 			});
+			await openCard();
 
 			expect(screen.getByText('instanceAi.preferenceCard.notConfirmed')).toBeInTheDocument();
 			expect(screen.queryByText('instanceAi.preferenceCard.notSaved')).toBeNull();
@@ -455,7 +480,6 @@ describe('PreferenceCard', () => {
 			expect(screen.getByTestId('instance-ai-preference-card-error')).toHaveTextContent(
 				'instanceAi.preferenceCard.notConfirmedMessage',
 			);
-			expect(screen.getByTestId('instance-ai-preference-card-manage')).toBeInTheDocument();
 			expect(screen.queryByTestId('instance-ai-preference-card-edit')).toBeNull();
 		});
 
@@ -907,7 +931,8 @@ describe('PreferenceCard', () => {
 			);
 			expect(screen.getByTestId('instance-ai-preference-modal-text')).toBeInTheDocument();
 			expect(thread.applyEvent).not.toHaveBeenCalled();
-			expect(screen.getByText('instanceAi.preferenceCard.saved')).toBeInTheDocument();
+			// The card keeps its saved title: the row was not undone.
+			expect(screen.getByText('instanceAi.preferenceCard.saved.justForYou')).toBeInTheDocument();
 		});
 
 		// A 2xx body without the fact leaves the row state unknown: the card must not move
@@ -930,7 +955,8 @@ describe('PreferenceCard', () => {
 			);
 			expect(screen.getByTestId('instance-ai-preference-modal-text')).toBeInTheDocument();
 			expect(thread.applyEvent).not.toHaveBeenCalled();
-			expect(screen.getByText('instanceAi.preferenceCard.saved')).toBeInTheDocument();
+			// The card keeps its saved title: the row was not undone.
+			expect(screen.getByText('instanceAi.preferenceCard.saved.justForYou')).toBeInTheDocument();
 		});
 
 		it.each([
@@ -979,7 +1005,8 @@ describe('PreferenceCard', () => {
 	// The card's fact says where its own last write put the row. A move made on the settings
 	// page or over MCP never reaches that fact, so the row itself is read and wins.
 	describe('the row behind the card', () => {
-		const scopeText = () => screen.getByTestId('instance-ai-preference-card-scope').textContent;
+		/** The header's title text, which names where the row applies. */
+		const headerText = () => screen.getByTestId('instance-ai-preference-card-header').textContent;
 
 		it('asks for the id the card holds', () => {
 			const contextStore = resolvedRows();
@@ -995,8 +1022,8 @@ describe('PreferenceCard', () => {
 
 			renderActive();
 
-			expect(scopeText()).toContain('instanceAi.preferenceCard.scope.project');
-			expect(scopeText()).toContain('Marketing');
+			expect(headerText()).toContain('instanceAi.preferenceCard.saved.forProject');
+			expect(headerText()).toContain('Marketing');
 		});
 
 		it('keeps the scope the card wrote while the row is unresolved', () => {
@@ -1004,7 +1031,7 @@ describe('PreferenceCard', () => {
 
 			renderActive();
 
-			expect(scopeText()).toContain('settings.context.preferences.scope.user');
+			expect(headerText()).toContain('instanceAi.preferenceCard.saved.justForYou');
 		});
 
 		it('opens the modal on the scope the row holds now', async () => {

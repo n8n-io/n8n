@@ -42,6 +42,7 @@ export namespace PubSub {
 		export type ReloadLicense = ToCommand<'reload-license'>;
 		export type ReloadOIDCConfiguration = ToCommand<'reload-oidc-config'>;
 		export type ReloadSamlConfiguration = ToCommand<'reload-saml-config'>;
+		export type ReloadOAuthSigningKeys = ToCommand<'reload-oauth-signing-keys'>;
 		export type ReloadCredentialsOverwrites = ToCommand<'reload-overwrite-credentials'>;
 		export type RestartEventBus = ToCommand<'restart-event-bus'>;
 		export type ReloadExternalSecretsProviders = ToCommand<'reload-external-secrets-providers'>;
@@ -80,6 +81,7 @@ export namespace PubSub {
 		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
 		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
 		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
+		export type ReloadAgentsSettings = ToCommand<'reload-agents-settings'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type CancelCollection = ToCommand<'cancel-collection'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
@@ -127,12 +129,14 @@ export namespace PubSub {
 		| Commands.ClearTestWebhooks
 		| Commands.ReloadOIDCConfiguration
 		| Commands.ReloadSamlConfiguration
+		| Commands.ReloadOAuthSigningKeys
 		| Commands.ReloadCredentialsOverwrites
 		| Commands.ReloadSsoProvisioningConfiguration
 		| Commands.ReloadSourceControlConfiguration
 		| Commands.ReloadMcpRegistry
 		| Commands.ReloadOtelConfig
 		| Commands.ReloadInstanceAiSettings
+		| Commands.ReloadAgentsSettings
 		| Commands.CancelTestRun
 		| Commands.CancelCollection
 		| Commands.AgentChatIntegrationChanged
