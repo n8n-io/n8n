@@ -1,4 +1,5 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
+import { isRecord } from '@n8n/utils/is-record';
 import type { JSONSchema7 } from 'json-schema';
 
 import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
@@ -488,7 +489,11 @@ export class ToolCallRunner {
 			isError: false,
 		});
 
-		list.setToolCallResult(toolCallId, guardedResult.historyOutput);
+		// An MCP result reports a failure in `isError`. The stored output of an untrusted
+		// tool hides that flag, so keep it on the block for history readers.
+		list.setToolCallResult(toolCallId, guardedResult.historyOutput, {
+			resultIsError: isRecord(toolResult) && toolResult.isError === true,
+		});
 		if (guardedCustomMessage) {
 			list.addResponse([guardedCustomMessage]);
 		}

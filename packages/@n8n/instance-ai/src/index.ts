@@ -183,10 +183,16 @@ export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export {
 	assessRepeatableWork,
+	buildRepeatableWorkSection,
+	collectWorkSignals,
 	describeScheduleTrigger,
+	hasRepeatableWorkSection,
 	isRepeatableEnough,
 	parseSchedulePhrase,
+	PROPOSE_AUTOMATION_TOOL_NAME,
+	readWorkToolCall,
 	recommendRunTarget,
+	REPEATABLE_WORK_OPEN_TAG,
 	REPEATABLE_WORK_THRESHOLD,
 	scheduleToCron,
 	type RecommendationReason,
@@ -198,6 +204,8 @@ export {
 	type ScheduleTrigger,
 	type WeekdaysTrigger,
 	type WorkSignal,
+	type WorkSignalsInput,
+	type WorkToolCall,
 } from './automation';
 export {
 	WorkflowSaveConflictError,

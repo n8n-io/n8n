@@ -15,6 +15,19 @@ export {
 	type WorkSignal,
 } from './repeatable-work';
 export {
+	buildRepeatableWorkSection,
+	hasRepeatableWorkSection,
+	REPEATABLE_WORK_CLOSE_TAG,
+	REPEATABLE_WORK_OPEN_TAG,
+} from './repeatable-work-block';
+export {
+	collectWorkSignals,
+	PROPOSE_AUTOMATION_TOOL_NAME,
+	readWorkToolCall,
+	type WorkSignalsInput,
+	type WorkToolCall,
+} from './work-signals';
+export {
 	isAlwaysOnTrigger,
 	LOCAL_ONLY_NODE_TYPES,
 	recommendRunTarget,

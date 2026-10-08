@@ -16,6 +16,7 @@ import { z } from 'zod';
 
 import { computeChatModelValidationIssues } from './chat-model-validation';
 import { planVerificationSimulation } from './plan-verification-simulation';
+import { ONE_OFF_BUILD_SUCCEEDED_REASON } from './post-build-flow-reason';
 import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
 	buildCredentialMap,
@@ -402,7 +403,7 @@ const postBuildFlowOutputSchema = z.discriminatedUnion('skillId', [
 	z.object({
 		required: z.literal(true),
 		skillId: z.literal(ONE_OFF_OPERATIONS_SKILL_ID),
-		reason: z.literal('direct-one-off-build-succeeded'),
+		reason: z.literal(ONE_OFF_BUILD_SUCCEEDED_REASON),
 		guidance: z.string(),
 		instructions: z.string(),
 	}),
@@ -425,7 +426,7 @@ async function directPostBuildFlowHandoff(
 		return {
 			required: true,
 			skillId: ONE_OFF_OPERATIONS_SKILL_ID,
-			reason: 'direct-one-off-build-succeeded',
+			reason: ONE_OFF_BUILD_SUCCEEDED_REASON,
 			guidance: oneOffOperationsGuidance(activate !== undefined),
 			instructions: await getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID, skills, activate),
 		};

@@ -249,7 +249,8 @@ export class AgentMessageList {
 
 	/**
 	 * Locate the assistant message hosting the given toolCallId and mark the
-	 * block as resolved with the supplied output.
+	 * block as resolved with the supplied output. `resultIsError` records that
+	 * the result itself reports a failure (see `ContentToolCall`).
 	 *
 	 * Returns the mutated host message, or `undefined` if the toolCallId is
 	 * not found (internal invariant violation — caller should log/throw).
@@ -257,7 +258,7 @@ export class AgentMessageList {
 	setToolCallResult(
 		toolCallId: string,
 		output: JSONValue,
-		options?: { canceled?: boolean },
+		options?: { canceled?: boolean; resultIsError?: boolean },
 	): AgentDbMessage | undefined {
 		const host = this.findToolCallHost(toolCallId);
 		if (!host) return undefined;
@@ -272,6 +273,11 @@ export class AgentMessageList {
 			(mutableBlock as Extract<ContentToolCall, { state: 'resolved' }>).canceled = true;
 		} else if ('canceled' in mutableBlock) {
 			delete (mutableBlock as { canceled?: boolean }).canceled;
+		}
+		if (options?.resultIsError) {
+			Object.assign(mutableBlock, { resultIsError: true });
+		} else if ('resultIsError' in mutableBlock) {
+			delete mutableBlock.resultIsError;
 		}
 		if ('error' in mutableBlock) {
 			delete (mutableBlock as { error: unknown }).error;

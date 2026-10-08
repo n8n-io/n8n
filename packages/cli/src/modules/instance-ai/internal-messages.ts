@@ -238,6 +238,15 @@ export function withAiPreferences(message: string, block: string): string {
 }
 
 /**
+ * The `<thread-context>` block among the leading internal blocks of a stored user message, or
+ * `undefined`. Only the service writes these blocks, so a tag lookalike in the user's own text
+ * is never returned. Read a service-written section from this block, never from the whole message.
+ */
+export function extractThreadContextBlock(stored: string): string | undefined {
+	return leadingInternalBlocks(stored).find((block) => block.startsWith(THREAD_CONTEXT_OPEN_TAG));
+}
+
+/**
  * Matches the service-written preferences block inside one `<thread-context>` block. The
  * renderer escapes the tags out of user text, so the first close tag is always the real one.
  */
@@ -251,10 +260,16 @@ const AI_PREFERENCES_BLOCK = /<ai-preferences>\n[\s\S]*?\n<\/ai-preferences>/;
  * `asStoredThreadContextSection(freshBlock)`, never the raw render.
  */
 export function extractAiPreferencesBlock(stored: string): string | undefined {
-	const threadContext = leadingInternalBlocks(stored).find((block) =>
-		block.startsWith(THREAD_CONTEXT_OPEN_TAG),
-	);
+	const threadContext = extractThreadContextBlock(stored);
 	return threadContext ? AI_PREFERENCES_BLOCK.exec(threadContext)?.[0] : undefined;
+}
+
+/**
+ * One `<thread-context>` block without its ai-preferences block. The saved preferences are the
+ * user's own text, so a reader of the sections that n8n wrote must leave them out.
+ */
+export function withoutAiPreferencesBlock(threadContext: string): string {
+	return threadContext.replace(AI_PREFERENCES_BLOCK, '');
 }
 
 const PREVIEW_TABS_HEADER =
@@ -269,9 +284,7 @@ const THREAD_ARTIFACTS_BLOCK = /<thread-artifacts>\n[\s\S]*?\n<\/thread-artifact
  * Compare against `asStoredThreadContextSection(freshBlock)`, never the raw render.
  */
 export function extractThreadArtifactsBlock(stored: string): string | undefined {
-	const threadContext = leadingInternalBlocks(stored).find((block) =>
-		block.startsWith(THREAD_CONTEXT_OPEN_TAG),
-	);
+	const threadContext = extractThreadContextBlock(stored);
 	return threadContext ? THREAD_ARTIFACTS_BLOCK.exec(threadContext)?.[0] : undefined;
 }
 
@@ -384,6 +397,21 @@ export function cleanStoredUserMessage(stored: string): string | null {
 		text = text.replace(TASK_CONTEXT_BLOCK, '');
 	} while (text !== previous);
 	return text === AUTO_FOLLOW_UP_MESSAGE ? null : text;
+}
+
+/**
+ * The attachment manifest that the service adds after the text of a turn with files. Each file is
+ * on one line, so a match attempt reads only the lines of one manifest.
+ */
+const TRAILING_ATTACHMENT_MANIFEST =
+	/(?:^|\n\n)\[ATTACHMENTS\]\n(?:- [^\n]*\n)*\[\/ATTACHMENTS\]\s*$/;
+
+/**
+ * Removes the attachment manifest from the end of a cleaned stored message. The manifest holds
+ * file names, which are not the user's own words.
+ */
+export function stripAttachmentManifest(text: string): string {
+	return text.replace(TRAILING_ATTACHMENT_MANIFEST, '');
 }
 
 /**
