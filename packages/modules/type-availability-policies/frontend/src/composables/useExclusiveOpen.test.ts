@@ -28,7 +28,7 @@ describe('useExclusiveOpen', () => {
 		b.scope.stop();
 	});
 
-	it('hands the slot back to an instance that still wants to open', async () => {
+	it('keeps a displaced instance closed until it wants to open again', async () => {
 		const a = instance();
 		const b = instance();
 
@@ -39,20 +39,36 @@ describe('useExclusiveOpen', () => {
 
 		b.wantsOpen.value = false;
 		await nextTick();
+		expect(a.open.value).toBe(false);
+
+		a.wantsOpen.value = false;
+		await nextTick();
+		a.wantsOpen.value = true;
+		await nextTick();
 		expect(a.open.value).toBe(true);
 
 		a.scope.stop();
 		b.scope.stop();
 	});
 
+	it('opens an instance that already wants to open when it is created', async () => {
+		const wantsOpen = ref(true);
+		const scope = effectScope();
+		const open = scope.run(() => useExclusiveOpen(wantsOpen))!;
+
+		expect(open.value).toBe(true);
+
+		scope.stop();
+	});
+
 	it('releases the slot when the owner is disposed', async () => {
 		const a = instance();
 		const b = instance();
 
-		a.wantsOpen.value = true;
 		b.wantsOpen.value = true;
 		await nextTick();
 		b.scope.stop();
+		a.wantsOpen.value = true;
 		await nextTick();
 
 		expect(a.open.value).toBe(true);

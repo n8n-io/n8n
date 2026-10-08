@@ -99,6 +99,27 @@ describe('RestrictedNodePopover', () => {
 		otherAnchor.remove();
 	});
 
+	it('keeps every popover closed while a dialog opened from another row is open', async () => {
+		const otherAnchor = document.createElement('div');
+		document.body.appendChild(otherAnchor);
+		renderPopover({ anchor, nodeTypeName: 'Gmail' });
+		renderPopover({ anchor: otherAnchor, nodeTypeName: 'Slack' });
+
+		await userEvent.hover(anchor);
+		await screen.findByText('Gmail');
+		await userEvent.hover(otherAnchor);
+		const popover = await screen.findByText('Slack');
+		await userEvent.hover(popover);
+		await userEvent.click(screen.getByTestId('node-restricted-contact-admin'));
+
+		expect(screen.getByTestId('contact-instance-admin-modal')).toHaveTextContent('Slack');
+		await waitFor(() =>
+			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
+		);
+
+		otherAnchor.remove();
+	});
+
 	it('opens while focus is inside the anchor row and closes when focus leaves', async () => {
 		const button = document.createElement('button');
 		anchor.appendChild(button);
