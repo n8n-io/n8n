@@ -1,0 +1,64 @@
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_71ad2034164515::t_a3e043f8942f38 142-181,203
+  s_71ad2034164515::t_fe2d594875d558 5,12,18-22,26-30,82-91,136-141,182-202,204-214
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/agent-package-fixtures.ts
+  s_71ad2034164515::t_b934779dae605e 1-145
+packages/cli/src/modules/n8n-packages/__tests__/import-agent-package.integration.test.ts
+  s_71ad2034164515::t_90a31c566bc5ed 1-180
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_71ad2034164515::t_59aefae7b0dae6 25,27-28
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.agent.test.ts
+  s_71ad2034164515::t_d37ba306474c09 1-299
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_71ad2034164515::t_302e0847187cdc 179-181
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_71ad2034164515::t_106e6b2a89c7e3 1-6
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_71ad2034164515::t_7c0afb5fb6ed12 116-119
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  s_71ad2034164515::t_817c8e72010510 152
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/sub-workflow-ordering.test.ts
+  s_71ad2034164515::t_a8b96262f9960a 29
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_71ad2034164515::t_93890a8175bf51 27,45,84-87
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_71ad2034164515::t_659622c3bc1c1f 422,480,501-508,515
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_71ad2034164515::t_492cfa78a0ae92 19-20,55-70,209
+packages/cli/src/modules/n8n-packages/spec/__tests__/requirements.schema.test.ts
+  s_71ad2034164515::t_710b1b2f22ec8c 86-113,119,125-166
+packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
+  s_71ad2034164515::t_45eef10f52f39f 51,62
+packages/cli/src/modules/n8n-packages/spec/requirement-consumers.ts
+  s_71ad2034164515::t_81c4c22071612a 6
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_71ad2034164515::t_54118134194764 4,12-30,47-52,56,59,118-121,149
+packages/cli/src/modules/n8n-packages/spec/serialized/agent.schema.ts
+  s_71ad2034164515::t_562bd6c982bafb 1-71
+packages/cli/src/modules/promotions.ee/__tests__/import-manifest-bridge.test.ts
+  s_71ad2034164515::t_298e15921e84a9 108-116,143-151,160-168
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_71ad2034164515::t_7978dd61a573db 35-42
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_71ad2034164515::t_7383f6a41b5560 14-19,25,28,35-37
+packages/cli/src/modules/promotions.ee/import-manifest-bridge.ts
+  s_71ad2034164515::t_c2476b92010ef8 81-83,285
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_71ad2034164515::t_af87668a62f09d 60-63,335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd19efa45be0fbb0dbe59cf644229abfcb54ac79",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
