@@ -47,6 +47,11 @@ vi.mock('../../../tracing/langsmith-tracing', async () => {
 	};
 });
 
+// Covered in workflow-build-telemetry.test.ts; kept out of the trace child-run counts here.
+vi.mock('../../../tracing/builder-metric-event', () => ({
+	emitBuilderMetric: vi.fn(async () => await Promise.resolve()),
+}));
+
 vi.mock('../workflow-validation-warnings', async () => {
 	const actual = await vi.importActual<typeof import('../workflow-validation-warnings')>(
 		'../workflow-validation-warnings',

@@ -1120,6 +1120,17 @@ async function startAndFinishProductChildSpan(
 	});
 }
 
+function isLiveTraceHandle(
+	tracing: InstanceAiTraceContext | undefined,
+): tracing is InstanceAiTraceContext {
+	return tracing !== undefined && (tracing.isLive?.() ?? true);
+}
+
+/** Whether {@link emitTraceOnlyChildRun} would export a run, so callers can skip costly payloads. */
+export function canEmitTraceOnlyChildRun(fallbackTracing: InstanceAiTraceContext | undefined) {
+	return getCurrentProductTrace() !== undefined || isLiveTraceHandle(fallbackTracing);
+}
+
 /**
  * Emit a trace-only child run, preferring the current turn's ambient trace: a
  * tool suspended in one turn and resumed in a later one holds a stale handle
@@ -1151,7 +1162,7 @@ export async function emitTraceOnlyChildRun(
 		return 'ambient';
 	}
 	// A dead handle's runs are spanless and export nothing — don't claim 'handle'.
-	if (fallbackTracing && (fallbackTracing.isLive?.() ?? true)) {
+	if (isLiveTraceHandle(fallbackTracing)) {
 		try {
 			const run = await fallbackTracing.startChildRun(fallbackTracing.actorRun, {
 				...init,

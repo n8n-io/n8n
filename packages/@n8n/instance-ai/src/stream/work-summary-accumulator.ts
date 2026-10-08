@@ -28,7 +28,8 @@ export const workSummarySchema = z.object({
 export type ToolCallSummary = z.infer<typeof toolCallSummarySchema>;
 export type WorkSummary = z.infer<typeof workSummarySchema>;
 
-function hasConfigMutationMarker(result: unknown): boolean {
+/** Builder tools stamp `configMutated: true` on results that changed the agent config. */
+export function hasConfigMutationMarker(result: unknown): boolean {
 	return (
 		typeof result === 'object' &&
 		result !== null &&

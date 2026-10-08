@@ -19,6 +19,7 @@ import type {
 	InstanceAiTraceRun,
 	OrchestrationContext,
 } from '../../../types';
+import { emitAgentBuildMetrics, withAgentStreamMetrics } from '../agent-build-metrics';
 import type * as AgentTargetBindingModule from '../agent-target-binding';
 import {
 	getSessionAgentByRef,
@@ -29,6 +30,12 @@ import {
 } from '../agent-target-binding';
 import { createBuildAgentTool } from '../build-agent.tool';
 import type { BuilderRequiredArtifact } from '../builder-required-artifact';
+
+// Covered in agent-build-metrics.test.ts; kept out of the trace child-run counts here.
+vi.mock('../agent-build-metrics', () => ({
+	emitAgentBuildMetrics: vi.fn(async () => await Promise.resolve()),
+	withAgentStreamMetrics: vi.fn((_context: unknown, turn: unknown) => turn),
+}));
 
 vi.mock('../agent-target-binding', async () => {
 	const actual = await vi.importActual<typeof AgentTargetBindingModule>('../agent-target-binding');
@@ -681,6 +688,34 @@ describe('build-agent tool', () => {
 
 			// Baseline + outcome.
 			expect(delegate.readAgentArtifact).toHaveBeenCalledTimes(2);
+		});
+
+		it('records builder metrics for the settled turn and taps its stream', async () => {
+			const { context, delegate } = makeTracedContext();
+			const turn = fakeStream(
+				[
+					toolCallChunk('call-1', 'patch_config'),
+					toolResultChunk('call-1', { configMutated: true }),
+				],
+				'Updated and tested.',
+			);
+			vi.mocked(delegate.streamBuild).mockResolvedValue(turn);
+
+			await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			expect(withAgentStreamMetrics).toHaveBeenCalledWith(context, turn, {
+				agentId: 'agent-existing',
+				activity: expect.any(String),
+				alreadyShown: false,
+			});
+			expect(emitAgentBuildMetrics).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agentId: 'agent-existing',
+					outcome: 'completed',
+					configUpdated: true,
+					userWaitMs: undefined,
+				}),
+			);
 		});
 
 		it('does not re-read after a pass that changed nothing', async () => {
@@ -1698,6 +1733,7 @@ describe('build-agent tool', () => {
 				toolCallId: string;
 				configUpdated: boolean;
 				requiredArtifacts: BuilderRequiredArtifact[];
+				suspendedAt: number;
 			}> = {},
 		) {
 			return {
@@ -2033,6 +2069,50 @@ describe('build-agent tool', () => {
 
 			const payload = suspend.mock.calls[0][0] as Record<string, unknown>;
 			expect(payload).toMatchObject({ builderCheckpoint: { configUpdated: true } });
+		});
+
+		it('records the user wait time on the resumed pass and stamps the next suspension', async () => {
+			vi.useFakeTimers({ now: 100_000 });
+			try {
+				const { context, delegate } = makeContext();
+				context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+				vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+					{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+				]);
+				vi.mocked(delegate.resumeBuild).mockResolvedValue(
+					suspendingStream('ask_credential', askCredentialSuspendPayload(), {
+						runId: 'builder-run-2',
+						toolCallId: 'builder-call-2',
+					}),
+				);
+				const suspend: Mock = vi.fn().mockResolvedValue(undefined);
+
+				await runToolWithCtx(
+					context,
+					{ message: 'Build it', name: 'New Agent' },
+					{
+						resumeData: { approved: true },
+						suspendPayload: suspendPayloadWithCheckpoint({
+							configUpdated: true,
+							suspendedAt: 70_000,
+						}),
+						suspend,
+					},
+				);
+
+				expect(emitAgentBuildMetrics).toHaveBeenCalledWith(
+					expect.objectContaining({
+						outcome: 'suspended',
+						configUpdated: true,
+						userWaitMs: 30_000,
+					}),
+				);
+				const payload = suspend.mock.calls[0][0] as { builderCheckpoint: Record<string, unknown> };
+				expect(payload.builderCheckpoint).toMatchObject({ suspendedAt: 100_000 });
+				expect(payload.builderCheckpoint).not.toHaveProperty('userWaitMs');
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('ORs carried configUpdated with the resumed pass when finishing', async () => {

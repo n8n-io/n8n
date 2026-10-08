@@ -1,4 +1,5 @@
 import type { WorkflowSourceFileBinding } from './workflow-file-bindings';
+import { emitBuilderMetric } from '../../tracing/builder-metric-event';
 import type { InstanceAiContext } from '../../types';
 import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
 
@@ -71,6 +72,17 @@ export function trackWorkflowSourceBuild(
 					...(input.remediation.reason ? { remediation_reason: input.remediation.reason } : {}),
 				}
 			: {}),
+	});
+	void emitBuilderMetric(context.tracing, 'workflow_build', {
+		success: input.result === 'success',
+		result: input.result,
+		stage: input.stage,
+		operation: input.saveOperation,
+		workflow_id: input.savedWorkflowId ?? input.targetWorkflowId,
+		work_item_id: buildContext?.workItemId,
+		is_supporting_workflow: input.isSupportingWorkflow === true,
+		error_count: input.errorCount ?? 0,
+		remediation_category: input.remediation?.category,
 	});
 }
 

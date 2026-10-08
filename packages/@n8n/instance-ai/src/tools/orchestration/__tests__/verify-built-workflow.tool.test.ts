@@ -23,7 +23,12 @@ import type {
 } from '../../../workflow-loop/workflow-loop-state';
 import { WorkflowTaskCoordinator } from '../../../workflow-loop/workflow-task-service';
 import { CREDENTIALLESS_AI_ROOT_SIMULATION_REASON } from '../../workflows/plan-verification-simulation';
+import { emitWorkflowVerificationMetric } from '../verification/verification-metric';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
+
+vi.mock('../verification/verification-metric', () => ({
+	emitWorkflowVerificationMetric: vi.fn(async () => await Promise.resolve()),
+}));
 
 type VerifyBuiltWorkflowOutput = {
 	success: boolean;
@@ -706,6 +711,16 @@ describe('verify-built-workflow tool', () => {
 		});
 		expect(update.verification?.evidence?.nodesExecuted).toEqual(['Form Trigger', 'Insert Row']);
 		expect(typeof update.verification?.verifiedAt).toBe('string');
+		expect(emitWorkflowVerificationMetric).toHaveBeenCalledWith(
+			undefined,
+			expect.objectContaining({
+				source: 'verify',
+				workflowId: 'wf-1',
+				workItemId: 'wi-1',
+				executionId: 'exec-1',
+				claim: expect.objectContaining({ level: expect.any(String) }),
+			}),
+		);
 	});
 
 	it('increments the verify attempt count on the build outcome each run', async () => {

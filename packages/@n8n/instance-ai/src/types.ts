@@ -1481,6 +1481,18 @@ export interface InstanceAiBuilderDelegate {
 		skills: Record<string, AgentSkill>;
 		configHash: string | null;
 	} | null>;
+	/** Read-only Publish validation of the agent's draft, for the `agent_verification`
+	 *  trace metric. Resolves to `undefined` when the agent does not exist. Optional
+	 *  for the same reason as `readAgentArtifact`. */
+	validateAgent?(agentId: string): Promise<AgentValidationSummary | undefined>;
+}
+
+export interface AgentValidationSummary {
+	valid: boolean;
+	/** Distinct validation issue codes, sorted. */
+	issueCodes: string[];
+	issueCount: number;
+	capabilityCount: number;
 }
 
 // ── Computer Use state ──────────────────────────────────────────────────────

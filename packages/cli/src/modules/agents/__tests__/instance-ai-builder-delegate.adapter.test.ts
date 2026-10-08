@@ -27,6 +27,7 @@ import {
 import type { AgentConfigService } from '../agent-config.service';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import type { AgentSkillsService } from '../agent-skills.service';
+import type { AgentValidationService } from '../agent-validation.service';
 import type { N8nMemory, N8nMemoryImpl } from '../integrations/n8n-memory';
 import type { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
@@ -37,6 +38,7 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 	const agentThreadRepository = mock<AgentThreadRepository>();
 	const agentConfig = mock<AgentConfigService>();
 	const agentSkills = mock<AgentSkillsService>();
+	const agentValidation = mock<AgentValidationService>();
 	const credentialService = mock<InstanceAiCredentialService>();
 	const settingsRepository = mock<SettingsRepository>();
 	const agentsSettingsService = new AgentsSettingsService(
@@ -58,6 +60,7 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 		agentConfig,
 		agentSkills,
 		agentsSettingsService,
+		agentValidation,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -81,6 +84,7 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 		agentThreadRepository,
 		agentConfig,
 		agentSkills,
+		agentValidation,
 		credentialProvider,
 		credentialProviderFor,
 		credentialService,
@@ -551,6 +555,57 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			await expect(delegate.readAgentArtifact!('agent-1')).rejects.toThrow(ForbiddenError);
 			expect(agentConfig.getConfig).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('validateAgent', () => {
+		const CONFIG = {
+			name: 'Support Triage',
+			tools: [{ type: 'workflow', workflow: 'wf-1' }],
+		} as unknown as AgentJsonConfig;
+
+		it('summarizes the Publish validation and the capability count', async () => {
+			const { delegate, agentsService, agentValidation, credentialProvider } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			const agent = { id: 'agent-1', schema: CONFIG, integrations: [] } as unknown as Agent;
+			agentsService.findById.mockResolvedValue(agent);
+			agentValidation.validateLoadedAgentConfiguration.mockResolvedValue({
+				status: 'invalid',
+				issues: [
+					{ code: 'missing_credential', path: 'tools.0', capability: { kind: 'tool' } },
+					{ code: 'missing_required', path: 'instructions', capability: { kind: 'agent' } },
+					{ code: 'missing_credential', path: 'tools.1', capability: { kind: 'tool' } },
+				],
+			});
+
+			await expect(delegate.validateAgent!('agent-1')).resolves.toEqual({
+				valid: false,
+				issueCodes: ['missing_credential', 'missing_required'],
+				issueCount: 3,
+				capabilityCount: 1,
+			});
+			expect(agentValidation.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
+				agent,
+				'project-1',
+				credentialProvider,
+			);
+		});
+
+		it('returns no summary for a missing agent', async () => {
+			const { delegate, agentsService, agentValidation } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(null);
+
+			await expect(delegate.validateAgent!('agent-1')).resolves.toBeUndefined();
+			expect(agentValidation.validateLoadedAgentConfiguration).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the user lacks agent:read scope', async () => {
+			const { delegate, agentsService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			await expect(delegate.validateAgent!('agent-1')).rejects.toThrow(ForbiddenError);
+			expect(agentsService.findById).not.toHaveBeenCalled();
 		});
 	});
 

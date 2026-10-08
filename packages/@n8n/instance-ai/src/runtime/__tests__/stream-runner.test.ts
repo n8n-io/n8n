@@ -1,7 +1,12 @@
 import type { WorkSummary } from '../../stream/work-summary-accumulator';
+import { emitBuilderMetric } from '../../tracing/builder-metric-event';
 import type * as ResumableStreamExecutor from '../resumable-stream-executor';
 import { executeResumableStream } from '../resumable-stream-executor';
 import { streamAgentRun } from '../stream-runner';
+
+vi.mock('../../tracing/builder-metric-event', () => ({
+	emitBuilderMetric: vi.fn(async () => {}),
+}));
 
 vi.mock('../resumable-stream-executor', async () => {
 	const actual = await vi.importActual<typeof ResumableStreamExecutor>(
@@ -278,5 +283,40 @@ describe('streamAgentRun', () => {
 		);
 		await expect(collectAsyncIterable(source.fullStream)).resolves.toEqual([nativeChunk]);
 		await expect(source.text).resolves.toBe('All good');
+	});
+
+	it('records first_response once, on the first text delta', async () => {
+		const mockedExecuteResumableStream = vi.mocked(executeResumableStream);
+		mockedExecuteResumableStream.mockClear();
+		vi.mocked(emitBuilderMetric).mockClear();
+		mockedExecuteResumableStream.mockImplementation(async ({ context }) => {
+			expect(emitBuilderMetric).not.toHaveBeenCalled();
+			context.onTextDelta?.();
+			context.onTextDelta?.();
+			return { status: 'completed', agentRunId: 'agent-run-1', workSummary: emptyWorkSummary };
+		});
+		const agent = {
+			stream: vi.fn().mockResolvedValue({ runId: 'agent-run-1', fullStream: emptyStream() }),
+		};
+
+		await streamAgentRun(
+			agent,
+			'hello',
+			{},
+			{
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				signal: new AbortController().signal,
+				eventBus: createEventBus(),
+				logger: createLogger(),
+			},
+		);
+
+		expect(emitBuilderMetric).toHaveBeenCalledTimes(1);
+		expect(emitBuilderMetric).toHaveBeenCalledWith(undefined, 'first_response', {
+			success: true,
+			phase: 'message',
+		});
 	});
 });

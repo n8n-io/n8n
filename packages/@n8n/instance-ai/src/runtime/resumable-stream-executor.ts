@@ -38,6 +38,8 @@ export interface ResumableStreamContext {
 	signal: AbortSignal;
 	logger: Logger;
 	onActivity?: () => void;
+	/** Called for each text delta, just before its event is published. */
+	onTextDelta?: () => void;
 	/** Stop consuming after the current chunk has been mapped and published. */
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
 }
@@ -434,6 +436,7 @@ async function consumeStreamPass(args: {
 		if ((mappedEvent && !isDeltaChunk) || isFinishStep) syntheticSegmentId = undefined;
 
 		const events = mappedEvent ? [mappedEvent] : [];
+		if (mappedEvent?.type === 'text-delta') options.context.onTextDelta?.();
 
 		const published = publishEvents(events, {
 			suspension,

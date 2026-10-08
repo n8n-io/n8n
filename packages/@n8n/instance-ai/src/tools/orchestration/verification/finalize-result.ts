@@ -9,6 +9,7 @@ import type {
 	VerifyBuiltWorkflowOutput,
 	WorkflowTaskService,
 } from './types';
+import { emitWorkflowVerificationMetric } from './verification-metric';
 import type { OrchestrationContext } from '../../../types';
 import { createRemediation } from '../../../workflow-loop/remediation';
 import type {
@@ -71,6 +72,12 @@ export async function handleBlockedVerification(args: {
 	} catch {
 		// intentional: verification record persistence is advisory
 	}
+	await emitWorkflowVerificationMetric(context.tracing, {
+		source: 'blocked',
+		workflowId,
+		workItemId: input.workItemId,
+		reason,
+	});
 	try {
 		await workflowTaskService.reportVerificationVerdict({
 			workItemId: input.workItemId,
@@ -150,6 +157,13 @@ export async function persistVerificationOutcome(args: {
 		},
 		previousProgress,
 	);
+	await emitWorkflowVerificationMetric(context.tracing, {
+		source: 'verify',
+		workflowId,
+		workItemId: input.workItemId,
+		executionId: result.executionId || undefined,
+		claim: storedClaim ?? claim,
+	});
 
 	if (analysis.remediation && !analysis.remediation.shouldEdit) {
 		await reportTerminalRemediation({

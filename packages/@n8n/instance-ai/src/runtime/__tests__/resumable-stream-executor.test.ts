@@ -340,6 +340,36 @@ describe('executeResumableStream', () => {
 		expect(onActivity).toHaveBeenCalledTimes(2);
 	});
 
+	it('calls onTextDelta only for text deltas', async () => {
+		const eventBus = createEventBus();
+		const onTextDelta = vi.fn(() => {
+			expect(eventBus.publish).not.toHaveBeenCalledWith(
+				'thread-1',
+				expect.objectContaining({ type: 'text-delta' }),
+			);
+		});
+
+		await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([{ type: 'reasoning-delta', delta: 'Thinking' }, textChunk('Hi')]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+				onTextDelta,
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(onTextDelta).toHaveBeenCalledTimes(1);
+	});
+
 	it('assigns stable response IDs from native start-step chunks', async () => {
 		const eventBus = createEventBus();
 

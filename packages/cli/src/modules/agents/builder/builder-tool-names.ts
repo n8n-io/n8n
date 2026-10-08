@@ -1,3 +1,5 @@
+import { AGENT_BUILDER_TEST_TOOL_NAME } from '@n8n/api-types';
+
 /**
  * Tool names used by the agent builder. Centralised so tool implementations,
  * prompts, and tests can't drift on string typos.
@@ -24,7 +26,7 @@ export const BUILDER_TOOLS = {
 	UPDATE_TASK: 'update_task',
 	FINISH_SETUP: 'finish_setup',
 	GET_RESOURCE_LOCATOR_OPTIONS: 'get_resource_locator_options',
-	CALL_AGENT: 'call_agent',
+	CALL_AGENT: AGENT_BUILDER_TEST_TOOL_NAME,
 	PUBLISH_AGENT: 'publish_agent',
 	UNPUBLISH_AGENT: 'unpublish_agent',
 	RESOLVE_LLM: 'resolve_llm',
