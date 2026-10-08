@@ -9,6 +9,22 @@ import {
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 } from '../constants';
+import { VIEWS } from '@/app/constants';
+
+// Reactive, so that a test can switch the mode while the menu is in use.
+const { experience } = await vi.hoisted(async () => {
+	const { reactive } = await import('vue');
+	return { experience: reactive({ isSimple: false, defaultProjectId: 'team-project-1' }) };
+});
+
+vi.mock('../experience/useExperienceMode', async () => {
+	const { computed } = await import('vue');
+	return { useExperienceMode: () => ({ isSimple: computed(() => experience.isSimple) }) };
+});
+
+vi.mock('../experience/useLastUsedProject', () => ({
+	useLastUsedProject: () => ({ simpleDefaultProjectId: () => experience.defaultProjectId }),
+}));
 
 const {
 	browserUseTelemetry,
@@ -178,6 +194,8 @@ describe('useInstanceAiInputMenuItems', () => {
 		settingsStore.computerUseConnectionStatus = 'none';
 		settingsStore.browserUseConnectionStatus = 'none';
 		settingsStore.gatewayHostIdentifier = null;
+		experience.isSimple = false;
+		experience.defaultProjectId = 'team-project-1';
 	});
 
 	it('omits connection groups that instance settings report as unavailable', () => {
@@ -391,6 +409,131 @@ describe('useInstanceAiInputMenuItems', () => {
 			expect(openSpy).toHaveBeenCalledWith('/settings/context/preferences', '_blank');
 			expect(router.push).not.toHaveBeenCalled();
 			openSpy.mockRestore();
+		});
+	});
+
+	describe('in Simple mode', () => {
+		const ids = (items: InputMenuItem[]) => items.map(({ id }) => id);
+
+		/** Every item of today's menu can show: MCP connections, computer, browser and preferences. */
+		function offerEverything() {
+			featureFlags.preferences = true;
+			mcpStore.connections = [makeMcpConnection('1', 'connected')];
+		}
+
+		it('shows exactly "Attach files", the computer, the browser and "Add workflow"', () => {
+			offerEverything();
+			experience.isSimple = true;
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+			expect(ids(menuItems.value)).toEqual(['attach-files', 'computer', 'browser', 'add-workflow']);
+			expect(menuItems.value.map(({ label }) => label)).toEqual([
+				'chatInputBase.button.attach',
+				'instanceAi.inputMenu.computer.connect',
+				'instanceAi.inputMenu.browser.connect',
+				'workflows.add',
+			]);
+			expect(findItem(menuItems.value, 'add-tool')).toBeUndefined();
+			expect(findItem(menuItems.value, 'mcp-1')).toBeUndefined();
+			expect(findItem(menuItems.value, 'preferences-manage')).toBeUndefined();
+		});
+
+		it('keeps the full menu in Power mode and with the flag off', () => {
+			offerEverything();
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+			expect(ids(menuItems.value)).toEqual([
+				'attach-files',
+				'tools',
+				'computer',
+				'browser',
+				'preferences',
+			]);
+			expect(findItem(menuItems.value, 'add-workflow')).toBeUndefined();
+		});
+
+		it('follows a switch of the mode while the menu is in use', () => {
+			offerEverything();
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+			experience.isSimple = true;
+			expect(ids(menuItems.value)).toEqual(['attach-files', 'computer', 'browser', 'add-workflow']);
+
+			experience.isSimple = false;
+			expect(ids(menuItems.value)).toContain('tools');
+		});
+
+		it('leaves out the computer and the browser when the instance does not offer them', () => {
+			experience.isSimple = true;
+			settingsStore.isComputerUseAvailable = false;
+			settingsStore.isBrowserUseAvailable = false;
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+			expect(ids(menuItems.value)).toEqual(['attach-files', 'add-workflow']);
+		});
+
+		it('opens the new workflow in the same tab, in the project of new Simple chats', async () => {
+			experience.isSimple = true;
+			const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			await findItem(menuItems.value, 'add-workflow')?.data?.action?.();
+
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { projectId: 'team-project-1' },
+			});
+			expect(openSpy).not.toHaveBeenCalled();
+			openSpy.mockRestore();
+		});
+
+		it('reads the project when the user picks "Add workflow", not when the menu is built', async () => {
+			experience.isSimple = true;
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+			experience.defaultProjectId = 'personal-project';
+			await findItem(menuItems.value, 'add-workflow')?.data?.action?.();
+
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { projectId: 'personal-project' },
+			});
+		});
+
+		it('keeps the behaviour of the items it shows', async () => {
+			experience.isSimple = true;
+			const attachFiles = vi.fn();
+
+			const { menuItems } = useInstanceAiInputMenuItems(attachFiles);
+			await findItem(menuItems.value, 'attach-files')?.data?.action?.();
+			await findItem(menuItems.value, 'computer')?.data?.action?.();
+			await findItem(menuItems.value, 'browser')?.data?.action?.();
+
+			expect(attachFiles).toHaveBeenCalledTimes(1);
+			expect(uiStore.openModal).toHaveBeenCalledWith(INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY);
+			expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
+		});
+
+		it('asks for attention only for the connections that the menu shows', () => {
+			mcpStore.connections = [
+				makeMcpConnection('1', 'disconnected'),
+				makeMcpConnection('2', 'disconnected'),
+			];
+			settingsStore.browserUseConnectionStatus = 'disconnected';
+
+			const power = useInstanceAiInputMenuItems(vi.fn());
+			expect(power.disconnectedConnectionCount.value).toBe(3);
+
+			experience.isSimple = true;
+			const simple = useInstanceAiInputMenuItems(vi.fn());
+			expect(simple.disconnectedConnectionCount.value).toBe(1);
+
+			settingsStore.browserUseConnectionStatus = 'connected';
+			const simpleConnected = useInstanceAiInputMenuItems(vi.fn());
+			expect(simpleConnected.disconnectedConnectionCount.value).toBe(0);
 		});
 	});
 });

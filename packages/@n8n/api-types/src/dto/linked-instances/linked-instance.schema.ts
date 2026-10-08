@@ -4,8 +4,8 @@ import { z } from 'zod';
 const NAME_PATTERN = /^[\p{L}\p{N} ._()-]+$/u;
 // A header value can hold only visible ASCII characters.
 const TOKEN_PATTERN = /^[\x21-\x7E]+$/;
-// n8n project ids are nanoids or UUIDs. Other characters are not sent back to the instance.
-const REMOTE_PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+// n8n ids are nanoids or UUIDs. Other characters are not sent back to an instance.
+const ENTITY_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 export const LINKED_INSTANCE_MAX_URL_LENGTH = 2048;
 
@@ -37,11 +37,13 @@ export const linkedInstanceTokenSchema = z
 	.max(4096, messages.token)
 	.regex(TOKEN_PATTERN, messages.token);
 
-export const linkedInstanceRemoteProjectIdSchema = z
-	.string()
-	.min(1, messages.defaultRemoteProjectId)
-	.max(36, messages.defaultRemoteProjectId)
-	.regex(REMOTE_PROJECT_ID_PATTERN, messages.defaultRemoteProjectId);
+/** The id of an n8n project or workflow (nanoid or UUID). Every failure gives `message`. */
+export const linkedInstanceEntityIdSchema = (message: string) =>
+	z.string().min(1, message).max(36, message).regex(ENTITY_ID_PATTERN, message);
+
+export const linkedInstanceRemoteProjectIdSchema = linkedInstanceEntityIdSchema(
+	messages.defaultRemoteProjectId,
+);
 
 export const LINKED_INSTANCE_STATUSES = [
 	'online',

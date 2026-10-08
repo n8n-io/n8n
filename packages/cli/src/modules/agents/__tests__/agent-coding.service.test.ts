@@ -18,6 +18,7 @@ import { JwtService } from '@/services/jwt.service';
 import type { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentCodingService } from '../agent-coding.service';
 import { codingSessionPaths } from '../agent-coding-session';
+import type { CodingMetaFacts, CodingProcessFacts } from '../agent-coding-status';
 import type { AgentSandboxRuntime } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { Agent } from '../entities/agent.entity';
@@ -28,6 +29,7 @@ import type { AgentExecutionThreadRepository } from '../repositories/agent-execu
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { SandboxPortCapability } from '../sandbox-preview/sandbox-port-capability.service';
 import { SandboxPreviewService } from '../sandbox-preview/sandbox-preview.service';
+import { createShallowClone } from './test-utils/coding-sandbox';
 
 const exec = promisify(execFile);
 
@@ -115,23 +117,48 @@ function localService(root: string) {
 	return { service, threads, executions };
 }
 
-function codingStatus(app: AgentCodingStatus['app']): AgentCodingStatus {
-	return {
-		phase: 'ready',
-		branch: 'main',
-		changes: [],
-		uncommittedChanges: 0,
-		uncommittedPaths: [],
-		app,
-		check: 'not_started',
-		setupExitCode: 0,
-		checkExitCode: null,
+const RUN = 'boot-a:4242';
+const IDLE: CodingProcessFacts = {
+	pid: null,
+	exit: null,
+	stopped: null,
+	started: null,
+	heartbeatAgeMs: null,
+	alive: false,
+};
+const RUNNING: CodingProcessFacts = {
+	...IDLE,
+	pid: '42',
+	started: RUN,
+	heartbeatAgeMs: 0,
+	alive: true,
+};
+const APP_FACTS: Record<AgentCodingStatus['app'], CodingProcessFacts> = {
+	running: RUNNING,
+	starting: RUNNING,
+	stopped: IDLE,
+	error: { ...IDLE, pid: '42', started: RUN, exit: '1' },
+};
+
+/** Facts script output of a prepared checkout whose app is in the state `app`. */
+function factsOutput(app: AgentCodingStatus['app']): string {
+	const status: CodingMetaFacts = {
+		stage: 'ready',
+		repoExists: true,
+		appResponds: app === 'running',
+		processes: {
+			setup: { ...IDLE, pid: '41', started: RUN, exit: '0' },
+			app: APP_FACTS[app],
+			check: IDLE,
+		},
+		git: { branch: 'main\n', nameStatus: '', numstat: '', porcelain: '', untracked: [] },
 	};
+	return JSON.stringify({ incarnation: RUN, status });
 }
 
 /**
- * A coding service whose status probe answers `app` directly, so these tests
- * do not depend on the status script that runs in the sandbox.
+ * A coding service whose facts probe answers with the output for `app`, so these tests
+ * do not depend on the script that runs in the sandbox.
  */
 function codingService(
 	provider: SandboxProvider,
@@ -167,7 +194,7 @@ function codingService(
 		sandboxPreviewService,
 	);
 	const inspect = vi.spyOn(service as unknown as { inspect: () => Promise<unknown> }, 'inspect');
-	inspect.mockResolvedValue(codingStatus('running'));
+	inspect.mockResolvedValue(factsOutput('running'));
 	return { service, inspect };
 }
 
@@ -207,7 +234,7 @@ describe('AgentCodingService.preview', () => {
 				const getPreviewUrl = vi.fn();
 				const sandbox = mock<WorkspaceSandbox>({ getPreviewUrl });
 				const { service, sandboxPreviewService, inspect } = previewService('n8n-sandbox', sandbox);
-				inspect.mockResolvedValue(codingStatus(app));
+				inspect.mockResolvedValue(factsOutput(app));
 				sandboxPreviewService.open.mockResolvedValue({ url: '/sandbox-preview/token/' });
 
 				const preview = await service.preview('project', 'agent', user);
@@ -243,7 +270,7 @@ describe('AgentCodingService.preview', () => {
 					'n8n-sandbox',
 					mock<WorkspaceSandbox>(),
 				);
-				inspect.mockResolvedValue(codingStatus(app));
+				inspect.mockResolvedValue(factsOutput(app));
 
 				await expect(service.preview('project', 'agent', user)).rejects.toThrow(
 					'Run the app for this session before opening its preview',
@@ -440,6 +467,28 @@ it('keeps worktree edits and reviews separate through commits and archive/reopen
 		await expect(
 			service.file('project', 'agent', user, '../repo/app.txt', first.id),
 		).rejects.toThrow('inside the repository');
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+}, 30_000);
+
+it('offers the branches of a shallow clone as base branches, without the remote name', async () => {
+	const root = await mkdtemp(join(tmpdir(), 'n8n-coding-branches-'));
+	const user = mock<User>({ id: 'test-user' });
+	try {
+		await createShallowClone(join(root, 'remote'), join(root, 'repo'), { 'app.txt': 'original\n' });
+		const { service } = localService(root);
+		const session = await service.createSession('project', 'agent', user, {
+			name: 'Due dates',
+			original: false,
+			baseBranch: 'main',
+			branch: 'agent/due-dates',
+		});
+
+		const { branches } = await service.sessions('project', 'agent', user);
+
+		expect(session.branch).toBe('agent/due-dates');
+		expect(branches).toEqual(['agent/due-dates', 'main', 'origin/main']);
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}

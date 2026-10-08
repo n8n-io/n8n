@@ -3,11 +3,9 @@ import {
 	UpdateLinkedInstanceRequestDto,
 	type LinkedInstanceSummary,
 } from '@n8n/api-types';
-import { Time } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
-	createUserKeyedRateLimiter,
 	Delete,
 	Get,
 	GlobalScope,
@@ -19,10 +17,7 @@ import {
 import type { Response } from 'express';
 
 import { LinkedInstancesService } from './linked-instances.service';
-
-// These routes reach another instance, so each user gets a small budget on each route.
-const remoteCallRateLimit = () =>
-	createUserKeyedRateLimiter({ limit: 10, windowMs: Time.minutes.toMilliseconds });
+import { remoteCallRateLimit } from './remote-call-rate-limit';
 
 /** Each signed-in user manages only their own links. No response holds a token. */
 @RestController('/linked-instances')

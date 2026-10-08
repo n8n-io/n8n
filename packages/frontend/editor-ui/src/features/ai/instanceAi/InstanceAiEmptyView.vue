@@ -27,6 +27,8 @@ import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from './prefills';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
+import { useExperienceMode } from './experience/useExperienceMode';
+import { useLastUsedProject } from './experience/useLastUsedProject';
 import {
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_PROJECT_ID_QUERY,
@@ -125,12 +127,15 @@ const cloudPlanStore = useCloudPlanStore();
 const projectsStore = useProjectsStore();
 const route = useRoute();
 const router = useRouter();
+const { isSimple } = useExperienceMode();
+const { rememberChatProject, simpleDefaultProjectId } = useLastUsedProject();
 function resolveInitialProjectId(): string | undefined {
 	const queryProjectId = route.query[INSTANCE_AI_PROJECT_ID_QUERY];
 	if (typeof queryProjectId === 'string' && queryProjectId.length > 0) {
 		return queryProjectId;
 	}
-	return projectsStore.personalProject?.id;
+	// Simple mode has no picker, so teammates see the work in the last-used team project.
+	return isSimple.value ? simpleDefaultProjectId() : projectsStore.personalProject?.id;
 }
 
 /** Prefer a hand-off source from navigation; fall back for direct empty-state visits. */
@@ -142,9 +147,12 @@ function resolveLaunchSource(): InstanceAiThreadSource {
 const selectedProject = ref(resolveInitialProjectId());
 // An instance that loses its team-project license keeps its projects, but the
 // user cannot work in them. Hide the picker then, the same way the sidebar
-// project list hides itself.
+// project list hides itself. Simple mode chooses the project itself.
 const canSelectProject = computed(
-	() => projectsStore.isTeamProjectFeatureEnabled && projectsStore.myProjects.length > 1,
+	() =>
+		projectsStore.isTeamProjectFeatureEnabled &&
+		projectsStore.myProjects.length > 1 &&
+		!isSimple.value,
 );
 const settingsStore = useInstanceAiSettingsStore();
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
@@ -582,6 +590,7 @@ async function handleSubmit(
 		return;
 	}
 
+	const projectId = selectedProject.value;
 	const threadId = uuidv4();
 	isStartingThread.value = true;
 
@@ -589,7 +598,7 @@ async function handleSubmit(
 	// `/assistant/:threadId` for a thread the BE doesn't know about, and the
 	// follow-up `postMessage` would 404.
 	try {
-		await store.syncThread(threadId, selectedProject.value, {
+		await store.syncThread(threadId, projectId, {
 			source: resolveLaunchSource(),
 			origin: 'internal',
 		});
@@ -599,6 +608,7 @@ async function handleSubmit(
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
+	rememberChatProject(projectId);
 
 	// The thread view sends the opener through the Agents chat, so it streams
 	// there. Files wait in memory: they are too large for the localStorage stash.

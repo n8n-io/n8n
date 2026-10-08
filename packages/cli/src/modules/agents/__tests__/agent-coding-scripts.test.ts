@@ -11,13 +11,13 @@ import {
 } from '@n8n/api-types';
 
 import {
+	CODING_NODE_MAJOR_CHECK,
 	CODING_NODE_VERSION,
 	CODING_PNPM_VERSION,
 	buildDownloadFunction,
 	buildLaunchCommand,
 	buildLaunchScript,
 	buildNodeBootstrap,
-	buildNodeMajorCheck,
 	buildPnpmBootstrap,
 	buildSetupBootstrap,
 	buildStatusCommand,
@@ -133,6 +133,22 @@ describe('generated scripts', () => {
 		expect(buildSetupBootstrap(otherConfig, '/w', '/w/.coding')).toContain('get.pnpm.io');
 	});
 
+	it.each([
+		[1, '1 second'],
+		[90, '90 seconds'],
+		[60, '1 minute'],
+		[1800, '30 minutes'],
+	])('names a time limit of %i seconds as "%s" in the stop message', (seconds, text) => {
+		const script = buildLaunchScript({
+			workspaceRoot: '/w',
+			meta: '/w/.coding',
+			name: 'check',
+			command: 'true',
+			timeLimitSeconds: seconds,
+		});
+		expect(script).toContain(`its time limit of ${text}, so it was stopped.`);
+	});
+
 	it('uses the configured check time limit', () => {
 		expect(codingCheckTimeLimitSeconds({ ...otherConfig, checkTimeoutMinutes: 3 })).toBe(180);
 		expect(codingCheckTimeLimitSeconds({ ...n8nConfig, checkTimeoutMinutes: 3 })).toBe(180);
@@ -149,12 +165,15 @@ describe('generated scripts', () => {
 	});
 });
 
-describe('buildNodeMajorCheck', () => {
+describe('CODING_NODE_MAJOR_CHECK', () => {
 	async function major(fakes: Record<string, string>) {
 		const path = await tools([], fakes);
-		return await runBash(`${STRICT}\n${buildNodeMajorCheck()}\nprintf '%s' "$coding_node_major"`, {
-			env: { PATH: path },
-		});
+		return await runBash(
+			`${STRICT}\n${CODING_NODE_MAJOR_CHECK}\nprintf '%s' "$coding_node_major"`,
+			{
+				env: { PATH: path },
+			},
+		);
 	}
 
 	it('gives 0 without an error when PATH has no node', async () => {

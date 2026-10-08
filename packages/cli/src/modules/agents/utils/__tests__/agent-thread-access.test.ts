@@ -7,6 +7,7 @@ import {
 	isProjectThreadCheckpoint,
 	isSharedThread,
 	N8N_CHAT_PRODUCTION_SOURCE,
+	readsSharedThread,
 	threadBelongsTo,
 } from '../agent-thread-access';
 
@@ -54,6 +55,21 @@ describe('threadBelongsTo', () => {
 	it('does not give a private thread without owner to anybody', () => {
 		const orphan = makeThread({ ownerId: null });
 		expect(threadBelongsTo(orphan, 'project-1', 'agent-1', '')).toBe(false);
+	});
+});
+
+describe('readsSharedThread', () => {
+	const scope = { projectId: 'project-1', agentId: 'agent-1', userId: 'teammate-1' };
+
+	it('lets a user read a shared thread of the project and agent', () => {
+		expect(readsSharedThread(sharedThread, scope)).toBe(true);
+	});
+
+	it('refuses a private thread, a thread without owner, and another project or agent', () => {
+		expect(readsSharedThread(privateThread, { ...scope, userId: 'owner-1' })).toBe(false);
+		expect(readsSharedThread(integrationThread, scope)).toBe(false);
+		expect(readsSharedThread(sharedThread, { ...scope, projectId: 'project-2' })).toBe(false);
+		expect(readsSharedThread(sharedThread, { ...scope, agentId: 'agent-2' })).toBe(false);
 	});
 });
 
@@ -115,12 +131,12 @@ describe('isProjectThreadCheckpoint', () => {
 	});
 
 	it('hides a checkpoint in the draft-chat memory of another user', () => {
-		expect(
-			isProjectThreadCheckpoint(sharedThread, draftChatMemoryResourceId('teammate-1')),
-		).toBe(false);
-		expect(
-			isProjectThreadCheckpoint(integrationThread, draftChatMemoryResourceId('owner-1')),
-		).toBe(false);
+		expect(isProjectThreadCheckpoint(sharedThread, draftChatMemoryResourceId('teammate-1'))).toBe(
+			false,
+		);
+		expect(isProjectThreadCheckpoint(integrationThread, draftChatMemoryResourceId('owner-1'))).toBe(
+			false,
+		);
 	});
 
 	it('shows a checkpoint that is not in a draft-chat memory', () => {

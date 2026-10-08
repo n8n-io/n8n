@@ -1,7 +1,7 @@
 import { nextTick } from 'vue';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -20,7 +20,6 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import type { ExperienceMode } from '@n8n/api-types';
 import userEvent from '@testing-library/user-event';
-import { within } from '@testing-library/vue';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');

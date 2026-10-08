@@ -59,12 +59,10 @@ function sharedPaths(workspaceRoot: string) {
  * Sets `coding_node_major` to the major version of the `node` on PATH, or to 0 when there is no
  * usable `node`. The value is always an integer, so a numeric comparison cannot fail.
  */
-export function buildNodeMajorCheck(): string {
-	return [
-		'coding_node_major="$(node -p \'process.versions.node.split(".")[0]\' 2>/dev/null)" || coding_node_major=0',
-		'case "$coding_node_major" in \'\'|*[!0-9]*) coding_node_major=0 ;; esac',
-	].join('\n');
-}
+export const CODING_NODE_MAJOR_CHECK = [
+	'coding_node_major="$(node -p \'process.versions.node.split(".")[0]\' 2>/dev/null)" || coding_node_major=0',
+	'case "$coding_node_major" in \'\'|*[!0-9]*) coding_node_major=0 ;; esac',
+].join('\n');
 
 /** Installs Node.js 24 into `nodeDir` when neither `nodeDir` nor PATH has it. */
 export function buildNodeBootstrap(nodeDir: string): string {
@@ -74,7 +72,7 @@ export function buildNodeBootstrap(nodeDir: string): string {
 	const url = `https://nodejs.org/dist/v${CODING_NODE_VERSION}/node-v${CODING_NODE_VERSION}-linux-$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/').tar.gz`;
 	return [
 		`if [ ! -x ${shellEscape(join(nodeDir, 'bin/node'))} ]; then`,
-		buildNodeMajorCheck(),
+		CODING_NODE_MAJOR_CHECK,
 		`if [ "$coding_node_major" -ne ${major} ]; then`,
 		`printf 'Installing Node.js ${CODING_NODE_VERSION}.\\n'`,
 		// Extract to a temporary folder first, so a failed download leaves no partial Node.js.
@@ -119,17 +117,15 @@ export function codingCheckTimeLimitSeconds(config: AgentCodingConfig): number {
 	);
 }
 
-function describeLimit(seconds: number): string {
-	const [value, unit] = seconds % 60 === 0 ? [seconds / 60, 'minute'] : [seconds, 'second'];
-	return `${value} ${unit}${value === 1 ? '' : 's'}`;
-}
-
 /**
  * Touches the heartbeat while the script runs. With a time limit, it stops the whole process group
  * when the limit passes and records the time-limit exit code.
  */
 function buildMonitor(heartbeat: string, exit: string, timeLimitSeconds: number): string {
-	const message = `The check ran longer than its time limit of ${describeLimit(timeLimitSeconds)}, so it was stopped. To change the limit, edit the coding settings.`;
+	const [value, unit] =
+		timeLimitSeconds % 60 === 0 ? [timeLimitSeconds / 60, 'minute'] : [timeLimitSeconds, 'second'];
+	const limit = `${value} ${unit}${value === 1 ? '' : 's'}`;
+	const message = `The check ran longer than its time limit of ${limit}, so it was stopped. To change the limit, edit the coding settings.`;
 	return `coding_time_limit() {
 	printf '\\n%s\\n' ${shellEscape(message)}
 	trap '' TERM
@@ -238,9 +234,10 @@ export function buildLaunchCommand(options: CodingLaunchCommandOptions): string 
 	].join('\n');
 }
 
-function nodeCommand(workspaceRoot: string, args: string[], script: string): string {
+/** Runs a Node.js program. `nodeDir` holds the Node.js that setup installs, if any. */
+function nodeCommand(nodeDir: string, args: string[], script: string): string {
 	return [
-		`export PATH=${shellEscape(join(sharedPaths(workspaceRoot).nodeDir, 'bin'))}:"$PATH"`,
+		`export PATH=${shellEscape(join(nodeDir, 'bin'))}:"$PATH"`,
 		`command -v node >/dev/null 2>&1 || { printf '%s\\n' ${shellEscape(NODE_MISSING_MESSAGE)} >&2; exit 127; }`,
 		`node - ${args.map(shellEscape).join(' ')} <<'JS'\n${script}\nJS`,
 	].join('\n');
@@ -262,10 +259,10 @@ export function buildStatusCommand(options: CodingStatusCommandOptions): string 
 		options.mode,
 		options.sessionId ?? '',
 	];
-	return nodeCommand(options.workspaceRoot, args, CODING_FACTS_SCRIPT);
+	return nodeCommand(sharedPaths(options.workspaceRoot).nodeDir, args, CODING_FACTS_SCRIPT);
 }
 
 export function buildStopCommand(workspaceRoot: string, meta: string, all: boolean): string {
-	const args = [sharedPaths(workspaceRoot).sharedMeta, meta, all ? 'all' : 'current'];
-	return nodeCommand(workspaceRoot, args, CODING_STOP_SCRIPT);
+	const { sharedMeta, nodeDir } = sharedPaths(workspaceRoot);
+	return nodeCommand(nodeDir, [sharedMeta, meta, all ? 'all' : 'current'], CODING_STOP_SCRIPT);
 }

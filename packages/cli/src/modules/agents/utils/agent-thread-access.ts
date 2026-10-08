@@ -54,6 +54,14 @@ export function isSharedThread(thread: Pick<AgentExecutionThread, 'accessScope' 
 	return thread.accessScope === 'project' && thread.ownerId !== null;
 }
 
+/** Whether the user reads a shared thread of the project and agent. Readers do not change it. */
+export function readsSharedThread(
+	thread: AgentExecutionThread,
+	{ projectId, agentId, userId }: { projectId: string; agentId: string; userId: string },
+): boolean {
+	return isSharedThread(thread) && threadBelongsTo(thread, projectId, agentId, userId);
+}
+
 /** A shared thread keeps its owner, so only the owner continues it, as before the share. */
 export function canUseTopLevelDraftThread(thread: AgentExecutionThread, userId: string): boolean {
 	return thread.ownerId === userId && thread.parentThreadId === null;

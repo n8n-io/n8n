@@ -37,7 +37,10 @@ export class ThreadSharingService {
 		const thread = await this.threads.findOneBy({ id: threadId, agentId: ASSISTANT_AGENT_ID });
 		if (!thread || thread.parentThreadId !== null) throw new NotFoundError('Thread not found');
 		await this.policy.assertCanShare(user, thread);
-		if (thread.accessScope === 'user' && !(await this.threads.shareWithProject(thread.id, user.id))) {
+		if (
+			thread.accessScope === 'user' &&
+			!(await this.threads.shareWithProject(thread.id, user.id))
+		) {
 			await this.assertSharedBy(user, thread.id);
 		}
 		return await this.getThreadInfo(user, thread.id);

@@ -35,8 +35,7 @@ import type {
 import {
 	canContinueThreadInN8nChat,
 	canContinueThreadInPreview,
-	isSharedThread,
-	threadBelongsTo,
+	readsSharedThread,
 	type AgentSessionMode,
 } from './utils/agent-thread-access';
 import { buildInboundUserMessage, readInboundUserMessage } from './utils/inbound-attachments';
@@ -198,10 +197,7 @@ export class AgentMessageQueueService {
 		// A client-created session can have no accepted messages yet.
 		if (!thread) return { items: [], steerableExecutionId: null };
 		// Readers of a shared thread see its queue. Only the owner changes it.
-		const reader =
-			isSharedThread(thread) &&
-			threadBelongsTo(thread, input.projectId, input.agentId, input.userId);
-		if (!reader) await this.assertUserChatAccess(thread, input);
+		if (!readsSharedThread(thread, input)) await this.assertUserChatAccess(thread, input);
 		const items = await this.repository.listPending(thread.id);
 		// Only Preview executions accept steering.
 		const steerable = kind === 'preview' ? await this.steering.findEligible(thread) : null;

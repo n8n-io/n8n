@@ -19,6 +19,7 @@ import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useBrowserUseConnection } from './useBrowserUseConnection';
 import { useMcpServerConnect } from './useMcpServerConnect';
 import { iconForTool } from '../toolIcons';
+import { useSimpleInputMenu } from '../experience/useSimpleInputMenu';
 
 type InputMenuItemData = {
 	status?: ToolConnectionStatus;
@@ -442,5 +443,9 @@ export function useInstanceAiInputMenuItems(
 		return items;
 	});
 
-	return { menuItems, disconnectedConnectionCount, refreshAppliedPreferences };
+	// Simple mode shows four items. Power mode and the flag off keep the full menu.
+	return {
+		...useSimpleInputMenu(menuItems, disconnectedConnectionCount),
+		refreshAppliedPreferences,
+	};
 }

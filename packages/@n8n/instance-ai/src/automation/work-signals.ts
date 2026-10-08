@@ -1,4 +1,5 @@
 import type {
+	ContentToolCall,
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	FLAG_MEMORY_TOOL_NAME,
 	LOAD_TOOL_TOOL_NAME,
@@ -91,8 +92,16 @@ const LOCAL_LOOKUP_TOOL_NAMES: ReadonlySet<string> = new Set<string>([
 	'browser_hover',
 	'browser_scroll',
 	'browser_tab_list',
+	'browser_tab_open',
 	'browser_tab_focus',
+	'browser_tab_close',
 	'browser_wait',
+]);
+
+/** Calls of local tools that also have write actions, made with an action that only reads. */
+const LOCAL_LOOKUP_SIGNATURES: ReadonlySet<string> = new Set<string>([
+	'browser_cookies:get',
+	'browser_storage:get',
 ]);
 
 /** The calls of the Assistant's own tools that do the user's job: they run or write something. */
@@ -161,16 +170,21 @@ function isAssistantTool(toolName: string): boolean {
 	return ASSISTANT_TOOL_NAMES.has(toolName) || toolName.startsWith(RUNTIME_WORKSPACE_TOOL_PREFIX);
 }
 
+function isLocalLookup(toolName: string, signature: string): boolean {
+	return LOCAL_LOOKUP_TOOL_NAMES.has(toolName) || LOCAL_LOOKUP_SIGNATURES.has(signature);
+}
+
 /**
  * Whether a call does work that the user can want again, so that a repeat of it counts. The
  * Assistant's own `propose_automation` call and the local lookups are not work.
  */
 export function isWorkToolCall(call: Pick<WorkToolCall, 'toolName' | 'action'>): boolean {
 	const { toolName } = call;
-	if (toolName === PROPOSE_AUTOMATION_TOOL_NAME || LOCAL_LOOKUP_TOOL_NAMES.has(toolName)) {
+	const signature = signatureOf(call);
+	if (toolName === PROPOSE_AUTOMATION_TOOL_NAME || isLocalLookup(toolName, signature)) {
 		return false;
 	}
-	return !isAssistantTool(toolName) || JOB_SIGNATURES.has(signatureOf(call));
+	return !isAssistantTool(toolName) || JOB_SIGNATURES.has(signature);
 }
 
 /**
@@ -204,12 +218,22 @@ const lenient = <T extends z.ZodTypeAny>(schema: T) => schema.optional().catch(u
 
 const nonBlankText = z.string().trim().min(1);
 
+/**
+ * The runtime sets this field when a tool result reports a failure (an MCP `isError: true`).
+ * The stored output of an MCP, gateway or browser tool is wrapped text that hides the flag.
+ */
+const RESULT_IS_ERROR_KEY = 'resultIsError' satisfies keyof Extract<
+	ContentToolCall,
+	{ state: 'resolved' }
+>;
+
 /** The parts of a stored tool call that the work signals use. Stored data is never trusted. */
 const storedToolCallSchema = z.object({
 	type: z.literal('tool-call'),
 	toolName: nonBlankText,
 	state: z.enum(['pending', 'resolved', 'rejected']),
 	canceled: lenient(z.boolean()),
+	[RESULT_IS_ERROR_KEY]: lenient(z.boolean()),
 	input: z.object({ action: lenient(nonBlankText), workflowId: lenient(nonBlankText) }).catch({}),
 	output: z
 		.object({
@@ -235,12 +259,17 @@ function reportsFailure(output: StoredToolCall['output']): boolean {
 	);
 }
 
+function finishedWithoutFailureFlag({ state, canceled, resultIsError }: StoredToolCall): boolean {
+	return state === 'resolved' && canceled !== true && resultIsError !== true;
+}
+
 /**
  * A call is ok when it finished and its result reports no failure. A workflow run or a node run is
  * ok only when it succeeded, as in the automation offer of the editor.
  */
-function isOkCall({ toolName, state, canceled, input, output }: StoredToolCall): boolean {
-	if (state !== 'resolved' || canceled === true) return false;
+function isOkCall(call: StoredToolCall): boolean {
+	if (!finishedWithoutFailureFlag(call)) return false;
+	const { toolName, input, output } = call;
 	if (STATUS_RESULT_SIGNATURES.has(signatureOf({ toolName, action: input.action }))) {
 		return output.status === 'success';
 	}

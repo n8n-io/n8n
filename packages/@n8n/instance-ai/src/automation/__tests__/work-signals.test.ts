@@ -1,5 +1,5 @@
 import type { WorkspaceFilesystem, WorkspaceSandbox } from '@n8n/agents';
-import { createWorkspaceTools } from '@n8n/agents';
+import { createWorkspaceTools, wrapUntrustedData } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkSignal } from '../repeatable-work';
@@ -36,6 +36,32 @@ const call = (toolName: string, action?: string, ok = true): WorkToolCall => ({
 });
 const assess = (userText: string, toolCalls: WorkToolCall[]) =>
 	assessRepeatableWork(collectWorkSignals({ userTexts: [userText], toolCalls }));
+
+/**
+ * A stored MCP tool call as the agents runtime writes it: the raw result is serialised into
+ * untrusted-data text, and `resultIsError` records a result with `isError: true`.
+ */
+const storedMcpCall = (isError: boolean) => ({
+	type: 'tool-call',
+	toolCallId: 'call-mcp',
+	toolName: 'slack_post_message',
+	input: { channel: 'C1', text: 'Daily numbers' },
+	state: 'resolved',
+	output: {
+		type: 'content',
+		value: [
+			{
+				type: 'text',
+				text: wrapUntrustedData(
+					JSON.stringify({ content: [{ type: 'text', text: 'channel_not_found' }], isError }),
+					'mcp:slack',
+					'post_message',
+				),
+			},
+		],
+	},
+	...(isError ? { resultIsError: true } : {}),
+});
 
 describe('collectWorkSignals', () => {
 	it('returns no signals for an empty chat', () => {
@@ -265,6 +291,37 @@ describe('collectWorkSignals', () => {
 		expect(assessment.reasons).toEqual(['intent-phrase']);
 		expect(assessment.score).toBe(0.3);
 	});
+
+	it('does not count two failed MCP calls as a repeat in a one-off chat', () => {
+		const failedCall = readWorkToolCall(storedMcpCall(true));
+		if (!failedCall) throw new Error('Expected a tool call');
+
+		const assessment = assess('Copy these rows to the sheet', [
+			failedCall,
+			failedCall,
+			oneOffBuild(),
+			run(),
+		]);
+
+		expect(assessment.repeatedSignatures).toEqual([]);
+		expect(assessment.reasons).toEqual(['one-off-success']);
+		expect(assessment.score).toBe(0.2);
+	});
+
+	it('counts two successful MCP calls as a repeat', () => {
+		const okCall = readWorkToolCall(storedMcpCall(false));
+		if (!okCall) throw new Error('Expected a tool call');
+
+		const assessment = assess('Copy these rows to the sheet', [
+			okCall,
+			okCall,
+			oneOffBuild(),
+			run(),
+		]);
+
+		expect(assessment.repeatedSignatures).toEqual(['slack_post_message:']);
+		expect(assessment.score).toBe(0.6);
+	});
 });
 
 describe('isWorkToolCall', () => {
@@ -280,6 +337,10 @@ describe('isWorkToolCall', () => {
 		['shell_execute', undefined],
 		['browser_click', undefined],
 		['browser_type', undefined],
+		['browser_cookies', 'set'],
+		['browser_cookies', 'clear'],
+		['browser_storage', 'set'],
+		['browser_storage', 'clear'],
 		['keyboard_type', undefined],
 		['mouse_click', undefined],
 	])('counts %s:%s as work', (toolName, action) => {
@@ -335,6 +396,10 @@ describe('isWorkToolCall', () => {
 		['browser_snapshot', undefined],
 		['browser_content', undefined],
 		['browser_wait', undefined],
+		['browser_tab_open', undefined],
+		['browser_tab_close', undefined],
+		['browser_cookies', 'get'],
+		['browser_storage', 'get'],
 	])('does not count %s:%s as work', (toolName, action) => {
 		expect(isWorkToolCall({ toolName, ...(action ? { action } : {}) })).toBe(false);
 	});
@@ -387,9 +452,35 @@ describe('readWorkToolCall', () => {
 		['success: false', part({ output: { success: false } })],
 		['ok: false', part({ output: { ok: false } })],
 		['denied: true', part({ output: { denied: true, message: 'Not now' } })],
-		['isError: true', part({ output: { isError: true } })],
+		['an unwrapped result with isError: true', part({ output: { isError: true } })],
+		['resultIsError: true', part({ resultIsError: true })],
 	])('marks a %s call as not ok', (_label, value) => {
 		expect(readWorkToolCall(value)?.ok).toBe(false);
+	});
+
+	it('marks a stored MCP call whose result reported a failure as not ok', () => {
+		expect(readWorkToolCall(storedMcpCall(true))).toStrictEqual({
+			toolName: 'slack_post_message',
+			ok: false,
+		});
+	});
+
+	it('marks a stored MCP call whose result succeeded as ok', () => {
+		expect(readWorkToolCall(storedMcpCall(false))).toStrictEqual({
+			toolName: 'slack_post_message',
+			ok: true,
+		});
+	});
+
+	it('reads the failure marker of the runtime on any tool, also a run that succeeded', () => {
+		const runPart = part({
+			toolName: 'executions',
+			input: { action: 'run', workflowId: 'wf-1' },
+			output: { status: 'success' },
+			resultIsError: true,
+		});
+
+		expect(readWorkToolCall(runPart)?.ok).toBe(false);
 	});
 
 	it.each([
@@ -404,6 +495,13 @@ describe('readWorkToolCall', () => {
 
 	it('marks a finished call that was not canceled as ok', () => {
 		expect(readWorkToolCall(part({ canceled: false }))?.ok).toBe(true);
+	});
+
+	it.each([
+		['false', false],
+		['a value that is not a boolean', 'yes'],
+	])('marks a finished call with resultIsError %s as ok', (_label, resultIsError) => {
+		expect(readWorkToolCall(part({ resultIsError }))?.ok).toBe(true);
 	});
 
 	it.each([

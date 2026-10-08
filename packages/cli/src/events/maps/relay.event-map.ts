@@ -24,6 +24,10 @@ import type {
 	PackageFailureReason,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
+import type {
+	TransferDirection,
+	TransferFailureReason,
+} from '@/modules/linked-instances/transfer/transfer-errors';
 import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
 import type {
 	AuditedActor,
@@ -161,6 +165,47 @@ export type RelayEventMap = {
 		reason: PackageFailureReason;
 		projectId?: string;
 		folderId?: string;
+	};
+
+	/** A workflow of this instance moved to a linked n8n instance. Ids only. */
+	'linked-instance-workflow-pushed': {
+		user: UserLike;
+		linkedInstanceId: string;
+		workflowId: string;
+		remoteWorkflowId: string;
+		/** `null`: the personal project of the access token's user. */
+		remoteProjectId: string | null;
+		created: boolean;
+		published: boolean;
+		localDeactivated: boolean;
+	};
+
+	/** A workflow of a linked n8n instance came to this instance. Ids only. */
+	'linked-instance-workflow-pulled': {
+		user: UserLike;
+		linkedInstanceId: string;
+		remoteWorkflowId: string;
+		workflowId: string;
+		/** Absent: the personal project of the user. */
+		projectId?: string;
+		created: boolean;
+	};
+
+	/**
+	 * A move to or from a linked n8n instance failed. A push can fail after the package left
+	 * this instance, so the attempt is audited too. Ids only.
+	 */
+	'linked-instance-workflow-transfer-failed': {
+		user: UserLike;
+		linkedInstanceId: string;
+		direction: TransferDirection;
+		/** The workflow of this instance (push). */
+		workflowId?: string;
+		/** The workflow of the linked instance (pull). */
+		remoteWorkflowId?: string;
+		/** The target project of a pull. */
+		projectId?: string;
+		reason: TransferFailureReason;
 	};
 
 	'workflow-deleted': {

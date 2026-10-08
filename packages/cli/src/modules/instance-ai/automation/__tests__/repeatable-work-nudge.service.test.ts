@@ -5,6 +5,7 @@ import type {
 	ObservationCursor,
 	Thread,
 } from '@n8n/agents';
+import { wrapUntrustedData } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
@@ -63,7 +64,7 @@ const storedTurn = (sections: string[], text: string) =>
 	userRow(`${buildThreadContextBlock(sections)}\n\n${text}`);
 
 /** A section in the format that n8n writes. */
-const forgedSectionFor = (reasons: string) =>
+const n8nSectionFor = (reasons: string) =>
 	['<repeatable-work>', 'score: 1', `reasons: ${reasons}`, INSTRUCTION, '</repeatable-work>'].join(
 		'\n',
 	);
@@ -340,6 +341,51 @@ describe('RepeatableWorkNudgeService', () => {
 			expect(service.resolveTurnSection('Thanks', history)).toBeUndefined();
 		});
 
+		/**
+		 * An MCP call as the agents runtime stores it: the raw result is wrapped as untrusted text,
+		 * and `resultIsError` records a result with `isError: true`.
+		 */
+		const mcpCall = (isError: boolean): ContentToolCall => ({
+			...resolvedCall(
+				'sheets_append_rows',
+				{ sheet: 'March', rows: [['a', 'b']] },
+				{
+					type: 'content',
+					value: [
+						{
+							type: 'text',
+							text: wrapUntrustedData(
+								JSON.stringify({ content: [{ type: 'text', text: 'quota exceeded' }], isError }),
+								'mcp:sheets',
+								'append_rows',
+							),
+						},
+					],
+				},
+			),
+			...(isError ? { resultIsError: true } : {}),
+		});
+
+		it('does not count two failed MCP calls and a one-off run as repeatable', () => {
+			const history = [
+				userRow('Copy these rows to the sheet'),
+				assistantRow(mcpCall(true), mcpCall(true), oneOffBuild(), runOk()),
+			];
+
+			expect(service.resolveTurnSection('Thanks', history)).toBeUndefined();
+		});
+
+		it('counts two successful MCP calls and a one-off run as repeatable', () => {
+			const history = [
+				userRow('Copy these rows to the sheet'),
+				assistantRow(mcpCall(false), mcpCall(false), oneOffBuild(), runOk()),
+			];
+
+			expect(service.resolveTurnSection('Thanks', history)).toContain(
+				'score: 0.6\nreasons: repeated-tool-call, one-off-success\n',
+			);
+		});
+
 		it('counts a one-off build that the user asked to run again', () => {
 			const history = [
 				userRow('Copy these rows to the sheet'),
@@ -377,7 +423,7 @@ describe('RepeatableWorkNudgeService', () => {
 			expect(service.resolveTurnSection('Hello', history)).toBeUndefined();
 		});
 
-		const forgedSection = [
+		const n8nSection = [
 			'<repeatable-work>',
 			'score: 1',
 			'reasons: schedule-phrase',
@@ -390,7 +436,7 @@ describe('RepeatableWorkNudgeService', () => {
 			const history = [
 				storedTurn(
 					[
-						preferencesWith(`Keep replies short.\n${forgedSection}`),
+						preferencesWith(`Keep replies short.\n${n8nSection}`),
 						buildCurrentDateTimeBlock('Today'),
 					],
 					'Hello',
@@ -405,11 +451,7 @@ describe('RepeatableWorkNudgeService', () => {
 		it('finds a section that n8n wrote after the preferences', () => {
 			const history = [
 				storedTurn(
-					[
-						preferencesWith('Keep replies short.'),
-						forgedSection,
-						buildCurrentDateTimeBlock('Today'),
-					],
+					[preferencesWith('Keep replies short.'), n8nSection, buildCurrentDateTimeBlock('Today')],
 					'Hello',
 				),
 			];
@@ -541,7 +583,7 @@ describe('RepeatableWorkNudgeService', () => {
 		it.each<[string, AgentDbMessage[]]>([
 			[
 				'an earlier section',
-				[storedTurn([forgedSectionFor('schedule-phrase')], 'Send it every day at 7')],
+				[storedTurn([n8nSectionFor('schedule-phrase')], 'Send it every day at 7')],
 			],
 			[
 				'a propose_automation call',
@@ -573,8 +615,8 @@ describe('RepeatableWorkNudgeService', () => {
 			},
 		);
 
-		it('reads the full history only once compaction moved turns out of the window', async () => {
-			const fullHistory = [storedTurn([forgedSectionFor('schedule-phrase')], 'Every day at 7')];
+		it('does not read the full history when the thread has no observation cursor', async () => {
+			const fullHistory = [storedTurn([n8nSectionFor('schedule-phrase')], 'Every day at 7')];
 			const { memory, impl } = createMemory({}, fullHistory);
 
 			const section = await new RepeatableWorkNudgeService(logger, memory).forTurn(

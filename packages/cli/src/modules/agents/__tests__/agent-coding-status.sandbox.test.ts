@@ -12,6 +12,7 @@ import {
 import { parseCodingSessionsOutput, parseCodingStatusOutput } from '../agent-coding-status';
 import {
 	createGitRepo,
+	createShallowClone,
 	createToolDir,
 	freePort,
 	killProcessGroup,
@@ -322,6 +323,45 @@ describe('coding status and stop scripts in a real shell', () => {
 		});
 		expect((await readStatus(1, id)).branch).toBe('coding/first');
 	}, 30_000);
+
+	describe('base branches of a shallow clone', () => {
+		async function listBranches() {
+			const result = await runBash(
+				buildStatusCommand({ workspaceRoot: workspace, port: 1, probePath: '/', mode: 'sessions' }),
+			);
+			expect(result).toMatchObject({ code: 0, stderr: '' });
+			const facts = JSON.parse(result.stdout) as { branches: string };
+			return { printed: facts.branches, listed: parseCodingSessionsOutput(result.stdout).branches };
+		}
+
+		beforeEach(async () => {
+			const repo = join(workspace, 'repo');
+			await createShallowClone(join(workspace, 'remote'), repo, { 'app.txt': 'original\n' });
+			const worktree = join(meta, 'sessions', 'b0f2d2a8-5ab8-4d3c-9d6a-2c0f8a0d4c11', 'repo');
+			const added = await runBash(`git worktree add -q -b agent/due-dates '${worktree}' HEAD`, {
+				cwd: repo,
+			});
+			expect(added.code).toBe(0);
+		});
+
+		it('lists local, worktree and remote branches without the remote name', async () => {
+			const { printed, listed } = await listBranches();
+
+			// Git prints the alias refs/remotes/origin/HEAD as the bare remote name.
+			expect(printed).toMatch(/^origin\trefs\/remotes\/origin\/main$/m);
+			expect(listed).toEqual(['agent/due-dates', 'main', 'origin/main']);
+		});
+
+		it('keeps a local branch named like the remote, which git prints as heads/origin', async () => {
+			await runBash('git branch origin', { cwd: join(workspace, 'repo') });
+
+			const { printed, listed } = await listBranches();
+
+			// The local branch makes "origin" ambiguous, so git prints the alias in full.
+			expect(printed).toMatch(/^origin\/HEAD\trefs\/remotes\/origin\/main$/m);
+			expect(listed).toEqual(['agent/due-dates', 'main', 'heads/origin', 'origin/main']);
+		});
+	});
 
 	it('fails with a clear message when the sandbox has no Node.js', async () => {
 		const tools = await createToolDir([]);

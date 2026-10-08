@@ -6,6 +6,7 @@ import {
 	codingProcessState,
 	codingStatusFromFacts,
 	isHeartbeatFresh,
+	parseCodingBranches,
 	parseCodingChanges,
 	type CodingMetaFacts,
 	type CodingProcessFacts,
@@ -227,6 +228,85 @@ describe('parseCodingChanges properties', () => {
 						additions: last?.additions,
 						deletions: 0,
 					});
+				}
+			}),
+		);
+	});
+});
+
+describe('parseCodingBranches properties', () => {
+	// Ref name parts as git accepts them: no space, tab, line break, '..' or special characters.
+	const partArb = fc.stringMatching(/^[A-Za-z0-9][A-Za-z0-9_-]{0,7}$/);
+	const branchArb = fc
+		.array(fc.oneof(partArb, fc.constantFrom('origin', 'HEAD', 'main')), {
+			minLength: 1,
+			maxLength: 3,
+		})
+		.map((parts) => parts.join('/'));
+
+	interface PrintedRef {
+		name: string;
+		target: string;
+	}
+
+	interface PrintedOutput {
+		refs: PrintedRef[];
+		lineEnd: string;
+		finalLineEnd: boolean;
+	}
+
+	// One line of `git for-each-ref --format=%(refname:short)%09%(symref)` for each kind of ref.
+	const refArb: fc.Arbitrary<PrintedRef> = fc.oneof(
+		// A local branch named "origin" is ambiguous with the remote, so git prints heads/origin.
+		branchArb.map((name) => ({ name: name === 'origin' ? 'heads/origin' : name, target: '' })),
+		branchArb.map((name) => ({ name: `origin/${name}`, target: '' })),
+		fc.record({
+			name: fc.constantFrom('origin', 'origin/HEAD'),
+			target: branchArb.map((name) => `refs/remotes/origin/${name}`),
+		}),
+	);
+
+	const outputArb: fc.Arbitrary<PrintedOutput> = fc.record({
+		refs: fc.array(refArb, { maxLength: 8 }),
+		lineEnd: fc.constantFrom('\n', '\r\n'),
+		finalLineEnd: fc.boolean(),
+	});
+
+	function print({ refs, lineEnd, finalLineEnd }: PrintedOutput): string {
+		const text = refs.map((ref) => `${ref.name}\t${ref.target}`).join(lineEnd);
+		return finalLineEnd && refs.length > 0 ? `${text}${lineEnd}` : text;
+	}
+
+	it('never lists the bare remote name or another alias', () => {
+		fc.assert(
+			fc.property(outputArb, (output) => {
+				const branches = parseCodingBranches(print(output));
+				expect(branches).not.toContain('origin');
+				expect(branches).not.toContain('origin/HEAD');
+				for (const ref of output.refs.filter((item) => item.target)) {
+					expect(branches).not.toContain(ref.name);
+				}
+			}),
+		);
+	});
+
+	it('keeps every branch that is not an alias, in the printed order', () => {
+		fc.assert(
+			fc.property(outputArb, (output) => {
+				const expected = output.refs
+					.filter((ref) => !ref.target && ref.name !== 'origin/HEAD')
+					.map((ref) => ref.name);
+				expect(parseCodingBranches(print(output))).toEqual(expected);
+			}),
+		);
+	});
+
+	it('returns only non-empty names without a tab or line feed for any output', () => {
+		fc.assert(
+			fc.property(fc.string({ unit: 'binary' }), (output) => {
+				for (const branch of parseCodingBranches(output)) {
+					expect(branch).not.toBe('');
+					expect(branch).not.toMatch(/[\t\n]/);
 				}
 			}),
 		);

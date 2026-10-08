@@ -49,11 +49,14 @@ describe('SimpleWorkspaceDisclosure', () => {
 	});
 
 	it('shows a collapsed Workspace heading whose button names the section', () => {
-		const { getByRole, emitted } = renderDisclosure({ props: { open: false, collapsed: false } });
+		const { getByRole, queryByRole, emitted } = renderDisclosure({
+			props: { open: false, collapsed: false },
+		});
 
 		const heading = getByRole('heading', { level: 2, name: 'Workspace' });
 		const button = within(heading).getByRole('button', { name: 'Workspace' });
 		expect(button).toHaveAttribute('aria-expanded', 'false');
+		expect(queryByRole('link')).not.toBeInTheDocument();
 		expect(emitted()['update:open']).toBeUndefined();
 		expect(storage.has(OPEN_KEY)).toBe(false);
 	});

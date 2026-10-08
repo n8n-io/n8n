@@ -17,9 +17,7 @@ describe('userDisplayName', () => {
 	});
 
 	it('trims each name part and joins them with one space', () => {
-		expect(userDisplayName(named('  Ada ', ' Lovelace  ', 'ada@example.com'))).toBe(
-			'Ada Lovelace',
-		);
+		expect(userDisplayName(named('  Ada ', ' Lovelace  ', 'ada@example.com'))).toBe('Ada Lovelace');
 	});
 
 	it.each([

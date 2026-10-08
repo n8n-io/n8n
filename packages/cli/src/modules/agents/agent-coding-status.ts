@@ -132,9 +132,7 @@ function checkState(
 	}
 }
 
-function count(value: string): number {
-	return /^\d+$/.test(value) ? Number(value) : 0;
-}
+const NUMSTAT_COUNT = /^\d+$/;
 
 /** Reads one `git diff --numstat -z` entry. Binary files show '-' and count as 0. */
 export function parseNumstatEntry(
@@ -144,10 +142,12 @@ export function parseNumstatEntry(
 	// Without a first tab the search from index 0 also finds none.
 	const second = entry.indexOf('\t', first + 1);
 	if (second === -1) return undefined;
+	const additions = entry.slice(0, first);
+	const deletions = entry.slice(first + 1, second);
 	return {
 		path: entry.slice(second + 1),
-		additions: count(entry.slice(0, first)),
-		deletions: count(entry.slice(first + 1, second)),
+		additions: NUMSTAT_COUNT.test(additions) ? Number(additions) : 0,
+		deletions: NUMSTAT_COUNT.test(deletions) ? Number(deletions) : 0,
 	};
 }
 
@@ -194,8 +194,21 @@ export function parseUncommittedPaths(porcelain: string): string[] {
 		.map((entry) => entry.slice(3));
 }
 
+/**
+ * Reads `git for-each-ref --format=%(refname:short)%09%(symref)` output: one "name<TAB>target"
+ * line for each ref. A ref with a target is an alias, for example refs/remotes/origin/HEAD. Git
+ * shortens that alias to the bare remote name "origin", which is not a branch. A ref name cannot
+ * contain a tab, so the first tab ends the name.
+ */
 export function parseCodingBranches(output: string): string[] {
-	return output.split(/\r?\n/).filter((branch) => branch && branch !== 'origin/HEAD');
+	const branches: string[] = [];
+	for (const line of output.split(/\r?\n/)) {
+		const tab = line.indexOf('\t');
+		const name = tab === -1 ? line : line.slice(0, tab);
+		const symbolic = tab !== -1 && tab < line.length - 1;
+		if (name && !symbolic && name !== 'origin/HEAD') branches.push(name);
+	}
+	return branches;
 }
 
 export function codingStatusFromFacts(

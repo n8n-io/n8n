@@ -374,6 +374,31 @@ describe('parseCodingBranches', () => {
 		expect(parseCodingBranches('main\r\ndev\r\n')).toEqual(['main', 'dev']);
 		expect(parseCodingBranches('')).toEqual([]);
 	});
+
+	it('leaves out an alias, so the bare remote name does not show as a branch', () => {
+		const output = [
+			'agent/due-dates\t',
+			'main\t',
+			'origin\trefs/remotes/origin/main',
+			'origin/main\t',
+			'',
+		].join('\n');
+		expect(parseCodingBranches(output)).toEqual(['agent/due-dates', 'main', 'origin/main']);
+	});
+
+	it('keeps a local branch that git prints as heads/origin and leaves out its alias', () => {
+		const output = 'heads/origin\t\norigin/HEAD\trefs/remotes/origin/main\norigin/main\t\n';
+		expect(parseCodingBranches(output)).toEqual(['heads/origin', 'origin/main']);
+	});
+
+	it.each([
+		['an alias with CRLF line ends', 'main\t\r\norigin\trefs/remotes/origin/main\r\n', ['main']],
+		['a line without a name', '\t\n\trefs/heads/main\nmain\t\n', ['main']],
+		['origin/HEAD that is not an alias', 'origin/HEAD\t\norigin/main\t\n', ['origin/main']],
+		['a name without a tab at the end', 'main\t\ndev', ['main', 'dev']],
+	])('handles %s', (_case, output, expected) => {
+		expect(parseCodingBranches(output)).toEqual(expected);
+	});
 });
 
 describe('parseCodingStatusOutput', () => {

@@ -162,7 +162,9 @@ function sessionsOutput(all) {
 		all.push(status);
 		sessions.push({ session, status });
 	}
-	const refs = ['for-each-ref', '--format=%(refname:short)', 'refs/heads/', 'refs/remotes/origin/'];
+	// Each line is "name<TAB>target". Only an alias such as origin/HEAD has a target.
+	const format = '--format=%(refname:short)%09%(symref)';
+	const refs = ['for-each-ref', format, 'refs/heads/', 'refs/remotes/origin/'];
 	return { incarnation: incarnation(), sessions, branches: git(path.join(workspace, 'repo'), refs) };
 }
 function statusOutput(all) {

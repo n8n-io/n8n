@@ -48,6 +48,7 @@ export {
 	LINKED_INSTANCE_INPUT_MESSAGES,
 	LINKED_INSTANCE_MAX_URL_LENGTH,
 	LINKED_INSTANCE_STATUSES,
+	linkedInstanceEntityIdSchema,
 	linkedInstanceNameSchema,
 	linkedInstanceRemoteProjectIdSchema,
 	linkedInstanceTokenSchema,
@@ -56,6 +57,23 @@ export {
 	type LinkedInstanceStatus,
 	type LinkedInstanceSummary,
 } from './linked-instances/linked-instance.schema';
+export { LinkedInstanceTransferPreflightRequestDto } from './linked-instances/transfer-preflight-request.dto';
+export { LinkedInstanceTransferRequestDto } from './linked-instances/transfer-workflow-request.dto';
+export { LinkedInstancePullRequestDto } from './linked-instances/pull-workflow-request.dto';
+export {
+	LINKED_INSTANCE_TRANSFER_CREDENTIAL_STATUSES,
+	LINKED_INSTANCE_TRANSFER_INPUT_MESSAGES,
+	linkedInstanceRemoteWorkflowIdSchema,
+	linkedInstanceTransferProjectIdSchema,
+	linkedInstanceTransferWorkflowIdSchema,
+	type LinkedInstanceCredentialNeedingSetup,
+	type LinkedInstancePullResult,
+	type LinkedInstancePushResult,
+	type LinkedInstanceTransferCredential,
+	type LinkedInstanceTransferCredentialStatus,
+	type LinkedInstanceTransferPreflight,
+	type LinkedInstanceTransferSubWorkflow,
+} from './linked-instances/linked-instance-transfer.schema';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';

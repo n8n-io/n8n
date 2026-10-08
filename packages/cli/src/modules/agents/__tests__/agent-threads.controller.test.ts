@@ -218,7 +218,7 @@ describe('AgentThreadsController instance agent sessions', () => {
 		const { service, controller, request } = setup(true, false);
 		service.getThreads.mockResolvedValue({ threads: [], nextCursor: null });
 
-		await controller.listThreads(request(), mock(), { scope: 'all', status: 'failed' });
+		await controller.listThreads(request(), mock(), { scope: 'all', status: 'error' });
 
 		expect(service.getThreads).toHaveBeenCalledWith(
 			'project-1',
@@ -226,7 +226,7 @@ describe('AgentThreadsController instance agent sessions', () => {
 			'user-1',
 			20,
 			undefined,
-			{ scope: 'mine', status: 'failed' },
+			{ scope: 'mine', status: 'error' },
 		);
 	});
 

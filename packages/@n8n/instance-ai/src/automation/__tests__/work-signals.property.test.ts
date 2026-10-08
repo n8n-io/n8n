@@ -36,6 +36,8 @@ const SPEC_NON_WORK: ReadonlyArray<[string, string | undefined]> = [
 	['search_files', undefined],
 	['browser_navigate', undefined],
 	['browser_snapshot', undefined],
+	['browser_tab_open', undefined],
+	['browser_cookies', 'get'],
 ];
 
 // Small pools make matching workflow IDs and repeated calls likely.
@@ -225,6 +227,24 @@ describe('readWorkToolCall properties', () => {
 
 					expect(call).toBeDefined();
 					if (part.state !== 'resolved') expect(call?.ok).toBe(false);
+				},
+			),
+		);
+	});
+
+	it('never marks a call as ok when the runtime marked its result as a failure', () => {
+		fc.assert(
+			fc.property(
+				fc.record({
+					type: fc.constant('tool-call'),
+					toolName: toolNameArb.filter((name) => name.trim() !== ''),
+					state: fc.constantFrom('pending', 'resolved', 'rejected'),
+					input: fc.anything(),
+					output: fc.anything(),
+					resultIsError: fc.constant(true),
+				}),
+				(part) => {
+					expect(readWorkToolCall(part)?.ok).toBe(false);
 				},
 			),
 		);

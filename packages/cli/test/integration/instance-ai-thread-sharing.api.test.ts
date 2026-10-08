@@ -10,6 +10,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { PROJECT_SCOPE_MAP } from '@n8n/permissions';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
@@ -33,6 +34,7 @@ import { draftChatMemoryResourceId } from '@/modules/agents/utils/agent-memory-s
 import { ASSISTANT_AGENT_ID } from '@/modules/instance-ai/assistant-turn-options';
 import { toAssistantTool } from '@/modules/instance-ai/capabilities/assistant-capability-bridge';
 import { InstanceAiMemoryService } from '@/modules/instance-ai/instance-ai-memory.service';
+import { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
 import { InstanceAiService } from '@/modules/instance-ai/instance-ai.service';
 import {
 	buildPastConversationsBlock,
@@ -42,7 +44,8 @@ import { defineCapability } from '@/services/capabilities/capability';
 import { UserService } from '@/services/user.service';
 
 import { createCredentials } from './shared/db/credentials';
-import { createChatUser, createOwner, createUser } from './shared/db/users';
+import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
+import { createAdmin, createChatUser, createOwner, createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
@@ -121,6 +124,7 @@ const proposalCapability = defineCapability({
 				message: 'Want "Invoices" to run automatically?',
 				severity: 'info',
 				fields: { automationProposal: { archived: false } },
+				offered: { activate: [true, false] },
 			}),
 	},
 	build: (context) => ({
@@ -322,6 +326,19 @@ const cardIsOpen = async (threadId: string) =>
 		threadId,
 	)) !== null;
 
+/** A file in the owner's draft-chat memory of the thread, as a chat message stores it. */
+const storeAttachment = async (threadId: string) =>
+	await Container.get(AgentChatAttachmentService).storeInbound({
+		agentId: ASSISTANT_AGENT_ID,
+		projectId: project.id,
+		threadId,
+		resourceId: draftChatMemoryResourceId(owner.id),
+		source: 'chat',
+		fileName: 'invoices.txt',
+		mimeType: 'text/plain',
+		data: Buffer.from('Invoice 42'),
+	});
+
 const userTexts = (messages: AgentPersistedMessageDto[]) =>
 	messages
 		.filter(({ role }) => role === 'user')
@@ -451,16 +468,7 @@ describe('reading a shared chat', () => {
 	test('an outsider gets 404 on every read of the chat', async () => {
 		const threadId = await createSharedThread();
 		await ownerOpensCard(threadId);
-		const attachment = await Container.get(AgentChatAttachmentService).storeInbound({
-			agentId: ASSISTANT_AGENT_ID,
-			projectId: project.id,
-			threadId,
-			resourceId: draftChatMemoryResourceId(owner.id),
-			source: 'chat',
-			fileName: 'invoices.txt',
-			mimeType: 'text/plain',
-			data: Buffer.from('Invoice 42'),
-		});
+		const attachment = await storeAttachment(threadId);
 		const ownProject = (await getPersonalProject(outsider)).id;
 
 		for (const path of ['', '/status', '/tabs']) {
@@ -487,6 +495,34 @@ describe('reading a shared chat', () => {
 		// The same file opens for a teammate, so the refusals above are about access.
 		const file = await teammateAgent.get(`${chatUrl()}/attachments/${attachment.id}`).expect(200);
 		expect(file.text).toBe('Invoice 42');
+	});
+
+	test('a global admin who is not a member gets 404 on every route of the chat, as an outsider', async () => {
+		const admin = await createAdmin();
+		const adminAgent = testServer.authAgentFor(admin);
+		const threadId = await createSharedThread();
+		const card = await ownerOpensCard(threadId);
+		const attachment = await storeAttachment(threadId);
+
+		// The global role passes the project check of the Agents routes. The chat rules refuse.
+		for (const path of ['messages', 'queue', 'background-tasks']) {
+			await adminAgent.get(`${chatUrl()}/${threadId}/${path}`).expect(404);
+		}
+		await adminAgent.get(`${chatUrl()}/attachments/${attachment.id}`).expect(404);
+		await adminAgent.get(`${agentUrl()}/threads/${threadId}`).expect(404);
+		const sessions = await adminAgent.get(`${agentUrl()}/threads`).expect(200);
+		expect(JSON.stringify(sessions.body.data)).not.toContain(threadId);
+		for (const path of ['', '/status', '/tabs']) {
+			await adminAgent.get(`/instance-ai/threads/${threadId}${path}`).expect(404);
+		}
+		expect((await answer(adminAgent, card)).status).toBe(404);
+		await adminAgent.post(chatUrl()).send({ message: 'hi', sessionId: threadId }).expect(404);
+		expect(await cardIsOpen(threadId)).toBe(true);
+
+		// As a member of the project, the admin reads the chat like a teammate.
+		await linkUserToProject(admin, project, 'project:viewer');
+		await adminAgent.get(`${chatUrl()}/${threadId}/messages`).expect(200);
+		await adminAgent.get(`/instance-ai/threads/${threadId}`).expect(200);
 	});
 
 	test('a project member without the Assistant scope reads nothing of the chat', async () => {
@@ -571,6 +607,37 @@ describe('answering a card in a shared chat', () => {
 		});
 	});
 
+	test('an editor without publish keeps a proposed automation but cannot turn it on', async () => {
+		const withoutPublish = await createCustomRoleWithScopeSlugs(
+			PROJECT_SCOPE_MAP['project:editor'].filter((scope) => scope !== 'workflow:publish'),
+			{ roleType: 'project' },
+		);
+		const keeper = await createUser({ firstName: 'Kim', lastName: 'Keeper' });
+		await linkUserToProject(keeper, project, withoutPublish.slug);
+		const keeperAgent = testServer.authAgentFor(keeper);
+		const decide = (activate: boolean) => ({
+			kind: 'capabilityDecision',
+			approved: true,
+			values: { activate },
+		});
+		const threadId = await createSharedThread();
+		const card = await ownerOpensCard(threadId);
+
+		const turnOn = await answer(keeperAgent, card, decide(true));
+		expect(turnOn.status).toBe(403);
+		expect(turnOn.body.message).toBe('Only editors in Finance can approve this.');
+		expect(appliedAs).toEqual([]);
+		expect(await cardIsOpen(threadId)).toBe(true);
+
+		expect((await answer(keeperAgent, card, decide(false))).status).toBe(200);
+		expect(appliedAs).toEqual([owner.id]);
+
+		// An editor who can publish turns it on.
+		const next = await ownerOpensCard(threadId);
+		expect((await answer(teammateAgent, next, decide(true))).status).toBe(200);
+		expect(appliedAs).toEqual([owner.id, owner.id]);
+	});
+
 	test('a viewer cannot approve, and the card stays open', async () => {
 		const threadId = await createSharedThread();
 		const card = await ownerOpensCard(threadId);
@@ -645,6 +712,17 @@ describe('answering a card in a shared chat', () => {
 		expect(await cardIsOpen(threadId)).toBe(false);
 	});
 
+	test('a malformed card answer from a teammate gets 400, not a refusal', async () => {
+		const threadId = await createSharedThread();
+		const card = await ownerOpensCard(threadId);
+
+		const response = await answer(teammateAgent, card, { kind: 'approval' });
+
+		expect(response.status).toBe(400);
+		expect(response.body.message).toBe('The answer is not valid.');
+		expect(await cardIsOpen(threadId)).toBe(true);
+	});
+
 	test('a teammate cannot answer with text, which only the owner sends', async () => {
 		const threadId = await createSharedThread();
 		const card = await ownerOpensCard(threadId);
@@ -704,5 +782,24 @@ describe('answering a card in a shared chat', () => {
 		expect((await answer(ownerAgent, ownerCard, alwaysAllow)).status).toBe(200);
 		expect(runScopes).toEqual(['once', 'session']);
 		expect(await grants.findKeys(threadId)).toEqual(new Set(['executions:run']));
+	});
+});
+
+describe('turning the Assistant off', () => {
+	test('stops the owner and the teammates from reading and answering a shared chat', async () => {
+		const threadId = await createSharedThread();
+		const card = await ownerOpensCard(threadId);
+		vi.spyOn(Container.get(InstanceAiSettingsService), 'isInstanceAiEnabled').mockReturnValue(
+			false,
+		);
+
+		for (const agent of [teammateAgent, ownerAgent]) {
+			await agent.get(`${chatUrl()}/${threadId}/messages`).expect(404);
+			await agent.get(`${agentUrl()}/threads/${threadId}`).expect(404);
+			expect((await answer(agent, card)).status).toBe(404);
+		}
+		await teammateAgent.post(chatUrl()).send({ message: 'hi', sessionId: threadId }).expect(404);
+		expect(appliedAs).toEqual([]);
+		expect(await cardIsOpen(threadId)).toBe(true);
 	});
 });

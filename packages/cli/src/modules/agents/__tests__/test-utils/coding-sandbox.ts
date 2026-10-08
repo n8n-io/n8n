@@ -50,6 +50,32 @@ export async function createGitRepo(repo: string, files: Record<string, string>)
 	await exec('git', ['commit', '-q', '-m', 'Initial'], { cwd: repo });
 }
 
+/**
+ * Creates `checkout` the way prepare does: a shallow clone of the main branch of a bare origin.
+ * The seed repository and the bare origin go into `originDir`. Git also writes
+ * refs/remotes/origin/HEAD in the clone, an alias of origin/main.
+ */
+export async function createShallowClone(
+	originDir: string,
+	checkout: string,
+	files: Record<string, string>,
+): Promise<void> {
+	const seed = join(originDir, 'seed');
+	const origin = join(originDir, 'origin.git');
+	await createGitRepo(seed, files);
+	await exec('git', ['clone', '-q', '--bare', seed, origin]);
+	await exec('git', [
+		'clone',
+		'-q',
+		'--depth',
+		'1',
+		'--branch',
+		'main',
+		`file://${origin}`,
+		checkout,
+	]);
+}
+
 export async function freePort(): Promise<number> {
 	return await new Promise((resolve, reject) => {
 		const server = createServer();
