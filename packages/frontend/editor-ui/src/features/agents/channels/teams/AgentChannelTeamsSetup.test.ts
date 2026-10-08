@@ -915,8 +915,10 @@ describe('AgentChannelTeamsSetup', () => {
 			await openAvailability(getByTestId);
 			await fireEvent.click(getByTestId('teams-scope-groups'));
 
+			// The changed key, not `updateNotice`: that one is its prefix, so a
+			// substring match would pass whether or not the copy switched.
 			expect(getByTestId('teams-update-notice')).toHaveTextContent(
-				'agents.channels.teams.settings.updateNotice',
+				'agents.channels.teams.settings.updateNoticeChanged',
 			);
 			expect(getByTestId('teams-update-notice').className).not.toBe(quiet);
 		});

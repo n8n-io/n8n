@@ -136,13 +136,12 @@ describe('AgentChannelTeamsEditView', () => {
 		);
 	});
 
-	it('keeps the package where it could not', async () => {
-		const { getByTestId, queryByTestId } = renderView({
+	it('offers the package, which is the only route this view has', async () => {
+		const { getByTestId } = renderView({
 			props: viewProps,
 			pinia: createTestingPinia(),
 		});
 
 		await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
-		expect(queryByTestId('teams-settings-install')).not.toBeInTheDocument();
 	});
 });

@@ -76,6 +76,8 @@ const props = (overrides: Record<string, unknown> = {}) => {
 		setup: setupState(),
 		loading: false,
 		credentialPermissions: { create: true, update: true },
+		projectId: 'project-1',
+		agentId: 'agent-1',
 		runtime: runtime ?? buildRuntime(),
 		...rest,
 	};
@@ -691,6 +693,30 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			await waitFor(() => expect(getByTestId('teams-install-upload-blocked')).toBeVisible());
 		});
 
+		/** Nothing else asserts the button actually provisions what was chosen. */
+		it('creates the bot against the subscription the user picked', async () => {
+			const provisionBot = vi.fn();
+			const { getByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					subscriptions: ref([{ id: 'sub-1', name: 'Production' }]),
+					provisionBot,
+				}),
+			);
+
+			await waitFor(() => expect(getByTestId('teams-create-bot')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-create-bot'));
+
+			await waitFor(() => expect(provisionBot).toHaveBeenCalledWith('sub-1'));
+		});
+
 		it('keeps the availability panel editable once the bot is up', async () => {
 			const { getByTestId } = render(
 				signedIn({
@@ -845,7 +871,8 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			// The hints stay: they are what to do while it is being waited for.
 			expect(getByTestId('teams-install-upload-blocked')).toBeVisible();
 
-			installed.value = true;
+			// Driven by the poll alone: setting `installed` here would show the done
+			// state even if the wait stopped without ever asking Microsoft.
 			await vi.advanceTimersByTimeAsync(3000);
 
 			await waitFor(() => expect(getByTestId('teams-install-done')).toBeVisible());

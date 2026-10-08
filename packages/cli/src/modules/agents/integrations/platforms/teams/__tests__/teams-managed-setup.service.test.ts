@@ -103,7 +103,7 @@ describe('TeamsManagedSetupService', () => {
 			withManagerCredential({
 				organizationName: 'Acme Corp',
 				tenantId: 'tenant-1',
-				oauthTokenData: { access_token: 'token', scope: ALL_SCOPES },
+				oauthTokenData: { access_token: 'token', refresh_token: 'refresh-1', scope: ALL_SCOPES },
 			});
 
 			await expect(service.getSetupState(scope)).resolves.toMatchObject({
@@ -119,6 +119,20 @@ describe('TeamsManagedSetupService', () => {
 					},
 				],
 			});
+		});
+
+		/**
+		 * Every provisioning step redeems the refresh token rather than the access
+		 * token beside it, so a grant without one looks usable and fails on the
+		 * first call.
+		 */
+		it('asks for a reconnect when the grant carries no refresh token', async () => {
+			withManagerCredential({
+				oauthTokenData: { access_token: 'token', scope: ALL_SCOPES },
+			});
+
+			const [summary] = (await service.getSetupState(scope)).managerCredentials;
+			expect(summary).toMatchObject({ connected: true, reconnectRequired: true });
 		});
 
 		it('reports a credential whose OAuth round trip never finished as not connected', async () => {
@@ -138,6 +152,7 @@ describe('TeamsManagedSetupService', () => {
 			withManagerCredential({
 				oauthTokenData: {
 					access_token: 'token',
+					refresh_token: 'refresh-1',
 					scope: [
 						'https://graph.microsoft.com/Application.ReadWrite.All',
 						'https://graph.microsoft.com/TeamsAppInstallation.ReadWriteSelfForUser',
@@ -153,6 +168,7 @@ describe('TeamsManagedSetupService', () => {
 			withManagerCredential({
 				oauthTokenData: {
 					access_token: 'token',
+					refresh_token: 'refresh-1',
 					scope: 'openid https://graph.microsoft.com/Application.ReadWrite.All',
 				},
 			});
@@ -165,6 +181,7 @@ describe('TeamsManagedSetupService', () => {
 			withManagerCredential({
 				oauthTokenData: {
 					access_token: 'token',
+					refresh_token: 'refresh-1',
 					// Entra sometimes answers with the bare permission name.
 					scope: REQUIRED_MANAGER_SCOPES.map((granted) =>
 						granted.replace('https://graph.microsoft.com/', ''),

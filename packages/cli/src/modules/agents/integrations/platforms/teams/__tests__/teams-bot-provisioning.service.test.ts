@@ -20,7 +20,7 @@ const provisionOptions = {
 	agentId: 'agent-1',
 	agentName: 'Support Bot',
 	subscriptionId: SUBSCRIPTION_ID,
-	msaAppId: '11111111-2222-3333-4444-555555555555',
+	msaAppId: '1111aaaa-2222-bbbb-4444-555566667777',
 	msaAppTenantId: '99999999-8888-7777-6666-555555555555',
 	messagingEndpoint: 'https://n8n.example.com/rest/webhooks/teams',
 };
@@ -120,7 +120,9 @@ describe('TeamsBotProvisioningService', () => {
 		it('reports a refused listing rather than calling it none', async () => {
 			arm.request.mockResolvedValue(failed(403, 'AuthorizationFailed'));
 
-			await expect(service.listSubscriptions(listOptions)).rejects.toThrow();
+			await expect(service.listSubscriptions(listOptions)).rejects.toThrow(
+				/cannot read the Azure subscriptions/,
+			);
 		});
 
 		it('follows ARM paging, so a long list is not cut short', async () => {
@@ -139,6 +141,24 @@ describe('TeamsBotProvisioningService', () => {
 				{ id: 'sub-1', name: 'First' },
 				{ id: 'sub-2', name: 'Second' },
 			]);
+		});
+
+		/**
+		 * A page that failed is an unknown list, not a short one. Returning what
+		 * arrived hides the subscription the user came for, or reads as "this
+		 * account has no Azure subscription" and sends them down the manual route.
+		 */
+		it('reports a page it could not read, rather than a short list', async () => {
+			arm.request.mockImplementation(async (_t: string, _m: string, path: string) =>
+				path === '/subscriptions?skipToken=abc'
+					? failed(403, 'AuthorizationFailed')
+					: ok({
+							value: [{ subscriptionId: 'sub-1', displayName: 'First', state: 'Enabled' }],
+							nextLink: 'https://management.azure.com/subscriptions?skipToken=abc',
+						}),
+			);
+
+			await expect(service.listSubscriptions(listOptions)).rejects.toThrow();
 		});
 
 		it('does not follow a nextLink that points off Azure Resource Manager', async () => {
@@ -235,6 +255,116 @@ describe('TeamsBotProvisioningService', () => {
 
 			expect(result.botName).toBe('the-old-name-abcd1234');
 			expect(putTo('botServices/the-old-name-abcd1234')).toBeDefined();
+		});
+
+		/**
+		 * A resource group with enough bots pages the list. Missing the bot on a
+		 * later page asks Azure for a second one on the same app registration,
+		 * which it refuses.
+		 */
+		it('looks past the first page of bots before deciding to make one', async () => {
+			arm.request.mockImplementation(async (_t: string, method: string, path: string) => {
+				if (method === 'GET' && path.endsWith('botServices?api-version=2022-09-15')) {
+					return ok({
+						value: [{ name: 'other-bot', properties: { msaAppId: 'someone-elses-app' } }],
+						nextLink: 'https://management.azure.com/botServices?skipToken=abc',
+					});
+				}
+				if (method === 'GET' && path === '/botServices?skipToken=abc') {
+					return ok({
+						value: [
+							{
+								name: 'the-old-name-abcd1234',
+								properties: { msaAppId: provisionOptions.msaAppId },
+							},
+						],
+					});
+				}
+				return ok();
+			});
+
+			await expect(service.provisionBot(provisionOptions)).resolves.toMatchObject({
+				botName: 'the-old-name-abcd1234',
+			});
+		});
+
+		/**
+		 * Creating a group that is already there asks Azure to move it, and that
+		 * refusal reads as "this account cannot create resources".
+		 */
+		it('reports a resource group it could not read, rather than creating over it', async () => {
+			arm.request.mockImplementation(async (_t: string, method: string, path: string) =>
+				method === 'GET' && path.includes('resourcegroups')
+					? failed(403, 'AuthorizationFailed')
+					: ok(),
+			);
+
+			await expect(service.provisionBot(provisionOptions)).rejects.toThrow(/Contributor role/);
+			expect(putTo('resourcegroups')).toBeUndefined();
+		});
+
+		/**
+		 * A refused later page is an unknown list. Reading it as "no bot" asks
+		 * Azure for a second bot on an app registration that already has one,
+		 * which it refuses -- three steps after the real problem.
+		 */
+		it('reports a page of bots it could not read, rather than making a second bot', async () => {
+			arm.request.mockImplementation(async (_t: string, method: string, path: string) => {
+				if (method === 'GET' && path.endsWith('botServices?api-version=2022-09-15')) {
+					return ok({
+						value: [],
+						nextLink: 'https://management.azure.com/botServices?skipToken=abc',
+					});
+				}
+				if (method === 'GET' && path === '/botServices?skipToken=abc') {
+					return failed(403, 'AuthorizationFailed');
+				}
+				return ok();
+			});
+
+			await expect(service.provisionBot(provisionOptions)).rejects.toThrow(/Contributor role/);
+			expect(putTo('botServices/')).toBeUndefined();
+		});
+
+		/**
+		 * Only an absent group means "nothing to reuse". Any other refusal is an
+		 * unknown list, and reading it as "no bot" makes a second bot on an app
+		 * registration that already has one.
+		 */
+		it('reports a refused first page of bots, rather than making a second bot', async () => {
+			arm.request.mockImplementation(async (_t: string, method: string, path: string) =>
+				method === 'GET' && path.endsWith('botServices?api-version=2022-09-15')
+					? failed(403, 'AuthorizationFailed')
+					: ok(),
+			);
+
+			await expect(service.provisionBot(provisionOptions)).rejects.toThrow(/Contributor role/);
+			expect(putTo('botServices/')).toBeUndefined();
+		});
+
+		/** A resource group with no bots yet is the ordinary first run. */
+		it('makes a bot when the group has none to reuse', async () => {
+			arm.request.mockImplementation(async (_t: string, method: string, path: string) =>
+				method === 'GET' && path.endsWith('botServices?api-version=2022-09-15')
+					? failed(404)
+					: ok(),
+			);
+
+			await expect(service.provisionBot(provisionOptions)).resolves.toMatchObject({
+				botName: BOT_NAME,
+			});
+		});
+
+		/** A blip reading the group is not a refusal: the create reports its own. */
+		it('still tries to create the group when the read did not answer', async () => {
+			arm.request.mockImplementation(async (_t: string, method: string, path: string) =>
+				method === 'GET' && path.includes('resourcegroups') ? failed(503) : ok(),
+			);
+
+			await expect(service.provisionBot(provisionOptions)).resolves.toMatchObject({
+				botName: BOT_NAME,
+			});
+			expect(putTo('resourcegroups')).toBeDefined();
 		});
 
 		it('names a new bot after the agent, so the portal shows something readable', async () => {

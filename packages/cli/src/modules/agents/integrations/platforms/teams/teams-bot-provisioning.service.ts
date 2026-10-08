@@ -19,6 +19,11 @@ const SUBSCRIPTIONS_API = '2022-12-01';
 const RESOURCE_GROUP_API = '2021-04-01';
 const PROVIDER_API = '2021-04-01';
 const BOT_API = '2022-09-15';
+/**
+ * Paging is driven by a link the vendor returns, so a link that points at
+ * itself would loop for ever. No tenant has this many of either.
+ */
+const MAX_PAGES = 50;
 /** Every provisioned bot lands here. Not configurable: it is Azure jargon in a
  * flow that has none, and a wrong value fails late and confusingly. */
 const RESOURCE_GROUP = 'n8n-agents';
@@ -90,7 +95,7 @@ export class TeamsBotProvisioningService {
 		// truncated list, with the subscription they wanted missing from it.
 		const subscriptions: TeamsAzureSubscription[] = [];
 		let page: ArmResponse | undefined = response;
-		while (page) {
+		for (let read = 0; page && read < MAX_PAGES; read++) {
 			const value = isRecord(page.body) ? page.body.value : undefined;
 			if (Array.isArray(value)) {
 				for (const entry of value) {
@@ -106,7 +111,11 @@ export class TeamsBotProvisioningService {
 				: undefined;
 			const nextPath: string | undefined = next ? armNextLinkPath(next) : undefined;
 			page = nextPath ? await this.arm.request(token, 'GET', nextPath) : undefined;
-			if (page && !page.ok) break;
+			// Keeping only the pages that arrived would hide the subscription the
+			// user came for, or read as "this account has none".
+			if (page && !page.ok) {
+				throw this.subscriptionsError(page.statusCode, graphErrorCode(page.body));
+			}
 		}
 		return subscriptions;
 	}
@@ -196,19 +205,45 @@ export class TeamsBotProvisioningService {
 		subscriptionId: string,
 		msaAppId: string,
 	): Promise<string | undefined> {
-		const response = await this.arm.request(
+		let page: ArmResponse = await this.arm.request(
 			token,
 			'GET',
 			`/subscriptions/${subscriptionId}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.BotService/botServices?api-version=${BOT_API}`,
 		);
-		// A resource group with no bots yet is the ordinary first run.
-		if (!response.ok) return undefined;
 
-		const value = isRecord(response.body) ? response.body.value : undefined;
-		if (!Array.isArray(value)) return undefined;
+		// A resource group that is not there yet is the ordinary first run. Any
+		// other refusal is an unknown list, and reading it as "no bot" asks Azure
+		// for a second bot on an app registration that already has one.
+		if (page.statusCode === 404) return undefined;
+		if (!page.ok) {
+			throw this.botError(page.statusCode, graphErrorCode(page.body));
+		}
 
-		const match = value.find((bot) => botAppIdOf(bot)?.toLowerCase() === msaAppId.toLowerCase());
-		return match ? stringProperty(match, 'name') : undefined;
+		// Paged like the subscriptions are. Missing the bot on a later page asks
+		// Azure for a second one on the same app registration, which it refuses.
+		for (let read = 0; read < MAX_PAGES; read++) {
+			const value = isRecord(page.body) ? page.body.value : undefined;
+			if (Array.isArray(value)) {
+				const match = value.find(
+					(bot) => botAppIdOf(bot)?.toLowerCase() === msaAppId.toLowerCase(),
+				);
+				if (match) return stringProperty(match, 'name');
+			}
+
+			const next: string | undefined = isRecord(page.body)
+				? stringProperty(page.body, 'nextLink')
+				: undefined;
+			const nextPath: string | undefined = next ? armNextLinkPath(next) : undefined;
+			if (!nextPath) return undefined;
+
+			page = await this.arm.request(token, 'GET', nextPath);
+			// Past the first page a refusal is not "no bot": taking it as one makes
+			// a second bot on an app registration that already has one.
+			if (!page.ok) {
+				throw this.botError(page.statusCode, graphErrorCode(page.body));
+			}
+		}
+		return undefined;
 	}
 
 	/**
@@ -234,6 +269,14 @@ export class TeamsBotProvisioningService {
 		const path = `/subscriptions/${subscriptionId}/resourcegroups/${RESOURCE_GROUP}?api-version=${RESOURCE_GROUP_API}`;
 		const existing = await this.arm.request(token, 'GET', path);
 		if (existing.ok) return;
+		// A refused read is reported as itself. Creating over a group that exists
+		// asks Azure to move it, and that error reads to the user as "this account
+		// cannot create resources". Anything else -- a 404, or a blip -- still
+		// tries the create, which reports its own refusal.
+		const code = graphErrorCode(existing.body);
+		if (existing.statusCode === 403 || code === 'AuthorizationFailed') {
+			throw this.botError(existing.statusCode, code);
+		}
 
 		const response = await this.arm.request(token, 'PUT', path, {
 			location: RESOURCE_GROUP_LOCATION,

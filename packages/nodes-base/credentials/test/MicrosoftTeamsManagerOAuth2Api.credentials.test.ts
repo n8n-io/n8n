@@ -83,10 +83,11 @@ describe('MicrosoftTeamsOAuth2Api, the node credential it must not disturb', () 
 	 * for something they never asked for, which is why the setup has its own type.
 	 */
 	it('carries none of the setup permissions', () => {
-		const scope = String(
-			nodeCredential.properties.find((property) => property.name === 'scope')?.default ?? '',
-		);
+		const scope = nodeCredential.properties.find((property) => property.name === 'scope')?.default;
 
+		// Asserted first: with `?? ''` as a fallback, a renamed or dropped
+		// property would make every absence check below pass on an empty string.
+		expect(typeof scope).toBe('string');
 		expect(scope).not.toContain('Application.ReadWrite.All');
 		expect(scope).not.toContain('AppCatalog');
 		expect(scope).not.toContain('management.azure.com');

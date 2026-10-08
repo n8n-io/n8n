@@ -9599,7 +9599,7 @@
 	"agents.channels.teams.managed.connect.failed": "The Microsoft sign-in did not finish. If it stopped at a permissions screen, an administrator has to approve n8n for your organisation once before anyone can use this setup.",
 	"agents.channels.teams.managed.connect.edit": "Edit this sign-in",
 	"agents.channels.teams.managed.createApp.title": "Create Teams app",
-	"agents.channels.teams.managed.createApp.description": "Adds this agent to your organisation as a Teams app. Name and icon come from the agent.",
+	"agents.channels.teams.managed.createApp.description": "Registers this agent with Microsoft, so Teams knows who it is. Name and icon come from the agent.",
 	"agents.channels.teams.managed.createApp.locked": "Connect to continue.",
 	"agents.channels.teams.managed.createBot.title": "Deploy Azure Bot",
 	"agents.channels.teams.managed.createBot.description": "Creates the bot in your Azure subscription.",
@@ -9615,7 +9615,7 @@
 	"agents.channels.teams.managed.createBot.subscription": "Azure subscription",
 	"agents.channels.teams.managed.createBot.create": "Create Azure Bot",
 	"agents.channels.teams.managed.createBot.summary": "Bot {botName} is running in Azure",
-	"agents.channels.teams.managed.createBot.noSubscription": "Your Microsoft account does not have access to an Azure subscription. Ask your Azure administrator for Contributor access to one, or use your own Microsoft app.",
+	"agents.channels.teams.managed.createBot.noSubscription": "Your Microsoft account does not have access to an Azure subscription, and the bot needs one. Ask your Azure administrator for Contributor access to a subscription, or create the bot yourself in a subscription you can already use.",
 	"agents.channels.teams.managed.createBot.freeTier": "Uses Azure's free bot tier. You can see and delete it in the Azure portal.",
 	"agents.channels.teams.managed.createBot.titleDone": "Azure Bot deployed",
 	"agents.channels.teams.managed.createBot.progress": "Creating Azure Bot, this can take up to a minute…",
@@ -9646,5 +9646,6 @@
 	"agents.channels.modal.teamsResourcesNotDeleted.link": "Open Microsoft Entra",
 	"agents.channels.teams.managed.connect.adminConsent": "Sign-in blocked by a permissions screen?",
 	"agents.channels.teams.managed.connect.adminConsentHint": "A Microsoft administrator approves n8n once for the whole organisation. After that, signing in just works.",
-	"agents.channels.teams.managed.createBot.checking": "Looking for an Azure subscription n8n can use…"
+	"agents.channels.teams.managed.createBot.checking": "Looking for an Azure subscription n8n can use…",
+	"agents.channels.teams.managed.createBot.retry": "Check again for an Azure subscription"
 }

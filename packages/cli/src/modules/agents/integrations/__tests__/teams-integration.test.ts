@@ -1,4 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -15,6 +17,7 @@ import {
 	TEAMS_CLIENT_SECRET as CLIENT_SECRET,
 	TEAMS_TENANT_ID as TENANT_ID,
 } from './helpers/teams/synthetic-fixtures';
+import { TeamsCleanupService } from '../platforms/teams/teams-cleanup.service';
 import { TeamsIntegration } from '../platforms/teams/teams-integration';
 
 const createTeamsAdapter = vi.fn(() => ({ name: 'teams' }));
@@ -362,6 +365,40 @@ describe('TeamsIntegration', () => {
 					isNewMention,
 				}),
 			).toBe(expected);
+		});
+	});
+
+	/**
+	 * The hook is the only wiring between integration removal and the cleanup
+	 * service, and the lifecycle tests mock `onRemove` away.
+	 */
+	describe('onRemove', () => {
+		it('asks the cleanup service about this project and credential', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const warning = {
+				integrationType: 'teams' as const,
+				code: 'resources_not_deleted' as const,
+				action: { type: 'open_url' as const, url: 'https://entra.microsoft.com' },
+				details: { appId: 'app-1' },
+			};
+			const cleanupService = mock<TeamsCleanupService>();
+			cleanupService.describeLeftovers.mockResolvedValue(warning);
+			Container.set(TeamsCleanupService, cleanupService);
+
+			await expect(
+				integration.onRemove({
+					user,
+					agentId: AGENT_ID,
+					projectId: 'project-1',
+					credentialId: CREDENTIAL_ID,
+				}),
+			).resolves.toEqual(warning);
+
+			expect(cleanupService.describeLeftovers).toHaveBeenCalledWith({
+				user,
+				projectId: 'project-1',
+				credentialId: CREDENTIAL_ID,
+			});
 		});
 	});
 });

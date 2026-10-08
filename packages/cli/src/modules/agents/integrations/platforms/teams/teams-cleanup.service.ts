@@ -1,4 +1,5 @@
 import type { AgentIntegrationDisconnectWarning } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
@@ -9,6 +10,7 @@ const ENTRA_APPS_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade';
 
 export interface TeamsCleanupContext {
+	user: User;
 	projectId: string;
 	credentialId: string;
 }
@@ -31,7 +33,10 @@ export class TeamsCleanupService {
 	): Promise<AgentIntegrationDisconnectWarning | undefined> {
 		if (!ctx.credentialId) return undefined;
 
-		const data = await this.credentialLookup.decryptForProject(
+		// Through the disconnecting user: `decryptForProject` consults nobody, and
+		// would read a global credential this user may no longer use.
+		const data = await this.credentialLookup.decryptForUser(
+			ctx.user,
 			ctx.projectId,
 			ctx.credentialId,
 			BOT_CREDENTIAL_TYPE,

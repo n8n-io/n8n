@@ -277,6 +277,13 @@ watch(
 			props.runtime.provisionedApp.value = null;
 			props.runtime.provisionedBot.value = null;
 			props.runtime.installed.value = false;
+			// The install step and the channel it wrote belonged to the old
+			// account too: leaving them would offer Done for a bot credential this
+			// account has nothing to do with.
+			stopWaiting();
+			installRoute.value = 'choose';
+			installOutcome.value = 'none';
+			persisted.value = false;
 		}
 		if (isConnected && !subscriptionsChecked.value) void checkSubscriptions();
 	},
@@ -308,6 +315,11 @@ async function run(name: string, action: () => Promise<void>) {
 	}
 }
 
+/**
+ * With a credential id this signs that one in; without one it makes a new
+ * credential first. The picker already names one whenever the project has any,
+ * so passing it is what keeps a second sign-in from piling up beside it.
+ */
 async function connect(credentialId?: string) {
 	await run('connect', async () => {
 		connectFailed.value = !(await props.runtime.connectManagerCredential(credentialId));
@@ -348,6 +360,19 @@ async function checkSubscriptions() {
 	} finally {
 		subscriptionsChecking.value = false;
 	}
+}
+
+/**
+ * Azure is asked from a watcher rather than a click, so a refusal would leave
+ * the step with nothing on it to press. Clears the refusal it is retrying, and
+ * leaves one that a step the user did start has reported.
+ */
+async function retrySubscriptions() {
+	if (errorStepId.value === STEP_OF_ACTION['create-bot']) {
+		errorMessage.value = '';
+		errorStepId.value = '';
+	}
+	await checkSubscriptions();
 }
 
 const provisionBot = async () =>
@@ -465,7 +490,11 @@ function skipWaiting() {
 	installOutcome.value = 'skipped';
 }
 
-onBeforeUnmount(stopWaiting);
+let unmounted = false;
+onBeforeUnmount(() => {
+	unmounted = true;
+	stopWaiting();
+});
 
 /**
  * Hands the setup to the manual flow, for the walls this one cannot climb: a
@@ -486,6 +515,10 @@ const downloadPackage = async () =>
 			provisionedApp.value?.credentialId,
 			currentSettings.value,
 		);
+		// The request can outlive the step. Starting a poll now would leave a
+		// timer nothing clears, and persisting would bind a channel the user has
+		// already walked away from.
+		if (unmounted) return;
 		saveAs(blob, TEAMS_PACKAGE_FILENAME);
 		installRoute.value = 'downloaded';
 		persistChannel();
@@ -611,7 +644,7 @@ const downloadPackage = async () =>
 						:loading="busy === 'connect'"
 						:disabled="loading || busy !== null"
 						data-testid="teams-manager-connect"
-						@click="connect(reconnectRequired ? selectedCredentialId : undefined)"
+						@click="connect(selectedCredentialId || undefined)"
 					>
 						{{ i18n.baseText('agents.channels.teams.managed.connect.button') }}
 					</N8nButton>
@@ -696,7 +729,22 @@ const downloadPackage = async () =>
 						</N8nText>
 					</template>
 
-					<template v-else-if="!subscriptionsChecked" />
+					<!--
+						Azure never answered, so neither branch below is the truth. The
+						question runs from a watcher rather than a click, so without this
+						the step would have no action left on it at all.
+					-->
+					<template v-else-if="!subscriptionsChecked">
+						<N8nButton
+							variant="outline"
+							size="medium"
+							:disabled="busy !== null"
+							data-testid="teams-bot-retry"
+							@click="retrySubscriptions"
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.createBot.retry') }}
+						</N8nButton>
+					</template>
 
 					<template v-else-if="subscriptions.length > 0">
 						<N8nInputLabel
