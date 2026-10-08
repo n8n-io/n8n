@@ -62,7 +62,7 @@ const mockBaseText = vi.fn((key: string, options?: { interpolate?: Record<string
 		'credentialEdit.credentialSharing.availableToOwner.tooltip':
 			'Only {name} can use this credential in {project}.',
 		'credentialEdit.credentialSharing.share': 'Share',
-		'credentialEdit.credentialSharing.shareWith': 'Share with {project}',
+		'credentialEdit.credentialSharing.share.tooltip': 'Share this credential with {project}',
 		'credentialEdit.credentialSharing.usedIn.personalSpace': 'Can use in personal space',
 		'credentialEdit.credentialSharing.usedIn.personalSpace.tooltip':
 			"{name}'s role lets them use any credential in their personal space, without a share.",
@@ -735,12 +735,12 @@ describe('CredentialSharing.ee', () => {
 			).not.toHaveLength(0);
 		});
 
-		it('keeps the Share button in the third person and says what sharing adds', async () => {
+		it('keeps the Share button label short and says what sharing adds', async () => {
 			viewerWith(['credential:use', 'credential:share']);
 			const { getByTestId, findAllByText } = renderUsedIn(viewerPersonalProject.id);
 
 			const share = getByTestId('credential-used-in-project-share');
-			expect(share).toHaveTextContent('Share with Owner Test');
+			expect(share).toHaveTextContent(/^\s*Share\s*$/);
 
 			await userEvent.hover(share);
 			expect(
@@ -794,7 +794,7 @@ describe('CredentialSharing.ee', () => {
 			projectsStore.personalProject = ownerPersonalProject;
 		});
 
-		it('shows a project the credential is used in but not shared with, with "Available to you" and a Share action', () => {
+		it('shows a project the credential is used in but not shared with, with "Available to you" and a Share action', async () => {
 			getDependenciesMock.mockReturnValue({
 				dependencies: [
 					{
@@ -811,7 +811,7 @@ describe('CredentialSharing.ee', () => {
 				homeProject: ownerPersonalProject,
 				sharedWithProjects: [],
 			});
-			const { getByTestId } = renderComponent({
+			const { getByTestId, findAllByText } = renderComponent({
 				props: {
 					credentialId: credential.id,
 					credentialData: {},
@@ -827,17 +827,20 @@ describe('CredentialSharing.ee', () => {
 			expect(row).toHaveTextContent('Marketing');
 			expect(row).toHaveTextContent('Used in "Email summary"');
 			expect(row).toHaveTextContent('Available to you');
-			expect(getByTestId('credential-used-in-project-share')).toHaveTextContent(
-				'Share with Marketing',
-			);
+			const share = getByTestId('credential-used-in-project-share');
+			expect(share).toHaveTextContent(/^\s*Share\s*$/);
+
+			await userEvent.hover(share);
+			expect(await findAllByText('Share this credential with Marketing')).not.toHaveLength(0);
 		});
 
 		it.each([
-			['Priya Nair <priya@example.com>', 'Share with Priya Nair'],
-			['<priya@example.com>', 'Share'],
+			['Priya Nair <priya@example.com>', 'Share this credential with Priya Nair'],
+			['<priya@example.com>', undefined],
+			[null, undefined],
 		])(
-			'hides the email of a personal project in the Share button (%s)',
-			(projectName, expectedLabel) => {
+			'shows a short Share button and keeps the email out of the tooltip (%s)',
+			async (projectName, expectedTooltip) => {
 				projectsStore.myProjects = [
 					{ ...marketingProject, name: projectName, type: 'personal' as const },
 				];
@@ -857,7 +860,7 @@ describe('CredentialSharing.ee', () => {
 					homeProject: ownerPersonalProject,
 					sharedWithProjects: [],
 				});
-				const { getByTestId } = renderComponent({
+				const { getByTestId, findAllByText, queryByText } = renderComponent({
 					props: {
 						credentialId: credential.id,
 						credentialData: {},
@@ -867,42 +870,16 @@ describe('CredentialSharing.ee', () => {
 					},
 				});
 
-				const label = getByTestId('credential-used-in-project-share').textContent?.trim();
-				expect(label).toBe(expectedLabel);
-				expect(label).not.toContain('@');
+				const share = getByTestId('credential-used-in-project-share');
+				expect(share).toHaveTextContent(/^\s*Share\s*$/);
+
+				await userEvent.hover(share);
+				if (expectedTooltip) {
+					expect(await findAllByText(expectedTooltip)).not.toHaveLength(0);
+				}
+				expect(queryByText(/Share this credential with\s*$/)).not.toBeInTheDocument();
 			},
 		);
-
-		it('falls back to a plain "Share" button when the project has no name', () => {
-			projectsStore.myProjects = [{ ...marketingProject, name: null }];
-			getDependenciesMock.mockReturnValue({
-				dependencies: [
-					{
-						id: 'wf-1',
-						name: 'Email summary',
-						type: 'workflowParent',
-						projectId: 'marketing-project',
-					},
-				],
-				inaccessibleCount: 0,
-			});
-
-			const credential = createCredential({
-				homeProject: ownerPersonalProject,
-				sharedWithProjects: [],
-			});
-			const { getByTestId } = renderComponent({
-				props: {
-					credentialId: credential.id,
-					credentialData: {},
-					credentialPermissions: { share: true },
-					credential,
-					modalBus: createEventBus(),
-				},
-			});
-
-			expect(getByTestId('credential-used-in-project-share')).toHaveTextContent(/^\s*Share\s*$/);
-		});
 
 		it('explains in a tooltip that only the owner can use the credential in the project', async () => {
 			getDependenciesMock.mockReturnValue({

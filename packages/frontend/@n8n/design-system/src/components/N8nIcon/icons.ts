@@ -2,6 +2,11 @@ import Anthropic from './custom/anthropic.svg';
 import Azure from './custom/azure.svg';
 import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
+import BotFail from './custom/bot-fail.svg';
+import BotIdle from './custom/bot-idle.svg';
+import BotPass from './custom/bot-pass.svg';
+import BotWaiting from './custom/bot-waiting.svg';
+import BotWarning from './custom/bot-warning.svg';
 import Continue from './custom/continue.svg';
 import Discord from './custom/discord.svg';
 import EmptyOutput from './custom/empty-output.svg';
@@ -517,6 +522,11 @@ export const updatedIconSet = {
 	// NOTE: ensure to replace any colors with "currentColor" in SVG
 	anthropic: Anthropic,
 	'bolt-filled': BoltFilled,
+	'bot-fail': BotFail,
+	'bot-idle': BotIdle,
+	'bot-pass': BotPass,
+	'bot-waiting': BotWaiting,
+	'bot-warning': BotWarning,
 	'filled-square': FilledSquare,
 	'grip-lines-vertical': GripLinesVertical,
 	variable: IconLucideVariable,
