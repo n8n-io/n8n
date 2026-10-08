@@ -28,7 +28,7 @@ import {
 	type OrchestratorTurnResult,
 } from './runner';
 import { buildReplyTurn } from './seeded-turn';
-import { ORCHESTRATOR_AGENT_ID, type DiscoveryTestCase } from './types';
+import type { DiscoveryTestCase } from './types';
 import { buildResumeData, toConfirmationData } from '../../src/runtime/confirmation-payload';
 import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { loadDiscoveryTestCasesWithFiles } from '../data/discovery';
@@ -46,6 +46,7 @@ import {
 	createRouteWatcher,
 	MAX_ANSWERS,
 	routeLabel,
+	traceSteps,
 	trialPasses,
 	type RouteResolution,
 } from '../routing/grade';
@@ -387,13 +388,9 @@ async function runRoutingTrial(args: CliArgs, routingCase: RoutingCase) {
 		const reply = await proxy.decideFollowUp();
 		// ponytail: a proxy that sees nothing to answer leaves the trial graded on the question.
 		if (reply.kind !== 'followUp') return result;
-		const assistantText = run.turn.instanceEvents
-			.flatMap((event) =>
-				event.type === 'text-delta' && event.agentId === ORCHESTRATOR_AGENT_ID
-					? [event.payload.text]
-					: [],
-			)
-			.join('');
+		const assistantText = traceSteps(run.turn.instanceEvents)
+			.flatMap((step) => (step.kind === 'text' ? [step.text] : []))
+			.join('\n\n');
 		scenario = buildReplyTurn(scenario, assistantText, reply.message);
 		earlier = resolution;
 	}

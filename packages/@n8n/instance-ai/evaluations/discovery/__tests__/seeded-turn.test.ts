@@ -64,15 +64,10 @@ describe('buildReplyTurn', () => {
 		expect(reply.userMessage).toBe('The 6am run.');
 		expect(reply.attach).toBeUndefined();
 		expect(reply.seed?.workflows).toEqual(seed.workflows);
-		expect(
-			reply.seed?.messages.map(({ role, content }) => [role, JSON.stringify(content)]),
-		).toEqual([
-			['user', JSON.stringify(seed.messages[0].content)],
-			['user', expect.stringContaining('Why did it fail?')],
-			['assistant', expect.stringContaining('Which run?')],
-		]);
-		expect(reply.seed?.messages[1].content).toEqual([
-			{ type: 'text', text: buildTurnMessage(first) },
+		expect(reply.seed?.messages.map(({ role, content }) => [role, content])).toEqual([
+			['user', seed.messages[0].content],
+			['user', [{ type: 'text', text: buildTurnMessage(first) }]],
+			['assistant', [{ type: 'text', text: 'Which run?' }]],
 		]);
 	});
 
@@ -82,7 +77,6 @@ describe('buildReplyTurn', () => {
 		const reply = buildReplyTurn(first, 'What do you need?', 'A report.');
 		const second = buildReplyTurn(reply, 'Daily or weekly?', 'Daily.');
 
-		expect(reply.seed?.messages.map(({ role }) => role)).toEqual(['user', 'assistant']);
 		expect(second.seed?.messages.map(({ role }) => role)).toEqual([
 			'user',
 			'assistant',

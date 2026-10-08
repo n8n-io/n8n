@@ -1,12 +1,7 @@
 // ---------------------------------------------------------------------------
-// What a seeded routing case adds to the orchestrator's turn.
-//
-// Production (packages/cli/src/modules/instance-ai/instance-ai.service.ts)
-// sends an editor hand-off as a resource attachment inside a leading
-// `<thread-context>` block. The runner uses the same builders, so the model
-// reads the same block. Earlier messages go into the agent's memory as thread
-// history, the way a restored thread holds them. A reply turn puts the first
-// turn there too.
+// What a seeded routing case adds to the orchestrator's turn. An open workflow
+// or Agent goes in the same `<thread-context>` block as production. Earlier
+// messages, and the first turn of a reply, go into memory as thread history.
 // ---------------------------------------------------------------------------
 
 import { Memory, type AgentDbMessage, type BuiltMemory } from '@n8n/agents';
