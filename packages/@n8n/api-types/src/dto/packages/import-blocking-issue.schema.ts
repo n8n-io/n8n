@@ -208,6 +208,12 @@ const dataTableSchemaOperationSchema = z
 			destructive: z.literal(true),
 		}),
 		z.object({
+			kind: z.literal('rename-column'),
+			from: z.string(),
+			to: z.string(),
+			destructive: z.literal(false),
+		}),
+		z.object({
 			kind: z.literal('reorder-columns'),
 			destructive: z.literal(false),
 		}),

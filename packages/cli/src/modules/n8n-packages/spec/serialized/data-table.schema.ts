@@ -15,6 +15,7 @@ const reservedColumnNames = new Set(
 
 export const serializedDataTableColumnSchema = z
 	.object({
+		id: dataTableIdSchema.min(1).optional(),
 		name: dataTableColumnNameSchema,
 		type: dataTableColumnTypeSchema,
 		index: z.number().int(),

@@ -1228,6 +1228,25 @@ oneOf:
                               kind:
                                 type: string
                                 enum:
+                                  - rename-column
+                              from:
+                                type: string
+                              to:
+                                type: string
+                              destructive:
+                                type: boolean
+                                enum:
+                                  - false
+                            required:
+                              - kind
+                              - from
+                              - to
+                              - destructive
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
                                   - reorder-columns
                               destructive:
                                 type: boolean

@@ -18,7 +18,7 @@ function makeDataTable(overrides: Partial<DataTable> = {}): DataTable {
 		id: 'dt1',
 		name: 'Customers',
 		projectId: 'proj-1',
-		columns: [{ id: 'col-1', name: 'email', type: 'string', index: 0 }],
+		columns: [{ id: 'col1', name: 'email', type: 'string', index: 0 }],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		...overrides,
@@ -112,7 +112,7 @@ describe('DataTableExporter', () => {
 			expect(parsed).toEqual({
 				id: 'dt1',
 				name: 'Customers',
-				columns: [{ name: 'email', type: 'string', index: 0 }],
+				columns: [{ id: 'col1', name: 'email', type: 'string', index: 0 }],
 			});
 		});
 

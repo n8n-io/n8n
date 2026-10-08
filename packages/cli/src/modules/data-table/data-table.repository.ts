@@ -57,6 +57,7 @@ export class DataTableRepository extends Repository<DataTable> {
 		columns: DataTableCreateColumnSchema[],
 		trx?: EntityManager,
 		explicitId?: string,
+		explicitColumnIds?: Array<string | undefined>,
 	) {
 		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
@@ -87,6 +88,7 @@ export class DataTableRepository extends Repository<DataTable> {
 			// insert columns
 			const columnEntities = columns.map((col, index) =>
 				em.create(DataTableColumn, {
+					id: explicitColumnIds?.[index],
 					dataTableId,
 					name: col.name,
 					type: col.type,

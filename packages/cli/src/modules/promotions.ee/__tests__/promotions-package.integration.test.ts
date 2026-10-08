@@ -75,6 +75,7 @@ import { PromotionConnectionProjectRepository } from '../database/repositories/p
 import { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
+import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionConfigResolver } from '../promotion-config.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
@@ -1689,6 +1690,17 @@ describe('Apply data table changes', () => {
 			? await service.apply(connection.id, owner)
 			: await service.applyProjectSelection(project.id, owner, { workflowIds: [workflow.id] });
 
+	const renameNoteColumn = async (
+		{ project, orders, dataTableService }: Awaited<ReturnType<typeof promoteDataTableWorkflows>>,
+		name: string,
+	) => {
+		const note = (await dataTableService.getColumns(orders.id, project.id)).find(
+			(column) => column.name === 'note',
+		);
+		assert(note);
+		await dataTableService.renameColumn(orders.id, project.id, note.id, { name });
+	};
+
 	it.each([{ flow: 'full' as const }, { flow: 'selection' as const }])(
 		'blocks a $flow apply whose data table change removes column values and writes nothing',
 		async ({ flow }) => {
@@ -1699,6 +1711,7 @@ describe('Apply data table changes', () => {
 				{ email: 'a@example.com', extra: 'keep me' },
 			]);
 			await dataTableService.updateDataTable(orders.id, project.id, { name: 'Local orders' });
+			await renameNoteColumn(promoted, 'memo');
 			await Container.get(WorkflowRepository).update(workflow.id, { name: 'Target workflow' });
 			const before = await snapshotApplyState();
 
@@ -1733,6 +1746,12 @@ describe('Apply data table changes', () => {
 				kind: 'rename-table',
 				from: 'Local orders',
 				to: 'Orders',
+				destructive: false,
+			});
+			expect(changes).toContainEqual({
+				kind: 'rename-column',
+				from: 'memo',
+				to: 'note',
 				destructive: false,
 			});
 			expect(changes.filter(({ destructive }) => destructive)).toEqual([removeExtra]);
@@ -1831,6 +1850,40 @@ describe('Apply data table changes', () => {
 			expect(await dataTableService.getOne(customers.id, project.id)).toMatchObject({
 				name: 'Customers',
 			});
+		},
+	);
+
+	it.each([{ flow: 'full' as const }, { flow: 'selection' as const }])(
+		'applies a $flow column rename without confirmation and keeps the values',
+		async ({ flow }) => {
+			const promoted = await promoteDataTableWorkflows();
+			const { project, orders, dataTableService } = promoted;
+			await renameNoteColumn(promoted, 'memo');
+			await dataTableService.insertRows(orders.id, project.id, [
+				{ email: 'a@example.com', memo: 'keep me' },
+			]);
+
+			const result = await applyFlow(flow, promoted);
+
+			assert(result.status === 'applied', JSON.stringify(result));
+			expect(result.counts.dataTables.updated).toBe(1);
+			expect(
+				(await dataTableService.getColumns(orders.id, project.id)).map(({ name }) => name),
+			).toEqual(['email', 'note']);
+			const { data } = await dataTableService.getManyRowsAndCount(orders.id, project.id, {});
+			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com', note: 'keep me' })]);
+			const changeService = new PromotionChangeService(
+				service,
+				packagesService,
+				Container.get(WorkflowRepository),
+				Container.get(VariablesRepository),
+				mockLogger(),
+			);
+			const { changes } = await changeService.getChanges(owner, project.id, 'apply', {
+				sort: 'name',
+				order: 'asc',
+			});
+			expect(changes).toEqual([]);
 		},
 	);
 });

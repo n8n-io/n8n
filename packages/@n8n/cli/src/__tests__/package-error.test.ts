@@ -56,6 +56,7 @@ describe('toPackagesError', () => {
 						typeMismatches: [],
 						overwriteChanges: [
 							{ kind: 'remove-column', column: 'note', type: 'string', destructive: true },
+							{ kind: 'rename-column', from: 'mail', to: 'email', destructive: false },
 							{ kind: 'add-column', column: 'BaaId', type: 'string', destructive: false },
 						],
 						usedByWorkflows: ['wf1'],
@@ -69,7 +70,7 @@ describe('toPackagesError', () => {
 			'data table "First" (dt1) does not match the package schema (missing columns: BaaId), used by workflow(s) wf1',
 		);
 		expect(hint).toContain(
-			'--data-table-schema-conflict-policy=overwrite would: remove column note (data lost), add column BaaId',
+			'--data-table-schema-conflict-policy=overwrite would: remove column note (data lost), rename column mail to email, add column BaaId',
 		);
 	});
 

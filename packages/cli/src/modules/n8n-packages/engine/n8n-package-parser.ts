@@ -14,6 +14,7 @@ import type { PreparedProject } from '../entities/project/project-import.types';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
 import { derivePublishedState } from '../entities/workflow/workflow-published-state';
 import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
+import { assertUnseen } from '../io/directory/package-directory-inventory-reader';
 import { entityFilePath, workflowMetadataFilePath } from '../io/manifest-entry';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
@@ -84,8 +85,13 @@ export class N8nPackageParser {
 		const manifest = await this.getManifest(reader);
 
 		const dataTables: SerializedDataTable[] = [];
+		const seenColumnIds = new Set<string>();
 		for (const entry of manifest.dataTables ?? []) {
-			dataTables.push(await this.readDataTable(reader, entry));
+			const dataTable = await this.readDataTable(reader, entry);
+			for (const { id } of dataTable.columns) {
+				if (id) assertUnseen(seenColumnIds, id, 'data table column id');
+			}
+			dataTables.push(dataTable);
 		}
 		return dataTables;
 	}

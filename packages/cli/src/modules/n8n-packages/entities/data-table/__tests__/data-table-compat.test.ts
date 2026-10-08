@@ -1,4 +1,8 @@
-import { diffDataTableSchema, findSchemaIncompatibility } from '../data-table-compat';
+import {
+	diffDataTableColumns,
+	diffDataTableSchema,
+	findSchemaIncompatibility,
+} from '../data-table-compat';
 
 const packageColumns = [
 	{ name: 'email', type: 'string' as const, index: 0 },
@@ -90,13 +94,25 @@ describe('diffDataTableSchema', () => {
 
 	it('detects every kind of change and lists them in a fixed order', () => {
 		expect(
-			diffDataTableSchema(packageTable, {
-				name: 'Orders',
-				columns: [
-					{ name: 'age', type: 'string', index: 0 },
-					{ name: 'extra', type: 'boolean', index: 1 },
-				],
-			}),
+			diffDataTableSchema(
+				{
+					id: 'dt1',
+					name: 'Customers',
+					columns: [
+						{ id: 'c1', name: 'email', type: 'string', index: 0 },
+						{ id: 'c2', name: 'age', type: 'number', index: 1 },
+						{ id: 'c3', name: 'added', type: 'boolean', index: 2 },
+					],
+				},
+				{
+					name: 'Orders',
+					columns: [
+						{ id: 'c2', name: 'age', type: 'string', index: 0 },
+						{ id: 'c1', name: 'mail', type: 'string', index: 1 },
+						{ id: 'c9', name: 'extra', type: 'boolean', index: 2 },
+					],
+				},
+			),
 		).toEqual([
 			{ kind: 'remove-column', column: 'extra', type: 'boolean', destructive: true },
 			{
@@ -106,10 +122,59 @@ describe('diffDataTableSchema', () => {
 				to: 'number',
 				destructive: true,
 			},
-			{ kind: 'add-column', column: 'email', type: 'string', destructive: false },
+			{ kind: 'rename-column', from: 'mail', to: 'email', destructive: false },
+			{ kind: 'add-column', column: 'added', type: 'boolean', destructive: false },
 			{ kind: 'reorder-columns', destructive: false },
 			{ kind: 'rename-table', from: 'Orders', to: 'Customers', destructive: false },
 		]);
+	});
+
+	it('reports a renamed and retyped column as a rename and a type change', () => {
+		expect(
+			diffDataTableColumns(
+				[{ id: 'c1', name: 'score', type: 'number', index: 0 }],
+				[{ id: 'c1', name: 'points', type: 'string', index: 0 }],
+			),
+		).toEqual([
+			{
+				kind: 'change-column-type',
+				column: 'score',
+				from: 'string',
+				to: 'number',
+				destructive: true,
+			},
+			{ kind: 'rename-column', from: 'points', to: 'score', destructive: false },
+		]);
+	});
+
+	it('reports a rename when a column takes the name of a removed column', () => {
+		expect(
+			diffDataTableColumns(
+				[{ id: 'c1', name: 'b', type: 'string', index: 0 }],
+				[
+					{ id: 'c2', name: 'b', type: 'string', index: 0 },
+					{ id: 'c1', name: 'a', type: 'string', index: 1 },
+				],
+			),
+		).toEqual([
+			{ kind: 'remove-column', column: 'b', type: 'string', destructive: true },
+			{ kind: 'rename-column', from: 'a', to: 'b', destructive: false },
+		]);
+	});
+
+	it('matches columns without an id by name', () => {
+		expect(
+			diffDataTableColumns(
+				[
+					{ id: 'c1', name: 'email', type: 'string', index: 0 },
+					{ name: 'age', type: 'number', index: 1 },
+				],
+				[
+					{ id: 'c1', name: 'mail', type: 'string', index: 0 },
+					{ id: 'c2', name: 'age', type: 'number', index: 1 },
+				],
+			),
+		).toEqual([{ kind: 'rename-column', from: 'mail', to: 'email', destructive: false }]);
 	});
 
 	it('treats a column that differs only in case as removed and added', () => {
@@ -144,15 +209,16 @@ describe('diffDataTableSchema', () => {
 		]);
 	});
 
-	it('reports a reorder when the target has a gap in its column positions', () => {
+	it('does not report a reorder when a middle column is removed', () => {
 		expect(
 			diffDataTableSchema(packageTable, {
 				name: 'Customers',
 				columns: [
 					{ name: 'email', type: 'string', index: 0 },
+					{ name: 'note', type: 'string', index: 1 },
 					{ name: 'age', type: 'number', index: 2 },
 				],
 			}),
-		).toEqual([{ kind: 'reorder-columns', destructive: false }]);
+		).toEqual([{ kind: 'remove-column', column: 'note', type: 'string', destructive: true }]);
 	});
 });
