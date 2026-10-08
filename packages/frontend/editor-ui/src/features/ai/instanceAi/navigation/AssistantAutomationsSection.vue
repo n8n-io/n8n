@@ -37,12 +37,16 @@ const { isEnabled: experienceModesOn } = useExperienceMode();
 const isEnabled = computed(() => isAssistantAvailable.value && experienceModesOn.value);
 const { automations, refresh } = useMyAutomations(isEnabled);
 // A turn can build or turn on a workflow, also when the user answers an automation card.
-useChatTurnEnded(() => void refresh());
+useChatTurnEnded(() => {
+	void refresh();
+});
 
 const isCollapsed = useLocalStorage(COLLAPSED_KEY, false, { writeDefaults: false });
 
 function toRow(automation: InstanceAiProvenanceListItem): AutomationRow {
-	const status = i18n.baseText(automation.active ? 'instanceAi.automations.on' : 'instanceAi.automations.off');
+	const status = i18n.baseText(
+		automation.active ? 'instanceAi.automations.on' : 'instanceAi.automations.off',
+	);
 	return {
 		workflowId: automation.workflowId,
 		active: automation.active,
@@ -106,7 +110,11 @@ const rows = computed(() => (automations.value ?? []).map(toRow));
 				>
 					<N8nMenuItem :item="row.item" :aria-label="row.rowLabel" scroll-label-on-overflow />
 					<span :class="$style.trailing">
-						<N8nTooltip v-if="row.chat" placement="right" :content="i18n.baseText('instanceAi.provenance.openChat')">
+						<N8nTooltip
+							v-if="row.chat"
+							placement="right"
+							:content="i18n.baseText('instanceAi.provenance.openChat')"
+						>
 							<N8nIconButton
 								variant="ghost"
 								size="xsmall"

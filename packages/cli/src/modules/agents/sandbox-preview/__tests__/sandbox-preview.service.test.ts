@@ -214,9 +214,7 @@ describe('SandboxPreviewService', () => {
 			expect(service.resolveToken(jwtService.sign('sandboxPreview', { sub: 'user-1' }))).toBe(
 				undefined,
 			);
-			expect(service.resolveToken(jwtService.sign('sandboxPreview', { jti: 'x' }))).toBe(
-				undefined,
-			);
+			expect(service.resolveToken(jwtService.sign('sandboxPreview', { jti: 'x' }))).toBe(undefined);
 		});
 
 		it('rejects a preview token whose entry this process does not hold', () => {

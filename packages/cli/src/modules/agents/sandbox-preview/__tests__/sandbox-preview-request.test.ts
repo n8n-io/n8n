@@ -127,9 +127,12 @@ describe('parsePreviewUrl', () => {
 });
 
 describe('segmentClimbsOut', () => {
-	it.each(['..', '%2e%2e', 'a%2f..', '..%5cb', '%252e%252e', '%zz'])('is true for %s', (segment) => {
-		expect(segmentClimbsOut(segment)).toBe(true);
-	});
+	it.each(['..', '%2e%2e', 'a%2f..', '..%5cb', '%252e%252e', '%zz'])(
+		'is true for %s',
+		(segment) => {
+			expect(segmentClimbsOut(segment)).toBe(true);
+		},
+	);
 
 	it.each(['', '.', '...', 'a..b', '100%25', '%252525', 'main.ts'])(
 		'is false for %j',

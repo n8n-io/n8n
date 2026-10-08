@@ -18,7 +18,10 @@ import { threadDisplayState, toTime } from '../threadDisplayState';
 const BASE_TIME = Date.parse('2026-03-01T10:00:00.000Z');
 const at = (seconds: number) => new Date(BASE_TIME + seconds * 1000).toISOString();
 
-function chat(id: string, overview: Partial<InstanceAiThreadSummary> = {}): InstanceAiThreadSummary {
+function chat(
+	id: string,
+	overview: Partial<InstanceAiThreadSummary> = {},
+): InstanceAiThreadSummary {
 	return { id, title: `Chat ${id}`, createdAt: at(0), updatedAt: at(0), ...overview };
 }
 
@@ -119,9 +122,7 @@ describe('groupThreads', () => {
 							expect(entry.threads).toHaveLength(entry.total);
 						} else {
 							expect(entry.threads.length).toBeLessThanOrEqual(perGroup + (hasOpen ? 1 : 0));
-							expect(entry.threads.length).toBeGreaterThanOrEqual(
-								Math.min(entry.total, perGroup),
-							);
+							expect(entry.threads.length).toBeGreaterThanOrEqual(Math.min(entry.total, perGroup));
 						}
 					}
 				}),
@@ -164,7 +165,9 @@ describe('groupThreads', () => {
 						const shown = new Set(entry.threads.map((t) => t.id));
 						const others = entry.threads.filter((t) => t.id !== openThreadId).map(activity);
 						const oldestShown = Math.min(...others);
-						const hidden = threads.filter((t) => groupOf.get(t.id) === entry.group && !shown.has(t.id));
+						const hidden = threads.filter(
+							(t) => groupOf.get(t.id) === entry.group && !shown.has(t.id),
+						);
 						for (const thread of hidden) expect(activity(thread)).toBeLessThanOrEqual(oldestShown);
 					}
 				}),
@@ -197,7 +200,9 @@ describe('groupThreads', () => {
 				lastViewedAt: () => viewed,
 			});
 
-			expect(entries).toEqual([{ group: expected, threads: [expect.objectContaining({ id: 'a' })], total: 1 }]);
+			expect(entries).toEqual([
+				{ group: expected, threads: [expect.objectContaining({ id: 'a' })], total: 1 },
+			]);
 		});
 
 		it('puts a chat that waits for input in "Needs you", whatever its state', () => {

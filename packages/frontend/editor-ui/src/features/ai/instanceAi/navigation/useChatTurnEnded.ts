@@ -25,14 +25,19 @@ export function hasNewKey(previous: ReadonlySet<string>, next: ReadonlySet<strin
 /**
  * Calls `onEnded` when a chat of the sidebar list ends a turn: the chat stops working, or it
  * has new activity and is not working (a turn too short to show as working). The live list
- * (`useLiveThreadList`) keeps the store current. The first list is the baseline, so the
- * first load of the list calls nothing.
+ * (`useLiveThreadList`) keeps the store current. The first list that has chats is the
+ * baseline, so the first load of the list calls nothing.
  */
 export function useChatTurnEnded(onEnded: () => void) {
 	const store = useInstanceAiStore();
 	const keys = computed(() => settledActivityKeys(store.threads));
+	let hasBaseline = store.threads.length > 0;
 
 	watch(keys, (next, previous) => {
-		if (previous.size > 0 && hasNewKey(previous, next)) onEnded();
+		if (!hasBaseline) {
+			hasBaseline = store.threads.length > 0;
+			return;
+		}
+		if (hasNewKey(previous, next)) onEnded();
 	});
 }

@@ -208,7 +208,13 @@ describe('SandboxPreviewProxyController', () => {
 	) =>
 		await new Promise<Answer>((resolve, reject) => {
 			const outgoing = request(
-				{ host: '127.0.0.1', port, path, method: options.method ?? 'GET', headers: options.headers },
+				{
+					host: '127.0.0.1',
+					port,
+					path,
+					method: options.method ?? 'GET',
+					headers: options.headers,
+				},
 				(res) => {
 					const chunks: Buffer[] = [];
 					res.on('data', (chunk: Buffer) => chunks.push(chunk));

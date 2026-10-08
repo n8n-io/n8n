@@ -112,6 +112,15 @@ describe('credentialChoicesOfCopy', () => {
 		});
 	});
 
+	it('binds nothing for a node of the copy without credentials', () => {
+		const choices = credentialChoicesOfCopy(
+			[withCredentials('n-1', { stripeApi: { id: 'src-stripe', name: 'Stripe' } })],
+			[node('n-1')],
+		);
+
+		expect(choices).toEqual({ bindings: new Map(), conflicting: [] });
+	});
+
 	it('binds nothing for a package node without a credential id', () => {
 		const choices = credentialChoicesOfCopy(
 			[withCredentials('n-1', { stripeApi: { id: null, name: 'Stripe' } })],
@@ -187,6 +196,12 @@ describe('acceptedCredentialChoices', () => {
 		).toEqual(new Map());
 	});
 
+	it('drops a binding for a credential that the package does not require, even to an unusable one', () => {
+		expect(acceptedCredentialChoices(new Map([['src-unknown', 'gone']]), requirements, [])).toEqual(
+			new Map(),
+		);
+	});
+
 	it('drops a binding for a credential that the package does not require', () => {
 		expect(
 			acceptedCredentialChoices(new Map([['src-unknown', 'own-stripe']]), requirements, [
@@ -217,6 +232,13 @@ describe('dataTableIdOf', () => {
 		['a value that is not text', tableNode('n-1', { __rl: true, mode: 'id', value: 3 })],
 		['a parameter that is not a locator', tableNode('n-1', 'dt-1')],
 		['no parameter', node('n-1', { type: 'n8n-nodes-base.dataTable' })],
+		[
+			'no parameters at all',
+			node('n-1', {
+				type: 'n8n-nodes-base.dataTable',
+				parameters: undefined as unknown as INode['parameters'],
+			}),
+		],
 	])('gives no id for %s', (_case, input) => {
 		expect(dataTableIdOf(input)).toBeUndefined();
 	});
@@ -287,6 +309,15 @@ describe('dataTableChoicesOfCopy', () => {
 			[tableNode('n-1', byId('dt-own'), 'n8n-nodes-base.dataTableTool')],
 		],
 		['the node of the copy has no table', [node('n-1', { type: 'n8n-nodes-base.dataTable' })]],
+		[
+			'the node of the copy has no parameters',
+			[
+				node('n-1', {
+					type: 'n8n-nodes-base.dataTable',
+					parameters: undefined as unknown as INode['parameters'],
+				}),
+			],
+		],
 	])('keeps nothing when %s', (_case, copyNodes) => {
 		const choices = dataTableChoicesOfCopy(
 			[tableNode('n-1', byId('dt-source'))],

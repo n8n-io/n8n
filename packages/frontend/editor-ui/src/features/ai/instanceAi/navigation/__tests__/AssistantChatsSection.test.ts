@@ -242,6 +242,16 @@ describe('AssistantChatsSection', () => {
 			]);
 		});
 
+		it('keeps the flat list in Simple mode, without groups', () => {
+			instanceAiStore.threads = chatsInEveryState();
+
+			const { queryAllByRole, queryAllByTestId, getByTestId } = render();
+
+			expect(queryAllByRole('heading')).toEqual([]);
+			expect(queryAllByTestId(/^assistant-chat-group-/)).toEqual([]);
+			expect(rowTestIds(getByTestId('instance-ai-sidebar-chats'))).toHaveLength(5);
+		});
+
 		it('shows a state icon for each chat that needs a look, and none for a chat the user saw', () => {
 			instanceAiStore.threads = chatsInEveryState();
 
@@ -355,9 +365,11 @@ describe('AssistantChatsSection', () => {
 				'Fix Slack alert, Failed',
 			]);
 			expect(rowLabels(getByRole('list', { name: 'Done' }))).toEqual(['Team digest']);
-			expect(within(getByTestId('assistant-chat-group-needs-you')).getByTestId(
-				'instance-ai-thread-state-broken',
-			)).toBeInTheDocument();
+			expect(
+				within(getByTestId('assistant-chat-group-needs-you')).getByTestId(
+					'instance-ai-thread-state-broken',
+				),
+			).toBeInTheDocument();
 		});
 
 		it('keeps the section header, its toggle and the link to the chat history', async () => {
@@ -372,7 +384,9 @@ describe('AssistantChatsSection', () => {
 
 		it('keeps the open chat in its group when it is older than the five shown', async () => {
 			instanceAiStore.threads = Array.from({ length: 7 }, (_, index) =>
-				chat(`thread-${index}`, `Chat ${index}`, { updatedAt: `2026-03-0${7 - index}T10:00:00.000Z` }),
+				chat(`thread-${index}`, `Chat ${index}`, {
+					updatedAt: `2026-03-0${7 - index}T10:00:00.000Z`,
+				}),
 			);
 			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: 'thread-6' } });
 

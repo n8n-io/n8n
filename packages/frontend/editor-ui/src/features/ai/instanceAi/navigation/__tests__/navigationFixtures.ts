@@ -5,7 +5,11 @@ import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
-import { INSTANCE_AI_THREADS_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '../../constants';
+import {
+	INSTANCE_AI_THREADS_VIEW,
+	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_VIEW,
+} from '../../constants';
 
 export const T0 = '2026-03-01T10:00:00.000Z';
 export const T1 = '2026-03-01T11:00:00.000Z';

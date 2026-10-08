@@ -220,7 +220,9 @@ describe('AgentCodingService.preview', () => {
 
 	describe('on Daytona', () => {
 		it('keeps returning the signed Daytona preview URL', async () => {
-			const getPreviewUrl = vi.fn().mockResolvedValue('https://5173-sandbox.proxy.daytona.test/?t=1');
+			const getPreviewUrl = vi
+				.fn()
+				.mockResolvedValue('https://5173-sandbox.proxy.daytona.test/?t=1');
 			const { service, sandboxPreviewService } = previewService(
 				'daytona',
 				mock<WorkspaceSandbox>({ getPreviewUrl }),

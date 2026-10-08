@@ -62,7 +62,9 @@ const ORIGIN_WIDE = [
 const headerNameArb = fc.stringMatching(/^[a-z][a-z0-9-]{0,24}$/);
 
 const randomCase = (name: string, flips: boolean[]) =>
-	[...name].map((char, index) => (flips[index % flips.length] ? char.toUpperCase() : char)).join('');
+	[...name]
+		.map((char, index) => (flips[index % flips.length] ? char.toUpperCase() : char))
+		.join('');
 
 describe('droppedRequestHeaders', () => {
 	it('keeps the headers that the app needs', () => {

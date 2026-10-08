@@ -24,7 +24,10 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-const to = computed(() => ({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: props.thread.id } }));
+const to = computed(() => ({
+	name: INSTANCE_AI_THREAD_VIEW,
+	params: { threadId: props.thread.id },
+}));
 
 const item = computed<IMenuItem>(() => ({
 	id: `instance-ai-thread-${props.thread.id}`,
