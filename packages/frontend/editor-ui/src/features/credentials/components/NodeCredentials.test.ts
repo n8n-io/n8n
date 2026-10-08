@@ -3687,7 +3687,7 @@ describe('NodeCredentials', () => {
 
 			const select = screen.getByTestId('node-credentials-select');
 			await waitFor(() =>
-				expect(within(select).getByRole('combobox')).toHaveValue("Alice's OpenAi"),
+				expect(within(select).getByRole('combobox')).toHaveValue("Alice Chen's OpenAi"),
 			);
 
 			await userEvent.click(select);
@@ -3695,7 +3695,9 @@ describe('NodeCredentials', () => {
 			expect(await screen.findByTestId(UNUSABLE_HEADER)).toHaveTextContent('Not available to you');
 			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
 			expect(option).toHaveClass('is-disabled');
-			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
+			expect(option).toHaveTextContent("Alice Chen's OpenAi");
+			expect(option).toHaveTextContent('Not shared with Marketing');
+			expect(option).not.toHaveTextContent("Alice's OpenAi");
 			// Only the current credential stays; others the user cannot use are not offered.
 			expect(screen.queryByTestId('node-credentials-select-item-bob-cred')).not.toBeInTheDocument();
 		});
@@ -3707,7 +3709,7 @@ describe('NodeCredentials', () => {
 			await userEvent.hover(warning.querySelector('svg') ?? warning);
 
 			expect(
-				await screen.findByText("Only Alice Chen can run or publish with Alice's OpenAi."),
+				await screen.findByText("Only Alice Chen can run or publish with Alice Chen's OpenAi."),
 			).toBeInTheDocument();
 			expect(
 				screen.getByText(
@@ -3724,7 +3726,7 @@ describe('NodeCredentials', () => {
 			await waitFor(() =>
 				expect(
 					within(screen.getByTestId('node-credentials-select')).getByRole('combobox'),
-				).toHaveValue("Alice's OpenAi"),
+				).toHaveValue("Alice Chen's OpenAi"),
 			);
 		});
 
