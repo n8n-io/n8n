@@ -76,9 +76,8 @@ target "n8n-pc" {
   }
 }
 
-# The glibc n8n image. Users add vendor libraries that need glibc in a derived
-# image. It inherits _app, not n8n, so the Alpine BUILDER_IMAGE and
-# RUNTIME_IMAGE overrides do not apply. The pins are the Dockerfile defaults.
+# Inherits _app, not n8n: the Alpine BUILDER_IMAGE and RUNTIME_IMAGE overrides
+# must not reach the Debian build. Its pins are the Dockerfile defaults.
 target "n8n-debian" {
   inherits   = ["_app"]
   dockerfile = "docker/images/n8n/Dockerfile.debian"
@@ -104,8 +103,6 @@ target "base" {
   tags       = tags(BASE_TAGS, "n8nio/base:${NODE_VERSION}")
 }
 
-# The glibc base. Users build on top of it to add vendor libraries. The DHI
-# reference is the Dockerfile default.
 target "base-debian" {
   inherits   = ["_context"]
   dockerfile = "docker/images/n8n-base/Dockerfile.debian"

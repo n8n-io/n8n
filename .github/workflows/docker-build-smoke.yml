@@ -131,12 +131,10 @@ jobs:
         run: pnpm build:docker:smoke
 
       # n8n-cloud does not deploy the Debian image, so skip the chart patterns.
-      # The runners images were checked above.
       - name: Verify the Debian n8n image
         env:
           SMOKE_IMAGE: n8nio/n8n:local-debian
           SMOKE_SKIP_CLOUD: 'true'
-          SMOKE_RUNNERS_IMAGES: ','
         run: pnpm build:docker:smoke
 
   notify-on-failure:
