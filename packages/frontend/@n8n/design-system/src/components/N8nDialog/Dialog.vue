@@ -2,7 +2,6 @@
 import { DialogRoot, DialogPortal } from 'reka-ui';
 
 import N8nDialogContent from './DialogContent.vue';
-import N8nDialogDescription from './DialogDescription.vue';
 import N8nDialogHeader from './DialogHeader.vue';
 import N8nDialogOverlay from './DialogOverlay.vue';
 import N8nDialogTitle from './DialogTitle.vue';
@@ -52,7 +51,19 @@ export interface DialogProps {
 	 */
 	disableOutsidePointerEvents?: boolean;
 	/**
-	 * Shows/hides close button in top right
+	 * Close the dialog when the user clicks outside it.
+	 * Escape and the close button still close the dialog.
+	 * @default true
+	 */
+	closeOnOverlayClick?: boolean;
+	/**
+	 * Close the dialog when the user presses Escape.
+	 * An overlay click and the close button still close the dialog.
+	 * @default true
+	 */
+	closeOnEscape?: boolean;
+	/**
+	 * Show the close button on the title row. The button is the last stop in the tab order.
 	 * @default true
 	 */
 	showCloseButton?: boolean;
@@ -69,12 +80,6 @@ export interface DialogProps {
 	 * Alternative to using N8nDialogHeader and N8nDialogTitle as children.
 	 */
 	header?: string;
-	/**
-	 * Shorthand for rendering a dialog description below the header.
-	 * Alternative to using N8nDialogDescription as a child.
-	 * Only rendered when header prop is also provided.
-	 */
-	description?: string;
 	/**
 	 * Render above another open dialog
 	 */
@@ -98,10 +103,14 @@ withDefaults(defineProps<DialogProps>(), {
 	size: 'medium',
 	trapFocus: true,
 	disableOutsidePointerEvents: true,
+	closeOnOverlayClick: true,
+	closeOnEscape: true,
 	showCloseButton: true,
 	stacked: false,
 });
 const emit = defineEmits<DialogEmits>();
+
+defineOptions({ inheritAttrs: false });
 
 const handleOpenChange = (value: boolean) => {
 	emit('update:open', value);
@@ -118,10 +127,13 @@ const handleOpenChange = (value: boolean) => {
 		<DialogPortal>
 			<N8nDialogOverlay :stacked="stacked" />
 			<N8nDialogContent
+				v-bind="$attrs"
 				:size="size"
 				:force-mount="forceMount"
 				:trap-focus="trapFocus"
 				:disable-outside-pointer-events="disableOutsidePointerEvents"
+				:close-on-overlay-click="closeOnOverlayClick"
+				:close-on-escape="closeOnEscape"
 				:show-close-button="showCloseButton"
 				:aria-label="ariaLabel"
 				:aria-description="ariaDescription"
@@ -134,7 +146,6 @@ const handleOpenChange = (value: boolean) => {
 			>
 				<N8nDialogHeader v-if="header">
 					<N8nDialogTitle>{{ header }}</N8nDialogTitle>
-					<N8nDialogDescription v-if="description">{{ description }}</N8nDialogDescription>
 				</N8nDialogHeader>
 				<slot />
 			</N8nDialogContent>
