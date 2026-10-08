@@ -253,7 +253,7 @@ import type {
 	InstanceContextInjection,
 	InstanceContextSurface,
 } from '@n8n/api-types';
-import type { InstanceAiHandoffContext } from '@n8n/api-types';
+import { UNLIMITED_CREDITS, type InstanceAiHandoffContext } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -880,7 +880,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveExperimentGates: Mock;
 			};
 			instanceWriteAccess: { isReadOnly: Mock };
-			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
+			modelService: {
+				resolveAgentModelConfig: Mock;
+				resolveProxyModel: Mock;
+				getCredits: Mock;
+			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
 			dbIterationLogStorage: unknown;
@@ -956,6 +960,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
+			getCredits: vi.fn(async () => ({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+			})),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
 		service.agentMemory = {
@@ -1251,7 +1259,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveExperimentGates: Mock;
 			};
 			instanceWriteAccess: { isReadOnly: Mock };
-			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
+			modelService: {
+				resolveAgentModelConfig: Mock;
+				resolveProxyModel: Mock;
+				getCredits: Mock;
+			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
 			dbIterationLogStorage: unknown;
@@ -1325,6 +1337,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
+			getCredits: vi.fn(async () => ({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+			})),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
 		service.agentMemory = {
