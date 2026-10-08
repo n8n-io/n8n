@@ -4,6 +4,7 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
@@ -85,21 +86,23 @@ function navigateToProjectSettings() {
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 
-		<div :class="$style.content">
-			<N8nLoading v-if="isLoading" :rows="3" />
-			<div v-else :class="$style.memberList">
-				<div v-for="member in membersData.members" :key="member.userId" :class="$style.memberRow">
-					<N8nUserInfo
-						:first-name="member.firstName"
-						:last-name="member.lastName"
-						:email="member.email"
-					/>
-					<N8nText :class="$style.roleLabel" color="text-light" size="small">
-						{{ getRoleDisplayName(member.role) }}
-					</N8nText>
+		<N8nDialogBody>
+			<div :class="$style.content">
+				<N8nLoading v-if="isLoading" :rows="3" />
+				<div v-else :class="$style.memberList">
+					<div v-for="member in membersData.members" :key="member.userId" :class="$style.memberRow">
+						<N8nUserInfo
+							:first-name="member.firstName"
+							:last-name="member.lastName"
+							:email="member.email"
+						/>
+						<N8nText :class="$style.roleLabel" color="text-light" size="small">
+							{{ getRoleDisplayName(member.role) }}
+						</N8nText>
+					</div>
 				</div>
 			</div>
-		</div>
+		</N8nDialogBody>
 
 		<N8nDialogFooter>
 			<N8nButton variant="subtle" @click="emit('update:open', false)">
@@ -114,7 +117,6 @@ function navigateToProjectSettings() {
 
 <style lang="css" module>
 .content {
-	margin-top: var(--spacing--sm);
 	max-height: 400px;
 	overflow-y: auto;
 }
