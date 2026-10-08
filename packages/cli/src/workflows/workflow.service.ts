@@ -139,11 +139,7 @@ export class WorkflowService {
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
-<<<<<<< HEAD
-=======
-		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
->>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 	) {}
 
 	/**

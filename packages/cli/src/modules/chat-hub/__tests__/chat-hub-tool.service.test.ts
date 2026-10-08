@@ -6,13 +6,9 @@ import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-<<<<<<< HEAD
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-=======
-import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
->>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { NodeTypes } from '@/node-types';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 

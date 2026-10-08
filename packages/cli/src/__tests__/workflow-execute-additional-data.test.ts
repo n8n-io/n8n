@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-=======
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, UrlService } from '@n8n/backend-services';
->>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, type NodesConfig, WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, Project, WorkflowHistory } from '@n8n/db';

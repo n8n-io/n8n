@@ -191,30 +191,14 @@ export class ChatHubWorkflowService {
 	 * Chat workflows are system-generated but policed like any other: the nodes are real, so a
 	 * blocked node type has to block the run rather than reach the engine.
 	 */
-<<<<<<< HEAD
 	private async enforceChatWorkflowSave(workflow: WorkflowEntity, projectId: string) {
+		this.deprecatedNodesValidationService.validateOnCreate(workflow.nodes, workflow.id);
+
 		return await this.policyEnforcementService.enforceWorkflowSave({
 			workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
 			storedWorkflow: null,
 			projectId,
 		});
-=======
-	private async enforceChatWorkflowSave(
-		workflow: WorkflowEntity,
-		projectId: string,
-		user: UserLike,
-	) {
-		this.deprecatedNodesValidationService.validateOnCreate(workflow.nodes, workflow.id);
-
-		return await this.policyEnforcementService.enforceWorkflowSave(
-			{
-				workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
-				storedWorkflow: null,
-				projectId,
-			},
-			{ kind: 'user', user },
-		);
->>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 	}
 
 	async createTitleGenerationWorkflow(
