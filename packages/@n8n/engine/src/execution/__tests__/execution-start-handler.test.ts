@@ -284,7 +284,7 @@ describe('ExecutionStartHandler lifecycle events', () => {
 				{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
 			],
 		};
-		const seededSteps = [{ nodeId: 'a', outputs: [[{ json: { reused: true } }]] }];
+		const seededSteps = { a: [[{ json: { reused: true } }]] };
 
 		it('records seeded steps as completed beside the trigger and announces each one', async () => {
 			const executionStore = makeExecutionStore({

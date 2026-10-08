@@ -122,7 +122,7 @@ export type {
 	StepStatus,
 	StepStore,
 	StepView,
-	SeededStep,
+	SeededSteps,
 	TriggerOutputs,
 	WaitDeclaration,
 	WorkflowDocument,
