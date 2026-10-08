@@ -102,19 +102,9 @@ const LISTED_COLUMNS_LIMIT = 5;
 function destructiveColumns(
 	changes: Extract<PromotionBindingConflict, { code: 'destructive-change' }>['changes'],
 ) {
-	const columns = changes.flatMap((change) => {
-		if (change.kind === 'remove-column') {
-			return i18n.baseText('promotions.bindings.destructive.removedColumn', {
-				interpolate: { column: change.column },
-			});
-		}
-		if (change.kind === 'change-column-type') {
-			return i18n.baseText('promotions.bindings.destructive.retypedColumn', {
-				interpolate: { column: change.column, from: change.from, to: change.to },
-			});
-		}
-		return [];
-	});
+	const columns = changes.flatMap((change) =>
+		change.kind === 'remove-column' || change.kind === 'change-column-type' ? change.column : [],
+	);
 	const list = columns.slice(0, LISTED_COLUMNS_LIMIT).join(', ');
 	const hidden = columns.length - LISTED_COLUMNS_LIMIT;
 	return hidden > 0
@@ -277,10 +267,9 @@ async function continueApply() {
 						{{ i18n.baseText('promotions.bindings.destructive.title') }}
 					</h3>
 					<p>{{ destructiveSummary }}</p>
-					<N8nCallout v-for="item in destructiveChanges" :key="item.id" theme="warning">
+					<N8nCallout v-for="item in destructiveChanges" :key="item.id" theme="warning" iconless>
 						<strong>{{ item.name }}</strong>
 						<p>{{ destructiveColumns(item.changes) }}</p>
-						<p>{{ consumerNames(item.consumers) }}</p>
 					</N8nCallout>
 				</section>
 				<div v-if="mode === 'bindings'" :class="$style.notices">
