@@ -115,9 +115,9 @@ A publisher never changes a version line. To withdraw or deprecate a version, it
 status line (`addStatusToStore`):
 
 ```json
-{"id":"gmail.message.get","yank":"1.0.4","reason":"sends Bcc as Cc","at":"2026-10-02T12:00:00.000Z","signatures":[…]}
-{"id":"gmail.message.get","revoke":"1.0.4","reason":"leaks the token","at":"…","signatures":[…]}
-{"id":"gmail.message.get","deprecate":"1","message":"Use major 2","use":"gmail.message.get@2","at":"…","signatures":[…]}
+{"id":"gmail.message.get","yank":"1.0.4","reason":"sends Bcc as Cc","at":"2026-10-02T12:00:00.000Z"}
+{"id":"gmail.message.get","revoke":"1.0.4","reason":"leaks the token","at":"…"}
+{"id":"gmail.message.get","deprecate":"1","message":"Use major 2","use":"gmail.message.get@2","at":"…"}
 ```
 
 - **Yank**: a save pins no node to the version. A node that has a pin of it still runs it. For a
@@ -129,13 +129,11 @@ status line (`addStatusToStore`):
 - **Deprecate**: `major`, `major.minor` or `major.minor.patch`. The reader gives the line
   (`StoreReader.index`). The host does not act on it yet.
 
-The signatures of a status line cover its canonical JSON without `signatures`
-(`storeStatusTextOf`), with the same key id and ed25519 form as a version. The instance keeps
-the lines in the `node_contract_status` table. It takes a line of `n8n contracts:import` only
-when a configured key signs it, or every line when no key is set. A signed line applies to a
-version only when its key proves at least the origin of the version: only the first-party key
-withdraws a first-party version, and an unsigned line, such as a line that the instance writes,
-applies only to a private version. A line from the npm registry is the exception, see below.
+A status line has no signature. It applies to every version of its id, whatever the origin of
+the version. The source of the line gives the trust: the npm registry auth, the admin who runs
+`n8n contracts:import`, or the instance. A line only reduces what runs. The instance keeps the
+lines in the `node_contract_status` table. `n8n contracts:import` takes every line of the folder,
+also when a key is set. It ignores a `signatures` field of a line from an older folder.
 The lines arrive with `n8n contracts:import`, with `contracts:export`, and from the npm
 registry for each id that the leader main reads (a sync of the pinned ids, a download, a
 newer-patch check). `contracts:export` writes only the yank and revoke lines of the versions
@@ -145,9 +143,8 @@ In an npm registry, `pnpm publish:contracts yank|revoke <id>@<version> <reason>`
 package runs `npm deprecate <name>@<version> <message>`. A host reads every npm deprecation as a
 yank. The message of a yank is the reason, and the message of a revoke is `revoked: <reason>`.
 The POC has no deprecation that is not a yank. The host reads the `deprecated` field of each
-version in the packument and makes a yank or revoke line with `registry: <url>` and no
-signature. Such a line applies to every origin, because the registry auth controls who can
-deprecate. Its `at` is the publish date of the version: npm keeps no date of a deprecation.
+version in the packument and makes a yank or revoke line with `registry: <url>`. Its `at` is
+the publish date of the version: npm keeps no date of a deprecation.
 
 ### npm packages
 

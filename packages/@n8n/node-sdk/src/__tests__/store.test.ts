@@ -11,8 +11,6 @@ import {
 	addToStore,
 	manifestTextOf,
 	signStoreManifest,
-	signStoreStatus,
-	storeStatusTextOf,
 	storeBlobFileOf,
 	storeFilesOfDir,
 	storeIndexFileOf,
@@ -330,15 +328,6 @@ describe('store status lines', () => {
 		await expect(addStatusToStore(dir, [noReason as unknown as StoreStatusRecord])).rejects.toThrow(
 			'is not a status line',
 		);
-	});
-
-	it('signs the canonical form of a status line', () => {
-		const signed = { ...yank, signatures: [signStoreStatus(yank, privateKey)] };
-		const reordered = { at, reason: yank.reason, yank: '1.1.0', id: 'demo.echo' };
-		expect(storeStatusTextOf(signed)).toBe(storeStatusTextOf(reordered));
-		expect(verifyStoreSignature(signed, storeStatusTextOf(signed), publicKey)).toBe(true);
-		const changed = { ...signed, reason: 'other' };
-		expect(verifyStoreSignature(changed, storeStatusTextOf(changed), publicKey)).toBe(false);
 	});
 });
 

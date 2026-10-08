@@ -19,7 +19,7 @@ const flagsSchema = z.object({
 @Command({
 	name: 'contracts:import',
 	description:
-		'Puts each version of a store folder into the node contracts store, with the origin of its signing key, and the status lines (yank, revoke, deprecate) that a configured key signs, or every status line when no key is set. It checks every digest, and every signature when N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE or N8N_NODE_CONTRACTS_VETTING_KEY_FILE is set. When one check of a version fails, it adds nothing.',
+		'Puts each version of a store folder into the node contracts store, with the origin of its signing key, and every status line (yank, revoke, deprecate). It checks every digest, and every signature when N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE or N8N_NODE_CONTRACTS_VETTING_KEY_FILE is set. When one check of a version fails, it adds nothing.',
 	examples: ['--input=/mnt/node-contracts', '--input=file:///mnt/node-contracts'],
 	flagsSchema,
 })

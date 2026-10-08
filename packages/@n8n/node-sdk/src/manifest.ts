@@ -544,7 +544,6 @@ export const storeStatusRecordSchema = t.union(
 				reason: t.str(),
 				at: t.str(),
 				registry: t.str().optional(),
-				signatures: signatures(),
 			})
 			.with(OPEN),
 	),
@@ -556,7 +555,6 @@ export const storeStatusRecordSchema = t.union(
 				reason: t.str(),
 				at: t.str(),
 				registry: t.str().optional(),
-				signatures: signatures(),
 			})
 			.with(OPEN),
 	),
@@ -568,7 +566,6 @@ export const storeStatusRecordSchema = t.union(
 				message: t.str(),
 				use: t.str().optional(),
 				at: t.str(),
-				signatures: signatures(),
 			})
 			.with(OPEN),
 	),

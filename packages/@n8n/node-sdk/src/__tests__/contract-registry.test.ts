@@ -6,7 +6,6 @@ import {
 	manifestTextOf,
 	npmNameOf,
 	signStoreManifest,
-	signStoreStatus,
 	storeBlobFileOf,
 	storeFilesOfDir,
 	storeReader,
@@ -446,9 +445,8 @@ describe('contractStore', () => {
 			rangedPinOf('^1.1.0', '1.1.0'),
 		);
 		expect(await storeOf().pinOf('demo.echo', 2, pinOf('1.0.0'))).toBeUndefined();
-		const yank = { id: 'demo.echo', yank: '1.1.0', reason: 'wrong output', at: '2026-10-02' };
 		await instance.current.store.insertStatuses([
-			{ ...yank, signatures: [signStoreStatus(yank, privateKey)] },
+			{ id: 'demo.echo', yank: '1.1.0', reason: 'wrong output', at: '2026-10-02' },
 		]);
 		expect(await storeOf().pinOf('demo.echo', 1)).toEqual(rangedPinOf('^1.0.1', '1.0.1'));
 	});
@@ -472,9 +470,8 @@ describe('contractStore', () => {
 		await expect(lockOfRange('~1.3.0')).rejects.toThrow(
 			'No version of demo.echo satisfies the range ~1.3.0. Versions known: 1.1.0, 1.0.1, 1.0.0',
 		);
-		const yank = { id: 'demo.echo', yank: '1.0.1', reason: 'wrong output', at: '2026-10-02' };
 		await instance.current.store.insertStatuses([
-			{ ...yank, signatures: [signStoreStatus(yank, privateKey)] },
+			{ id: 'demo.echo', yank: '1.0.1', reason: 'wrong output', at: '2026-10-02' },
 		]);
 		expect(await lockOfRange('~1.0.0')).toEqual(rangedPinOf('~1.0.0', '1.0.0'));
 		expect(await storeOf().pinOf('demo.echo', 1, { range: '~1.0.0' })).toEqual(
@@ -765,14 +762,18 @@ describe('origin', () => {
 
 describe('status lines', () => {
 	const at = '2026-10-02T12:00:00.000Z';
-	const signed = (status: StoreStatusRecord, key = privateKey): StoreStatusRecord => ({
-		...status,
-		signatures: [signStoreStatus(status, key)],
+	const yankOf = (version: string): StoreStatusRecord => ({
+		id: 'demo.echo',
+		yank: version,
+		reason: 'wrong output',
+		at,
 	});
-	const yankOf = (version: string, key?: string) =>
-		signed({ id: 'demo.echo', yank: version, reason: 'wrong output', at }, key);
-	const revokeOf = (version: string, key?: string) =>
-		signed({ id: 'demo.echo', revoke: version, reason: 'leaks the token', at }, key);
+	const revokeOf = (version: string): StoreStatusRecord => ({
+		id: 'demo.echo',
+		revoke: version,
+		reason: 'leaks the token',
+		at,
+	});
 	/** Sets the `npm deprecate` message of a version of `demo.echo`. */
 	const inRegistry = (version: string, message: string) => fake().deprecate(ECHO, version, message);
 
@@ -812,7 +813,7 @@ describe('status lines', () => {
 		expect(await run(locked('1.0.0'), { revokedAllowed: ['demo.echo@1.0.0'] })).toEqual(['HELLO']);
 	});
 
-	it('applies a registry line to every origin, and an own line only to private versions', async () => {
+	it('applies a registry line and an own line to every origin', async () => {
 		publish(packedOf('1.0.0'), firstParty.privateKey);
 		inRegistry('1.0.0', 'revoked: leaks the token');
 		await expect(run(locked('1.0.0'), { keys: bothKeys })).rejects.toThrow(
@@ -832,24 +833,10 @@ describe('status lines', () => {
 		await store.addOwnStatuses([
 			{ id: 'demo.echo', yank: '1.0.1', reason: 'Hidden on this instance', at },
 		]);
-		expect(await store.withdrawal(community)).toBeUndefined();
-		expect(await store.withdrawal({ ...community, origin: 'private' })).toMatchObject({
-			yank: '1.0.1',
-		});
+		expect(await store.withdrawal(community)).toMatchObject({ yank: '1.0.1' });
 	});
 
-	it('takes a status line of a first-party version only from the first-party key', async () => {
-		const store = storeOf({ keys: bothKeys });
-		await instance.current.store.insertStatuses([revokeOf('1.1.0')]);
-		expect(await run({}, { keys: bothKeys })).toEqual(['hello#']);
-		await instance.current.store.insertStatuses([revokeOf('1.1.0', firstParty.privateKey)]);
-		await expect(run({}, { keys: bothKeys })).rejects.toThrow('demo.echo@1.1.0 is revoked');
-		expect((await store.withdrawal(bundled('1.1.0')))?.signatures).toEqual(
-			revokeOf('1.1.0', firstParty.privateKey).signatures,
-		);
-	});
-
-	it('keeps the status lines through import and export', async () => {
+	it('keeps the status lines through import and export with a key set', async () => {
 		const dir = await mkdtemp(path.join(dirs.root, 'statuses-'));
 		await addToStore(
 			dir,
@@ -859,31 +846,35 @@ describe('status lines', () => {
 				return { manifestText, bundle, signatures: [signStoreManifest(manifestText, privateKey)] };
 			}),
 		);
-		const deprecation = signed({ id: 'demo.echo', deprecate: '1', message: 'Use major 2', at });
-		// An import needs a signature for each line, also for a line that names a registry.
-		const registryLine = { id: 'demo.echo', yank: '1.0.0', reason: 'r', at, registry: 'http://x/' };
-		await addStatusToStore(dir, [
-			yankOf('1.0.1'),
-			deprecation,
-			revokeOf('1.0.0', strangerKey),
-			registryLine,
-		]);
+		const deprecation = { id: 'demo.echo', deprecate: '1', message: 'Use major 2', at };
+		const registryYank = { id: 'demo.echo', yank: '1.0.0', reason: 'r', at, registry: 'http://x/' };
+		// A folder of an older host has signed status lines.
+		const signature = { key: `sha256:${'a'.repeat(64)}`, sig: 'c2ln' };
+		const oldSigned = { ...yankOf('1.0.1'), signatures: [signature] };
+		const lines = [oldSigned, deprecation, revokeOf('1.0.0'), registryYank];
+		await addStatusToStore(dir, lines);
 		await importContractStore(
 			storeReader(storeFilesOfDir(dir)),
 			instance.current.store,
 			vettingKeys,
 		);
-		expect([...instance.current.statuses.values()]).toEqual([yankOf('1.0.1'), deprecation]);
+		expect([...instance.current.statuses.values()]).toEqual(lines);
 		const out = await mkdtemp(path.join(dirs.root, 'export-'));
 		await exportContractStore(instance.current.store, out);
-		expect((await storeReader(storeFilesOfDir(out)).index('demo.echo')).statuses).toEqual([
-			deprecation,
-			yankOf('1.0.1'),
-		]);
+		const exported = (await storeReader(storeFilesOfDir(out)).index('demo.echo')).statuses;
+		expect(exported).toEqual([deprecation, revokeOf('1.0.0'), registryYank, oldSigned]);
+		instance.current = memoryStore();
+		await importContractStore(
+			storeReader(storeFilesOfDir(out)),
+			instance.current.store,
+			vettingKeys,
+		);
+		expect([...instance.current.statuses.values()]).toEqual(exported);
 		const pinned = await mkdtemp(path.join(dirs.root, 'export-'));
-		await exportContractStore(instance.current.store, pinned, ({ version }) => version === '1.0.0');
+		await exportContractStore(instance.current.store, pinned, ({ version }) => version === '1.0.1');
 		expect((await storeReader(storeFilesOfDir(pinned)).index('demo.echo')).statuses).toEqual([
 			deprecation,
+			oldSigned,
 		]);
 	});
 });

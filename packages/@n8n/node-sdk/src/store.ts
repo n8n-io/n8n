@@ -143,10 +143,8 @@ export interface StoreYank {
 	readonly reason: string;
 	/** When the publisher yanked the version, as an ISO date. */
 	readonly at: string;
-	/** The npm registry of a deprecation that the line comes from. Such a line applies to every origin. */
+	/** The npm registry of a deprecation that the line comes from. */
 	readonly registry?: string;
-	/** Publisher signatures of `storeStatusTextOf` of the line. */
-	readonly signatures?: readonly StoreSignature[];
 }
 
 /**
@@ -162,10 +160,8 @@ export interface StoreRevoke {
 	readonly reason: string;
 	/** When the publisher revoked the version, as an ISO date. */
 	readonly at: string;
-	/** The npm registry of a deprecation that the line comes from. Such a line applies to every origin. */
+	/** The npm registry of a deprecation that the line comes from. */
 	readonly registry?: string;
-	/** Publisher signatures of `storeStatusTextOf` of the line. */
-	readonly signatures?: readonly StoreSignature[];
 }
 
 /**
@@ -183,8 +179,6 @@ export interface StoreDeprecation {
 	readonly use?: string;
 	/** When the publisher deprecated the versions, as an ISO date. */
 	readonly at: string;
-	/** Publisher signatures of `storeStatusTextOf` of the line. */
-	readonly signatures?: readonly StoreSignature[];
 }
 
 /** A status line of `index/<id>.ndjson`. It never changes a version line: it is a new line. */
@@ -395,14 +389,6 @@ export function withdrawalOf(
 		) ?? statuses.find((status): status is StoreYank => 'yank' in status && status.yank === version)
 	);
 }
-
-/**
- * The bytes that the signatures of a status line cover: its canonical JSON without
- * `signatures`. A manifest has other bytes (tabs and a final newline), so a signature of one
- * never verifies as the other.
- */
-export const storeStatusTextOf = ({ signatures: _, ...status }: StoreStatusRecord) =>
-	canonicalJson(status);
 
 /** The index lines of `catalog.json`. */
 export function parseStoreCatalog(text: string): StoreRecord[] {
@@ -662,14 +648,7 @@ export const signStoreManifest = (manifestText: string, privateKey: string): Sto
 	sig: sign(null, Buffer.from(manifestText), privateKey).toString('base64'),
 });
 
-/** Signs a status line with the publisher key (PEM). Add the result to its `signatures`. */
-export const signStoreStatus = (status: StoreStatusRecord, privateKey: string) =>
-	signStoreManifest(storeStatusTextOf(status), privateKey);
-
-/**
- * True when a signature of the line by `publicKey` (PEM) covers `text`: the manifest bytes of a
- * version line, or `storeStatusTextOf` of a status line.
- */
+/** True when a signature of the line by `publicKey` (PEM) covers the manifest bytes. */
 export function verifyStoreSignature(
 	{ signatures = [] }: Pick<StoreRecord, 'signatures'>,
 	manifestText: string,

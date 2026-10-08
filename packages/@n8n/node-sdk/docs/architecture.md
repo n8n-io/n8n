@@ -159,8 +159,7 @@ four ways:
   need no registry egress.
 - The store reads the packument of `npmNameOf(id)` and downloads the tarball of each version
   once. An npm deprecation is a yank, and a message that starts with `revoked:` is a revoke. These
-  status lines have no signature. They apply to every origin, because the registry auth controls
-  who can deprecate.
+  status lines apply to every origin, because the registry auth controls who can deprecate.
 - Before the table takes a version, the store checks each blob digest (the manifest against
   `n8n.digest` of its package), checks the manifest
   against the pin, and records the **origin** from the key that signed it:

@@ -35,7 +35,6 @@ import {
 	parseAnyManifest,
 	storeBlobFileOf,
 	storeIndexFileOf,
-	storeStatusTextOf,
 	unresolvedCredentialPinsOf,
 	verifyStoreSignature,
 	withdrawalOf,
@@ -158,18 +157,6 @@ export function originOf(
 	if (vetting && verifyStoreSignature(line, manifestText, vetting)) return 'community';
 	return 'private';
 }
-
-const ORIGIN_RANK: Record<ContractOrigin, number> = { private: 0, community: 1, 'first-party': 2 };
-
-/**
- * Whether a status line applies to a version of `origin`. A line from the npm registry applies
- * to every origin: the registry auth decides who deprecates. Else its signer must prove at least
- * that origin. So only the first-party key withdraws a first-party version, and an unsigned line
- * applies only to a private version.
- */
-const appliesTo = (status: StoreStatusRecord, origin: ContractOrigin, keys: ContractKeys) =>
-	('registry' in status && status.registry !== undefined) ||
-	ORIGIN_RANK[originOf(status, storeStatusTextOf(status), keys)] >= ORIGIN_RANK[origin];
 
 /** Inserts the status lines that the store does not have, and returns them. */
 async function admitStatuses(
@@ -996,16 +983,13 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		return await loaded;
 	};
 
-	const withdrawal = async ({ manifest, origin }: CheckedVersion) => {
+	const withdrawal = async ({ manifest }: CheckedVersion) => {
 		const statuses = await cachedFor(
 			statusesById,
 			manifest.id,
 			async () => await store.statuses(manifest.id),
 		);
-		return withdrawalOf(
-			statuses.filter((status) => appliesTo(status, origin, keys)),
-			manifest.semver,
-		);
+		return withdrawalOf(statuses, manifest.semver);
 	};
 
 	/** The SDK runtime of a digest: embedded, stored, or else from the registry into the store. */
@@ -1178,10 +1162,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 			});
 			const withdrawn = new Set(
 				checked.flatMap((version) => {
-					const applying = statuses.filter(
-						(status) =>
-							status.id === version.manifest.id && appliesTo(status, version.origin, keys),
-					);
+					const applying = statuses.filter(({ id }) => id === version.manifest.id);
 					return withdrawalOf(applying, version.manifest.semver) ? [version] : [];
 				}),
 			);
@@ -1422,7 +1403,7 @@ async function verifiedVersionOf(
  * Puts each version of a store folder, e.g. of `contracts:export`, into the instance store
  * with its origin. It first checks every version: the digest of each blob, the index line
  * against its manifest, and the signature when a key is set. When one check fails, it adds
- * nothing. Then it puts the status lines that a trusted key signs into the store.
+ * nothing. Then it puts every status line into the store.
  */
 export async function importContractStore(
 	source: StoreReader,
@@ -1437,15 +1418,10 @@ export async function importContractStore(
 			.map(async (record) => await verifiedVersionOf(source, record, keys)),
 	);
 	const added = await admitVersions(store, versions);
-	// With a key, each line needs the signature of a key of them, also a line with `registry`.
+	// A status line only reduces what runs, and only an admin runs an import, so it needs no signature.
 	await admitStatuses(
 		store,
-		indexes
-			.flatMap(({ statuses }) => statuses)
-			.filter(
-				(status) =>
-					!hasKey(keys) || originOf(status, storeStatusTextOf(status), keys) !== 'private',
-			),
+		indexes.flatMap(({ statuses }) => statuses),
 	);
 	return added;
 }
