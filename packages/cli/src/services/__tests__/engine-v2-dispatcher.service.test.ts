@@ -638,7 +638,7 @@ describe('EngineV2Dispatcher', () => {
 				expect(request.triggerOutputs).toEqual([[{ json: { from: 'runData' } }]]);
 				// An empty slot collapses to a dead edge, as for any other step.
 				expect(request.seededSteps).toEqual({
-					[SET_NODE.id]: [[{ json: { reused: true } }], null],
+					[SET_NODE.id]: [[[{ json: { reused: true } }], null]],
 				});
 			});
 
