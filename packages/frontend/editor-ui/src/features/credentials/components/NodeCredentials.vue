@@ -331,6 +331,7 @@ function findDisplayedCredential(
 	);
 	return (
 		typeEntry?.options.find((option) => option.id === credentialId) ??
+		credentialsStore.getUsableCredentialById(credentialId) ??
 		credentialsStore.getCredentialById(credentialId)
 	);
 }
