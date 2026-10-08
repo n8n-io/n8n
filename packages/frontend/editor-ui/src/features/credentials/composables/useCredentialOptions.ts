@@ -24,9 +24,6 @@ export function useCredentialOptions(
 	const rootStore = useRootStore();
 	const options = ref<INodeListSearchItems[]>([]);
 	const loading = ref(false);
-	const failed = ref(false);
-	const open = ref(false);
-	let loaded = false;
 	let revision = 0;
 	const destination = computed<CredentialOptionsDestination | undefined>(() => {
 		if (context.credentialId) return { kind: 'stored', credentialId: context.credentialId };
@@ -47,7 +44,7 @@ export function useCredentialOptions(
 
 	async function loadOptions() {
 		const target = destination.value;
-		if (!context.credentialType || !target || !canLoad.value || loading.value || loaded) return;
+		if (!context.credentialType || !target || !canLoad.value) return;
 		const requestRevision = revision;
 		const request = {
 			type: context.credentialType,
@@ -55,7 +52,6 @@ export function useCredentialOptions(
 			propertyName: context.parameter.name,
 		};
 		loading.value = true;
-		failed.value = false;
 		options.value = [];
 		try {
 			let paginationToken: string | undefined;
@@ -68,9 +64,8 @@ export function useCredentialOptions(
 				options.value.push(...response.results);
 				paginationToken = response.paginationToken;
 			} while (paginationToken);
-			loaded = true;
 		} catch {
-			if (requestRevision === revision) failed.value = true;
+			if (requestRevision === revision) options.value = [];
 		} finally {
 			if (requestRevision === revision) loading.value = false;
 		}
@@ -87,19 +82,12 @@ export function useCredentialOptions(
 			if (isEqual(current, previous)) return;
 			revision++;
 			options.value = [];
-			loaded = false;
 			loading.value = false;
-			failed.value = false;
-			if (open.value) void loadOptions();
+			void loadOptions();
 		},
-		{ flush: 'sync' },
+		{ flush: 'sync', immediate: true },
 	);
 	onScopeDispose(() => revision++);
 
-	function onVisibleChange(visible: boolean) {
-		open.value = visible;
-		if (visible) void loadOptions();
-	}
-
-	return { options, loading, failed, canLoad, onVisibleChange };
+	return { options, loading };
 }

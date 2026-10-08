@@ -110,7 +110,7 @@ export class CredentialOptionsService {
 			methodName && Object.hasOwn(credentialType.methods?.loadOptions ?? {}, methodName)
 				? credentialType.methods?.loadOptions?.[methodName]
 				: undefined;
-		if (property?.type !== 'string' || !loader) {
+		if (property?.type !== 'options' || !loader) {
 			throw new BadRequestError('This credential field does not support loading a list.');
 		}
 		try {
