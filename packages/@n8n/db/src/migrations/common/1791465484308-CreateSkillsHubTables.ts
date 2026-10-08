@@ -15,7 +15,7 @@ const AGENT_HISTORY_SKILL_TABLE = 'agent_history_skill';
  * one they ran. There
  * is no draft row; an editor keeps unsaved changes to itself until Save.
  */
-export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
+export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.createSkillTable(context);
 		await this.createSkillVersionTable(context);
