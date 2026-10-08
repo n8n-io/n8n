@@ -2,6 +2,12 @@ import type { PaginationRootEmits, PaginationRootProps } from './reka-ui';
 
 export type PaginationSizes = 'small' | 'medium';
 
+/**
+ * Items-per-page value for the All option.
+ * Selecting All emits this value and shows every item on one page.
+ */
+export const PAGINATION_ALL_ITEMS_PER_PAGE = -1;
+
 export type PaginationProps = Omit<
 	PaginationRootProps,
 	'dir' | 'asChild' | 'as' | 'itemsPerPage' | 'total'
@@ -20,6 +26,12 @@ export type PaginationProps = Omit<
 	 * @defaultValue [10, 20, 30, 40, 50, 100]
 	 */
 	pageSizes?: number[];
+	/**
+	 * Show an All option in the page size selector.
+	 * Selecting it emits `PAGINATION_ALL_ITEMS_PER_PAGE`.
+	 * @defaultValue false
+	 */
+	showAll?: boolean;
 	/**
 	 * Show the total item count.
 	 * @defaultValue true

@@ -8,7 +8,13 @@ import { useI18n } from '@n8n/design-system/composables/useI18n';
 import type { SelectValue } from '@n8n/design-system/v2/components/Select/Select.types';
 import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
 
-import type { PaginationEmits, PaginationProps, PaginationSlots } from './Pagination.types';
+import {
+	PAGINATION_ALL_ITEMS_PER_PAGE,
+	type PaginationEmits,
+	type PaginationProps,
+	type PaginationSlots,
+} from './Pagination.types';
+
 import {
 	PaginationRoot,
 	PaginationList,
@@ -30,6 +36,7 @@ const $style = useCssModule();
 const props = withDefaults(defineProps<PaginationProps>(), {
 	size: 'medium',
 	pageSizes: () => [10, 20, 30, 40, 50, 100],
+	showAll: false,
 	showTotal: true,
 	showSizes: true,
 	showJumper: false,
@@ -103,9 +110,18 @@ watch(
 	{ immediate: true },
 );
 
+function isAllPageSize() {
+	return currentItemsPerPage.value === PAGINATION_ALL_ITEMS_PER_PAGE;
+}
+
 function resolvedPageCount() {
-	if (!props.total || !currentItemsPerPage.value) return 1;
+	if (isAllPageSize() || !props.total || !currentItemsPerPage.value) return 1;
 	return Math.ceil(props.total / currentItemsPerPage.value);
+}
+
+function rootItemsPerPage() {
+	if (isAllPageSize()) return Math.max(props.total, 1);
+	return currentItemsPerPage.value;
 }
 
 function shouldHide() {
@@ -121,10 +137,16 @@ function isNextDisabled(page: number, pageCount: number) {
 }
 
 function pageSizeItems() {
-	return props.pageSizes.map((s) => ({
+	const items = props.pageSizes.map((s) => ({
 		value: String(s),
 		label: t('pagination.pageSizeOption', { size: s }),
 	}));
+
+	if (props.showAll) {
+		items.push({ value: String(PAGINATION_ALL_ITEMS_PER_PAGE), label: t('pagination.all') });
+	}
+
+	return items;
 }
 
 function handlePageUpdate(newPage: number) {
@@ -245,7 +267,7 @@ function handlePagerKeydown(event: KeyboardEvent) {
 			v-slot="{ page: rootPage, pageCount: rootPageCount }"
 			v-bind="rootProps"
 			:page="currentPage"
-			:items-per-page="currentItemsPerPage"
+			:items-per-page="rootItemsPerPage()"
 			:total="total"
 			@update:page="handlePageUpdate"
 		>
