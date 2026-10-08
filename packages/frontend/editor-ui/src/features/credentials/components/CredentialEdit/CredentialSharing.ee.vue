@@ -214,16 +214,20 @@ function usedInProjectName(project: Pick<ProjectSharingData, 'name'>) {
 	return splitName(project.name ?? '').name;
 }
 
-function usedInShareTooltip(project: Pick<ProjectSharingData, 'name'>) {
+function usedInShareTooltip(project: ProjectSharingData) {
 	const name = usedInProjectName(project);
 
-	return hasInstanceWideUse(project)
-		? i18n.baseText('credentialEdit.credentialSharing.share.teamProjects.tooltip', {
-				interpolate: { name },
-			})
-		: i18n.baseText('credentialEdit.credentialSharing.share.tooltip', {
+	if (hasInstanceWideUse(project)) {
+		return i18n.baseText('credentialEdit.credentialSharing.share.teamProjects.tooltip', {
+			interpolate: { name: name ?? '' },
+		});
+	}
+
+	return name
+		? i18n.baseText('credentialEdit.credentialSharing.share.tooltip', {
 				interpolate: { project: name },
-			});
+			})
+		: '';
 }
 
 function usedInAccessTooltip(project: Pick<ProjectSharingData, 'name'>) {
@@ -370,7 +374,11 @@ function goToUpgrade() {
 								{{ usedInAccessText }}
 							</N8nText>
 						</N8nTooltip>
-						<N8nTooltip :content="usedInShareTooltip(project)" placement="top">
+						<N8nTooltip
+							:content="usedInShareTooltip(project)"
+							:disabled="!usedInShareTooltip(project)"
+							placement="top"
+						>
 							<N8nButton
 								variant="outline"
 								data-test-id="credential-used-in-project-share"
