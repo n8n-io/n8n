@@ -7,7 +7,7 @@ import { UserError } from 'n8n-workflow';
 import { PassThrough } from 'node:stream';
 import type { Mocked } from 'vitest';
 
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
 	PackageEntityAccessDeniedError,
@@ -26,14 +26,12 @@ vi.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 // Loaded after the middleware spies above are installed (the handler captures
 // middleware at module-evaluation time). Typed loosely to invoke route entries.
 let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
-// exportPackage/importPackageSelection = [middleware(...), businessLogic]; index 1 is the handler under test.
+// exportPackage = [middleware(...), businessLogic]; index 1 is the handler under test.
 let exportPackage: (...args: unknown[]) => unknown;
-let importPackageSelection: (...args: unknown[]) => unknown;
 
 beforeAll(async () => {
 	handler = (await import('../n8n-packages.handler.js')) as unknown as typeof handler;
 	exportPackage = handler.exportPackage[1];
-	importPackageSelection = handler.importPackageSelection[1];
 });
 
 const EXPORT_COUNTS = {
@@ -80,31 +78,6 @@ describe('n8n-packages handler', () => {
 		let caught: unknown;
 		try {
 			await exportPackage(req, res);
-		} catch (error) {
-			caught = error;
-		}
-		return caught;
-	}
-
-	function makeImportSelectionRequest(
-		body: Record<string, unknown>,
-		apiKeyScopes?: string[],
-		files: Express.Multer.File[] = [
-			{ fieldname: 'package', buffer: Buffer.from('tar-bytes') } as Express.Multer.File,
-		],
-	) {
-		return {
-			user: { id: 'user-1' },
-			body: { selectedProjectId: 'P1', selectedWorkflowIds: '["WFA"]', ...body },
-			files,
-			tokenGrant: apiKeyScopes ? { apiKeyScopes } : undefined,
-		} as unknown as AuthenticatedRequest;
-	}
-
-	async function runImportSelection(req: AuthenticatedRequest, res: Response) {
-		let caught: unknown;
-		try {
-			await importPackageSelection(req, res);
 		} catch (error) {
 			caught = error;
 		}
@@ -603,116 +576,6 @@ describe('n8n-packages handler', () => {
 				workflowVersionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
-			});
-		});
-	});
-
-	describe('importPackageSelection', () => {
-		it('throws ForbiddenError and emits access-denied when the API key lacks workflow:import scope', async () => {
-			const caught = await runImportSelection(
-				makeImportSelectionRequest({}, ['workflow:export']),
-				makeResponse(),
-			);
-
-			expect(caught).toBeInstanceOf(ForbiddenError);
-			expect(mockService.importPackageSelection).not.toHaveBeenCalled();
-			expect(emittedEvent('n8n-package-import-failed')).toEqual({
-				user: { id: 'user-1' },
-				reason: 'access-denied',
-			});
-		});
-
-		it('throws BadRequestError and emits validation when selectedProjectId is missing', async () => {
-			const caught = await runImportSelection(
-				makeImportSelectionRequest({ selectedProjectId: '' }, ['workflow:import']),
-				makeResponse(),
-			);
-
-			expect(caught).toBeInstanceOf(BadRequestError);
-			expect(mockService.importPackageSelection).not.toHaveBeenCalled();
-			expect(emittedEvent('n8n-package-import-failed')).toMatchObject({ reason: 'validation' });
-		});
-
-		it('throws BadRequestError when the multipart package file is missing', async () => {
-			const caught = await runImportSelection(
-				makeImportSelectionRequest({}, ['workflow:import'], []),
-				makeResponse(),
-			);
-
-			expect(caught).toBeInstanceOf(BadRequestError);
-			expect(mockService.importPackageSelection).not.toHaveBeenCalled();
-		});
-
-		it.each(['projectId', 'folderId'])(
-			'rejects a stray %s field, which the selection endpoint does not accept',
-			async (field) => {
-				const caught = await runImportSelection(
-					makeImportSelectionRequest({ [field]: 'proj-brie' }, ['workflow:import']),
-					makeResponse(),
-				);
-
-				expect(caught).toBeInstanceOf(BadRequestError);
-				expect(mockService.importPackageSelection).not.toHaveBeenCalled();
-			},
-		);
-
-		it('parses the DTO and forwards the selection to the service', async () => {
-			const result = { package: {}, workflows: [], bindings: {}, credentials: {} };
-			mockService.importPackageSelection.mockResolvedValue(result as never);
-			const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
-
-			const caught = await runImportSelection(
-				makeImportSelectionRequest(
-					{
-						selectedProjectId: 'P1',
-						selectedWorkflowIds: '["WFA","WFB"]',
-						deletedWorkflowIds: '["WFC"]',
-						workflowConflictPolicy: 'skip',
-						workflowIdPolicy: 'new',
-					},
-					['workflow:import'],
-				),
-				res,
-			);
-
-			expect(caught).toBeUndefined();
-			expect(mockService.importPackageSelection).toHaveBeenCalledWith(
-				expect.objectContaining({
-					user: { id: 'user-1' },
-					apiKeyScopes: ['workflow:import'],
-					workflowConflictPolicy: 'skip',
-					workflowIdPolicy: 'new',
-					packageBuffer: expect.any(Buffer),
-				}),
-				{
-					selectedProjectId: 'P1',
-					selectedWorkflowIds: ['WFA', 'WFB'],
-					deletedWorkflowIds: ['WFC'],
-				},
-			);
-			expect(mockEventService.emit).not.toHaveBeenCalled();
-		});
-
-		it('omits deletedWorkflowIds from the selection when the caller does not send it', async () => {
-			const result = { package: {}, workflows: [], bindings: {}, credentials: {} };
-			mockService.importPackageSelection.mockResolvedValue(result as never);
-			const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
-
-			await runImportSelection(makeImportSelectionRequest({}, ['workflow:import']), res);
-
-			expect(mockService.importPackageSelection).toHaveBeenCalledWith(expect.any(Object), {
-				selectedProjectId: 'P1',
-				selectedWorkflowIds: ['WFA'],
-			});
-		});
-
-		it('emits blocked when the service rejects the import as blocked', async () => {
-			mockService.importPackageSelection.mockRejectedValue(new ConflictError('Import blocked'));
-
-			await runImportSelection(makeImportSelectionRequest({}, ['workflow:import']), makeResponse());
-
-			expect(emittedEvent('n8n-package-import-failed')).toMatchObject({
-				reason: 'blocked',
 			});
 		});
 	});
