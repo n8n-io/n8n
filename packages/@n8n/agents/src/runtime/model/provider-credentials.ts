@@ -164,7 +164,9 @@ export function hasAzureApiKey(creds: AzureOpenAiAuthFields): boolean {
 /** A stored Entra OAuth2 access token proves the credential was connected. */
 export function hasAzureEntraToken(creds: AzureOpenAiAuthFields): boolean {
 	return (
-		isStringRecord(creds.oauthTokenData) && typeof creds.oauthTokenData.access_token === 'string'
+		isStringRecord(creds.oauthTokenData) &&
+		typeof creds.oauthTokenData.access_token === 'string' &&
+		creds.oauthTokenData.access_token !== ''
 	);
 }
 
