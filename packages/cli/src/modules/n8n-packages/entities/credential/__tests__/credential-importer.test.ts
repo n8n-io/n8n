@@ -51,7 +51,7 @@ describe('CredentialImporter', () => {
 	): CredentialRequirement => ({
 		name: 'Source GitHub',
 		type: 'githubApi',
-		usedByWorkflows: ['wf-1'],
+		usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		...overrides,
 	});
 
@@ -63,7 +63,7 @@ describe('CredentialImporter', () => {
 		sourceId: credential.id,
 		name: credential.name,
 		type: credential.type,
-		usedByWorkflows: credential.usedByWorkflows,
+		usedByWorkflows: credential.usedBy.map(({ id }) => id),
 		...overrides,
 	});
 
@@ -95,7 +95,7 @@ describe('CredentialImporter', () => {
 				id: 'cred-manifest',
 				name: 'Manifest GitHub',
 				type: 'githubApi',
-				usedByWorkflows: ['wf-1'],
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 			},
 		]);
 		const credentialResolution = await importer.plan(context, request);
@@ -109,7 +109,12 @@ describe('CredentialImporter', () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 
 		const request = bindingRequest([
-			{ id: 'cred-missing', name: 'Missing', type: 'githubApi', usedByWorkflows: ['wf-1'] },
+			{
+				id: 'cred-missing',
+				name: 'Missing',
+				type: 'githubApi',
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+			},
 		]);
 		const credentialResolution = await importer.plan(context, request);
 
@@ -145,7 +150,7 @@ describe('CredentialImporter', () => {
 					id: 'source-cred',
 					name: 'Source GitHub',
 					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			{ credentialBindings: new Map([['source-cred', 'target-cred']]) },
@@ -188,7 +193,7 @@ describe('CredentialImporter', () => {
 					id: 'source-cred',
 					name: 'Source GitHub',
 					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			{ credentialBindings: new Map([['source-cred', 'target-missing']]) },
@@ -215,7 +220,10 @@ describe('CredentialImporter', () => {
 			const missingCredential = packageCredential({
 				id: 'missing-cred',
 				name: 'Missing GitHub',
-				usedByWorkflows: ['wf-1', 'wf-2'],
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-2' },
+				],
 			});
 			const request = bindingRequest([missingCredential], { missingMode: 'create-stub' });
 			const resolution = {

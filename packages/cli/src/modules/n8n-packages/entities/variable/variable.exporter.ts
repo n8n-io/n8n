@@ -89,7 +89,10 @@ export class VariableExporter {
 				);
 			}
 
-			requirements.push({ name, usedByWorkflows });
+			requirements.push({
+				name,
+				usedBy: usedByWorkflows.map((id) => ({ kind: 'workflow', id })),
+			});
 		}
 
 		return { entries, requirements };

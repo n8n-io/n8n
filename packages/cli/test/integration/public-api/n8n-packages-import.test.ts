@@ -80,7 +80,7 @@ async function buildImportPackage(
 				? {
 						variables: [{ id: 'var-http-source', name: variable.name, target: variable.target }],
 						requirements: {
-							variables: [{ name: variable.name, usedByWorkflows: [wfId] }],
+							variables: [{ name: variable.name, usedBy: [{ kind: 'workflow', id: wfId }] }],
 						},
 					}
 				: {}),

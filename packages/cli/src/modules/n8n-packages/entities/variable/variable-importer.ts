@@ -30,6 +30,7 @@ import type {
 } from './variable.types';
 import { VariableConflictPolicy } from '../../n8n-packages.types';
 import type { ImportContext } from '../../n8n-packages.types';
+import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
 
 @Service()
 export class VariableImporter {
@@ -76,7 +77,7 @@ export class VariableImporter {
 				}
 
 				const scope = picked.project ? { projectId: picked.project.id } : {};
-				const usedByWorkflows = [...new Set(requirement.usedByWorkflows)].sort();
+				const usedByWorkflows = [...new Set(getWorkflowConsumerIds(requirement))].sort();
 				conflicts.push({ name: requirement.name, ...scope, usedByWorkflows });
 				if (overwritesConflicts) {
 					overwrites.push({
@@ -96,7 +97,7 @@ export class VariableImporter {
 					name: requirement.name,
 					...(requirement.globalPlacement ? {} : { projectId: context.projectId }),
 					...(value !== undefined ? { value } : {}),
-					usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
+					usedByWorkflows: [...new Set(getWorkflowConsumerIds(requirement))].sort(),
 				});
 			}
 		}

@@ -3,6 +3,7 @@ import type { User } from '@n8n/db';
 import type { PackageWriter } from '../../io/package-writer';
 import type { VariableConflictPolicy, VariableMissingMode } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
 
 export interface WorkflowVariableRequirement {
@@ -72,7 +73,7 @@ export interface VariableLimitFailure {
 export function createFailure(requirement: PackageVariableRequirement): VariableResolutionFailure {
 	return {
 		name: requirement.name,
-		usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
+		usedByWorkflows: [...new Set(getWorkflowConsumerIds(requirement))].sort(),
 	};
 }
 

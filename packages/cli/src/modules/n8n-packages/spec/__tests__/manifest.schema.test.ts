@@ -55,8 +55,18 @@ describe('packageManifestSchema', () => {
 			...validManifest,
 			requirements: {
 				credentials: [
-					{ id: 'cred-1', name: 'A', type: 'githubApi', usedByWorkflows: ['wf-abc'] },
-					{ id: 'cred-1', name: 'B', type: 'slackApi', usedByWorkflows: ['wf-abc'] },
+					{
+						id: 'cred-1',
+						name: 'A',
+						type: 'githubApi',
+						usedBy: [{ kind: 'workflow', id: 'wf-abc' }],
+					},
+					{
+						id: 'cred-1',
+						name: 'B',
+						type: 'slackApi',
+						usedBy: [{ kind: 'workflow', id: 'wf-abc' }],
+					},
 				],
 			},
 		};
@@ -69,8 +79,8 @@ describe('packageManifestSchema', () => {
 			...validManifest,
 			requirements: {
 				dataTables: [
-					{ id: 'dt-1', name: 'A', usedByWorkflows: ['wf-abc'] },
-					{ id: 'dt-1', name: 'B', usedByWorkflows: ['wf-abc'] },
+					{ id: 'dt-1', name: 'A', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+					{ id: 'dt-1', name: 'B', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
 				],
 			},
 		};
@@ -82,7 +92,9 @@ describe('packageManifestSchema', () => {
 		const manifest = {
 			...validManifest,
 			requirements: {
-				workflows: [{ id: 'wf-child', name: 'Child workflow', usedByWorkflows: ['wf-abc'] }],
+				workflows: [
+					{ id: 'wf-child', name: 'Child workflow', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+				],
 			},
 		};
 
@@ -96,8 +108,8 @@ describe('packageManifestSchema', () => {
 			...validManifest,
 			requirements: {
 				workflows: [
-					{ id: 'wf-child', name: 'Child A', usedByWorkflows: ['wf-abc'] },
-					{ id: 'wf-child', name: 'Child B', usedByWorkflows: ['wf-abc'] },
+					{ id: 'wf-child', name: 'Child A', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+					{ id: 'wf-child', name: 'Child B', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
 				],
 			},
 		};
@@ -143,8 +155,8 @@ describe('packageManifestSchema', () => {
 			...validManifest,
 			requirements: {
 				variables: [
-					{ name: 'API_URL', usedByWorkflows: ['wf-abc'] },
-					{ name: 'API_URL', usedByWorkflows: ['wf-abc'] },
+					{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+					{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
 				],
 			},
 		};

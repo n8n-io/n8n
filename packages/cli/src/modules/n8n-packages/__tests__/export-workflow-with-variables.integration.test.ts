@@ -73,7 +73,7 @@ describe('workflow package export — with variables', () => {
 		]);
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
+			variables: [{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: workflow.id }] }],
 		});
 
 		const files = variableFiles(entries);
@@ -117,7 +117,7 @@ describe('workflow package export — with variables', () => {
 		]);
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
+			variables: [{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: workflow.id }] }],
 		});
 
 		const files = variableFiles(entries);
@@ -150,7 +150,7 @@ describe('workflow package export — with variables', () => {
 		]);
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
+			variables: [{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: workflow.id }] }],
 		});
 		expect(variableFiles(entries)).toHaveLength(1);
 	});
@@ -183,7 +183,7 @@ describe('workflow package export — with variables', () => {
 		expect(manifest).not.toHaveProperty('variables');
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
+			variables: [{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: workflow.id }] }],
 		});
 		expect(variableFiles(entries)).toEqual([]);
 		expect(JSON.stringify(manifest)).not.toContain('example.com');
@@ -216,7 +216,7 @@ describe('workflow package export — with variables', () => {
 			},
 		]);
 		expect(manifest.requirements!.variables).toEqual([
-			{ name: 'API_URL', usedByWorkflows: [workflow.id] },
+			{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: workflow.id }] },
 		]);
 
 		const files = variableFiles(entries);
@@ -251,8 +251,12 @@ describe('workflow package export — with variables', () => {
 
 		expect(manifest.variables).toHaveLength(1);
 		expect(manifest.requirements!.variables).toHaveLength(1);
-		expect(manifest.requirements!.variables![0].usedByWorkflows.sort()).toEqual(
-			[wfA.id, wfB.id].sort(),
+		expect(manifest.requirements!.variables![0].usedBy).toHaveLength(2);
+		expect(manifest.requirements!.variables![0].usedBy).toEqual(
+			expect.arrayContaining([
+				{ kind: 'workflow', id: wfA.id },
+				{ kind: 'workflow', id: wfB.id },
+			]),
 		);
 		expect(variableFiles(entries)).toHaveLength(1);
 	});
@@ -279,7 +283,7 @@ describe('workflow package export — with variables', () => {
 		]);
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [{ name: 'legacy-key', usedByWorkflows: [workflow.id] }],
+			variables: [{ name: 'legacy-key', usedBy: [{ kind: 'workflow', id: workflow.id }] }],
 		});
 		expect(variableFiles(entries)).toHaveLength(1);
 	});
@@ -299,7 +303,7 @@ describe('workflow package export — with variables', () => {
 		expect(manifest).not.toHaveProperty('variables');
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [{ name: 'DOES_NOT_EXIST', usedByWorkflows: [workflow.id] }],
+			variables: [{ name: 'DOES_NOT_EXIST', usedBy: [{ kind: 'workflow', id: workflow.id }] }],
 		});
 		expect(variableFiles(entries)).toEqual([]);
 	});
@@ -326,7 +330,7 @@ describe('workflow package export — with variables', () => {
 		expect(manifest).not.toHaveProperty('variables');
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
+			variables: [{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: workflow.id }] }],
 		});
 		expect(variableFiles(entries)).toEqual([]);
 		expect(JSON.stringify(manifest)).not.toContain('example.com');
@@ -441,7 +445,7 @@ describe('workflow package export — with variables', () => {
 		expect(manifest).not.toHaveProperty('variables');
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [{ name: 'PRIVATE_VAR', usedByWorkflows: [workflow.id] }],
+			variables: [{ name: 'PRIVATE_VAR', usedBy: [{ kind: 'workflow', id: workflow.id }] }],
 		});
 		expect(variableFiles(entries)).toEqual([]);
 	});
@@ -506,7 +510,7 @@ describe('workflow package export — with variables', () => {
 
 			expect(manifest.requirements).toEqual({
 				nodeTypes: expect.any(Array),
-				variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
+				variables: [{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: workflow.id }] }],
 			});
 			// Stubs still travel (name/type only) — the scope gate is value-only.
 			const files = variableFiles(entries);

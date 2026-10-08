@@ -27,7 +27,7 @@ function makeImporter() {
 }
 
 const request: TagImportRequest = {
-	requirements: [{ id: 'tag-1', name: 'prod', usedByWorkflows: ['wf-1'] }],
+	requirements: [{ id: 'tag-1', name: 'prod', usedBy: [{ kind: 'workflow', id: 'wf-1' }] }],
 	missingMode: 'create',
 	conflictPolicy: 'skip',
 };

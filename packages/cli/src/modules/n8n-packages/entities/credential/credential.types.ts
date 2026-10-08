@@ -3,6 +3,7 @@ import type {
 	CredentialMatchingMode,
 	CredentialMissingMode,
 } from '../../n8n-packages.types';
+import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export interface WorkflowCredentialRequirement {
@@ -58,6 +59,6 @@ export function createFailure(
 		sourceId: reference.id,
 		name: reference.name,
 		type: reference.type,
-		usedByWorkflows: [...reference.usedByWorkflows].sort(),
+		usedByWorkflows: getWorkflowConsumerIds(reference).sort(),
 	};
 }

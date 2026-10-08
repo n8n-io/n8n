@@ -2,6 +2,15 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# Unreleased
+
+## n8n Packages (preview)
+
+Package manifest requirements now use `usedBy: [{ "kind": "workflow", "id": "workflow-id" }]`.
+The `usedByWorkflows` field is no longer supported.
+Re-export packages after upgrading.
+Regenerate existing Promotions snapshots.
+
 # 2.0.0
 
 ### What changed?

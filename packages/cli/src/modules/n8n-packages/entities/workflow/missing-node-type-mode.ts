@@ -1,6 +1,7 @@
 import { collectNodeTypeUsage, type NodeTypeUsage } from './node-type-usage';
 import type { PreparedWorkflow } from './workflow-import.types';
 import type { MissingNodeTypeMode } from '../../n8n-packages.types';
+import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
 
 /** A `(type, typeVersion)` pair the target instance cannot resolve. Field names align with the manifest requirements shape. */
 export type MissingNodeTypeRequirement = NodeTypeUsage;
@@ -48,5 +49,5 @@ export function missingNodeTypeBlockingFailures(
 
 /** Package workflow ids that should not be published because they use missing node types. */
 export function workflowsWithMissingNodeTypes(missing: MissingNodeTypeRequirement[]): Set<string> {
-	return new Set(missing.flatMap(({ usedByWorkflows }) => usedByWorkflows));
+	return new Set(missing.flatMap(getWorkflowConsumerIds));
 }

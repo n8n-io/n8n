@@ -6,6 +6,7 @@ import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@n8n/errors';
 
+import type { PackageCredentialRequirement } from '../../../spec/requirements.schema';
 import type { CredentialMatcherContext, UsableCredential } from '../credential-matcher';
 import { CredentialMatcherFactory } from '../credential-matcher-factory';
 import { createFailure } from '../credential.types';
@@ -66,11 +67,11 @@ describe('IdBasedCredentialMatcher', () => {
 	});
 
 	it('reports a missing credential when the user cannot use it in the target project', async () => {
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'cred-global',
 			name: 'Global',
 			type: 'httpBasicAuth',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], context);
@@ -85,11 +86,11 @@ describe('IdBasedCredentialMatcher', () => {
 	it('does not query the database for unknown credential types', async () => {
 		credentialTypes.recognizes.mockReturnValue(false);
 
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'cred-x',
 			name: 'Unknown',
 			type: 'unknownCredentialType',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], context);
@@ -109,7 +110,7 @@ describe('IdBasedCredentialMatcher', () => {
 					id: 'cred-manifest',
 					name: 'Manifest GitHub',
 					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			context,
@@ -130,7 +131,7 @@ describe('IdBasedCredentialMatcher', () => {
 					id: 'cred-shared',
 					name: 'Shared',
 					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			context,
@@ -151,7 +152,7 @@ describe('IdBasedCredentialMatcher', () => {
 					id: 'cred-global',
 					name: 'Global',
 					type: 'httpBasicAuth',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			context,
@@ -166,11 +167,11 @@ describe('IdBasedCredentialMatcher', () => {
 		// custom role granting workflow:import without credential:read yields an empty result.
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'cred-manifest',
 			name: 'Manifest GitHub',
 			type: 'githubApi',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], context);
@@ -191,7 +192,7 @@ describe('IdBasedCredentialMatcher', () => {
 					id: 'cred-manifest',
 					name: 'Manifest GitHub',
 					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			context,
@@ -206,11 +207,11 @@ describe('IdBasedCredentialMatcher', () => {
 			usable('target-cred'),
 		]);
 
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'source-cred',
 			name: 'Source GitHub',
 			type: 'githubApi',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], {
@@ -227,11 +228,11 @@ describe('IdBasedCredentialMatcher', () => {
 			usable('source-cred'),
 		]);
 
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'source-cred',
 			name: 'Source GitHub',
 			type: 'githubApi',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], {
@@ -250,11 +251,11 @@ describe('IdBasedCredentialMatcher', () => {
 			usable('target-cred', 'slackApi'),
 		]);
 
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'source-cred',
 			name: 'Source GitHub',
 			type: 'githubApi',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], {
@@ -278,11 +279,11 @@ describe('NameAndTypeCredentialMatcher', () => {
 	let context: CredentialMatcherContext;
 	let matcherFactory: CredentialMatcherFactory;
 
-	const requirement = {
+	const requirement: PackageCredentialRequirement = {
 		id: 'source-cred',
 		name: 'Production GitHub',
 		type: 'githubApi',
-		usedByWorkflows: ['wf-1'],
+		usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 	};
 
 	beforeEach(() => {
@@ -552,11 +553,11 @@ describe('TypeOnlyCredentialMatcher', () => {
 	let context: CredentialMatcherContext;
 	let matcherFactory: CredentialMatcherFactory;
 
-	const requirement = {
+	const requirement: PackageCredentialRequirement = {
 		id: 'source-cred',
 		name: 'Irrelevant name',
 		type: 'githubApi',
-		usedByWorkflows: ['wf-1'],
+		usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 	};
 
 	beforeEach(() => {

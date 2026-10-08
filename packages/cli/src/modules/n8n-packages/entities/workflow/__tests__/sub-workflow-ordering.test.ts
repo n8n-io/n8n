@@ -8,7 +8,7 @@ const wf = (sourceWorkflowId: string) => ({ sourceWorkflowId });
 const requiredBy = (id: string, ...parents: string[]): PackageWorkflowRequirement => ({
 	id,
 	name: id,
-	usedByWorkflows: parents,
+	usedBy: parents.map((id) => ({ kind: 'workflow', id })),
 });
 
 const idsOf = (workflows: Array<{ sourceWorkflowId: string }>) =>

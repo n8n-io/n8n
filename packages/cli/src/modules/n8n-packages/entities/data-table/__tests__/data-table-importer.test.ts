@@ -33,7 +33,7 @@ function makeImporter() {
 
 function makeRequest(overrides: Partial<DataTableImportRequest> = {}): DataTableImportRequest {
 	return {
-		requirements: [{ id: 'dt1', name: 'Customers', usedByWorkflows: ['wf-1'] }],
+		requirements: [{ id: 'dt1', name: 'Customers', usedBy: [{ kind: 'workflow', id: 'wf-1' }] }],
 		packageDataTables: [
 			{ id: 'dt1', name: 'Customers', columns: [{ name: 'email', type: 'string', index: 0 }] },
 		],

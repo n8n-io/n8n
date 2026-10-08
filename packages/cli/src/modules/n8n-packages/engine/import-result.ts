@@ -22,7 +22,10 @@ import type {
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
-import type { PackageCredentialRequirement } from '../spec/requirements.schema';
+import type {
+	PackageCredentialRequirement,
+	PackageRequirementConsumer,
+} from '../spec/requirements.schema';
 
 export function toPackageSummary(manifest: PackageManifest): ImportPackageSummary {
 	return {
@@ -161,9 +164,9 @@ export function unionTagSummaries(summaries: ImportTagSummary[]): ImportTagSumma
 }
 
 /**
- * Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match.
+ * Keep only requirements and consumers for the imported workflows.
  */
-export function identifyRequirements<T extends { usedByWorkflows: string[] }>(
+export function identifyRequirements<T extends { usedBy: PackageRequirementConsumer[] }>(
 	requirements: T[] | undefined,
 	workflows: PreparedWorkflow[],
 ): T[] | undefined {
@@ -173,9 +176,9 @@ export function identifyRequirements<T extends { usedByWorkflows: string[] }>(
 	return requirements
 		.map((requirement) => ({
 			...requirement,
-			usedByWorkflows: requirement.usedByWorkflows.filter((id) => importedIds.has(id)),
+			usedBy: requirement.usedBy.filter(({ id }) => importedIds.has(id)),
 		}))
-		.filter((requirement) => requirement.usedByWorkflows.length > 0);
+		.filter((requirement) => requirement.usedBy.length > 0);
 }
 
 /**

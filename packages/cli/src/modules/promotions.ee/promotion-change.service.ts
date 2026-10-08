@@ -37,7 +37,11 @@ import {
 	type ManifestEntry,
 	type PackageManifest,
 } from '@/modules/n8n-packages/spec/manifest.schema';
-import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
+import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
+import type {
+	PackageRequirementConsumer,
+	PackageRequirements,
+} from '@/modules/n8n-packages/spec/requirements.schema';
 import type { SerializedWorkflow } from '@/modules/n8n-packages/spec/serialized/workflow.schema';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
@@ -325,13 +329,13 @@ export function scopeManifestToProject(
 			variables.set(entry.name, entry);
 		}
 	}
-	const scopeRows = <T extends { usedByWorkflows: string[] }>(rows: T[] | undefined) => {
+	const scopeRows = <T extends { usedBy: PackageRequirementConsumer[] }>(rows: T[] | undefined) => {
 		const kept = rows
 			?.map((row) => ({
 				...row,
-				usedByWorkflows: row.usedByWorkflows.filter((id) => workflowIds.has(id)),
+				usedBy: row.usedBy.filter(({ id }) => workflowIds.has(id)),
 			}))
-			.filter((row) => row.usedByWorkflows.length > 0);
+			.filter((row) => row.usedBy.length > 0);
 		return kept?.length ? kept : undefined;
 	};
 	const { requirements } = manifest;
@@ -432,7 +436,7 @@ function calculateDependencyImpact({
 					previous.some(({ path }) => changedPaths.has(path)) ||
 					(currentPath !== undefined && changedPaths.has(currentPath));
 			}
-			for (const workflowId of requirement.usedByWorkflows) {
+			for (const workflowId of getWorkflowConsumerIds(requirement)) {
 				dependencyCounts.set(workflowId, (dependencyCounts.get(workflowId) ?? 0) + 1);
 				if (dependencyChanged) affectedWorkflowIds.add(workflowId);
 			}

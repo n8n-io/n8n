@@ -34,6 +34,7 @@ import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
+import type { PackageVariableRequirement } from '../spec/requirements.schema';
 import { importPackageRequest } from './fixtures/import-request';
 import type {
 	ImportPackageRequest,
@@ -374,7 +375,9 @@ describe('project shell import', () => {
 					},
 				],
 				manifestExtras: {
-					requirements: { workflows: [{ id: sub.id, name: 'Sub', usedByWorkflows: ['WF'] }] },
+					requirements: {
+						workflows: [{ id: sub.id, name: 'Sub', usedBy: [{ kind: 'workflow', id: 'WF' }] }],
+					},
 				},
 			});
 
@@ -694,7 +697,16 @@ describe('project shell import', () => {
 			],
 			manifestExtras: {
 				requirements: {
-					tags: [{ id: 'TAG1', name: 'shared', usedByWorkflows: ['WFA', 'WFB'] }],
+					tags: [
+						{
+							id: 'TAG1',
+							name: 'shared',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
+					],
 				},
 			},
 		});
@@ -738,7 +750,16 @@ describe('project shell import', () => {
 			],
 			manifestExtras: {
 				requirements: {
-					tags: [{ id: 'TAG1', name: 'prod', usedByWorkflows: ['WFA', 'WFB'] }],
+					tags: [
+						{
+							id: 'TAG1',
+							name: 'prod',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
+					],
 				},
 			},
 		});
@@ -790,8 +811,8 @@ describe('project shell import', () => {
 			manifestExtras: {
 				requirements: {
 					tags: [
-						{ id: 'X', name: 'prod', usedByWorkflows: ['WFA'] },
-						{ id: 'H', name: 'staging', usedByWorkflows: ['WFB'] },
+						{ id: 'X', name: 'prod', usedBy: [{ kind: 'workflow', id: 'WFA' }] },
+						{ id: 'H', name: 'staging', usedBy: [{ kind: 'workflow', id: 'WFB' }] },
 					],
 				},
 			},
@@ -1039,13 +1060,13 @@ describe('project shell import', () => {
 		 * Two team projects — brie (P1, workflow WFA) and stilton (P2, workflow WFB) — with an
 		 * optional bundled variable `catalog` and the variable `requirements` its workflows declare.
 		 * A catalog entry's `target` encodes scope: `variables/x` is global, `projects/<name>/variables/x`
-		 * is that project's. Requirements are what the workflows reference (by `usedByWorkflows`).
+		 * is that project's. Requirements use `usedBy` to identify their workflow consumers.
 		 */
 		const twoProjectPackage = async (
 			opts: {
 				catalog?: Array<{ id: string; name: string; target: string }>;
 				variables?: PackageVariableEntry[];
-				requirements?: Array<{ name: string; usedByWorkflows: string[] }>;
+				requirements?: PackageVariableRequirement[];
 			} = {},
 		) =>
 			await buildEntityPackageBuffer({
@@ -1073,7 +1094,15 @@ describe('project shell import', () => {
 		/** Both projects' workflows reference `API_URL` as a name-only requirement (nothing bundled). */
 		const apiUrlPackage = async () =>
 			await twoProjectPackage({
-				requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				requirements: [
+					{
+						name: 'API_URL',
+						usedBy: [
+							{ kind: 'workflow', id: 'WFA' },
+							{ kind: 'workflow', id: 'WFB' },
+						],
+					},
+				],
 			});
 
 		/** Single team project brie (P1, workflow WFA) whose workflow needs a top-level (global) variable. */
@@ -1091,7 +1120,7 @@ describe('project shell import', () => {
 				manifestExtras: {
 					variables: [{ id: 'v1', name: 'GLOBAL_VAR', target: 'variables/global_var' }],
 					requirements: {
-						variables: [{ name: 'GLOBAL_VAR', usedByWorkflows: ['WFA'] }],
+						variables: [{ name: 'GLOBAL_VAR', usedBy: [{ kind: 'workflow', id: 'WFA' }] }],
 					},
 				},
 			});
@@ -1101,8 +1130,20 @@ describe('project shell import', () => {
 				await createVariable('GLOBAL_URL', 'https://global.example.com');
 				const packageBuffer = await twoProjectPackage({
 					requirements: [
-						{ name: 'GLOBAL_URL', usedByWorkflows: ['WFA', 'WFB'] },
-						{ name: 'ABSENT_VAR', usedByWorkflows: ['WFA', 'WFB'] },
+						{
+							name: 'GLOBAL_URL',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
+						{
+							name: 'ABSENT_VAR',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
 					],
 				});
 
@@ -1145,8 +1186,20 @@ describe('project shell import', () => {
 				await createVariable('GLOBAL_URL', 'https://global.example.com');
 				const packageBuffer = await twoProjectPackage({
 					requirements: [
-						{ name: 'GLOBAL_URL', usedByWorkflows: ['WFA', 'WFB'] },
-						{ name: 'ABSENT_VAR', usedByWorkflows: ['WFA', 'WFB'] },
+						{
+							name: 'GLOBAL_URL',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
+						{
+							name: 'ABSENT_VAR',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
 					],
 				});
 
@@ -1209,8 +1262,8 @@ describe('project shell import', () => {
 						{ id: 'v2', name: 'GLOBAL_VAR', target: 'variables/global_var' },
 					],
 					requirements: [
-						{ name: 'PROJECT_VAR', usedByWorkflows: ['WFA'] },
-						{ name: 'GLOBAL_VAR', usedByWorkflows: ['WFB'] },
+						{ name: 'PROJECT_VAR', usedBy: [{ kind: 'workflow', id: 'WFA' }] },
+						{ name: 'GLOBAL_VAR', usedBy: [{ kind: 'workflow', id: 'WFB' }] },
 					],
 				});
 
@@ -1324,7 +1377,15 @@ describe('project shell import', () => {
 						{ id: 'v1', name: 'API_URL', target: 'projects/brie/variables/api_url' },
 						{ id: 'v2', name: 'API_URL', target: 'projects/stilton/variables/api_url' },
 					],
-					requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+					requirements: [
+						{
+							name: 'API_URL',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
+					],
 				});
 
 				const result = await importProjects(owner, packageBuffer, undefined, {
@@ -1373,7 +1434,7 @@ describe('project shell import', () => {
 					manifestExtras: {
 						variables: [{ id: 'v1', name: 'THEIRS', target: 'projects/brie/variables/theirs' }],
 						requirements: {
-							variables: [{ name: 'THEIRS', usedByWorkflows: ['WFB'] }],
+							variables: [{ name: 'THEIRS', usedBy: [{ kind: 'workflow', id: 'WFB' }] }],
 						},
 					},
 				});
@@ -1407,8 +1468,20 @@ describe('project shell import', () => {
 						{ id: 'v3', name: 'API_URL', target: 'projects/stilton/variables/api_url' },
 					],
 					requirements: [
-						{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] },
-						{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] },
+						{
+							name: 'SHARED_URL',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
+						{
+							name: 'API_URL',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
 					],
 				});
 
@@ -1448,7 +1521,15 @@ describe('project shell import', () => {
 				licenseMocker.setQuota('quota:maxVariables', 1);
 				const packageBuffer = await twoProjectPackage({
 					catalog: [{ id: 'v1', name: 'SHARED_URL', target: 'variables/shared_url' }],
-					requirements: [{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+					requirements: [
+						{
+							name: 'SHARED_URL',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
+					],
 				});
 
 				const result = await importProjects(owner, packageBuffer, undefined, {
@@ -1549,8 +1630,8 @@ describe('project shell import', () => {
 						{ id: 'v2', name: 'VAR_B', target: 'projects/stilton/variables/var_b' },
 					],
 					requirements: [
-						{ name: 'VAR_A', usedByWorkflows: ['WFA'] },
-						{ name: 'VAR_B', usedByWorkflows: ['WFB'] },
+						{ name: 'VAR_A', usedBy: [{ kind: 'workflow', id: 'WFA' }] },
+						{ name: 'VAR_B', usedBy: [{ kind: 'workflow', id: 'WFB' }] },
 					],
 				});
 
@@ -1595,7 +1676,15 @@ describe('project shell import', () => {
 							variable: { name: 'API_URL', type: 'string', value: 'https://stilton.example.com' },
 						},
 					],
-					requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+					requirements: [
+						{
+							name: 'API_URL',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
+					],
 				});
 
 				const result = await importProjects(owner, packageBuffer, undefined, {
@@ -1632,7 +1721,15 @@ describe('project shell import', () => {
 							variable: { name: 'SHARED_URL', type: 'string', value: 'https://shared.example.com' },
 						},
 					],
-					requirements: [{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+					requirements: [
+						{
+							name: 'SHARED_URL',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
+					],
 				});
 
 				const result = await importProjects(owner, packageBuffer, undefined, {
@@ -1657,7 +1754,15 @@ describe('project shell import', () => {
 							variable: { name: 'API_URL', type: 'string', value: 'https://brie.example.com' },
 						},
 					],
-					requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+					requirements: [
+						{
+							name: 'API_URL',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
+					],
 				});
 
 				const result = await importProjects(owner, packageBuffer, undefined, {
@@ -1688,7 +1793,15 @@ describe('project shell import', () => {
 							variable: { name: 'SHARED_URL', type: 'string', value },
 						},
 					],
-					requirements: [{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+					requirements: [
+						{
+							name: 'SHARED_URL',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
+					],
 				});
 
 			const perProjectPackage = async (brie: string, stilton: string) =>
@@ -1705,7 +1818,15 @@ describe('project shell import', () => {
 							variable: { name: 'API_URL', type: 'string', value: stilton },
 						},
 					],
-					requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+					requirements: [
+						{
+							name: 'API_URL',
+							usedBy: [
+								{ kind: 'workflow', id: 'WFA' },
+								{ kind: 'workflow', id: 'WFB' },
+							],
+						},
+					],
 				});
 
 			it('reports one update when both projects resolve the same global variable', async () => {

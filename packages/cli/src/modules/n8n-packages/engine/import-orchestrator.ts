@@ -65,6 +65,7 @@ import type {
 	RemovedWorkflowSummary,
 	ResolvedImportFolderProperties,
 } from '../n8n-packages.types';
+import { getWorkflowConsumerIds } from '../spec/requirement-consumers';
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
 import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
 import { toImportBlockedError } from './import-blocked.error';
@@ -453,11 +454,11 @@ export class ImportOrchestrator {
 				.blockingConflicts(variableRequest, variablePlan)
 				.map((conflict): BlockingIssue => ({ type: 'variable-conflict', ...conflict })),
 			...missingNodeTypeBlockingFailures(missingNodeTypeMode, missingNodeTypes).map(
-				({ type, typeVersion, usedByWorkflows }): BlockingIssue => ({
+				(requirement): BlockingIssue => ({
 					type: 'missing-node-type',
-					nodeType: type,
-					typeVersion,
-					usedByWorkflows,
+					nodeType: requirement.type,
+					typeVersion: requirement.typeVersion,
+					usedByWorkflows: getWorkflowConsumerIds(requirement),
 				}),
 			),
 		];

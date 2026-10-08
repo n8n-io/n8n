@@ -411,8 +411,8 @@ describe('workflow package import — with tags', () => {
 				manifestExtras: {
 					requirements: {
 						tags: [
-							{ id: 'tag-a', name: 'prod', usedByWorkflows: ['wf-0'] },
-							{ id: 'tag-b', name: ' prod ', usedByWorkflows: ['wf-0'] },
+							{ id: 'tag-a', name: 'prod', usedBy: [{ kind: 'workflow', id: 'wf-0' }] },
+							{ id: 'tag-b', name: ' prod ', usedBy: [{ kind: 'workflow', id: 'wf-0' }] },
 						],
 					},
 				},
@@ -651,7 +651,9 @@ describe('workflow package import — with tags', () => {
 			const packageBuffer = await buildEntityPackageBuffer({
 				workflows: [{ target: 'workflows/wf-0', workflow }],
 				manifestExtras: {
-					requirements: { tags: [{ id: 'tag-1', name: 'prod', usedByWorkflows: ['wf-0'] }] },
+					requirements: {
+						tags: [{ id: 'tag-1', name: 'prod', usedBy: [{ kind: 'workflow', id: 'wf-0' }] }],
+					},
 				},
 			});
 			const targetProject = await createTeamProject('Target', owner);

@@ -82,7 +82,7 @@ describe('workflow package export — with credentials', () => {
 					id: credential.id,
 					name: credential.name,
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			],
 		});
@@ -198,8 +198,12 @@ describe('workflow package export — with credentials', () => {
 		expect(manifest.credentials![0].id).toBe(credential.id);
 
 		expect(manifest.requirements?.credentials).toHaveLength(1);
-		expect(manifest.requirements!.credentials![0].usedByWorkflows.sort()).toEqual(
-			[wfA.id, wfB.id].sort(),
+		expect(manifest.requirements!.credentials![0].usedBy).toHaveLength(2);
+		expect(manifest.requirements!.credentials![0].usedBy).toEqual(
+			expect.arrayContaining([
+				{ kind: 'workflow', id: wfA.id },
+				{ kind: 'workflow', id: wfB.id },
+			]),
 		);
 
 		const credentialFiles = entries.filter((e) => e.name.endsWith('/credential.json'));
@@ -240,7 +244,7 @@ describe('workflow package export — with credentials', () => {
 				id: credential.id,
 				name: credential.name,
 				type: credential.type,
-				usedByWorkflows: [child.id],
+				usedBy: [{ kind: 'workflow', id: child.id }],
 			},
 		]);
 		expect(manifest.requirements).not.toHaveProperty('subWorkflows');
@@ -269,7 +273,7 @@ describe('workflow package export — with credentials', () => {
 					id: 'does-not-exist',
 					name: 'Stale cred name',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			],
 		});
@@ -316,7 +320,7 @@ describe('workflow package export — with credentials', () => {
 					id: credential.id,
 					name: credential.name,
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			],
 		});

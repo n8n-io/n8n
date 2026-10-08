@@ -65,7 +65,7 @@ describe('package-layout', () => {
 			bundledVariables?: Map<string, SerializedVariable>,
 		) =>
 			placeByLayout({
-				requirements: [{ name: 'API_URL', usedByWorkflows: ['wf-1'] }],
+				requirements: [{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: 'wf-1' }] }],
 				manifestVariables,
 				scopePrefix,
 				bundledVariables,

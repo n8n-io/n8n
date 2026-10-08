@@ -5,13 +5,13 @@ describe('packageRequirementsSchema', () => {
 		id,
 		name: 'My Credential',
 		type: 'httpBasicAuth',
-		usedByWorkflows: ['wf-1'],
+		usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 	});
-	const variable = (name: string) => ({ name, usedByWorkflows: ['wf-1'] });
+	const variable = (name: string) => ({ name, usedBy: [{ kind: 'workflow', id: 'wf-1' }] });
 	const nodeType = (type: string, typeVersion: number) => ({
 		type,
 		typeVersion,
-		usedByWorkflows: ['wf-1'],
+		usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 	});
 
 	it('accepts distinct entries per section', () => {
@@ -25,13 +25,17 @@ describe('packageRequirementsSchema', () => {
 	});
 
 	it('accepts a workflow requirement without a name', () => {
-		const requirements = { workflows: [{ id: 'wf-dep', usedByWorkflows: ['wf-1'] }] };
+		const requirements = {
+			workflows: [{ id: 'wf-dep', usedBy: [{ kind: 'workflow', id: 'wf-1' }] }],
+		};
 
 		expect(() => packageRequirementsSchema.parse(requirements)).not.toThrow();
 	});
 
 	it('rejects a workflow requirement with an empty name', () => {
-		const requirements = { workflows: [{ id: 'wf-dep', name: '', usedByWorkflows: ['wf-1'] }] };
+		const requirements = {
+			workflows: [{ id: 'wf-dep', name: '', usedBy: [{ kind: 'workflow', id: 'wf-1' }] }],
+		};
 
 		expect(() => packageRequirementsSchema.parse(requirements)).toThrow();
 	});
@@ -45,7 +49,11 @@ describe('packageRequirementsSchema', () => {
 	});
 
 	it('rejects duplicate tag ids', () => {
-		const tag = (id: string) => ({ id, name: 'production', usedByWorkflows: ['wf-1'] });
+		const tag = (id: string) => ({
+			id,
+			name: 'production',
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+		});
 		const requirements = { tags: [tag('tag-1'), tag('tag-1')] };
 
 		expect(() => packageRequirementsSchema.parse(requirements)).toThrow(/Duplicate tag id: tag-1/);
@@ -73,5 +81,18 @@ describe('packageRequirementsSchema', () => {
 		const requirements = { nodeTypes: [nodeType('n8n-nodes-base.set', Infinity)] };
 
 		expect(() => packageRequirementsSchema.parse(requirements)).toThrow();
+	});
+
+	it.each([
+		{},
+		{ usedBy: [] },
+		{ usedBy: [{ kind: 'project', id: 'consumer' }] },
+		{ usedBy: [{ kind: 'workflow', id: '' }] },
+		{ usedBy: ['wf-1'] },
+		{ usedByWorkflows: ['wf-1'] },
+	])('rejects invalid or legacy consumer references: %j', (usage) => {
+		expect(() =>
+			packageRequirementsSchema.parse({ variables: [{ name: 'REGION', ...usage }] }),
+		).toThrow();
 	});
 });

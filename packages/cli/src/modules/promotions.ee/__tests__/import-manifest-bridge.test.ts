@@ -101,13 +101,20 @@ describe('import-manifest-bridge', () => {
 		]);
 	});
 
-	it('unions usedByWorkflows when leftover and staging share a requirement key', async () => {
+	it('unions workflow consumers when leftover and staging share a requirement key', async () => {
 		await writeTree({
 			'manifest.json': leftoverManifest({
 				requirements: {
 					tags: [
-						{ id: 't-shared', name: 'prod', usedByWorkflows: ['w1', 'w2'] },
-						{ id: 't-w1-only', name: 'draft', usedByWorkflows: ['w1'] },
+						{
+							id: 't-shared',
+							name: 'prod',
+							usedBy: [
+								{ kind: 'workflow', id: 'w1' },
+								{ kind: 'workflow', id: 'w2' },
+							],
+						},
+						{ id: 't-w1-only', name: 'draft', usedBy: [{ kind: 'workflow', id: 'w1' }] },
 					],
 				},
 			}),
@@ -123,7 +130,7 @@ describe('import-manifest-bridge', () => {
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
 				requirements: {
-					tags: [{ id: 't-shared', name: 'production', usedByWorkflows: ['w2'] }],
+					tags: [{ id: 't-shared', name: 'production', usedBy: [{ kind: 'workflow', id: 'w2' }] }],
 				},
 			}),
 			sourceId: 'inst-test',
@@ -133,8 +140,15 @@ describe('import-manifest-bridge', () => {
 			JSON.parse(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')),
 		);
 		expect(written.requirements?.tags).toEqual([
-			{ id: 't-shared', name: 'production', usedByWorkflows: ['w1', 'w2'] },
-			{ id: 't-w1-only', name: 'draft', usedByWorkflows: ['w1'] },
+			{
+				id: 't-shared',
+				name: 'production',
+				usedBy: [
+					{ kind: 'workflow', id: 'w1' },
+					{ kind: 'workflow', id: 'w2' },
+				],
+			},
+			{ id: 't-w1-only', name: 'draft', usedBy: [{ kind: 'workflow', id: 'w1' }] },
 		]);
 	});
 
@@ -142,7 +156,7 @@ describe('import-manifest-bridge', () => {
 		await writeTree({
 			'manifest.json': leftoverManifest({
 				requirements: {
-					tags: [{ id: 't-dropped', name: 'prod', usedByWorkflows: ['w2'] }],
+					tags: [{ id: 't-dropped', name: 'prod', usedBy: [{ kind: 'workflow', id: 'w2' }] }],
 				},
 			}),
 			'projects/alpha/workflows/w2/workflow.json': JSON.stringify({ id: 'w2', name: 'W2' }),

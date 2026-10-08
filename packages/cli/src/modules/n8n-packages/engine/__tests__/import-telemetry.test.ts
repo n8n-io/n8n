@@ -33,7 +33,7 @@ const requirement = (id: string): PackageCredentialRequirement => ({
 	id,
 	name: id,
 	type: 'githubApi',
-	usedByWorkflows: ['ignored'],
+	usedBy: [{ kind: 'workflow', id: 'ignored' }],
 });
 
 const scope = (input: {
@@ -158,7 +158,7 @@ const scope = (input: {
 			requirements: (tags.requirementIds ?? []).map((id) => ({
 				id,
 				name: `name-of-${id}`,
-				usedByWorkflows: ['ignored'],
+				usedBy: [{ kind: 'workflow', id: 'ignored' }],
 			})),
 			missingMode: 'create',
 			conflictPolicy: 'skip',

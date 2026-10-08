@@ -103,7 +103,7 @@ describe('CredentialExporter', () => {
 					id: 'cred_1',
 					name: 'My Credential',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			]);
 
@@ -119,7 +119,7 @@ describe('CredentialExporter', () => {
 			});
 		});
 
-		it('dedupes by credential id and aggregates usedByWorkflows when requirements come from multiple workflows', async () => {
+		it('dedupes by credential id and aggregates workflow consumers when requirements come from multiple workflows', async () => {
 			const { exporter, finder } = makeExporter();
 			finder.findCredentialForUser.mockResolvedValue(makeCredential());
 			const writer = new CapturingWriter();
@@ -143,7 +143,10 @@ describe('CredentialExporter', () => {
 					id: 'cred_1',
 					name: 'My Credential',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: ['wf-a', 'wf-b'],
+					usedBy: [
+						{ kind: 'workflow', id: 'wf-a' },
+						{ kind: 'workflow', id: 'wf-b' },
+					],
 				},
 			]);
 			expect(writer.files).toHaveLength(1);
@@ -208,7 +211,7 @@ describe('CredentialExporter', () => {
 					id: 'cred_unavailable',
 					name: 'Stale node name',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			]);
 			expect(writer.files).toEqual([]);
@@ -246,13 +249,13 @@ describe('CredentialExporter', () => {
 					id: 'cred_1',
 					name: 'My Credential',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 				{
 					id: 'cred_unavailable',
 					name: 'Unavailable',
 					type: 'slackOAuth2Api',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			]);
 			expect(writer.files).toHaveLength(1);
