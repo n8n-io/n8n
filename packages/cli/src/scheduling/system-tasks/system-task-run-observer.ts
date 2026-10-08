@@ -1,5 +1,5 @@
 import type { EventService } from '@n8n/backend-services';
-import type { SystemTask } from '@n8n/decorators';
+import type { SystemTask, SystemTaskRunContext } from '@n8n/decorators';
 import { TaskTimeoutError } from '@n8n/scheduler';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { SpanStatus, type Span, type Tracing } from 'n8n-core';
@@ -15,6 +15,12 @@ const SYSTEM_TASK_ATTRIBUTES = {
 	result: 'n8n.system_task.result',
 } as const;
 
+const RUNNER_BY_MODE: Record<SystemTaskMode, SystemTaskRunContext['runner']> = {
+	durable: 'scheduler',
+	leader_timer: 'leaderTimer',
+	instance_timer: 'instanceTimer',
+};
+
 /**
  * Starts one run of `task` and returns its promise. Calls `run` in the calling
  * tick, so an abort that follows the call cannot preempt the run, and rejects
@@ -25,7 +31,7 @@ async function startRun(
 	signal: AbortSignal,
 	mode: SystemTaskMode,
 ): Promise<void> {
-	await task.run(signal, { durable: mode === 'durable' });
+	await task.run(signal, { runner: RUNNER_BY_MODE[mode] });
 }
 
 /** How one observed run ended. A rejected run carries its error. */

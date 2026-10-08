@@ -3,9 +3,10 @@ import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceType } from '@n8n/constants';
 import type {
+	SchedulerSystemTask,
 	SystemTask,
 	SystemTaskClass,
-	SystemTaskPlacement,
+	SystemTaskTarget,
 	SystemTaskSchedule,
 } from '@n8n/decorators';
 import {
@@ -14,6 +15,7 @@ import {
 	OnShutdown,
 	SystemTaskMetadata,
 	resolveSystemTaskSchedule,
+	runsOnScheduler,
 	validateSystemTask,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -29,8 +31,6 @@ import { SystemTaskScheduledJobOwner } from './system-task-scheduled-job-owner';
 import { InMemorySystemTaskRunner } from './in-memory-system-task-runner';
 import { systemTaskType } from './system-task-type';
 
-type ClusterPlacement = Extract<SystemTaskPlacement, { scope: 'cluster' }>;
-
 /**
  * Routes each registered system task to the durable scheduler, to the timers
  * the leader runs, or to the timers every eligible instance runs. Starts and
@@ -41,7 +41,7 @@ export class SystemTaskRunner {
 	/** Includes the dropped tasks, so a name stays unique across instance kinds. */
 	private readonly registeredNames = new Set<string>();
 
-	private readonly durableTasks: SystemTask[] = [];
+	private readonly durableTasks: SchedulerSystemTask[] = [];
 
 	private readonly logger: Logger;
 
@@ -163,41 +163,48 @@ export class SystemTaskRunner {
 		this.registeredNames.add(task.name);
 		validateSystemTask(task);
 
-		const { placement } = task;
-		if (!runsOn(placement, this.instanceSettings.instanceType)) {
+		const { target } = task;
+		if (!runsOnInstanceType(target, this.instanceSettings.instanceType)) {
 			this.logger.debug('System task does not run on this kind of instance', {
 				name: task.name,
-				placement,
+				target,
 			});
 			return;
 		}
 
 		const schedule = resolveSystemTaskSchedule(task);
 
-		if (placement.scope === 'instance') {
+		if (target.scope === 'instance') {
 			this.logger.debug('System task will run on a per-instance timer', {
 				name: task.name,
 				schedule,
 			});
-			this.instanceTaskRunner.add(task, schedule);
-		} else if (this.runsDurably(placement)) {
+			this.instanceTaskRunner.add(task, schedule, { retryDelaySeconds: target.retryDelaySeconds });
+		} else if (runsOnScheduler(task) && this.schedulerEnabled()) {
 			this.handOverToDurableScheduler(task, schedule);
 		} else {
 			this.logger.debug('System task will run on an in-memory timer', {
 				name: task.name,
 				schedule,
 			});
+			// The leader timer is deprecated for task authors, but it still runs their tasks.
+			// oxlint-disable-next-line typescript/no-deprecated
+			const { leaderTimer } = target;
 			this.leaderTaskRunner.add(task, schedule, {
-				runOnStart: placement.runOnTakeover,
+				runOnStart: leaderTimer?.runOnTakeover,
+				retryDelaySeconds: leaderTimer?.retryDelaySeconds,
 				// Another main can run this task durably. Skip while its job is stored.
-				shouldSkipRun: placement.durable
+				shouldSkipRun: runsOnScheduler(task)
 					? async () => await this.isProvisionedElsewhere(task)
 					: undefined,
 			});
 		}
 	}
 
-	private handOverToDurableScheduler(task: SystemTask, schedule: SystemTaskSchedule): void {
+	private handOverToDurableScheduler(
+		task: SchedulerSystemTask,
+		schedule: SystemTaskSchedule,
+	): void {
 		this.durableTasks.push(task);
 		this.systemTaskOwner.declareDurable(task.name);
 		this.durableScheduler.registerTaskHandler(
@@ -233,12 +240,8 @@ export class SystemTaskRunner {
 		return provisioned;
 	}
 
-	private runsDurably(placement: ClusterPlacement): boolean {
-		return (
-			placement.durable &&
-			this.globalConfig.scheduler.enabledForSystemTasks &&
-			this.durableScheduler.isActive()
-		);
+	private schedulerEnabled(): boolean {
+		return this.globalConfig.scheduler.enabledForSystemTasks && this.durableScheduler.isActive();
 	}
 
 	private reportFailure(message: string, task: Pick<SystemTask, 'name'>, error: unknown): void {
@@ -251,8 +254,8 @@ export class SystemTaskRunner {
 	}
 }
 
-function runsOn(placement: SystemTaskPlacement, instanceType: InstanceType): boolean {
-	return placement.scope === 'cluster'
+function runsOnInstanceType(target: SystemTaskTarget, instanceType: InstanceType): boolean {
+	return target.scope === 'cluster'
 		? instanceType === 'main'
-		: placement.instanceTypes.includes(instanceType);
+		: target.instanceTypes.includes(instanceType);
 }
