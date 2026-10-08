@@ -174,6 +174,19 @@ describe('EngineV2ManualRunPlanner', () => {
 			expect(plan.seeded).toEqual([]);
 		});
 
+		it('reruns everything after a node without run data instead of seeding it', () => {
+			// B never ran, so v1 starts at B and drops what lies after it: C's results
+			// are not reused even though the caller still holds them.
+			const plan = planner.plan(
+				runData({
+					destinationNode: { nodeName: C.name, mode: 'inclusive' },
+					runData: fullRunData(TRIGGER, A, C),
+				}),
+			);
+
+			expect(plan.seeded.map((seed) => seed.nodeId)).toEqual([A.id]);
+		});
+
 		it('lets pinned data win over run data', () => {
 			const plan = planner.plan(
 				runData({
