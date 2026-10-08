@@ -30,6 +30,30 @@ const MAX_TOOL_DESCRIPTION_CHARS = 200;
 // Tool/skill/capability names are unbounded in the agent config schema; cap each
 // label so a pathologically long name can't blow the prompt's token budget.
 const MAX_LABEL_CHARS = 100;
+// Revision and example fields are free-form feedback/input-output pairs, not
+// agent config — bounded on the same order as a single case's own fields.
+const MAX_CONTEXT_FIELD_CHARS = 2000;
+
+/**
+ * Feedback on a case that already ran, plus what it ran with. Asks the model
+ * for one replacement case that addresses the feedback, instead of sampling
+ * fresh dimension tuples.
+ */
+export interface CaseRevisionContext {
+	suggestion: string;
+	previousInput: string;
+	previousOutput: string;
+}
+
+/**
+ * An input/output pair the user already approved. Grounds fresh generations in
+ * that same style and scope, rather than leaving length/tone/formality to
+ * whatever the agent's config implies.
+ */
+export interface CaseExampleContext {
+	input: string;
+	output: string;
+}
 
 /** Bounded, prompt-safe view of the agent's config. */
 export interface AgentConfigSummary {
@@ -109,34 +133,83 @@ function describeTuple(tuple: DimensionTuple): string {
 
 export const CASE_GENERATION_SYSTEM_PROMPT = [
 	'You generate realistic test cases for evaluating a specific AI agent.',
-	'Each test case has two fields:',
+	'Each test case has three fields:',
 	'- `input`: a realistic message an end user would actually send this agent.',
 	'- `whatToCheck`: a short, plain-language description of what a good response should do — NOT a score, NOT code, NOT a rubric.',
+	'- `scenario`: one or two words naming the kind of scenario the case exercises, e.g. "Vague", "Sensitive data", "Upset", "Missing detail", "Other language", "Happy path", "Off topic".',
 	'',
 	'Rules:',
 	'- Ground every case in the actual name, instructions, and tools of the agent below. Do not invent capabilities it does not have.',
 	'- These are DRAFTS a human will review and edit. Never assume a single "correct" answer or write grading logic.',
 	'- Write one case per numbered scenario, in order, following the guidance for that scenario.',
 	'- Keep each `input` natural and self-contained (no placeholders like "<name>").',
+	'- Make `scenario` specific to what actually makes that case distinct (the tone, the gap, the trick), not a restatement of the capability or difficulty being exercised.',
+	'- When given feedback on a case that already ran, write a new case that directly addresses the feedback — do not repeat the original input.',
 ].join('\n');
 
 /**
- * Build the user prompt: the bounded agent summary plus one numbered scenario
- * per sampled tuple. The model is asked to return exactly one case per scenario,
- * in order, matching {@link generatedCasesSchema}.
+ * Build the user prompt: the bounded agent summary plus either one numbered
+ * scenario per sampled tuple, or — when `revision` is given — the prior case
+ * and feedback on it, asking for a single replacement. When generating fresh
+ * scenarios (no `revision`), an approved `example` pair is included to ground
+ * their style and scope. When a `rule` is given, the prompt asks for one case
+ * that tests that rule instead. The model is asked to return exactly one case per
+ * scenario (or the one replacement), in order, matching {@link generatedCasesSchema}.
  */
 export function buildCaseGenerationUserPrompt(
 	summary: AgentConfigSummary,
 	tuples: DimensionTuple[],
+	revision?: CaseRevisionContext,
+	example?: CaseExampleContext,
+	rule?: string,
 ): string {
+	const intro = ['Here is the agent to write test cases for:', JSON.stringify(summary), ''];
+
+	if (revision) {
+		// A case that errored or never finished has nothing here — say so rather
+		// than leaving the line blank, which would read as a truncation bug.
+		const previousOutput = revision.previousOutput
+			? truncate(revision.previousOutput, MAX_CONTEXT_FIELD_CHARS)
+			: '(the agent did not produce an output)';
+		return [
+			...intro,
+			'A case that already ran did not go well and needs to be replaced:',
+			`Original input: ${truncate(revision.previousInput, MAX_CONTEXT_FIELD_CHARS)}`,
+			`Original output: ${previousOutput}`,
+			`What should have happened instead: ${truncate(revision.suggestion, MAX_CONTEXT_FIELD_CHARS)}`,
+			'',
+			'Write exactly 1 replacement test case that addresses this feedback.',
+			'Return a JSON object of the form { "cases": [ { "input": "…", "whatToCheck": "…", "scenario": "…" } ] }.',
+		].join('\n');
+	}
+
+	if (rule) {
+		return [
+			...intro,
+			'The user wants to check that the agent follows this rule:',
+			`Rule: ${truncate(rule, MAX_CONTEXT_FIELD_CHARS)}`,
+			'',
+			'Write exactly 1 test case. Its `input` is a realistic message an end user would send that puts this rule to the test, so a response that breaks the rule is possible. Set `whatToCheck` to the rule in plain language.',
+			'Return a JSON object of the form { "cases": [ { "input": "…", "whatToCheck": "…", "scenario": "…" } ] }.',
+		].join('\n');
+	}
+
+	const exampleSection = example
+		? [
+				'The user already approved this input and the response it got as a good fit for this agent — match its style and scope when writing new cases:',
+				`Example input: ${truncate(example.input, MAX_CONTEXT_FIELD_CHARS)}`,
+				`Example output: ${truncate(example.output, MAX_CONTEXT_FIELD_CHARS)}`,
+				'',
+			]
+		: [];
+
 	const scenarios = tuples.map((tuple, i) => `${i + 1}. ${describeTuple(tuple)}`).join('\n');
 	return [
-		'Here is the agent to write test cases for:',
-		JSON.stringify(summary),
-		'',
+		...intro,
+		...exampleSection,
 		`Write exactly ${tuples.length} test cases — one for each numbered scenario below, in the same order:`,
 		scenarios,
 		'',
-		'Return a JSON object of the form { "cases": [ { "input": "…", "whatToCheck": "…" }, … ] }.',
+		'Return a JSON object of the form { "cases": [ { "input": "…", "whatToCheck": "…", "scenario": "…" }, … ] }.',
 	].join('\n');
 }

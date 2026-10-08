@@ -138,6 +138,7 @@ describe('publish-workflow MCP tool', () => {
 				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
 					versionId: undefined,
 					source: 'n8n-mcp',
+					publishHistory: 'none',
 				});
 
 				expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
@@ -173,6 +174,7 @@ describe('publish-workflow MCP tool', () => {
 				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
 					versionId,
 					source: 'n8n-mcp',
+					publishHistory: 'none',
 				});
 			});
 		});

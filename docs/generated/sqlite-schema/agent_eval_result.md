@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_eval_result" ("id" varchar(36) PRIMARY KEY NOT NULL, "runId" varchar(36) NOT NULL, "sourceRowId" varchar(255), "runIndex" integer, "status" varchar NOT NULL, "input" text, "output" text, "toolCalls" text, "metrics" text, "runAt" datetime(3), "completedAt" datetime(3), "errorCode" varchar(255), "errorDetails" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_eval_result_status" CHECK ("status" IN ('new', 'running', 'success', 'error', 'cancelled')), CONSTRAINT "FK_40a2d1248a6d984f442de2fac1b" FOREIGN KEY ("runId") REFERENCES "agent_eval_run" ("id") ON DELETE CASCADE)
+CREATE TABLE "agent_eval_result" ("id" varchar(36) PRIMARY KEY NOT NULL, "runId" varchar(36) NOT NULL, "sourceRowId" varchar(255), "runIndex" integer, "status" varchar NOT NULL, "input" text, "output" text, "toolCalls" text, "metrics" text, "runAt" datetime(3), "completedAt" datetime(3), "errorCode" varchar(255), "errorDetails" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "verdict" JSON, CONSTRAINT "CHK_agent_eval_result_status" CHECK ("status" IN ('new', 'running', 'success', 'error', 'cancelled')), CONSTRAINT "FK_40a2d1248a6d984f442de2fac1b" FOREIGN KEY ("runId") REFERENCES "agent_eval_run" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -30,6 +30,7 @@ CREATE TABLE "agent_eval_result" ("id" varchar(36) PRIMARY KEY NOT NULL, "runId"
 | status | varchar |  | false |  |  |  |
 | toolCalls | TEXT |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| verdict | JSON |  | true |  |  |  |
 
 ## Constraints
 
@@ -71,6 +72,7 @@ erDiagram
   varchar status
   TEXT toolCalls
   datetime_3_ updatedAt
+  JSON verdict
 }
 "agent_eval_rating" {
   TEXT comment

@@ -371,6 +371,7 @@ describe('update()', () => {
 		expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
 			versionId: workflow.activeVersionId,
 			source: 'ui',
+			publishHistory: 'none',
 		});
 	});
 
