@@ -1,4 +1,4 @@
-import type { SystemTaskPlacement } from '../system-task-placement';
+import type { SystemTaskPlacement } from '../types';
 
 it('should let an instance-scoped placement name the instance types that run the task', () => {
 	const placement: SystemTaskPlacement = { scope: 'instance', instanceTypes: ['main', 'worker'] };
