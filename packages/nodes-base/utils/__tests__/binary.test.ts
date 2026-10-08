@@ -1,12 +1,13 @@
 import { type WorkSheet, utils as xlsxUtils, write as xlsxWrite } from '@e965/xlsx';
 import {
 	convertJsonToSpreadsheetBinary,
+	createBinaryFromJson,
 	extractDataFromPDF,
 	prepareBinariesDataList,
 	routeBinaryProperties,
 } from '@utils/binary';
 import type { IBinaryData, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { BINARY_ENCODING, jsonParse } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -349,3 +350,98 @@ describe('routeBinaryProperties', () => {
 		expect(binary.blob).toBe(binaryData);
 	});
 });
+
+describe('createBinaryFromJson', () => {
+	const helpers = mock<IExecuteFunctions['helpers']>();
+	const executeFunctions = mock<IExecuteFunctions>({
+		helpers,
+		getNode: vi.fn().mockReturnValue({ name: 'Convert to File' }),
+	});
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		helpers.prepareBinaryData.mockImplementation(async (buffer, fileName, mimeType) => ({
+			data: buffer.toString('base64'),
+			fileName,
+			mimeType,
+		}));
+	});
+
+	it('should decode a valid base64 string', async () => {
+		const base64 = Buffer.from('hello world').toString('base64');
+		const result = await createBinaryFromJson.call(executeFunctions, base64, {
+			fileName: 'test.txt',
+			mimeType: 'text/plain',
+		});
+
+		expect(helpers.prepareBinaryData).toHaveBeenCalledWith(
+			Buffer.from('hello world'),
+			'test.txt',
+			'text/plain',
+		);
+		expect(result.fileName).toBe('test.txt');
+	});
+
+	it('should strip data: URI prefix and extract mimeType if not provided', async () => {
+		const pngBase64 =
+			'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+		const dataUri = `data:image/png;base64,${pngBase64}`;
+
+		const result = await createBinaryFromJson.call(executeFunctions, dataUri);
+
+		expect(helpers.prepareBinaryData).toHaveBeenCalledWith(
+			Buffer.from(pngBase64, 'base64'),
+			undefined,
+			'image/png',
+		);
+		const decodedBuffer = (helpers.prepareBinaryData as Mock).mock.calls[0][0] as Buffer;
+		expect(decodedBuffer.subarray(0, 4)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+		expect(result.fileName).toBe('file');
+	});
+
+	it('should not override options.mimeType when data: URI is provided', async () => {
+		const pngBase64 =
+			'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+		const dataUri = `data:image/png;base64,${pngBase64}`;
+
+		await createBinaryFromJson.call(executeFunctions, dataUri, {
+			mimeType: 'application/octet-stream',
+		});
+
+		expect(helpers.prepareBinaryData).toHaveBeenCalledWith(
+			Buffer.from(pngBase64, 'base64'),
+			undefined,
+			'application/octet-stream',
+		);
+	});
+
+	it('should handle base64 string with whitespace and newlines', async () => {
+		const raw = 'valid base64 content';
+		const base64 = Buffer.from(raw).toString('base64');
+		const base64WithWhitespace = `\n  ${base64}  \r\n`;
+
+		const result = await createBinaryFromJson.call(executeFunctions, base64WithWhitespace, {
+			fileName: 'spaced.txt',
+		});
+
+		expect(helpers.prepareBinaryData).toHaveBeenCalledWith(
+			Buffer.from(raw),
+			'spaced.txt',
+			undefined,
+		);
+		expect(result.fileName).toBe('spaced.txt');
+	});
+
+	it('should throw NodeOperationError if input contains non-base64 characters', async () => {
+		const invalidInput = 'this is plain text, not base64!';
+
+		await expect(createBinaryFromJson.call(executeFunctions, invalidInput)).rejects.toThrow(
+			NodeOperationError,
+		);
+
+		await expect(createBinaryFromJson.call(executeFunctions, invalidInput)).rejects.toThrow(
+			'The provided string is not valid base64 data. If you are trying to write plain text to a file, use the "Convert to Text File" operation instead.',
+		);
+	});
+});
+
