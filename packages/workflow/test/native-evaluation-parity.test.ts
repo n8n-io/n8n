@@ -493,6 +493,23 @@ describe('Expression - fast native evaluation parity', () => {
 		// payload string per element. Method inputs and `+` results are charged
 		// against a work budget, so the loop hands off after a few visits however
 		// many elements there are.
+		// An array literal in a body is rebuilt per visit, so its length is
+		// charged like a method input.
+		test('array literals in a callback body are charged per visit', () => {
+			const literal = `[${new Array<number>(1000).fill(0).join(',')}]`;
+			const visits = MAX_WORK / 1000;
+			expect(
+				nativeOn(`{{ $json.many.every(n => ${literal}.length > n) }}`, {
+					$json: { many: new Array<number>(visits + 1).fill(0) },
+				}),
+			).toEqual({ handled: false });
+			expect(
+				nativeOn(`{{ $json.few.every(n => ${literal}.length > n) }}`, {
+					$json: { few: new Array<number>(5).fill(0) },
+				}),
+			).toEqual({ handled: true, value: true });
+		});
+
 		test('callback work is budgeted by the characters it touches', () => {
 			const big = 'x'.repeat(MAX_RESULT_LENGTH);
 			const many = new Array<string>(100).fill('y');

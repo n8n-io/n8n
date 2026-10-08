@@ -517,6 +517,9 @@ function evalNode(node: SimpleNode, env: Env): unknown {
 		case 'call':
 			return evalCall(node, env);
 		case 'array':
+			// A literal is built afresh on every evaluation, once per visit in a body.
+			env.charge(node.elements.length);
+
 			return node.elements.map((element) => element.value);
 		case 'param':
 			return env.param;
