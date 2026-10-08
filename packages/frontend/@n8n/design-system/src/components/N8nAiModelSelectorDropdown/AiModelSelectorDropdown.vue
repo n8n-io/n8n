@@ -197,56 +197,49 @@ defineExpose({
 					</template>
 				</div>
 			</template>
-			<div v-else :class="[$style.labelColumn, ui.class]">
-				<div :class="$style.labelWithBadge">
-					<span v-if="item.data?.loading" :class="$style.modelLoading" aria-hidden="true"></span>
-					<N8nText v-else size="medium" :color="item.disabled ? 'text-xlight' : 'text-dark'">
-						{{ item.label }}
-					</N8nText>
-					<N8nBadge
-						v-if="item.data?.badgeLabel"
-						:class="$style.badge"
-						variant="secondary"
-						size="xsmall"
-					>
-						{{ item.data.badgeLabel }}
-					</N8nBadge>
-					<N8nBadge
-						v-if="item.data?.actionPill"
-						size="xxsmall"
-						:variant="
-							item.data.actionPill.type === 'danger' || item.data.actionPill.type === 'info'
-								? item.data.actionPill.type
-								: 'success'
-						"
-					>
-						{{ item.data.actionPill.text }}
-					</N8nBadge>
-					<span v-if="item.data?.connectedLabel" :class="$style.connected">
-						<N8nIcon icon="check" size="small" :class="$style.connectedIcon" />
-						<N8nText size="small" color="text-light">{{ item.data.connectedLabel }}</N8nText>
-					</span>
-				</div>
-				<N8nText
-					v-if="item.data?.restrictedLabel"
-					size="small"
-					color="text-light"
-					data-test-id="ai-model-selector-restriction"
-				>
-					{{ item.data.restrictedLabel }}
+			<div v-else :class="[$style.labelWithBadge, ui.class]">
+				<span v-if="item.data?.loading" :class="$style.modelLoading" aria-hidden="true"></span>
+				<N8nText v-else size="medium" :color="item.disabled ? 'text-xlight' : 'text-dark'">
+					{{ item.label }}
 				</N8nText>
+				<N8nBadge
+					v-if="item.data?.badgeLabel"
+					:class="$style.badge"
+					variant="secondary"
+					size="xsmall"
+				>
+					{{ item.data.badgeLabel }}
+				</N8nBadge>
+				<N8nBadge
+					v-if="item.data?.actionPill"
+					size="xxsmall"
+					:variant="
+						item.data.actionPill.type === 'danger' || item.data.actionPill.type === 'info'
+							? item.data.actionPill.type
+							: 'success'
+					"
+				>
+					{{ item.data.actionPill.text }}
+				</N8nBadge>
+				<span v-if="item.data?.connectedLabel" :class="$style.connected">
+					<N8nIcon icon="check" size="small" :class="$style.connectedIcon" />
+					<N8nText size="small" color="text-light">{{ item.data.connectedLabel }}</N8nText>
+				</span>
 			</div>
 		</template>
 
 		<template #item-trailing="{ item, ui }">
-			<N8nIcon
-				v-if="item.data?.restrictedLabel"
-				icon="lock"
-				size="small"
-				color="text-light"
-				:class="ui.class"
-				data-test-id="ai-model-selector-restricted-icon"
-			/>
+			<span v-if="item.data?.restrictedLabel" :class="[$style.restricted, ui.class]">
+				<N8nText size="small" color="text-light" data-test-id="ai-model-selector-restriction">
+					{{ item.data.restrictedLabel }}
+				</N8nText>
+				<N8nIcon
+					icon="lock"
+					size="small"
+					color="text-light"
+					data-test-id="ai-model-selector-restricted-icon"
+				/>
+			</span>
 			<N8nTooltip
 				v-else-if="item.data?.description"
 				:content="truncateBeforeLast(item.data.description, 320, 0)"
@@ -360,7 +353,8 @@ defineExpose({
 	margin-inline: var(--spacing--5xs);
 }
 
-.connected {
+.connected,
+.restricted {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
@@ -390,12 +384,6 @@ defineExpose({
 	flex-shrink: 0;
 	display: inline-flex;
 	align-items: center;
-}
-
-.labelColumn {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
 }
 
 .labelWithBadge {

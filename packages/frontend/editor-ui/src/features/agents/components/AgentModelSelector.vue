@@ -484,10 +484,14 @@ const menu = computed(() => {
 
 	if (selectedProvider) {
 		const item = providerToMenuItem(selectedProvider);
-		menuItems.push({
-			...item,
-			data: { ...item.data, connectedLabel: i18n.baseText('agents.modelSelector.connected') },
-		});
+		menuItems.push(
+			item.data?.restrictedLabel
+				? item
+				: {
+						...item,
+						data: { ...item.data, connectedLabel: i18n.baseText('agents.modelSelector.connected') },
+					},
+		);
 	}
 
 	if (aiGatewayProviders.length) {

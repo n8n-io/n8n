@@ -398,18 +398,15 @@ describe('AgentModelSelector', () => {
 		expect(getProviderItem(wrapper, 'azure-openai')?.disabled).toBe(true);
 	});
 
-	it('shows the restricted badge for a selected restricted provider and keeps it pinned', async () => {
+	it('shows the restricted badge for a selected restricted provider and pins it without the connected marker', async () => {
 		restrictedCredentialTypes.value = { anthropicApi: 'instance' };
 
 		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
 		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
 
 		expect(getDropdown(wrapper).props('restrictedLabel')).toBe('Restricted');
-		expect(items[0]).toMatchObject({
-			id: 'anthropic',
-			disabled: true,
-			data: { connectedLabel: 'Connected' },
-		});
+		expect(items[0]).toMatchObject({ id: 'anthropic', disabled: true });
+		expect(items[0].data?.connectedLabel).toBeUndefined();
 	});
 
 	it('shows no restricted badge for an unrestricted selection', async () => {
