@@ -27,6 +27,22 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		description:
 			'Allows reading the AI preferences saved for the instance, the user, and their projects.',
 	},
+	'skill:read': {
+		displayName: 'Read Skills',
+		description: 'Allows reading instance skills and the skills of other users.',
+	},
+	'skill:update': {
+		displayName: 'Update Skills',
+		description: 'Allows editing and saving instance skills and the skills of other users.',
+	},
+	'projectSkill:read': {
+		displayName: 'Read Project Skills',
+		description: 'Allows reading the skills of a project.',
+	},
+	'projectSkill:update': {
+		displayName: 'Update Project Skills',
+		description: 'Allows editing and saving the skills of a project.',
+	},
 	'agent:create': {
 		displayName: 'Create Agent',
 		description: 'Allows creating new agents in a project.',
