@@ -5,6 +5,7 @@ import {
 	getDescendantNodeIds,
 	GraphValidationError,
 	validateExecutableGraph,
+	type StoredWorkflowGraph,
 	type WorkflowGraph,
 	type WorkflowLoop,
 } from '../graph';
@@ -99,16 +100,13 @@ export class StartExecutionService {
 
 /**
  * Labels the graph nodes as seeded according to the steps passed in, so we
- * know to use the seeded data during execution. A label the caller put on a
- * node is dropped: only `seededSteps` decides.
+ * know to use the seeded data during execution.
  */
-function markSeededNodes(graph: WorkflowGraph, seededSteps: SeededSteps): WorkflowGraph {
+function markSeededNodes(graph: WorkflowGraph, seededSteps: SeededSteps): StoredWorkflowGraph {
 	const seeded = new Set(Object.keys(seededSteps));
 	return {
 		...graph,
-		nodes: graph.nodes.map(({ seeded: _, ...node }) =>
-			seeded.has(node.id) ? { ...node, seeded: true } : node,
-		),
+		nodes: graph.nodes.map((node) => (seeded.has(node.id) ? { ...node, seeded: true } : node)),
 	};
 }
 

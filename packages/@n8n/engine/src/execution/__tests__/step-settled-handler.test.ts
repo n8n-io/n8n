@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { WorkflowGraph } from '../../graph';
+import type { StoredWorkflowGraph, WorkflowGraph } from '../../graph';
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
@@ -203,7 +203,7 @@ describe('StepSettledHandler', () => {
 
 	describe('a seeded successor', () => {
 		/** The same graph, with b's outputs supplied by the caller. */
-		const seededGraph: WorkflowGraph = {
+		const seededGraph: StoredWorkflowGraph = {
 			...graph,
 			nodes: graph.nodes.map((node) => (node.id === 'b' ? { ...node, seeded: true } : node)),
 		};
