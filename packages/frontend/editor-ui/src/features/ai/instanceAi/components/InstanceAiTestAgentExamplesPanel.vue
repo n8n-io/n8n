@@ -4,11 +4,12 @@
  * slider-controlled batch of additional generated examples the user can trim,
  * extend with their own, and hand off to a real check via "Check your agent".
  */
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
+import { MAX_APPLY_SUGGESTIONS } from '@/features/agents/agentEvals.types';
 import AgentAvatar, { type AgentAvatarKind } from '@/features/agents/components/AgentAvatar.vue';
 import AgentEvalExamplesSlider from '@/features/agents/components/AgentEvalExamplesSlider.vue';
 import AgentEvalSuggestionCard from '@/features/agents/components/AgentEvalSuggestionCard.vue';
@@ -74,6 +75,8 @@ const emit = defineEmits<{
 	'open-case': [resultId: string | null];
 	/** "Apply suggestion" on a failed case: rewrite the agent's instructions, then rerun it. */
 	'apply-suggestion': [resultId: string];
+	/** "Apply all suggestions": one rewrite of the instructions for all these cases, then rerun them. */
+	'apply-suggestions': [resultIds: string[]];
 }>();
 
 const i18n = useI18n();
@@ -106,6 +109,34 @@ function suggestionFor(run: SuiteCaseRun): string | null {
 }
 
 const applyingAny = computed(() => (props.applyingSuggestionIds?.length ?? 0) > 0);
+
+// One request takes at most MAX_APPLY_SUGGESTIONS cases; any beyond that keep their card.
+const applicableSuggestionIds = computed(() =>
+	(props.caseRuns ?? [])
+		.filter((run) => suggestionFor(run) !== null)
+		.flatMap((run) => (run.resultId ? [run.resultId] : []))
+		.slice(0, MAX_APPLY_SUGGESTIONS),
+);
+
+const applyingAll = ref(false);
+watch(applyingAny, (applying) => {
+	if (!applying) applyingAll.value = false;
+});
+
+function onApplyAllSuggestions() {
+	applyingAll.value = true;
+	emit('apply-suggestions', applicableSuggestionIds.value);
+}
+
+// A settled run with cases that need work opens its list, so they are not hidden behind
+// the summary. The user can still collapse it.
+watch(
+	() => runSettled.value && needsWorkCount.value > 0,
+	(needsAttention) => {
+		if (needsAttention) summaryExpanded.value = true;
+	},
+	{ immediate: true },
+);
 
 function toggleSummaryExpanded() {
 	summaryExpanded.value = !summaryExpanded.value;
@@ -240,17 +271,38 @@ function onCheckYourAgent() {
 						:test-id="`instance-ai-test-agent-examples-case-${run.rowId}`"
 						@open="emit('open-case', run.resultId)"
 					/>
-					<AgentEvalSuggestionCard
-						v-if="suggestionFor(run) && run.resultId"
-						:suggestion="suggestionFor(run) ?? ''"
-						:applying="applyingSuggestionIds?.includes(run.resultId)"
-						:disabled="applyingAny && !applyingSuggestionIds?.includes(run.resultId)"
-						:test-id="`instance-ai-test-agent-examples-case-${run.rowId}-suggestion`"
-						@apply="emit('apply-suggestion', run.resultId)"
-						@dismiss="dismissedSuggestions.push(suggestionKey(run))"
-					/>
+					<template v-if="suggestionFor(run) && run.resultId">
+						<N8nText
+							v-if="run.errorMessage"
+							color="text-base"
+							size="small"
+							:data-test-id="`instance-ai-test-agent-examples-case-${run.rowId}-verdict`"
+						>
+							{{ run.errorMessage }}
+						</N8nText>
+						<AgentEvalSuggestionCard
+							:suggestion="suggestionFor(run) ?? ''"
+							:applying="applyingSuggestionIds?.includes(run.resultId)"
+							:disabled="applyingAny && !applyingSuggestionIds?.includes(run.resultId)"
+							:test-id="`instance-ai-test-agent-examples-case-${run.rowId}-suggestion`"
+							@apply="emit('apply-suggestion', run.resultId)"
+							@dismiss="dismissedSuggestions.push(suggestionKey(run))"
+						/>
+					</template>
 				</div>
 			</div>
+
+			<N8nButton
+				v-if="runSettled && summaryExpanded && applicableSuggestionIds.length > 1"
+				variant="solid"
+				size="small"
+				:disabled="applyingAny"
+				:loading="applyingAll"
+				data-test-id="instance-ai-test-agent-examples-apply-all-suggestions"
+				@click="onApplyAllSuggestions"
+			>
+				{{ i18n.baseText('agents.builder.agentEvals.suggestion.applyAll') }}
+			</N8nButton>
 
 			<N8nButton
 				v-if="runFailed"

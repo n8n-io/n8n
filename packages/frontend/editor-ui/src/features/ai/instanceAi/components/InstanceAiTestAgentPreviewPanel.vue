@@ -715,6 +715,7 @@ function onDontCreateEvals() {
 				@try-agent="emit('try-agent')"
 				@open-case="emit('open-evals', $event)"
 				@apply-suggestion="applySuggestions([$event])"
+				@apply-suggestions="applySuggestions($event)"
 			/>
 		</template>
 	</div>

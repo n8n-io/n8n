@@ -4,6 +4,7 @@ import { fireEvent, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { MAX_APPLY_SUGGESTIONS } from '@/features/agents/agentEvals.types';
 import InstanceAiTestAgentExamplesPanel from '../components/InstanceAiTestAgentExamplesPanel.vue';
 
 const examples = [
@@ -244,19 +245,38 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 		});
 
 		it('keeps each row labeled with its scenario tag once the suite has run', async () => {
-			const user = userEvent.setup();
-			const { getByTestId, findByText, getByText } = renderComponent({ props: { caseRuns } });
-
-			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			const { findByText, getByText } = renderComponent({ props: { caseRuns } });
 
 			expect(await findByText('Vague')).toBeInTheDocument();
 			expect(getByText('Sensitive data')).toBeInTheDocument();
 			expect(getByText('Custom')).toBeInTheDocument();
 		});
 
-		it('collapses to the summary pill by default, expanding on click', async () => {
+		it('opens its list by default when some checks need work', () => {
+			const { getByText, getByTestId } = renderComponent({ props: { caseRuns } });
+
+			expect(getByText('Saved 3 checks')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-examples-case-2')).toBeInTheDocument();
+		});
+
+		it('can be collapsed to the summary pill, and expanded again', async () => {
 			const user = userEvent.setup();
-			const { getByText, getByTestId, queryByTestId } = renderComponent({ props: { caseRuns } });
+			const { getByTestId, queryByTestId } = renderComponent({ props: { caseRuns } });
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			expect(queryByTestId('instance-ai-test-agent-examples-case-1')).not.toBeInTheDocument();
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
+		});
+
+		it('stays collapsed to the summary pill when every check passed', async () => {
+			const user = userEvent.setup();
+			const allPassed = caseRuns.map((run) => ({ ...run, status: 'pass' as const }));
+			const { getByText, getByTestId, queryByTestId } = renderComponent({
+				props: { caseRuns: allPassed },
+			});
 
 			expect(getByText('Saved 3 checks')).toBeInTheDocument();
 			expect(queryByTestId('instance-ai-test-agent-examples-case-1')).not.toBeInTheDocument();
@@ -264,6 +284,17 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
 
 			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
+		});
+
+		it('opens its list once a running suite settles with checks that need work', async () => {
+			const running = caseRuns.map((run) => ({ ...run, status: 'waiting' as const }));
+			const { queryByTestId, getByTestId, rerender } = renderComponent({
+				props: { caseRuns: running },
+			});
+			await rerender({ caseRuns });
+
+			expect(getByTestId('instance-ai-test-agent-examples-case-2')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-examples-stop')).not.toBeInTheDocument();
 		});
 
 		it('hides "Try agent yourself" while some checks still need work', () => {
@@ -287,7 +318,6 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			const withResultIds = caseRuns.map((run) => ({ ...run, resultId: `result-${run.rowId}` }));
 			const { getByTestId, emitted } = renderComponent({ props: { caseRuns: withResultIds } });
 
-			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
 			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
 
 			expect(emitted('open-case')).toEqual([['result-2']]);
@@ -341,10 +371,10 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 		};
 		const CARD = 'instance-ai-test-agent-examples-case-1-suggestion';
 
+		// A settled run with a failed case opens its list on its own.
 		const expanded = async (caseRuns: unknown[], extra: Record<string, unknown> = {}) => {
 			const user = userEvent.setup();
 			const result = renderComponent({ props: { caseRuns, ...extra } as never });
-			await user.click(result.getByTestId('instance-ai-test-agent-examples-summary-toggle'));
 			return { user, ...result };
 		};
 
@@ -352,6 +382,29 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			const { getByTestId } = await expanded([failedRun]);
 
 			expect(getByTestId(CARD)).toHaveTextContent('Refuse invoice payments politely.');
+		});
+
+		it('shows the judge’s verdict above the card', async () => {
+			const { getByTestId } = await expanded([failedRun]);
+
+			expect(getByTestId('instance-ai-test-agent-examples-case-1-verdict')).toHaveTextContent(
+				'It agreed instead of refusing.',
+			);
+		});
+
+		it('shows no verdict text when the judge gave no reasoning', async () => {
+			const { getByTestId, queryByTestId } = await expanded([{ ...failedRun, errorMessage: null }]);
+
+			expect(getByTestId(CARD)).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-examples-case-1-verdict')).toBeNull();
+		});
+
+		it('hides the verdict text together with the card on "Keep as is"', async () => {
+			const { user, getByTestId, queryByTestId } = await expanded([failedRun]);
+
+			await user.click(getByTestId(`${CARD}-dismiss`));
+
+			expect(queryByTestId('instance-ai-test-agent-examples-case-1-verdict')).toBeNull();
 		});
 
 		it('emits apply-suggestion with the result id on "Apply suggestion"', async () => {
@@ -408,6 +461,91 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			});
 
 			expect(getByTestId('instance-ai-test-agent-examples-case-2-suggestion-apply')).toBeDisabled();
+		});
+	});
+
+	describe('apply all suggestions', () => {
+		const failed = (rowId: number, overrides: Record<string, unknown> = {}) => ({
+			rowId,
+			input: `case ${rowId}`,
+			label: 'Vague',
+			status: 'work' as const,
+			output: 'answer',
+			toolCalls: [],
+			resultId: `result-${rowId}`,
+			whatToCheck: null,
+			errorMessage: 'It broke the rule.',
+			fixSuggestion: `Fix ${rowId}.`,
+			...overrides,
+		});
+		const BUTTON = 'instance-ai-test-agent-examples-apply-all-suggestions';
+
+		it('is hidden with a single failed case, which has its own card', () => {
+			const { queryByTestId } = renderComponent({ props: { caseRuns: [failed(1)] } });
+
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+		});
+
+		it('is hidden when only one failed case has a suggestion', () => {
+			const { queryByTestId } = renderComponent({
+				props: { caseRuns: [failed(1), failed(2, { fixSuggestion: null })] },
+			});
+
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+		});
+
+		it('is shown with two failed cases that have suggestions, and emits their result ids', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderComponent({
+				props: {
+					caseRuns: [failed(1), failed(2), { ...failed(3), status: 'pass' as const }],
+				},
+			});
+
+			await user.click(getByTestId(BUTTON));
+
+			expect(emitted('apply-suggestions')).toEqual([[['result-1', 'result-2']]]);
+		});
+
+		it('leaves out a case whose card was dismissed', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId, emitted } = renderComponent({
+				props: { caseRuns: [failed(1), failed(2), failed(3)] },
+			});
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-suggestion-dismiss'));
+
+			await user.click(getByTestId(BUTTON));
+
+			expect(emitted('apply-suggestions')).toEqual([[['result-1', 'result-3']]]);
+			expect(queryByTestId('instance-ai-test-agent-examples-case-2-suggestion')).toBeNull();
+		});
+
+		it('sends at most one request’s worth of cases', async () => {
+			const user = userEvent.setup();
+			const many = Array.from({ length: MAX_APPLY_SUGGESTIONS + 2 }, (_, i) => failed(i + 1));
+			const { getByTestId, emitted } = renderComponent({ props: { caseRuns: many } });
+
+			await user.click(getByTestId(BUTTON));
+
+			expect((emitted('apply-suggestions')[0] as [string[]])[0]).toHaveLength(
+				MAX_APPLY_SUGGESTIONS,
+			);
+		});
+
+		it('is disabled while a suggestion is being applied', () => {
+			const { getByTestId } = renderComponent({
+				props: { caseRuns: [failed(1), failed(2)], applyingSuggestionIds: ['result-1'] },
+			});
+
+			expect(getByTestId(BUTTON)).toBeDisabled();
+		});
+
+		it('is hidden while the run is still going', () => {
+			const { queryByTestId } = renderComponent({
+				props: { caseRuns: [failed(1), failed(2), failed(3, { status: 'waiting' as const })] },
+			});
+
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
 		});
 	});
 

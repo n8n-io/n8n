@@ -1521,7 +1521,6 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			await view.findByTestId('instance-ai-test-agent-examples-check-agent');
 			await user.click(view.getByTestId('instance-ai-test-agent-examples-check-agent'));
 			await view.findByText('0 of 1 went well, 1 need work');
-			await user.click(view.getByTestId('instance-ai-test-agent-examples-summary-toggle'));
 			return { store, user, ...view };
 		}
 
@@ -1630,7 +1629,6 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 
 			// Settles immediately (the mocked run is already "completed").
 			expect(await findByText('0 of 1 went well, 1 need work')).toBeInTheDocument();
-			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
 			const row = await findByTestId('instance-ai-test-agent-examples-case-1');
 
 			// "Needs work", not "Couldn't finish" — the avatar's own accessible
