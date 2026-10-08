@@ -2,7 +2,6 @@ const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState 
 	() => ({
 		packWorkspaceSdkMockState: {
 			isEnabled: false,
-			packWorkspaceSdk: vi.fn(),
 			packSandboxLinkedWorkspacePackages: vi.fn(),
 		},
 		resolveMockWorkspaceRoot: async (workspace: {
@@ -34,7 +33,6 @@ const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState 
 
 vi.mock('../pack-workspace-sdk', () => ({
 	isLinkWorkspaceSdkEnabled: () => packWorkspaceSdkMockState.isEnabled,
-	packWorkspaceSdk: packWorkspaceSdkMockState.packWorkspaceSdk,
 	packSandboxLinkedWorkspacePackages: packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages,
 }));
 
@@ -190,7 +188,6 @@ function loadSetupSandboxWorkspaceWithFsMocks(
 	readFileViaSandbox: ReadFileViaSandboxMock,
 ): SetupSandboxWorkspace {
 	packWorkspaceSdkMockState.isEnabled = false;
-	packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 	sandboxFsMockState.runInSandbox = runInSandbox;
 	sandboxFsMockState.readFileViaSandbox = readFileViaSandbox;
 	return setupSandboxWorkspace;
@@ -231,7 +228,6 @@ async function loadSandboxPackageJson(linkSdk: boolean): Promise<{
 	// is re-evaluated. Using `await import` (rather than `vi.importActual`) keeps the
 	// module-cache interaction consistent with the doMock-based loaders above.
 	packWorkspaceSdkMockState.isEnabled = linkSdk;
-	packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 	vi.doUnmock('../sandbox-fs');
 	vi.resetModules();
 	if (linkSdk) {
@@ -255,7 +251,6 @@ describe('PACKAGE_JSON', () => {
 	afterEach(() => {
 		vi.resetModules();
 		packWorkspaceSdkMockState.isEnabled = false;
-		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 		restoreLinkWorkspaceSdkEnv(originalLinkSdk);
 	});
 
@@ -287,7 +282,6 @@ describe('setupSandboxWorkspace', () => {
 		vi.doUnmock('../sandbox-fs');
 		vi.resetModules();
 		packWorkspaceSdkMockState.isEnabled = false;
-		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 	});
 
 	it('writes the initialized marker only after workspace files and npm install succeed', async () => {
@@ -854,7 +848,6 @@ describe('formatNodeCatalogLine', () => {
 	beforeAll(async () => {
 		vi.doUnmock('../sandbox-fs');
 		packWorkspaceSdkMockState.isEnabled = false;
-		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 		vi.resetModules();
 		({ formatNodeCatalogLine } = await import('../sandbox-setup.js'));
 	});
