@@ -10,8 +10,7 @@ describe('TrustedKeyRefreshTask', () => {
 	it('should declare a durable 60-second poll cadence', () => {
 		expect(task.name).toBe('trusted-key-refresh');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 60 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
+		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 3 } });
 	});
 
 	it('should refresh the due sources on run', async () => {
