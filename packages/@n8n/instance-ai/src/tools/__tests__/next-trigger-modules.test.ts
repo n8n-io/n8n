@@ -3,12 +3,17 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { nextNodeModule, nodeModuleText } from '../next-modules';
+import { toContract } from '@n8n/node-sdk/registry';
+
+import { nextActions, nextNodeModule, nodeModuleText, rangedNodeModuleText } from '../next-modules';
 
 const TSC = path.join(path.dirname(require.resolve('typescript/package.json')), 'bin', 'tsc');
 
-/** Runs `tsc` on `source` with the generated node modules, as the sandbox build does. */
-function typeErrors(source: string): string[] {
+/**
+ * Runs `tsc` on `source` with the generated node modules, as the sandbox build does, and with
+ * the module text of each import path in `modules`.
+ */
+function typeErrors(source: string, modules: Readonly<Record<string, string>> = {}): string[] {
 	const root = mkdtempSync(path.join(tmpdir(), 'next-trigger-modules-'));
 	try {
 		mkdirSync(path.join(root, 'nodes'));
@@ -22,6 +27,9 @@ function typeErrors(source: string): string[] {
 			'googleSheetsTrigger',
 		]) {
 			writeFileSync(path.join(root, 'nodes', `${id}.ts`), nodeModuleText(id) ?? '');
+		}
+		for (const [id, text] of Object.entries(modules)) {
+			writeFileSync(path.join(root, 'nodes', `${id}.ts`), text);
 		}
 		writeFileSync(path.join(root, 'workflow.ts'), source);
 		const sdk = require.resolve('@n8n/workflow-sdk/next').replace(/\.js$/, '.d.ts');
@@ -397,5 +405,55 @@ schedule.trigger({ name: 'F', rule: { interval: [{ field: 'days', triggerAtHourr
 		expect(errors[0]).toContain("Property 'severty' does not exist");
 		expect(errors[1]).toContain('have no overlap');
 		expect(errors[2]).toContain("'item.body.count' is possibly 'undefined'");
+	});
+});
+
+describe('range modules', { timeout: 30_000 }, () => {
+	const get = nextActions().find(({ id }) => id === 'httpRequest.get');
+	const contract = get && toContract(get);
+	// A stored version whose input has `link` where the newest version has `url`.
+	const versions = new Map(
+		contract
+			? [
+					[
+						'httpRequest.get@~3.1.0',
+						{
+							contract: {
+								...contract,
+								input: {
+									type: 'object' as const,
+									properties: { link: { type: 'string' as const } },
+									required: ['link'],
+								},
+							},
+						},
+					],
+				]
+			: [],
+	);
+	const module = rangedNodeModuleText('httpRequest', '~3.1.0', versions) ?? '';
+	const source = (from: string, field: string) => `import { manual, workflow } from '@n8n/workflow-sdk/next';
+import { httpRequest } from '@n8n/nodes/${from}';
+export default workflow('Get', manual(), httpRequest.get({ name: 'Get', ${field}: 'https://example.com' }));
+`;
+
+	it('type a module at a range by the input of the version that the range locks', () => {
+		expect(module).toContain('export const httpRequest = {');
+		expect(module).not.toContain('send:');
+		expect(
+			typeErrors(source('httpRequest@~3.1.0', 'link'), { 'httpRequest@~3.1.0': module }),
+		).toEqual([]);
+		expect(
+			typeErrors(source('httpRequest@~3.1.0', 'url'), { 'httpRequest@~3.1.0': module }).join('\n'),
+		).toContain("'url' does not exist");
+		expect(
+			typeErrors(source('httpRequest', 'url'), {
+				httpRequest: nodeModuleText('httpRequest') ?? '',
+			}),
+		).toEqual([]);
+	});
+
+	it('have no module when no action has a version in the range', () => {
+		expect(rangedNodeModuleText('httpRequest', '~9.0.0', versions)).toBeUndefined();
 	});
 });

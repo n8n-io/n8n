@@ -1676,7 +1676,59 @@ describe('decompileWorkflow', () => {
 	});
 });
 
+describe('decompileWorkflow contract ranges', () => {
+	const digest = 'sha256:0';
+	const json = workflow(
+		'Get',
+		manual(),
+		httpRequest.get({ name: 'Old', url: 'https://api.example.com/a' }),
+		httpRequest.get({ name: 'New', url: 'https://api.example.com/b' }),
+	).toJSON();
+	const locked = (contracts: Record<string, WorkflowJSON['nodes'][number]['contract']>) => ({
+		...json,
+		nodes: json.nodes.map((n) => {
+			const contract = n.name === undefined ? undefined : contracts[n.name];
+			return contract ? { ...n, contract } : n;
+		}),
+	});
+
+	it('imports a module at the range of the lock, and a second import of it by another name', () => {
+		const source = decompileWorkflow(
+			locked({
+				Old: { range: '~3.1.0', version: '3.1.0', digest },
+				New: { range: '^3.2.0', version: '3.2.0', digest },
+			}),
+			factories,
+		);
+
+		expect(source).toContain("import { httpRequest } from '@n8n/nodes/httpRequest@~3.1.0';");
+		expect(source).toContain(
+			"import { httpRequest as httpRequest2 } from '@n8n/nodes/httpRequest';",
+		);
+		expect(source).toContain('httpRequest.get({\n    name: "Old"');
+		expect(source).toContain('httpRequest2.get({\n    name: "New"');
+	});
+
+	it('imports a range-only contract at its range, and leaves out a range that a path cannot hold', () => {
+		const source = decompileWorkflow(
+			locked({ Old: { range: '3.1.x' }, New: { range: '>=3.1.0 <3.3.0' } }),
+			factories,
+		);
+
+		expect(source).toContain("import { httpRequest } from '@n8n/nodes/httpRequest@3.1.x';");
+		expect(source).toContain(
+			"import { httpRequest as httpRequest2 } from '@n8n/nodes/httpRequest';",
+		);
+	});
+});
+
 describe('locateNextNodes', () => {
+	it('names the import path of the module of a module call', () => {
+		const located = locateNextNodes(`import { notion as old } from '@n8n/nodes/notion@~3.1.0';
+workflow('W', manual(), old.databasePage.getAll({ name: 'Tasks', database: 'x' }));`);
+		expect(located).toEqual([{ name: 'Tasks', line: 2, from: '@n8n/nodes/notion@~3.1.0' }]);
+	});
+
 	it('finds the line of each node call', () => {
 		const source = decompileWorkflow(branchWorkflow().toJSON(), factories) ?? '';
 		const lines = source.split('\n');

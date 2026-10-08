@@ -161,6 +161,28 @@ describe('workflows get-as-code integration', () => {
 	});
 
 	describe('with node contracts', () => {
+		it('imports the module of a node at the range of its lock', async () => {
+			const workflow = makeContractWorkflow();
+			const locked = {
+				...workflow,
+				nodes: workflow.nodes.map((node) =>
+					node.name === 'Get Done Pages'
+						? { ...node, contract: { range: '~1.0.0', version: '1.0.0', digest: 'sha256:0' } }
+						: node,
+				),
+			};
+			const context = makeContext(locked, new Map());
+			context.nodeContractsEnabled = true;
+
+			const result = await executeTool<GetAsCodeResult>(createWorkflowsTool(context), {
+				action: 'get-as-code',
+				workflowId: 'wf-managed',
+			});
+
+			expect(result.code).toContain("import { notion } from '@n8n/nodes/notion@~1.0.0';");
+			expect(result.code).toContain('notion.databasePage.getAll({');
+		});
+
 		it('returns typed source for a contract workflow and indexes its nodes', async () => {
 			const files = new Map<string, string>();
 			const context = makeContext(makeContractWorkflow(), files);

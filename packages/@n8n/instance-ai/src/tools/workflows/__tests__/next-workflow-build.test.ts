@@ -1,4 +1,5 @@
 import type { WorkflowNodeRef } from '../../contract-catalog';
+import { toContract } from '@n8n/node-sdk/registry';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 import * as flowSdk from '@n8n/workflow-sdk/next';
 import {
@@ -17,6 +18,7 @@ import {
 	derivedNodeTypes,
 	mattermostDescription,
 } from '../../__tests__/derived-node-types';
+import { nextActions } from '../../next-modules';
 import {
 	contractEgressWarnings,
 	declaredOutputOf,
@@ -25,6 +27,7 @@ import {
 	firstPageOmissions,
 	fixtureOriginsOf,
 	liveReadNodeNames,
+	lockedVersionsOf,
 	sampledReadIssues,
 	sampledKeysOf,
 	sampleSchemaIssues,
@@ -42,6 +45,7 @@ import {
 	untypedNodeIssues,
 	untypedOutputIssues,
 	usedNodeIds,
+	withContractRanges,
 	withTscHints,
 	workflowExpressions,
 } from '../next-workflow-build';
@@ -93,6 +97,76 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 		expect(file).toContain('openai: "gpt-5" | "gpt-5-mini";');
 		expect(file).not.toContain('google');
 		expect(await modelCatalogFile(source, async () => ['x'])).toBe('export {};\n');
+	});
+
+	describe('range imports', () => {
+		const ranged = `import { workflow, manual } from '@n8n/workflow-sdk/next';
+import { notion as old } from '@n8n/nodes/notion@~3.1.0';
+import { httpRequest } from '@n8n/nodes/httpRequest';`;
+		const input = {
+			type: 'object' as const,
+			properties: {
+				database: { type: 'string' as const },
+				limit: { type: 'integer' as const, maximum: 5 },
+			},
+		};
+		const getAll = nextActions().find(({ id }) => id === 'notion.databasePage.getAll');
+		// A stored version with another input than the newest version.
+		const contract = { ...toContract(getAll as NonNullable<typeof getAll>), input };
+
+		it('finds a module at a range, and locks each action of its node', async () => {
+			const versionOf = vi.fn(async (actionId: string) =>
+				actionId === 'notion.databasePage.getAll' ? { contract } : undefined,
+			);
+			const locked = await lockedVersionsOf(ranged, versionOf);
+
+			expect(usedNodeIds(ranged)).toEqual(['notion@~3.1.0', 'httpRequest']);
+			expect(versionOf).toHaveBeenCalledWith('notion.databasePage.getAll', '~3.1.0');
+			expect(locked.ok && [...locked.versions.keys()]).toEqual([
+				'notion.databasePage.getAll@~3.1.0',
+			]);
+		});
+
+		it('names the import whose version does not load, and a range without a version', async () => {
+			const failed = await lockedVersionsOf(ranged, async () => {
+				throw new Error('The registry does not answer');
+			});
+			expect(failed).toEqual({
+				ok: false,
+				errors: [
+					'Cannot load the version of "@n8n/nodes/notion@~3.1.0": The registry does not answer',
+				],
+			});
+			expect(nextWorkspaceFiles(ranged)).toEqual({
+				ok: false,
+				errors: [
+					'No action of "@n8n/nodes/notion" has a version in the range ~3.1.0. Import "@n8n/nodes/notion" for the newest version.',
+				],
+			});
+		});
+
+		it('puts the range of the import on each node of a module call at a range', async () => {
+			const workflow: WorkflowJSON = {
+				name: 'Ranged',
+				connections: {},
+				nodes: [
+					node('Tasks', '@n8n/nodes-integrations.notionDatabasePageGetAll', { limit: 9 }),
+					node('Get', '@n8n/nodes-core.httpRequestGet', { url: 'https://example.com' }),
+				],
+			};
+			const source = `${ranged}
+export default workflow('Ranged', manual(),
+	old.databasePage.getAll({ name: 'Tasks', database: 'x', limit: 9 }),
+	httpRequest.get({ name: 'Get', url: 'https://example.com' }));`;
+			const built = await withContractRanges(workflow, source);
+
+			expect(built.nodes.map((n) => n.contract)).toEqual([{ range: '~3.1.0' }, undefined]);
+			// The input check reads the version that the range locks.
+			const versions = new Map([['notion.databasePage.getAll@~3.1.0', { contract }]]);
+			expect(staticInputIssues(built, versions)).toEqual([
+				'Node "Tasks": input.limit: must be at most 5',
+			]);
+		});
 	});
 
 	it('names the typed modules when a source imports an unknown one', () => {

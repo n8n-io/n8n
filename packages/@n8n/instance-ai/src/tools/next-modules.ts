@@ -25,7 +25,7 @@ import {
 	toTs,
 	type GeneratedAction,
 } from '@n8n/node-sdk/codegen';
-import { toContract } from '@n8n/node-sdk/registry';
+import { toContract, type VersionManifest } from '@n8n/node-sdk/registry';
 
 import {
 	contractActions,
@@ -157,6 +157,33 @@ const moduleOf = (nodeId: string, own: readonly Action[]) =>
 export function nodeModuleText(nodeId: string): string | undefined {
 	const own = nextActions().filter((action) => action.node.id === nodeId);
 	return own.length || triggersOfNode(nodeId).length ? moduleOf(nodeId, own) : undefined;
+}
+
+/** The version of an action that a range locks, by `<actionId>@<range>`. */
+export type LockedVersions = ReadonlyMap<string, Pick<VersionManifest, 'contract' | 'ui'>>;
+
+/**
+ * The sandbox module of a node at a range, e.g. `notion@~3.1.0`: each action typed by the version
+ * that the range locks, and every trigger of the node. An action without a version in the range
+ * is not in it.
+ */
+export function rangedNodeModuleText(
+	nodeId: string,
+	range: string,
+	versions: LockedVersions,
+): string | undefined {
+	const locked = nextActions().flatMap((action) => {
+		const version = action.node.id === nodeId ? versions.get(`${action.id}@${range}`) : undefined;
+		return version
+			? [{ ...generatedActionOf(action), contract: version.contract, ui: version.ui }]
+			: [];
+	});
+	return locked.length > 0
+		? generateNodeModule(nodeId, [
+				...locked,
+				...triggersOfNode(nodeId).flatMap(({ factories }) => factories),
+			])
+		: undefined;
 }
 
 /**

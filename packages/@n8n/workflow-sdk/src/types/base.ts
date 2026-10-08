@@ -4,7 +4,7 @@
  * Core types for building n8n workflows programmatically.
  */
 
-import type { IWorkflowGroup, WorkflowGroupRepeat } from 'n8n-workflow';
+import type { INode, IWorkflowGroup, WorkflowGroupRepeat } from 'n8n-workflow';
 
 import type { ValidationOptions, ValidationResult } from '../validation/index';
 import type { PluginRegistry } from '../workflow-builder/plugins/registry';
@@ -314,6 +314,7 @@ export interface NodeJSON {
 	name?: string; // Optional - some nodes like sticky notes may not have a name
 	type: string;
 	typeVersion: number;
+	contract?: INode['contract'];
 	position: [number, number];
 	parameters?: IDataObject;
 	credentials?: Record<string, NodeJSONCredential>;

@@ -29,6 +29,7 @@ import {
 	fetchResourceFields,
 	fixtureOriginsOf,
 	liveReadNodeNames,
+	lockedVersionsOf,
 	sampledKeysOf,
 	sampledReadIssues,
 	sampleSchemaIssues,
@@ -46,6 +47,7 @@ import {
 	untypedInputIssues,
 	untypedNodeIssues,
 	untypedOutputIssues,
+	withContractRanges,
 	workflowExpressions,
 } from './next-workflow-build';
 
@@ -484,7 +486,17 @@ async function compileNextWorkflowSource(
 			summary: 'Workflow source uses a node type that this instance does not have.',
 		};
 	}
-	const prepared = nextWorkspaceFiles(source, context);
+	const locked = await lockedVersionsOf(source, context.contractVersionOf);
+	if (!locked.ok) {
+		return {
+			success: false,
+			reason: 'workflow_source_build_failed',
+			editable: true,
+			errors: locked.errors,
+			summary: 'Workflow source imports a node module at a range whose version does not load.',
+		};
+	}
+	const prepared = nextWorkspaceFiles(source, context, locked.versions);
 	if (!prepared.ok) {
 		return {
 			success: false,
@@ -504,12 +516,15 @@ async function compileNextWorkflowSource(
 		new Map([...prepared.files, [MODEL_CATALOG_PATH, catalog]]),
 		fileOptions,
 	);
-	const built = await compileTypeScriptWorkflowSource(
+	const compiled = await compileTypeScriptWorkflowSource(
 		context,
 		filePath,
 		abortSignal,
 		NEXT_TSCONFIG_FILENAME,
 	);
+	const built = compiled.success
+		? { ...compiled, workflow: await withContractRanges(compiled.workflow, source) }
+		: compiled;
 	const lookups = built.success ? await fetchResourceFields(context, built.workflow) : undefined;
 	const resourceFields = lookups?.fields;
 	const revealed = built.success
@@ -529,7 +544,7 @@ async function compileNextWorkflowSource(
 		abortSignal,
 		built.success ? [] : built.errors,
 	);
-	const inputIssues = built.success ? staticInputIssues(built.workflow) : [];
+	const inputIssues = built.success ? staticInputIssues(built.workflow, locked.versions) : [];
 	const errors = [...typecheck.errors, ...inputIssues];
 	if (typecheck.incomplete !== undefined) {
 		const found = built.success ? errors : [...new Set([...built.errors, ...errors])];

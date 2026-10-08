@@ -264,6 +264,8 @@ interface Graph {
 	readonly names: ReadonlySet<string>;
 	readonly regions: readonly RegionRead[];
 	readonly groups: readonly GroupRead[];
+	/** The local name of each imported module, by import path, e.g. `notion2` for a second range. */
+	readonly bindings: ReadonlyMap<string, string>;
 }
 
 interface FlowPlan {
@@ -722,9 +724,25 @@ function contractReadOf(
 		typeof resource === 'string' && typeof operation === 'string'
 			? factories.get(composedFactoryKey(node.type, node.typeVersion, resource, operation))
 			: undefined;
-	if (composed) return inputRead(composed, fields);
+	if (composed) return inputRead(atRange(node, composed), fields);
 	const factory = factories.get(node.type);
-	return factory && inputRead(factory, node.parameters ?? {});
+	return factory && inputRead(atRange(node, factory), node.parameters ?? {});
+}
+
+// The builder imports a module at a range from a file of that name, so a range has no spaces.
+const IMPORTABLE_RANGE = /^[\w.~^*-]+$/;
+
+/**
+ * The factory at the range of the node lock, e.g. from `@n8n/nodes/notion@~3.1.0`. The default
+ * `^<version>`, and a range that an import path cannot hold, stay out: the save keeps the lock.
+ */
+function atRange(node: NamedNode, factory: ContractFactory): ContractFactory {
+	const { contract } = node;
+	const range = contract?.range;
+	if (range === undefined || !IMPORTABLE_RANGE.test(range)) return factory;
+	return contract && 'version' in contract && range === `^${contract.version}`
+		? factory
+		: { ...factory, from: `${factory.from}@${range}` };
 }
 
 /**
@@ -907,6 +925,7 @@ const KNOWN_KEYS = new Set<string>([
 	'parameters',
 	'credentials',
 	'webhookId',
+	'contract',
 	'onError',
 	...Object.keys({
 		retryOnFail: true,
@@ -1452,7 +1471,8 @@ function contractCall(graph: Graph, node: NamedNode, shape: ContractShape): Call
 			? { providers: Object.fromEntries(fields) }
 			: {}
 		: Object.fromEntries(fields);
-	return new Call(`${shape.factory.module}.${shape.factory.path}`, {
+	const module = graph.bindings.get(shape.factory.from) ?? shape.factory.module;
+	return new Call(`${module}.${shape.factory.path}`, {
 		name: node.name,
 		...parameters,
 		...providers,
@@ -1812,16 +1832,18 @@ function render(
 	]);
 	const factories = [
 		...new Map(
-			[...shapes, ...graph.providerShapes.values()]
-				.flatMap((shape) =>
-					shape.kind === 'contract' ? [{ key: shape.factory.module, factory: shape.factory }] : [],
-				)
-				.map(({ key, factory }) => [key, factory]),
+			[...shapes, ...graph.providerShapes.values()].flatMap((shape) =>
+				shape.kind === 'contract' ? [[shape.factory.from, shape.factory] as const] : [],
+			),
 		).values(),
 	];
+	const importOf = ({ module, from }: ContractFactory) => {
+		const local = graph.bindings.get(from) ?? module;
+		return `import { ${local === module ? module : `${module} as ${local}`} } from '${from}';`;
+	};
 	const imports = [
 		`import { ${HELPERS.filter((helper) => kinds.has(helper)).join(', ')} } from '@n8n/workflow-sdk/next';`,
-		...factories.map(({ module, from }) => `import { ${module} } from '${from}';`),
+		...factories.map(importOf),
 	];
 	return [
 		...imports,
@@ -1916,6 +1938,20 @@ export function decompileWorkflow(
 				list.every(({ node }) => !providerShapes.has(node.name)),
 	);
 	if (!hosted) return undefined;
+	const imported = [
+		...new Map(
+			[...shapes.values(), ...providerShapes.values()].flatMap((shape) =>
+				shape.kind === 'contract' ? [[shape.factory.from, shape.factory.module] as const] : [],
+			),
+		),
+	];
+	// A module at a second range, or a second module of the same name, takes the next free name.
+	const bindings = new Map(
+		imported.map(([from, module], index) => {
+			const before = imported.slice(0, index).filter(([, other]) => other === module).length;
+			return [from, before === 0 ? module : `${module}${before + 1}`];
+		}),
+	);
 	const graph: Graph = {
 		nodes,
 		edges: edges.main,
@@ -1925,6 +1961,7 @@ export function decompileWorkflow(
 		names,
 		regions,
 		groups,
+		bindings,
 	};
 	const flows = mainNodes
 		.filter((node) => !targets.has(node.name))
@@ -2113,6 +2150,8 @@ function joinOf(
 
 const NODE_TYPE_CALLS = new Set(['node', 'provider', 'trigger']);
 
+const NAMED_IMPORT = /import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g;
+
 /**
  * The node name and 1-based line of each `…({ name: '…' })` call, in source order, and the
  * `type` that a `node()`, `provider()` or `trigger()` call names. A typed step can have an
@@ -2125,6 +2164,8 @@ export function locateNextNodes(source: string): Array<{
 	line: number;
 	/** The node type that a `node()`, `provider()` or `trigger()` call names. */
 	type?: string;
+	/** The import path of the module of a module call, e.g. `@n8n/nodes/notion@~3.1.0`. */
+	from?: string;
 }> {
 	const program = (() => {
 		try {
@@ -2141,6 +2182,24 @@ export function locateNextNodes(source: string): Array<{
 		...(node.type === 'CallExpression' ? [node] : []),
 		...childNodes(node).flatMap(calls),
 	];
+	// The parse input has no import lines, so the imports come from the source text.
+	const imports = new Map(
+		[...source.matchAll(NAMED_IMPORT)].flatMap(([, names = '', from = '']) =>
+			names.split(',').flatMap((specifier) => {
+				const local = specifier
+					.trim()
+					.split(/\s+as\s+/)
+					.at(-1);
+				return local ? [[local, from] as const] : [];
+			}),
+		),
+	);
+	const rootOf = (callee: acorn.AnyNode): string | undefined =>
+		callee.type === 'Identifier'
+			? callee.name
+			: callee.type === 'MemberExpression'
+				? rootOf(callee.object)
+				: undefined;
 	return (program ? calls(program) : []).flatMap((call) => {
 		const [config] = call.arguments;
 		if (config?.type !== 'ObjectExpression') return [];
@@ -2162,8 +2221,17 @@ export function locateNextNodes(source: string): Array<{
 				: undefined;
 		// A module call such as `notion.databasePage.getAll({…})` starts at its factory name.
 		const at = call.callee.type === 'MemberExpression' ? call.callee.property : call;
+		const root = call.callee.type === 'MemberExpression' ? rootOf(call.callee) : undefined;
+		const from = root === undefined ? undefined : imports.get(root);
 		return name !== undefined && at.loc
-			? [{ name, line: at.loc.start.line, ...(type === undefined ? {} : { type }) }]
+			? [
+					{
+						name,
+						line: at.loc.start.line,
+						...(type === undefined ? {} : { type }),
+						...(from === undefined ? {} : { from }),
+					},
+				]
 			: [];
 	});
 }

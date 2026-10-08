@@ -29,6 +29,7 @@ import type {
 	McpToolCallRequest,
 	McpToolCallResult,
 } from '@n8n/api-types';
+import type { VersionManifest } from '@n8n/node-sdk/registry';
 import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
@@ -1611,6 +1612,15 @@ export interface InstanceAiContext {
 	credentialDescriptionsEnabled?: boolean;
 	/** Serve action contracts in the `nodes` tool and compile contract nodes on build. */
 	nodeContractsEnabled?: boolean;
+	/**
+	 * The manifest of the version of an action that a range locks, e.g. for an import of
+	 * `@n8n/nodes/notion@~3.1.0`, see `ContractStore.pinOf`. `undefined` when no version of the
+	 * action is in the range. It throws when the version does not load.
+	 */
+	contractVersionOf?: (
+		actionId: string,
+		range: string,
+	) => Promise<Pick<VersionManifest, 'contract' | 'ui'> | undefined>;
 	userId: string;
 	/**
 	 * Trace handle for the current agent run, threaded in from the orchestration

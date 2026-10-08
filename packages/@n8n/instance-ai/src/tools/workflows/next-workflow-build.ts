@@ -58,10 +58,13 @@ import {
 	FLOW_STEP_OF_ACTION,
 	isInstalledNodeType,
 	missingNodeTypeIssue,
+	nextActions,
 	nextNodeIds,
 	nodeModuleText,
 	nodeTypeOfModulePath,
+	rangedNodeModuleText,
 	type DeriveSource,
+	type LockedVersions,
 } from '../next-modules';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
 import { WORKFLOW_DIAGNOSTICS_FILENAME } from '../../workspace/sandbox-typescript';
@@ -92,17 +95,76 @@ const NEXT_TSCONFIG = JSON.stringify(
 	2,
 );
 
-// A typed module id (`notion`) or a derived module path (`n8n-nodes-base/airtable`).
-const NODE_IMPORT = /from\s+['"]@n8n\/nodes\/([\w@./-]+)['"]/g;
+// A typed module id (`notion`), a typed module at a range (`notion@~3.1.0`), or a derived
+// module path (`n8n-nodes-base/airtable`).
+const NODE_IMPORT = /from\s+['"]@n8n\/nodes\/([\w@./~^*-]+)['"]/g;
 
 export const usedNodeIds = (source: string) => [
 	...new Set([...source.matchAll(NODE_IMPORT)].flatMap(([, id]) => (id ? [id] : []))),
 ];
 
-function nodeModule(nodeId: string, source: DeriveSource): string | undefined {
+const NODES_PREFIX = '@n8n/nodes/';
+
+// The sandbox keeps a module in a file of its import path, so a range has no spaces.
+const RANGED_MODULE = /^(\w+)@([\w.~^*-]+)$/;
+
+/** The node id and the range of a typed module at a range, e.g. `notion@~3.1.0`. */
+const rangedModuleOf = (id: string) => {
+	const [, nodeId, range] = RANGED_MODULE.exec(id) ?? [];
+	return nodeId && range ? { nodeId, range } : undefined;
+};
+
+/**
+ * The version that each range import locks for each action of its node, see `LockedVersions`.
+ * An import whose version does not load gives an error that names it.
+ */
+export async function lockedVersionsOf(
+	source: string,
+	versionOf: InstanceAiContext['contractVersionOf'],
+): Promise<{ ok: true; versions: LockedVersions } | { ok: false; errors: string[] }> {
+	const ranged = usedNodeIds(source).flatMap((id) => {
+		const module = rangedModuleOf(id);
+		return module ? [{ id, ...module }] : [];
+	});
+	if (ranged.length === 0 || !versionOf) return { ok: true, versions: new Map() };
+	const results = await Promise.all(
+		ranged.map(async ({ id, nodeId, range }) => {
+			try {
+				const actions = nextActions().filter((action) => action.node.id === nodeId);
+				const versions = await Promise.all(
+					actions.map(async (action) => await versionOf(action.id, range)),
+				);
+				return actions.flatMap((action, index) => {
+					const version = versions[index];
+					return version ? [[`${action.id}@${range}`, version] as const] : [];
+				});
+			} catch (error) {
+				const reason = error instanceof Error ? error.message : String(error);
+				return `Cannot load the version of "@n8n/nodes/${id}": ${reason}`;
+			}
+		}),
+	);
+	const errors = results.filter((result) => typeof result === 'string');
+	return errors.length > 0
+		? { ok: false, errors }
+		: {
+				ok: true,
+				versions: new Map(results.flatMap((result) => (Array.isArray(result) ? result : []))),
+			};
+}
+
+function nodeModule(
+	nodeId: string,
+	source: DeriveSource,
+	versions: LockedVersions,
+): string | undefined {
 	const nodeType = nodeTypeOfModulePath(nodeId);
-	const text =
-		nodeType === undefined ? nodeModuleText(nodeId) : derivedNodeModuleText(nodeType, source);
+	const ranged = rangedModuleOf(nodeId);
+	const text = ranged
+		? rangedNodeModuleText(ranged.nodeId, ranged.range, versions)
+		: nodeType === undefined
+			? nodeModuleText(nodeId)
+			: derivedNodeModuleText(nodeType, source);
 	// tsc reads the per-node output types through this reference; tsx ignores it.
 	const up = '../'.repeat(nodeId.split('/').length);
 	return text === undefined
@@ -140,16 +202,21 @@ export async function missingNodeTypeErrors(
 export function nextWorkspaceFiles(
 	source: string,
 	deriveSource: DeriveSource = {},
+	versions: LockedVersions = new Map(),
 ): { ok: true; files: Map<string, string> } | { ok: false; errors: string[] } {
-	const modules = usedNodeIds(source).map((id) => [id, nodeModule(id, deriveSource)] as const);
+	const modules = usedNodeIds(source).map(
+		(id) => [id, nodeModule(id, deriveSource, versions)] as const,
+	);
 	const unknown = modules.filter(([, text]) => text === undefined).map(([id]) => id);
 	if (unknown.length > 0) {
 		return {
 			ok: false,
-			errors: unknown.map(
-				(id) =>
-					`No node module "@n8n/nodes/${id}". Typed modules: ${nextNodeIds().join(', ')}. Another node <package>.<name> has a derived module "@n8n/nodes/<package>/<name>" when type-definition returns one. Use node({ type, version, parameters }) from '@n8n/workflow-sdk/next' for other nodes.`,
-			),
+			errors: unknown.map((id) => {
+				const ranged = rangedModuleOf(id);
+				return ranged
+					? `No action of "@n8n/nodes/${ranged.nodeId}" has a version in the range ${ranged.range}. Import "@n8n/nodes/${ranged.nodeId}" for the newest version.`
+					: `No node module "@n8n/nodes/${id}". Typed modules: ${nextNodeIds().join(', ')}. Another node <package>.<name> has a derived module "@n8n/nodes/<package>/<name>" when type-definition returns one. Use node({ type, version, parameters }) from '@n8n/workflow-sdk/next' for other nodes.`;
+			}),
 		};
 	}
 	return {
@@ -957,16 +1024,56 @@ export function workflowExpressions(workflow: WorkflowJSON): string {
  * with its node and field, not the run. Expressions and placeholders wait for the run; the type
  * check reports a missing field.
  */
-export function staticInputIssues(workflow: WorkflowJSON): string[] {
+export function staticInputIssues(
+	workflow: WorkflowJSON,
+	versions: LockedVersions = new Map(),
+): string[] {
 	return workflow.nodes.flatMap((node) => {
 		const tool = toolActionOfNode(node);
 		const action = actionOfNode(node) ?? tool;
 		if (!action || !node.name || node.disabled) return [];
-		const fields = action.inputSchema.properties ?? {};
-		return fixedInputIssues(nodeInputOf(node, action), action.inputSchema, {
-			tool: tool !== undefined,
-		}).map((issue) => `Node "${node.name}": ${withRefHint(issue, fields)}`);
+		// A node of a range import has the input of the version that the range locks.
+		const range = node.contract?.range;
+		const version = range === undefined ? undefined : versions.get(`${action.id}@${range}`);
+		const inputSchema = version?.contract.input ?? action.inputSchema;
+		const ui = version ? version.ui : action.ui;
+		const fields = inputSchema.properties ?? {};
+		const input = contractInputOf(
+			node.parameters ?? {},
+			inputSchema,
+			tool ? toolUiOf(inputSchema, ui) : ui,
+		);
+		return fixedInputIssues(input, inputSchema, { tool: tool !== undefined }).map(
+			(issue) => `Node "${node.name}": ${withRefHint(issue, fields)}`,
+		);
 	});
+}
+
+/**
+ * The built workflow with `contract: { range }` on each node of a module that the source imports
+ * at a range, e.g. `@n8n/nodes/notion@~3.1.0`. The save locks the newest version in the range. A
+ * call whose module the source does not import by name gets no range.
+ */
+export async function withContractRanges(
+	workflow: WorkflowJSON,
+	source: string,
+): Promise<WorkflowJSON> {
+	const { locateNextNodes } = await import('@n8n/workflow-sdk/next');
+	const ranges = new Map(
+		locateNextNodes(source).flatMap(({ name, from }) => {
+			const id = from?.startsWith(NODES_PREFIX) ? from.slice(NODES_PREFIX.length) : undefined;
+			const range = id === undefined ? undefined : rangedModuleOf(id)?.range;
+			return range === undefined ? [] : [[name, range] as const];
+		}),
+	);
+	if (ranges.size === 0) return workflow;
+	return {
+		...workflow,
+		nodes: workflow.nodes.map((node) => {
+			const range = node.name === undefined ? undefined : ranges.get(node.name);
+			return range === undefined ? node : { ...node, contract: { range } };
+		}),
+	};
 }
 
 // A pattern miss of a top-level field, e.g. `input.spreadsheet: "Invoices" is not Spreadsheet ID`.

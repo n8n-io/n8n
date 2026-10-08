@@ -2,6 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
+import { minVersion, validRange } from 'semver';
 
 /**
  * Call before `new Workflow`: it adds the stored majors that the contract nodes of the
@@ -29,6 +30,24 @@ export async function pinNodeContracts(
 	if (!Container.get(GlobalConfig).instanceAi.nodeContractsEnabled) return nodes;
 	const { pinnedNodesOf } = await import('@/node-contracts-registry.js');
 	return await pinnedNodesOf(nodes, storedNodes);
+}
+
+/**
+ * The manifest of the version of an action that a range locks, see `ContractStore.pinOf`. The
+ * Instance AI builder types an import at a range with it. `undefined` when no version of the
+ * action is in the range. It throws when the version does not load.
+ */
+export async function contractVersionOf(actionId: string, range: string) {
+	const major = validRange(range) === null ? undefined : minVersion(range)?.major;
+	if (major === undefined) return undefined;
+	const { NodeContractsStore } = await import('@/node-contracts-registry.js');
+	const store = await Container.get(NodeContractsStore).open();
+	const pin = await store.pinOf(actionId, major, { range }).catch((error: unknown) => {
+		// The range is outside the major, or no version of the action is in it.
+		if (error instanceof UserError) return undefined;
+		throw error;
+	});
+	return pin && (await store.locked(actionId, pin)).manifest;
 }
 
 /**

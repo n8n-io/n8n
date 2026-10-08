@@ -189,6 +189,7 @@ import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mc
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
+import { contractVersionOf } from '@/node-contracts-run';
 import { ExecuteNodeService } from '@/node-execution';
 import type { ExecuteNodeResult } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
@@ -578,7 +579,9 @@ export class InstanceAiAdapterService {
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
 			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
-			...(this.globalConfig.instanceAi.nodeContractsEnabled ? { nodeContractsEnabled: true } : {}),
+			...(this.globalConfig.instanceAi.nodeContractsEnabled
+				? { nodeContractsEnabled: true, contractVersionOf }
+				: {}),
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
@@ -5590,6 +5593,7 @@ function toWorkflowJSON(
 			name: n.name,
 			type: n.type,
 			typeVersion: n.typeVersion,
+			contract: n.contract,
 			position: n.position,
 			parameters: redact ? {} : n.parameters,
 			credentials: n.credentials,

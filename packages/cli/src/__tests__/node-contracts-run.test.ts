@@ -18,7 +18,12 @@ import { mock } from 'vitest-mock-extended';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { nodeTypeOf } from '@/node-contracts-catalog';
 import { ContractNodeLoader, NodeContractsStore } from '@/node-contracts-registry';
-import { nodeGroupsForRun, pinNodeContracts, prepareNodeContractsRun } from '@/node-contracts-run';
+import {
+	contractVersionOf,
+	nodeGroupsForRun,
+	pinNodeContracts,
+	prepareNodeContractsRun,
+} from '@/node-contracts-run';
 import { NodeContractsSync } from '@/node-contracts-sync';
 
 describe('nodeGroupsForRun', () => {
@@ -142,6 +147,16 @@ describe('pinNodeContracts', () => {
 	afterEach(() => {
 		instanceAi.nodeContractsEnabled = true;
 		nodesStore.open.mockClear();
+	});
+
+	it('contractVersionOf gives the manifest of the version that a range locks, and none outside', async () => {
+		const [head] = versionsOf('httpRequest.get');
+
+		expect(await contractVersionOf('httpRequest.get', `~${head?.manifest.semver}`)).toEqual(
+			head?.manifest,
+		);
+		expect(await contractVersionOf('httpRequest.get', '~9.0.0')).toBeUndefined();
+		expect(await contractVersionOf('httpRequest.get', 'not a range')).toBeUndefined();
 	});
 
 	it('pins each contract node, tool node and migrated slot to the newest version of its major', async () => {
