@@ -2,10 +2,10 @@
 	"openrpc": "1.3.2",
 	"info": {
 		"title": "n8n Node Contract: the trigger interface",
-		"version": "2.12.0",
+		"version": "2.13.0",
 		"description": "Generated from spec/wit (world trigger-bundle) by scripts/spec.ts. Do not edit.\n\nA trigger: it starts executions. The host calls `poll` for a `poll` trigger, and `activate`,\n`check`, `webhook` and `deactivate` for a `webhook` trigger.\n\nBoth sides send requests on one connection. `x-direction` tells which side answers a method. A method without `result` is a notification. Names in brackets are not WIT functions: the JSON-RPC mapping adds them."
 	},
-	"x-world": "n8n:node-contract/trigger-bundle@2.12.0",
+	"x-world": "n8n:node-contract/trigger-bundle@2.13.0",
 	"x-since": "2.5.0",
 	"methods": [
 		{

@@ -1,6 +1,6 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"$id": "urn:n8n:node-contract:manifest@2.12.0",
+	"$id": "urn:n8n:node-contract:manifest@2.13.0",
 	"title": "n8n Node Contract manifest",
 	"description": "Generated from src/manifest.ts by scripts/spec.ts. Do not edit. `x-n8n-since` is the Node Contract version that added a field. The `contract.input` and `contract.output` schemas follow the contract format of the SDK.",
 	"oneOf": [
@@ -1110,6 +1110,52 @@
 					"additionalProperties": {
 						"type": "string"
 					}
+				},
+				"bundleHash": {
+					"type": "string",
+					"pattern": "^[0-9a-f]{64}$",
+					"x-n8n-since": "2.13.0"
+				},
+				"sdk": {
+					"anyOf": [
+						{
+							"type": "string",
+							"description": "The SDK version that packed a manifest before 2.11.0."
+						},
+						{
+							"type": "object",
+							"properties": {
+								"version": {
+									"type": "string",
+									"pattern": "^\\d+\\.\\d+\\.\\d+$"
+								},
+								"digest": {
+									"type": "string",
+									"pattern": "^sha256:[0-9a-f]{64}$"
+								}
+							},
+							"required": [
+								"version",
+								"digest"
+							],
+							"additionalProperties": false,
+							"description": "The SDK runtime that the bundle imports.",
+							"x-n8n-since": "2.13.0"
+						}
+					],
+					"x-n8n-since": "2.5.0"
+				},
+				"hooks": {
+					"type": "array",
+					"items": {
+						"enum": [
+							"sign",
+							"exchange",
+							"refresh",
+							"derive"
+						]
+					},
+					"x-n8n-since": "2.13.0"
 				}
 			},
 			"required": [

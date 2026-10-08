@@ -1,4 +1,4 @@
-package n8n:node-contract@2.12.0;
+package n8n:node-contract@2.13.0;
 
 /// What a trigger bundle exports. The host keeps the state of each trigger node, runs the
 /// polls on the Poll Times of the node, and checks the webhook signature that the manifest

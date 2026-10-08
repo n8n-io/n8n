@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { defineCredential, field } from '../entry/credentials';
+import { credentialManifestOf } from '../manifest';
 import { packAction, packCredential, packSdkRuntime, sdkVersion } from '../pack';
 import { defineNode, t } from '../index';
 import {
@@ -161,6 +162,65 @@ describe('npmPackageOf', () => {
 		};
 		expect(verifyStoreSignature({ signatures }, manifestText, publicKey)).toBe(true);
 	});
+
+	it('holds the bundle of a credential with code, which depends on the SDK runtime', async () => {
+		const entryFile = path.join(dirs.root, 'credentials.ts');
+		await writeFile(
+			entryFile,
+			`import { defineCredential, field } from '@n8n/node-sdk/credentials';
+
+export const signed = defineCredential({
+	id: 'demo.signed',
+	version: '1.0.0',
+	displayName: 'Demo Signed',
+	fields: { key: field.secret('Key') },
+	auth: (a) =>
+		a.custom({
+			reason: 'The API signs each request.',
+			sign: async (data, request) => ({ ...request, headers: { 'x-key': data.key } }),
+		}),
+});
+`,
+		);
+		const signed = defineCredential({
+			id: 'demo.signed',
+			version: '1.0.0',
+			displayName: 'Demo Signed',
+			fields: { key: field.secret('Key') },
+			auth: (a) =>
+				a.custom({
+					reason: 'The API signs each request.',
+					sign: async (data, request) => ({ ...request, headers: { 'x-key': data.key } }),
+				}),
+		});
+		await expect(packCredential(signed)).rejects.toThrow(
+			'The credential demo.signed has code, so pack needs its credentials.ts module',
+		);
+
+		const packed = await packCredential(signed, { entryFile, exportName: 'signed' });
+		if (!packed?.bundle) throw new Error('no bundle');
+		const files = npmPackageOf(packed, { privateKey });
+
+		expect(packed.manifest).toMatchObject({
+			nodeContract: '2.13.0',
+			bundleHash: sha256(packed.bundle),
+			sdk: { version: sdkVersion(), digest: `sha256:${sha256(packed.sdk ?? '')}` },
+			hooks: ['sign'],
+		});
+		expect(Object.keys(files).sort()).toEqual(['bundle.cjs', 'manifest.json', 'package.json']);
+		expect(files['bundle.cjs']).toBe(packed.bundle);
+		expect(JSON.parse(files['package.json'] ?? '')).toMatchObject({
+			name: '@n8n-nodes/demo.signed',
+			version: '1.0.0',
+			dependencies: { '@n8n-nodes/sdk-runtime': sdkVersion() },
+			n8n: {
+				id: 'demo.signed',
+				kind: 'credential',
+				nodeContract: '2.13.0',
+				bundle: `sha256:${packed.manifest.bundleHash}`,
+			},
+		});
+	});
 });
 
 describe('npmStoreReader', () => {
@@ -276,7 +336,9 @@ describe('publishCredential', () => {
 			publish(tokenWith({ hosts: ['b.example.com'], version: '1.0.1' })),
 		).rejects.toThrow('demo.token@1.0.1 is a patch bump from 1.0.0, but the change is major');
 		const v200 = await publish(tokenWith({ hosts: ['b.example.com'], version: '2.0.0' }));
-		expect(v200).toEqual(packCredential(tokenWith({ hosts: ['b.example.com'], version: '2.0.0' })));
+		expect(v200).toEqual(
+			credentialManifestOf(tokenWith({ hosts: ['b.example.com'], version: '2.0.0' })),
+		);
 		const versions = await npmVersionsOf(fake().url, '@n8n-nodes/demo.token');
 		expect(versions.map(({ version }) => version)).toEqual(['1.0.0', '2.0.0']);
 	}, 60_000);
@@ -479,7 +541,7 @@ import { token } from '../credentials';`,
 				privateKey,
 			});
 			// A revoked version in the range does not count.
-			const revoked = packCredential(tokenWith({ version: '1.0.1' }));
+			const revoked = credentialManifestOf(tokenWith({ version: '1.0.1' }));
 			if (!revoked) throw new Error('no manifest');
 			fake().put(npmPackageOf({ manifest: revoked }, { privateKey }));
 			fake().deprecate(npmNameOf('demo.token'), '1.0.1', 'revoked: leaks');

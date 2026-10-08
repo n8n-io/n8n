@@ -6,11 +6,11 @@ import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-w
 import {
 	credentialTypesOf,
 	packAction,
-	packCredential,
 	packPackage,
 	packSdkRuntime,
 	type PackedAction,
 } from '../pack';
+import { credentialManifestOf } from '../manifest';
 import { defineCredential, field } from '../entry/credentials';
 import { generateNodeModule } from '../entry/codegen';
 import {
@@ -413,7 +413,7 @@ describe('diffContracts', () => {
 describe('diffCredentials', () => {
 	type Spec = Parameters<typeof defineCredential>[0];
 	const manifestOf = ({ fields, ...spec }: Partial<Spec>) => {
-		const manifest = packCredential(
+		const manifest = credentialManifestOf(
 			defineCredential({
 				id: 'demo.token',
 				version: '1.0.0',
@@ -899,7 +899,9 @@ export const read = demo.action('read', {
 		);
 		const packed = {
 			...read,
-			credentials: credentialTypesOf([read.action]).flatMap((type) => packCredential(type) ?? []),
+			credentials: credentialTypesOf([read.action]).flatMap(
+				(type) => credentialManifestOf(type) ?? [],
+			),
 		};
 		const fixture = (credential?: Record<string, unknown>) => ({
 			executions: [
@@ -1122,10 +1124,10 @@ describe('published versions', () => {
 				toVersionedNodeType([packedOf({ ...manifest, nodeContract }, bundle)], runtime);
 
 			expect(() => typeOf('3.0.0')).toThrow(
-				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.12.0.',
+				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.13.0.',
 			);
-			expect(() => typeOf('2.13.0')).toThrow('needs Node Contract 2.13.0');
-			expect(() => typeOf('2.12.0')).not.toThrow();
+			expect(() => typeOf('2.14.0')).toThrow('needs Node Contract 2.14.0');
+			expect(() => typeOf('2.13.0')).not.toThrow();
 			expect(() => typeOf('2.10.0')).not.toThrow();
 			expect(() => typeOf('2.8.0')).not.toThrow();
 			expect(() => typeOf('2.7.0')).not.toThrow();
@@ -1138,7 +1140,7 @@ describe('published versions', () => {
 			expect(() => typeOf('2.0.3')).not.toThrow();
 
 			expect(() => typeOf('1.0.0', hostRuntime({ nodeContractRange: '>=1.0.0 <3.0.0' }))).toThrow(
-				'needs Node Contract 1.0.0. This host runs >=1.0.0 <3.0.0 and implements 2.12.0.',
+				'needs Node Contract 1.0.0. This host runs >=1.0.0 <3.0.0 and implements 2.13.0.',
 			);
 			// The range also applies at run time, to a version the registry loader picks.
 			const picking = hostRuntime({
@@ -1191,9 +1193,9 @@ describe('published versions', () => {
 			expect(() => evaluateBundle(bundle, '3.0.0', runtime)).toThrow(
 				'This host cannot run Node Contract 3.0.0',
 			);
-			expect(() => evaluateBundle(bundle, '2.13.0', runtime)).toThrow('cannot run');
+			expect(() => evaluateBundle(bundle, '2.14.0', runtime)).toThrow('cannot run');
 			expect(() => evaluateBundle(bundle, '1.0.0', runtime)).toThrow(
-				'This host cannot run Node Contract 1.0.0. It implements 2.12.0.',
+				'This host cannot run Node Contract 1.0.0. It implements 2.13.0.',
 			);
 			expect(() => evaluateBundle(bundle, NODE_CONTRACT_VERSION)).toThrow(
 				'A packed action cannot import @n8n/node-sdk',

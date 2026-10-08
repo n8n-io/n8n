@@ -3,7 +3,7 @@
 For how this part fits in n8n, see [architecture.md](architecture.md).
 
 The Node Contract is the spec between nodes and the n8n engine. It has one version,
-`n8n:node-contract@x.y.z` (now 2.12.0), and two parts:
+`n8n:node-contract@x.y.z` (now 2.13.0), and two parts:
 
 - The **manifest format** tells what a thing is, as data. The host reads a manifest before it
   loads code. Source: `src/manifest.ts`. Spec: `spec/manifest.schema.json` (JSON Schema
@@ -75,7 +75,8 @@ What each minor added (`@since` in the WIT, `x-n8n-since` in the schema):
 | 2.10.0 | the `guest` of a version (`http`: the bundle is the JSON config of the generic HTTP guest, which runs in this process) and `errorOf`: the n8n expression that the host checks each response with |
 | 2.11.0 | the SDK runtime: a bundle imports `@n8n/node-sdk` and `@n8n/node-sdk/credentials` from the host, and its manifest pins the runtime with `sdk: { version, digest }`. The runtime is a store version of kind `sdk` (id `sdkRuntime`). Credential and native manifests have no `sdk` |
 | 2.12.0 | credential pins by semver range: `credentials: { "notion.token": "^1.2.0" }`. A host reads an older pin `<id>@<major>` as `^<major>` |
-| unstable | `credential.exchange`, `credential.refresh` (`credential-exchange`); the lookup interface (`lookup`) |
+| 2.13.0 | credential bundles: the manifest of a credential type with code has `bundleHash`, `sdk: { version, digest }` and `hooks` (the exports of the bundle that the host calls). A credential type without code keeps a manifest without them |
+| unstable | `credential.exchange`, `credential.refresh` (`credential-exchange`); `credential.derive` (`credential-derive`); the lookup interface (`lookup`) |
 
 The host reads only manifests with `nodeContract`. It refuses a manifest without it, such as
 one packed before 2.5.0, and a bundle of Node Contract 1.x. Pack such a version again. The
@@ -360,7 +361,7 @@ if it starts with `http://` or `https://`. Agents list a resource with
 
 | Path | What |
 |---|---|
-| `spec/wit/*.wit` | Package `n8n:node-contract@2.12.0`: `host.wit` (capabilities and shared types), one file per kind |
+| `spec/wit/*.wit` | Package `n8n:node-contract@2.13.0`: `host.wit` (capabilities and shared types), one file per kind |
 | `spec/manifest.schema.json` | Generated from `src/manifest.ts` |
 | `spec/<kind>.openrpc.json` | Generated from `spec/wit` |
 | `spec/json-rpc.md` | The JSON-RPC mapping |

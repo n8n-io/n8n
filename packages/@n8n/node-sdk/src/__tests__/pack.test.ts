@@ -19,7 +19,7 @@ import {
 	type PackedAction,
 	type PackedSdkRuntime,
 } from '../pack';
-import type { CredentialManifest } from '../manifest';
+import { credentialManifestOf, type CredentialManifest } from '../manifest';
 import { npmDigestOf, npmPackageOf, type NpmVersion } from '../npm';
 import {
 	executorOf,
@@ -211,7 +211,7 @@ export const token = defineCredential({ id: 'probe.token', version: '1.2.0', dis
 		});
 	});
 
-	it('refuses to pack a credential type without a version', () => {
+	it('refuses to pack a credential type without a version', async () => {
 		const token = defineCredential({
 			id: 'probe.token',
 			version: '1.0.0',
@@ -219,8 +219,8 @@ export const token = defineCredential({ id: 'probe.token', version: '1.2.0', dis
 			fields: { token: field.secret('Token') },
 			auth: (a) => a.bearer('token'),
 		});
-		expect(packCredential(token)?.semver).toBe('1.0.0');
-		expect(() => packCredential({ ...token, semver: undefined })).toThrow(
+		expect((await packCredential(token))?.manifest.semver).toBe('1.0.0');
+		await expect(packCredential({ ...token, semver: undefined })).rejects.toThrow(
 			'The credential probe.token has no version',
 		);
 	});
@@ -644,7 +644,7 @@ export const pass = defineNode({
 		};
 		const published = await packAction(state.entry, 'pass', otherSdk);
 		const [credential] = credentialTypesOf([published.action]).flatMap(
-			(type) => packCredential(type) ?? [],
+			(type) => credentialManifestOf(type) ?? [],
 		);
 		// A credential manifest of Node Contract 2.10 names the SDK it was packed with.
 		const oldCredential = { ...credential, sdk: '@n8n/node-sdk@0.1.0' };

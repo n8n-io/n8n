@@ -3,7 +3,8 @@ import { appendFile, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/p
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { packAction, packCredential, packNative, type PackedAction } from '../pack';
+import { credentialManifestOf } from '../manifest';
+import { packAction, packNative, type PackedAction } from '../pack';
 import { credential, defineCredential, field } from '../entry/credentials';
 import { defineNode, t } from '../index';
 import {
@@ -110,7 +111,7 @@ afterAll(async () => {
 describe('the store layout', () => {
 	it('gives back the packed manifest and bundle bytes', async () => {
 		const packed = await pack();
-		const credential = packCredential(token);
+		const credential = credentialManifestOf(token);
 		if (!credential) throw new Error('demo.token has no manifest');
 		const dir = await newDir('round-trip');
 		const [record] = await addToStore(dir, [
@@ -204,8 +205,8 @@ describe('the store layout', () => {
 
 	it('keeps a stored credential version and refuses other bytes for it', async () => {
 		const dir = await newDir('immutable-credential');
-		const textOf = (type: Parameters<typeof packCredential>[0]) => {
-			const manifest = packCredential(type);
+		const textOf = (type: Parameters<typeof credentialManifestOf>[0]) => {
+			const manifest = credentialManifestOf(type);
 			if (!manifest) throw new Error('no manifest');
 			return manifestTextOf(manifest);
 		};
@@ -237,8 +238,8 @@ describe('unresolvedCredentialPinsOf', () => {
 				native: { type: 'n8n-nodes-base.webhook', version: 2.2, on: 'webhook' },
 			}),
 		);
-	const credentialOf = (type: Parameters<typeof packCredential>[0]) => {
-		const manifest = packCredential(type);
+	const credentialOf = (type: Parameters<typeof credentialManifestOf>[0]) => {
+		const manifest = credentialManifestOf(type);
 		if (!manifest) throw new Error('no manifest');
 		return manifest;
 	};

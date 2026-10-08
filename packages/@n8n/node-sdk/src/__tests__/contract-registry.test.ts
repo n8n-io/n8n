@@ -13,8 +13,8 @@ import {
 } from '../entry/registry';
 import { defineNode, t } from '../index';
 import { credential, defineCredential, field } from '../entry/credentials';
-import type { NativeManifest } from '../manifest';
-import { packAction, packCredential, packNative, packSdkRuntime, type PackedAction } from '../pack';
+import { credentialManifestOf, type NativeManifest } from '../manifest';
+import { packAction, packNative, packSdkRuntime, type PackedAction } from '../pack';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -978,7 +978,7 @@ describe('importContractStore and exportContractStore', () => {
 			};
 		};
 		const pingCredential = (version: `${number}.${number}.${number}`) => {
-			const manifest = packCredential({ ...pingToken, semver: version });
+			const manifest = credentialManifestOf({ ...pingToken, semver: version });
 			if (!manifest) throw new Error('ping.token has no manifest');
 			return storedOf(manifest);
 		};
@@ -1141,7 +1141,7 @@ describe('importContractStore and exportContractStore', () => {
 	/** A store folder with a credential manifest and a native version that pins it. */
 	const credentialAndNativeDir = async () => {
 		const dir = await sourceDir();
-		const pingCredential = packCredential(pingToken);
+		const pingCredential = credentialManifestOf(pingToken);
 		if (!pingCredential) throw new Error('ping.token has no manifest');
 		await addToStore(
 			dir,
@@ -1209,7 +1209,7 @@ describe('contractStore with triggers and credentials', () => {
 	const ping = async () => {
 		const entry = path.join(pingDir.path, 'ping.ts');
 		await writeFile(entry, pingSource);
-		const credential = packCredential(pingToken);
+		const credential = credentialManifestOf(pingToken);
 		if (!credential) throw new Error('ping.token has no manifest');
 		return { trigger: await packAction(entry, 'pinged'), credential };
 	};
@@ -1305,7 +1305,7 @@ describe('contractStore with triggers and credentials', () => {
 			};
 		};
 		const tokenOf = (version: `${number}.${number}.${number}`) => {
-			const manifest = packCredential({ ...pingToken, semver: version });
+			const manifest = credentialManifestOf({ ...pingToken, semver: version });
 			if (!manifest) throw new Error('ping.token has no manifest');
 			return manifest;
 		};

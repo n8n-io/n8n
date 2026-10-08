@@ -211,6 +211,9 @@ const SDK_NODE_CONTRACT: NodeContractVersion = '2.11.0';
 /** The Node Contract version that pins credential types by semver range. */
 const CREDENTIAL_RANGES_NODE_CONTRACT: NodeContractVersion = '2.12.0';
 
+/** The Node Contract version that added credential bundles. */
+const CREDENTIAL_BUNDLE_NODE_CONTRACT: NodeContractVersion = '2.13.0';
+
 /** The build settings of a bundle and of the SDK runtime. The same source gives the same bytes. */
 const BUILD_OPTIONS = {
 	bundle: true,
@@ -338,6 +341,37 @@ export async function packSdkRuntime(version = sdkVersion()): Promise<PackedSdkR
 const semverOf = (source: Action | Trigger) => source.semver ?? `${source.version}.0.0`;
 
 /**
+ * Bundles one export as the default export, with its helpers and dependencies. The same source
+ * gives the same bytes. The bundle imports `n8n-workflow` and the SDK from the host.
+ */
+async function bundleOfExport(
+	entryFile: string,
+	exportName: string,
+	plugins: readonly Plugin[] = [],
+) {
+	const { build } = await import('esbuild');
+	const result = await build({
+		...BUILD_OPTIONS,
+		stdin: {
+			contents: `export { ${exportName} as default } from ${JSON.stringify(entryFile)};`,
+			resolveDir: path.dirname(entryFile),
+			loader: 'ts',
+		},
+		external: ['n8n-workflow', 'node:*', ...SDK_MODULES],
+		plugins: [sdkSourcePlugin, ...plugins],
+	});
+	const bundle = result.outputFiles[0]?.text ?? '';
+	const imported = externalsOf(result);
+	const gaps = await sandboxGapsOf(bundle, imported, Object.keys(result.metafile.inputs));
+	if (gaps.length > 0) {
+		throw new UserError(
+			`${exportName} in ${entryFile} uses what a bundle may not use: ${gaps.join(', ')}. Use web APIs, http.request for requests, no timers, and no Unicode property escapes.`,
+		);
+	}
+	return { bundle, imported };
+}
+
+/**
  * Bundles one exported action or trigger with its helpers and dependencies. The same source gives the
  * same bytes, so a release build reproduces the HEAD bundle the registry holds. The bundle imports
  * the SDK from the host, and its manifest pins `sdk`. Default: the SDK runtime of this source.
@@ -349,27 +383,10 @@ export async function packAction(
 	exportName: string,
 	sdk?: PackedSdkRuntime,
 ): Promise<PackedAction> {
-	const { build } = await import('esbuild');
 	const types = new Map<string, AnyCredentialType>();
-	const result = await build({
-		...BUILD_OPTIONS,
-		stdin: {
-			contents: `export { ${exportName} as default } from ${JSON.stringify(entryFile)};`,
-			resolveDir: path.dirname(entryFile),
-			loader: 'ts',
-		},
-		// The host provides `n8n-workflow` and the SDK runtime.
-		external: ['n8n-workflow', 'node:*', ...SDK_MODULES],
-		plugins: [sdkSourcePlugin, credentialModulesPlugin(types)],
-	});
-	const bundle = result.outputFiles[0]?.text ?? '';
-	const imported = externalsOf(result);
-	const gaps = await sandboxGapsOf(bundle, imported, Object.keys(result.metafile.inputs));
-	if (gaps.length > 0) {
-		throw new UserError(
-			`${exportName} in ${entryFile} uses what a bundle may not use: ${gaps.join(', ')}. Use web APIs, http.request for requests, no timers, and no Unicode property escapes.`,
-		);
-	}
+	const { bundle, imported } = await bundleOfExport(entryFile, exportName, [
+		credentialModulesPlugin(types),
+	]);
 	const usesSdk = imported.some((module) => SDK_MODULES.includes(module));
 	const runtimeSdk = usesSdk ? (sdk ?? (await packSdkRuntime())) : undefined;
 	const action = evaluateBundle(bundle, NODE_CONTRACT_VERSION, runtimeSdk?.bundle, (id) =>
@@ -614,9 +631,74 @@ function assertCredentialHost(baseUrl: string | undefined, type: AnyCredentialTy
 	}
 }
 
-/** The credential manifest of a type, with the version of its source, or none for a compat type. */
-export const packCredential = (type: AnyCredentialType): CredentialManifest | undefined =>
-	credentialManifestOf(type);
+/** A packed credential type: its manifest, and for a type with code its bundle and SDK runtime. */
+export interface PackedCredential {
+	/** The credential manifest. */
+	readonly manifest: CredentialManifest;
+	/** The bundle code. A type without code has none. */
+	readonly bundle?: string;
+	/** The SDK runtime bundle that `manifest.sdk` pins. */
+	readonly sdk?: string;
+}
+
+/** The source file and the export name of a credential type. */
+export interface CredentialEntry {
+	/** The `credentials.ts` module, e.g. `src/nodes/notion/credentials.ts`. */
+	readonly entryFile: string;
+	/** The export name of the type in `entryFile`, e.g. `notionToken`. */
+	readonly exportName: string;
+}
+
+const CUSTOM_HOOKS = ['sign', 'exchange', 'refresh'] as const;
+
+/** The functions of a `custom` scheme, which the credential bundle exports. */
+const hooksOf = ({ scheme }: AnyCredentialType) =>
+	scheme.kind === 'custom' && isRecord(scheme)
+		? CUSTOM_HOOKS.filter((hook) => typeof scheme[hook] === 'function')
+		: [];
+
+/**
+ * The credential manifest of a type, with the version of its source, or none for a compat type.
+ * A type with code also gets a bundle of its export in `entry`, as `packAction` bundles an
+ * action: the manifest pins the SDK runtime and lists the `hooks` of the bundle.
+ */
+export async function packCredential(
+	type: AnyCredentialType,
+	entry?: CredentialEntry,
+	sdk?: PackedSdkRuntime,
+): Promise<PackedCredential | undefined> {
+	const manifest = credentialManifestOf(type);
+	if (!manifest) return undefined;
+	const hooks = hooksOf(type);
+	if (hooks.length === 0) return { manifest };
+	if (!entry) {
+		throw new UserError(
+			`The credential ${type.id} has code, so pack needs its credentials.ts module`,
+		);
+	}
+	const { bundle, imported } = await bundleOfExport(entry.entryFile, entry.exportName);
+	const runtimeSdk = imported.some((module) => SDK_MODULES.includes(module))
+		? (sdk ?? (await packSdkRuntime()))
+		: undefined;
+	return {
+		manifest: {
+			...manifest,
+			nodeContract: CREDENTIAL_BUNDLE_NODE_CONTRACT,
+			bundleHash: sha256(bundle),
+			...(runtimeSdk
+				? {
+						sdk: {
+							version: runtimeSdk.manifest.semver,
+							digest: `sha256:${runtimeSdk.manifest.bundleHash}`,
+						},
+					}
+				: {}),
+			hooks,
+		},
+		bundle,
+		...(runtimeSdk ? { sdk: runtimeSdk.bundle } : {}),
+	};
+}
 
 /**
  * The manifest of a native action or trigger: its contract and the legacy node that runs it. It
@@ -686,6 +768,8 @@ export interface PackageContracts {
 	readonly entries: readonly ActionEntry[];
 	/** The contracts that a legacy node runs. They have a manifest and no bundle. */
 	readonly natives: ReadonlyArray<Action | Trigger>;
+	/** The entry of each credential type that a `credentials.ts` module exports, by id. */
+	readonly credentials: ReadonlyMap<string, CredentialEntry>;
 }
 
 // A built contract has these fields; other exports of an action file are helpers.
@@ -697,7 +781,8 @@ const isContractExport = (value: unknown): value is Action | Trigger =>
 	isRecord(value.node);
 
 /**
- * The contracts of a package: the exports of its `src/nodes/<node>/actions/*.ts` files. An
+ * The contracts of a package: the exports of its `src/nodes/<node>/actions/*.ts` files, and the
+ * credential types of its `credentials.ts` modules. An
  * action file without a contract export is an error, because pack would drop it without a
  * sign. Two exports of one id and major are an error, because pack would write two versions
  * for one.
@@ -706,7 +791,8 @@ export async function contractsOfPackage(
 	pkg: Pick<SourcePackage, 'name' | 'dir'>,
 ): Promise<PackageContracts> {
 	const nodesDir = path.join(pkg.dir, 'src', 'nodes');
-	const files = readdirSync(nodesDir, { recursive: true, encoding: 'utf8' }).filter(
+	const all = readdirSync(nodesDir, { recursive: true, encoding: 'utf8' });
+	const files = all.filter(
 		(file) => path.basename(path.dirname(file)) === 'actions' && file.endsWith('.ts'),
 	);
 	// tsx loads TypeScript in any caller: a tsx script, vitest or plain Node.
@@ -741,6 +827,18 @@ export async function contractsOfPackage(
 			action.native ? [] : [{ entryFile, exportName, action }],
 		),
 		natives: found.flatMap(({ action }) => (action.native ? [action] : [])),
+		credentials: new Map(
+			all
+				.filter((file) => path.basename(file) === 'credentials.ts')
+				.flatMap((file) => {
+					const entryFile = path.join(nodesDir, file);
+					const module: unknown = tsxRequire(entryFile, __filename);
+					return (isRecord(module) ? Object.entries(module) : []).flatMap(
+						([exportName, type]): Array<[string, CredentialEntry]> =>
+							isManifestCredentialType(type) ? [[type.id, { entryFile, exportName }]] : [],
+					);
+				}),
+		),
 	};
 }
 
@@ -758,10 +856,10 @@ export interface PackedPackage {
  * What a published version must keep, next to the contract hash, to stand for a HEAD: the
  * bundle, or all of a credential but its old `sdk` text.
  */
-// A version without a bundle (credential, native) is all manifest, so every field except the SDK
-// pin must match.
+// A credential or a native version is mostly manifest, so every field except the SDK pin must
+// match.
 const shipKeyOf = (manifest: StoreManifest) =>
-	'bundleHash' in manifest
+	'bundleHash' in manifest && manifest.kind !== 'credential'
 		? manifest.bundleHash
 		: canonicalJson(Object.fromEntries(Object.entries(manifest).filter(([key]) => key !== 'sdk')));
 
@@ -858,13 +956,17 @@ export async function packPackage(
 	outDir = embeddedStoreDirOf(pkg),
 	log: (line: string) => void = () => {},
 ): Promise<PackedPackage> {
-	const { entries, natives: sources } = await contractsOfPackage(pkg);
+	const { entries, natives: sources, credentials } = await contractsOfPackage(pkg);
 	const types = credentialTypesOf([...entries.map(({ action }) => action), ...sources]);
 	const sdk = await packSdkRuntime();
 	const packed = await Promise.all(
 		entries.map(async ({ entryFile, exportName }) => await packAction(entryFile, exportName, sdk)),
 	);
-	const credentialManifests = types.flatMap((type) => packCredential(type) ?? []);
+	const packedCredentials = (
+		await Promise.all(
+			types.map(async (type) => await packCredential(type, credentials.get(type.id), sdk)),
+		)
+	).flatMap((credential) => credential ?? []);
 	const natives = sources.map(packNative);
 	const url = process.env.N8N_NODE_CONTRACTS_NPM_REGISTRY;
 	const scope = process.env.N8N_NODE_CONTRACTS_NPM_SCOPE ?? DEFAULT_NPM_SCOPE;
@@ -884,15 +986,13 @@ export async function packPackage(
 	const [shipped, shippedCredentials, shippedNatives] = await Promise.all([
 		Promise.all(packed.map(async (version) => await ship(version, parseManifest))),
 		Promise.all(
-			credentialManifests.map(
-				async (manifest) => await ship({ manifest }, parseCredentialManifest),
-			),
+			packedCredentials.map(async (credential) => await ship(credential, parseCredentialManifest)),
 		),
 		Promise.all(natives.map(async (manifest) => await ship({ manifest }, parseNativeManifest))),
 	]);
 	const localSdk = `sha256:${sdk.manifest.bundleHash}`;
 	const pinnedSdks = new Map(
-		shipped.flatMap(
+		[...shipped, ...shippedCredentials].flatMap(
 			({ manifest }): Array<[string, string]> =>
 				typeof manifest.sdk === 'object' && manifest.sdk.digest !== localSdk
 					? [[manifest.sdk.digest, `${manifest.id}@${manifest.semver}`]]

@@ -279,7 +279,10 @@ const sorted = (values: readonly string[] = []) => [...values].sort();
 function recordOf(manifest: StoreManifest, digest: string): StoreRecord {
 	const { id, semver: version, kind, nodeContract } = manifest;
 	const head = { id, version, kind, nodeContract, manifest: digest };
-	if (manifest.kind === 'credential') return { ...head, name: manifest.name };
+	if (manifest.kind === 'credential') {
+		const { bundleHash, name } = manifest;
+		return { ...head, ...(bundleHash ? { bundle: `sha256:${bundleHash}` } : {}), name };
+	}
 	if (manifest.kind === 'sdk') return { ...head, bundle: `sha256:${manifest.bundleHash}` };
 	const { contract, contractHash, credentials } = manifest;
 	const pins = credentials ? { credentials } : {};

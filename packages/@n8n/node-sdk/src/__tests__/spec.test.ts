@@ -46,6 +46,7 @@ import {
 	nativeManifestSchema,
 	sdkManifestSchema,
 	versionManifestSchema,
+	type CredentialHook,
 	type CredentialManifest,
 	type NativeManifest,
 	type SdkManifest,
@@ -549,6 +550,19 @@ describe('the credential interface', () => {
 		).toEqual(['exchange', 'refresh']);
 		expect(wit.world('credential-bundle').imports).toEqual(['http']);
 	});
+
+	it('exports derive as unstable, and each export is a manifest hook', () => {
+		expect(wit.world('credential-bundle').exports).toEqual(['credential']);
+		expect(
+			wit
+				.iface('credential')
+				.funcs.filter(({ unstable }) => unstable === 'credential-derive')
+				.map(({ name }) => name),
+		).toEqual(['derive']);
+		expect(sorted(wit.iface('credential').funcs.map(({ name }) => name))).toEqual(
+			sorted(membersOf<CredentialHook>()(['sign', 'exchange', 'refresh', 'derive'])),
+		);
+	});
 });
 
 describe('the lookup interface', () => {
@@ -602,6 +616,9 @@ describe('spec/manifest.schema.json', () => {
 					'notice',
 					'legacyParent',
 					'renamed',
+					'bundleHash',
+					'sdk',
+					'hooks',
 				]),
 			),
 		);

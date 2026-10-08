@@ -11,18 +11,24 @@ interface bundle {
 
 /// The action world of the Node Contract, for a JS bundle.
 world action-js {
-    include n8n:node-contract/action-bundle@2.12.0;
+    include n8n:node-contract/action-bundle@2.13.0;
     import bundle;
 }
 
 /// The provider world of the Node Contract, for a JS bundle.
 world provider-js {
-    include n8n:node-contract/provider-bundle@2.12.0;
+    include n8n:node-contract/provider-bundle@2.13.0;
     import bundle;
 }
 
 /// The trigger world of the Node Contract, for a JS bundle.
 world trigger-js {
-    include n8n:node-contract/trigger-bundle@2.12.0;
+    include n8n:node-contract/trigger-bundle@2.13.0;
+    import bundle;
+}
+
+/// The credential world of the Node Contract, for a JS bundle.
+world credential-js {
+    include n8n:node-contract/credential-bundle@2.13.0;
     import bundle;
 }

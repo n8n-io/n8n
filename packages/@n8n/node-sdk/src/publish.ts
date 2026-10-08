@@ -28,6 +28,7 @@ import {
 	packCredential,
 	packNative,
 	packSdkRuntime,
+	type CredentialEntry,
 	type PackedAction,
 } from './pack';
 import {
@@ -50,6 +51,7 @@ import { parameterPathOf, toProperty } from './properties';
 import { providedKindOf, providerInputsOf, replayCapability, type ProviderKind } from './providers';
 import { canonicalJson, shapeOf } from './schema';
 import {
+	credentialManifestOf,
 	parseCredentialManifest,
 	parseSdkManifest,
 	type CredentialManifest,
@@ -465,7 +467,9 @@ export async function checkPublish(
 	}
 	const untitled = missingTitlesOf(manifest.contract);
 	if (untitled.length > 0) throw new UserError(`${at} needs field titles: ${untitled.join('; ')}`);
-	const credentials = credentialTypesOf([action]).flatMap((type) => packCredential(type) ?? []);
+	const credentials = credentialTypesOf([action]).flatMap(
+		(type) => credentialManifestOf(type) ?? [],
+	);
 	const issues = await replayFixtures({ ...packed, credentials }, fixtures);
 	if (issues.length > 0) throw new UserError(`${at} fails its fixtures: ${issues.join('; ')}`);
 	return checked?.diff;
@@ -616,8 +620,8 @@ export async function publishAction(options: PublishOptions): Promise<VersionMan
 }
 
 /**
- * Publishes the credential manifest of a type, as `publishAction` publishes an action: the gate
- * of `checkCredentialPublish`, and a signature.
+ * Publishes the credential manifest of a type, with the bundle of a type with code, as
+ * `publishAction` publishes an action: the gate of `checkCredentialPublish`, and a signature.
  *
  * @throws a `UserError` for a compat type: its legacy class defines it, so it has no manifest.
  */
@@ -625,12 +629,14 @@ export async function publishCredential(
 	options: PublishTarget & {
 		/** The credential type to publish. */
 		readonly type: AnyCredentialType;
+		/** The module of the type. A type with code needs it for its bundle. */
+		readonly entry?: CredentialEntry;
 	},
 ): Promise<CredentialManifest> {
-	const manifest = packCredential(options.type);
-	if (!manifest) throw new UserError(`${options.type.name} is a compat type and has no manifest`);
-	return await publishVersion(options, { manifest }, parseCredentialManifest, (previous) =>
-		checkCredentialPublish(previous, manifest),
+	const packed = await packCredential(options.type, options.entry);
+	if (!packed) throw new UserError(`${options.type.name} is a compat type and has no manifest`);
+	return await publishVersion(options, packed, parseCredentialManifest, (previous) =>
+		checkCredentialPublish(previous, packed.manifest),
 	);
 }
 
@@ -710,12 +716,12 @@ export async function publishPackage(
 	};
 	const logVersion = ({ id, semver }: { readonly id: string; readonly semver: string }) =>
 		log(`${id}@${semver}`);
-	const { entries, natives } = await contractsOfPackage(pkg);
+	const { entries, natives, credentials } = await contractsOfPackage(pkg);
 	// The bundles depend on the SDK runtime, so it comes first. It has no gate: only its bytes count.
 	logVersion(await publishVersion(target, await packSdkRuntime(), parseSdkManifest, () => {}));
 	// One at a time, so the log stays readable.
 	for (const type of credentialTypesOf([...entries.map(({ action }) => action), ...natives]))
-		logVersion(await publishCredential({ ...target, type }));
+		logVersion(await publishCredential({ ...target, type, entry: credentials.get(type.id) }));
 	for (const { entryFile, exportName, action } of entries) {
 		const fixtures = await fixturesOf(pkg, action);
 		logVersion(await publishAction({ ...target, entryFile, exportName, fixtures }));

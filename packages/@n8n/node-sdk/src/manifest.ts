@@ -31,6 +31,7 @@ const SINCE_2_7 = { 'x-n8n-since': '2.7.0' } as const satisfies JsonSchema;
 const SINCE_2_10 = { 'x-n8n-since': '2.10.0' } as const satisfies JsonSchema;
 const SINCE_2_11 = { 'x-n8n-since': '2.11.0' } as const satisfies JsonSchema;
 const SINCE_2_12 = { 'x-n8n-since': '2.12.0' } as const satisfies JsonSchema;
+const SINCE_2_13 = { 'x-n8n-since': '2.13.0' } as const satisfies JsonSchema;
 
 /**
  * A reader ignores a top-level field it does not know, so a newer SDK can add an annotation.
@@ -361,6 +362,9 @@ const notice = fits<Notice>()(
 	}),
 );
 
+/** An export of a credential bundle that the host calls, see `spec/wit/credential.wit`. */
+export type CredentialHook = 'sign' | 'exchange' | 'refresh' | 'derive';
+
 /** The data of one version of a credential type. Only a `custom` scheme has code. */
 export interface CredentialManifest {
 	/** Marks a credential manifest. */
@@ -393,6 +397,12 @@ export interface CredentialManifest {
 	readonly legacyParent?: string;
 	/** Stored fields with an old name, by old name. */
 	readonly renamed?: Readonly<Record<string, string>>;
+	/** The hex SHA-256 of the bundle bytes. Only a type with code has a bundle. */
+	readonly bundleHash?: string;
+	/** The SDK runtime that the bundle imports. A manifest before 2.11.0 has the SDK version. */
+	readonly sdk?: string | SdkPin;
+	/** The exports of the bundle. The host calls no other export. */
+	readonly hooks?: readonly CredentialHook[];
 }
 
 export const credentialManifestSchema = typed<CredentialManifest>()(
@@ -413,6 +423,23 @@ export const credentialManifestSchema = typed<CredentialManifest>()(
 			notice: notice.optional(),
 			legacyParent: t.str().optional(),
 			renamed: values().optional(),
+			bundleHash: hex().with(SINCE_2_13).optional(),
+			sdk: t
+				.union(
+					t.str().describe('The SDK version that packed a manifest before 2.11.0.'),
+					typed<SdkPin>()(
+						t
+							.obj({ version: semver(), digest: digest() })
+							.describe('The SDK runtime that the bundle imports.')
+							.with(SINCE_2_13),
+					),
+				)
+				.with(SINCE_2_5)
+				.optional(),
+			hooks: t
+				.arr(t.oneOf('sign', 'exchange', 'refresh', 'derive'))
+				.with(SINCE_2_13)
+				.optional(),
 		})
 		.with({ title: 'Credential manifest', ...SINCE_2_5, ...OPEN }),
 );

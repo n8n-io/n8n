@@ -277,7 +277,7 @@ and `contractNodeLoadersOf` gives it to the loader of each first-party package.
 
 | Level | Example | Who sets it | What it decides |
 |---|---|---|---|
-| Node Contract | `2.12.0` | The spec. Pack writes the lowest that a bundle needs | Whether this n8n can run the bundle |
+| Node Contract | `2.13.0` | The spec. Pack writes the lowest that a bundle needs | Whether this n8n can run the bundle |
 | Action major | `notion.databasePage.getAll@1` | The author; a new permission forces a new major | The n8n `typeVersion`. A saved node keeps its major |
 | Action minor and patch | `1.2.3` | The author, in the source | Which bundle a node runs inside its major |
 | Range | `~1.2.0` in `INode.contract` | The user, in the editor or in AI builder code | The versions that a save may lock |
