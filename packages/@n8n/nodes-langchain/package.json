@@ -57,6 +57,7 @@
       "dist/credentials/DaytonaApi.credentials.js",
       "dist/credentials/DeepSeekApi.credentials.js",
       "dist/credentials/GooglePalmApi.credentials.js",
+      "dist/credentials/GoogleVertexAiApi.credentials.js",
       "dist/credentials/GroqApi.credentials.js",
       "dist/credentials/HuggingFaceApi.credentials.js",
       "dist/credentials/MicrosoftAgent365Api.credentials.js",

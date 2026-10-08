@@ -1,4 +1,5 @@
 import { ProjectsClient } from '@google-cloud/resource-manager';
+import { getGoogleServiceAccountCredentials } from 'n8n-nodes-base/google-service-account';
 import type { GoogleAISafetySetting } from '@langchain/google-common';
 import { ChatVertexAI, type ChatVertexAIInput } from '@langchain/google-vertexai';
 import {
@@ -6,7 +7,6 @@ import {
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -24,11 +24,13 @@ import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { extractGoogleErrorMessage, makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
+import { getVertexEndpoint, vertexLocationField } from '../gemini-common/vertex-location';
+
 import {
-	getVertexEndpoint,
-	resolveVertexLocation,
-	vertexLocationField,
-} from '../gemini-common/vertex-location';
+	googleVertexAuthentication,
+	googleVertexCredentials,
+	resolveGoogleVertexCredentials,
+} from '@utils/google-vertex';
 
 function errorDescriptionMapper(error: NodeError) {
 	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
@@ -69,17 +71,14 @@ export class LmChatGoogleVertex implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
-		credentials: [
-			{
-				name: 'googleApi',
-				required: true,
-			},
-		],
+		credentials: googleVertexCredentials,
 		properties: [
+			googleVertexAuthentication,
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Project ID',
 				name: 'projectId',
+				displayOptions: { show: { authentication: ['googleApi'] } },
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
@@ -124,14 +123,8 @@ export class LmChatGoogleVertex implements INodeType {
 				const results: Array<{ name: string; value: string }> = [];
 
 				const credentials = await this.getCredentials('googleApi');
-				const privateKey = formatPemBlock(credentials.privateKey as string);
-				const email = (credentials.email as string).trim();
-
 				const client = new ProjectsClient({
-					credentials: {
-						client_email: email,
-						private_key: privateKey,
-					},
+					credentials: getGoogleServiceAccountCredentials(credentials),
 				});
 
 				const [projects] = await client.searchProjects();
@@ -151,21 +144,13 @@ export class LmChatGoogleVertex implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('googleApi');
-		const privateKey = formatPemBlock(credentials.privateKey as string);
-		const email = (credentials.email as string).trim();
-
-		// A node-level location overrides the credential region; multi-region
-		// locations (eu/us) need a dedicated host the SDK doesn't build itself.
-		const locationOverride = this.getNodeParameter('location', itemIndex, '') as string;
-		const location = resolveVertexLocation(locationOverride, credentials.region as string);
+		const { projectId, credentials, location } = await resolveGoogleVertexCredentials(
+			this,
+			itemIndex,
+		);
 		const endpoint = getVertexEndpoint(location);
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
-
-		const projectId = this.getNodeParameter('projectId', itemIndex, '', {
-			extractValue: true,
-		}) as string;
 
 		const options = this.getNodeParameter('options', itemIndex, {
 			maxOutputTokens: 2048,
@@ -197,10 +182,7 @@ export class LmChatGoogleVertex implements INodeType {
 			const modelConfig: ChatVertexAIInput = {
 				authOptions: {
 					projectId,
-					credentials: {
-						client_email: email,
-						private_key: privateKey,
-					},
+					credentials,
 				},
 				location,
 				...(endpoint ? { endpoint } : {}),

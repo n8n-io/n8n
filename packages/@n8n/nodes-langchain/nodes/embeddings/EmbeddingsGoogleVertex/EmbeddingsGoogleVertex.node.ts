@@ -1,7 +1,7 @@
 import { ProjectsClient } from '@google-cloud/resource-manager';
+import { getGoogleServiceAccountCredentials } from 'n8n-nodes-base/google-service-account';
 import { VertexAIEmbeddings } from '@langchain/google-vertexai';
 import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
-import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ILoadOptionsFunctions,
@@ -11,11 +11,13 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
+import { getVertexEndpoint, vertexLocationField } from '../../llms/gemini-common/vertex-location';
+
 import {
-	getVertexEndpoint,
-	resolveVertexLocation,
-	vertexLocationField,
-} from '../../llms/gemini-common/vertex-location';
+	googleVertexAuthentication,
+	googleVertexCredentials,
+	resolveGoogleVertexCredentials,
+} from '@utils/google-vertex';
 
 export class EmbeddingsGoogleVertex implements INodeType {
 	methods = {
@@ -24,14 +26,8 @@ export class EmbeddingsGoogleVertex implements INodeType {
 				const results: Array<{ name: string; value: string }> = [];
 
 				const credentials = await this.getCredentials('googleApi');
-				const privateKey = formatPemBlock(credentials.privateKey as string);
-				const email = (credentials.email as string).trim();
-
 				const client = new ProjectsClient({
-					credentials: {
-						client_email: email,
-						private_key: privateKey,
-					},
+					credentials: getGoogleServiceAccountCredentials(credentials),
 				});
 
 				const [projects] = await client.searchProjects();
@@ -64,12 +60,7 @@ export class EmbeddingsGoogleVertex implements INodeType {
 			ignoreHttpStatusErrors: true,
 			baseURL: '={{ $credentials.host }}',
 		},
-		credentials: [
-			{
-				name: 'googleApi',
-				required: true,
-			},
-		],
+		credentials: googleVertexCredentials,
 		codex: {
 			categories: ['AI'],
 			subcategories: {
@@ -90,6 +81,7 @@ export class EmbeddingsGoogleVertex implements INodeType {
 		outputNames: ['Embeddings'],
 
 		properties: [
+			googleVertexAuthentication,
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName:
@@ -101,6 +93,7 @@ export class EmbeddingsGoogleVertex implements INodeType {
 			{
 				displayName: 'Project ID',
 				name: 'projectId',
+				displayOptions: { show: { authentication: ['googleApi'] } },
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
@@ -134,29 +127,18 @@ export class EmbeddingsGoogleVertex implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('googleApi');
-		const privateKey = formatPemBlock(credentials.privateKey as string);
-		const email = (credentials.email as string).trim();
-
-		// A node-level location overrides the credential region; multi-region
-		// locations (eu/us) need a dedicated host the SDK doesn't build itself.
-		const locationOverride = this.getNodeParameter('location', itemIndex, '') as string;
-		const location = resolveVertexLocation(locationOverride, credentials.region as string);
+		const { projectId, credentials, location } = await resolveGoogleVertexCredentials(
+			this,
+			itemIndex,
+		);
 		const endpoint = getVertexEndpoint(location);
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
 
-		const projectId = this.getNodeParameter('projectId', itemIndex, '', {
-			extractValue: true,
-		}) as string;
-
 		const embeddings = new VertexAIEmbeddings({
 			authOptions: {
 				projectId,
-				credentials: {
-					client_email: email,
-					private_key: privateKey,
-				},
+				credentials,
 			},
 			location,
 			...(endpoint ? { endpoint } : {}),

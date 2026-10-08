@@ -38,6 +38,7 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 			privateKey: 'test-private-key',
 			email: 'test@n8n.io',
 			region: 'us-central1',
+			projectId: 'target-project',
 		});
 		mockContext.getNode = vi.fn().mockReturnValue(mockNode);
 		//@ts-expect-error - Mocking
@@ -78,6 +79,9 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 			});
 
 			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+			expect(mockContext.getNodeParameter).toHaveBeenCalledWith('projectId', 0, '', {
+				extractValue: true,
+			});
 			expect(MockedChatVertexAI).toHaveBeenCalledTimes(1);
 			const callArgs = MockedChatVertexAI.mock.calls[0][0];
 			expect(callArgs).not.toHaveProperty('thinkingBudget');
@@ -98,24 +102,32 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 			});
 		});
 
-		it('uses the node-level location override, with no endpoint override for global', async () => {
-			const mockContext = setupMockContext();
+		it.each([undefined, 'googleVertexAiApi'])(
+			'uses the global node override with authentication %s',
+			async (authentication) => {
+				const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'modelName') return 'gemini-3.1-flash-lite';
-				if (paramName === 'projectId') return 'test-project';
-				if (paramName === 'location') return 'global';
-				if (paramName === 'options') return {};
-				if (paramName === 'options.safetySettings.values') return null;
-				return undefined;
-			});
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'authentication') return authentication;
+					if (paramName === 'modelName') return 'gemini-3.1-flash-lite';
+					if (paramName === 'projectId') return 'test-project';
+					if (paramName === 'location') return 'global';
+					if (paramName === 'options') return {};
+					if (paramName === 'options.safetySettings.values') return null;
+					return undefined;
+				});
 
-			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+				await lmChatGoogleVertex.supplyData.call(mockContext, 0);
 
-			const callArgs = MockedChatVertexAI.mock.calls[0][0];
-			expect(callArgs?.location).toBe('global');
-			expect(callArgs).not.toHaveProperty('endpoint');
-		});
+				const callArgs = MockedChatVertexAI.mock.calls[0][0];
+				expect(callArgs?.location).toBe('global');
+				expect(mockContext.getCredentials).toHaveBeenCalledWith(authentication ?? 'googleApi');
+				expect(callArgs).not.toHaveProperty('endpoint');
+				expect(callArgs?.authOptions?.projectId).toBe(
+					authentication === 'googleVertexAiApi' ? 'target-project' : 'test-project',
+				);
+			},
+		);
 
 		it('routes the EU multi-region location through the .rep. data-residency endpoint', async () => {
 			const mockContext = setupMockContext();
@@ -136,23 +148,45 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 			expect(callArgs?.endpoint).toBe('aiplatform.eu.rep.googleapis.com');
 		});
 
-		it('falls back to the credential region when no location override is set', async () => {
-			const mockContext = setupMockContext();
+		it.each([undefined, 'googleVertexAiApi'])(
+			'falls back to the credential region with authentication %s',
+			async (authentication) => {
+				const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'modelName') return 'gemini-2.5-flash';
-				if (paramName === 'projectId') return 'test-project';
-				if (paramName === 'location') return '';
-				if (paramName === 'options') return {};
-				if (paramName === 'options.safetySettings.values') return null;
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'authentication') return authentication;
+					if (paramName === 'modelName') return 'gemini-2.5-flash';
+					if (paramName === 'projectId') return 'test-project';
+					if (paramName === 'location') return '';
+					if (paramName === 'options') return {};
+					if (paramName === 'options.safetySettings.values') return null;
+					return undefined;
+				});
+
+				await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+
+				const callArgs = MockedChatVertexAI.mock.calls[0][0];
+				expect(callArgs?.location).toBe('us-central1');
+				expect(callArgs).not.toHaveProperty('endpoint');
+			},
+		);
+
+		it('requires the new credential project even when a node project is stored', async () => {
+			const context = setupMockContext();
+			context.getCredentials.mockResolvedValue({
+				email: 'test@n8n.io',
+				privateKey: 'test-private-key',
+				region: 'global',
+				projectId: '',
+			});
+			context.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'authentication') return 'googleVertexAiApi';
+				if (name === 'projectId') return 'stale-node-project';
 				return undefined;
 			});
 
-			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
-
-			const callArgs = MockedChatVertexAI.mock.calls[0][0];
-			expect(callArgs?.location).toBe('us-central1');
-			expect(callArgs).not.toHaveProperty('endpoint');
+			await expect(lmChatGoogleVertex.supplyData.call(context, 0)).rejects.toThrow('project ID');
+			expect(MockedChatVertexAI).not.toHaveBeenCalled();
 		});
 
 		it('should include thinkingBudget in model config when specified', async () => {
