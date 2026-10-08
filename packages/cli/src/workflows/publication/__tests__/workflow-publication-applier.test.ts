@@ -1000,6 +1000,7 @@ describe('WorkflowPublicationApplier', () => {
 				},
 			],
 		});
+		expect((result as { error: Error }).error).toBe(error);
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
