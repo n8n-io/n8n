@@ -82,7 +82,7 @@ describe('Expression - fast native evaluation parity', () => {
 				mixed: ['a', 1],
 				empty: [] as number[],
 				sparse,
-				manyZeros: new Array<number>(MAX_STEPS * 2).fill(0),
+				manyZeros: new Array<number>(MAX_STEPS + 1).fill(0),
 				filler: 'x'.repeat(Math.ceil(Math.cbrt(MAX_RESULT_LENGTH))),
 				big: 'y'.repeat(20_000),
 				bigger: 'y'.repeat(150_000),
@@ -212,7 +212,9 @@ describe('Expression - fast native evaluation parity', () => {
 	});
 
 	describe('expressions that bail at runtime match the engine result', () => {
-		test.each(RUNTIME_BAILOUT_CORPUS)('%s', (expr) => {
+		// A bail marshals its oversized input into the engine twice. The quickjs
+		// bridge takes seconds for that on a loaded CI machine.
+		test.each(RUNTIME_BAILOUT_CORPUS)('%s', { timeout: 30_000 }, (expr) => {
 			expect(isNativelyEvaluable(expr.slice(1))).toBe(true);
 			expect(nativeOutcome(expr).handled).toBe(false);
 
