@@ -1,9 +1,16 @@
-import { agentToolPolicyRefusalSchema, type AgentToolPolicyRefusal } from '@n8n/api-types';
+import type { PolicyViolation } from '@n8n/api-types';
+import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
+import { hasPolicyRefusalMarker } from 'n8n-workflow';
 
-/** The refusal a tool returns when a policy blocks the call, if `output` is one. */
-export function parseToolPolicyRefusal(output: unknown): AgentToolPolicyRefusal | undefined {
-	const parsed = agentToolPolicyRefusalSchema.safeParse(output);
-	return parsed.success ? parsed.data : undefined;
+export interface ToolPolicyRefusal {
+	violations: [PolicyViolation, ...PolicyViolation[]];
+}
+
+/** A tool output in the serialized policy-refusal shape, the one executions also store. */
+export function parseToolPolicyRefusal(output: unknown): ToolPolicyRefusal | undefined {
+	if (!hasPolicyRefusalMarker(output)) return undefined;
+	const [first, ...rest] = getPolicyViolations(output) ?? [];
+	return first ? { violations: [first, ...rest] } : undefined;
 }
 
 export function isPolicyRefusedToolOutput(output: unknown): boolean {

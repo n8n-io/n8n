@@ -1,7 +1,8 @@
-import type { AgentToolPolicyRefusal, PolicyViolation } from '@n8n/api-types';
+import type { PolicyViolation } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { ToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const TOOL_SUFFIX = 'Tool';
@@ -31,7 +32,7 @@ export function useToolPolicyRefusalText() {
 	}
 
 	/** The agent builder does not load node or credential types up front. */
-	async function loadSubjectTypes(refusal: AgentToolPolicyRefusal) {
+	async function loadSubjectTypes(refusal: ToolPolicyRefusal) {
 		const types = new Set(refusal.violations.map((v) => v.subjectType));
 		await Promise.all([
 			types.has('credentialType') ? credentialsStore.fetchCredentialTypes(false) : undefined,

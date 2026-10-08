@@ -1,5 +1,7 @@
-import type { AgentToolPolicyRefusal, PolicyViolation } from '@n8n/api-types';
+import type { PolicyViolation } from '@n8n/api-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { ToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
 
 import { useToolPolicyRefusalText } from '../useToolPolicyRefusalText';
 
@@ -36,8 +38,8 @@ function violation(overrides: Partial<PolicyViolation> = {}): PolicyViolation {
 	};
 }
 
-function refusal(violations: [PolicyViolation, ...PolicyViolation[]]): AgentToolPolicyRefusal {
-	return { status: 'policy_refused', error: 'Blocked', instruction: 'Stop', violations };
+function refusal(violations: [PolicyViolation, ...PolicyViolation[]]): ToolPolicyRefusal {
+	return { violations };
 }
 
 describe('useToolPolicyRefusalText', () => {

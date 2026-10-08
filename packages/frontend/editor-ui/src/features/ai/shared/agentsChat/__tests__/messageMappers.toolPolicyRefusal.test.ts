@@ -4,8 +4,8 @@ import { TOOL_CALL_STATE } from '../constants';
 import { convertDbMessages } from '../messageMappers';
 
 const refusalOutput = {
-	status: 'policy_refused' as const,
-	error: 'Blocked by policy',
+	isPolicyRefusal: true,
+	message: 'Blocked by policy',
 	violations: [{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Not allowed' }],
 	instruction: 'Ask the user to pick another tool.',
 };

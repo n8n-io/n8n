@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { AgentToolPolicyRefusal } from '@n8n/api-types';
 import { N8nLink } from '@n8n/design-system';
 import {
 	ContactInstanceAdminModal,
@@ -8,10 +7,12 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 
+import type { ToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
+
 import { useToolPolicyRefusalText } from '../composables/useToolPolicyRefusalText';
 
 const props = defineProps<{
-	refusal: AgentToolPolicyRefusal;
+	refusal: ToolPolicyRefusal;
 	/** Names the subject when a violation does not. */
 	fallbackName: string;
 }>();

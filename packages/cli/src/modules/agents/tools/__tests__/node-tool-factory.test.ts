@@ -1,7 +1,7 @@
 import type { AgentJsonToolConfig } from '@n8n/api-types';
-import { agentToolPolicyRefusalSchema } from '@n8n/api-types';
 import type { PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { hasPolicyRefusalMarker } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -226,7 +226,7 @@ describe('resolveNodeTool → tool name sanitization', () => {
 });
 
 describe('resolveNodeTool → policy refusal', () => {
-	it('returns a parseable policy-refusal result instead of throwing, carrying the violations', async () => {
+	it('returns a policy refusal in the serialized refusal shape instead of throwing', async () => {
 		const violations: NonEmptyViolations = [violation()];
 		const executeInline = vi.fn().mockResolvedValue({
 			status: 'error',
@@ -241,10 +241,13 @@ describe('resolveNodeTool → policy refusal', () => {
 		});
 
 		const output = await tool.handler!({}, {} as never);
-		const parsed = agentToolPolicyRefusalSchema.safeParse(output);
-
-		expect(parsed.success).toBe(true);
-		expect(output).toMatchObject({ status: 'policy_refused', violations });
+		expect(output).toEqual({
+			isPolicyRefusal: true,
+			message: 'Node type is not permitted for agent tool execution',
+			violations,
+			instruction: expect.any(String),
+		});
+		expect(hasPolicyRefusalMarker(output)).toBe(true);
 	});
 
 	it('throws for an ordinary executor error with no violations, as before', async () => {

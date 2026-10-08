@@ -2299,8 +2299,8 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				toolCallId: 'tc-refused',
 				toolName: 'http_request',
 				output: {
-					status: 'policy_refused',
-					error: 'Blocked by policy',
+					isPolicyRefusal: true,
+					message: 'Blocked by policy',
 					violations: [
 						{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Not allowed' },
 					],

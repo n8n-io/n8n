@@ -69,7 +69,12 @@ vi.mock('@n8n/design-system', () => ({
 	N8nTooltip: { template: '<div><slot /></div>', props: ['content', 'placement'] },
 }));
 
-vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
+vi.mock('@n8n/frontend-module-type-availability-policies', async () => ({
+	getPolicyViolations: (
+		await vi.importActual<typeof import('@n8n/frontend-module-type-availability-policies')>(
+			'@n8n/frontend-module-type-availability-policies',
+		)
+	).getPolicyViolations,
 	ContactInstanceAdminModal: {
 		props: ['open', 'nodeTypeName', 'kind'],
 		template:
@@ -814,8 +819,8 @@ describe('AgentChatToolSteps', () => {
 				toolCallId: 'tc-refused',
 				state: TOOL_CALL_STATE.ERROR,
 				output: {
-					status: 'policy_refused',
-					error: 'Blocked by policy',
+					isPolicyRefusal: true,
+					message: 'Blocked by policy',
 					violations: [
 						{
 							kind: 'node-type-unavailable',

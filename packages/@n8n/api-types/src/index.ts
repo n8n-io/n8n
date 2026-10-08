@@ -233,11 +233,6 @@ export {
 } from './schemas/source-controlled-file.schema';
 
 export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
-export {
-	AGENT_TOOL_POLICY_REFUSED_STATUS,
-	agentToolPolicyRefusalSchema,
-	type AgentToolPolicyRefusal,
-} from './schemas/agent-tool-policy-refusal.schema';
 export { publicApiUploadedFileSchema } from './schemas/public-api-uploaded-file.schema';
 
 export {

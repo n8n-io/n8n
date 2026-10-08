@@ -1,24 +1,25 @@
 import { isPolicyRefusedToolOutput, parseToolPolicyRefusal } from '../toolPolicyRefusal';
 
-const validRefusal = {
-	status: 'policy_refused' as const,
-	error: 'Blocked by policy',
-	violations: [{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Not allowed' }],
+const violation = { kind: 'node-type-unavailable', checkId: 'check-1', message: 'Not allowed' };
+const refusal = {
+	isPolicyRefusal: true,
+	message: 'Blocked by policy',
+	violations: [violation],
 	instruction: 'Ask the user to pick another tool.',
 };
 
 describe('parseToolPolicyRefusal', () => {
-	it('parses a valid refusal', () => {
-		expect(parseToolPolicyRefusal(validRefusal)).toEqual(validRefusal);
-		expect(isPolicyRefusedToolOutput(validRefusal)).toBe(true);
+	it('reads the violations of a serialized policy refusal', () => {
+		expect(parseToolPolicyRefusal(refusal)).toEqual({ violations: [violation] });
+		expect(isPolicyRefusedToolOutput(refusal)).toBe(true);
 	});
 
 	it.each([
 		['undefined', undefined],
 		['a plain string', 'Something failed'],
 		['an ordinary tool output', { foo: 'bar' }],
-		['a refusal with no violations', { ...validRefusal, violations: [] }],
-		['another status', { ...validRefusal, status: 'error' }],
+		['violations without the refusal marker', { violations: [violation] }],
+		['a refusal with no violations', { ...refusal, violations: [] }],
 	])('rejects %s', (_label, output) => {
 		expect(parseToolPolicyRefusal(output)).toBeUndefined();
 		expect(isPolicyRefusedToolOutput(output)).toBe(false);
