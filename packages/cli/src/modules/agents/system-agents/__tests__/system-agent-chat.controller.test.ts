@@ -236,7 +236,17 @@ describe('SystemAgentChatController', () => {
 
 	it('returns the usage of a usable thread', async () => {
 		const { controller, systemAgents } = setup();
-		const usage = { executions: [] };
+		const usage = {
+			executions: [],
+			total: {
+				promptTokens: null,
+				completionTokens: null,
+				totalTokens: null,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+				cost: null,
+			},
+		};
 		systemAgents.getUsage.mockResolvedValue(usage);
 
 		await expect(

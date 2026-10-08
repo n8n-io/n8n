@@ -33,6 +33,7 @@ import {
 } from '../../agent-sandbox-principal';
 import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
+import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import { SubAgentRunner } from '../sub-agent-runner';
 import type {
 	ResolvedSubAgentRuntimeSource,
@@ -129,6 +130,7 @@ describe('SubAgentRunner', () => {
 	let logger: Mocked<Logger>;
 	let checkpointStorage: Mocked<N8NCheckpointStorage>;
 	let credentialProvider: Mocked<CredentialProvider>;
+	let executionRepository: Mocked<AgentExecutionRepository>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -149,6 +151,9 @@ describe('SubAgentRunner', () => {
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
+		executionRepository = mock<AgentExecutionRepository>();
+		executionRepository.findLinksForChildOf.mockResolvedValue(null);
+		executionRepository.findFirstLinksInThread.mockResolvedValue(null);
 		runner = new SubAgentRunner(
 			sourceResolver,
 			new AgentTurnExecutionService(
@@ -163,6 +168,7 @@ describe('SubAgentRunner', () => {
 			logger,
 			aiConfigMock,
 			toolApprovalService,
+			executionRepository,
 		);
 
 		childAgent = mock<BuiltAgent>();
@@ -608,6 +614,105 @@ describe('SubAgentRunner', () => {
 				},
 			}),
 		);
+	});
+
+	describe('execution links', () => {
+		const runContext = {
+			projectId,
+			parentAgentId,
+			credentialProvider,
+			runType: 'production' as const,
+		};
+
+		it('links a child to the parent turn that delegates it', async () => {
+			executionRepository.findLinksForChildOf.mockResolvedValue({
+				parentExecutionId: 'turn-1',
+				rootExecutionId: 'turn-1',
+			});
+
+			await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext);
+
+			expect(executionRepository.findLinksForChildOf).toHaveBeenCalledWith('turn-1');
+			expect(agentExecutionService.startExecutionRecording).toHaveBeenCalledWith(
+				expect.objectContaining({
+					source: 'subagent',
+					executionLinks: { parentExecutionId: 'turn-1', rootExecutionId: 'turn-1' },
+				}),
+				expect.any(Date),
+			);
+		});
+
+		it('links a grandchild to the delegating child and to the root turn', async () => {
+			executionRepository.findLinksForChildOf.mockResolvedValue({
+				parentExecutionId: 'child-1',
+				rootExecutionId: 'turn-1',
+			});
+
+			await runner.run({ ...spawnRequest, parentExecutionId: 'child-1' }, runContext);
+
+			expect(executionRepository.findLinksForChildOf).toHaveBeenCalledWith('child-1');
+			expect(agentExecutionService.startExecutionRecording).toHaveBeenCalledWith(
+				expect.objectContaining({
+					executionLinks: { parentExecutionId: 'child-1', rootExecutionId: 'turn-1' },
+				}),
+				expect.any(Date),
+			);
+		});
+
+		it('stores no links when the parent execution is unknown or missing', async () => {
+			await runner.run(spawnRequest, runContext);
+			await runner.run({ ...spawnRequest, parentExecutionId: 'deleted-turn' }, runContext);
+
+			expect(executionRepository.findLinksForChildOf).toHaveBeenCalledTimes(1);
+			for (const [params] of agentExecutionService.startExecutionRecording.mock.calls) {
+				expect(params).not.toHaveProperty('executionLinks');
+			}
+		});
+
+		it('runs the child without links when the link lookup fails', async () => {
+			executionRepository.findLinksForChildOf.mockRejectedValue(new Error('database unavailable'));
+
+			const result = await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext);
+
+			expect(result.status).toBe('completed');
+			expect(agentExecutionService.startExecutionRecording.mock.calls[0][0]).not.toHaveProperty(
+				'executionLinks',
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to resolve sub-agent execution links',
+				expect.objectContaining({ error: 'database unavailable' }),
+			);
+		});
+
+		it('keeps the links of the first child execution when a later turn resumes the child', async () => {
+			executionRepository.findFirstLinksInThread.mockResolvedValue({
+				parentExecutionId: 'turn-1',
+				rootExecutionId: 'turn-1',
+			});
+
+			await runner.resumeForeground(
+				{
+					...delegatedRequest,
+					childRunId: 'child-run-1',
+					childToolCallId: 'tool-call-1',
+					childThreadId: 'child-thread-1',
+					resumeData: { approved: true },
+					resumeContext: { agentId: 'agent-1' },
+					parentThreadId,
+				},
+				runContext,
+			);
+
+			expect(executionRepository.findFirstLinksInThread).toHaveBeenCalledWith('child-thread-1');
+			expect(executionRepository.findLinksForChildOf).not.toHaveBeenCalled();
+			expect(agentExecutionService.startExecutionRecording).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'child-thread-1',
+					executionLinks: { parentExecutionId: 'turn-1', rootExecutionId: 'turn-1' },
+				}),
+				expect.any(Date),
+			);
+		});
 	});
 
 	it('returns a child suspension with draft resume context', async () => {

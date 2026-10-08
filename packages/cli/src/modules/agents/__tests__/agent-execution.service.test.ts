@@ -81,7 +81,8 @@ function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecor
 		finishReason: 'stop',
 		usage: null,
 		totalCost: null,
-		usageDetails: null,
+		cacheReadTokens: null,
+		cacheWriteTokens: null,
 		timeline: [],
 		startTime: 0,
 		duration: 1,
@@ -417,6 +418,45 @@ describe('AgentExecutionService', () => {
 
 			expect(agentExecutionRepository.create).toHaveBeenCalledWith(
 				expect.objectContaining({ acceptsSteering: true }),
+			);
+		});
+
+		it.each([
+			{
+				name: 'stores the execution links of a delegated run',
+				executionLinks: { parentExecutionId: 'child-1', rootExecutionId: 'turn-1' },
+				expected: { parentExecutionId: 'child-1', rootExecutionId: 'turn-1' },
+			},
+			{
+				name: 'stores no execution links for a top-level turn',
+				executionLinks: undefined,
+				expected: { parentExecutionId: null, rootExecutionId: null },
+			},
+		])('$name', async ({ executionLinks, expected }) => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			const execution = mock<AgentExecution>({ id: 'execution-1' });
+			agentExecutionRepository.create.mockReturnValue(execution);
+			agentExecutionRepository.saveInContext.mockResolvedValue(execution);
+
+			await service.startExecutionRecording(
+				{
+					access: previewAccess,
+					resourceId: 'user-1',
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: null,
+					...(executionLinks !== undefined ? { executionLinks } : {}),
+				},
+				new Date(100),
+			);
+
+			expect(agentExecutionRepository.create).toHaveBeenCalledWith(
+				expect.objectContaining({ ...expected, cacheReadTokens: null, cacheWriteTokens: null }),
 			);
 		});
 
@@ -766,11 +806,7 @@ describe('AgentExecutionService', () => {
 		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
 	});
 
-	it('stores the usage details with the terminal execution and keeps thread totals unchanged', async () => {
-		const usageDetails = {
-			cacheReadTokens: 8,
-			subAgents: { runs: 1, promptTokens: 50, completionTokens: 5, totalTokens: 55 },
-		};
+	it('stores the prompt-cache tokens with the terminal execution and does not add them to thread totals', async () => {
 		await service.finalizeExecution('execution-1', {
 			threadId: 'thread-1',
 			agentId: 'agent-1',
@@ -780,18 +816,24 @@ describe('AgentExecutionService', () => {
 			record: makeMessageRecord({
 				model: 'mock',
 				usage: { promptTokens: 10, completionTokens: 3, totalTokens: 13 },
-				usageDetails,
+				cacheReadTokens: 8,
+				cacheWriteTokens: 2,
 			}),
 		});
 
 		expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 			'execution-1',
-			expect.objectContaining({ promptTokens: 10, totalTokens: 13, usageDetails }),
+			expect.objectContaining({
+				promptTokens: 10,
+				totalTokens: 13,
+				cacheReadTokens: 8,
+				cacheWriteTokens: 2,
+			}),
 			undefined,
 			expect.any(Object),
 			undefined,
 		);
-		// Sub-agent usage stays out of the thread counters, like the turn columns.
+		// Cache tokens are a subset of the prompt tokens, so the counters do not change.
 		expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledWith(
 			'thread-1',
 			10,
@@ -994,7 +1036,8 @@ describe('AgentExecutionService', () => {
 				finishReason: 'stop',
 				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 				totalCost: 0.01,
-				usageDetails: null,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
 				timeline: [],
 				startTime: Date.parse('2026-05-07T10:00:00Z'),
 				duration: 1234,
@@ -1150,7 +1193,8 @@ describe('AgentExecutionService', () => {
 				record: makeMessageRecord({
 					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 					totalCost: 25,
-					usageDetails: null,
+					cacheReadTokens: null,
+					cacheWriteTokens: null,
 					timeline: [
 						{
 							type: 'tool-call',

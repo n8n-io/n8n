@@ -21,7 +21,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_rating](public.agent_eval_rating.md) | 8 |  | BASE TABLE |
 | [public.agent_eval_result](public.agent_eval_result.md) | 16 |  | BASE TABLE |
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
-| [public.agent_execution](public.agent_execution.md) | 24 |  | BASE TABLE |
+| [public.agent_execution](public.agent_execution.md) | 27 |  | BASE TABLE |
 | [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 19 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
@@ -206,6 +206,8 @@ erDiagram
 "public.agent_eval_result" }o--|| "public.agent_eval_run" : "FOREIGN KEY (#quot;runId#quot;) REFERENCES agent_eval_run(id) ON DELETE CASCADE"
 "public.agent_eval_run" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_eval_run" }o--|| "public.agent_eval_dataset" : "FOREIGN KEY (#quot;datasetId#quot;) REFERENCES agent_eval_dataset(id) ON DELETE CASCADE"
+"public.agent_execution" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;parentExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
+"public.agent_execution" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;rootExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_execution_message_links" }o--|| "public.agents_messages" : "FOREIGN KEY (#quot;messageId#quot;) REFERENCES agents_messages(id) ON DELETE CASCADE"
 "public.agent_execution_message_links" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
@@ -575,6 +577,8 @@ erDiagram
   boolean acceptsSteering
   json attachments
   json author
+  integer cacheReadTokens
+  integer cacheWriteTokens
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt
@@ -584,7 +588,9 @@ erDiagram
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
+  varchar_36_ parentExecutionId FK
   integer promptTokens
+  varchar_36_ rootExecutionId FK
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
@@ -594,7 +600,6 @@ erDiagram
   json timeline
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
-  json usageDetails
   text userMessage
 }
 "public.agent_execution_message_links" {

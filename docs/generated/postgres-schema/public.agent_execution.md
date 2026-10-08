@@ -7,6 +7,8 @@
 | acceptsSteering | boolean | false | false |  |  | Accept input until the runtime closes admission |
 | attachments | json |  | true |  |  | Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService |
 | author | json |  | true |  |  | Chat platform user who wrote the turn as {id, name}; null for runs outside chat integrations |
+| cacheReadTokens | integer |  | true |  |  | Input tokens read from the provider prompt cache. A subset of promptTokens, not added to it |
+| cacheWriteTokens | integer |  | true |  |  | Input tokens written to the provider prompt cache. A subset of promptTokens, not added to it |
 | completionTokens | integer |  | true |  |  |  |
 | cost | double precision |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -14,9 +16,11 @@
 | error | text |  | true |  |  |  |
 | failureSummary | json |  | true |  |  | Execution failure projection as {count, latest} for session list queries |
 | hitlStatus | varchar(16) |  | true |  |  |  |
-| id | varchar(36) |  | false | [public.agent_execution_message_links](public.agent_execution_message_links.md) [public.agent_message_queue](public.agent_message_queue.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_execution](public.agent_execution.md) [public.agent_execution_message_links](public.agent_execution_message_links.md) [public.agent_message_queue](public.agent_message_queue.md) |  |  |
 | model | varchar(255) |  | true |  |  |  |
+| parentExecutionId | varchar(36) | NULL::character varying | true |  | [public.agent_execution](public.agent_execution.md) | Execution of the parent turn that delegated this run. Null for a top-level turn |
 | promptTokens | integer |  | true |  |  |  |
+| rootExecutionId | varchar(36) | NULL::character varying | true |  | [public.agent_execution](public.agent_execution.md) | Top-level execution of the delegation tree. Null for a top-level turn |
 | source | varchar(32) |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
@@ -26,7 +30,6 @@
 | timeline | json |  | true |  |  |  |
 | totalTokens | integer |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| usageDetails | json |  | true |  |  | Usage the token columns do not hold, as {cacheReadTokens, cacheWriteTokens, subAgents} |
 | userMessage | text |  | true |  |  |  |
 
 ## Constraints
@@ -37,6 +40,8 @@
 | CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'success'::character varying, 'error'::character varying, 'cancelled'::character varying, 'interrupted'::character varying])::text[]))) |
 | CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
+| FK_agent_execution_parentExecutionId | FOREIGN KEY | FOREIGN KEY ("parentExecutionId") REFERENCES agent_execution(id) ON DELETE SET NULL |
+| FK_agent_execution_rootExecutionId | FOREIGN KEY | FOREIGN KEY ("rootExecutionId") REFERENCES agent_execution(id) ON DELETE SET NULL |
 | PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |
 | agent_execution_acceptsSteering_not_null | n | NOT NULL "acceptsSteering" |
 | agent_execution_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -52,6 +57,8 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_63d3c3a68b9cebf05f967f0b1c | CREATE INDEX "IDX_63d3c3a68b9cebf05f967f0b1c" ON public.agent_execution USING btree ("threadId", "createdAt") |
+| IDX_agent_execution_parentExecutionId | CREATE INDEX "IDX_agent_execution_parentExecutionId" ON public.agent_execution USING btree ("parentExecutionId") |
+| IDX_agent_execution_rootExecutionId | CREATE INDEX "IDX_agent_execution_rootExecutionId" ON public.agent_execution USING btree ("rootExecutionId") |
 | IDX_agent_execution_status | CREATE INDEX "IDX_agent_execution_status" ON public.agent_execution USING btree (status) WHERE ((status)::text = 'running'::text) |
 | PK_ba438acc8532addc12d1ef17049 | CREATE UNIQUE INDEX "PK_ba438acc8532addc12d1ef17049" ON public.agent_execution USING btree (id) |
 
@@ -60,6 +67,8 @@
 ```mermaid
 erDiagram
 
+"public.agent_execution" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;parentExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
+"public.agent_execution" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;rootExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
 "public.agent_execution_message_links" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;steeringExecutionId#quot;) REFERENCES agent_execution(id)"
@@ -69,6 +78,8 @@ erDiagram
   boolean acceptsSteering
   json attachments
   json author
+  integer cacheReadTokens
+  integer cacheWriteTokens
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt
@@ -78,7 +89,9 @@ erDiagram
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
+  varchar_36_ parentExecutionId FK
   integer promptTokens
+  varchar_36_ rootExecutionId FK
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
@@ -88,7 +101,6 @@ erDiagram
   json timeline
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
-  json usageDetails
   text userMessage
 }
 "public.agent_execution_message_links" {

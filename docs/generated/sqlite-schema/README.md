@@ -21,7 +21,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 16 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
-| [agent_execution](agent_execution.md) | 24 |  | table |
+| [agent_execution](agent_execution.md) | 27 |  | table |
 | [agent_execution_message_links](agent_execution_message_links.md) | 5 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 19 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
@@ -189,6 +189,8 @@ erDiagram
 "agent_eval_run" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_eval_run" }o--|| "agent_eval_dataset" : "FOREIGN KEY (datasetId) REFERENCES agent_eval_dataset (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_execution" }o--o| "agent_execution" : "FOREIGN KEY (rootExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_execution" }o--o| "agent_execution" : "FOREIGN KEY (parentExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_execution_message_links" |o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_message_links" |o--|| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--o| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -561,6 +563,8 @@ erDiagram
   BOOLEAN acceptsSteering
   TEXT attachments
   TEXT author
+  INTEGER cacheReadTokens
+  INTEGER cacheWriteTokens
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
@@ -570,7 +574,9 @@ erDiagram
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
+  VARCHAR_36_ parentExecutionId FK
   INTEGER promptTokens
+  VARCHAR_36_ rootExecutionId FK
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status
@@ -580,7 +586,6 @@ erDiagram
   TEXT timeline
   INTEGER totalTokens
   datetime_3_ updatedAt
-  TEXT usageDetails
   TEXT userMessage
 }
 "agent_execution_message_links" {

@@ -5,8 +5,6 @@ import {
 	settleChildTrace,
 	type PersistedChildTrace,
 	type AgentBackgroundJobSignal,
-	type AgentExecutionSubAgentUsage,
-	type AgentExecutionUsageDetails,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
@@ -216,8 +214,6 @@ export function buildApprovalArgs(input: unknown, entry?: ToolRegistryEntry): un
 	};
 }
 
-type SubAgentCompletedChunk = Extract<StreamChunk, { type: 'subagent-completed' }>;
-
 export interface RecordedUsage {
 	promptTokens: number;
 	completionTokens: number;
@@ -280,11 +276,10 @@ export interface MessageRecord {
 	finishReason: string;
 	usage: RecordedUsage | null;
 	totalCost: number | null;
-	/**
-	 * Prompt-cache tokens of the turn and the usage of its direct sub-agents.
-	 * `usage` and `totalCost` exclude the sub-agent usage.
-	 */
-	usageDetails: AgentExecutionUsageDetails | null;
+	/** Input tokens read from the prompt cache. A subset of `usage.promptTokens`. */
+	cacheReadTokens: number | null;
+	/** Input tokens written to the prompt cache. A subset of `usage.promptTokens`. */
+	cacheWriteTokens: number | null;
 	timeline: TimelineEvent[];
 	startTime: number;
 	duration: number;
@@ -334,10 +329,9 @@ export class ExecutionRecorder {
 
 	private totalCost: number | null = null;
 
-	private cacheTokens: Pick<AgentExecutionUsageDetails, 'cacheReadTokens' | 'cacheWriteTokens'> =
-		{};
+	private cacheReadTokens: number | null = null;
 
-	private subAgentUsage: AgentExecutionSubAgentUsage | null = null;
+	private cacheWriteTokens: number | null = null;
 
 	private timeline: TimelineEvent[] = [];
 
@@ -455,17 +449,11 @@ export class ExecutionRecorder {
 						completionTokens: chunk.usage.completionTokens,
 						totalTokens: chunk.usage.totalTokens,
 					};
-					const { cacheRead, cacheWrite } = chunk.usage.inputTokenDetails ?? {};
-					this.cacheTokens = {
-						...(cacheRead !== undefined && { cacheReadTokens: cacheRead }),
-						...(cacheWrite !== undefined && { cacheWriteTokens: cacheWrite }),
-					};
+					this.cacheReadTokens = chunk.usage.inputTokenDetails?.cacheRead ?? null;
+					this.cacheWriteTokens = chunk.usage.inputTokenDetails?.cacheWrite ?? null;
 				}
 				this.model = chunk.model ?? null;
 				this.totalCost = chunk.usage?.cost ?? null;
-				break;
-			case 'subagent-completed':
-				if (chunk.usage) this.addSubAgentUsage(chunk.usage);
 				break;
 			case 'tool-call-suspended':
 				this.flushReasoningBuffer();
@@ -514,46 +502,13 @@ export class ExecutionRecorder {
 			finishReason: this.finishReason,
 			usage: this.usage,
 			totalCost: this.totalCost,
-			usageDetails: this.getUsageDetails(),
+			cacheReadTokens: this.cacheReadTokens,
+			cacheWriteTokens: this.cacheWriteTokens,
 			timeline: this.timeline,
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
 			error: this.error,
 		};
-	}
-
-	/**
-	 * Sub-agent runs bill their model calls outside the parent stream, so the
-	 * parent `finish` usage does not include them. Keep them apart from the
-	 * token columns: a configured sub-agent also records its own execution in
-	 * its child thread, and a sum over all executions must not count it twice.
-	 */
-	private addSubAgentUsage(usage: NonNullable<SubAgentCompletedChunk['usage']>): void {
-		const current = this.subAgentUsage ?? {
-			runs: 0,
-			promptTokens: 0,
-			completionTokens: 0,
-			totalTokens: 0,
-		};
-		const cost =
-			usage.cost !== undefined || current.cost !== undefined
-				? (current.cost ?? 0) + (usage.cost ?? 0)
-				: undefined;
-		this.subAgentUsage = {
-			runs: current.runs + 1,
-			promptTokens: current.promptTokens + usage.promptTokens,
-			completionTokens: current.completionTokens + usage.completionTokens,
-			totalTokens: current.totalTokens + usage.totalTokens,
-			...(cost !== undefined && { cost }),
-		};
-	}
-
-	private getUsageDetails(): AgentExecutionUsageDetails | null {
-		const details: AgentExecutionUsageDetails = {
-			...this.cacheTokens,
-			...(this.subAgentUsage && { subAgents: { ...this.subAgentUsage } }),
-		};
-		return Object.keys(details).length > 0 ? details : null;
 	}
 
 	/** Flush accumulated text into a timeline event. */

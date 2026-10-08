@@ -73,6 +73,8 @@ erDiagram
   BOOLEAN acceptsSteering
   TEXT attachments
   TEXT author
+  INTEGER cacheReadTokens
+  INTEGER cacheWriteTokens
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
@@ -82,7 +84,9 @@ erDiagram
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
+  VARCHAR_36_ parentExecutionId FK
   INTEGER promptTokens
+  VARCHAR_36_ rootExecutionId FK
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status
@@ -92,7 +96,6 @@ erDiagram
   TEXT timeline
   INTEGER totalTokens
   datetime_3_ updatedAt
-  TEXT usageDetails
   TEXT userMessage
 }
 "agents_messages" {

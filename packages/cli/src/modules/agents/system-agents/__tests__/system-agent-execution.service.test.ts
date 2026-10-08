@@ -17,7 +17,10 @@ import type {
 } from '../../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
-import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
+import type {
+	AgentExecutionRepository,
+	AgentExecutionUsageRow,
+} from '../../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
@@ -523,47 +526,115 @@ describe('SystemAgentExecutionService', () => {
 	});
 
 	describe('getUsage', () => {
-		it('returns the stored usage of each turn with its cache and sub-agent details', async () => {
-			const { service, executionRepository } = setup();
-			const usageDetails = {
-				cacheReadTokens: 800,
-				cacheWriteTokens: 100,
-				subAgents: { runs: 1, promptTokens: 50, completionTokens: 20, totalTokens: 70, cost: 0.2 },
+		function usageRow(
+			overrides: Partial<AgentExecutionUsageRow> & Pick<AgentExecutionUsageRow, 'id'>,
+		): AgentExecutionUsageRow {
+			return {
+				threadId: thread.id,
+				parentExecutionId: null,
+				rootExecutionId: null,
+				status: 'success',
+				model: 'anthropic/claude-sonnet-4-5',
+				startedAt: new Date('2026-10-08T10:00:00.000Z'),
+				stoppedAt: new Date('2026-10-08T10:00:02.000Z'),
+				duration: 2000,
+				promptTokens: null,
+				completionTokens: null,
+				totalTokens: null,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+				cost: null,
+				...overrides,
 			};
+		}
+
+		it('returns each turn with its own usage, its descendants and their sum', async () => {
+			const { service, executionRepository } = setup();
 			executionRepository.findUsageByThreadId.mockResolvedValue([
-				{
-					id: 'execution-1',
-					status: 'success',
-					model: 'anthropic/claude-sonnet-4-5',
-					startedAt: new Date('2026-10-08T10:00:00.000Z'),
-					stoppedAt: new Date('2026-10-08T10:00:02.000Z'),
-					duration: 2000,
+				usageRow({
+					id: 'turn-1',
 					promptTokens: 1000,
 					completionTokens: 40,
 					totalTokens: 1040,
+					cacheReadTokens: 800,
+					cacheWriteTokens: 100,
 					cost: 0.1,
-					usageDetails,
-				},
+				}),
+				usageRow({ id: 'turn-2', promptTokens: 10, completionTokens: 1, totalTokens: 11 }),
+			]);
+			executionRepository.findDescendantUsageByRootIds.mockResolvedValue([
+				usageRow({
+					id: 'child-1',
+					threadId: 'child-thread-1',
+					parentExecutionId: 'turn-1',
+					rootExecutionId: 'turn-1',
+					promptTokens: 300,
+					completionTokens: 30,
+					totalTokens: 330,
+					cacheReadTokens: 200,
+					cost: 0.03,
+				}),
+				usageRow({
+					id: 'grandchild-1',
+					threadId: 'grandchild-thread-1',
+					parentExecutionId: 'child-1',
+					rootExecutionId: 'turn-1',
+					promptTokens: 50,
+					completionTokens: 5,
+					totalTokens: 55,
+					cost: 0.005,
+				}),
 			]);
 
-			await expect(service.getUsage(thread)).resolves.toEqual({
-				executions: [
-					{
-						executionId: 'execution-1',
-						status: 'success',
-						model: 'anthropic/claude-sonnet-4-5',
-						startedAt: '2026-10-08T10:00:00.000Z',
-						stoppedAt: '2026-10-08T10:00:02.000Z',
-						duration: 2000,
-						promptTokens: 1000,
-						completionTokens: 40,
-						totalTokens: 1040,
-						cost: 0.1,
-						usageDetails,
-					},
-				],
-			});
+			const usage = await service.getUsage(thread);
+
 			expect(executionRepository.findUsageByThreadId).toHaveBeenCalledWith(thread.id);
+			expect(executionRepository.findDescendantUsageByRootIds).toHaveBeenCalledWith([
+				'turn-1',
+				'turn-2',
+			]);
+			const [first, second] = usage.executions;
+			expect(first).toMatchObject({
+				executionId: 'turn-1',
+				threadId: thread.id,
+				parentExecutionId: null,
+				startedAt: '2026-10-08T10:00:00.000Z',
+				promptTokens: 1000,
+				cacheReadTokens: 800,
+				cacheWriteTokens: 100,
+				cost: 0.1,
+			});
+			expect(
+				first.descendants.map((entry) => [entry.executionId, entry.parentExecutionId]),
+			).toEqual([
+				['child-1', 'turn-1'],
+				['grandchild-1', 'child-1'],
+			]);
+			expect(first.total).toEqual({
+				promptTokens: 1350,
+				completionTokens: 75,
+				totalTokens: 1425,
+				cacheReadTokens: 1000,
+				cacheWriteTokens: 100,
+				cost: expect.closeTo(0.135, 10),
+			});
+			expect(second.descendants).toEqual([]);
+			expect(second.total).toEqual({
+				promptTokens: 10,
+				completionTokens: 1,
+				totalTokens: 11,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+				cost: null,
+			});
+			expect(usage.total).toEqual({
+				promptTokens: 1360,
+				completionTokens: 76,
+				totalTokens: 1436,
+				cacheReadTokens: 1000,
+				cacheWriteTokens: 100,
+				cost: expect.closeTo(0.135, 10),
+			});
 		});
 	});
 

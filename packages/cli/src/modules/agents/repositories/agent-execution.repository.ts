@@ -14,20 +14,34 @@ export type RunningAgentExecution = Pick<
 	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline'
 >;
 
-export type AgentExecutionUsageRow = Pick<
-	AgentExecution,
-	| 'id'
-	| 'status'
-	| 'model'
-	| 'startedAt'
-	| 'stoppedAt'
-	| 'duration'
-	| 'promptTokens'
-	| 'completionTokens'
-	| 'totalTokens'
-	| 'cost'
-	| 'usageDetails'
->;
+const USAGE_COLUMNS = [
+	'id',
+	'threadId',
+	'parentExecutionId',
+	'rootExecutionId',
+	'status',
+	'model',
+	'startedAt',
+	'stoppedAt',
+	'duration',
+	'promptTokens',
+	'completionTokens',
+	'totalTokens',
+	'cacheReadTokens',
+	'cacheWriteTokens',
+	'cost',
+] as const satisfies ReadonlyArray<keyof AgentExecution>;
+
+export type AgentExecutionUsageRow = Pick<AgentExecution, (typeof USAGE_COLUMNS)[number]>;
+
+/** Links of a delegated run to the execution that started it and to the top of its tree. */
+export interface AgentExecutionLinks {
+	parentExecutionId: string | null;
+	rootExecutionId: string | null;
+}
+
+/** Keeps `IN (...)` lists below the SQLite bound-parameter limit. */
+const ROOT_ID_BATCH_SIZE = 500;
 
 type AgentExecutionFinalizationValues = Pick<
 	AgentExecution,
@@ -36,7 +50,13 @@ type AgentExecutionFinalizationValues = Pick<
 	Partial<
 		Pick<
 			AgentExecution,
-			'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'usageDetails' | 'hitlStatus'
+			| 'model'
+			| 'promptTokens'
+			| 'completionTokens'
+			| 'totalTokens'
+			| 'cacheReadTokens'
+			| 'cacheWriteTokens'
+			| 'hitlStatus'
 		>
 	>;
 
@@ -58,22 +78,58 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	/** Usage columns of all executions in a thread, oldest first. Skips the timeline. */
 	async findUsageByThreadId(threadId: string): Promise<AgentExecutionUsageRow[]> {
 		return await this.find({
-			select: [
-				'id',
-				'status',
-				'model',
-				'startedAt',
-				'stoppedAt',
-				'duration',
-				'promptTokens',
-				'completionTokens',
-				'totalTokens',
-				'cost',
-				'usageDetails',
-			],
+			select: [...USAGE_COLUMNS],
 			where: { threadId },
 			order: { createdAt: 'ASC', id: 'ASC' },
 		});
+	}
+
+	/**
+	 * Usage columns of the delegated runs at all depths below the given
+	 * top-level executions, oldest first. Skips the timeline.
+	 */
+	async findDescendantUsageByRootIds(rootIds: string[]): Promise<AgentExecutionUsageRow[]> {
+		const rows: AgentExecutionUsageRow[] = [];
+		for (let i = 0; i < rootIds.length; i += ROOT_ID_BATCH_SIZE) {
+			rows.push(
+				...(await this.find({
+					select: [...USAGE_COLUMNS],
+					where: { rootExecutionId: In(rootIds.slice(i, i + ROOT_ID_BATCH_SIZE)) },
+					order: { createdAt: 'ASC', id: 'ASC' },
+				})),
+			);
+		}
+		return rows;
+	}
+
+	/**
+	 * Links for a run that the given execution delegates. Returns null when the
+	 * parent execution does not exist, so the caller stores no dangling link.
+	 */
+	async findLinksForChildOf(parentExecutionId: string): Promise<AgentExecutionLinks | null> {
+		const parent = await this.findOne({
+			select: ['id', 'rootExecutionId'],
+			where: { id: parentExecutionId },
+		});
+		if (!parent) return null;
+		return { parentExecutionId: parent.id, rootExecutionId: parent.rootExecutionId ?? parent.id };
+	}
+
+	/**
+	 * Links of the first linked execution in a delegated thread. A resumed child
+	 * reuses them, so all its executions point at the turn that delegated it.
+	 */
+	async findFirstLinksInThread(threadId: string): Promise<AgentExecutionLinks | null> {
+		const first = await this.findOne({
+			select: ['id', 'parentExecutionId', 'rootExecutionId'],
+			where: [
+				{ threadId, parentExecutionId: Not(IsNull()) },
+				{ threadId, rootExecutionId: Not(IsNull()) },
+			],
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+		if (!first) return null;
+		return { parentExecutionId: first.parentExecutionId, rootExecutionId: first.rootExecutionId };
 	}
 
 	async findRunning(): Promise<RunningAgentExecution[]> {

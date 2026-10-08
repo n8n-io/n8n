@@ -504,6 +504,7 @@ describe('AgentExecutionRepository', () => {
 						mockLogger(),
 						new AiConfig(),
 						mock<AgentToolApprovalService>(),
+						repository,
 					),
 					service,
 					mockLogger(),
@@ -4480,6 +4481,109 @@ describe('AgentExecutionRepository', () => {
 			expect(firstPage.threads.map(({ id }) => id)).toEqual([newest.id]);
 			expect(secondPage.threads.map(({ id }) => id)).toEqual([oldest.id]);
 			expect(secondPage.nextCursor).toBeNull();
+		});
+	});
+
+	describe('execution links', () => {
+		/** A top-level turn, a child it delegated and a grandchild the child delegated. */
+		async function createDelegationTree() {
+			const parentThread = await createThread();
+			const childThread = await createThread({ sessionNumber: 2, parentThreadId: parentThread.id });
+			const grandchildThread = await createThread({
+				sessionNumber: 3,
+				parentThreadId: childThread.id,
+			});
+			const turn = await createExecution({
+				threadId: parentThread.id,
+				promptTokens: 1000,
+				cacheReadTokens: 800,
+				cacheWriteTokens: 100,
+				createdAt: new Date('2026-10-08T10:00:00Z'),
+			});
+			const childLinks = await repository.findLinksForChildOf(turn.id);
+			const child = await createExecution({
+				threadId: childThread.id,
+				...childLinks,
+				promptTokens: 300,
+				createdAt: new Date('2026-10-08T10:00:01Z'),
+			});
+			const grandchildLinks = await repository.findLinksForChildOf(child.id);
+			const grandchild = await createExecution({
+				threadId: grandchildThread.id,
+				...grandchildLinks,
+				promptTokens: 50,
+				createdAt: new Date('2026-10-08T10:00:02Z'),
+			});
+			return { parentThread, childThread, turn, child, grandchild, childLinks, grandchildLinks };
+		}
+
+		it('links a child to its parent and a grandchild to the delegating child and the root', async () => {
+			const { turn, child, childLinks, grandchildLinks } = await createDelegationTree();
+
+			expect(childLinks).toEqual({ parentExecutionId: turn.id, rootExecutionId: turn.id });
+			expect(grandchildLinks).toEqual({ parentExecutionId: child.id, rootExecutionId: turn.id });
+			expect(await repository.findLinksForChildOf(uuid())).toBeNull();
+		});
+
+		it('returns the descendants of top-level turns at all depths, oldest first', async () => {
+			const { parentThread, turn, child, grandchild } = await createDelegationTree();
+			const otherTurn = await createExecution({
+				threadId: parentThread.id,
+				createdAt: new Date('2026-10-08T12:00:00Z'),
+			});
+
+			const turns = await repository.findUsageByThreadId(parentThread.id);
+			expect(turns.map(({ id }) => id)).toEqual([turn.id, otherTurn.id]);
+			expect(turns[0]).toMatchObject({
+				promptTokens: 1000,
+				cacheReadTokens: 800,
+				cacheWriteTokens: 100,
+			});
+
+			const descendants = await repository.findDescendantUsageByRootIds([turn.id, otherTurn.id]);
+			expect(
+				descendants.map(({ id, parentExecutionId, rootExecutionId }) => [
+					id,
+					parentExecutionId,
+					rootExecutionId,
+				]),
+			).toEqual([
+				[child.id, turn.id, turn.id],
+				[grandchild.id, child.id, turn.id],
+			]);
+			expect(await repository.findDescendantUsageByRootIds([])).toEqual([]);
+		});
+
+		it('reuses the links of the first execution in a resumed child thread', async () => {
+			const { childThread, turn } = await createDelegationTree();
+			// A later parent turn resumes the child. The child keeps its original links.
+			await createExecution({
+				threadId: childThread.id,
+				parentExecutionId: turn.id,
+				rootExecutionId: turn.id,
+				createdAt: new Date('2026-10-08T11:00:00Z'),
+			});
+
+			expect(await repository.findFirstLinksInThread(childThread.id)).toEqual({
+				parentExecutionId: turn.id,
+				rootExecutionId: turn.id,
+			});
+			expect(await repository.findFirstLinksInThread(uuid())).toBeNull();
+		});
+
+		it('keeps child executions and clears their links when the parent execution is deleted', async () => {
+			const { turn, child, grandchild } = await createDelegationTree();
+
+			await repository.delete({ id: turn.id });
+
+			expect(await repository.findOneByOrFail({ id: child.id })).toMatchObject({
+				parentExecutionId: null,
+				rootExecutionId: null,
+			});
+			expect(await repository.findOneByOrFail({ id: grandchild.id })).toMatchObject({
+				parentExecutionId: child.id,
+				rootExecutionId: null,
+			});
 		});
 	});
 });

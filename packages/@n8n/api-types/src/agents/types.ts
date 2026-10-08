@@ -405,52 +405,49 @@ export interface AgentChatQueueResponse {
 	steerableExecutionId: string | null;
 }
 
-/** Model usage of the sub-agent runs that one turn started. */
-export interface AgentExecutionSubAgentUsage {
-	/** Number of sub-agent runs (or resumed run segments) counted here. */
-	runs: number;
-	promptTokens: number;
-	completionTokens: number;
-	totalTokens: number;
-	/** Estimated cost in USD. Absent when no sub-agent run reported a cost. */
-	cost?: number;
-}
-
 /**
- * Usage details of one agent execution that the token columns do not hold.
- * The `promptTokens`, `completionTokens`, `totalTokens` and `cost` columns
- * count the model calls of the turn's own agent only.
+ * Token usage and cost of one agent execution, or a sum of executions.
+ * `cacheReadTokens` and `cacheWriteTokens` are subsets of `promptTokens`.
  */
-export interface AgentExecutionUsageDetails {
+export interface AgentExecutionUsage {
+	promptTokens: number | null;
+	completionTokens: number | null;
+	totalTokens: number | null;
 	/** Input tokens read from the provider prompt cache. Part of `promptTokens`. */
-	cacheReadTokens?: number;
+	cacheReadTokens: number | null;
 	/** Input tokens written to the provider prompt cache. Part of `promptTokens`. */
-	cacheWriteTokens?: number;
-	/**
-	 * Usage reported by the `subagent-completed` chunks of direct sub-agents.
-	 * It is not part of the turn's token columns. Add it to get the combined usage.
-	 */
-	subAgents?: AgentExecutionSubAgentUsage;
+	cacheWriteTokens: number | null;
+	/** Estimated cost in USD. */
+	cost: number | null;
 }
 
-/** Usage of one execution in a thread. */
-export interface AgentExecutionUsageEntry {
+/** Usage of one execution, with the fields that identify it. */
+export interface AgentExecutionUsageEntry extends AgentExecutionUsage {
 	executionId: string;
+	/** Session thread of the execution. A delegated run has its own child thread. */
+	threadId: string;
+	/** Execution that delegated this run. Null for a top-level turn. */
+	parentExecutionId: string | null;
 	status: AgentExecutionStatus;
 	model: string | null;
 	startedAt: string | null;
 	stoppedAt: string | null;
 	duration: number;
-	promptTokens: number | null;
-	completionTokens: number | null;
-	totalTokens: number | null;
-	cost: number | null;
-	usageDetails: AgentExecutionUsageDetails | null;
 }
 
-/** Usage of every execution in a system-agent thread, oldest first. */
+/** Usage of one turn: its own execution, its delegated runs and their sum. */
+export interface AgentTurnUsage extends AgentExecutionUsageEntry {
+	/** Delegated runs at all depths that have this turn as their root, oldest first. */
+	descendants: AgentExecutionUsageEntry[];
+	/** Sum of the turn's own usage and the usage of all its descendants. */
+	total: AgentExecutionUsage;
+}
+
+/** Usage of every turn in a system-agent thread, oldest first. */
 export interface AgentThreadUsageResponse {
-	executions: AgentExecutionUsageEntry[];
+	executions: AgentTurnUsage[];
+	/** Sum of all turns and their descendants. */
+	total: AgentExecutionUsage;
 }
 
 /** Chat history envelope returned by the agent chat messages endpoints. */
