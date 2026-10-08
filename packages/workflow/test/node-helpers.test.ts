@@ -32,6 +32,7 @@ import {
 	isTriggerNodeType,
 	getCredentialActivationParameters,
 	resolveSupportedCredentialActivation,
+	findParameterShapeConflicts,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
 import { mock } from 'vitest-mock-extended';
@@ -7887,6 +7888,51 @@ describe('NodeHelpers', () => {
 					() => true,
 				),
 			).toEqual({ credentialType: 'serviceApiKey', parameters: { authentication: 'apiKey' } });
+		});
+	});
+
+	describe('findParameterShapeConflicts', () => {
+		const channelPicker: INodeProperties = {
+			displayName: 'Channel',
+			name: 'channelId',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			displayOptions: { show: { operation: ['get'] } },
+		};
+		const channelName: INodeProperties = {
+			displayName: 'Channel',
+			name: 'channelId',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { operation: ['create'] } },
+		};
+
+		it('should report a resource locator and a string that share a name', () => {
+			expect(findParameterShapeConflicts([channelPicker, channelName], 1)).toEqual([
+				{ name: 'channelId', types: ['resourceLocator', 'string'] },
+			]);
+		});
+
+		it('should ignore a parameter that @version hides on the checked version', () => {
+			const legacyName: INodeProperties = {
+				...channelName,
+				displayOptions: { show: { '@version': [{ _cnd: { lt: 2 } }] } },
+			};
+
+			expect(findParameterShapeConflicts([channelPicker, legacyName], 2)).toEqual([]);
+			expect(findParameterShapeConflicts([channelPicker, legacyName], 1)).toHaveLength(1);
+		});
+
+		it('should ignore same-named parameters whose values have the same shape', () => {
+			const channelOptions: INodeProperties = { ...channelName, type: 'options', options: [] };
+
+			expect(findParameterShapeConflicts([channelName, channelOptions], 1)).toEqual([]);
+		});
+
+		it('should ignore parameters without a user value', () => {
+			const notice: INodeProperties = { ...channelName, type: 'notice' };
+
+			expect(findParameterShapeConflicts([channelPicker, notice], 1)).toEqual([]);
 		});
 	});
 });
