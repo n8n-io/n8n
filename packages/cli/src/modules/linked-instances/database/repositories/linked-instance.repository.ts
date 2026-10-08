@@ -92,15 +92,4 @@ export class LinkedInstanceRepository extends BaseRepository<LinkedInstance> {
 		const { affected } = await this.update({ id, userId }, update);
 		return (affected ?? 0) > 0;
 	}
-
-	/** Returns `false` when the user has no link with this id. */
-	async updateStatus(
-		userId: string,
-		id: string,
-		status: LinkedInstanceStatus,
-		verifiedAt: Date,
-	): Promise<boolean> {
-		const { affected } = await this.update({ id, userId }, { status, lastVerifiedAt: verifiedAt });
-		return (affected ?? 0) > 0;
-	}
 }

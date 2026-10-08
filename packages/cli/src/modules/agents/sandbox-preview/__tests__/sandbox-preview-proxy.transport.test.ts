@@ -153,7 +153,8 @@ describe('SandboxPreviewProxyController transport', () => {
 
 	it('sends nothing to the service when the browser leaves during the access check', async () => {
 		const { url } = await openPreview();
-		const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+		const pause = async (ms: number) =>
+			await new Promise<void>((resolve) => setTimeout(resolve, ms));
 		let checkStarted: () => void = () => {};
 		const started = new Promise<void>((resolve) => (checkStarted = resolve));
 		let finishCheck: () => void = () => {};

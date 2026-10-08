@@ -222,21 +222,20 @@ describe('LinkedInstanceRepository', () => {
 		await expect(repository.updateForUser(bob.id, link.id, {})).resolves.toBe(false);
 	});
 
-	it("updates the status of only the user's link", async () => {
+	it("records a check on only the user's link", async () => {
 		const link = await createLink(alice.id);
 		const checkedAt = new Date('2026-10-08T08:30:00.000Z');
+		const check = { status: 'unauthorised', lastVerifiedAt: checkedAt } as const;
 
-		await expect(repository.updateStatus(bob.id, link.id, 'offline', checkedAt)).resolves.toBe(
-			false,
-		);
+		await expect(repository.updateForUser(bob.id, link.id, check)).resolves.toBe(false);
 		await expect(repository.findForUser(alice.id, link.id)).resolves.toMatchObject({
 			status: 'online',
 		});
 
-		await expect(
-			repository.updateStatus(alice.id, link.id, 'unauthorised', checkedAt),
-		).resolves.toBe(true);
+		await expect(repository.updateForUser(alice.id, link.id, check)).resolves.toBe(true);
 		await expect(repository.findForUser(alice.id, link.id)).resolves.toMatchObject({
+			name: 'Cloud',
+			tokenEncrypted: 'ciphertext',
 			status: 'unauthorised',
 			lastVerifiedAt: checkedAt,
 		});

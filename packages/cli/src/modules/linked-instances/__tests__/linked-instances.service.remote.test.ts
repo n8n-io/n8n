@@ -211,17 +211,68 @@ describe('LinkedInstancesService and the linked instance', () => {
 		});
 
 		it.each(['not-a-uuid', randomUUID()])('throws NotFoundError for the id %j', async (id) => {
-			const { service, alice, repository } = await linked();
+			const { service, alice, repository, clientFactory } = await linked();
 
 			await expect(service.verify(alice, id)).rejects.toThrow(NotFoundError);
-			expect(repository.updateStatus).not.toHaveBeenCalled();
+			expect(clientFactory.create).not.toHaveBeenCalled();
+			expect(repository.updateForUser).not.toHaveBeenCalled();
 		});
 
 		it('throws NotFoundError when the link goes away during the probe', async () => {
 			const { service, alice, link, repository } = await linked();
-			repository.updateStatus.mockResolvedValueOnce(false);
+			repository.updateForUser.mockResolvedValueOnce(false);
 
 			await expectRejection(service.verify(alice, link.id), NotFoundError, LINK_NOT_FOUND_MESSAGE);
+		});
+
+		it('keeps the default project without a call to list the projects', async () => {
+			const { service, client, alice, link } = await linked();
+			client.callTool.mockResolvedValue(searchProjectsOutput([SALES, PERSONAL]));
+
+			const summary = await service.verify(alice, link.id);
+
+			expect(summary.defaultRemoteProject).toEqual(ref(OPS));
+			expect(client.callTool).not.toHaveBeenCalled();
+		});
+
+		it('picks a default project for a link that has none, as a new link does', async () => {
+			const { service, client, alice, link, rows } = await linked();
+			rows[0].defaultRemoteProjectId = null;
+			rows[0].defaultRemoteProjectName = null;
+			rows[0].status = 'offline';
+			client.callTool.mockResolvedValue(searchProjectsOutput([SALES, OPS, PERSONAL]));
+
+			const summary = await service.verify(alice, link.id);
+
+			expect(summary).toMatchObject({ status: 'online', defaultRemoteProject: ref(SALES) });
+			await expect(service.list(alice)).resolves.toEqual([summary]);
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('records the instance as online when it still does not list its projects', async () => {
+			const { service, client, logger, alice, link, rows } = await linked();
+			rows[0].defaultRemoteProjectId = null;
+			rows[0].status = 'offline';
+			client.callTool.mockRejectedValue(new RemoteInstanceError('timeout'));
+
+			const summary = await service.verify(alice, link.id);
+
+			expect(summary).toMatchObject({ status: 'online', defaultRemoteProject: null });
+			expect(logger.warn).toHaveBeenCalledWith('Could not list the projects of a linked instance', {
+				origin: CLOUD,
+				reason: 'timeout',
+			});
+		});
+
+		it('does not list the projects when the probe fails', async () => {
+			const { service, client, alice, link, rows } = await linked();
+			rows[0].defaultRemoteProjectId = null;
+			client.probe.mockResolvedValue({ ok: false, reason: 'unreachable' });
+
+			const summary = await service.verify(alice, link.id);
+
+			expect(summary).toMatchObject({ status: 'offline', defaultRemoteProject: null });
+			expect(client.callTool).not.toHaveBeenCalled();
 		});
 	});
 
@@ -339,9 +390,36 @@ describe('LinkedInstancesService and the linked instance', () => {
 			expect(clientFactory.create).toHaveBeenCalledWith({ origin: CLOUD, token });
 			expect(summary).toEqual({
 				...link,
+				lastVerifiedAt: expect.any(String),
 				defaultRemoteProject: { id: SALES.id, name: 'Sales EMEA' },
 			});
 			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('records that the instance is online after the probe for a new default project', async () => {
+			const { service, alice, link, rows } = await linked();
+			rows[0].status = 'offline';
+			rows[0].lastVerifiedAt = new Date('2026-01-01T00:00:00.000Z');
+			const before = Date.now();
+
+			const summary = await service.update(alice, link.id, {
+				defaultRemoteProjectId: PERSONAL.id,
+			});
+
+			expect(summary).toMatchObject({ status: 'online', defaultRemoteProject: ref(PERSONAL) });
+			expect(Date.parse(summary.lastVerifiedAt ?? '')).toBeGreaterThanOrEqual(before);
+		});
+
+		it('decrypts the stored token only when no new token replaces it', async () => {
+			const { service, cipher, alice, link } = await linked();
+			cipher.decryptV2.mockClear();
+
+			await service.update(alice, link.id, { name: 'Renamed' });
+			await service.update(alice, link.id, { token: fakeToken() });
+			expect(cipher.decryptV2).not.toHaveBeenCalled();
+
+			await service.update(alice, link.id, { defaultRemoteProjectId: PERSONAL.id });
+			expect(cipher.decryptV2).toHaveBeenCalledTimes(1);
 		});
 
 		it('checks a new default project with a new token sent with it', async () => {

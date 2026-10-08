@@ -34,6 +34,12 @@ export type LinkedInstanceChanges = {
 
 export type LinkedInstanceCredentials = { origin: string; token: string };
 
+/** A link as stored. Do not keep or log the token that `readToken` returns. */
+export type StoredLinkedInstance = {
+	summary: LinkedInstanceSummary;
+	readToken: () => Promise<string>;
+};
+
 const idSchema = z.string().uuid();
 
 // A Postgres uuid column rejects other strings, so an id in another format matches no row.
@@ -63,7 +69,8 @@ function toProjectColumns(project: LinkedInstanceRemoteProject | null) {
 
 /**
  * Keeps linked instances and their encrypted access tokens.
- * The token goes in only as ciphertext, and comes out in clear only through `readCredentials`.
+ * The token goes in only as ciphertext, and comes out in clear only through `readCredentials`
+ * and the `readToken` function of `findForUse`.
  */
 @Service()
 export class LinkedInstanceStore {
@@ -102,18 +109,6 @@ export class LinkedInstanceStore {
 		return row ? toSummary(row) : null;
 	}
 
-	/** Records the result of a check. Returns `null` when the user has no link with this id. */
-	async updateStatus(
-		userId: string,
-		id: string,
-		status: LinkedInstanceStatus,
-		verifiedAt: Date,
-	): Promise<LinkedInstanceSummary | null> {
-		if (!isLinkedInstanceId(id)) return null;
-		if (!(await this.repository.updateStatus(userId, id, status, verifiedAt))) return null;
-		return await this.getForUser(userId, id);
-	}
-
 	/**
 	 * Sets the given fields in one statement. Encrypts a new token.
 	 * Returns `null` when the user has no link with this id.
@@ -135,12 +130,26 @@ export class LinkedInstanceStore {
 		return await this.repository.deleteForUser(userId, id);
 	}
 
-	/** Decrypts the token for one request. Returns `null` when the user has no link with this id. */
-	async readCredentials(userId: string, id: string): Promise<LinkedInstanceCredentials | null> {
+	/**
+	 * Reads the link once. The token stays encrypted until `readToken` runs.
+	 * Returns `null` when the user has no link with this id.
+	 */
+	async findForUse(userId: string, id: string): Promise<StoredLinkedInstance | null> {
 		if (!isLinkedInstanceId(id)) return null;
 		const row = await this.repository.findForUser(userId, id);
 		if (!row) return null;
-		return { origin: row.baseUrl, token: await this.cipher.decryptV2(row.tokenEncrypted) };
+		const { tokenEncrypted } = row;
+		return {
+			summary: toSummary(row),
+			readToken: async () => await this.cipher.decryptV2(tokenEncrypted),
+		};
+	}
+
+	/** Decrypts the token for one request. Returns `null` when the user has no link with this id. */
+	async readCredentials(userId: string, id: string): Promise<LinkedInstanceCredentials | null> {
+		const link = await this.findForUse(userId, id);
+		if (!link) return null;
+		return { origin: link.summary.baseUrl, token: await link.readToken() };
 	}
 
 	private async toUpdate(changes: LinkedInstanceChanges): Promise<LinkedInstanceUpdate> {

@@ -102,12 +102,7 @@ const rows = computed(() => (automations.value ?? []).map(toRow));
 </script>
 
 <template>
-	<div
-		v-if="hasList"
-		ref="root"
-		:class="$style.section"
-		data-test-id="assistant-automations"
-	>
+	<div v-if="hasList" ref="root" :class="$style.section" data-test-id="assistant-automations">
 		<AssistantSectionHeader
 			ref="header"
 			v-model:collapsed="isCollapsed"

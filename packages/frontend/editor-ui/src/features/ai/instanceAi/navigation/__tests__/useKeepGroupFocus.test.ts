@@ -75,7 +75,10 @@ describe('useKeepGroupFocus helpers', () => {
 				return list;
 			});
 		const anchorArb = fc.record({
-			rowId: fc.option(fc.integer({ min: 0, max: 15 }).map((id) => `r${id}`), { nil: undefined }),
+			rowId: fc.option(
+				fc.integer({ min: 0, max: 15 }).map((id) => `r${id}`),
+				{ nil: undefined },
+			),
 			group: fc.option(fc.constantFrom(...GROUP_NAMES, 'other'), { nil: undefined }),
 		});
 

@@ -67,9 +67,6 @@ export function fakeRepository() {
 	repository.updateForUser.mockImplementation(async (userId, id, update) =>
 		change(userId, id, update),
 	);
-	repository.updateStatus.mockImplementation(async (userId, id, status, lastVerifiedAt) =>
-		change(userId, id, { status, lastVerifiedAt }),
-	);
 	repository.deleteForUser.mockImplementation(async (userId, id) => {
 		const index = rows.findIndex(owned(userId, id));
 		if (index === -1) return false;

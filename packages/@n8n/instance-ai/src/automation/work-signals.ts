@@ -57,7 +57,7 @@ const ASSISTANT_TOOL_NAMES: ReadonlySet<string> = new Set<string>([
 	...Object.values(DOMAIN_TOOL_IDS),
 	...Object.values(ORCHESTRATION_TOOL_IDS),
 	...Object.values(WORKSPACE_TOOL_IDS),
-	// Also has the research tools that the runtime loads by name.
+	// This list also names the research tools `web-search` and `fetch-url`.
 	...ALWAYS_LOADED_TOOL_NAMES,
 	...RUNTIME_TOOL_NAMES,
 ]);

@@ -19,6 +19,7 @@ import {
 	LinkedInstanceStore,
 	type LinkedInstanceChanges,
 	type LinkedInstanceCredentials,
+	type StoredLinkedInstance,
 } from './linked-instance.store';
 import {
 	RemoteInstanceClientFactory,
@@ -59,6 +60,15 @@ async function probeOrThrow(client: RemoteInstanceClient): Promise<string[]> {
 	const probe = await client.probe();
 	if (!probe.ok) throw new BadRequestError(PROBE_FAILURE_MESSAGES[probe.reason]);
 	return probe.toolNames;
+}
+
+// A passed probe shows that the instance answers with this token.
+function passedProbeChanges(newToken?: string): LinkedInstanceChanges {
+	return {
+		...(newToken === undefined ? {} : { token: newToken }),
+		status: 'online',
+		verifiedAt: new Date(),
+	};
 }
 
 /** Links other n8n instances for one user. Each user sees and changes only their own links. */
@@ -117,21 +127,25 @@ export class LinkedInstancesService {
 
 	/**
 	 * Checks the instance again with the stored token and records the result.
-	 * A failed check is a status, not an error.
+	 * A failed check is a status, not an error. A link without a default project gets one,
+	 * as a new link does.
 	 * @throws {NotFoundError} when the user has no link with this id
 	 */
 	async verify(user: User, id: string): Promise<LinkedInstanceSummary> {
-		const credentials = await this.getTokenForUse(user, id);
-		const probe = await this.withClient(credentials, async (client) => await client.probe());
-		const status = probe.ok ? 'online' : PROBE_FAILURE_STATUSES[probe.reason];
+		const link = await this.findLink(user, id);
+		const credentials = { origin: link.summary.baseUrl, token: await link.readToken() };
+		const changes = await this.withClient(
+			credentials,
+			async (client) => await this.check(client, link.summary),
+		);
 
-		const summary = await this.store.updateStatus(user.id, id, status, new Date());
+		const summary = await this.store.updateForUser(user.id, id, changes);
 		if (!summary) throw new NotFoundError(LINK_NOT_FOUND_MESSAGE);
 
 		this.logger.info('Checked a linked instance', {
 			userId: user.id,
 			linkedInstanceId: id,
-			status,
+			status: summary.status,
 		});
 		return summary;
 	}
@@ -139,16 +153,15 @@ export class LinkedInstancesService {
 	/**
 	 * Renames the link, replaces its token or sets its default project. A new token must pass
 	 * the probe first, else the old token stays. A new default project must be one that the
-	 * instance lists for the token.
+	 * instance lists for the token. A passed probe also records that the instance is online.
 	 * @throws {BadRequestError} when the input is not valid, the probe fails or the project is not listed
 	 * @throws {NotFoundError} when the user has no link with this id
 	 */
 	async update(user: User, id: string, input: LinkUpdateInput): Promise<LinkedInstanceSummary> {
 		const update = parseLinkUpdate(input);
-		const current = await this.store.getForUser(user.id, id);
-		if (!current) throw new NotFoundError(LINK_NOT_FOUND_MESSAGE);
+		const link = await this.findLink(user, id);
 
-		const remoteChanges = await this.readRemoteChanges(user, current, update);
+		const remoteChanges = await this.readRemoteChanges(link, update);
 		const summary = await this.store.updateForUser(user.id, id, {
 			...(update.name === undefined ? {} : { name: update.name }),
 			...remoteChanges,
@@ -180,39 +193,59 @@ export class LinkedInstancesService {
 		return credentials;
 	}
 
+	/** @throws {NotFoundError} when the user has no link with this id */
+	private async findLink(user: User, id: string): Promise<StoredLinkedInstance> {
+		const link = await this.store.findForUse(user.id, id);
+		if (!link) throw new NotFoundError(LINK_NOT_FOUND_MESSAGE);
+		return link;
+	}
+
+	private async check(
+		client: RemoteInstanceClient,
+		current: LinkedInstanceSummary,
+	): Promise<LinkedInstanceChanges> {
+		const probe = await client.probe();
+		if (!probe.ok) {
+			return { status: PROBE_FAILURE_STATUSES[probe.reason], verifiedAt: new Date() };
+		}
+		const changes = passedProbeChanges();
+		if (current.defaultRemoteProject) return changes;
+
+		// The project list can fail when the user links the instance, so each check tries again.
+		const projects = await this.tryListProjects(client, probe.toolNames, current.baseUrl);
+		return projects
+			? { ...changes, defaultRemoteProject: pickDefaultRemoteProject(projects) }
+			: changes;
+	}
+
 	/** Only a new token or a new default project needs the instance. */
 	private async readRemoteChanges(
-		user: User,
-		current: LinkedInstanceSummary,
+		link: StoredLinkedInstance,
 		update: LinkUpdateInput,
 	): Promise<LinkedInstanceChanges> {
 		if (update.token === undefined && update.defaultRemoteProjectId === undefined) return {};
 
-		const stored = await this.store.readCredentials(user.id, current.id);
-		if (!stored) throw new NotFoundError(LINK_NOT_FOUND_MESSAGE);
-		const token = update.token ?? stored.token;
-		return await this.withClient({ origin: stored.origin, token }, async (client) => {
+		const { summary: current } = link;
+		// A new token replaces the stored one, so the stored one stays encrypted.
+		const token = update.token ?? (await link.readToken());
+		return await this.withClient({ origin: current.baseUrl, token }, async (client) => {
 			const toolNames = await probeOrThrow(client);
+			const changes = passedProbeChanges(update.token);
 			if (update.defaultRemoteProjectId !== undefined) {
 				const project = await this.findListedProject(
 					client,
 					toolNames,
 					update.defaultRemoteProjectId,
 				);
-				return { ...this.tokenChanges(update.token), defaultRemoteProject: project };
+				return { ...changes, defaultRemoteProject: project };
 			}
 			// The new token can belong to another user, who sees other projects.
-			const projects = await this.tryListProjects(client, toolNames, stored.origin);
+			const projects = await this.tryListProjects(client, toolNames, current.baseUrl);
 			const defaultRemoteProject = projects
 				? reconcileDefaultRemoteProject(current.defaultRemoteProject, projects)
 				: undefined;
-			return { ...this.tokenChanges(update.token), defaultRemoteProject };
+			return { ...changes, defaultRemoteProject };
 		});
-	}
-
-	private tokenChanges(token: string | undefined): LinkedInstanceChanges {
-		if (token === undefined) return {};
-		return { token, status: 'online', verifiedAt: new Date() };
 	}
 
 	/**
