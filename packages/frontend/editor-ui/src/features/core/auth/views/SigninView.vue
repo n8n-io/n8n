@@ -14,6 +14,8 @@ import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { useExperienceMode } from '@/features/ai/instanceAi/experience/useExperienceMode';
+import { postSignInRoute } from '@/features/ai/instanceAi/experience/postSignInRoute';
 
 import type { IFormBoxConfig } from '@/Interface';
 import {
@@ -40,6 +42,7 @@ export type MfaCodeOrMfaRecoveryCode = Pick<LoginRequestDto, 'mfaCode' | 'mfaRec
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ssoStore = useSSOStore();
+const { isEnabled: isExperienceEnabled } = useExperienceMode();
 
 const route = useRoute();
 const router = useRouter();
@@ -248,7 +251,8 @@ const login = async (form: LoginRequestDto) => {
 			return;
 		}
 
-		await router.push({ name: VIEWS.HOMEPAGE });
+		// Sign-in loads the module settings, so the flag is current here.
+		await router.push(postSignInRoute({ experienceEnabled: isExperienceEnabled.value }));
 	} catch (error) {
 		if (error.errorCode === MFA_AUTHENTICATION_REQUIRED_ERROR_CODE) {
 			showMfaView.value = true;

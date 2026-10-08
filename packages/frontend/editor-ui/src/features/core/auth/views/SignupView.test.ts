@@ -197,6 +197,61 @@ describe('SignupView', () => {
 		expect(payload).not.toHaveProperty('inviteeId');
 	});
 
+	describe('after the invitation is accepted', () => {
+		async function acceptInvitation() {
+			route.query.token = 'signup-token';
+			usersStore.validateSignupToken.mockResolvedValueOnce({
+				inviter: { firstName: 'John', lastName: 'Doe' },
+			});
+			const { getByRole, container } = renderComponent();
+			const inputs = [
+				'input[name="firstName"]',
+				'input[name="lastName"]',
+				'input[type="password"]',
+			];
+			const [firstName, lastName, password] = inputs.map((selector) =>
+				container.querySelector(selector),
+			);
+			if (!firstName || !lastName || !password) throw new Error('Inputs not found');
+
+			await userEvent.type(firstName, 'Jane');
+			await userEvent.type(lastName, 'Doe');
+			await userEvent.type(password, '324R435gfg5fgj!');
+			await userEvent.click(getByRole('button', { name: 'Finish account setup' }));
+		}
+
+		it('opens the overview while experience modes are off', async () => {
+			await acceptInvitation();
+
+			expect(usersStore.acceptInvitation).toHaveBeenCalledTimes(1);
+			expect(router.push).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
+		});
+
+		it('opens the app root, which leads to the Assistant, while experience modes are on', async () => {
+			mockedStore(useSettingsStore).moduleSettings = {
+				'instance-ai': { enabled: true, experience: { enabled: true, defaultMode: 'simple' } },
+			} as ReturnType<typeof useSettingsStore>['moduleSettings'];
+
+			await acceptInvitation();
+
+			expect(usersStore.acceptInvitation).toHaveBeenCalledTimes(1);
+			expect(router.push).toHaveBeenCalledWith('/');
+			expect(router.push).not.toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
+		});
+
+		it('stays on the form when the invitation fails', async () => {
+			mockedStore(useSettingsStore).moduleSettings = {
+				'instance-ai': { enabled: true, experience: { enabled: true, defaultMode: 'simple' } },
+			} as ReturnType<typeof useSettingsStore>['moduleSettings'];
+			usersStore.acceptInvitation.mockRejectedValueOnce(new Error('expired'));
+
+			await acceptInvitation();
+
+			expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			expect(router.push).not.toHaveBeenCalled();
+		});
+	});
+
 	it('should default to 8-character minimum when passwordMinLength is not configured', () => {
 		const settingsStore = mockedStore(useSettingsStore);
 		delete (settingsStore.userManagement as { passwordMinLength?: number }).passwordMinLength;

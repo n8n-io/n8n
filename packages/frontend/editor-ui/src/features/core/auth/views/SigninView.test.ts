@@ -283,6 +283,47 @@ describe('SigninView', () => {
 			expect(hrefSpy).not.toHaveBeenCalled();
 			expect(router.push).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 		});
+
+		it('opens the overview without a redirect while experience modes are off', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({});
+
+			await signInWithValidUser();
+
+			expect(router.push).toHaveBeenCalledTimes(1);
+			expect(router.push).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
+		});
+
+		describe('with experience modes on', () => {
+			beforeEach(() => {
+				settingsStore.moduleSettings = {
+					'instance-ai': { enabled: true, experience: { enabled: true, defaultMode: 'power' } },
+				} as typeof settingsStore.moduleSettings;
+			});
+
+			it.each([
+				['no redirect', {}],
+				['an empty redirect', { redirect: '' }],
+				['a redirect to another origin', { redirect: 'https://n8n.local.evil.com' }],
+			])('opens the app root, which leads to the Assistant, for %s', async (_case, query) => {
+				vi.spyOn(route, 'query', 'get').mockReturnValue(query);
+				const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+				await signInWithValidUser();
+
+				expect(hrefSpy).not.toHaveBeenCalled();
+				expect(router.push).toHaveBeenCalledTimes(1);
+				expect(router.push).toHaveBeenCalledWith('/');
+			});
+
+			it('still follows a safe local redirect', async () => {
+				vi.spyOn(route, 'query', 'get').mockReturnValue({ redirect: '/workflow/123' });
+
+				await signInWithValidUser();
+
+				expect(router.push).toHaveBeenCalledTimes(1);
+				expect(router.push).toHaveBeenCalledWith('/workflow/123');
+			});
+		});
 	});
 
 	describe('when SSO is the active login method', () => {

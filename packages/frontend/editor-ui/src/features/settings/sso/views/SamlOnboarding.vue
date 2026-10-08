@@ -3,16 +3,18 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { IFormBoxConfig } from '@n8n/design-system';
 import AuthView from '@/features/core/auth/views/AuthView.vue';
-import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useExperienceMode } from '@/features/ai/instanceAi/experience/useExperienceMode';
+import { postSignInRoute } from '@/features/ai/instanceAi/experience/postSignInRoute';
 
 const router = useRouter();
 const locale = useI18n();
 const toast = useToast();
 
 const usersStore = useUsersStore();
+const { isEnabled: isExperienceEnabled } = useExperienceMode();
 
 const loading = ref(false);
 const FORM_CONFIG: IFormBoxConfig = reactive({
@@ -55,7 +57,8 @@ const onSubmit = async (values: { [key: string]: string }) => {
 	try {
 		loading.value = true;
 		await usersStore.updateUserName(values);
-		await router.push({ name: VIEWS.HOMEPAGE });
+		// The first SAML sign-in ends here, so it lands where every other sign-in lands.
+		await router.push(postSignInRoute({ experienceEnabled: isExperienceEnabled.value }));
 	} catch (error) {
 		loading.value = false;
 		toast.showError(error, 'Error', { message: error.message });

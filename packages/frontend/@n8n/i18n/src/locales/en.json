@@ -7282,6 +7282,7 @@
 	"experienceMode.switched.simple": "Switched to Simple mode",
 	"experienceMode.switched.power": "Switched to Power mode",
 	"experienceMode.saveError": "Couldn't change the interface. Try again.",
+	"experienceMode.workspace": "Workspace",
 	"focusedNodes.nodesLabel": "nodes",
 	"focusedNodes.nodesCount": "{count} nodes",
 	"focusedNodes.noMatches": "No nodes matching \"{query}\"",

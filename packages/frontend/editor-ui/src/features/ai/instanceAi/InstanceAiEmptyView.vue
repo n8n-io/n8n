@@ -27,9 +27,9 @@ import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from './prefills';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
+import { useNewChatProject } from './experience/useNewChatProject';
 import {
 	INSTANCE_AI_THREAD_VIEW,
-	INSTANCE_AI_PROJECT_ID_QUERY,
 	INSTANCE_AI_SOURCE_QUERY,
 	isInstanceAiThreadSource,
 } from './constants';
@@ -93,7 +93,6 @@ import {
 	EMPTY_ASSISTANT_MENTION_COUNTS,
 	type AssistantMentionCounts,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -122,16 +121,9 @@ const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPOSURE_EVENT =
 const store = useInstanceAiStore();
 const appSettingsStore = useSettingsStore();
 const cloudPlanStore = useCloudPlanStore();
-const projectsStore = useProjectsStore();
 const route = useRoute();
 const router = useRouter();
-function resolveInitialProjectId(): string | undefined {
-	const queryProjectId = route.query[INSTANCE_AI_PROJECT_ID_QUERY];
-	if (typeof queryProjectId === 'string' && queryProjectId.length > 0) {
-		return queryProjectId;
-	}
-	return projectsStore.personalProject?.id;
-}
+const { selectedProject, canSelectProject, rememberChatProject } = useNewChatProject();
 
 /** Prefer a hand-off source from navigation; fall back for direct empty-state visits. */
 function resolveLaunchSource(): InstanceAiThreadSource {
@@ -139,13 +131,6 @@ function resolveLaunchSource(): InstanceAiThreadSource {
 	return isInstanceAiThreadSource(querySource) ? querySource : 'assistant_page';
 }
 
-const selectedProject = ref(resolveInitialProjectId());
-// An instance that loses its team-project license keeps its projects, but the
-// user cannot work in them. Hide the picker then, the same way the sidebar
-// project list hides itself.
-const canSelectProject = computed(
-	() => projectsStore.isTeamProjectFeatureEnabled && projectsStore.myProjects.length > 1,
-);
 const settingsStore = useInstanceAiSettingsStore();
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const toast = useToast();
@@ -493,16 +478,6 @@ watch(chatInputRef, () => {
 });
 const isStartingThread = ref(false);
 
-watch(
-	() => route.query[INSTANCE_AI_PROJECT_ID_QUERY],
-	() => {
-		// Re-resolve on every change, including when the query is cleared, so
-		// navigating away from a project-scoped entry falls back to the
-		// personal project instead of leaving the previous project selected.
-		selectedProject.value = resolveInitialProjectId();
-	},
-);
-
 type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
 	promptKey: BaseTextKey;
 	suggestionId: string;
@@ -582,6 +557,7 @@ async function handleSubmit(
 		return;
 	}
 
+	const projectId = selectedProject.value;
 	const threadId = uuidv4();
 	isStartingThread.value = true;
 
@@ -589,7 +565,7 @@ async function handleSubmit(
 	// `/assistant/:threadId` for a thread the BE doesn't know about, and the
 	// follow-up `postMessage` would 404.
 	try {
-		await store.syncThread(threadId, selectedProject.value, {
+		await store.syncThread(threadId, projectId, {
 			source: resolveLaunchSource(),
 			origin: 'internal',
 		});
@@ -599,6 +575,7 @@ async function handleSubmit(
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
+	rememberChatProject(projectId);
 
 	// The thread view sends the opener through the Agents chat, so it streams
 	// there. Files wait in memory: they are too large for the localStorage stash.

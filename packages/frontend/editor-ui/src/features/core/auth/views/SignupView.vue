@@ -10,9 +10,12 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { createPasswordRules } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
+import { useExperienceMode } from '@/features/ai/instanceAi/experience/useExperienceMode';
+import { postSignInRoute } from '@/features/ai/instanceAi/experience/postSignInRoute';
 
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const { isEnabled: isExperienceEnabled } = useExperienceMode();
 
 const toast = useToast();
 const i18n = useI18n();
@@ -130,7 +133,8 @@ async function onSubmit(values: { [key: string]: string | boolean }) {
 			} catch {}
 		}
 
-		await router.push({ name: VIEWS.HOMEPAGE });
+		// Accepting the invitation signs the user in and loads the module settings.
+		await router.push(postSignInRoute({ experienceEnabled: isExperienceEnabled.value }));
 	} catch (error) {
 		toast.showError(error, i18n.baseText('auth.signup.setupYourAccountError'));
 	}

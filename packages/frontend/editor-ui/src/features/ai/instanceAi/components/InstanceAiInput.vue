@@ -107,6 +107,7 @@ const props = withDefaults(
 		submitActiveRequiresFocus?: boolean;
 		contextChip?: ContextChip | null;
 		mentionsEnabled?: boolean;
+		/** The project of the new chat. Mentions search it, and the + menu adds new work there. */
 		mentionProjectId?: string;
 		mentionArtifacts?: readonly WorkflowArtifactReference[];
 		mentionActiveWorkflowId?: string;
@@ -968,6 +969,7 @@ const resizable = computed(() => {
 				<InstanceAiInputMenu
 					:disabled="isBusy || isGatedBySetup"
 					:thread-id="props.currentThreadId || undefined"
+					:project-id="props.mentionProjectId"
 					@attach-files="chatInputRef?.openFilePicker()"
 				/>
 			</template>

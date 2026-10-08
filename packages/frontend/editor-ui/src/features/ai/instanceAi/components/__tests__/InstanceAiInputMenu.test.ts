@@ -1,16 +1,20 @@
 import { fireEvent } from '@testing-library/vue';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { defineComponent, h } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { provideThread, type ThreadRuntime } from '../../instanceAi.store';
 import InstanceAiInputMenu from '../InstanceAiInputMenu.vue';
 
-const { action, track, refreshAppliedPreferences, receivedThreadId } = vi.hoisted(() => ({
-	action: vi.fn(),
-	track: vi.fn(),
-	refreshAppliedPreferences: vi.fn(),
-	receivedThreadId: vi.fn<(threadId: string | undefined) => void>(),
-}));
+const { action, track, refreshAppliedPreferences, receivedThreadId, receivedProjectId } =
+	vi.hoisted(() => ({
+		action: vi.fn(),
+		track: vi.fn(),
+		refreshAppliedPreferences: vi.fn(),
+		receivedThreadId: vi.fn<(threadId: string | undefined) => void>(),
+		receivedProjectId: vi.fn<(projectId: string | undefined) => void>(),
+	}));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
@@ -52,8 +56,13 @@ vi.mock('../../composables/useInstanceAiInputMenuItems', async () => {
 	const { ref } = await import('vue');
 
 	return {
-		useInstanceAiInputMenuItems: (_attachFiles: () => void, threadId: () => string | undefined) => {
+		useInstanceAiInputMenuItems: (
+			_attachFiles: () => void,
+			threadId: () => string | undefined,
+			projectId: () => string | undefined,
+		) => {
 			receivedThreadId(threadId());
+			receivedProjectId(projectId());
 			return {
 				menuItems: ref([{ id: 'action', label: 'Action', data: { action } }]),
 				disconnectedConnectionCount: ref(0),
@@ -103,6 +112,32 @@ describe('InstanceAiInputMenu', () => {
 		renderComponent({ props: { threadId: 'thread-7' } });
 
 		expect(receivedThreadId).toHaveBeenCalledWith('thread-7');
+	});
+
+	it('hands the project of the new chat to the menu items, for new work in Simple mode', () => {
+		renderComponent({ props: { projectId: 'team-a' } });
+
+		expect(receivedProjectId).toHaveBeenCalledWith('team-a');
+	});
+
+	it('hands the project of the open chat to the menu items', () => {
+		const InChat = defineComponent({
+			setup() {
+				provideThread({ id: 'thread-7', projectId: 'team-b' } as ThreadRuntime);
+				return () => h(InstanceAiInputMenu, { threadId: 'thread-7' });
+			},
+		});
+
+		createComponentRenderer(InChat)();
+
+		expect(receivedThreadId).toHaveBeenCalledWith('thread-7');
+		expect(receivedProjectId).toHaveBeenCalledWith('team-b');
+	});
+
+	it('hands no project outside a chat when none is given', () => {
+		renderComponent();
+
+		expect(receivedProjectId).toHaveBeenCalledWith(undefined);
 	});
 
 	it('runs the selected menu action once', async () => {

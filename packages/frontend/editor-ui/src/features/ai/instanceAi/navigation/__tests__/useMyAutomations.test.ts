@@ -3,6 +3,7 @@ import { effectScope, nextTick, reactive, ref, type EffectScope, type Ref } from
 import { createPinia, setActivePinia } from 'pinia';
 import type { InstanceAiProvenanceListItem } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { useAssistantSidebarStore } from '../assistantSidebar.store';
 import { AUTOMATIONS_SHOWN, useMyAutomations } from '../useMyAutomations';
 
 const { fetchMyAutomations, currentUser } = vi.hoisted(() => ({
@@ -262,6 +263,55 @@ describe('useMyAutomations', () => {
 			const { automations } = mount();
 
 			expect(automations.value).toBeUndefined();
+		});
+	});
+
+	describe('marks when the first answer came, so that the rows below the section can show', () => {
+		it('after a list', async () => {
+			const pending = createDeferredPromise<InstanceAiProvenanceListItem[]>();
+			fetchMyAutomations.mockReturnValueOnce(pending.promise);
+			mount();
+			const store = useAssistantSidebarStore();
+			expect(store.automationsSettled).toBe(false);
+
+			pending.resolve([]);
+			await flushPromises();
+
+			expect(store.automationsSettled).toBe(true);
+		});
+
+		it('after a failed load', async () => {
+			fetchMyAutomations.mockRejectedValueOnce(new Error('offline'));
+			mount();
+
+			await flushPromises();
+
+			expect(useAssistantSidebarStore().automationsSettled).toBe(true);
+		});
+
+		it('not while disabled, because nothing loads', async () => {
+			mount(false);
+
+			await flushPromises();
+
+			expect(useAssistantSidebarStore().automationsSettled).toBe(false);
+		});
+
+		it('not for an answer to the previous user', async () => {
+			const previous = createDeferredPromise<InstanceAiProvenanceListItem[]>();
+			const next = createDeferredPromise<InstanceAiProvenanceListItem[]>();
+			fetchMyAutomations.mockReturnValueOnce(previous.promise).mockReturnValueOnce(next.promise);
+			mount();
+
+			usersStore.id = 'user-2';
+			await nextTick();
+			previous.resolve([automation('wf-1')]);
+			await flushPromises();
+			expect(useAssistantSidebarStore().automationsSettled).toBe(false);
+
+			next.resolve([]);
+			await flushPromises();
+			expect(useAssistantSidebarStore().automationsSettled).toBe(true);
 		});
 	});
 

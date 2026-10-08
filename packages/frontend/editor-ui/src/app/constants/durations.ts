@@ -58,6 +58,12 @@ export const SETUP_PANEL_SUCCESS_DELAY = 650;
  */
 export const LIVE_REGION_ANNOUNCE_DELAY = 150;
 
+/**
+ * The longest time that a sidebar section waits for the lists above it before it shows.
+ * A list request that never ends must not hide the rows below it.
+ */
+export const SIDEBAR_LISTS_SETTLE_TIMEOUT = 3 * TIME.SECOND;
+
 /** Hover-intent delays for reveal-on-hover affordances (e.g. a collapsed group's description). */
 export const HOVER_DELAY = {
 	/** Delay before a hovered affordance reveals its content. */

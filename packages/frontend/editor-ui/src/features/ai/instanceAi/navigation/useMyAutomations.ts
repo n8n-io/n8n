@@ -29,6 +29,9 @@ export function useMyAutomations(enabled: MaybeRefOrGetter<boolean>) {
 			if (request === store.automationsRequest) store.automations = items;
 		} catch {
 			// Offline, no access or the Assistant is off: keep the last list.
+		} finally {
+			// The rows below the section wait for this, also when the load failed.
+			if (request === store.automationsRequest) store.automationsSettled = true;
 		}
 	}
 

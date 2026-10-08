@@ -1,7 +1,7 @@
 import { nextTick } from 'vue';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -13,6 +13,21 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
+import { resetExperienceModeState } from '@/features/ai/instanceAi/experience/useExperienceMode';
+import { stubLocalStorage } from '@/features/ai/instanceAi/navigation/__tests__/navigationFixtures';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { EnterpriseEditionFeature } from '@/app/constants';
+import type { ExperienceMode, InstanceAiProvenanceListItem } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import userEvent from '@testing-library/user-event';
+
+const { fetchMyAutomations } = vi.hoisted(() => ({ fetchMyAutomations: vi.fn() }));
+
+vi.mock('@/features/ai/instanceAi/provenance/provenance.api', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	fetchMyAutomations,
+}));
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -391,5 +406,391 @@ describe('ProjectsNavigation', () => {
 
 		// The shared menu item should not be rendered
 		expect(getByTestId('project-shared-menu-item')).toBeInTheDocument();
+	});
+
+	describe('with experience modes', () => {
+		const WORKSPACE_OPEN_KEY = 'n8n:sidebar:workspace-open';
+		const HIDDEN_IN_SIMPLE = [
+			'project-personal-menu-item',
+			'project-shared-menu-item',
+			'project-workflow-reviews-menu-item',
+			'project-chat-menu-item',
+		];
+		const storage = new Map<string, string>();
+
+		beforeEach(() => {
+			resetExperienceModeState();
+			storage.clear();
+			stubLocalStorage(storage);
+			// The chat list listens for live updates while experience modes are on.
+			mockedStore(usePushConnectionStore).addEventListener.mockReturnValue(() => {});
+			// The Automations list loads for the signed-in user.
+			usersStore.currentUserId = '1';
+			fetchMyAutomations.mockResolvedValue([]);
+		});
+
+		/** Turns on experience modes with `mode` as the instance default. */
+		function useMode(mode: ExperienceMode) {
+			const instanceAiSettings = settingsStore.moduleSettings['instance-ai'];
+			if (instanceAiSettings) instanceAiSettings.experience = { enabled: true, defaultMode: mode };
+		}
+
+		/** A sidebar where every item can show: projects, sharing, reviews, chat hub, a favourite and a chat. */
+		function fillSidebar() {
+			configureInstanceAi(true);
+			vi.mocked(useRBACStore().hasScope).mockImplementation(
+				(scope) => scope === 'instanceAi:message' || scope === 'chatHub:message',
+			);
+			projectsStore.teamProjectsLimit = -1;
+			projectsStore.isTeamProjectFeatureEnabled = true;
+			projectsStore.myProjects = [...teamProjects];
+			projectsStore.personalProject = createTestProject({ type: 'personal' });
+			usersStore.allUsers = [
+				{ id: '1', isPendingUser: false, isDefaultUser: false, mfaEnabled: false },
+				{ id: '2', isPendingUser: false, isDefaultUser: false, mfaEnabled: false },
+			];
+			settingsStore.isChatFeatureEnabled = true;
+			settingsStore.isEnterpriseFeatureEnabled = {
+				...settingsStore.isEnterpriseFeatureEnabled,
+				[EnterpriseEditionFeature.WorkflowReviews]: true,
+			};
+			settingsStore.settings = {
+				...settingsStore.settings,
+				workflowReviews: { enabled: true },
+			} as typeof settingsStore.settings;
+			mockedStore(useFavoritesStore).favorites = [
+				{
+					id: 1,
+					userId: '1',
+					resourceId: 'workflow-1',
+					resourceType: 'workflow',
+					resourceName: 'Invoice flow',
+				},
+			];
+			mockedStore(useInstanceAiStore).threads = [
+				{
+					id: 'thread-1',
+					title: 'Weekly report',
+					createdAt: '2026-01-01T00:00:00.000Z',
+					updatedAt: '2026-01-01T00:00:00.000Z',
+				},
+			];
+		}
+
+		/** True when `first` comes before `second` in the document. */
+		function precedes(first: Element, second: Element) {
+			return (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+		}
+
+		it('shows every item in Power mode, as with the flag off', () => {
+			fillSidebar();
+			useMode('power');
+
+			const { getByTestId, getByText, getAllByTestId, getByRole, queryByRole } = renderComponent({
+				props: { collapsed: false },
+			});
+
+			for (const testId of HIDDEN_IN_SIMPLE) expect(getByTestId(testId)).toBeInTheDocument();
+			expect(getByText('Favorites')).toBeVisible();
+			expect(getByText('Projects')).toBeVisible();
+			expect(getAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
+			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+			// Without the Workspace, Favorites and Projects are top sections, like Chats.
+			expect(getByRole('heading', { level: 2, name: 'Favorites' })).toBeInTheDocument();
+			expect(getByRole('heading', { level: 2, name: 'Projects' })).toBeInTheDocument();
+		});
+
+		it('shows no Workspace with the flag off', () => {
+			fillSidebar();
+
+			const { getByTestId, getByText, queryByRole } = renderComponent({
+				props: { collapsed: false },
+			});
+
+			for (const testId of HIDDEN_IN_SIMPLE) expect(getByTestId(testId)).toBeInTheDocument();
+			expect(getByText('Projects')).toBeVisible();
+			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+		});
+
+		it('keeps only the Assistant and Overview on top in Simple mode, then Chats, then a collapsed Workspace', async () => {
+			fillSidebar();
+			useMode('simple');
+
+			const { getByTestId, findByRole, queryByTestId, queryByText } = renderComponent({
+				props: { collapsed: false },
+			});
+
+			expect(getByTestId('project-instance-ai-menu-item')).toBeInTheDocument();
+			expect(getByTestId('project-home-menu-item')).toBeInTheDocument();
+			for (const testId of HIDDEN_IN_SIMPLE) expect(queryByTestId(testId)).not.toBeInTheDocument();
+
+			const workspace = await findByRole('button', { name: 'Workspace' });
+			expect(workspace).toHaveAttribute('aria-expanded', 'false');
+			expect(precedes(getByTestId('instance-ai-sidebar-chats'), workspace)).toBe(true);
+			expect(queryByText('Favorites')).not.toBeInTheDocument();
+			expect(queryByText('Projects')).not.toBeInTheDocument();
+			expect(queryByText('Invoice flow')).not.toBeInTheDocument();
+			expect(queryByTestId('project-menu-item')).not.toBeInTheDocument();
+		});
+
+		it('shows the Workspace only after Chats and Automations, so that it does not move down while they load', async () => {
+			fillSidebar();
+			useMode('simple');
+			const instanceAiStore = mockedStore(useInstanceAiStore);
+			const chats = instanceAiStore.threads;
+			instanceAiStore.threads = [];
+			const threadsLoaded = createDeferredPromise<void>();
+			instanceAiStore.loadThreads.mockImplementation(async () => {
+				await threadsLoaded.promise;
+				instanceAiStore.threads = chats;
+				return true;
+			});
+			const automation: InstanceAiProvenanceListItem = {
+				workflowId: 'wf-1',
+				name: 'Weekly report',
+				active: true,
+				threadId: 'thread-1',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				canOpenThread: true,
+			};
+			fetchMyAutomations.mockResolvedValue([automation]);
+
+			const { queryByRole, findByRole, getByTestId, queryByTestId } = renderComponent({
+				props: { collapsed: false },
+			});
+			await waitFor(() => expect(fetchMyAutomations).toHaveBeenCalled());
+			await nextTick();
+
+			expect(queryByTestId('instance-ai-sidebar-chats')).not.toBeInTheDocument();
+			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+
+			threadsLoaded.resolve();
+			const workspace = await findByRole('button', { name: 'Workspace' });
+
+			const chatsSection = getByTestId('instance-ai-sidebar-chats');
+			const automationsSection = getByTestId('assistant-automations');
+			expect(precedes(chatsSection, automationsSection)).toBe(true);
+			expect(precedes(automationsSection, workspace)).toBe(true);
+		});
+
+		it('keeps the Power layout in Simple mode for a user who cannot reach the Assistant', () => {
+			fillSidebar();
+			// A member before the Assistant setup is complete.
+			configureInstanceAi(false);
+			useMode('simple');
+
+			const { getByTestId, queryByTestId, queryByRole, getByText } = renderComponent({
+				props: { collapsed: false },
+			});
+
+			expect(queryByTestId('project-instance-ai-menu-item')).not.toBeInTheDocument();
+			for (const testId of HIDDEN_IN_SIMPLE) expect(getByTestId(testId)).toBeInTheDocument();
+			expect(getByText('Favorites')).toBeVisible();
+			expect(getByText('Projects')).toBeVisible();
+			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+		});
+
+		it('opens Favorites and Projects below the Workspace, and remembers it', async () => {
+			fillSidebar();
+			useMode('simple');
+
+			const { findByRole, getByText, getAllByTestId } = renderComponent({
+				props: { collapsed: false },
+			});
+			const workspace = await findByRole('button', { name: 'Workspace' });
+
+			await userEvent.click(workspace);
+
+			expect(workspace).toHaveAttribute('aria-expanded', 'true');
+			const projectItems = getAllByTestId('project-menu-item');
+			expect(projectItems).toHaveLength(teamProjects.length);
+			expect(precedes(workspace, getByText('Favorites'))).toBe(true);
+			expect(precedes(getByText('Favorites'), getByText('Projects'))).toBe(true);
+			expect(precedes(getByText('Projects'), projectItems[0])).toBe(true);
+			expect(getByText('Invoice flow')).toBeInTheDocument();
+			await waitFor(() => expect(storage.get(WORKSPACE_OPEN_KEY)).toBe('true'));
+		});
+
+		it('keeps every hidden page reachable: the open Workspace lists them first, in the top-group order', async () => {
+			fillSidebar();
+			useMode('simple');
+
+			const { findByRole, getByTestId, getByText, queryByTestId } = renderComponent({
+				props: { collapsed: false },
+			});
+			const workspace = await findByRole('button', { name: 'Workspace' });
+
+			await userEvent.click(workspace);
+
+			const items = HIDDEN_IN_SIMPLE.map((testId) => getByTestId(testId));
+			expect(precedes(workspace, items[0])).toBe(true);
+			for (let index = 1; index < items.length; index++) {
+				expect(precedes(items[index - 1], items[index])).toBe(true);
+			}
+			expect(precedes(items[items.length - 1], getByText('Favorites'))).toBe(true);
+			expect(getByTestId('project-personal-menu-item')).toHaveTextContent('Personal');
+			expect(getByTestId('project-shared-menu-item')).toHaveTextContent('Shared with you');
+
+			await userEvent.click(workspace);
+
+			for (const testId of HIDDEN_IN_SIMPLE) expect(queryByTestId(testId)).not.toBeInTheDocument();
+		});
+
+		it('lists in the Workspace only the hidden pages that the user can open', async () => {
+			storage.set(WORKSPACE_OPEN_KEY, 'true');
+			fillSidebar();
+			settingsStore.isChatFeatureEnabled = false;
+			usersStore.allUsers = [
+				{ id: '1', isPendingUser: false, isDefaultUser: false, mfaEnabled: false },
+			];
+			useMode('simple');
+
+			const { findByTestId, queryByTestId, getByTestId } = renderComponent({
+				props: { collapsed: false },
+			});
+
+			expect(await findByTestId('project-personal-menu-item')).toBeInTheDocument();
+			expect(getByTestId('project-workflow-reviews-menu-item')).toBeInTheDocument();
+			expect(queryByTestId('project-shared-menu-item')).not.toBeInTheDocument();
+			expect(queryByTestId('project-chat-menu-item')).not.toBeInTheDocument();
+		});
+
+		it('marks Favorites and Projects as sub-headings of the Workspace, each with its own state', async () => {
+			storage.set(WORKSPACE_OPEN_KEY, 'true');
+			fillSidebar();
+			useMode('simple');
+
+			const { findByRole, getByRole } = renderComponent({ props: { collapsed: false } });
+
+			const favorites = await findByRole('heading', { level: 3, name: 'Favorites' });
+			const favoritesToggle = within(favorites).getByRole('button', { name: 'Favorites' });
+			const projects = getByRole('heading', { level: 3, name: 'Projects' });
+			const projectsToggle = within(projects).getByRole('button', { name: 'Projects' });
+			expect(favoritesToggle).toHaveAttribute('aria-expanded', 'true');
+			expect(projectsToggle).toHaveAttribute('aria-expanded', 'true');
+
+			await userEvent.click(projectsToggle);
+
+			expect(projectsToggle).toHaveAttribute('aria-expanded', 'false');
+			expect(favoritesToggle).toHaveAttribute('aria-expanded', 'true');
+		});
+
+		it('shows the Workspace open when the user left it open', async () => {
+			storage.set(WORKSPACE_OPEN_KEY, 'true');
+			fillSidebar();
+			useMode('simple');
+
+			const { getByRole, findAllByTestId } = renderComponent({ props: { collapsed: false } });
+
+			expect(await findAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
+			expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'true');
+		});
+
+		it('opens the Workspace on a page that it holds, so the sidebar shows where the user is', async () => {
+			fillSidebar();
+			useMode('simple');
+			projectsStore.projectNavActiveId = 'shared';
+
+			const { findByTestId, getByRole } = renderComponent({ props: { collapsed: false } });
+
+			expect(await findByTestId('project-shared-menu-item')).toBeInTheDocument();
+			expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'true');
+			// The user did not open it, so the next visit starts closed again.
+			expect(storage.has(WORKSPACE_OPEN_KEY)).toBe(false);
+		});
+
+		it('opens the Workspace on a team project page and lists the projects', async () => {
+			fillSidebar();
+			useMode('simple');
+			projectsStore.projectNavActiveId = teamProjects[0].id;
+
+			const { findAllByTestId, getByRole } = renderComponent({ props: { collapsed: false } });
+
+			expect(await findAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
+			expect(getByRole('heading', { level: 3, name: 'Projects' })).toBeInTheDocument();
+		});
+
+		it('keeps the Workspace closed on a page outside it', async () => {
+			fillSidebar();
+			useMode('simple');
+			projectsStore.projectNavActiveId = 'home';
+
+			const { findByRole, queryByTestId } = renderComponent({ props: { collapsed: false } });
+
+			expect(await findByRole('button', { name: 'Workspace' })).toHaveAttribute(
+				'aria-expanded',
+				'false',
+			);
+			expect(queryByTestId('project-shared-menu-item')).not.toBeInTheDocument();
+		});
+
+		it('gives the collapsed sidebar an icon toggle that shows the project icons', async () => {
+			fillSidebar();
+			useMode('simple');
+
+			const { getByRole, getByTestId, queryAllByTestId } = renderComponent({
+				props: { collapsed: true },
+			});
+			expect(queryAllByTestId('project-menu-item')).toHaveLength(0);
+
+			await userEvent.click(getByRole('button', { name: 'Workspace' }));
+
+			expect(queryAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
+			expect(getByTestId('project-personal-menu-item')).toBeInTheDocument();
+		});
+
+		/** No favourite, no review inbox and no chat hub: only projects could fill the Workspace. */
+		function leaveOnlyProjects() {
+			fillSidebar();
+			mockedStore(useFavoritesStore).favorites = [];
+			settingsStore.isChatFeatureEnabled = false;
+			settingsStore.settings = {
+				...settingsStore.settings,
+				workflowReviews: { enabled: false },
+			} as typeof settingsStore.settings;
+		}
+
+		it('shows no Workspace when there is nothing to put in it', () => {
+			leaveOnlyProjects();
+			projectsStore.myProjects = [];
+			projectsStore.personalProject = null;
+			// With one user, nothing can be shared with this user.
+			usersStore.allUsers = [
+				{ id: '1', isPendingUser: false, isDefaultUser: false, mfaEnabled: false },
+			];
+			useMode('simple');
+
+			const { queryByRole } = renderComponent({ props: { collapsed: false } });
+
+			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+		});
+
+		it('shows no Workspace when the team projects stay without licence and folders are off', () => {
+			leaveOnlyProjects();
+			projectsStore.isTeamProjectFeatureEnabled = false;
+			settingsStore.isFoldersFeatureEnabled = false;
+			useMode('simple');
+
+			const { queryByRole, queryByTestId } = renderComponent({ props: { collapsed: false } });
+
+			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+			expect(queryByTestId('project-menu-item')).not.toBeInTheDocument();
+		});
+
+		it('lists the personal project and the projects without a Projects title when only folders are on', async () => {
+			leaveOnlyProjects();
+			projectsStore.isTeamProjectFeatureEnabled = false;
+			settingsStore.isFoldersFeatureEnabled = true;
+			useMode('simple');
+
+			const { findByRole, getByTestId, getAllByTestId, queryByText } = renderComponent({
+				props: { collapsed: false },
+			});
+			await userEvent.click(await findByRole('button', { name: 'Workspace' }));
+
+			expect(getByTestId('project-personal-menu-item')).toBeInTheDocument();
+			expect(getAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
+			expect(queryByText('Projects')).not.toBeInTheDocument();
+		});
 	});
 });

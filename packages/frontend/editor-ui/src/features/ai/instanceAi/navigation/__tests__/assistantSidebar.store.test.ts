@@ -19,6 +19,7 @@ function fill(store: ReturnType<typeof useAssistantSidebarStore>) {
 	store.automationsRequest = 3;
 	store.expandedGroups = new Set(['done']);
 	store.chatListSettled = true;
+	store.automationsSettled = true;
 }
 
 describe('useAssistantSidebarStore', () => {
@@ -27,12 +28,13 @@ describe('useAssistantSidebarStore', () => {
 		useUsersStore().currentUserId = 'user-1';
 	});
 
-	it('starts with no list, no expanded group and no chat list', () => {
+	it('starts with no list, no expanded group and no answer to either list', () => {
 		const store = useAssistantSidebarStore();
 
 		expect(store.automations).toBeUndefined();
 		expect([...store.expandedGroups]).toEqual([]);
 		expect(store.chatListSettled).toBe(false);
+		expect(store.automationsSettled).toBe(false);
 	});
 
 	it('keeps the state for the same user', () => {
@@ -42,6 +44,7 @@ describe('useAssistantSidebarStore', () => {
 		expect(useAssistantSidebarStore().automations).toEqual([automation]);
 		expect([...useAssistantSidebarStore().expandedGroups]).toEqual(['done']);
 		expect(useAssistantSidebarStore().chatListSettled).toBe(true);
+		expect(useAssistantSidebarStore().automationsSettled).toBe(true);
 	});
 
 	it.each([
@@ -56,6 +59,7 @@ describe('useAssistantSidebarStore', () => {
 		expect(store.automations).toBeUndefined();
 		expect([...store.expandedGroups]).toEqual([]);
 		expect(store.chatListSettled).toBe(false);
+		expect(store.automationsSettled).toBe(false);
 		// A request that started for the previous user no longer matches.
 		expect(store.automationsRequest).not.toBe(3);
 	});
