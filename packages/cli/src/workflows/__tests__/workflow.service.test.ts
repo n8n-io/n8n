@@ -138,6 +138,7 @@ describe('WorkflowService', () => {
 				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -513,6 +514,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				nodeGroupRulesFlagGateMock, // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 
 			vi.clearAllMocks();
@@ -1358,6 +1360,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 
 			// Bypass validation internals
@@ -2119,6 +2122,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -2261,6 +2265,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -2568,6 +2573,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -2739,6 +2745,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -2927,6 +2934,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -3031,6 +3039,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -3134,6 +3143,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				errorWorkflowValidationServiceMock, // errorWorkflowValidationService
+				mock(),
 			);
 
 			vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);

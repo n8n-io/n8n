@@ -213,6 +213,7 @@ describe('GlobalConfig', () => {
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
 			mergeSqlSandboxMemoryLimitMb: 64,
+			blockDeprecated: true,
 		},
 		publicApi: {
 			disabled: false,
