@@ -833,7 +833,7 @@ describe('project shell import', () => {
 						sourceId: 'X',
 						name: 'prod',
 						existingTagId: 'H',
-						usedByWorkflows: ['WFA'],
+						usedBy: [{ kind: 'workflow', id: 'WFA' }],
 					}),
 				],
 			},
@@ -1004,13 +1004,13 @@ describe('project shell import', () => {
 						type: 'missing-node-type',
 						nodeType: 'n8n-nodes-community.chatBot',
 						typeVersion: 1,
-						usedByWorkflows: ['WFA'],
+						usedBy: [{ kind: 'workflow', id: 'WFA' }],
 					},
 					{
 						type: 'missing-node-type',
 						nodeType: 'n8n-nodes-community.chatBot',
 						typeVersion: 1,
-						usedByWorkflows: ['WFB'],
+						usedBy: [{ kind: 'workflow', id: 'WFB' }],
 					},
 				],
 			},
@@ -1211,8 +1211,16 @@ describe('project shell import', () => {
 				expect((error as UnprocessableRequestError).message).toMatch(/Import blocked/);
 				// One issue per consuming workflow of the unresolved name.
 				expect((error as UnprocessableRequestError).meta?.issues).toEqual([
-					{ type: 'variable-unresolved', name: 'ABSENT_VAR', usedByWorkflows: ['WFA'] },
-					{ type: 'variable-unresolved', name: 'ABSENT_VAR', usedByWorkflows: ['WFB'] },
+					{
+						type: 'variable-unresolved',
+						name: 'ABSENT_VAR',
+						usedBy: [{ kind: 'workflow', id: 'WFA' }],
+					},
+					{
+						type: 'variable-unresolved',
+						name: 'ABSENT_VAR',
+						usedBy: [{ kind: 'workflow', id: 'WFB' }],
+					},
 				]);
 
 				expect(await findProject('P1')).toBeNull();
@@ -1243,7 +1251,11 @@ describe('project shell import', () => {
 				expect(error).toBeInstanceOf(UnprocessableRequestError);
 				// API_URL resolves in P1 (seeded above) but not P2, so only WFB blocks.
 				expect((error as UnprocessableRequestError).meta?.issues).toEqual([
-					{ type: 'variable-unresolved', name: 'API_URL', usedByWorkflows: ['WFB'] },
+					{
+						type: 'variable-unresolved',
+						name: 'API_URL',
+						usedBy: [{ kind: 'workflow', id: 'WFB' }],
+					},
 				]);
 				expect(await workflowStates()).toEqual(workflowsBefore);
 			});
@@ -1648,7 +1660,10 @@ describe('project shell import', () => {
 						remaining: 1,
 						requested: 2,
 						names: ['VAR_A', 'VAR_B'],
-						usedByWorkflows: ['WFA', 'WFB'],
+						usedBy: [
+							{ kind: 'workflow', id: 'WFA' },
+							{ kind: 'workflow', id: 'WFB' },
+						],
 					},
 				]);
 				expect(await findProject('P1')).toBeNull();
@@ -1874,8 +1889,16 @@ describe('project shell import', () => {
 
 				expect(error).toBeInstanceOf(ConflictError);
 				expect((error as ConflictError).meta?.issues).toEqual([
-					{ type: 'variable-conflict', name: 'SHARED_URL', usedByWorkflows: ['WFA'] },
-					{ type: 'variable-conflict', name: 'SHARED_URL', usedByWorkflows: ['WFB'] },
+					{
+						type: 'variable-conflict',
+						name: 'SHARED_URL',
+						usedBy: [{ kind: 'workflow', id: 'WFA' }],
+					},
+					{
+						type: 'variable-conflict',
+						name: 'SHARED_URL',
+						usedBy: [{ kind: 'workflow', id: 'WFB' }],
+					},
 				]);
 				expect(await findProject('P1')).toBeNull();
 				expect(await findProject('P2')).toBeNull();
@@ -1899,8 +1922,8 @@ describe('project shell import', () => {
 				expect(error).toBeInstanceOf(ConflictError);
 				// One issue per scope, as the `fail` policy reports the same collision.
 				expect((error as ConflictError).meta?.issues).toEqual([
-					{ type: 'variable-conflict', name: 'API_URL', usedByWorkflows: ['WFA'] },
-					{ type: 'variable-conflict', name: 'API_URL', usedByWorkflows: ['WFB'] },
+					{ type: 'variable-conflict', name: 'API_URL', usedBy: [{ kind: 'workflow', id: 'WFA' }] },
+					{ type: 'variable-conflict', name: 'API_URL', usedBy: [{ kind: 'workflow', id: 'WFB' }] },
 				]);
 				expect(await findProject('P1')).toBeNull();
 				expect(await findProject('P2')).toBeNull();

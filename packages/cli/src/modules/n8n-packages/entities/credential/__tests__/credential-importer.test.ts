@@ -63,7 +63,6 @@ describe('CredentialImporter', () => {
 		sourceId: credential.id,
 		name: credential.name,
 		type: credential.type,
-		usedByWorkflows: credential.usedBy.map(({ id }) => id),
 		...overrides,
 	});
 
@@ -125,7 +124,6 @@ describe('CredentialImporter', () => {
 				sourceId: 'cred-missing',
 				name: 'Missing',
 				type: 'githubApi',
-				usedByWorkflows: ['wf-1'],
 			},
 		]);
 		expect(importer.blockingFailures(request, credentialResolution)).toEqual([
@@ -134,7 +132,6 @@ describe('CredentialImporter', () => {
 				sourceId: 'cred-missing',
 				name: 'Missing',
 				type: 'githubApi',
-				usedByWorkflows: ['wf-1'],
 			},
 		]);
 	});
@@ -177,7 +174,6 @@ describe('CredentialImporter', () => {
 				kind: 'source_not_found',
 				sourceId: 'missing-source',
 				targetId: 'target-cred',
-				usedByWorkflows: [],
 			},
 		]);
 	});
@@ -208,7 +204,6 @@ describe('CredentialImporter', () => {
 				name: 'Source GitHub',
 				type: 'githubApi',
 				targetId: 'target-missing',
-				usedByWorkflows: ['wf-1'],
 			},
 		]);
 	});

@@ -712,7 +712,7 @@ describe('workflow package import — with variables', () => {
 							remaining: 0,
 							requested: 1,
 							names: ['API_URL'],
-							usedByWorkflows: [workflow.id],
+							usedBy: [{ kind: 'workflow', id: workflow.id }],
 						},
 					],
 				},
@@ -1341,7 +1341,7 @@ describe('workflow package import — with variables', () => {
 								type: 'variable-conflict',
 								name: 'API_URL',
 								projectId: targetProject.id,
-								usedByWorkflows: [workflow.id],
+								usedBy: [{ kind: 'workflow', id: workflow.id }],
 							},
 						],
 					},
@@ -1365,7 +1365,11 @@ describe('workflow package import — with variables', () => {
 				}).catch((e: unknown) => e);
 
 				expect((error as ConflictError).meta?.issues).toEqual([
-					{ type: 'variable-conflict', name: 'API_URL', usedByWorkflows: [workflow.id] },
+					{
+						type: 'variable-conflict',
+						name: 'API_URL',
+						usedBy: [{ kind: 'workflow', id: workflow.id }],
+					},
 				]);
 			});
 
@@ -1450,7 +1454,7 @@ describe('workflow package import — with variables', () => {
 						type: 'variable-conflict',
 						name: 'API_URL',
 						projectId: targetProject.id,
-						usedByWorkflows: [workflow.id],
+						usedBy: [{ kind: 'workflow', id: workflow.id }],
 					},
 				]);
 				expect((await variablesInProject(targetProject.id))[0].value).toBe('');

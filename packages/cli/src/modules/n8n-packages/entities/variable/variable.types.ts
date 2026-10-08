@@ -3,7 +3,6 @@ import type { User } from '@n8n/db';
 import type { PackageWriter } from '../../io/package-writer';
 import type { VariableConflictPolicy, VariableMissingMode } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
-import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
 
 export interface WorkflowVariableRequirement {
@@ -38,20 +37,17 @@ export interface VariableImportRequest {
 
 export interface VariableResolutionFailure {
 	name: string;
-	usedByWorkflows: string[];
 }
 
 export interface VariableCreation {
 	name: string;
 	projectId?: string;
 	value?: string;
-	usedByWorkflows: string[];
 }
 
 export interface VariableConflict {
 	name: string;
 	projectId?: string;
-	usedByWorkflows: string[];
 }
 
 export interface VariableOverwrite {
@@ -59,7 +55,6 @@ export interface VariableOverwrite {
 	name: string;
 	projectId?: string;
 	value: string;
-	usedByWorkflows: string[];
 }
 
 export interface VariableLimitFailure {
@@ -67,14 +62,6 @@ export interface VariableLimitFailure {
 	remaining: number;
 	requested: number;
 	names: string[];
-	usedByWorkflows: string[];
-}
-
-export function createFailure(requirement: PackageVariableRequirement): VariableResolutionFailure {
-	return {
-		name: requirement.name,
-		usedByWorkflows: [...new Set(getWorkflowConsumerIds(requirement))].sort(),
-	};
 }
 
 export function destinationKey(destination: { name: string; projectId?: string }): string {
@@ -83,28 +70,11 @@ export function destinationKey(destination: { name: string; projectId?: string }
 		: `global:${destination.name}`;
 }
 
-export function dedupeCreationsByDestination(creations: VariableCreation[]): VariableCreation[] {
-	const byDestination = new Map<string, VariableCreation>();
-	for (const creation of creations) {
-		const key = destinationKey(creation);
-		const existing = byDestination.get(key);
-		if (!existing) {
-			// Copied because the caller goes on to apply these creations.
-			byDestination.set(key, { ...creation, usedByWorkflows: [...creation.usedByWorkflows] });
-			continue;
-		}
-		existing.usedByWorkflows = [
-			...new Set([...existing.usedByWorkflows, ...creation.usedByWorkflows]),
-		].sort();
-	}
-	return [...byDestination.values()];
-}
-
 /**
  * Scopes resolve independently, so two can land on one row — a global neither shadows — and disagree
  * about its value, where the last write would silently win.
  */
-export function divergentOverwrites(overwrites: VariableOverwrite[]): VariableConflict[] {
+export function divergentOverwrites(overwrites: VariableOverwrite[]): VariableOverwrite[] {
 	const firstValueByRow = new Map<string, string>();
 	const divergent = new Set<string>();
 	for (const { variableId, value } of overwrites) {
@@ -113,9 +83,7 @@ export function divergentOverwrites(overwrites: VariableOverwrite[]): VariableCo
 		else if (seen !== value) divergent.add(variableId);
 	}
 
-	return overwrites
-		.filter(({ variableId }) => divergent.has(variableId))
-		.map(({ variableId, value, ...conflict }) => conflict);
+	return overwrites.filter(({ variableId }) => divergent.has(variableId));
 }
 
 /** Reports the planned creations that do not fit the remaining quota. `quota` of `null` means unlimited. */
@@ -130,7 +98,6 @@ export function computeVariableLimitFailure(
 		remaining: quota.remaining,
 		requested: creations.length,
 		names: [...new Set(creations.map((creation) => creation.name))].sort(),
-		usedByWorkflows: [...new Set(creations.flatMap((creation) => creation.usedByWorkflows))].sort(),
 	};
 }
 

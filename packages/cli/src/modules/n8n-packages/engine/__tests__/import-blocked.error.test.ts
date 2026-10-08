@@ -23,13 +23,13 @@ const credentialUnresolved: BlockingIssue = {
 	type: 'credential-unresolved',
 	kind: 'not_found',
 	sourceId: 'c1',
-	usedByWorkflows: ['w1'],
+	usedBy: [{ kind: 'workflow', id: 'w1' }],
 };
 
 const variableUnresolved: BlockingIssue = {
 	type: 'variable-unresolved',
 	name: 'API_URL',
-	usedByWorkflows: ['w1'],
+	usedBy: [{ kind: 'workflow', id: 'w1' }],
 };
 
 const workflowLineageConflict: BlockingIssue = {
@@ -49,7 +49,7 @@ const tagUnresolved = (
 	kind,
 	sourceId: 't1',
 	name: 'prod',
-	usedByWorkflows: ['w1'],
+	usedBy: [{ kind: 'workflow', id: 'w1' }],
 });
 
 describe('toImportBlockedError', () => {

@@ -491,6 +491,7 @@ export {
 export { ExportPackageRequestDto } from './packages/export-package-request.dto';
 export {
 	importBlockingIssueSchema,
+	packageRequirementConsumerSchema,
 	type ImportBlockingIssue,
 } from './packages/import-blocking-issue.schema';
 export {

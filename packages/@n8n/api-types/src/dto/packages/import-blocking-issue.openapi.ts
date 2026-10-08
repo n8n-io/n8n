@@ -205,10 +205,10 @@ export const tagUnresolvedFieldDocs = {
 	existingName: {
 		description: 'For `rename-drift`: the current name of the same-id target tag.',
 	},
-	usedByWorkflows: {
+	usedBy: {
 		description:
-			'Package workflow ids (non-skipped) that reference the source tag — not workflows ' +
-			'attached to the contested target tag.',
+			'Package consumers that reference the source tag. This excludes skipped consumers ' +
+			'and workflows attached to the contested target tag.',
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
@@ -263,8 +263,8 @@ export const variableLimitExceededFieldDocs = {
 		description: 'Number of new variable rows the import would create (destination-deduplicated).',
 	},
 	names: { description: 'The unique variable names the import would create.' },
-	usedByWorkflows: {
-		description: 'Package workflow ids that reference any of the listed variables.',
+	usedBy: {
+		description: 'Package consumers that reference any of the listed variables.',
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
@@ -278,7 +278,7 @@ export const variableLimitExceededIssueOpenApi: ZodOpenAPIMetadata = {
 export const missingNodeTypeFieldDocs = {
 	nodeType: { description: "Full node type name as used by the package's workflows." },
 	typeVersion: { description: "Node type version the package's workflows use." },
-	usedByWorkflows: { description: 'Package workflow ids that use this node type and version.' },
+	usedBy: { description: 'Package consumers that use this node type and version.' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const missingNodeTypeIssueOpenApi: ZodOpenAPIMetadata = {

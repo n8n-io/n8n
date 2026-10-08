@@ -10,6 +10,8 @@ Package manifest requirements now use `usedBy: [{ "kind": "workflow", "id": "wor
 The `usedByWorkflows` field is no longer supported.
 Re-export packages after upgrading.
 Regenerate existing Promotions snapshots.
+Package import errors also use `usedBy` for resource consumers.
+Update API clients to read each consumer's `kind` and `id`.
 
 # 2.0.0
 

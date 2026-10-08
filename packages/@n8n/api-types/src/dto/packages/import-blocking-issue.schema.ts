@@ -42,6 +42,13 @@ import {
 import { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
 import { policyViolationSchema } from '../../schemas/policy-violation.schema';
 
+export const packageRequirementConsumerSchema = z
+	.object({
+		kind: z.literal('workflow'),
+		id: z.string().min(1),
+	})
+	.openapi('PackageRequirementConsumer');
+
 /**
  * A reason an import cannot proceed, matching the `BlockingIssue` union in
  * `packages/cli/src/modules/n8n-packages/n8n-packages.types.ts`. A type-level test in
@@ -121,7 +128,7 @@ const credentialUnresolvedIssueSchema = z
 		targetId: z.string().optional().openapi(credentialUnresolvedFieldDocs.targetId),
 		expectedType: z.string().optional().openapi(credentialUnresolvedFieldDocs.expectedType),
 		actualType: z.string().optional().openapi(credentialUnresolvedFieldDocs.actualType),
-		usedByWorkflows: z.array(z.string()),
+		usedBy: z.array(packageRequirementConsumerSchema),
 	})
 	.openapi(credentialUnresolvedIssueOpenApi);
 
@@ -265,7 +272,7 @@ const dataTableUnresolvedIssueSchema = z
 			.optional()
 			.openapi(dataTableUnresolvedFieldDocs.conflictingTableId),
 		currentName: z.string().optional().openapi(dataTableUnresolvedFieldDocs.currentName),
-		usedByWorkflows: z.array(z.string()),
+		usedBy: z.array(packageRequirementConsumerSchema),
 	})
 	.openapi(dataTableUnresolvedIssueOpenApi);
 
@@ -287,7 +294,7 @@ const tagUnresolvedIssueSchema = z
 			.openapi(tagUnresolvedFieldDocs.missingScope),
 		existingTagId: z.string().optional().openapi(tagUnresolvedFieldDocs.existingTagId),
 		existingName: z.string().optional().openapi(tagUnresolvedFieldDocs.existingName),
-		usedByWorkflows: z.array(z.string()).openapi(tagUnresolvedFieldDocs.usedByWorkflows),
+		usedBy: z.array(packageRequirementConsumerSchema).openapi(tagUnresolvedFieldDocs.usedBy),
 	})
 	.openapi(tagUnresolvedIssueOpenApi);
 
@@ -295,7 +302,7 @@ const variableUnresolvedIssueSchema = z
 	.object({
 		type: z.literal('variable-unresolved'),
 		name: z.string().openapi(variableUnresolvedFieldDocs.name),
-		usedByWorkflows: z.array(z.string()),
+		usedBy: z.array(packageRequirementConsumerSchema),
 	})
 	.openapi(variableUnresolvedIssueOpenApi);
 
@@ -304,7 +311,7 @@ const variableConflictIssueSchema = z
 		type: z.literal('variable-conflict'),
 		name: z.string().openapi(variableConflictFieldDocs.name),
 		projectId: z.string().optional().openapi(variableConflictFieldDocs.projectId),
-		usedByWorkflows: z.array(z.string()),
+		usedBy: z.array(packageRequirementConsumerSchema),
 	})
 	.openapi(variableConflictIssueOpenApi);
 
@@ -316,7 +323,9 @@ const variableLimitExceededIssueSchema = z
 		remaining: z.number().int().openapi(variableLimitExceededFieldDocs.remaining),
 		requested: z.number().int().openapi(variableLimitExceededFieldDocs.requested),
 		names: z.array(z.string()).openapi(variableLimitExceededFieldDocs.names),
-		usedByWorkflows: z.array(z.string()).openapi(variableLimitExceededFieldDocs.usedByWorkflows),
+		usedBy: z
+			.array(packageRequirementConsumerSchema)
+			.openapi(variableLimitExceededFieldDocs.usedBy),
 	})
 	.openapi(variableLimitExceededIssueOpenApi);
 
@@ -325,7 +334,7 @@ const missingNodeTypeIssueSchema = z
 		type: z.literal('missing-node-type'),
 		nodeType: z.string().openapi(missingNodeTypeFieldDocs.nodeType),
 		typeVersion: z.number().openapi(missingNodeTypeFieldDocs.typeVersion),
-		usedByWorkflows: z.array(z.string()).openapi(missingNodeTypeFieldDocs.usedByWorkflows),
+		usedBy: z.array(packageRequirementConsumerSchema).openapi(missingNodeTypeFieldDocs.usedBy),
 	})
 	.openapi(missingNodeTypeIssueOpenApi);
 

@@ -155,15 +155,15 @@ oneOf:
       actualType:
         type: string
         description: 'For `type_mismatch`: the actual type of the resolved target credential.'
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
+          $ref: packageRequirementConsumer.generated.yml
     required:
       - type
       - kind
       - sourceId
-      - usedByWorkflows
+      - usedBy
     description: A credential reference that could not be resolved in the target project.
   - type: object
     properties:
@@ -457,14 +457,14 @@ oneOf:
       currentName:
         type: string
         description: "For a rename `name-conflict`: the matched table's current name."
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
+          $ref: packageRequirementConsumer.generated.yml
     required:
       - type
       - kind
-      - usedByWorkflows
+      - usedBy
     description: A data table referenced by the package's workflows that could not be resolved against the target project — under `dataTableMissingMode=must-preexist` or `dataTableSchemaConflictPolicy`, or because the data table module is disabled on this instance, or the caller lacks the scope the resolution needs.
   - type: object
     properties:
@@ -498,15 +498,15 @@ oneOf:
       existingName:
         type: string
         description: 'For `rename-drift`: the current name of the same-id target tag.'
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
-        description: Package workflow ids (non-skipped) that reference the source tag — not workflows attached to the contested target tag.
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that reference the source tag. This excludes skipped consumers and workflows attached to the contested target tag.
     required:
       - type
       - kind
-      - usedByWorkflows
+      - usedBy
     description: "A tag referenced by the package's workflows that could not be resolved on the target instance. `kind` distinguishes the cause: `rename-drift` (the same-id target tag carries a different name — under `tagConflictPolicy=fail`, or `rename` when the package name is held by another tag), `name-collision` (the id is free but the name belongs to a different tag under `tagMissingMode=create` with `tagConflictPolicy=fail`; also raised when two package tags collide with each other, or when the target tag a reconcile would re-key is claimed by another package tag), `invalid-name` / `invalid-id` (the package tag's name or id cannot be written on this instance), or `permission-denied` (the importing user lacks the global `tag:create` / `tag:update` scope the plan needs)."
   - type: object
     properties:
@@ -517,14 +517,14 @@ oneOf:
       name:
         type: string
         description: Requirement name with no match in the target project or global scope.
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
+          $ref: packageRequirementConsumer.generated.yml
     required:
       - type
       - name
-      - usedByWorkflows
+      - usedBy
     description: A variable reference that could not be resolved in the target project or the global scope, under `variableMissingMode=must-preexist`.
   - type: object
     properties:
@@ -538,14 +538,14 @@ oneOf:
       projectId:
         type: string
         description: Project owning the resolved variable. Absent when it resolved at the global scope.
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
+          $ref: packageRequirementConsumer.generated.yml
     required:
       - type
       - name
-      - usedByWorkflows
+      - usedBy
     description: A variable that resolved in the target project or the global scope, but whose value differs from the one the package bundles for it, under `variableConflictPolicy=fail`. Also reported under `overwrite`, once per scope, when the projects of a package resolve one row and disagree about the value it should hold. Values are never reported — only the name and the scope the variable was found in.
   - type: object
     properties:
@@ -567,18 +567,18 @@ oneOf:
         items:
           type: string
         description: The unique variable names the import would create.
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
-        description: Package workflow ids that reference any of the listed variables.
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that reference any of the listed variables.
     required:
       - type
       - limit
       - remaining
       - requested
       - names
-      - usedByWorkflows
+      - usedBy
     description: Creating the package's variables under `create-stub` or `create-with-value` would exceed the instance variable quota (`quota:maxVariables`). Reported once for the whole import; nothing is created.
   - type: object
     properties:
@@ -592,16 +592,16 @@ oneOf:
       typeVersion:
         type: number
         description: Node type version the package's workflows use.
-      usedByWorkflows:
+      usedBy:
         type: array
         items:
-          type: string
-        description: Package workflow ids that use this node type and version.
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that use this node type and version.
     required:
       - type
       - nodeType
       - typeVersion
-      - usedByWorkflows
+      - usedBy
     description: A node type — or a version of a node type — used by a package workflow that this instance does not have, under `missingNodeTypeMode=fail`. One issue is reported per missing `(nodeType, typeVersion)` pair.
   - type: object
     properties:

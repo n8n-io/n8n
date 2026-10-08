@@ -5,7 +5,6 @@ import type {
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
 } from '../../n8n-packages.types';
-import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
 
@@ -49,7 +48,6 @@ export type DataTableResolutionFailure = {
 	conflictingTableId?: string;
 	/** For a rename `name-conflict`: the matched table's current name. */
 	currentName?: string;
-	usedByWorkflows: string[];
 };
 
 export function createFailure(
@@ -73,7 +71,6 @@ export function createFailure(
 		kind,
 		sourceId: requirement.id,
 		name: requirement.name,
-		usedByWorkflows: [...new Set(getWorkflowConsumerIds(requirement))].sort(),
 		...details,
 	};
 }

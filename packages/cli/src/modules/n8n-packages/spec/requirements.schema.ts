@@ -1,12 +1,8 @@
+import { packageRequirementConsumerSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
-const requirementConsumerSchema = z.object({
-	kind: z.literal('workflow'),
-	id: z.string().min(1),
-});
-
 const requirementUsage = {
-	usedBy: z.array(requirementConsumerSchema).min(1),
+	usedBy: z.array(packageRequirementConsumerSchema).min(1),
 };
 
 export const packageCredentialRequirementSchema = z.object({
@@ -119,7 +115,7 @@ export const packageRequirementsSchema = z.object({
 		),
 });
 
-export type PackageRequirementConsumer = z.infer<typeof requirementConsumerSchema>;
+export type PackageRequirementConsumer = z.infer<typeof packageRequirementConsumerSchema>;
 export type PackageCredentialRequirement = z.infer<typeof packageCredentialRequirementSchema>;
 export type PackageDataTableRequirement = z.infer<typeof packageDataTableRequirementSchema>;
 export type PackageWorkflowRequirement = z.infer<typeof packageWorkflowRequirementSchema>;

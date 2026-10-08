@@ -22,7 +22,6 @@ import type {
 } from './data-table.types';
 import { DataTableMatchingMode, DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
 import type { DataTableMissingMode, ImportContext } from '../../n8n-packages.types';
-import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
 
@@ -64,7 +63,7 @@ export class DataTableImporter {
 			return {
 				creations: [],
 				updates: [],
-				failures: [{ kind: 'module-disabled', usedByWorkflows: workflowsUsing(requirements) }],
+				failures: [{ kind: 'module-disabled' }],
 				matchedCount: 0,
 			};
 		}
@@ -201,7 +200,6 @@ export class DataTableImporter {
 			failures.push({
 				kind: 'permission-denied',
 				missingScope: 'dataTable:create',
-				usedByWorkflows: workflowsUsing(creations.map(({ requirement }) => requirement)),
 			});
 		}
 
@@ -209,7 +207,6 @@ export class DataTableImporter {
 			failures.push({
 				kind: 'permission-denied',
 				missingScope: 'dataTable:update',
-				usedByWorkflows: workflowsUsing(updates.map(({ requirement }) => requirement)),
 			});
 		}
 
@@ -324,9 +321,4 @@ async function hasProjectScope(
 	scope: 'dataTable:create' | 'dataTable:update',
 ): Promise<boolean> {
 	return await userHasScopes(context.user, [scope], false, { projectId: context.projectId });
-}
-
-/** Sorted unique workflow ids referencing the given requirements. */
-function workflowsUsing(requirements: PackageDataTableRequirement[]): string[] {
-	return [...new Set(requirements.flatMap(getWorkflowConsumerIds))].sort();
 }

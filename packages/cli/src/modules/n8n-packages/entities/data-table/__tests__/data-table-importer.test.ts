@@ -66,7 +66,7 @@ describe('DataTableImporter.plan', () => {
 		const plan = await importer.plan(context, makeRequest());
 
 		expect(plan.creations).toEqual([]);
-		expect(plan.failures).toEqual([{ kind: 'module-disabled', usedByWorkflows: ['wf-1'] }]);
+		expect(plan.failures).toEqual([{ kind: 'module-disabled' }]);
 	});
 
 	it('fails with permission-denied when the user cannot create tables in the target project', async () => {
@@ -76,7 +76,7 @@ describe('DataTableImporter.plan', () => {
 		const plan = await importer.plan(context, makeRequest());
 
 		expect(plan.failures).toEqual([
-			{ kind: 'permission-denied', missingScope: 'dataTable:create', usedByWorkflows: ['wf-1'] },
+			{ kind: 'permission-denied', missingScope: 'dataTable:create' },
 		]);
 		expect(userHasScopesMock).toHaveBeenCalledWith(context.user, ['dataTable:create'], false, {
 			projectId: context.projectId,

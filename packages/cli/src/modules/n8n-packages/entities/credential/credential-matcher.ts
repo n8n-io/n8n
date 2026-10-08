@@ -208,7 +208,6 @@ function orphanBindingFailures(
 				kind: 'source_not_found',
 				sourceId,
 				targetId,
-				usedByWorkflows: [],
 			});
 		}
 	}

@@ -383,7 +383,7 @@ describe('workflow package import — with data tables', () => {
 				overwriteChanges: [
 					{ kind: 'add-column', column: 'signed_up_at', type: 'date', destructive: false },
 				],
-				usedByWorkflows: ['wf-0'],
+				usedBy: [{ kind: 'workflow', id: 'wf-0' }],
 			});
 
 			expect(await workflowRepository.count()).toBe(0);
@@ -533,7 +533,7 @@ describe('workflow package import — with data tables', () => {
 					kind: 'missing',
 					sourceId: table.id,
 					name: table.name,
-					usedByWorkflows: ['wf-0'],
+					usedBy: [{ kind: 'workflow', id: 'wf-0' }],
 				},
 			);
 
@@ -551,6 +551,7 @@ describe('workflow package import — with data tables', () => {
 				await expectBlocked(importPackage({ user: owner, projectId: project.id, packageBuffer }), {
 					type: 'data-table-unresolved',
 					kind: 'module-disabled',
+					usedBy: [{ kind: 'workflow', id: 'wf-0' }],
 				});
 			} finally {
 				isActive.mockRestore();
@@ -882,6 +883,7 @@ describe('workflow package import — with data tables', () => {
 				type: 'data-table-unresolved',
 				kind: 'permission-denied',
 				missingScope: 'dataTable:update',
+				usedBy: [{ kind: 'workflow', id: 'wf-0' }],
 			});
 
 			expect(await columnsOf(table.id)).toEqual([{ name: 'email', type: 'string', index: 0 }]);

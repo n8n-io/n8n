@@ -3,7 +3,6 @@ import type {
 	CredentialMatchingMode,
 	CredentialMissingMode,
 } from '../../n8n-packages.types';
-import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export interface WorkflowCredentialRequirement {
@@ -29,7 +28,6 @@ export type CredentialResolutionFailure = {
 	expectedType?: string;
 	/** For `type_mismatch`: the actual type of the resolved target credential. */
 	actualType?: string;
-	usedByWorkflows: string[];
 };
 
 export interface CredentialResolution {
@@ -59,6 +57,5 @@ export function createFailure(
 		sourceId: reference.id,
 		name: reference.name,
 		type: reference.type,
-		usedByWorkflows: getWorkflowConsumerIds(reference).sort(),
 	};
 }

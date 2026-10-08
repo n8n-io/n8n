@@ -8,14 +8,7 @@ import { TagService } from '@/services/tag.service';
 
 import { decideTagImportAction } from './tag-import-decision';
 import type { TagDecisionFailure } from './tag-import-decision';
-import { sortedUnique } from './tag.types';
-import type {
-	ReferencingWorkflow,
-	TagImportPlan,
-	TagImportRequest,
-	TagRef,
-	TagResolutionFailure,
-} from './tag.types';
+import type { ReferencingWorkflow, TagImportPlan, TagImportRequest, TagRef } from './tag.types';
 import type { ImportContext } from '../../n8n-packages.types';
 
 @Service()
@@ -91,32 +84,18 @@ export class TagImporter {
 
 		decisionFailures.push(...duplicateWrittenNameFailures(plan));
 
-		const sourceWorkflowIdsReferencing = (tagId: string) =>
-			appliedWorkflows
-				.filter(({ tagIds }) => tagIds?.includes(tagId))
-				.map(({ sourceWorkflowId }) => sourceWorkflowId);
-
-		plan.failures = decisionFailures.map((failure) => ({
-			...failure,
-			usedByWorkflows: sortedUnique(sourceWorkflowIdsReferencing(failure.sourceId)),
-		}));
+		plan.failures = decisionFailures;
 
 		// Tags are global entities, so gate on the user's global scopes: project-level
 		// workflow:import alone must not grant instance-wide tag writes.
 		if (plan.creations.length > 0 && !hasGlobalScope(context.user, 'tag:create')) {
-			plan.failures.push(
-				permissionFailure(
-					'tag:create',
-					plan.creations.map(({ id }) => id),
-					sourceWorkflowIdsReferencing,
-				),
-			);
+			plan.failures.push({ kind: 'permission-denied', missingScope: 'tag:create' });
 		}
-		const updatedTagIds = [...plan.renames, ...plan.reconciles].map(({ id }) => id);
-		if (updatedTagIds.length > 0 && !hasGlobalScope(context.user, 'tag:update')) {
-			plan.failures.push(
-				permissionFailure('tag:update', updatedTagIds, sourceWorkflowIdsReferencing),
-			);
+		if (
+			(plan.renames.length > 0 || plan.reconciles.length > 0) &&
+			!hasGlobalScope(context.user, 'tag:update')
+		) {
+			plan.failures.push({ kind: 'permission-denied', missingScope: 'tag:update' });
 		}
 
 		return plan;
@@ -206,16 +185,4 @@ function duplicateWrittenNameFailures(plan: TagImportPlan): TagDecisionFailure[]
 				({ id, to }): TagDecisionFailure => ({ kind: 'name-collision', sourceId: id, name: to }),
 			),
 	];
-}
-
-function permissionFailure(
-	missingScope: 'tag:create' | 'tag:update',
-	tagIds: string[],
-	sourceWorkflowIdsReferencing: (tagId: string) => string[],
-): TagResolutionFailure {
-	return {
-		kind: 'permission-denied',
-		missingScope,
-		usedByWorkflows: sortedUnique(tagIds.flatMap(sourceWorkflowIdsReferencing)),
-	};
 }
