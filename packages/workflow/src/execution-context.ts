@@ -314,16 +314,22 @@ export function toErrorWorkflowContext(
  * re-verifying the stored token. Absent `subject` = the legacy token-verify carrier;
  * `establishedAt`/`executionPath` are optional so those legacy carriers still parse.
  *
- * `grant` (see {@link OAuthResourceGrant}) is carried by grant-based triggers so a run
- * can re-verify its token after the protected resource stops resolving. It is listed
- * here so `maybeBindExecutionId` preserves it through its parse-and-re-encrypt round-trip;
- * the identifier validates it against its own local schema.
+ * `grant` (see {@link OAuthResourceGrant}) is the gate that admitted the caller. A run
+ * uses it to re-take that decision after the protected resource stops resolving.
+ *
+ * `version: 2` marks a seal made at admission. Such a seal always carries `grant`.
+ * An absent `version` marks a legacy seal, where `grant` can be absent.
+ *
+ * `version`, `grant` and `binding` are listed here so `maybeBindExecutionId` keeps them
+ * through its parse-and-re-encrypt round-trip. The identifier validates them against
+ * its own local schema.
  *
  * `binding` names the `trusted_source_identity` row (`sourceId`, `subject`) the caller
  * was admitted through, so every resolve re-checks that the binding is still active.
  */
 export const N8NOAuthMetadataSchema = z.object({
 	source: z.literal('n8n-oauth'),
+	version: z.literal(2).optional(),
 	subject: z.string().optional(),
 	resource: z.string(),
 	establishedAt: z.number().optional(),

@@ -1,6 +1,6 @@
 import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import type { User, UserRepository } from '@n8n/db';
 import { CredentialResolverError } from '@n8n/decorators';
 import type { TrustedSourceGate } from '@n8n/inbound-auth';
 import { mock } from 'vitest-mock-extended';
@@ -22,6 +22,7 @@ describe('N8NIdentifier', () => {
 	let mockAuthService: Mocked<AuthService>;
 	let mockOAuthVerifier: Mocked<OAuthTokenVerifierProxy>;
 	let mockTrustedSourceGate: Mocked<TrustedSourceGate>;
+	let mockUserRepository: Mocked<UserRepository>;
 
 	const mockUser = mock<User>({ id: 'user-123' });
 
@@ -31,12 +32,15 @@ describe('N8NIdentifier', () => {
 		mockOAuthVerifier = mock<OAuthTokenVerifierProxy>();
 		mockTrustedSourceGate = mock<TrustedSourceGate>();
 		mockTrustedSourceGate.authorizeSealed.mockResolvedValue(true);
+		mockUserRepository = mock<UserRepository>();
+		mockUserRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-123', disabled: false }));
 
 		identifier = new N8NIdentifier(
 			mockLogger,
 			mockAuthService,
 			mockOAuthVerifier,
 			mockTrustedSourceGate,
+			mockUserRepository,
 		);
 	});
 
@@ -409,6 +413,25 @@ describe('N8NIdentifier', () => {
 				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
 			});
 
+			it('rejects a version 2 carrier without a grant, before verifying the token', async () => {
+				await expect(
+					identifier.resolve(
+						{
+							identity: 'oauth-access-token',
+							version: 1 as const,
+							metadata: {
+								source: 'n8n-oauth' as const,
+								version: 2,
+								resource: 'https://host/mcp/workflow-a',
+							},
+						},
+						{},
+					),
+				).rejects.toThrow(CredentialResolverError);
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+				expect(mockLogger.warn).toHaveBeenCalled();
+			});
+
 			it('should throw CredentialResolverError when the token resolves to no user', async () => {
 				mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({
 					user: null,
@@ -435,6 +458,7 @@ describe('N8NIdentifier', () => {
 				version: 1 as const,
 				metadata: {
 					source: 'n8n-oauth' as const,
+					version: 2,
 					resource: 'https://host/mcp/wf',
 					subject: 'user-123',
 					establishedAt: 1,
@@ -533,12 +557,67 @@ describe('N8NIdentifier', () => {
 				);
 			});
 
-			it('rejects a seal with a subject but no grant, without asking the gate', async () => {
+			it('rejects a version 2 seal without a grant, without asking the gate or loading the user', async () => {
 				await expect(
 					identifier.resolve(sealedContext({ grant: undefined }), {}, 'exec-root'),
 				).rejects.toThrow(CredentialResolverError);
 				expect(mockTrustedSourceGate.authorizeSealed).not.toHaveBeenCalled();
+				expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
 				expect(mockLogger.warn).toHaveBeenCalled();
+			});
+
+			describe('legacy seal (no version)', () => {
+				const legacyContext = (metaOverrides: Record<string, unknown> = {}) =>
+					sealedContext({ version: undefined, ...metaOverrides });
+
+				it('re-takes the sealed grant through the gate when the seal has one', async () => {
+					const result = await identifier.resolve(legacyContext(), {}, 'exec-root');
+
+					expect(result).toBe('user-123');
+					expect(mockTrustedSourceGate.authorizeSealed).toHaveBeenCalledWith({
+						userId: 'user-123',
+						grant,
+						binding: undefined,
+					});
+					expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
+				});
+
+				it('checks the principal locally when the seal has no grant', async () => {
+					const result = await identifier.resolve(
+						legacyContext({ grant: undefined }),
+						{},
+						'exec-root',
+					);
+
+					expect(result).toBe('user-123');
+					expect(mockTrustedSourceGate.authorizeSealed).not.toHaveBeenCalled();
+					expect(mockUserRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-123' });
+				});
+
+				it('rejects when the sealed principal is disabled', async () => {
+					mockUserRepository.findOneBy.mockResolvedValue(
+						mock<User>({ id: 'user-123', disabled: true }),
+					);
+
+					await expect(
+						identifier.resolve(legacyContext({ grant: undefined }), {}, 'exec-root'),
+					).rejects.toThrow(CredentialResolverError);
+				});
+
+				it('rejects when the sealed principal no longer exists', async () => {
+					mockUserRepository.findOneBy.mockResolvedValue(null);
+
+					await expect(
+						identifier.resolve(legacyContext({ grant: undefined }), {}, 'exec-root'),
+					).rejects.toThrow(CredentialResolverError);
+				});
+
+				it('still binds the seal to its execution', async () => {
+					await expect(
+						identifier.resolve(legacyContext({ grant: undefined }), {}, 'exec-other'),
+					).rejects.toThrow(CredentialResolverError);
+					expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
+				});
 			});
 		});
 	});
@@ -564,7 +643,14 @@ describe('N8NIdentifier', () => {
 			const userId = await identifier.identify({
 				identity: 'token',
 				version: 1,
-				metadata: { source: 'n8n-oauth', resource: 'r', subject: 'user-123', grant, binding },
+				metadata: {
+					source: 'n8n-oauth',
+					version: 2,
+					resource: 'r',
+					subject: 'user-123',
+					grant,
+					binding,
+				},
 			});
 
 			expect(userId).toBe('user-123');
@@ -584,6 +670,7 @@ describe('N8NIdentifier', () => {
 				version: 1,
 				metadata: {
 					source: 'n8n-oauth',
+					version: 2,
 					resource: 'r',
 					subject: 'user-123',
 					grant: { audiences: ['r'] },
@@ -593,16 +680,76 @@ describe('N8NIdentifier', () => {
 			expect(userId).toBeUndefined();
 		});
 
-		it('returns undefined for a sealed subject without a grant', async () => {
+		it('returns undefined for a version 2 seal without a grant', async () => {
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: { source: 'n8n-oauth', version: 2, resource: 'r', subject: 'user-123' },
+			});
+
+			expect(userId).toBeUndefined();
+			expect(mockTrustedSourceGate.authorizeSealed).not.toHaveBeenCalled();
+			expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined for a version 2 carrier without a subject or a grant, without verifying the token', async () => {
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: { source: 'n8n-oauth', version: 2, resource: 'r' },
+			});
+
+			expect(userId).toBeUndefined();
+			expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+		});
+
+		it('asks the gate for a legacy seal with a grant', async () => {
+			const grant = { audiences: ['r'], executeAccessWorkflowId: 'wf' };
+
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: { source: 'n8n-oauth', resource: 'r', subject: 'user-123', grant },
+			});
+
+			expect(userId).toBe('user-123');
+			expect(mockTrustedSourceGate.authorizeSealed).toHaveBeenCalledWith({
+				userId: 'user-123',
+				grant,
+				binding: undefined,
+			});
+			expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
+		});
+
+		it('returns the subject of a legacy seal without a grant when the principal is enabled', async () => {
 			const userId = await identifier.identify({
 				identity: 'token',
 				version: 1,
 				metadata: { source: 'n8n-oauth', resource: 'r', subject: 'user-123' },
 			});
 
-			expect(userId).toBeUndefined();
+			expect(userId).toBe('user-123');
 			expect(mockTrustedSourceGate.authorizeSealed).not.toHaveBeenCalled();
+			expect(mockUserRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-123' });
 		});
+
+		it.each([
+			['disabled', mock<User>({ id: 'user-123', disabled: true })],
+			['missing', null],
+		])(
+			'returns undefined for a legacy seal without a grant when the principal is %s',
+			async (_label, user) => {
+				mockUserRepository.findOneBy.mockResolvedValue(user);
+
+				const userId = await identifier.identify({
+					identity: 'token',
+					version: 1,
+					metadata: { source: 'n8n-oauth', resource: 'r', subject: 'user-123' },
+				});
+
+				expect(userId).toBeUndefined();
+			},
+		);
 
 		it('verifies the token for an n8n-oauth carrier without a subject', async () => {
 			mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockUser } as never);

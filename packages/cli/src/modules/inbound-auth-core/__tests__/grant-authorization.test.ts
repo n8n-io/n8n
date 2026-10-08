@@ -29,6 +29,11 @@ describe('authorizeAgainstGrant', () => {
 				user,
 			),
 		).resolves.toBe(true);
+		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+			['wf-1'],
+			user,
+			['workflow:execute'],
+		);
 	});
 
 	it('denies a holder who has lost it', async () => {
