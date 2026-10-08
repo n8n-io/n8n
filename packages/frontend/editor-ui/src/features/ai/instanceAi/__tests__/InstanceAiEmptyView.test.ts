@@ -1064,6 +1064,25 @@ describe('InstanceAiEmptyView', () => {
 		expect(nudge).toHaveAttribute('data-eligible', 'true');
 	});
 
+	it('keeps the free nudge ineligible when credits run out after the warning was dismissed', async () => {
+		store.showCreditWarning = true;
+
+		const { getByTestId, queryByTestId } = renderView();
+		const nudge = getByTestId('instance-ai-free-nudge-stub');
+
+		await fireEvent.click(getByTestId('credit-banner-dismiss'));
+		await flushPromises();
+
+		expect(nudge).toHaveAttribute('data-eligible', 'true');
+
+		store.isOutOfCredits = true;
+		await flushPromises();
+
+		expect(nudge).toHaveAttribute('data-eligible', 'false');
+		expect(getByTestId('credit-warning-banner')).toHaveTextContent("You've run out of AI credits");
+		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
+	});
+
 	it('tracks personalized prompt suggestions exposure for the control variant', () => {
 		experimentMocks.personalizedPromptVariant.value = 'control';
 

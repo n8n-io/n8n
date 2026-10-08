@@ -452,7 +452,7 @@ describe('InstanceAiInput', () => {
 		await userEvent.type(textbox, 'Keep going');
 		await fireEvent.keyDown(textbox, { key: 'Enter' });
 
-		expect(emitted().submit?.[0]?.[0]).toBe('Keep going');
+		expect(emittedArgument(emitted().submit?.[0], 0)).toBe('Keep going');
 	});
 
 	it('keeps stop available while a run is streaming and credits are exhausted', async () => {

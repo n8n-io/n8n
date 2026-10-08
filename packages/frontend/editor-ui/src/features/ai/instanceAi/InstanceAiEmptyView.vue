@@ -869,6 +869,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					<InstanceAiFreeNudge
 						:eligible="
 							store.creditsQuota !== undefined &&
+							!isOutOfCredits &&
 							!creditBanner.visible.value &&
 							settingsStore.isWorkflowBuilderAvailable
 						"
