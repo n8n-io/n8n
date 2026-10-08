@@ -11,13 +11,16 @@ import {
 } from '@n8n/api-types';
 
 import {
+	activationNoteKey,
 	answerTargetId,
 	cardActions,
 	decisionFor,
 	hiddenStepCount,
+	liveStatusKey,
 	LOCAL_CAVEAT_KEY,
 	placeOf,
 	placeReasonKey,
+	sharedProjectCount,
 	showsLocalCaveat,
 	titleKey,
 	triggerLineKey,
@@ -169,24 +172,29 @@ describe('placeOf', () => {
 		const proposal = makeProposal({ recommended: local(['needs-local-trigger']) });
 
 		expect(placeOf(proposal)).toEqual({
+			linked: false,
 			reasonKey: 'instanceAi.automation.reason.needsLocalTrigger',
 			caveat: true,
 		});
 	});
 
-	it('names a linked instance by its label, else by its id', () => {
+	it('names a linked instance by its label, and never by its id', () => {
 		const linked: Partial<Proposal> = {
 			recommended: { targetId: 'cloud-1', kind: 'linked', reasons: ['always-on-trigger'] },
 			offered: { target: ['cloud-1'], activate: [true, false] },
 		};
 
 		expect(placeOf(makeProposal({ ...linked, targets: [CLOUD_TARGET] }))).toEqual({
+			linked: true,
 			linkedLabel: 'Team cloud',
 			caveat: false,
 		});
-		expect(
-			placeOf(makeProposal({ ...linked, targets: [{ ...CLOUD_TARGET, label: undefined }] })),
-		).toEqual({ linkedLabel: 'cloud-1', caveat: false });
+		for (const label of [undefined, '', '   ']) {
+			expect(placeOf(makeProposal({ ...linked, targets: [{ ...CLOUD_TARGET, label }] }))).toEqual({
+				linked: true,
+				caveat: false,
+			});
+		}
 	});
 
 	it('names the offered target, without the reason, when the recommendation is not offered', () => {
@@ -197,7 +205,7 @@ describe('placeOf', () => {
 		});
 
 		expect(answerTargetId(proposal)).toBe('local');
-		expect(placeOf(proposal)).toEqual({ caveat: true });
+		expect(placeOf(proposal)).toEqual({ linked: false, caveat: true });
 	});
 
 	it('shows no local reason when the targets list says the place is linked', () => {
@@ -205,7 +213,7 @@ describe('placeOf', () => {
 			targets: [{ id: 'local', kind: 'linked', label: 'Team cloud', status: 'online' }],
 		});
 
-		expect(placeOf(proposal)).toEqual({ linkedLabel: 'Team cloud', caveat: false });
+		expect(placeOf(proposal)).toEqual({ linked: true, linkedLabel: 'Team cloud', caveat: false });
 	});
 
 	it('reads the kind of a target that the targets list leaves out', () => {
@@ -216,8 +224,8 @@ describe('placeOf', () => {
 			offered: { target: ['cloud-2'], activate: [true] },
 		});
 
-		expect(placeOf(missingLocal).linkedLabel).toBeUndefined();
-		expect(placeOf(missingLinked)).toEqual({ linkedLabel: 'cloud-2', caveat: false });
+		expect(placeOf(missingLocal).linked).toBe(false);
+		expect(placeOf(missingLinked)).toEqual({ linked: true, caveat: false });
 	});
 });
 
@@ -273,6 +281,114 @@ describe('titleKey and cardActions', () => {
 		const proposal = makeProposal({ offered: { target: ['local'], activate: [true] } });
 
 		expect(cardActions(proposal).map(({ action }) => action)).toEqual(['activate', 'decline']);
+	});
+});
+
+describe('a workflow that is live now', () => {
+	const live = (overrides: Partial<Proposal> = {}) =>
+		makeProposal({ active: true, hasUnpublishedChanges: false, ...overrides });
+
+	it('offers to make saved changes live, or to save them and keep the live version', () => {
+		const proposal = live({ hasUnpublishedChanges: true });
+
+		expect(titleKey(proposal)).toBe('instanceAi.automation.proposal.titleUpdate');
+		expect(liveStatusKey(proposal)).toBe('instanceAi.automation.status.liveWithChanges');
+		expect(activationNoteKey(proposal)).toBeUndefined();
+		expect(cardActions(proposal)).toEqual([
+			{ action: 'activate', labelKey: 'instanceAi.automation.action.makeLive', type: 'primary' },
+			{
+				action: 'save',
+				labelKey: 'instanceAi.automation.action.saveKeepLive',
+				type: 'secondary',
+			},
+			{ action: 'decline', labelKey: 'instanceAi.automation.action.notNow', type: 'tertiary' },
+		]);
+	});
+
+	it('only offers to keep a workflow whose saved version is live, as turning it on changes nothing', () => {
+		const proposal = live();
+
+		expect(titleKey(proposal)).toBe('instanceAi.automation.proposal.titleKeep');
+		expect(liveStatusKey(proposal)).toBe('instanceAi.automation.status.live');
+		expect(activationNoteKey(proposal)).toBeUndefined();
+		expect(cardActions(proposal)).toEqual([
+			{ action: 'save', labelKey: 'instanceAi.automation.action.saveWorkflow', type: 'primary' },
+			{ action: 'decline', labelKey: 'instanceAi.automation.action.notNow', type: 'tertiary' },
+		]);
+	});
+
+	it('says that changes cannot go live from the card when it cannot activate', () => {
+		const proposal = live({
+			hasUnpublishedChanges: true,
+			canActivate: false,
+			offered: { target: ['local'], activate: [false] },
+		});
+
+		expect(titleKey(proposal)).toBe('instanceAi.automation.proposal.titleKeep');
+		expect(activationNoteKey(proposal)).toBe('instanceAi.automation.note.cannotMakeLive');
+		expect(cardActions(proposal).map(({ labelKey }) => labelKey)).toEqual([
+			'instanceAi.automation.action.saveWorkflow',
+			'instanceAi.automation.action.notNow',
+		]);
+	});
+
+	it('has no live status for a workflow that is off', () => {
+		expect(liveStatusKey(makeProposal())).toBeUndefined();
+		// The flag means nothing without a live version.
+		expect(liveStatusKey(makeProposal({ hasUnpublishedChanges: true }))).toBeUndefined();
+	});
+});
+
+describe('activationNoteKey', () => {
+	it('says why a trigger that can start the workflow has no "Turn it on" button', () => {
+		const proposal = makeProposal({
+			canActivate: false,
+			offered: { target: ['local'], activate: [false] },
+		});
+
+		expect(cardActions(proposal).map(({ action }) => action)).toEqual(['save', 'decline']);
+		expect(activationNoteKey(proposal)).toBe('instanceAi.automation.note.cannotTurnOn');
+	});
+
+	it('adds no note when the card can turn the workflow on', () => {
+		expect(activationNoteKey(makeProposal())).toBeUndefined();
+	});
+
+	it('adds no note for a manual workflow, as its title already asks only to keep it', () => {
+		expect(activationNoteKey(makeManualProposal())).toBeUndefined();
+	});
+
+	it.each<AutomationTriggerKind>(['webhook', 'form', 'chat', 'app-event', 'other'])(
+		'adds the note for a %s trigger that the card cannot turn on',
+		(kind) => {
+			const proposal = makeProposal({
+				trigger: { kind },
+				offered: { target: ['local'], activate: [false] },
+			});
+
+			expect(activationNoteKey(proposal)).toBe('instanceAi.automation.note.cannotTurnOn');
+		},
+	);
+});
+
+describe('sharedProjectCount', () => {
+	const project = (index: number) => ({
+		projectId: `project-${index}`,
+		projectName: `Project ${index}`,
+		projectType: 'team' as const,
+	});
+
+	it('counts every other project, also those that the card does not list', () => {
+		expect(sharedProjectCount(makeProposal())).toBe(0);
+		expect(
+			sharedProjectCount(makeProposal({ sharedWith: { projects: [project(1)], total: 14 } })),
+		).toBe(14);
+	});
+
+	it('never counts fewer projects than the card lists', () => {
+		const sharedWith = { projects: [project(1), project(2)], total: 1 };
+
+		expect(sharedProjectCount(makeProposal({ sharedWith }))).toBe(2);
 	});
 });
 
@@ -377,6 +493,8 @@ const proposalArb: fc.Arbitrary<Proposal> = fc
 			}),
 		}),
 		targets: fc.array(targetArb, { minLength: 1, maxLength: 3 }),
+		active: fc.boolean(),
+		hasUnpublishedChanges: fc.boolean(),
 		canActivate: fc.boolean(),
 		offered: fc.record({
 			target: fc.uniqueArray(targetIdArb, { minLength: 1 }),
@@ -386,6 +504,13 @@ const proposalArb: fc.Arbitrary<Proposal> = fc
 	.map((fields) => makeProposal(fields));
 
 const TYPE_ORDER = { primary: 0, secondary: 1, tertiary: 2 } as const;
+
+/** The title asks the question of the primary button, or only to keep the workflow. */
+function expectedTitle(proposal: Proposal, offersTurnOn: boolean): string {
+	if (!offersTurnOn) return 'instanceAi.automation.proposal.titleKeep';
+	if (proposal.active) return 'instanceAi.automation.proposal.titleUpdate';
+	return 'instanceAi.automation.proposal.title';
+}
 
 describe('automation proposal properties', () => {
 	it('sends only values that the card offered, as the server checks them', () => {
@@ -411,14 +536,40 @@ describe('automation proposal properties', () => {
 		);
 	});
 
-	it('never offers to turn on when the card cannot activate', () => {
+	it('never offers to turn on when the card cannot activate or the saved version is live', () => {
 		fc.assert(
 			fc.property(proposalArb, (proposal) => {
 				const actions = cardActions(proposal).map(({ action }) => action);
-				if (!proposal.canActivate) expect(actions).not.toContain('activate');
-				if (actions.includes('activate')) {
-					expect(titleKey(proposal)).toBe('instanceAi.automation.proposal.title');
-				}
+				const savedVersionLive = proposal.active && !proposal.hasUnpublishedChanges;
+				if (!proposal.canActivate || savedVersionLive) expect(actions).not.toContain('activate');
+				expect(titleKey(proposal)).toBe(expectedTitle(proposal, actions.includes('activate')));
+			}),
+		);
+	});
+
+	it('explains a missing "Turn it on" exactly when the trigger could start the workflow', () => {
+		fc.assert(
+			fc.property(proposalArb, (proposal) => {
+				const offersTurnOn = cardActions(proposal).some(({ action }) => action === 'activate');
+				const savedVersionLive = proposal.active && !proposal.hasUnpublishedChanges;
+				const needsNote = !offersTurnOn && proposal.trigger.kind !== 'manual' && !savedVersionLive;
+
+				expect(activationNoteKey(proposal) !== undefined).toBe(needsNote);
+				expect(liveStatusKey(proposal) !== undefined).toBe(proposal.active);
+			}),
+		);
+	});
+
+	it('never says "leave it off" for a workflow that is live', () => {
+		fc.assert(
+			fc.property(proposalArb, (proposal) => {
+				const labels = cardActions(proposal).map(({ labelKey }) => labelKey);
+				const offLabels = [
+					'instanceAi.automation.action.saveOff',
+					'instanceAi.automation.action.turnOn',
+				];
+
+				if (proposal.active) for (const label of offLabels) expect(labels).not.toContain(label);
 			}),
 		);
 	});
@@ -444,7 +595,8 @@ describe('automation proposal properties', () => {
 				const caveats = [place.reasonKey === LOCAL_CAVEAT_KEY, place.caveat].filter(Boolean);
 
 				expect(caveats.length).toBeLessThanOrEqual(1);
-				if (place.linkedLabel !== undefined) expect(caveats).toEqual([]);
+				if (place.linked) expect(caveats).toEqual([]);
+				if (!place.linked) expect(place.linkedLabel).toBeUndefined();
 			}),
 		);
 	});

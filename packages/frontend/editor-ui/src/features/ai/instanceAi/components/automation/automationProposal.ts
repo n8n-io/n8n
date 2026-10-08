@@ -33,7 +33,9 @@ export type AutomationTriggerLine =
 
 /** Where the workflow runs after the answer, and why the card recommends that place. */
 export interface AutomationPlace {
-	/** Display name of a linked instance. Absent when the workflow runs on this computer. */
+	/** True when the workflow runs on a linked instance, not on this computer. */
+	linked: boolean;
+	/** Display name of the linked instance. Absent when the server sent no name. */
 	linkedLabel?: string;
 	reasonKey?: BaseTextKey;
 	/** Show the local caveat on a line of its own. */
@@ -120,12 +122,8 @@ function placeTarget(proposal: Proposal): PlaceTarget {
 	let isLocal = id === AUTOMATION_LOCAL_TARGET_ID;
 	if (target) isLocal = target.kind === 'local';
 	else if (isRecommended) isLocal = recommended.kind === 'local';
-	return {
-		id,
-		...(target?.label !== undefined && { label: target.label }),
-		isLocal,
-		isRecommended,
-	};
+	const label = target?.label?.trim();
+	return { id, ...(label && { label }), isLocal, isRecommended };
 }
 
 /**
@@ -153,46 +151,87 @@ export function placeOf(proposal: Proposal): AutomationPlace {
 	const place = placeTarget(proposal);
 	const reasonKey = shownReasonKey(proposal, place);
 	return {
-		...(!place.isLocal && { linkedLabel: place.label ?? place.id }),
+		linked: !place.isLocal,
+		// Only a linked place shows a name from the server. The component names this computer.
+		...(!place.isLocal && place.label !== undefined && { linkedLabel: place.label }),
 		...(reasonKey && { reasonKey }),
 		caveat: hasLocalCaveat(proposal, place, reasonKey),
 	};
 }
 
+/**
+ * The copy of a workflow that is off, and of a workflow that is live with saved changes. For a
+ * live workflow, "Save" keeps the live version: the server does not turn the workflow off.
+ */
+const ACTIVATION_COPY = {
+	off: {
+		title: 'instanceAi.automation.proposal.title',
+		activate: 'instanceAi.automation.action.turnOn',
+		save: 'instanceAi.automation.action.saveOff',
+		note: 'instanceAi.automation.note.cannotTurnOn',
+	},
+	live: {
+		title: 'instanceAi.automation.proposal.titleUpdate',
+		activate: 'instanceAi.automation.action.makeLive',
+		save: 'instanceAi.automation.action.saveKeepLive',
+		note: 'instanceAi.automation.note.cannotMakeLive',
+	},
+} as const satisfies Record<string, Record<string, BaseTextKey>>;
+
+function activationCopy(proposal: Proposal) {
+	return ACTIVATION_COPY[proposal.active ? 'live' : 'off'];
+}
+
+/** False when the saved version is live already, so "Turn it on" would change nothing. */
+function hasSomethingToTurnOn(proposal: Proposal): boolean {
+	return !proposal.active || proposal.hasUnpublishedChanges;
+}
+
 function offersActivation(proposal: Proposal): boolean {
 	return (
 		proposal.canActivate &&
+		hasSomethingToTurnOn(proposal) &&
 		proposal.offered.activate.includes(true) &&
 		answerTargetId(proposal) !== undefined
 	);
 }
 
-/** The card asks to keep the workflow when it cannot turn it on. */
+/** The card asks to keep the workflow when it cannot turn it on or the saved version is live. */
 export function titleKey(proposal: Proposal): BaseTextKey {
 	return offersActivation(proposal)
-		? 'instanceAi.automation.proposal.title'
+		? activationCopy(proposal).title
 		: 'instanceAi.automation.proposal.titleKeep';
+}
+
+/** The line that says that a version of the workflow is live now. */
+export function liveStatusKey(proposal: Proposal): BaseTextKey | undefined {
+	if (!proposal.active) return undefined;
+	return proposal.hasUnpublishedChanges
+		? 'instanceAi.automation.status.liveWithChanges'
+		: 'instanceAi.automation.status.live';
+}
+
+/**
+ * The line that says why the card has no button to turn the workflow on. The title of a
+ * manual workflow says it already, and a live workflow without changes needs no button.
+ */
+export function activationNoteKey(proposal: Proposal): BaseTextKey | undefined {
+	if (offersActivation(proposal) || proposal.trigger.kind === 'manual') return undefined;
+	return hasSomethingToTurnOn(proposal) ? activationCopy(proposal).note : undefined;
 }
 
 /** The buttons in DOM order. A button shows only when the card offers the values it sends. */
 export function cardActions(proposal: Proposal): AutomationCardAction[] {
 	const actions: AutomationCardAction[] = [];
+	const copy = activationCopy(proposal);
 	const canTurnOn = offersActivation(proposal);
-	if (canTurnOn) {
-		actions.push({
-			action: 'activate',
-			labelKey: 'instanceAi.automation.action.turnOn',
-			type: 'primary',
-		});
-	}
+	if (canTurnOn) actions.push({ action: 'activate', labelKey: copy.activate, type: 'primary' });
 	const canSave =
 		proposal.offered.activate.includes(false) && answerTargetId(proposal) !== undefined;
 	if (canSave) {
 		actions.push({
 			action: 'save',
-			labelKey: canTurnOn
-				? 'instanceAi.automation.action.saveOff'
-				: 'instanceAi.automation.action.saveWorkflow',
+			labelKey: canTurnOn ? copy.save : 'instanceAi.automation.action.saveWorkflow',
 			type: canTurnOn ? 'secondary' : 'primary',
 		});
 	}
@@ -226,4 +265,10 @@ export function visibleSteps(proposal: Proposal): Step[] {
 /** The number of running nodes without an icon on the card. */
 export function hiddenStepCount(proposal: Proposal): number {
 	return Math.max(0, proposal.stepCount - visibleSteps(proposal).length);
+}
+
+/** The number of other projects that can also see the workflow. */
+export function sharedProjectCount(proposal: Proposal): number {
+	const { projects, total } = proposal.sharedWith;
+	return Math.max(total, projects.length);
 }

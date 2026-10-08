@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -8,7 +8,11 @@ import AssistantSectionHeader from './AssistantSectionHeader.vue';
 
 const WORKSPACE_OPEN_KEY = 'n8n:sidebar:workspace-open';
 
-const props = defineProps<{ collapsed: boolean }>();
+const props = defineProps<{
+	collapsed: boolean;
+	/** The sidebar item of the current page, when the Workspace holds it. */
+	activeItemId?: string;
+}>();
 
 /** True while the sidebar shows the sections that Simple mode keeps in the Workspace. */
 const open = defineModel<boolean>('open', { required: true });
@@ -24,9 +28,20 @@ const storedOpen = useStorage(WORKSPACE_OPEN_KEY, false, undefined, {
 	onError: () => {},
 });
 
-// The parent starts closed. Give it the stored choice, also when another tab changes it.
+// A page that the Workspace holds opens it, so that the sidebar shows where the user is.
+// This does not change the stored choice: the next visit starts as the user left it.
+const revealed = ref(false);
 watch(
-	storedOpen,
+	() => props.activeItemId,
+	(itemId) => {
+		if (itemId) revealed.value = true;
+	},
+	{ immediate: true },
+);
+
+// The parent starts closed. Give it the shown state, also when another tab changes it.
+watch(
+	() => storedOpen.value || revealed.value,
 	(value) => {
 		open.value = value;
 	},
@@ -34,8 +49,9 @@ watch(
 );
 
 function setOpen(value: boolean) {
-	open.value = value;
+	revealed.value = false;
 	storedOpen.value = value;
+	open.value = value;
 }
 </script>
 

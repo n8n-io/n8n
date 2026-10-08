@@ -40,13 +40,17 @@ describe('LinkedInstanceSessions', () => {
 
 		const result = await sessions.withSession(stored, 'push', async (session) => {
 			expect(session.link).toEqual(stored.summary);
-			expect(session.client).toBe(client);
 			expect([...session.toolNames]).toContain('import_workflow_package');
+			expect(await session.callTool('list_credentials', { limit: 1 })).toEqual({
+				data: [],
+				count: 0,
+			});
 			return 'done';
 		});
 
 		expect(result).toBe('done');
 		expect(clientFactory.create).toHaveBeenCalledWith({ origin: CLOUD, token: link.token });
+		expect(client.callTool).toHaveBeenCalledWith('list_credentials', { limit: 1 });
 		expect(client.probe).toHaveBeenCalledTimes(1);
 		expect(client.close).toHaveBeenCalledTimes(1);
 	});
@@ -99,5 +103,63 @@ describe('LinkedInstanceSessions', () => {
 			expect(clean('x'.repeat(300), 255)).toHaveLength(255);
 			expect(clean('short', 255)).toBe('short');
 		});
+	});
+
+	it.each(['\u200B', '\u202E', '\u2066', '\uFEFF', '\u00AD'])(
+		'removes a token that the instance splits with %j',
+		async (mark) => {
+			const { sessions, stored, link } = await sessionSetup();
+			const split = `${link.token.slice(0, 6)}${mark}${link.token.slice(6)}`;
+
+			await sessions.withSession(stored, 'push', async ({ clean }) => {
+				expect(clean(`Token ${split} refused`)).toBe('Token [REDACTED] refused');
+				expect(clean(`${split}${split}`, 255)).toBe('[REDACTED][REDACTED]');
+			});
+		},
+	);
+
+	it('cleans the text of a tool error before the work sees it', async () => {
+		const { sessions, stored, link, client } = await sessionSetup();
+		const split = `${link.token.slice(0, 6)}\u200B${link.token.slice(6)}`;
+		client.callTool.mockRejectedValue(
+			new RemoteInstanceError('tool-error', `Refused:\r\n${split}\u202E is\u2028invalid`),
+		);
+
+		const error = await sessions
+			.withSession(stored, 'push', async (session) => await session.callTool('x', {}))
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(RemoteInstanceError);
+		expect(error).toMatchObject({
+			reason: 'tool-error',
+			message: 'Refused: [REDACTED] is invalid',
+		});
+	});
+
+	it('gives a tool error without visible text the default message', async () => {
+		const { sessions, stored, client } = await sessionSetup();
+		client.callTool.mockRejectedValue(new RemoteInstanceError('tool-error', '\u200B\u202E'));
+
+		const error = await sessions
+			.withSession(stored, 'push', async (session) => await session.callTool('x', {}))
+			.catch((e: unknown) => e);
+
+		expect(error).toMatchObject({
+			reason: 'tool-error',
+			message: 'The tool on the linked instance failed.',
+		});
+	});
+
+	it('passes every other error of a tool call on as it is', async () => {
+		const { sessions, stored, client } = await sessionSetup();
+		const timeout = new RemoteInstanceError('timeout');
+		const bug = new Error('bug\nwith a line');
+
+		for (const failure of [timeout, bug]) {
+			client.callTool.mockRejectedValueOnce(failure);
+			await expect(
+				sessions.withSession(stored, 'push', async (session) => await session.callTool('x', {})),
+			).rejects.toBe(failure);
+		}
 	});
 });

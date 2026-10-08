@@ -14,7 +14,7 @@ import {
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { getSchemaBaseDirs, setSchemaBaseDirs, validateNodeConfig } from '@n8n/workflow-sdk';
-import type { INode } from 'n8n-workflow';
+import { jsonParse, type INode } from 'n8n-workflow';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
@@ -82,7 +82,7 @@ const reachesPullRequest = (drop: OutputSelector) => {
 const agentNodes = () => workflow.nodes.filter((node) => node.type === MESSAGE_AN_AGENT);
 
 function sessionKeyOf(node: INode): string {
-	const advanced = node.parameters.advanced;
+	const advanced: unknown = node.parameters.advanced;
 	const session = isRecord(advanced) && isRecord(advanced.session) ? advanced.session.session : {};
 	const parsed = z.object({ sessionIdType: z.literal('customKey'), sessionKey: z.string() });
 	return parsed.parse(session).sessionKey;
@@ -202,22 +202,20 @@ describe('software factory template pack', () => {
 		it('bounds every loop by a person or by at most 3 retries', () => {
 			expect(findUnboundedCycles(workflow, isLoopBound)).toEqual([]);
 			// Without the bounds, the plan loop and the repair loop stay.
-			expect(findUnboundedCycles(workflow, () => false)).toEqual(
-				expect.arrayContaining([
-					['Ask for plan approval', 'Plan', 'Plan decision', 'Revise plan'],
-					[
-						'Address critic findings',
-						'Check result',
-						'Critic input',
-						'Critic verdict',
-						'Fix the failing check',
-						'Fresh critic',
-						'Get diff',
-						'Implement',
-						'Verify',
-					],
-				]),
-			);
+			expect(findUnboundedCycles(workflow, () => false)).toEqual([
+				['Ask for plan approval', 'Plan', 'Plan decision', 'Revise plan'],
+				[
+					'Address critic findings',
+					'Check result',
+					'Critic input',
+					'Critic verdict',
+					'Fix the failing check',
+					'Fresh critic',
+					'Get diff',
+					'Implement',
+					'Verify',
+				],
+			]);
 		});
 
 		it('opens a pull request only when each gate passes', () => {
@@ -285,7 +283,10 @@ describe('software factory template pack', () => {
 		});
 
 		it('continues after the critic only on an explicit approval without serious findings', () => {
-			const review = (structuredOutput: unknown, options: { diff?: string; runIndex?: number } = {}) =>
+			const review = (
+				structuredOutput: unknown,
+				options: { diff?: string; runIndex?: number } = {},
+			) =>
 				routeOf('Critic verdict', {
 					json: { structuredOutput },
 					nodes: { 'Critic input': { diff: options.diff ?? 'diff --git a/a.ts b/a.ts' } },
@@ -294,11 +295,19 @@ describe('software factory template pack', () => {
 			const finding = (severity: string) => ({ path: 'a.ts', line: 1, severity, body: 'Fix it' });
 
 			expect(review({ verdict: 'approve', findings: [finding('minor')], scopeCreep: [] })).toBe(0);
-			expect(review({ verdict: 'approve', findings: [finding('major')], scopeCreep: [] })).toBe('fallback');
-			expect(review({ verdict: 'approve', findings: [finding('blocker')], scopeCreep: [] })).toBe('fallback');
-			expect(review({ verdict: 'approve', findings: [], scopeCreep: [] }, { diff: '' })).toBe('fallback');
+			expect(review({ verdict: 'approve', findings: [finding('major')], scopeCreep: [] })).toBe(
+				'fallback',
+			);
+			expect(review({ verdict: 'approve', findings: [finding('blocker')], scopeCreep: [] })).toBe(
+				'fallback',
+			);
+			expect(review({ verdict: 'approve', findings: [], scopeCreep: [] }, { diff: '' })).toBe(
+				'fallback',
+			);
 			expect(review({ verdict: 'request_changes', findings: [], scopeCreep: [] })).toBe(1);
-			expect(review({ verdict: 'request_changes', findings: [], scopeCreep: [] }, { runIndex: 2 })).toBe('fallback');
+			expect(
+				review({ verdict: 'request_changes', findings: [], scopeCreep: [] }, { runIndex: 2 }),
+			).toBe('fallback');
 			expect(review({ verdict: 'block', findings: [], scopeCreep: [] })).toBe('fallback');
 			expect(review(null)).toBe('fallback');
 		});
@@ -374,7 +383,7 @@ describe('software factory template pack', () => {
 						scopeCreep: z.object({ type: z.literal('array') }),
 					}),
 				})
-				.parse(JSON.parse(z.string().parse(critic.parameters.outputSchema)));
+				.parse(jsonParse(z.string().parse(critic.parameters.outputSchema)));
 
 			expect(critic.parameters).toMatchObject({ useStructuredOutput: true, schemaType: 'manual' });
 			expect(schema.required).toEqual(['verdict', 'findings', 'scopeCreep']);
@@ -497,7 +506,10 @@ describe('software factory template code', () => {
 		'- Not a criterion.',
 	].join('\n');
 
-	const issueEvent = (event: Record<string, unknown> = {}, issue: Record<string, unknown> = {}) => ({
+	const issueEvent = (
+		event: Record<string, unknown> = {},
+		issue: Record<string, unknown> = {},
+	) => ({
 		action: 'create',
 		type: 'Issue',
 		url: 'https://linear.app/acme/issue/ENG-42',
@@ -554,8 +566,16 @@ describe('software factory template code', () => {
 	});
 
 	it.each([
-		['an update that keeps the label', { action: 'update', updatedFrom: { labelIds: ['label-factory'] } }, {}],
-		['an update that does not change labels', { action: 'update', updatedFrom: { title: 'Old' } }, {}],
+		[
+			'an update that keeps the label',
+			{ action: 'update', updatedFrom: { labelIds: ['label-factory'] } },
+			{},
+		],
+		[
+			'an update that does not change labels',
+			{ action: 'update', updatedFrom: { title: 'Old' } },
+			{},
+		],
 		['an issue without the label', {}, { labels: [{ id: 'label-bug', name: 'bug' }] }],
 		['an issue without labels', {}, { labels: undefined }],
 		['a removed issue', { action: 'remove' }, {}],
@@ -567,11 +587,31 @@ describe('software factory template code', () => {
 	it.each([
 		['no section', 'Fix the bug.\n- A list item outside a section.', []],
 		['an empty section', '## Acceptance criteria\n\n## Notes\n- Not a criterion.', []],
-		['a bold heading', '**Acceptance criteria:**\n- First\n- Second\n**Out of scope**\n- Third', ['First', 'Second']],
+		[
+			'a bold heading',
+			'**Acceptance criteria:**\n- First\n- Second\n**Out of scope**\n- Third',
+			['First', 'Second'],
+		],
+		[
+			'another heading level and checked items',
+			'### ACCEPTANCE CRITERIA\n- [x] Done\n- [ ] Open',
+			['Done', 'Open'],
+		],
 	])('reads the acceptance criteria of a description with %s', (_case, text, criteria) => {
 		const [item] = ticketItems.parse(readTicket(issueEvent({}, { description: text })));
 
 		expect(item.json.acceptanceCriteria).toEqual(criteria);
+	});
+
+	it('reads the acceptance criteria of the example ticket in the README', () => {
+		const example = /```markdown\n([\s\S]*?)```/.exec(readPackText('README.md'))?.[1];
+		const [item] = ticketItems.parse(readTicket(issueEvent({}, { description: example })));
+
+		expect(item.json.acceptanceCriteria).toEqual([
+			'The workflow card shows the number of runs in the last 7 days.',
+			'The number is 0 for a workflow without runs.',
+			'A unit test covers both cases.',
+		]);
 	});
 
 	it.each([

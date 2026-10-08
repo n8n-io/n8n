@@ -5,7 +5,7 @@ import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/
 import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nMenuItem } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
@@ -16,11 +16,12 @@ import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
+import ProjectNavigationSectionHeader from './ProjectNavigationSectionHeader.vue';
 import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import AssistantChatsSection from '@/features/ai/instanceAi/navigation/AssistantChatsSection.vue';
 import AssistantAutomationsSection from '@/features/ai/instanceAi/navigation/AssistantAutomationsSection.vue';
-import SimpleWorkspaceDisclosure from '@/features/ai/instanceAi/navigation/SimpleWorkspaceDisclosure.vue';
+import SimpleSidebarSections from '@/features/ai/instanceAi/navigation/SimpleSidebarSections.vue';
 import { useExperienceMode } from '@/features/ai/instanceAi/experience/useExperienceMode';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
@@ -64,22 +65,13 @@ const isChatLinkAvailable = computed(
 		hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 );
 const isInstanceAiNavVisible = useInstanceAiAvailable();
-// Simple mode keeps the chats on top and puts Favorites and Projects in the Workspace disclosure.
+// Simple mode keeps the chats on top and moves the other pages into the Workspace.
 const { isSimple } = useExperienceMode();
 const workspaceOpen = ref(false);
 const showWorkspaceItems = computed(() => !isSimple.value || workspaceOpen.value);
-// In the Workspace, Favorites and Projects are sub-sections with AA-contrast titles.
-const sectionHeadingLevel = computed(() => (isSimple.value ? 3 : 2));
-const sectionTitleColor = computed<'text-base' | 'text-light'>(() =>
-	isSimple.value ? 'text-base' : 'text-light',
-);
 const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
 );
-const showPersonalItem = computed(
-	() => !!projectsStore.personalProject?.id && canBrowseProjects.value,
-);
-const showSharedItem = computed(() => canBrowseProjects.value && hasMultipleVerifiedUsers.value);
 
 const FAVORITES_COLLAPSED_KEY = computed(
 	() => `n8n:sidebar:${usersStore.currentUser?.id ?? 'anonymous'}:favorites-collapsed`,
@@ -166,15 +158,19 @@ const chat = computed<IMenuItem>(() => ({
 	route: { to: { name: CHAT_VIEW } },
 }));
 
-// Simple mode hides these top items. The Workspace holds them, so each page stays reachable.
-const workspaceTopItems = computed(() =>
+// The pages below Overview that the user can open. Simple mode moves them into the Workspace.
+const pageItems = computed(() =>
 	[
 		{
 			item: personalProject.value,
-			show: showPersonalItem.value,
+			show: !!projectsStore.personalProject?.id && canBrowseProjects.value,
 			testId: 'project-personal-menu-item',
 		},
-		{ item: shared.value, show: showSharedItem.value, testId: 'project-shared-menu-item' },
+		{
+			item: shared.value,
+			show: canBrowseProjects.value && hasMultipleVerifiedUsers.value,
+			testId: 'project-shared-menu-item',
+		},
 		{
 			item: workflowReviews.value,
 			show: isWorkflowReviewsNavVisible.value,
@@ -183,13 +179,12 @@ const workspaceTopItems = computed(() =>
 		{ item: chat.value, show: isChatLinkAvailable.value, testId: 'project-chat-menu-item' },
 	].filter((entry) => entry.show),
 );
-// Show the Workspace only when it holds something, so that it never opens to nothing.
-const hasWorkspaceContent = computed(
-	() =>
-		workspaceTopItems.value.length > 0 ||
-		hasFavorites.value ||
-		(canBrowseProjects.value && displayProjects.value.length > 0),
-);
+const topGroupItems = computed(() => (isSimple.value ? [] : pageItems.value));
+// The Workspace rows below the pages, so that the Workspace knows when it holds the current page.
+const workspaceNestedItemIds = computed(() => [
+	...favoriteGroups.value.flatMap((group) => group.items.map((entry) => entry.menuItem.id)),
+	...(canBrowseProjects.value ? displayProjects.value.map((project) => project.id) : []),
+]);
 
 /** A pull or an applied package can create and delete projects behind the sidebar. */
 async function reloadMyProjects() {
@@ -211,7 +206,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="$style.projects">
+	<div :class="[$style.projects, { [$style.inWorkspace]: isSimple && !props.collapsed }]">
 		<div :class="[$style.home, props.collapsed ? $style.collapsed : '']">
 			<N8nMenuItem
 				v-if="isInstanceAiNavVisible"
@@ -228,71 +223,30 @@ onBeforeUnmount(() => {
 				data-test-id="project-home-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="showPersonalItem && !isSimple"
-				:item="personalProject"
+				v-for="entry in topGroupItems"
+				:key="entry.testId"
+				:item="entry.item"
 				:compact="props.collapsed"
-				:active="sidebarActiveTabId === personalProject.id"
-				data-test-id="project-personal-menu-item"
-			/>
-			<N8nMenuItem
-				v-if="showSharedItem && !isSimple"
-				:item="shared"
-				:compact="props.collapsed"
-				:active="sidebarActiveTabId === 'shared'"
-				data-test-id="project-shared-menu-item"
-			/>
-			<N8nMenuItem
-				v-if="isWorkflowReviewsNavVisible && !isSimple"
-				:item="workflowReviews"
-				:compact="props.collapsed"
-				:active="sidebarActiveTabId === 'workflow-reviews'"
-				data-test-id="project-workflow-reviews-menu-item"
-			/>
-			<N8nMenuItem
-				v-if="isChatLinkAvailable && !isSimple"
-				:item="chat"
-				:compact="props.collapsed"
-				:active="sidebarActiveTabId === 'chat'"
-				data-test-id="project-chat-menu-item"
+				:active="sidebarActiveTabId === entry.item.id"
+				:data-test-id="entry.testId"
 			/>
 		</div>
-		<template v-if="isSimple">
-			<AssistantChatsSection :collapsed="props.collapsed" />
-			<AssistantAutomationsSection :collapsed="props.collapsed" />
-			<SimpleWorkspaceDisclosure
-				v-if="hasWorkspaceContent"
-				v-model:open="workspaceOpen"
-				:collapsed="props.collapsed"
-			/>
-			<div v-if="workspaceOpen && workspaceTopItems.length > 0" :class="$style.projectItems">
-				<N8nMenuItem
-					v-for="entry in workspaceTopItems"
-					:key="entry.testId"
-					:item="entry.item"
-					:compact="props.collapsed"
-					:active="sidebarActiveTabId === entry.item.id"
-					:data-test-id="entry.testId"
-				/>
-			</div>
-		</template>
+		<SimpleSidebarSections
+			v-if="isSimple"
+			v-model:workspace-open="workspaceOpen"
+			:collapsed="props.collapsed"
+			:items="pageItems"
+			:nested-item-ids="workspaceNestedItemIds"
+			:active-tab-id="sidebarActiveTabId"
+		/>
 		<template v-if="hasFavorites && showWorkspaceItems">
-			<div v-if="!props.collapsed" role="heading" :aria-level="sectionHeadingLevel">
-				<button
-					type="button"
-					:class="$style.sectionHeader"
-					:aria-expanded="!favoritesCollapsed"
-					@click="favoritesCollapsed = !favoritesCollapsed"
-				>
-					<N8nText size="small" bold :color="sectionTitleColor">
-						{{ locale.baseText('favorites.menu.title') }}
-					</N8nText>
-					<N8nIcon
-						icon="chevron-down"
-						size="xsmall"
-						:class="[$style.chevron, favoritesCollapsed ? $style.chevronCollapsed : '']"
-					/>
-				</button>
-			</div>
+			<ProjectNavigationSectionHeader
+				v-if="!props.collapsed"
+				v-model:collapsed="favoritesCollapsed"
+				:title="locale.baseText('favorites.menu.title')"
+				:in-workspace="isSimple"
+				chevron-size="xsmall"
+			/>
 			<div v-if="props.collapsed || !favoritesCollapsed" :class="$style.projectItems">
 				<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
 					<div v-if="!props.collapsed && groupIndex > 0" :class="$style.groupSpacer" />
@@ -329,27 +283,13 @@ onBeforeUnmount(() => {
 		<AssistantChatsSection v-if="!isSimple" :collapsed="props.collapsed" />
 		<AssistantAutomationsSection v-if="!isSimple" :collapsed="props.collapsed" />
 		<template v-if="projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0">
-			<div
+			<ProjectNavigationSectionHeader
 				v-if="!props.collapsed && showWorkspaceItems"
-				role="heading"
-				:aria-level="sectionHeadingLevel"
-			>
-				<button
-					type="button"
-					:class="$style.sectionHeader"
-					:aria-expanded="!projectsCollapsed"
-					@click="projectsCollapsed = !projectsCollapsed"
-				>
-					<N8nText size="small" bold :color="sectionTitleColor">
-						{{ locale.baseText('projects.menu.title') }}
-					</N8nText>
-					<N8nIcon
-						icon="chevron-down"
-						size="small"
-						:class="[$style.chevron, projectsCollapsed ? $style.chevronCollapsed : '']"
-					/>
-				</button>
-			</div>
+				v-model:collapsed="projectsCollapsed"
+				:title="locale.baseText('projects.menu.title')"
+				:in-workspace="isSimple"
+				chevron-size="small"
+			/>
 		</template>
 		<div
 			v-if="
@@ -375,8 +315,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
-
 .projects {
 	width: 100%;
 	align-items: start;
@@ -390,6 +328,11 @@ onBeforeUnmount(() => {
 
 .projectItems {
 	padding: var(--spacing--2xs) var(--spacing--3xs);
+}
+
+// In Simple mode the Workspace holds these rows, so they start one step in from its title.
+.inWorkspace .projectItems {
+	padding-inline-start: calc(var(--spacing--3xs) + var(--spacing--xs));
 }
 
 .instanceAiParentInactive {
@@ -406,44 +349,6 @@ onBeforeUnmount(() => {
 .upgradeLink {
 	color: var(--color--primary);
 	cursor: pointer;
-}
-
-.sectionHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	width: calc(100% - var(--spacing--3xs) * 2);
-	box-sizing: border-box;
-	padding: var(--spacing--4xs) var(--spacing--3xs);
-	margin: var(--spacing--4xs) var(--spacing--3xs) 0;
-	background: none;
-	border: none;
-	border-radius: var(--spacing--4xs);
-	cursor: pointer;
-	color: inherit;
-
-	&:hover {
-		background-color: var(--color--background--light-1);
-		color: var(--color--text--shade-1);
-
-		.chevron {
-			color: var(--color--text--shade-1);
-		}
-	}
-
-	&:focus-visible {
-		@include focus.focus-ring;
-	}
-}
-
-.chevron {
-	color: var(--color--text--tint-1);
-	transition: transform 0.15s ease;
-	flex-shrink: 0;
-}
-
-.chevronCollapsed {
-	transform: rotate(-90deg);
 }
 
 /* Keep old .projectsLabel for any remaining usages */

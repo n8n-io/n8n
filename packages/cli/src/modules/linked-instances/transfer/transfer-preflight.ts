@@ -7,7 +7,9 @@ import type {
 } from '@n8n/api-types';
 
 import {
+	credentialSummaryKey,
 	type CredentialSummary,
+	uniqueCredentialSummaries,
 	uniqueSorted,
 } from '@/modules/n8n-packages/capabilities/package-requirements';
 
@@ -37,27 +39,13 @@ export type RemoteCredentialList = {
 	complete: boolean;
 };
 
-const credentialKey = ({ name, type }: CredentialSummary) => JSON.stringify([name, type]);
-
-function compareCredentials(a: CredentialSummary, b: CredentialSummary): number {
-	return a.name.localeCompare(b.name) || a.type.localeCompare(b.type);
-}
-
-/** Each name and type once, sorted, as the export lists them in the package. The import matches on both. */
-function uniqueCredentials(credentials: readonly CredentialSummary[]): CredentialSummary[] {
-	const byKey = new Map(
-		credentials.map(({ name, type }) => [credentialKey({ name, type }), { name, type }]),
-	);
-	return [...byKey.values()].sort(compareCredentials);
-}
-
 function credentialStatus(
 	credential: CredentialSummary,
 	remote: RemoteCredentialList | null,
 	remoteKeys: ReadonlySet<string>,
 ): LinkedInstanceTransferCredentialStatus {
 	if (remote === null) return 'unknown';
-	if (remoteKeys.has(credentialKey(credential))) return 'matched';
+	if (remoteKeys.has(credentialSummaryKey(credential))) return 'matched';
 	// A credential that a partial list leaves out can still be there.
 	return remote.complete ? 'needs-set-up' : 'unknown';
 }
@@ -71,8 +59,9 @@ export function matchCredentials(
 	local: readonly CredentialSummary[],
 	remote: RemoteCredentialList | null,
 ): LinkedInstanceTransferCredential[] {
-	const remoteKeys = new Set((remote?.credentials ?? []).map(credentialKey));
-	return uniqueCredentials(local).map((credential) => ({
+	const remoteKeys = new Set((remote?.credentials ?? []).map(credentialSummaryKey));
+	// Each name and type once, sorted, as the export lists them in the package.
+	return uniqueCredentialSummaries(local).map((credential) => ({
 		...credential,
 		status: credentialStatus(credential, remote, remoteKeys),
 	}));

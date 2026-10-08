@@ -10,8 +10,7 @@ import { LINK_NOT_FOUND_MESSAGE } from '../../linked-instances.service';
 import { RemoteInstanceError } from '../../remote/remote-instance.errors';
 import { RESPONSE_OVER_LIMIT_MESSAGE } from '../../remote/remote-instance.transports';
 import { TRANSFER_MESSAGES } from '../transfer-errors';
-import { REST_IMPORT_RULES } from '../transfer-local-workflows';
-import { serialised, transferSetup, workflowEntity } from './transfer.test-helpers';
+import { serialised, transferSetup } from './transfer.test-helpers';
 
 vi.mock('@/modules/n8n-packages/capabilities/workflow-package-export', () => ({
 	exportWorkflowPackage: vi.fn(),
@@ -61,7 +60,8 @@ describe('TransferService.pull', () => {
 			limit: { maxBytes: 1024, setting: 'N8N_PAYLOAD_SIZE_MAX' },
 			projectId: undefined,
 			sourceWorkflowId: 'r1',
-			rules: REST_IMPORT_RULES,
+			// The rules of a pull: see local-package-import.test.ts.
+			rules: { assertUpdatable: expect.any(Function), afterImport: expect.any(Function) },
 		});
 		// The import checks the personal project itself.
 		expect(projectService.getProjectWithScope).not.toHaveBeenCalled();
@@ -230,19 +230,5 @@ describe('TransferService.pull', () => {
 				logger.warn.mock.calls,
 			),
 		).not.toContain(token);
-	});
-});
-
-describe('REST_IMPORT_RULES', () => {
-	it('refuses to update an archived workflow and names it', () => {
-		const archived = () =>
-			REST_IMPORT_RULES.assertUpdatable(workflowEntity({ name: 'Daily report', isArchived: true }));
-
-		expect(archived).toThrow(BadRequestError);
-		expect(archived).toThrow(TRANSFER_MESSAGES.archivedLocalCopy('Daily report'));
-	});
-
-	it('lets a pull update a workflow that is not archived', () => {
-		expect(() => REST_IMPORT_RULES.assertUpdatable(workflowEntity())).not.toThrow();
 	});
 });

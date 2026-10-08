@@ -5,19 +5,19 @@
  */
 import { computed, ref, useId } from 'vue';
 import lowerFirst from 'lodash/lowerFirst';
-import { I18nT } from 'vue-i18n';
 import type { AutomationProposalCard, InstanceAiConfirmRequest } from '@n8n/api-types';
-import { N8nBadge, N8nButton, N8nCard, N8nText, type ButtonVariant } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nText, type ButtonVariant } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { describeSchedule } from '@/features/agents/utils/scheduleBuilder';
-import { splitName } from '@/features/collaboration/projects/projects.utils';
 import ConfirmationFooter from '../ConfirmationFooter.vue';
+import AutomationProposalPlace from './AutomationProposalPlace.vue';
 import AutomationProposalSteps from './AutomationProposalSteps.vue';
 import {
+	activationNoteKey,
 	cardActions,
 	decisionFor,
 	hiddenStepCount,
-	placeOf,
+	liveStatusKey,
 	titleKey,
 	triggerLineKey,
 	visibleSteps,
@@ -53,9 +53,10 @@ const submitted = ref(false);
 
 const isInactive = computed(() => props.disabled || submitted.value);
 const actions = computed(() => cardActions(props.proposal));
-const place = computed(() => placeOf(props.proposal));
 const steps = computed(() => visibleSteps(props.proposal));
 const hiddenSteps = computed(() => hiddenStepCount(props.proposal));
+const statusKey = computed(() => liveStatusKey(props.proposal));
+const noteKey = computed(() => activationNoteKey(props.proposal));
 
 const triggerText = computed(() => {
 	const line = triggerLineKey(props.proposal.trigger);
@@ -67,18 +68,6 @@ const triggerText = computed(() => {
 	return i18n.baseText(line.key, {
 		interpolate: { description: lowerFirst(description), timezone: line.timezone ?? '' },
 	});
-});
-
-const placeName = computed(
-	() => place.value.linkedLabel ?? i18n.baseText('instanceAi.automation.place.thisComputer'),
-);
-
-// A personal project is named "First Last <email>". The card shows only the name.
-const projectName = computed(() => {
-	const { projectName: name, projectType } = props.proposal.visibleTo;
-	if (projectType !== 'personal') return name;
-	const parts = splitName(name);
-	return parts.name ?? parts.email ?? name;
 });
 
 function choose(action: AutomationAction) {
@@ -109,6 +98,15 @@ function choose(action: AutomationAction) {
 				>
 					{{ proposal.title }}
 				</N8nText>
+				<N8nText
+					v-if="statusKey"
+					tag="div"
+					size="small"
+					color="text-dark"
+					data-test-id="automation-proposal-status"
+				>
+					{{ i18n.baseText(statusKey) }}
+				</N8nText>
 			</div>
 
 			<N8nText
@@ -123,50 +121,16 @@ function choose(action: AutomationAction) {
 
 			<AutomationProposalSteps v-if="steps.length > 0" :steps="steps" :hidden-count="hiddenSteps" />
 
-			<N8nText
-				tag="div"
-				size="small"
-				color="text-dark"
-				:class="$style.line"
-				data-test-id="automation-proposal-place"
-			>
-				<I18nT
-					:keypath="
-						place.reasonKey
-							? 'instanceAi.automation.place.runsOnWithReason'
-							: 'instanceAi.automation.place.runsOn'
-					"
-					scope="global"
-				>
-					<template #place>
-						<N8nBadge variant="outline">{{ placeName }}</N8nBadge>
-					</template>
-					<template v-if="place.reasonKey" #reason>{{ i18n.baseText(place.reasonKey) }}</template>
-				</I18nT>
-			</N8nText>
+			<AutomationProposalPlace :proposal="proposal" />
 
 			<N8nText
-				v-if="place.caveat"
+				v-if="noteKey"
 				tag="div"
 				size="small"
 				color="text-base"
-				data-test-id="automation-proposal-caveat"
+				data-test-id="automation-proposal-note"
 			>
-				{{ i18n.baseText('instanceAi.automation.place.localCaveat') }}
-			</N8nText>
-
-			<N8nText
-				tag="div"
-				size="small"
-				color="text-dark"
-				:class="$style.line"
-				data-test-id="automation-proposal-visible-to"
-			>
-				<I18nT keypath="instanceAi.automation.visibleTo" scope="global">
-					<template #project>
-						<N8nBadge variant="outline" :class="$style.wrap">{{ projectName }}</N8nBadge>
-					</template>
-				</I18nT>
+				{{ i18n.baseText(noteKey) }}
 			</N8nText>
 		</div>
 
@@ -210,13 +174,6 @@ function choose(action: AutomationAction) {
 
 .wrap {
 	overflow-wrap: anywhere;
-}
-
-.line {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--spacing--4xs);
 }
 
 .footer {

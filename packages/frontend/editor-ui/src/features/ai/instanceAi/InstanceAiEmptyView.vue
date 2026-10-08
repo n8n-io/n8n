@@ -27,11 +27,9 @@ import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from './prefills';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { useExperienceMode } from './experience/useExperienceMode';
-import { useLastUsedProject } from './experience/useLastUsedProject';
+import { useNewChatProject } from './experience/useNewChatProject';
 import {
 	INSTANCE_AI_THREAD_VIEW,
-	INSTANCE_AI_PROJECT_ID_QUERY,
 	INSTANCE_AI_SOURCE_QUERY,
 	isInstanceAiThreadSource,
 } from './constants';
@@ -95,7 +93,6 @@ import {
 	EMPTY_ASSISTANT_MENTION_COUNTS,
 	type AssistantMentionCounts,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -124,19 +121,9 @@ const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPOSURE_EVENT =
 const store = useInstanceAiStore();
 const appSettingsStore = useSettingsStore();
 const cloudPlanStore = useCloudPlanStore();
-const projectsStore = useProjectsStore();
 const route = useRoute();
 const router = useRouter();
-const { isSimple } = useExperienceMode();
-const { rememberChatProject, simpleDefaultProjectId } = useLastUsedProject();
-function resolveInitialProjectId(): string | undefined {
-	const queryProjectId = route.query[INSTANCE_AI_PROJECT_ID_QUERY];
-	if (typeof queryProjectId === 'string' && queryProjectId.length > 0) {
-		return queryProjectId;
-	}
-	// Simple mode has no picker, so teammates see the work in the last-used team project.
-	return isSimple.value ? simpleDefaultProjectId() : projectsStore.personalProject?.id;
-}
+const { selectedProject, canSelectProject, rememberChatProject } = useNewChatProject();
 
 /** Prefer a hand-off source from navigation; fall back for direct empty-state visits. */
 function resolveLaunchSource(): InstanceAiThreadSource {
@@ -144,16 +131,6 @@ function resolveLaunchSource(): InstanceAiThreadSource {
 	return isInstanceAiThreadSource(querySource) ? querySource : 'assistant_page';
 }
 
-const selectedProject = ref(resolveInitialProjectId());
-// An instance that loses its team-project license keeps its projects, but the
-// user cannot work in them. Hide the picker then, the same way the sidebar
-// project list hides itself. Simple mode chooses the project itself.
-const canSelectProject = computed(
-	() =>
-		projectsStore.isTeamProjectFeatureEnabled &&
-		projectsStore.myProjects.length > 1 &&
-		!isSimple.value,
-);
 const settingsStore = useInstanceAiSettingsStore();
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const toast = useToast();
@@ -500,16 +477,6 @@ watch(chatInputRef, () => {
 	composerHasContent.value = false;
 });
 const isStartingThread = ref(false);
-
-watch(
-	() => route.query[INSTANCE_AI_PROJECT_ID_QUERY],
-	() => {
-		// Re-resolve on every change, including when the query is cleared, so
-		// navigating away from a project-scoped entry falls back to the
-		// personal project instead of leaving the previous project selected.
-		selectedProject.value = resolveInitialProjectId();
-	},
-);
 
 type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
 	promptKey: BaseTextKey;

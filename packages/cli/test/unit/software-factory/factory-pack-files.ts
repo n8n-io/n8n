@@ -40,7 +40,9 @@ export function readPackJson(relativePath: string): unknown {
 }
 
 /** A credential that a person chooses after import: no id, only a name. */
-const placeholderCredentialSchema = z.object({ id: z.null(), name: z.string().trim().min(1) }).strict();
+const placeholderCredentialSchema = z
+	.object({ id: z.null(), name: z.string().trim().min(1) })
+	.strict();
 
 const templateNodeSchema = z
 	.object({
@@ -136,12 +138,12 @@ export function runCodeNode(jsCode: string, run: TemplateRun): unknown {
 const evaluate = (expression: string, run: TemplateRun) =>
 	plain(runInNewContext(`(${expression})`, sandboxOf(run)));
 
-const textOf = (value: unknown) =>
-	value === undefined || value === null
-		? ''
-		: typeof value === 'object'
-			? JSON.stringify(value)
-			: String(value);
+function textOf(value: unknown): string {
+	if (value === undefined || value === null) return '';
+	if (typeof value === 'string') return value;
+	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+	return JSON.stringify(value);
+}
 
 /**
  * Resolves a parameter value like n8n does. A value that is one `={{ … }}` expression keeps the
@@ -179,7 +181,13 @@ const filterValueSchema = z.object({
 	combinator: z.enum(['and', 'or']),
 });
 
-const parameterValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null(), z.undefined()]);
+const parameterValueSchema = z.union([
+	z.string(),
+	z.number(),
+	z.boolean(),
+	z.null(),
+	z.undefined(),
+]);
 
 const toParameterValue = (value: unknown): NodeParameterValue => parameterValueSchema.parse(value);
 

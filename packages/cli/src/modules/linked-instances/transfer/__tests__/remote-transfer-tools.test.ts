@@ -3,11 +3,12 @@ import { RemoteInstanceError } from '../../remote/remote-instance.errors';
 import type { RemoteSession } from '../linked-instance-sessions';
 import {
 	exportFromRemote,
+	findRemotePersonalProjectId,
 	importOnRemote,
 	listRemoteCredentials,
 	publishOnRemote,
 } from '../remote-transfer-tools';
-import { ALL_TOOLS, transferSetup } from './transfer.test-helpers';
+import { ALL_TOOLS, REMOTE_PERSONAL_PROJECT_ID, transferSetup } from './transfer.test-helpers';
 
 /** Runs the work in a real session over the fake instance, as the services do. */
 async function inSession<T>(
@@ -224,6 +225,20 @@ describe('publishOnRemote', () => {
 		});
 	});
 
+	it('gives the text of a tool error on one line and without characters without width', async () => {
+		await inSession(async (session, { remote }) => {
+			remote.handlers.publish_workflow = () => {
+				throw new RemoteInstanceError('tool-error', 'Locked\nby\u202E someone');
+			};
+
+			expect(await publishOnRemote(session, 'remote1')).toEqual({
+				ok: false,
+				failure: 'refused',
+				reason: 'Locked by someone',
+			});
+		});
+	});
+
 	it('turns a remote failure into a refusal', async () => {
 		await inSession(async (session, { remote }) => {
 			remote.handlers.publish_workflow = () => {
@@ -260,7 +275,7 @@ describe('listRemoteCredentials', () => {
 		);
 	});
 
-	it('lists the names and types in the project, and in all projects without one', async () => {
+	it('lists the names and types in the project', async () => {
 		await inSession(async (session, { remote }) => {
 			remote.handlers.list_credentials = () => ({
 				data: [
@@ -274,11 +289,7 @@ describe('listRemoteCredentials', () => {
 				credentials: [{ name: 'Stripe', type: 'httpHeaderAuth' }],
 				complete: true,
 			});
-			await listRemoteCredentials(session, undefined);
-			expect(remote.callsOf('list_credentials')).toEqual([
-				{ limit: 200, projectId: 'p1' },
-				{ limit: 200 },
-			]);
+			expect(remote.callsOf('list_credentials')).toEqual([{ limit: 200, projectId: 'p1' }]);
 		});
 	});
 
@@ -300,6 +311,44 @@ describe('listRemoteCredentials', () => {
 			remote.handlers.list_credentials = () => ({ error: 'Forbidden' });
 
 			expect(await catchError(listRemoteCredentials(session, 'p1'))).toHaveProperty(
+				'reason',
+				'tool-error',
+			);
+		});
+	});
+});
+
+describe('findRemotePersonalProjectId', () => {
+	it('asks for the personal project of the token user and returns its id', async () => {
+		await inSession(async (session, { remote }) => {
+			expect(await findRemotePersonalProjectId(session)).toBe(REMOTE_PERSONAL_PROJECT_ID);
+			expect(remote.callsOf('search_projects')).toEqual([{ type: 'personal', limit: 1 }]);
+		});
+	});
+
+	it('returns undefined without the tool, and without a personal project in the list', async () => {
+		await inSession(
+			async (session, { remote }) => {
+				expect(await findRemotePersonalProjectId(session)).toBeUndefined();
+				expect(remote.callsOf('search_projects')).toEqual([]);
+			},
+			['import_workflow_package'],
+		);
+		await inSession(async (session, { remote }) => {
+			remote.handlers.search_projects = () => ({
+				data: [{ id: 'Tm1pQ2rS3tU4vW5x', name: 'Ops', type: 'team' }],
+				count: 1,
+			});
+
+			expect(await findRemotePersonalProjectId(session)).toBeUndefined();
+		});
+	});
+
+	it('throws a tool error for a result without a project list', async () => {
+		await inSession(async (session, { remote }) => {
+			remote.handlers.search_projects = () => ({ error: 'Forbidden' });
+
+			expect(await catchError(findRemotePersonalProjectId(session))).toHaveProperty(
 				'reason',
 				'tool-error',
 			);

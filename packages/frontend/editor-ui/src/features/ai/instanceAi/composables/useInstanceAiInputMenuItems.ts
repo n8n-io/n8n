@@ -443,9 +443,5 @@ export function useInstanceAiInputMenuItems(
 		return items;
 	});
 
-	// Simple mode shows four items. Power mode and the flag off keep the full menu.
-	return {
-		...useSimpleInputMenu(menuItems, disconnectedConnectionCount),
-		refreshAppliedPreferences,
-	};
+	return useSimpleInputMenu({ menuItems, disconnectedConnectionCount, refreshAppliedPreferences });
 }

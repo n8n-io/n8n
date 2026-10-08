@@ -6,8 +6,8 @@ import type {
 	AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { DirectedGraph } from 'n8n-core';
 import {
+	getChildNodes,
 	getReachableNodeNames,
 	mapConnectionsByDestination,
 	STICKY_NODE_TYPE,
@@ -45,7 +45,7 @@ export function listEdges(connections: IConnections): Edge[] {
 	);
 }
 
-export const describeEdge = (edge: Edge) =>
+const describeEdge = (edge: Edge) =>
 	`${edge.source} -[${edge.type} ${edge.outputIndex}]-> ${edge.target}`;
 
 /** Connections whose source or target is not a node of the workflow. */
@@ -88,23 +88,35 @@ export function findUnreachableNodes(
 
 /**
  * The sorted node names of each cycle that stays when the `isBreaker` outputs are removed. A
- * node that connects to itself is a cycle of one. Call it only on a graph without dangling
- * connections.
+ * node that connects to itself is a cycle of one.
  */
 export function findUnboundedCycles(
 	{ nodes, connections }: WorkflowGraph,
 	isBreaker: OutputSelector,
 ): string[][] {
 	const remaining = withoutOutputs(connections, isBreaker);
+	// getChildNodes never lists the start node, so a self-loop needs its own check.
 	const selfLoops = new Set(
 		listEdges(remaining)
 			.filter((edge) => edge.source === edge.target)
 			.map((edge) => edge.source),
 	);
-	return DirectedGraph.fromNodesAndConnections(nodes, remaining)
-		.getStronglyConnectedComponents()
-		.map((component) => [...component].map((node) => node.name).sort())
-		.filter((names) => names.length > 1 || selfLoops.has(names[0]));
+	const descendants = new Map(
+		nodes.map((node) => [node.name, new Set(getChildNodes(remaining, node.name))]),
+	);
+	const reaches = (from: string, to: string) => descendants.get(from)?.has(to) ?? false;
+
+	const cycles: string[][] = [];
+	const assigned = new Set<string>();
+	for (const { name } of nodes) {
+		if (assigned.has(name)) continue;
+		const loop = [...(descendants.get(name) ?? [])].filter((other) => reaches(other, name));
+		if (loop.length === 0 && !selfLoops.has(name)) continue;
+		const cycle = [name, ...loop].sort();
+		for (const member of cycle) assigned.add(member);
+		cycles.push(cycle);
+	}
+	return cycles;
 }
 
 const RUN_INDEX_EXPRESSION = /^=\{\{\s*\$runIndex\s*\}\}$/;
@@ -136,13 +148,12 @@ export function runIndexLimit(filterValue: unknown): number | undefined {
 
 /** The `$runIndex` limit of one output of an If or Switch (rules mode) node. */
 export function outputRunIndexLimit(node: INode, outputIndex: number): number | undefined {
-	const { parameters } = node;
 	if (node.type === 'n8n-nodes-base.if') {
-		return outputIndex === 0 ? runIndexLimit(parameters.conditions) : undefined;
+		return outputIndex === 0 ? runIndexLimit(node.parameters.conditions) : undefined;
 	}
-	if (node.type !== 'n8n-nodes-base.switch' || !isRecord(parameters.rules)) return undefined;
-	const rules = parameters.rules.values;
-	const rule: unknown = Array.isArray(rules) ? rules[outputIndex] : undefined;
+	const rules: unknown = node.parameters.rules;
+	if (node.type !== 'n8n-nodes-base.switch' || !isRecord(rules)) return undefined;
+	const rule: unknown = Array.isArray(rules.values) ? rules.values[outputIndex] : undefined;
 	return isRecord(rule) ? runIndexLimit(rule.conditions) : undefined;
 }
 
@@ -177,24 +188,33 @@ function mcpServerWriteReasons(server: AgentJsonMcpServerConfig): string[] {
 		.map((tool) => `MCP server "${server.name}" offers "${tool}"`);
 }
 
+/** Capabilities that can change data whatever their settings are. */
+function capabilityWriteReasons(config: AgentJsonConfig): string[] {
+	const reasons = [
+		config.coding ? 'coding lets the agent change a repository' : undefined,
+		config.subAgents?.agents?.some((agent) => agent.enabled !== false)
+			? 'sub-agents can have write tools'
+			: undefined,
+		config.integrations?.length ? 'integrations let the agent send messages' : undefined,
+		Object.keys(config.providerTools ?? {}).length > 0
+			? 'provider tools are not classified'
+			: undefined,
+	];
+	return reasons.filter((reason): reason is string => reason !== undefined);
+}
+
 /**
  * Why an agent can change something. The list is empty only when each enabled capability is
  * known to be read-only. Unknown capabilities count as write access (fail closed).
  */
 export function findWriteAccess(config: AgentJsonConfig): string[] {
-	const reasons: string[] = [];
-	if (config.coding) reasons.push('coding lets the agent change a repository');
-	if (config.subAgents?.agents?.some((agent) => agent.enabled !== false)) {
-		reasons.push('sub-agents can have write tools');
-	}
-	if (config.integrations?.length) reasons.push('integrations let the agent send messages');
-	if (Object.keys(config.providerTools ?? {}).length > 0) {
-		reasons.push('provider tools are not classified');
-	}
-	for (const tool of config.tools ?? []) {
-		const reason = tool.enabled === false ? undefined : toolWriteReason(tool);
-		if (reason) reasons.push(reason);
-	}
-	for (const server of config.mcpServers ?? []) reasons.push(...mcpServerWriteReasons(server));
-	return reasons;
+	const toolReasons = (config.tools ?? [])
+		.filter((tool) => tool.enabled !== false)
+		.map(toolWriteReason)
+		.filter((reason): reason is string => reason !== undefined);
+	return [
+		...capabilityWriteReasons(config),
+		...toolReasons,
+		...(config.mcpServers ?? []).flatMap(mcpServerWriteReasons),
+	];
 }

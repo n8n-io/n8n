@@ -24,6 +24,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { listCredentials } from '@/modules/mcp/tools/list-credentials.tool';
 import {
 	exportTool,
@@ -41,7 +42,7 @@ import {
 	type RemoteInstanceClient,
 } from '../../remote/remote-instance.client';
 import { readToolResult } from '../../remote/remote-instance.outcome';
-import { TRANSFER_MESSAGES } from '../transfer-errors';
+import { TRANSFER_MESSAGES, TRANSFER_WARNINGS } from '../transfer-errors';
 
 const clientFactory = mockInstance(RemoteInstanceClientFactory);
 mockInstance(ActiveWorkflowManager);
@@ -120,8 +121,33 @@ async function callRemoteTool(name: string, args: Record<string, unknown>): Prom
 	if (name === 'publish_workflow') {
 		return { success: true, workflowId: args.workflowId, activeVersionId: 'v1' };
 	}
+	if (name === 'search_projects') {
+		// As the n8n tool: only the projects that the token's user has a relation to.
+		const type = args.type === 'personal' || args.type === 'team' ? args.type : undefined;
+		const [projects, count] = await Container.get(ProjectRepository).getAccessibleProjectsAndCount(
+			remoteUser.id,
+			{ type, take: Number(args.limit ?? 100) },
+		);
+		return {
+			data: projects.map(({ id, name: projectName, type: projectType }) => ({
+				id,
+				name: projectName,
+				type: projectType,
+			})),
+			count,
+		};
+	}
 	throw new Error(`Unexpected tool ${name}`);
 }
+
+const toolCalls = (toolName: string) =>
+	client.callTool.mock.calls.filter(([name]) => name === toolName).map(([, args]) => args);
+
+const linkWithoutDefaultProject = async () =>
+	await Container.get(LinkedInstanceRepository).update(
+		{ id: linkId },
+		{ defaultRemoteProjectId: null, defaultRemoteProjectName: null },
+	);
 
 const workflowsIn = async (project: Project) =>
 	await Container.get(SharedWorkflowRepository).find({
@@ -247,6 +273,28 @@ describe('POST /linked-instances/:id/transfer/preflight', () => {
 			{ name: 'Mailgun', type: 'httpHeaderAuth', status: 'needs-set-up' },
 		]);
 	});
+
+	it('checks the personal project there when the link has no default project, as the move does', async () => {
+		await linkWithoutDefaultProject();
+		const workflow = await aliceWorkflow();
+
+		const preflight = await post(aliceAgent, '/transfer/preflight', { workflowId: workflow.id });
+		const move = await post(aliceAgent, '/transfer', { workflowId: workflow.id });
+
+		// The token's user has "Stripe" only in a team project, which a move into the personal
+		// project does not use.
+		expect(preflight.body.data).toMatchObject({
+			targetProject: null,
+			credentials: [{ name: 'Stripe', type: 'httpHeaderAuth', status: 'needs-set-up' }],
+		});
+		expect(toolCalls('list_credentials')).toEqual([
+			{ limit: 200, projectId: (await personalProjectOf(remoteUser)).id },
+		]);
+		expect(move.body.data).toMatchObject({
+			targetProject: null,
+			credentialsNeedingSetup: [expect.objectContaining({ name: 'Stripe' })],
+		});
+	});
 });
 
 describe('POST /linked-instances/:id/transfer', () => {
@@ -295,6 +343,35 @@ describe('POST /linked-instances/:id/transfer', () => {
 		expect(response.body.data).toMatchObject({ published: true, localDeactivated: true });
 		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: workflow.id });
 		expect(stored.activeVersionId).toBeNull();
+	});
+
+	it('does not publish a copy with a credential without a value, and keeps the workflow on here', async () => {
+		const mailgun = await headerCredential('Mailgun', await personalProjectOf(alice));
+		const workflow = await createActiveWorkflow(
+			{ name: 'Send mail', nodes: [httpNode(mailgun)], connections: {} },
+			alice,
+		);
+
+		const response = await post(aliceAgent, '/transfer', {
+			workflowId: workflow.id,
+			publish: true,
+			deactivateLocal: true,
+		});
+
+		expect(response.status).toBe(200);
+		expect(response.body.data).toMatchObject({
+			published: false,
+			publishFailed: true,
+			localDeactivated: false,
+			credentialsNeedingSetup: [expect.objectContaining({ name: 'Mailgun' })],
+			warnings: expect.arrayContaining([
+				TRANSFER_WARNINGS.credentialsNeedSetup('Cloud', 1),
+				TRANSFER_WARNINGS.keptLocalLive('Cloud'),
+			]),
+		});
+		expect(toolCalls('publish_workflow')).toEqual([]);
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: workflow.id });
+		expect(stored.activeVersionId).not.toBeNull();
 	});
 
 	it('answers 403 and moves nothing when the user cannot turn off the workflow here', async () => {
@@ -401,6 +478,72 @@ describe('POST /linked-instances/:id/pull', () => {
 		expect(response.body.message).toBe(TRANSFER_MESSAGES.cannotCreateInProject);
 		expect(clientFactory.create).not.toHaveBeenCalled();
 		expect(await workflowCountIn(salesProject)).toBe(0);
+	});
+
+	describe('MCP access of the workflow here', () => {
+		const mcpSettings = () => Container.get(McpSettingsService);
+		const settingsOf = async (workflowId: string) =>
+			(await Container.get(WorkflowRepository).findOneByOrFail({ id: workflowId })).settings;
+		const pull = async (remoteWorkflowId: string) =>
+			(await post(aliceAgent, '/pull', { remoteWorkflowId })).body.data;
+
+		afterEach(async () => {
+			await mcpSettings().setAutoExposeNewWorkflows(false);
+			await mcpSettings().setEnabled(false);
+		});
+
+		it('follows the setting for new workflows here, not the package, and a pull keeps a later change', async () => {
+			const source = await remoteWorkflow();
+
+			const first = await pull(source.id);
+			expect(first.created).toBe(true);
+			expect((await settingsOf(first.workflowId))?.availableInMCP).not.toBe(true);
+
+			await Container.get(WorkflowRepository).update(
+				{ id: first.workflowId },
+				{ settings: { availableInMCP: true } },
+			);
+			const second = await pull(source.id);
+			expect(second).toMatchObject({ workflowId: first.workflowId, created: false });
+			expect((await settingsOf(first.workflowId))?.availableInMCP).toBe(true);
+		});
+
+		it('makes a new workflow available when this instance does that for new workflows, and keeps a later turn-off', async () => {
+			await mcpSettings().setEnabled(true);
+			await mcpSettings().setAutoExposeNewWorkflows(true);
+			const source = await remoteWorkflow();
+
+			const first = await pull(source.id);
+			expect((await settingsOf(first.workflowId))?.availableInMCP).toBe(true);
+
+			await Container.get(WorkflowRepository).update(
+				{ id: first.workflowId },
+				{ settings: { availableInMCP: false } },
+			);
+			const second = await pull(source.id);
+			expect(second.created).toBe(false);
+			expect((await settingsOf(first.workflowId))?.availableInMCP).toBe(false);
+		});
+	});
+
+	it('refuses a pull that would change a workflow that was made here and has the same ID', async () => {
+		// Alice can create workflows in the project, and the token's user can read the workflow.
+		const shared = await createTeamProject('Shared', alice);
+		await linkUserToProject(remoteUser, shared, 'project:editor');
+		const source = await createWorkflow(
+			{ name: 'Same ID', nodes: [], settings: { availableInMCP: true } },
+			shared,
+		);
+
+		const response = await post(aliceAgent, '/pull', {
+			remoteWorkflowId: source.id,
+			projectId: shared.id,
+		});
+
+		expect(response.status).toBe(400);
+		expect(response.body.message).toBe(TRANSFER_MESSAGES.sameIdLocalWorkflow('Same ID'));
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: source.id });
+		expect(stored.versionId).toBe(source.versionId);
 	});
 
 	it('asks for MCP access when the workflow there is not available in MCP', async () => {

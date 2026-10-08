@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue';
+import { computed, type ComputedRef, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
@@ -10,14 +10,22 @@ import { ADD_WORKFLOW_ITEM_ID, countDisconnectedItems, simpleMenuItems } from '.
 import { useExperienceMode } from './useExperienceMode';
 import { useLastUsedProject } from './useLastUsedProject';
 
+/** The full composer + menu and the number of its lost connections. */
+type FullInputMenu = {
+	menuItems: Readonly<Ref<InputMenuItem[]>>;
+	disconnectedConnectionCount: Readonly<Ref<number>>;
+};
+
+type VisibleInputMenu<T extends FullInputMenu> = Omit<T, keyof FullInputMenu> & {
+	menuItems: ComputedRef<InputMenuItem[]>;
+	disconnectedConnectionCount: ComputedRef<number>;
+};
+
 /**
  * Trims the composer + menu to four items in Simple mode. Power mode and the flag off
- * keep the full menu and its attention count.
+ * keep the full menu and its attention count. The other fields of `menu` stay as they are.
  */
-export function useSimpleInputMenu(
-	menuItems: Readonly<Ref<InputMenuItem[]>>,
-	disconnectedCount: Readonly<Ref<number>>,
-) {
+export function useSimpleInputMenu<T extends FullInputMenu>(menu: T): VisibleInputMenu<T> {
 	const i18n = useI18n();
 	const router = useRouter();
 	const projectsStore = useProjectsStore();
@@ -49,22 +57,27 @@ export function useSimpleInputMenu(
 		await router.push({ name: VIEWS.NEW_WORKFLOW, query: { projectId } });
 	}
 
+	// The same label as in the sidebar + menu, so that one action has one name.
 	const addWorkflowItem = computed<InputMenuItem>(() => ({
 		id: ADD_WORKFLOW_ITEM_ID,
-		label: i18n.baseText('workflows.add'),
+		label: i18n.baseText('projects.menu.create.workflow'),
 		icon: { type: 'icon', value: 'workflow' },
 		disabled: addWorkflowProjectId() === undefined,
 		data: { action: addWorkflow },
 	}));
 
-	const visibleMenuItems = computed(() =>
-		isSimple.value ? simpleMenuItems(menuItems.value, addWorkflowItem.value) : menuItems.value,
+	const menuItems = computed(() =>
+		isSimple.value
+			? simpleMenuItems(menu.menuItems.value, addWorkflowItem.value)
+			: menu.menuItems.value,
 	);
 
 	// A hidden item must not make the + button ask for attention.
-	const visibleDisconnectedCount = computed(() =>
-		isSimple.value ? countDisconnectedItems(visibleMenuItems.value) : disconnectedCount.value,
+	const disconnectedConnectionCount = computed(() =>
+		isSimple.value
+			? countDisconnectedItems(menuItems.value)
+			: menu.disconnectedConnectionCount.value,
 	);
 
-	return { menuItems: visibleMenuItems, disconnectedConnectionCount: visibleDisconnectedCount };
+	return { ...menu, menuItems, disconnectedConnectionCount };
 }

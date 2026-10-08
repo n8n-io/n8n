@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 
 import { RemoteInstanceError } from '../remote/remote-instance.errors';
 import { LinkedInstanceSessions, type RemoteSession } from './linked-instance-sessions';
-import { listRemoteCredentials } from './remote-transfer-tools';
+import { findRemotePersonalProjectId, listRemoteCredentials } from './remote-transfer-tools';
 import { toTransferHttpError, transferContext } from './transfer-errors';
 import { TransferLocalWorkflows } from './transfer-local-workflows';
 import {
@@ -57,10 +57,15 @@ export class TransferPreflightService {
 		}
 	}
 
-	/** The credential check only informs, so a failure leaves the statuses unknown. */
+	/**
+	 * The credentials of the project that the move goes to, because the import matches only those.
+	 * The check only informs, so a failure leaves the statuses unknown.
+	 */
 	private async tryListCredentials(session: RemoteSession): Promise<RemoteCredentialList | null> {
 		try {
-			return await listRemoteCredentials(session, session.link.defaultRemoteProject?.id);
+			const projectId =
+				session.link.defaultRemoteProject?.id ?? (await findRemotePersonalProjectId(session));
+			return projectId === undefined ? null : await listRemoteCredentials(session, projectId);
 		} catch (error) {
 			if (!(error instanceof RemoteInstanceError)) throw error;
 			this.logger.warn('Could not list the credentials of a linked instance', {

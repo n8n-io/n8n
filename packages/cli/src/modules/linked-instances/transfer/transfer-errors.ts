@@ -38,6 +38,8 @@ export const TRANSFER_MESSAGES = {
 		'You do not have permission to create workflows in this project. Choose another project.',
 	archivedLocalCopy: (workflowName: string) =>
 		`The workflow "${workflowName}" in this project came from the same workflow before, but it is archived. Restore it, then try again.`,
+	sameIdLocalWorkflow: (workflowName: string) =>
+		`The workflow "${workflowName}" in this project has the same ID, but it is not a copy from a pull, so a pull does not change it. Choose another project.`,
 	unreachable: (name: string) => `Can't reach ${name}. Check that it's running, then try again.`,
 	unauthorised: (name: string) =>
 		`${name} refused the access token. Change the token in Settings > Linked instances.`,
@@ -74,10 +76,14 @@ export const TRANSFER_WARNINGS = {
 		`The workflow is in ${name}, but this access token cannot publish workflows there. Publish it in ${name}.`,
 	missingNodeTypes: (name: string) =>
 		`The workflow is in ${name}, but it uses node types that ${name} does not have, so it is not published. Install them, then publish it in ${name}.`,
+	credentialsNeedSetup: (name: string, count: number) =>
+		`The workflow is in ${name}, but ${count} credential(s) there have no value, so it is not published. Set them up, then publish it in ${name}.`,
 	keptLocalLive: (name: string) =>
-		`The workflow stays turned on here, because it is not live in ${name}.`,
+		`The workflow stays turned on here, because the new version is not live in ${name}.`,
 	turnOffFailed: (reason: string) =>
 		`The workflow is still turned on here: ${withoutFullStop(reason)}. Turn it off in the editor.`,
+	mcpAccessNotSet:
+		'The workflow is here, but n8n could not set its MCP access. Check MCP access in its workflow settings.',
 } as const;
 
 /** A refusal of the linked instance that has a message of its own. */
@@ -104,9 +110,23 @@ export function isProjectRefusal(error: unknown): boolean {
 	);
 }
 
-/** "Ops on Cloud", or "Cloud" for the personal project of the token's user. */
+/** "Ops on Cloud", or "your personal project on Cloud" for the personal project of the token's user. */
 export function describePlace(name: string, project: LinkedInstanceRemoteProject | null): string {
-	return project ? `${project.name} on ${name}` : name;
+	return `${project ? project.name : 'your personal project'} on ${name}`;
+}
+
+/**
+ * A failed import into a project of the linked instance. Messages name this project, because a
+ * push can go to the personal project when the linked instance refuses the default project.
+ */
+export class RemoteImportError extends RemoteInstanceError {
+	constructor(
+		error: RemoteInstanceError,
+		/** `null`: the personal project of the token's user. */
+		readonly project: LinkedInstanceRemoteProject | null,
+	) {
+		super(error.reason, error.message);
+	}
 }
 
 /** The context of the messages for a move with this link. */
@@ -117,9 +137,14 @@ export function transferContext(
 	return { direction, name: link.name, place: describePlace(link.name, link.defaultRemoteProject) };
 }
 
+/** Where the push went: the project of the failed import, else the default project of the link. */
+function pushPlace(error: RemoteInstanceError, { name, place }: TransferErrorContext): string {
+	return error instanceof RemoteImportError ? describePlace(name, error.project) : place;
+}
+
 function toolErrorMessage(error: RemoteInstanceError, context: TransferErrorContext): string {
-	const { direction, name, place } = context;
-	const where = direction === 'push' ? place : name;
+	const { direction, name } = context;
+	const where = direction === 'push' ? pushPlace(error, context) : name;
 	const refusal = classifyRemoteRefusal(error.message);
 	if (refusal === 'not-in-mcp') return TRANSFER_MESSAGES.turnOnMcpAccess(where);
 	if (refusal === 'archived') return TRANSFER_MESSAGES.restoreRemoteCopy(where);

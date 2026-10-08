@@ -34,7 +34,7 @@ const itemsArb = fc.array(
 );
 
 describe('simpleMenuItems', () => {
-	it('keeps "Attach files", the computer and the browser, then adds "Add workflow"', () => {
+	it('keeps "Attach files", the computer and the browser, then adds "New workflow"', () => {
 		const items = [
 			item('attach-files'),
 			item('tools'),

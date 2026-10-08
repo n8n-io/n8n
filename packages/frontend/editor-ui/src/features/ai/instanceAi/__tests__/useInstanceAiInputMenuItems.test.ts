@@ -31,7 +31,7 @@ vi.mock('../experience/useLastUsedProject', () => ({
 	useLastUsedProject: () => ({ simpleDefaultProjectId: () => experience.defaultProjectId }),
 }));
 
-// The projects of the user, with the scopes that "Add workflow" checks, and the branch state.
+// The projects of the user, with the scopes that "New workflow" checks, and the branch state.
 const { projectsStore, sourceControlStore } = vi.hoisted(() => ({
 	projectsStore: {
 		personalProject: null as { id: string; scopes: string[] } | null,
@@ -449,7 +449,7 @@ describe('useInstanceAiInputMenuItems', () => {
 			mcpStore.connections = [makeMcpConnection('1', 'connected')];
 		}
 
-		it('shows exactly "Attach files", the computer, the browser and "Add workflow"', () => {
+		it('shows exactly "Attach files", the computer, the browser and "New workflow"', () => {
 			offerEverything();
 			experience.isSimple = true;
 
@@ -460,7 +460,7 @@ describe('useInstanceAiInputMenuItems', () => {
 				'chatInputBase.button.attach',
 				'instanceAi.inputMenu.computer.connect',
 				'instanceAi.inputMenu.browser.connect',
-				'workflows.add',
+				'projects.menu.create.workflow',
 			]);
 			expect(findItem(menuItems.value, 'add-tool')).toBeUndefined();
 			expect(findItem(menuItems.value, 'mcp-1')).toBeUndefined();
@@ -518,7 +518,7 @@ describe('useInstanceAiInputMenuItems', () => {
 			openSpy.mockRestore();
 		});
 
-		it('reads the project when the user picks "Add workflow", not when the menu is built', async () => {
+		it('reads the project when the user picks "New workflow", not when the menu is built', async () => {
 			experience.isSimple = true;
 			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 
@@ -531,7 +531,7 @@ describe('useInstanceAiInputMenuItems', () => {
 			});
 		});
 
-		it('offers "Add workflow" when the user can create a workflow in the project', () => {
+		it('offers "New workflow" when the user can create a workflow in the project', () => {
 			experience.isSimple = true;
 
 			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
@@ -539,7 +539,7 @@ describe('useInstanceAiInputMenuItems', () => {
 			expect(findItem(menuItems.value, 'add-workflow')?.disabled).toBe(false);
 		});
 
-		it('disables "Add workflow" on a protected branch, like the sidebar + menu', async () => {
+		it('disables "New workflow" on a protected branch, like the sidebar + menu', async () => {
 			experience.isSimple = true;
 			sourceControlStore.preferences.branchReadOnly = true;
 
@@ -551,7 +551,7 @@ describe('useInstanceAiInputMenuItems', () => {
 			expect(router.push).not.toHaveBeenCalled();
 		});
 
-		it('disables "Add workflow" when the user cannot create workflows in the project', async () => {
+		it('disables "New workflow" when the user cannot create workflows in the project', async () => {
 			experience.isSimple = true;
 			experience.defaultProjectId = 'personal-project';
 			projectsStore.personalProject = { id: 'personal-project', scopes: ['workflow:read'] };
@@ -564,7 +564,17 @@ describe('useInstanceAiInputMenuItems', () => {
 			expect(router.push).not.toHaveBeenCalled();
 		});
 
-		it('disables "Add workflow" when there is no project to create the workflow in', () => {
+		it('follows a change of the project for new work while the menu is open', () => {
+			experience.isSimple = true;
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			expect(findItem(menuItems.value, 'add-workflow')?.disabled).toBe(false);
+
+			experience.defaultProjectId = undefined;
+
+			expect(findItem(menuItems.value, 'add-workflow')?.disabled).toBe(true);
+		});
+
+		it('disables "New workflow" when there is no project to create the workflow in', () => {
 			experience.isSimple = true;
 			experience.defaultProjectId = undefined;
 

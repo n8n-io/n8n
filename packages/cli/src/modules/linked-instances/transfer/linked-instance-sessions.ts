@@ -18,21 +18,49 @@ import { missingToolMessage, type TransferDirection } from './transfer-errors';
 // Remote error texts have the same limit.
 const MAX_REMOTE_TEXT_LENGTH = 500;
 
+type CleanText = (text: string, maxLength?: number) => string;
+
 /** One open connection to a linked instance that passed the probe. Do not keep it after the work. */
 export type RemoteSession = {
 	link: LinkedInstanceSummary;
-	client: RemoteInstanceClient;
+	/**
+	 * Calls a tool of the linked instance. The message of a tool error is made safe to show, as
+	 * `clean` does, because the messages for the user repeat it.
+	 * @throws {RemoteInstanceError}
+	 */
+	callTool: RemoteInstanceClient['callTool'];
 	toolNames: ReadonlySet<string>;
 	/**
-	 * Makes text from the linked instance safe to show: removes the access token, drops
-	 * characters without width, puts it on one line and cuts it to `maxLength` (default 500).
+	 * Makes text from the linked instance safe to show: drops characters without width, puts it on
+	 * one line, removes the access token and cuts it to `maxLength` (default 500).
 	 */
-	clean: (text: string, maxLength?: number) => string;
+	clean: CleanText;
 };
 
-function textCleaner(token: string): RemoteSession['clean'] {
-	return (text, maxLength = MAX_REMOTE_TEXT_LENGTH) =>
-		cleanName(remoteText(text, token) ?? '', maxLength);
+/**
+ * The text goes on one line before the token is removed. Otherwise a token with characters
+ * without width in it passes the removal, and the folding joins it again.
+ */
+export function textCleaner(token: string): CleanText {
+	return (text, maxLength = MAX_REMOTE_TEXT_LENGTH) => {
+		const oneLine = cleanName(text, Number.POSITIVE_INFINITY);
+		return cleanName(remoteText(oneLine, token) ?? '', maxLength);
+	};
+}
+
+function cleaningCallTool(
+	client: RemoteInstanceClient,
+	clean: CleanText,
+): RemoteInstanceClient['callTool'] {
+	return async (...args) => {
+		try {
+			return await client.callTool(...args);
+		} catch (error) {
+			// Only a tool error holds text of the linked instance. An empty text gets the default message.
+			if (!(error instanceof RemoteInstanceError) || error.reason !== 'tool-error') throw error;
+			throw new RemoteInstanceError('tool-error', clean(error.message) || undefined);
+		}
+	};
 }
 
 /** Opens the connections of moves. Each user reaches only their own links. */
@@ -72,7 +100,9 @@ export class LinkedInstanceSessions {
 				const toolNames = new Set(probe.toolNames);
 				const missing = missingToolMessage(toolNames, direction, summary.name);
 				if (missing) throw new BadRequestError(missing);
-				return await work({ link: summary, client, toolNames, clean: textCleaner(token) });
+				const clean = textCleaner(token);
+				const callTool = cleaningCallTool(client, clean);
+				return await work({ link: summary, callTool, toolNames, clean });
 			},
 		);
 	}

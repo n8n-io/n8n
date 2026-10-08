@@ -29,7 +29,10 @@ export const LINKED_INSTANCE_TRANSFER_CREDENTIAL_STATUSES = [
 	'matched',
 	/** The move creates an empty credential that the user sets up in the linked instance. */
 	'needs-set-up',
-	/** The linked instance did not list its credentials, for example for an access token without credential access. */
+	/**
+	 * The linked instance did not list the credentials of the target project in full, for example
+	 * for an access token without credential access.
+	 */
 	'unknown',
 ] as const;
 
@@ -57,8 +60,13 @@ export type LinkedInstanceTransferPreflight = {
 	nodeTypeCheck: 'checked' | 'unknown';
 	/** Node types that the linked instance does not have, as "type@version". */
 	missingNodeTypes: string[];
+	/** The statuses apply to `targetProject`. */
 	credentials: LinkedInstanceTransferCredential[];
-	/** Where the workflow goes. `null`: the personal project of the access token's user. */
+	/**
+	 * Where the workflow goes. `null`: the personal project of the access token's user. When the
+	 * linked instance refuses this project at the move, the workflow goes to the personal project
+	 * instead. The preflight cannot know that before the move.
+	 */
 	targetProject: LinkedInstanceRemoteProject | null;
 	/** A move copies one workflow only, so the workflow cannot move while this list is not empty. */
 	subWorkflowCalls: LinkedInstanceTransferSubWorkflow[];
@@ -76,13 +84,25 @@ export type LinkedInstancePushResult = {
 	targetProject: LinkedInstanceRemoteProject | null;
 	/** `false` when the move updated the copy of an earlier move. */
 	created: boolean;
-	/** `true` when a version of the copy is live in the linked instance. */
+	/**
+	 * `true` when a version of the copy is live in the linked instance. It can be an earlier
+	 * version: see `publishFailed`.
+	 */
 	published: boolean;
-	/** Ids are ids in the linked instance. */
+	/**
+	 * `true` when the move was asked to publish the copy and the new version did not go live: the
+	 * linked instance refused it, or the copy needs set-up first. The warnings say why. An earlier
+	 * version can stay live, so `published` can still be `true`.
+	 */
+	publishFailed: boolean;
+	/** Credentials without a value. A copy that has them is not published. Ids are ids in the linked instance. */
 	credentialsNeedingSetup: LinkedInstanceCredentialNeedingSetup[];
 	/** Node types that the linked instance does not have, as "type@version". */
 	missingNodeTypes: string[];
-	/** `true` when the workflow in this instance is turned off after the move. */
+	/**
+	 * `true` when the move turned off the workflow in this instance. `false` when the move was not
+	 * asked to, when the workflow was not on, or when it stays on: the warnings then say why.
+	 */
 	localDeactivated: boolean;
 	/** What did not work, then what the linked instance reported. en-GB. */
 	warnings: string[];

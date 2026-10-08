@@ -8,7 +8,14 @@ import { expectRejection, user } from '../../__tests__/linked-instances.test-hel
 import { LINK_NOT_FOUND_MESSAGE } from '../../linked-instances.service';
 import { RemoteInstanceError } from '../../remote/remote-instance.errors';
 import { TRANSFER_MESSAGES } from '../transfer-errors';
-import { node, OPS, serialised, transferSetup, workflowEntity } from './transfer.test-helpers';
+import {
+	node,
+	OPS,
+	REMOTE_PERSONAL_PROJECT_ID,
+	serialised,
+	transferSetup,
+	workflowEntity,
+} from './transfer.test-helpers';
 
 vi.mock('@/modules/n8n-packages/capabilities/workflow-package-export', () => ({
 	exportWorkflowPackage: vi.fn(),
@@ -145,16 +152,76 @@ describe('TransferPreflightService', () => {
 		);
 	});
 
-	it('lists all credentials of the user when the link has no default project', async () => {
-		const context = transferSetup();
-		const alice = user();
-		const link = await context.link(alice, null);
-		context.workflowFinder.findWorkflowForUser.mockResolvedValue(workflowEntity());
+	describe('without a default project', () => {
+		async function personalSetup() {
+			const context = transferSetup();
+			const alice = user();
+			const link = await context.link(alice, null);
+			context.workflowFinder.findWorkflowForUser.mockResolvedValue(
+				workflowEntity({ nodes: [slackNode] }),
+			);
+			context.credentialsFinder.findCredentialForUser.mockResolvedValue(
+				storedCredential('cred-slack', 'Team Slack', 'slackApi'),
+			);
+			return { ...context, alice, linkId: link.id };
+		}
 
-		const preflight = await context.preflightService.preflight(alice, link.id, 'wf1');
+		it('matches the credentials of the personal project there, where the move goes', async () => {
+			const { preflightService, alice, linkId, remote } = await personalSetup();
+			remote.handlers.list_credentials = (args) => ({
+				data:
+					args.projectId === REMOTE_PERSONAL_PROJECT_ID
+						? [{ id: 'c9', name: 'Team Slack', type: 'slackApi' }]
+						: [],
+			});
 
-		expect(preflight.targetProject).toBeNull();
-		expect(context.remote.callsOf('list_credentials')).toEqual([{ limit: 200 }]);
+			const preflight = await preflightService.preflight(alice, linkId, 'wf1');
+
+			expect(preflight.targetProject).toBeNull();
+			expect(preflight.credentials).toEqual([
+				{ name: 'Team Slack', type: 'slackApi', status: 'matched' },
+			]);
+			expect(remote.callsOf('search_projects')).toEqual([{ type: 'personal', limit: 1 }]);
+			expect(remote.callsOf('list_credentials')).toEqual([
+				{ limit: 200, projectId: REMOTE_PERSONAL_PROJECT_ID },
+			]);
+		});
+
+		it('gives unknown, and lists nothing, when the token cannot list projects', async () => {
+			const { preflightService, alice, linkId, client, remote } = await personalSetup();
+			client.probe.mockResolvedValue({
+				ok: true,
+				toolNames: ['import_workflow_package', 'list_credentials'],
+			});
+
+			const { credentials } = await preflightService.preflight(alice, linkId, 'wf1');
+
+			expect(credentials).toEqual([{ name: 'Team Slack', type: 'slackApi', status: 'unknown' }]);
+			expect(remote.callsOf('list_credentials')).toEqual([]);
+		});
+
+		it('gives unknown when the instance lists no personal project', async () => {
+			const { preflightService, alice, linkId, remote } = await personalSetup();
+			remote.handlers.search_projects = () => ({ data: [], count: 0 });
+
+			const { credentials } = await preflightService.preflight(alice, linkId, 'wf1');
+
+			expect(credentials.map(({ status }) => status)).toEqual(['unknown']);
+			expect(remote.callsOf('list_credentials')).toEqual([]);
+		});
+
+		it('gives unknown and logs ids only when the project list fails', async () => {
+			const { preflightService, alice, linkId, remote, logger } = await personalSetup();
+			remote.handlers.search_projects = () => ({ unexpected: true });
+
+			const { credentials } = await preflightService.preflight(alice, linkId, 'wf1');
+
+			expect(credentials.map(({ status }) => status)).toEqual(['unknown']);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not list the credentials of a linked instance',
+				{ linkedInstanceId: linkId, reason: 'tool-error' },
+			);
+		});
 	});
 
 	it('names the sub-workflows that block the move, when the user can read them', async () => {

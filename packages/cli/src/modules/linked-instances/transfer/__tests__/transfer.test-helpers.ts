@@ -5,6 +5,7 @@ import type { User, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -20,6 +21,7 @@ import {
 	fakeToken,
 } from '../../__tests__/linked-instances.test-helpers';
 import { LinkedInstanceSessions } from '../linked-instance-sessions';
+import { LocalPackageImport } from '../local-package-import';
 import type { LocalWorkflowDeactivator } from '../local-workflow-deactivator';
 import { TransferLocalWorkflows } from '../transfer-local-workflows';
 import { TransferPreflightService } from '../transfer-preflight.service';
@@ -35,6 +37,9 @@ export const ALL_TOOLS = [
 ];
 
 export const OPS: LinkedInstanceRemoteProject = { id: 'Xk3pQ9aZ1bC2dE4f', name: 'Ops' };
+
+/** The personal project of the token's user in the linked instance. */
+export const REMOTE_PERSONAL_PROJECT_ID = 'Pq7rS8tU9vW0xY1z';
 
 type ToolHandler = (args: Record<string, unknown>) => unknown;
 
@@ -66,6 +71,12 @@ export function fakeRemote(client: ReturnType<typeof mock<RemoteInstanceClient>>
 			activeVersionId: 'version-1',
 		}),
 		list_credentials: () => ({ data: [], count: 0 }),
+		search_projects: () => ({
+			data: [
+				{ id: REMOTE_PERSONAL_PROJECT_ID, name: 'Alice <alice@example.com>', type: 'personal' },
+			],
+			count: 1,
+		}),
 		export_workflow_package: () => ({
 			packageBase64: Buffer.from('remote-package').toString('base64'),
 			workflowName: 'Daily report',
@@ -116,19 +127,22 @@ export function transferSetup() {
 	const remote = fakeRemote(client);
 	const sessions = new LinkedInstanceSessions(store, clientFactory);
 
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
+
 	const workflowFinder = mock<WorkflowFinderService>();
 	const projectService = mock<ProjectService>();
 	const credentialsFinder = mock<CredentialsFinderService>();
 	const deactivator = mock<LocalWorkflowDeactivator>();
+	const mcpSettings = mock<McpSettingsService>();
+	const packageImport = new LocalPackageImport(projectService, mcpSettings, logger);
 	const local = new TransferLocalWorkflows(
 		workflowFinder,
-		projectService,
 		credentialsFinder,
 		deactivator,
+		packageImport,
 	);
 
-	const logger = mock<Logger>();
-	logger.scoped.mockReturnValue(logger);
 	const eventService = mock<EventService>();
 	const service = new TransferService(logger, eventService, sessions, local);
 	const preflightService = new TransferPreflightService(logger, sessions, local);
@@ -165,6 +179,7 @@ export function transferSetup() {
 		projectService,
 		credentialsFinder,
 		deactivator,
+		mcpSettings,
 		logger,
 		eventService,
 		link,

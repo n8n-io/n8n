@@ -618,6 +618,42 @@ describe('ProjectsNavigation', () => {
 			expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'true');
 		});
 
+		it('opens the Workspace on a page that it holds, so the sidebar shows where the user is', async () => {
+			fillSidebar();
+			useMode('simple');
+			projectsStore.projectNavActiveId = 'shared';
+
+			const { findByTestId, getByRole } = renderComponent({ props: { collapsed: false } });
+
+			expect(await findByTestId('project-shared-menu-item')).toBeInTheDocument();
+			expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'true');
+			// The user did not open it, so the next visit starts closed again.
+			expect(storage.has(WORKSPACE_OPEN_KEY)).toBe(false);
+		});
+
+		it('opens the Workspace on a team project page and lists the projects', async () => {
+			fillSidebar();
+			useMode('simple');
+			projectsStore.projectNavActiveId = teamProjects[0].id;
+
+			const { findAllByTestId, getByRole } = renderComponent({ props: { collapsed: false } });
+
+			expect(await findAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
+			expect(getByRole('heading', { level: 3, name: 'Projects' })).toBeInTheDocument();
+		});
+
+		it('keeps the Workspace closed on a page outside it', async () => {
+			fillSidebar();
+			useMode('simple');
+			projectsStore.projectNavActiveId = 'home';
+
+			const { getByRole, queryByTestId } = renderComponent({ props: { collapsed: false } });
+			await nextTick();
+
+			expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'false');
+			expect(queryByTestId('project-shared-menu-item')).not.toBeInTheDocument();
+		});
+
 		it('gives the collapsed sidebar an icon toggle that shows the project icons', async () => {
 			fillSidebar();
 			useMode('simple');

@@ -352,14 +352,26 @@ describe('POST /instance-ai/threads/:threadId/share', () => {
 
 		const response = await ownerAgent.post(`/instance-ai/threads/${threadId}/share`).expect(200);
 
+		const sharedWith = { projectId: project.id, projectName: 'Finance' };
 		expect(response.body.data.thread).toMatchObject({
 			id: threadId,
 			resourceId: owner.id,
-			sharedWith: { projectId: project.id, projectName: 'Finance' },
+			sharedWith,
 			owner: { id: owner.id, name: 'Olivia Owner' },
 		});
 		// Sharing again changes nothing.
 		await ownerAgent.post(`/instance-ai/threads/${threadId}/share`).expect(200);
+		// Every route that returns the chat keeps the shared marker.
+		const renamed = await ownerAgent
+			.patch(`/instance-ai/threads/${threadId}`)
+			.send({ title: 'Invoices' })
+			.expect(200);
+		expect(renamed.body.data.thread).toMatchObject({ title: 'Invoices', sharedWith });
+		const ensured = await ownerAgent
+			.post('/instance-ai/threads')
+			.send({ threadId, projectId: project.id, source: 'assistant_page' })
+			.expect(200);
+		expect(ensured.body.data).toMatchObject({ created: false, thread: { sharedWith } });
 	});
 
 	test('refuses a chat in a personal project', async () => {

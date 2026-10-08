@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { computed, effectScope } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import type { Scope } from '@n8n/permissions';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -196,6 +197,74 @@ describe('useLastUsedProject', () => {
 			storage.set(keyFor('user-2'), 'team-a');
 
 			expect(useLastUsedProject().simpleDefaultProjectId()).toBe('personal-1');
+		});
+	});
+
+	describe('in a computed value', () => {
+		// The storage listener of the composable ends with the scope, as in a component.
+		let scope = effectScope();
+		const inScope = () => {
+			const result = scope.run(useLastUsedProject);
+			if (!result) throw new Error('The effect scope is not active');
+			return result;
+		};
+
+		beforeEach(() => {
+			scope = effectScope();
+		});
+
+		afterEach(() => scope.stop());
+
+		function storeInOtherTab(key: string | null, value: string | null) {
+			if (key !== null && value !== null) storage.set(key, value);
+			window.dispatchEvent(new StorageEvent('storage', { key, newValue: value }));
+		}
+
+		it('follows a chat that starts in a team project', () => {
+			const { rememberChatProject, simpleDefaultProjectId } = inScope();
+			const projectId = computed(() => simpleDefaultProjectId());
+			expect(projectId.value).toBe('personal-1');
+
+			rememberChatProject('team-a');
+
+			expect(projectId.value).toBe('team-a');
+		});
+
+		it('follows a lost create right', () => {
+			storage.set(keyFor('user-1'), 'team-a');
+			const { simpleDefaultProjectId } = inScope();
+			const projectId = computed(() => simpleDefaultProjectId());
+			expect(projectId.value).toBe('team-a');
+
+			projectsStore.myProjects = [listItem('team-a', 'team', ['workflow:read'])];
+
+			expect(projectId.value).toBe('personal-1');
+		});
+
+		it.each([
+			['a chat that started in another tab', keyFor('user-1')],
+			['another tab that cleared the storage', null],
+		])('follows %s', (_case, key) => {
+			const { lastUsedProjectId } = inScope();
+			const projectId = computed(() => lastUsedProjectId());
+			expect(projectId.value).toBeUndefined();
+
+			storage.set(keyFor('user-1'), 'team-b');
+			storeInOtherTab(key, key ? 'team-b' : null);
+
+			expect(projectId.value).toBe('team-b');
+		});
+
+		it('does not run again for a change of another stored value', () => {
+			const { lastUsedProjectId } = inScope();
+			const read = vi.fn(lastUsedProjectId);
+			const projectId = computed(() => read());
+			expect(projectId.value).toBeUndefined();
+
+			storeInOtherTab('n8n:sidebar:workspace-open', 'true');
+
+			expect(projectId.value).toBeUndefined();
+			expect(read).toHaveBeenCalledTimes(1);
 		});
 	});
 });

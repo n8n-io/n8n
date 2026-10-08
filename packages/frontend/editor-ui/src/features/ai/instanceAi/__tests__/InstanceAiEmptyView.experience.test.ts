@@ -61,6 +61,7 @@ const renderView = createComponentRenderer(InstanceAiEmptyView, {
 });
 
 let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
+let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 let stored: Map<string, string>;
 
 function useMode(defaultMode: ExperienceMode) {
@@ -97,7 +98,7 @@ describe('InstanceAiEmptyView project choice', () => {
 		resetExperienceModeState();
 		useUsersStore().currentUserId = 'user-1';
 
-		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore = mockedStore(useProjectsStore);
 		projectsStore.isTeamProjectFeatureEnabled = true;
 		projectsStore.personalProject = { id: PERSONAL } as Project;
 		projectsStore.myProjects = [
@@ -181,6 +182,64 @@ describe('InstanceAiEmptyView project choice', () => {
 			await startChat(getByTestId);
 
 			expect(rememberedProjects()).toEqual([TEAM_WITH_RIGHTS]);
+		});
+
+		it.each([
+			['the user loses the right to create workflows in it', ['workflow:read']],
+			['the project is removed', undefined],
+		])('starts in the personal project when %s while the screen is open', async (_case, scopes) => {
+			stored.set(LAST_PROJECT_KEY, TEAM_WITH_RIGHTS);
+			const { getByTestId } = renderView();
+
+			projectsStore.myProjects = [
+				{ id: PERSONAL, type: 'personal', name: 'Me', scopes: ['workflow:create'] },
+				...(scopes ? [{ id: TEAM_WITH_RIGHTS, type: 'team', name: 'Team A', scopes }] : []),
+			] as ProjectListItem[];
+			await flushPromises();
+			await startChat(getByTestId);
+
+			expect(startedProject()).toBe(PERSONAL);
+		});
+	});
+
+	describe('when the mode changes while the screen is open', () => {
+		it('starts the chat in the last-used team project after a switch to Simple', async () => {
+			stored.set(LAST_PROJECT_KEY, TEAM_WITH_RIGHTS);
+			useMode('power');
+			const { getByTestId, queryByTestId } = renderView();
+			expect(getByTestId('composer-footer')).toHaveTextContent('Personal space');
+
+			useMode('simple');
+			await flushPromises();
+			await startChat(getByTestId);
+
+			expect(queryByTestId('composer-footer')).not.toBeInTheDocument();
+			expect(startedProject()).toBe(TEAM_WITH_RIGHTS);
+		});
+
+		it('shows the personal project in the picker after a switch to Power', async () => {
+			stored.set(LAST_PROJECT_KEY, TEAM_WITH_RIGHTS);
+			useMode('simple');
+			const { getByTestId, findByTestId } = renderView();
+
+			useMode('power');
+
+			expect(await findByTestId('composer-footer')).toHaveTextContent('Personal space');
+			await startChat(getByTestId);
+			expect(startedProject()).toBe(PERSONAL);
+		});
+
+		it('keeps the project from ?projectId= in both modes', async () => {
+			stored.set(LAST_PROJECT_KEY, TEAM_WITH_RIGHTS);
+			routeQuery.projectId = 'team-from-link';
+			useMode('power');
+			const { getByTestId } = renderView();
+
+			useMode('simple');
+			await flushPromises();
+			await startChat(getByTestId);
+
+			expect(startedProject()).toBe('team-from-link');
 		});
 	});
 

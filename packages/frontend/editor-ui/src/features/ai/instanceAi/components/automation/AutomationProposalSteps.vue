@@ -1,11 +1,12 @@
 <script setup lang="ts">
 /** The node icons of an automation proposal, with the node names as accessible labels. */
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import type { AutomationProposalCard } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { loadStepNodeTypes } from './loadStepNodeTypes';
 
 const props = defineProps<{
 	steps: AutomationProposalCard['steps'];
@@ -15,6 +16,11 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+
+// getNodeType is reactive, so the icons and labels update when the node types arrive.
+onMounted(() => {
+	void loadStepNodeTypes(nodeTypesStore);
+});
 
 // NodeIcon has no accessible name, so each icon gets the node name as its label.
 const icons = computed(() =>
@@ -39,9 +45,10 @@ const moreText = computed(() =>
 		data-test-id="automation-proposal-steps"
 	>
 		<li v-for="icon in icons" :key="icon.key" :class="$style.step">
-			<span role="img" :aria-label="icon.label" :title="icon.label" :class="$style.step">
+			<!-- A div, because the root of NodeIcon is a div. -->
+			<div role="img" :aria-label="icon.label" :title="icon.label" :class="$style.step">
 				<NodeIcon :node-type="icon.nodeType" :node-name="icon.name" :size="16" />
-			</span>
+			</div>
 		</li>
 		<li v-if="hiddenCount > 0" :class="$style.step">
 			<N8nText size="small" color="text-base">{{ moreText }}</N8nText>

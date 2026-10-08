@@ -11,6 +11,7 @@ import {
 } from '@/services/capabilities/capability-scopes';
 
 import { RemoteInstanceError } from '../remote/remote-instance.errors';
+import { parseRemoteProjects, SEARCH_PROJECTS_TOOL } from '../remote-projects';
 import type { RemoteSession } from './linked-instance-sessions';
 import type { RemoteCredentialList } from './transfer-preflight';
 
@@ -129,7 +130,7 @@ export async function importOnRemote(
 	session: RemoteSession,
 	args: RemoteImportArgs,
 ): Promise<RemoteImportResult> {
-	const result = await session.client.callTool(IMPORT_TOOL, args, {
+	const result = await session.callTool(IMPORT_TOOL, args, {
 		timeoutMs: PACKAGE_CALL_TIMEOUT_MS,
 	});
 	const parsed = parseOrThrow(importResultSchema, result, UNKNOWN_FORMAT.import);
@@ -151,7 +152,7 @@ export async function exportFromRemote(
 	session: RemoteSession,
 	remoteWorkflowId: string,
 ): Promise<string> {
-	const result = await session.client.callTool(
+	const result = await session.callTool(
 		EXPORT_TOOL,
 		{ workflowId: remoteWorkflowId },
 		{ timeoutMs: PACKAGE_CALL_TIMEOUT_MS },
@@ -170,7 +171,7 @@ export async function publishOnRemote(
 	// An OAuth token without the workflow write grant does not see the tool.
 	if (!session.toolNames.has(PUBLISH_WORKFLOW_TOOL)) return { ok: false, failure: 'unavailable' };
 	try {
-		const result = await session.client.callTool(PUBLISH_WORKFLOW_TOOL, {
+		const result = await session.callTool(PUBLISH_WORKFLOW_TOOL, {
 			workflowId: remoteWorkflowId,
 		});
 		// The tool reports a refusal in its result, not as a tool error.
@@ -183,25 +184,39 @@ export async function publishOnRemote(
 		};
 	} catch (error) {
 		if (!(error instanceof RemoteInstanceError)) throw error;
+		// The session made the text of a tool error safe to show.
 		return { ok: false, failure: 'refused', reason: error.message };
 	}
 }
 
 /**
+ * The id of the personal project of the token's user, where an import without a project goes.
+ * @returns `undefined` when the access token cannot list projects or the list has no personal project
+ * @throws {RemoteInstanceError}
+ */
+export async function findRemotePersonalProjectId(
+	session: RemoteSession,
+): Promise<string | undefined> {
+	if (!session.toolNames.has(SEARCH_PROJECTS_TOOL)) return undefined;
+	const result = await session.callTool(SEARCH_PROJECTS_TOOL, { type: 'personal', limit: 1 });
+	return parseRemoteProjects(result).projects.find(({ type }) => type === 'personal')?.id;
+}
+
+/**
  * The credentials that the token's user can use in the project, by name and type: the credentials
  * that the project owns or that are shared with it, and the global ones. The import matches the
- * same credentials. Without a project, the tool lists every credential that the user can use.
+ * same credentials. Without a project, the tool would list every credential that the user can
+ * use, also those of other projects, so the project is necessary.
  * @returns `null` when the access token cannot list credentials
  * @throws {RemoteInstanceError}
  */
 export async function listRemoteCredentials(
 	session: RemoteSession,
-	projectId: string | undefined,
+	projectId: string,
 ): Promise<RemoteCredentialList | null> {
 	if (!session.toolNames.has(LIST_CREDENTIALS_TOOL)) return null;
-	const args =
-		projectId === undefined ? { limit: MAX_CREDENTIALS } : { limit: MAX_CREDENTIALS, projectId };
-	const result = await session.client.callTool(LIST_CREDENTIALS_TOOL, args);
+	const args = { limit: MAX_CREDENTIALS, projectId };
+	const result = await session.callTool(LIST_CREDENTIALS_TOOL, args);
 	const { data } = parseOrThrow(credentialListSchema, result, UNKNOWN_FORMAT.credentials);
 	const credentials = data.flatMap((item) => {
 		const parsed = nameAndTypeSchema.safeParse(item);

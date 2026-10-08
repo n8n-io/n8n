@@ -10,6 +10,10 @@ import { WorkflowService } from '@/workflows/workflow.service';
 export type TurnOffOptions = {
 	/** The editor tab of the request (`push-ref`). Without it, the editor lock is not checked, as in the REST API. */
 	clientId?: string;
+	/**
+	 * The source in the `workflow-deactivated` event. Defaults to `ui`, because the REST routes of
+	 * a move serve the editor. A caller in the Assistant gives `n8n-ai`.
+	 */
 	source?: WorkflowActionSource;
 };
 

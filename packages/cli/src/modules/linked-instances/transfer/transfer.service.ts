@@ -1,7 +1,6 @@
 import type {
 	LinkedInstancePullResult,
 	LinkedInstancePushResult,
-	LinkedInstanceRemoteProject,
 	LinkedInstanceSummary,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -15,15 +14,8 @@ import { reasonForClient } from '@/modules/n8n-packages/capabilities/package-too
 import type { StoredLinkedInstance } from '../linked-instance.store';
 import { LinkedInstanceSessions, type RemoteSession } from './linked-instance-sessions';
 import type { TurnOffOptions } from './local-workflow-deactivator';
+import { exportFromRemote } from './remote-transfer-tools';
 import {
-	exportFromRemote,
-	importOnRemote,
-	publishOnRemote,
-	type RemoteImportArgs,
-	type RemoteImportResult,
-} from './remote-transfer-tools';
-import {
-	isProjectRefusal,
 	toTransferHttpError,
 	transferContext,
 	transferFailureReason,
@@ -31,6 +23,7 @@ import {
 	type TransferDirection,
 } from './transfer-errors';
 import { TransferLocalWorkflows } from './transfer-local-workflows';
+import { importWithFallback, publishCopy, type RemoteOutcome } from './transfer-push-steps';
 
 export type PushInput = {
 	workflowId: string;
@@ -46,15 +39,15 @@ export type PullInput = {
 	projectId?: string;
 };
 
-/** What happened in the linked instance during a push. */
-type RemoteOutcome = {
-	imported: RemoteImportResult;
-	targetProject: LinkedInstanceRemoteProject | null;
-	published: boolean;
-	warnings: string[];
-};
+type LocalStepOutcome = { localDeactivated: boolean; warnings: string[] };
 
-type StepOutcome = { warnings: string[] };
+/** What the step that turns off the workflow here needs to know. */
+type TurnOffStep = {
+	requested: boolean;
+	/** The move asked to publish the copy, and the new version did not go live there. */
+	publishFailed: boolean;
+	options: TurnOffOptions;
+};
 
 /** A failed move, for the audit event and the log. Ids only. */
 type TransferFailure = {
@@ -200,25 +193,12 @@ export class TransferService {
 			'push',
 			async (session) => await this.sendAndPublish(user, session, workflow, input.publish === true),
 		);
-		const localStep = await this.turnOffLocalCopy(user, link.summary, workflow.id, {
+		const localStep = await this.turnOffLocalCopy(user, link.summary, workflow, {
 			requested: input.deactivateLocal === true,
-			publishFailed: input.publish === true && !remote.published,
+			publishFailed: remote.publishFailed,
 			options,
 		});
-
-		const { imported, targetProject, published } = remote;
-		return {
-			remoteWorkflowId: imported.workflowId,
-			remoteUrl: remoteWorkflowUrl(link.summary.baseUrl, imported.workflowId),
-			targetProject,
-			created: imported.created,
-			published,
-			credentialsNeedingSetup: imported.credentialsNeedingSetup,
-			missingNodeTypes: imported.missingNodeTypes,
-			localDeactivated: localStep.localDeactivated,
-			// What did not work comes first, then what the linked instance reported.
-			warnings: [...remote.warnings, ...localStep.warnings, ...imported.warnings],
-		};
+		return toPushResult(link.summary, remote, localStep);
 	}
 
 	/** Runs after the probe, so that no export happens for an instance that cannot take it. */
@@ -228,16 +208,20 @@ export class TransferService {
 		workflow: WorkflowEntity,
 		publish: boolean,
 	): Promise<RemoteOutcome> {
+		// The warnings of the export tell an MCP client what any import must check: the error
+		// workflow link and the variables. The import there reports what it found, for example the
+		// variables that are missing, so the result shows only those.
 		const { packageBase64 } = await this.local.exportPackage(user, workflow);
 		const sent = await importWithFallback(session, {
 			packageBase64,
 			sourceWorkflowId: workflow.id,
 		});
-		if (!publish) return { ...sent, published: sent.imported.published };
+		if (!publish) return { ...sent, published: sent.imported.published, publishFailed: false };
 		const publishing = await publishCopy(session, sent.imported);
 		return {
 			...sent,
 			published: publishing.published,
+			publishFailed: publishing.failed,
 			warnings: [...sent.warnings, ...publishing.warnings],
 		};
 	}
@@ -246,24 +230,28 @@ export class TransferService {
 	private async turnOffLocalCopy(
 		user: User,
 		link: LinkedInstanceSummary,
-		workflowId: string,
-		step: { requested: boolean; publishFailed: boolean; options: TurnOffOptions },
-	): Promise<StepOutcome & { localDeactivated: boolean }> {
-		if (!step.requested) return { localDeactivated: false, warnings: [] };
-		// The user asked for the copy to run there. With both copies off, the automation stops.
+		workflow: WorkflowEntity,
+		step: TurnOffStep,
+	): Promise<LocalStepOutcome> {
+		// A workflow that is not live here has nothing to turn off, and nothing stays on.
+		if (!step.requested || workflow.activeVersionId === null) {
+			return { localDeactivated: false, warnings: [] };
+		}
+		// The user asked for the new version to run there instead. Without it, the automation would
+		// stop or run an earlier version, so the workflow here stays on.
 		if (step.publishFailed) {
 			return { localDeactivated: false, warnings: [TRANSFER_WARNINGS.keptLocalLive(link.name)] };
 		}
 		try {
 			return {
-				localDeactivated: await this.local.turnOff(user, workflowId, step.options),
+				localDeactivated: await this.local.turnOff(user, workflow.id, step.options),
 				warnings: [],
 			};
 		} catch (error) {
 			this.logger.warn('Could not turn off a workflow after it moved to a linked instance', {
 				userId: user.id,
 				linkedInstanceId: link.id,
-				workflowId,
+				workflowId: workflow.id,
 				reason: transferFailureReason(error),
 			});
 			return {
@@ -294,46 +282,23 @@ function toPullResult(imported: ImportedWorkflowPackage): LinkedInstancePullResu
 	};
 }
 
-/**
- * Imports into the default project of the link. When the linked instance refuses that project,
- * for example because the token's user is a viewer there, the personal project takes the workflow.
- */
-async function importWithFallback(
-	session: RemoteSession,
-	args: RemoteImportArgs,
-): Promise<Omit<RemoteOutcome, 'published'>> {
-	const project = session.link.defaultRemoteProject;
-	if (!project) {
-		return { imported: await importOnRemote(session, args), targetProject: null, warnings: [] };
-	}
-	try {
-		const imported = await importOnRemote(session, { ...args, projectId: project.id });
-		return { imported, targetProject: project, warnings: [] };
-	} catch (error) {
-		if (!isProjectRefusal(error)) throw error;
-		return {
-			imported: await importOnRemote(session, args),
-			targetProject: null,
-			warnings: [TRANSFER_WARNINGS.personalProjectFallback(session.link.name, project.name)],
-		};
-	}
-}
-
-/** Puts the copy live. The linked instance never publishes a workflow with missing node types. */
-async function publishCopy(
-	session: RemoteSession,
-	imported: RemoteImportResult,
-): Promise<StepOutcome & { published: boolean }> {
-	const { name } = session.link;
-	if (imported.missingNodeTypes.length > 0) {
-		return { published: imported.published, warnings: [TRANSFER_WARNINGS.missingNodeTypes(name)] };
-	}
-	const outcome = await publishOnRemote(session, imported.workflowId);
-	if (outcome.ok) return { published: true, warnings: [] };
-	const warning =
-		outcome.failure === 'unavailable'
-			? TRANSFER_WARNINGS.cannotPublish(name)
-			: TRANSFER_WARNINGS.publishFailed(name, outcome.reason);
-	// An earlier version can stay live after a failed publish.
-	return { published: imported.published, warnings: [warning] };
+function toPushResult(
+	link: LinkedInstanceSummary,
+	remote: RemoteOutcome,
+	local: LocalStepOutcome,
+): LinkedInstancePushResult {
+	const { imported, targetProject, published, publishFailed } = remote;
+	return {
+		remoteWorkflowId: imported.workflowId,
+		remoteUrl: remoteWorkflowUrl(link.baseUrl, imported.workflowId),
+		targetProject,
+		created: imported.created,
+		published,
+		publishFailed,
+		credentialsNeedingSetup: imported.credentialsNeedingSetup,
+		missingNodeTypes: imported.missingNodeTypes,
+		localDeactivated: local.localDeactivated,
+		// What did not work comes first, then what the linked instance reported.
+		warnings: [...remote.warnings, ...local.warnings, ...imported.warnings],
+	};
 }

@@ -18,6 +18,7 @@ import {
 	describePlace,
 	isProjectRefusal,
 	missingToolMessage,
+	RemoteImportError,
 	remoteFailureMessage,
 	toTransferHttpError,
 	TRANSFER_MESSAGES,
@@ -78,9 +79,9 @@ describe('isProjectRefusal', () => {
 });
 
 describe('describePlace and transferContext', () => {
-	it('names the project on the instance, or only the instance for the personal project', () => {
+	it('names the project on the instance, also the personal project', () => {
 		expect(describePlace('Cloud', OPS)).toBe('Ops on Cloud');
-		expect(describePlace('Cloud', null)).toBe('Cloud');
+		expect(describePlace('Cloud', null)).toBe('your personal project on Cloud');
 	});
 
 	it('builds the context of a link', () => {
@@ -88,7 +89,7 @@ describe('describePlace and transferContext', () => {
 		expect(transferContext({ name: 'Cloud', defaultRemoteProject: null }, 'pull')).toEqual({
 			direction: 'pull',
 			name: 'Cloud',
-			place: 'Cloud',
+			place: 'your personal project on Cloud',
 		});
 	});
 });
@@ -162,6 +163,39 @@ describe('remoteFailureMessage', () => {
 		);
 		expect(remoteFailureMessage(toolError(REMOTE_TEXTS.sizeLimit), PULL)).toBe(
 			`Cloud could not send the workflow: ${REMOTE_TEXTS.sizeLimit}`,
+		);
+	});
+});
+
+describe('RemoteImportError', () => {
+	it('keeps the reason and the text of the remote failure', () => {
+		const error = new RemoteImportError(toolError(REMOTE_TEXTS.projectRefused), OPS);
+
+		expect(error).toBeInstanceOf(RemoteInstanceError);
+		expect(error).toMatchObject({
+			reason: 'tool-error',
+			message: REMOTE_TEXTS.projectRefused,
+			project: OPS,
+		});
+		expect(isProjectRefusal(error)).toBe(true);
+		expect(
+			transferFailureReason(new RemoteImportError(new RemoteInstanceError('timeout'), null)),
+		).toBe('timeout');
+	});
+
+	it('names the project of the failed import in the message of a push, not the default project', () => {
+		const inPersonal = (text: string) => new RemoteImportError(toolError(text), null);
+		const inSales = (text: string) =>
+			new RemoteImportError(toolError(text), { id: 'Sa1eS2pR3oJ4eC5t', name: 'Sales' });
+
+		expect(remoteFailureMessage(inPersonal(REMOTE_TEXTS.notInMcp), PUSH)).toBe(
+			'Turn on MCP access for this workflow in your personal project on Cloud, then try again.',
+		);
+		expect(remoteFailureMessage(inSales(REMOTE_TEXTS.archived), PUSH)).toBe(
+			'This workflow is archived in Sales on Cloud. Restore it there, then try again.',
+		);
+		expect(remoteFailureMessage(inPersonal(REMOTE_TEXTS.sizeLimit), PUSH)).toBe(
+			`Cloud could not take the workflow: ${REMOTE_TEXTS.sizeLimit}`,
 		);
 	});
 });
@@ -247,6 +281,12 @@ describe('TRANSFER_WARNINGS', () => {
 		);
 		expect(TRANSFER_WARNINGS.turnOffFailed('someone else is editing it')).toBe(
 			'The workflow is still turned on here: someone else is editing it. Turn it off in the editor.',
+		);
+	});
+
+	it('says how many credentials need a value before the copy can go live', () => {
+		expect(TRANSFER_WARNINGS.credentialsNeedSetup('Cloud', 2)).toBe(
+			'The workflow is in Cloud, but 2 credential(s) there have no value, so it is not published. Set them up, then publish it in Cloud.',
 		);
 	});
 });

@@ -1,4 +1,4 @@
-/** The id of the "Add workflow" item that only Simple mode adds to the composer + menu. */
+/** The id of the "New workflow" item that only Simple mode adds to the composer + menu. */
 export const ADD_WORKFLOW_ITEM_ID = 'add-workflow';
 
 /**

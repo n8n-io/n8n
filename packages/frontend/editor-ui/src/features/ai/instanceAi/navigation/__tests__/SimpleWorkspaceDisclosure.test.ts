@@ -13,7 +13,10 @@ const storage = new Map<string, string>();
 
 /** A parent that owns `open` through v-model and shows it, as ProjectNavigation does. */
 const Parent = defineComponent({
-	props: { collapsed: { type: Boolean, default: false } },
+	props: {
+		collapsed: { type: Boolean, default: false },
+		activeItemId: { type: String, default: undefined },
+	},
 	setup(props) {
 		const open = ref(false);
 		return () => [
@@ -23,6 +26,7 @@ const Parent = defineComponent({
 					open.value = value;
 				},
 				collapsed: props.collapsed,
+				activeItemId: props.activeItemId,
 			}),
 			h('output', { 'data-test-id': 'parent-open' }, String(open.value)),
 		];
@@ -153,6 +157,76 @@ describe('SimpleWorkspaceDisclosure', () => {
 		expect(button).toHaveAttribute('aria-expanded', 'true');
 		expect(getByTestId('parent-open')).toHaveTextContent('true');
 		expect(consoleError).not.toHaveBeenCalled();
+	});
+
+	describe('when the current page is in the Workspace', () => {
+		it('opens without changing the stored choice', async () => {
+			const { getByRole, getByTestId } = renderInParent({
+				props: { collapsed: false, activeItemId: 'shared' },
+			});
+
+			await waitFor(() => expect(getByTestId('parent-open')).toHaveTextContent('true'));
+			expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'true');
+			expect(storage.has(OPEN_KEY)).toBe(false);
+		});
+
+		it('opens when the user goes to such a page, and stays open when the user leaves it', async () => {
+			const { getByRole, rerender } = renderInParent({ props: { collapsed: false } });
+			const button = getByRole('button', { name: 'Workspace' });
+			expect(button).toHaveAttribute('aria-expanded', 'false');
+
+			await rerender({ collapsed: false, activeItemId: 'project-1' });
+			expect(button).toHaveAttribute('aria-expanded', 'true');
+
+			await rerender({ collapsed: false, activeItemId: undefined });
+			expect(button).toHaveAttribute('aria-expanded', 'true');
+			expect(storage.has(OPEN_KEY)).toBe(false);
+		});
+
+		it('closes on one click, and the next visit starts closed', async () => {
+			storage.set(OPEN_KEY, 'true');
+			const { getByRole, getByTestId, unmount } = renderInParent({
+				props: { collapsed: false, activeItemId: 'shared' },
+			});
+			const button = getByRole('button', { name: 'Workspace' });
+			await waitFor(() => expect(button).toHaveAttribute('aria-expanded', 'true'));
+
+			await userEvent.click(button);
+
+			expect(button).toHaveAttribute('aria-expanded', 'false');
+			expect(getByTestId('parent-open')).toHaveTextContent('false');
+			await waitFor(() => expect(storage.get(OPEN_KEY)).toBe('false'));
+			unmount();
+
+			const next = renderInParent({ props: { collapsed: false } });
+			expect(next.getByRole('button', { name: 'Workspace' })).toHaveAttribute(
+				'aria-expanded',
+				'false',
+			);
+		});
+
+		it('opens again for the next page that it holds after the user closed it', async () => {
+			const { getByRole, rerender } = renderInParent({
+				props: { collapsed: false, activeItemId: 'shared' },
+			});
+			const button = getByRole('button', { name: 'Workspace' });
+			await waitFor(() => expect(button).toHaveAttribute('aria-expanded', 'true'));
+			await userEvent.click(button);
+
+			await rerender({ collapsed: false, activeItemId: 'shared' });
+			expect(button).toHaveAttribute('aria-expanded', 'false');
+
+			await rerender({ collapsed: false, activeItemId: 'project-1' });
+			expect(button).toHaveAttribute('aria-expanded', 'true');
+		});
+
+		it('opens the icon toggle of the collapsed sidebar too', async () => {
+			const { getByRole } = renderInParent({ props: { collapsed: true, activeItemId: 'shared' } });
+
+			await waitFor(() =>
+				expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'true'),
+			);
+		});
 	});
 
 	describe('in the collapsed sidebar', () => {

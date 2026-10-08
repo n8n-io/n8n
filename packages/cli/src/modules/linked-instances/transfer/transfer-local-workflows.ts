@@ -15,49 +15,22 @@ import {
 	exportWorkflowPackage,
 	type ExportedWorkflowPackage,
 } from '@/modules/n8n-packages/capabilities/workflow-package-export';
-import {
-	importWorkflowPackage,
-	type WorkflowPackageImportRules,
-} from '@/modules/n8n-packages/capabilities/workflow-package-import';
 import { CredentialRequirementsExtractor } from '@/modules/n8n-packages/entities/credential/credential-requirements.extractor';
-import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { LocalPackageImport, type LocalImportArgs } from './local-package-import';
 import { LocalWorkflowDeactivator, type TurnOffOptions } from './local-workflow-deactivator';
 import { TRANSFER_MESSAGES } from './transfer-errors';
 import type { LocalTransferRequirements } from './transfer-preflight';
-
-/**
- * A pull updates the workflow of an earlier pull of the same workflow. An archived workflow stays
- * as it is: the user restores it first.
- */
-function assertUpdatableOverRest(workflow: WorkflowEntity): void {
-	if (workflow.isArchived) {
-		throw new BadRequestError(TRANSFER_MESSAGES.archivedLocalCopy(workflow.name));
-	}
-}
-
-/** The rules of the REST surface for the workflow that a pull writes. */
-export const REST_IMPORT_RULES: WorkflowPackageImportRules = {
-	assertUpdatable: assertUpdatableOverRest,
-};
-
-export type LocalImportArgs = {
-	packageBase64: string;
-	/** Defaults to the personal project of the user. */
-	projectId?: string;
-	/** The id of the workflow in the linked instance. The import refuses a package without it. */
-	sourceWorkflowId: string;
-};
 
 /** The workflows of this instance in a move, checked as the acting user. */
 @Service()
 export class TransferLocalWorkflows {
 	constructor(
 		private readonly workflowFinder: WorkflowFinderService,
-		private readonly projectService: ProjectService,
 		private readonly credentialsFinder: CredentialsFinderService,
 		private readonly deactivator: LocalWorkflowDeactivator,
+		private readonly packageImport: LocalPackageImport,
 	) {}
 
 	/**
@@ -83,18 +56,9 @@ export class TransferLocalWorkflows {
 		if (!workflow) throw new ForbiddenError(TRANSFER_MESSAGES.cannotTurnOff);
 	}
 
-	/**
-	 * The import checks the same scopes. This check comes before any request to the linked instance.
-	 * @throws {ForbiddenError} when the user cannot import workflows into the project
-	 */
+	/** @throws {ForbiddenError} when the user cannot import workflows into the project */
 	async assertCanImportInto(user: User, projectId: string | undefined): Promise<void> {
-		// The personal project of the user is the default, and its owner can import into it.
-		if (projectId === undefined) return;
-		const project = await this.projectService.getProjectWithScope(user, projectId, [
-			'workflow:import',
-			'workflow:create',
-		]);
-		if (!project) throw new ForbiddenError(TRANSFER_MESSAGES.cannotCreateInProject);
+		await this.packageImport.assertCanImportInto(user, projectId);
 	}
 
 	/** What the workflow needs in the linked instance. Reads only. */
@@ -121,14 +85,7 @@ export class TransferLocalWorkflows {
 	}
 
 	async importPackage(user: User, args: LocalImportArgs): Promise<ImportedWorkflowPackage> {
-		return await importWorkflowPackage({
-			user,
-			packageBase64: args.packageBase64,
-			limit: instanceMcpPackageSizeLimit(),
-			projectId: args.projectId,
-			sourceWorkflowId: args.sourceWorkflowId,
-			rules: REST_IMPORT_RULES,
-		});
+		return await this.packageImport.importPackage(user, args);
 	}
 
 	/** @returns true when no version of the workflow is live afterwards */
