@@ -149,13 +149,13 @@ check of every pull request. For every `ADR-*.md` file it checks:
 - a file name that matches the H1 and the `Date` field;
 - the header fields, their order, and one blank line between them;
 - a `Decision Owner` from the allowed list in
-  `packages/testing/code-health/src/index.ts`;
+  `packages/quality/policy/code-health/src/index.ts`;
 - a full file name in `Supersedes` and `Superseded by`;
 - exactly the five sections, in order, each with content;
 - the three `Links` fields, one line each;
 - paragraph lines of at most 100 characters outside `Links`;
-- that every record ID (`ADR-YYYYMMDD-…`) the record mentions names a file
-  in this repository.
+- that every record ID the record mentions is a full ID that names a file in
+  this repository. A date alone, `ADR-20260902`, is rejected.
 
 Run it locally:
 
