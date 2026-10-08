@@ -2,12 +2,12 @@ import { isRecord } from '@n8n/utils/is-record';
 
 const DATA_VALUED_KEYS = new Set(['example', 'examples', 'default', 'enum']);
 
-// Values under these keys are schemas, so a property named `example` is still walked.
+// Each value under these keys is a schema. Check it too, even when its name is `example`.
 const SCHEMA_MAP_KEYS = new Set(['properties', 'patternProperties', '$defs', 'definitions']);
 
 /**
- * zod-to-openapi emits a discriminated union as a bare `oneOf`, and `.openapi()` metadata cannot
- * add a sibling `type` without replacing the union, so the generated document is patched instead.
+ * zod-to-openapi writes a discriminated union as a `oneOf` with no `type`. `.openapi()` cannot add
+ * the `type` without replacing the union, so this function adds it to the generated document.
  */
 export function addObjectTypeToObjectUnions(node: unknown): void {
 	if (Array.isArray(node)) {
