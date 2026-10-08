@@ -1,8 +1,8 @@
 import { Container } from '@n8n/di';
 
-import { SystemTask, type SystemTaskClass, type SystemTaskSchedule } from '../system-task';
+import { SystemTask, type SystemTaskClass } from '../system-task';
 import { SystemTaskMetadata } from '../system-task-metadata';
-import type { SystemTaskPlacement } from '../types';
+import type { SystemTaskTarget, SystemTaskSchedule } from '../types';
 
 let metadata: SystemTaskMetadata;
 
@@ -24,9 +24,7 @@ it('should make a decorated class injectable without registering it', () => {
 
 		readonly schedule: SystemTaskSchedule = { kind: 'interval', intervalSeconds: 60 };
 
-		readonly effects = 'idempotent' as const;
-
-		readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
+		readonly target: SystemTaskTarget = { scope: 'cluster', leaderTimer: {} };
 
 		async run() {}
 	}
@@ -49,9 +47,7 @@ it('should notify a subscribed listener when a task class is registered later', 
 			timezone: null,
 		};
 
-		readonly effects = 'idempotent' as const;
-
-		readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
+		readonly target: SystemTaskTarget = { scope: 'cluster', leaderTimer: {} };
 
 		async run() {}
 	}
@@ -71,9 +67,7 @@ it('should let a subscribed listener resolve the class it is notified of', () =>
 
 		readonly schedule: SystemTaskSchedule = { kind: 'interval', intervalSeconds: 60 };
 
-		readonly effects = 'idempotent' as const;
-
-		readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
+		readonly target: SystemTaskTarget = { scope: 'cluster', leaderTimer: {} };
 
 		async run() {}
 	}
