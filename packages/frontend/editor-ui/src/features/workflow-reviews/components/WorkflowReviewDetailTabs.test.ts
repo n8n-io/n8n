@@ -4,6 +4,7 @@ import type {
 	WorkflowReviewRequestWorkflowDetail,
 } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import WorkflowReviewDetailTabs from './WorkflowReviewDetailTabs.vue';
@@ -13,7 +14,7 @@ vi.mock('./WorkflowReviewChangesSection.vue', () => ({
 		name: 'WorkflowReviewChangesSection',
 		props: ['workflow', 'state', 'decision'],
 		template:
-			'<div data-test-id="workflow-review-changes-section" :data-state="state" :data-decision="decision" />',
+			'<div data-test-id="workflow-review-changes-section" :data-workflow-id="workflow.workflowId" :data-state="state" :data-decision="decision" />',
 	},
 }));
 
@@ -293,7 +294,7 @@ describe('WorkflowReviewDetailTabs', () => {
 	});
 
 	describe('changes tab', () => {
-		it('renders one section per workflow', () => {
+		it('renders one item per workflow and opens only the first', () => {
 			const { getAllByTestId } = renderComponent({
 				props: {
 					review: makeDetail({
@@ -307,7 +308,45 @@ describe('WorkflowReviewDetailTabs', () => {
 				},
 			});
 
-			expect(getAllByTestId('workflow-review-changes-section')).toHaveLength(2);
+			expect(getAllByTestId('workflow-review-changes-item')).toHaveLength(2);
+			expect(getAllByTestId('workflow-review-changes-section')).toHaveLength(1);
+		});
+
+		it('keeps the open workflow when the user switches tabs', async () => {
+			const review = makeDetail({
+				workflows: [makeWorkflowDetail(), makeWorkflowDetail({ workflowId: 'wf-2' })],
+			});
+			const { getAllByTestId, getByTestId, rerender } = renderComponent({
+				props: { review, tab: 'changes', deciding: false },
+			});
+
+			await userEvent.click(getAllByTestId('workflow-review-changes-item-trigger')[1]);
+			await rerender({ review, tab: 'activity', deciding: false });
+			await rerender({ review, tab: 'changes', deciding: false });
+
+			expect(getByTestId('workflow-review-changes-section')).toHaveAttribute(
+				'data-workflow-id',
+				'wf-2',
+			);
+		});
+
+		it('opens the first workflow again when another review is selected', async () => {
+			const workflows = [makeWorkflowDetail(), makeWorkflowDetail({ workflowId: 'wf-2' })];
+			const { getAllByTestId, getByTestId, rerender } = renderComponent({
+				props: { review: makeDetail({ workflows }), tab: 'changes', deciding: false },
+			});
+
+			await userEvent.click(getAllByTestId('workflow-review-changes-item-trigger')[1]);
+			await rerender({
+				review: makeDetail({ id: 'req-2', workflows }),
+				tab: 'changes',
+				deciding: false,
+			});
+
+			expect(getByTestId('workflow-review-changes-section')).toHaveAttribute(
+				'data-workflow-id',
+				'wf-1',
+			);
 		});
 
 		// A closed review keeps its diff: the backend serves the baseline frozen at
