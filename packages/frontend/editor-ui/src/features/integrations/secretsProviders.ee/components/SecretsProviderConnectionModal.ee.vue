@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
-import { createEventBus } from '@n8n/utils/event-bus';
 import type { IUpdateInformation } from '@/Interface';
 import type { SecretProviderTypeResponse } from '@n8n/api-types';
 import type { IParameterLabel } from 'n8n-workflow';
@@ -11,13 +10,16 @@ import {
 	MODAL_CONFIRM,
 	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 } from '@/app/constants';
-import Modal from '@/app/components/Modal.vue';
 import SaveButton from '@/app/components/SaveButton.vue';
 import SecretsProviderImage from './SecretsProviderImage.ee.vue';
 import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
 import { useConnectionModal } from '@/features/integrations/secretsProviders.ee/composables/useConnectionModal.ee';
 import {
 	N8nCallout,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIcon,
 	N8nIconButton,
 	N8nInput,
@@ -62,9 +64,11 @@ const props = withDefaults(
 // Composables
 const i18n = useI18n();
 const { confirm } = useMessage();
-const eventBus = createEventBus();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
+const modalOpen = computed(
+	() => uiStore.modalsById[SECRETS_PROVIDER_CONNECTION_MODAL_KEY]?.open === true,
+);
 const settingsStore = useSettingsStore();
 
 // Constants
@@ -201,7 +205,7 @@ function handleDelete() {
 			projectId: deleteProjectId,
 			onConfirm: () => {
 				props.data.onClose?.();
-				eventBus.emit('close');
+				void closeDialog();
 			},
 		},
 	});
@@ -227,6 +231,15 @@ async function handleBeforeClose() {
 	return true;
 }
 
+async function closeDialog() {
+	if ((await handleBeforeClose()) === false) return;
+	uiStore.closeModal(SECRETS_PROVIDER_CONNECTION_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
 onMounted(async () => {
 	if (providerTypes.value.length === 0) return;
 
@@ -237,18 +250,15 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
+	<N8nDialog
 		v-if="providerTypes.length"
-		:id="`${SECRETS_PROVIDER_CONNECTION_MODAL_KEY}-modal`"
-		:custom-class="$style.secretsProviderConnectionModal"
-		:event-bus="eventBus"
-		:name="SECRETS_PROVIDER_CONNECTION_MODAL_KEY"
-		:before-close="handleBeforeClose"
-		width="70%"
-		height="80%"
+		:open="modalOpen"
+		size="full"
+		:container-class="$style.secretsProviderConnectionModal"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<div :class="$style.header">
+		<N8nDialogHeader>
+			<div :class="$style.header" :data-test-id="`${SECRETS_PROVIDER_CONNECTION_MODAL_KEY}-modal`">
 				<div :class="$style.info">
 					<div :class="$style.icon">
 						<SecretsProviderImage
@@ -258,18 +268,20 @@ onMounted(async () => {
 						/><N8nIcon v-else icon="vault" width="24" height="24" />
 					</div>
 					<div :class="$style.name">
-						<N8nText
+						<N8nDialogTitle
 							v-if="modal.providerKey.value"
-							size="large"
 							:class="$style.providerName"
 							:title="modal.providerKey.value"
 						>
 							{{ modal.providerKey.value }}
-						</N8nText>
-						<N8nText
-							:size="modal.providerKey.value ? 'small' : 'large'"
-							:color="modal.providerKey.value ? 'text-light' : 'text-base'"
-						>
+						</N8nDialogTitle>
+						<N8nDialogTitle v-else>
+							{{
+								modal.selectedProviderType.value?.displayName ??
+								i18n.baseText('settings.secretsProviderConnections.modal.providerType.placeholder')
+							}}
+						</N8nDialogTitle>
+						<N8nText v-if="modal.providerKey.value" size="small" color="text-light">
 							{{
 								modal.selectedProviderType.value?.displayName ??
 								i18n.baseText('settings.secretsProviderConnections.modal.providerType.placeholder')
@@ -288,7 +300,7 @@ onMounted(async () => {
 							data-test-id="secrets-provider-delete-button"
 							@click="handleDelete"
 						/>
-						<template #content>{{ i18n.baseText('generic.delete') }}</template>
+						<template #content> {{ i18n.baseText('generic.delete') }}</template>
 					</N8nTooltip>
 					<SaveButton
 						:saved="!modal.hasUnsavedChanges.value && modal.isEditMode.value"
@@ -300,9 +312,8 @@ onMounted(async () => {
 					/>
 				</div>
 			</div>
-		</template>
-
-		<template #content>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<div :class="$style.container">
 				<!-- Left sidebar menu -->
 				<nav v-if="tabNavigationEnabled" :class="$style.sidebar">
@@ -527,25 +538,29 @@ onMounted(async () => {
 					</div>
 				</div>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
 .secretsProviderConnectionModal {
-	--dialog--max-width: 1200px;
-	--dialog--close--spacing--top: 31px;
-	min-height: var(--dialog--min-height);
-	max-height: var(--dialog--max-height);
+	/* Previous dialog cap. No spacing token for 1200px. */
+	max-width: min(1200px, 70vw);
+	/* Keep the dialog fixed. A relative position drops it out of the viewport. */
+	height: 80dvh;
+	max-height: 80dvh;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 
-	:global(.el-dialog__header) {
+	header {
 		padding-bottom: 0;
-		border-bottom: var(--border);
 	}
 
-	:global(.el-dialog__body) {
-		padding-top: var(--spacing--lg);
-		position: relative;
+	/* Let the body shrink inside the cap. The connection form scrolls inside it. */
+	:global([data-slot='dialog-body']) {
+		min-height: 0;
+		overflow: hidden;
 	}
 }
 
@@ -604,7 +619,8 @@ onMounted(async () => {
 
 .container {
 	display: flex;
-	height: 100%;
+	flex: 1;
+	min-height: 0;
 }
 
 .info {
@@ -630,6 +646,7 @@ onMounted(async () => {
 
 .contentArea {
 	flex: 1;
+	min-height: 0;
 	overflow-y: auto;
 	padding-top: var(--spacing--2xs);
 }
