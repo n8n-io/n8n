@@ -34,6 +34,15 @@ function isExpiredToken(error: unknown, body: Record<string, unknown> | undefine
 	return /expired/i.test(text) && /jwt|token/i.test(text);
 }
 
+export function assertLakebaseOAuth(context: DatabricksContext): void {
+	if (getActiveCredentialType(context) === 'databricksApi') {
+		throw new NodeOperationError(context.getNode(), 'Lakebase requires OAuth2 authentication', {
+			description:
+				'The Lakebase Data API does not accept personal access tokens. Set Authentication to OAuth2 and use a Databricks OAuth2 credential.',
+		});
+	}
+}
+
 /**
  * Pass JSON bodies only. The helper resends the request after a token refresh or a
  * schema-cache retry, so do not pass a stream or FormData body.
@@ -42,12 +51,7 @@ export async function lakebaseApiRequest(
 	context: DatabricksContext,
 	options: IHttpRequestOptions,
 ): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
-	if (getActiveCredentialType(context) === 'databricksApi') {
-		throw new NodeOperationError(context.getNode(), 'Lakebase requires OAuth2 authentication', {
-			description:
-				'The Lakebase Data API does not accept personal access tokens. Set Authentication to OAuth2 and use a Databricks OAuth2 credential.',
-		});
-	}
+	assertLakebaseOAuth(context);
 	const abortSignal =
 		'getExecutionCancelSignal' in context ? context.getExecutionCancelSignal() : undefined;
 

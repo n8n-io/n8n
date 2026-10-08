@@ -367,10 +367,9 @@ describe('listSearch -> getLakebaseTables', () => {
 		expect(apiMock(context)).not.toHaveBeenCalled();
 	});
 
-	it('refuses personal access token auth through the shared transport', async () => {
+	it('refuses personal access token auth before any request', async () => {
 		const context = createLoadOptionsContext(selectedSchema);
 		context.getNodeParameter.mockReturnValue('accessToken');
-		apiMock(context).mockResolvedValueOnce(endpointsResponse);
 
 		const promise = getLakebaseTables.call(context);
 
@@ -378,7 +377,7 @@ describe('listSearch -> getLakebaseTables', () => {
 		await expect(promise).rejects.toMatchObject({
 			message: 'Lakebase requires OAuth2 authentication',
 		});
-		expect(apiMock(context)).toHaveBeenCalledTimes(1);
+		expect(apiMock(context)).not.toHaveBeenCalled();
 	});
 
 	it('lists the tables of the schema document, skipping internal objects', async () => {

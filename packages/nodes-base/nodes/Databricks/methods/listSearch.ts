@@ -21,6 +21,7 @@ import {
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { getRunOutcome } from '../actions/job/runState';
 import {
+	assertLakebaseOAuth,
 	collectPages,
 	lakebaseApiRequest,
 	resolveLakebaseRestBase,
@@ -727,6 +728,8 @@ export async function getLakebaseTables(
 	if (!schema) {
 		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
 	}
+	// A PAT can read the endpoints, so check before the lookup to name the real cause
+	assertLakebaseOAuth(this);
 	try {
 		const base = await resolveLakebaseRestBase(this, project, branch);
 		const doc: { components?: { schemas?: Record<string, unknown> } } = await lakebaseApiRequest(
