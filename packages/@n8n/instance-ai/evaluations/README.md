@@ -594,7 +594,9 @@ A case can add a second user turn with only `[stage directions]`: the facts
 that a user proxy uses to answer a question, for example
 `[Customers message the shop all day and want answers.]`. The proxy answers
 up to 2 accepted questions, and the trial passes only on the route after the
-last answer. `after:<route>` gives the routes that pass after an answer.
+last answer. If the proxy finds no question to answer in a text reply, the
+trial is graded on that question. `after:<route>` gives the routes that pass
+after an answer.
 Without it, the accepted routes without a steer pass. A further question passes
 when it steers to an `after` artifact.
 A `bucket:clarify` case with stage directions needs an `after:<route>` tag.
