@@ -1715,7 +1715,8 @@ describe('WaitingWebhooks', () => {
 				},
 			] as any);
 			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(
-				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
+				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback, _dn, options) => {
+					options?.onResume?.();
 					callback(null, { noWebhookResponse: true });
 					return undefined;
 				},
@@ -1730,6 +1731,41 @@ describe('WaitingWebhooks', () => {
 			expect(mockEventService.emit).toHaveBeenCalledWith(
 				'execution-resumed',
 				expect.objectContaining({ executionId: 'test-execution-id', workflowId: 'workflow-id' }),
+			);
+		});
+
+		it('should not emit when the resume request fails before the execution resumes', async () => {
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: '',
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(
+				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
+					callback(new Error('Workflow Webhook Error: Workflow could not be started!'), {});
+					return undefined;
+				},
+			);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: 'test-execution-id', suffix: undefined },
+				method: 'POST',
+			});
+			await expect(waitingWebhooks.executeWebhook(mockReq, createMockRes())).rejects.toThrow(
+				'Workflow could not be started',
+			);
+
+			expect(mockEventService.emit).not.toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.anything(),
 			);
 		});
 

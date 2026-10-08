@@ -3118,10 +3118,14 @@ describe('executeWebhook when the node webhook throws', () => {
 		runExecutionData,
 		executionId,
 		method = 'GET',
+		onResume,
+		webhookSucceeds = false,
 	}: {
 		runExecutionData?: IRunExecutionData;
 		executionId?: string;
 		method?: 'GET' | 'POST';
+		onResume?: () => void;
+		webhookSucceeds?: boolean;
 	}) => {
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -3130,7 +3134,13 @@ describe('executeWebhook when the node webhook throws', () => {
 			mock<IWorkflowExecuteAdditionalData>(),
 		);
 		engineV2Dispatcher.handlesWorkflow.mockReturnValue(false);
-		webhookService.runWebhook.mockRejectedValue(new Error('No binary data with field data found.'));
+		if (webhookSucceeds) {
+			webhookService.runWebhook.mockResolvedValue({ workflowData: [[{ json: { ok: true } }]] });
+		} else {
+			webhookService.runWebhook.mockRejectedValue(
+				new Error('No binary data with field data found.'),
+			);
+		}
 		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
 
 		const workflow = mock<Workflow>({
@@ -3170,6 +3180,8 @@ describe('executeWebhook when the node webhook throws', () => {
 			mock<WebhookRequest>({ method, headers: {}, contentType: undefined, body: {} }),
 			mock<express.Response>({ headersSent: false }),
 			responseCallback,
+			undefined,
+			{ onResume },
 		);
 
 		return { responseCallback };
@@ -3217,11 +3229,15 @@ describe('executeWebhook when the node webhook throws', () => {
 			resultData: { runData, lastNodeExecuted: 'Form Ending' },
 		});
 
+		const onResume = vi.fn();
 		const { responseCallback } = await runRequest({
 			runExecutionData,
 			executionId: EXECUTION_ID,
 			method,
+			onResume,
 		});
+
+		expect(onResume).not.toHaveBeenCalled();
 
 		expectErrorResponse(responseCallback);
 		expect(workflowRunner.run).not.toHaveBeenCalled();
@@ -3230,6 +3246,30 @@ describe('executeWebhook when the node webhook throws', () => {
 		expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main).toEqual([
 			[{ json: { submitted: true } }],
 		]);
+	});
+
+	it('should call onResume once before a waiting execution resumes', async () => {
+		const runExecutionData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack: [{ node: startNode, data: { main: [[]] }, source: null }],
+			},
+			resultData: { runData: {}, lastNodeExecuted: 'Form Ending' },
+		});
+		const onResume = vi.fn();
+
+		await runRequest({
+			runExecutionData,
+			executionId: EXECUTION_ID,
+			method: 'POST',
+			onResume,
+			webhookSucceeds: true,
+		});
+
+		expect(onResume).toHaveBeenCalledTimes(1);
+		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		expect(onResume.mock.invocationCallOrder[0]).toBeLessThan(
+			workflowRunner.run.mock.invocationCallOrder[0],
+		);
 	});
 
 	it('should still record a new execution as failed', async () => {

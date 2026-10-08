@@ -981,6 +981,8 @@ export async function executeWebhook(
 		encryptedRunnerIdentity?: string;
 		/** Store recorded on the execution being resumed. Unset for a new execution. */
 		storedAt?: ExecutionStorageLocation;
+		/** Called right before a waiting execution resumes, i.e. not when the request stops earlier. */
+		onResume?: () => void;
 	},
 ): Promise<string | undefined> {
 	const responder = new WebhookResponder(responseCallback);
@@ -1293,6 +1295,8 @@ export async function executeWebhook(
 		// From here the dispatcher owns the payload: it deletes the files when the
 		// data plane does not accept the run.
 		engineV2Payload = undefined;
+
+		if (executionId) options?.onResume?.();
 
 		// Start now to run the workflow
 		executionId = await Container.get(WorkflowRunner).run(
