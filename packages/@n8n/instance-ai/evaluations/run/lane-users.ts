@@ -1,10 +1,7 @@
 // ---------------------------------------------------------------------------
-// Per-case build users for `--build-via-mcp`.
-//
-// MCP credential/workflow visibility is user-scoped, so running each build as
-// its own freshly-invited member gives it an isolated credential view holding
-// exactly the case's declared credentials — the MCP analog of the
-// orchestrator's per-thread credential pinning.
+// Per-build users. `--build-via-mcp` builds act as a fresh member; orchestrator
+// builds keep the owner but run in a fresh member's personal project, the only
+// new project an unlicensed instance can create.
 // ---------------------------------------------------------------------------
 
 import { randomBytes } from 'crypto';
@@ -58,7 +55,7 @@ export class LaneUserPool {
 		// One batched POST per chunk — /rest/invitations is IP-rate-limited in production.
 		const emails = Array.from({ length: this.chunkSize }, () => {
 			this.seq += 1;
-			return `eval-mcp-${this.nonce}-${String(this.seq)}@n8n-evals.invalid`;
+			return `eval-build-${this.nonce}-${String(this.seq)}@n8n-evals.invalid`;
 		});
 		const invited = await this.ownerClient.inviteMembers(emails);
 		// Record every shell before judging usability: n8n creates them all up
@@ -108,6 +105,30 @@ export async function provisionCaseBuildUser(opts: {
 	return mcpApiKey;
 }
 
+export interface BuildProject {
+	userId: string;
+	projectId: string;
+}
+
+/** Accept a pooled invite and return that user's personal project, so a build
+ *  starts in a project no other build has touched. */
+export async function provisionBuildProject(opts: {
+	pool: LaneUserPool;
+	/** A fresh, logged-out client for the lane — accepting the invite logs it in. */
+	memberClient: N8nClient;
+	/** Becomes the project name the agent sees. */
+	name: { firstName: string; lastName: string };
+}): Promise<BuildProject> {
+	const { pool, memberClient } = opts;
+	const user = await pool.claim();
+	await memberClient.acceptInvitation({
+		token: user.acceptToken,
+		...opts.name,
+		password: pool.password,
+	});
+	return { userId: user.id, projectId: await memberClient.getPersonalProjectId() };
+}
+
 /** Best-effort deletion of the pool's users. Deleting a user also deletes
  *  what's left in their personal project, so only call this when built
  *  workflows are throwaway. */
@@ -129,5 +150,5 @@ export async function cleanupLaneUsers(
 			// best-effort
 		}
 	}
-	logger.verbose(`Deleted ${String(deleted)}/${String(ids.length)} MCP build user(s)`);
+	logger.verbose(`Deleted ${String(deleted)}/${String(ids.length)} build user(s)`);
 }

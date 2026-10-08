@@ -158,7 +158,7 @@ export async function cleanupBuild(
 	): Promise<boolean> => {
 		let ok = true;
 		try {
-			const projectId = await client.getPersonalProjectId();
+			const projectId = build.buildProjectId ?? (await client.getPersonalProjectId());
 			for (const id of ids) {
 				try {
 					await remove(projectId, id);
@@ -236,6 +236,15 @@ export async function cleanupBuild(
 			await client.deleteThread(build.threadId);
 		} catch {
 			clean = false; // Best-effort cleanup
+		}
+	}
+
+	// Last: the user's delete takes its project and anything left in it.
+	if (build.buildUserId) {
+		try {
+			await client.deleteUser(build.buildUserId);
+		} catch (error: unknown) {
+			if (!(error instanceof N8nApiError && error.status === 404)) clean = false;
 		}
 	}
 
