@@ -17,8 +17,8 @@ const ENFORCED_HEADER = 'Content-Security-Policy';
 const REPORT_ONLY_HEADER = 'Content-Security-Policy-Report-Only';
 
 /**
- * A browser never renders a script as a page, and a policy on a worker script would
- * constrain the worker, which otherwise runs with no policy.
+ * A browser does not render a script as HTML, and a policy on a worker script would
+ * constrain the worker.
  */
 const JAVASCRIPT_TYPES = new Set(['text/javascript', 'application/javascript']);
 
@@ -77,7 +77,7 @@ const copyWriteHeadHeaders = (res: Response, args: unknown[]) => {
 			if (typeof name === 'string' && isHeaderValue(value)) res.setHeader(name, value);
 		}
 	} else {
-		// Alternating names and values, as in `res.getRawHeaderNames` output.
+		// Alternating names and values.
 		for (let i = 0; i + 1 < headers.length; i += 2) {
 			const [name, value] = [headers[i], headers[i + 1]];
 			if (typeof name === 'string' && isHeaderValue(value)) res.setHeader(name, value);
@@ -123,8 +123,8 @@ export const createContentSecurityPolicyMiddleware = ({
 
 			// A 304 updates the headers of the response in the browser cache, so a policy on
 			// it would replace the one that response came with, nonce included, and would
-			// reach a cached worker script. Read from `args`: `res.statusCode` changes only
-			// inside `writeHead`, so a direct `res.writeHead(304)` call still shows 200 here.
+			// reach a cached worker script. Read the status from `args`: a direct
+			// `res.writeHead(304)` call still shows 200 on `res.statusCode` here.
 			const isNotModified = args[0] === 304;
 
 			// A response that enforces its own policy, e.g. the `sandbox` policy on

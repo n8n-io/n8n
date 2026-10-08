@@ -31,8 +31,6 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 		res.type('html').send('<p>self-reporting</p>');
 	});
 
-	// Handlers that pass their headers to `writeHead` rather than setting them on `res`,
-	// as the streaming webhook and chat responses do.
 	app.get('/raw-page', (_req, res) => {
 		res.writeHead(200, { 'Content-Type': 'text/html' });
 		res.end(`<script nonce="${res.locals.cspNonce}"></script>`);
