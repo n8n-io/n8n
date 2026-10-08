@@ -167,6 +167,7 @@ export { SourceControlPullResponsePublicDto } from './source-control/source-cont
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { TestCredentialRequestDto } from './credentials/test-credential-request.dto';
+export { CredentialOptionsRequestDto } from './credentials/credential-options-request.dto';
 export {
 	CredentialPublicDto,
 	CredentialListPublicDto,

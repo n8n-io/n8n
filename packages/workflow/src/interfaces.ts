@@ -438,6 +438,15 @@ export interface ICredentialType {
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
+	methods?: {
+		loadOptions?: {
+			[method: string]: (
+				credentials: ICredentialDataDecryptedObject,
+				filter?: string,
+				paginationToken?: string,
+			) => Promise<INodeListSearchResult>;
+		};
+	};
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
 	__showManagedOAuthScopes?: boolean;
@@ -2020,8 +2029,8 @@ export interface INodePropertyTypeOptions {
 	editor?: EditorType; // Supported by: string
 	editorIsReadOnly?: boolean; // Supported by: string
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
-	loadOptionsDependsOn?: string[]; // Supported by: options
-	loadOptionsMethod?: string; // Supported by: options
+	loadOptionsDependsOn?: string[]; // Supported by: options, credential strings
+	loadOptionsMethod?: string; // Supported by: options, credential strings
 	loadOptions?: ILoadOptions; // Supported by: options
 	maxValue?: number; // Supported by: number
 	minValue?: number; // Supported by: number

@@ -4,6 +4,71 @@ import { mock } from 'vitest-mock-extended';
 
 import { EmbeddingsGoogleVertex } from '../../nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node';
 import { LmChatGoogleVertex } from '../../nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node';
+import { searchGoogleProjects } from '../google-vertex';
+
+const { searchProjects, close, ProjectsClient } = vi.hoisted(() => {
+	const searchProjects = vi.fn();
+	const close = vi.fn();
+	return {
+		searchProjects,
+		close,
+		ProjectsClient: vi.fn(
+			class {
+				searchProjects = searchProjects;
+				close = close;
+			},
+		),
+	};
+});
+
+vi.mock('@google-cloud/resource-manager', () => ({ ProjectsClient }));
+
+describe('Google project discovery', () => {
+	const credentials = Object.freeze({
+		email: ' service@owner-project.iam.gserviceaccount.com ',
+		privateKey: '-----BEGIN PRIVATE KEY----- key -----END PRIVATE KEY-----',
+		region: 'eu',
+	});
+
+	beforeEach(() => vi.clearAllMocks());
+
+	it('normalizes the service account and returns project names, IDs, and the next page', async () => {
+		searchProjects.mockResolvedValue([
+			[
+				{ displayName: 'Target project', projectId: 'target-project' },
+				{ projectId: 'another-project' },
+				{ displayName: 'Missing ID' },
+			],
+			{ pageToken: 'next-page' },
+		]);
+
+		await expect(searchGoogleProjects(credentials, undefined, 'current-page')).resolves.toEqual({
+			results: [
+				{ name: 'Target project (target-project)', value: 'target-project' },
+				{ name: 'another-project', value: 'another-project' },
+			],
+			paginationToken: 'next-page',
+		});
+		expect(ProjectsClient).toHaveBeenCalledWith({
+			credentials: {
+				client_email: 'service@owner-project.iam.gserviceaccount.com',
+				private_key: '-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----',
+			},
+		});
+		expect(searchProjects).toHaveBeenCalledWith(
+			{ pageToken: 'current-page' },
+			{ autoPaginate: false },
+		);
+		expect(close).toHaveBeenCalled();
+	});
+
+	it('closes the client when project discovery fails', async () => {
+		searchProjects.mockRejectedValue(new Error('Permission denied'));
+
+		await expect(searchGoogleProjects(credentials)).rejects.toThrow('Permission denied');
+		expect(close).toHaveBeenCalled();
+	});
+});
 
 describe.each([new LmChatGoogleVertex(), new EmbeddingsGoogleVertex()])(
 	'$description.displayName credential selection',

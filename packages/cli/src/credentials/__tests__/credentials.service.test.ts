@@ -2166,6 +2166,36 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('prepareCredentialsForUse', () => {
+		it('restores a masked key and preserves the original data for secret permission checks', async () => {
+			const storedCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Vertex',
+				type: 'googleVertexAiApi',
+			});
+			const storedData = { email: 'service@example.com', privateKey: 'stored-key' };
+			vi.spyOn(service, 'decrypt').mockResolvedValue(storedData);
+			vi.spyOn(service, 'replaceCredentialContentsForSharee').mockResolvedValue(undefined);
+			vi.spyOn(service, 'getCredentialTypeProperties').mockReturnValue([]);
+			const result = await service.prepareCredentialsForUse({
+				storedCredential,
+				user: ownerUser,
+				credentialsToUse: {
+					id: storedCredential.id,
+					name: storedCredential.name,
+					type: storedCredential.type,
+					data: { email: 'edited@example.com', privateKey: CREDENTIAL_BLANKING_VALUE },
+				},
+			});
+
+			expect(result.credentials.data).toEqual({
+				email: 'edited@example.com',
+				privateKey: 'stored-key',
+			});
+			expect(result.storedData).toEqual(storedData);
+		});
+	});
+
 	describe('testWithCredentials', () => {
 		it('refuses a stored credential of a blocked type before the tester runs', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
