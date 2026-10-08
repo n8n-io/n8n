@@ -96,10 +96,9 @@ export class StartExecutionService {
 }
 
 /**
- * The graph as stored: each seeded node marked, so a settlement knows without
- * a lookup. The mark comes from `seededSteps` alone. One the caller put on a
- * node is dropped, or a marked node could exist without outputs behind it, and
- * the first settlement to reach it would fail the run.
+ * Labels the graph nodes as seeded according to the steps passed in, so we
+ * know to use the seeded data during execution. A label the caller put on a
+ * node is dropped: only `seededSteps` decides.
  */
 function markSeededNodes(graph: WorkflowGraph, seededSteps: SeededSteps): WorkflowGraph {
 	const seeded = new Set(Object.keys(seededSteps));
