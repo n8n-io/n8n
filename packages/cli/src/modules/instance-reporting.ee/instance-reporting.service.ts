@@ -387,9 +387,10 @@ export class InstanceReportingService {
 	 */
 	private async collectDataPoints(days: string[]): Promise<InstanceReportDataPoint[]> {
 		const firstBillableDay = await this.insightsService.getFirstBillableDay();
+		// The billable number is only defined from the day this instance updated to 2.40.0 or higher.
+		// The first day with billable insight rows may be partial, so it and all earlier days
+		// report the total; later days report billable executions.
 		const totalDays = days.filter((day) => firstBillableDay === null || day <= firstBillableDay);
-		// The billable number is only defined from the day this instance updated to 2.40.0 or
-		// higher. That day can still be partly on an older version, so it reports the total.
 		const billableDays = days.slice(totalDays.length);
 
 		const [totalsByDay, billableByDay, { productionRootExecutions }] = await Promise.all([
