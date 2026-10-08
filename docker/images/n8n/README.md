@@ -152,9 +152,15 @@ Tags with a `-pc` suffix (for example `n8nio/n8n:2.36.0-pc`) are a pointer-compr
 
 ### About `-debian` tags
 
-Tags with a `-debian` suffix (for example `n8nio/n8n:2.41.0-debian`) use Debian (glibc) instead of Alpine (musl). Use them only to add a vendor library that needs glibc, for example Oracle Instant Client for Thick mode. Use the regular tags otherwise.
+Tags with a `-debian` suffix (for example `n8nio/n8n:2.41.0-debian`) use Debian (glibc) instead of Alpine (musl). Use them only to add a vendor library that needs glibc, for example Oracle Instant Client for Thick mode or the IBM Db2 driver (`ibm_db`). Use the regular tags otherwise.
 
-Like the regular image, this image has no package manager. Add the library in a derived image: download it in a build stage, then copy it in. This example adds Oracle Instant Client on arm64:
+Like the regular image, this image has no package manager, so `RUN apt-get install` does not work in a derived image. Build the library in a stage that has one, then copy it in:
+
+1. Start a build stage from an image with `apt` and the same Debian release: `debian:trixie-slim`, or `node:26-trixie` if the library is a Node native addon that you must compile.
+2. Install or download the library in that stage.
+3. `COPY --from` the files into `n8nio/n8n:<version>-debian`. Set `LD_LIBRARY_PATH` or `NODE_PATH` if the library needs it.
+
+This example adds Oracle Instant Client on arm64:
 
 ```dockerfile
 FROM debian:trixie-slim AS oracle

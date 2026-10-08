@@ -34,6 +34,9 @@ jobs:
         # `dhi_ref` the DHI base it builds on, pinned to a multi-arch index
         # digest. Bump tag and digest together when updating. The Debian
         # (glibc) base is published for the Node version of the n8n image only.
+        # A Node bump moves both tracks: after this workflow publishes the new
+        # bases, repin BUILDER_IMAGE and RUNTIME_IMAGE in
+        # docker/images/n8n/Dockerfile.debian as well as the Alpine Dockerfile.
         include:
           - tag: '22'
             dockerfile: docker/images/n8n-base/Dockerfile
