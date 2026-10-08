@@ -1,0 +1,9 @@
+packages/cli/src/modules/otel/README.md
+  ai_agent 62-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "48395d615d0f612c0d0691a1f207859db5825c08",
+  "prompts": {}
+}
