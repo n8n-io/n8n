@@ -165,14 +165,20 @@ export const useDataTableOperations = ({
 		const oldField = columnToRename.field;
 		if (!oldField) return;
 
-		columnToRename.headerName = newName;
+		const updateColumn = (changes: Partial<ColDef>) => {
+			colDefs.value = colDefs.value.map((col) =>
+				col.colId === columnId ? { ...col, ...changes } : col,
+			);
+		};
+
+		updateColumn({ headerName: newName });
 		setGridData({ colDefs: colDefs.value });
 
 		try {
 			toggleSave(true);
 			await dataTableStore.renameDataTableColumn(dataTableId, projectId, columnId, newName);
 
-			columnToRename.field = newName;
+			updateColumn({ field: newName });
 			if (oldField !== newName) {
 				rowData.value = rowData.value.map((row) => {
 					const newRow: DataTableRow = { ...row };
@@ -189,7 +195,7 @@ export const useDataTableOperations = ({
 				data_table_id: dataTableId,
 			});
 		} catch (error) {
-			columnToRename.headerName = oldName;
+			updateColumn({ headerName: oldName });
 			setGridData({ colDefs: colDefs.value });
 
 			const errorDetails = parseColumnOperationError(error);
