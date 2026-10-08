@@ -4620,6 +4620,49 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		}
 	});
 
+	it('uses regular tool concurrency for background dispatch', async () => {
+		let activeDispatches = 0;
+		let peakDispatches = 0;
+		const delegateTool = createDelegateSubAgentTool({
+			policy: { maxChildren: 5 },
+			runBackgroundSubAgent: async (input) => {
+				activeDispatches++;
+				peakDispatches = Math.max(peakDispatches, activeDispatches);
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				activeDispatches--;
+				return { status: 'started', jobId: input.taskName };
+			},
+		});
+		const { runtime } = createRuntimeWithTools([delegateTool], 2);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls(
+					Array.from({ length: 4 }, (_, index) => ({
+						toolCallId: `tc-${index + 1}`,
+						toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+						args: {
+							subAgentId: 'inline',
+							taskName: `research_${index + 1}`,
+							goal: 'Research this topic.',
+							mode: 'background',
+						},
+					})),
+				),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Jobs started'));
+
+		const result = await runtime.generate('Start research jobs');
+
+		expect(result.finishReason).toBe('stop');
+		expect(peakDispatches).toBe(2);
+		expect(result.toolCalls?.map((call) => call.output)).toEqual([
+			{ status: 'started', jobId: 'research_1' },
+			{ status: 'started', jobId: 'research_2' },
+			{ status: 'started', jobId: 'research_3' },
+			{ status: 'started', jobId: 'research_4' },
+		]);
+	});
+
 	it('batches a renamed delegate tool by maxChildren via metadata, not by tool name', async () => {
 		let activeDelegations = 0;
 		let peakDelegations = 0;
