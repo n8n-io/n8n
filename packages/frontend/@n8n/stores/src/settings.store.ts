@@ -320,7 +320,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const inbox = settings.value.inbox;
 		if (!inbox || !isModuleActive('inbox')) return;
 
-		// Keep access in sync with a saved policy if the next settings refresh fails.
+		// Update Inbox access from the saved policy.
 		inbox.availableTypes = inbox.availableTypes.filter((type) => type !== 'workflow_review');
 		inbox.failedTypes = inbox.failedTypes.filter((type) => type !== 'workflow_review');
 		if (

@@ -7,7 +7,6 @@ import SecuritySettings from './SecuritySettings.vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 const getSecuritySettings = vi.fn();
 const updateSecuritySettings = vi.fn();
@@ -940,25 +939,9 @@ describe('SecuritySettings', () => {
 			});
 		});
 
-		it('keeps the toggle disabled until Inbox availability finishes loading', async () => {
-			const refresh = createDeferredPromise<void>();
-			settingsStore.getSettings.mockReturnValueOnce(refresh.promise);
-			updateSecuritySettings.mockResolvedValue({ workflowReviews: { enabled: true } });
-			const { findByTestId } = renderView();
-			const toggle = await findByTestId('security-workflow-reviews-toggle');
-			await userEvent.click(toggle);
-			await waitFor(() => expect(settingsStore.getSettings).toHaveBeenCalled());
-			expect(toggle).toHaveClass('is-disabled');
-
-			refresh.resolve();
-			await waitFor(() => expect(toggle).not.toHaveClass('is-disabled'));
-			expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
-		});
-
-		it('keeps Inbox accessible after a saved policy when settings cannot refresh', async () => {
+		it('updates Inbox access after saving the policy without reloading settings', async () => {
 			settingsStore.settings.activeModules = ['inbox', 'workflow-reviews'];
 			settingsStore.settings.inbox = { enabled: false, availableTypes: [], failedTypes: [] };
-			settingsStore.getSettings.mockRejectedValueOnce(new Error('Settings unavailable'));
 			updateSecuritySettings.mockResolvedValue({ workflowReviews: { enabled: true } });
 			const { findByTestId } = renderView();
 			const toggle = await findByTestId('security-workflow-reviews-toggle');
@@ -972,6 +955,7 @@ describe('SecuritySettings', () => {
 			});
 			expect(toggle).not.toHaveClass('is-disabled');
 			expect(showError).not.toHaveBeenCalled();
+			expect(settingsStore.getSettings).not.toHaveBeenCalled();
 		});
 
 		it('should disable workflow reviews toggle when managed by env', async () => {

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import type { WorkflowReviewInboxItem } from './dto/workflow-reviews/list-workflow-review-inbox.dto';
-import type { SelfHealingResultOutcome } from './self-healing-results';
+import type { SelfHealingResultDetail } from './self-healing-results';
 
 export const inboxSourceTypeSchema = z.enum(['workflow_review', 'self_healing_result']);
 export type InboxSourceType = z.infer<typeof inboxSourceTypeSchema>;
@@ -16,18 +16,14 @@ export type InboxWorkflowReviewItem = WorkflowReviewInboxItem & {
 	type: 'workflow_review';
 };
 
-export type InboxSelfHealingItem = {
+export type InboxSelfHealingItem = Pick<
+	SelfHealingResultDetail,
+	'projectId' | 'workflowId' | 'summary' | 'outcome' | 'createdAt' | 'updatedAt' | 'completedAt'
+> & {
 	type: 'self_healing_result';
 	id: string;
 	state: InboxState;
-	projectId: string;
-	workflowId: string;
 	workflowName: string;
-	summary: string;
-	outcome: SelfHealingResultOutcome;
-	createdAt: string;
-	updatedAt: string;
-	completedAt: string;
 };
 
 export type InboxItem = InboxWorkflowReviewItem | InboxSelfHealingItem;

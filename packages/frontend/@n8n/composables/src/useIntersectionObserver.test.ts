@@ -93,9 +93,9 @@ describe('useIntersectionObserver()', () => {
 		observe(element);
 
 		// Simulate intersection
-		const callback = MockIntersectionObserver.getInstance().__callback;
-		if (callback) {
-			callback([createMockEntry(element, true)], {} as IntersectionObserver);
+		const onIntersect = MockIntersectionObserver.getInstance().__callback;
+		if (onIntersect) {
+			onIntersect([createMockEntry(element, true)], {} as IntersectionObserver);
 		}
 
 		expect(mockCallback).toHaveBeenCalledTimes(1);
@@ -112,9 +112,9 @@ describe('useIntersectionObserver()', () => {
 		observe(element);
 
 		// Simulate no intersection
-		const callback = MockIntersectionObserver.getInstance().__callback;
-		if (callback) {
-			callback([createMockEntry(element, false)], {} as IntersectionObserver);
+		const onIntersect = MockIntersectionObserver.getInstance().__callback;
+		if (onIntersect) {
+			onIntersect([createMockEntry(element, false)], {} as IntersectionObserver);
 		}
 
 		expect(mockCallback).not.toHaveBeenCalled();
@@ -131,9 +131,9 @@ describe('useIntersectionObserver()', () => {
 		observe(element);
 
 		// Simulate intersection
-		const callback = MockIntersectionObserver.getInstance().__callback;
-		if (callback) {
-			callback([createMockEntry(element, true)], {} as IntersectionObserver);
+		const onIntersect = MockIntersectionObserver.getInstance().__callback;
+		if (onIntersect) {
+			onIntersect([createMockEntry(element, true)], {} as IntersectionObserver);
 		}
 
 		expect(MockIntersectionObserver.getInstance().disconnect).toHaveBeenCalledTimes(1);
@@ -151,9 +151,9 @@ describe('useIntersectionObserver()', () => {
 		observe(element);
 
 		// Simulate intersection
-		const callback = MockIntersectionObserver.getInstance().__callback;
-		if (callback) {
-			callback([createMockEntry(element, true)], {} as IntersectionObserver);
+		const onIntersect = MockIntersectionObserver.getInstance().__callback;
+		if (onIntersect) {
+			onIntersect([createMockEntry(element, true)], {} as IntersectionObserver);
 		}
 
 		expect(MockIntersectionObserver.getInstance().disconnect).not.toHaveBeenCalled();

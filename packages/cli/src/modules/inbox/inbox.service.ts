@@ -191,31 +191,15 @@ export class InboxService {
 	}
 
 	private mergeRows(pages: InboxItem[][], limit: number): InboxItem[] {
-		const streams = pages.map((items) => ({ items, index: 0 }));
-		const rows: InboxItem[] = [];
-		while (rows.length < limit) {
-			let next: (typeof streams)[number] | undefined;
-			for (const stream of streams) {
-				const item = stream.items[stream.index];
-				if (!item) continue;
-				const current = next?.items[next.index];
-				const timeDifference = current
-					? Date.parse(item.createdAt) - Date.parse(current.createdAt)
-					: 0;
-				if (
-					!current ||
-					timeDifference > 0 ||
-					(timeDifference === 0 &&
-						sourceOrder.indexOf(item.type) < sourceOrder.indexOf(current.type))
-				) {
-					next = stream;
-				}
-			}
-			if (!next) break;
-			// Keep each source's database order, including its ID collation.
-			rows.push(next.items[next.index++]);
-		}
-		return rows;
+		// Stable sorting preserves each source's database order for equal timestamps.
+		return pages
+			.flat()
+			.sort(
+				(left, right) =>
+					Date.parse(right.createdAt) - Date.parse(left.createdAt) ||
+					sourceOrder.indexOf(left.type) - sourceOrder.indexOf(right.type),
+			)
+			.slice(0, limit);
 	}
 
 	private encodeCursor(cursor: InboxCursor): string {
