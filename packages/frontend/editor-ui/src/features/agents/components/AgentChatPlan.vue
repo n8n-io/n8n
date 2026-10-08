@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import type { RouteLocationRaw } from 'vue-router';
-import { type IconColor, N8nIcon, N8nLink, N8nScrollArea, N8nText } from '@n8n/design-system';
+import { type IconColor, N8nIcon, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { AgentPlanItemStatus, AgentPlanView } from '../utils/agent-plan';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
@@ -129,93 +129,95 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 				tabindex="0"
 				data-testid="agent-chat-plan-details"
 			>
-				<N8nText
-					v-if="!plan.closed && plan.document.presentation?.detail"
-					:class="$style.detail"
-					:title="plan.document.presentation.detail"
-				>
-					{{ plan.document.presentation.detail }}
-				</N8nText>
-				<ul
-					:class="$style.items"
-					:aria-label="plan.document.title"
-					data-testid="agent-chat-plan-items"
-				>
-					<li
-						v-for="item in plan.document.items"
-						:key="item.id"
-						:class="[
-							$style.parentItem,
-							{ [$style.hasChildren]: item.kind === 'group' && item.tasks.length > 0 },
-						]"
+				<div>
+					<N8nText
+						v-if="!plan.closed && plan.document.presentation?.detail"
+						:class="$style.detail"
+						:title="plan.document.presentation.detail"
 					>
-						<div :class="[$style.row, { [$style.group]: item.kind === 'group' }]">
-							<span
-								:class="$style.parentIcon"
-								role="img"
-								:aria-label="i18n.baseText(statusLabels[item.status])"
-								:title="i18n.baseText(statusLabels[item.status])"
-								:data-status="item.status"
-							>
-								<N8nIcon
-									:icon="statusIcons[item.status]"
-									:spin="item.status === 'in_progress'"
-									:color="statusIconColors[item.status]"
-									size="medium"
-									aria-hidden="true"
-								/>
-							</span>
-
-							<N8nText
-								bold
-								step="xs"
-								:color="item.status === 'done' ? undefined : 'text-light'"
-								:class="[$style.itemTitle, { [$style.inProgress]: item.status === 'in_progress' }]"
-								:title="item.title"
-								>{{ item.title }}</N8nText
-							>
-						</div>
-						<ul v-if="item.kind === 'group'" :class="$style.children">
-							<li v-for="task in item.tasks" :key="task.id" :class="$style.row">
-								<svg
-									:class="$style.treeBranch"
-									viewBox="0 0 16 8"
-									preserveAspectRatio="none"
-									fill="none"
-									stroke="currentColor"
-									aria-hidden="true"
-								>
-									<path d="M0 0Q0 4 4 4H16" />
-								</svg>
+						{{ plan.document.presentation.detail }}
+					</N8nText>
+					<ul
+						:class="$style.items"
+						:aria-label="plan.document.title"
+						data-testid="agent-chat-plan-items"
+					>
+						<li
+							v-for="item in plan.document.items"
+							:key="item.id"
+							:class="[
+								$style.parentItem,
+								{ [$style.hasChildren]: item.kind === 'group' && item.tasks.length > 0 },
+							]"
+						>
+							<div :class="[$style.row, { [$style.group]: item.kind === 'group' }]">
 								<span
+									:class="$style.parentIcon"
 									role="img"
-									:aria-label="i18n.baseText(statusLabels[task.status])"
-									:title="i18n.baseText(statusLabels[task.status])"
-									:data-status="task.status"
+									:aria-label="i18n.baseText(statusLabels[item.status])"
+									:title="i18n.baseText(statusLabels[item.status])"
+									:data-status="item.status"
 								>
 									<N8nIcon
-										:icon="statusIcons[task.status]"
-										:color="statusIconColors[task.status]"
-										:spin="task.status === 'in_progress'"
+										:icon="statusIcons[item.status]"
+										:spin="item.status === 'in_progress'"
+										:color="statusIconColors[item.status]"
 										size="medium"
 										aria-hidden="true"
 									/>
 								</span>
+
 								<N8nText
 									bold
 									step="xs"
-									:color="task.status === 'done' ? undefined : 'text-light'"
-									:class="[
-										$style.itemTitle,
-										{ [$style.inProgress]: task.status === 'in_progress' },
-									]"
-									:title="task.title"
-									>{{ task.title }}</N8nText
+									:color="item.status === 'done' ? undefined : 'text-light'"
+									:class="[$style.itemTitle, { [$style.inProgress]: item.status === 'in_progress' }]"
+									:title="item.title"
+									>{{ item.title }}</N8nText
 								>
-							</li>
-						</ul>
-					</li>
-				</ul>
+							</div>
+							<ul v-if="item.kind === 'group'" :class="$style.children">
+								<li v-for="task in item.tasks" :key="task.id" :class="$style.row">
+									<svg
+										:class="$style.treeBranch"
+										viewBox="0 0 16 8"
+										preserveAspectRatio="none"
+										fill="none"
+										stroke="currentColor"
+										aria-hidden="true"
+									>
+										<path d="M0 0Q0 4 4 4H16" />
+									</svg>
+									<span
+										role="img"
+										:aria-label="i18n.baseText(statusLabels[task.status])"
+										:title="i18n.baseText(statusLabels[task.status])"
+										:data-status="task.status"
+									>
+										<N8nIcon
+											:icon="statusIcons[task.status]"
+											:color="statusIconColors[task.status]"
+											:spin="task.status === 'in_progress'"
+											size="medium"
+											aria-hidden="true"
+										/>
+									</span>
+									<N8nText
+										bold
+										step="xs"
+										:color="task.status === 'done' ? undefined : 'text-light'"
+										:class="[
+											$style.itemTitle,
+											{ [$style.inProgress]: task.status === 'in_progress' },
+										]"
+										:title="task.title"
+										>{{ task.title }}</N8nText
+									>
+								</li>
+							</ul>
+						</li>
+					</ul>
+				</div>
 			</N8nScrollArea>
 		</ChatCollapsibleContainer>
 	</div>
