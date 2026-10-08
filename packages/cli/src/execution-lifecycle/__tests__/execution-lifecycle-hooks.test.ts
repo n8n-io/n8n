@@ -2106,12 +2106,14 @@ describe('Execution Lifecycle Hooks', () => {
 
 			/**
 			 * A child workflow entered through an Execute Sub-workflow Trigger named
-			 * "Trigger". `connections` is shorthand for main connections by source name.
+			 * "Trigger". `connections` is shorthand for main connections by source name;
+			 * `extraConnections` is merged in verbatim for non-main ones.
 			 */
 			function buildChildWorkflow(opts: {
 				nodes: string[];
 				connections: Record<string, string[]>;
 				extraNodes?: INode[];
+				extraConnections?: IWorkflowBase['connections'];
 			}): IWorkflowBase {
 				const noOp = workflowData.nodes[0];
 				return {
@@ -2128,12 +2130,15 @@ describe('Execution Lifecycle Hooks', () => {
 						...opts.nodes.map((name) => ({ ...noOp, id: `node-${name}`, name })),
 						...(opts.extraNodes ?? []),
 					],
-					connections: Object.fromEntries(
-						Object.entries(opts.connections).map(([source, targets]) => [
-							source,
-							{ main: [targets.map((node) => ({ node, type: 'main' as const, index: 0 }))] },
-						]),
-					),
+					connections: {
+						...Object.fromEntries(
+							Object.entries(opts.connections).map(([source, targets]) => [
+								source,
+								{ main: [targets.map((node) => ({ node, type: 'main' as const, index: 0 }))] },
+							]),
+						),
+						...opts.extraConnections,
+					},
 				};
 			}
 
@@ -2337,6 +2342,34 @@ describe('Execution Lifecycle Hooks', () => {
 						expect.objectContaining({
 							type: 'subworkflowExecutionStarted',
 							data: expect.objectContaining({ totalNodes: 2 }),
+						}),
+						rootPushRef,
+					);
+				});
+
+				it('includes AI sub-nodes, nested ones too', async () => {
+					// Sub-nodes connect *into* their parent, so a main-only walk misses them.
+					const hooks = buildHooks(
+						buildChildWorkflow({
+							nodes: ['Agent', 'Vector Store Tool', 'Embeddings'],
+							connections: { Trigger: ['Agent'] },
+							extraConnections: {
+								'Vector Store Tool': {
+									ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]],
+								},
+								Embeddings: {
+									ai_embedding: [[{ node: 'Vector Store Tool', type: 'ai_embedding', index: 0 }]],
+								},
+							},
+						}),
+					);
+
+					await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+					expect(push.send).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: 'subworkflowExecutionStarted',
+							data: expect.objectContaining({ totalNodes: 4 }),
 						}),
 						rootPushRef,
 					);
