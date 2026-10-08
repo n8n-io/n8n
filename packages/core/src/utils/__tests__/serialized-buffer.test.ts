@@ -1,5 +1,5 @@
 import type { SerializedBuffer } from '../serialized-buffer';
-import { toBuffer, isSerializedBuffer } from '../serialized-buffer';
+import { toBuffer, isSerializedBuffer, serializeBuffer } from '../serialized-buffer';
 
 // Mock data for tests
 const validSerializedBuffer: SerializedBuffer = {
@@ -22,15 +22,47 @@ describe('toBuffer', () => {
 	});
 });
 
+describe('serializeBuffer', () => {
+	test.each([
+		['empty', Buffer.alloc(0)],
+		['text', Buffer.from('n8n on the rocks')],
+		['non-UTF-8 bytes', Buffer.from([0, 255, 128, 0xc3, 0x28, 10])],
+	])('should round-trip a %s buffer through JSON', (_, buffer) => {
+		const parsed: unknown = JSON.parse(JSON.stringify(serializeBuffer(buffer)));
+
+		expect(isSerializedBuffer(parsed)).toBe(true);
+		expect(toBuffer(parsed as SerializedBuffer).equals(buffer)).toBe(true);
+	});
+
+	it('should encode as base64', () => {
+		expect(serializeBuffer(Buffer.from('ABC'))).toEqual({ type: 'Buffer', base64: 'QUJD' });
+	});
+});
+
+describe('toBuffer with mixed representations', () => {
+	it('should decode the byte array when base64 is not a string', () => {
+		const candidate: unknown = { type: 'Buffer', data: [65], base64: null };
+
+		expect(isSerializedBuffer(candidate)).toBe(true);
+		expect(toBuffer(candidate as SerializedBuffer).toString()).toBe('A');
+	});
+});
+
 describe('isSerializedBuffer', () => {
 	it('should return true for a valid SerializedBuffer', () => {
 		expect(isSerializedBuffer(validSerializedBuffer)).toBe(true);
+	});
+
+	it('should return true for a base64 SerializedBuffer', () => {
+		expect(isSerializedBuffer({ type: 'Buffer', base64: 'QUJD' })).toBe(true);
 	});
 
 	test.each([
 		[{ data: [1, 2, 3] }],
 		[{ data: [1, 2, 256] }],
 		[{ type: 'Buffer', data: 'notAnArray' }],
+		[{ type: 'Buffer', base64: 42 }],
+		[{ type: 'NotBuffer', base64: 'QUJD' }],
 		[{ data: 42 }],
 		[{ data: 'test' }],
 		[{ data: true }],

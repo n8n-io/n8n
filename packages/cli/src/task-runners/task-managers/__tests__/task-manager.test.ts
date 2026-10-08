@@ -98,6 +98,77 @@ describe('TaskRequester', () => {
 			);
 		});
 
+		it('converts base64 serialized buffer arguments into buffers', async () => {
+			const mockPrepareBinaryData = vi.fn().mockResolvedValue(undefined);
+			const mockTask = mock<Task>({
+				taskId: 'taskId',
+				data: { executeFunctions: { helpers: { prepareBinaryData: mockPrepareBinaryData } } },
+			});
+			instance.tasks.set('taskId', mockTask);
+
+			await instance.handleRpc('taskId', 'callId', 'helpers.prepareBinaryData', [
+				{ type: 'Buffer', base64: Buffer.from('data').toString('base64') },
+				'filename',
+			]);
+
+			expect(mockPrepareBinaryData).toHaveBeenCalledWith(Buffer.from('data'), 'filename');
+		});
+
+		it('sends a buffer return value as base64', async () => {
+			const buffer = Buffer.from([0, 255, 128, 10]);
+			const mockTask = mock<Task>({
+				taskId: 'taskId',
+				data: {
+					executeFunctions: {
+						helpers: { getBinaryDataBuffer: vi.fn().mockResolvedValue(buffer) },
+					},
+				},
+			});
+			instance.tasks.set('taskId', mockTask);
+
+			await instance.handleRpc('taskId', 'callId', 'helpers.getBinaryDataBuffer', [0, 'data']);
+
+			expect(instance.sentMessages).toEqual([
+				{
+					type: 'requester:rpcresponse',
+					taskId: 'taskId',
+					callId: 'callId',
+					status: 'success',
+					data: { type: 'Buffer', base64: buffer.toString('base64') },
+				},
+			]);
+		});
+
+		it('sends a readable error when the buffer return value cannot be encoded', async () => {
+			const buffer = Buffer.from('data');
+			vi.spyOn(buffer, 'toString').mockImplementation(() => {
+				throw Object.assign(new Error('Cannot create a string longer than 0x1fffffe8 characters'), {
+					code: 'ERR_STRING_TOO_LONG',
+				});
+			});
+			const mockTask = mock<Task>({
+				taskId: 'taskId',
+				data: {
+					executeFunctions: {
+						helpers: { getBinaryDataBuffer: vi.fn().mockResolvedValue(buffer) },
+					},
+				},
+			});
+			instance.tasks.set('taskId', mockTask);
+
+			await instance.handleRpc('taskId', 'callId', 'helpers.getBinaryDataBuffer', [0, 'data']);
+
+			expect(instance.sentMessages).toEqual([
+				{
+					type: 'requester:rpcresponse',
+					taskId: 'taskId',
+					callId: 'callId',
+					status: 'error',
+					data: 'Failed to encode RPC response: Cannot create a string longer than 0x1fffffe8 characters',
+				},
+			]);
+		});
+
 		describe('errors', () => {
 			it('sends method not allowed error if method is not in the allow list', async () => {
 				const mockTask = mock<Task>({
