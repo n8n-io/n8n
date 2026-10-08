@@ -145,7 +145,7 @@ export class AgentMessageQueueConsumer {
 						threadId: thread.id,
 						userId: user.id,
 						executionId: admission.executionId,
-						productionN8nChat: payload.kind === 'n8n_chat',
+						surface: payload.kind === 'n8n_chat' ? 'n8n-chat' : 'preview',
 					},
 					controller,
 				);

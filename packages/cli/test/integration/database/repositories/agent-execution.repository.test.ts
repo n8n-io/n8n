@@ -1785,7 +1785,7 @@ describe('AgentExecutionRepository', () => {
 						services.turns.execute({
 							...common,
 							agentInstance: runtime,
-							previewChat: true,
+							chatSurface: 'preview',
 							automaticPreviewContinuation,
 							onExecutionStarted: (id) => {
 								executionId = id;

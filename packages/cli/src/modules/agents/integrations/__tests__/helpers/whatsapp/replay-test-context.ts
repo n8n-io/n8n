@@ -8,6 +8,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatIntegrationContext } from '../../../agent-chat-integration';
+import { ChannelRateLimitGuard } from '../../../channel-rate-limit.guard';
 import type { ChatInstance } from '../../../chat-integration.service';
 import { ComponentMapper } from '../../../component-mapper';
 import type { ChatIntegrationActionExecutor } from '../../../integration-action-executor';
@@ -104,7 +105,9 @@ export function whatsAppThreadId(
 	return `whatsapp:${fixtures.phoneNumberId}:${fixtures.contact.wa_id}`;
 }
 
-export function createWhatsAppIntegration(): WhatsAppIntegration {
+export function createWhatsAppIntegration(
+	channelRateLimitGuard = new ChannelRateLimitGuard(),
+): WhatsAppIntegration {
 	return new WhatsAppIntegration(
 		mock<BackendLogger>(),
 		mock<AgentRepository>(),
@@ -112,7 +115,20 @@ export function createWhatsAppIntegration(): WhatsAppIntegration {
 			encryptionKey: 'test-encryption-key',
 			hmacSignatureSecret: 'test-hmac-signature-secret',
 		}),
+		channelRateLimitGuard,
 	);
+}
+
+/**
+ * A fixed number of leading sends fail with the given Meta error before the
+ * stub starts succeeding — for exercising `withWhatsAppRateLimitBackoff`'s
+ * retry loop. `count: Infinity` fails every send, for the exhausted-retries
+ * case.
+ */
+export interface WhatsAppFailureSequence {
+	count: number;
+	status?: number;
+	code?: number;
 }
 
 /**
@@ -121,8 +137,12 @@ export function createWhatsAppIntegration(): WhatsAppIntegration {
  * same `/{phoneNumberId}/messages` endpoint, so the response only needs a
  * message ID — the adapter doesn't branch on the response shape otherwise.
  */
-function installWhatsAppApiStub(failedTypes: string[] = []) {
+function installWhatsAppApiStub(
+	failedTypes: string[] = [],
+	failureSequence?: WhatsAppFailureSequence,
+) {
 	let nextMessageId = 1000;
+	let failuresLeft = failureSequence?.count ?? 0;
 	return installFetchStub({
 		match: /graph\.facebook\.com/,
 		onRequest: ({ url, body }) => {
@@ -134,6 +154,16 @@ function installWhatsAppApiStub(failedTypes: string[] = []) {
 					apiCall: { method, body },
 					responseBody: { error: { message: 'Test failure', code: 131047 } },
 					status: 400,
+				};
+			}
+			if (failuresLeft > 0 && method === 'messages') {
+				failuresLeft--;
+				return {
+					apiCall: { method, body },
+					responseBody: {
+						error: { message: 'Test rate limit', code: failureSequence?.code ?? 130429 },
+					},
+					status: failureSequence?.status ?? 400,
 				};
 			}
 			const to = typeof body.to === 'string' ? body.to : '';
@@ -156,11 +186,17 @@ export async function createWhatsAppReplayContext(
 		stream?: StreamChunk[];
 		integration?: AgentIntegrationConfig;
 		failedApiTypes?: string[];
+		failureSequence?: WhatsAppFailureSequence;
 	} = {},
 ): Promise<WhatsAppReplayContext> {
-	const stub = installWhatsAppApiStub(options.failedApiTypes);
+	const stub = installWhatsAppApiStub(options.failedApiTypes, options.failureSequence);
 
-	const integrationImpl = createWhatsAppIntegration();
+	// Shared with `createReplayContextSetup` below so the adapter's own guard
+	// checks (automatic replies) and the action executor's (respond, send_dm)
+	// agree on one connection's cooldown state, mirroring how DI hands both the
+	// same singleton in production.
+	const channelRateLimitGuard = new ChannelRateLimitGuard();
+	const integrationImpl = createWhatsAppIntegration(channelRateLimitGuard);
 	const integration: AgentIntegrationConfig = options.integration ?? {
 		type: 'whatsapp',
 		credentialId: 'cred-whatsapp',
@@ -206,6 +242,7 @@ export async function createWhatsAppReplayContext(
 		integration,
 		componentMapper: new ComponentMapper(),
 		stream: options.stream,
+		channelRateLimitGuard,
 	});
 
 	// No identity bootstrap call here — WhatsApp derives its bot user ID from
