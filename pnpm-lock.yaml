@@ -1228,6 +1228,9 @@ importers:
       '@n8n/ai-utilities':
         specifier: workspace:*
         version: link:../ai-utilities
+      '@n8n/client-oauth2':
+        specifier: workspace:*
+        version: link:../client-oauth2
       '@n8n/sandbox-client':
         specifier: 0.1.1
         version: 0.1.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
