@@ -183,7 +183,7 @@ const MAX_UPDATE_BATCH_SIZE = 900;
 
 @Service()
 export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
-	private hardDeletionBatchSize = 100;
+	readonly hardDeletionBatchSize = 100;
 
 	constructor(
 		dataSource: DataSource,
