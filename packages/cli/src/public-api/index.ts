@@ -287,7 +287,6 @@ function createLazyValidatorMiddleware(
 						},
 						validateRequests: true,
 						validateApiSpec: true,
-						// No legacy route takes a multipart body; decorator routes parse their own.
 						fileUploader: false,
 						formats: {
 							email: {

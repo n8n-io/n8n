@@ -1,6 +1,5 @@
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
-/** Field docs for {@link ImportPackageRequestDto}, kept out of the DTO file for readability. */
 export const importPackageRequestFieldDocs = {
 	package: { description: 'Gzip-compressed tar package (`.n8np`).' },
 	projectId: {
@@ -222,9 +221,6 @@ export const importPackageRequestFieldDocs = {
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
-/**
- * Field docs for {@link ImportPackageSelectionRequestDto}, kept out of the DTO file for readability.
- */
 export const importPackageSelectionRequestFieldDocs = {
 	selectedProjectId: {
 		description:
