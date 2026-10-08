@@ -1,4 +1,5 @@
 import type { Tool } from '@langchain/classic/tools';
+import { createToolFromNode } from '@n8n/ai-utilities';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { Mocked, MockedFunction } from 'vitest';
@@ -264,6 +265,64 @@ describe('OpenAI Response Operation', () => {
 	});
 
 	describe('Tool Calls', () => {
+		const createPgVectorTool = () =>
+			createToolFromNode(mockNode, {
+				name: 'pgvector_search',
+				description: 'Search documents',
+				// NODE-5496: PGVector retrieve-as-tool requires an input object.
+				extraArgs: [{ key: 'input', description: 'Query to search for. Required' }],
+				func: vi.fn().mockResolvedValue('Matched document'),
+			});
+
+		it('should invoke a PGVector-style tool with a query object', async () => {
+			const tool = createPgVectorTool();
+
+			await expect(tool.invoke({ input: 'find documents' })).resolves.toBe('Matched document');
+		});
+
+		it('should pass a query object to a PGVector-style tool from a function call', async () => {
+			const tool = createPgVectorTool();
+			const initialResponse = {
+				id: 'resp_123',
+				status: 'completed',
+				output: [
+					{
+						type: 'function_call',
+						call_id: 'call_123',
+						name: tool.name,
+						arguments: JSON.stringify({ input: 'find documents' }),
+					},
+				],
+			};
+			const finalResponse = {
+				id: 'resp_456',
+				status: 'completed',
+				output: [
+					{
+						type: 'message',
+						role: 'assistant',
+						content: [{ type: 'output_text', text: 'Found documents' }],
+					},
+				],
+			};
+
+			mockGetConnectedTools.mockResolvedValue([tool as Tool]);
+			mockCreateRequest.mockResolvedValue({ model: 'gpt-4o', input: [] });
+			mockApiRequest.mockResolvedValue(finalResponse).mockResolvedValueOnce(initialResponse);
+
+			await expect(execute.call(mockExecuteFunctions, 0)).resolves.toEqual([
+				{ json: finalResponse, pairedItem: { item: 0 } },
+			]);
+			expect(mockApiRequest).toHaveBeenCalledTimes(2);
+			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', '/responses', {
+				body: expect.objectContaining({
+					input: expect.arrayContaining([
+						{ type: 'function_call_output', call_id: 'call_123', output: 'Matched document' },
+					]),
+				}),
+			});
+		});
+
 		it('should execute tool calls with external tools', async () => {
 			const mockTool = {
 				name: 'test_tool',
