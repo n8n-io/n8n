@@ -16,6 +16,7 @@ packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/C
   s_9dde2d3ceb6629::t_cb8eed119d3fec 251
 packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts
   s_9dde2d3ceb6629::t_c8f78125789bd4 19,26-35
+  s_9dde2d3ceb6629::t_50ec945471ae68 1
 packages/frontend/@n8n/i18n/src/locales/en.json
   s_9dde2d3ceb6629::t_c8f78125789bd4 1051-1053
 packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOptions.ts
@@ -29,6 +30,7 @@ packages/@n8n/nodes-langchain/utils/google-vertex.ts
   s_9dde2d3ceb6629::t_5573b291b39044 98
 packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
   s_9dde2d3ceb6629::t_c8f78125789bd4 32,123-132
+  s_9dde2d3ceb6629::t_50ec945471ae68 1
 packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialOptionsInput.vue
   s_9dde2d3ceb6629::t_b0b359392a438b 68-69
   s_9dde2d3ceb6629::t_a64156d9454924 1-67,70-87
