@@ -46,6 +46,7 @@ import { i18n } from '@n8n/i18n';
 import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
 import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 import { isBrowserUseSupportedOnDevice } from './utils/browserUseSupport';
+import { limitExperienceToAssistant } from './experience/experienceMode';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 
@@ -166,6 +167,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				? (prev?.sandboxUnavailableReason ?? null)
 				: null,
 			runDebugEnabled: prev?.runDebugEnabled ?? false,
+			experience: limitExperienceToAssistant(prev?.experience, adminRes.enabled),
 		};
 		settingsStore.moduleSettings = {
 			...ms,

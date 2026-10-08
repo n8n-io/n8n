@@ -27,6 +27,7 @@ import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
+import ExperienceModeSwitch from '@/features/ai/instanceAi/experience/ExperienceModeSwitch.vue';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
 import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
 import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
@@ -402,6 +403,7 @@ useKeybindings({
 			@logout="onLogout"
 			@select="handleSelect"
 		/>
+		<ExperienceModeSwitch :is-collapsed="isCollapsed" />
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 	</N8nResizeWrapper>
 </template>
