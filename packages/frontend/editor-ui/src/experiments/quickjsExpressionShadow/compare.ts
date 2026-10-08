@@ -32,6 +32,12 @@ const MAX_CANONICAL_NODES = 10_000;
 // A long string counts as one node, so the size of strings has its own limit.
 const MAX_CANONICAL_CHARS = 1_000_000;
 
+// Captured at load: an expression can replace `valueOf` on its result or, in the legacy
+// engine, on the prototype, and calling that would run expression code again.
+const unboxString = String.prototype.valueOf;
+const unboxNumber = Number.prototype.valueOf;
+const unboxBoolean = Boolean.prototype.valueOf;
+
 class ValueTooLargeError extends Error {}
 
 interface CanonicalState {
@@ -90,9 +96,9 @@ function writeCanonical(value: unknown, state: CanonicalState): string {
 	}
 
 	// A boxed primitive must not equal a plain object that has the same index keys.
-	if (value instanceof String || value instanceof Number || value instanceof Boolean) {
-		return `${valueType(value)}(${writeCanonical(value.valueOf(), state)})`;
-	}
+	if (value instanceof String) return `String(${writeCanonical(unboxString.call(value), state)})`;
+	if (value instanceof Number) return `Number(${writeCanonical(unboxNumber.call(value), state)})`;
+	if (value instanceof Boolean) return `Boolean(${String(unboxBoolean.call(value))})`;
 
 	if (state.seen.has(value)) return 'circular';
 	state.seen.add(value);

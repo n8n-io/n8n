@@ -63,6 +63,15 @@ describe('canonicalize', () => {
 		expect(canonicalize(new Number(5))).not.toBe(canonicalize(5));
 	});
 
+	it('reads a boxed primitive without calling a valueOf that the expression set', () => {
+		const boxed = new String('ab');
+		const valueOf = vi.fn(() => 'changed');
+		Object.defineProperty(boxed, 'valueOf', { value: valueOf });
+
+		expect(canonicalize(boxed)).toBe(canonicalize(new String('ab')));
+		expect(valueOf).not.toHaveBeenCalled();
+	});
+
 	it('keeps NaN apart from null, which JSON would not', () => {
 		expect(canonicalize(NaN)).not.toBe(canonicalize(null));
 	});
