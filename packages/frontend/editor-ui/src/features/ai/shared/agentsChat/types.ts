@@ -141,6 +141,17 @@ export interface ChatMessageAttachment {
 	file?: File;
 }
 
+/**
+ * A custom typed event that the system-agent provider sends for the host of
+ * the chat. A keyed re-emit replaces the earlier event with the same `key`.
+ */
+export interface AgentsChatHostEvent {
+	id: string;
+	name: string;
+	payload: unknown;
+	key?: string;
+}
+
 export interface AgentsChatMessage {
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	id: string;
@@ -163,6 +174,8 @@ export interface AgentsChatMessage {
 	createdAt?: number;
 	/** Live preview only. Budget stop or alert cards for this turn. */
 	budgetNotices?: Array<{ id: string; code: 'budget.monthly' | 'budget.session' | 'budget.alert' }>;
+	/** Host events of this turn, in arrival order. Host extensions render them. */
+	hostEvents?: AgentsChatHostEvent[];
 }
 
 export type ChatMessage = AgentsChatMessage;

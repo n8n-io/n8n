@@ -2,7 +2,7 @@ import { defineComponent, h, type PropType } from 'vue';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentsChatInteractionExtension } from '../../interactionRegistry';
-import type { ToolCall } from '../../types';
+import type { AgentsChatHostEvent, ChatMessage, ToolCall } from '../../types';
 
 /** Test-only card input. A tool call is this card when its suspend payload has `testCard`. */
 export interface TestCardInput {
@@ -82,3 +82,57 @@ export const testToolResultExtension: AgentsChatInteractionExtension = {
 	matchToolResult: (toolCall) => toolCall.tool === TEST_RESULT_TOOL_NAME,
 	resultComponent: TestToolResult,
 };
+
+/** Test-only host event names, one for each placement. */
+export const TEST_HOST_EVENT = {
+	START: 'test.start',
+	END: 'test.end',
+	TRANSIENT: 'test.transient',
+	NONE: 'test.none',
+} as const;
+
+export const TestHostEvent = defineComponent({
+	name: 'TestHostEvent',
+	props: {
+		event: { type: Object as PropType<AgentsChatHostEvent>, required: true },
+		message: { type: Object as PropType<ChatMessage>, required: true },
+	},
+	setup(props) {
+		return () =>
+			h('div', { 'data-testid': 'test-host-event' }, [
+				h('span', props.event.name),
+				h('pre', JSON.stringify(props.event.payload)),
+				h('em', props.message.id),
+			]);
+	},
+});
+
+function matchName(name: string) {
+	return (event: AgentsChatHostEvent) => event.name === name;
+}
+
+/** Host extensions that render the test host events, one for each placement. */
+export const testHostEventExtensions: readonly AgentsChatInteractionExtension[] = [
+	{
+		key: 'test_host_start',
+		matchHostEvent: matchName(TEST_HOST_EVENT.START),
+		hostEventComponent: TestHostEvent,
+	},
+	{
+		key: 'test_host_end',
+		matchHostEvent: matchName(TEST_HOST_EVENT.END),
+		hostEventComponent: TestHostEvent,
+		hostEventPlacement: 'end',
+	},
+	{
+		key: 'test_host_transient',
+		matchHostEvent: matchName(TEST_HOST_EVENT.TRANSIENT),
+		hostEventComponent: TestHostEvent,
+		hostEventPlacement: 'transient',
+	},
+	{
+		key: 'test_host_none',
+		matchHostEvent: matchName(TEST_HOST_EVENT.NONE),
+		hostEventPlacement: 'none',
+	},
+];

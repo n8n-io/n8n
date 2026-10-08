@@ -1,5 +1,6 @@
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 
+import type { AgentsChatHostEventSource } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
 import { getMessageInteractives } from './messageMappers';
 import { getMessageThinkingSegments } from './thinking';
@@ -56,6 +57,11 @@ export type DisplayGroup =
 			 * (HITL resume history must not inherit the suspended turn's id).
 			 */
 			executionId?: string;
+			/**
+			 * Host events of every folded message, in arrival order, with the
+			 * message that carries each one. Set only when there are events.
+			 */
+			hostEvents?: AgentsChatHostEventSource[];
 	  };
 
 export type TurnDisplayGroup = Exclude<DisplayGroup, { kind: 'backgroundJobSignal' }>;
@@ -184,6 +190,14 @@ function appendBudgetNotices(
 	return merged;
 }
 
+function appendHostEvents(group: ToolRunGroup, message: AgentsChatMessage): void {
+	if (!message.hostEvents?.length) return;
+	group.hostEvents = [
+		...(group.hostEvents ?? []),
+		...message.hostEvents.map((event) => ({ event, message })),
+	];
+}
+
 function appendInteractivePayloads(
 	existing: InteractivePayload[],
 	next: InteractivePayload[],
@@ -234,9 +248,10 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				last.budgetNotices = appendBudgetNotices(last.budgetNotices, message.budgetNotices);
 				last.awaitingInput = last.interactives.some((payload) => payload.resolvedAt === undefined);
 				last.executionId ??= message.executionId;
+				appendHostEvents(last, message);
 				continue;
 			}
-			groups.push({
+			const group: ToolRunGroup = {
 				kind: 'toolRun',
 				id: message.id,
 				thinkingSegments: getMessageThinkingSegments(message),
@@ -246,7 +261,9 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				interactives: getMessageInteractives(message),
 				budgetNotices: appendBudgetNotices([], message.budgetNotices),
 				...(message.executionId ? { executionId: message.executionId } : {}),
-			});
+			};
+			appendHostEvents(group, message);
+			groups.push(group);
 			continue;
 		}
 
@@ -266,6 +283,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				);
 				last.budgetNotices = appendBudgetNotices(last.budgetNotices, message.budgetNotices);
 				last.awaitingInput = last.interactives.some((payload) => payload.resolvedAt === undefined);
+				appendHostEvents(last, message);
 				continue;
 			}
 		}

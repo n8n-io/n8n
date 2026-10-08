@@ -1,12 +1,18 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AgentChatMessageList from '../components/AgentChatMessageList.vue';
-import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
+import type {
+	AgentsChatHostEvent,
+	ChatMessage,
+	ToolCall,
+} from '@/features/ai/shared/agentsChat/types';
 import { planMessage, planTask, planView } from './fixtures/agent-plan';
 import { computed } from 'vue';
 import { AGENTS_CHAT_INTERACTION_EXTENSIONS } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import {
+	TEST_HOST_EVENT,
 	TEST_RESULT_TOOL_NAME,
+	testHostEventExtensions,
 	testToolResultExtension,
 } from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 
@@ -1416,6 +1422,168 @@ describe('AgentChatMessageList', () => {
 			expect(wrapper.find('[data-testid="test-tool-result"]').exists()).toBe(false);
 			expect(stepToolCallIds(wrapper)).toEqual(['tc-note']);
 			wrapper.unmount();
+		});
+	});
+
+	describe('host event renderers', () => {
+		function hostEvent(name: string, id: string): AgentsChatHostEvent {
+			return { id, name, payload: { id } };
+		}
+
+		function assistantMessage(
+			hostEvents: AgentsChatHostEvent[],
+			overrides: Partial<ChatMessage> = {},
+		): ChatMessage {
+			return {
+				id: 'assistant-1',
+				role: 'assistant',
+				content: 'Answer text',
+				status: 'success',
+				hostEvents,
+				...overrides,
+			};
+		}
+
+		function mountList(messages: ChatMessage[], withExtensions = true) {
+			return mount(AgentChatMessageList, {
+				props: { messages, messagingState: 'idle' },
+				global: withExtensions
+					? {
+							provide: {
+								[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => testHostEventExtensions),
+							},
+						}
+					: {},
+			});
+		}
+
+		/** Host events and text in document order, as `placement:id` and `text`. */
+		function renderOrder(wrapper: ReturnType<typeof mountList>): string[] {
+			return wrapper
+				.findAll('[data-testid="agent-chat-host-event"], [data-testid="markdown-chunk"]')
+				.map((element) => {
+					if (element.attributes('data-testid') === 'markdown-chunk') return 'text';
+					const payload = JSON.parse(element.find('pre').text()) as { id: string };
+					return `${element.attributes('data-placement')}:${payload.id}`;
+				});
+		}
+
+		it('renders start events before the text and end events after it, in arrival order', () => {
+			const wrapper = mountList([
+				assistantMessage([
+					hostEvent(TEST_HOST_EVENT.END, 'end-1'),
+					hostEvent(TEST_HOST_EVENT.START, 'start-1'),
+					hostEvent(TEST_HOST_EVENT.START, 'start-2'),
+					hostEvent(TEST_HOST_EVENT.END, 'end-2'),
+				]),
+			]);
+
+			expect(renderOrder(wrapper)).toEqual([
+				'start:start-1',
+				'start:start-2',
+				'text',
+				'end:end-1',
+				'end:end-2',
+			]);
+			wrapper.unmount();
+		});
+
+		it('passes the event and its message to the host component', () => {
+			const wrapper = mountList([assistantMessage([hostEvent(TEST_HOST_EVENT.START, 's')])]);
+
+			const rendered = wrapper.find('[data-testid="test-host-event"]');
+			expect(rendered.find('span').text()).toBe(TEST_HOST_EVENT.START);
+			expect(rendered.find('em').text()).toBe('assistant-1');
+			wrapper.unmount();
+		});
+
+		it('renders start events before the tool steps of a tool run', () => {
+			const wrapper = mountList([
+				assistantMessage([hostEvent(TEST_HOST_EVENT.START, 's')], {
+					content: '',
+					toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+				}),
+				{ id: 'assistant-2', role: 'assistant', content: 'Found it', status: 'success' },
+			]);
+
+			const content = wrapper.find('[data-testid="agent-chat-host-event"]').element.parentElement;
+			const steps = wrapper.findComponent({ name: 'AgentChatToolSteps' });
+			expect(steps.exists()).toBe(true);
+			expect(content?.firstElementChild?.getAttribute('data-placement')).toBe('start');
+			expect(renderOrder(wrapper)).toEqual(['start:s', 'text']);
+			wrapper.unmount();
+		});
+
+		it('shows transient events while the message has no text and hides them once text exists', async () => {
+			const events = [hostEvent(TEST_HOST_EVENT.TRANSIENT, 't')];
+			const wrapper = mountList([
+				assistantMessage(events, {
+					content: '',
+					status: 'streaming',
+					toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'running' }],
+				}),
+			]);
+
+			expect(renderOrder(wrapper)).toEqual(['transient:t']);
+
+			await wrapper.setProps({
+				messages: [
+					assistantMessage(events, {
+						content: 'The answer',
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+					}),
+				],
+			});
+
+			expect(renderOrder(wrapper)).toEqual(['text']);
+			wrapper.unmount();
+		});
+
+		it('renders nothing for placement none and unknown events', () => {
+			const wrapper = mountList([
+				assistantMessage([hostEvent(TEST_HOST_EVENT.NONE, 'n'), hostEvent('other.event', 'o')]),
+			]);
+
+			expect(renderOrder(wrapper)).toEqual(['text']);
+			wrapper.unmount();
+		});
+
+		it('renders a host-event-only message with a visible event', () => {
+			const wrapper = mountList([
+				assistantMessage([hostEvent(TEST_HOST_EVENT.END, 'e')], { content: '' }),
+			]);
+
+			expect(renderOrder(wrapper)).toEqual(['end:e']);
+			expect(wrapper.findAll('[class*="assistant"]')).toHaveLength(1);
+			wrapper.unmount();
+		});
+
+		it('hides a host-event-only message without a visible event', () => {
+			const wrapper = mountList([
+				{ id: 'user-1', role: 'user', content: 'Hi' },
+				assistantMessage([hostEvent(TEST_HOST_EVENT.NONE, 'n'), hostEvent('other.event', 'o')], {
+					content: '',
+				}),
+			]);
+
+			expect(wrapper.findAll('[class*="assistant"]')).toHaveLength(0);
+			wrapper.unmount();
+		});
+
+		it('renders no host events without extensions', () => {
+			const messages = [
+				assistantMessage([
+					hostEvent(TEST_HOST_EVENT.START, 's'),
+					hostEvent(TEST_HOST_EVENT.END, 'e'),
+				]),
+			];
+			const withEvents = mountList(messages, false);
+			const withoutEvents = mountList([{ ...messages[0], hostEvents: undefined }], false);
+
+			expect(renderOrder(withEvents)).toEqual(['text']);
+			expect(withEvents.html()).toBe(withoutEvents.html());
+			withEvents.unmount();
+			withoutEvents.unmount();
 		});
 	});
 });
