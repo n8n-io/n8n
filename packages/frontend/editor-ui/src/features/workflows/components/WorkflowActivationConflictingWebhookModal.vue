@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { createEventBus } from '@n8n/utils/event-bus';
-import Modal from '@/app/components/Modal.vue';
 import { WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 
@@ -8,8 +6,15 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
-import { N8nButton, N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
-const modalBus = createEventBus();
+import {
+	N8nButton,
+	N8nCallout,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nLink,
+	N8nText,
+} from '@n8n/design-system';
 const uiStore = useUIStore();
 const rootStore = useRootStore();
 
@@ -62,42 +67,52 @@ const workflowUrl = computed(() => {
 	return rootStore.urlBaseEditor + 'workflow/' + data.workflowId;
 });
 
+const modalOpen = computed(
+	() => uiStore.modalsById[WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY]?.open === true,
+);
+
 const onClick = async () => {
+	if (uiStore.modalsById[WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY]?.open !== true) return;
 	uiStore.closeModal(WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY);
 };
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void onClick();
+}
 </script>
 
 <template>
-	<Modal
-		width="540px"
-		:name="WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY"
-		:title="`Conflicting ${webhookTypeUi.title} Path`"
-		:event-bus="modalBus"
-		:center="true"
+	<N8nDialog
+		:open="modalOpen"
+		size="large"
+		:header="`Conflicting ${webhookTypeUi.title} Path`"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<N8nCallout theme="danger" data-test-id="conflicting-webhook-callout">
-				A {{ webhookTypeUi.callout }} '{{ data.node }}' in the workflow '{{ data.workflowName }}'
-				uses a conflicting URL path, so this workflow cannot be activated
-			</N8nCallout>
-			<div :class="$style.container">
+		<N8nDialogBody>
+			<div data-test-id="workflowActivationConflictingWebhook-modal">
+				<N8nCallout theme="danger" data-test-id="conflicting-webhook-callout">
+					A {{ webhookTypeUi.callout }} '{{ data.node }}' in the workflow '{{ data.workflowName }}'
+					uses a conflicting URL path, so this workflow cannot be activated
+				</N8nCallout>
 				<div>
-					<N8nText color="text-base"> You can deactivate </N8nText>
-					<N8nLink :to="workflowUrl" :underline="true">{{ data.workflowName }}</N8nLink>
-					{{ ' ' }}
-					<N8nText color="text-base" data-test-id="conflicting-webhook-suggestion">
-						{{ webhookTypeUi.suggestion }}
+					<div>
+						<N8nText color="text-base"> You can deactivate </N8nText>
+						<N8nLink :to="workflowUrl" :underline="true">{{ data.workflowName }}</N8nLink>
+						{{ ' ' }}
+						<N8nText color="text-base" data-test-id="conflicting-webhook-suggestion">
+							{{ webhookTypeUi.suggestion }}
+						</N8nText>
+					</div>
+				</div>
+				<div data-test-id="conflicting-webhook-path">
+					<N8nText color="text-light"> {{ webhookUrl }}/</N8nText>
+					<N8nText color="text-dark" bold>
+						{{ data.webhookPath }}
 					</N8nText>
 				</div>
 			</div>
-			<div data-test-id="conflicting-webhook-path">
-				<N8nText color="text-light"> {{ webhookUrl }}/</N8nText>
-				<N8nText color="text-dark" bold>
-					{{ data.webhookPath }}
-				</N8nText>
-			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<N8nButton
 				label="Done"
 				size="medium"
@@ -105,13 +120,6 @@ const onClick = async () => {
 				data-test-id="close-button"
 				@click="onClick"
 			/>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
-
-<style module lang="scss">
-.container {
-	margin-top: var(--spacing--md);
-	margin-bottom: var(--spacing--sm);
-}
-</style>
