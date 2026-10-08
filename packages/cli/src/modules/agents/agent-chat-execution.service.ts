@@ -15,19 +15,25 @@ import { PARENT_TASK_CANCELLED_REASON } from './background/sub-agent-background-
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import {
-	draftChatMemoryResourceId,
-	productionChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 	userIdFromProductionChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 import {
 	canContinueThreadInPreview,
+	chatSurfaceMemoryResourceId,
 	N8N_CHAT_PRODUCTION_SOURCE,
 	threadBelongsTo,
+	type AgentChatSurface,
 } from './utils/agent-thread-access';
 import { getDelegatedChildCheckpoints } from './utils/delegated-child-checkpoints';
 
-type ExecutionContext = PubSubCommandMap['cancel-agent-chat-execution'];
+type CancelExecutionPayload = PubSubCommandMap['cancel-agent-chat-execution'];
+// In-process callers already know which chat surface a run is on. The wire
+// payload keeps the older `productionN8nChat` flag for rolling-deploy
+// compatibility with mains still running the previous version.
+type ExecutionContext = Omit<CancelExecutionPayload, 'productionN8nChat'> & {
+	surface: AgentChatSurface;
+};
 
 export interface CancelSuspendedRunParams {
 	agentId: string;
@@ -100,9 +106,7 @@ export class AgentChatExecutionService {
 					await this.cancelSuspended({
 						agentId: context.agentId,
 						runId: suspendedRunId,
-						resourceId: context.productionN8nChat
-							? productionChatMemoryResourceId(context.userId)
-							: draftChatMemoryResourceId(context.userId),
+						resourceId: chatSurfaceMemoryResourceId(context.surface, context.userId),
 						cancelBackgroundJobs:
 							execution.controller.signal.reason === PARENT_TASK_CANCELLED_REASON,
 					});
@@ -130,18 +134,17 @@ export class AgentChatExecutionService {
 					if (execution.status !== 'running') return await this.cancelRecordedSuspension(context);
 					this.cancelOrRemember(context);
 					if (!this.instanceSettings.isMultiMain) return true;
+					const { surface, ...rest } = context;
 					await this.publisher.publishCommand({
 						command: 'cancel-agent-chat-execution',
-						payload: context,
+						payload: { ...rest, productionN8nChat: surface === 'n8n-chat' },
 					});
 					return true;
 				} finally {
 					await this.backgroundJobService.cancelForParent(
 						context.agentId,
 						context.threadId,
-						context.productionN8nChat
-							? productionChatMemoryResourceId(context.userId)
-							: draftChatMemoryResourceId(context.userId),
+						chatSurfaceMemoryResourceId(context.surface, context.userId),
 					);
 				}
 			},
@@ -149,7 +152,12 @@ export class AgentChatExecutionService {
 	}
 
 	@OnPubSubEvent('cancel-agent-chat-execution', { instanceType: 'main' })
-	async handleCancel(context: ExecutionContext): Promise<void> {
+	async handleCancel(payload: CancelExecutionPayload): Promise<void> {
+		const { productionN8nChat, ...rest } = payload;
+		const context: ExecutionContext = {
+			...rest,
+			surface: productionN8nChat ? 'n8n-chat' : 'preview',
+		};
 		if (await this.cancelLocalWithChildren(context)) return;
 		await this.lockService.withLease(
 			LockNamespace.KNOWN_LOCKS,
@@ -169,9 +177,7 @@ export class AgentChatExecutionService {
 		await this.backgroundJobService.cancelForParent(
 			context.agentId,
 			context.threadId,
-			context.productionN8nChat
-				? productionChatMemoryResourceId(context.userId)
-				: draftChatMemoryResourceId(context.userId),
+			chatSurfaceMemoryResourceId(context.surface, context.userId),
 		);
 		return true;
 	}
@@ -208,7 +214,7 @@ export class AgentChatExecutionService {
 		const execution = await this.executionRepository.findOneBy({ id: executionId, threadId });
 		if (
 			!execution ||
-			(context.productionN8nChat
+			(context.surface === 'n8n-chat'
 				? !(
 						thread.accessScope === 'user' &&
 						thread.ownerId === userId &&
@@ -234,9 +240,7 @@ export class AgentChatExecutionService {
 		return await this.cancelSuspended({
 			agentId: context.agentId,
 			runId: pending.runId,
-			resourceId: context.productionN8nChat
-				? productionChatMemoryResourceId(context.userId)
-				: draftChatMemoryResourceId(context.userId),
+			resourceId: chatSurfaceMemoryResourceId(context.surface, context.userId),
 		});
 	}
 

@@ -11,7 +11,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { AgentSessionMode } from './utils/agent-thread-access';
+import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
@@ -56,8 +56,8 @@ interface ExecuteTurnConfig {
 	context: RecordingContext;
 	prepare: () => Promise<AgentTurnRequest>;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
-	previewChat?: boolean;
-	productionN8nChat?: boolean;
+	/** The chat surface this turn runs under. Undefined for integrations and tasks. */
+	chatSurface?: AgentChatSurface;
 	automaticPreviewContinuation?: boolean;
 	/** The abort signal is a wake lease, not a chat request. */
 	isWakeRun?: boolean;
@@ -80,6 +80,7 @@ interface ChatExecutionControl {
 	controller: AbortController;
 	detachRequest: () => void;
 	userId: string;
+	surface: AgentChatSurface;
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -130,8 +131,8 @@ export class AgentTurnExecutionService {
 		try {
 			turn = await config.prepare();
 			const preparedTurn = turn;
-			if (config.previewChat || config.productionN8nChat) {
-				chatControl = this.createChatExecutionControl(preparedTurn);
+			if (config.chatSurface !== undefined) {
+				chatControl = this.createChatExecutionControl(preparedTurn, config.chatSurface);
 				preparedTurn.options.abortSignal = chatControl.controller.signal;
 			}
 			const stream = await this.admitTurn(preparedTurn, config, recorder, state, chatControl);
@@ -154,7 +155,10 @@ export class AgentTurnExecutionService {
 		}
 	}
 
-	private createChatExecutionControl(turn: AgentTurnRequest): ChatExecutionControl {
+	private createChatExecutionControl(
+		turn: AgentTurnRequest,
+		surface: AgentChatSurface,
+	): ChatExecutionControl {
 		const userId = turn.recording.access.ownerId;
 		if (turn.recording.access.accessScope !== 'user' || !userId) {
 			throw new UnexpectedError('A preview execution must have an owning user.');
@@ -167,6 +171,7 @@ export class AgentTurnExecutionService {
 		return {
 			controller,
 			userId,
+			surface,
 			detachRequest: () => requestSignal?.removeEventListener('abort', abort),
 		};
 	}
@@ -430,7 +435,7 @@ export class AgentTurnExecutionService {
 		const admission = await this.startExecution(
 			{
 				...turn.recording,
-				previewChat: config.previewChat,
+				previewChat: config.chatSurface === 'preview' ? true : undefined,
 				acceptsSteering: chatControl !== undefined,
 				resumeRunId: turn.type === 'resume' ? turn.options.runId : undefined,
 				allowSuspendedPredecessor: config.automaticPreviewContinuation,
@@ -487,7 +492,7 @@ export class AgentTurnExecutionService {
 					...config.context,
 					userId: chatControl.userId,
 					executionId,
-					...(config.productionN8nChat ? { productionN8nChat: true } : {}),
+					surface: chatControl.surface,
 				},
 				chatControl.controller,
 			);
