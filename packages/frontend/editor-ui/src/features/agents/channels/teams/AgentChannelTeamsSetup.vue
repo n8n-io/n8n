@@ -19,9 +19,8 @@ import {
 import type { PermissionsRecord } from '@n8n/permissions';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
-import AgentChannelTeamsAvailability, {
-	type TeamsAvailability,
-} from './AgentChannelTeamsAvailability.vue';
+import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
+import { availabilityFrom, TEAMS_PACKAGE_FILENAME, type TeamsAvailability } from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
@@ -83,15 +82,7 @@ const setupState = ref<TeamsAgentSetupState | null>(null);
 const setupLoadFailed = ref(false);
 const showEndpoint = ref(false);
 
-function availabilityFrom(saved?: AgentTeamsIntegrationSettings): TeamsAvailability {
-	return {
-		teamChannels: saved?.teamChannels ?? false,
-		groupChats: saved?.groupChats ?? false,
-		readAllChannelMessages: saved?.readAllChannelMessages ?? false,
-		readAllGroupMessages: saved?.readAllGroupMessages ?? false,
-	};
-}
-
+// A hidden read permission is never kept on: nothing here could turn it off.
 const availability = ref<TeamsAvailability>(availabilityFrom(props.savedSettings));
 
 // The credential the saved channel runs on, so a swap counts as an app change.
@@ -251,7 +242,7 @@ async function downloadPackage(
 			packageCredentialId || undefined,
 			settings,
 		);
-		saveAs(blob, 'n8n-agent-teams-app.zip');
+		saveAs(blob, TEAMS_PACKAGE_FILENAME);
 		agentTelemetry.trackDownloadedTeamsAppPackage({ agentId: props.agentId, status: 'success' });
 		return true;
 	} catch {

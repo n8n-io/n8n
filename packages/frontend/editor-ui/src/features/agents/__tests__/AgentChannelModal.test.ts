@@ -72,7 +72,7 @@ vi.mock('../channels/registry', async () => {
 	const { ref, defineComponent } = await import('vue');
 	const platformView = {
 		props: ['modelValue', 'mode', 'isPublished', 'runtime', 'ensureAgentPersisted'],
-		emits: ['update:modelValue', 'connect', 'connected', 'done'],
+		emits: ['update:modelValue', 'connect', 'persist', 'connected', 'done'],
 		setup: () => {
 			// Platforms that drive their own flow (Slack) report `connected` while
 			// still reporting `loading`, so the two are controlled together here.
@@ -100,6 +100,7 @@ vi.mock('../channels/registry', async () => {
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
 				<button data-testid="platform-done" @click="$emit('done')" />
+				<button data-testid="persist-channel" @click="$emit('persist')" />
 				<button data-testid="persist-agent" @click="ensureAgentPersisted?.()" />
 				<button data-testid="platform-own-flow" @click="startOwnFlow(); $emit('connected')" />
 			</div>
@@ -482,6 +483,40 @@ describe('AgentChannelModal', () => {
 		await wrapper.get('[data-testid="persist-agent"]').trigger('click');
 
 		expect(mocks.ensureAgentPersisted).toHaveBeenCalledOnce();
+	});
+
+	/**
+	 * A setup whose remaining steps happen outside n8n stores what it has and
+	 * carries on, rather than closing on the user mid-flow.
+	 */
+	it('stores the channel without closing when the view asks it to', async () => {
+		selectedCredentials.value.example = 'credential-new';
+		const wrapper = mountModal('example_setup', true);
+
+		await wrapper.get('[data-testid="persist-channel"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.connect).toHaveBeenCalled();
+		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+		expect(wrapper.emitted('update:open')).toBeUndefined();
+	});
+
+	/**
+	 * Such a setup reaches no single terminal step, so the first write is the
+	 * only moment that can report the channel as connected.
+	 */
+	it('reports the channel connected on the first store, and only once', async () => {
+		selectedCredentials.value.example = 'credential-new';
+		const wrapper = mountModal('example_setup', true);
+
+		await wrapper.get('[data-testid="persist-channel"]').trigger('click');
+		await flushPromises();
+		await wrapper.get('[data-testid="persist-channel"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.connect).toHaveBeenCalledTimes(2);
+		expect(wrapper.emitted('channel-connected')).toHaveLength(1);
+		expect(wrapper.emitted('update:open')).toBeUndefined();
 	});
 
 	describe('while agent persistence is pending', () => {
