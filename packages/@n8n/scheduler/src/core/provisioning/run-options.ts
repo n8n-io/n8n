@@ -74,7 +74,7 @@ export interface OutdatedJobIds {
  * @throws {InvalidRunOptionError} when the timeout or the concurrency limit is outside
  * the range the scheduler enforces.
  */
-export function resolveRunOptions(
+export function resolveCoreRunOptions(
 	requested: RequestedRunOptions,
 	defaults: RunOptionDefaults,
 ): ResolvedRunOptions {
