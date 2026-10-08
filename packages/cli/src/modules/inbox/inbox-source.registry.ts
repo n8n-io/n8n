@@ -10,8 +10,8 @@ import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 
 export type InboxSourceBoundary =
-	// Compare timestamps with < for beforeTime and <= for atOrBeforeTime.
-	| { mode: 'beforeTime' | 'atOrBeforeTime'; createdAt: Date }
+	// Include only earlier timestamps.
+	| { mode: 'beforeTime'; createdAt: Date }
 	// Include earlier timestamps, or equal timestamps with a greater ID in database order.
 	| { mode: 'afterItem'; createdAt: Date; id: string };
 

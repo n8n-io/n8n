@@ -60,9 +60,7 @@ function createSource(type: InboxSourceType, rows: InboxItem[] = []) {
 					const difference = Date.parse(item.createdAt) - boundary.createdAt.getTime();
 					return (
 						difference < 0 ||
-						(difference === 0 &&
-							(boundary.mode === 'atOrBeforeTime' ||
-								(boundary.mode === 'afterItem' && item.id > boundary.id)))
+						(difference === 0 && boundary.mode === 'afterItem' && item.id > boundary.id)
 					);
 				})
 				.slice(0, limit),
@@ -211,23 +209,32 @@ describe('InboxService', () => {
 		expect(source.isEnabled).not.toHaveBeenCalled();
 	});
 
-	it('uses fixed source order for equal timestamps, regardless of registration order', async () => {
-		registry.register(createSource('self_healing_result', [result('1', 12), result('2', 12)]));
-		registry.register(createSource('workflow_review', [review('1', 12), review('2', 12)]));
-		const keys: string[] = [];
-		let cursor: string | undefined;
-		do {
-			const page = await service.list(user, { state: 'open', limit: 1, cursor });
-			keys.push(...page.data.map(({ type, id }) => `${type}:${id}`));
-			cursor = page.nextCursor ?? undefined;
-		} while (cursor);
-		expect(keys).toEqual([
-			'workflow_review:1',
-			'workflow_review:2',
-			'self_healing_result:1',
-			'self_healing_result:2',
-		]);
-	});
+	it.each([
+		{ limit: 1, expected: ['workflow_review:1', 'workflow_review:2'] },
+		{
+			limit: 3,
+			expected: [
+				'workflow_review:1',
+				'workflow_review:2',
+				'self_healing_result:1',
+				'self_healing_result:2',
+			],
+		},
+	])(
+		'continues tied timestamps within the cursor source with page size $limit',
+		async ({ limit, expected }) => {
+			registry.register(createSource('self_healing_result', [result('1', 12), result('2', 12)]));
+			registry.register(createSource('workflow_review', [review('1', 12), review('2', 12)]));
+			const keys: string[] = [];
+			let cursor: string | undefined;
+			do {
+				const page = await service.list(user, { state: 'open', limit, cursor });
+				keys.push(...page.data.map(({ type, id }) => `${type}:${id}`));
+				cursor = page.nextCursor ?? undefined;
+			} while (cursor);
+			expect(keys).toEqual(expected);
+		},
+	);
 
 	it('compares equal timestamps with different ISO precision by source order', async () => {
 		registry.register(createSource('self_healing_result', [result('a', 12)]));

@@ -624,20 +624,16 @@ describe('workflow review repositories', () => {
 			);
 		});
 
-		it.each([
-			['beforeTime', '<'],
-			['atOrBeforeTime', '<='],
-		] as const)('supports the %s boundary between sources', async (mode, operator) => {
+		it('uses older timestamps for a boundary from another source', async () => {
 			const createdAt = new Date('2026-10-07T00:00:00.000Z');
 			await inboxRepository.findRequests({
 				visibility: allVisibility,
 				limit: 10,
-				boundary: { mode, createdAt },
+				boundary: { mode: 'beforeTime', createdAt },
 			});
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				`review.createdAt ${operator} :createdAt`,
-				{ createdAt },
-			);
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.createdAt < :createdAt', {
+				createdAt,
+			});
 		});
 		describe('category filter', () => {
 			it('leaves the query untouched when no category is requested', async () => {

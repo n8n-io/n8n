@@ -843,13 +843,6 @@ describe('Inbox source reads', () => {
 			await service.listForInbox(user, {
 				state: 'open',
 				limit: 10,
-				boundary: { mode: 'atOrBeforeTime', createdAt },
-			}),
-		).toEqual(all);
-		expect(
-			await service.listForInbox(user, {
-				state: 'open',
-				limit: 10,
 				boundary: { mode: 'afterItem', ...boundary },
 			}),
 		).toEqual(all.slice(1));

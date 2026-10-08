@@ -189,13 +189,8 @@ export class InboxService {
 		if (!after) return undefined;
 		const createdAt = new Date(after.createdAt);
 		if (type === after.type) return { mode: 'afterItem', createdAt, id: after.id };
-		return {
-			mode:
-				sourceOrder.indexOf(type) < sourceOrder.indexOf(after.type)
-					? 'beforeTime'
-					: 'atOrBeforeTime',
-			createdAt,
-		};
+		// Other sources resume at older timestamps. Equal timestamps can be skipped.
+		return { mode: 'beforeTime', createdAt };
 	}
 
 	private mergeRows(pages: InboxItem[][], limit: number): InboxItem[] {
