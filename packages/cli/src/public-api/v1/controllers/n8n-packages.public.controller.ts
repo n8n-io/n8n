@@ -145,7 +145,7 @@ export class N8nPackagesPublicController {
 				{
 					selectedProjectId,
 					selectedWorkflowIds,
-					...(deletedWorkflowIds !== undefined ? { deletedWorkflowIds } : {}),
+					deletedWorkflowIds,
 				},
 			);
 		} catch (error) {
