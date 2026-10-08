@@ -95,7 +95,7 @@ export class DeprecatedNodesValidationService {
 	private throwIfViolations(violations: DeprecatedNodeViolation[], workflowId?: string) {
 		if (violations.length === 0) return;
 
-		this.logger.warn('Rejected workflow save with deprecated nodes', {
+		this.logger.warn('Rejected deprecated nodes', {
 			workflowId,
 			violations: violations.map(({ kind, nodeType }) => ({ kind, nodeType })),
 		});
@@ -115,7 +115,7 @@ export class DeprecatedNodesValidationService {
 
 	private formatMessage(violations: DeprecatedNodeViolation[]): string {
 		const lines = violations.map((v) => {
-			const verb = v.kind === 'added' ? 'add a new' : 'modify a';
+			const verb = v.kind === 'added' ? 'use a' : 'modify a';
 			return `Cannot ${verb} "${v.nodeType}" node ("${v.nodeName}"): this node type is deprecated.`;
 		});
 

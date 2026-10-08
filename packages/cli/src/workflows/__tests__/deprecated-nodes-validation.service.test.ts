@@ -200,7 +200,7 @@ describe('DeprecatedNodesValidationService', () => {
 				...before,
 				makeNode({ id: 'b', type: 'n8n-nodes-base.function', name: 'New Func' }),
 			];
-			expect(() => validator.validateOnUpdate(after, before)).toThrow(/Cannot add.*New Func/);
+			expect(() => validator.validateOnUpdate(after, before)).toThrow(/Cannot use.*New Func/);
 		});
 
 		it('blocks editing the parameters of an existing deprecated node', () => {
@@ -235,7 +235,7 @@ describe('DeprecatedNodesValidationService', () => {
 
 			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.myNode', typeVersion: 2 });
 			const after = { ...before, typeVersion: 1 };
-			expect(() => validator.validateOnUpdate([after], [before])).toThrow(/Cannot add/);
+			expect(() => validator.validateOnUpdate([after], [before])).toThrow(/Cannot use/);
 		});
 
 		it('allows migrating a deprecated typeVersion forward, including parameter changes', () => {

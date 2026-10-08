@@ -1,7 +1,7 @@
-import { ModuleRegistry } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, type NodesConfig, WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, Project, WorkflowHistory } from '@n8n/db';
 import {
 	ExecutionRepository,
@@ -143,7 +143,20 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(DataTableProxyService);
 	mockInstance(WorkflowHookContextService);
 	const workflowPublishedDataService = mockInstance(WorkflowPublishedDataService);
-	const deprecatedNodesValidationService = mockInstance(DeprecatedNodesValidationService);
+	const deprecatedNodeTypes = mock<NodeTypes>();
+	deprecatedNodeTypes.getByNameAndVersion.mockImplementation((type) =>
+		type === 'n8n-nodes-base.function'
+			? mock<INodeType>({ description: { deprecated: true } })
+			: mock<INodeType>(),
+	);
+	Container.set(
+		DeprecatedNodesValidationService,
+		new DeprecatedNodesValidationService(
+			mock<Logger>(),
+			mock<NodesConfig>({ blockDeprecated: true }),
+			deprecatedNodeTypes,
+		),
+	);
 	const workflowsConfig = Container.get(WorkflowsConfig);
 	afterEach(() => {
 		// Keep the default (flag off) for every test; flag-on tests opt in.
@@ -1200,26 +1213,13 @@ describe('WorkflowExecuteAdditionalData', () => {
 			},
 		);
 
-		it('checks inline nodes for deprecated node types', async () => {
-			const nodes = [mock<INode>({ type: 'n8n-nodes-base.function' })];
+		it('refuses inline nodes of a deprecated type', async () => {
+			const nodes = [mock<INode>({ type: 'n8n-nodes-base.function', typeVersion: 1 })];
 			const workflowCode = mock<IWorkflowBase>({ nodes, connections: {} });
 
-			await loadWorkflow({ code: workflowCode }, 'parent-workflow-id');
-
-			expect(deprecatedNodesValidationService.validateOnCreate).toHaveBeenCalledWith(
-				nodes,
-				'parent-workflow-id',
+			await expect(loadWorkflow({ code: workflowCode }, 'parent-workflow-id')).rejects.toThrow(
+				DeprecatedNodesError,
 			);
-		});
-
-		it('refuses inline nodes the deprecated node check rejects', async () => {
-			const workflowCode = mock<IWorkflowBase>({ nodes: [], connections: {} });
-			const error = new DeprecatedNodesError('deprecated', { violations: [] });
-			deprecatedNodesValidationService.validateOnCreate.mockImplementationOnce(() => {
-				throw error;
-			});
-
-			await expect(loadWorkflow({ code: workflowCode }, 'parent-workflow-id')).rejects.toBe(error);
 		});
 	});
 
@@ -1450,15 +1450,15 @@ describe('WorkflowExecuteAdditionalData', () => {
 			workflowRepository.get.mockClear();
 		});
 
-		it('does not check a stored workflow for deprecated node types', async () => {
-			deprecatedNodesValidationService.validateOnCreate.mockClear();
+		it('loads a stored workflow that contains a deprecated node', async () => {
+			const nodes = [mock<INode>({ type: 'n8n-nodes-base.function', typeVersion: 1 })];
 			workflowRepository.get.mockResolvedValue(
-				mock<WorkflowEntity>({ id: 'workflow-123', nodes: [], connections: {} }),
+				mock<WorkflowEntity>({ id: 'workflow-123', nodes, connections: {} }),
 			);
 
-			await getDraftWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
+			const result = await getDraftWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
 
-			expect(deprecatedNodesValidationService.validateOnCreate).not.toHaveBeenCalled();
+			expect(result.nodes).toEqual(nodes);
 		});
 
 		it('should use draft version', async () => {

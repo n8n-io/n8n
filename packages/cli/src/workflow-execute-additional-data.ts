@@ -158,7 +158,7 @@ async function fetchWorkflowData(
 	} else {
 		const workflowData = workflowInfo.code;
 		if (workflowData) {
-			// Inline JSON is never saved, so it has to pass the save-time check here.
+			// The save-time check does not see inline JSON, so it runs here.
 			Container.get(DeprecatedNodesValidationService).validateOnCreate(
 				workflowData.nodes ?? [],
 				parentWorkflowId,
