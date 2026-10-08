@@ -22,6 +22,12 @@ vi.mock('../legacy-request-adapter', () => ({
 	proxyRequestToAxios: vi.fn(),
 }));
 
+/** Shaped like cli's `PolicyViolationError`, which core cannot import. */
+const policyRefusal = () =>
+	Object.assign(new Error('Credential type "slackApi" is blocked by an instance policy'), {
+		isPolicyRefusal: true,
+	});
+
 describe('httpRequestWithAuthentication', () => {
 	const baseUrl = 'https://api.example.com';
 	const tokenUrl = 'https://auth.example.com';
@@ -374,6 +380,25 @@ describe('httpRequestWithAuthentication', () => {
 		expect(result).toEqual({ ok: true });
 		expect(request).toHaveBeenCalledTimes(1);
 	});
+
+	test('rethrows a policy refusal from the credential read unchanged, with no request sent', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		const refusal = policyRefusal();
+		mockThis.getCredentials.mockRejectedValue(refusal);
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'slackApi',
+				{ method: 'GET', url: `${baseUrl}/items` },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toBe(refusal);
+
+		expect(request).not.toHaveBeenCalled();
+	});
 });
 
 describe('requestWithAuthentication (legacy) — preAuthentication retry', () => {
@@ -508,4 +533,22 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 			);
 		},
 	);
+
+	test('rethrows a policy refusal from the credential read unchanged, with no request sent', async () => {
+		const refusal = policyRefusal();
+		mockThis.getCredentials.mockRejectedValue(refusal);
+
+		await expect(
+			requestWithAuthentication.call(
+				mockThis,
+				'slackApi',
+				{ method: 'GET', uri: 'https://api.example.com/items' },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toBe(refusal);
+
+		expect(proxyRequestToAxiosMock).not.toHaveBeenCalled();
+	});
 });

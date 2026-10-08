@@ -40,8 +40,10 @@ describe('Microsoft SharePoint Trigger', () => {
 		expect(description.outputs).toEqual(['main']);
 	});
 
-	it('stays out of the node picker until the trigger is finished', () => {
-		expect(description.hidden).toBe(true);
+	it('appears in the node picker', () => {
+		// `hidden` also labels a node "Deprecated" in the NDV, so it has to be
+		// absent rather than false.
+		expect(description.hidden).toBeUndefined();
 	});
 
 	it('declares its own credential pair, independent of the action node', () => {

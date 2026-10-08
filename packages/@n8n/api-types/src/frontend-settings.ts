@@ -93,6 +93,7 @@ export interface FrontendSettings {
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
 	endpointHealth: string;
+	healthCheckTimeoutMs: number;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
@@ -375,6 +376,14 @@ export type FrontendModuleSettings = {
 	'encryption-key-manager'?: {
 		/** Whether encryption-key rotation (and its management UI) is enabled. */
 		rotationEnabled: boolean;
+	};
+
+	/**
+	 * Client settings for SCIM user-provisioning module.
+	 */
+	scim?: {
+		/** Whether SCIM provisioning is enabled in the instance. */
+		scimEnabled: boolean;
 	};
 
 	/**

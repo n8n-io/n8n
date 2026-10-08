@@ -181,6 +181,7 @@ describe('GlobalConfig', () => {
 					'mcp-client-revoked': '',
 					'email-change-requested': '',
 					'email-change-completed': '',
+					'agent-budget-alert': '',
 				},
 			},
 		},
@@ -308,6 +309,7 @@ describe('GlobalConfig', () => {
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
 			health: '/healthz',
+			frontendHealthCheckTimeoutMs: 5000,
 		},
 		cache: {
 			backend: 'auto',
@@ -1006,6 +1008,26 @@ describe('GlobalConfig', () => {
 			expect(config.database.maxRecoveryBackoffMs).toBe(60000);
 			expect(config.database.connectionAcquisitionTimeoutMs).toBe(10000);
 		});
+	});
+
+	describe('data table cleanup interval config validation', () => {
+		it('should accept a positive N8N_DATA_TABLES_CLEANUP_INTERVAL_MS', () => {
+			process.env = { N8N_DATA_TABLES_CLEANUP_INTERVAL_MS: '30000' };
+			const config = Container.get(GlobalConfig);
+			expect(config.dataTable.cleanupIntervalMs).toBe(30000);
+		});
+
+		it.each(['0', '-5', '1500.5'])(
+			'should reject a data table cleanup interval of %s and fall back to the default',
+			(value) => {
+				process.env = { N8N_DATA_TABLES_CLEANUP_INTERVAL_MS: value };
+				const config = Container.get(GlobalConfig);
+				expect(config.dataTable.cleanupIntervalMs).toBe(60000);
+				expect(consoleWarnMock).toHaveBeenCalledWith(
+					expect.stringContaining('N8N_DATA_TABLES_CLEANUP_INTERVAL_MS'),
+				);
+			},
+		);
 	});
 
 	describe('workflow publication outbox cleanup config validation', () => {

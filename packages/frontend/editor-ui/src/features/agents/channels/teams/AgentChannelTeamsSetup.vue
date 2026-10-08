@@ -25,7 +25,6 @@ import AgentChannelTeamsAvailability, {
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
-import { OFFER_READ_PERMISSIONS } from './constants';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -81,13 +80,12 @@ const setupState = ref<TeamsAgentSetupState | null>(null);
 const setupLoadFailed = ref(false);
 const showEndpoint = ref(false);
 
-// A hidden read permission is never kept on: nothing here could turn it off.
 function availabilityFrom(saved?: AgentTeamsIntegrationSettings): TeamsAvailability {
 	return {
 		teamChannels: saved?.teamChannels ?? false,
 		groupChats: saved?.groupChats ?? false,
-		readAllChannelMessages: OFFER_READ_PERMISSIONS && (saved?.readAllChannelMessages ?? false),
-		readAllGroupMessages: OFFER_READ_PERMISSIONS && (saved?.readAllGroupMessages ?? false),
+		readAllChannelMessages: saved?.readAllChannelMessages ?? false,
+		readAllGroupMessages: saved?.readAllGroupMessages ?? false,
 	};
 }
 

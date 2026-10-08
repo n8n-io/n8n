@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased-id */
 import type { Embeddings } from '@langchain/core/embeddings';
+import type { Tool } from '@langchain/core/tools';
 import { proxyFetch } from '@n8n/ai-utilities';
 import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
@@ -327,6 +328,60 @@ describe('VectorStoreDatabricks', () => {
 		});
 	});
 
+	describe('supplyData in retrieve-as-tool mode', () => {
+		// A managed-embedding index rejects query_vector, so the agent's query has to reach the
+		// store as text. The factory picks that path from this node's `searchByText`.
+		it('searches the agent query as text and never embeds it', async () => {
+			const store = { similaritySearchWithScore: vi.fn().mockResolvedValue([]) };
+			mockedFromExistingIndex.mockResolvedValue(store as unknown as DatabricksVectorStore);
+			const ctx = setupContext<ISupplyDataFunctions>({
+				...baseParams,
+				mode: 'retrieve-as-tool',
+				toolDescription: 'Company policies. Use for any policy question.',
+				topK: 3,
+			});
+			ctx.addInputData = vi.fn().mockReturnValue({ index: 0 });
+			ctx.addOutputData = vi.fn();
+
+			const { response } = await node.supplyData.call(ctx, 0);
+			await (response as Tool).invoke({ input: 'what is the leave policy' });
+
+			expect(store.similaritySearchWithScore).toHaveBeenCalledWith(
+				'what is the leave policy',
+				3,
+				undefined,
+			);
+			expect(embeddings.embedQuery).not.toHaveBeenCalled();
+		});
+
+		// An agent-driven search must use the node's own configuration. The community package
+		// drops the mode and the filter on this path, which is the regression this pins.
+		it('carries the configured search mode, metadata filter and limit into the tool search', async () => {
+			const store = { similaritySearchWithScore: vi.fn().mockResolvedValue([]) };
+			mockedFromExistingIndex.mockResolvedValue(store as unknown as DatabricksVectorStore);
+			const ctx = setupContext<ISupplyDataFunctions>({
+				...baseParams,
+				mode: 'retrieve-as-tool',
+				toolDescription: 'Company policies. Use for any policy question.',
+				topK: 3,
+				options: { searchMode: 'HYBRID', searchFilterJson: { source: 'hr' } },
+			});
+			ctx.addInputData = vi.fn().mockReturnValue({ index: 0 });
+			ctx.addOutputData = vi.fn();
+
+			const { response } = await node.supplyData.call(ctx, 0);
+			await (response as Tool).invoke({ input: 'what is the leave policy' });
+
+			expect(mockedFromExistingIndex).toHaveBeenCalledWith(
+				embeddings,
+				expect.objectContaining({ queryType: 'HYBRID' }),
+			);
+			expect(store.similaritySearchWithScore).toHaveBeenCalledWith('what is the leave policy', 3, {
+				source: 'hr',
+			});
+		});
+	});
+
 	describe('execute in insert mode', () => {
 		it('adds the loaded documents through the store', async () => {
 			const documents = [
@@ -369,7 +424,7 @@ describe('VectorStoreDatabricks', () => {
 		let httpRequestWithAuthentication: ReturnType<typeof vi.fn>;
 		let ctx: ILoadOptionsFunctions;
 
-		const setupSearchContext = (host: string) => {
+		const setupSearchContext = (host: string, mode = 'load') => {
 			httpRequestWithAuthentication = vi.fn(
 				async (_type: string, options: { url: string; qs: Record<string, string> }) =>
 					options.url.endsWith('/endpoints')
@@ -378,6 +433,7 @@ describe('VectorStoreDatabricks', () => {
 			);
 			ctx = {
 				getCredentials: vi.fn().mockResolvedValue({ ...mockCredential, host }),
+				getCurrentNodeParameter: vi.fn((path: string) => (path === 'mode' ? mode : undefined)),
 				getNode: vi.fn().mockReturnValue(nodeDef),
 				helpers: { httpRequestWithAuthentication },
 			} as unknown as ILoadOptionsFunctions;
@@ -399,6 +455,21 @@ describe('VectorStoreDatabricks', () => {
 				expect(options.url).toMatch(/^https:\/\/ws\.example\.com\/api\/2\.0\/vector-search\//);
 				expect(options.headers).toMatchObject({ 'User-Agent': DATABRICKS_PARTNER_USER_AGENT });
 			}
+		});
+
+		// Only insert writes, so only insert may narrow the list; the read modes query both types.
+		it.each([
+			['insert', ['cat.sch.zeta']],
+			['load', ['cat.sch.alpha', 'cat.sch.beta', 'cat.sch.zeta']],
+			['retrieve', ['cat.sch.alpha', 'cat.sch.beta', 'cat.sch.zeta']],
+			['retrieve-as-tool', ['cat.sch.alpha', 'cat.sch.beta', 'cat.sch.zeta']],
+		])('offers the writable indexes in %s mode', async (mode, expected) => {
+			setupSearchContext('https://ws.example.com/', mode);
+
+			const result = await methods.listSearch.searchIndexes.call(ctx);
+
+			expect(result.results.map((entry) => entry.value)).toEqual(expected);
+			expect(ctx.getCurrentNodeParameter).toHaveBeenCalledWith('mode');
 		});
 
 		it('does not let the bearer follow a cross-origin redirect', async () => {

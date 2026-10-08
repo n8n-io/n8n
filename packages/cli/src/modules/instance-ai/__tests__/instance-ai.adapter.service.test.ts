@@ -2087,6 +2087,104 @@ describe('web-search provider selection', () => {
 });
 
 describe('createNodeAdapter', () => {
+	describe('module-gated node types', () => {
+		const gatedNodes = [
+			{
+				name: 'n8n-nodes-base.messageAnAgent',
+				displayName: 'Message an Agent',
+				description: 'Send a message to a n8n agent',
+				group: ['transform'],
+				version: 3.1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			},
+			{
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields',
+				description: 'Set values',
+				group: ['input'],
+				version: 3,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			},
+		];
+
+		let activeModules: string[];
+
+		// Create the adapter before turning modules on: an active agents module also makes
+		// `createContext` wire the Agent Builder delegate, which these tests do not need.
+		const createAdapter = (modules: string[]) => {
+			const adapter = createNodeAdapterForTests(gatedNodes);
+			activeModules = modules;
+			return adapter;
+		};
+
+		beforeEach(() => {
+			activeModules = [];
+			const moduleRegistry = Container.get(ModuleRegistry);
+			vi.spyOn(moduleRegistry, 'isActive').mockImplementation((moduleName) =>
+				activeModules.includes(moduleName),
+			);
+			moduleRegistry.settings.delete('agents');
+		});
+
+		afterEach(() => {
+			Container.get(ModuleRegistry).settings.delete('agents');
+			vi.restoreAllMocks();
+		});
+
+		it('offers Message an Agent while agents are enabled', async () => {
+			const adapter = createAdapter(['agents']);
+
+			const searchable = await adapter.listSearchable();
+			const available = await adapter.listAvailable();
+
+			expect(searchable.map((n) => n.name)).toContain('n8n-nodes-base.messageAnAgent');
+			expect(available.map((n) => n.name)).toContain('n8n-nodes-base.messageAnAgent');
+			expect((await adapter.getDescription('n8n-nodes-base.messageAnAgent')).unavailable).toBe(
+				undefined,
+			);
+		});
+
+		it('leaves Message an Agent out of discovery while the agents module is inactive', async () => {
+			const adapter = createAdapter([]);
+
+			const searchable = await adapter.listSearchable();
+			const available = await adapter.listAvailable();
+
+			expect(searchable.map((n) => n.name)).toEqual(['n8n-nodes-base.set']);
+			expect(available.map((n) => n.name)).toEqual(['n8n-nodes-base.set']);
+		});
+
+		it('names the module to enable when the agents module is inactive', async () => {
+			const adapter = createAdapter([]);
+
+			const description = await adapter.getDescription('n8n-nodes-base.messageAnAgent');
+
+			expect(description.unavailable).toMatch(/The "agents" module is disabled on this instance\./);
+		});
+
+		it('says why Message an Agent is unavailable when an admin has turned agents off', async () => {
+			Container.get(ModuleRegistry).settings.set('agents', { enabled: false });
+			const adapter = createAdapter(['agents']);
+
+			const description = await adapter.getDescription('n8n-nodes-base.messageAnAgent');
+			const definition = await adapter.getNodeTypeDefinition?.('n8n-nodes-base.messageAnAgent');
+
+			expect(description.unavailable).toMatch(
+				/An admin turned "agents" off in the instance settings\./,
+			);
+			expect(definition).toEqual(
+				expect.objectContaining({
+					content: 'node-def',
+					unavailable: expect.stringMatching(/An admin turned "agents" off/),
+				}),
+			);
+		});
+	});
+
 	it('preserves credential displayOptions in getDescription()', async () => {
 		const adapter = createNodeAdapterForTests([
 			{
@@ -7976,6 +8074,61 @@ describe('createContext: aiPreferenceService', () => {
 });
 
 describe('createCredentialAdapter', () => {
+	describe('test', () => {
+		const storedCredential = { id: 'cred-1', name: 'Slack account', type: 'slackApi' };
+
+		const adapterWith = (decryptForUse: ReturnType<typeof vi.fn>, test: ReturnType<typeof vi.fn>) =>
+			createNodeAdapterServiceForTests([], {
+				credentialsFinderService: {
+					findCredentialForUser: vi.fn().mockResolvedValue(storedCredential),
+				},
+				credentialsService: { decryptForUse, test },
+			});
+
+		it('decrypts through the policy-checked path as the user', async () => {
+			const decryptForUse = vi.fn().mockResolvedValue({ accessToken: 'secret' });
+			const test = vi.fn().mockResolvedValue({ status: 'OK', message: 'ok' });
+			const { credentialService, mockUser } = adapterWith(decryptForUse, test);
+
+			await expect(credentialService.test('cred-1')).resolves.toEqual({
+				success: true,
+				message: 'ok',
+			});
+			expect(decryptForUse).toHaveBeenCalledWith(
+				storedCredential,
+				{ kind: 'user', user: mockUser },
+				undefined,
+			);
+		});
+
+		it('judges the policy on the project the thread is bound to', async () => {
+			const decryptForUse = vi.fn().mockResolvedValue({});
+			const test = vi.fn().mockResolvedValue({ status: 'OK', message: 'ok' });
+			const { service, mockUser } = adapterWith(decryptForUse, test);
+			const { credentialService } = service.createContext(mockUser, {
+				projectId: 'team-project-1',
+			});
+
+			await credentialService.test('cred-1');
+
+			expect(decryptForUse).toHaveBeenCalledWith(
+				storedCredential,
+				{ kind: 'user', user: mockUser },
+				'team-project-1',
+			);
+		});
+
+		it('does not run the test when the policy refuses the decrypt', async () => {
+			const refusal = new Error('Credential type "slackApi" is blocked by an instance policy');
+			const decryptForUse = vi.fn().mockRejectedValue(refusal);
+			const test = vi.fn();
+			const { credentialService } = adapterWith(decryptForUse, test);
+
+			await expect(credentialService.test('cred-1')).rejects.toBe(refusal);
+			expect(test).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getCredentialFillState', () => {
 		/** An adapter over a credential type declaring `properties` and holding `data`. */
 		const adapterFor = (

@@ -6,7 +6,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
 import * as logAiEventModule from 'src/utils/log-ai-event';
-import { N8nLlmTracing } from 'src/utils/n8n-llm-tracing';
+import { anthropicTokensUsageParser, N8nLlmTracing } from 'src/utils/n8n-llm-tracing';
 import * as tokenEstimatorModule from 'src/utils/tokenizer/token-estimator';
 
 // Mock the dependencies
@@ -1009,6 +1009,42 @@ describe('N8nLlmTracing', () => {
 			expect(tracer.runsMap['run-1']).toBeDefined();
 			expect(tracer.runsMap['run-2']).toBeDefined();
 			expect(tracer.runsMap['run-3']).toBeDefined();
+		});
+	});
+});
+
+describe('anthropicTokensUsageParser', () => {
+	const result = (usage?: Record<string, number>): LLMResult => ({
+		generations: [],
+		llmOutput: usage ? { usage } : {},
+	});
+
+	it('should count cache creation and cache read tokens as prompt tokens', () => {
+		expect(
+			anthropicTokensUsageParser(
+				result({
+					input_tokens: 10,
+					output_tokens: 5,
+					cache_creation_input_tokens: 3,
+					cache_read_input_tokens: 2,
+				}),
+			),
+		).toEqual({ promptTokens: 15, completionTokens: 5, totalTokens: 20 });
+	});
+
+	it('should work without cache fields', () => {
+		expect(anthropicTokensUsageParser(result({ input_tokens: 10, output_tokens: 5 }))).toEqual({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+		});
+	});
+
+	it('should return zeros when usage is missing', () => {
+		expect(anthropicTokensUsageParser(result())).toEqual({
+			promptTokens: 0,
+			completionTokens: 0,
+			totalTokens: 0,
 		});
 	});
 });
