@@ -280,7 +280,7 @@ function onCheckYourAgent() {
 						<AgentEvalSuggestionCard
 							:suggestion="suggestionFor(run) ?? ''"
 							:applying="applyingSuggestionIds?.includes(run.resultId)"
-							:disabled="applyingAny && !applyingSuggestionIds?.includes(run.resultId)"
+							:disabled="applyingAny"
 							:test-id="`instance-ai-test-agent-examples-case-${run.rowId}-suggestion`"
 							@apply="emit('apply-suggestion', run.resultId)"
 							@dismiss="dismissedSuggestions.push(suggestionKey(run))"

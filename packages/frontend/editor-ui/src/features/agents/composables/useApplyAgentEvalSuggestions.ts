@@ -24,17 +24,23 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 	const applyingIds = ref<string[]>([]);
 	const applyingPreview = ref(false);
 
-	// Saves pending builder edits, runs the write, and tells the builder to refetch. A
-	// failure is toasted and reads as `null`.
+	type Target = { projectId: string; agentId: string };
+	// `ok: false` is a failure that was toasted. `ok: true` with a null `value` means the write had
+	// nothing to send, which is not a failure.
+	type Outcome<T> = { ok: true; value: T | null } | { ok: false };
+
+	// Saves pending builder edits, runs the write, and tells the builder to refetch. The target
+	// is fixed by the caller, so a navigation in the middle of a multi-request apply cannot
+	// move the rest of it to another agent.
 	async function applyAndRefresh<T>(
+		{ projectId, agentId }: Target,
 		write: (projectId: string, agentId: string) => Promise<T | null>,
-	): Promise<T | null> {
-		const { projectId, agentId } = target();
+	): Promise<Outcome<T>> {
 		try {
 			await flushAgentConfig?.();
 			const applied = await write(projectId, agentId);
 			if (applied) agentsEventBus.emit('agentUpdated', { agentId, source: 'agent-evals' });
-			return applied;
+			return { ok: true, value: applied };
 		} catch (error) {
 			const conflict = error instanceof ResponseError && error.httpStatusCode === 409;
 			toast.showError(
@@ -45,7 +51,7 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 						: 'agents.builder.agentEvals.suggestion.applyError',
 				),
 			);
-			return null;
+			return { ok: false };
 		}
 	}
 
@@ -56,19 +62,22 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 	/**
 	 * Applies the suggestions of these results. One request takes at most
 	 * MAX_APPLY_SUGGESTIONS results, so a longer list goes out as successive requests; the
-	 * first failure stops the rest. Resolves to whether every request applied.
+	 * first failure stops the rest. A batch with nothing left to send is skipped, not a failure.
+	 * Resolves to whether no request failed.
 	 */
 	async function applySuggestions(resultIds: string[]): Promise<boolean> {
 		const ids = [...new Set(resultIds)];
 		if (ids.length === 0 || busy()) return false;
+		const writeTarget = target();
 		applyingIds.value = ids;
 		try {
 			for (let start = 0; start < ids.length; start += MAX_APPLY_SUGGESTIONS) {
 				const batch = ids.slice(start, start + MAX_APPLY_SUGGESTIONS);
-				const applied = await applyAndRefresh(
+				const outcome = await applyAndRefresh(
+					writeTarget,
 					async (projectId, agentId) => await store.applySuggestions(projectId, agentId, batch),
 				);
-				if (!applied) return false;
+				if (!outcome.ok) return false;
 			}
 			return true;
 		} finally {
@@ -83,10 +92,12 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 		if (busy()) return null;
 		applyingPreview.value = true;
 		try {
-			return await applyAndRefresh(
+			const outcome = await applyAndRefresh(
+				target(),
 				async (projectId, agentId) =>
 					await store.applyPreviewSuggestion(projectId, agentId, options),
 			);
+			return outcome.ok ? outcome.value : null;
 		} finally {
 			applyingPreview.value = false;
 		}

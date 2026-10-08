@@ -238,9 +238,9 @@ const applicableSuggestionIds = computed(() =>
 		.map((row) => row.id),
 );
 
-// While one suggestion is being applied the others wait: each write starts from the saved config.
-const isBlockedByApply = (resultId: string) =>
-	applyingSuggestionIds.value.length > 0 && !applyingSuggestionIds.value.includes(resultId);
+// A long apply sends its batches one after another, so the checks still waiting to be sent
+// must not change under it. Every row waits until the whole apply is done.
+const isApplyingSuggestions = computed(() => applyingSuggestionIds.value.length > 0);
 
 async function onApplySuggestion(resultId: string) {
 	await applySuggestions([resultId]);
@@ -474,7 +474,7 @@ onBeforeUnmount(store.stopPollingRun);
 					v-if="applicableSuggestionIds.length > 0 && !showingPreviousRun"
 					variant="solid"
 					size="small"
-					:disabled="disabled || rerunning || inFlight || applyingSuggestionIds.length > 0"
+					:disabled="disabled || rerunning || inFlight || isApplyingSuggestions"
 					:loading="applyingAll"
 					data-testid="agent-eval-checks-apply-all-suggestions"
 					@click="onApplyAllSuggestions"
@@ -508,7 +508,7 @@ onBeforeUnmount(store.stopPollingRun);
 				:what-to-check="row.whatToCheck"
 				:fix-suggestion="row.fixSuggestion"
 				:applying-suggestion="applyingSuggestionIds.includes(row.id)"
-				:disabled="disabled || showingPreviousRun || isBlockedByApply(row.id)"
+				:disabled="disabled || showingPreviousRun || isApplyingSuggestions"
 				:running-check="row.status === 'waiting'"
 				hide-revise
 				view="complete"
