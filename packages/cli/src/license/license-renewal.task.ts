@@ -1,6 +1,6 @@
-import { ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
+import { Time } from '@n8n/constants';
 import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
 import { AUTORENEWAL_INTERVAL } from '@n8n_io/license-sdk';
 
 import { License } from '@/license';
@@ -15,21 +15,21 @@ export class LicenseRenewalTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromMilliseconds(AUTORENEWAL_INTERVAL);
 
-	/** A retry after a failed renewal resends a token the server may have rotated already. */
-	readonly effects: SystemTaskEffects = 'non-idempotent';
-
-	/** A check that missed its grace window still runs once, late. */
-	readonly misfirePolicy: ScheduledJobMisfirePolicy = ScheduledJobMisfirePolicy.Coalesce;
-
-	/** Kept well under one interval, so two checks are never claimable at once. */
-	readonly misfireGraceSeconds = 5 * Time.minutes.toSeconds;
-
-	readonly placement: SystemTaskPlacement = {
+	readonly target = {
 		scope: 'cluster',
-		durable: true,
-		/** A new leader may inherit a due renewal whose window closes before the next interval. */
-		runOnTakeover: true,
-	};
+		scheduler: {
+			/** A retry after a failed renewal resends a token the server may have rotated already. */
+			maxAttempts: 1,
+			/** Kept well under one interval, so two checks are never claimable at once. */
+			missedAfterSeconds: 5 * Time.minutes.toSeconds,
+			/** A check that missed its grace window still runs once, late. */
+			catchUp: true,
+		},
+		leaderTimer: {
+			/** A new leader may inherit a due renewal whose window closes before the next interval. */
+			runOnTakeover: true,
+		},
+	} satisfies SystemTaskTarget;
 
 	constructor(private readonly license: License) {}
 

@@ -18,12 +18,11 @@ describe('TelemetryPulseTask', () => {
 	it('should send one packet for the whole cluster every 6 hours', () => {
 		expect(task.name).toBe('telemetry-pulse');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 21600 });
-		expect(task.effects).toBe('non-idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
+		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 1 } });
 	});
 
 	it('should keep a missed occurrence for an hour, coalesce a longer backlog and never retry a failed one', () => {
-		expect(task.misfireGraceSeconds).toBe(3600);
+		expect(task.target.scheduler?.missedAfterSeconds).toBe(3600);
 		expect(resolveSystemTaskRunOptions(task)).toEqual({
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 3600,

@@ -1,12 +1,7 @@
 import { SchedulerConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type {
-	SystemTaskEffects,
-	SystemTaskPlacement,
-	SystemTaskRunContext,
-	SystemTaskSchedule,
-} from '@n8n/decorators';
+import type { SystemTaskRunContext, SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowStatisticsRollupService } from './workflow-statistics-rollup.service';
 
@@ -25,14 +20,14 @@ export class WorkflowStatisticsRollupTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(ROLLUP_INTERVAL_SECONDS);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly placement: SystemTaskPlacement = {
+	readonly target = {
 		scope: 'cluster',
-		durable: true,
-		/** Increments pile up while no instance is the leader, so a backlog is waiting. */
-		runOnTakeover: true,
-	};
+		scheduler: { maxAttempts: 3 },
+		leaderTimer: {
+			/** Increments pile up while no instance is the leader, so a backlog is waiting. */
+			runOnTakeover: true,
+		},
+	} satisfies SystemTaskTarget;
 
 	private readonly durableRunBudgetMs: number;
 
@@ -46,10 +41,10 @@ export class WorkflowStatisticsRollupTask implements SystemTask {
 			Time.seconds.toMilliseconds;
 	}
 
-	async run(signal: AbortSignal, { durable }: SystemTaskRunContext): Promise<void> {
+	async run(signal: AbortSignal, { runner }: SystemTaskRunContext): Promise<void> {
 		await this.rollupService.rollup(
 			signal,
-			durable ? this.durableRunBudgetMs : IN_MEMORY_RUN_BUDGET_MS,
+			runner === 'scheduler' ? this.durableRunBudgetMs : IN_MEMORY_RUN_BUDGET_MS,
 		);
 	}
 }
