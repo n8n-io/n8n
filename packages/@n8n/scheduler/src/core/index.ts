@@ -33,7 +33,7 @@ export {
 	createJobProvisioner,
 	scheduleFingerprint,
 	findOutdatedJobs,
-	resolveRunOptions,
+	resolveCoreRunOptions,
 } from './provisioning';
 export type {
 	MisfireGraceAdjustment,
