@@ -30,6 +30,7 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
+		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
 		...overrides,
 	};
@@ -232,11 +233,31 @@ describe('StartExecutionService', () => {
 		it('persists the seeded steps with the execution', async () => {
 			const store = makeStore();
 			const service = new StartExecutionService(admittance, store, makeQueue());
-			const seededSteps = { a: [[{ json: { from: 'earlier' } }]] };
+			const seededSteps = { a: [[[{ json: { from: 'earlier' } }]]] };
 
 			await service.start({ ...base, seededSteps });
 
+			// Stored beside the row, with the node marked in the graph so a
+			// settlement knows to record it rather than run it.
+			expect(store.createExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					graph: {
+						...graph,
+						nodes: graph.nodes.map((node) => (node.id === 'a' ? { ...node, seeded: true } : node)),
+					},
+				}),
+			);
 			expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ seededSteps }));
+		});
+
+		it('rejects a node outside any loop seeded with more than one pass', async () => {
+			const store = makeStore();
+			const service = new StartExecutionService(admittance, store, makeQueue());
+
+			await expect(service.start({ ...base, seededSteps: { a: [[], []] } })).rejects.toThrow(
+				/seeded with 2 passes/,
+			);
+			expect(store.createExecution).not.toHaveBeenCalled();
 		});
 
 		it.each([
@@ -248,7 +269,7 @@ describe('StartExecutionService', () => {
 			const queue = makeQueue();
 			const service = new StartExecutionService(admittance, store, queue);
 
-			await expect(service.start({ ...base, seededSteps: { [nodeId]: [] } })).rejects.toThrow(
+			await expect(service.start({ ...base, seededSteps: { [nodeId]: [[]] } })).rejects.toThrow(
 				GraphValidationError,
 			);
 			expect(store.createExecution).not.toHaveBeenCalled();
@@ -278,7 +299,7 @@ describe('StartExecutionService', () => {
 			const service = new StartExecutionService(admittance, store, makeQueue());
 
 			await expect(
-				service.start({ ...base, graph: loopGraph, seededSteps: { [nodeId]: [] } }),
+				service.start({ ...base, graph: loopGraph, seededSteps: { [nodeId]: [[]] } }),
 			).rejects.toThrow(/inside the loop of loop/);
 			expect(store.createExecution).not.toHaveBeenCalled();
 		});
