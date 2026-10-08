@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { devNull, tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -49,6 +49,29 @@ afterEach(() => {
 });
 
 const plan = (base, git) => planFromDiff(base, { git, repoRoot: root });
+
+// Run git in the temp repo. It ignores the user's git config, so no hook,
+// signing or template applies.
+function gitInRoot(args) {
+	const res = spawnSync(
+		'git',
+		['-c', 'user.name=Test', '-c', 'user.email=test@example.com', ...args],
+		{
+			cwd: root,
+			encoding: 'utf8',
+			env: { ...process.env, GIT_CONFIG_GLOBAL: devNull, GIT_CONFIG_NOSYSTEM: '1' },
+		},
+	);
+	assert.equal(res.status, 0, res.stderr);
+	return res.stdout;
+}
+
+// Make the temp repo a git repo with SAMPLE_REPO committed on `main`.
+function commitSampleRepo() {
+	gitInRoot(['init', '--quiet', '--initial-branch=main']);
+	gitInRoot(['add', '--all']);
+	gitInRoot(['commit', '--quiet', '--no-gpg-sign', '--message', 'sample']);
+}
 
 function assertMutateError(fn, pattern) {
 	assert.throws(fn, (error) => {
@@ -156,6 +179,27 @@ describe('planFromDiff git use', () => {
 			/^git diff against 'origin\/master' failed\.\nfatal: bad object$/,
 		);
 	});
+
+	// The plan and its git data must come from the same repo. This repo has no
+	// `main` branch, so git from this repo has no merge base and the plan stops.
+	it('reads git in the repo root it is given when no git is injected', () => {
+		commitSampleRepo();
+		writeFileSync(
+			path.join(root, instanceAiSource),
+			'export const id = 1;\nexport const two = 2;\n',
+		);
+		const { jobs, skipped } = planFromDiff('main', { repoRoot: root });
+		assert.deepEqual(skipped, []);
+		assert.deepEqual(
+			jobs.map((job) => [job.pkgRoot, job.targets]),
+			[
+				[
+					path.join(root, 'packages/@n8n/instance-ai'),
+					[`${path.join('src', 'utils', 'model-config-id.ts')}:2-2`],
+				],
+			],
+		);
+	});
 });
 
 describe('runGit', () => {
@@ -164,6 +208,13 @@ describe('runGit', () => {
 		assert.equal(res.status, 0);
 		assert.equal(typeof res.stdout, 'string');
 		assert.ok(res.stdout.trim().length > 0);
+	});
+
+	it('runs git in the root it is given', () => {
+		commitSampleRepo();
+		const res = runGit(['rev-parse', '--show-toplevel'], root);
+		assert.equal(res.status, 0, res.stderr);
+		assert.equal(res.stdout.trim(), realpathSync(root));
 	});
 
 	// A missing git is a setup problem, so it must not read as "nothing changed".

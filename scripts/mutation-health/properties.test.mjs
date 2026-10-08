@@ -14,7 +14,13 @@ import path from 'node:path';
 import { forEachSample } from './samples.mjs';
 import { toCommandLine } from './stryker.mjs';
 import { coverageFromCounts, emptyCounts, scoreFromCounts } from './summary.mjs';
-import { mergeRanges, parseHunkRanges, toPackageRelative } from './targets.mjs';
+import {
+	mergeRanges,
+	parseHunkRanges,
+	parseTestFiles,
+	splitRange,
+	toPackageRelative,
+} from './targets.mjs';
 import { toNestedNamePattern } from './vitest-compat.mjs';
 
 // The pattern @stryker-mutator/vitest-runner 10.0.0 builds for a mutant (see
@@ -168,6 +174,70 @@ describe('toPackageRelative for any path', () => {
 			if (rel.startsWith(`${packageDir}/`)) return;
 			assert.equal(toPackageRelative(rel, packageDir), rel);
 		});
+	});
+});
+
+describe('parseTestFiles for any flag values', () => {
+	// The values of repeated --test-files flags: paths, commas and blanks.
+	const values = (r) => r.array(0, 5, () => r.string('ab/.,  \t', 0, 10));
+	// Each non-blank path of the values, as typed, with repeats.
+	const pathsIn = (vals) =>
+		vals
+			.flatMap((value) => value.split(','))
+			.map((part) => part.trim())
+			.filter(Boolean);
+
+	it('keeps each typed path once, trimmed, in the order it first appears', () => {
+		forEachSample({ seed: 1401 }, values, (vals) => {
+			const files = parseTestFiles(vals);
+			const typed = pathsIn(vals);
+			assert.deepEqual(new Set(files), new Set(typed));
+			assert.equal(new Set(files).size, files.length);
+			for (const file of files)
+				assert.ok(file !== '' && file === file.trim() && !file.includes(','));
+			const firstSeen = files.map((file) => typed.indexOf(file));
+			assert.deepEqual(
+				firstSeen,
+				[...firstSeen].sort((a, b) => a - b),
+			);
+		});
+	});
+
+	it('reads one comma-joined value as the repeated flag, and a second parse changes nothing', () => {
+		forEachSample({ seed: 1402 }, values, (vals) => {
+			const files = parseTestFiles(vals);
+			assert.deepEqual(parseTestFiles([vals.join(',')]), files);
+			assert.deepEqual(parseTestFiles(files), files);
+			assert.deepEqual(parseTestFiles([files.join(',')]), files);
+		});
+	});
+});
+
+describe('splitRange for any target', () => {
+	// Colons, dashes and digits in a file name look like parts of a range.
+	const FILE_CHARS = 'ab:-0123./';
+
+	it('splits off a trailing `:<start>-<end>` and keeps the rest as the file', () => {
+		forEachSample(
+			{ seed: 1501 },
+			(r) => ({ file: r.string(FILE_CHARS, 0, 10), start: r.int(0, 999), end: r.int(0, 999) }),
+			({ file, start, end }) => {
+				const range = `${start}-${end}`;
+				assert.deepEqual(splitRange(`${file}:${range}`), { file, range });
+			},
+		);
+	});
+
+	it('keeps a target that does not end in a whole range as the file', () => {
+		forEachSample(
+			{ seed: 1502 },
+			(r) => {
+				const [a, b] = [r.int(0, 99), r.int(0, 99)];
+				const end = r.pick(['.ts', `:${a}`, `:${a}-`, `:-${b}`, `:${a}-${b}x`]);
+				return `${r.string(FILE_CHARS, 0, 10)}${end}`;
+			},
+			(target) => assert.deepEqual(splitRange(target), { file: target, range: null }),
+		);
 	});
 });
 

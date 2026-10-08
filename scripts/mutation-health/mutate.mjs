@@ -56,8 +56,9 @@
  *   0  — the gate passed.
  *   1  — the gate failed. Iterate: read summary.json and strengthen the tests.
  *   2  — usage or config error.
- *   3  — Stryker did not resolve or did not run. Never 1: a broken toolchain
- *        must stay distinct from a score of zero.
+ *   3  — Stryker did not resolve or did not run, or its test runner ran no
+ *        test for a mutant that tests cover. Never 1: a broken toolchain must
+ *        stay distinct from a score of zero.
  *   130 / 143 — the run was cancelled with SIGINT / SIGTERM.
  */
 
@@ -88,6 +89,7 @@ import {
 	mutantCountFromOutput,
 	overallGate,
 	reportLines,
+	testsNotRunLines,
 } from './summary.mjs';
 import {
 	CLI_PACKAGE_DIR,
@@ -243,19 +245,23 @@ function describeRun({ packageDir, targets }, { config, configLabel }) {
 	return lines;
 }
 
+// Why a run gives no valid result, for the two toolchain failures.
+function failureLines(outcome, { packageDir, run, rawJsonPath, report, root }) {
+	if (outcome === 'tests-not-run') return testsNotRunLines(packageDir, report);
+	return [
+		`✗ ${packageDir}: Stryker exited ${run.exitCode} without producing ` +
+			`${path.relative(root, rawJsonPath)}`,
+	];
+}
+
 async function summariseRun(job, { config, run, rawJsonPath, summaryJsonPath, root }, log) {
 	const { packageDir, targets } = job;
-	const outcome = classifyRun({
-		exitCode: run.exitCode,
-		output: run.output,
-		hasReport: existsSync(rawJsonPath),
-	});
+	const report = existsSync(rawJsonPath) ? JSON.parse(await readFile(rawJsonPath, 'utf8')) : null;
+	const outcome = classifyRun({ exitCode: run.exitCode, output: run.output, report });
 	const result = { packageDir, summaryPath: path.relative(root, summaryJsonPath) };
-	if (outcome === 'failed') {
-		log(
-			`✗ ${packageDir}: Stryker exited ${run.exitCode} without producing ` +
-				`${path.relative(root, rawJsonPath)}`,
-		);
+	if (outcome === 'failed' || outcome === 'tests-not-run') {
+		const failure = { packageDir, run, rawJsonPath, report, root };
+		for (const line of failureLines(outcome, failure)) log(line);
 		return { ...result, failed: true };
 	}
 	const meta = {
@@ -266,10 +272,7 @@ async function summariseRun(job, { config, run, rawJsonPath, summaryJsonPath, ro
 	const summary =
 		outcome === 'no-tests'
 			? buildNoTestsSummary({ ...meta, noCoverage: mutantCountFromOutput(run.output) })
-			: buildSummary(JSON.parse(await readFile(rawJsonPath, 'utf8')), {
-					...meta,
-					testRunner: config.testRunner,
-				});
+			: buildSummary(report, { ...meta, testRunner: config.testRunner });
 	if (outcome === 'partial') summary.partial = true;
 	await writeFile(summaryJsonPath, JSON.stringify(summary, null, 2));
 	return { ...result, summary, noTests: outcome === 'no-tests' };
@@ -349,7 +352,7 @@ export function reportResults(results, log) {
 	for (const r of results) for (const line of reportLines(r)) log(line);
 
 	if (results.some((r) => r.failed)) {
-		log('\nGate: ERROR — at least one Stryker run produced no report.');
+		log('\nGate: ERROR — at least one Stryker run produced no valid report.');
 		return 3;
 	}
 	const overall = overallGate(results.map((r) => r.summary));

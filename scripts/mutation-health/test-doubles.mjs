@@ -38,17 +38,39 @@ export function fakeSpawn({ onSpawn } = {}) {
 	return { spawn, calls, children };
 }
 
-/** A stand-in process plus recorders for `exit` and `write`. */
+/**
+ * A stand-in process plus recorders for `exit` and `write`. `exited` settles
+ * with the code of the first exit, for a handler that exits after a wait.
+ */
 export function fakeProcess() {
 	const exits = [];
 	const writes = [];
+	let firstExit;
+	const exited = new Promise((resolve) => {
+		firstExit = resolve;
+	});
 	return {
 		proc: new EventEmitter(),
 		exits,
 		writes,
-		exit: (code) => exits.push(code),
+		exited,
+		exit: (code) => {
+			exits.push(code);
+			firstExit(code);
+		},
 		write: (msg) => writes.push(msg),
 	};
+}
+
+/** 'resolved', 'rejected', or 'pending' when `promise` did not settle within one turn. */
+export function settledState(promise) {
+	return Promise.race([
+		promise.then(
+			() => 'resolved',
+			() => 'rejected',
+		),
+		new Promise((resolve) => setImmediate(() => resolve('pending'))),
+	]);
 }
 
 /** A writable stand-in that keeps what was written. */

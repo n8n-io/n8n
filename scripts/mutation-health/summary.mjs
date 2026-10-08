@@ -64,23 +64,68 @@ export function coverageFromCounts(c) {
 // the second one when a test command matches no test file.
 const NO_TESTS_OUTPUT = /no tests were executed|no test files found/i;
 
+function mutantLocation(file, m) {
+	return `${file}:${m.location.start.line}:${m.location.start.column}`;
+}
+
 /**
- * What a finished Stryker run produced. `hasReport` must describe THIS run:
- * the caller deletes the previous reports first, because a file left by an
- * earlier run makes a crashed run look complete and report the earlier target.
- *
- *   complete  — the run finished and wrote a report.
- *   partial   — the run wrote a report, then exited non-zero. Untested mutants
- *               can still be survivors, so this never passes the gate.
- *   no-tests  — no test covers the target. A result, not an error: the score is
- *               zero and every mutant has no coverage. See DEVP-414.
- *   failed    — no report. The caller reports a toolchain failure.
+ * The location of each mutant that tests cover but that survived with no test
+ * run. Stryker runs the covering tests of each mutant, so such a mutant means
+ * that the test runner selected none of them, and the survivor is not a real
+ * result. The plain vitest runner failed this way under Vitest 5 (see
+ * vitest-compat.mjs). A mutant without coverage data (the command runner) or
+ * without a test count is never in the list.
  */
-export function classifyRun({ exitCode, output, hasReport }) {
-	if (!hasReport) {
+export function survivorsWithNoTestRun(report) {
+	const locations = [];
+	for (const [file, info] of Object.entries(report.files ?? {})) {
+		for (const m of info.mutants ?? []) {
+			if (m.status === 'Survived' && m.coveredBy?.length > 0 && m.testsCompleted === 0) {
+				locations.push(mutantLocation(file, m));
+			}
+		}
+	}
+	return locations;
+}
+
+/**
+ * What a finished Stryker run produced. `report` is the parsed report of THIS
+ * run, or null when it wrote none. The caller deletes the previous reports
+ * first, because a file left by an earlier run makes a crashed run look
+ * complete and report the earlier target.
+ *
+ *   complete      — the run finished and wrote a report.
+ *   partial       — the run wrote a report, then exited non-zero. Untested
+ *                   mutants can still be survivors, so this never passes the gate.
+ *   no-tests      — no test covers the target. A result, not an error: the score
+ *                   is zero and every mutant has no coverage. See DEVP-414.
+ *   tests-not-run — a mutant that tests cover survived with no test run (see
+ *                   survivorsWithNoTestRun). The score is not valid, so the
+ *                   caller reports a toolchain failure.
+ *   failed        — no report. The caller reports a toolchain failure.
+ */
+export function classifyRun({ exitCode, output, report }) {
+	if (!report) {
 		return NO_TESTS_OUTPUT.test(output) ? 'no-tests' : 'failed';
 	}
+	if (survivorsWithNoTestRun(report).length > 0) return 'tests-not-run';
 	return exitCode === 0 ? 'complete' : 'partial';
+}
+
+// A run with many such mutants lists only the first ones.
+const LISTED_NOT_RUN = 5;
+
+/** What the tool prints for a `tests-not-run` result of the package at `packageDir`. */
+export function testsNotRunLines(packageDir, report) {
+	const locations = survivorsWithNoTestRun(report);
+	const more = locations.length - LISTED_NOT_RUN;
+	return [
+		`✗ ${packageDir}: ${locations.length} mutant(s) survived with no test run, but tests cover them:`,
+		...locations.slice(0, LISTED_NOT_RUN).map((location) => `   - ${location}`),
+		...(more > 0 ? [`   … and ${more} more`] : []),
+		'  The test runner did not run their covering tests, so the score is not valid.',
+		'  See "Vitest 5" in scripts/mutation-health/README.md.',
+	];
 }
 
 // A run is only "passing" when the score meets the floor AND every unkilled
@@ -98,10 +143,6 @@ function testNamesById(raw) {
 		for (const t of info.tests ?? []) names[t.id] = t.name;
 	}
 	return names;
-}
-
-function mutantLocation(file, m) {
-	return `${file}:${m.location.start.line}:${m.location.start.column}`;
 }
 
 function survivorRow(file, source, m, testNames) {

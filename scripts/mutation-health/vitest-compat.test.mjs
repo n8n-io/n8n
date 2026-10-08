@@ -315,14 +315,15 @@ function injectorFor(options) {
 }
 
 // A stand-in for the Vitest context that the runner's `init` makes. `start`
-// records the files and the test name pattern of each test run.
-function fakeVitest(started) {
+// records the files and the test name pattern of each test run. `files` is
+// what Vitest recorded for the test files.
+function fakeVitest(started, files = []) {
 	const projects = [{ config: {} }];
 	return {
 		projects,
 		config: {},
 		provide() {},
-		state: { filesMap: new Map(), getFiles: () => [], errorsSet: new Set() },
+		state: { filesMap: new Map(), getFiles: () => files, errorsSet: new Set() },
 		async start(files) {
 			started.push({ files, pattern: projects[0].config.testNamePattern });
 		},
@@ -332,16 +333,43 @@ function fakeVitest(started) {
 describe('the vitest-compat plugin file', () => {
 	const skip = !installedPlugins && '@stryker-mutator/vitest-runner is not installed';
 
-	it('wraps the installed vitest runner', { skip }, () => {
-		const [plugin] = installedPlugins;
-		assert.equal(plugin.name, COMPAT_RUNNER_NAME);
-		assert.deepEqual(plugin.factory.inject, ['$injector']);
-		const runner = plugin.factory(injectorFor({ vitest: {} }));
-		// Both fixes sit on the runner instance.
-		assert.equal(Object.hasOwn(runner, 'init'), true);
-		assert.equal(Object.hasOwn(runner, 'dryRun'), true);
-		assert.equal(runner.constructor.name, 'VitestTestRunner');
-	});
+	it(
+		'declares the vitest-compat runner with the dependencies of the installed runner',
+		{ skip },
+		() => {
+			const vitestRunner = installedRunnerPlugins.find(
+				(plugin) => plugin.kind === 'TestRunner' && plugin.name === 'vitest',
+			);
+			assert.equal(installedPlugins.length, 1);
+			const [plugin] = installedPlugins;
+			assert.equal(plugin.kind, 'TestRunner');
+			assert.equal(plugin.name, COMPAT_RUNNER_NAME);
+			assert.deepEqual(plugin.factory.inject, vitestRunner.factory.inject);
+		},
+	);
+
+	// The installed runner's own dry run, on a Vitest stand-in. The stand-in is
+	// set in place of `init`, which would start the real Vitest.
+	it(
+		'makes the dry run of the installed runner fail when a test file did not load',
+		{ skip },
+		async () => {
+			// The runner reads the coverage of each file from `meta`.
+			const failed = {
+				...testFile('/pkg/a.test.ts', 'fail', { errors: ['Cannot find package'] }),
+				meta: {},
+			};
+			const runner = installedPlugins[0].factory(injectorFor({ vitest: { related: false } }));
+			const started = [];
+			runner.ctx = fakeVitest(started, [failed]);
+			const result = await runner.dryRun({ files: ['/pkg/src/a.ts'] });
+			assert.equal(started.length, 1);
+			assert.deepEqual(result, {
+				status: 'error',
+				errorMessage: 'A test file did not load:\n/pkg/a.test.ts: Cannot find package',
+			});
+		},
+	);
 
 	// The runner's own mutant run, with Vitest replaced by a stand-in. A runner
 	// upgrade that selects tests in another way fails here, and not as a run

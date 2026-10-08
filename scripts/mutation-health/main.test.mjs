@@ -18,8 +18,8 @@ import {
 
 const SOURCE = 'export const a = 1 + 2;\n';
 
-// A Stryker report with one mutant for each given status.
-function report(statuses) {
+// A Stryker report with one mutant for each given status. `extra` goes on each mutant.
+function report(statuses, extra = {}) {
 	return {
 		files: {
 			'src/a.ts': {
@@ -30,6 +30,7 @@ function report(statuses) {
 					status,
 					location: { start: { line: 1, column: 17 }, end: { line: 1, column: 22 } },
 					replacement: '1 - 2',
+					...extra,
 				})),
 			},
 		},
@@ -55,9 +56,9 @@ afterEach(() => {
 	rmSync(path.dirname(pkgRoot), { recursive: true, force: true });
 });
 
-// Run the whole command on the temp package with a fake Stryker that writes
+// Start the whole command on the temp package with a fake Stryker that writes
 // `raw` as its report (no report when `raw` is null) and exits with `exitCode`.
-async function runMain({
+function startMain({
 	raw,
 	exitCode = 0,
 	argv = ['src/a.ts', '--package-dir', pkgRoot],
@@ -87,8 +88,14 @@ async function runMain({
 		exit: p.exit,
 		write: p.write,
 	};
-	const code = await main(argv, io);
-	return { code, stderr: stderr.text(), stdout: stdout.text(), calls: doubles.calls };
+	return { promise: main(argv, io), stderr, stdout, calls: doubles.calls };
+}
+
+// Run the whole command to its exit code (see startMain).
+async function runMain(options) {
+	const run = startMain(options);
+	const code = await run.promise;
+	return { code, stderr: run.stderr.text(), stdout: run.stdout.text(), calls: run.calls };
 }
 
 describe('main', () => {
@@ -122,7 +129,27 @@ describe('main', () => {
 	it('exits 3 when Stryker wrote no report', async () => {
 		const run = await runMain({ raw: null, exitCode: 1 });
 		assert.equal(run.code, 3);
-		assert.match(run.stderr, /\nGate: ERROR — at least one Stryker run produced no report\.\n$/);
+		assert.match(
+			run.stderr,
+			/\nGate: ERROR — at least one Stryker run produced no valid report\.\n$/,
+		);
+	});
+
+	// The plain vitest runner under Vitest 5 ran no test for any mutant, and
+	// every mutant survived. That must read as a broken toolchain, not a score.
+	it('exits 3 and writes no summary when covered mutants survived with no test run', async () => {
+		const notRun = { coveredBy: ['t1'], testsCompleted: 0 };
+		const run = await runMain({ raw: report(['Survived', 'Survived'], notRun) });
+		assert.equal(run.code, 3);
+		assert.match(
+			run.stderr,
+			/\n✗ .*pkg: 2 mutant\(s\) survived with no test run, but tests cover them:\n {3}- src\/a\.ts:1:17\n/,
+		);
+		assert.match(
+			run.stderr,
+			/\nGate: ERROR — at least one Stryker run produced no valid report\.\n$/,
+		);
+		assert.equal(existsSync(path.join(pkgRoot, 'reports/mutation/summary.json')), false);
 	});
 
 	// The playwright package has only a `test:unit` script.
@@ -195,6 +222,34 @@ describe('main --diff', () => {
 		assert.deepEqual(run.calls, []);
 	});
 
+	// --test-files does not work with --diff, so the message must not ask for it.
+	// Every scope check runs before the first run: the instance-ai job, planned
+	// first, must not start either.
+	it('refuses a changed cli source without a changed cli test before any run starts', async () => {
+		writeTree(tempRepo(), SAMPLE_REPO);
+		const sources = [
+			'packages/@n8n/instance-ai/src/utils/model-config-id.ts',
+			'packages/cli/src/credentials/external-secrets.utils.ts',
+		];
+		const run = startMain({
+			raw: report(['Killed']),
+			argv: ['--diff'],
+			git: gitChanged(sources),
+			repoRoot: tempRepo(),
+		});
+		await assert.rejects(
+			run.promise,
+			(error) =>
+				error instanceof MutateError &&
+				error.exitCode === 2 &&
+				/^Mutating packages\/cli with --diff needs at least one changed test file\.\n/.test(
+					error.message,
+				),
+		);
+		assert.deepEqual(run.calls, []);
+		assert.equal(existsSync(path.join(tempRepo(), '.stryker-tmp')), false);
+	});
+
 	// The plan, the run and the sandbox mirror all use the repo that main gets.
 	it('runs the changed lines of each package of the repo it is given', async () => {
 		writeTree(tempRepo(), SAMPLE_REPO);
@@ -249,10 +304,10 @@ describe('reportResults', () => {
 	});
 
 	// One run without a report makes the whole result a broken toolchain.
-	it('exits 3 when any run produced no report, even when another run passed', () => {
+	it('exits 3 when any run produced no valid report, even when another run passed', () => {
 		const { code, text } = gate([{ packageDir: 'packages/b', failed: true }, passed]);
 		assert.equal(code, 3);
 		assert.match(text, /summary: packages\/a\/reports\/mutation\/summary\.json/);
-		assert.match(text, /\nGate: ERROR — at least one Stryker run produced no report\.$/);
+		assert.match(text, /\nGate: ERROR — at least one Stryker run produced no valid report\.$/);
 	});
 });

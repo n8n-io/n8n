@@ -229,12 +229,24 @@ export function exitCodeForSignal(signal) {
 	return signal === 'SIGTERM' ? 143 : 130;
 }
 
+// How long the tool waits after a crash for a live Stryker to stop. On SIGINT
+// Stryker saves its incremental results and exits, which takes about a second.
+// The limit keeps a Stryker that does not stop from holding the tool.
+export const CRASH_STOP_GRACE_MS = 10_000;
+
+const writeStderr = (msg) => process.stderr.write(msg);
+
 /**
  * Handle a crash and a cancellation during a run.
  *
  * `onSignal` gets first refusal on SIGINT and SIGTERM. It returns true when it
- * told a live Stryker to stop: Stryker then removes its sandbox, and the run
- * exits once Stryker is gone. Otherwise this handler exits at once.
+ * told a live Stryker to stop: the run then exits once Stryker is gone, and
+ * the caller's `finally` removes the mirror with Stryker's sandbox in it.
+ * Otherwise this handler exits at once.
+ *
+ * `onCrash` runs on an uncaught exception. When it returns a promise, the exit
+ * waits until the promise settles, for example until a live Stryker is gone.
+ * A second crash while it waits does not exit again.
  *
  * `onExit` runs before each exit that these handlers make. An exit skips every
  * `finally` block, so `onExit` does the cleanup that a `finally` would do. A
@@ -245,10 +257,11 @@ export function exitCodeForSignal(signal) {
  */
 export function registerSignalHandlers({
 	onSignal,
+	onCrash,
 	onExit,
 	proc = process,
 	exit = (code) => process.exit(code),
-	write = (msg) => process.stderr.write(msg),
+	write = writeStderr,
 }) {
 	const leave = (code) => {
 		try {
@@ -258,9 +271,18 @@ export function registerSignalHandlers({
 		}
 		exit(code);
 	};
+	let waitingAfterCrash = false;
 	const handleUncaught = (err) => {
 		write(`\n✗ mutate.mjs crashed: ${err?.stack ?? err}\n`);
-		leave(3);
+		if (waitingAfterCrash) return;
+		const stopped = onCrash?.();
+		if (!stopped) {
+			leave(3);
+			return;
+		}
+		waitingAfterCrash = true;
+		const leaveAfterCrash = () => leave(3);
+		stopped.then(leaveAfterCrash, leaveAfterCrash);
 	};
 	const handleSignal = (signal) => {
 		if (onSignal?.(signal)) return;
@@ -306,41 +328,67 @@ function isRunning(child) {
 	return child.exitCode === null && child.signalCode === null;
 }
 
+// Tell a live Stryker to stop. Settles once it is gone, or after `graceMs`.
+function stopWithin(child, graceMs) {
+	return new Promise((resolve) => {
+		const timer = setTimeout(resolve, graceMs);
+		child.once('close', () => {
+			clearTimeout(timer);
+			resolve();
+		});
+		child.kill('SIGINT');
+	});
+}
+
+// The handlers while Stryker runs. `run` records a cancel and a crash.
+function strykerHandlers(child, run, { onExit, crashStopGraceMs, ...handlerIo }) {
+	const write = handlerIo.write ?? writeStderr;
+	return registerSignalHandlers({
+		...handlerIo,
+		onSignal: (signal) => {
+			if (!isRunning(child)) return false;
+			run.cancelledBy = signal;
+			child.kill('SIGINT');
+			return true;
+		},
+		// The run does not go on after a crash. A live Stryker gets a short time
+		// to stop, so the cleanup does not remove the mirror while Stryker uses it.
+		onCrash: () => {
+			run.crashed = true;
+			if (!isRunning(child)) return null;
+			write(`Waiting up to ${crashStopGraceMs / 1000} s for Stryker to stop before the cleanup.\n`);
+			return stopWithin(child, crashStopGraceMs);
+		},
+		// Stop a Stryker that is still alive, so it does not run on without the tool.
+		onExit: () => {
+			if (isRunning(child)) child.kill('SIGINT');
+			onExit?.();
+		},
+	});
+}
+
 /**
  * Start Stryker and wait until it is gone. Its output streams through and is
  * also kept, so the caller can classify the run. `cancelledBy` names the
  * signal that stopped the run, or is null. `spawn` and the streams are
  * injected so the unit tests can check the command without starting Stryker.
  * `onExit` is the caller's cleanup for an exit while Stryker runs (see
- * registerSignalHandlers).
+ * registerSignalHandlers). After a crash the promise never settles: the crash
+ * handler ends the process once Stryker is gone or `crashStopGraceMs` passed.
  */
 export function runStryker({ argv, cwd }, io = {}) {
 	const {
 		spawn = nodeSpawn,
 		stdout = process.stdout,
 		stderr = process.stderr,
-		onExit,
+		crashStopGraceMs = CRASH_STOP_GRACE_MS,
 		...handlerIo
 	} = io;
 	return new Promise((resolve, reject) => {
 		const chunks = [];
-		let cancelledBy = null;
+		const run = { cancelledBy: null, crashed: false };
 		const child = spawn(process.execPath, argv, { cwd, stdio: ['inherit', 'pipe', 'pipe'] });
-		const handlers = registerSignalHandlers({
-			...handlerIo,
-			onSignal: (signal) => {
-				if (!isRunning(child)) return false;
-				cancelledBy = signal;
-				child.kill('SIGINT');
-				return true;
-			},
-			// After a crash the process exits at once. Stop a live Stryker first,
-			// so that it does not keep running without the tool.
-			onExit: () => {
-				if (isRunning(child)) child.kill('SIGINT');
-				onExit?.();
-			},
-		});
+		const handlers = strykerHandlers(child, run, { ...handlerIo, crashStopGraceMs });
 		const keep = (sink) => (chunk) => {
 			chunks.push(Buffer.from(chunk));
 			sink.write(chunk);
@@ -348,12 +396,15 @@ export function runStryker({ argv, cwd }, io = {}) {
 		child.stdout.on('data', keep(stdout));
 		child.stderr.on('data', keep(stderr));
 		child.on('error', (err) => {
+			if (run.crashed) return;
 			handlers.dispose();
 			reject(new MutateError(3, `Stryker failed to start: ${err.message}`));
 		});
 		child.on('close', (code) => {
+			if (run.crashed) return;
 			handlers.dispose();
-			resolve({ exitCode: code ?? 1, output: Buffer.concat(chunks).toString('utf8'), cancelledBy });
+			const output = Buffer.concat(chunks).toString('utf8');
+			resolve({ exitCode: code ?? 1, output, cancelledBy: run.cancelledBy });
 		});
 	});
 }

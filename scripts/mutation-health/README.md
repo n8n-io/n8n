@@ -60,7 +60,7 @@ That divergence is exactly why this project exists.
 | `sandbox-mirror.mjs` | Where the sandbox goes. See [Sandbox runs](#sandbox-runs). |
 | `summary.mjs` | Scoring, the gate and `summary.json`. |
 | `vitest-compat.mjs`, `vitest-compat-runner.mjs` | The `vitest-compat` Stryker test runner. See [Vitest 5](#vitest-5). |
-| `*.test.mjs`, `test-doubles.mjs`, `samples.mjs` | Unit tests (`node --test scripts/mutation-health/*.test.mjs`). They start no Stryker run. CI runs them in the "Workflow scripts" job, which installs only `.github/scripts`, so a test must not need a root dependency such as Stryker or fast-check. Inject a stand-in, or skip the test when the dependency is missing. `properties.test.mjs` checks the pure helpers with seeded generated inputs from `samples.mjs`. |
+| `*.test.mjs`, `test-doubles.mjs`, `samples.mjs` | Unit tests (`node --test scripts/mutation-health/*.test.mjs`). They start no Stryker run. CI runs them in the "Workflow scripts" job, which installs only `.github/scripts`, so a test must not need a root dependency such as Stryker or fast-check. Inject a stand-in, or skip the test when the dependency is missing. `properties.test.mjs` checks the pure helpers with seeded generated inputs from `samples.mjs`. `working-tree.test.mjs` checks the main promise of the tool: an edit made while a run is in flight stays, whatever way the run ends. |
 | `stryker.default.mjs` | Shared Stryker config for any vitest package. A package that needs special handling ships its own `stryker.config.mjs`, which `mutate.mjs` prefers. |
 | `stryker.cli.mjs` | The default plus `vitest.related: false`, used for `packages/cli` targets. See [Scoping the tests](#scoping-the-tests-with---test-files). |
 
@@ -102,9 +102,9 @@ pnpm mutate packages/quality/testing/playwright/coverage-options.ts \
 ```
 
 Exit codes: `0` gate passed · `1` gate failed (summary.json still written — this is the
-iterate signal) · `2` usage or config error · `3` Stryker could not run · `130` / `143` the run
-was cancelled. A toolchain failure is **never** `1`, so a broken checkout can't be mistaken for a
-score of zero.
+iterate signal) · `2` usage or config error · `3` Stryker could not run, or its test runner ran
+no test for a mutant that tests cover · `130` / `143` the run was cancelled. A toolchain failure is
+**never** `1`, so a broken checkout can't be mistaken for a score of zero.
 
 ### Why `--diff` is fast
 
@@ -224,6 +224,13 @@ file without an error, and the run then reads as "no covering tests".
 the package-local configs of `packages/workflow` and `@n8n/scheduler`. Remove the name fix when
 the runner supports Vitest 5.
 
+The tool also checks each report for this failure, so that a later runner or Vitest change
+cannot bring it back without a sign. Stryker records the tests that cover each mutant
+(`coveredBy`) and the number of tests it ran for the mutant (`testsCompleted`). A mutant that tests
+cover but that survived with no test run means that the runner did not run its covering tests.
+The run then exits `3`, lists the first such mutants and writes no `summary.json`. A covering test
+that skips itself at run time has the same effect, because Stryker does not count a skipped test.
+
 ## Sandbox runs
 
 Every run uses Stryker's sandbox: Stryker copies the package and mutates the copy, never your
@@ -244,8 +251,11 @@ turned off for these runs, because the paths are already right.
 
 After each run Stryker removes its sandbox and the tool removes the mirror. The removal unlinks
 each link and never follows one, so it never deletes a real file. The tool also removes the mirror
-before it exits on `SIGINT`, `SIGTERM` or a crash. On a crash while Stryker runs, the tool first
-tells Stryker to stop, so Stryker does not keep running without it. Only a stop that the tool
+before it exits on `SIGINT`, `SIGTERM` or a crash. On a signal, Stryker stops and does not remove
+its sandbox, so the mirror removal removes it. On a crash while Stryker runs, the tool tells
+Stryker to stop and waits up to 10 seconds until Stryker is gone. Only then does it remove the
+mirror, so it does not remove files that Stryker still uses. If Stryker is still alive after the
+wait, the tool tells it to stop again, which makes Stryker exit at once. Only a stop that the tool
 cannot handle, such as `SIGKILL`, leaves a `.stryker-tmp/mirror-*` directory behind. It holds only
 directories and links, and you can delete it.
 

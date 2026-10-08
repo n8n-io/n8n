@@ -3,7 +3,8 @@
  * the test files to run. The planners read the file system and git. Git is
  * injected so the unit tests can check which git commands a plan uses: only
  * `merge-base` and `diff`, never one that writes. The repo root is also a
- * parameter (default: this repo), so the unit tests plan in a temp repo.
+ * parameter (default: this repo), so the unit tests plan in a temp repo. The
+ * default git runs in that same root, so a plan reads one repo only.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -27,9 +28,10 @@ const TEST_COMMAND_HINT =
 	'Name the command that runs its tests with --test-command, for example ' +
 	"--test-command 'pnpm exec vitest run'.";
 
-export function runGit(args) {
+/** Run a read-only git command in `root` (default: this repo) and return its text output. */
+export function runGit(args, root = repoRoot) {
 	const res = spawnSync('git', args, {
-		cwd: repoRoot,
+		cwd: root,
 		encoding: 'utf8',
 		maxBuffer: 64 * 1024 * 1024,
 	});
@@ -134,8 +136,12 @@ function planChangedFile(file, { from, git, root, byPackage, skipped }) {
 /**
  * One job per package for every line this branch changed. `packages/cli` jobs
  * also get the cli test files the patch changed, as their explicit test list.
+ * Without an injected `git`, git runs in `repoRoot`.
  */
-export function planFromDiff(base, { git = runGit, repoRoot: root = repoRoot } = {}) {
+export function planFromDiff(
+	base,
+	{ repoRoot: root = repoRoot, git = (args) => runGit(args, root) } = {},
+) {
 	const { from, files } = changedFilesSince(base, git);
 	const byPackage = new Map();
 	const skipped = [];

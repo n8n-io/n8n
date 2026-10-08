@@ -154,7 +154,9 @@ describe('toolCallFromPersistedPart properties', () => {
 				fc.constant(FAILED_DELEGATION),
 				fc.constant({ status: 'completed', answer: 'Done' }),
 				// Other outputs never read as a delegation status.
-				fc.jsonValue().filter((value) => !JSON.stringify(value).includes('"status"')),
+				fc
+					.jsonValue()
+					.filter((value) => !JSON.stringify(value).includes('"status"')),
 			),
 			error: fc.option(fc.string(), { nil: undefined }),
 		},
@@ -163,7 +165,11 @@ describe('toolCallFromPersistedPart properties', () => {
 	const toolNameArb = fc.constantFrom(DELEGATE_SUB_AGENT_TOOL_NAME, 'read_file');
 
 	/** The state table, written out without the helpers of the mapper. */
-	function expectedState(part: AgentPersistedMessageContentPart, toolName: string, failed: boolean) {
+	function expectedState(
+		part: AgentPersistedMessageContentPart,
+		toolName: string,
+		failed: boolean,
+	) {
 		if (part.state === 'resolved') {
 			if (part.canceled === true) return 'cancelled';
 			const failedDelegation =

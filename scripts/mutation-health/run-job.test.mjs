@@ -14,6 +14,7 @@ import {
 	fakeSpawn,
 	namesInPlaceMode,
 	resolveFakeStrykerBin,
+	settledState,
 	sink,
 } from './test-doubles.mjs';
 
@@ -401,19 +402,24 @@ describe('runJob exits on a signal or a crash, with the sandbox in a mirror', ()
 		assert.deepEqual(seen, { exits: [143], mirrorExists: false, kills: [] });
 	});
 
-	it('stops a live Stryker and removes the mirror, then exits 3, on a crash', async () => {
+	// Stryker can still work in its sandbox until it is gone. The job does not
+	// go on after the crash, so its promise never settles.
+	it('stops a live Stryker on a crash, then removes the mirror and exits 3 once it is gone', async () => {
 		const seen = {};
 		const stryker = (child, _call, p) => {
 			p.proc.emit('uncaughtException', new Error('boom'));
 			Object.assign(seen, atExit(p), { kills: [...child.kills] });
-			child.finish(130);
+			setImmediate(() => child.finish(130));
 		};
-		await runFakeJob({ inRepo: true, stryker }).promise;
-		assert.deepEqual(seen, { exits: [3], mirrorExists: false, kills: ['SIGINT'] });
+		const run = runFakeJob({ inRepo: true, stryker });
+		assert.equal(await run.exited, 3);
+		assert.deepEqual(seen, { exits: [], mirrorExists: true, kills: ['SIGINT'] });
+		assert.equal(existsSync(mirrorParent()), false);
+		assert.equal(await settledState(run.promise), 'pending');
 	});
 
-	// Two sets would both act on one signal: one would exit while Stryker still
-	// removes its sandbox.
+	// Two sets would both act on one signal: one would exit and remove the
+	// mirror while Stryker still runs in it.
 	it('listens with one set of handlers at a time, and with none after the job', async () => {
 		const counts = [];
 		const onPrint = (text, p) => {
