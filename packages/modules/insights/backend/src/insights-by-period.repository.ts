@@ -92,26 +92,15 @@ const aggregatedInsightsByTimeParser = z
 	})
 	.array();
 
-const dailyExecutionCountsParser = z
+const dailyBillableExecutionsParser = z
 	.object({
 		periodStart: periodStartParser,
-		total: z.union([z.number(), z.string()]).transform((value) => Number(value)),
-		billable: z
-			.union([z.number(), z.string(), z.null()])
-			.transform((value) => (value === null ? null : Number(value))),
+		billable: z.union([z.number(), z.string()]).transform((value) => Number(value)),
 	})
-	.transform(({ periodStart, total, billable }) => ({
-		day: periodStart.slice(0, 10),
-		total,
-		billable,
-	}))
+	.transform(({ periodStart, billable }) => ({ day: periodStart.slice(0, 10), billable }))
 	.array();
 
-type DailyExecutionCounts = z.infer<typeof dailyExecutionCountsParser>[number];
-
 const UTC_TIME_ZONE = { name: 'UTC', offsetMinutes: 0 };
-
-const EXECUTION_COUNT_TYPES = [TypeToNumber.success, TypeToNumber.failure, TypeToNumber.billable];
 
 /**
  * Identifies a caller whose insights must be limited to the workflows they can
@@ -588,13 +577,13 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return aggregatedInsightsByTimeParser.parse(rawRows);
 	}
 
-	async getDailyExecutionCounts({
+	async getDailyBillableExecutions({
 		startDate,
 		endDate,
 	}: {
 		startDate: Date;
 		endDate: Date;
-	}): Promise<DailyExecutionCounts[]> {
+	}): Promise<Array<{ day: string; billable: number }>> {
 		const firstDay = DateTime.fromJSDate(startDate, { zone: 'utc' }).startOf('day');
 		const cte = getDateRangesSelectQuery({
 			dbType,
@@ -606,20 +595,16 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 
 		const rawRows = await this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
-			.select([
-				`${periodStartExpr} as "periodStart"`,
-				`SUM(CASE WHEN insights.type IN (${TypeToNumber.success}, ${TypeToNumber.failure}) THEN value ELSE 0 END) AS "total"`,
-				`SUM(CASE WHEN insights.type = ${TypeToNumber.billable} THEN value END) AS "billable"`,
-			])
+			.select([`${periodStartExpr} as "periodStart"`, 'SUM(value) AS "billable"'])
 			.innerJoin('date_ranges', 'date_ranges', '1=1')
 			.where(`${this.escapeField('periodStart')} >= date_ranges.start_date`)
 			.andWhere(`${this.escapeField('periodStart')} < date_ranges.end_date`)
-			.andWhere(`insights.type IN (${EXECUTION_COUNT_TYPES.join(', ')})`)
+			.andWhere(`insights.type = ${TypeToNumber.billable}`)
 			.groupBy(periodStartExpr)
 			.orderBy(periodStartExpr, 'ASC')
 			.getRawMany();
 
-		return dailyExecutionCountsParser.parse(rawRows);
+		return dailyBillableExecutionsParser.parse(rawRows);
 	}
 
 	async getFirstBillableDay(): Promise<string | null> {
@@ -628,7 +613,11 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.where(`insights.type = ${TypeToNumber.billable}`)
 			.getRawOne<{ first: Date | string | null }>();
 
-		return result?.first ? periodStartParser.parse(result.first).slice(0, 10) : null;
+		if (!result?.first) {
+			return null;
+		}
+
+		return periodStartParser.parse(result.first).slice(0, 10);
 	}
 
 	async pruneOldData(maxAgeInDays: number): Promise<{ affected: number | null | undefined }> {

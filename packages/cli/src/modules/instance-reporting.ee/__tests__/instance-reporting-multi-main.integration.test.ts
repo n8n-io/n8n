@@ -69,7 +69,8 @@ describe('instance reporting across mains', () => {
 		const config = new InstanceReportingConfig();
 		config.instanceReportingBaseUrl = 'https://receiver.test';
 		const insights = mock<InsightsService>();
-		insights.getDailyBillableExecutions.mockResolvedValue(new Map([[REPORT_DAY, 5]]));
+		insights.getDailyExecutionTotals.mockResolvedValue(new Map([[REPORT_DAY, 5]]));
+		insights.getFirstBillableDay.mockResolvedValue(null);
 		const metrics = mock<LicenseMetricsRepository>();
 		metrics.getLicenseRenewalMetrics.mockResolvedValue(
 			mock<Awaited<ReturnType<LicenseMetricsRepository['getLicenseRenewalMetrics']>>>({
@@ -203,7 +204,7 @@ describe('instance reporting across mains', () => {
 		let arrived = 0;
 		const barrier = createDeferredPromise();
 		for (const [index, main] of [leader, follower].entries()) {
-			main.insights.getDailyBillableExecutions.mockImplementation(async () => {
+			main.insights.getDailyExecutionTotals.mockImplementation(async () => {
 				if (++arrived === 2) barrier.resolve();
 				await barrier.promise;
 				return new Map([[REPORT_DAY, index + 1]]);

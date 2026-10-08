@@ -833,8 +833,8 @@ describe('instance reporting retries', () => {
 
 		// Another process inserts today's report after this one found nothing pending.
 		const insights = Container.get(InsightsService);
-		const measure = insights.getDailyBillableExecutions.bind(insights);
-		vi.spyOn(insights, 'getDailyBillableExecutions').mockImplementation(async (args) => {
+		const measure = insights.getDailyExecutionTotals.bind(insights);
+		vi.spyOn(insights, 'getDailyExecutionTotals').mockImplementation(async (args) => {
 			other = await createPendingOn(new Date(), otherPoints);
 			return await measure(args);
 		});

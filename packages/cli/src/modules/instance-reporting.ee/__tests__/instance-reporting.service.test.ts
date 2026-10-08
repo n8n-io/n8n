@@ -53,9 +53,9 @@ const LICENSE_METRICS_MOCK = {
 	evaluations: 0,
 };
 
-/** Daily billable executions as insights returns them, keyed by `YYYY-MM-DD`. */
-function billableByDay(executions: Record<string, number>): Map<string, number> {
-	return new Map(Object.entries(executions));
+/** Daily execution totals as insights returns them, keyed by `YYYY-MM-DD`. */
+function totalsByDay(totals: Record<string, number>): Map<string, number> {
+	return new Map(Object.entries(totals));
 }
 
 function makeConfig(overrides: Partial<InstanceReportingConfig> = {}): InstanceReportingConfig {
@@ -110,9 +110,8 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 
 	const insightsService = mock<InsightsService>();
 	// The reported day held 42 executions.
-	insightsService.getDailyBillableExecutions.mockResolvedValue(
-		billableByDay({ [REPORT_DATE]: 42 }),
-	);
+	insightsService.getDailyExecutionTotals.mockResolvedValue(totalsByDay({ [REPORT_DATE]: 42 }));
+	insightsService.getFirstBillableDay.mockResolvedValue(null);
 	// No insights data: an instance that has not compacted anything yet.
 	insightsService.getEarliestDataDate.mockResolvedValue(null);
 
@@ -568,7 +567,7 @@ describe('InstanceReportingService', () => {
 			await expect(service.sendReport(new Date())).resolves.toBeUndefined();
 
 			expect(http.request).not.toHaveBeenCalled();
-			expect(insightsService.getDailyBillableExecutions).not.toHaveBeenCalled();
+			expect(insightsService.getDailyExecutionTotals).not.toHaveBeenCalled();
 			expect(reportRepository.createPending).not.toHaveBeenCalled();
 		});
 
@@ -601,12 +600,12 @@ describe('InstanceReportingService', () => {
 			});
 		});
 
-		test('reads the daily billable executions for the reported UTC day', async () => {
+		test('reads the daily execution totals for the reported UTC day', async () => {
 			const { service, insightsService } = makeHarness();
 
 			await service.sendReport(new Date());
 
-			expect(insightsService.getDailyBillableExecutions).toHaveBeenCalledWith({
+			expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledWith({
 				startDate: new Date('2026-03-25T00:00:00.000Z'),
 				endDate: new Date('2026-03-25T00:00:00.000Z'),
 			});
@@ -805,7 +804,7 @@ describe('InstanceReportingService', () => {
 			// Re-measuring would sample the cumulative total at a different point in
 			// the day and stretch its interval past 24 hours.
 			expect(body(http).dataPoints).toEqual(measured);
-			expect(insightsService.getDailyBillableExecutions).not.toHaveBeenCalled();
+			expect(insightsService.getDailyExecutionTotals).not.toHaveBeenCalled();
 			expect(reportRepository.createPending).not.toHaveBeenCalled();
 		});
 	});
@@ -879,8 +878,8 @@ describe('InstanceReportingService', () => {
 		test('carries a daily point for every day since the last delivered report', async () => {
 			const { service, reportRepository, insightsService, http } = makeHarness();
 			reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-22');
-			insightsService.getDailyBillableExecutions.mockResolvedValue(
-				billableByDay({ '2026-03-23': 5, '2026-03-24': 7, '2026-03-25': 9 }),
+			insightsService.getDailyExecutionTotals.mockResolvedValue(
+				totalsByDay({ '2026-03-23': 5, '2026-03-24': 7, '2026-03-25': 9 }),
 			);
 
 			await service.sendReport(new Date());
@@ -891,7 +890,7 @@ describe('InstanceReportingService', () => {
 				{ value: 9, date: '2026-03-25' },
 			]);
 			// One range query covers the gap, and the cumulative point stays single.
-			expect(insightsService.getDailyBillableExecutions).toHaveBeenCalledWith({
+			expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledWith({
 				startDate: new Date('2026-03-23T00:00:00.000Z'),
 				endDate: new Date('2026-03-25T00:00:00.000Z'),
 			});
@@ -902,15 +901,94 @@ describe('InstanceReportingService', () => {
 			const { service, reportRepository, insightsService, http } = makeHarness();
 			reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-23');
 			// Insights returns no row for a day that saw nothing.
-			insightsService.getDailyBillableExecutions.mockResolvedValue(
-				billableByDay({ '2026-03-25': 9 }),
-			);
+			insightsService.getDailyExecutionTotals.mockResolvedValue(totalsByDay({ '2026-03-25': 9 }));
 
 			await service.sendReport(new Date());
 
 			expect(dailyPoints(http)).toEqual([
 				{ value: 0, date: '2026-03-24' },
 				{ value: 9, date: '2026-03-25' },
+			]);
+		});
+
+		test('reports the total on and before the first billable day and billable executions after it', async () => {
+			const { service, reportRepository, insightsService, http } = makeHarness();
+			reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-21');
+			insightsService.getFirstBillableDay.mockResolvedValue('2026-03-23');
+			insightsService.getDailyExecutionTotals.mockResolvedValue(
+				totalsByDay({ '2026-03-22': 5, '2026-03-23': 7 }),
+			);
+			insightsService.getDailyBillableExecutions.mockResolvedValue(
+				totalsByDay({ '2026-03-24': 3, '2026-03-25': 4 }),
+			);
+
+			await service.sendReport(new Date());
+
+			expect(dailyPoints(http)).toEqual([
+				{ value: 5, date: '2026-03-22' },
+				{ value: 7, date: '2026-03-23' },
+				{ value: 3, date: '2026-03-24' },
+				{ value: 4, date: '2026-03-25' },
+			]);
+			expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledWith({
+				startDate: new Date('2026-03-22T00:00:00.000Z'),
+				endDate: new Date('2026-03-23T00:00:00.000Z'),
+			});
+			expect(insightsService.getDailyBillableExecutions).toHaveBeenCalledWith({
+				startDate: new Date('2026-03-24T00:00:00.000Z'),
+				endDate: new Date('2026-03-25T00:00:00.000Z'),
+			});
+		});
+
+		test('reports only billable executions when the first billable day is before the reported days', async () => {
+			const { service, reportRepository, insightsService, http } = makeHarness();
+			reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-23');
+			insightsService.getFirstBillableDay.mockResolvedValue('2026-03-01');
+			insightsService.getDailyBillableExecutions.mockResolvedValue(
+				totalsByDay({ '2026-03-24': 3, '2026-03-25': 4 }),
+			);
+
+			await service.sendReport(new Date());
+
+			expect(dailyPoints(http)).toEqual([
+				{ value: 3, date: '2026-03-24' },
+				{ value: 4, date: '2026-03-25' },
+			]);
+			expect(insightsService.getDailyExecutionTotals).not.toHaveBeenCalled();
+		});
+
+		test('reports only totals when insights has no billable executions', async () => {
+			const { service, reportRepository, insightsService, http } = makeHarness();
+			reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-23');
+			insightsService.getDailyExecutionTotals.mockResolvedValue(
+				totalsByDay({ '2026-03-24': 5, '2026-03-25': 6 }),
+			);
+
+			await service.sendReport(new Date());
+
+			expect(dailyPoints(http)).toEqual([
+				{ value: 5, date: '2026-03-24' },
+				{ value: 6, date: '2026-03-25' },
+			]);
+			expect(insightsService.getDailyBillableExecutions).not.toHaveBeenCalled();
+		});
+
+		test('reports 0 for a day after the first billable day without billable executions', async () => {
+			const { service, reportRepository, insightsService, http } = makeHarness();
+			reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-23');
+			insightsService.getFirstBillableDay.mockResolvedValue('2026-03-20');
+			insightsService.getDailyExecutionTotals.mockResolvedValue(
+				totalsByDay({ '2026-03-24': 5, '2026-03-25': 6 }),
+			);
+			insightsService.getDailyBillableExecutions.mockResolvedValue(
+				totalsByDay({ '2026-03-25': 4 }),
+			);
+
+			await service.sendReport(new Date());
+
+			expect(dailyPoints(http)).toEqual([
+				{ value: 0, date: '2026-03-24' },
+				{ value: 4, date: '2026-03-25' },
 			]);
 		});
 
@@ -936,8 +1014,8 @@ describe('InstanceReportingService', () => {
 				const { service, reportRepository, insightsService, http } = makeHarness();
 				reportRepository.findLastCoveredDay.mockResolvedValue(null);
 				insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-03-20T00:00:00.000Z'));
-				insightsService.getDailyBillableExecutions.mockResolvedValue(
-					billableByDay({ '2026-03-20': 4, [REPORT_DATE]: 42 }),
+				insightsService.getDailyExecutionTotals.mockResolvedValue(
+					totalsByDay({ '2026-03-20': 4, [REPORT_DATE]: 42 }),
 				);
 
 				await service.sendReport(new Date());
@@ -956,7 +1034,7 @@ describe('InstanceReportingService', () => {
 			test('reports yesterday as 0 on a new instance without insights data', async () => {
 				const { service, reportRepository, insightsService, http } = makeHarness();
 				reportRepository.findLastCoveredDay.mockResolvedValue(null);
-				insightsService.getDailyBillableExecutions.mockResolvedValue(new Map());
+				insightsService.getDailyExecutionTotals.mockResolvedValue(new Map());
 
 				await service.sendReport(new Date());
 
@@ -970,7 +1048,7 @@ describe('InstanceReportingService', () => {
 				const { service, reportRepository, insightsService, http } = makeHarness();
 				reportRepository.findLastCoveredDay.mockResolvedValue(null);
 				insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-03-26T00:00:00.000Z'));
-				insightsService.getDailyBillableExecutions.mockResolvedValue(new Map());
+				insightsService.getDailyExecutionTotals.mockResolvedValue(new Map());
 
 				await service.sendReport(new Date());
 
@@ -1010,7 +1088,7 @@ describe('InstanceReportingService', () => {
 
 				expect(points(http)).toEqual(measured);
 				expect(insightsService.getEarliestDataDate).not.toHaveBeenCalled();
-				expect(insightsService.getDailyBillableExecutions).not.toHaveBeenCalled();
+				expect(insightsService.getDailyExecutionTotals).not.toHaveBeenCalled();
 			});
 		});
 
@@ -1044,8 +1122,8 @@ describe('InstanceReportingService', () => {
 
 			await service.sendReport(new Date());
 
-			expect(insightsService.getDailyBillableExecutions).toHaveBeenCalledTimes(1);
-			expect(insightsService.getDailyBillableExecutions).toHaveBeenCalledWith({
+			expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledTimes(1);
+			expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledWith({
 				startDate: new Date('2026-01-01T00:00:00.000Z'),
 				endDate: new Date('2026-03-25T00:00:00.000Z'),
 			});

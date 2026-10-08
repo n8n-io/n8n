@@ -1176,83 +1176,36 @@ describe('InsightsService', () => {
 
 	describe('getDailyBillableExecutions', () => {
 		const startDate = new Date('2026-03-20T00:00:00.000Z');
-		const endDate = new Date('2026-03-24T00:00:00.000Z');
+		const endDate = new Date('2026-03-22T00:00:00.000Z');
 
-		const day = (date: string, total: number, billable: number | null = null) => ({
-			day: date,
-			total,
-			billable,
-		});
-
-		async function getDailyBillableExecutions(
-			firstBillableDay: string | null,
-			days: Array<ReturnType<typeof day>>,
-		) {
-			mockInsightsByPeriodRepository.getFirstBillableDay.mockResolvedValue(firstBillableDay);
-			mockInsightsByPeriodRepository.getDailyExecutionCounts.mockResolvedValue(days);
-
-			return Object.fromEntries(
-				await insightsService.getDailyBillableExecutions({ startDate, endDate }),
-			);
-		}
-
-		it('reports the total for every day when no day has billable executions', async () => {
-			const result = await getDailyBillableExecutions(null, [
-				day('2026-03-20', 8),
-				day('2026-03-21', 5),
+		it('returns the billable executions keyed by UTC day', async () => {
+			mockInsightsByPeriodRepository.getDailyBillableExecutions.mockResolvedValue([
+				{ day: '2026-03-20', billable: 4 },
+				{ day: '2026-03-22', billable: 0 },
 			]);
 
-			expect(result).toEqual({ '2026-03-20': 8, '2026-03-21': 5 });
+			const result = await insightsService.getDailyBillableExecutions({ startDate, endDate });
+
+			expect(Object.fromEntries(result)).toEqual({ '2026-03-20': 4, '2026-03-22': 0 });
 		});
 
-		it('reports the total on and before the first billable day and billable after it', async () => {
-			const result = await getDailyBillableExecutions('2026-03-21', [
-				day('2026-03-20', 8),
-				day('2026-03-21', 7, 4),
-				day('2026-03-22', 6, 5),
-				day('2026-03-23', 9, 8),
-			]);
+		it('reads the billable executions from the start to the end date', async () => {
+			mockInsightsByPeriodRepository.getDailyBillableExecutions.mockResolvedValue([]);
 
-			expect(result).toEqual({
-				'2026-03-20': 8,
-				'2026-03-21': 7,
-				'2026-03-22': 5,
-				'2026-03-23': 8,
-			});
-		});
+			await insightsService.getDailyBillableExecutions({ startDate, endDate });
 
-		it('reports billable for every day when the first billable day is before the range', async () => {
-			const result = await getDailyBillableExecutions('2026-03-01', [
-				day('2026-03-20', 7, 4),
-				day('2026-03-21', 6, 5),
-			]);
-
-			expect(result).toEqual({ '2026-03-20': 4, '2026-03-21': 5 });
-		});
-
-		it('reports 0 for a day after the first billable day without billable executions', async () => {
-			const result = await getDailyBillableExecutions('2026-03-20', [
-				day('2026-03-20', 7, 4),
-				day('2026-03-21', 3),
-				day('2026-03-22', 6, 5),
-			]);
-
-			expect(result).toEqual({ '2026-03-20': 7, '2026-03-21': 0, '2026-03-22': 5 });
-		});
-
-		it('returns an empty map when no day has executions', async () => {
-			const result = await getDailyBillableExecutions(null, []);
-
-			expect(result).toEqual({});
-		});
-
-		it('reads the days from the start to the end date', async () => {
-			await getDailyBillableExecutions(null, []);
-
-			expect(mockInsightsByPeriodRepository.getDailyExecutionCounts).toHaveBeenCalledWith({
+			expect(mockInsightsByPeriodRepository.getDailyBillableExecutions).toHaveBeenCalledWith({
 				startDate,
 				endDate,
 			});
+		});
+	});
+
+	describe('getFirstBillableDay', () => {
+		it('returns the first billable day from the repository', async () => {
+			mockInsightsByPeriodRepository.getFirstBillableDay.mockResolvedValue('2026-03-21');
+
+			await expect(insightsService.getFirstBillableDay()).resolves.toBe('2026-03-21');
 		});
 	});
 });
