@@ -1871,7 +1871,51 @@ describe('useCanvasOperations', () => {
 		const deprecatedType = 'n8n-nodes-base.function';
 		const replacementType = 'n8n-nodes-base.code';
 
-		it('should add a deprecated node unchanged instead of replacing it', async () => {
+		const setupDeprecatedNode = () => {
+			useNodeTypesStore().nodeTypes = {
+				[deprecatedType]: {
+					1: mockNodeTypeDescription({ name: deprecatedType, deprecated: true }),
+				},
+			};
+			const node = createTestNode({ id: 'deprecated', name: 'Function', type: deprecatedType });
+			workflowDocumentStoreInstance.allNodes = [node];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([node]);
+			return node;
+		};
+
+		it('should not toggle a deprecated node', () => {
+			const node = setupDeprecatedNode();
+			const updateNodePropertiesSpy = vi.spyOn(
+				workflowDocumentStoreInstance,
+				'updateNodeProperties',
+			);
+
+			useCanvasOperations().toggleNodesDisabled([node.id]);
+
+			expect(updateNodePropertiesSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not duplicate a deprecated node', async () => {
+			const node = setupDeprecatedNode();
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			expect(await useCanvasOperations().duplicateNodes([node.id])).toEqual([]);
+			expect(addNodeSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not copy or cut a deprecated node', async () => {
+			const node = setupDeprecatedNode();
+			const startRecordingUndoSpy = vi.spyOn(useHistoryStore(), 'startRecordingUndo');
+
+			const { copyNodes, cutNodes } = useCanvasOperations();
+
+			expect(await copyNodes([node.id])).toBe(false);
+			await cutNodes([node.id]);
+			expect(useClipboard().copy).not.toHaveBeenCalled();
+			expect(startRecordingUndoSpy).not.toHaveBeenCalled();
+		});
+
+		it('should add a deprecated node on paste', async () => {
 			const toast = useToast();
 			const nodeTypesStore = useNodeTypesStore();
 
@@ -1891,13 +1935,9 @@ describe('useCanvasOperations', () => {
 			const { addNodes } = useCanvasOperations();
 			const added = await addNodes([{ type: deprecatedType }], {});
 
-			// The deprecated node lands on the canvas as-is; it is not swapped for
-			// its replacement (or the No-Op fallback).
 			expect(addNodeSpy).toHaveBeenCalledTimes(1);
 			expect(addNodeSpy.mock.calls[0][0].type).toBe(deprecatedType);
 			expect(added[0].type).toBe(deprecatedType);
-
-			// No "deprecated nodes replaced" warning toast is shown.
 			expect(toast.showMessage).not.toHaveBeenCalled();
 		});
 	});

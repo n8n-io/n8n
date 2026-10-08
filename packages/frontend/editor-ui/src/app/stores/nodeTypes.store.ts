@@ -129,6 +129,11 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		};
 	});
 
+	const isNodeDeprecated = computed(() => {
+		return (node: { type: string; typeVersion: number }): boolean =>
+			getNodeType.value(node.type, node.typeVersion)?.deprecated === true;
+	});
+
 	const getNodeVersions = computed(() => {
 		return (nodeTypeName: string): number[] => {
 			return Object.keys(nodeTypes.value[nodeTypeName] ?? {}).map(Number);
@@ -551,6 +556,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		allNodeTypes,
 		allLatestNodeTypes,
 		getNodeType,
+		isNodeDeprecated,
 		getNodeVersions,
 		getCredentialOnlyNodeType,
 		isConfigNode,

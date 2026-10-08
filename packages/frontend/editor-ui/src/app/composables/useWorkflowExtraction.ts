@@ -513,6 +513,17 @@ export function useWorkflowExtraction() {
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {
 		const expandedNodeIds = expandSelectionWithSubNodes(nodeIds);
+		const deprecatedNodes = workflowDocumentStore.value.allNodes.filter(
+			(node) => expandedNodeIds.includes(node.id) && nodeTypesStore.isNodeDeprecated(node),
+		);
+		if (deprecatedNodes.length > 0) {
+			showError(
+				i18n.baseText('workflowExtraction.error.deprecatedSelected', {
+					interpolate: { nodes: deprecatedNodes.map(({ name }) => `'${name}'`).join(', ') },
+				}),
+			);
+			return false;
+		}
 		const result = isSelectionExtractable(expandedNodeIds);
 
 		if (!result.valid) {

@@ -164,9 +164,6 @@ export function useContextMenuItems(
 		return canAddNodeOfType(nodeType);
 	};
 
-	const isDeprecatedNode = (node: INode): boolean =>
-		nodeTypesStore.getNodeType(node.type, node.typeVersion)?.deprecated === true;
-
 	const hasPinData = (node: INode): boolean => {
 		return !!workflowDocumentStore?.value?.pinnedDataByNodeName?.[node.name];
 	};
@@ -333,7 +330,7 @@ export function useContextMenuItems(
 						divided: true,
 						label: i18n.baseText('contextMenu.extract', i18nOptions),
 						shortcut: { altKey: true, keys: ['X'] },
-						disabled: isReadOnly.value || nodes.some(isDeprecatedNode),
+						disabled: isReadOnly.value || nodes.some(nodeTypesStore.isNodeDeprecated),
 					},
 				];
 
@@ -493,7 +490,7 @@ export function useContextMenuItems(
 						? i18n.baseText('contextMenu.activate', i18nOptions)
 						: i18n.baseText('contextMenu.deactivate', i18nOptions),
 					shortcut: { keys: ['D'] },
-					disabled: isReadOnly.value || nodes.some(isDeprecatedNode),
+					disabled: isReadOnly.value || nodes.some(nodeTypesStore.isNodeDeprecated),
 				},
 				!onlyStickies && {
 					id: 'toggle_pin',
@@ -589,7 +586,7 @@ export function useContextMenuItems(
 									isReadOnly.value ||
 									isRestricted(nodes[0]) ||
 									!isExecutable(nodes[0]) ||
-									isDeprecatedNode(nodes[0]),
+									nodeTypesStore.isNodeDeprecated(nodes[0]),
 							},
 							...copyWebhookActions,
 							{
@@ -597,7 +594,7 @@ export function useContextMenuItems(
 								id: 'rename',
 								label: i18n.baseText('contextMenu.rename'),
 								shortcut: { keys: ['Space'] },
-								disabled: isReadOnly.value || isDeprecatedNode(nodes[0]),
+								disabled: isReadOnly.value || nodeTypesStore.isNodeDeprecated(nodes[0]),
 							},
 							{
 								id: 'replace',

@@ -39,6 +39,7 @@ const {
 	},
 	mockNodeTypesStore: {
 		isNodeTypeUnavailable: vi.fn(),
+		isNodeDeprecated: vi.fn(),
 		getNodeType: vi.fn().mockReturnValue({
 			displayName: 'Set',
 			name: 'n8n-nodes-base.set',
@@ -189,6 +190,7 @@ describe('useWorkflowExtraction', () => {
 		mockWorkflowDocumentStore.deleteGroup.mockReset();
 		mockNodeTypesStore.getNodeType.mockClear();
 		mockNodeTypesStore.isNodeTypeUnavailable.mockReset().mockReturnValue(false);
+		mockNodeTypesStore.isNodeDeprecated.mockReset().mockReturnValue(false);
 		mockHistoryStore.startRecordingUndo.mockClear();
 		mockHistoryStore.stopRecordingUndo.mockClear();
 		mockHistoryStore.pushCommandToUndo.mockClear();
@@ -218,6 +220,17 @@ describe('useWorkflowExtraction', () => {
 				expect(mockUIStore.openModalWithData).not.toHaveBeenCalled();
 			},
 		);
+
+		it('does not start extraction when the selection has a deprecated node', () => {
+			const nodeA = makeNode('A');
+			setWorkflowNodes([nodeA]);
+			mockNodeTypesStore.isNodeDeprecated.mockReturnValue(true);
+
+			const { extractWorkflow } = useWorkflowExtraction();
+			extractWorkflow([nodeA.id]);
+
+			expect(mockUIStore.openModalWithData).not.toHaveBeenCalled();
+		});
 
 		it('includes attached sub-nodes when starting extraction', () => {
 			const nodeA = makeNode('A', [0, 0]);

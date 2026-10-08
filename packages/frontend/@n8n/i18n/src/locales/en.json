@@ -4896,6 +4896,7 @@
 	"workflowExtraction.error.selectionGraph.listHeader": "Selection is invalid because of these errors:<br><br>{body}<br><br><a href=\"https://docs.n8n.io/workflows/subworkflow-conversion/\" target=\"_blank\">See docs</a> for more info.",
 	"workflowExtraction.error.inputNodeHasMultipleInputBranches": "First node '{node}' has multiple input branches, which sub-workflows do not support.",
 	"workflowExtraction.error.outputNodeHasMultipleOutputBranches": "Last node '{node}' has multiple output branches, which sub-workflows do not support.",
+	"workflowExtraction.error.deprecatedSelected": "Deprecated nodes cannot be converted to a sub-workflow. Unselect {nodes}.",
 	"workflowExtraction.error.triggerSelected": "Triggers cannot be converted to a sub-workflow. Please unselect {nodes}.",
 	"workflowExtraction.error.subworkflowCreationFailed": "Sub-workflow creation failed, aborting conversion.",
 	"workflowExtraction.success.title": "Created sub-workflow",

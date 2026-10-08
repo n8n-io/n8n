@@ -593,18 +593,8 @@ const keyMap = computed(() => {
 		...readOnlyKeymap,
 		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids, getDeleteWholeGroupIds())),
 		'delete|backspace': onDeleteSelection,
-		ctrl_d: emitWithSelectedNodes((ids) =>
-			emit(
-				'duplicate:nodes',
-				ids.filter((id) => !isNodeDeprecated(id)),
-			),
-		),
-		d: emitWithSelectedNodes((ids) =>
-			emit(
-				'update:nodes:enabled',
-				ids.filter((id) => !isNodeDeprecated(id)),
-			),
-		),
+		ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
+		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
 		p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
 		f2: emitWithLastSelectedNode((id) => {
 			if (!isNodeDeprecated(id)) emit('update:node:name', id);
