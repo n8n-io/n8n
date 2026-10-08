@@ -12,8 +12,7 @@ const AGENT_HISTORY_SKILL_TABLE = 'agent_history_skill';
  * (team or personal, for its agents and its assistant sessions), or the instance (neither
  * set). Its name and content live in numbered, immutable versions: a Save that changes
  * the content creates the next one, agents read the latest, and agent publishes pin the
- * one they ran. There
- * is no draft row; an editor keeps unsaved changes to itself until Save.
+ * one they ran.
  */
 export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 	async up(context: MigrationContext) {
@@ -138,7 +137,7 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 			.withColumns(
 				column('agentId').varchar(36).primary,
 				column('skillId').varchar(36).primary,
-				// A draft normally follows the skill's latest saved version. An agent revert
+				// An agent draft normally follows the skill's latest saved version. A revert
 				// pins the version it had; the pin clears when the skill is saved again.
 				column('skillVersionId').uuid.comment(
 					'Set when the agent draft pins a saved version. NULL = follows the latest saved version',
