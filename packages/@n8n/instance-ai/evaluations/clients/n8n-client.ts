@@ -277,6 +277,9 @@ export class N8nClient {
 	 *  never logged in takes the strict path. */
 	private hasGlobalWorkflowDelete = false;
 
+	/** The logged-in user's name, when the login payload carries both parts. */
+	userName?: { firstName: string; lastName: string };
+
 	/** Public: the browser runtime needs to know where n8n ACTUALLY is, which is
 	 *  not always what n8n reports as its own base URL (see `planRelayConnection`). */
 	constructor(readonly baseUrl: string) {}
@@ -295,13 +298,22 @@ export class N8nClient {
 		const result = (await this.fetch('/rest/login', {
 			method: 'POST',
 			body: { emailOrLdapLoginId: loginEmail, password: loginPassword },
-		})) as { data?: { globalScopes?: string[]; isOwner?: boolean } };
+		})) as {
+			data?: {
+				globalScopes?: string[];
+				isOwner?: boolean;
+				firstName?: string | null;
+				lastName?: string | null;
+			};
+		};
 
 		// `/rest/login` returns the public user with `withScopes: true`. `isOwner`
 		// is the fallback for a payload that carries no scope list: an owner always
 		// holds the scope, so the two agree wherever both are present.
 		this.hasGlobalWorkflowDelete =
 			result.data?.globalScopes?.includes('workflow:delete') ?? result.data?.isOwner ?? false;
+		const { firstName, lastName } = result.data ?? {};
+		this.userName = firstName && lastName ? { firstName, lastName } : undefined;
 
 		if (!this.sessionCookie) {
 			throw new Error('Failed to authenticate with n8n — no session cookie received');
@@ -815,18 +827,25 @@ export class N8nClient {
 	}
 
 	/**
-	 * Create a credential.
-	 * POST /rest/credentials  body: { name, type, data }
+	 * Create a credential, in `projectId` when given (else the caller's personal project).
+	 * POST /rest/credentials  body: { name, type, data, projectId? }
 	 */
 	async createCredential(
 		name: string,
 		type: string,
 		data: Record<string, unknown>,
 		description?: string | null,
+		projectId?: string,
 	): Promise<{ id: string }> {
 		const result = (await this.fetch('/rest/credentials', {
 			method: 'POST',
-			body: { name, type, data, ...(description !== undefined ? { description } : {}) },
+			body: {
+				name,
+				type,
+				data,
+				...(description !== undefined ? { description } : {}),
+				...(projectId !== undefined ? { projectId } : {}),
+			},
 		})) as { data: { id: string } };
 		return { id: result.data.id };
 	}

@@ -203,6 +203,8 @@ export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 export interface ArtifactRef {
 	type: ArtifactType;
 	id: string;
+	/** The project the build ran in. Absent means the owner's personal project. */
+	projectId?: string;
 }
 
 /** Structured agent preview. Capture redacts it; persistence validates and caps it. */
