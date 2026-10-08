@@ -4,8 +4,9 @@ exports[`CanvasHandlePlus > should render with default props 1`] = `
 "<div class="canvas-handle-plus container right" data-test-id="canvas-handle-plus-wrapper"><svg class="wrapper right default" style="width: 70px; height: 24px; --canvas-handle-plus-line--color--lightness--light: 0.840; --canvas-handle-plus-line--color--lightness--dark: 0.420;" viewBox="0 0 70 24">
     <line class="line" x1="0" y1="12" x2="47" y2="12" stroke-width="2"></line>
     <g data-test-id="canvas-handle-plus" class="plus clickable" transform="translate(46, 0)">
-      <rect class="clickable" x="2" y="2" width="20" height="20" stroke="light-dark(var(--color--neutral-200), var(--color--neutral-850))" stroke-width="2" rx="4" fill="light-dark(var(--color--neutral-200), var(--color--neutral-850))"></rect>
-      <path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M8 12h8m-4-4v8" class="source clickable"></path>
+      <rect class="clickable" x="2" y="2" width="20" height="20" stroke="light-dark(var(--color--neutral-200), var(--color--neutral-850))" stroke-width="2" rx="4" fill="light-dark(var(--color--neutral-200), var(--color--neutral-850))"></rect><svg x="6" y="6" width="12" height="12" viewBox="0 0 12 12" class="source clickable">
+        <path class="source clickable" fill="currentColor" d="M6.6 5.4h4.75v1.2H6.6v4.75H5.4V6.6H.65V5.4H5.4V.65h1.2z"></path>
+      </svg>
     </g>
   </svg></div>"
 `;
