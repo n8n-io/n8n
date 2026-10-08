@@ -257,6 +257,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 				hostEvents.push({
 					id: `${msg.id}:host-event:${partIndex}`,
 					name: part.name,
+					...(typeof part.key === 'string' && part.key ? { key: part.key } : {}),
 					payload: part.payload ?? null,
 				});
 			} else if (part.type === 'reasoning' && part.text) {

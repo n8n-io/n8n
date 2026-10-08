@@ -34,6 +34,13 @@ import { bindExecutionInput } from './utils/execution-input';
 
 type RecordingContext = Pick<StartExecutionParams, 'projectId' | 'agentId' | 'threadId'>;
 
+/** The outcome of a turn that the runtime is about to store. */
+export interface AgentTurnFinalizeOutcome {
+	executionId: string;
+	status: 'completed' | 'suspended' | 'errored' | 'cancelled';
+	error?: unknown;
+}
+
 export type AgentTurnRequest = { recording: StartExecutionParams } & (
 	| {
 			type: 'start';
@@ -66,6 +73,13 @@ interface ExecuteTurnConfig {
 	onSettled?: (suspended: boolean) => Promise<void>;
 	/** Called once with the recorder of the turn, so that a host can record its own events. */
 	onRecorderCreated?: (recorder: ExecutionRecorder) => void;
+	/**
+	 * Called once when the outcome of the turn is known, before the runtime
+	 * stores the turn record. Events that the host records here are stored
+	 * with the turn. The runtime does not call it when the turn has no
+	 * execution record.
+	 */
+	onBeforeFinalize?: (outcome: AgentTurnFinalizeOutcome) => Promise<void>;
 }
 
 interface TurnExecutionState {
@@ -271,10 +285,9 @@ export class AgentTurnExecutionService {
 		executionId: string,
 		state: TurnExecutionState,
 	): Promise<void> {
+		const cancelled = this.isCancelled(turn, recorder, state);
+		await this.runBeforeFinalize(config, recorder, executionId, state, cancelled);
 		const record = recorder.getMessageRecord();
-		const cancelled =
-			turn.options.abortSignal?.aborted ||
-			(!state.receivedFinish && !recorder.suspended && record.error === null);
 		let hitlStatus: RecordMessageParams['hitlStatus'];
 		if (recorder.suspended) hitlStatus = 'suspended';
 		else if (turn.type === 'resume' && state.executionStarted) hitlStatus = 'resumed';
@@ -290,6 +303,47 @@ export class AgentTurnExecutionService {
 				hitlStatus,
 			},
 		});
+	}
+
+	private isCancelled(
+		turn: AgentTurnRequest,
+		recorder: ExecutionRecorder,
+		state: TurnExecutionState,
+	): boolean {
+		return (
+			turn.options.abortSignal?.aborted === true ||
+			(!state.receivedFinish && !recorder.suspended && recorder.getMessageRecord().error === null)
+		);
+	}
+
+	/** Give the host a last chance to record events before the record is final. */
+	private async runBeforeFinalize(
+		config: ExecuteTurnConfig,
+		recorder: ExecutionRecorder,
+		executionId: string,
+		state: TurnExecutionState,
+		cancelled: boolean,
+	): Promise<void> {
+		if (!config.onBeforeFinalize) return;
+		const record = recorder.getMessageRecord();
+		let status: AgentTurnFinalizeOutcome['status'] = 'completed';
+		if (cancelled) status = 'cancelled';
+		else if (recorder.suspended) status = 'suspended';
+		else if (record.error !== null || record.finishReason === 'error') status = 'errored';
+		try {
+			await config.onBeforeFinalize({
+				executionId,
+				status,
+				...(state.executionError !== undefined ? { error: state.executionError } : {}),
+			});
+		} catch (error) {
+			// The turn record must be stored even when the host hook fails.
+			this.logger.warn('Agent turn before-finalize hook failed', {
+				threadId: config.context.threadId,
+				executionId,
+				error,
+			});
+		}
 	}
 
 	createRecorder(

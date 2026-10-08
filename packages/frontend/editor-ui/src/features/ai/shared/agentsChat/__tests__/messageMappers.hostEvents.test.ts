@@ -26,6 +26,24 @@ describe('convertDbMessages — host events', () => {
 		]);
 	});
 
+	it('keeps the key of a keyed host event', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm-1',
+				role: 'assistant',
+				content: [
+					{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+				],
+			},
+		];
+
+		const [message] = convertDbMessages(dbMessages);
+
+		expect(message.hostEvents).toEqual([
+			{ id: 'm-1:host-event:0', name: 'test.progress', key: 'build', payload: { done: 1 } },
+		]);
+	});
+
 	it('ignores host-event parts without a name and on user messages', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{ id: 'm-1', role: 'assistant', content: [{ type: 'host-event', payload: { n: 1 } }] },

@@ -450,6 +450,44 @@ describe('ExecutionRecorder', () => {
 			expect(recorded.payload).toEqual({ apiKey: '[REDACTED]', message: 'ok' });
 			expect(recorder.getMessageRecord().timeline).toEqual([recorded]);
 		});
+
+		it('replaces a keyed event in its position and keeps its timestamp', () => {
+			const recorder = new ExecutionRecorder();
+
+			const first = recorder.recordHostEvent('test.progress', { done: 0 }, 'build');
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'working' });
+			const replaced = recorder.recordHostEvent('test.progress', { done: 1 }, 'build');
+			recorder.record({ type: 'text-delta', id: 't1', delta: ' more' });
+
+			const { timeline } = recorder.getMessageRecord();
+			expect(timeline).toEqual([
+				{
+					type: 'host-event',
+					name: 'test.progress',
+					key: 'build',
+					payload: { done: 1 },
+					timestamp: first.timestamp,
+				},
+				expect.objectContaining({ type: 'text', content: 'working more' }),
+			]);
+			expect(replaced).toEqual(timeline[0]);
+		});
+
+		it('appends events without a key, or with another name or key', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.recordHostEvent('test.progress', { done: 0 });
+			recorder.recordHostEvent('test.progress', { done: 1 });
+			recorder.recordHostEvent('test.progress', { done: 2 }, 'a');
+			recorder.recordHostEvent('test.progress', { done: 3 }, 'b');
+			recorder.recordHostEvent('test.other', { done: 4 }, 'a');
+
+			expect(
+				recorder
+					.getMessageRecord()
+					.timeline.map((event) => (event.type === 'host-event' ? event.payload : event.type)),
+			).toEqual([{ done: 0 }, { done: 1 }, { done: 2 }, { done: 3 }, { done: 4 }]);
+		});
 	});
 });
 

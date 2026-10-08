@@ -54,6 +54,55 @@ describe('SystemAgentHostEventChannel', () => {
 		expect(onDropped).toHaveBeenCalledWith('test.late');
 	});
 
+	it('replaces a keyed event in its position and sends the update with its key', () => {
+		const send = vi.fn<(event: AgentSseEvent) => void>();
+		const channel = new SystemAgentHostEventChannel(send);
+		const recorder = new ExecutionRecorder();
+		channel.attach(recorder);
+
+		channel.emit('test.progress', { done: 0 }, { key: 'build' });
+		channel.emit('test.notice');
+		channel.emit('test.progress', { done: 1 }, { key: 'build' });
+
+		expect(send.mock.calls.at(-1)?.[0]).toEqual({
+			type: 'host-event',
+			name: 'test.progress',
+			key: 'build',
+			payload: { done: 1 },
+		});
+		expect(recorder.getMessageRecord().timeline).toEqual([
+			expect.objectContaining({ name: 'test.progress', key: 'build', payload: { done: 1 } }),
+			expect.objectContaining({ name: 'test.notice', payload: null }),
+		]);
+	});
+
+	it('keeps only the last buffered event for a name and key', () => {
+		const send = vi.fn<(event: AgentSseEvent) => void>();
+		const channel = new SystemAgentHostEventChannel(send);
+
+		channel.emit('test.progress', { done: 0 }, { key: 'build' });
+		channel.emit('test.notice');
+		channel.emit('test.progress', { done: 1 }, { key: 'build' });
+		channel.attach(new ExecutionRecorder());
+
+		expect(send.mock.calls.map(([event]) => event)).toEqual([
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+			{ type: 'host-event', name: 'test.notice', payload: null },
+		]);
+	});
+
+	it('refuses an empty or too long key', () => {
+		const channel = new SystemAgentHostEventChannel(vi.fn());
+
+		expect(() => channel.emit('test.progress', null, { key: '' })).toThrow(
+			'A host event key must have 1 to 128 characters',
+		);
+		expect(() => channel.emit('test.progress', null, { key: 'k'.repeat(129) })).toThrow(
+			'A host event key must have 1 to 128 characters',
+		);
+		expect(() => channel.emit('test.progress', null, { key: 'k'.repeat(128) })).not.toThrow();
+	});
+
 	it('refuses an empty or too long name', () => {
 		const channel = new SystemAgentHostEventChannel(vi.fn());
 

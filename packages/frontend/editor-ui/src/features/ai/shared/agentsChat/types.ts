@@ -133,6 +133,8 @@ export interface ChatMessageAttachment {
 export interface AgentsChatHostEvent {
 	id: string;
 	name: string;
+	/** Set when the event can update. A later event with the same name and key replaces it. */
+	key?: string;
 	payload: unknown;
 }
 

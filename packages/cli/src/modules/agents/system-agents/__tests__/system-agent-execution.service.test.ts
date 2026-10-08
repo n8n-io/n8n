@@ -17,7 +17,7 @@ import type {
 	AgentTurnRequest,
 } from '../../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
-import { ExecutionRecorder } from '../../execution-recorder';
+import { ExecutionRecorder, type TimelineEvent } from '../../execution-recorder';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
@@ -255,21 +255,45 @@ describe('SystemAgentExecutionService', () => {
 	});
 
 	describe('host events', () => {
-		/** Run the turn with a real recorder, the way the Agents runtime records it. */
+		/**
+		 * Run the turn with a real recorder, the way the Agents runtime records
+		 * it. Like the runtime, call the finalize hook before the record is
+		 * stored, and keep the stored timeline.
+		 */
 		function setupWithRecorder(chunks: AgentExecutionStreamChunk[] = [textChunk]) {
 			const context = setup(chunks);
 			const recorders: ExecutionRecorder[] = [];
+			const stored: TimelineEvent[][] = [];
 			context.turnExecutionService.execute.mockImplementation(async function* (config) {
 				const recorder = new ExecutionRecorder();
 				recorders.push(recorder);
 				config.onRecorderCreated?.(recorder);
 				context.prepared.push(await config.prepare());
-				for (const chunk of chunks) {
-					if (chunk.type !== 'message-steered') recorder.record(chunk);
-					yield chunk;
+				try {
+					for (const chunk of chunks) {
+						if (chunk.type !== 'message-steered') recorder.record(chunk);
+						yield chunk;
+					}
+				} finally {
+					await config.onBeforeFinalize?.({ executionId: 'exec-1', status: 'completed' });
+					stored.push(structuredClone(recorder.getMessageRecord().timeline));
 				}
 			});
-			return { ...context, recorders };
+			return { ...context, recorders, stored };
+		}
+
+		function historyOf(timeline: TimelineEvent[]) {
+			return executionToMessagesDto({
+				id: 'exec-1',
+				userMessage: 'Build me a workflow',
+				author: null,
+				timeline,
+				attachments: null,
+				status: 'success',
+				error: null,
+				createdAt: new Date(),
+			} as Parameters<typeof executionToMessagesDto>[0]).find(({ role }) => role === 'assistant')
+				?.content;
 		}
 
 		it('streams events from prepareTurn and from the turn, and records them in order', async () => {
@@ -305,17 +329,7 @@ describe('SystemAgentExecutionService', () => {
 			expect(timeline.map((event) => event.type)).toEqual(['host-event', 'text', 'host-event']);
 
 			// The same events come back from history after a reload.
-			const history = executionToMessagesDto({
-				id: 'exec-1',
-				userMessage: 'Build me a workflow',
-				author: null,
-				timeline,
-				attachments: null,
-				status: 'success',
-				error: null,
-				createdAt: new Date(),
-			} as Parameters<typeof executionToMessagesDto>[0]);
-			expect(history.find(({ role }) => role === 'assistant')?.content).toEqual([
+			expect(historyOf(timeline)).toEqual([
 				{ type: 'host-event', name: 'test.prepared', payload: { step: 1 } },
 				{ type: 'text', text: 'Hello' },
 				{ type: 'host-event', name: 'test.after-text', payload: { step: 2 } },
@@ -347,8 +361,95 @@ describe('SystemAgentExecutionService', () => {
 			});
 		});
 
-		it('drops an event that comes after the turn settled', async () => {
-			const { service, provider, handle, onSettled, logger, recorders } = setupWithRecorder();
+		it('replaces a keyed event in place, in the stream and in the record', async () => {
+			const { service, provider, handle, onChunk, stored } = setupWithRecorder();
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				turn.emitHostEvent('test.progress', { done: 0 }, { key: 'build' });
+				onChunk.mockImplementation(() =>
+					turn.emitHostEvent('test.progress', { done: 1 }, { key: 'build' }),
+				);
+				return handle;
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			const events = send.mock.calls.map(([event]: [AgentSseEvent]) => event);
+			expect(events.filter((event) => event.type === 'host-event')).toEqual([
+				{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 0 } },
+				{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+			]);
+			expect(historyOf(stored[0])).toEqual([
+				{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+				{ type: 'text', text: 'Hello' },
+			]);
+		});
+
+		it('sends and stores an event from onSettled before done', async () => {
+			const { service, provider, handle, onSettled, stored } = setupWithRecorder();
+			let emit: SystemAgentTurn['emitHostEvent'] | undefined;
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				emit = turn.emitHostEvent;
+				return handle;
+			});
+			onSettled.mockImplementation(async () => emit?.('test.summary', { ok: true }));
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(onSettled).toHaveBeenCalledWith({ executionId: 'exec-1', status: 'completed' });
+			const events = send.mock.calls.map(([event]: [AgentSseEvent]) => event);
+			expect(events.map((event) => event.type)).toEqual(['text-delta', 'host-event', 'done']);
+			expect(historyOf(stored[0])).toEqual([
+				{ type: 'text', text: 'Hello' },
+				{ type: 'host-event', name: 'test.summary', payload: { ok: true } },
+			]);
+		});
+
+		it('calls onSettled once and uses its outcome for the workspace and done', async () => {
+			const { source } = workspaceSource();
+			const context = setup([textChunk], source);
+			context.turnExecutionService.execute.mockImplementation(async function* (config) {
+				context.prepared.push(await config.prepare());
+				yield textChunk;
+				await config.onBeforeFinalize?.({ executionId: 'exec-1', status: 'cancelled' });
+			});
+			const send = vi.fn();
+
+			await context.service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(context.onSettled).toHaveBeenCalledTimes(1);
+			expect(source.release).toHaveBeenCalledWith(
+				workspaceScope,
+				expect.anything(),
+				expect.objectContaining({ status: 'cancelled' }),
+			);
+			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+			expect(context.executionRepository.findExecution).not.toHaveBeenCalled();
+		});
+
+		it('drops an event that comes after onSettled returned', async () => {
+			const { service, provider, handle, logger, stored } = setupWithRecorder();
+			let emit: SystemAgentTurn['emitHostEvent'] | undefined;
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				emit = turn.emitHostEvent;
+				return handle;
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+			emit?.('test.late');
+
+			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'host-event' }));
+			expect(stored[0]).not.toContainEqual(expect.objectContaining({ type: 'host-event' }));
+			expect(logger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('dropped'),
+				expect.objectContaining({ name: 'test.late' }),
+			);
+		});
+
+		it('drops an event from onSettled when the turn has no execution record', async () => {
+			const { service, provider, handle, onSettled, logger } = setup([textChunk]);
 			let emit: SystemAgentTurn['emitHostEvent'] | undefined;
 			provider.prepareTurn.mockImplementation(async (turn) => {
 				emit = turn.emitHostEvent;
@@ -359,10 +460,8 @@ describe('SystemAgentExecutionService', () => {
 
 			await service.consume(claimFor(), user, new AbortController().signal, send);
 
+			expect(onSettled).toHaveBeenCalledTimes(1);
 			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'host-event' }));
-			expect(recorders[0].getMessageRecord().timeline).not.toContainEqual(
-				expect.objectContaining({ type: 'host-event' }),
-			);
 			expect(logger.debug).toHaveBeenCalledWith(
 				expect.stringContaining('dropped'),
 				expect.objectContaining({ name: 'test.late' }),

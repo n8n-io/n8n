@@ -1882,6 +1882,31 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		]);
 	});
 
+	it('replaces a keyed host event in its position and appends unkeyed ones', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 0 } },
+			{ type: 'host-event', name: 'test.notice', payload: 1 },
+			{ type: 'host-event', name: 'test.progress', key: 'other', payload: { done: 0 } },
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+			{ type: 'host-event', name: 'test.notice', payload: 2 },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const hostEvents = hook.messages.value[1].hostEvents ?? [];
+		expect(hostEvents.map(({ name, key, payload }) => ({ name, key, payload }))).toEqual([
+			{ name: 'test.progress', key: 'build', payload: { done: 1 } },
+			{ name: 'test.notice', key: undefined, payload: 1 },
+			{ name: 'test.progress', key: 'other', payload: { done: 0 } },
+			{ name: 'test.notice', key: undefined, payload: 2 },
+		]);
+	});
+
 	it('clears prior warnings on the next send', async () => {
 		const withWarning: AgentSseEvent[] = [
 			{ type: 'warning', message: 'boom', source: 'mcp', server: 'dead' },

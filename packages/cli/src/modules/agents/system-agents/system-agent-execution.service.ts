@@ -674,6 +674,19 @@ export class SystemAgentExecutionService {
 		let status: SystemAgentTurnStatus = 'completed';
 		let executionId = admission?.executionId;
 		let error: unknown;
+		/** Set when the settle hook ran. Its outcome is the stored outcome. */
+		const settled: { outcome?: SystemAgentTurnOutcome } = {};
+		const settle = async (outcome: SystemAgentTurnOutcome) => {
+			settled.outcome = outcome;
+			try {
+				await handle.onSettled?.(outcome);
+			} catch (settleError) {
+				this.logger.warn('System agent turn settle hook failed', {
+					threadId: thread.id,
+					error: settleError,
+				});
+			}
+		};
 		try {
 			const stream = this.turnExecutionService.execute({
 				admittedExecution: admission,
@@ -686,6 +699,12 @@ export class SystemAgentExecutionService {
 					executionId = id;
 				},
 				onRecorderCreated: (recorder) => hostEvents.attach(recorder),
+				// The settle hook runs before the record is final, so that the
+				// events it emits are stored with the turn.
+				onBeforeFinalize: async (outcome) => {
+					await settle(outcome);
+					hostEvents.close();
+				},
 				prepare,
 			});
 			for await (const chunk of stream) {
@@ -704,21 +723,19 @@ export class SystemAgentExecutionService {
 		} finally {
 			// The turn record is final here. A later event cannot be stored.
 			hostEvents.close();
-			const execution = executionId
-				? await this.executionRepository.findExecution(executionId)
-				: null;
-			if (execution?.status === 'cancelled') status = 'cancelled';
-			try {
-				await handle.onSettled?.({ status, executionId, error });
-			} catch (settleError) {
-				this.logger.warn('System agent turn settle hook failed', {
-					threadId: thread.id,
-					error: settleError,
-				});
+			if (!settled.outcome) {
+				// The turn has no execution record, so the runtime did not call
+				// the settle hook. Its events are dropped.
+				const execution = executionId
+					? await this.executionRepository.findExecution(executionId)
+					: null;
+				if (execution?.status === 'cancelled') status = 'cancelled';
+				await settle({ status, executionId, error });
 			}
-			await workspace?.release({ status, executionId, error });
-			if (status !== 'suspended' && status !== 'cancelled') {
-				send({ type: 'done', sessionId: thread.id, executionId: executionId ?? '' });
+			const outcome = settled.outcome ?? { status, executionId, error };
+			await workspace?.release(outcome);
+			if (outcome.status !== 'suspended' && outcome.status !== 'cancelled') {
+				send({ type: 'done', sessionId: thread.id, executionId: outcome.executionId ?? '' });
 			}
 		}
 	}

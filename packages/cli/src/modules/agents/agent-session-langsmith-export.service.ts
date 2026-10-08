@@ -447,7 +447,7 @@ function buildHostEventRun(
 		endTime: event.timestamp,
 		inputs: {},
 		outputs: { payload: event.payload },
-		metadata: {},
+		metadata: event.key !== undefined ? { key: event.key } : {},
 		children: [],
 	};
 }
