@@ -433,6 +433,26 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/**
+	 * Top-level private sessions of one user with any instance (system) agent,
+	 * in every project, oldest first. It does not check that a provider is
+	 * registered for the agent, so user deletion finds every session.
+	 */
+	async findOwnedSystemAgentSessions(
+		ownerId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>>> {
+		return await this.find({
+			select: ['id', 'agentId', 'projectId'],
+			where: {
+				ownerId,
+				accessScope: 'user',
+				parentThreadId: IsNull(),
+				agent: { scope: 'instance' },
+			},
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
+	/**
 	 * One top-level private session of a user with an agent. A child session
 	 * (for example an Agent builder session) has the same agent and owner as
 	 * its parent, so the parent filter keeps it out of the session routes.

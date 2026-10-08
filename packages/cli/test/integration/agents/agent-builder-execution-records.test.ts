@@ -492,7 +492,8 @@ describe('Agent builder execution records', () => {
 	});
 
 	/**
-	 * No service deletes system agent sessions when their owner is deleted.
+	 * These tests do not initialize the agents module, so its user deletion
+	 * handler is not registered (see `system-agent-user-deletion.test.ts`).
 	 * The database decides: the owner column is set to null, and deleting the
 	 * personal project cascades to the sessions in it. A builder session has
 	 * the working project of its parent, so it always shares the fate of its
