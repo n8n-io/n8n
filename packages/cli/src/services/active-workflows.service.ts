@@ -72,7 +72,10 @@ export class ActiveWorkflowsService {
 
 	/**
 	 * Drops the ids with a recorded activation failure. A partial publication keeps
-	 * its triggers running, so only a failed publication (zero live triggers) is dropped.
+	 * its triggers running, so only a failed publication is dropped. Its rows mean
+	 * zero live triggers on every path but one. A policy-refused republish marks
+	 * every trigger failed, and the previous version keeps running until a restart
+	 * or the next publish.
 	 */
 	private async dropActivationFailures(workflowIds: string[]) {
 		const activationErrors = await this.activationErrorsService.getAll();

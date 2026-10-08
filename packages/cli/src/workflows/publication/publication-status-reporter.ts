@@ -158,7 +158,7 @@ export class PublicationStatusReporter {
 		const failures = triggerStatuses.filter(
 			(s): s is FailedTriggerPublicationStatus => s.status === 'failed',
 		);
-		const errorMessage = this.formatActivationError(failures);
+		const errorMessage = this.formatPartialActivationError(failures);
 
 		this.logger.warn('Workflow partially published; some triggers failed to activate', {
 			workflowId: record.workflowId,
@@ -206,7 +206,7 @@ export class PublicationStatusReporter {
 	}
 
 	/** Builds a human-readable message naming each failed node and its error. */
-	private formatActivationError(failures: FailedTriggerPublicationStatus[]): string {
+	private formatPartialActivationError(failures: FailedTriggerPublicationStatus[]): string {
 		const detail = formatNodeFailures(
 			failures.map(({ nodeName, errorMessage }) => ({ nodeName, message: errorMessage })),
 		);

@@ -82,12 +82,7 @@ describe('ActiveWorkflowsService', () => {
 	describe('getActivationError', () => {
 		const workflowId = 'workflowId';
 
-		afterEach(() => {
-			workflowsConfig.useWorkflowPublicationService = false;
-		});
-
 		it('should throw a BadRequestError a user does not have access to the workflow id', async () => {
-			workflowsConfig.useWorkflowPublicationService = true;
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 			await expect(service.getActivationError(workflowId, user)).rejects.toThrow(BadRequestError);
 
@@ -95,7 +90,6 @@ describe('ActiveWorkflowsService', () => {
 				'workflow:read',
 			]);
 			expect(activationErrorsService.get).not.toHaveBeenCalled();
-			expect(workflowPublicationStatusService.getFailedActivationError).not.toHaveBeenCalled();
 		});
 
 		it('should return the error when the user has access', async () => {
@@ -130,24 +124,20 @@ describe('ActiveWorkflowsService', () => {
 			workflowsConfig.useWorkflowPublicationService = false;
 		});
 
-		it('should drop workflows whose publication failed from the stored active ids', async () => {
-			const ids = await service.getAllActiveIdsInStorage();
-
-			expect(ids).toEqual(['3', '4', '5']);
-			expect(workflowPublicationStatusService.getListStatusesByWorkflowIds).toHaveBeenCalledWith([
-				'2',
-				'3',
-				'4',
-				'5',
-			]);
-		});
-
-		it('should drop workflows whose publication failed for an owner', async () => {
-			user.role = GLOBAL_OWNER_ROLE;
-
-			const ids = await service.getAllActiveIdsFor(user);
-
-			expect(ids).toEqual(['3', '4', '5']);
+		it.each([
+			{
+				entry: 'getAllActiveIdsInStorage',
+				read: async () => await service.getAllActiveIdsInStorage(),
+			},
+			{
+				entry: 'getAllActiveIdsFor as an owner',
+				read: async () => {
+					user.role = GLOBAL_OWNER_ROLE;
+					return await service.getAllActiveIdsFor(user);
+				},
+			},
+		])('should drop workflows whose publication failed from $entry', async ({ read }) => {
+			expect(await read()).toEqual(['3', '4', '5']);
 			expect(workflowPublicationStatusService.getListStatusesByWorkflowIds).toHaveBeenCalledWith([
 				'2',
 				'3',
@@ -189,6 +179,14 @@ describe('ActiveWorkflowsService', () => {
 				workflowFinderService.findWorkflowForUser.mockResolvedValue(
 					Object.assign(new WorkflowEntity(), { nodes }),
 				);
+			});
+
+			it('should consult neither source when the user has no access', async () => {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+				await expect(service.getActivationError(workflowId, user)).rejects.toThrow(BadRequestError);
+				expect(workflowPublicationStatusService.getFailedActivationError).not.toHaveBeenCalled();
+				expect(activationErrorsService.get).not.toHaveBeenCalled();
 			});
 
 			it('should return the publication error before the legacy one', async () => {

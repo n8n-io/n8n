@@ -225,7 +225,7 @@ describe('Microsoft Teams Trigger: Graph refuses the subscription', () => {
 				type: 'workflowFailedToActivate',
 				data: { workflowId: workflow.id, errorMessage: GRAPH_ERROR, nodeId: trigger.id },
 			},
-			expect.any(Array),
+			[owner.id],
 		);
 
 		// Not recorded: the workflow stays active and the legacy surfaces stay clean.

@@ -303,25 +303,37 @@ describe('WorkflowPublicationStatusService', () => {
 			expect(await service.getFailedActivationError(WORKFLOW_ID, nodes)).toBe('err1');
 		});
 
-		it("orders several failures by the caller's node order", async () => {
+		it("orders several failures by the caller's node order, not by id", async () => {
 			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
-				makeRow({ nodeId: 'node-2', status: 'failed', errorMessage: 'err2' }),
 				makeRow({ nodeId: 'node-1', status: 'failed', errorMessage: 'err1' }),
+				makeRow({ nodeId: 'node-2', status: 'failed', errorMessage: 'err2' }),
 			]);
 
-			expect(await service.getFailedActivationError(WORKFLOW_ID, nodes)).toBe(
-				'Triggers failed to activate: "Webhook": err1; "Schedule": err2',
+			expect(await service.getFailedActivationError(WORKFLOW_ID, [nodes[1], nodes[0]])).toBe(
+				'Triggers failed to activate: "Schedule": err2; "Webhook": err1',
 			);
 		});
 
 		it('falls back to the node id for a node the caller does not know, after the known ones', async () => {
 			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
-				makeRow({ nodeId: 'node-2', status: 'failed', errorMessage: 'err2' }),
+				makeRow({ nodeId: 'deleted-node', status: 'failed', errorMessage: 'err2' }),
 				makeRow({ nodeId: 'node-1', status: 'failed', errorMessage: 'err1' }),
 			]);
 
 			expect(await service.getFailedActivationError(WORKFLOW_ID, [nodes[0]])).toBe(
-				'Triggers failed to activate: "Webhook": err1; "node-2": err2',
+				'Triggers failed to activate: "Webhook": err1; "deleted-node": err2',
+			);
+		});
+
+		it('orders several unknown ids by id, so the message is stable', async () => {
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
+				makeRow({ nodeId: 'node-9', status: 'failed', errorMessage: 'err9' }),
+				makeRow({ nodeId: 'node-8', status: 'failed', errorMessage: 'err8' }),
+				makeRow({ nodeId: 'node-1', status: 'failed', errorMessage: 'err1' }),
+			]);
+
+			expect(await service.getFailedActivationError(WORKFLOW_ID, [nodes[0]])).toBe(
+				'Triggers failed to activate: "Webhook": err1; "node-8": err8; "node-9": err9',
 			);
 		});
 
