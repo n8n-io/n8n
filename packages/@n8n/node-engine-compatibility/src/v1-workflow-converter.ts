@@ -43,11 +43,6 @@ import type { TriggerStepConfig, V1NodeStepConfig } from './types';
  * We do not invent connections to force v1 order. If it is ever needed, the
  * engine can be made to support running branches one at a time.
  *
- * The same divergence shows after a seeded step (a pinned node, or one whose
- * earlier results a partial run reuses): its successors are runnable at start,
- * so one can run before an unrelated node it names in an expression has
- * completed, where v1 would have run that node first.
- *
  * Disabled nodes never appear in the graph: every edge into their input
  * slot 0 is joined to every edge leaving them, so A -> disabled -> B becomes
  * A -> B, keeping A's `outputIndex` and B's `inputIndex`. Input slot 0 is
