@@ -412,6 +412,16 @@ function completeAndClose() {
 	emit('update:open', false);
 }
 
+/**
+ * Done is the save for a setup that never ran one. The routes that bind the
+ * credential themselves emit `persist`; a step already finished when the setup
+ * reopened does not, so closing on Done left the channel unbound and absent
+ * from the agent. Staying open on a failure keeps the reason on screen.
+ */
+async function finishSetup() {
+	if (await writeChannelConfig()) completeAndClose();
+}
+
 function handleModalOpenUpdate(isOpen: boolean) {
 	if (!isOpen && actionInFlight.value) return;
 	emit('update:open', isOpen);
@@ -751,8 +761,9 @@ watch(
 				v-if="setupCanFinish"
 				variant="solid"
 				size="medium"
+				:loading="actionInFlight"
 				data-testid="agent-channel-setup-done"
-				@click="completeAndClose"
+				@click="finishSetup"
 			>
 				{{ i18n.baseText('generic.done') }}
 			</N8nButton>
