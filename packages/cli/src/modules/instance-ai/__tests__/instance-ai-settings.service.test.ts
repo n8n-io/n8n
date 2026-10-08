@@ -1418,6 +1418,44 @@ describe('InstanceAiSettingsService', () => {
 			);
 		});
 
+		it.each([
+			['no URL', '', 'model-x', { id: 'openai/model-x' }],
+			['the official OpenAI URL', 'https://api.openai.com/v1', 'model-x', { id: 'openai/model-x' }],
+			['a self-hosted URL', 'https://kimi.example/v1', 'model-x', { id: 'custom/model-x' }],
+			[
+				'a self-hosted URL and a known model',
+				'https://kimi.example/v1',
+				'moonshotai/Kimi-K3',
+				{ id: 'custom/moonshotai/Kimi-K3', supportsStructuredOutputs: true },
+			],
+		])('builds an OpenAI credential with %s', async (_, url, modelName, expected) => {
+			const credential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				name: 'Admin model',
+				type: 'openAiApi',
+				usageScope: 'instance',
+			});
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				data: { apiKey: 'admin-key', url },
+			});
+			instanceCredentialBroker.assignForUse.mockResolvedValue({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+			});
+
+			await service.updateAdminSettings({ modelCredentialId: credential.id, modelName });
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				...expected,
+				url,
+				apiKey: 'admin-key',
+			});
+		});
+
 		it('uses the environment model connection without resolving stored credentials', async () => {
 			Object.assign(globalConfig.instanceAi, {
 				model: 'openai/gpt-5',

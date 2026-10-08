@@ -6,13 +6,7 @@ import { ExecutionsConfig } from '@n8n/config';
 import { MAX_INTEGER_32BITS_SIGNED } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	WorkflowHasIssuesError,
-	InstanceSettings,
-	WorkflowExecute,
-	SupplyDataContext,
-	StructuredToolkit,
-} from 'n8n-core';
+import { InstanceSettings, WorkflowExecute, SupplyDataContext, StructuredToolkit } from 'n8n-core';
 import {
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
@@ -20,7 +14,6 @@ import {
 	TimeoutExecutionCancelledError,
 	Workflow,
 	UnexpectedError,
-	createRunExecutionData,
 	runDataAttemptedDynamicCredentials,
 	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
@@ -100,6 +93,9 @@ function scheduleAt(timestamp: number, fn: () => void): () => void {
 export class JobProcessor {
 	private readonly runningJobs: Record<JobId, RunningJob> = {};
 
+	/** Execution id per job id for every job in `processJob`, including jobs still in preflight. */
+	private readonly trackedJobs = new Map<string, string>();
+
 	/** Cause of the cancellation of each job cancelled so far, kept until its run settles. */
 	private readonly cancellationReasons: Record<JobId, CancellationReason> = {};
 
@@ -119,6 +115,15 @@ export class JobProcessor {
 	}
 
 	async processJob(job: Job): Promise<JobResult> {
+		this.trackedJobs.set(String(job.id), job.data.executionId);
+		try {
+			return await this.runJob(job);
+		} finally {
+			this.trackedJobs.delete(String(job.id));
+		}
+	}
+
+	private async runJob(job: Job): Promise<JobResult> {
 		const { executionId, loadStaticData } = job.data;
 
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {
@@ -329,35 +334,14 @@ export class JobProcessor {
 				agentRequest: manualData?.agentRequest,
 			};
 
-			try {
-				workflowRun = this.manualExecutionService.runManually(
-					data,
-					workflow,
-					additionalData,
-					executionId,
-					resultData.pinData,
-					execution.storedAt,
-				);
-			} catch (error) {
-				if (error instanceof WorkflowHasIssuesError) {
-					// execution did not even start, but we call `workflowExecuteAfter` to notify main
-
-					const now = new Date();
-					const runData: IRun = {
-						mode: 'manual',
-						status: 'error',
-						finished: false,
-						startedAt: now,
-						stoppedAt: now,
-						data: createRunExecutionData({ resultData: { error, runData: {} } }),
-						storedAt: execution.storedAt,
-					};
-
-					await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
-					return { success: false };
-				}
-				throw error;
-			}
+			workflowRun = this.manualExecutionService.runManually(
+				data,
+				workflow,
+				additionalData,
+				executionId,
+				resultData.pinData,
+				execution.storedAt,
+			);
 		}
 
 		const runningJob: RunningJob = {
@@ -580,11 +564,20 @@ export class JobProcessor {
 
 		runningJob.run.cancel();
 		delete this.runningJobs[jobId];
+		// The run may ignore cancellation and never settle; drop tracking now instead of waiting for it.
+		this.trackedJobs.delete(String(jobId));
 		this.cancellationReasons[jobId] = reason;
 	}
 
-	getRunningJobIds(): JobId[] {
-		return Object.keys(this.runningJobs);
+	/** Ids of the jobs tracked from the start of processing, including jobs still in preflight. */
+	getTrackedJobIds(): JobId[] {
+		return [...this.trackedJobs.keys()];
+	}
+
+	getJobsInPreflight(): Array<{ jobId: JobId; executionId: string }> {
+		return [...this.trackedJobs]
+			.filter(([jobId]) => !(jobId in this.runningJobs))
+			.map(([jobId, executionId]) => ({ jobId, executionId }));
 	}
 
 	getRunningJobsSummary(): RunningJobSummary[] {

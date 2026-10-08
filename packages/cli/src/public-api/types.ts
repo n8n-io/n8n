@@ -1,5 +1,4 @@
 import type {
-	PublicCreateDestination,
 	UpdateOtelSettingsDto,
 	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
@@ -20,13 +19,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 	}
 >;
 export declare namespace PackageRequest {
-	type Import = AuthenticatedRequest<
-		{},
-		{},
-		{ projectId?: string; folderId?: string },
-		Record<string, never>
-	>;
-
 	type ImportSelection = AuthenticatedRequest<
 		{},
 		{},
@@ -112,13 +104,6 @@ export declare namespace CommunityPackageRequest {
 	type List = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{ name: string }, {}, { version?: string }>;
 	type Uninstall = AuthenticatedRequest<{ name: string }>;
-}
-
-export declare namespace LogStreamingRequest {
-	type CreateDestination = AuthenticatedRequest<{}, {}, PublicCreateDestination>;
-	type UpdateDestination = AuthenticatedRequest<{ id: string }, {}, PublicCreateDestination>;
-	type TestDestination = AuthenticatedRequest<{ id: string }>;
-	type DeleteDestination = AuthenticatedRequest<{ id: string }>;
 }
 
 // ----------------------------------

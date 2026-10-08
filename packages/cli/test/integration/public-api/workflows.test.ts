@@ -10,7 +10,7 @@ import {
 	linkUserToProject,
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, NodesConfig } from '@n8n/config';
 import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
 import {
 	WorkflowRepository,
@@ -1055,6 +1055,22 @@ describe('GET /workflows/:id', () => {
 				userId: member.id,
 			}),
 		]);
+	});
+
+	test('should return every publish event of the active version in order', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		const events = (
+			response.body.activeVersion.workflowPublishHistory as Array<{ event: string }>
+		).map(({ event }) => event);
+		expect(events).toEqual(['activated', 'deactivated', 'activated']);
 	});
 });
 
@@ -4376,5 +4392,94 @@ return [{ json: result }];
 		expect(retrievedUpdatedNode.parameters.jsCode).toBe(updatedCode);
 		expect(retrievedUpdatedNode.parameters.mode).toBe('runOnceForEachItem');
 		expect(retrievedUpdatedNode.parameters.language).toBe('javaScript');
+	});
+});
+
+describe('deprecated nodes', () => {
+	const nodesConfig = Container.get(NodesConfig);
+	let previousBlockDeprecated: boolean;
+	beforeAll(() => {
+		previousBlockDeprecated = nodesConfig.blockDeprecated;
+		nodesConfig.blockDeprecated = true;
+	});
+	afterAll(() => {
+		nodesConfig.blockDeprecated = previousBlockDeprecated;
+	});
+
+	const deprecatedNode: INode = {
+		id: uuid(),
+		name: 'Function',
+		type: 'n8n-nodes-base.function',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: { functionCode: 'return items;' },
+	};
+
+	test('POST /workflows rejects a workflow with a deprecated node', async () => {
+		const response = await authOwnerAgent.post('/workflows').send({
+			name: 'has deprecated',
+			nodes: [deprecatedNode],
+			connections: {},
+			settings: {},
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toMatch(/deprecated/i);
+	});
+
+	test('PUT /workflows/:id rejects editing a deprecated node', async () => {
+		const workflow = await createWorkflowWithHistory({ nodes: [deprecatedNode] }, owner);
+
+		const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: [{ ...deprecatedNode, parameters: { functionCode: 'return [];' } }],
+			connections: workflow.connections,
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toMatch(/deprecated/i);
+	});
+
+	test('PUT /workflows/:id allows editing other nodes while a deprecated node stays unchanged', async () => {
+		const otherNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: {},
+		};
+		const workflow = await createWorkflowWithHistory({ nodes: [deprecatedNode, otherNode] }, owner);
+
+		const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: [deprecatedNode, { ...otherNode, notes: 'edited' }],
+			connections: workflow.connections,
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('PUT /workflows/:id allows removing a deprecated node', async () => {
+		const otherNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: {},
+		};
+		const workflow = await createWorkflowWithHistory({ nodes: [deprecatedNode, otherNode] }, owner);
+
+		const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: [otherNode],
+			connections: {},
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
 	});
 });

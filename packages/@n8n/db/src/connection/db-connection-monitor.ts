@@ -328,7 +328,9 @@ export class DbConnectionMonitor {
 					this.setConnected(true);
 					this.consecutiveFailures = 0;
 					recovered = true;
+					this.recordRecoveryAttempt('success');
 				} catch (error) {
+					this.recordRecoveryAttempt('failure');
 					const wrapped = ensureError(error);
 					this.errorReporter.error(wrapped);
 					const { minRecoveryBackoffMs, maxRecoveryBackoffMs } = this.databaseConfig;
@@ -662,5 +664,28 @@ export class DbConnectionMonitor {
 		}
 		this.connected = connected;
 		this.onConnectedChange(connected);
+		if (!connected) {
+			this.recordDisconnection();
+		}
+	}
+
+	private recordDisconnection() {
+		try {
+			this.dbConnectionMetrics.disconnectionObserver?.();
+		} catch (error) {
+			// Metrics must not interrupt connection monitoring.
+			this.errorReporter.error(ensureError(error));
+		}
+	}
+
+	private recordRecoveryAttempt(result: 'success' | 'failure') {
+		if (!this.stopped) {
+			try {
+				this.dbConnectionMetrics.recoveryAttemptObserver?.(result);
+			} catch (error) {
+				// Metrics must not interrupt recovery or change its outcome.
+				this.errorReporter.error(ensureError(error));
+			}
+		}
 	}
 }

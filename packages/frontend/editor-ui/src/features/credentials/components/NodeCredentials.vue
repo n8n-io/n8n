@@ -317,6 +317,15 @@ function getUnlistedOwnerName(credentialType: string): string {
 	);
 }
 
+function getUnusableDisplayName(credentialType: string): string {
+	return i18n.baseText('nodeCredentials.unusable.displayName', {
+		interpolate: {
+			owner: getUnlistedOwnerName(credentialType),
+			type: credentialTypeNames.value[credentialType] ?? credentialType,
+		},
+	});
+}
+
 /**
  * Resolve a picked credential from the rows the dropdown is showing before
  * consulting the store. A host-supplied `credentials` list can hold ids the
@@ -660,6 +669,9 @@ function getSelectedName(type: string) {
 	if (isAiGatewayManagedCredentials(type)) {
 		return N8N_CREDITS_LABEL;
 	}
+	if (getUnusableSelected(type)) {
+		return getUnusableDisplayName(type);
+	}
 	return selected.value?.[type]?.name;
 }
 
@@ -779,7 +791,10 @@ function onCredentialSelected(
 	const selectedCredentials = findDisplayedCredential(credentialType, credentialId);
 	if (!selectedCredentials) return;
 	const selectedCredentialsType = props.showAll ? selectedCredentials.type : credentialType;
-	const oldCredentials = props.node.credentials?.[selectedCredentialsType] ?? null;
+	const oldCredentials: INodeCredentialsDetails | string | null =
+		props.node.credentials?.[selectedCredentialsType] ?? null;
+	const invalidCredentials =
+		typeof oldCredentials === 'string' ? { id: null, name: oldCredentials } : oldCredentials;
 
 	const newSelectedCredentials: INodeCredentialsDetails = {
 		id: selectedCredentials.id,
@@ -793,16 +808,16 @@ function onCredentialSelected(
 	// or not: switching away from it is a choice for this node only.
 	if (
 		!props.standalone &&
-		!oldCredentials?.__aiGatewayManaged &&
-		!isKnownCredentialId(oldCredentials?.id) &&
-		(oldCredentials?.id === null ||
-			(oldCredentials?.id &&
-				!credentialsStore.getCredentialByIdAndType(oldCredentials.id, selectedCredentialsType)))
+		!invalidCredentials?.__aiGatewayManaged &&
+		!isKnownCredentialId(invalidCredentials?.id) &&
+		(invalidCredentials?.id === null ||
+			(invalidCredentials?.id &&
+				!credentialsStore.getCredentialByIdAndType(invalidCredentials.id, selectedCredentialsType)))
 	) {
 		// update all nodes in the workflow with the same old/invalid credentials
 		workflowDocumentStore?.value?.replaceInvalidWorkflowCredentials({
 			credentials: newSelectedCredentials,
-			invalid: oldCredentials,
+			invalid: invalidCredentials,
 			type: selectedCredentialsType,
 		});
 		nodeHelpers.updateNodesCredentialsIssues();
@@ -810,7 +825,7 @@ function onCredentialSelected(
 			title: i18n.baseText('nodeCredentials.showMessage.title'),
 			message: i18n.baseText('nodeCredentials.showMessage.message', {
 				interpolate: {
-					oldCredentialName: oldCredentials.name,
+					oldCredentialName: invalidCredentials.name,
 					newCredentialName: newSelectedCredentials.name,
 				},
 			}),
@@ -1165,14 +1180,15 @@ function buildCredentialRows(
 function buildCurrentRow(credentialType: string, usable: boolean): CredentialRow | undefined {
 	const credential = getUnlistedSelected(credentialType);
 	if (!credential || (credential.currentUserCanUse !== false) !== usable) return undefined;
-	if (!matches(filter.value, credential.name)) return undefined;
+	const name = usable ? credential.name : getUnusableDisplayName(credentialType);
+	if (!matches(filter.value, name)) return undefined;
 
 	return {
 		kind: 'current',
 		key: credential.id,
 		id: credential.id,
-		name: credential.name,
-		meta: ownerMeta(credentialType),
+		name,
+		meta: ownerMeta(credentialType, usable),
 		usable,
 	};
 }
@@ -1181,11 +1197,21 @@ function buildCurrentRow(credentialType: string, usable: boolean): CredentialRow
  * Who owns the current credential, and where it is missing: the project the
  * workflow lives in, which a personal space does not name.
  */
-function ownerMeta(credentialType: string): string {
-	const owner = getUnlistedOwnerName(credentialType);
-	const projectName = pickerHomeProject.value?.name;
+function ownerMeta(credentialType: string, usable: boolean): string {
+	const projectName = !isPersonalSpace.value ? pickerHomeProject.value?.name : undefined;
 
-	return !isPersonalSpace.value && projectName
+	// The owner is already part of the name of a credential the user cannot use.
+	if (!usable) {
+		return projectName
+			? i18n.baseText('nodeCredentials.unusable.notShared', {
+					interpolate: { project: projectName },
+				})
+			: '';
+	}
+
+	const owner = getUnlistedOwnerName(credentialType);
+
+	return projectName
 		? i18n.baseText('nodeCredentials.unusable.ownerNotShared', {
 				interpolate: { owner, project: projectName },
 			})
@@ -1230,7 +1256,7 @@ function unusableTooltip(credentialType: string): { title: string; lines: string
 			: i18n.baseText('nodeCredentials.unusable.tooltip.title.unknownOwner'),
 		lines: [
 			i18n.baseText('nodeCredentials.unusable.tooltip.onlyOwner', {
-				interpolate: { owner, credential: credential?.name ?? '' },
+				interpolate: { owner, credential: getUnusableDisplayName(credentialType) },
 			}),
 			i18n.baseText('nodeCredentials.unusable.tooltip.canEdit'),
 			!isPersonalSpace.value && projectName

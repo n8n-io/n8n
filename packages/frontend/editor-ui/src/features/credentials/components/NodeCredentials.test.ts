@@ -669,6 +669,55 @@ describe('NodeCredentials', () => {
 	});
 
 	describe('onCredentialSelected', () => {
+		it.each([
+			{
+				format: 'a credential without an ID',
+				importedCredential: { id: null, name: 'Imported OpenAI account' },
+			},
+			{
+				format: 'a legacy credential name',
+				importedCredential: 'Imported OpenAI account',
+			},
+		])(
+			'updates all imported HTTP Request nodes sharing $format',
+			async ({ importedCredential }) => {
+				// LIGO-80: Imported workflows can keep credentials in the legacy name format.
+				const importedCredentials = {
+					openAiApi: importedCredential,
+				} as unknown as INodeUi['credentials'];
+				const firstNode: INodeUi = {
+					...httpNode,
+					credentials: importedCredentials,
+				};
+				const secondNode: INodeUi = {
+					...httpNode,
+					id: 'second-http-request',
+					name: 'HTTP Request 2',
+					credentials: { ...importedCredentials },
+				};
+				workflowDocumentStore.setNodes([firstNode, secondNode]);
+				ndvStore.activeNode = workflowDocumentStore.getNodeByName(firstNode.name) ?? null;
+				credentialsStore.state.credentials = {
+					c8vqdPpPClh4TgIO: createCredential(),
+				};
+
+				renderComponent(
+					{ props: { node: workflowDocumentStore.getNodeByName(firstNode.name) ?? firstNode } },
+					{ merge: true },
+				);
+
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
+				await userEvent.click(screen.getByText('OpenAi account'));
+
+				expect(
+					workflowDocumentStore.getNodeByName(secondNode.name)?.credentials?.openAiApi,
+				).toEqual({
+					id: 'c8vqdPpPClh4TgIO',
+					name: 'OpenAi account',
+				});
+			},
+		);
+
 		it('should not call assignCredentialToMatchingNodes on mount when auto-selecting credentials', () => {
 			ndvStore.activeNode = openAiNodeNoCreds;
 			credentialsStore.state.credentials = {
@@ -3638,7 +3687,7 @@ describe('NodeCredentials', () => {
 
 			const select = screen.getByTestId('node-credentials-select');
 			await waitFor(() =>
-				expect(within(select).getByRole('combobox')).toHaveValue("Alice's OpenAi"),
+				expect(within(select).getByRole('combobox')).toHaveValue("Alice Chen's OpenAi"),
 			);
 
 			await userEvent.click(select);
@@ -3646,7 +3695,9 @@ describe('NodeCredentials', () => {
 			expect(await screen.findByTestId(UNUSABLE_HEADER)).toHaveTextContent('Not available to you');
 			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
 			expect(option).toHaveClass('is-disabled');
-			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
+			expect(option).toHaveTextContent("Alice Chen's OpenAi");
+			expect(option).toHaveTextContent('Not shared with Marketing');
+			expect(option).not.toHaveTextContent("Alice's OpenAi");
 			// Only the current credential stays; others the user cannot use are not offered.
 			expect(screen.queryByTestId('node-credentials-select-item-bob-cred')).not.toBeInTheDocument();
 		});
@@ -3658,7 +3709,7 @@ describe('NodeCredentials', () => {
 			await userEvent.hover(warning.querySelector('svg') ?? warning);
 
 			expect(
-				await screen.findByText("Only Alice Chen can run or publish with Alice's OpenAi."),
+				await screen.findByText("Only Alice Chen can run or publish with Alice Chen's OpenAi."),
 			).toBeInTheDocument();
 			expect(
 				screen.getByText(
@@ -3675,7 +3726,7 @@ describe('NodeCredentials', () => {
 			await waitFor(() =>
 				expect(
 					within(screen.getByTestId('node-credentials-select')).getByRole('combobox'),
-				).toHaveValue("Alice's OpenAi"),
+				).toHaveValue("Alice Chen's OpenAi"),
 			);
 		});
 
