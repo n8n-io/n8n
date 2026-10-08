@@ -346,6 +346,10 @@ export interface AgentPersistedMessageContentPart {
 	sizeBytes?: number;
 	/** Live trace of a delegated child, present only on `delegate_subagent` parts. */
 	childTrace?: PersistedChildTrace;
+	/** The user who approved this suspended tool call, when the server recorded who answered. */
+	approvedBy?: AgentMessageAuthor;
+	/** The user who declined this suspended tool call, when the server recorded who answered. */
+	declinedBy?: AgentMessageAuthor;
 }
 
 /** Platform user who wrote a turn in a shared integration thread. */

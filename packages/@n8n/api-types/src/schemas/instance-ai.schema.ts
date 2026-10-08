@@ -2172,6 +2172,18 @@ export type InstanceAiSSEConnectionState =
 // Thread Inspector types (debug panel — raw agent memory inspection)
 // ---------------------------------------------------------------------------
 
+/** The team project that the owner shared a thread with. */
+export interface InstanceAiThreadSharedWith {
+	projectId: string;
+	projectName: string;
+}
+
+/** The owner of a shared thread. Every turn of the thread runs as this user. */
+export interface InstanceAiThreadOwner {
+	id: string;
+	name: string;
+}
+
 export interface InstanceAiThreadInfo extends InstanceAiThreadOverview {
 	id: string;
 	title?: string;
@@ -2180,6 +2192,15 @@ export interface InstanceAiThreadInfo extends InstanceAiThreadOverview {
 	createdAt: string;
 	updatedAt: string;
 	metadata?: Record<string, unknown>;
+	/** Set when the owner shared the thread. Members of the project can read it and answer its cards. */
+	sharedWith?: InstanceAiThreadSharedWith;
+	/** Set on a shared thread. Only this user can send messages to it. */
+	owner?: InstanceAiThreadOwner;
+}
+
+/** Response of `POST /instance-ai/threads/:threadId/share`. */
+export interface InstanceAiShareThreadResponse {
+	thread: InstanceAiThreadInfo;
 }
 
 export interface InstanceAiThreadListResponse {

@@ -6,7 +6,7 @@ import type {
 	SideCallUsageReport,
 	StreamChunk,
 } from '@n8n/agents';
-import type { AgentBackgroundJobSignal } from '@n8n/api-types';
+import type { AgentBackgroundJobSignal, AgentMessageAuthor } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
@@ -44,6 +44,8 @@ export type AgentTurnRequest = { recording: StartExecutionParams } & (
 			type: 'resume';
 			resumeData: unknown;
 			options: ResumeOptions & ExecutionOptions;
+			/** The user who answered the suspended tool call, recorded with the answer. */
+			answeredBy?: AgentMessageAuthor;
 	  }
 );
 
@@ -152,8 +154,9 @@ export class AgentTurnExecutionService {
 	}
 
 	private createPreviewExecutionControl(turn: AgentTurnRequest): PreviewExecutionControl {
+		// A shared thread keeps its owner, and its turns run as the owner.
 		const userId = turn.recording.access.ownerId;
-		if (turn.recording.access.accessScope !== 'user' || !userId) {
+		if (!userId) {
 			throw new UnexpectedError('A preview execution must have an owning user.');
 		}
 		const requestSignal = turn.options.abortSignal;
@@ -184,13 +187,13 @@ export class AgentTurnExecutionService {
 			return (await config.agentInstance.stream(turn.input, turn.options)).stream;
 		}
 
-		const { options, resumeData } = turn;
+		const { options, resumeData, answeredBy } = turn;
 		return (
 			await config.agentInstance.resume('stream', resumeData, {
 				...options,
 				onResumeClaimed: async () => {
 					state.executionStarted = true;
-					recorder.recordHitlResponse(options.toolCallId, resumeData);
+					recorder.recordHitlResponse(options.toolCallId, resumeData, answeredBy);
 					await options.onResumeClaimed?.();
 				},
 			})

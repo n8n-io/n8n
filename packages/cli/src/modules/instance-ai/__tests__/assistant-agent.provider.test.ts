@@ -12,6 +12,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
 import type { N8nMemory } from '../../agents/integrations/n8n-memory';
 import { AssistantAgentProvider } from '../assistant-agent.provider';
+import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import type { InstanceAiService } from '../instance-ai.service';
 
 function createProvider() {
@@ -19,8 +20,10 @@ function createProvider() {
 	const getThread = vi.fn();
 	const memory = mock<N8nMemory>();
 	memory.getImplementation.mockReturnValue({ getThread } as never);
-	const provider = new AssistantAgentProvider(instanceAiService, memory, mock());
-	return { provider, instanceAiService, memory, getThread };
+	const settings = mock<InstanceAiSettingsService>();
+	settings.isInstanceAiEnabled.mockReturnValue(true);
+	const provider = new AssistantAgentProvider(instanceAiService, memory, mock(), settings);
+	return { provider, instanceAiService, memory, getThread, settings };
 }
 
 function userWithScopes(scopes: Scope[]): User {
@@ -67,6 +70,19 @@ describe('AssistantAgentProvider', () => {
 	});
 
 	describe('authorize', () => {
+		it('refuses every user while the Assistant is turned off', async () => {
+			const { provider, settings } = createProvider();
+			settings.isInstanceAiEnabled.mockReturnValue(false);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+
+			const user = userWithScopes(['instanceAi:message', 'project:read']);
+			expect(await provider.authorize(user, 'project-1')).toBe(false);
+			expect(userHasScopes).not.toHaveBeenCalled();
+
+			settings.isInstanceAiEnabled.mockReturnValue(true);
+			expect(await provider.authorize(user, 'project-1')).toBe(true);
+		});
+
 		it('refuses a user without the instanceAi:message scope', async () => {
 			const { provider } = createProvider();
 

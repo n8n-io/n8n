@@ -7,6 +7,8 @@ import { NotFoundError } from '@n8n/errors';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
+import { AgentsService } from './agents.service';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { canContinueThreadInPreview } from './utils/agent-thread-access';
 
 @RestController('/projects/:projectId/agents/v2')
@@ -14,7 +16,26 @@ export class AgentThreadsController {
 	constructor(
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly langsmithExportService: AgentSessionLangSmithExportService,
+		private readonly systemAgents: SystemAgentRegistry,
+		private readonly agentsService: AgentsService,
 	) {}
+
+	/**
+	 * The agent must be a registered instance agent or an agent of the project, as on the chat
+	 * routes. An instance agent whose module is off has no readable threads. The threads of an
+	 * instance agent are only for users who can use it in the project.
+	 */
+	private async assertCanReadThreads(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<void> {
+		const { agentId, projectId } = req.params;
+		const known =
+			this.systemAgents.has(agentId) ||
+			(await this.agentsService.findById(agentId, projectId)) !== null;
+		if (!known || !(await this.systemAgents.allows(agentId, req.user, projectId))) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+	}
 
 	@Get('/:agentId/threads')
 	@ProjectScope('agent:read')
@@ -23,16 +44,20 @@ export class AgentThreadsController {
 		_res: Response,
 		@Query query: ListAgentSessionsQueryDto,
 	) {
+		await this.assertCanReadThreads(req);
+		const { projectId, agentId } = req.params;
 		const { cursor, limit: requestedLimit, ...filters } = query;
 		const limit = Math.min(Math.max(Number(requestedLimit) || 20, 1), 100);
+		// A user who cannot read other users' threads of the agent lists only their own.
+		const readsOthers = await this.systemAgents.readsOthersThreads(agentId, req.user, projectId);
 
 		return await this.agentExecutionService.getThreads(
-			req.params.projectId,
-			req.params.agentId,
+			projectId,
+			agentId,
 			req.user.id,
 			limit,
 			cursor,
-			filters,
+			readsOthers ? filters : { ...filters, scope: 'mine' },
 		);
 	}
 
@@ -41,15 +66,15 @@ export class AgentThreadsController {
 	async getThread(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
-		const result = await this.agentExecutionService.getThreadDetail(
-			req.params.threadId,
-			req.params.projectId,
-			req.params.agentId,
-			req.user.id,
-		);
-		if (!result) {
-			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
-		}
+		await this.assertCanReadThreads(req);
+		const { projectId, agentId, threadId } = req.params;
+		// Check the reader before the detail (inputs, timelines) is built.
+		const found = await this.agentExecutionService.findThreadById(threadId);
+		const readable = found !== null && (await this.systemAgents.canReadThread(req.user, found));
+		const result = readable
+			? await this.agentExecutionService.getThreadDetail(threadId, projectId, agentId, req.user.id)
+			: null;
+		if (!result) throw new NotFoundError(`Thread "${threadId}" not found`);
 		const {
 			ownerId: _ownerId,
 			accessScope: _accessScope,

@@ -144,7 +144,8 @@ export class AgentSessionLangSmithExportService {
 			agentId,
 			userId,
 		);
-		if (!detail) {
+		// A thread with an owner is exported only by its owner, also after a share.
+		if (!detail || (detail.thread.ownerId && detail.thread.ownerId !== userId)) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
 		this.ensureSettled(detail);

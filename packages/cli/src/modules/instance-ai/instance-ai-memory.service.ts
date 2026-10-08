@@ -175,9 +175,11 @@ export class InstanceAiMemoryService {
 		return this.toThreadInfo(thread);
 	}
 
+	/** `sharedProjectIds`: projects whose shared threads the user can also open. */
 	async listThreadHistory(
 		userId: string,
 		query: InstanceAiThreadHistoryQuery,
+		sharedProjectIds: string[] = [],
 	): Promise<InstanceAiThreadHistoryResponse> {
 		let before: { updatedAt: Date; id: string } | undefined;
 		if (query.cursor) {
@@ -190,12 +192,10 @@ export class InstanceAiMemoryService {
 				throw new BadRequestError('Invalid thread history cursor');
 			}
 		}
-		const rows = await this.threads.findOwnedHistoryPage(
+		const rows = await this.threads.findVisibleHistoryPage(
 			ASSISTANT_AGENT_ID,
-			userId,
-			query.limit,
-			query.search,
-			before,
+			{ userId, sharedProjectIds },
+			{ limit: query.limit, search: query.search, before },
 		);
 		const hasMore = rows.length > query.limit;
 		const threads = await this.toThreadInfos(rows.slice(0, query.limit));
@@ -212,12 +212,14 @@ export class InstanceAiMemoryService {
 		};
 	}
 
+	/** `sharedProjectIds`: projects whose shared threads the user can also open. */
 	async listThreads(
 		userId: string,
 		page = 0,
 		perPage = 100,
+		sharedProjectIds: string[] = [],
 	): Promise<InstanceAiThreadListResponse> {
-		const all = await this.threads.findOwnedByAgent(ASSISTANT_AGENT_ID, userId);
+		const all = await this.threads.findVisibleByAgent(ASSISTANT_AGENT_ID, userId, sharedProjectIds);
 		const slice = all.slice(page * perPage, (page + 1) * perPage);
 		const [threads, overviews] = await Promise.all([
 			this.toThreadInfos(slice),
@@ -346,8 +348,12 @@ export class InstanceAiMemoryService {
 		await this.threads.delete({ id: threadId, agentId: ASSISTANT_AGENT_ID });
 	}
 
+	/**
+	 * Deletes the Assistant threads of a user, private and shared. The 'user-deleted' event comes
+	 * after the user row is gone, so the threads are found also without their owner.
+	 */
 	async deleteThreadsForUser(userId: string): Promise<number> {
-		const sessions = await this.threads.findOwnedByAgent(ASSISTANT_AGENT_ID, userId);
+		const sessions = await this.threads.findOfUser(ASSISTANT_AGENT_ID, userId);
 		for (const session of sessions) await this.deleteThread(session.id);
 		return sessions.length;
 	}

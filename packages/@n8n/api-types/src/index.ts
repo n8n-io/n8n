@@ -640,6 +640,9 @@ export type {
 	InstanceAiThreadServerState,
 	InstanceAiSSEConnectionState,
 	InstanceAiThreadInfo,
+	InstanceAiThreadSharedWith,
+	InstanceAiThreadOwner,
+	InstanceAiShareThreadResponse,
 	InstanceAiThreadListResponse,
 	InstanceAiThreadHistoryResponse,
 	InstanceAiEnsureThreadResponse,
@@ -725,6 +728,12 @@ export {
 	readPendingInstanceAiSetupCredentialSelections,
 	type InstanceAiSetupCredentialSelection,
 } from './schemas/instance-ai-setup-credential-selection';
+export {
+	sharedCardRule,
+	type SharedCard,
+	type SharedCardRule,
+	type SharedCardTarget,
+} from './instance-ai-sharing';
 
 export type {
 	McpRegistryServerStatus,

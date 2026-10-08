@@ -5,6 +5,7 @@ import {
 	settleChildTrace,
 	type PersistedChildTrace,
 	type AgentBackgroundJobSignal,
+	type AgentMessageAuthor,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
@@ -264,6 +265,8 @@ export type TimelineEvent =
 			toolCallId: string;
 			response: unknown;
 			timestamp: number;
+			/** The user who answered. Absent on answers recorded before this field existed. */
+			respondedBy?: AgentMessageAuthor;
 	  };
 
 /**
@@ -355,7 +358,11 @@ export class ExecutionRecorder {
 	}
 
 	/** Record the human response that caused a suspended tool call to resume. */
-	recordHitlResponse(toolCallId: string, response: unknown): void {
+	recordHitlResponse(
+		toolCallId: string,
+		response: unknown,
+		respondedBy?: AgentMessageAuthor,
+	): void {
 		this.flushReasoningBuffer();
 		this.flushTextBuffer();
 		this.appendCompletedEvent({
@@ -363,6 +370,7 @@ export class ExecutionRecorder {
 			toolCallId,
 			response: sanitizeExecutionLogValue(response),
 			timestamp: Date.now(),
+			...(respondedBy ? { respondedBy: { id: respondedBy.id, name: respondedBy.name } } : {}),
 		});
 	}
 

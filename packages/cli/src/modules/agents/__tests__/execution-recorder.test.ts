@@ -351,6 +351,23 @@ describe('ExecutionRecorder', () => {
 					},
 				}),
 			]);
+			expect(recorder.getMessageRecord().timeline[0]).not.toHaveProperty('respondedBy');
+		});
+
+		it('records the user who answered with only the id and the name', () => {
+			const recorder = new ExecutionRecorder();
+			const author = { id: 'user-2', name: 'Grace Hopper', email: 'grace@example.com' };
+
+			recorder.recordHitlResponse('tc1', { approved: false }, author);
+
+			expect(recorder.getMessageRecord().timeline).toEqual([
+				expect.objectContaining({
+					type: 'hitl-response',
+					toolCallId: 'tc1',
+					response: { approved: false },
+					respondedBy: { id: 'user-2', name: 'Grace Hopper' },
+				}),
+			]);
 		});
 	});
 

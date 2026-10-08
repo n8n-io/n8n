@@ -586,6 +586,35 @@ describe('AgentSessionLangSmithExportService', () => {
 		expect(batchIngestRunsMock).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		['a thread shared by another owner', { accessScope: 'project' as const, ownerId: 'user-9' }],
+		['a private thread of another owner', { accessScope: 'user' as const, ownerId: 'user-9' }],
+	])('rejects %s without submitting a run', async (_label, access) => {
+		const { service, agentExecutionService, threadRepository } = setup();
+		agentExecutionService.getThreadDetail.mockResolvedValue({
+			thread: makeThread(access),
+			executions: [makeExecution()],
+		});
+		threadRepository.findByParentThreadId.mockResolvedValue([]);
+
+		await expect(service.exportSession(input)).rejects.toThrow(NotFoundError);
+		expect(batchIngestRunsMock).not.toHaveBeenCalled();
+	});
+
+	it('exports a thread that its caller owns, also after a share', async () => {
+		const { service, agentExecutionService, threadRepository } = setup();
+		agentExecutionService.getThreadDetail.mockResolvedValue({
+			thread: makeThread({ accessScope: 'project', ownerId: 'user-1' }),
+			executions: [makeExecution()],
+		});
+		threadRepository.findByParentThreadId.mockResolvedValue([]);
+
+		await expect(service.exportSession(input)).resolves.toMatchObject({
+			traceId: expect.any(String),
+		});
+		expect(batchIngestRunsMock).toHaveBeenCalled();
+	});
+
 	it('rejects when a child session is still running', async () => {
 		const child = setup();
 		const childThread = makeThread({

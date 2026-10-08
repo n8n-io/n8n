@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import {
 	InstanceAiConfirmRequestDto,
 	InstanceAiSendMessageRequest,
@@ -15,6 +15,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AgentExecutionThread } from '../agents/entities/agent-execution-thread.entity';
 import type {
 	SystemAgentProvider,
+	SystemAgentSharingPolicy,
 	SystemAgentTurn,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
@@ -28,7 +29,9 @@ import {
 	toJsonObject,
 	type AssistantTurnDefaults,
 } from './assistant-turn-options';
+import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiService } from './instance-ai.service';
+import { SharedThreadPolicy } from './sharing/shared-thread-policy';
 
 /**
  * The n8n Assistant as an instance agent. The Agents runtime runs it; this
@@ -44,9 +47,20 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 		private readonly instanceAiService: InstanceAiService,
 		private readonly memory: N8nMemory,
 		private readonly attachments: AgentChatAttachmentService,
+		private readonly settings: InstanceAiSettingsService,
 	) {}
 
+	/** What teammates can do in a chat that its owner shared with the team project. */
+	get sharing(): SystemAgentSharingPolicy {
+		return Container.get(SharedThreadPolicy);
+	}
+
+	/**
+	 * Every use of the Assistant through the Agents routes and queue asks this: send, read,
+	 * answer, and each queued turn of the owner. So turning the Assistant off stops them all.
+	 */
 	async authorize(user: User, projectId: string): Promise<boolean> {
+		if (!this.settings.isInstanceAiEnabled()) return false;
 		if (!hasGlobalScope(user, 'instanceAi:message')) return false;
 		// The working project must be one the user can read.
 		return await userHasScopes(user, ['project:read'], false, { projectId });

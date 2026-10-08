@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
-import { NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
@@ -20,6 +20,7 @@ import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
 import { SystemAgentExecutionService } from '../system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
+import type { CheckedAnswer } from '../system-agent-thread-guard';
 import type {
 	SystemAgentProvider,
 	SystemAgentTurn,
@@ -399,23 +400,24 @@ describe('SystemAgentExecutionService', () => {
 	});
 
 	describe('resumeRun', () => {
-		it('normalizes the client resume data with the provider before it resumes', async () => {
+		const teammate = mock<User>({ id: 'user-2' });
+		const checkedAnswer = (overrides: Partial<CheckedAnswer> = {}): CheckedAnswer => ({
+			agentId: AGENT_ID,
+			threadId: 'thread-1',
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: { kind: 'approval', approved: true },
+			runAs: user,
+			answeredBy: { id: 'user-1', name: 'Ada Lovelace' },
+			...overrides,
+		});
+
+		it('normalizes the checked answer with the provider before it resumes', async () => {
 			const { service, provider, checkpointStorage } = setup([textChunk]);
-			checkpointStorage.load.mockResolvedValue({
-				persistence: { threadId: 'thread-1' },
-			} as never);
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
 
-			await service.resumeRun({
-				agentId: AGENT_ID,
-				user,
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				resumeData: { kind: 'approval', approved: true },
-				send: vi.fn(),
-			});
+			await service.resumeRun(checkedAnswer(), vi.fn());
 
-			expect(checkpointStorage.load).toHaveBeenCalledWith('run-1', AGENT_ID);
 			expect(provider.normalizeResumeData).toHaveBeenCalledWith({
 				kind: 'approval',
 				approved: true,
@@ -428,20 +430,84 @@ describe('SystemAgentExecutionService', () => {
 			);
 		});
 
-		it('refuses a run without a stored checkpoint', async () => {
-			const { service, checkpointStorage } = setup();
-			checkpointStorage.load.mockResolvedValue(undefined);
+		it('runs the answer of a teammate as the owner and records who answered', async () => {
+			const { service, provider, checkpointStorage, threadRepository, prepared } = setup([
+				textChunk,
+			]);
+			const shared = { ...thread, accessScope: 'project' } as AgentExecutionThread;
+			threadRepository.findOwnedById.mockResolvedValue(shared);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+
+			await service.resumeRun(
+				checkedAnswer({ answeredBy: { id: teammate.id, name: 'Grace Hopper' } }),
+				vi.fn(),
+			);
+
+			expect(threadRepository.findOwnedById).toHaveBeenCalledWith(AGENT_ID, 'user-1', 'thread-1');
+			expect(provider.authorize).toHaveBeenCalledWith(user, 'project-1');
+			expect(provider.prepareTurn).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'resume', user, resourceId: 'draft-chat:user-1' }),
+			);
+			expect(prepared[0]).toMatchObject({
+				type: 'resume',
+				answeredBy: { id: 'user-2', name: 'Grace Hopper' },
+				recording: { access: { accessScope: 'project', ownerId: 'user-1' } },
+			});
+		});
+
+		it('streams the continuation to the caller', async () => {
+			const { service, checkpointStorage } = setup([textChunk]);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+			const send = vi.fn();
+
+			await service.resumeRun(checkedAnswer(), send);
+
+			expect(send).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'done', sessionId: 'thread-1' }),
+			);
+		});
+
+		it('refuses a card that waits no more', async () => {
+			const { service, provider, checkpointStorage } = setup();
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
+
+			await expect(service.resumeRun(checkedAnswer(), vi.fn())).rejects.toThrow(
+				'This action is no longer waiting for input',
+			);
+			expect(provider.prepareTurn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateThread', () => {
+		it('refuses to move a shared thread to another project', async () => {
+			const { service, threadRepository } = setup();
+			threadRepository.findOwnedById.mockResolvedValue({
+				...thread,
+				accessScope: 'project',
+			} as AgentExecutionThread);
 
 			await expect(
-				service.resumeRun({
-					agentId: AGENT_ID,
-					user,
-					runId: 'run-1',
-					toolCallId: 'tc-1',
-					resumeData: {},
-					send: vi.fn(),
-				}),
-			).rejects.toThrow('This action is no longer waiting for input');
+				service.updateThread(AGENT_ID, user, 'thread-1', { projectId: 'project-2' }),
+			).rejects.toThrow(BadRequestError);
+			expect(threadRepository.updateOwned).not.toHaveBeenCalled();
+		});
+
+		it('renames a shared thread', async () => {
+			const { service, threadRepository } = setup();
+			threadRepository.findOwnedById.mockResolvedValue({
+				...thread,
+				accessScope: 'project',
+			} as AgentExecutionThread);
+
+			await service.updateThread(AGENT_ID, user, 'thread-1', {
+				title: 'Invoices',
+				projectId: 'project-1',
+			});
+
+			expect(threadRepository.updateOwned).toHaveBeenCalledWith('thread-1', {
+				title: 'Invoices',
+				projectId: 'project-1',
+			});
 		});
 	});
 

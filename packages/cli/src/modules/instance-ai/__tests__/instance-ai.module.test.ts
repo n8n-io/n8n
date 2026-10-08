@@ -19,6 +19,7 @@ import { InstanceAiService } from '../instance-ai.service';
 // Importing the controllers resolves their middleware from the container, which needs a database.
 vi.mock('../instance-ai.controller', () => ({}));
 vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
+vi.mock('../sharing/thread-sharing.controller', () => ({}));
 
 describe('InstanceAiModule', () => {
 	const usePruneInterval = (pruneInterval: number): void => {

@@ -123,6 +123,30 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 
+	it('sends queue updates of a shared thread to every reader of the project', async () => {
+		threadRepository.findOneBy.mockResolvedValue({ ...thread, ownerId: 'user-1' });
+
+		broadcaster.notifyQueueUpdated('thread-1');
+
+		await vi.waitFor(() =>
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'agentMessageQueueUpdated',
+					data: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+				},
+				['user-1', 'user-2'],
+			),
+		);
+	});
+
+	it('sends no queue update for a project thread without owner', async () => {
+		broadcaster.notifyQueueUpdated('thread-1');
+
+		await vi.waitFor(() => expect(threadRepository.findOneBy).toHaveBeenCalledOnce());
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(push.sendToUsers).not.toHaveBeenCalled();
+	});
+
 	it('skips task updates for projects without members', async () => {
 		userRepository.findIdsWithGlobalOrProjectRoles.mockResolvedValue([]);
 		broadcaster.notifyBackgroundJobsUpdated('agent-1', 'thread-1');

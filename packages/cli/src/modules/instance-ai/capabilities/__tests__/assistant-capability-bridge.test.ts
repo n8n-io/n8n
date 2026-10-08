@@ -352,7 +352,7 @@ const withMode = (
 const SUSPENDED = { suspended: true };
 
 describe('toAssistantTool with confirmation', () => {
-	const provider = new AssistantAgentProvider(mock(), mock(), mock());
+	const provider = new AssistantAgentProvider(mock(), mock(), mock(), mock());
 	const handler = vi.fn<DeployHandler>();
 	const confirm = vi.fn<NonNullable<DeployOptions['confirm']>>();
 	const user = makeUser('alice');

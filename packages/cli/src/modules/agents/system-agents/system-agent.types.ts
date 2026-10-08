@@ -5,6 +5,7 @@ import type {
 	Message,
 	ResumeOptions,
 	RunOptions,
+	SerializableAgentState,
 } from '@n8n/agents';
 import type { User } from '@n8n/db';
 
@@ -69,6 +70,38 @@ export interface SystemAgentTurnHandle {
 }
 
 /**
+ * Rules for a thread that its owner shared with the thread's project. The owner keeps full
+ * use of the thread. These checks apply only to users who do not own it.
+ */
+export interface SystemAgentSharingPolicy {
+	/** Whether the user can read a thread that another user owns. */
+	canRead(user: User, thread: AgentExecutionThread): Promise<boolean>;
+	/** Whether the user can read the threads that other users shared in the project. */
+	canReadSharedIn(user: User, projectId: string): Promise<boolean>;
+	/** The error for a reader who tries to send a message to the thread. */
+	sendError(user: User, thread: AgentExecutionThread): Promise<Error>;
+	/**
+	 * Check that a reader may answer the pending `call`. Throws when the reader may not.
+	 * Returns the answer to resume with, which can differ from `resumeData`.
+	 */
+	authorizeAnswer(
+		user: User,
+		thread: AgentExecutionThread,
+		call: SystemAgentPendingCall,
+		resumeData: unknown,
+	): Promise<unknown>;
+}
+
+/**
+ * The suspended tool call that an answer resumes. The input is what the model sent. The
+ * suspend payload is the card, as the tool stored it in the checkpoint.
+ */
+export type SystemAgentPendingCall = Pick<
+	SerializableAgentState['pendingToolCalls'][string],
+	'toolName' | 'input'
+> & { suspendPayload: unknown };
+
+/**
  * A code-defined, instance-level agent. The Agents runtime owns the queue,
  * steering, checkpoints, HITL resume and recording. The provider builds a
  * fresh runtime for each turn and decides who can use the agent.
@@ -87,4 +120,6 @@ export interface SystemAgentProvider {
 	): Promise<SystemAgentTurnOptions>;
 	/** Convert a resume payload from a client into the tool's resume data. */
 	normalizeResumeData?(resumeData: unknown): unknown;
+	/** Rules for shared threads. Without them, only the owner can use a thread. */
+	readonly sharing?: SystemAgentSharingPolicy;
 }
