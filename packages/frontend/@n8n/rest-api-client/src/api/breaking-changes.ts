@@ -1,7 +1,8 @@
 import type {
 	BreakingChangeLightReportResult,
-	BreakingChangeWorkflowRuleResult,
+	BreakingChangeRuleDetailResult,
 	BreakingChangeVersion,
+	MigrationFindingTriageStatus,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
 
@@ -33,7 +34,7 @@ export async function refreshReport(
 export async function getReportForRule(
 	context: IRestApiContext,
 	ruleId: string,
-): Promise<BreakingChangeWorkflowRuleResult> {
+): Promise<BreakingChangeRuleDetailResult> {
 	return (await get(context.baseUrl, `/breaking-changes/report/${ruleId}`)).data;
 }
 
@@ -46,5 +47,19 @@ export async function migrateWorkflowForRule(
 		context,
 		'POST',
 		`/breaking-changes/report/${ruleId}/workflows/${workflowId}/migrate`,
+	);
+}
+
+export async function updateFindingStatus(
+	context: IRestApiContext,
+	ruleId: string,
+	workflowId: string,
+	status: MigrationFindingTriageStatus,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/breaking-changes/report/${ruleId}/workflows/${workflowId}`,
+		{ status },
 	);
 }

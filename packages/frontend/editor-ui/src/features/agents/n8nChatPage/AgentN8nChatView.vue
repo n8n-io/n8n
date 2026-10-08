@@ -234,6 +234,7 @@ const agentPageRoute = computed(() => {
 			agent-status="production"
 			:connected-triggers="[]"
 			channel="n8n-chat"
+			:background-jobs-active="true"
 			center-empty-state
 			@session-created="onSessionCreated"
 			@update:streaming="onStreamingChange"

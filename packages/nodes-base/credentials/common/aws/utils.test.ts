@@ -9,6 +9,7 @@ import {
 	AWS_REGION_SHAPE_PATTERN,
 	awsGetSignInOptionsAndUpdateRequest,
 	parseAwsUrl,
+	uriEncodeS3CopySource,
 	uriEncodeS3Pathname,
 	validateBedrockEndpointOverride,
 } from './utils';
@@ -1889,5 +1890,39 @@ describe('awsGetSignInOptionsAndUpdateRequest — S3 object-path canonicalizatio
 		expect(signOpts.path).toBe(
 			new URL('https://s3.us-east-1.amazonaws.com/bucket/my réport 中.pdf').pathname,
 		);
+	});
+});
+
+describe('uriEncodeS3CopySource', () => {
+	// CopyObject reads an optional `?versionId=<id>` selector after the key. The
+	// key is encoded; the selector must stay readable or S3 reads it as key text.
+	it.each([
+		['/bucket/résumé.pdf', '/bucket/r%C3%A9sum%C3%A9.pdf'],
+		['/bucket/résumé.pdf?versionId=3HL4kqt', '/bucket/r%C3%A9sum%C3%A9.pdf?versionId=3HL4kqt'],
+		['/bucket/my report.pdf?versionId=3HL4kqt', '/bucket/my%20report.pdf?versionId=3HL4kqt'],
+		['/bucket/key.txt?versionId=null', '/bucket/key.txt?versionId=null'],
+	])('encodes %s as %s', (copySource, expected) => {
+		expect(uriEncodeS3CopySource(copySource)).toBe(expected);
+	});
+
+	it('encodes a key holding a question mark that is not a version selector', () => {
+		expect(uriEncodeS3CopySource('/bucket/what?.pdf')).toBe('/bucket/what%3F.pdf');
+	});
+
+	it('splits on the last selector, so an earlier one stays part of the key', () => {
+		expect(uriEncodeS3CopySource('/bucket/a?versionId=x?versionId=y')).toBe(
+			'/bucket/a%3FversionId%3Dx?versionId=y',
+		);
+	});
+
+	it('is idempotent', () => {
+		for (const copySource of [
+			'/bucket/résumé.pdf?versionId=3HL4kqt',
+			'/bucket/plain.txt',
+			'/bucket/my report.pdf',
+		]) {
+			const once = uriEncodeS3CopySource(copySource);
+			expect(uriEncodeS3CopySource(once)).toBe(once);
+		}
 	});
 });

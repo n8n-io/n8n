@@ -956,7 +956,7 @@ const resizable = computed(() => {
 			<template v-if="!props.isAwaitingPlanReview" #footer-start>
 				<InstanceAiInputMenu
 					:disabled="isBusy || isGatedBySetup"
-					:thread-id="props.currentThreadId || undefined"
+					:is-streaming="props.isStreaming"
 					@attach-files="chatInputRef?.openFilePicker()"
 				/>
 			</template>

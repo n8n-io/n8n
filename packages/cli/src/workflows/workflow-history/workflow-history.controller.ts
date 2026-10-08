@@ -2,6 +2,8 @@ import {
 	PaginationDto,
 	WorkflowHistoryVersionsByIdsDto,
 	UpdateWorkflowHistoryVersionDto,
+	WorkflowPublishTimelineQueryDto,
+	WORKFLOW_HISTORY_DEFAULT_TAKE,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { RestController, Get, Post, Query, Body, Patch, Param, Licensed } from '@n8n/decorators';
@@ -13,8 +15,6 @@ import { WorkflowHistoryRequest } from '@/requests';
 
 import { WorkflowHistoryService } from './workflow-history.service';
 
-const DEFAULT_TAKE = 20;
-
 @RestController('/workflow-history')
 export class WorkflowHistoryController {
 	constructor(private readonly historyService: WorkflowHistoryService) {}
@@ -25,7 +25,7 @@ export class WorkflowHistoryController {
 			return await this.historyService.getList(
 				req.user,
 				req.params.workflowId,
-				query.take ?? DEFAULT_TAKE,
+				query.take ?? WORKFLOW_HISTORY_DEFAULT_TAKE,
 				query.skip ?? 0,
 			);
 		} catch (e) {
@@ -43,6 +43,7 @@ export class WorkflowHistoryController {
 				req.user,
 				req.params.workflowId,
 				req.params.versionId,
+				{ publishHistory: 'latestActivation' },
 			);
 		} catch (e) {
 			if (e instanceof SharedWorkflowNotFoundError) {
@@ -76,9 +77,16 @@ export class WorkflowHistoryController {
 	}
 
 	@Get('/workflow/:workflowId/publish-timeline')
-	async getPublishTimeline(req: WorkflowHistoryRequest.GetList) {
+	async getPublishTimeline(
+		req: WorkflowHistoryRequest.GetList,
+		_res: Response,
+		@Query query: WorkflowPublishTimelineQueryDto,
+	) {
 		try {
-			return await this.historyService.getPublishTimeline(req.user, req.params.workflowId);
+			return await this.historyService.getPublishTimeline(req.user, req.params.workflowId, {
+				offset: query.skip,
+				limit: query.take,
+			});
 		} catch (e) {
 			if (e instanceof SharedWorkflowNotFoundError) {
 				throw new NotFoundError('Could not find workflow');

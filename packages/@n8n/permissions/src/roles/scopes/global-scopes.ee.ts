@@ -197,6 +197,7 @@ export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
 
 export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'annotationTag:create',
+	'breakingChanges:list',
 	'annotationTag:read',
 	'annotationTag:update',
 	'annotationTag:delete',
