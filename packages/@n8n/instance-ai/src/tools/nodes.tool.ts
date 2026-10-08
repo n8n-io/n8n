@@ -153,9 +153,23 @@ export const nodeRequestSchema = z.union([
 
 export type NodeTypeRequest = z.infer<typeof nodeRequestSchema>;
 
+// Node contracts: a catalog example would point at a node that a module replaces.
+const MODULE_NODE_TYPE_ID_DESCRIPTION = 'Node type ID, module id, or action id';
+
+/** `describe` and `explore-resources` share the field, so they share one description. */
+const moduleNodeTypeField = z
+	.string()
+	.describe(
+		'Node type ID, e.g. "@n8n/nodes-integrations.googleSheetsSheetRead". `describe` also takes a module id or an action id.',
+	);
+
+const moduleDescribeAction = describeAction.extend({ nodeType: moduleNodeTypeField });
+
 const moduleNodeRequestSchema = z.union([
-	z.string().describe('Node type ID, module id, or action id'),
-	nodeRequestObjectSchema,
+	z.string().describe(MODULE_NODE_TYPE_ID_DESCRIPTION),
+	nodeRequestObjectSchema.extend({
+		nodeType: z.string().describe('Node type ID of a split node'),
+	}),
 ]);
 
 const typeDefinitionAction = z.object({
@@ -219,6 +233,7 @@ const exploreResourcesAction = z.object({
 
 /** Flag on: a typed node module names the lookup of a resource field with its resource id. */
 const moduleExploreResourcesAction = exploreResourcesAction.extend({
+	nodeType: moduleNodeTypeField,
 	methodName: z
 		.string()
 		.describe(
@@ -282,6 +297,10 @@ const executeAction = z.object({
 
 type ExecuteInput = z.infer<typeof executeAction>;
 
+const moduleExecuteAction = executeAction.extend({
+	type: z.string().min(1).describe('Node type ID'),
+});
+
 const moduleSuggestedAction = suggestedAction.extend({
 	action: suggestedAction.shape.action.describe(
 		'Get curated nodes by category. Call first when the workflow fits a known category. The list is not complete: also consider nodes that run on Gateway credits.',
@@ -311,11 +330,11 @@ const moduleFullInputSchema = sanitizeInputSchema(
 	z.discriminatedUnion('action', [
 		listAction,
 		moduleSearchAction,
-		describeAction,
+		moduleDescribeAction,
 		moduleTypeDefinitionAction,
 		moduleSuggestedAction,
 		moduleExploreResourcesAction,
-		executeAction,
+		moduleExecuteAction,
 	]),
 );
 
@@ -1131,6 +1150,7 @@ export function createNodesTool(
 				context.nodeContractsEnabled ? moduleTypeDefinitionAction : typeDefinitionAction,
 				context.nodeContractsEnabled
 					? orchestratorExploreAction.extend({
+							nodeType: moduleExploreResourcesAction.shape.nodeType,
 							methodName: moduleExploreResourcesAction.shape.methodName,
 							currentNodeParameters: moduleExploreResourcesAction.shape.currentNodeParameters,
 						})

@@ -50,8 +50,10 @@ describe('node contracts tool schemas', () => {
 			'currentNodeParameters',
 			'limit',
 			'methodName',
+			'nodeType',
 			'nodeTypes',
 			'queries',
+			'type',
 		];
 		const actionText = (properties: Record<string, unknown>, action: string) =>
 			String((properties.action as { description?: string }).description)

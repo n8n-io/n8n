@@ -587,6 +587,19 @@ describe('nodes tool', () => {
 			expect(result).toEqual({ results: [{ name: 'Leads', value: '0' }] });
 		});
 
+		it.each(['full', 'orchestrator'] as const)(
+			'gives no catalog node type example on the %s surface only with the node contracts on',
+			(surface) => {
+				const schemaOf = (nodeContractsEnabled: boolean) => {
+					const tool = createNodesTool(createMockContext({ nodeContractsEnabled }), surface);
+					const { inputSchema } = tool as unknown as { inputSchema: never };
+					return JSON.stringify(zodToJsonSchema(inputSchema));
+				};
+				expect(schemaOf(true)).not.toContain('n8n-nodes-base');
+				expect(schemaOf(false)).toContain('n8n-nodes-base.httpRequest');
+			},
+		);
+
 		it('names the resource id as the method only with the node contracts on', () => {
 			const methodNameOf = (nodeContractsEnabled: boolean) => {
 				const tool = createNodesTool(createMockContext({ nodeContractsEnabled }), 'full');
