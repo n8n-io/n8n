@@ -5,10 +5,10 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { CacheService, EventService } from '@n8n/backend-services';
+import { EventService } from '@n8n/backend-services';
 
 import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQuery } from './cached-metric-query';
+import { CachedMetricQueryFactory, toGaugeValue } from './cached-metric-query';
 import { DURATION_BUCKETS_SECONDS } from './constant';
 
 const ALL_STATUSES = Object.values(WorkflowPublicationOutboxStatus);
@@ -39,7 +39,7 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
-		private readonly cacheService: CacheService,
+		private readonly cachedMetricQueries: CachedMetricQueryFactory,
 	) {}
 
 	get enabled(): boolean {
@@ -67,8 +67,7 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 		// a scrape, coalescing collapses both gauges' collects to a single query.
 		const cacheTtl = this.config.workflowPublicationMetricInterval * Time.seconds.toMilliseconds;
 
-		const query = new CachedMetricQuery<StatusStatsByStatus>({
-			cacheService: this.cacheService,
+		const query = this.cachedMetricQueries.create<StatusStatsByStatus>({
 			cacheKey: RECORD_STATS_CACHE_KEY,
 			ttlMs: cacheTtl,
 			query: async () => {
@@ -88,7 +87,10 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 			async collect() {
 				const byStatus = await query.get();
 				for (const status of ALL_STATUSES) {
-					this.set({ status }, byStatus[status]?.count ?? 0);
+					this.set(
+						{ status },
+						toGaugeValue(byStatus, (stats) => stats[status]?.count ?? 0),
+					);
 				}
 			},
 		});
@@ -101,10 +103,12 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 				const byStatus = await query.get();
 				const now = Date.now();
 				for (const status of ACTIVE_STATUSES) {
-					const oldestMs = byStatus[status]?.oldestMs;
 					this.set(
 						{ status },
-						oldestMs !== undefined ? (now - oldestMs) * Time.milliseconds.toSeconds : 0,
+						toGaugeValue(byStatus, (stats) => {
+							const oldestMs = stats[status]?.oldestMs;
+							return oldestMs !== undefined ? (now - oldestMs) * Time.milliseconds.toSeconds : 0;
+						}),
 					);
 				}
 			},

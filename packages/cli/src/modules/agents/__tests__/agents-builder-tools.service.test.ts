@@ -20,6 +20,7 @@ import type { User } from '@n8n/db';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import { NodeConnectionTypes, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
+import type { ZodTypeAny } from 'zod';
 
 import type { CredentialTypes } from '@/credential-types';
 import { ConflictError, LockedError } from '@n8n/errors';
@@ -368,7 +369,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
+					config: updatedConfig,
 				},
 				ctx,
 			);
@@ -395,7 +396,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
+					config: updatedConfig,
 				},
 				ctx,
 			);
@@ -409,6 +410,109 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+		it('write_config keeps stored top-level fields that the model omits', async () => {
+			const { service, agentsService } = makeService();
+			const storedConfig: AgentJsonConfig = {
+				...baseConfig,
+				memory: { enabled: true, storage: 'n8n' },
+				config: { webSearch: { enabled: false }, promptCaching: { enabled: true } },
+			};
+			const currentConfig = { ...storedConfig, integrations: [] };
+			agentsService.findById.mockResolvedValue(makeAgent(storedConfig));
+			agentsService.updateConfig.mockImplementation(async (_agentId, _projectId, config) => ({
+				config: config as AgentJsonConfig,
+				configHash: 'config-hash',
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			}));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					config: { name: 'Support Agent', instructions: 'Help with support tickets.' },
+				},
+				ctx,
+			);
+
+			const saved = agentsService.updateConfig.mock.calls[0][2] as AgentJsonConfig;
+			expect(saved).toEqual(
+				expect.objectContaining({
+					name: 'Support Agent',
+					instructions: 'Help with support tickets.',
+					model: baseConfig.model,
+					credential: baseConfig.credential,
+					memory: { enabled: true, storage: 'n8n' },
+				}),
+			);
+			// An omitted `config` must not turn a disabled web search back on.
+			expect(saved.config?.webSearch).toEqual({ enabled: false });
+			expect(result).toEqual({ ok: true, configMutated: true, agentId, configHash: 'config-hash' });
+		});
+
+		it('write_config still accepts a config sent as a JSON string', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig = { ...currentConfig, instructions: 'Help with support tickets.' };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: updatedConfig,
+				configHash: 'config-hash',
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					config: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({ ok: true, configMutated: true, agentId, configHash: 'config-hash' });
+		});
+
+		it('write_config and patch_config input schemas take objects and parse stringified values', () => {
+			const { service } = makeService();
+			const writeSchema = getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG)
+				.inputSchema as ZodTypeAny;
+			const patchSchema = getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG)
+				.inputSchema as ZodTypeAny;
+			const ops = [{ op: 'replace', path: '/instructions', value: 'Changed.' }];
+
+			expect(writeSchema.parse({ config: { name: 'A' }, baseConfigHash: null })).toEqual({
+				config: { name: 'A' },
+				baseConfigHash: null,
+			});
+			expect(
+				writeSchema.parse({ config: JSON.stringify({ name: 'A' }), baseConfigHash: null }),
+			).toEqual({ config: { name: 'A' }, baseConfigHash: null });
+			expect(patchSchema.parse({ operations: ops, baseConfigHash: 'h' }).operations).toEqual(ops);
+			expect(
+				patchSchema.parse({ operations: JSON.stringify(ops), baseConfigHash: 'h' }).operations,
+			).toEqual(ops);
+			expect(patchSchema.safeParse({ operations: '[not json', baseConfigHash: 'h' }).success).toBe(
+				false,
+			);
+		});
+
+		it('write_config input schema maps the legacy json key to config', () => {
+			const { service } = makeService();
+			const tool = getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG);
+			const writeSchema = tool.inputSchema as ZodTypeAny;
+
+			expect(
+				writeSchema.parse({ json: JSON.stringify({ name: 'A' }), baseConfigHash: 'h' }),
+			).toEqual({ config: { name: 'A' }, baseConfigHash: 'h' });
+			// The model only sees the new key.
+			expect(zodToJsonSchema(writeSchema)).toEqual(
+				expect.objectContaining({
+					type: 'object',
+					required: ['config', 'baseConfigHash'],
+				}),
+			);
+		});
+
 		it('write_config failure result is not stamped with configMutated', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
@@ -416,7 +520,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: 'stale-hash',
-					json: JSON.stringify(baseConfig),
+					config: baseConfig,
 				},
 				ctx,
 			);
@@ -433,7 +537,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(baseConfig),
-					json: JSON.stringify({ ...baseConfig, instructions: 'Changed.' }),
+					config: { ...baseConfig, instructions: 'Changed.' },
 				},
 				ctx,
 			);
@@ -453,7 +557,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(baseConfig),
-					operations: JSON.stringify([{ op: 'replace', path: '/instructions', value: 'Changed.' }]),
+					operations: [{ op: 'replace', path: '/instructions', value: 'Changed.' }],
 				},
 				ctx,
 			);
@@ -483,9 +587,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					operations: JSON.stringify([
-						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
-					]),
+					operations: [{ op: 'replace', path: '/instructions', value: 'Updated instructions' }],
 				},
 				ctx,
 			);
@@ -523,10 +625,10 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					operations: JSON.stringify([
+					operations: [
 						{ op: 'remove', path: '/integrations' },
 						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
-					]),
+					],
 				},
 				ctx,
 			);
@@ -553,7 +655,7 @@ describe('AgentsBuilderToolsService', () => {
 			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash({ ...baseConfig, integrations: [] }),
-					json: JSON.stringify({ ...baseConfig, instructions: 'Changed.' }),
+					config: { ...baseConfig, instructions: 'Changed.' },
 				},
 				ctx,
 			);
@@ -581,9 +683,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					operations: JSON.stringify([
-						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
-					]),
+					operations: [{ op: 'replace', path: '/instructions', value: 'Updated instructions' }],
 				},
 				ctx,
 			);
@@ -610,9 +710,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
 					baseConfigHash: 'stale-hash',
-					operations: JSON.stringify([
-						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
-					]),
+					operations: [{ op: 'replace', path: '/instructions', value: 'Updated instructions' }],
 				},
 				ctx,
 			);
@@ -660,7 +758,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					operations: JSON.stringify([{ op: 'remove', path: '/integrations/1' }]),
+					operations: [{ op: 'remove', path: '/integrations/1' }],
 				},
 				ctx,
 			);
@@ -704,9 +802,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					operations: JSON.stringify([
-						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
-					]),
+					operations: [{ op: 'replace', path: '/instructions', value: 'Updated instructions' }],
 				},
 				ctx,
 			);
@@ -748,7 +844,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
+					config: updatedConfig,
 				},
 				ctx,
 			);
@@ -784,7 +880,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
+					config: updatedConfig,
 				},
 				ctx,
 			);
@@ -815,7 +911,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
+					config: updatedConfig,
 				},
 				ctx,
 			);
@@ -842,9 +938,9 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					operations: JSON.stringify([
+					operations: [
 						{ op: 'replace', path: '/tools', value: [makeLinearToolWithFromAiTeamId()] },
-					]),
+					],
 				},
 				ctx,
 			);
@@ -922,7 +1018,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
+					config: updatedConfig,
 				},
 				ctx,
 			);
@@ -975,7 +1071,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					operations: JSON.stringify([{ op: 'replace', path: '/tools', value: [nodeTool] }]),
+					operations: [{ op: 'replace', path: '/tools', value: [nodeTool] }],
 				},
 				ctx,
 			);
@@ -1022,7 +1118,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
+					config: updatedConfig,
 				},
 				ctx,
 			);
@@ -1069,9 +1165,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					operations: JSON.stringify([
-						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
-					]),
+					operations: [{ op: 'replace', path: '/instructions', value: 'Updated instructions' }],
 				},
 				ctx,
 			);
@@ -1111,7 +1205,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
+					config: updatedConfig,
 				},
 				ctx,
 			);
@@ -1142,7 +1236,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
+					config: updatedConfig,
 				},
 				ctx,
 			);
@@ -1178,7 +1272,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentDraftConfig),
-					json: JSON.stringify(draftConfig),
+					config: draftConfig,
 				},
 				ctx,
 			);
@@ -1208,7 +1302,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentDraftConfig),
-					json: JSON.stringify(draftConfig),
+					config: draftConfig,
 				},
 				ctx,
 			);
@@ -1229,7 +1323,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(draftConfig),
+					config: draftConfig,
 				},
 				ctx,
 			);
@@ -1250,7 +1344,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(malformedConfig),
+					config: malformedConfig,
 				},
 				ctx,
 			);
@@ -1278,9 +1372,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					operations: JSON.stringify([
-						{ op: 'replace', path: '/instructions', value: 'Triage Slack messages.' },
-					]),
+					operations: [{ op: 'replace', path: '/instructions', value: 'Triage Slack messages.' }],
 				},
 				ctx,
 			);
@@ -1306,7 +1398,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
-					operations: JSON.stringify([{ op: 'replace', path: '/model', value: '' }]),
+					operations: [{ op: 'replace', path: '/model', value: '' }],
 				},
 				ctx,
 			);
@@ -1328,7 +1420,7 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
 					baseConfigHash: 'stale-hash',
-					json: JSON.stringify(updatedConfig),
+					config: updatedConfig,
 				},
 				ctx,
 			);
@@ -1368,7 +1460,7 @@ describe('AgentsBuilderToolsService', () => {
 				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 					{
 						baseConfigHash: getAgentConfigHash(currentConfig),
-						json: JSON.stringify(updatedConfig),
+						config: updatedConfig,
 					},
 					ctx,
 				);
@@ -1410,7 +1502,7 @@ describe('AgentsBuilderToolsService', () => {
 				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 					{
 						baseConfigHash: getAgentConfigHash(currentConfig),
-						json: JSON.stringify(updatedConfig),
+						config: updatedConfig,
 					},
 					ctx,
 				);
@@ -1460,7 +1552,7 @@ describe('AgentsBuilderToolsService', () => {
 				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 					{
 						baseConfigHash: getAgentConfigHash(currentConfig),
-						json: JSON.stringify(updatedConfig),
+						config: updatedConfig,
 					},
 					ctx,
 				);
@@ -1512,7 +1604,7 @@ describe('AgentsBuilderToolsService', () => {
 				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 					{
 						baseConfigHash: getAgentConfigHash(currentConfig),
-						json: JSON.stringify(updatedConfig),
+						config: updatedConfig,
 					},
 					ctx,
 				);
