@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ToolResultRenderer.vue
+  s_ff1df4c8e29288::t_fd674365e0d45c 56-68
+  s_ff1df4c8e29288::t_9ba9ade9786082 55
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/ToolResultRenderer.test.ts
+  s_ff1df4c8e29288::t_fd674365e0d45c 8-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c3184300299b4edafa966bf285b217840ee436c",
+  "prompts": {},
+  "sessions": {
+    "s_ff1df4c8e29288": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11ba6-c33a-7773-8064-be646c391402",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
