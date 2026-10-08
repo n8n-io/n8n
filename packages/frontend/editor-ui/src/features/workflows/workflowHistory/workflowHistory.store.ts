@@ -136,8 +136,11 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		await whApi.updateWorkflowHistoryVersion(rootStore.restApiContext, workflowId, versionId, data);
 	};
 
-	const getPublishTimeline = async (workflowId: string): Promise<PublishTimelineEvent[]> =>
-		await whApi.getPublishTimeline(rootStore.restApiContext, workflowId);
+	const getPublishTimeline = async (
+		workflowId: string,
+		queryParams: WorkflowHistoryRequestParams,
+	): Promise<PublishTimelineEvent[]> =>
+		await whApi.getPublishTimeline(rootStore.restApiContext, workflowId, queryParams);
 
 	const getVersionFirstAdoptionDate = async (version: {
 		major: number;

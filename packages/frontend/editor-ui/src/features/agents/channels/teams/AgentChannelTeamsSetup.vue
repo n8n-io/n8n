@@ -12,6 +12,10 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import {
+	listenForCredentialChanges,
+	useCredentialsStore,
+} from '@/features/credentials/credentials.store';
 import type { PermissionsRecord } from '@n8n/permissions';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
@@ -21,7 +25,6 @@ import AgentChannelTeamsAvailability, {
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
-import { OFFER_READ_PERMISSIONS } from './constants';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -77,13 +80,12 @@ const setupState = ref<TeamsAgentSetupState | null>(null);
 const setupLoadFailed = ref(false);
 const showEndpoint = ref(false);
 
-// A hidden read permission is never kept on: nothing here could turn it off.
 function availabilityFrom(saved?: AgentTeamsIntegrationSettings): TeamsAvailability {
 	return {
 		teamChannels: saved?.teamChannels ?? false,
 		groupChats: saved?.groupChats ?? false,
-		readAllChannelMessages: OFFER_READ_PERMISSIONS && (saved?.readAllChannelMessages ?? false),
-		readAllGroupMessages: OFFER_READ_PERMISSIONS && (saved?.readAllGroupMessages ?? false),
+		readAllChannelMessages: saved?.readAllChannelMessages ?? false,
+		readAllGroupMessages: saved?.readAllGroupMessages ?? false,
 	};
 }
 
@@ -326,13 +328,19 @@ watch(
 	() => loadSetupState(),
 );
 
-watch(
-	credentialId,
-	async () => {
-		await Promise.all([runCredentialCheck('auto'), loadSetupState()]);
+async function refreshForCredential() {
+	await Promise.all([runCredentialCheck('auto'), loadSetupState()]);
+}
+
+watch(credentialId, refreshForCredential, { immediate: true });
+
+// Saving the picked credential keeps its ID, so the watch above does not see the edit.
+listenForCredentialChanges({
+	store: useCredentialsStore(),
+	onCredentialUpdated: async (credential) => {
+		if (credential.id === credentialId.value) await refreshForCredential();
 	},
-	{ immediate: true },
-);
+});
 
 // Settings can arrive after this mounts, so the empty defaults must not stick.
 watch(

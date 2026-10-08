@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -519,6 +519,47 @@ describe('Posthog store', () => {
 			resetStores();
 			window.localStorage.clear();
 			window.featureFlags = undefined;
+		});
+	});
+
+	describe('waitForFeatureFlagsWithTimeout', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('resolves once the flags settle, and clears its own timeout', async () => {
+			const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
+			const store = {
+				waitForFeatureFlags: vi.fn().mockResolvedValue(undefined),
+			} as unknown as ReturnType<typeof usePostHog>;
+
+			const promise = waitForFeatureFlagsWithTimeout(store, 3000);
+			await vi.advanceTimersByTimeAsync(0);
+			await promise;
+
+			expect(store.waitForFeatureFlags).toHaveBeenCalled();
+			expect(clearTimeoutSpy).toHaveBeenCalled();
+		});
+
+		it('resolves after timeoutMs when the flags never settle', async () => {
+			const store = {
+				waitForFeatureFlags: vi.fn(async () => await new Promise<void>(() => {})),
+			} as unknown as ReturnType<typeof usePostHog>;
+
+			let resolved = false;
+			void waitForFeatureFlagsWithTimeout(store, 3000).then(() => {
+				resolved = true;
+			});
+
+			await vi.advanceTimersByTimeAsync(2999);
+			expect(resolved).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(resolved).toBe(true);
 		});
 	});
 });

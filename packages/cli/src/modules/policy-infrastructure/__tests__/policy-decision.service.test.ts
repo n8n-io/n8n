@@ -3,6 +3,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import {
 	type CredentialDecryptContext,
 	type CredentialSaveContext,
+	type CredentialTransferContext,
 	type PolicyCheckClass,
 	type PolicyCheckMetadata,
 	type PolicyCheckResult,
@@ -98,6 +99,11 @@ const credentialUpdateContext: CredentialSaveContext = {
 	projectId: 'proj-1',
 };
 
+const credentialTransferContext: CredentialTransferContext = {
+	credential: { id: 'cred-1', type: 'slackApi' },
+	targetProjectId: 'proj-2',
+};
+
 const decryptContext: CredentialDecryptContext = {
 	credentialType: 'slackApi',
 	credentialId: 'cred-1',
@@ -184,6 +190,10 @@ class OtherPointsCheck implements RegisteredPolicyCheck {
 	}
 
 	async onCredentialSave(): Promise<PolicyCheckResult> {
+		return { violations: [slackBlocked] };
+	}
+
+	async onCredentialTransfer(): Promise<PolicyCheckResult> {
 		return { violations: [slackBlocked] };
 	}
 }
@@ -429,6 +439,29 @@ describe('PolicyDecisionService', () => {
 			expect(JSON.stringify(audit.mock.calls[0][1])).not.toContain('wf-claimed');
 		});
 
+		it('names an agent as an agent, not as a workflow', async () => {
+			const { service, audit } = auditedServiceWith(SlackCheck);
+			const agent = {
+				id: 'agent-1',
+				name: 'Support agent',
+				nodes: [],
+				artifactKind: 'agent' as const,
+			};
+
+			await service.enforce(
+				'workflowSave',
+				{ workflow: agent, storedWorkflow: agent, projectId: 'proj-1' },
+				asAlice,
+			);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				agentId: 'agent-1',
+				agentName: 'Support agent',
+				projectId: 'proj-1',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
+		});
+
 		it('records the project a transfer moves into', async () => {
 			const { service, audit } = auditedServiceWith(OtherPointsCheck);
 
@@ -460,6 +493,19 @@ describe('PolicyDecisionService', () => {
 				credentialType: 'slackApi',
 			});
 			expect(JSON.stringify(audit.mock.calls[0][1])).not.toContain('payload-cred');
+		});
+
+		it('records the project a credential transfer moves into', async () => {
+			const { service, audit } = auditedServiceWith(OtherPointsCheck);
+
+			await service.enforce('credentialTransfer', credentialTransferContext, unattended);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				credentialId: 'cred-1',
+				credentialType: 'slackApi',
+				projectId: 'proj-2',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
 		});
 
 		it('records the credential and the node asking for it', async () => {

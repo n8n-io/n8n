@@ -67,6 +67,9 @@ export const columnIdParamSchema = z
 	.regex(NANOID_REGEX, 'must match format "nanoid"')
 	.openapi({ format: 'nanoid', param: { description: 'The ID of the column' } });
 export const variableIdParamSchema = stringIdParamSchema('The ID of the variable.');
+export const logStreamingDestinationIdParamSchema = stringIdParamSchema(
+	'The id of the log streaming destination.',
+);
 export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
 	'The ID of the node type policy document.',
 );
