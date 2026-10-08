@@ -120,8 +120,12 @@ async function onClickTemplatesLink() {
 		</div>
 
 		<template v-if="showMcpDiscovery">
-			<div :class="$style.orDivider">{{ i18n.baseText('generic.or') }}</div>
-			<ClaudeEntryPoint placement="canvas" />
+			<div :class="$style.orDivider">
+				<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>
+			</div>
+			<div :class="$style.option">
+				<ClaudeEntryPoint placement="canvas" />
+			</div>
 		</template>
 		<template v-else-if="showInstanceAiBuildWithAi || showLegacyBuildWithAi">
 			<!-- Or Divider -->
