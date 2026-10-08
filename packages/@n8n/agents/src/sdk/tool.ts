@@ -253,8 +253,19 @@ export class Tool<
 
 	private systemInstructionText?: string;
 
+	private legacyNamesValue?: string[];
+
 	constructor(name: string) {
 		this.name = name;
+	}
+
+	/**
+	 * Declare former names of this tool. Suspended calls and message history
+	 * persisted under a former name still resolve to this tool.
+	 */
+	legacyNames(...names: string[]): this {
+		this.legacyNamesValue = [...(this.legacyNamesValue ?? []), ...names];
+		return this;
 	}
 
 	/** Set the tool description. Required before building. */
@@ -423,6 +434,7 @@ export class Tool<
 
 		const built: BuiltTool = {
 			name: this.name,
+			...(this.legacyNamesValue?.length ? { legacyNames: this.legacyNamesValue } : {}),
 			description: this.desc,
 			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,

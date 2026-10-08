@@ -28,8 +28,8 @@ unchanged. Add locale translations for these keys; missing translations fall bac
 to English. The backend retains `message` for older clients and saved approvals
 that have no structured details.
 
-`build-workflow`, `workflows(action="publish")`,
-and `executions(action="run")` accept `approvalSummary`. The agent supplies one
+`workflow_builder_build_workflow`, `workflow_builder_workflows(action="publish")`,
+and `workflow_builder_executions(action="run")` accept `approvalSummary`. The agent supplies one
 line in the user’s language that describes the concrete change or effect of the
 call, for example `Add a Slack notification after the payment check`. Live execution summaries
 describe the external actions that the workflow will perform. The field is
@@ -48,37 +48,37 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 
 | Tool | Actions |
 |------|---------|
-| `workflows` | 12 |
-| `data-tables` | 11 |
+| `workflow_builder_workflows` | 12 |
+| `workflow_builder_data_tables` | 11 |
 | `workspace` | 8 |
-| `executions` | 8 |
-| `credentials` | 6 |
-| `nodes` | 7 |
+| `workflow_builder_executions` | 8 |
+| `workflow_builder_credentials` | 6 |
+| `workflow_builder_nodes` | 7 |
 | `mcp-servers` | 4 |
 | `conversation-history` | 2 |
-| `task-control` | 3 |
+| `workflow_builder_task_control` | 3 |
 | `research` | 2 |
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
-| `build-workflow`, `ask-user`, `parse-file`, `searchModels` | single-purpose |
+| `workflow_builder_build_workflow`, `workflow_builder_ask_user`, `parse-file`, `workflow_builder_search_models` | single-purpose |
 
 ## Orchestration Tools
 
 These tools are exclusive to the orchestrator agent. Sub-agents do not receive
 them. Some are conditional on context availability.
 
-### `create-tasks`
+### `workflow_builder_create_tasks`
 
 Persist a dependency-aware task plan for detached multi-step execution. For
 initial plan-worthy work, the orchestrator loads the `planning` skill, performs
-discovery with normal domain tools, loads `create-tasks` via `load_tool`, then
-calls `create-tasks` with
+discovery with normal domain tools, loads `workflow_builder_create_tasks` via `load_tool`, then
+calls `workflow_builder_create_tasks` with
 `planningContext.source: "planning-skill"`. For
 `<planned-task-follow-up type="replan">` turns, use
 `planningContext.source: "replan"` when multiple dependent tasks still need
 scheduling. Clear single-workflow builds, including new and one-off workflows,
-use `workflow-builder`, workspace file tools, and `build-workflow` directly.
+use `workflow-builder`, workspace file tools, and `workflow_builder_build_workflow` directly.
 The plan is shown to the user for approval before execution starts.
 
 | Field | Type | Required | Description |
@@ -110,20 +110,20 @@ The plan is shown to the user for approval before execution starts.
 - On denial: cancels the graph and blocks same-turn resubmission
 
 **Task kinds** map to executors:
-- `build-workflow` → orchestrator follow-up run using the workflow-builder skill
+- `workflow_builder_build_workflow` → orchestrator follow-up run using the workflow-builder skill
 - `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
 
 Standalone data-table work is handled directly by the orchestrator with the
-`data-table-manager` skill and the `data-tables` / `parse-file` tools. Single
+`data-table-manager` skill and the `workflow_builder_data_tables` / `parse-file` tools. Single
 workflow-local table requirements belong in the builder task spec; plan only
 when the table schema is shared, independently durable, or creates real
 dependency coordination.
 
-### `task-control`
+### `workflow_builder_task_control`
 
 Progress tracking and background-task control. One tool, three actions.
 
-#### `task-control(action="update-checklist")`
+#### `workflow_builder_task_control(action="update-checklist")`
 
 Update a visible task checklist for the user. Lightweight progress tracking
 during synchronous work.
@@ -136,7 +136,7 @@ during synchronous work.
 
 **Behavior**: Saves to storage, publishes `tasks-update` event for live UI refresh.
 
-#### `task-control(action="cancel-task")`
+#### `workflow_builder_task_control(action="cancel-task")`
 
 Cancel a running background task by its ID.
 
@@ -149,13 +149,13 @@ Cancel a running background task by its ID.
 **Cancellation flow** (three surfaces converge):
 ```
 User clicks stop button  -> POST /chat/:threadId/tasks/:taskId/cancel ---+
-User says "stop that"    -> orchestrator calls task-control -------------+
+User says "stop that"    -> orchestrator calls workflow_builder_task_control -------------+
 cancelRun (global stop)  -> cancelBackgroundTasks(threadId) -------------+
                                                                         v
                                             service.cancelBackgroundTask()
 ```
 
-#### `task-control(action="correct-task")`
+#### `workflow_builder_task_control(action="correct-task")`
 
 Send a course correction to a running background task.
 
@@ -168,7 +168,7 @@ Send a course correction to a running background task.
 sent, the task already completed, the task was not found, or delivery is not
 available.
 
-### `complete-checkpoint`
+### `workflow_builder_complete_checkpoint`
 
 Close out a `checkpoint` planned task with its verdict. The tool is registered
 for the orchestrator and is intended only for checkpoint follow-up turns. The
@@ -196,7 +196,7 @@ Registered only when the host provides both `agentPreviewSession` and
 
 **Returns**: `{ ok, title?, sessionNumber?, transcript?, error? }`
 
-### `verify-built-workflow` *(conditional)*
+### `workflow_builder_verify_built_workflow` *(conditional)*
 
 Run a built workflow with per-execution pin data for verification (never
 persisted to the workflow). Destructive and user-action nodes — write
@@ -278,7 +278,7 @@ output a file are skipped because their data is in the binary, which the
 preview omits. Truncated outputs are skipped because the hidden items can hold
 data.
 
-### `report-verification-verdict` *(conditional)*
+### `workflow_builder_report_verification_verdict` *(conditional)*
 
 Feed verification results into the deterministic workflow loop state machine.
 
@@ -293,7 +293,7 @@ Feed verification results into the deterministic workflow loop state machine.
 
 **Returns**: `{ guidance: string }` — next action based on loop state machine.
 
-### `apply-workflow-credentials` *(conditional)*
+### `workflow_builder_apply_workflow_credentials` *(conditional)*
 
 Atomically apply real credentials to previously-mocked workflow nodes.
 
@@ -304,16 +304,16 @@ Atomically apply real credentials to previously-mocked workflow nodes.
 
 **Returns**: `{ updatedNodes: string[] }`
 
-## `workflows` (12 actions)
+## `workflow_builder_workflows` (12 actions)
 
 The domain surface has up to twelve actions. Version actions are registered only
 when their backend methods are available. Use `get` to inspect a workflow. Use
-`get-as-code`, workspace edits, and `build-workflow` to change a workflow.
+`get-as-code`, workspace edits, and `workflow_builder_build_workflow` to change a workflow.
 The internal `getAsWorkflowJSON` and `updateFromWorkflowJSON` service methods
 remain available to compiler, setup, validation, credential, and verification
 flows. They are not model-facing actions.
 
-### `workflows(action="list")`
+### `workflow_builder_workflows(action="list")`
 
 List workflows accessible to the current user.
 
@@ -363,7 +363,7 @@ so it cannot reach a project the user can't read (`scope: "instance"` already
 returns that whole readable set). Writes ignore it and stay locked to the thread's
 bound project.
 
-### `workflows(action="get")`
+### `workflow_builder_workflows(action="get")`
 
 Inspect workflow metadata and structure. Small workflows return their full node
 data. Large workflows return a structural summary unless `full` is true.
@@ -379,12 +379,12 @@ or a structured not-found response.
 
 `activeVersionId` is `null` when the workflow is unpublished.
 
-### `workflows(action="get-as-code")`
+### `workflow_builder_workflows(action="get-as-code")`
 
 Get a workflow as TypeScript SDK code. Used by the builder agent to inspect an
 existing workflow when no workspace source file is already available. Existing
 workflow modifications should write the returned code to a workspace source file
-and call `build-workflow` with both `filePath` and the real n8n `workflowId`
+and call `workflow_builder_build_workflow` with both `filePath` and the real n8n `workflowId`
 once; subsequent repairs can reuse only `filePath`.
 
 | Field | Type | Required | Description |
@@ -394,7 +394,7 @@ once; subsequent repairs can reuse only `filePath`.
 
 **Returns**: `{ workflowId, name, code, error? }`.
 
-### `build-workflow`
+### `workflow_builder_build_workflow`
 
 Compile, validate, and save a workspace workflow source file. Inline source and
 string patches are not accepted; edit the workspace file first and then call
@@ -443,13 +443,13 @@ had no main outputs. Changes to its inputs or rules leave that finding
 informational, including connecting an existing parked Switch. New or re-enabled
 Switches and removal of existing output branches remain blocking. These checks
 do not prove runtime correctness. The sandbox CLI has no saved-workflow baseline,
-so `build-workflow` makes the final decision. Preserve unrelated nodes and report
+so `workflow_builder_build_workflow` makes the final decision. Preserve unrelated nodes and report
 any remaining blocker instead of expanding the edit.
 
-### `workflows(action="delete")`
+### `workflow_builder_workflows(action="delete")`
 
 Archive a workflow (soft delete, deactivates if needed). Reverse it with
-`workflows(action="unarchive")`.
+`workflow_builder_workflows(action="unarchive")`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -457,7 +457,7 @@ Archive a workflow (soft delete, deactivates if needed). Reverse it with
 
 **Returns**: `{ success: boolean }`
 
-### `workflows(action="unarchive")`
+### `workflow_builder_workflows(action="unarchive")`
 
 Restore an archived workflow without publishing it.
 
@@ -467,7 +467,7 @@ Restore an archived workflow without publishing it.
 
 **Returns**: `{ success: boolean }`
 
-### `workflows(action="setup")`
+### `workflow_builder_workflows(action="setup")`
 
 Open the inline UI for per-node credential and parameter setup. The tool uses a
 suspend/resume state machine and can present several node setup requests in one
@@ -516,11 +516,11 @@ The panel's Execute action sends a normal chat message with
 `context: { source: 'setup-panel-execute', workflowId }`. With the flag on,
 the host adds a private `workflow-test-request` block that identifies the target.
 If required setup remains open, the agent reports those items and ends the turn
-without a run. Otherwise, it runs the saved workflow through `executions(action="run")`, inspects
+without a run. Otherwise, it runs the saved workflow through `workflow_builder_executions(action="run")`, inspects
 the output, and reports the test result in chat. Execution approval policy still
 applies. The new panel does not use the wizard's trigger-test resume loop.
 
-### `workflows(action="publish")`
+### `workflow_builder_workflows(action="publish")`
 
 Publish a workflow version to production. Makes it active — it will run on triggers.
 
@@ -531,7 +531,7 @@ Publish a workflow version to production. Makes it active — it will run on tri
 
 **Returns**: `{ success: boolean, activeVersionId?: string }`
 
-### `workflows(action="unpublish")`
+### `workflow_builder_workflows(action="unpublish")`
 
 Stop a workflow from running in production. The draft is preserved.
 
@@ -541,7 +541,7 @@ Stop a workflow from running in production. The draft is preserved.
 
 **Returns**: `{ success: boolean }`
 
-### `workflows(action="list-versions")` *(conditional — requires license)*
+### `workflow_builder_workflows(action="list-versions")` *(conditional — requires license)*
 
 List version history for a workflow (metadata only).
 
@@ -553,7 +553,7 @@ List version history for a workflow (metadata only).
 
 **Returns**: `{ versions: [{ versionId, name, description, authors, createdAt, autosaved, isActive, isCurrentDraft }] }`
 
-### `workflows(action="validate")`
+### `workflow_builder_workflows(action="validate")`
 
 Return the per-node configuration issues a human would see as red warning
 indicators on the canvas — missing credentials, parameter validation errors and
@@ -565,7 +565,7 @@ workflow is configured correctly before suggesting the user run or publish it.
 | `workflowId` | string | yes | Workflow ID |
 | `ignoreIssues` | array | no | Issue categories to skip: `parameters`, `credentials`, `input`, `execution`, `typeUnknown`, `aiGateway`, `chatModel` |
 
-### `workflows(action="restore-version")` *(conditional — requires license)*
+### `workflow_builder_workflows(action="restore-version")` *(conditional — requires license)*
 
 Restore a workflow to a previous version (overwrites current draft). HITL
 approval required. This does not publish the restored draft. A production rollback
@@ -581,7 +581,7 @@ must also use the publish action and its normal approval flow.
 (`unpublished`, `current`, or `stale`). The note states whether publication is still
 required. Denied and failed restores retain their existing error responses.
 
-### `workflows(action="update-version")` *(conditional — requires `feat:namedVersions` license)*
+### `workflow_builder_workflows(action="update-version")` *(conditional — requires `feat:namedVersions` license)*
 
 Update a version's name or description.
 
@@ -596,9 +596,9 @@ Update a version's name or description.
 
 ---
 
-## `executions` (8 actions)
+## `workflow_builder_executions` (8 actions)
 
-### `executions(action="list")`
+### `workflow_builder_executions(action="list")`
 
 List recent workflow executions.
 
@@ -610,7 +610,7 @@ List recent workflow executions.
 
 **Returns**: `{ executions: [{ id, workflowId, workflowName, status, startedAt, finishedAt, mode }] }`
 
-### `executions(action="run")`
+### `workflow_builder_executions(action="run")`
 
 Execute a workflow, wait for completion (with timeout), and return the result.
 Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
@@ -624,7 +624,7 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 
 **Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt?, verificationClaim? }`
 
-**Live test evidence**: `verify-built-workflow` always simulates destructive
+**Live test evidence**: `workflow_builder_verify_built_workflow` always simulates destructive
 nodes, so a live test runs through this action. When a successful run reaches
 every planned node of the latest build, with no saved pins and no injected
 trigger input, the run is recorded as a `verified` claim on the build outcome.
@@ -639,7 +639,7 @@ can raise the verdict but never lower it.
 - **Schedule trigger**: current datetime information
 - **Unknown trigger**: `{ json: inputData }` (generic fallback)
 
-### `executions(action="run-step")`
+### `workflow_builder_executions(action="run-step")`
 
 Run ONE node of a saved workflow and return its real output — the canvas
 "Execute step". The node runs inside the real workflow, so expressions that
@@ -792,7 +792,7 @@ node (`executions:run-step:<workflowId>:<nodeName>`), so a debug loop on one
 node stops prompting while the rest of the workflow still asks. A whole-workflow
 run grant covers a step of that workflow too.
 
-### `executions(action="get")`
+### `workflow_builder_executions(action="get")`
 
 Get execution status without blocking.
 
@@ -802,7 +802,7 @@ Get execution status without blocking.
 
 **Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt? }`
 
-### `executions(action="debug")`
+### `workflow_builder_executions(action="debug")`
 
 Analyze a failed execution with structured diagnostics.
 
@@ -812,7 +812,7 @@ Analyze a failed execution with structured diagnostics.
 
 **Returns**: `{ executionId, status, failedNode?: { name, type, error, inputData? }, nodeTrace: [{ name, type, status }] }`
 
-### `executions(action="get-node-output")`
+### `workflow_builder_executions(action="get-node-output")`
 
 Get the output data of a specific node from an execution.
 
@@ -844,7 +844,7 @@ A run that failed records no items, so `totalRuns` can count more runs than the
 items account for. Read the error of that run from `action="get"`, which
 reports it under `nodeErrors`.
 
-### `executions(action="get-resolved-node-parameters")`
+### `workflow_builder_executions(action="get-resolved-node-parameters")`
 
 Replay expression resolution for a node's parameters against a past execution.
 Returns raw `parameters`, the `resolved` tree, `failedExpressions`, and
@@ -859,7 +859,7 @@ node received an unexpected value; more precise than reading raw expressions.
 | `itemIndex` | number | no | Input item index to resolve against. Defaults to `0` |
 | `runIndex` | number | no | Node run to use when it ran more than once. Defaults to the last run |
 
-### `executions(action="stop")`
+### `workflow_builder_executions(action="stop")`
 
 Cancel a running execution.
 
@@ -871,7 +871,7 @@ Cancel a running execution.
 
 ---
 
-## `credentials` (6 actions)
+## `workflow_builder_credentials` (6 actions)
 
 The instance PostHog flag `120_credential_descriptions` controls description
 fields and selection guidance. Only boolean `true` enables them. When the flag
@@ -879,9 +879,9 @@ is false or missing, `list` and `get` omit `description`, including managed entr
 
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
-> `credentials(action="setup")`) or Computer Use browser credential capture.
+> `workflow_builder_credentials(action="setup")`) or Computer Use browser credential capture.
 
-### `credentials(action="list")`
+### `workflow_builder_credentials(action="list")`
 
 List credentials accessible to the current user. Never exposes secrets.
 
@@ -899,7 +899,7 @@ share one type. Use `get` to read the full text if the preview does not resolve 
 A Gateway credits managed entry has `id: "__AI_GATEWAY_MANAGED__"`,
 `__aiGatewayManaged: true`, and `description: null`.
 
-### `credentials(action="get")`
+### `workflow_builder_credentials(action="get")`
 
 Get credential metadata. Never returns decrypted secrets.
 
@@ -911,7 +911,7 @@ Get credential metadata. Never returns decrypted secrets.
 The description contains the full stored text, or `null` when unset.
 The response never contains credential secret data.
 
-### `credentials(action="delete")`
+### `workflow_builder_credentials(action="delete")`
 
 Permanently delete a credential. **Irreversible** — HITL confirmation required.
 
@@ -922,7 +922,7 @@ Permanently delete a credential. **Irreversible** — HITL confirmation required
 
 **Returns**: `{ success: boolean }`
 
-### `credentials(action="search-types")`
+### `workflow_builder_credentials(action="search-types")`
 
 Search available credential types by name or description.
 
@@ -934,7 +934,7 @@ Search available credential types by name or description.
 **Returns**: `{ results: [...] }`. Gateway-credits-only results have
 `{ type, gatewayCredits: true }`.
 
-### `credentials(action="setup")`
+### `workflow_builder_credentials(action="setup")`
 
 Open the credential picker UI for the user to configure credentials securely.
 The LLM never sees secrets — the user interacts with the n8n frontend directly.
@@ -959,7 +959,7 @@ returned. Generic auth types (bearer/header/query/basic/etc.) stay preselected
 but always require an explicit Continue, since the type alone does not identify
 a service. When `needsBrowserSetup=true`, the orchestrator should load the
 `credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
-directly, then call `credentials(action="setup")` again to select the created
+directly, then call `workflow_builder_credentials(action="setup")` again to select the created
 credential.
 
 **Setup panel** (`118_instance_ai_setup_overhaul: variant`): when the call belongs
@@ -975,7 +975,7 @@ build snapshot). Standalone setup, `requireUserSelection`, and an entry with
 `preferNew` keep the card: the panel cannot express "replace the bound
 credential".
 
-### `credentials(action="test")`
+### `workflow_builder_credentials(action="test")`
 
 Test whether a credential is valid and can connect to its service.
 
@@ -987,7 +987,7 @@ Test whether a credential is valid and can connect to its service.
 
 ---
 
-## `nodes` (7 actions)
+## `workflow_builder_nodes` (7 actions)
 
 The full domain surface has seven actions. The orchestrator receives all seven
 actions in the current registry. The tool also defines a restricted
@@ -995,7 +995,7 @@ actions in the current registry. The tool also defines a restricted
 does not currently select it. Specialized agents that resolve the full domain
 tool can also receive all seven actions.
 
-### `nodes(action="list")`
+### `workflow_builder_nodes(action="list")`
 
 List available node types in the n8n instance.
 
@@ -1006,7 +1006,7 @@ List available node types in the n8n instance.
 
 **Returns**: `{ nodes: [{ name, displayName, description, group, version }] }`
 
-### `nodes(action="describe")`
+### `workflow_builder_nodes(action="describe")`
 
 Get detailed node description including properties, credentials, inputs, and outputs.
 
@@ -1016,7 +1016,7 @@ Get detailed node description including properties, credentials, inputs, and out
 
 **Returns**: `{ name, displayName, description, properties, credentials, inputs, outputs }`
 
-### `nodes(action="type-definition")`
+### `workflow_builder_nodes(action="type-definition")`
 
 Get TypeScript definitions for one to five node types, including exact
 parameters, credentials, display conditions, and builder annotations.
@@ -1027,7 +1027,7 @@ parameters, credentials, display conditions, and builder annotations.
 
 **Returns**: `{ definitions, error? }`.
 
-### `nodes(action="search")`
+### `workflow_builder_nodes(action="search")`
 
 Search nodes ranked by relevance with `@builderHint` annotations. Includes
 subnode requirements and discriminator values.
@@ -1040,7 +1040,7 @@ subnode requirements and discriminator values.
 
 **Returns**: `{ results, totalResults }`
 
-### `nodes(action="suggested")`
+### `workflow_builder_nodes(action="suggested")`
 
 Get curated node suggestions for common use cases.
 
@@ -1050,7 +1050,7 @@ Get curated node suggestions for common use cases.
 
 **Returns**: `{ results, unknownCategories }`.
 
-### `nodes(action="explore-resources")`
+### `workflow_builder_nodes(action="explore-resources")`
 
 Explore a node's dynamic resources (listSearch / loadOptions). Used to discover
 discriminator values like spreadsheet IDs, calendar names, etc.
@@ -1069,7 +1069,7 @@ discriminator values like spreadsheet IDs, calendar names, etc.
 
 **Returns**: `{ results, paginationToken?, builderHint?, error? }`.
 
-### `nodes(action="execute")`
+### `workflow_builder_nodes(action="execute")`
 
 Execute a single node standalone — real credentials, caller-supplied parameters
 and input items — and return its real output items. The node runs through the
@@ -1084,7 +1084,7 @@ field-level errors immediately. One exception: a missing discriminator (e.g.
 `resource`/`operation`) does not block — n8n falls back to the node's defaults
 at runtime, so the node can still run and cause side effects.
 
-**Approval mirrors `executions(action="run")`** — executing one node is
+**Approval mirrors `workflow_builder_executions(action="run")`** — executing one node is
 equivalent to running a one-node workflow, so the same `runWorkflow` admin
 policy applies (`blocked` denies; `always_allow` skips the prompt — a
 standalone node request is always agent-authored, the analog of an AI-created
@@ -1124,7 +1124,7 @@ called. Binary output is reduced to metadata (`fileName`, `mimeType`,
 `fileSize`). Output is size-capped (a `truncated` field reports shown vs total
 items).
 When `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` is disabled, output items and
-upstream error details are suppressed, mirroring `executions(action="run")`.
+upstream error details are suppressed, mirroring `workflow_builder_executions(action="run")`.
 Wait states are not supported — a node that starts waiting (e.g. Wait,
 send-and-wait operations) returns an error.
 
@@ -1135,14 +1135,14 @@ placeholder/new-credential forms have no stored row and cannot execute.
 
 ---
 
-## `searchModels`
+## `workflow_builder_search_models`
 
 Preliminary models.dev catalog search when choosing a model without a relevant
 credential or a suitable named builder-hint recommendation. The `model-selection`
 skill activates this deferred tool when model-bearing node definitions are
 inspected. It can also be discovered with `search_tools` and loaded with
 `load_tool`. Activation does not call the catalog. If a provider credential or Gateway credits is
-available, use `nodes(action="explore-resources")` with that credential instead.
+available, use `workflow_builder_nodes(action="explore-resources")` with that credential instead.
 Do not use catalog search to validate an unfamiliar model or to recover from a
 failed credential lookup.
 
@@ -1175,7 +1175,7 @@ one caller stops its wait without cancelling a refresh shared with other callers
 
 ---
 
-## `data-tables` (11 actions)
+## `workflow_builder_data_tables` (11 actions)
 
 Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
 `updatedAt`) are reserved and auto-managed.
@@ -1325,7 +1325,7 @@ pagination, truncation state, and warnings. Text-like results contain extracted
 content and can include a title or page count. All results identify the source
 attachment and can contain an error.
 
-## `ask-user`
+## `workflow_builder_ask_user`
 
 Suspend the run for one or more human decisions.
 
@@ -1411,7 +1411,7 @@ sandbox) to consult these before planning or building non-trivial workflows.
 
 ## Agent Builder Tool
 
-### `build-agent` *(orchestration tool — requires the `agents` backend module)*
+### `agent_builder_build_agent` *(orchestration tool — requires the `agents` backend module)*
 
 Delegates agent building to the agents-module builder chat
 (`AgentsBuilderService`) running as an embedded sub-agent: one conversational
@@ -1422,7 +1422,7 @@ and tools drive the build, including its interactive tools (`ask_questions`,
 `call_agent` target-tool approvals) and
 lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
 the sub-agent session no longer excludes them. Forward publish/unpublish/
-activate/make-live intents to `build-agent`; never tell the user to open the
+activate/make-live intents to `agent_builder_build_agent`; never tell the user to open the
 agent editor and click Publish. The builder also inherits the orchestrator's
 validated, approval-wrapped MCP connector tools so it can use the same external
 context while designing the agent; connector tools that conflict with a native
@@ -1434,7 +1434,7 @@ appears in the agents-module builder UI.
 |-------|------|----------|-------------|
 | `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
 | `name` | string | no | Agent name — switches back to the agent with that name built earlier in this conversation, or creates a new agent and makes it the active target; omit on follow-up calls for the current agent |
-| `agentId` | string | no | Existing agent id to edit — use the `agentId` returned by earlier build-agent results; pass to start editing that agent or to switch the active build target; omit on follow-up calls |
+| `agentId` | string | no | Existing agent id to edit — use the `agentId` returned by earlier agent_builder_build_agent results; pass to start editing that agent or to switch the active build target; omit on follow-up calls |
 | `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
 **Returns**: `{ ok: true, builderReply, configUpdated, agentId,
@@ -1548,7 +1548,7 @@ tool's relevance self-evident.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `action` | `'search' \| 'get-messages'` | yes | Discriminator |
-| `query` | string | no | Case-insensitive text matched against titles, user messages, and ask-user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
+| `query` | string | no | Case-insensitive text matched against titles, user messages, and workflow_builder_ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
 | `limit` | number | no | Max conversations to return (default 10 when searching, 5 when listing recent; max 10) |
 | `threadId` | string | `get-messages` | Conversation id from a search result |
 | `aroundMessageId` | string | no | Center the read on this message id (from a search excerpt) |
@@ -1570,14 +1570,14 @@ tail read to continue recent work.
 **`get-messages`** → `{ threadId, title, messages: [{ messageId, role, createdAt, text, userAnswers?: [{ question, answer }] }], hasMoreBefore, hasMoreAfter, error? }`,
 oldest-first. Defaults for the read window (tail/head/around sizing) are
 applied by the service, not the tool. The read is the conversation as the
-user experienced it: their messages, ask-user Q&A, and each turn's final
+user experienced it: their messages, workflow_builder_ask_user Q&A, and each turn's final
 text-only reply. Mid-turn assistant rows — the agent loop only continues on
 tool calls, so a row carrying them is working narration rather than the reply
 that ended the turn — are filtered out in SQL via structural markers
 (unescaped `"type":"tool-call"` can only be block structure — quotes inside
-text are escaped); ask-user rows stay visible for their Q&A. Rows only
+text are escaped); workflow_builder_ask_user rows stay visible for their Q&A. Rows only
 recognizable after parsing — internal auto-follow-up user rows, rows with no
-visible text, ask-user rows still awaiting an answer, unreadable content — are
+visible text, workflow_builder_ask_user rows still awaiting an answer, unreadable content — are
 dropped by the same visibility predicate the window fetch uses, so
 `before`/`after` count returned messages. The fetch over-reads to fill its
 slots; `hasMoreBefore`/`hasMoreAfter` may over-report after a long run of
@@ -1590,12 +1590,12 @@ thrown tool error — when the service is unavailable or a lookup fails.
 
 The orchestrator receives the safe native domain tools and orchestration tools
 from `src/tools/index.ts`. Its workflow tool omits raw workflow JSON reads and
-full-definition replacements. It receives the full six-action `nodes` tool.
+full-definition replacements. It receives the full six-action `workflow_builder_nodes` tool.
 External and local MCP tools are added after their names are checked against the
 native tools active for the current request.
 
 The embedded Agent Builder uses the agents-module builder's own tool surface
-through `build-agent`. It does not receive the Instance AI domain registry. It
+through `agent_builder_build_agent`. It does not receive the Instance AI domain registry. It
 inherits the orchestrator's safe MCP connector tools.
 
 ---

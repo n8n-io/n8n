@@ -6,6 +6,7 @@
  * target in thread metadata lets follow-up turns keep editing the same agent
  * instead of creating a new one — including after a cancelled build.
  */
+import { resolveBuilderToolName } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -180,7 +181,7 @@ function idOf(message: Record<string, unknown>): string {
 
 /**
  * Binding metadata for a seeded thread, reconstructed from the seeded history
- * rather than invented. The model authored the refs its own `build-agent` calls
+ * rather than invented. The model authored the refs its own `agent_builder_build_agent` calls
  * carry, and the LAST such call is what "most recently targeted" meant — array
  * order in the seed is an authoring artifact, not conversation order. An agent
  * the history never targeted keeps its display name as the ref and sorts first,
@@ -205,8 +206,12 @@ export function seedAgentBuilderTargetMetadata(
 		if (!Array.isArray(message.content)) continue;
 		for (const block of message.content) {
 			if (!isRecord(block) || block.type !== 'tool-call') continue;
-			if (block.toolName !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT) continue;
-			// `targetIdentity` stamps the resolved identity on every build-agent
+			if (
+				typeof block.toolName !== 'string' ||
+				resolveBuilderToolName(block.toolName) !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT
+			)
+				continue;
+			// `targetIdentity` stamps the resolved identity on every agent_builder_build_agent
 			// output, so the output is authoritative over the call's own input.
 			const output = isRecord(block.output) ? block.output : undefined;
 			if (typeof output?.agentId !== 'string') continue;

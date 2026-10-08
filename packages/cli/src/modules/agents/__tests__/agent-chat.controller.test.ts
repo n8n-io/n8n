@@ -682,7 +682,7 @@ describe('AgentChatController SSE done payload', () => {
 				type: 'tool-call-suspended',
 				runId: 'run-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask_questions',
+				toolName: 'agent_builder_ask_questions',
 			};
 		});
 		const writes: string[] = [];

@@ -274,7 +274,7 @@ export async function runWorkflowChecks(args: {
 	workflow: WorkflowResponse | undefined;
 	prompt: string;
 	agentText: string | undefined;
-	/** Per-live-turn failed build-workflow attempt counts; feeds the efficiency check. */
+	/** Per-live-turn failed workflow_builder_build_workflow attempt counts; feeds the efficiency check. */
 	failedBuildsPerTurn?: number[];
 	logger: EvalLogger;
 }): Promise<CheckOutcome[] | undefined> {

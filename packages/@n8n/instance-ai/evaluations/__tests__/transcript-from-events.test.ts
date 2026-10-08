@@ -99,11 +99,15 @@ describe('buildTranscriptFromEvents', () => {
 				events: [
 					RUN_START,
 					evt('tool-call', {
-						payload: { toolName: 'credentials', toolCallId: 'tc2', args: { name: 'slack' } },
+						payload: {
+							toolName: 'workflow_builder_credentials',
+							toolCallId: 'tc2',
+							args: { name: 'slack' },
+						},
 					}),
 					evt('tool-result', {
 						payload: {
-							toolName: 'credentials',
+							toolName: 'workflow_builder_credentials',
 							toolCallId: 'tc2',
 							result: { id: 'c1', token: 'secret-token' },
 						},
@@ -229,16 +233,18 @@ describe('buildTranscriptFromEvents', () => {
 		});
 	});
 
-	describe('ask-user routing', () => {
+	describe('workflow_builder_ask_user routing', () => {
 		const questions = [
 			{ id: 'q1', question: 'Which channel?', type: 'single', options: ['Slack', 'Teams'] },
 		];
 
-		it('renders ask-user from confirmation-request and skips the tool-call twin', () => {
+		it('renders workflow_builder_ask_user from confirmation-request and skips the tool-call twin', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
-					evt('tool-call', { payload: { toolName: 'ask-user', args: { questions } } }),
+					evt('tool-call', {
+						payload: { toolName: 'workflow_builder_ask_user', args: { questions } },
+					}),
 					evt('confirmation-request', {
 						payload: { requestId: 'r1', questions, inputType: 'questions' },
 					}),
@@ -268,7 +274,9 @@ describe('buildTranscriptFromEvents', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
-					evt('tool-call', { payload: { toolName: 'ask-user', args: { questions } } }),
+					evt('tool-call', {
+						payload: { toolName: 'workflow_builder_ask_user', args: { questions } },
+					}),
 					evt('confirmation-request', {
 						payload: { requestId: 'r1', questions, inputType: 'questions' },
 					}),
@@ -286,7 +294,7 @@ describe('buildTranscriptFromEvents', () => {
 					RUN_START,
 					evt('tool-call', {
 						payload: {
-							toolName: 'create-tasks',
+							toolName: 'workflow_builder_create_tasks',
 							args: { tasks: [{ title: 'Fetch posts', description: 'GET /posts' }] },
 						},
 					}),
@@ -321,7 +329,7 @@ describe('buildTranscriptFromEvents', () => {
 					}),
 					evt('tool-result', {
 						payload: {
-							toolName: 'workflows',
+							toolName: 'workflow_builder_workflows',
 							result: {
 								completedNodes: [{ nodeName: 'Schedule', parametersSet: ['cron'] }],
 								skippedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
@@ -392,14 +400,14 @@ describe('buildTranscriptFromEvents', () => {
 				events: [
 					RUN_START,
 					evt('confirmation-request', {
-						payload: { requestId: 'r1', toolName: 'create-tasks' },
+						payload: { requestId: 'r1', toolName: 'workflow_builder_create_tasks' },
 					}),
 				],
 				proxyResponses: new Map([['r1', { kind: 'approval' as const, approved: false }]]),
 			});
 			expect(turns[0].steps[0]).toMatchObject({
 				kind: 'confirmation',
-				toolName: 'create-tasks',
+				toolName: 'workflow_builder_create_tasks',
 				resumeReason: 'approval',
 				approved: false,
 			});
@@ -437,9 +445,9 @@ describe('buildTranscriptFromEvents', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
-					evt('tool-call', { payload: { toolName: 'credentials', args: {} } }),
-					evt('tool-call', { payload: { toolName: 'credentials', args: {} } }),
-					evt('tool-call', { payload: { toolName: 'credentials', args: {} } }),
+					evt('tool-call', { payload: { toolName: 'workflow_builder_credentials', args: {} } }),
+					evt('tool-call', { payload: { toolName: 'workflow_builder_credentials', args: {} } }),
+					evt('tool-call', { payload: { toolName: 'workflow_builder_credentials', args: {} } }),
 				],
 			});
 			const calls = turns[0].steps.filter((i) => i.kind === 'tool-call');

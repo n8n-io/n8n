@@ -7741,7 +7741,7 @@ describe('createContext — builder delegate wiring', () => {
 		expect(context.agentBuilderTarget).toEqual(
 			expected ? { agentId: 'agent-42', projectId: 'proj-1' } : undefined,
 		);
-		expect(tools.has('build-agent')).toBe(expected);
+		expect(tools.has('agent_builder_build_agent')).toBe(expected);
 	});
 
 	it('enables deterministic Agent Builder model catalogs for eval threads', () => {

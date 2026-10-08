@@ -4,7 +4,7 @@ Node type: `@n8n/n8n-nodes-langchain.openAi` (default type version **2.3**)
 
 Use this when mapping downstream fields from an OpenAI node with `$json.<field>` or
 `$('NodeName').item.json.<field>`. Output shape depends on **node type version**,
-resource, operation, and simplify settings — consult `nodes(action="type-definition")`
+resource, operation, and simplify settings — consult `workflow_builder_nodes(action="type-definition")`
 when in doubt.
 
 ## Version and operation

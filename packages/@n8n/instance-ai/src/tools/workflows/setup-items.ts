@@ -166,7 +166,7 @@ function mergeCredentialRequests(requests: readonly AnnouncedCredentialRequest[]
 }
 
 /**
- * Items for a `credentials(action="setup")` announcement without node context:
+ * Items for a `workflow_builder_credentials(action="setup")` announcement without node context:
  * one service-keyed row per type, no bindings; the next build snapshot fans them
  * out. Generic auth types are skipped: their rows are keyed per node (see
  * `credentialSetupItemId`), so a node-less row would never reconcile as done.
@@ -192,7 +192,7 @@ export function buildSetupItemsFromCredentialRequests(
 }
 
 /**
- * Items for a `credentials(action="setup")` announcement against a saved
+ * Items for a `workflow_builder_credentials(action="setup")` announcement against a saved
  * workflow: the workflow's analysed checklist (so generic auth types land on
  * their per-node rows, and the snapshot is whole even in a later run), with the
  * announcement's `reason` and `setupHint` applied to every row of an announced

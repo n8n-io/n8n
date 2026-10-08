@@ -395,7 +395,7 @@ describe('PreferenceCard', () => {
 		});
 
 		it('renders nothing for another tool that answers in the saved shape', () => {
-			renderActive({ toolName: 'workflows' });
+			renderActive({ toolName: 'workflow_builder_workflows' });
 
 			expect(screen.queryByTestId('instance-ai-preference-card')).toBeNull();
 		});

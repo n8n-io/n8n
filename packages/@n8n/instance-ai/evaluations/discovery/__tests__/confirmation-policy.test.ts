@@ -107,7 +107,13 @@ describe('resolveConfirmation', () => {
 			approved: true,
 			connectedSlugs: ['notion', 'linear'],
 		});
-		expect(resolveConfirmation(suspension('credentials', credentialPayload), empty, all)).toEqual({
+		expect(
+			resolveConfirmation(
+				suspension('workflow_builder_credentials', credentialPayload),
+				empty,
+				all,
+			),
+		).toEqual({
 			approved: true,
 			autoSetup: { credentialType: 'slackOAuth2Api' },
 		});
@@ -146,19 +152,25 @@ describe('resolveConfirmation', () => {
 	it('keeps an approve approved even when resumeWith claims refusal', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
-				confirmations: { 'ask-user': { decision: 'approve', resumeWith: { approved: false } } },
+				confirmations: {
+					workflow_builder_ask_user: { decision: 'approve', resumeWith: { approved: false } },
+				},
 			}),
 		);
-		expect(resolveConfirmation(suspension('ask-user'), policy)).toEqual({ approved: true });
+		expect(resolveConfirmation(suspension('workflow_builder_ask_user'), policy)).toEqual({
+			approved: true,
+		});
 	});
 
 	it('carries resumeWith when no responder recognises the payload', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
-				confirmations: { 'ask-user': { decision: 'approve', resumeWith: { answer: 'yes' } } },
+				confirmations: {
+					workflow_builder_ask_user: { decision: 'approve', resumeWith: { answer: 'yes' } },
+				},
 			}),
 		);
-		expect(resolveConfirmation(suspension('ask-user'), policy)).toEqual({
+		expect(resolveConfirmation(suspension('workflow_builder_ask_user'), policy)).toEqual({
 			approved: true,
 			answer: 'yes',
 		});
@@ -170,23 +182,44 @@ describe('unmatchedConfirmations', () => {
 		scenario({
 			confirmations: {
 				'mcp_notion_notion-search': 'deny',
-				credentials: { decision: 'approve', resumeWith: { autoSetup: { credentialType: 'x' } } },
+				workflow_builder_credentials: {
+					decision: 'approve',
+					resumeWith: { autoSetup: { credentialType: 'x' } },
+				},
 			},
 		}),
 	);
 
 	it('reports every behaviour-changing answer no suspension asked for', () => {
-		expect(unmatchedConfirmations(policy, [])).toEqual(['mcp_notion_notion-search', 'credentials']);
+		expect(unmatchedConfirmations(policy, [])).toEqual([
+			'mcp_notion_notion-search',
+			'workflow_builder_credentials',
+		]);
 	});
 
 	it('reports nothing once each declared tool has suspended', () => {
-		const asked = [suspension('mcp_notion_notion-search'), suspension('credentials')];
+		const asked = [
+			suspension('mcp_notion_notion-search'),
+			suspension('workflow_builder_credentials'),
+		];
 		expect(unmatchedConfirmations(policy, asked)).toEqual([]);
+	});
+
+	it('matches an answer keyed by a former builder tool name', () => {
+		const legacyPolicy = buildConfirmationPolicy(
+			scenario({ confirmations: { credentials: 'deny' } }),
+		);
+		expect(resolveConfirmation(suspension('workflow_builder_credentials'), legacyPolicy)).toEqual({
+			approved: false,
+		});
+		expect(
+			unmatchedConfirmations(legacyPolicy, [suspension('workflow_builder_credentials')]),
+		).toEqual([]);
 	});
 
 	it('exempts a bare approve, which only asks for the default', () => {
 		const approveOnly = buildConfirmationPolicy(
-			scenario({ confirmations: { 'ask-user': 'approve' } }),
+			scenario({ confirmations: { workflow_builder_ask_user: 'approve' } }),
 		);
 		expect(unmatchedConfirmations(approveOnly, [])).toEqual([]);
 	});
@@ -197,12 +230,16 @@ describe('unmatchedConfirmations', () => {
 			requestId: 'req-1',
 			suspendPayload: { type: 'approval', toolName: 'mcp_notion_notion-search' },
 		};
-		expect(unmatchedConfirmations(policy, [gated, suspension('credentials')])).toEqual([]);
+		expect(
+			unmatchedConfirmations(policy, [gated, suspension('workflow_builder_credentials')]),
+		).toEqual([]);
 	});
 
 	it('ignores suspensions the scenario never declared', () => {
 		expect(
-			unmatchedConfirmations(buildConfirmationPolicy(scenario()), [suspension('nodes')]),
+			unmatchedConfirmations(buildConfirmationPolicy(scenario()), [
+				suspension('workflow_builder_nodes'),
+			]),
 		).toEqual([]);
 	});
 });

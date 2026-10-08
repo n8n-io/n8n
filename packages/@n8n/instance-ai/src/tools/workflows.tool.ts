@@ -1,9 +1,10 @@
 /**
- * Consolidated workflows tool — list, get, get-as-code, delete/archive,
+ * Consolidated workflow_builder_workflows tool — list, get, get-as-code, delete/archive,
  * unarchive, setup, publish, unpublish, list-versions, restore-version,
  * update-version.
  */
 import {
+	getLegacyBuilderToolNames,
 	instanceAiApprovalDetailsSchema,
 	buildCredentialDestinationGrantKey,
 	credentialDestinationSchema,
@@ -78,6 +79,7 @@ import {
 	materializeWorkflowSource,
 	type MaterializedSourceStatus,
 } from './workflows/workflow-source-materializer';
+import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -217,7 +219,7 @@ const getAsCodeAction = z.object({
 	action: z
 		.literal('get-as-code')
 		.describe(
-			'Write an existing workflow as TypeScript SDK source into the workspace (src/workflows/<name>.workflow.ts), bind the file to the workflow, and return the file path plus a node index with line numbers. Edit the file with scoped replacements and save with build-workflow. Source is inlined only when small. Pass versionId for a past version instead of the current draft.',
+			'Write an existing workflow as TypeScript SDK source into the workspace (src/workflows/<name>.workflow.ts), bind the file to the workflow, and return the file path plus a node index with line numbers. Edit the file with scoped replacements and save with workflow_builder_build_workflow. Source is inlined only when small. Pass versionId for a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
@@ -275,7 +277,7 @@ const setupAction = z.object({
 				'credential whose secret is invalid or rotated (e.g. pasted a new token in chat, which you ' +
 				'cannot store). Never pass as a default. The card opens with nothing preselected so the user ' +
 				'lands on credential creation; existing credentials of the type stay listed in case they ' +
-				'change their mind. Pass the same list you passed to build-workflow.',
+				'change their mind. Pass the same list you passed to workflow_builder_build_workflow.',
 		),
 	reopenSkipped: z
 		.array(z.string())
@@ -751,7 +753,7 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 			error: message,
 			availableWorkflows: available,
 			hint:
-				'No workflow exists with that id. Pick one from `availableWorkflows` or call `workflows(action="list")` for the current set. ' +
+				'No workflow exists with that id. Pick one from `availableWorkflows` or call `workflow_builder_workflows(action="list")` for the current set. ' +
 				'Do not retry with a guessed id — if the user did not provide one, you are building a new workflow.',
 		};
 	}
@@ -787,13 +789,13 @@ async function getPinnedNodesReport(
 
 const SOURCE_FILE_NOTES: Record<MaterializedSourceStatus, string> = {
 	written:
-		'Source written to filePath and bound to this workflow. Locate nodes with the `nodes` index (line numbers) and read only those lines — for a large file use a ranged shell read such as `sed -n START,ENDp filePath` via workspace_execute_command, since workspace_read_file returns the whole file. Apply edits with workspace_str_replace_file, then call build-workflow with this filePath. Do not rewrite the whole file.',
+		'Source written to filePath and bound to this workflow. Locate nodes with the `nodes` index (line numbers) and read only those lines — for a large file use a ranged shell read such as `sed -n START,ENDp filePath` via workspace_execute_command, since workspace_read_file returns the whole file. Apply edits with workspace_str_replace_file, then call workflow_builder_build_workflow with this filePath. Do not rewrite the whole file.',
 	refreshed:
-		'The saved workflow changed since the file was written, so the file was regenerated from the saved workflow. Re-apply any edit you still need with workspace_str_replace_file, then build-workflow.',
+		'The saved workflow changed since the file was written, so the file was regenerated from the saved workflow. Re-apply any edit you still need with workspace_str_replace_file, then workflow_builder_build_workflow.',
 	current:
-		'The file already matches the saved workflow; nothing was written. Edit it with workspace_str_replace_file and call build-workflow with this filePath.',
+		'The file already matches the saved workflow; nothing was written. Edit it with workspace_str_replace_file and call workflow_builder_build_workflow with this filePath.',
 	conflict:
-		'The file has edits that were never built, so it was left untouched. Build it with build-workflow to save them, or delete the file and call get-as-code again to start from the saved workflow.',
+		'The file has edits that were never built, so it was left untouched. Build it with workflow_builder_build_workflow to save them, or delete the file and call get-as-code again to start from the saved workflow.',
 };
 
 /**
@@ -825,7 +827,7 @@ async function handleGetAsCode(
 	const toCode = (json: WorkflowJSON): string => {
 		// Emit node ids: this code is edited and built back into the same saved workflow,
 		// and carrying the ids through is what keeps node identity stable. Positions stay
-		// out: build-workflow restores the saved layout by id, so a position in the file
+		// out: workflow_builder_build_workflow restores the saved layout by id, so a position in the file
 		// is only an invitation to edit layout.
 		const body = generateWorkflowCode({
 			workflow: json,
@@ -1522,7 +1524,7 @@ const SETUP_PANEL_ANNOUNCED_GUIDANCE =
 	'The setup panel now lists what this workflow still needs (`open`); nothing is ' +
 	'waiting on you and no card is open. Finish your turn now: tell the user in one or two sentences ' +
 	'what to configure in the panel — name the services and any values — then stop. Do not call setup ' +
-	'again for this workflow, do not call `credentials(action="setup")`, and do not tell the user to ' +
+	'again for this workflow, do not call `workflow_builder_credentials(action="setup")`, and do not tell the user to ' +
 	'open the editor or canvas. Items under `configured` have stored bindings. Report any ' +
 	'validationWarnings; a binding does not prove that a connection or workflow test passed.';
 
@@ -2303,7 +2305,8 @@ export function createWorkflowsTool(
 
 	const inputSchema = buildInputSchema(context, options);
 
-	return new Tool('workflows')
+	return new Tool(DOMAIN_TOOL_IDS.WORKFLOWS)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.WORKFLOWS))
 		.description(getToolDescription(context, options))
 		.input(inputSchema)
 		.suspend(suspendSchema)

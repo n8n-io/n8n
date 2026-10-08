@@ -3817,7 +3817,7 @@ describe('node usage', () => {
 	});
 });
 
-describe('workflows(action="setup") — setup panel', () => {
+describe('workflow_builder_workflows(action="setup") — setup panel', () => {
 	const openSlack = {
 		node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
 		credentialType: 'slackApi',

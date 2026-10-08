@@ -1,5 +1,5 @@
 /**
- * AGENT-354 — build-agent HITL cascade, end to end through REAL SDK mechanics.
+ * AGENT-354 — agent_builder_build_agent HITL cascade, end to end through REAL SDK mechanics.
  *
  * `build-agent.tool.test.ts` mocks `InstanceAiBuilderDelegate` and invokes the
  * handler directly with hand-built `ctx` objects — it never touches the AI
@@ -353,7 +353,7 @@ function createOrchestrationContext(params: {
 	return context;
 }
 
-describe('build-agent cascade restart (real SDK)', () => {
+describe('agent_builder_build_agent cascade restart (real SDK)', () => {
 	it('survives restarts across a builder question and a chained target approval', async () => {
 		const store = new InMemoryCheckpointStore();
 		const threadRecords = new Map<string, ThreadRecord>();

@@ -24,7 +24,7 @@
 // ---------------------------------------------------------------------------
 
 import type { GuardrailsOptions } from '@n8n/agents';
-import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
+import { AGENT_BUILDER_TOOL_NAMES, type InstanceAiEvent, type TaskList } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 
@@ -237,7 +237,7 @@ export async function runOrchestratorTurn(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `create-tasks` and runtime skills. Discovery scenarios measure first-step
+		// `workflow_builder_create_tasks` and runtime skills. Discovery scenarios measure first-step
 		// tool-call decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
@@ -392,7 +392,7 @@ function completedBuilderTurn(): BuilderTurnStream {
 			yield {
 				type: 'tool-call',
 				toolCallId: 'discovery-write',
-				toolName: 'write_config',
+				toolName: AGENT_BUILDER_TOOL_NAMES.WRITE_CONFIG,
 				input: {},
 			};
 			yield { type: 'tool-result', toolCallId: 'discovery-write', output: { ok: true } };
@@ -450,7 +450,7 @@ function createStubOrchestrationContext(
 		// Surface the localMcpServer so Computer Use browser tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
-		// Registers the `workspace_*` file tools for build-workflow
+		// Registers the `workspace_*` file tools for workflow_builder_build_workflow
 		...(opts.context.workspace ? { workspace: opts.context.workspace } : {}),
 		...(opts.context.workspaceRoot ? { workspaceRoot: opts.context.workspaceRoot } : {}),
 		// Used for the orchestrator's untrusted-content doctrine and other domain references.

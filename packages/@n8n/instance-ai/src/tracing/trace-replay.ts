@@ -1,3 +1,4 @@
+import { resolveBuilderToolName } from '@n8n/api-types';
 import { jsonParse } from 'n8n-workflow';
 
 // ── Trace Event Types ───────────────────────────────────────────────────────
@@ -46,6 +47,11 @@ function isToolEvent(event: TraceEvent): event is ToolTraceEvent {
 	return event.kind !== 'header';
 }
 
+/** Recordings can carry a former builder tool name. */
+function isSameTool(recordedToolName: string, toolName: string): boolean {
+	return resolveBuilderToolName(recordedToolName) === resolveBuilderToolName(toolName);
+}
+
 // ── TraceIndex ──────────────────────────────────────────────────────────────
 
 /**
@@ -82,7 +88,7 @@ export class TraceIndex {
 		}
 
 		const event = events[cursor];
-		if (event.toolName !== expectedToolName) {
+		if (!isSameTool(event.toolName, expectedToolName)) {
 			throw new Error(
 				`Tool mismatch at step ${event.stepId}: expected "${expectedToolName}", ` +
 					`trace has "${event.toolName}" — agent took a different path`,
@@ -102,13 +108,13 @@ export class TraceIndex {
 		}
 
 		const event = events[cursor];
-		if (event.toolName === expectedToolName) {
+		if (isSameTool(event.toolName, expectedToolName)) {
 			this.cursors.set(agentRole, cursor + 1);
 			return event;
 		}
 
 		for (let i = cursor + 1; i < events.length; i++) {
-			if (events[i].toolName === expectedToolName) {
+			if (isSameTool(events[i].toolName, expectedToolName)) {
 				this.cursors.set(agentRole, i + 1);
 				return events[i];
 			}

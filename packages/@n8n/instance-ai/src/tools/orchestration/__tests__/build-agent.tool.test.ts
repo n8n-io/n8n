@@ -290,7 +290,7 @@ async function runToolWithCtx(
 	return await executeTool<BuildAgentOutput>(tool, input, ctx);
 }
 
-describe('build-agent tool', () => {
+describe('agent_builder_build_agent tool', () => {
 	beforeEach(() => {
 		vi.mocked(saveAgentBuilderTarget).mockClear();
 		vi.mocked(getSessionAgentByRef).mockReset().mockResolvedValue(undefined);
@@ -695,7 +695,7 @@ describe('build-agent tool', () => {
 
 		it('reads nothing when tracing is off — there is nowhere to emit', async () => {
 			// Tracing is disabled on most instances, and the read costs a scope
-			// check plus two queries on every non-create build-agent turn.
+			// check plus two queries on every non-create agent_builder_build_agent turn.
 			const { context, delegate } = makeContext();
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
 				fakeStream(

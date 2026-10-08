@@ -487,7 +487,7 @@ export class InstanceAiAdapterService {
 			 *  harness registers bypasses mid-run, after this context is built. */
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
-			 *  assistant can create one via the build-agent tool. */
+			 *  assistant can create one via the agent_builder_build_agent tool. */
 			agentId?: string;
 			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval-config service/tool not wired. */
@@ -661,7 +661,7 @@ export class InstanceAiAdapterService {
 	 * active. The adapter class is statically imported (so its `@Service` is
 	 * always registered), so the module-enabled check is what gates
 	 * agent-building. Returns null when the module is off, so `builderDelegate`
-	 * (and the build-agent sub-agent tool it powers) is simply absent from the
+	 * (and the agent_builder_build_agent sub-agent tool it powers) is simply absent from the
 	 * context.
 	 */
 	private getBuilderDelegateAdapter(
@@ -2343,7 +2343,7 @@ export class InstanceAiAdapterService {
 				const target = nodes.find((node) => node.name === nodeName);
 				if (!target) {
 					throw new UserError(
-						`The workflow has no node named "${nodeName}". Use workflows(action="get-as-code") to see the node names.`,
+						`The workflow has no node named "${nodeName}". Use workflow_builder_workflows(action="get-as-code") to see the node names.`,
 					);
 				}
 				if (target.disabled) {
@@ -2423,7 +2423,7 @@ export class InstanceAiAdapterService {
 						throw new UserError(
 							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
 								`Run ${roots} instead, then read this node with ` +
-								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -2438,7 +2438,7 @@ export class InstanceAiAdapterService {
 							`Node "${nodeName}" runs through ${roots}, and ${upper} runs above another of them, ` +
 								`so a step run would run ${upper} and the nodes after it again. ` +
 								`Run ${upper} instead, then read this node with ` +
-								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}

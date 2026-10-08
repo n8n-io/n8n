@@ -53,7 +53,7 @@ describe('estimateTokens', () => {
 describe('computeTokenStats', () => {
 	it('finds the largest result and tags it with the tool name', () => {
 		const stats = computeTokenStats([
-			makeCall({ toolName: 'workflows', result: { items: ['a', 'b'] } }),
+			makeCall({ toolName: 'workflow_builder_workflows', result: { items: ['a', 'b'] } }),
 			makeCall({ toolName: 'browser_snapshot', result: 'x'.repeat(40_000) }),
 			makeCall({ toolName: 'write_file', result: 'ok' }),
 		]);

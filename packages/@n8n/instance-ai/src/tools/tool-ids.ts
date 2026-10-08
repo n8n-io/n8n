@@ -1,19 +1,21 @@
+import { AGENT_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+
 import { isAgentFeatureEnabled } from '../utils/agent-feature-enabled';
 
 export const DOMAIN_TOOL_IDS = {
-	WORKFLOWS: 'workflows',
+	WORKFLOWS: WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS,
 	EVAL_CONFIG: 'eval-config',
-	EXECUTIONS: 'executions',
-	CREDENTIALS: 'credentials',
-	DATA_TABLES: 'data-tables',
+	EXECUTIONS: WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS,
+	CREDENTIALS: WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS,
+	DATA_TABLES: WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES,
 	WORKSPACE: 'workspace',
 	RESEARCH: 'research',
 	N8N_DOCS: 'n8n-docs',
-	NODES: 'nodes',
-	SEARCH_MODELS: 'searchModels',
-	ASK_USER: 'ask-user',
+	NODES: WORKFLOW_BUILDER_TOOL_NAMES.NODES,
+	SEARCH_MODELS: WORKFLOW_BUILDER_TOOL_NAMES.SEARCH_MODELS,
+	ASK_USER: WORKFLOW_BUILDER_TOOL_NAMES.ASK_USER,
 	LEAVE_ONBOARDING: 'leave-onboarding',
-	BUILD_WORKFLOW: 'build-workflow',
+	BUILD_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
 	PARSE_FILE: 'parse-file',
 	AGENT_CONTEXT: 'agent-context',
 	MCP_SERVERS: 'mcp-servers',
@@ -22,7 +24,7 @@ export const DOMAIN_TOOL_IDS = {
 	SAVE_USER_PREFERENCE: 'save_user_preference',
 } as const;
 
-/** Trace-only chain-typed child run emitted by `build-workflow` with the
+/** Trace-only chain-typed child run emitted by `workflow_builder_build_workflow` with the
  *  compiled workflow JSON — bookkeeping, not an agent-facing tool. Consumed by
  *  the eval harness (`langsmith-seed.ts`) so seed reconstruction can skip the
  *  SDK re-parse; excluded by name from rebuilt transcripts. */
@@ -33,13 +35,13 @@ export const COMPILED_WORKFLOW_TRACE_RUN_NAME = 'compiled-workflow';
 export const AGENT_SNAPSHOT_TRACE_RUN_NAME = 'agent-snapshot';
 
 export const ORCHESTRATION_TOOL_IDS = {
-	CREATE_TASKS: 'create-tasks',
-	TASK_CONTROL: 'task-control',
-	COMPLETE_CHECKPOINT: 'complete-checkpoint',
-	VERIFY_BUILT_WORKFLOW: 'verify-built-workflow',
-	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
-	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
-	BUILD_AGENT: 'build-agent',
+	CREATE_TASKS: WORKFLOW_BUILDER_TOOL_NAMES.CREATE_TASKS,
+	TASK_CONTROL: WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL,
+	COMPLETE_CHECKPOINT: WORKFLOW_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT,
+	VERIFY_BUILT_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW,
+	REPORT_VERIFICATION_VERDICT: WORKFLOW_BUILDER_TOOL_NAMES.REPORT_VERIFICATION_VERDICT,
+	APPLY_WORKFLOW_CREDENTIALS: WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
+	BUILD_AGENT: AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT,
 	GET_SESSION: 'get-session',
 } as const;
 
@@ -93,7 +95,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
 	'web-search',
 	'fetch-url',
-	// build-agent is the primary route for agent-anchored intents; deferring it
+	// agent_builder_build_agent is the primary route for agent-anchored intents; deferring it
 	// costs 2 LLM rounds (search_tools + load_tool) and a prompt-cache rewrite
 	// on every agent build.
 	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.BUILD_AGENT] : []),

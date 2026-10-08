@@ -76,12 +76,12 @@ describe('createPlanTool — planning context guard', () => {
 		const out = await executeTool(tool, { tasks: validTasks() }, {});
 
 		expect(out.taskCount).toBe(0);
-		expect(out.result).toContain('`create-tasks` requires `planningContext`');
+		expect(out.result).toContain('`workflow_builder_create_tasks` requires `planningContext`');
 		expect(out.result).toContain('load the `planning` skill');
 		expect(out.result).not.toContain('`plan`');
 		expect(out.result).not.toContain('skipPlannerDiscovery');
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'create-tasks called with invalid planning context — rejecting',
+			'workflow_builder_create_tasks called with invalid planning context — rejecting',
 			expect.objectContaining({ threadId: 'test-thread', taskCount: 1 }),
 		);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
@@ -254,7 +254,7 @@ describe('createPlanTool — planning context guard', () => {
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toContain(
-			'must load `create-tasks` via `load_tool` if needed, then call `create-tasks`',
+			'must load `workflow_builder_create_tasks` via `load_tool` if needed, then call `workflow_builder_create_tasks`',
 		);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
 	});
@@ -455,7 +455,7 @@ describe('createPlanTool — createPlan validation failures', () => {
 		expect(out.result).toContain('Revise the task graph and call this tool again');
 		expect(suspend).not.toHaveBeenCalled();
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'create-tasks rejected by planned task validator',
+			'workflow_builder_create_tasks rejected by planned task validator',
 			expect.objectContaining({ threadId: 'test-thread', error: validatorError.message }),
 		);
 	});

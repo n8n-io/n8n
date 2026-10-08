@@ -8,11 +8,15 @@
 				"argsContainAny": ["data-table-manager"]
 			},
 			{
-				"toolName": "data-tables",
+				"toolName": "workflow_builder_data_tables",
 				"argsContainAny": ["list"]
 			}
 		],
-		"noneOf": ["create-tasks", "build-workflow", "spawn_sub_agent:workflow-builder"]
+		"noneOf": [
+			"workflow_builder_create_tasks",
+			"workflow_builder_build_workflow",
+			"spawn_sub_agent:workflow-builder"
+		]
 	},
-	"rationale": "Regression coverage for natural standalone data-table requests. A plain request to list existing Data Tables should load the data-table-manager skill and use the direct data-tables list action, without routing through planning, workflow-building, or background agents."
+	"rationale": "Regression coverage for natural standalone data-table requests. A plain request to list existing Data Tables should load the data-table-manager skill and use the direct workflow_builder_data_tables list action, without routing through planning, workflow-building, or background agents."
 }

@@ -53,7 +53,7 @@ beforeEach(() => {
 	track = vi.fn();
 });
 
-describe('ask_credential tool', () => {
+describe('agent_builder_ask_credential tool', () => {
 	it('auto-resolves when exactly one credential of the requested type exists, without tracking a request', async () => {
 		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'My Slack', type: 'slackApi' },
@@ -365,7 +365,7 @@ describe('ask_credential tool', () => {
 	});
 });
 
-describe('ask_embedding_credential tool', () => {
+describe('agent_builder_ask_embedding_credential tool', () => {
 	it('returns managed credential when assistant proxy is enabled', async () => {
 		const credentialService = makeCredentialService([]);
 		const tool = askEmbeddingCredentialTool({

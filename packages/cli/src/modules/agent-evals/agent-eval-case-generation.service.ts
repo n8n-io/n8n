@@ -197,7 +197,7 @@ export class AgentEvalCaseGenerationService {
 	/**
 	 * Draft exactly one case (`count: 1, save: false` — nothing persisted) and
 	 * immediately run it against the agent through the same path Preview Chat
-	 * and the builder's own `call_agent` tool use ({@link AgentTestRunService}) —
+	 * and the builder's own `agent_builder_call_agent` tool use ({@link AgentTestRunService}) —
 	 * no Data Table, no dataset, no eval-run row. Backs "try it once" and its
 	 * "needs work" retries, which would otherwise litter a fresh dataset+row on
 	 * every attempt the user doesn't keep.

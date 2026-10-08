@@ -126,7 +126,7 @@ export async function resolveVerificationTarget(
 			guidance:
 				'Verification has already run the maximum number of times for this workflow. ' +
 				'Report which nodes were and were not reached, and let the user decide whether to run it manually. ' +
-				'Do not call executions(action="run") to expand coverage.',
+				'Do not call workflow_builder_executions(action="run") to expand coverage.',
 		});
 		return {
 			kind: 'blocked',

@@ -1,7 +1,7 @@
 /**
  * Replays expression resolution for a node's parameters against a past
  * execution's saved data — the server-side equivalent of the editor's
- * "resolved parameters" view. Used by `executions(action="get-resolved-node-parameters")`
+ * "resolved parameters" view. Used by `workflow_builder_executions(action="get-resolved-node-parameters")`
  * and folded into the `debug` action's failedNode payload.
  *
  * Lives in its own module to keep `instance-ai.adapter.service.ts` focused.

@@ -366,7 +366,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 			toolCalls: [
 				{
 					toolCallId: 'update',
-					toolName: 'workflows',
+					toolName: 'workflow_builder_workflows',
 					isLoading: true,
 					args: { action: 'update', workflowId: 'wf-1' },
 				},

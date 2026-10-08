@@ -296,7 +296,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'workflow_builder_ask_user',
 				input: { prompt: 'Confirm?' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -362,7 +362,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'workflow_builder_ask_user',
 				args: { prompt: 'Confirm?' },
 				severity: 'destructive',
 				message: 'Need approval',
@@ -482,7 +482,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'build-agent-call',
-				toolName: 'build-agent',
+				toolName: 'agent_builder_build_agent',
 				input: { agentRef: 'support-agent' },
 				suspendPayload: {
 					type: 'approval',
@@ -500,7 +500,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'approval-1',
 				toolCallId: 'build-agent-call',
-				toolName: 'build-agent',
+				toolName: 'agent_builder_build_agent',
 				args: { agentRef: 'support-agent' },
 				severity: 'warning',
 				message: 'Confirmation required',
@@ -686,7 +686,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'executions',
+				toolName: 'workflow_builder_executions',
 				input: { action: 'listen', workflowId: 'wf-1' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -702,7 +702,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'executions',
+				toolName: 'workflow_builder_executions',
 				args: { action: 'listen', workflowId: 'wf-1' },
 				severity: 'info',
 				message: 'Waiting for a test request to Intake',
@@ -747,7 +747,7 @@ describe('mapAgentChunkToEvent', () => {
 		const event = map({
 			type: 'tool-call-suspended',
 			toolCallId: 'tc-1',
-			toolName: 'executions',
+			toolName: 'workflow_builder_executions',
 			suspendPayload: {
 				requestId: 'request-1',
 				severity: 'info',

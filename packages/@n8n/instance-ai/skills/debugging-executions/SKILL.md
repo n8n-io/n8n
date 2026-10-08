@@ -6,8 +6,8 @@ description: >-
   parameter values after a successful run, or a node showing a red or failed
   expression error.
 recommended_tools:
-  - executions
-  - workflows
+  - workflow_builder_executions
+  - workflow_builder_workflows
 ---
 
 # Debugging Executions
@@ -17,8 +17,8 @@ with wrong or empty values.
 
 ## When the user reports it still fails
 
-Re-run the failing path with `executions(action="run")` (or
-`verify-built-workflow`) and inspect the real result before responding. Do not
+Re-run the failing path with `workflow_builder_executions(action="run")` (or
+`workflow_builder_verify_built_workflow`) and inspect the real result before responding. Do not
 restate that the workflow is "fixed", "verified", or "working", and do not
 attribute the reported failure to a test-harness artifact, stale state, or "it
 works in production" without a re-run against the failing path. Treat live
@@ -36,7 +36,7 @@ own.
 
 Two consequences when the user reports a live workflow failing:
 
-- **Read the version each execution ran.** `executions(action="list", workflowId)`
+- **Read the version each execution ran.** `workflow_builder_executions(action="list", workflowId)`
   returns `workflowVersionId` on every row, plus `workflow.activeVersionId`
   (the published version) and `workflow.draftVersionId`. Only a row whose
   `workflowVersionId` equals `workflow.activeVersionId` ran the published code.
@@ -53,7 +53,7 @@ the fix — an earlier execution ran the old version.
 
 ## Testing event-triggered workflows
 
-Use `executions(action="run")` with `inputData` matching the trigger's output
+Use `workflow_builder_executions(action="run")` with `inputData` matching the trigger's output
 shape — do not rebuild the workflow with a Manual Trigger. For trigger
 `inputData` shapes, read
 `${N8N_WORKSPACE_DIR}/knowledge-base/reference/trigger-input-data-shapes.md`
@@ -61,7 +61,7 @@ when a sandbox workspace is available.
 
 ## Failed execution
 
-`executions(action="debug")` already includes `failedNode.resolvedParameters` —
+`workflow_builder_executions(action="debug")` already includes `failedNode.resolvedParameters` —
 start there. That bundle has `parameters` (raw, with expressions intact),
 `resolved` (substituted), `failedExpressions` (those that threw), and
 `emptyResolutions` (those that resolved to `null`/`undefined`/`""` silently).
@@ -73,11 +73,11 @@ time; we just don't have it here.
 
 ## Confirming a fix on the node that failed
 
-`executions(action="debug")` tells you what the node received. It does not tell
+`workflow_builder_executions(action="debug")` tells you what the node received. It does not tell
 you whether your fix works. To learn that, run the node itself:
 
 ```
-executions(action="run-step", workflowId, nodeName, reuseExecutionId=<the failed execution>)
+workflow_builder_executions(action="run-step", workflowId, nodeName, reuseExecutionId=<the failed execution>)
 ```
 
 `reuseExecutionId` replays the data the node really received and re-runs only
@@ -161,13 +161,13 @@ that Agent:
   and it does not report which. Do not name a single Agent to the user when
   this field holds more than one.
 - A tool on two Agents where one runs above the other is refused. Run the
-  upper Agent, then read the tool with `executions(action="get-node-output")`.
+  upper Agent, then read the tool with `workflow_builder_executions(action="get-node-output")`.
 
 The tool's own arguments come from `toolArguments` — the values the agent would
 normally decide:
 
 ```
-executions(action="run-step", workflowId, nodeName="Search Tickets Tool",
+workflow_builder_executions(action="run-step", workflowId, nodeName="Search Tickets Tool",
            reuseExecutionId=<the failed execution>,
            toolArguments={"query": "login fails", "status": "open"})
 ```
@@ -178,7 +178,7 @@ Ticket" tool creates the ticket again, and `toolArguments` does not change that.
 Only run one when the user has accepted a second write.
 
 Use the argument names from the node's `$fromAI` calls, which
-`workflows(action="get-as-code")` shows. Pass a plain string instead for a tool
+`workflow_builder_workflows(action="get-as-code")` shows. Pass a plain string instead for a tool
 that takes one free-text input (Wikipedia, Code Tool, a vector store used as a
 tool).
 
@@ -192,13 +192,13 @@ the node's output from that execution.
 
 A sub-node that is not a tool — a model, memory, embeddings — cannot be run this
 way at all. Run the Agent, and read the sub-node with
-`executions(action="get-node-output")` on **that** execution: n8n records every
+`workflow_builder_executions(action="get-node-output")` on **that** execution: n8n records every
 call a sub-node made while the Agent ran.
 
 ## Successful execution with wrong or empty value
 
 When `debug` doesn't apply because nothing errored, call
-`executions(action="get-resolved-node-parameters", executionId, nodeName)` on the
+`workflow_builder_executions(action="get-resolved-node-parameters", executionId, nodeName)` on the
 node whose output looks off — **do this unprompted**, don't ask the user for
 permission first. It's a cheap read-only inspection and the only reliable way to
 confirm whether an empty value came from an expression silently resolving to

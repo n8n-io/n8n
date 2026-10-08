@@ -44,7 +44,7 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_THINKING_ENABLED` | boolean | `true` | Extended thinking / reasoning. When `false`, reasoning is not enabled on the model. |
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
-| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflows(action="list")`). `false` falls back to the PostHog flag. |
+| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflow_builder_workflows(action="list")`). `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Computer Use browser tooling, used for credential setup. |
 | `N8N_INSTANCE_AI_PROMPT_VERSION` | string | `''` | Pin every run on this instance to one published prompt profile, e.g. `concise@1`. Empty keeps the backend experiment assignment. An unknown version fails the Instance AI run, not the instance. See [prompt profiles](./prompt-profiles.md). |
 | `N8N_INSTANCE_AI_ACTIVATION_CAPPED` | boolean | `false` | Activation capping. |
@@ -116,8 +116,8 @@ without search results. `research(action="fetch-url")` still works.
 | `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | boolean | `false` | Local-dev only. When `1` or `true`, pack `@n8n/utils`, `@n8n/errors`, `n8n-workflow`, and `@n8n/workflow-sdk` from the host monorepo into each sandbox after `npm install`. Build all four packages first. Start a new AI thread after changing this because existing sandboxes keep their initialized `node_modules`. |
 
 When sandbox is enabled, Instance AI writes workflow source files in the runtime
-workspace and `build-workflow` runs TypeScript sources through the sandbox
-`tsx` build runner before saving. The model still calls only `build-workflow`;
+workspace and `workflow_builder_build_workflow` runs TypeScript sources through the sandbox
+`tsx` build runner before saving. The model still calls only `workflow_builder_build_workflow`;
 there is no no-sandbox TypeScript build fallback.
 
 Sandbox workspaces persist per thread. The same remote sandbox is reused across

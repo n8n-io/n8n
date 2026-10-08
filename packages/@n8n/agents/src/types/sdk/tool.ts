@@ -137,6 +137,12 @@ export interface ToolCancellationContext extends ToolContext {
 
 export interface BuiltTool {
 	readonly name: string;
+	/**
+	 * Former names of this tool. Persisted checkpoints and message history can
+	 * still reference them, so the runtime resolves them to this tool. They are
+	 * never exposed to the model.
+	 */
+	readonly legacyNames?: readonly string[];
 	readonly description: string;
 	/**
 	 * Behavioural directive paired with the tool, injected into the agent's

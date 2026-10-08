@@ -192,7 +192,7 @@ export async function refreshWorkflowSourceFileBindingFromWorkflow(
 	});
 }
 
-/** Refresh the binding checksum/version after an agent-side DB patch outside build-workflow. */
+/** Refresh the binding checksum/version after an agent-side DB patch outside workflow_builder_build_workflow. */
 export async function refreshWorkflowSourceFileBindingFromSave(
 	context: InstanceAiContext,
 	workflowId: string,

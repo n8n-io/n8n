@@ -235,8 +235,8 @@ test.describe(
 			}
 		});
 
-		// Skipped: the replay recording predates the create-tasks load_tool
-		// deferral (#33815), so the recorded direct create-tasks call fails as an
+		// Skipped: the replay recording predates the workflow_builder_create_tasks load_tool
+		// deferral (#33815), so the recorded direct workflow_builder_create_tasks call fails as an
 		// unloaded tool and the approval panel never appears. Unskip once the
 		// recordings are updated (#34055 or a re-record).
 		test.skip(
@@ -307,7 +307,7 @@ test.describe(
 		);
 
 		// The ticket's autonomous "similar workflow" edit and this explicit edit both
-		// converge on build-workflow with a workflowId before the update is saved.
+		// converge on workflow_builder_build_workflow with a workflowId before the update is saved.
 		test('should require approval before editing an existing workflow and apply after approval', async ({
 			api,
 			n8n,

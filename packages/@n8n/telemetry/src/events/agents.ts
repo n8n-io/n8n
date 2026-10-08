@@ -314,7 +314,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_PUBLISHED_AGENT: {
 		name: 'Builder published agent',
 		description:
-			'The Instance AI builder published an agent version through its publish_agent tool. One of three same-shaped publish events ("User published agent", "MCP published agent") — union them for total agent publishing, or read one for that surface alone. Emitted from `AgentPublishService.publishAgent`; an idempotent no-op publish emits nothing.',
+			'The Instance AI builder published an agent version through its agent_builder_publish_agent tool. One of three same-shaped publish events ("User published agent", "MCP published agent") — union them for total agent publishing, or read one for that surface alone. Emitted from `AgentPublishService.publishAgent`; an idempotent no-op publish emits nothing.',
 		properties: z.object({
 			...agentPublish,
 			event_version: z.literal('1'),
@@ -341,7 +341,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_UNPUBLISHED_AGENT: {
 		name: 'Builder unpublished agent',
 		description:
-			'The Instance AI builder unpublished an agent through its unpublish_agent tool. One of three same-shaped unpublish events ("User unpublished agent", "MCP unpublished agent") — union them for total agent unpublishing, or read one for that surface alone. Emitted from `AgentPublishService.unpublishAgent`.',
+			'The Instance AI builder unpublished an agent through its agent_builder_unpublish_agent tool. One of three same-shaped unpublish events ("User unpublished agent", "MCP unpublished agent") — union them for total agent unpublishing, or read one for that surface alone. Emitted from `AgentPublishService.unpublishAgent`.',
 		properties: z.object({
 			...agentActorIdentity,
 			event_version: z.literal('1'),
@@ -396,7 +396,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ADDED_TASKS: {
 		name: 'Builder added tasks to agent',
 		description:
-			'The Instance AI builder created a scheduled task through the `create_tasks` tool. That path persists outside `AgentConfigService.updateConfig`, so it is not covered by "Builder modified agent" — this event stays until the task write path is folded in.',
+			'The Instance AI builder created a scheduled task through the `agent_builder_create_tasks` tool. That path persists outside `AgentConfigService.updateConfig`, so it is not covered by "Builder modified agent" — this event stays until the task write path is folded in.',
 		properties: z.object({
 			...builderSessionIdentity,
 			task_added: z.string().describe('Identifier of the newly added task'),
@@ -407,7 +407,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ADDED_TRIGGER: {
 		name: 'Builder added trigger to agent',
 		description:
-			'The Instance AI builder configured and persisted a chat channel for the target agent through the configure_channel tool, mirroring the frontend "User added trigger to agent" event.',
+			'The Instance AI builder configured and persisted a chat channel for the target agent through the agent_builder_configure_channel tool, mirroring the frontend "User added trigger to agent" event.',
 		properties: z.object({
 			...builderSessionIdentity,
 			trigger_type: z.string().describe('Chat integration type that was configured and persisted'),
@@ -416,7 +416,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ASKED_QUESTIONS: {
 		name: 'Builder asked questions',
 		description:
-			'The Instance AI builder used the ask_questions tool and suspended, showing the user a batch of questions to determine the shape of the agent.',
+			'The Instance AI builder used the agent_builder_ask_questions tool and suspended, showing the user a batch of questions to determine the shape of the agent.',
 		properties: z.object({
 			...builderSessionIdentity,
 			question_count: z.number(),
@@ -426,7 +426,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_ANSWERED_BUILDER_QUESTIONS: {
 		name: 'User answered builder questions',
 		description:
-			'The user resumed a builder ask_questions card by answering, skipping, or dismissing it.',
+			'The user resumed a builder agent_builder_ask_questions card by answering, skipping, or dismissing it.',
 		properties: z.object({
 			...builderSessionIdentity,
 			outcome: z.enum(['answered', 'skipped', 'dismissed']),
@@ -437,7 +437,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_REQUESTED_CREDENTIAL: {
 		name: 'Builder requested credential',
 		description:
-			'The Instance AI builder used the ask_credential (or ask_embedding_credential) tool and suspended to show a credential picker card. Does not fire when the request auto-resolves without showing a card.',
+			'The Instance AI builder used the agent_builder_ask_credential (or agent_builder_ask_embedding_credential) tool and suspended to show a credential picker card. Does not fire when the request auto-resolves without showing a card.',
 		properties: z.object({
 			...builderSessionIdentity,
 			credential_type: z.string(),

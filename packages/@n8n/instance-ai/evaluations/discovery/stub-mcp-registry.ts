@@ -27,27 +27,21 @@ const CATALOGUE: McpRegistryConnectServerSummary[] = [
 		slug: 'notion',
 		title: 'Notion',
 		description: 'Connect to the Notion MCP Server',
-		usesCredentials: [
-			{ credentialType: 'notionMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-		],
+		usesCredentials: [{ credentialType: 'notionMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 		tools: ['notion-search', 'notion-fetch', 'notion-create-pages'],
 	},
 	{
 		slug: 'linear',
 		title: 'Linear',
 		description: 'Connect to the Linear MCP Server',
-		usesCredentials: [
-			{ credentialType: 'linearMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-		],
+		usesCredentials: [{ credentialType: 'linearMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 		tools: ['list_issues', 'get_issue', 'save_issue'],
 	},
 	{
 		slug: 'slack',
 		title: 'Slack',
 		description: 'Connect to the Slack MCP Server',
-		usesCredentials: [
-			{ credentialType: 'slackMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-		],
+		usesCredentials: [{ credentialType: 'slackMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 		tools: [],
 	},
 ];
@@ -92,10 +86,12 @@ export function createStubMcpRegistry(state: DiscoveryMcpState): StubMcpRegistry
 			// Connected servers are filtered out, as in the adapter.
 			search: async (queries) =>
 				await Promise.resolve(
-					servers.filter(
-						(server) =>
-							!connected.has(server.slug) && queries.some((query) => matches(server, query)),
-					).map(({ slug, title, description, tools }) => ({ slug, title, description, tools })),
+					servers
+						.filter(
+							(server) =>
+								!connected.has(server.slug) && queries.some((query) => matches(server, query)),
+						)
+						.map(({ slug, title, description, tools }) => ({ slug, title, description, tools })),
 				),
 			getServers: async (slugs) =>
 				await Promise.resolve(servers.filter((server) => slugs.includes(server.slug))),

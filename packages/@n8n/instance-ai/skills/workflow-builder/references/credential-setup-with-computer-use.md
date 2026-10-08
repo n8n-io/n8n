@@ -6,7 +6,7 @@ description: >-
   credential values from an external service console.
 recommended_tools:
   - research
-  - ask-user
+  - workflow_builder_ask_user
   - browser_connect
   - browser_tab_open
   - browser_navigate
@@ -35,7 +35,7 @@ bridge.
 3. Work from documented setup steps, but adapt to the current UI. Use
    `browser_content` for page text and `browser_snapshot` when you need refs
    for `browser_click`, `browser_type`, or secret capture.
-4. Ask with `ask-user` when the user must choose a project, app name, account,
+4. Ask with `workflow_builder_ask_user` when the user must choose a project, app name, account,
    workspace, scope set, description, or resource. Do not invent these values.
 5. Continue until the credential can be created in n8n, the user must complete
    a private step, or a real blocker is reached. Reading docs, reaching a
@@ -44,7 +44,7 @@ bridge.
 ## Secrets
 
 - Never ask the user to paste passwords, API keys, tokens, client secrets,
-  cookies, private keys, or connection strings into chat or `ask-user`.
+  cookies, private keys, or connection strings into chat or `workflow_builder_ask_user`.
 - When a secret is visible in the browser, call `browser_snapshot` first. Use
   `interactive: false` when the secret is static page text rather than an input.
 - Capture secrets with `browser_capture_secret` using either a snapshot `ref`

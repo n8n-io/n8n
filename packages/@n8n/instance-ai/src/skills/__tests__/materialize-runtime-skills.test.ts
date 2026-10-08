@@ -139,7 +139,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const registryPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${SANDBOX_RUNTIME_SKILL_REGISTRY_FILE}`;
 		const manifestPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${RUNTIME_SKILL_MANIFEST_FILE}`;
 
-		expect(bundle.files.get(skillPath)).toContain('data-tables');
+		expect(bundle.files.get(skillPath)).toContain('workflow_builder_data_tables');
 		expect(bundle.files.get(referencePath)).toContain('Fast Routing');
 		expect(bundle.registryPath).toBe(registryPath);
 		expect(bundle.manifestPath).toBe(manifestPath);
@@ -189,7 +189,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const manifestPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${RUNTIME_SKILL_MANIFEST_FILE}`;
 
 		expect(executeCommand).not.toHaveBeenCalled();
-		expect(writes.get(skillPath)).toContain('data-tables');
+		expect(writes.get(skillPath)).toContain('workflow_builder_data_tables');
 		expect(writes.get(skillPath)).toContain('parse-file');
 		expect(writes.get(referencePath)).toContain('Fast Routing');
 
@@ -281,7 +281,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const skillPath = `${skillDir}/SKILL.md`;
 
 		expect(executeCommand).toHaveBeenCalledTimes(1);
-		expect(writes.get(skillPath)).toContain('data-tables');
+		expect(writes.get(skillPath)).toContain('workflow_builder_data_tables');
 		const text = skillLoadText(result);
 		expect(text).toContain('[Skill: "data-table-manager"]');
 		expect(text).toContain(skillPath);
@@ -313,7 +313,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const skillPath = `${skillDir}/SKILL.md`;
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 		expect(writeFile).not.toHaveBeenCalled();
-		expect(writes.get(skillPath)).toContain('data-tables');
+		expect(writes.get(skillPath)).toContain('workflow_builder_data_tables');
 		const text = skillLoadText(result);
 		expect(text).toContain('[Skill: "data-table-manager"]');
 		expect(text).toContain(skillPath);
@@ -343,7 +343,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 
 		const skillPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager/SKILL.md`;
 		expect(writeFile).toHaveBeenCalled();
-		expect(writes.get(skillPath)).toContain('data-tables');
+		expect(writes.get(skillPath)).toContain('workflow_builder_data_tables');
 	});
 
 	it('falls back to live materialization when the prebaked manifest is invalid', async () => {
@@ -364,7 +364,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 
 		const skillPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager/SKILL.md`;
 		expect(writeFile).toHaveBeenCalled();
-		expect(writes.get(skillPath)).toContain('data-tables');
+		expect(writes.get(skillPath)).toContain('workflow_builder_data_tables');
 	});
 
 	it('rejects linked file paths that escape the materialized skill directory', async () => {

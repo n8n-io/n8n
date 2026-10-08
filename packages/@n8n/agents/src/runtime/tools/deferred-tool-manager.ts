@@ -88,6 +88,9 @@ export class DeferredToolManager {
 
 	private readonly loadedToolNames = new Set<string>();
 
+	/** Former tool names mapped to current ones, so older history still hydrates. */
+	private readonly currentNameByLegacyName = new Map<string, string>();
+
 	/** Always-available tools, kept out of `toolsByName` so they stay unloadable. */
 	private readonly activeToolsByName = new Map<string, BuiltTool>();
 
@@ -112,6 +115,13 @@ export class DeferredToolManager {
 			// A deferred tool of the same name owns the name, because that one is loadable.
 			if (this.toolsByName.has(tool.name)) continue;
 			this.activeToolsByName.set(tool.name, tool);
+		}
+
+		for (const tool of [...this.toolsByName.values(), ...this.activeToolsByName.values()]) {
+			for (const legacyName of tool.legacyNames ?? []) {
+				if (this.toolsByName.has(legacyName) || this.activeToolsByName.has(legacyName)) continue;
+				this.currentNameByLegacyName.set(legacyName, tool.name);
+			}
 		}
 
 		this.topK = options.topK ?? DEFAULT_TOP_K;
@@ -149,7 +159,8 @@ export class DeferredToolManager {
 			if (!('content' in message) || !Array.isArray(message.content)) continue;
 			for (const block of message.content) {
 				if (!this.isSuccessfulLoadToolCall(block)) continue;
-				const toolName = this.getLoadedToolNameFromOutput(block.output);
+				const loadedName = this.getLoadedToolNameFromOutput(block.output);
+				const toolName = loadedName && this.resolveName(loadedName);
 				if (toolName && this.toolsByName.has(toolName)) {
 					this.loadedToolNames.add(toolName);
 				}
@@ -206,7 +217,12 @@ export class DeferredToolManager {
 		};
 	}
 
-	load(toolName: string): LoadToolOutput {
+	private resolveName(name: string): string {
+		return this.currentNameByLegacyName.get(name) ?? name;
+	}
+
+	load(requestedName: string): LoadToolOutput {
+		const toolName = this.resolveName(requestedName);
 		const activeTool = this.activeToolsByName.get(toolName);
 		if (activeTool) {
 			return {

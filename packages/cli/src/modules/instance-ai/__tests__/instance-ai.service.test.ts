@@ -2905,7 +2905,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		);
 	});
 
-	it.each(['workflows', 'build-agent'])(
+	it.each(['workflow_builder_workflows', 'agent_builder_build_agent', 'build-agent'])(
 		'rebuilds the suspended %s call when autoSetup is set',
 		async (toolName) => {
 			const service = createSuspendedRunResumeService();
@@ -2945,7 +2945,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 				undefined,
 				'group-1',
 				expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
-				toolName === 'build-agent',
+				toolName !== 'workflow_builder_workflows',
 			);
 			expect(service.processResumedStream).toHaveBeenCalledWith(
 				rebuiltAgent,
@@ -6034,7 +6034,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		const service = createSetupFollowUpService({});
 
 		expect(
-			service.getWorkflowSetupSuspensionWorkflowId('workflows', {
+			service.getWorkflowSetupSuspensionWorkflowId('workflow_builder_workflows', {
 				workflowId: 'wf-1',
 				setupRequests: [],
 			}),
@@ -6042,11 +6042,17 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		expect(
 			service.getWorkflowSetupSuspensionWorkflowId('workflows', {
 				workflowId: 'wf-1',
+				setupRequests: [],
+			}),
+		).toBe('wf-1');
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('workflow_builder_workflows', {
+				workflowId: 'wf-1',
 				message: 'Publish workflow?',
 			}),
 		).toBeUndefined();
 		expect(
-			service.getWorkflowSetupSuspensionWorkflowId('credentials', {
+			service.getWorkflowSetupSuspensionWorkflowId('workflow_builder_credentials', {
 				workflowId: 'wf-1',
 				setupRequests: [],
 			}),

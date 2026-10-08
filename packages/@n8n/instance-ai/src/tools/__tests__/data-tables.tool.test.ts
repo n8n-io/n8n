@@ -51,7 +51,7 @@ function noSuspendCtx() {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-describe('data-tables tool', () => {
+describe('workflow_builder_data_tables tool', () => {
 	it.each([true, false])(
 		'resumes a saved row deletion without display names when approved=%s',
 		async (approved) => {
@@ -423,7 +423,7 @@ describe('data-tables tool', () => {
 			expect(result).toEqual({
 				dataTableId: 'dt-1',
 				...queryResult,
-				hint: '50 more rows available. Use additional paginated data-tables queries for bulk operations.',
+				hint: '50 more rows available. Use additional paginated workflow_builder_data_tables queries for bulk operations.',
 			});
 		});
 
@@ -442,7 +442,7 @@ describe('data-tables tool', () => {
 			expect(result).toEqual({
 				dataTableId: 'dt-1',
 				...queryResult,
-				hint: '70 more rows available. Use additional paginated data-tables queries for bulk operations.',
+				hint: '70 more rows available. Use additional paginated workflow_builder_data_tables queries for bulk operations.',
 			});
 		});
 

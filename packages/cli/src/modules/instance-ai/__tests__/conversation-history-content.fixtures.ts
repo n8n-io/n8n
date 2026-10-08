@@ -31,7 +31,7 @@ export function askUserContent(
 		customText?: string;
 		skipped?: boolean;
 	}>,
-	options: { state?: string } = {},
+	options: { state?: string; toolName?: string } = {},
 ): string {
 	return JSON.stringify({
 		role: 'assistant',
@@ -39,7 +39,7 @@ export function askUserContent(
 			{
 				type: 'tool-call',
 				toolCallId: 'call-1',
-				toolName: 'ask-user',
+				toolName: options.toolName ?? 'workflow_builder_ask_user',
 				state: options.state ?? 'resolved',
 				output: { answered: true, answers },
 			},

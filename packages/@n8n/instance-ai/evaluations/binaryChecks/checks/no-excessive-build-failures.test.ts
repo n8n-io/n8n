@@ -12,25 +12,28 @@ const wf: WorkflowResponse = {
 	connections: {},
 };
 
-const bw = (): TranscriptStep => ({ kind: 'tool-call', toolName: 'build-workflow' });
+const bw = (): TranscriptStep => ({
+	kind: 'tool-call',
+	toolName: 'workflow_builder_build_workflow',
+});
 const bwOk = (): TranscriptStep => ({
 	kind: 'tool-call',
-	toolName: 'build-workflow',
+	toolName: 'workflow_builder_build_workflow',
 	result: { success: true },
 });
 const bwFail = (): TranscriptStep => ({
 	kind: 'tool-call',
-	toolName: 'build-workflow',
+	toolName: 'workflow_builder_build_workflow',
 	result: { success: false, errors: ['nope'] },
 });
 const bwErr = (): TranscriptStep => ({
 	kind: 'tool-call',
-	toolName: 'build-workflow',
+	toolName: 'workflow_builder_build_workflow',
 	error: 'boom',
 });
 const approval = (): TranscriptStep => ({
 	kind: 'confirmation',
-	toolName: 'build-workflow',
+	toolName: 'workflow_builder_build_workflow',
 	resumeReason: 'approval',
 	approved: true,
 });

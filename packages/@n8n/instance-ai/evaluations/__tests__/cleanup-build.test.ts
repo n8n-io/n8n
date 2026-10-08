@@ -101,7 +101,7 @@ describe('cleanupBuild', () => {
 	});
 
 	it('deletes a seeded agent the live turn never touched', async () => {
-		// No `build-agent` call means no `agent-spawned` event and so no artifact ref —
+		// No `agent_builder_build_agent` call means no `agent-spawned` event and so no artifact ref —
 		// without the seed's own id the restored agent would leak into the shared project.
 		const { client, mocks } = makeClient({ deleteAgent: vi.fn().mockResolvedValue(undefined) });
 		const build = { ...makeBuild(), createdAgentIds: ['seeded-agent-1'] };

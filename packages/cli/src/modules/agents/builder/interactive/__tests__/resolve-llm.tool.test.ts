@@ -43,7 +43,7 @@ function makeFreeCredits(
 	};
 }
 
-describe('resolve_llm tool', () => {
+describe('agent_builder_resolve_llm tool', () => {
 	it('auto-resolves when exactly one LLM-provider credential exists', async () => {
 		const credentialProvider = makeProvider([
 			{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
@@ -435,7 +435,7 @@ describe('resolve_llm tool', () => {
 		});
 	});
 
-	// INS-1263: resolve_llm returned the maintained default without checking it
+	// INS-1263: agent_builder_resolve_llm returned the maintained default without checking it
 	// against the credential, so a model the provider does not serve shipped into
 	// the agent config and every call then failed with `404 Not Found`.
 	describe('provider default verification for own credentials', () => {

@@ -7,6 +7,7 @@ import {
 	findAgent,
 	stateFromAgentTree,
 	isSafeObjectKey,
+	resolveBuilderToolName,
 } from '@n8n/api-types';
 import type {
 	InstanceAiEvent,
@@ -112,11 +113,26 @@ function createRunState(rootAgentId?: string): AgentRunState {
 }
 
 /**
+ * Rewrite former builder tool names in a persisted snapshot tree to their
+ * current names, in place. Live events get the same treatment in the shared
+ * reducer, so the UI only has to handle current names.
+ */
+export function normalizeAgentTreeToolNames(node: InstanceAiAgentNode): void {
+	for (const toolCall of node.toolCalls) {
+		toolCall.toolName = resolveBuilderToolName(toolCall.toolName);
+	}
+	for (const child of node.children) {
+		normalizeAgentTreeToolNames(child);
+	}
+}
+
+/**
  * Index a snapshot tree (session restore / run-sync) into a reactive run state.
  * The tree's nodes are adopted, not copied — live events keep mutating the
  * exact objects the message already renders.
  */
 export function createRunStateFromTree(tree: InstanceAiAgentNode): AgentRunState | undefined {
+	normalizeAgentTreeToolNames(tree);
 	const runState = stateFromAgentTree(tree);
 	return runState ? reactive(runState) : undefined;
 }

@@ -18,14 +18,14 @@ vi.mock('../attachments/parse-file.tool', () => ({
 }));
 
 vi.mock('../credentials.tool', () => ({
-	CREDENTIALS_TOOL_ID: 'credentials',
-	createCredentialsTool: vi.fn(() => ({ id: 'credentials' })),
+	CREDENTIALS_TOOL_ID: 'workflow_builder_credentials',
+	createCredentialsTool: vi.fn(() => ({ id: 'workflow_builder_credentials' })),
 }));
 
 vi.mock('../data-tables.tool', () => ({
-	DATA_TABLES_TOOL_ID: 'data-tables',
+	DATA_TABLES_TOOL_ID: 'workflow_builder_data_tables',
 	createDataTablesTool: vi.fn((_context: unknown, scope?: string) => ({
-		id: scope ? `data-tables-${scope}` : 'data-tables',
+		id: scope ? `workflow_builder_data_tables-${scope}` : 'workflow_builder_data_tables',
 	})),
 }));
 
@@ -34,17 +34,17 @@ vi.mock('../agent-context.tool', () => ({
 }));
 
 vi.mock('../executions.tool', () => ({
-	createExecutionsTool: vi.fn(() => ({ id: 'executions' })),
+	createExecutionsTool: vi.fn(() => ({ id: 'workflow_builder_executions' })),
 }));
 
 vi.mock('../nodes.tool', () => ({
 	createNodesTool: vi.fn((_context: unknown, scope?: string) => ({
-		id: scope ? `nodes-${scope}` : 'nodes',
+		id: scope ? `workflow_builder_nodes-${scope}` : 'workflow_builder_nodes',
 	})),
 }));
 
 vi.mock('../search-models.tool', () => ({
-	createSearchModelsTool: vi.fn(() => ({ id: 'searchModels' })),
+	createSearchModelsTool: vi.fn(() => ({ id: 'workflow_builder_search_models' })),
 }));
 
 vi.mock('../n8n-docs.tool', () => ({
@@ -56,23 +56,25 @@ vi.mock('../mcp-servers.tool', () => ({
 }));
 
 vi.mock('../orchestration/build-agent.tool', () => ({
-	createBuildAgentTool: vi.fn(() => ({ id: 'build-agent' })),
+	createBuildAgentTool: vi.fn(() => ({ id: 'agent_builder_build_agent' })),
 }));
 
 vi.mock('../orchestration/complete-checkpoint.tool', () => ({
-	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
+	createCompleteCheckpointTool: vi.fn(() => ({ id: 'workflow_builder_complete_checkpoint' })),
 }));
 
 vi.mock('../orchestration/plan.tool', () => ({
-	createPlanTool: vi.fn(() => ({ id: 'create-tasks' })),
+	createPlanTool: vi.fn(() => ({ id: 'workflow_builder_create_tasks' })),
 }));
 
 vi.mock('../orchestration/report-verification-verdict.tool', () => ({
-	createReportVerificationVerdictTool: vi.fn(() => ({ id: 'report-verification-verdict' })),
+	createReportVerificationVerdictTool: vi.fn(() => ({
+		id: 'workflow_builder_report_verification_verdict',
+	})),
 }));
 
 vi.mock('../orchestration/verify-built-workflow.tool', () => ({
-	createVerifyBuiltWorkflowTool: vi.fn(() => ({ id: 'verify-built-workflow' })),
+	createVerifyBuiltWorkflowTool: vi.fn(() => ({ id: 'workflow_builder_verify_built_workflow' })),
 }));
 
 vi.mock('../research.tool', () => ({
@@ -80,24 +82,26 @@ vi.mock('../research.tool', () => ({
 }));
 
 vi.mock('../shared/ask-user.tool', () => ({
-	ASK_USER_TOOL_ID: 'ask-user',
-	createAskUserTool: vi.fn(() => ({ id: 'ask-user' })),
+	ASK_USER_TOOL_ID: 'workflow_builder_ask_user',
+	createAskUserTool: vi.fn(() => ({ id: 'workflow_builder_ask_user' })),
 }));
 
 vi.mock('../task-control.tool', () => ({
-	createTaskControlTool: vi.fn(() => ({ id: 'task-control' })),
+	createTaskControlTool: vi.fn(() => ({ id: 'workflow_builder_task_control' })),
 }));
 
 vi.mock('../workflows/apply-workflow-credentials.tool', () => ({
-	createApplyWorkflowCredentialsTool: vi.fn(() => ({ id: 'apply-workflow-credentials' })),
+	createApplyWorkflowCredentialsTool: vi.fn(() => ({
+		id: 'workflow_builder_apply_workflow_credentials',
+	})),
 }));
 
 vi.mock('../workflows/build-workflow.tool', () => ({
-	createBuildWorkflowTool: vi.fn(() => ({ id: 'build-workflow' })),
+	createBuildWorkflowTool: vi.fn(() => ({ id: 'workflow_builder_build_workflow' })),
 }));
 
 vi.mock('../workflows.tool', () => ({
-	createWorkflowsTool: vi.fn(() => ({ id: 'workflows' })),
+	createWorkflowsTool: vi.fn(() => ({ id: 'workflow_builder_workflows' })),
 }));
 
 vi.mock('../workspace.tool', () => ({
@@ -131,17 +135,17 @@ describe('domain tool construction', () => {
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
-			workflows: { id: 'workflows' },
-			executions: { id: 'executions' },
-			credentials: { id: 'credentials' },
-			'data-tables': { id: 'data-tables' },
+			workflow_builder_workflows: { id: 'workflow_builder_workflows' },
+			workflow_builder_executions: { id: 'workflow_builder_executions' },
+			workflow_builder_credentials: { id: 'workflow_builder_credentials' },
+			workflow_builder_data_tables: { id: 'workflow_builder_data_tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },
-			nodes: { id: 'nodes' },
-			searchModels: { id: 'searchModels' },
-			'ask-user': { id: 'ask-user' },
-			'build-workflow': { id: 'build-workflow' },
+			workflow_builder_nodes: { id: 'workflow_builder_nodes' },
+			workflow_builder_search_models: { id: 'workflow_builder_search_models' },
+			workflow_builder_ask_user: { id: 'workflow_builder_ask_user' },
+			workflow_builder_build_workflow: { id: 'workflow_builder_build_workflow' },
 		});
 		expect(orchestratorTools.has('templates')).toBe(false);
 		expect(orchestratorTools.has('evals')).toBe(false);
@@ -157,8 +161,10 @@ describe('domain tool construction', () => {
 	});
 
 	it('makes model catalog search discoverable without loading it for every turn', () => {
-		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain('searchModels');
-		expect(ALWAYS_LOADED_TOOL_NAMES.has('searchModels')).toBe(false);
+		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain(
+			'workflow_builder_search_models',
+		);
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('workflow_builder_search_models')).toBe(false);
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {
@@ -266,23 +272,23 @@ describe('domain tool construction', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('agent-context')).toBe(true);
 	});
 
-	it('constructs create-tasks for the agent to apply profile exclusions', () => {
+	it('constructs workflow_builder_create_tasks for the agent to apply profile exclusions', () => {
 		const context = mock<OrchestrationContext>();
 
 		const orchestrationTools = createOrchestrationTools(context);
 
-		expect(orchestrationTools.has('create-tasks')).toBe(true);
+		expect(orchestrationTools.has('workflow_builder_create_tasks')).toBe(true);
 		expect(orchestrationTools.has('plan')).toBe(false);
 		expect(orchestrationTools.has('delegate')).toBe(false);
 		expect(orchestrationTools.has('eval-setup-with-agent')).toBe(false);
 		expect(orchestrationTools.has('eval-data')).toBe(false);
 	});
 
-	it('registers build-agent only when a builder delegate is present on the domain context', () => {
+	it('registers agent_builder_build_agent only when a builder delegate is present on the domain context', () => {
 		const withoutDelegate = createOrchestrationTools(
 			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
 		);
-		expect(withoutDelegate.has('build-agent')).toBe(false);
+		expect(withoutDelegate.has('agent_builder_build_agent')).toBe(false);
 
 		const withDelegate = createOrchestrationTools(
 			makeContext({
@@ -290,7 +296,7 @@ describe('domain tool construction', () => {
 			} as Partial<InstanceAiContext>) as never,
 		);
 		expect(Object.fromEntries(withDelegate)).toMatchObject({
-			'build-agent': { id: 'build-agent' },
+			agent_builder_build_agent: { id: 'agent_builder_build_agent' },
 		});
 	});
 

@@ -439,7 +439,7 @@ export class UserProxyLlm {
 			return undefined;
 		}
 
-		// ask-user questions go to the LLM; only single-blob plan-review/text are scripted here.
+		// workflow_builder_ask_user questions go to the LLM; only single-blob plan-review/text are scripted here.
 		if (inputType === 'plan-review') {
 			const userInput = this.consumeAllRemainingUserScriptTurns(
 				'Before I approve, use these details:',

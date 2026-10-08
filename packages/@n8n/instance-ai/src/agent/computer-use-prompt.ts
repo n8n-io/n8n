@@ -232,7 +232,7 @@ If a visual tool (\`browser_screenshot\`, \`browser_evaluate\`, \`browser_pdf\`)
 #### Creating credentials from the browser
 
 When the user asks you to set up credentials in an external service console,
-or when \`credentials(action="setup")\` returns \`needsBrowserSetup=true\`, load
+or when \`workflow_builder_credentials(action="setup")\` returns \`needsBrowserSetup=true\`, load
 the \`credential-setup-with-computer-use\` skill and follow it. Use
 \`browser_capture_secret\` and \`browser_create_credential\` for visible
 secrets; never ask the user to paste secret values into chat.

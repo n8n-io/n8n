@@ -135,7 +135,7 @@ export interface TraceToolsMustNotErrorGrader {
 	maxErrors?: number;
 	/** Optional substring filter on toolName. Default 'browser' covers browser_navigate, browser_tab_open. */
 	toolNamePrefix?: string;
-	/** Tool names exempted from the count. Defaults to ['ask-user', 'pause-for-user'] — those legitimately "interrupt" rather than fail. */
+	/** Tool names exempted from the count. Defaults to ['workflow_builder_ask_user', 'pause-for-user'] — those legitimately "interrupt" rather than fail. */
 	ignoreTools?: string[];
 }
 

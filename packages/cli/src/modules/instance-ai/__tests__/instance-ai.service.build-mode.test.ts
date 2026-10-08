@@ -72,9 +72,11 @@ function createService(checkpoint?: SerializableAgentState): ServiceInternals {
 
 describe('InstanceAiService build mode recovery', () => {
 	it.each([
+		{ toolName: 'agent_builder_build_agent', hasBuilderCheckpoint: true, resumeAgentBuild: true },
+		{ toolName: 'agent_builder_build_agent', hasBuilderCheckpoint: false, resumeAgentBuild: false },
+		// A run suspended before the rename stores the former tool name.
 		{ toolName: 'build-agent', hasBuilderCheckpoint: true, resumeAgentBuild: true },
-		{ toolName: 'build-agent', hasBuilderCheckpoint: false, resumeAgentBuild: false },
-		{ toolName: 'workflows', hasBuilderCheckpoint: true, resumeAgentBuild: false },
+		{ toolName: 'workflow_builder_workflows', hasBuilderCheckpoint: true, resumeAgentBuild: false },
 	])(
 		'restores $toolName with a builder checkpoint $hasBuilderCheckpoint',
 		async ({ toolName, hasBuilderCheckpoint, resumeAgentBuild }) => {

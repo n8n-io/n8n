@@ -8,6 +8,7 @@ import {
 	type ApprovalOption,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { resolveBuilderToolName } from '@n8n/api-types';
 import type { InstanceAiConfirmation, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
@@ -138,45 +139,45 @@ const chunks = computed((): ConfirmationChunk[] => {
 const approvalTitleKeys = new Map<string, BaseTextKey>(
 	(
 		[
-			'instanceAi.tools.workflows.delete.imperative',
-			'instanceAi.tools.workflows.delete.imperativeWithResource',
-			'instanceAi.tools.workflows.unarchive.imperative',
-			'instanceAi.tools.workflows.unarchive.imperativeWithResource',
-			'instanceAi.tools.workflows.publish.imperative',
-			'instanceAi.tools.workflows.publish.imperativeWithResource',
-			'instanceAi.tools.workflows.unpublish.imperative',
-			'instanceAi.tools.workflows.unpublish.imperativeWithResource',
-			'instanceAi.tools.workflows.update-version.imperative',
-			'instanceAi.tools.workflows.update-version.imperativeWithResource',
-			'instanceAi.tools.workflows.restore-version.imperative',
-			'instanceAi.tools.workflows.restore-version.imperativeWithResource',
-			'instanceAi.tools.nodes.execute.imperativeWithResource',
-			'instanceAi.tools.executions.run.imperative',
-			'instanceAi.tools.executions.run.imperativeWithResource',
-			'instanceAi.tools.credentials.delete.imperative',
-			'instanceAi.tools.data-tables.create.imperative',
-			'instanceAi.tools.data-tables.create.imperativeWithResource',
-			'instanceAi.tools.data-tables.delete.imperative',
-			'instanceAi.tools.data-tables.delete.imperativeWithResource',
-			'instanceAi.tools.data-tables.add-column.imperative',
-			'instanceAi.tools.data-tables.add-column.imperativeWithResource',
-			'instanceAi.tools.data-tables.delete-column.imperative',
-			'instanceAi.tools.data-tables.delete-column.imperativeWithResource',
-			'instanceAi.tools.data-tables.rename-column.imperative',
-			'instanceAi.tools.data-tables.rename-column.imperativeWithResource',
-			'instanceAi.tools.data-tables.insert-rows.imperative',
-			'instanceAi.tools.data-tables.insert-rows.imperativeWithResource',
-			'instanceAi.tools.data-tables.update-rows.imperative',
-			'instanceAi.tools.data-tables.update-rows.imperativeWithResource',
-			'instanceAi.tools.data-tables.delete-rows.imperative',
-			'instanceAi.tools.data-tables.delete-rows.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_workflows.delete.imperative',
+			'instanceAi.tools.workflow_builder_workflows.delete.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_workflows.unarchive.imperative',
+			'instanceAi.tools.workflow_builder_workflows.unarchive.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_workflows.publish.imperative',
+			'instanceAi.tools.workflow_builder_workflows.publish.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_workflows.unpublish.imperative',
+			'instanceAi.tools.workflow_builder_workflows.unpublish.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_workflows.update-version.imperative',
+			'instanceAi.tools.workflow_builder_workflows.update-version.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_workflows.restore-version.imperative',
+			'instanceAi.tools.workflow_builder_workflows.restore-version.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_nodes.execute.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_executions.run.imperative',
+			'instanceAi.tools.workflow_builder_executions.run.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_credentials.delete.imperative',
+			'instanceAi.tools.workflow_builder_data_tables.create.imperative',
+			'instanceAi.tools.workflow_builder_data_tables.create.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_data_tables.delete.imperative',
+			'instanceAi.tools.workflow_builder_data_tables.delete.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_data_tables.add-column.imperative',
+			'instanceAi.tools.workflow_builder_data_tables.add-column.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_data_tables.delete-column.imperative',
+			'instanceAi.tools.workflow_builder_data_tables.delete-column.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_data_tables.rename-column.imperative',
+			'instanceAi.tools.workflow_builder_data_tables.rename-column.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_data_tables.insert-rows.imperative',
+			'instanceAi.tools.workflow_builder_data_tables.insert-rows.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_data_tables.update-rows.imperative',
+			'instanceAi.tools.workflow_builder_data_tables.update-rows.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_data_tables.delete-rows.imperative',
+			'instanceAi.tools.workflow_builder_data_tables.delete-rows.imperativeWithResource',
 			'instanceAi.tools.workspace.tag-workflow.imperative',
 			'instanceAi.tools.workspace.cleanup-test-executions.imperative',
 			'instanceAi.tools.workspace.create-folder.imperative',
 			'instanceAi.tools.workspace.delete-folder.imperative',
 			'instanceAi.tools.workspace.move-workflow-to-folder.imperative',
-			'instanceAi.tools.build-workflow.imperative',
-			'instanceAi.tools.build-workflow.imperativeWithResource',
+			'instanceAi.tools.workflow_builder_build_workflow.imperative',
+			'instanceAi.tools.workflow_builder_build_workflow.imperativeWithResource',
 			'instanceAi.tools.build-workflow-with-agent.imperative',
 		] satisfies BaseTextKey[]
 	).map((key) => [key, key]),
@@ -209,7 +210,8 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
 	if (item.toolCall.confirmation.targetApproval) {
 		return i18n.baseText('agents.chat.approval.title');
 	}
-	const { toolName, args } = item.toolCall;
+	const { args } = item.toolCall;
+	const toolName = resolveBuilderToolName(item.toolCall.toolName);
 	const action = typeof args?.action === 'string' ? args.action : undefined;
 	const keyBase = action
 		? `instanceAi.tools.${toolName}.${action}`
@@ -568,7 +570,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
 				/>
 
-				<!-- Text input (ask-user) -->
+				<!-- Text input (workflow_builder_ask_user) -->
 				<div
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'text'"
 					:key="'text-' + chunk.item.toolCall.confirmation.requestId"
@@ -684,7 +686,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 					:options="chunk.item.toolCall.confirmation.resourceDecision.options"
 				/>
 
-				<!-- Chat-channel setup (agent-builder configure_channel) — presence-based -->
+				<!-- Chat-channel setup (agent-builder agent_builder_configure_channel) — presence-based -->
 				<InstanceAiChannelSetup
 					v-else-if="chunk.item.toolCall.confirmation.channelConfig"
 					:key="'channel-' + chunk.item.toolCall.confirmation.requestId"

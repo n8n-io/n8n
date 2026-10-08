@@ -8,7 +8,7 @@
 				"argsContainAny": ["intent-recognition"]
 			},
 			{
-				"toolName": "ask-user",
+				"toolName": "workflow_builder_ask_user",
 				"argsContainAny": [
 					"fixed rules",
 					"predefined rules",

@@ -199,12 +199,20 @@ export function isInterruptible(toolName: string, toolMap: Map<string, BuiltTool
 	return !!builtTool?.suspendSchema;
 }
 
-/** Build a Map from tool name to BuiltTool for quick lookups. */
+/**
+ * Build a Map from tool name to BuiltTool for quick lookups. Legacy names are
+ * registered too, so persisted calls under a former name still resolve. A
+ * current tool name always wins over a legacy name.
+ */
 export function buildToolMap(tools?: BuiltTool[]): Map<string, BuiltTool> {
 	const map = new Map<string, BuiltTool>();
-	if (tools) {
-		for (const t of tools) {
-			map.set(t.name, t);
+	if (!tools) return map;
+	for (const t of tools) {
+		map.set(t.name, t);
+	}
+	for (const t of tools) {
+		for (const legacyName of t.legacyNames ?? []) {
+			if (!map.has(legacyName)) map.set(legacyName, t);
 		}
 	}
 	return map;

@@ -45,7 +45,7 @@ import { streamAgentChunks } from '../utils/agent-stream';
 
 /**
  * Builder session options for the agent-builder sub-agent. `AgentsBuilderService`
- * only ever streams for Instance AI's build-agent tool, so every field the
+ * only ever streams for Instance AI's agent_builder_build_agent tool, so every field the
  * host has already resolved (model, billing identity, telemetry) is required
  * rather than falling back to the builder's own settings/tracing chains.
  */

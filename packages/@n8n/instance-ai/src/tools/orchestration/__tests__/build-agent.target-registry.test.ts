@@ -1,5 +1,5 @@
 /**
- * build-agent target addressing against the REAL binding module.
+ * agent_builder_build_agent target addressing against the REAL binding module.
  *
  * `build-agent.tool.test.ts` mocks `agent-target-binding`, so it proves the
  * resolver's behaviour given a registry hit but not that a create actually
@@ -109,7 +109,7 @@ function makeContext(threadMemory: unknown) {
 	return { context, delegate };
 }
 
-describe('build-agent target registry (real binding)', () => {
+describe('agent_builder_build_agent target registry (real binding)', () => {
 	it('resolves a replayed create call to the agent created before the stop', async () => {
 		const { thread, memory } = createThreadMemory();
 		const { context, delegate } = makeContext(memory);

@@ -31,11 +31,11 @@ export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
 
 You are running as a sub-agent inside n8n's instance AI chat; the user sees your questions as chat cards.
 
-Preview links work in this chat. Include a markdown Preview link after a successful build and when \`call_agent\` reports an unsupported interaction as \`approval_required\`, using the exact relative path from the "Session context" section (form: \`[Preview](<path>)\`). Do not invent absolute URLs. Do not omit the link and describe the path in plain text instead.
+Preview links work in this chat. Include a markdown Preview link after a successful build and when \`agent_builder_call_agent\` reports an unsupported interaction as \`approval_required\`, using the exact relative path from the "Session context" section (form: \`[Preview](<path>)\`). Do not invent absolute URLs. Do not omit the link and describe the path in plain text instead.
 
 When you mention the agent editor, say Sessions tab for history and Preview for live chat. Never say Runs, Executions, or Activity History for agents.
 
-You can publish and unpublish the target agent with \`publish_agent\` and \`unpublish_agent\`. Never tell the user to open the agent editor and click Publish.
+You can publish and unpublish the target agent with \`agent_builder_publish_agent\` and \`agent_builder_unpublish_agent\`. Never tell the user to open the agent editor and click Publish.
 
 Use \`agent-context\` for read-only exploration of the target Agent and related project context. Use the legacy read tools only when a mutation flow specifically requires their freshness token.
 
@@ -83,7 +83,7 @@ function toBuilderTurnStream(
 
 /**
  * Host implementation of the instance-ai builder-delegate port. Wraps
- * `AgentsBuilderService` for use as a sub-agent by instance AI's build-agent
+ * `AgentsBuilderService` for use as a sub-agent by instance AI's agent_builder_build_agent
  * tool: one builder conversational turn per `streamBuild`/`resumeBuild` call,
  * with builder sessions keyed to an instance-AI-scoped thread id
  * (`session.threadId`) so nothing surfaces in the agents-module builder UI.

@@ -7,6 +7,11 @@ import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '../builder-tool-names';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { clientMintedAgentIdSchema } from '../agents/dto';
 import type { McpToolPermissions } from './mcp-tool-permissions.schema';
@@ -2726,14 +2731,25 @@ export type InstanceAiMcpConnectionToolsResponse =
 			failureReason: InstanceAiMcpConnectionFailureReason;
 	  };
 
-export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
-	if (toolName === 'task-control') return 'tasks';
-	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
+export function getRenderHint(rawToolName: string): InstanceAiToolCallState['renderHint'] {
+	const toolName = resolveBuilderToolName(rawToolName);
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL) return 'tasks';
+	if (
+		toolName === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW ||
+		toolName === 'build-workflow-with-agent'
+	)
+		return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
-	if (toolName === 'create-tasks') return 'planner';
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREATE_TASKS) return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
 	if (
-		['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'].includes(toolName)
+		[
+			AGENT_BUILDER_TOOL_NAMES.CREATE_SKILLS,
+			'list_skills',
+			'read_skill',
+			AGENT_BUILDER_TOOL_NAMES.UPDATE_SKILL,
+			'load_skill',
+		].includes(toolName)
 	)
 		return 'skill';
 	return 'default';

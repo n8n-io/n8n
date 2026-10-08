@@ -42,7 +42,7 @@ const CARD_REQUEST_ID_PREFIX = 'onboarding-';
 const PRELOAD_FORBIDDEN_PLACEHOLDER_PREFIX = '$' + '{N8N_';
 type Question = InstanceAiQuestion;
 type GivenAnswer = Extract<InstanceAiConfirmRequest, { kind: 'questions' }>['answers'][number];
-/** One answer in the `ask-user` result shape: the wire answer plus the question text. */
+/** One answer in the `workflow_builder_ask_user` result shape: the wire answer plus the question text. */
 type Answer = GivenAnswer & { question: string };
 
 /**
@@ -150,7 +150,7 @@ export async function loadOnboardingSkill(): Promise<string> {
 
 /**
  * The agent-first onboarding thread. The greeting and one question card are stored before the
- * agent's first turn, the card as a finished synthetic run whose `ask-user` call still waits
+ * agent's first turn, the card as a finished synthetic run whose `workflow_builder_ask_user` call still waits
  * for an answer. The UI shows, answers and restores the card through the same HITL path as a
  * live one. The answer settles the card and posts the follow-up question the same way, with no
  * model turn; the task the user types next starts the first real turn. Free text in the card
@@ -245,7 +245,7 @@ export class InstanceAiOnboardingService {
 		const { survey, surveySource } = surveyOf(metadata?.sourceContext);
 		const { questions, shown, answered } = applySurvey(ONBOARDING_OPENING.questions, survey);
 		const given = request.answers;
-		// One answer per shown step in card order, with the question text like the `ask-user` tool adds.
+		// One answer per shown step in card order, with the question text like the `workflow_builder_ask_user` tool adds.
 		const answerFor = (question: Question): Answer => ({
 			...(given.find((answer) => answer.questionId === question.id) ?? {
 				questionId: question.id,
@@ -255,7 +255,7 @@ export class InstanceAiOnboardingService {
 			question: question.question,
 		});
 		const answers = shown.map(answerFor);
-		// Same result shape as the `ask-user` tool, so the UI and the agent read it the same way.
+		// Same result shape as the `workflow_builder_ask_user` tool, so the UI and the agent read it the same way.
 		this.eventBus.publish(row.threadId, {
 			type: 'tool-result',
 			runId: row.runId,
@@ -322,7 +322,7 @@ export class InstanceAiOnboardingService {
 
 	/**
 	 * Store a host-written assistant turn as a finished synthetic run. With `card`, the run also
-	 * holds an `ask-user` call that still waits for an answer, plus the pending row `answerCard`
+	 * holds an `workflow_builder_ask_user` call that still waits for an answer, plus the pending row `answerCard`
 	 * claims. Returns the run id.
 	 */
 	private async seedTurn(turn: {

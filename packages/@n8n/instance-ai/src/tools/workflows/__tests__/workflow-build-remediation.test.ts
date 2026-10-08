@@ -80,6 +80,6 @@ describe('createSaveFailureRemediation', () => {
 			reason: 'workflow_id_not_found',
 		});
 		expect(remediation.guidance).toContain('omit workflowId');
-		expect(remediation.guidance).toContain('workflows()');
+		expect(remediation.guidance).toContain('workflow_builder_workflows()');
 	});
 });

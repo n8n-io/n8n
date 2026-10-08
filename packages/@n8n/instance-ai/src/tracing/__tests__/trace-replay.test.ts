@@ -86,11 +86,11 @@ describe('IdRemapper', () => {
 			remapper.learn(
 				{
 					guidance:
-						'Workflow verified successfully. Call `workflows(action="setup")` with workflowId "old-wf-1" to finish setup.',
+						'Workflow verified successfully. Call `workflow_builder_workflows(action="setup")` with workflowId "old-wf-1" to finish setup.',
 				},
 				{
 					guidance:
-						'Workflow verified successfully. Call `workflows(action="setup")` with workflowId "new-wf-9" to finish setup.',
+						'Workflow verified successfully. Call `workflow_builder_workflows(action="setup")` with workflowId "new-wf-9" to finish setup.',
 				},
 			);
 
@@ -222,7 +222,7 @@ describe('TraceIndex', () => {
 		const events: TraceEvent[] = [
 			{ kind: 'header', version: 1, testName: 'test', recordedAt: '' },
 			makeToolCall(1, 'orchestrator', 'search-nodes'),
-			makeToolCall(2, 'workflow-builder', 'build-workflow'),
+			makeToolCall(2, 'workflow-builder', 'workflow_builder_build_workflow'),
 			makeToolCall(3, 'orchestrator', 'run-workflow'),
 		];
 
@@ -231,7 +231,7 @@ describe('TraceIndex', () => {
 		const e1 = index.next('orchestrator', 'search-nodes');
 		expect(e1.stepId).toBe(1);
 
-		const e2 = index.next('workflow-builder', 'build-workflow');
+		const e2 = index.next('workflow-builder', 'workflow_builder_build_workflow');
 		expect(e2.stepId).toBe(2);
 
 		const e3 = index.next('orchestrator', 'run-workflow');
@@ -272,7 +272,7 @@ describe('TraceIndex', () => {
 	it('should scan forward for a matching tool when requested', () => {
 		const events: TraceEvent[] = [
 			makeToolCall(1, 'orchestrator', 'credentials'),
-			makeToolCall(2, 'orchestrator', 'build-workflow'),
+			makeToolCall(2, 'orchestrator', 'workflow_builder_build_workflow'),
 			makeToolCall(3, 'orchestrator', 'plan'),
 		];
 
@@ -312,14 +312,14 @@ describe('TraceIndex', () => {
 
 	it('should handle suspend and resume events', () => {
 		const events: TraceEvent[] = [
-			makeToolCall(1, 'orchestrator', 'build-workflow'),
+			makeToolCall(1, 'orchestrator', 'workflow_builder_build_workflow'),
 			makeSuspend(2, 'orchestrator', 'run-workflow'),
 			makeResume(3, 'orchestrator', 'run-workflow'),
 		];
 
 		const index = new TraceIndex(events);
 
-		expect(index.next('orchestrator', 'build-workflow').kind).toBe('tool-call');
+		expect(index.next('orchestrator', 'workflow_builder_build_workflow').kind).toBe('tool-call');
 		expect(index.next('orchestrator', 'run-workflow').kind).toBe('tool-suspend');
 		expect(index.next('orchestrator', 'run-workflow').kind).toBe('tool-resume');
 	});
@@ -356,7 +356,7 @@ describe('TraceWriter', () => {
 		writer.recordToolCall('orchestrator', 'search-nodes', { q: 'http' }, { results: [] });
 		writer.recordToolCall(
 			'builder',
-			'build-workflow',
+			'workflow_builder_build_workflow',
 			{ filePath: 'src/workflows/wi-1.workflow.ts' },
 			{ workflowId: '5', filePath: 'src/workflows/wi-1.workflow.ts' },
 		);
@@ -375,7 +375,7 @@ describe('TraceWriter', () => {
 		const call2 = events[2] as TraceToolCall;
 		expect(call2.stepId).toBe(2);
 		expect(call2.agentRole).toBe('builder');
-		expect(call2.toolName).toBe('build-workflow');
+		expect(call2.toolName).toBe('workflow_builder_build_workflow');
 		expect(call2.input).toEqual({ filePath: 'src/workflows/wi-1.workflow.ts' });
 	});
 
@@ -477,7 +477,7 @@ describe('parseTraceJsonl', () => {
 		const writer = new TraceWriter('roundtrip-test');
 		writer.recordToolCall(
 			'orch',
-			'build-workflow',
+			'workflow_builder_build_workflow',
 			{ filePath: 'src/workflows/wi-1.workflow.ts' },
 			{ workflowId: '5', filePath: 'src/workflows/wi-1.workflow.ts' },
 		);

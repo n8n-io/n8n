@@ -8,7 +8,11 @@
 // circular import.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
+import {
+	resolveBuilderToolName,
+	type InstanceAiAgentNode,
+	type InstanceAiMessage,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 export interface ArtifactRefSpec {
@@ -51,7 +55,8 @@ function collectFromNode(node: InstanceAiAgentNode, spec: ArtifactRefSpec, ids: 
 
 	if (spec.toolNames && spec.resultKeys) {
 		for (const tc of node.toolCalls) {
-			if (spec.toolNames.has(tc.toolName)) {
+			// Stored messages can carry a former builder tool name.
+			if (spec.toolNames.has(resolveBuilderToolName(tc.toolName))) {
 				const id = extractIdFromResult(tc.result, spec.resultKeys);
 				if (id) ids.add(id);
 			}

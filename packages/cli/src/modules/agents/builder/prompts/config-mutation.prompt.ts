@@ -7,22 +7,22 @@ export function getConfigMutationPrompt(): string {
 ### Purpose
 
 Use this after deciding a config change is needed and before calling
-\`agent-context({ type: "config" })\`, \`write_config\`, or \`patch_config\`.
+\`agent-context({ type: "config" })\`, \`agent_builder_write_config\`, or \`agent_builder_patch_config\`.
 
 ### Workflow
 
 Follow Config Freshness for authoritative reads, hashes, and stale recovery.
-- For \`write_config\`, send a \`config\` object with only the top-level fields
+- For \`agent_builder_write_config\`, send a \`config\` object with only the top-level fields
   you set or change, plus \`baseConfigHash\`. Omitted top-level fields keep
   their stored value, so do not copy \`model\`, \`credential\`, \`memory\`,
   \`personalisation\`, \`config\`, or \`integrations\` back unless you change them.
-- For \`patch_config\`, send an array of RFC 6902 operation objects plus \`baseConfigHash\`.
+- For \`agent_builder_patch_config\`, send an array of RFC 6902 operation objects plus \`baseConfigHash\`.
 - Send objects and arrays, not JSON strings.
 - Pass the \`configHash\` from your latest config read or from your latest
   write result as \`baseConfigHash\`; do not read the config again between your
   own writes.
 - Put every change you already know into one write. Do not split known changes
-  across several \`patch_config\` calls.
+  across several \`agent_builder_patch_config\` calls.
 - Use JSON Pointer paths like \`/field\`, \`/nested/field\`, \`/array/0\`, and \`/array/-\`.
 - On parse, patch, or schema errors, nothing was saved: fix the payload and
   retry with the same \`baseConfigHash\`.
@@ -37,7 +37,7 @@ ${getSchemaReferenceSection()}
 - Keep each feature in the schema path where it belongs.
 - Preserve unrelated existing config unless the user asked to change it.
 - Never write placeholder instructions, tool descriptions, or skill descriptions.
-- Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\` or \`ask_credential\`.
+- Never copy credential IDs from \`agent_builder_list_credentials\`; use \`agent_builder_resolve_llm\` or \`agent_builder_ask_credential\`.
 - Valid provider tool keys are complete provider tool IDs documented in the Tool Guidance section.
 - \`providerTools\` keys must be complete provider tool IDs from the valid key list.
 
@@ -46,7 +46,7 @@ ${getSchemaReferenceSection()}
 #### Create A Fresh Agent Draft
 
 - Requires \`name\` and \`instructions\`.
-- Use the model and credential from \`resolve_llm\` when resolved; while LLM
+- Use the model and credential from \`agent_builder_resolve_llm\` when resolved; while LLM
   setup is pending, write \`model: ""\` and omit \`credential\`.
 - Keep \`tools\` and \`skills\` arrays if present.
 
@@ -63,21 +63,21 @@ Good minimal shape:
 
 #### Update Only Instructions
 
-Use \`patch_config\` with:
+Use \`agent_builder_patch_config\` with:
 \`\`\`json
 [{ "op": "replace", "path": "/instructions", "value": "New instructions" }]
 \`\`\`
 
 #### Add A Target-Agent Skill Ref
 
-- \`create_skills\` attaches its new skills itself; do not patch those refs in.
+- \`agent_builder_create_skills\` attaches its new skills itself; do not patch those refs in.
 - To attach an existing, unattached skill: if \`skills\` exists, append to
   \`/skills/-\`; if \`skills\` is missing, add \`/skills\` with an array.
 - Ref shape: \`{ "type": "skill", "id": "<skill-id>" }\`.
 
 #### Remove An Existing Chat Integration
 
-- Chat-channel removal is a config edit, not a \`configure_channel\` action.
+- Chat-channel removal is a config edit, not a \`agent_builder_configure_channel\` action.
 - Call \`agent-context({ type: "config" })\` first and inspect \`config.integrations\`.
 - If you know the exact array index to remove, prefer:
 \`\`\`json
@@ -99,7 +99,7 @@ Use \`patch_config\` with:
   user asks to disable web search. Omitting \`provider\` also means native.
 - For every other provider, never use \`provider: "native"\` or omit
   \`provider\` for enabled web search.
-- For Brave or SearXNG search, call \`ask_credential\`, then set
+- For Brave or SearXNG search, call \`agent_builder_ask_credential\`, then set
   \`config.webSearch = { "enabled": true, "provider": "brave" | "searxng", "credential": "<credentialId>" }\`.
 - Brave and SearXNG remain fallback tools even when the model provider also supports native search.
 - When patching only \`/model\` and \`/credential\`, do not patch
@@ -110,7 +110,7 @@ Use \`patch_config\` with:
 
 #### Configure Fallback Services
 
-- Services that require credentials must call \`ask_credential\` first and persist only its returned credential id.
+- Services that require credentials must call \`agent_builder_ask_credential\` first and persist only its returned credential id.
 - If credential selection is skipped, do not enable the feature unless it supports missing credentials.
 - For fallback web search, use exact credential type names: \`braveSearchApi\` for \`provider: "brave"\`, and \`searXngApi\` for \`provider: "searxng"\`.
 
@@ -132,9 +132,9 @@ Bad: provider namespace as provider tool
 { "providerTools": { "anthropic": {} } }
 \`\`\`
 
-Bad: copying credential IDs from \`list_credentials\`
+Bad: copying credential IDs from \`agent_builder_list_credentials\`
 \`\`\`json
-{ "credential": "<id-from-list_credentials>" }
+{ "credential": "<id-from-agent_builder_list_credentials>" }
 \`\`\`
 
 Bad: replacing \`config\` while dropping unrelated settings
@@ -144,13 +144,13 @@ Bad: replacing \`config\` while dropping unrelated settings
 
 ### Gotchas
 
-- \`write_config\` keeps every top-level field you omit. A top-level field you
+- \`agent_builder_write_config\` keeps every top-level field you omit. A top-level field you
   send replaces the stored field whole: to change one key inside \`config\`
-  (for example \`config.webSearch\`), use \`patch_config\` on that path instead.
-- \`patch_config\` cannot create a config when none exists; use \`write_config\` first.
+  (for example \`config.webSearch\`), use \`agent_builder_patch_config\` on that path instead.
+- \`agent_builder_patch_config\` cannot create a config when none exists; use \`agent_builder_write_config\` first.
 - \`/array/-\` appends to an array; \`/array/0\` inserts before the current first item.
 - Removing an integration means deleting its entry from \`integrations[]\`; do
-  not call \`configure_channel\` for removal.
+  not call \`agent_builder_configure_channel\` for removal.
 - Model-only changes must preserve existing Brave or SearXNG \`config.webSearch\`.
 - Empty or placeholder \`instructions\` values are rejected; derive real instructions from the stated goal instead.
 
@@ -169,5 +169,5 @@ Bad: replacing \`config\` while dropping unrelated settings
 - \`stage: "parse"\`: fix JSON syntax and retry with the same \`baseConfigHash\`.
 - \`stage: "patch"\`: fix JSON Pointer paths or operation shape and retry with the same \`baseConfigHash\`.
 - \`stage: "schema"\`: compare the payload against the Config schema reference and retry with the same \`baseConfigHash\`.
-- \`ask_credential\` skipped: omit or disable the feature that required it.`;
+- \`agent_builder_ask_credential\` skipped: omit or disable the feature that required it.`;
 }

@@ -216,7 +216,7 @@ watch(
 
 const { isFeatureEnabled: isTestAgentPreviewVariant } = useTestAgentPreviewExperiment();
 
-// The builder's own "Testing agent" step (the `call_agent` tool) already runs
+// The builder's own "Testing agent" step (the `agent_builder_call_agent` tool) already runs
 // a representative message against the draft agent — reused here so the
 // preview panel can show a real result immediately instead of generating and
 // running a case of its own. Scoped to the agent the panel is actually

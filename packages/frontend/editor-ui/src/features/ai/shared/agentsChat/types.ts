@@ -35,7 +35,7 @@ export interface ToolCall {
 	/**
 	 * One-line answer label rendered next to the tool name in
 	 * `AgentChatToolSteps`. Set when an interactive tool resolves so the user
-	 * sees what they picked (e.g. "Slack") instead of just "ask_questions".
+	 * sees what they picked (e.g. "Slack") instead of just "agent_builder_ask_questions".
 	 */
 	displaySummary?: string;
 	/**
