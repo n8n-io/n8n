@@ -1,6 +1,8 @@
 import type { APIResponse } from '@playwright/test';
+import type { SelfHealingResultContent } from '@n8n/api-types';
 
 import type { ApiHelpers } from './api-helper';
+import { TestError } from '../Types';
 
 /** A binary file attached to a chat message, as the chat endpoint expects it. */
 export interface InstanceAiFileAttachmentPayload {
@@ -16,6 +18,23 @@ export interface InstanceAiFileAttachmentPayload {
  */
 export class InstanceAiApiHelper {
 	constructor(private readonly api: ApiHelpers) {}
+
+	async createSelfHealingResult(
+		input: SelfHealingResultContent & {
+			workflowId: string;
+			projectId: string;
+			backgroundUserId: string;
+			executionId: string;
+			withChanges: boolean;
+		},
+	): Promise<{ resultId: string }> {
+		const response = await this.api.request.post('/rest/e2e/self-healing-result', { data: input });
+		if (!response.ok()) {
+			throw new TestError(`Failed to create Assistant result: ${await response.text()}`);
+		}
+		const { data } = await response.json();
+		return data;
+	}
 
 	/**
 	 * Post a chat message to a thread.

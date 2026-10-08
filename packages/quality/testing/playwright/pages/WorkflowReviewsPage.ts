@@ -13,6 +13,38 @@ export class WorkflowReviewsPage extends BasePage {
 		return this.page.getByTestId('inbox-row').filter({ hasText: title });
 	}
 
+	getGroup(name: 'Waiting for your review' | 'Authored by you' | 'Closed'): Locator {
+		return this.page.getByRole('listbox', { name, exact: true });
+	}
+
+	getAssistantStatus(title: string): Locator {
+		return this.getRequestRow(title).getByTestId('inbox-assistant-status');
+	}
+
+	getAssistantDetail(): Locator {
+		return this.page.getByTestId('inbox-self-healing-detail');
+	}
+
+	getChangesDiff(): Locator {
+		return this.page.getByTestId('workflow-review-changes-diff');
+	}
+
+	async selectDetailTab(name: 'Activity' | 'Changes'): Promise<void> {
+		await this.page
+			.getByTestId('workflow-review-detail-tab-bar')
+			.getByText(name, { exact: true })
+			.click();
+	}
+
+	async selectInboxTab(name: 'Open' | 'Closed'): Promise<void> {
+		await this.page.getByTestId('inbox-tabs').getByText(name, { exact: true }).click();
+	}
+
+	async openAssistantResult(title: string): Promise<void> {
+		await this.getRequestRow(title).click();
+		await this.getAssistantDetail().waitFor({ state: 'visible' });
+	}
+
 	getSelectedRequestTitle(): Locator {
 		return this.page.getByTestId('workflow-review-request-title');
 	}

@@ -1,4 +1,4 @@
-import type { PushMessage } from '@n8n/api-types';
+import type { PushMessage, SelfHealingResultContent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
@@ -244,6 +244,45 @@ export class E2EController {
 	async pushSend(req: PushRequest) {
 		const { pushRef: _, ...pushMsg } = req.body;
 		this.push.broadcast(pushMsg);
+	}
+
+	// This controller loads only in E2E mode. Fixed investigation output makes UI tests repeatable.
+	@Post('/self-healing-result', { skipAuth: true })
+	async createSelfHealingResult(
+		req: Request<
+			{},
+			{},
+			SelfHealingResultContent & {
+				workflowId: string;
+				projectId: string;
+				backgroundUserId: string;
+				executionId: string;
+				withChanges: boolean;
+			}
+		>,
+	) {
+		const { SelfHealingResultService } = await import(
+			'../modules/instance-ai/self-healing/self-healing-result.service.js'
+		);
+		const { WorkflowSuggestionService } = await import(
+			'../modules/instance-ai/workflow-suggestions/workflow-suggestion.service.js'
+		);
+		const { withChanges, ...input } = req.body;
+		const suggestions = Container.get(WorkflowSuggestionService);
+		let suggestion;
+		if (withChanges && input.outcome !== 'could_not_fix') {
+			const baseline = await suggestions.captureBaseline(input.workflowId, input.backgroundUserId);
+			suggestion = await suggestions.prepareSuggestion(baseline, {
+				graph: {
+					nodes: baseline.original.nodes.map((node) => ({ ...node, notes: input.summary })),
+					connections: baseline.original.connections,
+				},
+				explanation: input.summary,
+				resultKind: input.outcome,
+			});
+		}
+		const result = await Container.get(SelfHealingResultService).complete({ ...input, suggestion });
+		return { resultId: result.id };
 	}
 
 	@Patch('/feature', { skipAuth: true })

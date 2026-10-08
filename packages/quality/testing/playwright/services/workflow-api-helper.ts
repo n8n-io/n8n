@@ -1,4 +1,4 @@
-import type { WorkflowPublicationStatus } from '@n8n/api-types';
+import type { WorkflowPublicationStatus, WorkflowReviewRequestDetail } from '@n8n/api-types';
 import type { APIResponse } from '@playwright/test';
 import { readFileSync } from 'fs';
 import { isTerminalExecutionStatus, type IWorkflowBase, type ExecutionSummary } from 'n8n-workflow';
@@ -278,6 +278,15 @@ export class WorkflowApiHelper {
 
 		const result = await response.json();
 		return result.data ?? result;
+	}
+
+	async getReviewRequest(id: string): Promise<WorkflowReviewRequestDetail> {
+		const response = await this.api.request.get(`/rest/workflow-review-requests/${id}`);
+		if (!response.ok()) {
+			throw new TestError(`Failed to get review: ${await response.text()}`);
+		}
+		const { data } = await response.json();
+		return data;
 	}
 
 	async getWorkflow(workflowId: string): Promise<IWorkflowBase> {
