@@ -76,8 +76,12 @@ const credentialListSchema = z.object({ data: z.array(z.unknown()) });
 
 const nameAndTypeSchema = z.object({ name: z.string(), type: z.string() });
 
-function parseOrThrow<T>(schema: z.ZodType<T>, result: unknown, message: string): T {
-	const parsed = schema.safeParse(result);
+function parseOrThrow<S extends z.ZodTypeAny>(
+	schema: S,
+	result: unknown,
+	message: string,
+): z.output<S> {
+	const parsed: z.SafeParseReturnType<unknown, z.output<S>> = schema.safeParse(result);
 	if (!parsed.success) throw new RemoteInstanceError('tool-error', message);
 	return parsed.data;
 }
