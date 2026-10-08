@@ -31,6 +31,7 @@ import {
 } from './assistant-turn-options';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiService } from './instance-ai.service';
+import { RunTargetService } from './run-target/run-target.service';
 import { SharedThreadPolicy } from './sharing/shared-thread-policy';
 
 /**
@@ -53,6 +54,11 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 	/** What teammates can do in a chat that its owner shared with the team project. */
 	get sharing(): SystemAgentSharingPolicy {
 		return Container.get(SharedThreadPolicy);
+	}
+
+	/** Loaded here, not in the constructor, which already takes the four dependencies it may take. */
+	private get runTargets(): RunTargetService {
+		return Container.get(RunTargetService);
 	}
 
 	/**
@@ -133,6 +139,7 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 			computerUseChannels: context?.computerUseChannels ?? defaults.computerUseChannels,
 			buildMode: context?.mode ?? defaults.buildMode,
 			promptVersion: context?.promptVersion ?? defaults.promptVersion,
+			runTarget: await this.runTargets.forChatTurn(thread, stored, context?.runTarget),
 			...(context?.threadArtifacts ? { threadArtifacts: context.threadArtifacts } : {}),
 			...(context?.context ? { handoffContext: context.context } : {}),
 			...(references?.length ? { attachments: references } : {}),

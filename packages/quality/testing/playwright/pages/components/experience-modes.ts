@@ -20,16 +20,6 @@ export class ExperienceModes {
 		return this.page.getByTestId('experience-mode-toggle');
 	}
 
-	/** The button that collapses and expands the main sidebar. */
-	getMainSidebarToggle(): Locator {
-		return this.page.locator('#toggle-sidebar-button');
-	}
-
-	/** Text of a toast that the page shows, for example after a mode switch. */
-	getToast(text: string): Locator {
-		return this.page.getByText(text, { exact: true });
-	}
-
 	/** The Overview entry of the sidebar. */
 	getOverviewEntry(): Locator {
 		return this.page.getByTestId('project-home-menu-item');
@@ -68,6 +58,11 @@ export class ExperienceModes {
 
 	getAutomationsSection(): Locator {
 		return this.page.getByTestId('assistant-automations');
+	}
+
+	/** A row of the Automations section, by its accessible name: the workflow name and its status. */
+	getAutomationRow(name: string): Locator {
+		return this.getAutomationsSection().getByRole('menuitem', { name, exact: true });
 	}
 
 	/** One group of the chat list in Power mode. */

@@ -1763,6 +1763,16 @@ export type ComputerUseChannel = z.infer<typeof computerUseChannelSchema>;
 
 export const MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE = 10;
 
+/**
+ * Where an Assistant chat runs. `linked` names a link of the sender by its id. The
+ * server checks that the thread owner holds that link.
+ */
+export const runTargetSchema = z.discriminatedUnion('kind', [
+	z.object({ kind: z.literal('local') }),
+	z.object({ kind: z.literal('linked'), instanceId: z.string().uuid() }),
+]);
+export type RunTarget = z.infer<typeof runTargetSchema>;
+
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z
@@ -1784,6 +1794,8 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	/** Eval override: observer threshold for THIS thread, so driving compaction
 	 *  for one case does not lower it for every conversation on the instance. */
 	observerThresholdTokens: z.number().int().min(1000).max(1_000_000).optional(),
+	/** Read on the first message of a chat only. Later values are ignored. A value that fails to parse is absent. */
+	runTarget: runTargetSchema.optional().catch(undefined),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
@@ -2170,6 +2182,8 @@ export interface InstanceAiThreadSummary extends InstanceAiThreadOverview {
 	sharedWith?: InstanceAiThreadSharedWith;
 	/** Set on a shared thread. See `InstanceAiThreadInfo.owner`. */
 	owner?: InstanceAiThreadOwner;
+	/** Read-only. See `InstanceAiThreadInfo.runTarget`. */
+	runTarget?: InstanceAiThreadRunTarget;
 }
 
 export type InstanceAiSSEConnectionState =
@@ -2194,6 +2208,14 @@ export interface InstanceAiThreadOwner {
 	name: string;
 }
 
+/**
+ * Where a chat runs. `name` is the name of the linked instance when the chat started. A
+ * teammate never gets this field, because it names the owner's link.
+ */
+export type InstanceAiThreadRunTarget =
+	| { kind: 'local' }
+	| { kind: 'linked'; instanceId: string; name: string };
+
 export interface InstanceAiThreadInfo extends InstanceAiThreadOverview {
 	id: string;
 	title?: string;
@@ -2206,6 +2228,8 @@ export interface InstanceAiThreadInfo extends InstanceAiThreadOverview {
 	sharedWith?: InstanceAiThreadSharedWith;
 	/** Set on a shared thread. Only this user can send messages to it. */
 	owner?: InstanceAiThreadOwner;
+	/** Read-only. Absent until the first message. A shared thread runs locally, whatever this holds. */
+	runTarget?: InstanceAiThreadRunTarget;
 }
 
 /** Response of `POST /instance-ai/threads/:threadId/share`. */

@@ -4,8 +4,8 @@ import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@
 
 import { makeProposal } from '@/features/ai/instanceAi/components/automation/__tests__/automationProposalFixtures';
 import { ASSISTANT_CONFIRMATION_TOOL_NAME } from '../assistantConfirmation';
-import { capabilityDecisionOf, keepsResolvedCard } from '../resolvedCards';
-import type { InteractivePayload } from '../types';
+import { capabilityDecisionOf, keepSessionAnswers, keepsResolvedCard } from '../resolvedCards';
+import type { ChatMessage, InteractivePayload } from '../types';
 
 const TURN_ON = { kind: 'capabilityDecision', approved: true, values: { activate: true } };
 const SAVE = {
@@ -150,12 +150,14 @@ describe('keepsResolvedCard properties', () => {
 
 	/** Every card without an automation proposal, from every renderer. */
 	const cardsWithoutProposal: fc.Arbitrary<InteractivePayload> = fc.oneof(
-		fc.tuple(state, otherAssistantInputs, answers).map(([base, input, answer]) => ({
-			...base,
-			toolName: ASSISTANT_CONFIRMATION_TOOL_NAME,
-			input,
-			resolvedValue: answer.value,
-		})),
+		fc.tuple(state, otherAssistantInputs, answers).map(
+			([base, input, answer]): InteractivePayload => ({
+				...base,
+				toolName: ASSISTANT_CONFIRMATION_TOOL_NAME,
+				input,
+				resolvedValue: answer.value,
+			}),
+		),
 		fc
 			.tuple(state, fc.option(fc.record({ approved: fc.boolean() }), { nil: undefined }))
 			.map(([base, resolvedValue]) => ({
@@ -190,6 +192,97 @@ describe('keepsResolvedCard properties', () => {
 
 				expect(keepsResolvedCard(payload)).toBe(expected);
 			}),
+		);
+	});
+});
+
+describe('keepSessionAnswers', () => {
+	/** A message as a history refresh builds it: the answered card holds the tool result. */
+	function refreshed(...interactives: InteractivePayload[]): ChatMessage {
+		return {
+			id: 'assistant-1',
+			role: 'assistant',
+			content: '',
+			status: 'success',
+			interactives,
+			interactive: interactives[0],
+		};
+	}
+
+	const answers = (entries: Array<[string, unknown]>) => new Map<string, unknown>(entries);
+
+	it('puts the answer of this session back on an answered automation card', () => {
+		const message = refreshed(automationCard({ resolvedValue: TOOL_RESULT }));
+
+		keepSessionAnswers([message], answers([['tc-1', SAVE]]));
+
+		expect(message.interactives?.[0].resolvedValue).toEqual(SAVE);
+		expect(message.interactive?.resolvedValue).toEqual(SAVE);
+		expect(keepsResolvedCard(message.interactives?.[0] ?? automationCard())).toBe(true);
+	});
+
+	it('changes only the card of the answer, and keeps the others as the history has them', () => {
+		const other = automationCard({ toolCallId: 'tc-2', resolvedValue: TOOL_RESULT });
+		const message = refreshed(automationCard({ resolvedValue: TOOL_RESULT }), other);
+
+		keepSessionAnswers([message], answers([['tc-1', TURN_ON]]));
+
+		expect(message.interactives?.map((card) => card.resolvedValue)).toEqual([TURN_ON, TOOL_RESULT]);
+		expect(message.interactives?.[1]).toBe(other);
+	});
+
+	it.each([
+		['is open again', { resolvedAt: undefined, resolvedValue: undefined, runId: 'run-1' }],
+		['was cancelled', { cancelled: true, resolvedValue: undefined }],
+	])('leaves a card that %s as the history has it', (_name, fields) => {
+		const card = automationCard(fields);
+		const message = refreshed(card);
+
+		keepSessionAnswers([message], answers([['tc-1', TURN_ON]]));
+
+		expect(message.interactives?.[0]).toBe(card);
+	});
+
+	it('leaves other Assistant cards with the value from the history', () => {
+		const questions = automationCard({
+			input: { requestId: 'r-3', message: 'Which one?', inputType: 'questions', questions: [] },
+			resolvedValue: { answered: true },
+		});
+		const message = refreshed(questions);
+
+		keepSessionAnswers([message], answers([['tc-1', { kind: 'questions', answers: [] }]]));
+
+		expect(message.interactives?.[0]).toBe(questions);
+	});
+
+	it('does nothing without answers, and leaves messages without cards alone', () => {
+		const card = automationCard({ resolvedValue: TOOL_RESULT });
+		const message = refreshed(card);
+		const plain: ChatMessage = { id: 'user-1', role: 'user', content: 'Hi', status: 'success' };
+		const messages = [plain, message];
+
+		expect(keepSessionAnswers(messages, new Map())).toBe(messages);
+		expect(keepSessionAnswers(messages, answers([['tc-1', TURN_ON]]))).toBe(messages);
+		expect(plain).toEqual({ id: 'user-1', role: 'user', content: 'Hi', status: 'success' });
+	});
+
+	it('changes a card only when the answer keeps it in the chat', () => {
+		const card = automationCard({ resolvedValue: TOOL_RESULT });
+
+		fc.assert(
+			fc.property(
+				fc.oneof(
+					fc.constantFrom<unknown>(TURN_ON, SAVE, DECLINE),
+					fc.constantFrom<unknown>(undefined, 'yes', TOOL_RESULT, { kind: 'approval' }),
+				),
+				(answer) => {
+					const message = refreshed(card);
+					keepSessionAnswers([message], answers([['tc-1', answer]]));
+					const kept = keepsResolvedCard({ ...card, resolvedValue: answer } as InteractivePayload);
+
+					expect(message.interactives?.[0].resolvedValue).toEqual(kept ? answer : TOOL_RESULT);
+				},
+			),
 		);
 	});
 });

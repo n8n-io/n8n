@@ -3,6 +3,7 @@ import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiConfirmationCard from '../agentsChat/InstanceAiConfirmationCard.vue';
+import { createTestRouter } from '../../navigation/__tests__/navigationFixtures';
 import { makeProposal } from '../automation/__tests__/automationProposalFixtures';
 
 const push = vi.hoisted(() => ({
@@ -256,6 +257,44 @@ describe('InstanceAiConfirmationCard', () => {
 
 		expect(getByTestId('automation-proposal-resolved')).toHaveTextContent('Not automated.');
 		expect(queryByTestId('automation-proposal-not-now')).not.toBeInTheDocument();
+	});
+
+	it('lets the user answer an automation card again when the chat takes the answer back', async () => {
+		const input = {
+			requestId: 'req-auto-4',
+			message: 'Want "Morning digest" to run automatically?',
+			automationProposal: makeProposal(),
+		};
+		const { getByTestId, emitted, rerender } = renderComponent({
+			props: { input, toolCallId: 'tc-auto' },
+			global: { plugins: [createTestRouter()], stubs: { RouterLink: false } },
+		});
+
+		await fireEvent.click(getByTestId('automation-proposal-turn-on'));
+		// The chat shows the answer at once, and opens the card again when the request fails.
+		const [[answer]] = emitted<[unknown]>().submit;
+		await rerender({ input, toolCallId: 'tc-auto', resolvedValue: answer });
+		expect(getByTestId('automation-proposal-resolved')).toBeInTheDocument();
+		await rerender({ input, toolCallId: 'tc-auto', resolvedValue: undefined });
+
+		for (const testId of [
+			'automation-proposal-turn-on',
+			'automation-proposal-save',
+			'automation-proposal-not-now',
+		]) {
+			expect(getByTestId(testId)).toBeEnabled();
+		}
+		await fireEvent.click(getByTestId('automation-proposal-save'));
+		expect(emitted().submit).toEqual([
+			[{ kind: 'capabilityDecision', approved: true, values: { target: 'local', activate: true } }],
+			[
+				{
+					kind: 'capabilityDecision',
+					approved: true,
+					values: { target: 'local', activate: false },
+				},
+			],
+		]);
 	});
 
 	it('renders the approval card when no card field is set', () => {

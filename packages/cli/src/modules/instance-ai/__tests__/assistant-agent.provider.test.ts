@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import type { User } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
@@ -12,6 +13,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
 import type { N8nMemory } from '../../agents/integrations/n8n-memory';
 import { AssistantAgentProvider } from '../assistant-agent.provider';
+import { RunTargetService } from '../run-target/run-target.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import type { InstanceAiService } from '../instance-ai.service';
 
@@ -22,8 +24,11 @@ function createProvider() {
 	memory.getImplementation.mockReturnValue({ getThread } as never);
 	const settings = mock<InstanceAiSettingsService>();
 	settings.isInstanceAiEnabled.mockReturnValue(true);
+	const runTargets = mock<RunTargetService>();
+	runTargets.forChatTurn.mockResolvedValue({ kind: 'local' });
+	Container.set(RunTargetService, runTargets);
 	const provider = new AssistantAgentProvider(instanceAiService, memory, mock(), settings);
-	return { provider, instanceAiService, memory, getThread, settings };
+	return { provider, instanceAiService, memory, getThread, settings, runTargets };
 }
 
 function userWithScopes(scopes: Scope[]): User {
@@ -134,9 +139,35 @@ describe('AssistantAgentProvider', () => {
 			expect(options).toEqual({
 				timeZone: 'Europe/Helsinki',
 				pushRef: 'push-1',
+				runTarget: { kind: 'local' },
 				runId: expect.stringMatching(/^run_/),
 				messageGroupId: expect.stringMatching(/^mg_/),
 			});
+		});
+
+		it('gives the run target service the stored defaults and the requested target', async () => {
+			const { provider, getThread, runTargets } = createProvider();
+			const stored = { runTarget: { kind: 'local' } };
+			getThread.mockResolvedValue({ id: 'thread-1', metadata: { assistantTurnDefaults: stored } });
+			const thread = { id: 'thread-1' } as AgentExecutionThread;
+			const requested = { kind: 'linked', instanceId: '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c' };
+
+			await provider.chatTurnOptions(mock<User>(), thread, { timeZone: 'UTC', runTarget: requested });
+
+			expect(runTargets.forChatTurn).toHaveBeenCalledWith(thread, stored, requested);
+		});
+
+		it('passes no run target when the request carries an invalid one', async () => {
+			const { provider, getThread, runTargets } = createProvider();
+			getThread.mockResolvedValue(null);
+			const thread = { id: 'thread-1' } as AgentExecutionThread;
+
+			await provider.chatTurnOptions(mock<User>(), thread, {
+				timeZone: 'UTC',
+				runTarget: { kind: 'linked', instanceId: 'not-a-uuid' },
+			});
+
+			expect(runTargets.forChatTurn).toHaveBeenCalledWith(thread, undefined, undefined);
 		});
 
 		it('returns only the ids when the thread has no stored defaults', async () => {
@@ -147,7 +178,7 @@ describe('AssistantAgentProvider', () => {
 				id: 'thread-1',
 			} as AgentExecutionThread);
 
-			expect(Object.keys(options).sort()).toEqual(['messageGroupId', 'runId']);
+			expect(Object.keys(options).sort()).toEqual(['messageGroupId', 'runId', 'runTarget']);
 		});
 	});
 });

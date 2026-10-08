@@ -3,7 +3,7 @@
  * The card of `propose_automation`: what starts the workflow, its steps, where it runs and
  * who can see it. Each button sends a `capabilityDecision` with values that the card offered.
  */
-import { computed, ref, useId } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import type { AutomationProposalCard, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nText, type ButtonVariant } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -69,6 +69,11 @@ const triggerText = computed(() => describeTrigger(props.proposal.trigger));
 const answeredAction = computed(() => {
 	const decision = capabilityDecisionOf(props.resolvedValue);
 	return decision === undefined ? undefined : actionOf(decision);
+});
+
+// A failed answer opens the same card again, so its buttons must work again.
+watch(answeredAction, (now, before) => {
+	if (before !== undefined && now === undefined) submitted.value = false;
 });
 
 function choose(action: AutomationAction) {

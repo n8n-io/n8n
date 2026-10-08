@@ -392,6 +392,36 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		expect(result.thread.title).toBe('Existing');
 	});
 
+	it('exposes the stored run target of an existing chat, and none when the chat has no target', async () => {
+		const linkId = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
+		const stored = { kind: 'linked', instanceId: linkId, name: 'Cloud' };
+		const options = { source: 'assistant_page', origin: 'internal' } as const;
+		mockThreads.findOneBy.mockResolvedValueOnce(makeSession('thread-linked', '2026-01-02T00:00:00.000Z'));
+		mockGetThread.mockResolvedValueOnce({
+			id: 'thread-linked',
+			title: 'Linked',
+			resourceId: 'user-1',
+			metadata: { assistantTurnDefaults: { pushRef: 'push-1', runTarget: stored } },
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+		});
+		mockThreads.findOneBy.mockResolvedValueOnce(makeSession('thread-plain', '2026-01-02T00:00:00.000Z'));
+		mockGetThread.mockResolvedValueOnce({
+			id: 'thread-plain',
+			title: 'Plain',
+			resourceId: 'user-1',
+			metadata: { assistantTurnDefaults: { pushRef: 'push-1' } },
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+		});
+
+		const linked = await createService().ensureThread('user-1', 'thread-linked', 'project-1', options);
+		const plain = await createService().ensureThread('user-1', 'thread-plain', 'project-1', options);
+
+		expect(linked.thread.runTarget).toEqual(stored);
+		expect(plain.thread).not.toHaveProperty('runTarget');
+	});
+
 	it('refuses a thread owned by another user', async () => {
 		mockThreads.findOneBy.mockResolvedValueOnce(
 			makeSession('thread-other', '2026-01-02T00:00:00.000Z', 'user-2'),

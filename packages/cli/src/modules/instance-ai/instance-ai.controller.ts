@@ -61,6 +61,7 @@ import { EvalThreadRestoreService } from './eval/thread-restore.service';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { withoutServerMetadata } from './run-target/run-target';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -441,7 +442,8 @@ export class InstanceAiController {
 		await this.assertThreadAccess(req.user.id, threadId);
 		const thread = await this.memoryService.updateThread(threadId, {
 			title: payload.title,
-			metadata: payload.metadata,
+			// The server owns the `assistant*` metadata keys, for example the run target.
+			metadata: withoutServerMetadata(payload.metadata),
 		});
 		return { thread: await this.threadSharing.withSharingFields(req.user, thread) };
 	}

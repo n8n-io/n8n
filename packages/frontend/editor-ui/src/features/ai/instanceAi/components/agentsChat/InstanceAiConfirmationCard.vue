@@ -4,7 +4,7 @@
  * emits the Assistant confirm body (`InstanceAiConfirmRequest`) as the resume
  * data; the Agents chat resumes the suspended tool call with it.
  */
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import {
 	N8nApprovalCard,
@@ -55,6 +55,14 @@ const submitted = ref(false);
 const textValue = ref('');
 
 const isInactive = computed(() => props.disabled || submitted.value);
+
+// An answered card that stays in the chat opens again when its answer fails.
+watch(
+	() => props.resolvedValue,
+	(now, before) => {
+		if (before !== undefined && now === undefined) submitted.value = false;
+	},
+);
 
 /** Same dispatch order as the legacy `InstanceAiConfirmationPanel`. */
 const variant = computed(() => {

@@ -4,6 +4,7 @@ import type {
 	InstanceAiBuildMode,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifactsContext,
+	InstanceAiThreadRunTarget,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -32,6 +33,8 @@ export interface AssistantTurnOptions {
 	promptVersion?: string;
 	computerUseChannels?: ComputerUseChannel[];
 	observerThresholdTokens?: number;
+	/** Where the chat runs. A shared chat runs locally, whatever this says. */
+	runTarget?: InstanceAiThreadRunTarget;
 	attachments?: InstanceAiAttachment[];
 	handoffContext?: InstanceAiHandoffContext;
 	threadArtifacts?: InstanceAiThreadArtifactsContext;
@@ -52,7 +55,7 @@ export const ASSISTANT_TURN_DEFAULTS_KEY = 'assistantTurnDefaults';
 
 export type AssistantTurnDefaults = Pick<
 	AssistantTurnOptions,
-	'timeZone' | 'pushRef' | 'computerUseChannels' | 'buildMode' | 'promptVersion'
+	'timeZone' | 'pushRef' | 'computerUseChannels' | 'buildMode' | 'promptVersion' | 'runTarget'
 >;
 
 export function readAssistantTurnOptions(value: unknown): AssistantTurnOptions {

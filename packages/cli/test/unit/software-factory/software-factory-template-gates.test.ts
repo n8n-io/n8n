@@ -184,6 +184,8 @@ describe('software factory gates', () => {
 			['the file name of the test', 'pnpm test a.test.ts'],
 			['the path of the test', 'pnpm test pkg/a.test.ts --run'],
 			['the path quoted', "pnpm test 'pkg/a.test.ts'"],
+			['a chain that runs the test first, with &&', 'pnpm test pkg/a.test.ts && echo done'],
+			['a change of directory before the test', 'cd packages/cli && pnpm test pkg/a.test.ts'],
 		])('accepts a command that names the test file as %s', (_case, runCommand) => {
 			expect(prep(ready, testWith({ testPath: 'pkg/a.test.ts', runCommand }))).toBe(true);
 		});
@@ -219,6 +221,36 @@ describe('software factory gates', () => {
 				'the command only mentions the file name in another word',
 				ready,
 				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'true # xa.test.ts' }),
+			],
+			[
+				'the file name sits in a shell comment',
+				ready,
+				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'true # pkg/a.test.ts' }),
+			],
+			[
+				'a command that succeeds after the test',
+				ready,
+				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts; true' }),
+			],
+			[
+				'a fallback after the test',
+				ready,
+				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts || true' }),
+			],
+			[
+				'a pipe, whose exit code is the one of its last command',
+				ready,
+				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts | tee log' }),
+			],
+			[
+				'a test that runs in the background',
+				ready,
+				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts &' }),
+			],
+			[
+				'a second line after the test',
+				ready,
+				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts\ntrue' }),
 			],
 			['the planner failed', ready, { error: 'The agent stopped.' }],
 			['the planner returned no test', ready, { structuredOutput: null }],
@@ -391,6 +423,29 @@ describe('software factory gates', () => {
 			});
 		});
 
+		const CHECK_MISMATCH = 'the check after Minimise lists other changes than the minimised diff';
+
+		it.each([
+			['names other changes', { changes: [] }],
+			['has no list of changes', { changes: undefined }],
+		])('stops when the check after Minimise %s', (_case, check) => {
+			const result = minimised([{ path: 'a.ts', lines: ['+const a = 1;'] }], { approved, check });
+
+			expect(result.route).toBe(NOT_READY);
+			expect(result.facts.unreviewed).toEqual([CHECK_MISMATCH]);
+		});
+
+		it('takes the changed lines from the minimised diff, not from the check after Minimise', () => {
+			const big = [{ path: 'a.ts', lines: added(150) }];
+			const result = minimised(big, {
+				approved: big,
+				check: { changes: changesOf([{ path: 'a.ts', lines: added(5) }]) },
+			});
+
+			expect(result.facts).toMatchObject({ changedLines: 150, unreviewed: [CHECK_MISMATCH] });
+			expect(result.route).toBe(NOT_READY);
+		});
+
 		it('stops when Minimise swapped the approved change for a file that the critic did not review', () => {
 			const result = minimised([{ path: 'new-unreviewed.ts', lines: added(15) }], {
 				approved: [{ path: 'a.ts', lines: added(20) }],
@@ -478,7 +533,8 @@ describe('software factory gates', () => {
 							changes: [...changesOf(approved), binary],
 						},
 					},
-					'Re-verify': checkResult({ changes: changesOf(approved) }),
+					// The check lists the changes of the minimised diff, as coding_check does.
+					'Re-verify': checkResult({ changes }),
 					'Get minimised diff': { structuredContent: { diff: minimisedDiff, changes } },
 				}).route;
 

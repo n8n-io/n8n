@@ -60,6 +60,7 @@ function compare(parts: { approved: IDataObject; minimised: IDataObject; checked
 		)[0].json;
 	return {
 		unreviewed: facts.unreviewed,
+		changedLines: facts.changedLines,
 		route: configured.routeOf('Ready for PR?', { json: facts }),
 	};
 }
@@ -96,6 +97,30 @@ describe('software factory diff gates', () => {
 			expect(
 				problemsOf({ diff: unifiedDiff(files), changes: [...changesOf(files), untracked] }),
 			).toEqual(['src/new.ts: missing from the diff']);
+		});
+
+		it('accepts a name with a space, which git ends with a tab in the header lines', () => {
+			const spaced: DiffFile[] = [{ path: 'my file.ts', lines: ['+const a = 1;'] }];
+			const tabbed = unifiedDiff(spaced).replace(/^(?:---|\+\+\+) .*$/gm, (line) => line + '\t');
+
+			expect(problemsOf({ diff: tabbed, changes: changesOf(spaced) })).toEqual([]);
+		});
+
+		it('lists a quoted name, which matches no listed change', () => {
+			const quoted = [
+				'diff --git "a/q\\"x.ts" "b/q\\"x.ts"',
+				'index 1111111..2222222 100644',
+				'--- "a/q\\"x.ts"',
+				'+++ "b/q\\"x.ts"',
+				'@@ -1,1 +1,1 @@',
+				'+const a = 1;',
+				'',
+			].join('\n');
+			const change = { path: 'q"x.ts', status: 'M', additions: 1, deletions: 0 };
+
+			expect(problemsOf({ diff: quoted, changes: [change] })).toContain(
+				'q"x.ts: missing from the diff',
+			);
 		});
 
 		it('lists a diff that is cut after a hunk header', () => {
@@ -324,6 +349,52 @@ describe('software factory diff gates', () => {
 
 			expect(result.route).toBe(READY);
 			expect(result.unreviewed).toEqual([]);
+		});
+
+		it('accepts a name with a space in the minimised diff, as it accepts it in the approved diff', () => {
+			const spaced: DiffFile[] = [{ path: 'my file.ts', lines: ['+const a = 1;'] }];
+			const tabbed = unifiedDiff(spaced).replace(/^(?:---|\+\+\+) .*$/gm, (line) => line + '\t');
+			const result = compare({
+				approved: { diff: tabbed, changes: changesOf(spaced) },
+				minimised: { diff: tabbed, changes: changesOf(spaced) },
+			});
+
+			expect(result.route).toBe(READY);
+			expect(result.unreviewed).toEqual([]);
+		});
+
+		it('stops when the check after Minimise lists other changes than the minimised diff', () => {
+			const result = compare({
+				approved: approvedDiff,
+				minimised: approvedDiff,
+				checked: { check: 'passed', test: 'passed', changes: [] },
+			});
+
+			expect(result.route).toBe(NOT_READY);
+			expect(result.unreviewed).toEqual([
+				'the check after Minimise lists other changes than the minimised diff',
+			]);
+		});
+
+		it('takes the changed lines from the minimised diff, not from the check after Minimise', () => {
+			const large: DiffFile[] = [
+				{
+					path: 'src/a.ts',
+					lines: Array.from({ length: 150 }, (_, index) => `+const a${index} = ${index};`),
+				},
+			];
+			const result = compare({
+				approved: { diff: unifiedDiff(large), changes: changesOf(large) },
+				minimised: { diff: unifiedDiff(large), changes: changesOf(large) },
+				checked: {
+					check: 'passed',
+					test: 'passed',
+					changes: changesOf([{ path: 'src/a.ts', lines: ['+const a = 1;'] }]),
+				},
+			});
+
+			expect(result.changedLines).toBe(150);
+			expect(result.route).toBe(NOT_READY);
 		});
 
 		it('reports the same diff problems as "Check the diff" for the same diff', () => {

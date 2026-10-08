@@ -158,6 +158,17 @@ export const test = base.extend<LinkedInstancesFixtures, LinkedInstancesWorkerFi
 
 	context: async ({ context }, use) => {
 		context.setDefaultNavigationTimeout(NAVIGATION_TIMEOUT_MS);
+		// The sidebar experiment has no PostHog variant in e2e, so the control group starts the
+		// sidebar collapsed. Expand it before the first load. A stored choice stays as it is.
+		await context.addInitScript(() => {
+			try {
+				if (window.localStorage.getItem('sidebar.collapsed') === null) {
+					window.localStorage.setItem('sidebar.collapsed', 'false');
+				}
+			} catch {
+				// Blocked storage: the sidebar keeps its default.
+			}
+		});
 		await use(context);
 	},
 
@@ -189,5 +200,9 @@ export const test = base.extend<LinkedInstancesFixtures, LinkedInstancesWorkerFi
 		await context.dispose();
 	},
 });
+
+// The Assistant home animates. Reduced motion keeps its frames still, so every future-poc
+// spec sees the same layout.
+test.use({ contextOptions: { reducedMotion: 'reduce' } });
 
 export { expect };

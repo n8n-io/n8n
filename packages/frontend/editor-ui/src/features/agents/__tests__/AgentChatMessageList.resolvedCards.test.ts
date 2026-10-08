@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { makeProposal } from '@/features/ai/instanceAi/components/automation/__tests__/automationProposalFixtures';
 import { rebuildInteractiveFromHistory } from '@/features/ai/shared/agentsChat/messageMappers';
+import { keepSessionAnswers } from '@/features/ai/shared/agentsChat/resolvedCards';
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AgentChatMessageList from '../components/AgentChatMessageList.vue';
 
@@ -28,7 +29,7 @@ vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
 
 vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
 	default: {
-		template: '<div data-testid="interactive-card">{{ payload.toolCallId }}</div>',
+		template: '<div data-testid="interactive-card" tabindex="-1">{{ payload.toolCallId }}</div>',
 		props: ['payload'],
 	},
 }));
@@ -54,8 +55,9 @@ function answeredCall(tool: string, suspendPayload: unknown, output: unknown): T
 	return { tool, toolCallId: `tc-${tool}`, state: 'done', suspendPayload, output, input: {} };
 }
 
-function renderedCards(calls: ToolCall[]): string[] {
-	const message: ChatMessage = {
+/** The message as the chat builds it from its tool calls, live or from the history. */
+function messageOf(calls: ToolCall[]): ChatMessage {
+	return {
 		id: 'assistant-1',
 		role: 'assistant',
 		content: 'Done.',
@@ -63,8 +65,11 @@ function renderedCards(calls: ToolCall[]): string[] {
 		interactives: calls.flatMap((call) => rebuildInteractiveFromHistory(call) ?? []),
 		status: 'success',
 	};
+}
+
+function renderedCards(calls: ToolCall[]): string[] {
 	const wrapper = mount(AgentChatMessageList, {
-		props: { messages: [message], messagingState: 'idle' },
+		props: { messages: [messageOf(calls)], messagingState: 'idle' },
 	});
 	return wrapper.findAll('[data-testid="interactive-card"]').map((card) => card.text());
 }
@@ -76,6 +81,7 @@ describe('AgentChatMessageList — answered Assistant cards', () => {
 		expect(renderedCards([call])).toEqual(['tc-propose_automation']);
 	});
 
+	// In a live session, the chat puts the answer back after each history read (keepSessionAnswers).
 	it('hides the automation card after a reload, when its value is the tool result', () => {
 		const call = answeredCall('propose_automation', automationSuspend, TOOL_RESULT);
 
@@ -95,5 +101,30 @@ describe('AgentChatMessageList — answered Assistant cards', () => {
 		);
 
 		expect(renderedCards([questions, capability])).toEqual([]);
+	});
+
+	it('keeps the same card, and its focus, when the history is read again after the turn', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [messageOf([answeredCall('propose_automation', automationSuspend, TURN_ON)])],
+				messagingState: 'idle',
+			},
+			attachTo: document.body,
+		});
+		const card = wrapper.get('[data-testid="interactive-card"]').element;
+		if (!(card instanceof HTMLElement)) throw new Error('The card is not an element');
+		card.focus();
+
+		// The refresh builds new messages with the tool result; the chat puts the answer back.
+		const refreshed = messageOf([
+			answeredCall('propose_automation', automationSuspend, TOOL_RESULT),
+		]);
+		await wrapper.setProps({
+			messages: keepSessionAnswers([refreshed], new Map([['tc-propose_automation', TURN_ON]])),
+		});
+
+		expect(wrapper.get('[data-testid="interactive-card"]').element).toBe(card);
+		expect(document.activeElement).toBe(card);
+		wrapper.unmount();
 	});
 });

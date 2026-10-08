@@ -181,7 +181,7 @@ async function confirmUnlink(instance: LinkedInstanceSummary): Promise<boolean> 
 	return choice === MODAL_CONFIRM;
 }
 
-/** @returns true when the server removed the link */
+/** @returns true when the link is gone, also when it was gone before this request */
 async function sendUnlink(id: string): Promise<boolean> {
 	unlinkingIds.value = toggled(unlinkingIds.value, id, true);
 	try {

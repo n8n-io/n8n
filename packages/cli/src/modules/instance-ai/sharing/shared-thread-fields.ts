@@ -14,13 +14,20 @@ type SharingFields = Pick<InstanceAiThreadInfo, 'sharedWith' | 'owner'>;
 /** Thread metadata that only the owner gets. The turn defaults hold the owner's push connection. */
 const OWNER_ONLY_METADATA_KEYS: readonly string[] = [ASSISTANT_TURN_DEFAULTS_KEY];
 
-/** The thread as `viewer` may see it: without the owner-only metadata of another user's thread. */
+/**
+ * The thread as `viewer` may see it: without the owner-only metadata and run target of another
+ * user's thread. The run target names the owner's link.
+ */
 function forViewer(viewer: User, thread: InstanceAiThreadInfo): InstanceAiThreadInfo {
-	if (thread.resourceId === viewer.id || !thread.metadata) return thread;
+	if (thread.resourceId === viewer.id) return thread;
+	const { runTarget: _runTarget, ...teammateView } = thread;
+	if (!teammateView.metadata) return teammateView;
 	const metadata = Object.fromEntries(
-		Object.entries(thread.metadata).filter(([key]) => !OWNER_ONLY_METADATA_KEYS.includes(key)),
+		Object.entries(teammateView.metadata).filter(
+			([key]) => !OWNER_ONLY_METADATA_KEYS.includes(key),
+		),
 	);
-	return { ...thread, metadata };
+	return { ...teammateView, metadata };
 }
 
 /** Marks the shared threads of a thread list with the project and the owner. */

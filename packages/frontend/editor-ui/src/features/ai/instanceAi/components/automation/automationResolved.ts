@@ -1,24 +1,22 @@
-import { automationProposalResultSchema, type AutomationProposalCard } from '@n8n/api-types';
+import type { AutomationProposalCard } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
-import { isRecord } from '@n8n/utils/is-record';
 
+import {
+	automationResultOf,
+	type AutomationResult,
+} from '@/features/ai/shared/agentsChat/automationResult';
 import { triggerLineKey, type AutomationAction } from './automationProposal';
 
 /**
- * Pure rules for an answered automation card and for the tool step of `propose_automation`.
- * The answer says what the user chose. The tool result says what happened, so it wins.
+ * Pure rules for an answered automation card. The answer says what the user chose. The tool
+ * result says what happened, so it wins.
  */
 
-export const PROPOSE_AUTOMATION_TOOL_NAME = 'propose_automation';
-
-/** What a `propose_automation` result says about the workflow. */
-export type AutomationResult =
-	| { kind: 'kept'; active: boolean; failed: boolean }
-	/** Declined, blocked by an admin, or refused: nothing was kept. */
-	| { kind: 'refused' };
-
-/** What the tool step of an answered card says now. */
-export type AutomationToolOutcome = AutomationResult | { kind: 'waiting' };
+/**
+ * What the tool step of an answered card says now. `failed` is a tool call that ended in an
+ * error, so the card cannot tell what the server changed.
+ */
+export type AutomationToolOutcome = AutomationResult | { kind: 'waiting' } | { kind: 'failed' };
 
 /** The tool call fields that the outcome reads (the Assistant thread mirror has this shape). */
 export interface AutomationToolCall {
@@ -28,12 +26,15 @@ export interface AutomationToolCall {
 
 export type AutomationResolvedKind =
 	| 'on'
+	| 'changes-live'
 	| 'turning-on'
+	| 'making-live'
 	| 'not-on'
 	| 'not-live'
 	| 'saved'
 	| 'saved-live'
 	| 'not-saved'
+	| 'failed'
 	| 'declined';
 
 export type AutomationResolvedTone = 'success' | 'warning' | 'neutral';
@@ -42,7 +43,7 @@ export interface AutomationResolvedStatus {
 	kind: AutomationResolvedKind;
 	messageKey: BaseTextKey;
 	tone: AutomationResolvedTone;
-	/** True when the workflow was kept or is being kept, so "Open workflow" leads to it. */
+	/** True when the workflow can be there to open, so "Open workflow" leads to it. */
 	showsLink: boolean;
 }
 
@@ -50,8 +51,18 @@ type ResolvedView = Omit<AutomationResolvedStatus, 'kind'>;
 
 const RESOLVED_VIEWS: Record<AutomationResolvedKind, ResolvedView> = {
 	on: { messageKey: 'instanceAi.automation.resolved.on', tone: 'success', showsLink: true },
+	'changes-live': {
+		messageKey: 'instanceAi.automation.resolved.changesLive',
+		tone: 'success',
+		showsLink: true,
+	},
 	'turning-on': {
 		messageKey: 'instanceAi.automation.resolved.turningOn',
+		tone: 'neutral',
+		showsLink: true,
+	},
+	'making-live': {
+		messageKey: 'instanceAi.automation.resolved.makingLive',
 		tone: 'neutral',
 		showsLink: true,
 	},
@@ -76,6 +87,7 @@ const RESOLVED_VIEWS: Record<AutomationResolvedKind, ResolvedView> = {
 		tone: 'warning',
 		showsLink: false,
 	},
+	failed: { messageKey: 'instanceAi.automation.resolved.failed', tone: 'warning', showsLink: true },
 	declined: {
 		messageKey: 'instanceAi.automation.resolved.declined',
 		tone: 'neutral',
@@ -83,46 +95,51 @@ const RESOLVED_VIEWS: Record<AutomationResolvedKind, ResolvedView> = {
 	},
 };
 
-/** A declined or blocked capability answers `{ denied: true, message }`. */
-function isDenied(output: unknown): boolean {
-	return isRecord(output) && output.denied === true;
-}
-
-/** The outcome in a tool result, or undefined for any other value (for example the answer). */
-export function automationResultOf(output: unknown): AutomationResult | undefined {
-	if (isDenied(output)) return { kind: 'refused' };
-	const parsed = automationProposalResultSchema.safeParse(output);
-	if (!parsed.success) return undefined;
-	return { kind: 'kept', active: parsed.data.active, failed: parsed.data.error !== undefined };
-}
+/** A workflow without a trigger line has no clause for "runs …". */
+const NO_TRIGGER_KEYS: Partial<Record<AutomationResolvedKind, BaseTextKey>> = {
+	on: 'instanceAi.automation.resolved.onNoTrigger',
+	'changes-live': 'instanceAi.automation.resolved.changesLiveNoTrigger',
+};
 
 /**
  * The outcome of the tool step. Right after the answer, the chat puts the answer in the place
- * of the result until the server sends it, so only a parsed result counts. A failed call kept
- * nothing: the server checks every condition before its first change.
+ * of the result until the server sends it, so only a parsed result counts. A failed call can
+ * come before or after the server kept the workflow: the server refuses most requests before
+ * its first change, but an unexpected error while it turns the workflow on comes after it.
  */
 export function toolOutcome(call: AutomationToolCall): AutomationToolOutcome {
-	if (call.error !== undefined) return { kind: 'refused' };
+	if (call.error !== undefined) return { kind: 'failed' };
 	return automationResultOf(call.result) ?? { kind: 'waiting' };
 }
 
+/** "Make changes live" is "Turn it on" for a workflow that was on already. */
+function successKind(proposal: AutomationProposalCard): AutomationResolvedKind {
+	return proposal.active ? 'changes-live' : 'on';
+}
+
+function waitingKind(proposal: AutomationProposalCard): AutomationResolvedKind {
+	return proposal.active ? 'making-live' : 'turning-on';
+}
+
+/** An outcome that leaves the answer to decide: no refusal and no failed call. */
+type OpenOutcome = Exclude<AutomationToolOutcome, { kind: 'refused' | 'failed' }>;
+
 function activateKind(
-	outcome: AutomationToolOutcome | undefined,
-): Exclude<AutomationResolvedKind, 'saved' | 'saved-live' | 'declined'> {
+	proposal: AutomationProposalCard,
+	outcome: OpenOutcome | undefined,
+): AutomationResolvedKind {
 	// Without a tool step to read, the card trusts the answer.
-	if (outcome === undefined) return 'on';
-	if (outcome.kind === 'waiting') return 'turning-on';
-	if (outcome.kind === 'refused') return 'not-saved';
-	if (outcome.active && !outcome.failed) return 'on';
+	if (outcome === undefined) return successKind(proposal);
+	if (outcome.kind === 'waiting') return waitingKind(proposal);
+	if (outcome.active && !outcome.failed) return successKind(proposal);
 	// A failed publish can leave the version that was live before running.
 	return outcome.active ? 'not-live' : 'not-on';
 }
 
 function saveKind(
 	proposal: AutomationProposalCard,
-	outcome: AutomationToolOutcome | undefined,
+	outcome: OpenOutcome | undefined,
 ): AutomationResolvedKind {
-	if (outcome?.kind === 'refused') return 'not-saved';
 	// "Save" keeps a live version running. The result says if one is live, else the card does.
 	const live = outcome?.kind === 'kept' ? outcome.active : proposal.active;
 	return live ? 'saved-live' : 'saved';
@@ -134,8 +151,9 @@ function resolvedKind(
 	outcome: AutomationToolOutcome | undefined,
 ): AutomationResolvedKind {
 	if (action === 'decline') return 'declined';
-	if (action === 'save') return saveKind(proposal, outcome);
-	return activateKind(outcome);
+	if (outcome?.kind === 'refused') return 'not-saved';
+	if (outcome?.kind === 'failed') return 'failed';
+	return action === 'save' ? saveKind(proposal, outcome) : activateKind(proposal, outcome);
 }
 
 /**
@@ -149,25 +167,9 @@ export function resolvedStatus(
 ): AutomationResolvedStatus {
 	const kind = resolvedKind(action, proposal, outcome);
 	const view = RESOLVED_VIEWS[kind];
-	// A workflow without a trigger line has no clause for "runs …".
-	if (kind === 'on' && triggerLineKey(proposal.trigger) === undefined) {
-		return { kind, ...view, messageKey: 'instanceAi.automation.resolved.onNoTrigger' };
+	const noTriggerKey = NO_TRIGGER_KEYS[kind];
+	if (noTriggerKey !== undefined && triggerLineKey(proposal.trigger) === undefined) {
+		return { kind, ...view, messageKey: noTriggerKey };
 	}
 	return { kind, ...view };
-}
-
-/**
- * The summary of a `propose_automation` tool step, from its result only. It names the state,
- * not the button: "Save" on a live workflow also gives `active: true`.
- */
-export function summariseAutomationResult(output: unknown): BaseTextKey | undefined {
-	const result = automationResultOf(output);
-	if (result === undefined) return undefined;
-	if (result.kind === 'refused') return 'instanceAi.automation.summary.declined';
-	if (result.failed) {
-		return result.active
-			? 'instanceAi.automation.summary.notLive'
-			: 'instanceAi.automation.summary.notOn';
-	}
-	return result.active ? 'instanceAi.automation.summary.on' : 'instanceAi.automation.summary.off';
 }

@@ -196,6 +196,7 @@ import { loadOnboardingSkill } from './onboarding';
 import { ONBOARDING_OPENING } from './onboarding-opening';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { runMetricsModelLabel } from './observability';
+import { keepFirstRunTarget } from './run-target/run-target';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -2757,7 +2758,14 @@ export class InstanceAiService {
 		await patchThread(this.assistantMemory, {
 			threadId,
 			update: ({ metadata }) => ({
-				metadata: { ...metadata, [ASSISTANT_TURN_DEFAULTS_KEY]: defaults },
+				metadata: {
+					...metadata,
+					// The stored run target outlives the turn defaults, which each turn replaces.
+					[ASSISTANT_TURN_DEFAULTS_KEY]: {
+						...defaults,
+						runTarget: keepFirstRunTarget(metadata?.[ASSISTANT_TURN_DEFAULTS_KEY], defaults.runTarget),
+					},
+				},
 			}),
 		});
 	}

@@ -2,10 +2,7 @@ import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 
-import {
-	PROPOSE_AUTOMATION_TOOL_NAME,
-	summariseAutomationResult,
-} from '@/features/ai/instanceAi/components/automation/automationResolved';
+import { PROPOSE_AUTOMATION_TOOL_NAME, summariseAutomationResult } from './automationResult';
 import {
 	cardChoiceLabel,
 	n8nChatResumeValueSchema,

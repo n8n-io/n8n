@@ -19,13 +19,11 @@ function withUserDefaults(options: Partial<TestUser>): Omit<TestUser, 'id'> {
 	};
 }
 
-// Only the settings field that the experience-mode helpers read.
+// Only the settings field that the experience-mode helpers read. A user without saved
+// settings has `null` there, not a missing field.
 const currentUserResponseSchema = z.object({
 	data: z.object({
-		settings: z
-			.object({ experienceMode: experienceModeSchema.optional() })
-			.passthrough()
-			.optional(),
+		settings: z.object({ experienceMode: experienceModeSchema.nullish() }).passthrough().nullish(),
 	}),
 });
 
@@ -104,7 +102,7 @@ export class UserApiHelper {
 			throw new TestError(`Failed to read the current user (${response.status()})`);
 		}
 		const body = currentUserResponseSchema.parse(await response.json());
-		return body.data.settings?.experienceMode;
+		return body.data.settings?.experienceMode ?? undefined;
 	}
 
 	/** Saves the Simple or Power mode for the signed-in user, as the sidebar switch does. */

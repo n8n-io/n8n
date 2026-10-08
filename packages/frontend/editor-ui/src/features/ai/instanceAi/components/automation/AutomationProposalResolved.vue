@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * An answered automation card: one line that says what happened, and a link to the workflow
- * when it was kept. The answer gives the first state. The result of the tool step, when it
- * arrives, says if the workflow is really on.
+ * unless nothing was kept ("Not now", or a refusal of the server). The answer gives the first
+ * state. The result of the tool step, when it arrives, says if the workflow is really on.
  */
 import { computed, onMounted, useId, useTemplateRef } from 'vue';
 import { I18nT } from 'vue-i18n';

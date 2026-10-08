@@ -129,6 +129,11 @@ test.describe('My journey', () => {
 Before each test, the fixtures reset both instances, sign in the owner of
 "This computer" and turn off web search there.
 
+Every browser context uses reduced motion, so animations keep still. A new
+context also starts with the sidebar expanded: the sidebar experiment has no
+PostHog variant in e2e, and its control group starts collapsed. A test that
+stores a choice in `sidebar.collapsed` keeps it.
+
 | Fixture | Purpose |
 |---|---|
 | `n8n`, `api` | The usual page and API helpers for "This computer". |

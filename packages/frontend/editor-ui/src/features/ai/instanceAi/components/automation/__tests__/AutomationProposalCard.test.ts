@@ -1,4 +1,4 @@
-import { defineComponent, h, nextTick, ref, type PropType } from 'vue';
+import { defineComponent, h, nextTick, ref, type PropType, type Ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -373,6 +373,8 @@ const InChat = defineComponent({
 			type: Object as PropType<{ value: InstanceAiToolCallState | undefined }>,
 			default: undefined,
 		},
+		/** The answer that the chat holds, so a test can take it back as a failed request does. */
+		state: { type: Object as PropType<Ref<unknown>>, default: undefined },
 	},
 	setup(props) {
 		const call = props.call;
@@ -383,7 +385,7 @@ const InChat = defineComponent({
 			} as unknown as ThreadRuntime);
 		}
 		// The chat resolves the card with the answer that the card sends.
-		const resolvedValue = ref<unknown>(props.answer);
+		const resolvedValue = props.state ?? ref<unknown>(props.answer);
 		const onSubmit = (body: InstanceAiConfirmRequest) => {
 			resolvedValue.value = body;
 		};
@@ -404,10 +406,15 @@ function renderAnswered(
 	{
 		proposal = makeProposal(),
 		call,
-	}: { proposal?: Proposal; call?: { value: InstanceAiToolCallState | undefined } } = {},
+		state,
+	}: {
+		proposal?: Proposal;
+		call?: { value: InstanceAiToolCallState | undefined };
+		state?: Ref<unknown>;
+	} = {},
 ) {
 	return renderInChat({
-		props: { proposal, answer, call },
+		props: { proposal, answer, call, state },
 		global: { plugins: [createTestRouter()], stubs: { RouterLink: false } },
 	});
 }
@@ -503,16 +510,46 @@ describe('AutomationProposalCard after the answer', () => {
 		);
 	});
 
-	it.each([
-		['the call failed', toolCall({ error: 'You cannot reach this workflow' })],
-		['an admin blocked it', toolCall({ result: { denied: true, message: 'Blocked' } })],
-	])('says that nothing was saved when %s, without a link', (_name, failed) => {
-		const { getByTestId, queryByTestId } = renderAnswered(TURN_ON, { call: ref(failed) });
+	it.each([TURN_ON, SAVE])(
+		'says "Not automated" like the tool step when an admin blocked it, without a link',
+		(answer) => {
+			const blocked = toolCall({ result: { denied: true, message: 'Blocked' } });
+			const { getByTestId, queryByTestId } = renderAnswered(answer, { call: ref(blocked) });
+
+			expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+				'Not automated. "Morning digest" couldn\'t be saved.',
+			);
+			expect(queryByTestId('automation-proposal-open-workflow')).not.toBeInTheDocument();
+		},
+	);
+
+	it('asks the user to check the workflow when the call failed, because it may be kept', () => {
+		const failed = toolCall({ error: 'Could not reach the database' });
+		const { getByTestId } = renderAnswered(TURN_ON, { call: ref(failed) });
 
 		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
-			'Couldn\'t save "Morning digest".',
+			'Something went wrong with "Morning digest". Open the workflow to check it.',
 		);
-		expect(queryByTestId('automation-proposal-open-workflow')).not.toBeInTheDocument();
+		expect(getByTestId('automation-proposal-open-workflow')).toHaveAttribute(
+			'href',
+			'/workflow/wf-1',
+		);
+	});
+
+	it('says that the changes are live after "Make changes live" on a live workflow', async () => {
+		const proposal = makeProposal({ active: true, hasUnpublishedChanges: true });
+		const call = ref(toolCall({ result: TURN_ON }));
+		const { getByTestId } = renderAnswered(TURN_ON, { proposal, call });
+		const status = getByTestId('automation-proposal-resolved-status');
+
+		expect(status).toHaveTextContent('Making your changes live…');
+
+		call.value = toolCall({ result: { ...KEPT, active: true } });
+		await nextTick();
+
+		expect(status).toHaveTextContent(
+			'Your changes are live. "Morning digest" runs at 08:00, Monday through Friday (United Kingdom Time) on This computer.',
+		);
 	});
 
 	it('announces the outcome politely, as one message', () => {
@@ -543,5 +580,31 @@ describe('AutomationProposalCard after the answer', () => {
 		const { getByTestId } = renderAnswered(SAVE);
 
 		expect(getByTestId('automation-proposal-resolved')).not.toHaveFocus();
+	});
+
+	it('lets the user answer again when the chat takes a failed answer back', async () => {
+		const state = ref<unknown>(undefined);
+		const { getByTestId, queryByTestId } = renderAnswered(undefined, { state });
+
+		await fireEvent.click(getByTestId('automation-proposal-turn-on'));
+		expect(getByTestId('automation-proposal-resolved')).toBeInTheDocument();
+
+		state.value = undefined;
+		await nextTick();
+
+		expect(queryByTestId('automation-proposal-resolved')).not.toBeInTheDocument();
+		for (const testId of [
+			'automation-proposal-turn-on',
+			'automation-proposal-save',
+			'automation-proposal-not-now',
+		]) {
+			expect(getByTestId(testId)).toBeEnabled();
+		}
+
+		await fireEvent.click(getByTestId('automation-proposal-not-now'));
+
+		expect(state.value).toEqual(DECLINE);
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent('Not automated.');
+		expect(getByTestId('automation-proposal-resolved')).toHaveFocus();
 	});
 });
