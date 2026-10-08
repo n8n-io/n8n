@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialOptionsInput.vue
+  s_9dde2d3ceb6629::t_88fde8bf9898c0 58
+  s_9dde2d3ceb6629::t_dfc74d8a2f1fdf 2,23-27,45,51,57,59
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_9dde2d3ceb6629::t_41dc3be5189c99 30-35,1803-1815,1817-1903
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialInputs.test.ts
+  s_9dde2d3ceb6629::t_41dc3be5189c99 124-128,137,162,167-171,177-185,188-189,199,203,207,211,214-219,222-225,237,240-241,248
+  s_9dde2d3ceb6629::t_96caff4ed4d5de 256-268
+  s_9dde2d3ceb6629::t_892df4741c08b5 255
+packages/@n8n/nodes-langchain/credentials/GoogleVertexAiApi.credentials.ts
+  s_9dde2d3ceb6629::t_33ac74ff29352b 3,17-29,37-38
+packages/@n8n/nodes-langchain/utils/google-vertex.ts
+  s_9dde2d3ceb6629::t_43f2e10fa447a0 13-14,50-51
+packages/@n8n/nodes-langchain/utils/tests/google-vertex.test.ts
+  s_9dde2d3ceb6629::t_395d36283ffc71 2-8,13,32-54
+packages/cli/src/credentials/__tests__/credential-options.service.test.ts
+  s_9dde2d3ceb6629::t_3c5ba4ec1b40a5 53-57,65
+packages/cli/src/credentials/credential-options.service.ts
+  s_9dde2d3ceb6629::t_a6979dfb69694e 113
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9dde2d3ceb6629::t_bff779c27bc98d 1051
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialInputs.vue
+  s_9dde2d3ceb6629::t_78868e1155f6c4 74
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOptions.ts
+  s_9dde2d3ceb6629::t_c5c90d68811453 47,68,86,88,92
+packages/workflow/src/interfaces.ts
+  s_9dde2d3ceb6629::t_2bd12bd08c934c 2032-2033
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2bfce8467e92ee429d686529ffc1c436767282a1",
+  "prompts": {},
+  "sessions": {
+    "s_9dde2d3ceb6629": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11ac2-6b8c-78c0-8c5b-f0f0c2840b03",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
