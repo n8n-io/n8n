@@ -282,7 +282,21 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 			if (requestSeq !== detailRequestSeq) {
 				return;
 			}
-			detail.value = response;
+			// TEMP(LIGO-1254): mock multiple workflows. Revert before merge.
+			const [first] = response.workflows;
+			detail.value = first
+				? {
+						...response,
+						workflows: [
+							first,
+							...[2, 3].map((n) => ({
+								...first,
+								workflowId: `${first.workflowId}-mock-${n}`,
+								workflowName: `${first.workflowName} (${n})`,
+							})),
+						],
+					}
+				: response;
 			detailNotFound.value = false;
 		} catch (e) {
 			if (requestSeq !== detailRequestSeq) {
