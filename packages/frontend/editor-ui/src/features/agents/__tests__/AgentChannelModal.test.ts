@@ -50,6 +50,7 @@ const loadingMap = ref<Record<string, boolean>>({});
 const runtimeErrors = ref<Record<string, string>>({});
 const errorIsConflict = ref<Record<string, boolean>>({});
 const platformSaveLabel = ref<string | undefined>();
+const platformCanFinish = ref(false);
 const credentialModalOpen = ref(false);
 
 vi.mock('@n8n/i18n', () => ({
@@ -83,6 +84,7 @@ vi.mock('../channels/registry', async () => {
 				beforeSave: mocks.beforeSave,
 				afterSave: mocks.afterSave,
 				keepOpenAfterConnect: mocks.keepOpenAfterConnect,
+				canFinish: platformCanFinish,
 				saveLabel: platformSaveLabel,
 				loading,
 				startOwnFlow: () => {
@@ -489,6 +491,24 @@ describe('AgentChannelModal', () => {
 	 * A setup whose remaining steps happen outside n8n stores what it has and
 	 * carries on, rather than closing on the user mid-flow.
 	 */
+	/**
+	 * A setup that finished before it was reopened never emits `persist`, so
+	 * Done is the only moment the channel can be written. Closing without
+	 * writing left it absent from the agent with nothing to show for the run.
+	 */
+	it('writes the channel when the setup is finished from the footer', async () => {
+		platformCanFinish.value = true;
+		selectedCredentials.value.example = 'credential-new';
+		const wrapper = mountModal('example_setup', true);
+		await flushPromises();
+
+		await wrapper.get('[data-testid="agent-channel-setup-done"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.connect).toHaveBeenCalled();
+		expect(wrapper.emitted('update:open')).toBeTruthy();
+	});
+
 	it('stores the channel without closing when the view asks it to', async () => {
 		selectedCredentials.value.example = 'credential-new';
 		const wrapper = mountModal('example_setup', true);
