@@ -246,7 +246,8 @@ export async function createInstanceAgent(
 		agent.mcpConnectionFailures(mcpConnectionFailures);
 	}
 	if (options.thinkingEnabled !== false) {
-		applyAgentThinking(agent, modelId);
+		// Eval branch: the builder runs Claude at high effort. Eval helpers (createEvalAgent) keep medium.
+		applyAgentThinking(agent, modelId, 'high');
 	}
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
