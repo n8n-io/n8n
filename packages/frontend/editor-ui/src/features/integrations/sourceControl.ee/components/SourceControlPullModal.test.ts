@@ -1023,6 +1023,48 @@ describe('SourceControlPullModal', () => {
 			expect(queryByTestId('source-control-pull-policy-group')).not.toBeInTheDocument();
 		});
 
+		it('puts the number of pullable items on the button for a partial pull', () => {
+			const { getByTestId } = renderModal({
+				pinia,
+				props: { data: { eventBus, status: [blockedWorkflow, ...sampleFiles] } },
+			});
+
+			expect(getByTestId('force-pull')).toHaveTextContent('Pull 2 items');
+			expect(getByTestId('force-pull')).toBeEnabled();
+		});
+
+		it('keeps the plain button label when nothing is blocked', () => {
+			const { getByTestId } = renderModal({
+				pinia,
+				props: { data: { eventBus, status: sampleFiles } },
+			});
+
+			expect(getByTestId('force-pull')).toHaveTextContent(/^Pull$/);
+		});
+
+		it('ignores a blocked modified workflow when choosing the override label', () => {
+			const { getByTestId } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status: [{ ...blockedWorkflow, status: 'modified' }, sampleFiles[1]],
+					},
+				},
+			});
+
+			expect(getByTestId('force-pull')).toHaveTextContent('Pull 1 item');
+		});
+
+		it('disables the button when every item is blocked', () => {
+			const { getByTestId } = renderModal({
+				pinia,
+				props: { data: { eventBus, status: [blockedWorkflow] } },
+			});
+
+			expect(getByTestId('force-pull')).toBeDisabled();
+		});
+
 		it('does not mark a blocked workflow for auto-publish', async () => {
 			const wrapper = renderModal({
 				pinia,

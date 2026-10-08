@@ -115,9 +115,13 @@ const autoPublishOptions = computed(() => {
 	];
 });
 
+// A blocked workflow is not overwritten, so it does not make the pull an override.
 const hasModifiedWorkflows = computed(() => {
 	return status.value.some(
-		(f) => f.type === SOURCE_CONTROL_FILE_TYPE.workflow && f.status === 'modified',
+		(f) =>
+			f.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
+			f.status === 'modified' &&
+			!isBlockedByPolicy(f),
 	);
 });
 
@@ -251,6 +255,19 @@ const dataTableWarningMessage = computed(() => {
 
 const policyBlockedCount = computed(() => status.value.filter(isBlockedByPolicy).length);
 
+const LISTED_TYPES: SourceControlledFileType[] = [
+	SOURCE_CONTROL_FILE_TYPE.workflow,
+	SOURCE_CONTROL_FILE_TYPE.credential,
+	SOURCE_CONTROL_FILE_TYPE.datatable,
+];
+
+/** Counts only the items listed in the tabs, so the number matches what the user sees. */
+const pullableListedCount = computed(
+	() =>
+		status.value.filter((file) => LISTED_TYPES.includes(file.type) && !isBlockedByPolicy(file))
+			.length,
+);
+
 // Active data source based on tab
 const activeDataSourceFiltered = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
@@ -346,6 +363,32 @@ const otherFiles = computed(() => {
 	}
 
 	return others;
+});
+
+const hasNothingToPull = computed(
+	() => policyBlockedCount.value > 0 && pullableListedCount.value === 0 && !otherFiles.value.length,
+);
+
+// The count only shows on a partial pull, where it differs from the full list.
+const pullButtonLabel = computed(() => {
+	const showCount = policyBlockedCount.value > 0 && pullableListedCount.value > 0;
+	const count = pullableListedCount.value;
+
+	if (hasModifiedWorkflows.value) {
+		return showCount
+			? i18n.baseText('settings.sourceControl.modals.pull.buttons.saveCount', {
+					adjustToNumber: count,
+					interpolate: { count: `${count}` },
+				})
+			: i18n.baseText('settings.sourceControl.modals.pull.buttons.save');
+	}
+
+	return showCount
+		? i18n.baseText('settings.sourceControl.modals.pull.buttons.pullCount', {
+				adjustToNumber: count,
+				interpolate: { count: `${count}` },
+			})
+		: i18n.baseText('settings.sourceControl.modals.pull.buttons.pull');
 });
 
 const otherFilesText = computed(() => {
@@ -763,12 +806,13 @@ onMounted(() => {
 				<N8nButton variant="subtle" class="mr-2xs" @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel') }}
 				</N8nButton>
-				<N8nButton variant="solid" data-test-id="force-pull" @click="pullWorkfolder">
-					{{
-						hasModifiedWorkflows
-							? i18n.baseText('settings.sourceControl.modals.pull.buttons.save')
-							: i18n.baseText('settings.sourceControl.modals.pull.buttons.pull')
-					}}
+				<N8nButton
+					variant="solid"
+					data-test-id="force-pull"
+					:disabled="hasNothingToPull"
+					@click="pullWorkfolder"
+				>
+					{{ pullButtonLabel }}
 				</N8nButton>
 			</div>
 		</template>
