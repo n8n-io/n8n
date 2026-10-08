@@ -66,6 +66,7 @@ function makeService() {
 	const agentPolicyService = mock<AgentPolicyService>();
 
 	agentsSettingsService.getEnabled.mockResolvedValue(true);
+	agentRepository.findByIdsAndProjectId.mockResolvedValue([]);
 	agentTaskService.requestReconcile.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	testChatService.clearAllTestChatMessages.mockResolvedValue();
@@ -792,6 +793,7 @@ describe('AgentsService', () => {
 						},
 						description: 'Answers billing questions.',
 						project: { id: 'project-1', name: 'Support Team' },
+						attachments: { image: false, pdf: false, audio: false },
 					},
 				],
 			});
@@ -848,7 +850,7 @@ describe('AgentsService', () => {
 	describe('findChatReachableAgentForUser', () => {
 		const user = { id: 'user-1' } as unknown as User;
 
-		function makeReachableAgent() {
+		function makeReachableAgent(schemaOverrides: Record<string, unknown> = {}) {
 			return makeAgent({
 				id: 'agent-1',
 				name: 'Support',
@@ -857,10 +859,11 @@ describe('AgentsService', () => {
 				activeVersion: {
 					schema: {
 						name: 'Support',
-						model: 'm',
+						model: 'anthropic/claude-sonnet-4-5',
 						instructions: 'published instructions',
 						personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
 						description: 'Answers billing questions.',
+						...schemaOverrides,
 					},
 				},
 			} as never);
@@ -887,7 +890,7 @@ describe('AgentsService', () => {
 			expect(agentRepository.findChatReachableById).toHaveBeenCalledWith('agent-1', null);
 		});
 
-		it('answers with the narrow chat item, never the agent config', async () => {
+		it('answers with the narrow chat item plus attachments and sub-agents, never the agent config', async () => {
 			const { service, agentRepository, projectScopeService } = makeService();
 			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 			agentRepository.findChatReachableById.mockResolvedValue(makeReachableAgent());
@@ -900,9 +903,56 @@ describe('AgentsService', () => {
 				personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
 				description: 'Answers billing questions.',
 				project: { id: 'project-1', name: 'Support Team' },
+				attachments: { image: true, pdf: true, audio: false },
+				subAgents: [],
 			});
 			expect(result).not.toHaveProperty('schema');
 			expect(JSON.stringify(result)).not.toContain('published instructions');
+		});
+
+		it.each(['', 'unknown-provider/some-model'])(
+			'reports no attachment support for model "%s"',
+			async (model) => {
+				const { service, agentRepository, projectScopeService } = makeService();
+				projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+				agentRepository.findChatReachableById.mockResolvedValue(makeReachableAgent({ model }));
+
+				const result = await service.findChatReachableAgentForUser('agent-1', user);
+
+				expect(result?.attachments).toEqual({ image: false, pdf: false, audio: false });
+			},
+		);
+
+		it('resolves sub-agent names from the same project, including disabled ones, skipping repeated and unresolved entries', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findChatReachableById.mockResolvedValue(
+				makeReachableAgent({
+					subAgents: {
+						agents: [
+							{ agentId: 'sub-1' },
+							{ agentId: 'sub-1' },
+							{ agentId: 'sub-2', enabled: false },
+							{ agentId: 'sub-3' },
+						],
+					},
+				}),
+			);
+			agentRepository.findByIdsAndProjectId.mockResolvedValue([
+				{ id: 'sub-1', name: 'Researcher' } as never,
+				{ id: 'sub-2', name: 'Retired' } as never,
+			]);
+
+			const result = await service.findChatReachableAgentForUser('agent-1', user);
+
+			expect(agentRepository.findByIdsAndProjectId).toHaveBeenCalledWith(
+				['sub-1', 'sub-2', 'sub-3'],
+				'project-1',
+			);
+			expect(result?.subAgents).toEqual([
+				{ id: 'sub-1', name: 'Researcher' },
+				{ id: 'sub-2', name: 'Retired' },
+			]);
 		});
 
 		it('returns null when the repository finds no reachable agent', async () => {

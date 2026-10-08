@@ -21,14 +21,27 @@ const chatIntegration = { type: 'n8n_chat', credentialId: '' } as const;
 
 // These routes go through the controller registry, so they also check the handler signatures.
 describe('n8n Chat page HTTP routes', () => {
-	async function createPublishedAgent(projectId: string, { withChat = true } = {}) {
+	async function createPublishedAgent(
+		projectId: string,
+		{
+			withChat = true,
+			model = 'anthropic/claude-sonnet-4-5',
+			name = 'Support agent',
+			subAgents,
+		}: {
+			withChat?: boolean;
+			model?: string;
+			name?: string;
+			subAgents?: Array<{ agentId: string; enabled?: boolean }>;
+		} = {},
+	) {
 		const agentRepository = Container.get(AgentRepository);
 		const agent = await agentRepository.save(
 			agentRepository.create({
 				id: randomUUID(),
-				name: 'Support agent',
+				name,
 				projectId,
-				schema: { name: 'Support agent', model: 'openai:gpt-4o-mini', instructions: 'Help' },
+				schema: { name, model, instructions: 'Help' },
 				integrations: [chatIntegration],
 				tools: {},
 				skills: {},
@@ -40,11 +53,12 @@ describe('n8n Chat page HTTP routes', () => {
 			versionId,
 			agentId: agent.id,
 			schema: {
-				name: 'Support agent',
+				name,
 				description: 'Answers support questions',
-				model: 'openai:gpt-4o-mini',
+				model,
 				instructions: 'Help',
 				integrations: withChat ? [chatIntegration] : [],
+				...(subAgents ? { subAgents: { agents: subAgents } } : {}),
 			},
 			tools: {},
 			skills: {},
@@ -99,7 +113,7 @@ describe('n8n Chat page HTTP routes', () => {
 		return { owner, chatUser, project, agent };
 	}
 
-	it('returns one reachable agent in the chat list shape', async () => {
+	it('returns one reachable agent in the chat list shape, plus attachments and sub-agents', async () => {
 		const { chatUser, project, agent } = await setup();
 
 		const response = await server
@@ -112,7 +126,31 @@ describe('n8n Chat page HTTP routes', () => {
 			name: 'Support agent',
 			description: 'Answers support questions',
 			project: { id: project.id, name: 'Support' },
+			attachments: { image: true, pdf: true, audio: false },
+			subAgents: [],
 		});
+	});
+
+	it('resolves sub-agent names for a chat-only member, including disabled entries', async () => {
+		const { chatUser, project } = await setup();
+		const researcher = await createPublishedAgent(project.id, {
+			withChat: false,
+			name: 'Researcher',
+		});
+		const retired = await createPublishedAgent(project.id, { withChat: false, name: 'Retired' });
+		const agent = await createPublishedAgent(project.id, {
+			subAgents: [{ agentId: researcher.id }, { agentId: retired.id, enabled: false }],
+		});
+
+		const response = await server
+			.authAgentFor(chatUser)
+			.get(`/agents/v2/n8n-chat/agents/${agent.id}`)
+			.expect(200);
+
+		expect(response.body.data.subAgents).toEqual([
+			{ id: researcher.id, name: 'Researcher' },
+			{ id: retired.id, name: 'Retired' },
+		]);
 	});
 
 	it('returns 404 for an agent without the published n8n Chat channel', async () => {
@@ -137,8 +175,13 @@ describe('n8n Chat page HTTP routes', () => {
 
 		expect(response.body).toMatchObject({
 			count: 2,
-			data: [{ id: busierAgent.id }, { id: agent.id }],
+			data: [
+				{ id: busierAgent.id, attachments: { image: true, pdf: true, audio: false } },
+				{ id: agent.id },
+			],
 		});
+		// The list carries attachments (the composer needs them), but sub-agents stay single-agent only.
+		expect(response.body.data[0]).not.toHaveProperty('subAgents');
 	});
 
 	it("lists the user's own n8n Chat threads", async () => {

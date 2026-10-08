@@ -39,6 +39,7 @@ const agentItem: AgentChatListItem = {
 		gradient: { from: '#000000', to: '#FFFFFF', angle: 0, fromStop: 0, toStop: 100 },
 	},
 	project: { id: 'project-1', name: 'Marketing' },
+	attachments: { image: false, pdf: false, audio: false },
 };
 
 const AgentChatPanelStub = {

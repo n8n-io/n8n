@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onScopeDispose, ref, useTemplateRef, watch } from 'vue';
+import { computed, onScopeDispose, provide, ref, useTemplateRef, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
-import type { AgentChatListItem } from '@n8n/api-types';
+import type { AgentN8nChatAgentDetails } from '@n8n/api-types';
 import { N8nEmptyState, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -18,6 +18,7 @@ import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentProjectBreadcrumb } from '../composables/useAgentProjectBreadcrumb';
 import { isNotFoundError } from '../utils/errors';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
+import { AGENT_SUB_AGENT_NAMES_KEY } from '../components/agentChatInjectionKeys';
 import AgentPersonalisationIcon from '../components/AgentPersonalisationIcon.vue';
 import N8nChatPageLayout from './components/N8nChatPageLayout.vue';
 import N8nChatThreadHistory from './components/N8nChatThreadHistory.vue';
@@ -36,7 +37,7 @@ const toast = useToast();
 const rootStore = useRootStore();
 const threadsStore = useAgentN8nChatThreadsStore();
 
-const agent = ref<AgentChatListItem | null>(null);
+const agent = ref<AgentN8nChatAgentDetails | null>(null);
 const isLoading = ref(true);
 const notFound = ref(false);
 const loadFailed = ref(false);
@@ -163,15 +164,22 @@ function onStreamingChange(streaming: boolean): void {
 // already resolved.
 const projectId = computed(() => agent.value?.project.id ?? '');
 
+const subAgentNameById = computed(() => {
+	const map = new Map<string, string>();
+	for (const subAgent of agent.value?.subAgents ?? []) map.set(subAgent.id, subAgent.name);
+	return map;
+});
+provide(AGENT_SUB_AGENT_NAMES_KEY, subAgentNameById);
+
 const agentConfig = computed<AgentJsonConfig | null>(() => {
 	const current = agent.value;
 	if (!current) return null;
 	return {
 		name: current.name,
 		// The chat-only audience this page serves never receives the model or
-		// instructions (see `AgentChatListItem`) — an empty draft model is a
-		// valid `AgentJsonConfig` and only disables attachment-capability
-		// detection, which already requires that field.
+		// instructions (see `AgentChatListItem`) — the model stays empty here,
+		// and `AgentChatPanel` gets attachment support from the route's
+		// `attachments` field instead of deriving it from this config.
 		model: '',
 		instructions: '',
 		...(current.description !== undefined ? { description: current.description } : {}),
@@ -231,6 +239,7 @@ const agentPageRoute = computed(() => {
 			:continue-session-id="continueSessionId"
 			:new-session="isNewSession"
 			:agent-config="agentConfig"
+			:attachment-capabilities="agent.attachments"
 			agent-status="production"
 			:connected-triggers="[]"
 			channel="n8n-chat"
