@@ -12,12 +12,13 @@ export function useToolPolicyRefusalText() {
 	const credentialsStore = useCredentialsStore();
 
 	function nodeTypeName(type: string): string | undefined {
-		// Agents run the `*Tool` variant. Its base type carries the name users know.
-		const baseType = type.endsWith(TOOL_SUFFIX) ? type.slice(0, -TOOL_SUFFIX.length) : type;
-		return (
-			nodeTypesStore.getNodeType(baseType)?.displayName ??
-			nodeTypesStore.getNodeType(type)?.displayName
-		);
+		// Agents run the generated `*Tool` variant of a usable-as-tool node. Real nodes such as
+		// `agentTool` also end in `Tool`, so only a usable-as-tool base names the subject.
+		if (type.endsWith(TOOL_SUFFIX)) {
+			const base = nodeTypesStore.getNodeType(type.slice(0, -TOOL_SUFFIX.length));
+			if (base?.usableAsTool) return base.displayName;
+		}
+		return nodeTypesStore.getNodeType(type)?.displayName;
 	}
 
 	/** Undefined until the types are loaded, so callers show a readable fallback, not a type id. */

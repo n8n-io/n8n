@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { AgentToolPolicyRefusal } from '@n8n/api-types';
 import { N8nLink } from '@n8n/design-system';
-import { ContactInstanceAdminModal } from '@n8n/frontend-module-type-availability-policies';
+import {
+	ContactInstanceAdminModal,
+	type RestrictedTypeKind,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 
@@ -22,7 +25,11 @@ const reasonText = computed(() =>
 	[...new Set(props.refusal.violations.map((v) => reason(v, props.fallbackName)))].join(' '),
 );
 
-const adminSubject = computed(() => subjectName(props.refusal.violations[0]) ?? props.fallbackName);
+const firstViolation = computed(() => props.refusal.violations[0]);
+const adminSubject = computed(() => subjectName(firstViolation.value) ?? props.fallbackName);
+const adminSubjectKind = computed<RestrictedTypeKind>(() =>
+	firstViolation.value.subjectType === 'credentialType' ? 'credential' : 'node',
+);
 
 onMounted(() => {
 	void loadSubjectTypes(props.refusal).catch(() => undefined);
@@ -40,6 +47,10 @@ onMounted(() => {
 		>
 			{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
 		</N8nLink>
-		<ContactInstanceAdminModal v-model:open="isContactAdminOpen" :node-type-name="adminSubject" />
+		<ContactInstanceAdminModal
+			v-model:open="isContactAdminOpen"
+			:node-type-name="adminSubject"
+			:kind="adminSubjectKind"
+		/>
 	</span>
 </template>

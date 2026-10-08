@@ -71,7 +71,7 @@ vi.mock('@n8n/design-system', () => ({
 
 vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
 	ContactInstanceAdminModal: {
-		props: ['open', 'nodeTypeName'],
+		props: ['open', 'nodeTypeName', 'kind'],
 		template:
 			'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
 	},

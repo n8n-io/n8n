@@ -46,13 +46,26 @@ describe('useToolPolicyRefusalText', () => {
 	});
 
 	describe('subjectName', () => {
-		it('names a `*Tool` node type by its base type', () => {
+		it('names a generated `*Tool` variant by its usable-as-tool base type', () => {
 			getNodeTypeMock.mockImplementation((type: string) =>
-				type === 'n8n-nodes-base.gmail' ? { displayName: 'Gmail' } : undefined,
+				type === 'n8n-nodes-base.gmail' ? { displayName: 'Gmail', usableAsTool: true } : undefined,
 			);
 			const { subjectName } = useToolPolicyRefusalText();
 
 			expect(subjectName(violation({ subject: 'n8n-nodes-base.gmailTool' }))).toBe('Gmail');
+		});
+
+		it('keeps the own name of a real node whose type ends in `Tool`', () => {
+			const nodeTypes: Record<string, object> = {
+				'@n8n/n8n-nodes-langchain.agent': { displayName: 'AI Agent' },
+				'@n8n/n8n-nodes-langchain.agentTool': { displayName: 'AI Agent Tool' },
+			};
+			getNodeTypeMock.mockImplementation((type: string) => nodeTypes[type]);
+			const { subjectName } = useToolPolicyRefusalText();
+
+			expect(subjectName(violation({ subject: '@n8n/n8n-nodes-langchain.agentTool' }))).toBe(
+				'AI Agent Tool',
+			);
 		});
 
 		it('names a credential subject from the credentials store', () => {
