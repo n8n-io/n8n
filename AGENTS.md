@@ -35,6 +35,9 @@ frontend, and extensible node-based workflow engine.
   suggested by Linear, **unless it is a security fix** (see Security Fix
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
+- Record an architecture decision as an ADR in the owning package's
+  `docs/adr/` directory. Read [docs/adr/README.md](docs/adr/README.md)
+  first. CI enforces its conventions
 - **Developing v3 features:** land normal feature work on `master` behind an
   opt-in flag; introduce breaking changes only on the `3.x` branch. See
   [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).

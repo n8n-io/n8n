@@ -1,15 +1,16 @@
 # Architecture Decision Records
 
-This directory holds the Architecture Decision Records (ADRs) of the
-`@n8n/engine` package. An ADR is a short, dated record of one important
-technical decision: the context, the decision, the alternatives, and the
-consequences.
+An Architecture Decision Record (ADR) is a short, dated record of one
+important technical decision: the context, the decision, the alternatives,
+and the consequences. Each package keeps its records in its own `docs/adr/`
+directory, for example `packages/@n8n/engine/docs/adr/`. Records that concern
+the whole repository live in this directory.
 
 The company process is defined in the Notion page
 [Engineering Technical Decisions][process] and its sub-page
 [Architecture Decision Records][adr-page].
-This README applies that process to this package and records the conventions
-that the reviews of the first records settled.
+This README applies that process to this repository and records the
+conventions that the reviews of the first records settled.
 
 ## When to write an ADR
 
@@ -43,9 +44,8 @@ number. CI checks that every record ID a record mentions names a file.
 
 ## Template
 
-Copy [`docs/ADR_TEMPLATE.md`](../../../../../docs/ADR_TEMPLATE.md) from the
-repository root. It is the one template, and CI checks every record against
-its structure.
+Copy [`docs/ADR_TEMPLATE.md`](../ADR_TEMPLATE.md) from the repository root.
+It is the one template, and CI checks every record against its structure.
 
 The header has three required fields, `Date`, `Status`, and `Decision Owner`,
 in that order, and three optional fields, `Source`, `Supersedes`, and
