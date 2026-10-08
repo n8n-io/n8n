@@ -42,7 +42,11 @@ class InMemoryWorkspaceFilesystem implements WorkspaceFilesystem {
 	readonly basePath = stubWorkspaceRoot;
 	status: ProviderStatus = 'ready';
 
-	private readonly files = new Map<string, string>();
+	private readonly files: Map<string, string>;
+
+	constructor(files: ReadonlyMap<string, string>) {
+		this.files = new Map([...files].map(([path, content]) => [relativePath(path), content]));
+	}
 
 	async readFile(path: string): Promise<string> {
 		const content = this.files.get(relativePath(path));
@@ -89,11 +93,12 @@ class InMemoryWorkspaceFilesystem implements WorkspaceFilesystem {
 	stat = unreachable;
 }
 
-export function createStubWorkspace(): Workspace {
+/** `files` maps a path to its content, for files that prod writes into the sandbox at setup. */
+export function createStubWorkspace(files: ReadonlyMap<string, string> = new Map()): Workspace {
 	const workspace = new Workspace({
 		id: 'stub-workspace',
 		name: 'stub-workspace',
-		filesystem: new InMemoryWorkspaceFilesystem(),
+		filesystem: new InMemoryWorkspaceFilesystem(files),
 	});
 
 	const allTools = workspace.getTools.bind(workspace);
