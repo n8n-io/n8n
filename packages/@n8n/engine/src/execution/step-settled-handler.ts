@@ -17,6 +17,7 @@ import {
 	stepKeyId,
 	type StepKey,
 	type StepKeyId,
+	type StepSlots,
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
@@ -128,6 +129,19 @@ export class StepSettledHandler {
 		);
 		if (toQueue.length === 0 && toSkip.length === 0) return 0;
 
+		// A seeded node settles the moment the run reaches it: its row is created
+		// completed, with the outputs the caller supplied for that pass, and
+		// announced as settled like a skip. Planned here rather than at start, so
+		// its successors see every ancestor settled first, as they would had it
+		// run. A seeded node whose inputs are all dead is skipped like any other:
+		// the outputs stand in for a run, and there would have been none.
+		const seededIds = new Set(
+			execution.graph.nodes.filter((node) => node.seeded).map((node) => node.id),
+		);
+		const toRun = toQueue.filter((key) => !seededIds.has(key.nodeId));
+		const toSeed = toQueue.filter((key) => seededIds.has(key.nodeId));
+		const seededOutputs = await this.executionStore.loadSeededOutputs(execution.id, toSeed);
+
 		// One batch, so a settlement's consequence lands atomically and a fan-out
 		// costs one round trip. A row another planner got to first isn't
 		// returned, so it isn't announced twice either.
@@ -135,17 +149,23 @@ export class StepSettledHandler {
 		// the rows forever; the reconciler re-announces stale queued steps and
 		// settled steps whose decidable successors have no rows.
 		const created = await this.stepStore.createSteps(execution.id, [
-			...toQueue.map((key) => ({ ...key, status: 'queued' as const })),
+			...toRun.map((key) => ({ ...key, status: 'queued' as const })),
+			...toSeed.map((key) => ({
+				...key,
+				status: 'completed' as const,
+				outputs: seededOutputsFor(execution.id, key, seededOutputs),
+			})),
 			...toSkip.map((key) => ({ ...key, status: 'skipped' as const })),
 		]);
 
-		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue.map(stepKeyId)));
+		return await this.announceCreatedSteps(execution.id, created, new Set(toRun.map(stepKeyId)));
 	}
 
 	/**
 	 * Announces the created rows — `step:ready` for queued ones, `step:settled`
-	 * for skips, which settle at birth — and returns how many were queued.
-	 * Published only after the rows exist, so a consumer can always load them.
+	 * for skips and seeded steps, which settle at birth — and returns how many
+	 * were queued. Published only after the rows exist, so a consumer can always
+	 * load them.
 	 */
 	private async announceCreatedSteps(
 		executionId: string,
@@ -265,4 +285,23 @@ export class StepSettledHandler {
 		}
 		return new Set([trigger.id, ...getDescendantNodeIds(execution.graph, trigger.id)]);
 	}
+}
+
+/**
+ * The start boundary stores outputs for every pass of every node it marks, so
+ * a marked node without outputs for a pass the run reaches is a bug, not a
+ * node to run instead.
+ */
+function seededOutputsFor(
+	executionId: string,
+	key: StepKey,
+	seededOutputs: Map<StepKeyId, StepSlots>,
+): StepSlots {
+	const outputs = seededOutputs.get(stepKeyId(key));
+	if (outputs === undefined) {
+		throw new UnexpectedError(
+			`Execution ${executionId} marks node ${key.nodeId} as seeded but holds no outputs for iteration ${key.iteration}`,
+		);
+	}
+	return outputs;
 }

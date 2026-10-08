@@ -5,6 +5,9 @@ import type {
 	ExecutionMode,
 	ExecutionStatus,
 	SeededSteps,
+	StepKey,
+	StepKeyId,
+	StepSlots,
 	TriggerOutputs,
 	WorkflowDocument,
 } from './execution.types';
@@ -20,15 +23,16 @@ interface BaseExecutionRecord {
 	/** Stored for the read path only. Nothing on the execution path reads it. */
 	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
-	/** Recorded as completed at start, beside the trigger. */
-	seededSteps?: SeededSteps | null;
 	callerContext: CallerContext;
 	/** What kind of a response the caller expects. */
 	responseExpectation: ResponseExpectation;
 }
 
-/** A new execution to persist. Timestamps are assigned by the store. */
-export type NewExecutionRecord = BaseExecutionRecord;
+/**
+ * A new execution to persist. Timestamps are assigned by the store. The seeded
+ * outputs are stored beside the row, in their own table, and read back by key.
+ */
+export type NewExecutionRecord = BaseExecutionRecord & { seededSteps?: SeededSteps | null };
 
 /**
  * What running an execution needs of its row. The execution path decides on
@@ -56,6 +60,12 @@ export interface ExecutionStore {
 
 	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
 	loadExecution(id: string): Promise<ExecutionRecord>;
+
+	/**
+	 * The outputs the caller seeded for the given steps, by step key id. A key
+	 * with no seeded outputs is absent from the result.
+	 */
+	loadSeededOutputs(executionId: string, keys: StepKey[]): Promise<Map<StepKeyId, StepSlots>>;
 
 	/**
 	 * Compare-and-set status transition. Returns `true` iff this call performed

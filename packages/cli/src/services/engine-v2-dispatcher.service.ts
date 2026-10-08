@@ -162,9 +162,10 @@ export class EngineV2Dispatcher {
 		const graph = new V1WorkflowConverter().convert(plan?.workflow ?? workflowData, trigger.name, {
 			allowNonTriggerRoot: plan !== undefined,
 		});
+		// One pass per node: a planned run seeds nothing inside a loop yet.
 		const seededSteps: SeededSteps | undefined = plan
 			? Object.fromEntries(
-					plan.seeded.map(({ nodeId, outputs }) => [nodeId, toStepOutputs(outputs)]),
+					plan.seeded.map(({ nodeId, outputs }) => [nodeId, [toStepOutputs(outputs)]]),
 				)
 			: undefined;
 
