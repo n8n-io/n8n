@@ -40,9 +40,7 @@ export type ActivityResourceType = (typeof activityResourceTypes)[number];
 // `id` trails each so a newest-first scan is served by the index alone.
 @Index('IDX_activity_event_project', ['projectId', 'id'])
 @Index('IDX_activity_event_user', ['userId', 'id'])
-// One resource's own history, which is what expanding a single entry shows. `resourceType` stays
-// out of the key: it narrows nothing, since an id is already unique per resource kind, and leading
-// with it would stop a read that filters `resourceId` alone from seeking this index at all.
+// Omit resourceType so queries that filter only resourceId can use this index.
 @Index('IDX_activity_event_resource', ['resourceId', 'id'])
 export class ActivityEvent extends WithCreatedAt {
 	/**

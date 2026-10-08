@@ -161,11 +161,6 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		});
 	}
 
-	/**
-	 * Returns one resource's history, newest first.
-	 * The (resourceId, id) index serves the resource filter and sort order.
-	 * The resourceType filter keeps workflow and credential histories separate when IDs match.
-	 */
 	async findByResource(query: {
 		resourceType: ActivityResourceType;
 		resourceId: string;
