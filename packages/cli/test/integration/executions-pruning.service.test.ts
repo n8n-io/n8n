@@ -4,6 +4,7 @@ import { Time } from '@n8n/constants';
 import { ExecutionEntity, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { ErrorReporter } from 'n8n-core';
 import type { ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -32,6 +33,7 @@ describe('softDeleteOnPruningCycle()', () => {
 		executionsConfig = Container.get(ExecutionsConfig);
 		pruningService = new ExecutionsPruningService(
 			mockLogger(),
+			mockInstance(ErrorReporter),
 			Container.get(ExecutionRepository),
 			mockInstance(ExecutionPersistence),
 		);

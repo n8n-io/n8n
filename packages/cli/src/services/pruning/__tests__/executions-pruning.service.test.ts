@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
+import type { ErrorReporter } from 'n8n-core';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -14,10 +15,16 @@ describe('ExecutionsPruningService', () => {
 	const makeService = () => {
 		const logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
+		const errorReporter = mock<ErrorReporter>();
 		const executionRepository = mock<ExecutionRepository>({ hardDeletionBatchSize: BATCH_SIZE });
 		const executionPersistence = mock<ExecutionPersistence>();
-		const service = new ExecutionsPruningService(logger, executionRepository, executionPersistence);
-		return { service, executionRepository, executionPersistence };
+		const service = new ExecutionsPruningService(
+			logger,
+			errorReporter,
+			executionRepository,
+			executionPersistence,
+		);
+		return { service, logger, errorReporter, executionRepository, executionPersistence };
 	};
 
 	const batchOf = (size: number): SoftDeletedRef[] =>
@@ -26,6 +33,11 @@ describe('ExecutionsPruningService', () => {
 			workflowId: 'wf-1',
 			storedAt: 'db' as const,
 		}));
+
+	const singleCalls = (executionPersistence: ExecutionPersistence) =>
+		vi
+			.mocked(executionPersistence.hardDelete)
+			.mock.calls.filter(([target]) => !Array.isArray(target));
 
 	describe('softDelete', () => {
 		it('should soft-delete prunable executions', async () => {
@@ -100,16 +112,64 @@ describe('ExecutionsPruningService', () => {
 			expect(executionPersistence.hardDelete).toHaveBeenCalledTimes(1);
 		});
 
-		it('should reject when a batch fails and select no further batch', async () => {
-			const { service, executionRepository, executionPersistence } = makeService();
-			executionRepository.findSoftDeletedExecutions.mockResolvedValue(batchOf(BATCH_SIZE));
-			executionPersistence.hardDelete.mockRejectedValue(new Error('blob store down'));
+		it('should delete one by one and report the rows that fail when a batch fails', async () => {
+			const { service, logger, errorReporter, executionRepository, executionPersistence } =
+				makeService();
+			const batch = batchOf(BATCH_SIZE);
+			const badRef = batch[42];
+			const badRowError = new Error('object locked');
+			executionRepository.findSoftDeletedExecutions
+				.mockResolvedValueOnce(batch)
+				.mockResolvedValueOnce([]);
+			executionPersistence.hardDelete.mockImplementation(async (target) => {
+				const targets = Array.isArray(target) ? target : [target];
+				if (targets.includes(badRef)) throw badRowError;
+			});
 
-			await expect(service.hardDelete(new AbortController().signal)).rejects.toThrow(
-				'blob store down',
-			);
+			const run = service.hardDelete(new AbortController().signal);
+			await vi.runAllTimersAsync();
+			await run;
+
+			expect(singleCalls(executionPersistence)).toEqual(batch.map((ref) => [ref]));
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).toHaveBeenCalledWith(badRowError, {
+				extra: { executionId: badRef.executionId },
+				shouldBeLogged: false,
+				shouldIsolate: true,
+			});
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(expect.any(String), {
+				executionIds: [badRef.executionId],
+			});
+		});
+
+		it('should stop the single deletes when the signal aborts', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			const batch = batchOf(BATCH_SIZE);
+			const controller = new AbortController();
+			executionRepository.findSoftDeletedExecutions.mockResolvedValue(batch);
+			executionPersistence.hardDelete
+				.mockRejectedValueOnce(new Error('blob store down'))
+				.mockImplementation(async () => controller.abort());
+
+			await service.hardDelete(controller.signal);
+
+			expect(singleCalls(executionPersistence)).toEqual([[batch[0]]]);
+		});
+
+		it('should reject when a batch fails and no single delete succeeds', async () => {
+			const { service, logger, errorReporter, executionRepository, executionPersistence } =
+				makeService();
+			const batchError = new Error('blob store down');
+			executionRepository.findSoftDeletedExecutions.mockResolvedValue(batchOf(BATCH_SIZE));
+			executionPersistence.hardDelete.mockRejectedValue(batchError);
+
+			await expect(service.hardDelete(new AbortController().signal)).rejects.toBe(batchError);
 
 			expect(executionRepository.findSoftDeletedExecutions).toHaveBeenCalledTimes(1);
+			expect(executionPersistence.hardDelete).toHaveBeenCalledTimes(1 + BATCH_SIZE);
+			expect(errorReporter.error).toHaveBeenCalledTimes(BATCH_SIZE);
+			expect(logger.error).toHaveBeenCalledTimes(1);
 		});
 	});
 });
