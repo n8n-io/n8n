@@ -93,6 +93,50 @@ describe('CredentialConfig', () => {
 		).not.toBeInTheDocument();
 	});
 
+	it('should show the Gateway credits nudge and emit its action', async () => {
+		const { emitted } = renderComponent(
+			{
+				props: {
+					isManaged: false,
+					showAiGatewayErrorNudge: true,
+				},
+			},
+			{ merge: true },
+		);
+
+		expect(screen.getByTestId('gateway-credits-credential-error-nudge')).toBeVisible();
+		expect(screen.getByText('No API key needed')).toBeVisible();
+		expect(screen.getByText(/Use your instance’s balance instead/)).toBeVisible();
+		await userEvent.click(screen.getByTestId('gateway-credits-credential-error-nudge-action'));
+
+		expect(emitted().useGatewayCredits).toHaveLength(1);
+	});
+
+	it('should promote free credits when they are available', () => {
+		renderComponent(
+			{
+				props: {
+					isManaged: false,
+					showAiGatewayErrorNudge: true,
+					aiGatewayCreditsAreFree: true,
+				},
+			},
+			{ merge: true },
+		);
+
+		expect(screen.getByText(/Start with free credits/)).toBeVisible();
+		expect(screen.getByRole('button', { name: 'Use free credits' })).toBeVisible();
+	});
+
+	it('should not show the Gateway credits nudge when it is not eligible', () => {
+		renderComponent(
+			{ props: { isManaged: false, showAiGatewayErrorNudge: false } },
+			{ merge: true },
+		);
+
+		expect(screen.queryByTestId('gateway-credits-credential-error-nudge')).not.toBeInTheDocument();
+	});
+
 	it('should not call addCredentialTranslation when getCredentialTranslation returns null', async () => {
 		const testCredentialType = {
 			name: 'testCredential',

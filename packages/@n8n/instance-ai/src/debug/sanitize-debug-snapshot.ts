@@ -1,9 +1,8 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 const OMIT_KEYS = new Set(['abortSignal']);
-const SENSITIVE_KEY_PATTERN =
-	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
 
 function shouldOmitKey(key: string, parentKey?: string): boolean {
 	if (OMIT_KEYS.has(key)) {
@@ -19,7 +18,7 @@ function shouldOmitKey(key: string, parentKey?: string): boolean {
 }
 
 function redactSensitiveKey(key: string, value: unknown, seen: WeakSet<object>): unknown {
-	if (SENSITIVE_KEY_PATTERN.test(key) && typeof value === 'string') {
+	if (isSensitiveKey(key) && typeof value === 'string') {
 		return '[redacted]';
 	}
 
@@ -35,14 +34,14 @@ export function sanitizeDebugSnapshotValue(
 	keyHint?: string,
 	seen?: WeakSet<object>,
 ): unknown {
-	const seenObjects = seen ?? new WeakSet<object>();
+	const ancestors = seen ?? new WeakSet<object>();
 
 	if (value === undefined || value === null) {
 		return value;
 	}
 
 	if (typeof value === 'string') {
-		if (keyHint && SENSITIVE_KEY_PATTERN.test(keyHint)) {
+		if (keyHint && isSensitiveKey(keyHint)) {
 			return '[redacted]';
 		}
 		return scrubSecretsInText(value);
@@ -79,26 +78,31 @@ export function sanitizeDebugSnapshotValue(
 		return `[binary ${value.byteLength} bytes]`;
 	}
 
+	// Only objects on the current path count as circular. A shared reference that
+	// appears in several sibling branches is serialized in each of them.
 	if (Array.isArray(value)) {
-		if (seenObjects.has(value)) {
+		if (ancestors.has(value)) {
 			return '[Circular]';
 		}
-		seenObjects.add(value);
-		return value.map((entry) => sanitizeDebugSnapshotValue(entry, keyHint, seenObjects));
+		ancestors.add(value);
+		const sanitized = value.map((entry) => sanitizeDebugSnapshotValue(entry, keyHint, ancestors));
+		ancestors.delete(value);
+		return sanitized;
 	}
 
 	if (isRecord(value)) {
-		if (seenObjects.has(value)) {
+		if (ancestors.has(value)) {
 			return '[Circular]';
 		}
-		seenObjects.add(value);
+		ancestors.add(value);
 		const sanitized: Record<string, unknown> = {};
 		for (const [key, entryValue] of Object.entries(value)) {
 			if (shouldOmitKey(key, keyHint)) {
 				continue;
 			}
-			sanitized[key] = redactSensitiveKey(key, entryValue, seenObjects);
+			sanitized[key] = redactSensitiveKey(key, entryValue, ancestors);
 		}
+		ancestors.delete(value);
 		return sanitized;
 	}
 

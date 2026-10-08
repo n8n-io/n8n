@@ -41,6 +41,7 @@ add to it.
 
 ## Team defaults
 
+- Write code that acts as its own documentation. The schema, the decorator, and the test should make the rule clear on their own without a comment.
 - List endpoints: cursor-based pagination (internal API uses both cursor- and
   page-based — don't copy an internal endpoint's model).
 - Pagination args are always `offset` and `limit` — on service methods, handler
@@ -111,16 +112,22 @@ model; reuse only what applies. Decorators, all from `@n8n/decorators`:
 | `@ApiResponse(status)` / `@ApiResponse(status, Dto)` | Success status + (optional) output DTO; registry `.parse()`s + strips the return value. Exactly one per route — a second `@ApiResponse` throws. `204` can't carry a DTO — throws. |
 | `@ApiErrorResponse(status)` | Declares an additional documented non-2xx status (e.g. `404`, `409`). Stack multiple for more than one. `400`/`401`/`403` are added automatically (body/query present, always, and `@ApiKeyScope` present, respectively) — don't declare those yourself. |
 | `@ApiSummary(text)` / `@ApiDescription(text)` / `@ApiTags([...])` | OpenAPI summary/description/tags. `@ApiTags` sorts alphabetically regardless of the order you pass. All optional but expected on every real route. |
-| `@Query` / `@Body` / `@Param('name')` | Bind + validate via a `Z.class` DTO / path param. |
+| `@Query` / `@Body` / `@Param('name')` | Bind + validate via a `Z.class` DTO / path param. `@Body` is JSON by default; `@Body({ mediaType: 'multipart/form-data', uploadLimits })` takes a `multipart/form-data` body instead — see [Request body media types](reference.md#request-body-media-types). |
 | `@Licensed('feat')` | Gates the route on a single `BooleanLicenseFeature`; `PublicApiControllerRegistry` runs its own license middleware (after auth/`@ApiKeyScope`/`@ProjectScope`|`@GlobalScope`, before the handler) and 403s unlicensed requests. Only takes one feature — if the gate is an any-of/all-of combination (e.g. `LicenseState.isProvisioningLicensed()`, which is `feat:saml` OR `feat:oidc`), `@Licensed` can't express that; check manually in the handler instead, same as the internal `provisioning.controller.ee.ts`/`role-mapping-rule.controller.ee.ts` do today (throwing `ForbiddenError` on failure). |
 
 ## Authorization (easy to get wrong)
 
 - `@ApiKeyScope` (what the API key is granted) and `@ProjectScope`/`@GlobalScope`
   (what the user may do) are independent. Use both when the model needs both.
-- `@ProjectScope` reads `req.params` as-is and does not remap `id` — name the path
-  param what the resolver expects (`workflowId`, `credentialId`, `projectId`,
-  `dataTableId`, …). A generic `id` often fails.
+- Name every path param `{resource}Id` (e.g. `workflowId`, `credentialId`,
+  `projectId`, …) — never a generic `:id` / `{id}`. This is the Public API's
+  naming convention: it keeps the API self-documenting and gives typed SDK
+  codegen a real argument name instead of `id`. `@ProjectScope` also reads
+  `req.params` as-is and does not remap `id` — it resolves authorization by
+  exact key name (`workflowId`, `credentialId`, `projectId`, `dataTableId`,
+  …), so a generic `id` on a `@ProjectScope` route often fails outright; a
+  `@GlobalScope` or unscoped route won't fail the same way, but still follow
+  the convention.
 - `@ApiKeyScope` takes a string, `{ anyOf: [...] }`, or `{ allOf: [...] }` — never
   a bare array. The scope must exist in the permissions registry
   (`API_KEY_RESOURCES` in `@n8n/permissions`); `scope-parity.test.ts` fails on an

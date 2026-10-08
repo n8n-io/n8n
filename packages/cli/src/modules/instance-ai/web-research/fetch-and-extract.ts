@@ -190,7 +190,7 @@ function extractHtml(
 
 	// Use Readability to extract main content
 	const Readability = loadReadability();
-	const reader = new Readability(document as unknown as Document);
+	const reader = new Readability(document);
 	const article = reader.parse();
 
 	if (!article) {

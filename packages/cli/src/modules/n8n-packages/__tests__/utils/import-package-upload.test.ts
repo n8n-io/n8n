@@ -3,11 +3,12 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import {
 	createN8nPackageMulterOptions,
 	getPackageUploadFile,
+	IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
 	listUploadFiles,
 	resolveImportPackageUpload,
 } from '../../utils/import-package-upload';
@@ -143,5 +144,50 @@ describe('resolveImportPackageUpload', () => {
 				body: { evil: 'true' },
 			}),
 		).toThrow('Unexpected form field "evil"');
+	});
+
+	describe('with the selection body field set', () => {
+		it('accepts the selection form fields', () => {
+			expect(() =>
+				resolveImportPackageUpload(
+					{
+						files: [makeFile('package', packageBuffer)],
+						body: {
+							selectedProjectId: 'P1',
+							selectedWorkflowIds: '["WFA"]',
+							deletedWorkflowIds: '["WFB"]',
+							workflowConflictPolicy: 'new-version',
+							workflowIdPolicy: 'source',
+							package: '',
+						},
+					},
+					IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
+				),
+			).not.toThrow();
+		});
+
+		it.each(['folderConflictPolicy', 'projectId', 'folderId'])(
+			'rejects the %s field, which the selection endpoint does not accept',
+			(field) => {
+				expect(() =>
+					resolveImportPackageUpload(
+						{
+							files: [makeFile('package', packageBuffer)],
+							body: { selectedProjectId: 'P1', [field]: 'x' },
+						},
+						IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
+					),
+				).toThrow(`Unexpected form field "${field}"`);
+			},
+		);
+
+		it('leaves the default field set unchanged', () => {
+			expect(() =>
+				resolveImportPackageUpload({
+					files: [makeFile('package', packageBuffer)],
+					body: { selectedProjectId: 'P1' },
+				}),
+			).toThrow('Unexpected form field "selectedProjectId"');
+		});
 	});
 });

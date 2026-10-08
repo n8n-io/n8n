@@ -1,6 +1,6 @@
 {
   "name": "@n8n/agents",
-  "version": "0.22.0",
+  "version": "0.28.0",
   "description": "AI agent SDK for n8n's code-first execution engine",
   "engines": {
     "node": ">=24.0.0"
@@ -79,8 +79,8 @@
     "build:unchecked": "rimraf dist && tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write src examples",
     "format:check": "biome ci src examples",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
@@ -112,7 +112,7 @@
     "@daytona/sdk": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/ai-utilities": "workspace:*",
-    "@n8n/sandbox-client": "0.1.0",
+    "@n8n/sandbox-client": "0.1.1",
     "@n8n/utils": "workspace:*",
     "@openrouter/ai-sdk-provider": "catalog:",
     "@opentelemetry/exporter-trace-otlp-http": ">=0.50.0",
@@ -159,6 +159,7 @@
     }
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@opentelemetry/api": "catalog:",
@@ -172,6 +173,8 @@
     "dotenv": "catalog:",
     "cross-env": "catalog:",
     "nock": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "pg": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",

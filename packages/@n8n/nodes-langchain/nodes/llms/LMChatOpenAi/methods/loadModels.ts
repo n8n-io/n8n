@@ -18,7 +18,7 @@ export async function searchModels(
 	}
 	const baseURL = baseUrlOverride || (credentials.url as string) || 'https://api.openai.com/v1';
 	const { openAiDefaultHeaders } = Container.get(AiConfig);
-	const lookup = this.helpers.getSecureEgressFilter().createSecureLookup();
+	const egressFilter = this.helpers.getSecureEgressFilter();
 	const headers = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 
 	// Shared with the agents model catalog: endpoint, auth, chat-model filtering
@@ -27,7 +27,7 @@ export async function searchModels(
 		apiKey: credentials.apiKey as string,
 		baseURL,
 		headers,
-		fetch: async (input, init) => await proxyFetch({ input, init, lookup }),
+		fetch: async (input, init) => await proxyFetch({ input, init, egressFilter }),
 	});
 
 	return {

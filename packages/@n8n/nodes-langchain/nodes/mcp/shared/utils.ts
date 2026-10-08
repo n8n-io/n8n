@@ -31,6 +31,8 @@ import {
 	type McpTool,
 } from './types';
 
+const MCP_SESSION_TERMINATION_TIMEOUT_MS = 1_000;
+
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
 	const { tools, nextCursor } = await client.listTools({ cursor });
 
@@ -214,6 +216,26 @@ export async function connectMcpClient({
 				fetch: authFetch,
 				...(signal ? { requestInit: { signal } } : {}),
 			});
+			const originalClose = client.close.bind(client);
+			let closePromise: Promise<void> | undefined;
+			client.close = async () => {
+				closePromise ??= (async () => {
+					let timeout: ReturnType<typeof setTimeout> | undefined;
+					try {
+						await Promise.race([
+							Promise.resolve(transport.terminateSession()).catch(() => {}),
+							new Promise<void>((resolve) => {
+								timeout = setTimeout(resolve, MCP_SESSION_TERMINATION_TIMEOUT_MS);
+							}),
+						]);
+					} finally {
+						if (timeout !== undefined) clearTimeout(timeout);
+						await originalClose();
+					}
+				})();
+
+				await closePromise;
+			};
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
@@ -302,9 +324,9 @@ function createAuthFetch(
 	onUnauthorized?: OnUnauthorizedHandler,
 	allowedDomains?: string,
 ): typeof fetch {
-	const secureLookup = secureEgressFilter.createSecureLookup();
 	return createRefreshingAuthFetch({
-		baseFetch: async (input, init) => await proxyFetch({ input, init, lookup: secureLookup }),
+		baseFetch: async (input, init) =>
+			await proxyFetch({ input, init, egressFilter: secureEgressFilter }),
 		initialHeaders,
 		...(onUnauthorized
 			? {

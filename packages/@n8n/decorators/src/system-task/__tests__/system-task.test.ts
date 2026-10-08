@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 
 import { SystemTask, type SystemTaskClass, type SystemTaskSchedule } from '../system-task';
 import { SystemTaskMetadata } from '../system-task-metadata';
+import type { SystemTaskPlacement } from '../system-task-placement';
 
 let metadata: SystemTaskMetadata;
 
@@ -25,7 +26,7 @@ it('should make a decorated class injectable without registering it', () => {
 
 		readonly effects = 'idempotent' as const;
 
-		readonly durable = false;
+		readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
 
 		async run() {}
 	}
@@ -50,7 +51,7 @@ it('should notify a subscribed listener when a task class is registered later', 
 
 		readonly effects = 'idempotent' as const;
 
-		readonly durable = false;
+		readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
 
 		async run() {}
 	}
@@ -72,7 +73,7 @@ it('should let a subscribed listener resolve the class it is notified of', () =>
 
 		readonly effects = 'idempotent' as const;
 
-		readonly durable = false;
+		readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
 
 		async run() {}
 	}

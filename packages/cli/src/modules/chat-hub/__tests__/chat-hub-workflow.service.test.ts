@@ -130,6 +130,7 @@ describe('ChatHubWorkflowService', () => {
 
 			expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
 				expect.objectContaining({ storedWorkflow: null, projectId: 'project-789' }),
+				{ kind: 'user', user: { id: 'user-123' } },
 			);
 			expect(workflowRepository.createContent).toHaveBeenCalledWith(
 				expect.anything(),
@@ -174,6 +175,7 @@ describe('ChatHubWorkflowService', () => {
 
 			expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
 				expect.objectContaining({ projectId: 'project-789' }),
+				{ kind: 'user', user: { id: 'user-123' } },
 			);
 			expect(workflowRepository.createContent).toHaveBeenCalledWith(
 				expect.anything(),
@@ -207,6 +209,7 @@ describe('ChatHubWorkflowService', () => {
 					workflow: expect.objectContaining({ id: 'workflow-1' }),
 					projectId: 'project-1',
 				}),
+				{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
 			);
 			expect(workflowRepository.createContent).toHaveBeenCalledWith(
 				expect.anything(),
@@ -1087,6 +1090,25 @@ describe('ChatHubWorkflowService', () => {
 				allowFileUploads: true,
 				allowedFilesMimeTypes: '*/*',
 			});
+		});
+
+		it('should normalize the legacy wildcard mime type', () => {
+			const nodes = [
+				makeNode({
+					options: {
+						allowFileUploads: true,
+						allowedFilesMimeTypes: '*',
+					},
+				}),
+			];
+
+			expect(service.resolveWorkflowAttachmentPolicy(nodes)).toEqual({
+				allowFileUploads: true,
+				allowedFilesMimeTypes: '*/*',
+			});
+			expect(
+				service.parseInputModalities({ allowFileUploads: true, allowedFilesMimeTypes: '*' }),
+			).toEqual(['text', 'image', 'audio', 'video', 'file']);
 		});
 
 		it('should return wildcard mime types when allowFileUploads is true and mime types is not set', () => {

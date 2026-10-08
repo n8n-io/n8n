@@ -58,6 +58,7 @@ function close(): void {
 		:open="open"
 		:header="title"
 		size="small"
+		stacked
 		data-test-id="credential-type-to-confirm-dialog"
 		@update:open="emit('update:open', $event)"
 	>

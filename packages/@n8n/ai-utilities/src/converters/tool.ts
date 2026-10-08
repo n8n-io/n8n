@@ -3,8 +3,8 @@ import type * as LangchainChatModels from '@langchain/core/language_models/chat_
 import type * as LangchainTools from '@langchain/core/tools';
 import type { JSONSchema7 } from 'json-schema';
 import { ZodSchema, type ZodTypeAny } from 'zod';
-import zodToJsonSchema from 'zod-to-json-schema';
 
+import { zodSchemaToJsonSchema } from '../json-schema';
 import type * as N8nTools from '../types/tool';
 
 /**
@@ -53,11 +53,6 @@ export function fromLcTool(tool: LangchainChatModels.BindToolsInput): N8nTools.T
 
 export function getParametersJsonSchema(tool: N8nTools.FunctionTool): JSONSchema7 {
 	const schema = tool.inputSchema;
-	if (schema instanceof ZodSchema) {
-		if ('toJSONSchema' in schema && typeof schema.toJSONSchema === 'function') {
-			return schema.toJSONSchema();
-		}
-		return zodToJsonSchema(schema) as JSONSchema7;
-	}
+	if (schema instanceof ZodSchema) return zodSchemaToJsonSchema(schema);
 	return schema;
 }

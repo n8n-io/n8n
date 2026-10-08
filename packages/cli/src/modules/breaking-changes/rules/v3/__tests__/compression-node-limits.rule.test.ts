@@ -54,4 +54,10 @@ describe('CompressionNodeLimitsRule', () => {
 			expect(result.instanceIssues).toHaveLength(0);
 		});
 	});
+
+	describe('getMetadata()', () => {
+		it('should report an executionsFail impact because oversized archives throw', () => {
+			expect(rule.getMetadata().impact).toBe('executionsFail');
+		});
+	});
 });

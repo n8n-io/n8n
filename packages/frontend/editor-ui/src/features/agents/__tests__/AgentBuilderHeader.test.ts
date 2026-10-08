@@ -4,17 +4,19 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
 import type { AgentResource } from '../types';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { AGENT_BUILDER_VIEW, PENDING_AGENT_ID_STATE } from '../constants';
+
+const trackClickedNewAgentMock = vi.fn();
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({ trackClickedNewAgent: trackClickedNewAgentMock }),
+}));
 
 const ensureLoadedMock = vi.fn();
 const agentsListRef = ref<AgentResource[] | null>(null);
 const routerPush = vi.fn();
 const routerResolve = vi.fn(
 	(to: { name?: string; params?: { projectId?: string; agentId?: string } }) => ({
-		href:
-			to.name === 'AgentPreviewView'
-				? `/projects/${to.params?.projectId ?? ''}/agents/${to.params?.agentId ?? ''}/preview`
-				: `/projects/${to.params?.projectId ?? ''}/agents`,
+		href: `/projects/${to.params?.projectId ?? ''}/agents`,
 	}),
 );
 
@@ -37,11 +39,16 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nAssistantIcon: {
+		name: 'N8nAssistantIcon',
+		template: '<i data-testid="stub-assistant-icon" />',
+		props: ['size'],
+	},
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
 		template:
-			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :data-icon="icon" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot /></component>',
-		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href'],
+			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :data-icon="icon" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot><span v-if="label">{{ label }}</span></slot></component>',
+		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href', 'label'],
 		emits: ['click'],
 	},
 	N8nToggle: {
@@ -65,7 +72,8 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nBreadcrumbs: {
 		name: 'N8nBreadcrumbs',
-		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
+		template:
+			'<div data-testid="stub-breadcrumbs"><slot name="prepend" /><slot name="append" /></div>',
 		props: ['items'],
 		emits: ['itemSelected'],
 	},
@@ -114,6 +122,11 @@ const baseAgent = {
 } as unknown as AgentResource;
 
 const globalStubs = {
+	ProjectIcon: {
+		name: 'ProjectIcon',
+		template: '<span data-testid="stub-project-icon" />',
+		props: ['icon', 'size', 'borderLess'],
+	},
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
@@ -126,7 +139,7 @@ const globalStubs = {
 			'configValidationStatus',
 			'beforePublish',
 		],
-		emits: ['published', 'unpublished', 'reverted'],
+		emits: ['publish-ready', 'published', 'unpublished', 'reverted'],
 	},
 };
 
@@ -134,6 +147,7 @@ function mountHeader(
 	overrides: Partial<{
 		agent: AgentResource | null;
 		projectName: string | null;
+		projectIcon: { type: 'icon' | 'emoji'; value: string };
 		headerActions: unknown[];
 		mode: 'edit' | 'preview';
 		artifactMode: boolean;
@@ -142,14 +156,16 @@ function mountHeader(
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
 		beforePublish: () => Promise<boolean>;
+		saveStatus: 'idle' | 'saving' | 'saved';
 	}> = {},
 ) {
 	return mount(AgentBuilderHeader, {
 		props: {
-			agent: overrides.agent ?? baseAgent,
+			agent: 'agent' in overrides ? (overrides.agent ?? null) : baseAgent,
 			projectId: 'p1',
 			agentId: 'a1',
 			projectName: 'projectName' in overrides ? (overrides.projectName ?? null) : 'My project',
+			projectIcon: overrides.projectIcon ?? { type: 'icon', value: 'user' },
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
 			mode: overrides.mode,
 			artifactMode: overrides.artifactMode,
@@ -158,6 +174,7 @@ function mountHeader(
 			sessionOptions: overrides.sessionOptions,
 			configValidationStatus: overrides.configValidationStatus,
 			beforePublish: overrides.beforePublish,
+			saveStatus: overrides.saveStatus,
 		},
 		global: { stubs: globalStubs },
 	});
@@ -168,6 +185,7 @@ describe('AgentBuilderHeader', () => {
 		ensureLoadedMock.mockReset();
 		routerPush.mockReset();
 		routerResolve.mockClear();
+		trackClickedNewAgentMock.mockReset();
 		agentsListRef.value = null;
 	});
 
@@ -221,6 +239,14 @@ describe('AgentBuilderHeader', () => {
 		expect(items.map((i) => i.id)).toEqual(['p1']);
 		// Agent name should surface in the switcher button, not the breadcrumb.
 		expect(wrapper.text()).toContain('Darwin');
+	});
+
+	it('shows the project icon before the breadcrumb', () => {
+		const projectIcon = { type: 'emoji' as const, value: '🚀' };
+		const wrapper = mountHeader({ projectIcon });
+
+		expect(wrapper.getComponent({ name: 'ProjectIcon' }).props('icon')).toEqual(projectIcon);
+		expect(wrapper.getComponent({ name: 'ProjectIcon' }).props('size')).toBe('mini');
 	});
 
 	it('links the project breadcrumb to the project agents page', () => {
@@ -289,6 +315,16 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('reverted')).toBeTruthy();
 	});
 
+	it('forwards publish readiness changes', () => {
+		const wrapper = mountHeader();
+		const publish = wrapper.findComponent({ name: 'AgentPublishButton' });
+
+		publish.vm.$emit('publish-ready', false);
+		publish.vm.$emit('publish-ready', true);
+
+		expect(wrapper.emitted('publish-ready')).toEqual([[false], [true]]);
+	});
+
 	it('forwards header-action from the action menu', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
 		const action = getDropdown(wrapper, 'agent-header-actions');
@@ -314,9 +350,8 @@ describe('AgentBuilderHeader', () => {
 		async ({ isPreviewOpen, event, accessibleLabel }) => {
 			const wrapper = mountHeader({ isPreviewOpen });
 			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-			expect(previewButton.attributes('data-icon')).toBe('play');
-			expect(previewButton.attributes('aria-label')).toBe(accessibleLabel);
-			expect(previewButton.attributes('aria-pressed')).toBe(String(isPreviewOpen));
+			expect(previewButton.attributes('data-icon')).toBe('flask-conical');
+			expect(previewButton.text()).toBe(accessibleLabel);
 
 			await previewButton.trigger('click');
 			expect(wrapper.emitted(event)).toEqual([[]]);
@@ -368,11 +403,19 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
 	});
 
-	it('navigates to Instance AI for agent creation from the switcher footer', async () => {
+	it('navigates to the builder with a pending agent for agent creation from the switcher footer', async () => {
 		const wrapper = mountHeader();
 
 		await wrapper.find('[data-testid="agent-header-new-agent"]').trigger('click');
 
-		expect(routerPush).toHaveBeenCalledWith(instanceAiCreateAgentRoute('p1'));
+		// Goes through `useCreateAgent` like every other entry point: the same
+		// minted id is tracked and carried into the route/pending-agent state.
+		expect(trackClickedNewAgentMock).toHaveBeenCalledWith('dropdown', expect.any(String));
+		const [, mintedAgentId] = trackClickedNewAgentMock.mock.calls[0] as [string, string];
+		expect(routerPush).toHaveBeenCalledWith({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: 'p1', agentId: mintedAgentId },
+			state: { [PENDING_AGENT_ID_STATE]: mintedAgentId },
+		});
 	});
 });

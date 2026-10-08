@@ -2,10 +2,18 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { N8N_PRICING_PAGE_URL } from '@n8n/frontend-constants/urls';
 
 import { useCloudPlanStore } from '../cloudPlan.store';
+import { getDefaultUpgradeRedirectGuard } from '../registries/upgradeRedirectGuard';
 import { useSettingsStore } from '../settings.store';
 import type { CloudUpdateLinkSourceType, UTMCampaign } from '../types/pageRedirection';
 import { useUsersStore } from '../users.store';
 import { useVersionsStore } from '../versions.store';
+import { useAssistantTopUpEligibility } from './useAssistantTopUpEligibility';
+
+/** Sources whose "upgrade" CTA is really a top-up for eligible cloud accounts. */
+const ASSISTANT_UPGRADE_SOURCES = new Set<string>(['ai-builder-sidebar', 'instance-ai']);
+
+/** Cloud dashboard path that carries the assistant top-up UI. */
+const ASSISTANT_TOP_UP_REDIRECT_PATH = '/manage/assistant';
 
 /**
  * Guard consulted before an upgrade redirect. Resolves `true` to proceed, `false`
@@ -17,19 +25,21 @@ export type UpgradeRedirectGuard = () => Promise<boolean>;
 /**
  * Injectable page-redirection composable. The app-facing `usePageRedirectionHelper`
  * wraps this and supplies the guard, which keeps this base free of any feature
- * dependency.
+ * dependency. A caller that cannot reach the shell — a module package — omits it
+ * and gets the guard the shell registered (see `registries/upgradeRedirectGuard`).
  *
  * It lives in `@n8n/stores` rather than `@n8n/composables` because its body is
  * store orchestration end to end — all four stores it reads are in this package,
  * and `@n8n/composables` sits *below* the stores tier (see that package's
  * `packageBoundary.test.ts`), so it cannot reach them.
  */
-export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirectGuard }) {
+export function useBasePageRedirectionHelper({ guard }: { guard?: UpgradeRedirectGuard } = {}) {
 	const usersStore = useUsersStore();
 	const cloudPlanStore = useCloudPlanStore();
 	const versionsStore = useVersionsStore();
 	const telemetry = useTelemetry();
 	const settingsStore = useSettingsStore();
+	const { isEligible: isAssistantTopUpEligible } = useAssistantTopUpEligibility();
 
 	const canAutoLoginToCloudDashboard = () =>
 		usersStore.isInstanceOwner && settingsStore.isCloudDeployment;
@@ -102,7 +112,7 @@ export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirect
 		utm_campaign: UTMCampaign,
 		mode: 'open' | 'redirect' = 'open',
 	) => {
-		const shouldProceed = await guard();
+		const shouldProceed = await (guard ?? getDefaultUpgradeRedirectGuard())();
 		if (!shouldProceed) return;
 
 		const { usageLeft, trialDaysLeft, userIsTrialing } = cloudPlanStore;
@@ -131,8 +141,12 @@ export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirect
 		let upgradeLink = N8N_PRICING_PAGE_URL;
 
 		if (canAutoLoginToCloudDashboard()) {
+			const redirectionPath =
+				ASSISTANT_UPGRADE_SOURCES.has(source) && isAssistantTopUpEligible.value
+					? ASSISTANT_TOP_UP_REDIRECT_PATH
+					: '/account/change-plan';
 			upgradeLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
-				redirectionPath: '/account/change-plan',
+				redirectionPath,
 			});
 		}
 

@@ -1,10 +1,20 @@
 import { createPinia, setActivePinia } from 'pinia';
 import type { FrontendSettings } from '@n8n/api-types';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { getNewWorkflow } from '@/app/api/workflows';
 import { useWorkflowHistoryStore } from './workflowHistory.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as whApi from '@n8n/rest-api-client/api/workflowHistory';
 import * as instanceVersionHistoryApi from '@n8n/rest-api-client/api/instance-version-history';
+
+const emptyCanvasGroupsEnabled = vi.hoisted(() => ({ value: false }));
+
+vi.mock('@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag', () => ({
+	useEmptyCanvasGroupsFlag: () => emptyCanvasGroupsEnabled,
+}));
+vi.mock('@/app/api/workflows', () => ({ getNewWorkflow: vi.fn() }));
 
 vi.mock('@n8n/rest-api-client/api/workflowHistory');
 vi.mock('@n8n/rest-api-client/api/instance-version-history');
@@ -134,7 +144,7 @@ describe('Workflow history store', () => {
 	});
 
 	describe('getPublishTimeline', () => {
-		it('should call the API with the rest context and workflow id and return its result', async () => {
+		it('should call the API with the rest context, workflow id and page, and return its result', async () => {
 			const workflowHistoryStore = useWorkflowHistoryStore();
 			const rootStore = useRootStore();
 			const workflowId = 'workflow-123';
@@ -153,9 +163,15 @@ describe('Workflow history store', () => {
 
 			vi.mocked(whApi.getPublishTimeline).mockResolvedValue(events);
 
-			const result = await workflowHistoryStore.getPublishTimeline(workflowId);
+			const result = await workflowHistoryStore.getPublishTimeline(workflowId, {
+				take: 100,
+				skip: 0,
+			});
 
-			expect(whApi.getPublishTimeline).toHaveBeenCalledWith(rootStore.restApiContext, workflowId);
+			expect(whApi.getPublishTimeline).toHaveBeenCalledWith(rootStore.restApiContext, workflowId, {
+				take: 100,
+				skip: 0,
+			});
 			expect(result).toBe(events);
 		});
 
@@ -163,8 +179,42 @@ describe('Workflow history store', () => {
 			const workflowHistoryStore = useWorkflowHistoryStore();
 			vi.mocked(whApi.getPublishTimeline).mockRejectedValue(new Error('API Error'));
 
-			await expect(workflowHistoryStore.getPublishTimeline('workflow-123')).rejects.toThrow(
-				'API Error',
+			await expect(
+				workflowHistoryStore.getPublishTimeline('workflow-123', { take: 100, skip: 0 }),
+			).rejects.toThrow('API Error');
+		});
+	});
+
+	describe('cloneIntoNewWorkflow', () => {
+		it('removes empty groups before cloning when the feature is disabled', async () => {
+			const workflowHistoryStore = useWorkflowHistoryStore();
+			const workflowsListStore = useWorkflowsListStore();
+			const workflowsStore = useWorkflowsStore();
+			const anchor = {
+				id: 'anchor',
+				name: 'Empty group anchor',
+				type: 'n8n-nodes-base.noOp',
+				parameters: { emptyGroupAnchor: true },
+			};
+			const group = { id: 'group', name: 'Empty group', nodeIds: ['anchor'] };
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
+				name: 'Original workflow',
+			} as never);
+			vi.mocked(whApi.getWorkflowVersion).mockResolvedValue({
+				nodes: [anchor],
+				connections: {},
+				nodeGroups: [group],
+			} as never);
+			vi.mocked(getNewWorkflow).mockResolvedValue({ name: 'Cloned workflow' } as never);
+			vi.spyOn(workflowsStore, 'createNewWorkflow').mockResolvedValue({} as never);
+
+			await workflowHistoryStore.cloneIntoNewWorkflow('workflow-123', 'version-456', {
+				formattedCreatedAt: '2026-09-24',
+			});
+
+			expect(workflowsStore.createNewWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ nodes: [], connections: {}, nodeGroups: undefined }),
 			);
 		});
 	});

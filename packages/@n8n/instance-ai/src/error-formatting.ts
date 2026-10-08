@@ -1,22 +1,11 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { truncate } from '@n8n/utils/string/truncate';
 
 const MAX_LOG_ERROR_LENGTH = 1_000;
 const MAX_LOG_ERROR_INPUT_LENGTH = 8_000;
 const MAX_LOG_ERROR_SANITIZE_INPUT_LENGTH = MAX_LOG_ERROR_INPUT_LENGTH + MAX_LOG_ERROR_LENGTH;
-const SENSITIVE_KEY_PATTERN =
-	'(?:api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|client[_-]?secret|private[_-]?key|token|password|passwd|secret|credentials?)';
 const URL_PATTERN = /\bhttps?:\/\/[^\s"'<>]+/gi;
-const QUOTED_SECRET_PATTERN = new RegExp(
-	`(["'])(${SENSITIVE_KEY_PATTERN})\\1\\s*:\\s*(["'])([^"']*)(\\3)`,
-	'gi',
-);
-const KEY_VALUE_SECRET_PATTERN = new RegExp(
-	`\\b(${SENSITIVE_KEY_PATTERN})\\b(\\s*[:=]\\s*)(["']?)([^\\s"',;&}]+)(\\3)`,
-	'gi',
-);
-const AUTHORIZATION_PATTERN =
-	/\b(authorization)(\s*[:=]\s*)(["']?)(?:(Bearer|Basic)\s+)?[^\s"',;&}]+(\3)/gi;
 
 function getStringProperty(value: unknown, keys: string[]): string | undefined {
 	if (!isRecord(value)) return undefined;
@@ -47,8 +36,12 @@ function getNumberProperty(value: unknown, keys: string[]): number | undefined {
 function sanitizeUrlForLog(value: string): string {
 	try {
 		const url = new URL(value);
-		if (url.username) url.username = 'REDACTED';
-		if (url.password) url.password = 'REDACTED';
+		// A single userinfo placeholder: the `user:password@` shape would be
+		// re-redacted by the shared scrubber into a different form.
+		if (url.username || url.password) {
+			url.username = 'REDACTED';
+			url.password = '';
+		}
 		url.search = '';
 		url.hash = '';
 		return url.toString();
@@ -58,15 +51,7 @@ function sanitizeUrlForLog(value: string): string {
 }
 
 function sanitizeForLog(value: string): string {
-	return value
-		.replace(URL_PATTERN, (url) => sanitizeUrlForLog(url))
-		.replace(
-			AUTHORIZATION_PATTERN,
-			(_match, key: string, separator: string, quote: string, scheme: string | undefined) =>
-				`${key}${separator}${quote}${scheme ? `${scheme} ` : ''}[REDACTED]${quote}`,
-		)
-		.replace(QUOTED_SECRET_PATTERN, '$1$2$1: $3[REDACTED]$5')
-		.replace(KEY_VALUE_SECRET_PATTERN, '$1$2$3[REDACTED]$5');
+	return scrubSecretsInText(value.replace(URL_PATTERN, (url) => sanitizeUrlForLog(url)));
 }
 
 function takeSanitizedLogSample(value: string): string {

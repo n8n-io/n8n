@@ -47,9 +47,20 @@ ids. Full table in
 1. **Scan cluster themes** — `list_cluster_runs` / `get_latest_cluster_run`
    return capability-gap themes with a `label`, `summary`, and `mechanism`: the
    real, recurring failure modes.
-2. **Pull the conversations** — `list_conversations` (e.g. `verdict:"bad"`,
-   `analyzed:"yes"`) → `get_conversation` (raw trace) + `get_conversation_analysis`
-   (findings). `get_linear_ticket_context` links a thread to its ticket. To target
+2. **Pull the conversations.** Start from what LangTracer already detected.
+   `list_signal_rates` lists every code check and label rule with its rate over a
+   window: what fails most right now. Then `list_conversations` with `signals`,
+   one token per signal, ANDed — `check:has_nodes`,
+   `label:task_outcome=agent-gave-up`, `analysis:bad`, `keeper:*`, `review:*` — puts
+   the matching entries on each row, each with its evidence (the verdict comment,
+   the judge's words, Keeper's reason) and its version. On a candidate,
+   `get_conversation_signals` shows what every source said and which ones agreed:
+   a thread flagged by a code check, the judge and Keeper is a stronger source
+   than one flagged by a single model pass. A source marked `not_run` never looked
+   at the thread, so read its silence as unknown, not as clean. The older path
+   still works: `list_conversations` (e.g. `verdict:"bad"`, `analyzed:"yes"`) →
+   `get_conversation` (raw trace) + `get_conversation_analysis` (findings).
+   `get_linear_ticket_context` links a thread to its ticket. To target
    **execution failures**, add `funnelDrop:"05"` (built + launched an execution
    that never *succeeded*). **Caveat: the funnel drop is a *conversion* signal, not
    a build-quality one** — most `funnelDrop:"05"` threads are healthy builds that
@@ -61,7 +72,8 @@ ids. Full table in
    (was `build-workflow` called on this turn?), which it reads reliably — but a
    content-dependent claim ("invented ID", "missing node") can be wrong when it
    couldn't see the built workflow. Confirm against the raw trace before building
-   a case around it.
+   a case around it. The same goes for a signal's `evidence`: it is what that
+   source saw, not the trace.
 4. **Optionally record the selection as an observation.** Offer to save why this
    thread was selected and what the developer observed. This is a best-effort
    LangTracer note, not a gate: skip it when the developer declines or has not
@@ -70,7 +82,12 @@ ids. Full table in
 5. **Encode a durable synthetic case** — turn the confirmed failure into an
    authored case ([SKILL.md](SKILL.md), [`case-shapes.md`](case-shapes.md)). The
    failure mode is the anchor; the conversation is yours to write, in the user's
-   voice.
+   voice. **Write down the precondition, not just the failure mode** — the state
+   the thread was in when the call went wrong, which is usually narrower than the
+   theme label suggests and is often stated outright in the assistant text just
+   before the failing call. Get this wrong and the case grades green because it
+   never set the situation up; see
+   [First reproduce, then reclassify](SKILL.md#first-reproduce-then-reclassify).
 6. **Push it to a curated suite** (don't commit the JSON) with
    `eval:langtracer-push` — see
    [Push to a lang-tracer suite](SKILL.md#push-to-a-lang-tracer-suite). An `inline`
@@ -305,14 +322,17 @@ what catch a clean-up that kept the shape but lost the point.
 
 You don't need to do these by hand:
 
-- **Credential references on nodes are dropped as the seed loads.** The case's own
-  `credentials[]` decides what the assistant can see, and a credential's display name
-  goes with the reference.
+- **Credential references on nodes resolve against the case's `credentials[]` as the
+  seed loads.** A reference is kept only when exactly one seeded credential has that
+  type and display name; any other reference is dropped. On a `published: true`
+  workflow an unresolved reference fails the restore instead.
 - **Data tables are columns only.** The seed format has no place for rows, and a
   `rows` key is rejected rather than quietly removed — so table contents can't come
   along by accident.
-- **A seed workflow is only `id`, `name`, `nodes` and `connections`.** Pinned example
-  data, instance metadata and settings never travel.
+- **A seed workflow is only `id`, `name`, `nodes`, `connections` and an optional
+  `published` flag.** `published: true` activates the workflow on restore, the way the
+  user's publish left it. Pinned example data, instance metadata and settings never
+  travel.
 - **Ids and workflow names are per run.** Ids are replaced with fresh ones and names
   get a `[seed <8hex>]` suffix, with mentions updated in the prose — though not inside
   node definitions or recorded tool calls.

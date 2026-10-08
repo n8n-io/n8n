@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
@@ -15,11 +16,12 @@ import { InstanceSettings, Tracing } from 'n8n-core';
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
-import { isDurablePollerChainEnabled } from './poll-trigger-node/durable-poller-chain';
 import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
 import { createSchedulerTracer } from './scheduler-tracer';
+import { reportSystemTaskOverlaps } from './system-tasks/system-task-overlap-reporter';
+import { SystemTaskScheduledJobOwner } from './system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 
 /**
@@ -45,6 +47,8 @@ export class DurableScheduler implements Scheduler {
 		metrics: PrometheusSchedulerMetricsService,
 		workflowOwner: WorkflowScheduledJobOwner,
 		agentOwner: AgentScheduledJobOwner,
+		systemTaskOwner: SystemTaskScheduledJobOwner,
+		eventService: EventService,
 	) {
 		const config = globalConfig.scheduler;
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
@@ -79,7 +83,7 @@ export class DurableScheduler implements Scheduler {
 					reconciliation: config.ownerReconciliationEnabled
 						? {
 								jobStore: jobs,
-								owners: createScheduledJobOwnerRegistry(workflowOwner, agentOwner),
+								owners: createScheduledJobOwnerRegistry(workflowOwner, agentOwner, systemTaskOwner),
 								options: {
 									settleSeconds: config.ownerSettleSeconds,
 									quarantineGraceSeconds: config.ownerQuarantineGraceSeconds,
@@ -104,6 +108,8 @@ export class DurableScheduler implements Scheduler {
 						maxConcurrentPasses: config.maxConcurrentPasses,
 					},
 					now: async () => await tasks.readDbTime(),
+					onHeldByConcurrencyLimit: (occurrences) =>
+						reportSystemTaskOverlaps(eventService, occurrences),
 					onEvent: ({ level, message, context }) => logger[level](message, context),
 					tracer,
 				})
@@ -111,7 +117,6 @@ export class DurableScheduler implements Scheduler {
 		if (enabled) {
 			warnOnMisfireGrace(logger, config);
 			warnOnDrainRate(logger, config);
-			warnOnPollTimeout(logger, globalConfig);
 		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
@@ -182,25 +187,6 @@ function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): voi
 		logger.warn(
 			'Scheduler materialization interval is long enough that a pass may never fully drain the busiest possible schedule; under the coalesce misfire policy such a schedule could stop producing catch-up runs entirely',
 			{ materializationIntervalSeconds, fastestIntervalSeconds },
-		);
-	}
-}
-
-/**
- * Warn when a poll may still be in flight after the lease on its occurrence has
- * expired: the reaper can then reclaim the occurrence and another instance can
- * start the same poll while the first one is still running. Equality counts
- * too, since the poll deadline only starts after the occurrence's setup reads.
- */
-function warnOnPollTimeout(logger: Logger, globalConfig: GlobalConfig): void {
-	const { pollTimeoutSeconds, leaseDurationSeconds } = globalConfig.scheduler;
-	if (
-		isDurablePollerChainEnabled(globalConfig.scheduler, globalConfig.workflows) &&
-		pollTimeoutSeconds >= leaseDurationSeconds
-	) {
-		logger.warn(
-			'Scheduler poll timeout reaches the lease duration; a poll can still be running when its lease expires and another instance takes the run over',
-			{ pollTimeoutSeconds, leaseDurationSeconds },
 		);
 	}
 }

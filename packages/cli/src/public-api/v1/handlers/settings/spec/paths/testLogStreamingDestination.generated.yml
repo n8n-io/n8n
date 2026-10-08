@@ -1,0 +1,37 @@
+operationId: testLogStreamingDestination
+tags:
+  - LogStreaming
+summary: Send a test message to a log streaming destination
+description: Send a test message to the destination to verify it is reachable and configured correctly. Requires the `eventBusDestination:test` scope and the Log Streaming feature to be licensed.
+x-required-scope: eventBusDestination:test
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The id of the log streaming destination.
+    name: id
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+              description: Whether the test message was delivered to the destination successfully.
+              example: true
+          required:
+            - success
+          additionalProperties: false
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

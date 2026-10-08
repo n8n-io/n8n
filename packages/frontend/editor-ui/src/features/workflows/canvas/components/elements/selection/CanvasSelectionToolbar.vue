@@ -10,7 +10,6 @@ import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlow
 import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGroupActions';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { BoundingBox } from '../../../canvas.types';
 
 const TOOLBAR_OFFSET_PX = 12;
@@ -35,9 +34,8 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
-const settingsStore = useSettingsStore();
 const { teleportTarget } = useVueFlowTransformPaneTeleport();
-const { isSelectionExtractable } = useSelectionValidation();
+const { isSelectionExtractable, isSubworkflowConversionDisabled } = useSelectionValidation();
 const { canGroup, groupSelection } = useCanvasNodeGroupActions(() => props.selectedNodes, {
 	readOnly: () => props.readOnly,
 });
@@ -54,7 +52,7 @@ const selectedNodeIds = computed(() => props.selectedNodes.map((node) => node.id
 const canExtractWorkflow = computed(
 	() =>
 		!props.readOnly &&
-		!settingsStore.isSubworkflowConversionDisabled &&
+		!isSubworkflowConversionDisabled() &&
 		isSelectionExtractable(selectedNodeIds.value).valid,
 );
 

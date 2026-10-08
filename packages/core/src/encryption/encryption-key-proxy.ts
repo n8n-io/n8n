@@ -10,9 +10,10 @@ export interface IEncryptionKeyProvider {
 	getActiveKey(): Promise<KeyInfo>;
 	getKeyById(id: string): Promise<KeyInfo | null>;
 	/**
-	 * The seeded legacy CBC row. Not on the decrypt path — no-prefix data
-	 * decrypts with the instance key directly — but kept for later
-	 * re-encryption tooling that must enumerate what the legacy key was.
+	 * The seeded legacy CBC row. Resolves the no-prefix decrypt path: ciphertext
+	 * without a key-id prefix is legacy data, and this key unwraps to the
+	 * instance key it was encrypted with. The provider falls back to the
+	 * instance key when the row is absent, so old data stays readable.
 	 */
 	getLegacyKey(): Promise<KeyInfo>;
 }
@@ -32,10 +33,6 @@ export class EncryptionKeyProxy {
 
 	setProvider(provider: IEncryptionKeyProvider | undefined): void {
 		this.provider = provider;
-	}
-
-	isConfigured(): boolean {
-		return this.provider !== undefined;
 	}
 
 	async getActiveKey(): Promise<KeyInfo> {

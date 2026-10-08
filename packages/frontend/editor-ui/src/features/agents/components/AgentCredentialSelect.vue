@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import type { PermissionsRecord } from '@n8n/permissions';
 import CredentialsDropdown, {
 	type CredentialOption as DropdownCredentialOption,
+	type ManagedCredentialOption,
 } from '@/features/credentials/components/CredentialPicker/CredentialsDropdown.vue';
 
 export interface AgentCredentialOption {
@@ -24,11 +25,14 @@ const props = withDefaults(
 		loading?: boolean;
 		disabled?: boolean;
 		size?: AgentCredentialSelectSize;
+		managedOption?: ManagedCredentialOption | null;
 	}>(),
 	{
 		size: 'small',
 	},
 );
+
+export type { ManagedCredentialOption };
 
 const emit = defineEmits<{
 	'update:modelValue': [credentialId: string];
@@ -59,6 +63,7 @@ function onCredentialSelected(credentialId: string) {
 		:class="$style[props.size]"
 		:credential-options="credentialOptions"
 		:selected-credential-id="modelValue ?? null"
+		:managed-option="managedOption"
 		:permissions="credentialPermissions"
 		:placeholder="placeholder"
 		:loading="loading"

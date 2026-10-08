@@ -11,7 +11,8 @@ parameters:
   - schema:
       type: string
     required: true
-    name: slug
+    description: The slug of the role.
+    name: roleSlug
     in: path
   - schema:
       anyOf:

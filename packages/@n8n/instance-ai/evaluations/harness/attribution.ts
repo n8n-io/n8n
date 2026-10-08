@@ -16,13 +16,15 @@
 // ---------------------------------------------------------------------------
 
 /**
- * Who owns a failed graded unit. Deliberately the SAME four names the verifier
- * prompt already defines, so the enum the LLM picks from and the enum we store
- * are one vocabulary rather than two that need translating — which is how the
- * old contract drifted. The harness-code categories (`build_failure`,
- * `verification_failure`, `expectations_failed`) fold into these.
+ * The categories the LLM verifier picks from, as spelled out in
+ * `system-prompts/mock-execution-verify.ts`. Deliberately the SAME four names
+ * we store, so the enum the LLM picks from and the enum we store are one
+ * vocabulary rather than two that need translating — which is how the old
+ * contract drifted. The harness-code categories (`build_failure`,
+ * `verification_failure`, `expectations_failed`) fold into these. A test fails
+ * when the prompt's enum and this list drift.
  */
-export const EVAL_ATTRIBUTIONS = [
+export const VERIFIER_CATEGORIES = [
 	/** The agent built it wrong — including "runs as built, misses the criteria". */
 	'builder_issue',
 	/** The eval mock/fixture layer served data the scenario did not describe. */
@@ -35,23 +37,32 @@ export const EVAL_ATTRIBUTIONS = [
 	'verification_gap',
 ] as const;
 
+/** Who owns a graded unit: the verifier's four buckets plus the one only the
+ *  harness asserts. */
+export const EVAL_ATTRIBUTIONS = [
+	...VERIFIER_CATEGORIES,
+	/** A budget ended the build conversation (harness/timeouts.ts). Every graded
+	 *  unit of that iteration carries it and is marked `incomplete`: what was
+	 *  saved is still graded and recorded, but the iteration counts neither as a
+	 *  pass nor as a failure. */
+	'timeout',
+] as const;
+
 export type EvalAttribution = (typeof EVAL_ATTRIBUTIONS)[number];
+export type VerifierCategory = (typeof VERIFIER_CATEGORIES)[number];
 
 export function isEvalAttribution(value: unknown): value is EvalAttribution {
 	return EVAL_ATTRIBUTIONS.includes(value as EvalAttribution);
 }
 
-/**
- * The categories the LLM verifier picks from, as spelled out in
- * `system-prompts/mock-execution-verify.ts`. Identical to `EVAL_ATTRIBUTIONS`
- * on purpose — kept as its own name so the prompt's enum has a code-side
- * counterpart that fails a test when the two drift.
- */
-export const VERIFIER_CATEGORIES = EVAL_ATTRIBUTIONS;
+export function isVerifierCategory(value: unknown): value is VerifierCategory {
+	return VERIFIER_CATEGORIES.includes(value as VerifierCategory);
+}
 
 /**
- * Attribution for a category the LLM verifier chose — an identity map, since
- * the two enums are now the same list.
+ * Attribution for a category the LLM verifier chose — an identity map over the
+ * verifier's own list. `timeout` is the harness's bucket alone, so a verifier
+ * that emits it is off-enum like any other unknown value.
  *
  * Anything off-enum — including a failing verdict it left uncategorised, which
  * `checklist/verifier.ts` back-fills as `verification_failure` — is the
@@ -61,7 +72,7 @@ export const VERIFIER_CATEGORIES = EVAL_ATTRIBUTIONS;
  * failure' category."
  */
 export function attributionFromVerifierCategory(category: string | undefined): EvalAttribution {
-	return isEvalAttribution(category) ? category : 'builder_issue';
+	return isVerifierCategory(category) ? category : 'builder_issue';
 }
 
 /**

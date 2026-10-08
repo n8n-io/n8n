@@ -55,3 +55,18 @@ export const useEmitters = <T extends string>() => {
 		},
 	};
 };
+
+/**
+ * Helper to get the visible tooltip content container.
+ * Queries the tooltip by its CSS class which is applied by N8nTooltip component.
+ * This is the semantic approach since .n8n-tooltip is the design system class.
+ *
+ * Usage: const tooltip = getTooltip(); expect(tooltip).toHaveTextContent('...');
+ */
+export const getTooltip = () => {
+	const tooltip = document.querySelector('.n8n-tooltip');
+	if (!tooltip) {
+		throw new Error('Unable to find tooltip with class .n8n-tooltip');
+	}
+	return tooltip as HTMLElement;
+};

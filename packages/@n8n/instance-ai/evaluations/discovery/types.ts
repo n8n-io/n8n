@@ -9,7 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import type { DiscoveryMcpState } from './stub-mcp-registry';
-import type { LocalGatewayStatus } from '../../src/types';
+import type { ComputerUseState } from '../../src/types';
 
 /**
  * Pass condition for tool invocations.
@@ -59,9 +59,10 @@ export interface ExpectedToolInvocations {
  * status (e.g. `disabledGlobally` to test the "explain how to enable" branch).
  */
 export interface DiscoveryInstanceState {
-	localGateway?: LocalGatewayStatus;
-	browserAvailable?: boolean;
+	computerUse?: ComputerUseState;
 	mcp?: DiscoveryMcpState;
+	/** Turn the folder-exploration capability on for the run (default off). */
+	folderExploration?: boolean;
 }
 
 export type ConfirmationDecision = 'approve' | 'deny';
@@ -93,12 +94,30 @@ export interface DiscoveryTestCase {
 	timeoutMs?: number;
 }
 
+/** What the runner reads from a case. Routing cases carry no tool expectations. */
+export type DiscoveryScenario = Pick<
+	DiscoveryTestCase,
+	'userMessage' | 'instanceState' | 'confirmations' | 'maxSteps' | 'timeoutMs'
+>;
+
 export type DiscoveryStreamStatus =
 	| 'completed'
 	| 'errored'
 	| 'timed-out'
 	| 'suspended'
-	| 'step-exhausted';
+	| 'step-exhausted'
+	/** The runner ended the run before an orchestrator tool call, because the route was picked. */
+	| 'stopped-on-route';
+
+/** Only the orchestrator's calls pick a route; sub-agents act on its choice. */
+export const ORCHESTRATOR_AGENT_ID = 'n8n-instance-agent';
+
+/** An orchestrator tool call that is about to run. */
+export interface PendingToolCall {
+	toolCallId: string;
+	toolName: string;
+	args: Record<string, unknown>;
+}
 
 export interface DiscoveryTrialFacts {
 	streamStatus: DiscoveryStreamStatus;

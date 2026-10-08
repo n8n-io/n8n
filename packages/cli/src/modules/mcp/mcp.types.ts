@@ -1,4 +1,4 @@
-import type { CallToolResult } from '@modelcontextprotocol/server';
+import type { CallToolResult, InputRequiredResult } from '@modelcontextprotocol/server';
 import type { WorkflowPublishBlockedReason } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
@@ -15,12 +15,25 @@ import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.t
  * Standard Schema interface the v2 SDK expects (see tool-schema.util.ts), so
  * handlers keep receiving the zod-parsed args object.
  */
-export type ToolHandler<InputArgs extends z.ZodRawShape = z.ZodRawShape> = (
+/**
+ * A handler answers with a tool result or, on a multi-round-trip tool, with a request for more
+ * input from the client. Tools default to the plain result so their tests read `content` freely;
+ * a tool that elicits names the union explicitly.
+ */
+export type ToolHandlerResult = CallToolResult | InputRequiredResult;
+
+export type ToolHandler<
+	InputArgs extends z.ZodRawShape = z.ZodRawShape,
+	Result extends ToolHandlerResult = CallToolResult,
+> = (
 	args: z.objectOutputType<InputArgs, z.ZodTypeAny>,
 	extra?: unknown,
-) => CallToolResult | Promise<CallToolResult>;
+) => Result | Promise<Result>;
 
-export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
+export type ToolDefinition<
+	InputArgs extends z.ZodRawShape = z.ZodRawShape,
+	Result extends ToolHandlerResult = CallToolResult,
+> = {
 	name: string;
 	config: {
 		description?: string;
@@ -36,12 +49,15 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 		/** Arbitrary tool metadata, e.g. the MCP App resource marker. */
 		_meta?: Record<string, unknown>;
 	};
-	handler: ToolHandler<InputArgs>;
+	handler: ToolHandler<InputArgs, Result>;
 };
 
 /** Registers a tool on the per-request server if the granted scopes cover it. */
-export type RegisterToolFn = <InputArgs extends z.ZodRawShape>(
-	tool: ToolDefinition<InputArgs>,
+export type RegisterToolFn = <
+	InputArgs extends z.ZodRawShape,
+	Result extends ToolHandlerResult = CallToolResult,
+>(
+	tool: ToolDefinition<InputArgs, Result>,
 ) => void;
 
 /** Read result for a static MCP resource (a single text document). */
@@ -181,7 +197,6 @@ export type UserConnectedToMCPEventPayload = {
 	http_status?: number;
 	mcp_apps_enabled?: boolean;
 	mcp_apps_variant?: McpAppsTelemetryVariant;
-	mcp_canvas_groups_enabled?: boolean;
 	error?: string;
 };
 

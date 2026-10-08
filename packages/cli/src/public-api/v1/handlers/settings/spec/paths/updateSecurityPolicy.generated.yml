@@ -1,0 +1,70 @@
+operationId: updateSecurityPolicy
+tags:
+  - SecurityPolicy
+summary: Set the security policy
+description: Replace the instance security policy with the provided full object. Every writable field must be sent. Read-only usage counts from GET are ignored if included, so a GET response can be sent back as a PUT body. The update takes effect exactly as it would from the UI, using the same validation. Requires the `securitySettings:manage` scope and the Personal Space Policy feature to be licensed. When the group is managed via environment variables, the write is rejected with 409 and no changes are made; a read still returns the current values.
+x-required-scope: securitySettings:manage
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          personalSpacePublishing:
+            type: boolean
+            description: Whether members may publish workflows and agents from their personal space.
+            example: false
+          personalSpaceSharing:
+            type: boolean
+            description: Whether members may share workflows and credentials from their personal space.
+            example: false
+          redactionEnforcement:
+            type: object
+            properties:
+              floor:
+                type: string
+                enum:
+                  - off
+                  - production
+                  - all
+                description: Minimum execution-data redaction level enforced across the instance.
+                example: production
+            required:
+              - floor
+            additionalProperties: false
+          publishedPersonalWorkflowsCount:
+            type: integer
+            description: Read-only usage count returned by GET. Ignored on write so a GET response can be sent back as a PUT body.
+          sharedPersonalWorkflowsCount:
+            type: integer
+            description: Read-only usage count returned by GET. Ignored on write so a GET response can be sent back as a PUT body.
+          sharedPersonalCredentialsCount:
+            type: integer
+            description: Read-only usage count returned by GET. Ignored on write so a GET response can be sent back as a PUT body.
+        required:
+          - personalSpacePublishing
+          - personalSpaceSharing
+          - redactionEnforcement
+        additionalProperties: false
+        description: Full security policy. All writable fields must be provided; partial updates are not supported.
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/securityPolicyPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

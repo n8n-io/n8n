@@ -1,9 +1,9 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 export default defineConfig(
 	globalIgnores(['src/template/templates/**/template', 'src/template/templates/shared']),
-	nodeConfig,
+	backendConfig,
 	{
 		files: ['**/*.test.ts', 'src/test-utils/**/*'],
 		rules: {

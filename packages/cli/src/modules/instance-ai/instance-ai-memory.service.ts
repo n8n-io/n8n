@@ -1,9 +1,12 @@
+import type { AgentDbMessage } from '@n8n/agents';
 import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
+	InstanceAiThreadHistoryQuery,
+	InstanceAiThreadHistoryResponse,
 	InstanceAiThreadMessagesResponse,
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
@@ -12,22 +15,22 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
 import {
 	buildAgentTreeFromEvents,
 	createSubAgentResourceIdPrefix,
 	patchThread,
 	withBoundAgentTarget,
 	type AgentBuilderTarget,
-	type AgentDbMessage,
 	type AgentTreeSnapshot,
 } from '@n8n/instance-ai';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
+import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import {
 	collectConfirmationRequestIds,
 	markExpiredConfirmations,
@@ -233,7 +236,15 @@ function buildLogDerivedSnapshots(
 		}
 		if (!group.runIds.includes(row.runId)) group.runIds.push(row.runId);
 		group.events.push(row.event);
-		if (row.runId === group.runIds[0] && row.createdAt > group.anchorAt) {
+		// A `preference-card` fact is appended by an Edit or an Undo, which can
+		// happen long after the turn. It must not move the anchor: the parser
+		// drops a snapshot anchored after the next conversational message, so a
+		// late fact would unpair the whole turn instead of correcting one card.
+		if (
+			row.runId === group.runIds[0] &&
+			row.event.type !== 'preference-card' &&
+			row.createdAt > group.anchorAt
+		) {
 			group.anchorAt = row.createdAt;
 		}
 		if (row.createdAt > group.lastAt) group.lastAt = row.createdAt;
@@ -275,6 +286,48 @@ export class InstanceAiMemoryService {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
 
+	async getThreadInfo(threadId: string): Promise<InstanceAiThreadInfo> {
+		const thread = await this.agentMemory.getThread(threadId);
+		if (!thread) throw new NotFoundError('Thread not found');
+		return this.toThreadInfo(thread);
+	}
+
+	async listThreadHistory(
+		userId: string,
+		query: InstanceAiThreadHistoryQuery,
+	): Promise<InstanceAiThreadHistoryResponse> {
+		let before: { updatedAt: Date; id: string } | undefined;
+		if (query.cursor) {
+			try {
+				const parsed = z
+					.object({ updatedAt: z.string().datetime(), id: z.string().min(1).max(256) })
+					.parse(JSON.parse(Buffer.from(query.cursor, 'base64url').toString('utf8')));
+				before = { updatedAt: new Date(parsed.updatedAt), id: parsed.id };
+			} catch {
+				throw new BadRequestError('Invalid thread history cursor');
+			}
+		}
+		const rows = await this.agentMemory.listThreadHistory(
+			userId,
+			query.limit,
+			query.search,
+			before,
+		);
+		const hasMore = rows.length > query.limit;
+		const threads = rows.slice(0, query.limit).map((thread) => this.toThreadInfo(thread));
+		const last = threads.at(-1);
+		return {
+			threads,
+			hasMore,
+			nextCursor:
+				hasMore && last
+					? Buffer.from(JSON.stringify({ updatedAt: last.updatedAt, id: last.id })).toString(
+							'base64url',
+						)
+					: null,
+		};
+	}
+
 	async listThreads(
 		userId: string,
 		page = 0,
@@ -294,11 +347,13 @@ export class InstanceAiMemoryService {
 		};
 	}
 
+	/** `title` names a host-opened thread from the start: the header never shows the first user message. */
 	async ensureThread(
 		userId: string,
 		threadId: string,
 		projectId: string,
 		launchMetadata: InstanceAiThreadLaunchMetadata,
+		title = '',
 	): Promise<InstanceAiEnsureThreadResponse> {
 		const existing = await this.agentMemory.getThread(threadId);
 		if (existing) {
@@ -316,7 +371,7 @@ export class InstanceAiMemoryService {
 			{
 				id: threadId,
 				resourceId: userId,
-				title: '',
+				title,
 				metadata: {
 					source: launchMetadata.source,
 					origin: launchMetadata.origin,
@@ -330,6 +385,46 @@ export class InstanceAiMemoryService {
 			thread: this.toThreadInfo(created),
 			created: true,
 		};
+	}
+
+	/**
+	 * Store an assistant greeting before any user turn (onboarding). The model API
+	 * needs a user message first, so a hidden auto-follow-up turn precedes the
+	 * greeting; the message parser drops that turn from the UI. `hiddenUserText`
+	 * replaces the auto-follow-up text when the hidden turn carries context for
+	 * the model (the onboarding answers). Returns the id of that hidden turn.
+	 */
+	async seedOpeningMessages(
+		threadId: string,
+		userId: string,
+		greeting: string,
+		hiddenUserText: string = AUTO_FOLLOW_UP_MESSAGE,
+	): Promise<{ userMessageId: string }> {
+		// Both stamps stay in the past: event rows written right after this must
+		// not sort before the greeting, or the fold shows the greeting twice.
+		const now = Date.now();
+		const userMessageId = randomUUID();
+		await this.agentMemory.saveMessages({
+			threadId,
+			resourceId: userId,
+			messages: [
+				{
+					id: userMessageId,
+					createdAt: new Date(now - 1),
+					type: 'llm',
+					role: 'user',
+					content: [{ type: 'text', text: hiddenUserText }],
+				},
+				{
+					id: randomUUID(),
+					createdAt: new Date(now),
+					type: 'llm',
+					role: 'assistant',
+					content: [{ type: 'text', text: greeting }],
+				},
+			],
+		});
+		return { userMessageId };
 	}
 
 	/** Eval-only: seed a thread with a native message log (id/role/content/createdAt
@@ -492,9 +587,11 @@ export class InstanceAiMemoryService {
 	}
 
 	/** Cross-check every confirmation card against `instance_ai_pending_confirmations`
-	 *  and flip `confirmation.expired = true` on the ones with no live row. */
-	private async flagExpiredConfirmations(
-		messages: Awaited<ReturnType<typeof parseStoredMessages>>,
+	 *  and flip `confirmation.expired = true` on the ones with no live row. Shared
+	 *  by the history read and the SSE run-sync frame so both render a settled
+	 *  card the same way. */
+	async flagExpiredConfirmations(
+		messages: Parameters<typeof markExpiredConfirmations>[0],
 	): Promise<void> {
 		const requestIds = collectConfirmationRequestIds(messages);
 		if (requestIds.length === 0) return;
@@ -633,10 +730,12 @@ export class InstanceAiMemoryService {
 	/**
 	 * Delete conversation threads older than the configured TTL. Invoked on a
 	 * recurring schedule by the leader instance's prune job. Idempotent and
-	 * safe to call repeatedly — no-op if threadTtlDays is 0 (disabled).
+	 * safe to call repeatedly — no-op if threadTtlDays is 0 (disabled). Stops
+	 * before the next thread once `signal` aborts.
 	 */
 	async cleanupExpiredThreads(
 		onThreadDeleted?: (threadId: string) => Promise<void>,
+		signal?: AbortSignal,
 	): Promise<number> {
 		const ttlDays = this.instanceAiConfig.threadTtlDays;
 		if (!ttlDays || ttlDays <= 0) return 0;
@@ -650,7 +749,7 @@ export class InstanceAiMemoryService {
 		const perPage = 100;
 		let hasMore = true;
 
-		while (hasMore) {
+		while (hasMore && !signal?.aborted) {
 			const result = await this.agentMemory.listThreads({
 				perPage,
 				page: 0,
@@ -658,6 +757,7 @@ export class InstanceAiMemoryService {
 			});
 			let deletedInPage = 0;
 			for (const thread of result.threads) {
+				if (signal?.aborted) break;
 				if (thread.updatedAt < cutoff) {
 					try {
 						await onThreadDeleted?.(thread.id);

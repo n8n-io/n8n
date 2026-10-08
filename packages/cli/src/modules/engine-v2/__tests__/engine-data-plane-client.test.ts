@@ -7,10 +7,15 @@ import type { EngineConfig } from '@n8n/config';
 import { SharedSecretIdentityVerifier } from '@n8n/engine';
 import type { StartExecutionRequest } from '@n8n/engine';
 import type { InstanceSettings } from 'n8n-core';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
+import {
+	EngineDidNotAdmitError,
+	EngineRejectedWorkflowError,
+	isStartRefusedBeforeSave,
+} from '@/services/engine-data-plane-proxy.service';
 
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
 
@@ -23,7 +28,7 @@ describe('EngineDataPlaneClient', () => {
 		graph: { nodes: [], edges: [] },
 		workflow: {},
 		executionId: EXECUTION_ID,
-		callerContext: {},
+		callerContext: { hostMode: 'trigger' },
 	};
 
 	let http: HttpRequestClient;
@@ -60,6 +65,28 @@ describe('EngineDataPlaneClient', () => {
 
 	beforeEach(() => {
 		client = newClient();
+	});
+
+	it('posts search filters without following redirects', async () => {
+		const body = { workflowIds: ['wf'], hostMode: 'webhook', includeTotal: true, limit: 20 };
+		const result = { items: [], hasMore: false, total: 0 };
+		respondWith(200, result);
+		await expect(client.searchExecutions(body)).resolves.toEqual(result);
+		expect(http.request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				url: '/api/workflow-executions/search',
+				method: 'POST',
+				body,
+				disableFollowRedirect: true,
+			}),
+		);
+	});
+
+	it('propagates search failures', async () => {
+		respondWith(503, {});
+		await expect(client.searchExecutions({ workflowIds: 'all', limit: 20 })).rejects.toThrow(
+			OperationalError,
+		);
 	});
 
 	describe('startExecution', () => {
@@ -125,28 +152,32 @@ describe('EngineDataPlaneClient', () => {
 				case: 'a rejected graph',
 				statusCode: 400,
 				body: { error: 'invalid_graph', reason: 'cycle detected' },
-				errorClass: UserError,
+				errorClass: EngineRejectedWorkflowError,
+				refusedBeforeSave: true,
 				message: 'Engine rejected the workflow: cycle detected',
 			},
 			{
 				case: 'a refused admission',
 				statusCode: 429,
 				body: { error: 'admittance_rejected', reason: 'at capacity' },
-				errorClass: OperationalError,
+				errorClass: EngineDidNotAdmitError,
+				refusedBeforeSave: true,
 				message: 'Engine did not admit the execution: at capacity',
 			},
 			{
 				case: 'an unsupported workflow',
 				statusCode: 501,
 				body: { error: 'unimplemented', reason: 'wait steps' },
-				errorClass: UserError,
+				errorClass: EngineRejectedWorkflowError,
+				refusedBeforeSave: true,
 				message: 'Engine does not support this workflow yet: wait steps',
 			},
 			{
 				case: 'an error code with no reason',
 				statusCode: 400,
 				body: { error: 'invalid_request' },
-				errorClass: UserError,
+				errorClass: EngineRejectedWorkflowError,
+				refusedBeforeSave: true,
 				message: 'Engine rejected the workflow: invalid_request',
 			},
 			{
@@ -154,6 +185,7 @@ describe('EngineDataPlaneClient', () => {
 				statusCode: 500,
 				body: { error: 'boom' },
 				errorClass: OperationalError,
+				refusedBeforeSave: false,
 				message: 'Engine responded with 500: boom',
 			},
 			{
@@ -161,6 +193,7 @@ describe('EngineDataPlaneClient', () => {
 				statusCode: 302,
 				body: '',
 				errorClass: OperationalError,
+				refusedBeforeSave: false,
 				message: 'Engine responded with 302',
 			},
 			{
@@ -168,16 +201,22 @@ describe('EngineDataPlaneClient', () => {
 				statusCode: 502,
 				body: '<html>bad gateway</html>',
 				errorClass: OperationalError,
+				refusedBeforeSave: false,
 				message: 'Engine responded with 502',
 			},
-		])('maps $case to $errorClass.name', async ({ statusCode, body, errorClass, message }) => {
-			respondWith(statusCode, body);
+		])(
+			'maps $case to $errorClass.name',
+			async ({ statusCode, body, errorClass, refusedBeforeSave, message }) => {
+				respondWith(statusCode, body);
 
-			const error = await startExecutionError();
+				const error = await startExecutionError();
 
-			expect(error).toBeInstanceOf(errorClass);
-			expect(error).toHaveProperty('message', message);
-		});
+				expect(error).toBeInstanceOf(errorClass);
+				expect(error).toHaveProperty('message', message);
+				// The dispatcher deletes the trigger files only when no execution was saved.
+				expect(isStartRefusedBeforeSave(error)).toBe(refusedBeforeSave);
+			},
+		);
 	});
 
 	describe('getExecution', () => {
@@ -220,6 +259,64 @@ describe('EngineDataPlaneClient', () => {
 			respondWith(500, { error: 'internal' });
 
 			await expect(client.getExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
+		});
+	});
+
+	describe('cancelExecution', () => {
+		it('reports a cancelled execution', async () => {
+			respondWith(200, {
+				executionId: EXECUTION_ID,
+				status: 'cancelled',
+				finishedAt: '2026-10-02T09:00:00.000Z',
+			});
+
+			await expect(client.cancelExecution(EXECUTION_ID)).resolves.toEqual({
+				cancelled: true,
+				finishedAt: new Date('2026-10-02T09:00:00.000Z'),
+			});
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: `/api/workflow-executions/${EXECUTION_ID}/cancel`,
+					method: 'POST',
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it('reports the status of an execution that had already ended', async () => {
+			respondWith(409, {
+				error: 'not_cancellable',
+				reason: 'The execution has already completed',
+				details: { status: 'completed' },
+			});
+
+			await expect(client.cancelExecution(EXECUTION_ID)).resolves.toEqual({
+				cancelled: false,
+				status: 'completed',
+			});
+		});
+
+		it.each([
+			['no details', { error: 'not_cancellable' }],
+			['no status', { error: 'not_cancellable', details: {} }],
+			['an unknown status', { error: 'not_cancellable', details: { status: 'paused' } }],
+		])('throws on a refusal that names %s', async (_case, body) => {
+			respondWith(409, body);
+
+			await expect(client.cancelExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
+		});
+
+		it('returns undefined for an execution the engine does not have', async () => {
+			respondWith(404, { error: 'not_found' });
+
+			await expect(client.cancelExecution(EXECUTION_ID)).resolves.toBeUndefined();
+		});
+
+		it('throws on any other engine failure', async () => {
+			respondWith(500, { error: 'internal' });
+
+			await expect(client.cancelExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
 		});
 	});
 });

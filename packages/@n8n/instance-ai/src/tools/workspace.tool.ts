@@ -3,6 +3,7 @@
  */
 import { Tool } from '@n8n/agents';
 import {
+	folderNameSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
@@ -61,7 +62,7 @@ const listFoldersAction = z.object({
 
 const createFolderAction = z.object({
 	action: z.literal('create-folder').describe('Create a new folder in a project'),
-	name: z.string().describe('Name for the new folder'),
+	name: folderNameSchema.describe('Name for the new folder'),
 	projectId: projectIdField,
 	parentFolderId: z
 		.string()
@@ -243,6 +244,16 @@ async function handleCreateFolder(
 ) {
 	const { resumeData } = ctx;
 
+	// The provider-facing schema strips `folderNameSchema`'s refinement (MCP tool
+	// schemas can't express custom validators), so the real check runs here — a
+	// slash in the name would make a workflow's folder `path` indistinguishable
+	// from real nesting.
+	const nameCheck = folderNameSchema.safeParse(input.name);
+	if (!nameCheck.success) {
+		return { error: nameCheck.error.issues[0]?.message ?? 'Invalid folder name' };
+	}
+	const name = nameCheck.data;
+
 	if (context.permissions?.createFolder === 'blocked') {
 		return {
 			id: '',
@@ -259,7 +270,7 @@ async function handleCreateFolder(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Create ${input.name} in project ${input.projectId}`,
+			message: `Create ${name} in project ${input.projectId}`,
 			severity: 'info' as const,
 		});
 	}
@@ -277,7 +288,7 @@ async function handleCreateFolder(
 
 	// State 3: Approved or always_allow — execute
 	const folder = await context.workspaceService!.createFolder!(
-		input.name,
+		name,
 		input.projectId,
 		input.parentFolderId,
 	);

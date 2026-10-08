@@ -9,7 +9,6 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ToolCredentialPicker from '@/features/shared/toolsConnection/ToolCredentialPicker.vue';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
-	hasToolConnection,
 	type McpServerConnectionItem,
 	type ToolCredentialRef,
 } from '@/features/shared/toolsConnection/types';
@@ -35,7 +34,13 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
-const { connectServer, connectWithCredential, createCredentialAdapter } = useMcpServerConnect();
+const {
+	connectServer,
+	connectWithCredential,
+	createCredentialAdapter,
+	ignorePendingConnectResult,
+	isConnectLocked,
+} = useMcpServerConnect();
 
 const isConnecting = ref(false);
 
@@ -80,7 +85,7 @@ const rows = computed<CardRow[]>(() =>
 				id: connection?.id ?? server.serverSlug,
 				kind: 'mcp-server',
 				title: entry?.title ?? server.title,
-				status: connection?.status ?? 'none',
+				status: isConnectLocked(server.serverSlug) ? 'connecting' : (connection?.status ?? 'none'),
 				credentials: credentialOptions.map(({ credentialType, name }) => ({
 					authType: credentialType,
 					displayName: name,
@@ -98,7 +103,7 @@ const isActionable = computed(() => !props.readOnly && !props.expired);
 const anyConnected = computed(() => rows.value.some(hasConnection));
 
 function hasConnection(row: CardRow): boolean {
-	return hasToolConnection(row.item.status);
+	return mcpStore.connections.some((connection) => connection.serverSlug === row.serverSlug);
 }
 
 function finish(approved: boolean) {
@@ -140,18 +145,12 @@ async function runConnect(attempt: () => Promise<unknown>) {
 }
 
 async function connect(row: CardRow, credentialType: string, credentialTypes?: readonly string[]) {
-	await runConnect(
-		async () =>
-			await connectServer({
-				slug: row.serverSlug,
-				credentialType,
-				credentialTypes,
-			}),
-	);
+	await connectServer({ slug: row.serverSlug, credentialType, credentialTypes });
 }
 
 async function handleSelectCredential(row: CardRow, credentialId: string) {
 	await runConnect(async () => {
+		ignorePendingConnectResult(row.serverSlug);
 		mcpTelemetry.trackExistingCredentialSelected(row.serverSlug);
 		return await connectWithCredential(row.serverSlug, credentialId);
 	});

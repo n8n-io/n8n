@@ -37,6 +37,7 @@ import {
 	timelineItemErrorMessage,
 	timelineItemStatus,
 } from '../session-timeline.utils';
+import { backgroundJobResultLabel } from '../utils/background-job-labels';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 
@@ -127,12 +128,13 @@ const toolDisplayName = computed((): string => {
 	if (
 		!props.item ||
 		(props.item.kind !== 'tool' &&
+			props.item.kind !== 'skill' &&
 			props.item.kind !== 'suspension' &&
 			props.item.kind !== 'hitl-response')
 	) {
 		return '';
 	}
-	return resolveToolNameForDisplay(props.item.toolName, i18n);
+	return resolveToolNameForDisplay(props.item.toolName, i18n, props.item.toolOutput);
 });
 
 const linkedToolName = computed((): string => {
@@ -198,10 +200,13 @@ const headerTitle = computed((): string => {
 	const item = props.item;
 	if (!item) return '';
 	if (isSubAgent.value) return delegateLabel(i18n, item.subAgentName ?? '');
+	if (item.kind === 'background-task-signal')
+		return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
+	if (item.kind === 'skill') return item.skillName ?? toolDisplayName.value;
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
-	if (item.kind === 'user') return i18n.baseText('agentSessions.timeline.user');
+	if (item.kind === 'user') return item.authorName ?? i18n.baseText('agentSessions.timeline.user');
 	if (item.kind === 'agent') return i18n.baseText('agentSessions.timeline.agent');
 	if (item.kind === 'execution-error') return executionErrorLabel(item, i18n);
 	if (item.kind === 'suspension') {
@@ -218,7 +223,9 @@ const headerIcon = computed((): IconName => {
 	const item = props.item;
 	if (!item) return 'info';
 	if (isSubAgent.value) return 'bot';
+	if (item.kind === 'background-task-signal') return 'list-checks';
 	if (item.kind === 'workflow') return 'workflow';
+	if (item.kind === 'skill') return 'book-open';
 	if (item.kind === 'tool') return 'wrench';
 	if (item.kind === 'node') return 'box';
 	if (item.kind === 'user') return 'user';
@@ -283,7 +290,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</N8nTooltip>
 					<N8nBadge
 						v-if="status"
-						:theme="status.theme"
+						:variant="status.theme"
 						size="xsmall"
 						:data-test-id="
 							status.kind === 'hitl-response'
@@ -328,8 +335,15 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 				</N8nCard>
 
 				<div :class="$style.output">
-					<template v-if="item.kind === 'execution-error'">
-						<N8nCallout theme="danger" data-testid="execution-error-callout">
+					<template v-if="item.kind === 'background-task-signal'">
+						<ul :class="$style.backgroundJobs" data-test-id="background-job-signal-details">
+							<li v-for="job in item.backgroundJobSignal?.tasks" :key="job.id">
+								{{ backgroundJobResultLabel(job, i18n) }}
+							</li>
+						</ul>
+					</template>
+					<template v-else-if="item.kind === 'execution-error'">
+						<N8nCallout theme="danger" data-test-id="execution-error-callout">
 							{{ executionErrorMessage(item, i18n) }}
 						</N8nCallout>
 					</template>
@@ -399,7 +413,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						</div>
 					</template>
 
-					<template v-else-if="item.kind === 'tool'">
+					<template v-else-if="item.kind === 'tool' || item.kind === 'skill'">
 						<N8nCallout
 							v-if="isFailed"
 							theme="danger"
@@ -460,7 +474,12 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins' as ds-mixins;
+@use '@n8n/design-system/css/mixins/markdown';
+
+.backgroundJobs {
+	padding-inline-start: var(--spacing--md);
+	overflow-wrap: anywhere;
+}
 
 .panel {
 	display: flex;
@@ -582,7 +601,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 }
 
 .markdown {
-	@include ds-mixins.markdown-content;
+	@include markdown.markdown-content;
 
 	color: var(--color--text--shade-1);
 	font-size: var(--font-size--sm);

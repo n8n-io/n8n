@@ -79,7 +79,7 @@ export function mapCredentialForProvider(
 	raw: ResolvedCredential,
 ): Record<string, unknown> {
 	const mapper = PROVIDER_CREDENTIAL_MAPPERS[provider];
-	if (!mapper) return raw as Record<string, unknown>;
+	if (!mapper) return raw;
 	// Strip undefined values so they don't shadow existing keys in the Zod parse.
 	const mapped = mapper(raw);
 	return Object.fromEntries(Object.entries(mapped).filter(([, v]) => v !== undefined));

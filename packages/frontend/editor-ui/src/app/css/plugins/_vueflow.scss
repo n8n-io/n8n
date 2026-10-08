@@ -1,4 +1,4 @@
-@use '@n8n/design-system/css/mixins' as mixins;
+@use '@n8n/design-system/css/mixins/breakpoints';
 
 /**
  * Resizer
@@ -59,7 +59,7 @@
 		opacity: 0.2;
 	}
 
-	@include mixins.breakpoint('xs-only') {
+	@include breakpoints.breakpoint('xs-only') {
 		display: none;
 	}
 }
@@ -149,7 +149,7 @@
 	gap: var(--spacing--xs);
 	box-shadow: none;
 
-	@include mixins.breakpoint('xs-only') {
+	@include breakpoints.breakpoint('xs-only') {
 		max-width: calc(100% - 3 * var(--spacing--sm) - var(--spacing--2xs));
 		overflow: auto;
 		margin-left: 0;

@@ -85,19 +85,23 @@ const isValidDate = (str: string) =>
 // Both functions below were taken from Stack Overflow jsonToDocument was fixed as it was unable to handle null values correctly
 // https://stackoverflow.com/questions/62246410/how-to-convert-a-firestore-document-to-plain-json-and-vice-versa
 // Great thanks to https://stackoverflow.com/users/3915246/mahindar
-export function jsonToDocument(value: string | number | IDataObject | IDataObject[]): IDataObject {
+export function jsonToDocument(
+	value: string | number | boolean | null | undefined | IDataObject | IDataObject[],
+): IDataObject {
 	if (value === 'true' || value === 'false' || typeof value === 'boolean') {
 		return { booleanValue: value };
+	} else if (value === undefined) {
+		return { nullValue: null };
 	} else if (value === null) {
 		return { nullValue: null };
-	} else if (value !== '' && typeof value !== 'object' && !isNaN(value as number)) {
+	} else if (typeof value === 'number' && !Number.isNaN(value)) {
 		if (value.toString().indexOf('.') !== -1) {
 			return { doubleValue: value };
 		} else {
 			return { integerValue: value };
 		}
-	} else if (isValidDate(value as string)) {
-		const date = new Date(Date.parse(value as string));
+	} else if (typeof value === 'string' && /[-T:]/.test(value) && isValidDate(value)) {
+		const date = new Date(Date.parse(value));
 		return { timestampValue: date.toISOString() };
 	} else if (typeof value === 'string') {
 		return { stringValue: value };
@@ -106,7 +110,7 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 	} else if (typeof value === 'object') {
 		const obj: IDataObject = {};
 		for (const key of Object.keys(value)) {
-			if (value.hasOwnProperty(key) && isSafeObjectProperty(key)) {
+			if (Object.prototype.hasOwnProperty.call(value, key) && isSafeObjectProperty(key)) {
 				obj[key] = jsonToDocument((value as IDataObject)[key] as IDataObject);
 			}
 		}

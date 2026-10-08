@@ -1,4 +1,4 @@
-import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import {
 	CHAT_VIEW,
 	CHAT_CONVERSATION_VIEW,
@@ -23,7 +23,7 @@ const ChatPersonalAgentsView = async () =>
 const SettingsChatHubView = async () =>
 	await import('@/features/ai/chatHub/SettingsChatHubView.vue');
 
-export const ChatModule: FrontendModuleDescription = {
+export const ChatModule = defineFrontendModule({
 	id: 'chat-hub',
 	name: 'Chat',
 	description: 'Chat with LLM models or your n8n AI agents.',
@@ -199,10 +199,9 @@ export const ChatModule: FrontendModuleDescription = {
 			label: i18n.baseText('settings.chatHub'),
 			position: 'top',
 			route: { to: { name: CHAT_SETTINGS_VIEW } },
-			preview: true,
 			get available() {
 				return hasPermission(['rbac'], { rbac: { scope: 'chatHub:manage' } });
 			},
 		},
 	],
-};
+});

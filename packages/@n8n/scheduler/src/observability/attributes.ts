@@ -1,3 +1,4 @@
+import type { RecordedOccurrence } from '../core/materializer';
 import type { ClaimedTask } from '../core/types';
 
 /**
@@ -72,15 +73,25 @@ export const SCHEDULER_FIRE_OUTCOME = {
 	skippedNotOwned: 'skipped_not_owned',
 } as const;
 
-/**
- * Per-occurrence attributes shared by the fire/handoff spans. `ClaimedTask`
- * carries no workflow id, so the identity is `job_id` + `task_id` only.
- */
-export function pickSchedulerTaskAttributes(task: ClaimedTask): Record<string, string | number> {
+/** The `job_id` + `task_id` + `task_type` triple every scheduler task span carries. */
+export function pickSchedulerTaskIdentity(
+	task: RecordedOccurrence,
+): Record<string, string | number> {
 	return {
 		[SCHEDULER_ATTRIBUTES.taskId]: task.id,
 		[SCHEDULER_ATTRIBUTES.jobId]: task.jobId,
 		[SCHEDULER_ATTRIBUTES.taskType]: task.taskType,
+	};
+}
+
+/**
+ * The full per-occurrence attributes of a fire span: the identity plus this
+ * attempt's lease, attempt counts and instants. Spans that carry the identity
+ * alone use {@link pickSchedulerTaskIdentity}.
+ */
+export function pickSchedulerTaskAttributes(task: ClaimedTask): Record<string, string | number> {
+	return {
+		...pickSchedulerTaskIdentity(task),
 		[SCHEDULER_ATTRIBUTES.leaseEpoch]: task.leaseEpoch,
 		[SCHEDULER_ATTRIBUTES.attempts]: task.attempts,
 		[SCHEDULER_ATTRIBUTES.maxAttempts]: task.maxAttempts,

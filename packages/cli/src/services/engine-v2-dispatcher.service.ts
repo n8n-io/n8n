@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { StepSlots, TriggerOutputs } from '@n8n/engine';
+import type { StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
 import type {
 	INode,
 	INodeExecutionData,
@@ -8,13 +8,23 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { classifyTriggerIdentity, isTriggerNodeType, UserError } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import { toWorkflowDocument } from '@/executions/execution-data/types';
-import { createExecutionIdV2 } from '@/executions/execution-id';
+import {
+	createExecutionIdV2,
+	type ExecutionIdV2,
+	isExecutionIdV2,
+} from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
-import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import {
+	EngineDataPlaneProxyService,
+	isStartRefusedBeforeSave,
+} from '@/services/engine-data-plane-proxy.service';
+import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
+import { toResponseExpectation } from '@/webhooks/engine-v2-response-expectation';
 
 type ToStepOutputs = (outputs: INodeExecutionData[][]) => StepSlots;
 
@@ -25,8 +35,11 @@ type FiredTrigger = {
 	outputs: INodeExecutionData[][];
 };
 
+/** A run that is ready to send to the data plane. */
+type PreparedStart = { executionId: ExecutionIdV2; request: StartExecutionRequest };
+
 /** Execution modes the v2 path serves today. */
-const ROUTED_MODES = new Set<WorkflowExecuteMode>(['manual', 'webhook']);
+const ROUTED_MODES = new Set<WorkflowExecuteMode>(['manual', 'webhook', 'trigger']);
 
 /** v1's payload for a manual run with no trigger data: one slot, one empty item. */
 const DEFAULT_MAIN_OUTPUT: INodeExecutionData[][] = [[{ json: {} }]];
@@ -39,10 +52,10 @@ const withoutNullSlots = (main: Array<INodeExecutionData[] | null>): INodeExecut
 	main.map((slot) => slot ?? []);
 
 /**
- * Routes a run to the engine 2.0 data plane and starts it there.
+ * Routes a run to the engine v2 data plane and starts it there.
  *
  * The single dispatch point for the v2 path: {@link routesToEngineV2} decides,
- * {@link start} runs. A workflow that opts into engine 2.0 never falls back to
+ * {@link start} runs. A workflow that opts into engine v2 never falls back to
  * v1 — anything the v2 path cannot do fails with a user-facing reason instead,
  * because a silent fallback would run the workflow on an engine the user did
  * not pick.
@@ -57,12 +70,12 @@ export class EngineV2Dispatcher {
 		private readonly proxy: EngineDataPlaneProxyService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly pushRegistry: EngineV2PushRegistry,
+		private readonly payloadFiles: EngineV2PayloadFiles,
 	) {}
 
 	/**
-	 * Manual and webhook runs for now; the trigger entry path (CAT-2921) reuses
-	 * this seam later. A resume must not start a fresh data-plane execution,
-	 * hence the `existingExecution` check.
+	 * Manual, webhook and active trigger runs. A resume must not start a fresh
+	 * data-plane execution, hence the `existingExecution` check.
 	 */
 	routesToEngineV2(
 		data: IWorkflowExecutionDataProcess,
@@ -83,15 +96,51 @@ export class EngineV2Dispatcher {
 		return workflowData.settings?.engineType === 'v2' && ROUTED_MODES.has(executionMode);
 	}
 
-	/** Returns the execution id this dispatch minted. */
+	/**
+	 * Returns the execution id this run uses.
+	 *
+	 * A caller that has to wait for the run's answer mints the id itself, so it
+	 * can subscribe before the run can produce one.
+	 *
+	 * The files the trigger stored belong to the control plane until the data
+	 * plane accepts the run. A run that does not start leaves them to no one, so
+	 * a failure deletes them, but only when no run can exist: a run that uses
+	 * deleted files fails, while a kept file is deleted with its execution.
+	 */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
 		const trigger = this.resolveFiredTrigger(data);
 
+		let prepared: PreparedStart;
+		try {
+			prepared = await this.prepare(data, trigger);
+		} catch (error) {
+			await this.payloadFiles.discard(trigger.outputs);
+			throw error;
+		}
+
+		const { executionId, request } = prepared;
+		try {
+			await this.proxy.startExecution(request);
+		} catch (error) {
+			// Assumes rejection: a dropped success response also releases a still-live session.
+			this.pushRegistry.release(executionId);
+			if (isStartRefusedBeforeSave(error)) await this.payloadFiles.discard(trigger.outputs);
+			throw error;
+		}
+
+		return executionId;
+	}
+
+	/** Everything before the data plane is called, so no run exists if this fails. */
+	private async prepare(
+		data: IWorkflowExecutionDataProcess,
+		trigger: FiredTrigger,
+	): Promise<PreparedStart> {
 		this.assertSupported(data, trigger);
 
 		const { workflowData } = data;
 
-		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes);
+		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes, data.userId);
 
 		// Lazily imported: a top-level import would pull the v1 step executor and
 		// its dependencies into every n8n process, including ones with the module off.
@@ -99,12 +148,18 @@ export class EngineV2Dispatcher {
 
 		const graph = new V1WorkflowConverter().convert(workflowData, trigger.name);
 
-		const executionId = createExecutionIdV2();
+		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
+		// A caller that minted the id is waiting on that exact run.
+		assert(isExecutionIdV2(executionId), 'Engine v2 was given an id it cannot run');
+		// A trigger node stored its files before the id existed. They move under the
+		// run here, so the data plane reads them where every other file of the run is.
+		await this.payloadFiles.claimForExecution(trigger.outputs, executionId);
 		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
 		this.registerPushSession(executionId, data, trigger);
 
-		try {
-			await this.proxy.startExecution({
+		return {
+			executionId,
+			request: {
 				executionId,
 				workflowId: workflowData.id,
 				graph,
@@ -112,7 +167,8 @@ export class EngineV2Dispatcher {
 				// workflow that ran even after the live one is edited.
 				workflow: toWorkflowDocument(workflowData),
 				triggerOutputs: this.toTriggerOutputs(trigger.outputs, toStepOutputs),
-				// Only manual and webhook route here, so anything else is a production run.
+				// The engine keeps only a coarse manual/production distinction. The exact
+				// host mode is carried in callerContext for reads and lifecycle events.
 				mode: data.executionMode === 'manual' ? 'manual' : 'production',
 				// The step executor needs the v1 mode and the caller to resolve credentials.
 				callerContext: {
@@ -120,14 +176,9 @@ export class EngineV2Dispatcher {
 					userId: data.userId,
 					projectId: data.projectId,
 				},
-			});
-		} catch (error) {
-			// Assumes rejection: a dropped success response also releases a still-live session.
-			this.pushRegistry.release(executionId);
-			throw error;
-		}
-
-		return executionId;
+				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
+			},
+		};
 	}
 
 	/**
@@ -163,13 +214,13 @@ export class EngineV2Dispatcher {
 	private assertSupported(data: IWorkflowExecutionDataProcess, trigger: FiredTrigger): void {
 		if (!this.proxy.isAvailable()) {
 			throw new UserError(
-				'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
+				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
 			);
 		}
 
 		if (data.runData !== undefined) {
 			throw new UserError(
-				'Engine 2.0 cannot run a workflow from existing data yet. Run the whole workflow instead.',
+				'Engine v2 cannot run a workflow from existing data yet. Run the whole workflow instead.',
 			);
 		}
 
@@ -177,18 +228,18 @@ export class EngineV2Dispatcher {
 		// user did not ask for, with their side effects.
 		if (data.destinationNode !== undefined) {
 			throw new UserError(
-				'Engine 2.0 cannot run a workflow up to a single node yet. Run the whole workflow instead.',
+				'Engine v2 cannot run a workflow up to a single node yet. Run the whole workflow instead.',
 			);
 		}
 
 		if (data.startNodes?.length) {
 			throw new UserError(
-				'Engine 2.0 cannot start from selected nodes yet. Run the whole workflow instead.',
+				'Engine v2 cannot start from selected nodes yet. Run the whole workflow instead.',
 			);
 		}
 
 		if (data.agentRequest !== undefined) {
-			throw new UserError('Engine 2.0 cannot run a workflow as an AI tool yet.');
+			throw new UserError('Engine v2 cannot run a workflow as an AI tool yet.');
 		}
 
 		// `WorkflowRunner.run` returns through the v2 branch before it establishes the
@@ -202,7 +253,7 @@ export class EngineV2Dispatcher {
 			classifyTriggerIdentity(firedNode.type, firedNode.parameters).providesExternalIdentity
 		) {
 			throw new UserError(
-				`Engine 2.0 cannot run the "${firedNode.name}" trigger yet, because it takes credentials from the request.`,
+				`Engine v2 cannot run the "${firedNode.name}" trigger yet, because it takes credentials from the request.`,
 			);
 		}
 
@@ -210,7 +261,7 @@ export class EngineV2Dispatcher {
 		const pinnedNode = Object.keys(data.pinData ?? {}).find((name) => name !== trigger.name);
 		if (pinnedNode !== undefined) {
 			throw new UserError(
-				`Engine 2.0 does not support pinned data on "${pinnedNode}" yet. Unpin it to run this workflow.`,
+				`Engine v2 does not support pinned data on "${pinnedNode}" yet. Unpin it to run this workflow.`,
 			);
 		}
 	}

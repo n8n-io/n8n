@@ -1,8 +1,6 @@
-import type { JSONObject } from '@n8n/agents';
+import type { EpisodicMemoryStatus, JSONObject } from '@n8n/agents';
 import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
-
-export type MemoryEntryStatus = 'active' | 'superseded' | 'dropped';
 
 @Entity({ name: 'agents_memory_entries' })
 @Index(['agentId', 'resourceId', 'status', 'createdAt', 'id'])
@@ -23,7 +21,7 @@ export class AgentMemoryEntryEntity extends WithTimestampsAndStringId {
 	contentHash: string;
 
 	@Column({ type: 'varchar', length: 16 })
-	status: MemoryEntryStatus;
+	status: EpisodicMemoryStatus;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	supersededBy: string | null;

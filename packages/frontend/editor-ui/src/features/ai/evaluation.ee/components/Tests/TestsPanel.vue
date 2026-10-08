@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { useI18n } from '@n8n/i18n';
@@ -7,6 +7,7 @@ import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-syst
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { NODE_CREATOR_OPEN_SOURCES } from '@/app/constants';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -29,6 +30,7 @@ const wizardStore = useEvaluationsWizardSidepanelStore();
 const evaluationStore = useEvaluationStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsStore = useWorkflowsStore();
+const pushStore = usePushConnectionStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const { fetchLatestUserExecution } = useUserExecutions();
 const locale = useI18n();
@@ -120,6 +122,29 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// The probe and any dispatched test runs are only ever fetched once (on open,
+// or right after a wizard-dispatched run). A run started outside the wizard's
+// own actions (the gate's own "Run" button, a trigger node run, or a plain
+// canvas run while the panel is open) never refreshes either, so the panel
+// keeps showing pre-run state until it remounts. Re-run both on this
+// workflow's own execution finishing so the gate and results stay live.
+let removePushListener: (() => void) | null = null;
+
+onMounted(() => {
+	removePushListener = pushStore.addEventListener((message) => {
+		if (message.type !== 'executionFinished') return;
+		const workflowId = workflowDocumentStore.value?.workflowId;
+		if (!workflowId || message.data.workflowId !== workflowId) return;
+		void runExecutionProbe();
+		void evaluationStore.fetchTestRuns(workflowId);
+	});
+});
+
+onBeforeUnmount(() => {
+	removePushListener?.();
+	removePushListener = null;
+});
 
 // Skip evaluation runs — after a few sessions, lastSuccessfulExecution would
 // always be the compiled eval workflow, not the user's graph.

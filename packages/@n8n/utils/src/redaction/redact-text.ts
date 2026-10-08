@@ -1,5 +1,6 @@
 import type { PiiDetectionType, PiiPatternTable, RedactionCategory } from './pii-patterns';
 import { resolvePatterns } from './pii-patterns';
+import { isSensitiveKey } from './sensitive-key';
 
 export const DEFAULT_PLACEHOLDER = '[REDACTED]';
 
@@ -45,16 +46,14 @@ export function redactText(input: string, opts: RedactionOptions = {}): Redactio
 		},
 		opts.piiPatterns,
 	);
-	// In preserve mode the url pass runs FIRST: it rewrites URLs with a URL-safe
-	// placeholder before other patterns can plant one containing `]` mid-URL —
-	// `]` stops the url regex, which would hide the URL's tail (and any secrets
-	// in it) from this pass entirely.
-	const ordered = opts.preserveUrlStructure
-		? [
-				...patterns.filter((pattern) => pattern.category === 'url'),
-				...patterns.filter((pattern) => pattern.category !== 'url'),
-			]
-		: patterns;
+	// The url pass runs FIRST: it rewrites URLs (whole, or with a URL-safe
+	// placeholder in preserve mode) before other patterns can plant one
+	// containing `]` mid-URL — `]` stops the url regex, which would hide the
+	// URL's tail (and any secrets in it) from this pass entirely.
+	const ordered = [
+		...patterns.filter((pattern) => pattern.category === 'url'),
+		...patterns.filter((pattern) => pattern.category !== 'url'),
+	];
 
 	const matches: Array<{ category: RedactionCategory }> = [];
 	let text = input;
@@ -149,8 +148,6 @@ export function findMatchRanges(
 }
 
 const MAX_DEEP_DEPTH = 8;
-const SENSITIVE_KEY_PATTERN =
-	/(api[_-]?key|private[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
 
 export interface DeepRedactionResult {
 	value: unknown;
@@ -177,7 +174,7 @@ function redactDeepValue(
 	depth: number,
 	key?: string,
 ): DeepRedactionResult {
-	if (opts.redactSensitiveKeys && key && SENSITIVE_KEY_PATTERN.test(key)) {
+	if (opts.redactSensitiveKeys && key && isSensitiveKey(key)) {
 		return { value: opts.placeholder ?? DEFAULT_PLACEHOLDER, matches: [{ category: 'secret' }] };
 	}
 

@@ -342,6 +342,33 @@ class TestImportAliasValidation(TestTaskAnalyzer):
                 analyzer.validate(code)
             assert name in exc_info.value.description
 
+    def test_import_alias_using_blocked_attribute_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_ATTRIBUTES:
+            code = f"import json as {name}"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_from_import_alias_using_blocked_attribute_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_ATTRIBUTES:
+            code = f"from json import dumps as {name}"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_from_import_name_using_blocked_attribute_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_ATTRIBUTES:
+            code = f"from math import {name}"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
     def test_safe_import_aliases_allowed(self, analyzer: TaskAnalyzer) -> None:
         safe = [
             "import json as j",

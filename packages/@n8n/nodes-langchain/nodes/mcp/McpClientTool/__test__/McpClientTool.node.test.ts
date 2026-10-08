@@ -37,6 +37,7 @@ const mockedProxyFetch = proxyFetch as MockedFunction<typeof proxyFetch>;
 
 const createTestEgressFilter = (): NodeEgressFilter => ({
 	validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+	validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
 	createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
 	validateRedirectSync: vi.fn(),
 });

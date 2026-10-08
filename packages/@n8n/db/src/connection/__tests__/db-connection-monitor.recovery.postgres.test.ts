@@ -325,14 +325,17 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			});
 			await dataSource.initialize();
 
-			const destroyTimeoutMs = 2_000;
+			// The frozen socket never self-drains, so any bound works. The log assertions below
+			// prove the path; the value only sets how long the test waits.
+			const destroyTimeoutMs = 50;
+			const logger = mock<Logger>();
 			const monitor = new DbConnectionMonitor(
 				dataSource,
 				() => {},
 				buildDatabaseConfig({
 					postgresdb: mock<DatabaseConfig['postgresdb']>({ destroyTimeoutMs }),
 				}),
-				mock<Logger>(),
+				logger,
 				mock<ErrorReporter>(),
 				mock<DbConnectionMetrics>(),
 			);
@@ -347,15 +350,17 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			proxy.freezeExisting();
 
 			try {
-				const start = Date.now();
 				// Without the destroy timeout this never resolves (`destroy()` hangs at attempt 1).
 				await (monitor as unknown as MonitorInternals).recoverDataSource();
-				const elapsed = Date.now() - start;
 
-				// `destroy()` was bounded and the frozen client force-closed, so the pool rebuilt.
-				// The lower bound proves recovery went through the timeout path, not a self-drain.
-				expect(elapsed).toBeGreaterThanOrEqual(destroyTimeoutMs);
-				expect(elapsed).toBeLessThan(destroyTimeoutMs + 15_000);
+				// `destroy()` hit the bound, the frozen client was force-closed, and that was enough:
+				// the drain settled inside the grace period, so the pool was not abandoned.
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining(`teardown exceeded ${destroyTimeoutMs}ms`),
+				);
+				expect(logger.error).not.toHaveBeenCalledWith(
+					expect.stringContaining('abandoning the pool'),
+				);
 				expect(dataSource.isInitialized).toBe(true);
 				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
 			} finally {
@@ -385,14 +390,17 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			);
 			await dataSource.initialize();
 
-			const destroyTimeoutMs = 2_000;
+			// The frozen socket never self-drains, so any bound works. The log assertions below
+			// prove the path; the value only sets how long the test waits.
+			const destroyTimeoutMs = 50;
+			const logger = mock<Logger>();
 			const monitor = new DbConnectionMonitor(
 				dataSource,
 				() => {},
 				buildDatabaseConfig({
 					postgresdb: mock<DatabaseConfig['postgresdb']>({ destroyTimeoutMs }),
 				}),
-				mock<Logger>(),
+				logger,
 				mock<ErrorReporter>(),
 				mock<DbConnectionMetrics>(),
 			);
@@ -413,14 +421,16 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			proxy.freezeExisting();
 
 			try {
-				const start = Date.now();
 				// Before the fix this never resolves: the post-force-close await was unbounded.
 				await (monitor as unknown as MonitorInternals).recoverDataSource();
-				const elapsed = Date.now() - start;
 
 				// Both bounds were traversed, then the teardown was abandoned and the pool rebuilt.
-				expect(elapsed).toBeGreaterThanOrEqual(destroyTimeoutMs + FORCE_CLOSE_GRACE_MS);
-				expect(elapsed).toBeLessThan(destroyTimeoutMs + FORCE_CLOSE_GRACE_MS + 15_000);
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining(`teardown exceeded ${destroyTimeoutMs}ms`),
+				);
+				expect(logger.error).toHaveBeenCalledWith(
+					expect.stringContaining(`${FORCE_CLOSE_GRACE_MS}ms after force-closing sockets`),
+				);
 				expect(dataSource.isInitialized).toBe(true);
 				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
 			} finally {

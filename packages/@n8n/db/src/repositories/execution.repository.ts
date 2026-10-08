@@ -1,5 +1,6 @@
 import { Logger, parseFlatted } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type {
@@ -12,6 +13,7 @@ import type {
 import {
 	Brackets,
 	DataSource,
+	Equal,
 	In,
 	IsNull,
 	LessThan,
@@ -19,9 +21,11 @@ import {
 	MoreThanOrEqual,
 	Not,
 	And,
+	Raw,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { stringify } from 'flatted';
+import chunk from 'lodash/chunk';
 import pick from 'lodash/pick';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import type {
@@ -30,11 +34,14 @@ import type {
 	ExecutionSummary,
 	IRunExecutionData,
 	IRunExecutionDataAll,
+	IWorkflowSettings,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
 	CRASHABLE_EXECUTION_STATUSES,
 	migrateRunExecutionData,
 	UnexpectedError,
+	WAIT_FOR_SUB_EXECUTION,
 } from 'n8n-workflow';
 
 import {
@@ -48,6 +55,7 @@ import {
 	SharedWorkflow,
 	WorkflowEntity,
 } from '../entities';
+import type { ActivityProjectScope } from './activity-event.repository';
 import { BaseRepository } from './base-repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type {
@@ -59,6 +67,7 @@ import type {
 import { TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { chunkIds } from '../utils/chunk-ids';
+import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
 import { separate } from '../utils/separate';
 
 class PostgresLiveRowsRetrievalError extends UnexpectedError {
@@ -66,6 +75,20 @@ class PostgresLiveRowsRetrievalError extends UnexpectedError {
 		super('Failed to retrieve live execution rows in Postgres', { extra: { rows } });
 	}
 }
+
+export type CrashedExecution = {
+	id: string;
+	workflowId: string;
+	workflowName?: string;
+	mode: WorkflowExecuteMode;
+	startedAt: Date | null;
+	stoppedAt: Date;
+	tracingContext?: { traceparent: string; tracestate?: string };
+	workflowVersionId?: string;
+	retryOf?: string;
+	workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
+	project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
+};
 
 export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
@@ -373,22 +396,141 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 	}
 
-	async markAsCrashed(executionIds: string | string[]) {
-		if (!Array.isArray(executionIds)) executionIds = [executionIds];
+	/**
+	 * Set in-progress executions to `crashed` in batches. Calls `onBatchTransitioned`
+	 * after each batch commits.
+	 */
+	async markAsCrashed(
+		executionIds: string | string[],
+		onBatchTransitioned?: (batch: CrashedExecution[]) => void,
+	): Promise<CrashedExecution[]> {
+		// Dedupe so a repeated id is reported, and counted, once.
+		const ids = [...new Set(Array.isArray(executionIds) ? executionIds : [executionIds])];
 
-		let processed: number = 0;
-		while (processed < executionIds.length) {
-			// NOTE: if a slice goes past the end of the array, it just returns up til the end.
-			const batch: string[] = executionIds.slice(processed, processed + MAX_UPDATE_BATCH_SIZE);
-			await this.update(
-				// Guard against overwriting executions that have since moved to a `waiting` or
-				// terminal status: recovery can race a `running` -> `waiting` transition and flag a
-				// healthy execution as dangling, but only genuinely in-progress rows should be crashed
-				{ id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
-				{ status: 'crashed', stoppedAt: new Date(), waitTill: null },
+		const crashed: CrashedExecution[] = [];
+
+		for (const batch of chunk(ids, MAX_UPDATE_BATCH_SIZE)) {
+			const transitioned = await this.withOwnerProjects(
+				await this.transitionToCrashed({ id: In(batch) }),
 			);
-			this.logger.info('Marked executions as `crashed`', { executionIds });
-			processed += batch.length;
+
+			crashed.push(...transitioned);
+			// Report each batch as it commits, so a later batch that throws keeps the earlier reports.
+			onBatchTransitioned?.(transitioned);
+			this.logger.info('Marked executions as `crashed`', { executionIds: batch });
+		}
+
+		return crashed;
+	}
+
+	/** Set the workflow's in-progress executions to `crashed`. */
+	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
+		const transitioned = await this.withOwnerProjects(
+			await this.transitionToCrashed({ workflowId }),
+		);
+
+		if (transitioned.length > 0) {
+			this.logger.info('Marked executions as `crashed`', {
+				executionIds: transitioned.map(({ id }) => id),
+			});
+		}
+
+		return transitioned;
+	}
+
+	/**
+	 * Set the rows matching `where` to `crashed`. The caller's predicate selects the
+	 * candidates; the status guard and the identity of the written rows are added here.
+	 */
+	private async transitionToCrashed(
+		where: FindOptionsWhere<ExecutionEntity>,
+	): Promise<CrashedExecution[]> {
+		// `stoppedAt` doubles as a claim token, so the read below can match the rows this
+		// UPDATE wrote without `SELECT ... FOR UPDATE`, which SQLite does not support. A
+		// batch that partly overlaps a concurrent sweep still reads the shared rows back.
+		const stoppedAt = new Date();
+
+		return await this.runInTransaction({}, async (tx) => {
+			// Guard against overwriting executions that have since moved to a `waiting` or
+			// terminal status: recovery can race a `running` -> `waiting` transition and flag a
+			// healthy execution as dangling, but only genuinely in-progress rows should be crashed
+			const updateResult = await tx.update(
+				ExecutionEntity,
+				{ ...where, status: In(CRASHABLE_EXECUTION_STATUSES) },
+				{ status: 'crashed', stoppedAt, waitTill: null },
+			);
+
+			// An unreported `affected` is unknown rather than zero, so it falls through to the read.
+			if (updateResult?.affected === 0) return [];
+
+			const rows = await tx.find(ExecutionEntity, {
+				select: {
+					id: true,
+					workflowId: true,
+					workflowVersionId: true,
+					mode: true,
+					retryOf: true,
+					startedAt: true,
+					// TypeORM types a JSON column's select as a nested select, but any truthy
+					// value here selects the whole column.
+					tracingContext: { traceparent: true, tracestate: true },
+					workflow: { id: true, name: true, settings: { customTelemetryTags: true } },
+				},
+				relations: { workflow: true },
+				where: { ...where, status: 'crashed', stoppedAt },
+				// The UPDATE above also crashes soft-deleted rows, so keep them in the read.
+				withDeleted: true,
+			});
+
+			return rows.map(
+				({
+					id,
+					workflowId,
+					workflowVersionId,
+					mode,
+					retryOf,
+					startedAt,
+					tracingContext,
+					workflow,
+				}) => ({
+					id,
+					workflowId,
+					workflowName: workflow?.name,
+					workflowVersionId: workflowVersionId ?? undefined,
+					mode,
+					retryOf: retryOf ?? undefined,
+					startedAt,
+					stoppedAt,
+					tracingContext: tracingContext ?? undefined,
+					workflowCustomTelemetryTags: workflow?.settings?.customTelemetryTags,
+				}),
+			);
+		});
+	}
+
+	/** Add the owner project of each execution's workflow. */
+	private async withOwnerProjects(executions: CrashedExecution[]): Promise<CrashedExecution[]> {
+		if (executions.length === 0) return executions;
+
+		try {
+			const projects = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds([
+				...new Set(executions.map(({ workflowId }) => workflowId)),
+			]);
+
+			return executions.map((execution) => {
+				const project = projects.get(execution.workflowId);
+				if (!project) return execution;
+
+				return {
+					...execution,
+					project: { id: project.id, customTelemetryTags: project.customTelemetryTags },
+				};
+			});
+		} catch (error) {
+			// The project only decorates the report, so a failed lookup must still let the
+			// crash be counted and announced.
+			this.logger.warn('Failed to load owner projects for crashed executions', { error });
+			return executions;
 		}
 	}
 
@@ -452,9 +594,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				// oxlint-disable-next-line typescript/no-deprecated
 				if (conditions?.requireNotFinished) whereCondition.finished = false;
-				if (conditions?.requireNotCanceled)
-					whereCondition.status = Not('canceled') as FindOperator<ExecutionStatus>;
+				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');
 
 				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
 				const executionTableAffectedRows = result.affected ?? 0;
@@ -553,34 +695,33 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.select('annotation.executionId')
 			.from(ExecutionAnnotation, 'annotation');
 
-		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
-		const date = new Date();
-		date.setHours(date.getHours() - pruneDataMaxAge);
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
 
-		const toPrune: Array<FindOptionsWhere<ExecutionEntity>> = [
-			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
-			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
-		];
+		const pruningCriteria = new Brackets((qb) => {
+			// Find executions that stopped before the retention cutoff.
+			qb.where({
+				stoppedAt: Raw(
+					(column) =>
+						`${column} <= ${dbNowPlusMsLiteral(isPostgres, -pruneDataMaxAge * Time.hours.toMilliseconds)}`,
+				),
+			});
 
-		if (pruneDataMaxCount > 0) {
-			const executions = await this.createQueryBuilder('execution')
-				.select('execution.id')
-				.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
-				.skip(pruneDataMaxCount)
-				.take(1)
-				.orderBy('execution.id', 'DESC')
-				.getMany();
+			if (pruneDataMaxCount > 0) {
+				// Compute the count cutoff in the same statement so it matches the rows it updates.
+				const countCutoff = this.createQueryBuilder('execution')
+					.select('execution.id')
+					.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
+					.orderBy('execution.id', 'DESC')
+					.offset(pruneDataMaxCount)
+					.limit(1);
 
-			if (executions[0]) {
-				toPrune.push({ id: LessThanOrEqual(executions[0].id) });
+				qb.orWhere(`id <= (${countCutoff.getQuery()})`);
 			}
-		}
-
-		const [timeBasedWhere, countBasedWhere] = toPrune;
+		});
 
 		return await this.createQueryBuilder()
 			.update(ExecutionEntity)
-			.set({ deletedAt: new Date() })
+			.set({ deletedAt: () => dbNowLiteral(isPostgres) })
 			.where({
 				deletedAt: IsNull(),
 				// Only mark executions as deleted if they are in an end state
@@ -588,24 +729,19 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			})
 			// Only mark executions as deleted if they are not annotated
 			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
-			.andWhere(
-				new Brackets((qb) =>
-					countBasedWhere
-						? qb.where(timeBasedWhere).orWhere(countBasedWhere)
-						: qb.where(timeBasedWhere),
-				),
-			)
+			.andWhere(pruningCriteria)
 			.execute();
 	}
 
 	async findSoftDeletedExecutions() {
-		const date = new Date();
-		date.setHours(date.getHours() - this.globalConfig.executions.pruneDataHardDeleteBuffer);
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
+		const bufferMs =
+			this.globalConfig.executions.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
 
 		const results = await this.find({
 			select: ['workflowId', 'id', 'storedAt'],
 			where: {
-				deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+				deletedAt: Raw((column) => `${column} <= ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
 			},
 			take: this.hardDeletionBatchSize,
 
@@ -651,6 +787,23 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
+	/** Ids of executions parked because a sub-execution they wait for is itself waiting. */
+	async findParkedOnSubExecution(): Promise<string[]> {
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			waitTill: WAIT_FOR_SUB_EXECUTION,
+			status: 'waiting',
+		};
+
+		if (this.globalConfig.database.type === 'sqlite') {
+			// Same TypeORM <> SQLite date-parameter issue as in `getWaitingExecutions`.
+			where.waitTill = Equal(DateUtils.mixedDateToUtcDatetimeString(WAIT_FOR_SUB_EXECUTION));
+		}
+
+		const rows = await this.find({ select: ['id'], where, order: { id: 'ASC' } });
+
+		return rows.map(({ id }) => id);
+	}
+
 	async countInWorkflows(
 		workflowIds: string[],
 		options: {
@@ -666,6 +819,125 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			where: this.getFindManyInWorkflowsCondition(workflowIds, options),
 			take: options.limit,
 		});
+	}
+
+	/**
+	 * Runs per workflow in these projects, one row for each workflow, newest first.
+	 *
+	 * For telling an agent what has been running and what broke. Aggregated in the database on
+	 * purpose: the alternative is reading every row and folding in memory, and a busy instance has
+	 * far more runs than a reader would ever show. The grouping is also what makes runs fold per
+	 * workflow across the whole window rather than only where they happen to be adjacent — two
+	 * schedules on different intervals interleave.
+	 *
+	 * Scoped by project, because a run has no acting user: a schedule that failed at 03:00 belongs
+	 * to nobody, and is exactly the row worth surfacing. An empty scope therefore reads nothing
+	 * rather than falling back to something wider.
+	 *
+	 * Bounded by `stoppedAt`, which carries its own index, rather than by an execution id: a run
+	 * that started before a caller's last read and failed after it has a low id and a recent
+	 * outcome, and is the row a reader most needs.
+	 */
+	async summariseRunsForProjects(query: {
+		projectIds: ActivityProjectScope;
+		/**
+		 * Start of the window, inclusive. Half-open with `stoppedBefore` — `[after, before)` — so
+		 * consecutive windows tile the timeline with neither a gap nor an overlap: a caller passing
+		 * the previous window's end gets additions only, and a run landing exactly on that boundary
+		 * belongs to the later window rather than falling between the two.
+		 */
+		stoppedAfter: Date;
+		/** End of the window, exclusive. The caller's read time. */
+		stoppedBefore: Date;
+		/** How many workflows may contribute, so schedules cannot crowd out everything else. */
+		workflowLimit: number;
+		/**
+		 * Count only workflows this instance exposes to MCP. Pushed into the query rather than
+		 * applied to the result, because these are aggregates: dropping rows afterwards would leave
+		 * "ran 43 times" standing for runs the caller may not see.
+		 */
+		mcpVisibleOnly?: boolean;
+	}): Promise<
+		Array<{
+			workflowId: string;
+			workflowName: string;
+			total: number;
+			failed: number;
+			lastStoppedAt: Date;
+			lastFailedExecutionId: string | null;
+		}>
+	> {
+		if (query.projectIds !== 'all-projects' && query.projectIds.length === 0) return [];
+		if (!Number.isInteger(query.workflowLimit) || query.workflowLimit <= 0) return [];
+
+		// `crashed` and `error` are the failure half of `CompletedExecutionStatus`. `canceled` is
+		// somebody stopping a run on purpose, which is not a fault to report.
+		const failureStatuses: ExecutionStatus[] = ['error', 'crashed'];
+
+		const qb = this.createQueryBuilder('execution')
+			.select('execution.workflowId', 'workflowId')
+			.addSelect('MAX(workflow.name)', 'workflowName')
+			// A workflow can be shared into several projects, so the join multiplies rows when more
+			// than one of them is in scope. Every aggregate here counts distinct executions.
+			.addSelect('COUNT(DISTINCT execution.id)', 'total')
+			.addSelect(
+				'COUNT(DISTINCT CASE WHEN execution.status IN (:...failureStatuses) THEN execution.id END)',
+				'failed',
+			)
+			.addSelect('MAX(execution.stoppedAt)', 'lastStoppedAt')
+			// Named so a reader can hand the agent the failure itself rather than the newest run,
+			// which on a schedule that has since recovered is a success.
+			.addSelect(
+				'MAX(CASE WHEN execution.status IN (:...failureStatuses) THEN execution.id END)',
+				'lastFailedExecutionId',
+			)
+			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = execution.workflowId')
+			.where('execution.deletedAt IS NULL')
+			// An evaluation suite is machine-paced and would bury everything a person did. The
+			// activity feed used to keep eval runs in their own category for the same reason.
+			.andWhere('execution.mode != :evaluationMode', { evaluationMode: 'evaluation' })
+			.andWhere('execution.stoppedAt IS NOT NULL')
+			.andWhere('execution.stoppedAt >= :stoppedAfter', { stoppedAfter: query.stoppedAfter })
+			.andWhere('execution.stoppedAt < :stoppedBefore', { stoppedBefore: query.stoppedBefore })
+			.setParameter('failureStatuses', failureStatuses);
+
+		// A whole-instance reader needs no project predicate, and skipping the join also removes the
+		// row multiplication a workflow shared into several projects would otherwise cause.
+		if (query.projectIds !== 'all-projects') {
+			qb.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = workflow.id').andWhere(
+				'sw.projectId IN (:...projectIds)',
+				{ projectIds: query.projectIds },
+			);
+		}
+
+		if (query.mcpVisibleOnly) {
+			qb.andWhere('workflow.isArchived = :notArchived', { notArchived: false });
+			applyWorkflowBooleanSettingFilter(qb, this.globalConfig, 'availableInMCP', true);
+		}
+
+		const rows = await qb
+			.groupBy('execution.workflowId')
+			.orderBy('MAX(execution.stoppedAt)', 'DESC')
+			.limit(query.workflowLimit)
+			.getRawMany<{
+				workflowId: string;
+				workflowName: string;
+				total: number | string;
+				failed: number | string;
+				lastStoppedAt: Date | string;
+				lastFailedExecutionId: number | string | null;
+			}>();
+
+		return rows.map((row) => ({
+			workflowId: row.workflowId,
+			workflowName: row.workflowName,
+			// Postgres returns COUNT as a bigint string.
+			total: Number(row.total),
+			failed: Number(row.failed),
+			lastStoppedAt: parseDbTime(row.lastStoppedAt),
+			lastFailedExecutionId:
+				row.lastFailedExecutionId === null ? null : String(row.lastFailedExecutionId),
+		}));
 	}
 
 	private getStatusCondition(status?: ExecutionStatus) {
@@ -947,7 +1219,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			user,
 			sharingOptions,
 			status,
-			finished,
 			workflowId,
 			startedBefore,
 			startedAfter,
@@ -986,24 +1257,26 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}
 
 		if (query.kind === 'range') {
-			const { limit, firstId, lastId } = query.range;
+			const { limit, beforeId } = query.range;
 
 			qb.limit(limit);
 
-			if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
-			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
+			if (beforeId) qb.andWhere('execution.id < :beforeId', { beforeId });
 
+			// Since a cursor pages by id, using a sort order other than `id` together
+			// with a cursor may skip or repeat rows at the boundary. This is because
+			// the row's status AND/OR startedAt timestamps can change after the fact.
+			// We accept this as a current limitation in the implementation.
 			if (query.order?.startedAt === 'DESC') {
 				qb.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' });
 			} else if (query.order?.top) {
 				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
-			} else {
-				qb.orderBy({ 'execution.id': 'DESC' });
 			}
+			qb.addOrderBy('execution.id', 'DESC');
 		}
 
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
-		if (finished) qb.andWhere({ finished });
+		if (query.mode) qb.andWhere('execution.mode = :filterMode', { filterMode: query.mode });
 		if (workflowId) qb.andWhere({ workflowId });
 		const startedAt = startedAtCondition({ startedAfter, startedBefore });
 		if (startedAt) qb.andWhere({ startedAt });
@@ -1115,9 +1388,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 				qb.orderBy({ [`COALESCE(${table}.${startedAt}, ${table}.${createdAt})`]: 'DESC' });
 			} else if (query.order?.top) {
 				qb.orderBy(`(CASE WHEN e.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
-			} else {
-				qb.orderBy({ 'e.id': 'DESC' });
 			}
+			qb.addOrderBy('e.id', 'DESC');
 		}
 
 		return qb;
@@ -1149,6 +1421,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.getRawMany<{ workflowVersionId: string }>();
 
 		return result.map((r) => r.workflowVersionId);
+	}
+
+	/** IDs of executions still in progress (`running` or `unknown` status). */
+	async findUnfinishedIds(): Promise<string[]> {
+		const rows = await this.find({
+			select: ['id'],
+			where: { status: In(['running', 'unknown']) },
+		});
+		return rows.map(({ id }) => id);
 	}
 
 	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {

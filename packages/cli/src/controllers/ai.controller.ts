@@ -15,6 +15,7 @@ import {
 	AiClearSessionRequestDto,
 	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, Query, RestController, GlobalScope } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError, NetworkError } from '@n8n_io/ai-assistant-sdk';
@@ -23,12 +24,14 @@ import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
 import { STREAM_SEPARATOR } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
-import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
+import {
+	BadRequestError,
+	ContentTooLargeError,
+	InternalServerError,
+	NotFoundError,
+	ServiceUnavailableError,
+	TooManyRequestsError,
+} from '@n8n/errors';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
@@ -45,6 +48,7 @@ export class AiController {
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private toAiAssistantResponseError(error: APIResponseError) {
@@ -223,6 +227,7 @@ export class AiController {
 		@Body payload: AiAskRequestDto,
 	): Promise<AiAssistantSDK.AskAiResponsePayload> {
 		try {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await this.aiService.askAi(payload, req.user);
 		} catch (e) {
 			throw this.toResponseError(e);
@@ -349,6 +354,15 @@ export class AiController {
 		_res: Response,
 		@Body payload: AiUsageSettingsRequestDto,
 	): Promise<void> {
+		// The setting is deprecated. It can only be turned on.
+		if (!payload.allowSendingParameterValues) {
+			throw new BadRequestError('Turning off sending parameter values is no longer supported.');
+		}
+		if (!this.globalConfig.ai.allowSendingParameterValues) {
+			throw new BadRequestError(
+				'Sending parameter values is turned off by the N8N_AI_ALLOW_SENDING_PARAMETER_VALUES environment variable. Remove it and restart n8n to turn this on.',
+			);
+		}
 		try {
 			await this.aiUsageService.updateAiUsageSettings(payload.allowSendingParameterValues);
 		} catch (e) {

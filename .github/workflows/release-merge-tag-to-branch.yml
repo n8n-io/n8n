@@ -30,7 +30,7 @@ jobs:
           private-key: ${{ secrets.RELEASE_TAG_MERGE_PRIVATE_KEY }}
           skip-token-revoke: false
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.target-branch }}
           fetch-depth: 500
@@ -61,7 +61,7 @@ jobs:
     if: ${{ always() && needs.merge-tag-to-branch.result == 'failure' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: master
           sparse-checkout: .github/scripts/slack

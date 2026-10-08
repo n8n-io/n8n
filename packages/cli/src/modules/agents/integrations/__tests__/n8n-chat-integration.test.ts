@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
+import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import type { ChatIntegrationService } from '../chat-integration.service';
 import { createIntegrationActionTool } from '../integration-tools';
 import type {
@@ -209,8 +210,12 @@ describe('internal integration dispatch', () => {
 		expect(tool.description).toContain('NEVER call respond with only message.text');
 	});
 
-	it('action executor skips getChatInstance and routes respond to the integration', async () => {
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+	it('action executor routes respond to the integration without a chat instance', async () => {
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const result = await executor.execute({
 			descriptor,
 			action: 'respond',
@@ -219,11 +224,15 @@ describe('internal integration dispatch', () => {
 			currentMessageContext: makeContext(),
 		});
 		expect(result).toMatchObject({ ok: true });
-		expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
 	});
 
 	it('action executor returns UNSUPPORTED_ACTION for send_dm on n8n_chat', async () => {
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const result = await executor.execute({
 			descriptor,
 			action: 'send_dm',
@@ -231,23 +240,27 @@ describe('internal integration dispatch', () => {
 			awaitResponse: false,
 		});
 		expect(result).toMatchObject({ ok: false, error: { code: 'UNSUPPORTED_ACTION' } });
-		expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
 	});
 
-	it('context executor skips getChatInstance for internal integrations', async () => {
+	it('context executor queries internal integrations without a chat instance', async () => {
 		userRepository.findOneBy.mockResolvedValue({
 			id: 'user-1',
 			firstName: 'Ada',
 			lastName: 'Lovelace',
 			email: 'ada@example.com',
 		} as User);
-		const executor = new ChatIntegrationContextQueryExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const result = await executor.execute({
 			descriptor,
 			query: 'get_user',
 			input: { userId: 'user-1' },
 		});
 		expect(result).toMatchObject({ ok: true });
-		expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
 	});
 });

@@ -19,7 +19,7 @@ export function textOf(result: CallToolResult): string {
 /** Extract structuredContent from a result, throwing if it isn't present. */
 export function structuredOf(result: CallToolResult): Record<string, unknown> {
 	if (!result.structuredContent) throw new Error('Expected structuredContent');
-	return result.structuredContent as Record<string, unknown>;
+	return result.structuredContent;
 }
 
 /** Find a tool by name from an array, throwing if not found. */
@@ -139,7 +139,7 @@ export function createMockConnection(adapter?: MockAdapter) {
 	]);
 
 	const state: ConnectionState = {
-		adapter: mockAdapter as unknown as ConnectionState['adapter'],
+		adapter: mockAdapter,
 		pages,
 		activePageId: 'page1',
 	};

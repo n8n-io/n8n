@@ -5,7 +5,10 @@ import type { ZodError } from 'zod';
  * Ajv's `errorsText(errors, { dataVar: 'request' })` renders `request/body/active is read-only`.
  * Without the path, a message written as a fragment ("is read-only", "Required") has no subject.
  */
-export function formatValidationError(location: 'body' | 'query', error: ZodError): string {
+export function formatValidationError(
+	location: 'body' | 'query' | 'params',
+	error: ZodError,
+): string {
 	const issue = error.errors[0];
 	if (!issue) return 'Invalid request';
 
