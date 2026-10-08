@@ -256,24 +256,17 @@ function openCommandBar(event: MouseEvent) {
 		<!-- Instance AI hand-off (mimics the assistant button) — shown when the
 		Instance AI feature is on and the host provides the workflow action.
 		Clicking hands the current workflow off to a new Instance AI thread. -->
-		<N8nButton
+		<N8nIconButton
 			v-if="
 				chatPanelStore.isEditableCanvasView && instanceAi && !!instanceAiCapability.openWorkflow
 			"
 			variant="ghost"
-			icon-only
 			size="large"
+			icon="n8n-assistant"
 			:aria-label="i18n.baseText('aiAssistant.tooltip')"
-			:class="{ [$style.icon]: true }"
 			data-test-id="instance-ai-canvas-action-button"
 			@click="onInstanceAiCanvasActionClick"
-		>
-			<template #default>
-				<div>
-					<N8nAssistantIcon size="large" />
-				</div>
-			</template>
-		</N8nButton>
+		/>
 		<!-- Legacy assistant/builder button — only while Instance AI is off. -->
 		<N8nTooltip
 			v-if="chatPanelStore.isEditableCanvasView && (aiAssistant || aiBuilder) && !instanceAi"
