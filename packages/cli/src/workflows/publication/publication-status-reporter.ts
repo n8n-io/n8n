@@ -123,10 +123,17 @@ export class PublicationStatusReporter {
 				});
 				// An expected denial, already logged as a warning by the applier — the
 				// terminal state and the UI push stand, the fault report does not.
-				if (!isPolicyRefusal(result.error)) {
+				const policyRefusal = isPolicyRefusal(result.error);
+				if (!policyRefusal) {
 					this.errorReporter.error(result.error, { shouldBeLogged: true });
 				}
-				await this.pushFailedToActivate(record.workflowId, result.error.message);
+				// One failed trigger whose own error this is: the FE names it in the toast.
+				// A policy refusal marks every trigger failed with the policy error, so it carries no node.
+				const failedNodeIds = (triggerStatuses ?? [])
+					.filter((s) => s.status === 'failed')
+					.map((s) => s.nodeId);
+				const nodeId = !policyRefusal && failedNodeIds.length === 1 ? failedNodeIds[0] : undefined;
+				await this.pushFailedToActivate(record.workflowId, result.error.message, nodeId);
 				return;
 			}
 
@@ -209,10 +216,14 @@ export class PublicationStatusReporter {
 	}
 
 	/** Pushes a failed-to-activate status to clients connected to any main. */
-	private async pushFailedToActivate(workflowId: string, errorMessage: string): Promise<void> {
+	private async pushFailedToActivate(
+		workflowId: string,
+		errorMessage: string,
+		nodeId?: string,
+	): Promise<void> {
 		await this.pushStatus({
 			type: 'workflowFailedToActivate',
-			data: { workflowId, errorMessage },
+			data: { workflowId, errorMessage, ...(nodeId ? { nodeId } : {}) },
 		});
 	}
 
