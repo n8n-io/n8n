@@ -1,4 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
+import { isZodSchema } from '@n8n/ai-utilities/json-schema';
 import { getConnectedTools } from '@utils/helpers';
 import get from 'lodash/get';
 import type {
@@ -681,8 +682,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				for (const tool of externalTools ?? []) {
 					if (tool.name === functionName) {
 						const parsedArgs: { input: string } = jsonParse(functionArgs);
-						const functionInput = tool.schema.safeParse(parsedArgs)?.success
-							? parsedArgs
+						if (!isZodSchema(tool.schema)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`The connected tool "${tool.name}" has an unsupported input schema. Connect a tool with a Zod input schema.`,
+								{ itemIndex: i },
+							);
+						}
+						const validatedArgs = tool.schema.safeParse(parsedArgs);
+						const functionInput = validatedArgs.success
+							? validatedArgs.data
 							: (parsedArgs.input ?? parsedArgs);
 						functionResponse = await tool.invoke(functionInput);
 					}
