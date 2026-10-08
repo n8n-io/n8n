@@ -4,6 +4,8 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
 import { AgentThreadsController } from '../agent-threads.controller';
+import type { AgentsService } from '../agents.service';
+import type { Agent } from '../entities/agent.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
@@ -16,6 +18,25 @@ import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
+
+/** An agents service that finds `agent-1` in `project-1`, as a project agent. */
+function projectAgents() {
+	const agentsService = mock<AgentsService>();
+	agentsService.findById.mockImplementation(async (agentId, projectId) =>
+		agentId === 'agent-1' && projectId === 'project-1' ? mock<Agent>({ id: agentId }) : null,
+	);
+	return agentsService;
+}
+
+/** Answer the thread lookup and the detail with the same thread. */
+function serveThread(
+	service: ReturnType<typeof mock<AgentExecutionService>>,
+	thread: AgentExecutionThread,
+	executions: AgentExecution[] = [],
+) {
+	service.findThreadById.mockResolvedValue(thread);
+	service.getThreadDetail.mockResolvedValue({ thread, executions });
+}
 
 describe('AgentThreadsController route access scopes', () => {
 	expectProjectScopedAgentRoutes(AgentThreadsController);
@@ -52,16 +73,17 @@ describe('AgentThreadsController route access scopes', () => {
 			agentExecutionService,
 			mock<AgentSessionLangSmithExportService>(),
 			new SystemAgentRegistry(),
+			projectAgents(),
 		);
-		agentExecutionService.getThreadDetail.mockResolvedValue({
-			thread: mock<AgentExecutionThread>({
+		serveThread(
+			agentExecutionService,
+			mock<AgentExecutionThread>({
 				id: 'thread-1',
 				ownerId: 'user-1',
 				accessScope: 'user',
 				owner: null,
 			}),
-			executions: [],
-		});
+		);
 
 		const result = await controller.getThread({
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
@@ -128,9 +150,11 @@ describe('AgentThreadsController session details', () => {
 				service,
 				mock<AgentSessionLangSmithExportService>(),
 				new SystemAgentRegistry(),
+				projectAgents(),
 			);
-			service.getThreadDetail.mockResolvedValue({
-				thread: mock<AgentExecutionThread>({
+			serveThread(
+				service,
+				mock<AgentExecutionThread>({
 					id: 'thread-1',
 					agentId: 'agent-1',
 					projectId: 'project-1',
@@ -139,8 +163,8 @@ describe('AgentThreadsController session details', () => {
 					parentThreadId,
 					taskId: null,
 				}),
-				executions: [mock<AgentExecution>({ source: null }), mock<AgentExecution>({ source })],
-			});
+				[mock<AgentExecution>({ source: null }), mock<AgentExecution>({ source })],
+			);
 			const result = await controller.getThread(
 				mock<AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>>({
 					params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
@@ -171,6 +195,7 @@ describe('AgentThreadsController instance agent sessions', () => {
 			service,
 			mock<AgentSessionLangSmithExportService>(),
 			registry,
+			projectAgents(),
 		);
 		const user = mock<User>({ id: 'user-1' });
 		const request = (threadId?: string) =>
@@ -242,12 +267,77 @@ describe('AgentThreadsController instance agent sessions', () => {
 			ownerId,
 			accessScope: 'project',
 		});
-		service.getThreadDetail.mockResolvedValue({ thread, executions: [] });
+		serveThread(service, thread);
 
 		const detail = controller.getThread(request('thread-1'));
 
 		if (shown) await expect(detail).resolves.toMatchObject({ thread: { id: 'thread-1' } });
 		else await expect(detail).rejects.toThrow('Thread "thread-1" not found');
 		expect(sharing.canRead).toHaveBeenCalledTimes(ownerId === 'user-1' ? 0 : 1);
+		// The detail (inputs, timelines) is built only for a reader.
+		expect(service.getThreadDetail).toHaveBeenCalledTimes(shown ? 1 : 0);
+	});
+});
+
+describe('AgentThreadsController agents without a registered provider', () => {
+	const sharedThread = (overrides: Partial<AgentExecutionThread> = {}) =>
+		mock<AgentExecutionThread>({
+			id: 'thread-1',
+			agentId: 'n8n-assistant',
+			projectId: 'project-1',
+			ownerId: 'owner-1',
+			accessScope: 'project',
+			parentThreadId: null,
+			...overrides,
+		});
+
+	function setup(agentId: string) {
+		const service = mock<AgentExecutionService>();
+		const controller = new AgentThreadsController(
+			service,
+			mock<AgentSessionLangSmithExportService>(),
+			new SystemAgentRegistry(),
+			projectAgents(),
+		);
+		const request = mock<
+			AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>
+		>({
+			params: { projectId: 'project-1', agentId, threadId: 'thread-1' },
+			user: mock<User>({ id: 'reader-1' }),
+		});
+		return { service, controller, request };
+	}
+
+	it.each(['n8n-assistant', 'missing-agent'])(
+		'answers 404 for %s, which is neither a registered instance agent nor a project agent',
+		async (agentId) => {
+			const { service, controller, request } = setup(agentId);
+			serveThread(service, sharedThread());
+
+			await expect(controller.listThreads(request, mock(), {})).rejects.toThrow(
+				`Agent "${agentId}" not found`,
+			);
+			await expect(controller.getThread(request)).rejects.toThrow(`Agent "${agentId}" not found`);
+			expect(service.getThreads).not.toHaveBeenCalled();
+			expect(service.findThreadById).not.toHaveBeenCalled();
+			expect(service.getThreadDetail).not.toHaveBeenCalled();
+		},
+	);
+
+	it('hides a thread that its owner shared from another user of a project agent route', async () => {
+		const { service, controller, request } = setup('agent-1');
+		serveThread(service, sharedThread({ agentId: 'agent-1' }));
+
+		await expect(controller.getThread(request)).rejects.toThrow('Thread "thread-1" not found');
+		expect(service.getThreadDetail).not.toHaveBeenCalled();
+	});
+
+	it('shows a project thread without an owner of a project agent to a project reader', async () => {
+		const { service, controller, request } = setup('agent-1');
+		serveThread(service, sharedThread({ agentId: 'agent-1', ownerId: null }));
+
+		await expect(controller.getThread(request)).resolves.toMatchObject({
+			thread: { id: 'thread-1' },
+		});
 	});
 });

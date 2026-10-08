@@ -972,6 +972,12 @@ export const confirmationRequestPayloadSchema = z.object({
 	automationProposal: automationProposalCardSchema
 		.optional()
 		.describe('When present, renders the card that offers to keep the workflow and turn it on'),
+	capability: z
+		.boolean()
+		.optional()
+		.describe(
+			'True on the card of an n8n capability. Its answer has no session scope, so the card does not offer "Always allow"',
+		),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 

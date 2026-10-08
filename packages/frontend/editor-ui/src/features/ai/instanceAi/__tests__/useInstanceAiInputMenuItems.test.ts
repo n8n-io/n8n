@@ -14,7 +14,12 @@ import { VIEWS } from '@/app/constants';
 // Reactive, so that a test can switch the mode while the menu is in use.
 const { experience } = await vi.hoisted(async () => {
 	const { reactive } = await import('vue');
-	return { experience: reactive({ isSimple: false, defaultProjectId: 'team-project-1' }) };
+	return {
+		experience: reactive({
+			isSimple: false,
+			defaultProjectId: 'team-project-1' as string | undefined,
+		}),
+	};
 });
 
 vi.mock('../experience/useExperienceMode', async () => {
@@ -24,6 +29,23 @@ vi.mock('../experience/useExperienceMode', async () => {
 
 vi.mock('../experience/useLastUsedProject', () => ({
 	useLastUsedProject: () => ({ simpleDefaultProjectId: () => experience.defaultProjectId }),
+}));
+
+// The projects of the user, with the scopes that "Add workflow" checks, and the branch state.
+const { projectsStore, sourceControlStore } = vi.hoisted(() => ({
+	projectsStore: {
+		personalProject: null as { id: string; scopes: string[] } | null,
+		myProjects: [] as Array<{ id: string; scopes: string[] }>,
+	},
+	sourceControlStore: { preferences: { branchReadOnly: false } },
+}));
+
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => projectsStore,
+}));
+
+vi.mock('@/features/integrations/sourceControl.ee/sourceControl.store', () => ({
+	useSourceControlStore: () => sourceControlStore,
 }));
 
 const {
@@ -196,6 +218,12 @@ describe('useInstanceAiInputMenuItems', () => {
 		settingsStore.gatewayHostIdentifier = null;
 		experience.isSimple = false;
 		experience.defaultProjectId = 'team-project-1';
+		projectsStore.personalProject = { id: 'personal-project', scopes: ['workflow:create'] };
+		projectsStore.myProjects = [
+			{ id: 'personal-project', scopes: ['workflow:create'] },
+			{ id: 'team-project-1', scopes: ['workflow:read', 'workflow:create'] },
+		];
+		sourceControlStore.preferences.branchReadOnly = false;
 	});
 
 	it('omits connection groups that instance settings report as unavailable', () => {
@@ -501,6 +529,59 @@ describe('useInstanceAiInputMenuItems', () => {
 				name: VIEWS.NEW_WORKFLOW,
 				query: { projectId: 'personal-project' },
 			});
+		});
+
+		it('offers "Add workflow" when the user can create a workflow in the project', () => {
+			experience.isSimple = true;
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+			expect(findItem(menuItems.value, 'add-workflow')?.disabled).toBe(false);
+		});
+
+		it('disables "Add workflow" on a protected branch, like the sidebar + menu', async () => {
+			experience.isSimple = true;
+			sourceControlStore.preferences.branchReadOnly = true;
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			const item = findItem(menuItems.value, 'add-workflow');
+			await item?.data?.action?.();
+
+			expect(item?.disabled).toBe(true);
+			expect(router.push).not.toHaveBeenCalled();
+		});
+
+		it('disables "Add workflow" when the user cannot create workflows in the project', async () => {
+			experience.isSimple = true;
+			experience.defaultProjectId = 'personal-project';
+			projectsStore.personalProject = { id: 'personal-project', scopes: ['workflow:read'] };
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			const item = findItem(menuItems.value, 'add-workflow');
+			await item?.data?.action?.();
+
+			expect(item?.disabled).toBe(true);
+			expect(router.push).not.toHaveBeenCalled();
+		});
+
+		it('disables "Add workflow" when there is no project to create the workflow in', () => {
+			experience.isSimple = true;
+			experience.defaultProjectId = undefined;
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+			expect(findItem(menuItems.value, 'add-workflow')?.disabled).toBe(true);
+		});
+
+		it('creates no workflow when the rights are gone by the time the user picks the item', async () => {
+			experience.isSimple = true;
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			const action = findItem(menuItems.value, 'add-workflow')?.data?.action;
+
+			projectsStore.myProjects = [{ id: 'team-project-1', scopes: ['workflow:read'] }];
+			await action?.();
+
+			expect(router.push).not.toHaveBeenCalled();
 		});
 
 		it('keeps the behaviour of the items it shows', async () => {

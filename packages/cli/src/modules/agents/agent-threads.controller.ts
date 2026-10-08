@@ -7,6 +7,7 @@ import { NotFoundError } from '@n8n/errors';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
+import { AgentsService } from './agents.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { canContinueThreadInPreview } from './utils/agent-thread-access';
 
@@ -16,14 +17,22 @@ export class AgentThreadsController {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly langsmithExportService: AgentSessionLangSmithExportService,
 		private readonly systemAgents: SystemAgentRegistry,
+		private readonly agentsService: AgentsService,
 	) {}
 
-	/** The threads of an instance agent are only for users who can use it in the project. */
+	/**
+	 * The agent must be a registered instance agent or an agent of the project, as on the chat
+	 * routes. An instance agent whose module is off has no readable threads. The threads of an
+	 * instance agent are only for users who can use it in the project.
+	 */
 	private async assertCanReadThreads(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 	): Promise<void> {
 		const { agentId, projectId } = req.params;
-		if (!(await this.systemAgents.allows(agentId, req.user, projectId))) {
+		const known =
+			this.systemAgents.has(agentId) ||
+			(await this.agentsService.findById(agentId, projectId)) !== null;
+		if (!known || !(await this.systemAgents.allows(agentId, req.user, projectId))) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 	}
@@ -58,15 +67,14 @@ export class AgentThreadsController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
 		await this.assertCanReadThreads(req);
-		const result = await this.agentExecutionService.getThreadDetail(
-			req.params.threadId,
-			req.params.projectId,
-			req.params.agentId,
-			req.user.id,
-		);
-		if (!result || !(await this.systemAgents.canReadThread(req.user, result.thread))) {
-			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
-		}
+		const { projectId, agentId, threadId } = req.params;
+		// Check the reader before the detail (inputs, timelines) is built.
+		const found = await this.agentExecutionService.findThreadById(threadId);
+		const readable = found !== null && (await this.systemAgents.canReadThread(req.user, found));
+		const result = readable
+			? await this.agentExecutionService.getThreadDetail(threadId, projectId, agentId, req.user.id)
+			: null;
+		if (!result) throw new NotFoundError(`Thread "${threadId}" not found`);
 		const {
 			ownerId: _ownerId,
 			accessScope: _accessScope,

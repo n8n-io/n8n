@@ -84,7 +84,7 @@ export const TRANSFER_WARNINGS = {
 export type RemoteRefusal = 'project-refused' | 'not-in-mcp' | 'archived';
 
 // Remote tool errors have no machine-readable reason, so these phrases of the n8n tools identify them.
-const REFUSAL_PHRASES: ReadonlyArray<[RemoteRefusal, string]> = [
+const REFUSAL_PHRASES: readonly (readonly [RemoteRefusal, string])[] = [
 	['project-refused', 'permission to create workflows in it'],
 	['not-in-mcp', 'is not available in MCP'],
 	['archived', 'is archived and cannot be accessed'],

@@ -56,6 +56,14 @@ type RemoteOutcome = {
 
 type StepOutcome = { warnings: string[] };
 
+/** A failed move, for the audit event and the log. Ids only. */
+type TransferFailure = {
+	link: LinkedInstanceSummary;
+	direction: TransferDirection;
+	error: unknown;
+	ids: { workflowId?: string; remoteWorkflowId?: string; projectId?: string };
+};
+
 /** Opens the copy in the editor of the linked instance. */
 export function remoteWorkflowUrl(baseUrl: string, workflowId: string): string {
 	return `${baseUrl}/workflow/${encodeURIComponent(workflowId)}`;
@@ -117,7 +125,12 @@ export class TransferService {
 			});
 			return result;
 		} catch (error) {
-			this.recordFailure(user, link.summary, 'push', error, { workflowId: input.workflowId });
+			this.recordFailure(user, {
+				link: link.summary,
+				direction: 'push',
+				error,
+				ids: { workflowId: input.workflowId },
+			});
 			throw toTransferHttpError(error, transferContext(link.summary, 'push'));
 		}
 	}
@@ -162,7 +175,12 @@ export class TransferService {
 			});
 			return toPullResult(imported);
 		} catch (error) {
-			this.recordFailure(user, link.summary, 'pull', error, { remoteWorkflowId, projectId });
+			this.recordFailure(user, {
+				link: link.summary,
+				direction: 'pull',
+				error,
+				ids: { remoteWorkflowId, projectId },
+			});
 			throw toTransferHttpError(error, transferContext(link.summary, 'pull'));
 		}
 	}
@@ -255,13 +273,8 @@ export class TransferService {
 		}
 	}
 
-	private recordFailure(
-		user: User,
-		link: LinkedInstanceSummary,
-		direction: TransferDirection,
-		error: unknown,
-		ids: { workflowId?: string; remoteWorkflowId?: string; projectId?: string },
-	): void {
+	private recordFailure(user: User, failure: TransferFailure): void {
+		const { link, direction, error, ids } = failure;
 		const reason = transferFailureReason(error);
 		const event = { linkedInstanceId: link.id, direction, ...ids, reason };
 		this.eventService.emit('linked-instance-workflow-transfer-failed', { user, ...event });

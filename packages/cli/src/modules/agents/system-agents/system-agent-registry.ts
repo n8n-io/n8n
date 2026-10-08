@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import { isSharedThread } from '../utils/agent-thread-access';
 import type { SystemAgentProvider } from './system-agent.types';
 
 /** Holds the code-defined instance agents. Modules register their provider at init. */
@@ -48,11 +49,14 @@ export class SystemAgentRegistry {
 	/**
 	 * Whether `user` can read `thread` in addition to the route's own checks. The owner reads
 	 * the thread. Another user reads a thread of an instance agent only as its sharing rules
-	 * allow, so that every route of the agent applies the same reader rule.
+	 * allow, so that every route of the agent applies the same reader rule. Only an instance
+	 * agent shares a thread that has an owner. When its provider is not registered (its module
+	 * is off), no rules allow a read, so only the owner reads that thread.
 	 */
 	async canReadThread(user: User, thread: AgentExecutionThread): Promise<boolean> {
+		if (thread.ownerId === user.id) return true;
 		const provider = this.providers.get(thread.agentId);
-		if (!provider || thread.ownerId === user.id) return true;
+		if (!provider) return !isSharedThread(thread);
 		return (await provider.sharing?.canRead(user, thread)) === true;
 	}
 }

@@ -280,6 +280,100 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		describe('linked instance transfers', () => {
+			const mover = {
+				id: 'user-mover',
+				email: 'mover@example.com',
+				firstName: 'Move',
+				lastName: 'User',
+				role: { slug: 'global:member' },
+			};
+			const moverPayload = {
+				userId: 'user-mover',
+				_email: 'mover@example.com',
+				_firstName: 'Move',
+				_lastName: 'User',
+				globalRole: 'global:member',
+			};
+
+			it('should log on `linked-instance-workflow-pushed` event', () => {
+				const event: RelayEventMap['linked-instance-workflow-pushed'] = {
+					user: mover,
+					linkedInstanceId: 'link-gouda',
+					workflowId: 'wf-gouda',
+					remoteWorkflowId: 'remote-gouda',
+					remoteProjectId: null,
+					created: true,
+					published: false,
+					localDeactivated: false,
+				};
+
+				eventService.emit('linked-instance-workflow-pushed', event);
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.linked-instance.workflow.pushed',
+					payload: {
+						...moverPayload,
+						linkedInstanceId: 'link-gouda',
+						workflowId: 'wf-gouda',
+						remoteWorkflowId: 'remote-gouda',
+						remoteProjectId: null,
+						created: true,
+						published: false,
+						localDeactivated: false,
+					},
+				});
+			});
+
+			it('should log on `linked-instance-workflow-pulled` event', () => {
+				const event: RelayEventMap['linked-instance-workflow-pulled'] = {
+					user: mover,
+					linkedInstanceId: 'link-gouda',
+					remoteWorkflowId: 'remote-gouda',
+					workflowId: 'wf-gouda',
+					projectId: 'proj-gouda',
+					created: false,
+				};
+
+				eventService.emit('linked-instance-workflow-pulled', event);
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.linked-instance.workflow.pulled',
+					payload: {
+						...moverPayload,
+						linkedInstanceId: 'link-gouda',
+						remoteWorkflowId: 'remote-gouda',
+						workflowId: 'wf-gouda',
+						projectId: 'proj-gouda',
+						created: false,
+					},
+				});
+			});
+
+			it('should log on `linked-instance-workflow-transfer-failed` event', () => {
+				const event: RelayEventMap['linked-instance-workflow-transfer-failed'] = {
+					user: mover,
+					linkedInstanceId: 'link-gouda',
+					direction: 'push',
+					workflowId: 'wf-gouda',
+					reason: 'timeout',
+				};
+
+				eventService.emit('linked-instance-workflow-transfer-failed', event);
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.linked-instance.workflow.transfer-failed',
+					payload: {
+						...moverPayload,
+						linkedInstanceId: 'link-gouda',
+						direction: 'push',
+						workflowId: 'wf-gouda',
+						reason: 'timeout',
+					},
+				});
+			});
+		});
+
 		it('should log on `workflow-archived` event', () => {
 			const event: RelayEventMap['workflow-archived'] = {
 				user: {

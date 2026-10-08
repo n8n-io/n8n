@@ -66,6 +66,8 @@ export const capabilityCardPayloadSchema = z
 		severity: instanceAiConfirmationSeveritySchema,
 		resourceName: z.string().optional(),
 		offered: z.record(z.array(offeredValueSchema)),
+		/** Hides "Always allow" on the card, because the answer schema has no session scope. */
+		capability: z.literal(true).optional(),
 	})
 	.passthrough();
 
@@ -115,6 +117,7 @@ function toCardPayload(card: CapabilityCard): CapabilityCardPayload {
 		severity: card.severity,
 		...(card.resourceName !== undefined ? { resourceName: card.resourceName } : {}),
 		offered,
+		capability: true,
 	};
 }
 

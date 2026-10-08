@@ -475,7 +475,7 @@ describe('ProjectsNavigation', () => {
 			fillSidebar();
 			useMode('power');
 
-			const { getByTestId, getByText, getAllByTestId, queryByRole } = renderComponent({
+			const { getByTestId, getByText, getAllByTestId, getByRole, queryByRole } = renderComponent({
 				props: { collapsed: false },
 			});
 
@@ -484,6 +484,9 @@ describe('ProjectsNavigation', () => {
 			expect(getByText('Projects')).toBeVisible();
 			expect(getAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
 			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+			// Without the Workspace, Favorites and Projects are top sections, like Chats.
+			expect(getByRole('heading', { level: 2, name: 'Favorites' })).toBeInTheDocument();
+			expect(getByRole('heading', { level: 2, name: 'Projects' })).toBeInTheDocument();
 		});
 
 		it('shows no Workspace with the flag off', () => {
@@ -540,6 +543,70 @@ describe('ProjectsNavigation', () => {
 			await waitFor(() => expect(storage.get(WORKSPACE_OPEN_KEY)).toBe('true'));
 		});
 
+		it('keeps every hidden page reachable: the open Workspace lists them first, in the top-group order', async () => {
+			fillSidebar();
+			useMode('simple');
+
+			const { getByRole, getByTestId, getByText, queryByTestId } = renderComponent({
+				props: { collapsed: false },
+			});
+			const workspace = getByRole('button', { name: 'Workspace' });
+
+			await userEvent.click(workspace);
+
+			const items = HIDDEN_IN_SIMPLE.map((testId) => getByTestId(testId));
+			expect(precedes(workspace, items[0])).toBe(true);
+			for (let index = 1; index < items.length; index++) {
+				expect(precedes(items[index - 1], items[index])).toBe(true);
+			}
+			expect(precedes(items[items.length - 1], getByText('Favorites'))).toBe(true);
+			expect(getByTestId('project-personal-menu-item')).toHaveTextContent('Personal');
+			expect(getByTestId('project-shared-menu-item')).toHaveTextContent('Shared with you');
+
+			await userEvent.click(workspace);
+
+			for (const testId of HIDDEN_IN_SIMPLE) expect(queryByTestId(testId)).not.toBeInTheDocument();
+		});
+
+		it('lists in the Workspace only the hidden pages that the user can open', async () => {
+			storage.set(WORKSPACE_OPEN_KEY, 'true');
+			fillSidebar();
+			settingsStore.isChatFeatureEnabled = false;
+			usersStore.allUsers = [
+				{ id: '1', isPendingUser: false, isDefaultUser: false, mfaEnabled: false },
+			];
+			useMode('simple');
+
+			const { findByTestId, queryByTestId, getByTestId } = renderComponent({
+				props: { collapsed: false },
+			});
+
+			expect(await findByTestId('project-personal-menu-item')).toBeInTheDocument();
+			expect(getByTestId('project-workflow-reviews-menu-item')).toBeInTheDocument();
+			expect(queryByTestId('project-shared-menu-item')).not.toBeInTheDocument();
+			expect(queryByTestId('project-chat-menu-item')).not.toBeInTheDocument();
+		});
+
+		it('marks Favorites and Projects as sub-headings of the Workspace, each with its own state', async () => {
+			storage.set(WORKSPACE_OPEN_KEY, 'true');
+			fillSidebar();
+			useMode('simple');
+
+			const { findByRole, getByRole } = renderComponent({ props: { collapsed: false } });
+
+			const favorites = await findByRole('heading', { level: 3, name: 'Favorites' });
+			const favoritesToggle = within(favorites).getByRole('button', { name: 'Favorites' });
+			const projects = getByRole('heading', { level: 3, name: 'Projects' });
+			const projectsToggle = within(projects).getByRole('button', { name: 'Projects' });
+			expect(favoritesToggle).toHaveAttribute('aria-expanded', 'true');
+			expect(projectsToggle).toHaveAttribute('aria-expanded', 'true');
+
+			await userEvent.click(projectsToggle);
+
+			expect(projectsToggle).toHaveAttribute('aria-expanded', 'false');
+			expect(favoritesToggle).toHaveAttribute('aria-expanded', 'true');
+		});
+
 		it('shows the Workspace open when the user left it open', async () => {
 			storage.set(WORKSPACE_OPEN_KEY, 'true');
 			fillSidebar();
@@ -555,23 +622,69 @@ describe('ProjectsNavigation', () => {
 			fillSidebar();
 			useMode('simple');
 
-			const { container, queryAllByTestId } = renderComponent({ props: { collapsed: true } });
+			const { getByRole, getByTestId, queryAllByTestId } = renderComponent({
+				props: { collapsed: true },
+			});
 			expect(queryAllByTestId('project-menu-item')).toHaveLength(0);
 
-			await userEvent.click(within(container).getByRole('button', { name: 'Workspace' }));
+			await userEvent.click(getByRole('button', { name: 'Workspace' }));
 
 			expect(queryAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
+			expect(getByTestId('project-personal-menu-item')).toBeInTheDocument();
 		});
 
-		it('shows no Workspace when there is no favourite and no project to put in it', () => {
+		/** No favourite, no review inbox and no chat hub: only projects could fill the Workspace. */
+		function leaveOnlyProjects() {
 			fillSidebar();
-			projectsStore.myProjects = [];
 			mockedStore(useFavoritesStore).favorites = [];
+			settingsStore.isChatFeatureEnabled = false;
+			settingsStore.settings = {
+				...settingsStore.settings,
+				workflowReviews: { enabled: false },
+			} as typeof settingsStore.settings;
+		}
+
+		it('shows no Workspace when there is nothing to put in it', () => {
+			leaveOnlyProjects();
+			projectsStore.myProjects = [];
+			projectsStore.personalProject = null;
+			// With one user, nothing can be shared with this user.
+			usersStore.allUsers = [
+				{ id: '1', isPendingUser: false, isDefaultUser: false, mfaEnabled: false },
+			];
 			useMode('simple');
 
 			const { queryByRole } = renderComponent({ props: { collapsed: false } });
 
 			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+		});
+
+		it('shows no Workspace when the team projects stay without licence and folders are off', () => {
+			leaveOnlyProjects();
+			projectsStore.isTeamProjectFeatureEnabled = false;
+			settingsStore.isFoldersFeatureEnabled = false;
+			useMode('simple');
+
+			const { queryByRole, queryByTestId } = renderComponent({ props: { collapsed: false } });
+
+			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+			expect(queryByTestId('project-menu-item')).not.toBeInTheDocument();
+		});
+
+		it('lists the personal project and the projects without a Projects title when only folders are on', async () => {
+			leaveOnlyProjects();
+			projectsStore.isTeamProjectFeatureEnabled = false;
+			settingsStore.isFoldersFeatureEnabled = true;
+			useMode('simple');
+
+			const { getByRole, getByTestId, getAllByTestId, queryByText } = renderComponent({
+				props: { collapsed: false },
+			});
+			await userEvent.click(getByRole('button', { name: 'Workspace' }));
+
+			expect(getByTestId('project-personal-menu-item')).toBeInTheDocument();
+			expect(getAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
+			expect(queryByText('Projects')).not.toBeInTheDocument();
 		});
 	});
 });

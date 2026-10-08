@@ -32,10 +32,6 @@ const Parent = defineComponent({
 const renderDisclosure = createComponentRenderer(SimpleWorkspaceDisclosure);
 const renderInParent = createComponentRenderer(Parent);
 
-function workspaceButton(container: HTMLElement) {
-	return within(container).getByRole('button', { name: 'Workspace' });
-}
-
 describe('SimpleWorkspaceDisclosure', () => {
 	beforeEach(() => {
 		createTestingPinia();
@@ -71,8 +67,8 @@ describe('SimpleWorkspaceDisclosure', () => {
 	});
 
 	it('opens and closes with the keyboard', async () => {
-		const { container, getByTestId } = renderInParent({ props: { collapsed: false } });
-		const button = workspaceButton(container);
+		const { getByRole, getByTestId } = renderInParent({ props: { collapsed: false } });
+		const button = getByRole('button', { name: 'Workspace' });
 
 		button.focus();
 		await userEvent.keyboard('{Enter}');
@@ -90,10 +86,10 @@ describe('SimpleWorkspaceDisclosure', () => {
 	it('opens again after a reload when the user left it open', async () => {
 		storage.set(OPEN_KEY, 'true');
 
-		const { container, getByTestId } = renderInParent({ props: { collapsed: false } });
+		const { getByRole, getByTestId } = renderInParent({ props: { collapsed: false } });
 
 		await waitFor(() => expect(getByTestId('parent-open')).toHaveTextContent('true'));
-		expect(workspaceButton(container)).toHaveAttribute('aria-expanded', 'true');
+		expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'true');
 	});
 
 	it('tells the parent the remembered choice when it mounts', () => {
@@ -107,9 +103,9 @@ describe('SimpleWorkspaceDisclosure', () => {
 	it('starts collapsed for a stored value that is not a boolean', () => {
 		storage.set(OPEN_KEY, 'yes please');
 
-		const { container, getByTestId } = renderInParent({ props: { collapsed: false } });
+		const { getByRole, getByTestId } = renderInParent({ props: { collapsed: false } });
 
-		expect(workspaceButton(container)).toHaveAttribute('aria-expanded', 'false');
+		expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'false');
 		expect(getByTestId('parent-open')).toHaveTextContent('false');
 	});
 
@@ -125,8 +121,8 @@ describe('SimpleWorkspaceDisclosure', () => {
 			removeItem: vi.fn(),
 		});
 
-		const { container, getByTestId } = renderInParent({ props: { collapsed: false } });
-		const button = workspaceButton(container);
+		const { getByRole, getByTestId } = renderInParent({ props: { collapsed: false } });
+		const button = getByRole('button', { name: 'Workspace' });
 		expect(button).toHaveAttribute('aria-expanded', 'false');
 
 		await userEvent.click(button);
@@ -138,12 +134,33 @@ describe('SimpleWorkspaceDisclosure', () => {
 		expect(consoleError).not.toHaveBeenCalled();
 	});
 
+	it('keeps working for this page when the browser refuses access to the storage', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+		// Some browsers throw on the `localStorage` lookup itself when site data is blocked.
+		Object.defineProperty(window, 'localStorage', {
+			configurable: true,
+			get() {
+				throw new DOMException('Access denied', 'SecurityError');
+			},
+		});
+
+		const { getByRole, getByTestId } = renderInParent({ props: { collapsed: false } });
+		const button = getByRole('button', { name: 'Workspace' });
+		expect(button).toHaveAttribute('aria-expanded', 'false');
+
+		await userEvent.click(button);
+
+		expect(button).toHaveAttribute('aria-expanded', 'true');
+		expect(getByTestId('parent-open')).toHaveTextContent('true');
+		expect(consoleError).not.toHaveBeenCalled();
+	});
+
 	describe('in the collapsed sidebar', () => {
 		it('shows an icon toggle with the same name and state, and no heading', async () => {
-			const { container, getByTestId, queryByRole } = renderInParent({
+			const { getByRole, getByTestId, queryByRole } = renderInParent({
 				props: { collapsed: true },
 			});
-			const button = workspaceButton(container);
+			const button = getByRole('button', { name: 'Workspace' });
 
 			expect(queryByRole('heading')).not.toBeInTheDocument();
 			expect(button).toHaveAttribute('aria-expanded', 'false');
@@ -167,8 +184,8 @@ describe('SimpleWorkspaceDisclosure', () => {
 		});
 
 		it('follows a change that another tab stored', async () => {
-			const { container, getByTestId } = renderInParent({ props: { collapsed: false } });
-			expect(workspaceButton(container)).toHaveAttribute('aria-expanded', 'false');
+			const { getByRole, getByTestId } = renderInParent({ props: { collapsed: false } });
+			expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'false');
 
 			window.localStorage.setItem(OPEN_KEY, 'true');
 			window.dispatchEvent(
@@ -181,7 +198,7 @@ describe('SimpleWorkspaceDisclosure', () => {
 			);
 
 			await waitFor(() =>
-				expect(workspaceButton(container)).toHaveAttribute('aria-expanded', 'true'),
+				expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'true'),
 			);
 			expect(getByTestId('parent-open')).toHaveTextContent('true');
 		});

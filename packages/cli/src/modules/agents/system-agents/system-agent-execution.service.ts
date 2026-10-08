@@ -314,7 +314,8 @@ export class SystemAgentExecutionService {
 
 	/**
 	 * Resume a suspended tool call as the thread owner `user`. Runs the continuation in the
-	 * background. `answeredBy` is the user who answered, when it is not the owner.
+	 * background. `answeredBy` is the user who answered (the owner or a teammate). It is
+	 * recorded with the answer.
 	 */
 	async resume(params: {
 		agentId: string;

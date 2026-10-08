@@ -55,6 +55,9 @@ const {
 
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
+const canBrowseProjects = computed(
+	() => projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled.value,
+);
 const isChatLinkAvailable = computed(
 	() =>
 		settingsStore.isChatFeatureEnabled &&
@@ -65,9 +68,18 @@ const isInstanceAiNavVisible = useInstanceAiAvailable();
 const { isSimple } = useExperienceMode();
 const workspaceOpen = ref(false);
 const showWorkspaceItems = computed(() => !isSimple.value || workspaceOpen.value);
+// In the Workspace, Favorites and Projects are sub-sections with AA-contrast titles.
+const sectionHeadingLevel = computed(() => (isSimple.value ? 3 : 2));
+const sectionTitleColor = computed<'text-base' | 'text-light'>(() =>
+	isSimple.value ? 'text-base' : 'text-light',
+);
 const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
 );
+const showPersonalItem = computed(
+	() => !!projectsStore.personalProject?.id && canBrowseProjects.value,
+);
+const showSharedItem = computed(() => canBrowseProjects.value && hasMultipleVerifiedUsers.value);
 
 const FAVORITES_COLLAPSED_KEY = computed(
 	() => `n8n:sidebar:${usersStore.currentUser?.id ?? 'anonymous'}:favorites-collapsed`,
@@ -154,6 +166,31 @@ const chat = computed<IMenuItem>(() => ({
 	route: { to: { name: CHAT_VIEW } },
 }));
 
+// Simple mode hides these top items. The Workspace holds them, so each page stays reachable.
+const workspaceTopItems = computed(() =>
+	[
+		{
+			item: personalProject.value,
+			show: showPersonalItem.value,
+			testId: 'project-personal-menu-item',
+		},
+		{ item: shared.value, show: showSharedItem.value, testId: 'project-shared-menu-item' },
+		{
+			item: workflowReviews.value,
+			show: isWorkflowReviewsNavVisible.value,
+			testId: 'project-workflow-reviews-menu-item',
+		},
+		{ item: chat.value, show: isChatLinkAvailable.value, testId: 'project-chat-menu-item' },
+	].filter((entry) => entry.show),
+);
+// Show the Workspace only when it holds something, so that it never opens to nothing.
+const hasWorkspaceContent = computed(
+	() =>
+		workspaceTopItems.value.length > 0 ||
+		hasFavorites.value ||
+		(canBrowseProjects.value && displayProjects.value.length > 0),
+);
+
 /** A pull or an applied package can create and delete projects behind the sidebar. */
 async function reloadMyProjects() {
 	await projectsStore.getMyProjects();
@@ -191,22 +228,14 @@ onBeforeUnmount(() => {
 				data-test-id="project-home-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="
-					projectsStore.personalProject?.id &&
-					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
-					!isSimple
-				"
+				v-if="showPersonalItem && !isSimple"
 				:item="personalProject"
 				:compact="props.collapsed"
 				:active="sidebarActiveTabId === personalProject.id"
 				data-test-id="project-personal-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="
-					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
-					hasMultipleVerifiedUsers &&
-					!isSimple
-				"
+				v-if="showSharedItem && !isSimple"
 				:item="shared"
 				:compact="props.collapsed"
 				:active="sidebarActiveTabId === 'shared'"
@@ -231,26 +260,39 @@ onBeforeUnmount(() => {
 			<AssistantChatsSection :collapsed="props.collapsed" />
 			<AssistantAutomationsSection :collapsed="props.collapsed" />
 			<SimpleWorkspaceDisclosure
-				v-if="hasFavorites || displayProjects.length > 0"
+				v-if="hasWorkspaceContent"
 				v-model:open="workspaceOpen"
 				:collapsed="props.collapsed"
 			/>
+			<div v-if="workspaceOpen && workspaceTopItems.length > 0" :class="$style.projectItems">
+				<N8nMenuItem
+					v-for="entry in workspaceTopItems"
+					:key="entry.testId"
+					:item="entry.item"
+					:compact="props.collapsed"
+					:active="sidebarActiveTabId === entry.item.id"
+					:data-test-id="entry.testId"
+				/>
+			</div>
 		</template>
 		<template v-if="hasFavorites && showWorkspaceItems">
-			<button
-				v-if="!props.collapsed"
-				:class="$style.sectionHeader"
-				@click="favoritesCollapsed = !favoritesCollapsed"
-			>
-				<N8nText size="small" bold color="text-light">
-					{{ locale.baseText('favorites.menu.title') }}
-				</N8nText>
-				<N8nIcon
-					icon="chevron-down"
-					size="xsmall"
-					:class="[$style.chevron, favoritesCollapsed ? $style.chevronCollapsed : '']"
-				/>
-			</button>
+			<div v-if="!props.collapsed" role="heading" :aria-level="sectionHeadingLevel">
+				<button
+					type="button"
+					:class="$style.sectionHeader"
+					:aria-expanded="!favoritesCollapsed"
+					@click="favoritesCollapsed = !favoritesCollapsed"
+				>
+					<N8nText size="small" bold :color="sectionTitleColor">
+						{{ locale.baseText('favorites.menu.title') }}
+					</N8nText>
+					<N8nIcon
+						icon="chevron-down"
+						size="xsmall"
+						:class="[$style.chevron, favoritesCollapsed ? $style.chevronCollapsed : '']"
+					/>
+				</button>
+			</div>
 			<div v-if="props.collapsed || !favoritesCollapsed" :class="$style.projectItems">
 				<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
 					<div v-if="!props.collapsed && groupIndex > 0" :class="$style.groupSpacer" />
@@ -287,24 +329,31 @@ onBeforeUnmount(() => {
 		<AssistantChatsSection v-if="!isSimple" :collapsed="props.collapsed" />
 		<AssistantAutomationsSection v-if="!isSimple" :collapsed="props.collapsed" />
 		<template v-if="projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0">
-			<button
+			<div
 				v-if="!props.collapsed && showWorkspaceItems"
-				:class="$style.sectionHeader"
-				@click="projectsCollapsed = !projectsCollapsed"
+				role="heading"
+				:aria-level="sectionHeadingLevel"
 			>
-				<N8nText size="small" bold color="text-light">
-					{{ locale.baseText('projects.menu.title') }}
-				</N8nText>
-				<N8nIcon
-					icon="chevron-down"
-					size="small"
-					:class="[$style.chevron, projectsCollapsed ? $style.chevronCollapsed : '']"
-				/>
-			</button>
+				<button
+					type="button"
+					:class="$style.sectionHeader"
+					:aria-expanded="!projectsCollapsed"
+					@click="projectsCollapsed = !projectsCollapsed"
+				>
+					<N8nText size="small" bold :color="sectionTitleColor">
+						{{ locale.baseText('projects.menu.title') }}
+					</N8nText>
+					<N8nIcon
+						icon="chevron-down"
+						size="small"
+						:class="[$style.chevron, projectsCollapsed ? $style.chevronCollapsed : '']"
+					/>
+				</button>
+			</div>
 		</template>
 		<div
 			v-if="
-				(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
+				canBrowseProjects &&
 				(!projectsStore.isTeamProjectFeatureEnabled || !projectsCollapsed || props.collapsed) &&
 				showWorkspaceItems
 			"

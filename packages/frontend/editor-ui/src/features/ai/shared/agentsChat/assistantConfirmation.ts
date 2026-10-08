@@ -35,6 +35,7 @@ const CARD_FIELDS = [
 	'channelConfig',
 	'testListener',
 	'credentialDestination',
+	'automationProposal',
 ] as const;
 
 const lenientConfirmationSchema = confirmationRequestPayloadSchema.partial().passthrough();
@@ -66,5 +67,6 @@ export function parseAssistantConfirmationInput(
 		requestId: value.requestId,
 		message,
 		...(typeof value.toolName === 'string' && { toolName: value.toolName }),
+		...(value.capability === true && { capability: true }),
 	};
 }

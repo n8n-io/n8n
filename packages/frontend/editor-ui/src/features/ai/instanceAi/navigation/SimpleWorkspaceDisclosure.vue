@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, watch } from 'vue';
-import { useLocalStorage } from '@vueuse/core';
+import { useStorage } from '@vueuse/core';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { HOVER_DELAY } from '@/app/constants';
@@ -17,8 +17,9 @@ const i18n = useI18n();
 const title = computed(() => i18n.baseText('experienceMode.workspace'));
 
 // The choice stays in this browser, like the other sidebar sections. When the storage
-// is blocked, the choice lasts for this page only.
-const storedOpen = useLocalStorage(WORKSPACE_OPEN_KEY, false, {
+// is blocked, the choice lasts for this page only. `useStorage` without a storage also
+// catches an error from the `localStorage` lookup itself.
+const storedOpen = useStorage(WORKSPACE_OPEN_KEY, false, undefined, {
 	writeDefaults: false,
 	onError: () => {},
 });

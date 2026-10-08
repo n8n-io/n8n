@@ -1,7 +1,10 @@
 import { computed, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { InputMenuItem } from '../composables/useInstanceAiInputMenuItems';
 import { ADD_WORKFLOW_ITEM_ID, countDisconnectedItems, simpleMenuItems } from './simpleMenu';
 import { useExperienceMode } from './useExperienceMode';
@@ -17,22 +20,40 @@ export function useSimpleInputMenu(
 ) {
 	const i18n = useI18n();
 	const router = useRouter();
+	const projectsStore = useProjectsStore();
+	const sourceControlStore = useSourceControlStore();
 	const { isSimple } = useExperienceMode();
 	const { simpleDefaultProjectId } = useLastUsedProject();
 
-	// The same editor route as "New workflow" in the sidebar + menu, in the same tab. The
-	// workflow goes to the project in which Simple mode starts new chats.
+	/**
+	 * The project in which Simple mode starts new work, when the user can create a workflow
+	 * there. The rule is the same as for "New workflow" in the sidebar + menu: no new workflow
+	 * on a protected branch or without `workflow:create` in the project.
+	 */
+	function addWorkflowProjectId(): string | undefined {
+		if (sourceControlStore.preferences.branchReadOnly) return undefined;
+		const projectId = simpleDefaultProjectId();
+		if (!projectId) return undefined;
+		const project = [projectsStore.personalProject, ...projectsStore.myProjects].find(
+			(candidate) => candidate?.id === projectId,
+		);
+		return getResourcePermissions(project?.scopes).workflow.create === true ? projectId : undefined;
+	}
+
+	// The same editor route as "New workflow" in the sidebar + menu, in the same tab.
 	async function addWorkflow() {
-		await router.push({
-			name: VIEWS.NEW_WORKFLOW,
-			query: { projectId: simpleDefaultProjectId() },
-		});
+		// Read the project again: the last-used project or the rights can change after the
+		// menu was built.
+		const projectId = addWorkflowProjectId();
+		if (!projectId) return;
+		await router.push({ name: VIEWS.NEW_WORKFLOW, query: { projectId } });
 	}
 
 	const addWorkflowItem = computed<InputMenuItem>(() => ({
 		id: ADD_WORKFLOW_ITEM_ID,
 		label: i18n.baseText('workflows.add'),
 		icon: { type: 'icon', value: 'workflow' },
+		disabled: addWorkflowProjectId() === undefined,
 		data: { action: addWorkflow },
 	}));
 

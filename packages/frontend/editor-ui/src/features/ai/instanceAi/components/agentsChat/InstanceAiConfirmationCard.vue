@@ -27,6 +27,7 @@ import GatewayResourceDecision from '../GatewayResourceDecision.vue';
 import InstanceAiChannelSetup from '../InstanceAiChannelSetup.vue';
 import InstanceAiCredentialSetup from '../InstanceAiCredentialSetup.vue';
 import InstanceAiMcpConnectCard from '../InstanceAiMcpConnectCard.vue';
+import AutomationProposalCard from '../automation/AutomationProposalCard.vue';
 import InstanceAiWorkflowSetup from '../../workflowSetup/InstanceAiWorkflowSetup.vue';
 import { useOptionalThread } from '../../instanceAi.store';
 import { resolvePlanTasksFromConfirmation } from '../../planReview.utils';
@@ -67,6 +68,7 @@ const variant = computed(() => {
 	if (input.domainAccess) return 'domain-access';
 	if (input.webSearch) return 'web-search';
 	if (input.credentialDestination) return 'credential-destination';
+	if (input.automationProposal) return 'automation-proposal';
 	return 'approval';
 });
 
@@ -211,6 +213,8 @@ const canAlwaysAllow = computed(() => {
 	if (!toolName || severity === 'destructive' || targetApproval || credentialDestination) {
 		return false;
 	}
+	// A capability answer has no session scope, so "Always allow" would approve only once.
+	if (props.input.capability === true) return false;
 	return buildAlwaysAllowKey(toolName, args ?? {}, workflowId) !== null;
 });
 
@@ -410,6 +414,13 @@ function onApprovalSelect(key: string) {
 		:disabled="isInactive"
 		data-test-id="instance-ai-agents-chat-credential-destination"
 		@select="onCredentialDestinationSelect"
+	/>
+
+	<AutomationProposalCard
+		v-else-if="variant === 'automation-proposal' && input.automationProposal"
+		:proposal="input.automationProposal"
+		:disabled="isInactive"
+		@submit="submit"
 	/>
 
 	<!-- Plain approval, and the fallback for payloads that fail validation -->

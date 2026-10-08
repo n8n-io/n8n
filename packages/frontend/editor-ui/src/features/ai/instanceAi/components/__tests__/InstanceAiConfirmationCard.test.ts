@@ -3,6 +3,7 @@ import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiConfirmationCard from '../agentsChat/InstanceAiConfirmationCard.vue';
+import { makeProposal } from '../automation/__tests__/automationProposalFixtures';
 
 const push = vi.hoisted(() => ({
 	listeners: [] as Array<(event: { type: string; data: Record<string, unknown> }) => void>,
@@ -171,6 +172,72 @@ describe('InstanceAiConfirmationCard', () => {
 		});
 
 		expect(queryByTestId('approval-card-always-allow')).not.toBeInTheDocument();
+	});
+
+	it('does not offer always allow for a capability card', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				input: {
+					requestId: 'req-cap',
+					message: 'Run the workflow',
+					severity: 'info',
+					toolName: 'executions',
+					args: { action: 'run', workflowId: 'wf-1' },
+					capability: true,
+				},
+			},
+		});
+
+		expect(getByTestId('instance-ai-agents-chat-approval')).toBeInTheDocument();
+		expect(queryByTestId('approval-card-always-allow')).not.toBeInTheDocument();
+	});
+
+	it('renders the automation card for a payload with an automation proposal', async () => {
+		const { getByTestId, queryByTestId, emitted } = renderComponent({
+			props: {
+				input: {
+					requestId: 'req-auto',
+					message: 'Want "Morning digest" to run automatically?',
+					severity: 'info',
+					toolName: 'propose_automation',
+					args: { workflowId: 'wf-1' },
+					capability: true,
+					automationProposal: makeProposal(),
+				},
+			},
+		});
+
+		expect(getByTestId('automation-proposal-card')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-agents-chat-approval')).not.toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('automation-proposal-turn-on'));
+		await fireEvent.click(getByTestId('automation-proposal-save'));
+
+		expect(emitted().submit).toEqual([
+			[
+				{
+					kind: 'capabilityDecision',
+					approved: true,
+					values: { target: 'local', activate: true },
+				},
+			],
+		]);
+		expect(getByTestId('automation-proposal-save')).toBeDisabled();
+	});
+
+	it('disables the automation card when the parent disables it', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				input: {
+					requestId: 'req-auto-2',
+					message: 'Keep "Morning digest" as a workflow?',
+					automationProposal: makeProposal(),
+				},
+				disabled: true,
+			},
+		});
+
+		expect(getByTestId('automation-proposal-not-now')).toBeDisabled();
 	});
 
 	it('renders the approval card when no card field is set', () => {

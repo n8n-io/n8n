@@ -32,19 +32,15 @@ export class LocalWorkflowDeactivator {
 		const { clientId, source = 'ui' } = options;
 		await this.collaborationService.validateWriteLock(user.id, clientId, workflowId, 'deactivate');
 		const workflow = await this.workflowService.deactivateWorkflow(user, workflowId, { source });
-		await this.notifyEditors(workflowId, user);
-		return workflow.activeVersionId === null;
-	}
-
-	/** The workflow is off already, so a failed notification is only logged. */
-	private async notifyEditors(workflowId: string, user: User): Promise<void> {
-		try {
-			await this.collaborationService.broadcastWorkflowUpdate(workflowId, user.id);
-		} catch (error) {
-			this.logger.warn('Failed to tell open editors that a moved workflow was turned off', {
-				workflowId,
-				error: getErrorMessage(error),
+		// The workflow is off already, so a failed notification is only logged.
+		await this.collaborationService
+			.broadcastWorkflowUpdate(workflowId, user.id)
+			.catch((error: unknown) => {
+				this.logger.warn('Failed to tell open editors that a moved workflow was turned off', {
+					workflowId,
+					error: getErrorMessage(error),
+				});
 			});
-		}
+		return workflow.activeVersionId === null;
 	}
 }

@@ -64,8 +64,10 @@ export function findSuspendedToolCall(
 
 /**
  * Checks requests to instance agent threads before the response stream opens, so that
- * the client gets an HTTP status instead of an error event. The runtime checks the same
- * rules again when it starts the turn.
+ * the client gets an HTTP status instead of an error event. When the turn starts, the
+ * runtime checks only the owner again (`runAs`). The rules for a teammate's answer (the
+ * card rule and the teammate's scopes) are checked only here, so every resume of an
+ * instance agent must go through `checkAnswer`.
  */
 @Service()
 export class SystemAgentThreadGuard {

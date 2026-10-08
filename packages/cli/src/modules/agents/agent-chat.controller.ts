@@ -227,10 +227,6 @@ export class AgentChatController {
 			throw new NotFoundError('Session not found');
 	}
 
-	/**
-	 * Enqueue a chat message and relay its execution to the browser stream.
-	 * `accept` validates the request and stores attachments. It returns nothing after it sends its own error.
-	 */
 	/** Code-defined instance agents (the n8n Assistant) build their own runtime. */
 	private async chatWithSystemAgent(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -265,6 +261,10 @@ export class AgentChatController {
 		);
 	}
 
+	/**
+	 * Enqueue a chat message and relay its execution to the browser stream.
+	 * `accept` validates the request and stores attachments. It returns nothing after it sends its own error.
+	 */
 	private async relayQueuedMessage(
 		res: FlushableResponse,
 		accept: (

@@ -8,8 +8,18 @@ import type { SystemAgentProvider, SystemAgentSharingPolicy } from '../system-ag
 const AGENT_ID = 'test-assistant';
 const reader = mock<User>({ id: 'reader-1' });
 
-const threadOf = (agentId: string, ownerId: string | null) =>
-	mock<AgentExecutionThread>({ id: 'thread-1', agentId, projectId: 'project-1', ownerId });
+const threadOf = (
+	agentId: string,
+	ownerId: string | null,
+	accessScope: AgentExecutionThread['accessScope'] = 'user',
+) =>
+	mock<AgentExecutionThread>({
+		id: 'thread-1',
+		agentId,
+		projectId: 'project-1',
+		ownerId,
+		accessScope,
+	});
 
 function setup(options: { sharing?: boolean } = {}) {
 	const registry = new SystemAgentRegistry();
@@ -106,10 +116,28 @@ describe('SystemAgentRegistry', () => {
 			);
 		});
 
-		it('keeps the threads of project agents to the route checks', async () => {
-			const { registry, sharing } = setup();
+		it.each([
+			['a private thread of another user', 'owner-1', 'user'],
+			['a project thread without owner', null, 'project'],
+		] as const)(
+			'keeps %s of a project agent to the route checks',
+			async (_label, ownerId, accessScope) => {
+				const { registry, sharing } = setup();
 
-			await expect(registry.canReadThread(reader, threadOf('agent-1', 'owner-1'))).resolves.toBe(
+				await expect(
+					registry.canReadThread(reader, threadOf('agent-1', ownerId, accessScope)),
+				).resolves.toBe(true);
+				expect(sharing.canRead).not.toHaveBeenCalled();
+			},
+		);
+
+		// For example, the module of the instance agent is off, so no provider is registered.
+		it('lets only the owner read a shared thread of an agent without a provider', async () => {
+			const { registry, sharing } = setup();
+			const shared = threadOf('unregistered-assistant', 'owner-1', 'project');
+
+			await expect(registry.canReadThread(reader, shared)).resolves.toBe(false);
+			await expect(registry.canReadThread(mock<User>({ id: 'owner-1' }), shared)).resolves.toBe(
 				true,
 			);
 			expect(sharing.canRead).not.toHaveBeenCalled();
