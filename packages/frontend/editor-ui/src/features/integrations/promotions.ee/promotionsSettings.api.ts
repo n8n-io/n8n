@@ -16,6 +16,7 @@ import type {
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
 	PromotionPromoteConfigPublicDto,
+	PromotionRepositoryListPublicDto,
 	UpdatePromotionConnectionDto,
 	UpdatePromotionProviderDto,
 	UpsertPromotionApplyConfigDto,
@@ -105,6 +106,19 @@ export const deletePromotionProvider = async (
 		endpoint: `${promotionsApiRoot}/providers/${id}`,
 	});
 };
+
+/** Lists the repositories that a Git host provider, such as GitLab, can reach. */
+export const fetchPromotionRepositories = async (
+	context: PublicApiContext,
+	providerId: string,
+	query: { search?: string; cursor?: string } = {},
+): Promise<PromotionRepositoryListPublicDto> =>
+	await request({
+		method: 'GET',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/providers/${providerId}/repositories`,
+		data: query,
+	});
 
 export const fetchPromotionConnections = async (
 	context: PublicApiContext,

@@ -28,6 +28,7 @@ import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
 import { MetricsApiHelper } from './metrics-api-helper';
 import { NodeParameterApiHelper } from './node-parameter-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
+import { PromotionsApiHelper } from './promotions-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
 import { SecuritySettingsApiHelper } from './security-settings-api-helper';
@@ -88,6 +89,7 @@ export class ApiHelpers {
 	mcp: McpApiHelper;
 	mcpOauth: McpOAuthApiHelper;
 	projects: ProjectApiHelper;
+	promotions: PromotionsApiHelper;
 	credentials: CredentialApiHelper;
 	agents: AgentApiHelper;
 	dynamicCredentials: DynamicCredentialApiHelper;
@@ -118,6 +120,7 @@ export class ApiHelpers {
 		this.mcp = new McpApiHelper(this);
 		this.mcpOauth = new McpOAuthApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
+		this.promotions = new PromotionsApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
 		this.agents = new AgentApiHelper(this);
 		this.dynamicCredentials = new DynamicCredentialApiHelper(this);

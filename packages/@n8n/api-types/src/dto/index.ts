@@ -661,7 +661,11 @@ export {
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
 	UpdatePromotionProviderDto,
+	isPromotionGitHostType,
+	supportsPromotionAuthType,
 	promotionGitConfigSchemas,
+	promotionGitHostBaseUrlSchema,
+	promotionGitHostConfigSchema,
 	promotionGitSshKeyAuthInputSchema,
 	promotionGitSshKeyAuthUpdateSchema,
 	promotionGitSshKeyConfigSchema,
@@ -673,8 +677,11 @@ export {
 	promotionProviderConfigSchema,
 	promotionProviderPublicSchema,
 	promotionProviderSummarySchema,
+	promotionProviderTypeCapabilities,
 	promotionProviderTypeSchema,
 	promotionSshKeyTypeSchema,
+	type PromotionGitHostConfig,
+	type PromotionGitHostType,
 	type PromotionProviderAuthInput,
 	type PromotionProviderAuthType,
 	type PromotionProviderAuthUpdate,
@@ -682,6 +689,13 @@ export {
 	type PromotionProviderType,
 	type PromotionSshKeyType,
 } from './promotions/promotion-provider.dto';
+export {
+	ListPromotionRepositoriesQueryDto,
+	MAX_PROMOTION_REPOSITORIES_PER_PAGE,
+	PromotionRepositoryListPublicDto,
+	promotionRepositorySchema,
+	type PromotionRepository,
+} from './promotions/promotion-repository.dto';
 export {
 	PromotionApplyConfigPublicDto,
 	PromotionPromoteConfigPublicDto,

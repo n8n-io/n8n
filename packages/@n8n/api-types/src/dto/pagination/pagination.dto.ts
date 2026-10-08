@@ -57,7 +57,7 @@ const offsetValidator = z
 		message: 'Param `offset` must be a non-negative integer',
 	});
 
-const createLimitValidator = (maxItems: number) =>
+export const createLimitValidator = (maxItems: number) =>
 	z
 		.string()
 		.optional()

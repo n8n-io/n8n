@@ -7,12 +7,48 @@ import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
-export const promotionProviderTypeSchema = z.enum(['git']);
+export const promotionProviderTypeSchema = z.enum(['git', 'gitlab']);
 export type PromotionProviderType = z.infer<typeof promotionProviderTypeSchema>;
 
-/** `token` is an HTTP(S) username and password, not a Git host API token. */
+/**
+ * `token` is an HTTP(S) username and password. On a Git host such as GitLab, the
+ * password is an access token, which also reads the host API. GitLab accepts
+ * any username with that token.
+ */
 export const promotionProviderAuthTypeSchema = z.enum(['ssh-key', 'token']);
 export type PromotionProviderAuthType = z.infer<typeof promotionProviderAuthTypeSchema>;
+
+/**
+ * `git` speaks plain Git only. A Git host type also has an API at its configured
+ * base URL. Each provider declares its supported authentication methods.
+ */
+export const promotionProviderTypeCapabilities = {
+	git: { authTypes: ['ssh-key', 'token'], hasHostApi: false, tokenUsername: null },
+	gitlab: { authTypes: ['token'], hasHostApi: true, tokenUsername: 'n8n' },
+} as const satisfies Record<
+	PromotionProviderType,
+	{
+		authTypes: readonly PromotionProviderAuthType[];
+		hasHostApi: boolean;
+		/** Null means the user supplies the Git transport username. */
+		tokenUsername: string | null;
+	}
+>;
+
+/** The provider types that have a host API. */
+export type PromotionGitHostType = {
+	[T in PromotionProviderType]: (typeof promotionProviderTypeCapabilities)[T]['hasHostApi'] extends true
+		? T
+		: never;
+}[PromotionProviderType];
+
+export const isPromotionGitHostType = (type: PromotionProviderType): type is PromotionGitHostType =>
+	promotionProviderTypeCapabilities[type].hasHostApi;
+
+export const supportsPromotionAuthType = (
+	type: PromotionProviderType,
+	authType: PromotionProviderAuthType,
+) => promotionProviderTypeCapabilities[type].authTypes.some((supported) => supported === authType);
 
 /** Key algorithms the backend can generate for an `ssh-key` provider. */
 export const promotionSshKeyTypeSchema = z.enum(['ed25519', 'rsa']);
@@ -33,6 +69,36 @@ export const promotionGitSshKeyConfigSchema = z
 /** HTTP(S) keeps the username with the password, so there is nothing public. */
 export const promotionGitTokenConfigSchema = z.object({ schemaVersion: z.literal(1) }).strict();
 
+function isPlainHttpUrl(value: string) {
+	for (const char of value) {
+		if (char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127) return false;
+	}
+	let url: URL;
+	try {
+		url = new URL(value);
+	} catch {
+		return false;
+	}
+	return (
+		['http:', 'https:'].includes(url.protocol) &&
+		!url.username &&
+		!url.password &&
+		!url.search &&
+		!url.hash
+	);
+}
+
+/** Credentials go in `auth`, never in the URL. A path is kept for a host under a subpath. */
+export const promotionGitHostBaseUrlSchema = z.string().trim().refine(isPlainHttpUrl, {
+	message: 'Base URL must be an HTTP(S) URL without credentials, a query, or a fragment',
+});
+
+/** The settings of a Git host type such as `gitlab`. The access token stays in `auth`. */
+export const promotionGitHostConfigSchema = z
+	.object({ schemaVersion: z.literal(1), baseUrl: promotionGitHostBaseUrlSchema })
+	.strict();
+export type PromotionGitHostConfig = z.infer<typeof promotionGitHostConfigSchema>;
+
 /**
  * Config schema for each auth type. Use this map once the auth type is known: the
  * union below accepts either shape and cannot tell them apart. A new provider type
@@ -46,6 +112,7 @@ export const promotionGitConfigSchemas = {
 export const promotionProviderConfigSchema = z.union([
 	promotionGitSshKeyConfigSchema,
 	promotionGitTokenConfigSchema,
+	promotionGitHostConfigSchema,
 ]);
 export type PromotionProviderConfig = z.infer<typeof promotionProviderConfigSchema>;
 
@@ -109,23 +176,25 @@ export type PromotionProviderAuthUpdate = z.infer<typeof promotionProviderAuthUp
  * The auth type is stated once, inside `auth`, so it always matches the credentials
  * beside it. The service reads it from there for the `authType` column.
  *
- * `git` is the only provider type today, so its two auth methods are the only ones
- * the union accepts. A second provider type brings its own auth variants, and the
- * pairing of provider type to auth method becomes a choice to model here.
+ * Only a Git host type takes a `config`, which holds its base URL. A `git` provider
+ * has its config generated. The body root cannot be a union, so the service checks
+ * the type, auth method, and config against `promotionProviderTypeCapabilities`.
  */
 export class CreatePromotionProviderDto extends Z.class(
 	{
 		name: promotionDisplayNameSchema,
 		type: promotionProviderTypeSchema,
 		auth: promotionProviderAuthInputSchema,
+		config: promotionGitHostConfigSchema.optional(),
 	},
 	{ strict: true },
 ) {}
 
 /**
- * `type` cannot change and `config` holds generated key material, so a strict shape
- * rejects both. Leaving out `auth` keeps the stored credentials. Sending it replaces
- * them.
+ * `type` cannot change, so a strict shape rejects it. Leaving out `auth` keeps the
+ * stored credentials. Sending it replaces them. A Git host type can send `config`
+ * to move to another base URL. A `git` provider's config is generated, so the
+ * service rejects it there.
  *
  * `auth.authType` states which credentials are being sent, and the auth type itself
  * cannot change, so the service compares it with the stored one and rejects a
@@ -136,11 +205,13 @@ const updatePromotionProviderSchema = z
 	.object({
 		name: promotionDisplayNameSchema.optional(),
 		auth: promotionProviderAuthUpdateSchema.optional(),
+		config: promotionGitHostConfigSchema.optional(),
 	})
 	.strict()
-	.refine(({ name, auth }) => name !== undefined || auth !== undefined, {
-		message: 'At least one field is required',
-	})
+	.refine(
+		({ name, auth, config }) => name !== undefined || auth !== undefined || config !== undefined,
+		{ message: 'At least one field is required' },
+	)
 	.openapi({ minProperties: 1 });
 
 type UpdatePromotionProvider = z.infer<typeof updatePromotionProviderSchema>;
@@ -149,6 +220,8 @@ export class UpdatePromotionProviderDto implements UpdatePromotionProvider {
 	name?: string;
 
 	auth?: PromotionProviderAuthUpdate;
+
+	config?: PromotionGitHostConfig;
 
 	static schema = updatePromotionProviderSchema;
 
@@ -180,8 +253,8 @@ export class PromotionProviderPublicDto extends Z.class(promotionProviderPublicS
 
 /**
  * A provider without its public config. Used for list rows and inside a
- * connection, neither of which shows the SSH public key. Only the provider detail
- * route does.
+ * connection, neither of which shows the SSH public key or the base URL. Only the
+ * provider detail route does.
  */
 export const promotionProviderSummarySchema = promotionProviderPublicSchema.omit({ config: true });
 

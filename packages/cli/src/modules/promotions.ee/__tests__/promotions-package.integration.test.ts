@@ -1,3 +1,4 @@
+import type { PromotionProviderType } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
@@ -69,6 +70,7 @@ import { PromotionConfigRepository } from '../database/repositories/promotion-co
 import { PromotionConnectionProjectRepository } from '../database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
+import type { GitHostClients } from '../git-hosts/git-host-clients';
 import { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import { PromotionConfigResolver } from '../promotion-config.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
@@ -168,7 +170,13 @@ beforeEach(async () => {
 			linkRepository,
 			projectRepository,
 		),
-		new PromotionProvidersService(providerRepository, connectionRepository, gitService, cipher),
+		new PromotionProvidersService(
+			providerRepository,
+			connectionRepository,
+			gitService,
+			cipher,
+			mock<GitHostClients>(),
+		),
 		workingDirectory,
 		new WorkingCopyUpdater(instanceSettings, logger),
 		gitService,
@@ -223,15 +231,19 @@ async function createInstanceConnection(
 	remoteUrl: string,
 	branches: { apply: string; promote: string } = { apply: 'main', promote: 'main' },
 	createBranchOnPromotion = false,
+	providerType: PromotionProviderType = 'git',
 ) {
 	const provider = await providerRepository.insertProvider({
 		name: 'Bot user',
-		type: 'git',
+		type: providerType,
 		authType: 'token',
-		config: { schemaVersion: 1 },
+		config: {
+			schemaVersion: 1,
+			...(providerType === 'gitlab' && { baseUrl: 'https://gitlab.example.com' }),
+		},
 		auth: JSON.stringify({
 			schemaVersion: 1,
-			username: 'git-user',
+			username: providerType === 'gitlab' ? 'n8n' : 'git-user',
 			password: 'git-password',
 		}),
 	});
@@ -539,103 +551,121 @@ describe('Promote and Apply', () => {
 		},
 	);
 
-	it('exports all team projects, commits them, and pushes them to the base branch', async () => {
-		const remote = await createRemote();
-		const connection = await createInstanceConnection(remote.bareDir);
-		await service.clone(connection.id, 'promote');
+	it.each(['git', 'gitlab'] as const)(
+		'exports and pushes all team projects through a %s provider',
+		async (providerType) => {
+			const remote = await createRemote();
+			const connection = await createInstanceConnection(
+				remote.bareDir,
+				undefined,
+				false,
+				providerType,
+			);
+			await service.clone(connection.id, 'promote');
 
-		const project = await createTeamProject('Orders', owner);
-		const workflow = await createWorkflow(
-			{ name: 'Process order', nodes: [], connections: {} },
-			project,
-		);
+			const project = await createTeamProject('Orders', owner);
+			const workflow = await createWorkflow(
+				{ name: 'Process order', nodes: [], connections: {} },
+				project,
+			);
 
-		const result = await service.promote(connection.id, owner, {
-			canExportVariableValues: false,
-			commitMessage: 'Export orders',
-		});
+			const result = await service.promote(connection.id, owner, {
+				canExportVariableValues: false,
+				commitMessage: 'Export orders',
+			});
 
-		const inspectionDir = path.join(testRoot, 'promote-inspection');
-		await simpleGit().clone(remote.bareDir, inspectionDir, ['--branch', 'main', '--single-branch']);
-		const inspectionGit = simpleGit(inspectionDir);
-		const remoteHead = (await inspectionGit.revparse(['HEAD'])).trim();
-		const pushedCommit = (await inspectionGit.log({ maxCount: 1 })).latest;
-		const manifest = packageManifestSchema.parse(
-			jsonParse(await readFile(path.join(inspectionDir, 'n8n-export', 'manifest.json'), 'utf-8')),
-		);
-		const projectEntry = manifest.projects?.find(({ id }) => id === project.id);
-		const workflowEntry = manifest.workflows?.find(({ id }) => id === workflow.id);
+			const inspectionDir = path.join(testRoot, 'promote-inspection');
+			await simpleGit().clone(remote.bareDir, inspectionDir, [
+				'--branch',
+				'main',
+				'--single-branch',
+			]);
+			const inspectionGit = simpleGit(inspectionDir);
+			const remoteHead = (await inspectionGit.revparse(['HEAD'])).trim();
+			const pushedCommit = (await inspectionGit.log({ maxCount: 1 })).latest;
+			const manifest = packageManifestSchema.parse(
+				jsonParse(await readFile(path.join(inspectionDir, 'n8n-export', 'manifest.json'), 'utf-8')),
+			);
+			const projectEntry = manifest.projects?.find(({ id }) => id === project.id);
+			const workflowEntry = manifest.workflows?.find(({ id }) => id === workflow.id);
 
-		assert(projectEntry);
-		assert(workflowEntry);
-		assert(pushedCommit);
-		assert(owner.firstName);
-		assert(owner.lastName);
-		expect(pushedCommit).toMatchObject({
-			hash: remoteHead,
-			message: 'Export orders',
-			author_name: `${owner.firstName} ${owner.lastName}`,
-			author_email: owner.email,
-		});
-		await expect(readFile(path.join(inspectionDir, 'README.md'), 'utf-8')).resolves.toContain(
-			'n8n promotions test',
-		);
-		await expect(
-			readFile(path.join(inspectionDir, 'n8n-export', projectEntry.target, 'project.json')),
-		).resolves.toBeDefined();
-		await expect(
-			readFile(path.join(inspectionDir, 'n8n-export', workflowEntry.target, 'workflow.json')),
-		).resolves.toBeDefined();
-		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
-		expect(result.counts.workflows).toBe(1);
-	});
+			assert(projectEntry);
+			assert(workflowEntry);
+			assert(pushedCommit);
+			assert(owner.firstName);
+			assert(owner.lastName);
+			expect(pushedCommit).toMatchObject({
+				hash: remoteHead,
+				message: 'Export orders',
+				author_name: `${owner.firstName} ${owner.lastName}`,
+				author_email: owner.email,
+			});
+			await expect(readFile(path.join(inspectionDir, 'README.md'), 'utf-8')).resolves.toContain(
+				'n8n promotions test',
+			);
+			await expect(
+				readFile(path.join(inspectionDir, 'n8n-export', projectEntry.target, 'project.json')),
+			).resolves.toBeDefined();
+			await expect(
+				readFile(path.join(inspectionDir, 'n8n-export', workflowEntry.target, 'workflow.json')),
+			).resolves.toBeDefined();
+			expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
+			expect(result.counts.workflows).toBe(1);
+		},
+	);
 
-	it('creates one timestamped branch for each promotion', async () => {
-		const remote = await createRemote();
-		const connection = await createInstanceConnection(
-			remote.bareDir,
-			{ apply: 'main', promote: 'main' },
-			true,
-		);
-		await service.clone(connection.id, 'promote');
+	it.each(['git', 'gitlab'] as const)(
+		'creates one timestamped branch for each promotion through a %s provider',
+		async (providerType) => {
+			const remote = await createRemote();
+			const connection = await createInstanceConnection(
+				remote.bareDir,
+				{ apply: 'main', promote: 'main' },
+				true,
+				providerType,
+			);
+			await service.clone(connection.id, 'promote');
 
-		const project = await createTeamProject('Orders', owner);
-		const workflow = await createWorkflow(
-			{ name: 'Process order', nodes: [], connections: {} },
-			project,
-		);
-		const baseCommit = (await remote.git.revparse(['main'])).trim();
+			const project = await createTeamProject('Orders', owner);
+			const workflow = await createWorkflow(
+				{ name: 'Process order', nodes: [], connections: {} },
+				project,
+			);
+			const baseCommit = (await remote.git.revparse(['main'])).trim();
 
-		const first = await service.promote(connection.id, owner, {
-			canExportVariableValues: false,
-			commitMessage: 'Promote orders',
-			force: true,
-		});
-		const remoteGit = simpleGit(remote.bareDir);
+			const first = await service.promote(connection.id, owner, {
+				canExportVariableValues: false,
+				commitMessage: 'Promote orders',
+				force: true,
+			});
+			const remoteGit = simpleGit(remote.bareDir);
 
-		expect(first.git.branchName).toMatch(
-			/^n8n-promotion\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/,
-		);
-		expect((await remoteGit.revparse([first.git.branchName])).trim()).toBe(first.git.commitSha);
-		expect((await remoteGit.revparse([`${first.git.branchName}^`])).trim()).toBe(baseCommit);
-		expect((await remoteGit.revparse(['main'])).trim()).toBe(baseCommit);
+			expect(first.git.branchName).toMatch(
+				/^n8n-promotion\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/,
+			);
+			expect((await remoteGit.revparse([first.git.branchName])).trim()).toBe(first.git.commitSha);
+			expect((await remoteGit.revparse([`${first.git.branchName}^`])).trim()).toBe(baseCommit);
+			expect((await remoteGit.revparse(['main'])).trim()).toBe(baseCommit);
 
-		await remote.git.fetch('origin', first.git.branchName);
-		await remote.git.merge(['FETCH_HEAD']);
-		await remote.git.push('origin', 'main');
-		const mergedBaseCommit = (await remote.git.revparse(['main'])).trim();
-		await Container.get(WorkflowRepository).update(workflow.id, { name: 'Process order v2' });
+			await remote.git.fetch('origin', first.git.branchName);
+			await remote.git.merge(['FETCH_HEAD']);
+			await remote.git.push('origin', 'main');
+			const mergedBaseCommit = (await remote.git.revparse(['main'])).trim();
+			await Container.get(WorkflowRepository).update(workflow.id, { name: 'Process order v2' });
 
-		const second = await service.promote(connection.id, owner, {
-			canExportVariableValues: false,
-			commitMessage: 'Promote orders again',
-		});
+			const second = await service.promote(connection.id, owner, {
+				canExportVariableValues: false,
+				commitMessage: 'Promote orders again',
+			});
 
-		expect(second.git.branchName).not.toBe(first.git.branchName);
-		expect((await remoteGit.revparse([second.git.branchName])).trim()).toBe(second.git.commitSha);
-		expect((await remoteGit.revparse([`${second.git.branchName}^`])).trim()).toBe(mergedBaseCommit);
-		expect((await remoteGit.revparse(['main'])).trim()).toBe(mergedBaseCommit);
-	});
+			expect(second.git.branchName).not.toBe(first.git.branchName);
+			expect((await remoteGit.revparse([second.git.branchName])).trim()).toBe(second.git.commitSha);
+			expect((await remoteGit.revparse([`${second.git.branchName}^`])).trim()).toBe(
+				mergedBaseCommit,
+			);
+			expect((await remoteGit.revparse(['main'])).trim()).toBe(mergedBaseCommit);
+		},
+	);
 
 	it('requires a clone after a branched promotion cannot restore its checkout', async () => {
 		const remote = await createRemote();

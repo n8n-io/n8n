@@ -244,6 +244,9 @@
 		"DELETE /promotions/providers/{promotionProviderId}": {
 			"status": "gap"
 		},
+		"GET /promotions/providers/{promotionProviderId}/repositories": {
+			"status": "gap"
+		},
 		"GET /promotions/connections": {
 			"status": "gap"
 		},
