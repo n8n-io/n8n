@@ -32,6 +32,8 @@ import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
 
+import { recordEvalUsage } from '../../src/utils/eval-usage';
+
 // Disable undici's 300s timeouts — mocked eval runs take minutes; the per-request
 // AbortSignal is the real bound. This is process-global: only ever imported by the
 // eval CLI harness — never import into the n8n server or shared runtime code.
@@ -1331,6 +1333,7 @@ export class N8nClient {
 			body,
 			timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 		})) as { data: InstanceAiEvalExecutionResult };
+		recordEvalUsage(result.data.llmUsage);
 		return result.data;
 	}
 
@@ -1358,6 +1361,7 @@ export class N8nClient {
 				timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 			},
 		)) as { data: InstanceAiEvalAgentExecutionResult };
+		recordEvalUsage(result.data.llmUsage);
 		return result.data;
 	}
 

@@ -14,6 +14,7 @@ import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
 import type { BuildOrchestrator } from './build-orchestrator';
 import { sentinelOutcomeFromVerdicts, type TargetOutput } from './reshape';
+import { EvalUsageMeter } from '../../src/utils/eval-usage';
 import type { CliArgs } from '../cli/args';
 import {
 	draftAgentVerdict,
@@ -57,6 +58,8 @@ export interface CasePipelineDeps {
 	buildExpectationsByKey: Map<string, Promise<BuildExpectationResult[]>>;
 	agentContextByKey: Map<string, Promise<AgentScenarioContext>>;
 	runDebugByThreadId: Map<string, Promise<InstanceAiRunDebugResponse[]>>;
+	/** Usage of the eval's own model calls, per `iteration:fileSlug`. Filled here. */
+	harnessUsageByKey: Map<string, EvalUsageMeter>;
 }
 
 export interface CasePipeline {
@@ -85,8 +88,18 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		buildExpectationsByKey,
 		agentContextByKey,
 		runDebugByThreadId,
+		harnessUsageByKey,
 	} = deps;
 	const { getOrBuild, buildCache } = orchestrator;
+
+	function usageMeterFor(key: string): EvalUsageMeter {
+		let meter = harnessUsageByKey.get(key);
+		if (!meter) {
+			meter = new EvalUsageMeter();
+			harnessUsageByKey.set(key, meter);
+		}
+		return meter;
+	}
 
 	// Rows remaining per `iteration:fileSlug` build. When the last row of a
 	// build finishes, its backend artifacts (workflow, data tables, thread — and
@@ -147,7 +160,10 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 	const runRow = async (inputs: ScenarioRowInputs): Promise<TargetOutput> => {
 		const iteration = inputs._iteration ?? 0;
 		try {
-			return await runScenarioRow(inputs, iteration);
+			// Only rows start builds, so a build and its judges count on the meter of its own case.
+			return await usageMeterFor(`${String(iteration)}:${inputs.testCaseFile}`).run(
+				async () => await runScenarioRow(inputs, iteration),
+			);
 		} catch (error: unknown) {
 			// runScenarioRow guards scenario execution internally, but a build-phase
 			// throw (getOrBuild) or a budget abort must not reject up to the driver

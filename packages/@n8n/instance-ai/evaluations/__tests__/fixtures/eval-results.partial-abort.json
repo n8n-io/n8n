@@ -41,7 +41,8 @@
 			],
 			"transcriptPerRun": [null],
 			"buildErrorPerRun": [null],
-			"buildTimeoutPerRun": [null]
+			"buildTimeoutPerRun": [null],
+			"harnessUsagePerRun": [null]
 		},
 		{
 			"name": "build me something",
@@ -76,7 +77,8 @@
 			],
 			"transcriptPerRun": [null],
 			"buildErrorPerRun": ["TimeoutError: The operation was aborted due to timeout"],
-			"buildTimeoutPerRun": [null]
+			"buildTimeoutPerRun": [null],
+			"harnessUsagePerRun": [null]
 		}
 	]
 }

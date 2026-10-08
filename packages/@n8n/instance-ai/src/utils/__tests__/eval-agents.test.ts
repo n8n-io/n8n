@@ -4,6 +4,7 @@ type MockAgentInstance = {
 	model: Mock;
 	instructions: Mock;
 	thinking: Mock;
+	configuration: Mock;
 };
 
 const mockAgentInstances: MockAgentInstance[] = [];
@@ -13,6 +14,7 @@ vi.mock('@n8n/agents', () => ({
 		this.model = vi.fn().mockReturnThis();
 		this.instructions = vi.fn().mockReturnThis();
 		this.thinking = vi.fn().mockReturnThis();
+		this.configuration = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Tool: vi.fn(),

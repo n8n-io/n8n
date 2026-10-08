@@ -1,3 +1,6 @@
+import type { InstanceAiEvalLlmUsage } from '@n8n/api-types';
+
+import { EvalUsageMeter, recordEvalUsage } from '../../src/utils/eval-usage';
 import type { CliArgs } from '../cli/args';
 import type { BuildResult } from '../harness/build-workflow';
 import { cleanupBuild } from '../harness/cleanup';
@@ -113,7 +116,20 @@ function makeDeps(
 		buildExpectationsByKey: new Map(),
 		agentContextByKey: new Map(),
 		runDebugByThreadId: new Map(),
+		harnessUsageByKey: new Map(),
 		...overrides,
+	};
+}
+
+function usageOf(agent: string, calls: number): InstanceAiEvalLlmUsage {
+	return {
+		agent,
+		model: 'anthropic/claude-sonnet-4-6',
+		calls,
+		uncachedInputTokens: 100 * calls,
+		cacheReadTokens: 0,
+		cacheWriteTokens: 0,
+		outputTokens: 10 * calls,
 	};
 }
 
@@ -123,6 +139,34 @@ beforeEach(() => {
 });
 
 describe('createCasePipeline', () => {
+	it('counts the model usage of each row and of its build under the case and iteration', async () => {
+		const lane = makeLane();
+		// The scenario run reports the server's mock usage, the build the simulated user's.
+		vi.mocked(lane.tracedExecute).mockImplementation(async () => {
+			recordEvalUsage([usageOf('eval-mock-responder', 2)]);
+			return await Promise.resolve({ success: true, score: 1, reasoning: 'works' } as never);
+		});
+		const orchestrator = makeOrchestrator({ build: okBuild(), lane, buildDurationMs: 42 });
+		vi.mocked(orchestrator.getOrBuild).mockImplementation(async () => {
+			recordEvalUsage([usageOf('eval-user-proxy', 1)]);
+			return await Promise.resolve({ build: okBuild(), lane, buildDurationMs: 42 });
+		});
+		const harnessUsageByKey = new Map<string, EvalUsageMeter>();
+		const pipeline = createCasePipeline(makeDeps(orchestrator, { harnessUsageByKey }));
+
+		await Promise.all([
+			pipeline.runRow({ ...rowInputs('happy-path'), _iteration: 0 }),
+			pipeline.runRow({ ...rowInputs('happy-path'), _iteration: 1 }),
+		]);
+
+		for (const key of ['0:case-a', '1:case-a']) {
+			expect(harnessUsageByKey.get(key)?.entries()).toEqual([
+				usageOf('eval-user-proxy', 1),
+				usageOf('eval-mock-responder', 2),
+			]);
+		}
+	});
+
 	it('runs a workflow scenario row and eagerly cleans up after the last row', async () => {
 		const lane = makeLane();
 		vi.mocked(lane.tracedExecute).mockResolvedValue({

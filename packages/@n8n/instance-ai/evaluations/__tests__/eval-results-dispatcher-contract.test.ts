@@ -1,4 +1,4 @@
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type { InstanceAiEvalExecutionResult, InstanceAiEvalLlmUsage } from '@n8n/api-types';
 import { mkdtempSync, readFileSync } from 'fs';
 import { jsonParse } from 'n8n-workflow';
 import { tmpdir } from 'os';
@@ -152,6 +152,7 @@ interface DispatcherView {
 		}> | null>;
 		buildCostUsdPerRun?: Array<number | null>;
 		buildTurnsPerRun?: Array<number | null>;
+		harnessUsagePerRun: Array<InstanceAiEvalLlmUsage[] | null>;
 		transcriptPerRun: Array<TranscriptTurn[] | null>;
 		buildErrorPerRun: Array<string | null>;
 		threadIds: Array<string | null>;
@@ -389,6 +390,38 @@ describe('eval-results.json — dispatcher contract', () => {
 		expect(new TextEncoder().encode(formattedArtifactFields).byteLength).toBeLessThanOrEqual(
 			AGENT_ARTIFACT_CASE_CAP_BYTES,
 		);
+	});
+
+	it('serializes the harness model usage of each iteration, null when it was not measured', () => {
+		const judgeUsage: InstanceAiEvalLlmUsage = {
+			agent: 'eval-checklist-verifier',
+			model: 'anthropic/claude-sonnet-4-6',
+			calls: 3,
+			uncachedInputTokens: 41_000,
+			cacheReadTokens: 12_000,
+			cacheWriteTokens: 4_000,
+			outputTokens: 2_500,
+		};
+		const evaluation = aggregateResults(
+			[[{ ...iteration1(), harnessUsage: [judgeUsage] }], [iteration2()]],
+			2,
+		);
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const { jsonPath } = writeEvalResults(
+			evaluation,
+			1234,
+			dir,
+			'exp-dispatcher-contract',
+			undefined,
+			undefined,
+			new Map([[testCase, 'daily-digest']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+
+		// LangTracer prices these per model. A null run is "not measured", never "free".
+		expect(report.testCases[0].harnessUsagePerRun).toEqual([[judgeUsage], null]);
 	});
 
 	it('serializes per-iteration `claude` build spend when a run recorded it', () => {
