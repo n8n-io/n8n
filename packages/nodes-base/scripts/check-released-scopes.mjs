@@ -2,9 +2,12 @@
 /**
  * Fails when a change removes an OAuth scope that the released n8n still grants.
  *
- * Narrowing a scope cannot be undone: existing credentials keep the token they
- * were issued, so the node starts failing for them and restoring the scope later
- * does not repair it.
+ * A removal reaches users through consent, not through the stored credential.
+ * A new connection is never asked for the scope, so the node fails for it. An
+ * existing credential narrows at its next reconnect, because the OAuth service
+ * drops a stored hidden scope before it applies the defaults (see
+ * packages/cli/src/oauth/oauth.service.ts). Putting the scope back repairs it
+ * only after each user reconnects, so the broken window is the cost.
  *
  * The baseline is the released package, not master, because tokens only exist
  * for scopes that shipped: a scope added to master and removed again before
@@ -197,7 +200,7 @@ report([
 	'',
 	...removals.map((entry) => `- \`${entry.credential}\`: \`${entry.scope}\``),
 	'',
-	'Every credential connected with a removed scope keeps failing after the change, and putting the scope back later does not repair them: those users have to reconnect.',
+	'A new connection is never asked for this scope, so the node fails for it. An existing credential narrows at its next reconnect. Putting the scope back repairs it only after each user reconnects.',
 	'',
 	'If the change is intended, ship it behind a new node version or with a migration note, and record it in `packages/nodes-base/credentials/scope-removals.json`:',
 	'',
