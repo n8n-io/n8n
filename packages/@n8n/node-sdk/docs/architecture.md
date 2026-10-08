@@ -124,7 +124,10 @@ needs, and gives the same bytes for the same source. A bundle imports `@n8n/node
 `sdk: { version, digest }` (a store version of kind `sdk`). With
 `N8N_NODE_CONTRACTS_NPM_REGISTRY`, the build ships the published bytes of each HEAD that the
 registry has. It logs a HEAD with unpublished changes that keep the contract and bundle hash,
-and fails on any other change under a published version (`assertPublishedMatches`).
+and fails on any other change under a published version (`assertPublishedMatches`). A published
+HEAD can pin another SDK runtime. The build ships that runtime only when the first-party key
+(`N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE`) signs its manifest. Without the registry, the build
+logs a warning that it did not compare published bytes.
 The release ships this store, so its versions are first-party with no key check. Details:
 [node-contract.md, Versions](node-contract.md#versions) and
 [Store layout](node-contract.md#store-layout).

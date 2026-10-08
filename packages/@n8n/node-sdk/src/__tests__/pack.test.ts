@@ -1,4 +1,4 @@
-import { generateKeyPairSync } from 'node:crypto';
+import { createPublicKey, generateKeyPairSync } from 'node:crypto';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -586,9 +586,16 @@ export const pass = defineNode({
 
 	const storeOf = () => storeReader(storeFilesOfDir(path.join(state.pkg, 'dist', 'store')));
 
-	it('ships a published version that pins another SDK runtime, with that runtime', async () => {
+	it('ships a published version that pins another signed SDK runtime, with that runtime', async () => {
 		const registry = state.registry as FakeNpmRegistry;
-		const put = (version: NpmVersion) => registry.put(npmPackageOf(version, { privateKey }));
+		const put = (version: NpmVersion, key = privateKey) =>
+			registry.put(npmPackageOf(version, { privateKey: key }));
+		const keyFile = path.join(state.pkg, 'first-party.pem');
+		await writeFile(
+			keyFile,
+			createPublicKey(privateKey).export({ type: 'spki', format: 'pem' }).toString(),
+		);
+		vi.stubEnv('N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE', keyFile);
 		await writeFile(state.entry, passSource(run));
 		const sdk = await packSdkRuntime();
 		const otherBundle = `${sdk.bundle}\n`;
@@ -602,12 +609,29 @@ export const pass = defineNode({
 		);
 		// A credential manifest of Node Contract 2.10 names the SDK it was packed with.
 		const oldCredential = { ...credential, sdk: '@n8n/node-sdk@0.1.0' };
-		put(otherSdk);
 		put({ ...published, fixtures: { executions: [] } });
 		put({ manifest: oldCredential as CredentialManifest });
 		const pkg = { name: '@acme/nodes', dir: state.pkg };
 		const log: string[] = [];
 		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', registry.url);
+		const unsigned = `demo.pass@1.0.0 pins SDK runtime sha256:${otherSdk.manifest.bundleHash}, which has no first-party signature`;
+
+		const otherKey = generateKeyPairSync('ed25519')
+			.privateKey.export({ type: 'pkcs8', format: 'pem' })
+			.toString();
+		put(otherSdk, otherKey);
+		await expect(packPackage(pkg)).rejects.toThrow(unsigned);
+		const files = npmPackageOf(otherSdk, { privateKey });
+		const packageJson = JSON.parse(files['package.json'] ?? '{}') as { n8n: object };
+		registry.put({
+			...files,
+			'package.json': JSON.stringify({
+				...packageJson,
+				n8n: { ...packageJson.n8n, signatures: [] },
+			}),
+		});
+		await expect(packPackage(pkg)).rejects.toThrow(unsigned);
+		put(otherSdk);
 
 		const shipped = await packPackage(pkg, undefined, (line) => log.push(line));
 		expect(shipped.manifests).toEqual([published.manifest]);
@@ -644,7 +668,11 @@ export const pass = defineNode({
 
 		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', '');
 		await writeFile(state.entry, passSource(run));
-		const local = await packPackage(pkg);
+		const localLog: string[] = [];
+		const local = await packPackage(pkg, undefined, (line) => localLog.push(line));
+		expect(localLog).toEqual([
+			'Warning: N8N_NODE_CONTRACTS_NPM_REGISTRY is not set, so the build did not compare published bytes',
+		]);
 		expect(local.manifests[0]?.bundleHash).toBe(published.manifest.bundleHash);
 		expect((await storeOf().records('demo.pass'))[0]?.manifest).toBe(
 			npmDigestOf(local.manifests[0] ?? published.manifest),

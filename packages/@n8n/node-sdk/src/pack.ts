@@ -36,6 +36,7 @@ import {
 	type StoreManifest,
 	type StoreReader,
 	type StoreVersion,
+	verifyStoreSignature,
 } from './store';
 import { matches } from './validate';
 import {
@@ -761,12 +762,28 @@ async function shippedOf<M extends StoreManifest>(
 	};
 }
 
-/** The SDK runtime of a `sha256:<hex>` digest from the registry, which a shipped manifest pins. */
-async function registrySdkOf(reader: StoreReader, digest: string) {
+/**
+ * The SDK runtime of a `sha256:<hex>` digest from the registry, which the shipped manifest of
+ * `pinnedBy` pins. The store runs it as n8n code, so it needs a signature of the first-party key
+ * (`N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE`).
+ */
+async function registrySdkOf(reader: StoreReader, digest: string, pinnedBy: string) {
 	const record = (await reader.records(SDK_RUNTIME_ID)).find(({ bundle }) => bundle === digest);
+	// readManifest checks the bundleHash against the digest, and blob checks the bytes.
 	const read = record && (await reader.readManifest(record));
 	const bundle = await reader.blob(digest);
-	if (!read || !bundle) throw new UserError(`The registry has no SDK runtime ${digest}`);
+	if (!record || !read || !bundle) throw new UserError(`The registry has no SDK runtime ${digest}`);
+	const keyFile = process.env.N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE;
+	if (!keyFile) {
+		throw new UserError(
+			`${pinnedBy} pins SDK runtime ${digest} from the registry. Set N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE to check its signature.`,
+		);
+	}
+	if (!verifyStoreSignature(record, read.text, readFileSync(keyFile, 'utf8'))) {
+		throw new UserError(
+			`${pinnedBy} pins SDK runtime ${digest}, which has no first-party signature`,
+		);
+	}
 	return { manifestText: read.text, bundle: bundle.toString('utf8') };
 }
 
@@ -780,6 +797,7 @@ async function registrySdkOf(reader: StoreReader, digest: string) {
  * With `N8N_NODE_CONTRACTS_NPM_REGISTRY` (scope: `N8N_NODE_CONTRACTS_NPM_SCOPE`), a release ships
  * the published bytes of each HEAD that the registry has, see `shippedOf`, with the SDK runtime
  * that they pin, and gives a line to `log` for each published manifest that differs from HEAD.
+ * Without it, `log` gets one warning that the build did not compare published bytes.
  */
 export async function packPackage(
 	pkg: Pick<SourcePackage, 'name' | 'dir'>,
@@ -797,6 +815,11 @@ export async function packPackage(
 	const url = process.env.N8N_NODE_CONTRACTS_NPM_REGISTRY;
 	const scope = process.env.N8N_NODE_CONTRACTS_NPM_SCOPE ?? DEFAULT_NPM_SCOPE;
 	const registry = url ? npmStoreReader(npmRegistryOf(url), { scope }) : undefined;
+	if (!registry) {
+		log(
+			'Warning: N8N_NODE_CONTRACTS_NPM_REGISTRY is not set, so the build did not compare published bytes',
+		);
+	}
 	const ship = async <M extends StoreManifest>(
 		local: { readonly manifest: M; readonly bundle?: string },
 		parse: (text: string) => M,
@@ -814,17 +837,20 @@ export async function packPackage(
 		Promise.all(natives.map(async (manifest) => await ship({ manifest }, parseNativeManifest))),
 	]);
 	const localSdk = `sha256:${sdk.manifest.bundleHash}`;
-	const pinnedSdks = [
-		...new Set(
-			shipped.flatMap(({ manifest }) =>
+	const pinnedSdks = new Map(
+		shipped.flatMap(
+			({ manifest }): Array<[string, string]> =>
 				typeof manifest.sdk === 'object' && manifest.sdk.digest !== localSdk
-					? [manifest.sdk.digest]
+					? [[manifest.sdk.digest, `${manifest.id}@${manifest.semver}`]]
 					: [],
-			),
 		),
-	];
+	);
 	const publishedSdks = registry
-		? await Promise.all(pinnedSdks.map(async (digest) => await registrySdkOf(registry, digest)))
+		? await Promise.all(
+				[...pinnedSdks].map(
+					async ([digest, pinnedBy]) => await registrySdkOf(registry, digest, pinnedBy),
+				),
+			)
 		: [];
 	rmSync(outDir, { recursive: true, force: true });
 	await addToStore(outDir, [
