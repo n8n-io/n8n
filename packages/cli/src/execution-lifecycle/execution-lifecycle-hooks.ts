@@ -26,8 +26,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	getChildNodes,
-	getParentNodes,
+	getExecutableNodeNames,
 	mapConnectionsByDestination,
 	runDataAttemptedDynamicCredentials,
 	runDataUsedDynamicCredentials,
@@ -500,19 +499,11 @@ function countReachableNodes(workflowData: IWorkflowBase): number {
 	// No entry point: the run will fail anyway, so fall back rather than report 0.
 	if (!startNode) return executable.length;
 
-	const reachable = new Set([
+	const reachable = getExecutableNodeNames(
+		workflowData.connections,
+		mapConnectionsByDestination(workflowData.connections),
 		startNode.name,
-		...getChildNodes(workflowData.connections, startNode.name),
-	]);
-
-	// Sub-nodes (AI models, memory, tools) connect *into* their parent, so they're
-	// not main descendants — but they execute and report progress.
-	const connectionsByDestination = mapConnectionsByDestination(workflowData.connections);
-	for (const nodeName of [...reachable]) {
-		for (const subNode of getParentNodes(connectionsByDestination, nodeName, 'ALL_NON_MAIN')) {
-			reachable.add(subNode);
-		}
-	}
+	);
 
 	return executable.filter((node) => reachable.has(node.name)).length;
 }

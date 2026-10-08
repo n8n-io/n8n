@@ -158,8 +158,8 @@ export type SubworkflowExecutionStarted = {
 };
 
 /**
- * Sent on each child node start/finish during a sub-workflow execution.
- * Lightweight (no item data) so it can fire at high frequency.
+ * Throttled snapshots of child-node progress during a sub-workflow execution.
+ * Not one message per node event: only the latest state in each window is sent.
  */
 export type SubworkflowNodeProgress = {
 	type: 'subworkflowNodeProgress';
