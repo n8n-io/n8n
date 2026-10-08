@@ -522,6 +522,51 @@ describe('SystemAgentExecutionService', () => {
 		});
 	});
 
+	describe('getUsage', () => {
+		it('returns the stored usage of each turn with its cache and sub-agent details', async () => {
+			const { service, executionRepository } = setup();
+			const usageDetails = {
+				cacheReadTokens: 800,
+				cacheWriteTokens: 100,
+				subAgents: { runs: 1, promptTokens: 50, completionTokens: 20, totalTokens: 70, cost: 0.2 },
+			};
+			executionRepository.findUsageByThreadId.mockResolvedValue([
+				{
+					id: 'execution-1',
+					status: 'success',
+					model: 'anthropic/claude-sonnet-4-5',
+					startedAt: new Date('2026-10-08T10:00:00.000Z'),
+					stoppedAt: new Date('2026-10-08T10:00:02.000Z'),
+					duration: 2000,
+					promptTokens: 1000,
+					completionTokens: 40,
+					totalTokens: 1040,
+					cost: 0.1,
+					usageDetails,
+				},
+			]);
+
+			await expect(service.getUsage(thread)).resolves.toEqual({
+				executions: [
+					{
+						executionId: 'execution-1',
+						status: 'success',
+						model: 'anthropic/claude-sonnet-4-5',
+						startedAt: '2026-10-08T10:00:00.000Z',
+						stoppedAt: '2026-10-08T10:00:02.000Z',
+						duration: 2000,
+						promptTokens: 1000,
+						completionTokens: 40,
+						totalTokens: 1040,
+						cost: 0.1,
+						usageDetails,
+					},
+				],
+			});
+			expect(executionRepository.findUsageByThreadId).toHaveBeenCalledWith(thread.id);
+		});
+	});
+
 	describe('access floor', () => {
 		it('refuses a user who cannot read the working project, before the provider checks', async () => {
 			const { service, provider } = setup();

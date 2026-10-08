@@ -26,6 +26,7 @@
 | timeline | json |  | true |  |  |  |
 | totalTokens | integer |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| usageDetails | json |  | true |  |  | Usage the token columns do not hold, as {cacheReadTokens, cacheWriteTokens, subAgents} |
 | userMessage | text |  | true |  |  |  |
 
 ## Constraints
@@ -87,6 +88,7 @@ erDiagram
   json timeline
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
+  json usageDetails
   text userMessage
 }
 "public.agent_execution_message_links" {

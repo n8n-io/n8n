@@ -24,6 +24,7 @@ function record(overrides: Partial<MessageRecord> = {}): MessageRecord {
 		finishReason: 'stop',
 		usage: null,
 		totalCost: null,
+		usageDetails: null,
 		timeline: [],
 		startTime: 0,
 		duration: 1,

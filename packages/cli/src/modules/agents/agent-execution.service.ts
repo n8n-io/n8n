@@ -240,6 +240,7 @@ export class AgentExecutionService {
 			completionTokens: null,
 			totalTokens: null,
 			cost: null,
+			usageDetails: null,
 			// Save the background job signal before notifying clients that the execution started.
 			timeline: params.initialTimeline?.length ? params.initialTimeline : null,
 			storedAt: 'db',
@@ -1050,6 +1051,7 @@ export class AgentExecutionService {
 			promptTokens: record.usage?.promptTokens ?? null,
 			completionTokens: record.usage?.completionTokens ?? null,
 			totalTokens: record.usage?.totalTokens ?? null,
+			usageDetails: record.usageDetails,
 			timeline: record.timeline.length > 0 ? record.timeline : null,
 			storedAt: 'db' as const,
 			error: record.error,

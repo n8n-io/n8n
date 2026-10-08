@@ -369,6 +369,141 @@ describe('ExecutionRecorder', () => {
 		});
 	});
 
+	describe('usage details', () => {
+		function subAgentCompleted(
+			usage?: Extract<StreamChunk, { type: 'subagent-completed' }>['usage'],
+		): StreamChunk {
+			return {
+				type: 'subagent-completed',
+				taskName: 'builder',
+				taskPath: 'builder',
+				parentToolCallId: 'tc1',
+				status: 'completed',
+				startedAt: 0,
+				finishedAt: 1,
+				durationMs: 1,
+				...(usage && { usage }),
+			};
+		}
+
+		it('stores the prompt-cache tokens of the finish usage', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: {
+					promptTokens: 1000,
+					completionTokens: 40,
+					totalTokens: 1040,
+					cost: 0.1,
+					inputTokenDetails: { noCache: 100, cacheRead: 800, cacheWrite: 100 },
+				},
+			});
+
+			const record = recorder.getMessageRecord();
+			expect(record.usage).toEqual({
+				promptTokens: 1000,
+				completionTokens: 40,
+				totalTokens: 1040,
+			});
+			expect(record.usageDetails).toEqual({ cacheReadTokens: 800, cacheWriteTokens: 100 });
+		});
+
+		it('keeps zero cache reads apart from a missing value', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: {
+					promptTokens: 10,
+					completionTokens: 1,
+					totalTokens: 11,
+					inputTokenDetails: { cacheRead: 0 },
+				},
+			});
+
+			expect(recorder.getMessageRecord().usageDetails).toEqual({ cacheReadTokens: 0 });
+		});
+
+		it('has no usage details when the turn reports no cache tokens and no sub-agents', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: { promptTokens: 10, completionTokens: 1, totalTokens: 11 },
+			});
+
+			expect(recorder.getMessageRecord().usageDetails).toBeNull();
+		});
+
+		it('reports the combined usage of a turn with sub-agents apart from its own usage', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record(makeToolCallChunk('delegate_subagent', { taskName: 'builder' }));
+			recorder.record(
+				subAgentCompleted({
+					promptTokens: 300,
+					completionTokens: 30,
+					totalTokens: 330,
+					cost: 0.03,
+				}),
+			);
+			recorder.record(
+				subAgentCompleted({ promptTokens: 200, completionTokens: 20, totalTokens: 220 }),
+			);
+			// A run without usage (for example a failed delegation) adds nothing.
+			recorder.record(subAgentCompleted());
+			recorder.record(makeToolResultChunk('delegate_subagent', { status: 'completed' }));
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: {
+					promptTokens: 1000,
+					completionTokens: 40,
+					totalTokens: 1040,
+					cost: 0.1,
+					inputTokenDetails: { cacheRead: 900 },
+				},
+			});
+
+			const record = recorder.getMessageRecord();
+			// The turn's own columns stay the parent model calls only.
+			expect(record.usage).toEqual({
+				promptTokens: 1000,
+				completionTokens: 40,
+				totalTokens: 1040,
+			});
+			expect(record.totalCost).toBe(0.1);
+			expect(record.usageDetails).toEqual({
+				cacheReadTokens: 900,
+				subAgents: {
+					runs: 2,
+					promptTokens: 500,
+					completionTokens: 50,
+					totalTokens: 550,
+					cost: 0.03,
+				},
+			});
+
+			const subAgents = record.usageDetails?.subAgents;
+			expect((record.usage?.totalTokens ?? 0) + (subAgents?.totalTokens ?? 0)).toBe(1590);
+		});
+
+		it('records sub-agent usage of a turn that suspends before its finish usage', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record(subAgentCompleted({ promptTokens: 5, completionTokens: 1, totalTokens: 6 }));
+			recorder.record({ type: 'finish', finishReason: 'tool-calls' });
+
+			expect(recorder.getMessageRecord().usageDetails).toEqual({
+				subAgents: { runs: 1, promptTokens: 5, completionTokens: 1, totalTokens: 6 },
+			});
+		});
+	});
+
 	describe('secret scrubbing', () => {
 		it('sanitizes tool inputs and outputs in timeline entries', () => {
 			const recorder = new ExecutionRecorder();

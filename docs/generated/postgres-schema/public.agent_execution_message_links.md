@@ -70,6 +70,7 @@ erDiagram
   json timeline
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
+  json usageDetails
   text userMessage
 }
 "public.agents_messages" {

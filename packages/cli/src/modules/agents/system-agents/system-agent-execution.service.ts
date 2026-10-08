@@ -1,5 +1,5 @@
 import type { SerializableAgentState } from '@n8n/agents';
-import type { AgentSseEvent } from '@n8n/api-types';
+import type { AgentSseEvent, AgentThreadUsageResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -257,6 +257,26 @@ export class SystemAgentExecutionService {
 		if (running || queued) status = 'running';
 		else if (checkpoint) status = 'suspended';
 		return { status, latestExecutionId: latest?.id ?? null, checkpoint };
+	}
+
+	/** Token usage of every turn in the thread, for usage and cost readers. */
+	async getUsage(thread: AgentExecutionThread): Promise<AgentThreadUsageResponse> {
+		const rows = await this.executionRepository.findUsageByThreadId(thread.id);
+		return {
+			executions: rows.map((row) => ({
+				executionId: row.id,
+				status: row.status,
+				model: row.model,
+				startedAt: row.startedAt?.toISOString() ?? null,
+				stoppedAt: row.stoppedAt?.toISOString() ?? null,
+				duration: row.duration,
+				promptTokens: row.promptTokens,
+				completionTokens: row.completionTokens,
+				totalTokens: row.totalTokens,
+				cost: row.cost,
+				usageDetails: row.usageDetails,
+			})),
+		};
 	}
 
 	// ── Messages ─────────────────────────────────────────────────────────────

@@ -81,6 +81,7 @@ function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecor
 		finishReason: 'stop',
 		usage: null,
 		totalCost: null,
+		usageDetails: null,
 		timeline: [],
 		startTime: 0,
 		duration: 1,
@@ -765,6 +766,41 @@ describe('AgentExecutionService', () => {
 		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
 	});
 
+	it('stores the usage details with the terminal execution and keeps thread totals unchanged', async () => {
+		const usageDetails = {
+			cacheReadTokens: 8,
+			subAgents: { runs: 1, promptTokens: 50, completionTokens: 5, totalTokens: 55 },
+		};
+		await service.finalizeExecution('execution-1', {
+			threadId: 'thread-1',
+			agentId: 'agent-1',
+			agentName: 'Agent',
+			projectId: 'project-1',
+			userMessage: null,
+			record: makeMessageRecord({
+				model: 'mock',
+				usage: { promptTokens: 10, completionTokens: 3, totalTokens: 13 },
+				usageDetails,
+			}),
+		});
+
+		expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({ promptTokens: 10, totalTokens: 13, usageDetails }),
+			undefined,
+			expect.any(Object),
+			undefined,
+		);
+		// Sub-agent usage stays out of the thread counters, like the turn columns.
+		expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledWith(
+			'thread-1',
+			10,
+			3,
+			0,
+			expect.any(Number),
+		);
+	});
+
 	describe('execution lifecycle', () => {
 		it('writes the timeline to blob storage in non-db mode', async () => {
 			storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
@@ -958,6 +994,7 @@ describe('AgentExecutionService', () => {
 				finishReason: 'stop',
 				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 				totalCost: 0.01,
+				usageDetails: null,
 				timeline: [],
 				startTime: Date.parse('2026-05-07T10:00:00Z'),
 				duration: 1234,
@@ -1113,6 +1150,7 @@ describe('AgentExecutionService', () => {
 				record: makeMessageRecord({
 					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 					totalCost: 25,
+					usageDetails: null,
 					timeline: [
 						{
 							type: 'tool-call',

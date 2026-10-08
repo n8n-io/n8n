@@ -1,5 +1,6 @@
 import type {
 	AgentExecutionStatus,
+	AgentExecutionUsageDetails,
 	AgentMessageAuthor,
 	AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -86,6 +87,10 @@ export class AgentExecution extends WithTimestampsAndStringId {
 
 	@Column({ type: 'double precision', nullable: true })
 	cost: number | null;
+
+	/** Prompt-cache tokens and sub-agent usage. Null for turns that reported none. */
+	@JsonColumn({ nullable: true })
+	usageDetails: AgentExecutionUsageDetails | null;
 
 	@JsonColumn({ nullable: true })
 	timeline: TimelineEvent[] | null;

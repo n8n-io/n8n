@@ -78,6 +78,7 @@ erDiagram
   TEXT timeline
   INTEGER totalTokens
   datetime_3_ updatedAt
+  TEXT usageDetails
   TEXT userMessage
 }
 "agents_messages" {

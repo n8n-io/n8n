@@ -21,7 +21,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 16 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
-| [agent_execution](agent_execution.md) | 23 |  | table |
+| [agent_execution](agent_execution.md) | 24 |  | table |
 | [agent_execution_message_links](agent_execution_message_links.md) | 5 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 19 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
@@ -580,6 +580,7 @@ erDiagram
   TEXT timeline
   INTEGER totalTokens
   datetime_3_ updatedAt
+  TEXT usageDetails
   TEXT userMessage
 }
 "agent_execution_message_links" {

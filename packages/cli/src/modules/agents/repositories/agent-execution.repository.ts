@@ -14,6 +14,21 @@ export type RunningAgentExecution = Pick<
 	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline'
 >;
 
+export type AgentExecutionUsageRow = Pick<
+	AgentExecution,
+	| 'id'
+	| 'status'
+	| 'model'
+	| 'startedAt'
+	| 'stoppedAt'
+	| 'duration'
+	| 'promptTokens'
+	| 'completionTokens'
+	| 'totalTokens'
+	| 'cost'
+	| 'usageDetails'
+>;
+
 type AgentExecutionFinalizationValues = Pick<
 	AgentExecution,
 	'status' | 'stoppedAt' | 'duration' | 'timeline' | 'storedAt' | 'error' | 'failureSummary'
@@ -21,7 +36,7 @@ type AgentExecutionFinalizationValues = Pick<
 	Partial<
 		Pick<
 			AgentExecution,
-			'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'hitlStatus'
+			'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'usageDetails' | 'hitlStatus'
 		>
 	>;
 
@@ -38,6 +53,27 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	/** All executions in a thread, oldest first — used by the timeline view. */
 	async findByThreadIdOrdered(threadId: string): Promise<AgentExecution[]> {
 		return await this.find({ where: { threadId }, order: { createdAt: 'ASC', id: 'ASC' } });
+	}
+
+	/** Usage columns of all executions in a thread, oldest first. Skips the timeline. */
+	async findUsageByThreadId(threadId: string): Promise<AgentExecutionUsageRow[]> {
+		return await this.find({
+			select: [
+				'id',
+				'status',
+				'model',
+				'startedAt',
+				'stoppedAt',
+				'duration',
+				'promptTokens',
+				'completionTokens',
+				'totalTokens',
+				'cost',
+				'usageDetails',
+			],
+			where: { threadId },
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
 	}
 
 	async findRunning(): Promise<RunningAgentExecution[]> {
