@@ -5,11 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import {
-	AGENT_BUILDER_VIEW,
-	AGENT_N8N_CHAT_SEARCH_MAX_LENGTH,
-	AGENTS_MODULE_NAME,
-} from '@/features/agents/constants';
+import { AGENT_BUILDER_VIEW, AGENT_N8N_CHAT_SEARCH_MAX_LENGTH } from '@/features/agents/constants';
 import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
@@ -37,7 +33,7 @@ export function useAgentNavigationCommands(options: {
 
 	const router = useRouter();
 
-	const isAgentsModuleActive = () => settingsStore.isModuleActive(AGENTS_MODULE_NAME) === true;
+	const isAgentsEnabled = () => settingsStore.isAgentsEnabled;
 
 	const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 	const { canCreate: canCreateInHomeProject } = useAgentPermissions(() => homeProject.value?.id);
@@ -89,7 +85,7 @@ export function useAgentNavigationCommands(options: {
 
 	const agentNavigationCommands = computed<CommandBarItem[]>(() => {
 		const projectId = homeProject.value?.id;
-		if (!isAgentsModuleActive() || !projectId || !canCreateInHomeProject.value) return [];
+		if (!isAgentsEnabled() || !projectId || !canCreateInHomeProject.value) return [];
 
 		return [
 			{
@@ -119,7 +115,7 @@ export function useAgentNavigationCommands(options: {
 			id: 'agents',
 			title: i18n.baseText('commandBar.sections.agents'),
 			isRemote: true,
-			isAvailable: isAgentsModuleActive,
+			isAvailable: isAgentsEnabled,
 			search,
 		},
 	};

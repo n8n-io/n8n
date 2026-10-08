@@ -9,7 +9,7 @@ import { useAgentNavigationCommands } from './useAgentNavigationCommands';
 import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { AGENT_BUILDER_VIEW, AGENTS_MODULE_NAME } from '@/features/agents/constants';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import type { AgentResource } from '@/features/agents/types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
@@ -59,7 +59,7 @@ const createAgent = (overrides: Partial<AgentResource> = {}): AgentResource =>
 	}) as AgentResource;
 
 describe('useAgentNavigationCommands', () => {
-	let settingsStore: ReturnType<typeof useSettingsStore>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	let projectsStore: ReturnType<typeof useProjectsStore>;
 	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 
@@ -69,13 +69,11 @@ describe('useAgentNavigationCommands', () => {
 		setActivePinia(createTestingPinia());
 		vi.clearAllMocks();
 
-		settingsStore = useSettingsStore();
+		settingsStore = mockedStore(useSettingsStore);
 		projectsStore = useProjectsStore();
 		sourceControlStore = useSourceControlStore();
 
-		vi.mocked(settingsStore.isModuleActive).mockImplementation(
-			(moduleName) => moduleName === AGENTS_MODULE_NAME,
-		);
+		settingsStore.isAgentsEnabled = true;
 		projectsStore.currentProject = createTestProject({
 			id: 'project-1',
 			scopes: ['agent:create'],
@@ -94,12 +92,11 @@ describe('useAgentNavigationCommands', () => {
 		});
 
 		it.each([true, false])(
-			'reports source availability as %s from the agents module',
-			(isActive) => {
-				vi.mocked(settingsStore.isModuleActive).mockReturnValue(isActive);
+			'reports source availability as %s from the agents admin setting',
+			(isEnabled) => {
+				settingsStore.isAgentsEnabled = isEnabled;
 
-				expect(setup().source?.isAvailable()).toBe(isActive);
-				expect(settingsStore.isModuleActive).toHaveBeenCalledWith(AGENTS_MODULE_NAME);
+				expect(setup().source?.isAvailable()).toBe(isEnabled);
 			},
 		);
 
@@ -208,8 +205,8 @@ describe('useAgentNavigationCommands', () => {
 			});
 		});
 
-		it('hides the create command when the agents module is not active', () => {
-			vi.mocked(settingsStore.isModuleActive).mockReturnValue(false);
+		it('hides the create command when agents are disabled', () => {
+			settingsStore.isAgentsEnabled = false;
 
 			expect(findCreateCommand()).toBeUndefined();
 		});
