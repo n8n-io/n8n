@@ -8,14 +8,20 @@ import { computed, ref } from 'vue';
 import { SCOPE_LABEL_KEY } from '../type-availability-policies.constants';
 import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
 
-const props = defineProps<{
-	nodeTypeName: string;
-	scope?: NodeTypeAvailabilityScope;
-	/** The list row the popover explains. It opens beside this element, not beside the lock. */
-	anchor?: MaybeElement;
-	/** Keyboard-active without DOM focus, such as a virtual list selection. */
-	active?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		nodeTypeName: string;
+		scope?: NodeTypeAvailabilityScope;
+		/** The list row the popover explains. It opens beside this element, not beside the lock. */
+		anchor?: MaybeElement;
+		/** Keyboard-active without DOM focus, such as a virtual list selection. */
+		active?: boolean;
+		side?: 'top' | 'right' | 'bottom' | 'left';
+		align?: 'start' | 'center' | 'end';
+		sideOffset?: number;
+	}>(),
+	{ side: 'left', align: 'center', sideOffset: 24 },
+);
 
 /** Leaving waits this long before closing, so the pointer can cross the gap to the popover. */
 const HOVER_GRACE_MS = 200;
@@ -53,9 +59,9 @@ const scopeKey = computed<BaseTextKey>(
 		<!-- The tool pickers render this inside a modal. -->
 		<N8nPopover
 			:open="open"
-			side="left"
-			align="center"
-			:side-offset="24"
+			:side="props.side"
+			:align="props.align"
+			:side-offset="props.sideOffset"
 			:reference="anchorElement"
 			:suppress-auto-focus="true"
 			:content-class="$style.card"

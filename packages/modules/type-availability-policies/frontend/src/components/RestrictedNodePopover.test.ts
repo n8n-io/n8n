@@ -52,6 +52,14 @@ describe('RestrictedNodePopover', () => {
 		expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();
 	});
 
+	it('places the popover where the host asks', async () => {
+		renderPopover({ active: true, side: 'top', align: 'end' });
+
+		const content = (await screen.findByTestId('node-restricted-popover')).closest('[data-side]');
+		expect(content).toHaveAttribute('data-side', 'top');
+		expect(content).toHaveAttribute('data-align', 'end');
+	});
+
 	it('names the project scope', async () => {
 		renderPopover({ active: true, scope: 'project' });
 
