@@ -117,14 +117,18 @@ describe('ApplyInstanceDialog', () => {
 				stubs: {
 					PromotionBindingsFlow: defineComponent({
 						props: { continueWith: { type: Object, required: true } },
-						emits: ['applied'],
+						emits: ['applied', 'update:open'],
 						setup:
 							(props, { emit }) =>
 							() =>
 								h('button', {
 									'data-test-id': 'stub-applied',
 									'data-continue-kind': props.continueWith.kind,
-									onClick: () => emit('applied', applied),
+									// Same order as the bindings dialog after a successful Continue.
+									onClick: () => {
+										emit('applied', applied);
+										emit('update:open', false);
+									},
 								}),
 					}),
 				},

@@ -142,7 +142,8 @@ function onBindingsSourceChanged() {
 }
 
 function onBindingsOpenChange(open: boolean) {
-	if (open) return;
+	// After a successful Continue, onBindingsApplied has already closed and refreshed.
+	if (open || !blockedResult.value) return;
 	blockedResult.value = undefined;
 	close();
 	// A failed Continue can leave part of the apply saved.
