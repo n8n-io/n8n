@@ -5,6 +5,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
@@ -261,121 +262,126 @@ const submit = async () => {
 			</N8nText>
 			<N8nDialogTitle>{{ i18n.baseText('workflowReviews.submitForReview.title') }}</N8nDialogTitle>
 		</N8nDialogHeader>
-		<form
-			data-test-id="workflow-submit-for-review-dialog"
-			:class="$style.form"
-			@submit.prevent="handleFormSubmit"
-		>
-			<WorkflowVersionForm
-				v-if="step === 1"
-				ref="versionForm"
-				v-model:version-name="versionName"
-				v-model:description="versionDescription"
-				version-name-test-id="workflow-review-version-name-input"
-				description-test-id="workflow-review-version-description-input"
-				@submit="goToReviewStep"
-			/>
-			<template v-else>
-				<N8nInputLabel
-					input-name="workflow-review-title"
-					:label="i18n.baseText('workflowReviews.submitForReview.reviewTitle.label')"
-					required
-				>
-					<N8nInput
-						id="workflow-review-title"
-						ref="titleInput"
-						v-model="reviewTitle"
-						:maxlength="REVIEW_TITLE_MAX_LENGTH"
-						:disabled="isSubmitting"
-						data-test-id="workflow-review-title-input"
-					/>
-					<CharacterCount
-						:value="reviewTitle"
-						:max="REVIEW_TITLE_MAX_LENGTH"
-						data-test-id="workflow-review-title-character-count"
-					/>
-				</N8nInputLabel>
-				<N8nInputLabel
-					input-name="workflow-review-description"
-					:label="i18n.baseText('workflowReviews.submitForReview.description.label')"
-				>
-					<N8nInput
-						id="workflow-review-description"
-						v-model="description"
-						type="textarea"
-						:rows="3"
-						:maxlength="REVIEW_DESCRIPTION_MAX_LENGTH"
-						:disabled="isSubmitting"
-						data-test-id="workflow-review-description-input"
-					/>
-					<CharacterCount
-						:value="description"
-						:max="REVIEW_DESCRIPTION_MAX_LENGTH"
-						data-test-id="workflow-review-description-character-count"
-					/>
-				</N8nInputLabel>
-				<N8nInputLabel
-					input-name="workflow-review-reviewer"
-					:label="i18n.baseText('workflowReviews.submitForReview.reviewer.label')"
-					required
-				>
-					<N8nUserSelect
-						id="workflow-review-reviewer"
-						v-model="selectedReviewerId"
-						:users="reviewerOptions"
-						:loading="isLoadingReviewers"
-						:placeholder="i18n.baseText('workflowReviews.submitForReview.reviewer.placeholder')"
-						:teleported="false"
-						:disabled="isSubmitting"
-						clearable
-						data-test-id="workflow-review-reviewer-select"
-					>
-						<template #prefix>
-							<N8nIcon icon="search" />
-						</template>
-					</N8nUserSelect>
-				</N8nInputLabel>
-			</template>
-			<N8nDialogFooter>
-				<template v-if="step === 1">
-					<N8nButton
-						type="button"
-						variant="outline"
-						:disabled="isSubmitting"
-						data-test-id="workflow-review-cancel-button"
-						@click="close"
-					>
-						{{ i18n.baseText('generic.cancel') }}
-					</N8nButton>
-					<N8nButton
-						type="submit"
-						:disabled="isNextDisabled"
-						data-test-id="workflow-review-next-button"
-					>
-						{{ i18n.baseText('generic.next') }}
-					</N8nButton>
-				</template>
+		<N8nDialogBody>
+			<form
+				id="workflow-submit-for-review-form"
+				data-test-id="workflow-submit-for-review-dialog"
+				:class="$style.form"
+				@submit.prevent="handleFormSubmit"
+			>
+				<WorkflowVersionForm
+					v-if="step === 1"
+					ref="versionForm"
+					v-model:version-name="versionName"
+					v-model:description="versionDescription"
+					version-name-test-id="workflow-review-version-name-input"
+					description-test-id="workflow-review-version-description-input"
+					@submit="goToReviewStep"
+				/>
 				<template v-else>
-					<N8nButton
-						type="button"
-						variant="outline"
-						:disabled="isSubmitting"
-						data-test-id="workflow-review-back-button"
-						@click="goBack"
+					<N8nInputLabel
+						input-name="workflow-review-title"
+						:label="i18n.baseText('workflowReviews.submitForReview.reviewTitle.label')"
+						required
 					>
-						{{ i18n.baseText('generic.back') }}
-					</N8nButton>
-					<N8nButton
-						type="submit"
-						:loading="isSubmitting"
-						:disabled="isSubmitDisabled"
-						data-test-id="workflow-review-submit-button"
+						<N8nInput
+							id="workflow-review-title"
+							ref="titleInput"
+							v-model="reviewTitle"
+							:maxlength="REVIEW_TITLE_MAX_LENGTH"
+							:disabled="isSubmitting"
+							data-test-id="workflow-review-title-input"
+						/>
+						<CharacterCount
+							:value="reviewTitle"
+							:max="REVIEW_TITLE_MAX_LENGTH"
+							data-test-id="workflow-review-title-character-count"
+						/>
+					</N8nInputLabel>
+					<N8nInputLabel
+						input-name="workflow-review-description"
+						:label="i18n.baseText('workflowReviews.submitForReview.description.label')"
 					>
-						{{ i18n.baseText('workflowReviews.submitForReview.submit') }}
-					</N8nButton>
+						<N8nInput
+							id="workflow-review-description"
+							v-model="description"
+							type="textarea"
+							:rows="3"
+							:maxlength="REVIEW_DESCRIPTION_MAX_LENGTH"
+							:disabled="isSubmitting"
+							data-test-id="workflow-review-description-input"
+						/>
+						<CharacterCount
+							:value="description"
+							:max="REVIEW_DESCRIPTION_MAX_LENGTH"
+							data-test-id="workflow-review-description-character-count"
+						/>
+					</N8nInputLabel>
+					<N8nInputLabel
+						input-name="workflow-review-reviewer"
+						:label="i18n.baseText('workflowReviews.submitForReview.reviewer.label')"
+						required
+					>
+						<N8nUserSelect
+							id="workflow-review-reviewer"
+							v-model="selectedReviewerId"
+							:users="reviewerOptions"
+							:loading="isLoadingReviewers"
+							:placeholder="i18n.baseText('workflowReviews.submitForReview.reviewer.placeholder')"
+							:teleported="false"
+							:disabled="isSubmitting"
+							clearable
+							data-test-id="workflow-review-reviewer-select"
+						>
+							<template #prefix>
+								<N8nIcon icon="search" />
+							</template>
+						</N8nUserSelect>
+					</N8nInputLabel>
 				</template>
-			</N8nDialogFooter>
-		</form>
+			</form>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<template v-if="step === 1">
+				<N8nButton
+					type="button"
+					variant="outline"
+					:disabled="isSubmitting"
+					data-test-id="workflow-review-cancel-button"
+					@click="close"
+				>
+					{{ i18n.baseText('generic.cancel') }}
+				</N8nButton>
+				<N8nButton
+					type="submit"
+					form="workflow-submit-for-review-form"
+					:disabled="isNextDisabled"
+					data-test-id="workflow-review-next-button"
+				>
+					{{ i18n.baseText('generic.next') }}
+				</N8nButton>
+			</template>
+			<template v-else>
+				<N8nButton
+					type="button"
+					variant="outline"
+					:disabled="isSubmitting"
+					data-test-id="workflow-review-back-button"
+					@click="goBack"
+				>
+					{{ i18n.baseText('generic.back') }}
+				</N8nButton>
+				<N8nButton
+					type="submit"
+					form="workflow-submit-for-review-form"
+					:loading="isSubmitting"
+					:disabled="isSubmitDisabled"
+					data-test-id="workflow-review-submit-button"
+				>
+					{{ i18n.baseText('workflowReviews.submitForReview.submit') }}
+				</N8nButton>
+			</template>
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
