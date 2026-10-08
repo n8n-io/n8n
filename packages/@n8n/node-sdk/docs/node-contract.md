@@ -53,8 +53,8 @@ flowchart LR
 | Version | Of what | Where | At run time |
 |---|---|---|---|
 | Node Contract version | the spec | `nodeContract` in each manifest; the WIT package version | Yes: the host range `N8N_NODE_CONTRACT_RANGE` (default `>=2.0.0 <3.0.0`) and the newest minor that the host implements |
-| action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets all of it: `version: '3.2.0'`, `1.0.0` when omitted. Pack writes it. With `N8N_NODE_CONTRACTS_NPM_REGISTRY` it ships the published bytes of a published version with the same contract and bundle hash. Publish skips such a version and refuses any other change | Yes: a workflow pins it |
-| credential version | the content | `semver` of the credential manifest, from `defineCredential({ version })`; an action pins a range in `credentials`, e.g. `{ "notion.token": "^1.2.0" }`: `^<version>`, or the range of `type.range('>=1.1 <3')` | Yes: the pin |
+| action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets all of it: `version: '3.2.0'`, `1.0.0` when omitted. Pack writes it. With `N8N_NODE_CONTRACTS_NPM_REGISTRY` it ships the published bytes of a published version with the same contract and bundle hash. Publish skips such a version and refuses any other change | Yes: a node sets a range in its major, and a save locks one version in it ([architecture.md, Save](architecture.md#6-save)) |
+| credential version | the content | `semver` of the credential manifest, from `defineCredential({ version })`; an action pins a range in `credentials`, e.g. `{ "notion.token": "^1.2.0" }`: `^<version>`, or the range of `type.range('>=1.1 <3')` | Yes: an instance keeps one version of each credential id, in every range that pins it |
 | SDK version | `@n8n/node-sdk` | `sdk: { version, digest }` in each bundled manifest | Yes: the host gives the bundle the SDK runtime of that digest |
 | n8n version | the product | — | Only through the Node Contract range it supports |
 
@@ -94,6 +94,12 @@ whose credential pin has no credential manifest of that id and range in the same
 the table, or in the embedded store. n8n does not list a stored version whose pin does not
 resolve, and registers no node type for it.
 
+n8n stores credential data by name, so it keeps one version of each credential id. The ranges are
+the pins of every stored and added version. The choice is the bundled version (checked against the added ranges only), else the installed
+(newest stored) version when every range takes it, else the newest higher version that every
+range takes. When no version fits, the admission fails and names both sides. A download fetches
+a credential only when no bundled or stored version fits.
+
 | File | Content |
 |---|---|
 | `catalog.json` | `{ "versions": [...] }`: the index line of the newest version of each id that is not yanked or revoked. `withdrawn` lists each id whose every version is yanked or revoked, so an import still finds it |
@@ -120,10 +126,10 @@ status line (`addStatusToStore`):
 {"id":"gmail.message.get","deprecate":"1","message":"Use major 2","use":"gmail.message.get@2","at":"…"}
 ```
 
-- **Yank**: a save pins no node to the version. A node that has a pin of it still runs it. For a
-  major that only the store has, the node type lists the newest version that is not withdrawn.
-  The embedded HEAD stays the projected version of its major: when a major has no other version,
-  a save leaves the node without a pin, and the node runs the yanked HEAD.
+- **Yank**: a save locks no new node to the version. A node that has a lock of it keeps it and
+  still runs it. For a major that only the store has, the node type lists the newest version that
+  is not withdrawn. The embedded HEAD stays the projected version of its major: when a major has
+  no other version, a save leaves the node without a lock, and the node runs the yanked HEAD.
 - **Revoke**: a yank, and the host also refuses to run the version. An admin can allow it with
   `N8N_NODE_CONTRACTS_REVOKED_ALLOW=<id>@<version>,…`.
 - **Deprecate**: `major`, `major.minor` or `major.minor.patch`. The reader gives the line
@@ -135,8 +141,8 @@ the version. The source of the line gives the trust: the npm registry auth, the 
 lines in the `node_contract_status` table. `n8n contracts:import` takes every line of the folder,
 also when a key is set. It ignores a `signatures` field of a line from an older folder.
 The lines arrive with `n8n contracts:import`, with `contracts:export`, and from the npm
-registry for each id that the leader main reads (a sync of the pinned ids, a download, a
-newer-patch check). `contracts:export` writes only the yank and revoke lines of the versions
+registry for each id that the leader main reads (a sync of the locked ids, a download, the
+version list of a save). `contracts:export` writes only the yank and revoke lines of the versions
 that it writes. An embedded HEAD is not a stored version, so the export drops its lines.
 
 In an npm registry, `pnpm publish:contracts yank|revoke <id>@<version> <reason>` in a source
@@ -156,17 +162,21 @@ another id.
 
 | File | Content |
 |---|---|
-| `package.json` | Generated: `name`, `version` (the manifest `semver`), `description` (the summary), `license`, `repository` and `author` of the source package, and `n8n`: the index line of the version without `version` and `manifest`, with the `fixtures` digest and the ed25519 `signatures` of the manifest bytes, and `digest` (`sha256:` of the manifest bytes) |
+| `package.json` | Generated: `name`, `version` (the manifest `semver`), `description` (the summary), `license`, `repository` and `author` of the source package, `dependencies` (`<scope>/sdk-runtime` at the exact `sdk.version`, and each credential package at its range), and `n8n`: the index line of the version without `version` and `manifest`, with the `fixtures` digest and the ed25519 `signatures` of the manifest bytes, and `digest` (`sha256:` of the manifest bytes) |
 | `manifest.json` | The exact manifest bytes, so the digest is the store digest |
 | `bundle.cjs` | The bundle, when the version has one |
 | `fixtures.json` | The fixtures that publish replayed, when the version has them |
 | `signatures.json` | Only in a package from before the index fields of `n8n`: the ed25519 signatures of the manifest bytes |
 
-Publish adds only the versions that the registry does not have. It reads the packument. It
-skips a published version with the same `n8n.digest`, and refuses one with another digest
-("bump the version in source"). The gate of each kind compares the new version with the newest
-published version below it. Publish reads that manifest from its tarball, and checks it against
-its digest. During the POC the registry is a local Verdaccio: publish refuses `registry.npmjs.*`.
+Publish runs in this order: the SDK runtime, the credentials, the actions, triggers and
+providers, then the native contracts. It reads the packument and adds only the versions that the
+registry does not have. It skips a published version with the same `n8n.digest` or the same
+contract and bundle hash (`assertPublishedMatches`), and refuses any other change ("bump the
+version in source"). The gate of each kind (`diffContracts`, `diffCredentials`) compares the new
+version with the newest published version below it, read from its tarball. Publish refuses a
+version whose credential range has no published version that is not deprecated. A version below
+the newest one gets the npm tag `latest-<major>`. During the POC the registry is a local
+Verdaccio ([README](../README.md#local-npm-registry)): publish refuses `registry.npmjs.*`.
 
 n8n reads the same packages (`npmStoreReader`). For an id, it makes the index lines from the
 `n8n` fields of the packument, so a list of versions (e.g. the candidates of a save) downloads
@@ -250,10 +260,12 @@ only.
   the fields without one, and `checkAction` and the publish gates refuse them, also in the
   reply step of a native trigger. A variant tag and a sub-node input need none.
 - A credential major changes when stored data or a saved workflow can break: a new required
-  field, a new host, a new scheme. A compat credential type has no manifest and no pin.
+  field, a new host, a new scheme (`diffCredentials`). A compat credential type has no manifest
+  and no pin.
 - An action major changes when it adds a permission: a scope, an egress host, an import, a
-  provider call, binary data access or a credential type. An auto-update then never widens what an action may do. `diffContracts`
-  reads the permissions from `permissionsOf`.
+  provider call, binary data access or a credential type. A range stays inside its major, so a
+  new lock never widens what an action may do. `diffContracts` reads the permissions from
+  `permissionsOf`.
 - The manifest is the permission source on both run paths. Pack writes every static host
   into `contract.egress.hosts`, also the host of the node `baseUrl`, so that host is in the
   contract hash. `loadExecutor` (in this process) refuses a bundle whose export grants other

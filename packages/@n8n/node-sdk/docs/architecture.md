@@ -29,7 +29,7 @@ The code calls these "node contracts". The product name is "next nodes"
 flowchart BT
   sdk["@n8n/node-sdk<br/>author API, spec, host runtime,<br/>store format, runtimes"]
   compat["@n8n/node-contract-compat<br/>legacy ↔ contract"]
-  base["@n8n/nodes-integrations<br/>integration nodes, embedded store,<br/>instance registry logic"]
+  base["@n8n/nodes-integrations<br/>integration nodes, embedded store,<br/>migrated node catalog"]
   core["@n8n/nodes-core<br/>core nodes, embedded store"]
   wsdk["@n8n/workflow-sdk/next<br/>typed workflow code"]
   ai["@n8n/instance-ai<br/>AI workflow builder"]
@@ -49,13 +49,13 @@ flowchart BT
 
 | Package | Has | Read first |
 |---|---|---|
-| `@n8n/node-sdk` | `defineNode` and `t` for authors; the spec (`spec/`); the host side that makes n8n node types from packed versions (`toVersionedNodeType`); pack, publish and the store format; the guest runtimes and the sandbox | `src/runtime.ts`, `src/sandbox.ts`, `src/runtime-policy.ts` |
-| `@n8n/nodes-integrations` | Integration nodes, one vendor each (`src/nodes/<service>/actions/*.ts`); the list of first-party packages (`FIRST_PARTY_PACKAGES`); the instance logic that has no n8n dependency: origin, admission, pins, version resolution, sync, import and export | `src/index.ts`, `src/registry.ts`, `src/contract-registry.ts`, `src/migrated.ts` |
+| `@n8n/node-sdk` | `defineNode` and `t` for authors; the spec (`spec/`); the host side that makes n8n node types from packed versions (`toVersionedNodeType`); pack, publish, npm and the store format; the instance store (origin, admission, range locks, import, export) and the version loader; the guest runtimes and the sandbox | `src/runtime.ts`, `src/contract-registry.ts`, `src/npm.ts`, `src/sandbox.ts`, `src/runtime-policy.ts` |
+| `@n8n/nodes-integrations` | Integration nodes, one vendor each (`src/nodes/<service>/actions/*.ts`), and the migrated legacy nodes (`MIGRATED_NODES`) | `src/catalog.ts` |
 | `@n8n/nodes-core` | Core nodes: flow control, item transforms, host features (wait, webhook, form, schedule, data tables, code), HTTP Request and the AI roots. The engine and the flow SDK may name them by type | `src/index.ts` |
 | `@n8n/node-contract-compat` | Derives manifests and typed modules from legacy node descriptions; composes a legacy node version where contract actions run some operations | `src/derive/`, `src/migrate/` |
-| `@n8n/workflow-sdk` (`/next`) | The typed workflow code that the AI builder writes. `@n8n/node-sdk/codegen` makes the module text of each node for it | `src/next/flow.ts` |
-| `@n8n/instance-ai` | Offers the typed node modules to the agent and builds the workflow | `src/tools/next-modules.ts`, `src/tools/workflows/next-workflow-build.ts` |
-| `cli` | Loads the node types, pins each contract node at save, keeps the store in the database, makes the runtimes, syncs from the registry, and has the `contracts:*` commands | `src/load-nodes-and-credentials.ts`, `src/node-contracts-*.ts`, `src/commands/contracts/` |
+| `@n8n/workflow-sdk` (`/next`) | The typed workflow code that the AI builder writes, and get-as-code (`decompile.ts`). `@n8n/node-sdk/codegen` makes the module text of each node for it | `src/next/flow.ts`, `src/next/decompile.ts` |
+| `@n8n/instance-ai` | Offers the typed node modules to the agent, also at a range, and builds the workflow | `src/tools/next-modules.ts`, `src/tools/workflows/next-workflow-build.ts` |
+| `cli` | Loads the node types, locks the range of each contract node at save, keeps the store in the database, makes the runtimes, syncs from the registry, and has the `contracts:*` commands and the versions endpoint of the editor | `src/load-nodes-and-credentials.ts`, `src/node-contracts-*.ts`, `src/commands/contracts/` |
 | `@n8n/config`, `@n8n/db` | The settings (`instance-ai.config.ts`, `nodes.config.ts`) and the tables `node_contract_version` and `node_contract_status` | — |
 
 The node packages hold node code and plain catalog data only (`src/catalog.ts`). The host code is
@@ -71,7 +71,7 @@ the same logic runs in tests and scripts without n8n.
 | Unit | One class with all resources and operations | One action per operation |
 | Description | Written by hand in the class | Made from the contract (`nodeDescriptionOf`) |
 | n8n type | `n8n-nodes-base.notion`, `typeVersion` set in the class | `<source package>.<nodeNameOf(id)>`, e.g. `@n8n/nodes-core.httpRequestGet`; `typeVersion` = action major |
-| Old versions | Kept in the class code | Separate packed versions in a store |
+| Old versions | Kept in the class code | Separate packed versions in a store. A node sets a semver range, and a save locks one version |
 | Comes from | The release only | The release (HEAD), the registry, or an import |
 | Permissions | None declared | Declared in the manifest, checked by the host |
 | Runs | In the n8n process | In the runtime that its origin allows |
@@ -103,41 +103,49 @@ flowchart LR
   E --> L
   R -- "4 Install<br/>sync, fetch, import" --> S["instance store<br/>node_contract_version"]
   S --> L["5 Load<br/>node types"]
-  L --> X["6 Run<br/>pin → version → runtime"]
+  L --> V["6 Save<br/>range → lock"]
+  V --> X["7 Run<br/>lock → version → runtime"]
 ```
 
 ### 1. Write
 
-An author writes `defineNode` and one `node.action(...)` per operation, then runs
-`n8n-node-next check` and `test`. See the [README](../README.md).
+An author writes `defineNode` and one `node.action(...)` per operation, with the full version in
+source (`version: '3.2.0'`), then runs `n8n-node-next check` and `test`. A credential type has
+its own version (`defineCredential({ version })`). See the [README](../README.md).
 
 ### 2. Build
 
 `pnpm build:contracts` in each first-party package (part of `build`) calls `packPackage`.
 It finds the contracts in the exports of `src/nodes/<node>/actions/*.ts`, with no list. It bundles
-each action and writes its manifest, bundle and fixtures into `dist/store`.
-`pnpm publish:contracts` calls `publishPackage`. Pack takes the version from the source and
-sets the lowest Node Contract version that the bundle needs. The same source gives the same bytes.
-A bundle imports the SDK from the host, and its manifest pins the SDK runtime. With
-`N8N_NODE_CONTRACTS_NPM_REGISTRY`, the build writes the published manifest, bundle and fixtures of
-each HEAD that the registry has, with the SDK runtime that they pin. When the published manifest
-differs from HEAD, it logs `<id>@<version> has unpublished changes; bump the version to ship
-them`. The published version must keep the contract hash and the bundle hash of HEAD; a
-credential or a native version has no bundle, so it must keep all but its old `sdk` text. Any other change under a published version is
-an error. Publish skips such a version with the same rule (`assertPublishedMatches`). Without the variable, the build reads no registry. The release
-ships this store, so its versions are first-party with no key check. Details:
+each action and writes its manifest, bundle and fixtures into `dist/store`, with the SDK runtime.
+Pack takes the version from the source, sets the lowest Node Contract version that the bundle
+needs, and gives the same bytes for the same source. A bundle imports `@n8n/node-sdk` and
+`@n8n/node-sdk/credentials` from the host, and its manifest pins the exact SDK runtime,
+`sdk: { version, digest }` (a store version of kind `sdk`). With
+`N8N_NODE_CONTRACTS_NPM_REGISTRY`, the build ships the published bytes of each HEAD that the
+registry has. It logs a HEAD with unpublished changes that keep the contract and bundle hash,
+and fails on any other change under a published version (`assertPublishedMatches`).
+The release ships this store, so its versions are first-party with no key check. Details:
 [node-contract.md, Versions](node-contract.md#versions) and
 [Store layout](node-contract.md#store-layout).
 
 ### 3. Publish
 
-`pnpm publish:contracts` publishes the HEAD of each action, trigger, credential and native
-contract as one npm package for each version, with `npm publish`. Each package holds the signed
-manifest. Publish adds only the versions that the registry does not have. The publish gate refuses
-a version bump that is smaller than the contract change (`diffContracts`). A publisher never
-changes a published version. It runs `npm deprecate` to yank, revoke or deprecate it. During the
-POC the registry is a local Verdaccio, and publish refuses `registry.npmjs.*`. Details:
-[npm packages](node-contract.md#npm-packages),
+```mermaid
+flowchart LR
+  K["SDK runtime<br/>sdk-runtime"] --> C["credentials<br/>gate: diffCredentials"]
+  C --> A["actions, triggers, providers<br/>gate: diffContracts,<br/>credential ranges published"]
+  A --> N["native contracts"]
+```
+
+`pnpm publish:contracts` publishes the HEAD of each kind in this order, one npm package for each
+version, with `npm publish`. The `package.json` holds the index line with the manifest signature, and lists the SDK
+runtime and each credential range in `dependencies`. Publish adds only the versions that the
+registry does not have. The gate of each kind refuses a bump that is smaller than the change,
+and an action whose credential range has no published version. A publisher never changes a
+published version: `npm deprecate` yanks or revokes it. During the POC the registry is a local
+Verdaccio ([README](../README.md#local-npm-registry)), and publish refuses `registry.npmjs.*`.
+Details: [npm packages](node-contract.md#npm-packages),
 [Version of an action change](node-contract.md#version-of-an-action-change) and
 [Status lines](node-contract.md#status-lines).
 
@@ -149,22 +157,24 @@ four ways:
 
 | How | When | Code |
 |---|---|---|
-| Sync of pinned versions | At start and at leader takeover, on the leader main, in the background | `NodeContractsSync` |
-| Fetch when needed | A run needs a pinned version that the table does not have | `contractStore` (`locked`) |
+| Sync of locked versions | At start and at leader takeover, on the leader main, in the background | `NodeContractsSync` |
+| Fetch when needed | A run needs a locked version that the table does not have | `contractStore` (`locked`) |
 | `n8n contracts:sync` | On demand, from the configured npm registry or `--registry=<url>` | `commands/contracts/sync.ts` |
 | `n8n contracts:import --input=<dir>` | A host without network, after `contracts:export` on another host | `commands/contracts/import.ts` |
 
 - Only the leader main and the `contracts:*` commands fetch from the npm registry of
   `N8N_NODE_CONTRACTS_NPM_REGISTRY`. Workers and follower mains only read the table, so they
   need no registry egress.
-- The store reads the packument of `npmNameOf(id)` and downloads the tarball of each version
-  once. An npm deprecation is a yank, and a message that starts with `revoked:` is a revoke. These
-  status lines apply to every origin, because the registry auth controls who can deprecate.
-- Before the table takes a version, the store checks each blob digest (the manifest against
-  `n8n.digest` of its package), checks the manifest
-  against the pin, and records the **origin** from the key that signed it:
-  `first-party`, `community` (vetting key) or `private` (no trusted key). See
+- The store lists versions from the packument of `npmNameOf(id)` and downloads a tarball only
+  for the blobs of a version. An npm deprecation is a yank or, with `revoked:`, a revoke.
+- Before the table takes a version, the store checks each blob digest, checks the manifest
+  against the lock, and records the **origin** from the key that signed it: `first-party`,
+  `community` (vetting key) or `private` (no trusted key). See
   [sandboxed-execution.md, n8n configuration](sandboxed-execution.md#n8n-configuration).
+- A version comes with its SDK runtime and the credential versions that its ranges need. n8n
+  keeps one version of each credential id, which must take the range of every stored version.
+  Else the install fails and names both sides. See
+  [Store layout](node-contract.md#store-layout).
 - A version that brings a new major logs the permissions that it adds and emits
   `node-contract-installed`.
 - After an add, the main tells the other mains to reload their node types (pubsub).
@@ -181,47 +191,76 @@ the composed legacy versions and the tool types.
 Before `new Workflow`, `prepareNodeContractsRun` adds the stored majors that the workflow needs,
 so a node of a major that arrived after start does not fail with `NodeVersionNotFoundError`.
 
-### 6. Run
+### 6. Save
+
+```mermaid
+sequenceDiagram
+  participant C as client
+  participant S as save (cli pinnedNodesOf)
+  participant K as ContractStore
+  C->>S: node, contract { range } or { range, version, digest } or none
+  S->>K: pinOf(action id, major, contract)
+  K->>K: majorVersionsOf: bundled + table + registry packument
+  K-->>S: lock { range, version, digest }, or UserError
+  S->>K: manifestOf(digest), no fetch
+  S->>S: assertFitsLock: parameters against the locked input
+  S-->>C: node with the lock, or 400
+```
+
+Each saved contract node has a lock, `contract: { range, version, digest }` next to `typeVersion`
+(`INode.contract`). The user sets the range inside the major of the node, e.g. `~3.1.0` or
+`>=3.1.0 <3.3.0`. Each save (editor, public API, `import:workflow`, source control pull, AI
+builder) writes `version` and `digest`, as `npm install` writes a lockfile (`pinNodeContracts`,
+`ContractStore.pinOf`). The digest is the `sha256:` of the manifest bytes.
+
+- A lock without a range reads as `^<version>`. A node without a lock gets `^<newest>`. A range
+  outside the major fails the save.
+- The save keeps the lock when the range has its version and a source has it. A lock that no
+  source has stays only when the save brings it, so that `contracts:sync` can fetch it. Else the
+  save locks the newest version in the range that is not yanked or revoked, or fails.
+- Only a main that fetches reads the registry packument. The save checks a lock that only the
+  registry has at the run.
+- A node without `contract` keeps the lock of the stored node with its id. A client with no lock
+  yet sends `{ range }`. A trigger has no lock.
+
+The editor shows a Version field in the node settings of a node with `contract`
+(`NodeContractVersion.vue`): the lock, the range, and a list of the versions of the major from
+`GET /rest/next-nodes/instance/node-versions` (scope `nodeDefinition:list`). After a save, the
+editor takes the lock from the response. The AI builder imports a node at a range,
+`import { notion } from '@n8n/nodes/notion@~3.1.0'`. `tsc` checks the code against the version
+that the range locks (`contractVersionOf`), and the built node gets `contract: { range }`.
+Get-as-code writes the range back, but not the default `^<version>` and not a range with a space.
+
+### 7. Run
 
 ```mermaid
 sequenceDiagram
   participant E as engine
   participant T as node type (node-sdk)
-  participant V as version loader (nodes-integrations)
+  participant V as version loader (node-sdk)
   participant P as executor loader (node-sdk)
   participant G as guest runtime
   E->>T: execute()
   T->>V: version for this node
-  V->>V: pin on the node,<br/>yank, revoke, deny list
+  V->>V: lock on the node,<br/>revoke, deny list
   V-->>T: packed version + origin
   T->>P: executor of the version (cached by bundle hash)
   P->>P: origin → runtime list → first runtime that serves it
-  P->>G: start the bundle
+  P->>G: start the bundle with its pinned SDK runtime
   T->>G: run the items
   G-->>T: host calls (http, binary, …), checked by the host
   G-->>T: output items
   T-->>E: outputs, and the version that ran in the run metadata
 ```
 
-- **Which version.** Each saved contract node has a pin, `contract: { version, digest }` next to
-  `typeVersion` (`INode.contract`). The digest is the `sha256:` of the manifest bytes. The host
-  writes the pin at each save (editor, public API, `import:workflow`, source control pull, AI
-  builder), in `pinNodeContracts` (`cli/src/node-contracts-run.ts`), before the policy check:
-  - A node without a pin, or with a pin of another major, gets the newest bundled or stored
-    version of its major that is not yanked or revoked (`ContractStore.pinOf`).
-  - A pin of the same major stays when a bundled or stored version has its digest and version.
-    A pin that no source has stays only when the save brings it (a create, an import, or a
-    changed pin), so that `contracts:sync` can fetch it. A saved one is re-pinned, e.g. a pin of
-    a bundled HEAD that a release replaced.
-  - A node that the client sends without a pin keeps the pin of the stored node with its id.
-  - A trigger has no pin: it runs the version that its node type projects.
-  A node without a pin of its major runs the HEAD of its major. A pinned node runs exactly the
-  pinned version. A newer version gets to a node only through a save. The pin travels with the
-  node: a history version, a copy and an export keep their pins. When no source has the pinned
-  version, the run fails and names the version.
+- **Which version.** A locked node runs exactly the locked version (`contractVersionLoader`). A
+  node without a lock of its major runs the HEAD of its major. A newer version gets to a node
+  only through a save. The lock travels with the node: a history version, a copy and an export
+  keep it. When no source has the locked version, the run fails and names the version.
 - **Where it runs.** The origin picks a runtime list (`N8N_NODES_NEXT_RUNTIMES_*`). The first
   runtime in the list that serves the version and is available runs it: `in-process`,
-  `worker`, `wasm` or `container`. See
+  `worker`, `wasm` or `container`. Each runtime gives the bundle a fresh evaluation of the SDK
+  runtime that its manifest pins. See
   [Runtimes and the runtime policy](sandboxed-execution.md#runtimes-and-the-runtime-policy).
 - **What it may do.** Every runtime uses the same host checks: egress hosts, credential
   application, response size, binary data. The manifest is the source of the permissions on
@@ -235,13 +274,16 @@ and `contractNodeLoadersOf` gives it to the loader of each first-party package.
 
 | Level | Example | Who sets it | What it decides |
 |---|---|---|---|
-| Node Contract | `2.9.0` | The spec. Pack writes the lowest that a bundle needs | Whether this n8n can run the bundle |
+| Node Contract | `2.12.0` | The spec. Pack writes the lowest that a bundle needs | Whether this n8n can run the bundle |
 | Action major | `notion.databasePage.getAll@1` | The author; a new permission forces a new major | The n8n `typeVersion`. A saved node keeps its major |
 | Action minor and patch | `1.2.3` | The author, in the source | Which bundle a node runs inside its major |
-| Pin | `INode.contract` (`{ version, digest }`) | The host, at each save | The exact version that a saved node runs |
+| Range | `~1.2.0` in `INode.contract` | The user, in the editor or in AI builder code | The versions that a save may lock |
+| Lock | `version` and `digest` in `INode.contract` | The host, at each save | The exact version that a saved node runs |
+| SDK runtime | `sdk: { version, digest }` | Pack | The SDK code that the host gives the bundle |
+| Credential | `defineCredential({ version: '1.2.0' })`; range `^1.2.0` in the action manifest | The author; `.range()` overrides the default `^<version>` | The one credential version that an instance keeps |
 
-A new permission always needs a new major, so an update never widens what a node may do. Full
-rules: [node-contract.md, Versions](node-contract.md#versions).
+A new permission always needs a new major, and a range stays inside its major, so a new lock
+never widens what a node may do. Full rules: [node-contract.md, Versions](node-contract.md#versions).
 
 ## Settings that are not in another page
 
@@ -251,9 +293,7 @@ The runtime and key settings are in
 | Variable | Default | Meaning |
 |---|---|---|
 | `N8N_INSTANCE_AI_NODE_CONTRACTS_ENABLED` | `true` (spike) | Loads the contract nodes |
-| `N8N_NODE_CONTRACTS_NPM_REGISTRY` | — | The npm registry. Empty: only bundled and stored versions run |
-| `N8N_NODE_CONTRACTS_NPM_SCOPE` | `@n8n-nodes` | The npm scope of contract packages |
-| `N8N_NODE_CONTRACTS_NPM_TOKEN` | — | The bearer token for the npm registry. n8n does not log it |
+| `N8N_NODE_CONTRACTS_NPM_REGISTRY` | — | The npm registry. Empty: only bundled and stored versions run. Scope and token: [npm packages](node-contract.md#npm-packages) |
 | `N8N_NODE_CONTRACTS_REVOKED_ALLOW` | — | `<id>@<version>` list of revoked versions that may still run |
 | `N8N_NODE_CONTRACT_RANGE` | `>=2.0.0 <3.0.0` | The Node Contract versions that this n8n runs |
 | `N8N_NODE_PERMISSIONS_DENY` | — | Permission classes that no node may have, for example `egress-input` or `code` |

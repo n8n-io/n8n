@@ -100,6 +100,7 @@ not unpublish a contract package.
 ```ts
 export const todoApi = defineCredential({
 	id: 'todo.token',
+	version: '1.0.0',
 	legacyName: 'todoApi',
 	displayName: 'Todo API',
 	fields: { apiKey: field.secret('API Key') },
@@ -114,7 +115,9 @@ export const todo = defineNode({
 
 A node has one credential: the credential types a user may pick, and the scopes its actions
 may list. Credential types are values (`defineCredential`, `compat`) with a declarative `auth`, so
-`tsc` rejects a typo, and `toCredentialType` projects one to an n8n `ICredentialType`. In n8n,
+`tsc` rejects a typo, and `toCredentialType` projects one to an n8n `ICredentialType`. A
+`defineCredential` type needs a full `version`. An action takes `^<version>` of it;
+`todoApi.range('>=1.1 <3')` sets another range. In n8n,
 `httpRequestWithAuthentication` applies it. `runAction` applies it the same way. See
 [docs/credentials-triggers.md](docs/credentials-triggers.md) for scopes, triggers and bindings.
 See [docs/node-contract.md](docs/node-contract.md) for the manifest format, the runtime interface
