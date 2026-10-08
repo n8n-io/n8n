@@ -196,7 +196,10 @@ describe('software factory template pack', () => {
 			// Behind an error output, that is the error output, which is empty after a success.
 			const errorOutputReads = workflow.nodes.flatMap((node) =>
 				nodeReferences(node.parameters)
-					.filter(({ method, noArguments }) => noArguments && ['first', 'last', 'all'].includes(method ?? ''))
+					.filter(
+						({ method, noArguments }) =>
+							noArguments && ['first', 'last', 'all'].includes(method ?? ''),
+					)
 					.filter(({ name }) => runtime.defaultOutputIndex(node.name, name) !== 0)
 					.map(({ name }) => `${node.name} reads ${name}`),
 			);
@@ -258,9 +261,9 @@ describe('software factory template pack', () => {
 				);
 
 			expect(outcomes(() => false)).toEqual([]);
-			expect(
-				outcomes((source, index) => source === 'PR opened?' && index === 0),
-			).toContain('Outcome: draft PR opened');
+			expect(outcomes((source, index) => source === 'PR opened?' && index === 0)).toContain(
+				'Outcome: draft PR opened',
+			);
 		});
 
 		it('opens the pull request as a draft', () => {
@@ -282,6 +285,8 @@ describe('software factory template pack', () => {
 			expect(parents.map((edge) => edge.source)).toEqual(['Critic input']);
 			expect(input.includeOtherFields ?? false).toBe(false);
 			expect(input.assignments.assignments.map((field) => field.name)).toEqual([
+				'repository',
+				'baseBranch',
 				'ticket',
 				'description',
 				'acceptanceCriteria',
@@ -289,8 +294,10 @@ describe('software factory template pack', () => {
 				'diff',
 				'check',
 			]);
+			// The settings, the ticket, the approved plan and the deterministic results only: no
+			// output of the implementer.
 			expect(new Set(referencedNodes(input.assignments))).toEqual(
-				new Set(['Read factory ticket', 'Plan', 'Get diff', 'Verify']),
+				new Set(['Factory settings', 'Read factory ticket', 'Plan', 'Get diff', 'Verify']),
 			);
 			expect(referencedNodes(critic.parameters)).toEqual(['Read factory ticket']);
 		});

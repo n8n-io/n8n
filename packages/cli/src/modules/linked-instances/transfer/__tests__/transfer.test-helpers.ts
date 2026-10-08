@@ -196,7 +196,8 @@ export const REFUSED_PROJECT =
 	'The project does not exist, or you do not have permission to create workflows in it.';
 
 /** The refusal of the publish tool while someone has the copy open in the editor there. */
-export const EDITOR_LOCK = 'Cannot modify workflow while it is being edited by a user in the editor.';
+export const EDITOR_LOCK =
+	'Cannot modify workflow while it is being edited by a user in the editor.';
 
 export const STUB_CREDENTIAL = { id: 'cred-stub', name: 'Mailgun', type: 'httpHeaderAuth' };
 

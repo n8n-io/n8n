@@ -28,12 +28,22 @@ const questionsPayload = {
 	message: '',
 	introMessage: 'Two quick questions before I build it',
 	inputType: 'questions' as const,
-	questions: [{ id: 'q-1', question: 'Which channel?', type: 'single' as const, options: ['#ops'] }],
+	questions: [
+		{ id: 'q-1', question: 'Which channel?', type: 'single' as const, options: ['#ops'] },
+	],
 };
-const questionsCall: SharedCard = { toolName: 'ask-user', input: {}, suspendPayload: questionsPayload };
+const questionsCall: SharedCard = {
+	toolName: 'ask-user',
+	input: {},
+	suspendPayload: questionsPayload,
+};
 
 /** Mounts the card inside a conversation that provides the sharing state, like the chat does. */
-function renderCard(props: { input: AssistantConfirmationInput; call?: SharedCard; disabled?: boolean }) {
+function renderCard(props: {
+	input: AssistantConfirmationInput;
+	call?: SharedCard;
+	disabled?: boolean;
+}) {
 	const onSubmit = vi.fn();
 	const Host = defineComponent({
 		setup() {
@@ -52,7 +62,10 @@ describe('SharedThreadCard', () => {
 	describe('for the owner', () => {
 		it('shows the card as it is, with "Always allow" and no footer', async () => {
 			setUpSharing({ shared: true });
-			const { getByTestId, queryByTestId, onSubmit } = renderCard({ input: runInput, call: runCall });
+			const { getByTestId, queryByTestId, onSubmit } = renderCard({
+				input: runInput,
+				call: runCall,
+			});
 
 			expect(getByTestId('approval-card-always-allow')).toBeEnabled();
 			expect(queryByTestId('instance-ai-shared-card-footer')).not.toBeInTheDocument();
@@ -77,7 +90,10 @@ describe('SharedThreadCard', () => {
 		beforeEach(() => setUpSharing({ shared: true, viewerId: TEAMMATE.id }));
 
 		it('lets the teammate answer, says who the answer runs as and hides "Always allow"', async () => {
-			const { getByTestId, queryByTestId, onSubmit } = renderCard({ input: runInput, call: runCall });
+			const { getByTestId, queryByTestId, onSubmit } = renderCard({
+				input: runInput,
+				call: runCall,
+			});
 
 			expect(getByTestId('instance-ai-shared-card-footer')).toHaveTextContent(
 				'Runs as Alice Owner',

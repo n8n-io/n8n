@@ -8,6 +8,9 @@ import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import { moveResize, startResize } from '@/__tests__/resize';
 import { mockedStore } from '@/__tests__/utils';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -1727,6 +1730,50 @@ describe('InstanceAiThreadView', () => {
 			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
 				dismissedContextKeys: ['test-agent:agent-1'],
 			});
+		});
+	});
+
+	describe('sharing in the header', () => {
+		it('offers the owner of a team-project chat to share it', () => {
+			useUsersStore().currentUserId = 'owner-1';
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = true;
+			projectsStore.myProjects = [
+				{
+					id: 'thread-project',
+					name: 'Marketing',
+					type: 'team',
+					role: 'project:editor',
+					scopes: ['instanceAi:message', 'project:read'],
+				} as ProjectListItem,
+			];
+
+			const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			expect(
+				within(getByTestId('instance-ai-builder-chat-header')).getByTestId(
+					'instance-ai-share-thread',
+				),
+			).toHaveTextContent('Share');
+		});
+
+		it('shows a teammate where the chat is shared, and no share button', () => {
+			useUsersStore().currentUserId = 'teammate-1';
+			store.threads = [
+				{
+					...store.threads[0],
+					sharedWith: { projectId: 'thread-project', projectName: 'Marketing' },
+					owner: { id: 'owner-1', name: 'Alice Owner' },
+				},
+			];
+
+			const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			const header = within(getByTestId('instance-ai-builder-chat-header'));
+			expect(header.getByTestId('instance-ai-shared-thread-chip')).toHaveTextContent(
+				'Shared with Marketing',
+			);
+			expect(queryByTestId('instance-ai-share-thread')).not.toBeInTheDocument();
 		});
 	});
 

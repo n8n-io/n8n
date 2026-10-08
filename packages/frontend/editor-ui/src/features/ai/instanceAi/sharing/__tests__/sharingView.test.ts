@@ -18,7 +18,11 @@ const PROJECT = 'project-1';
 const SHARED_WITH = { projectId: PROJECT, projectName: 'Marketing' };
 const READ: Scope[] = ['instanceAi:message', 'project:read'];
 
-const approvalPayload = { requestId: 'r-1', message: 'Delete "Invoices"?', severity: 'destructive' };
+const approvalPayload = {
+	requestId: 'r-1',
+	message: 'Delete "Invoices"?',
+	severity: 'destructive',
+};
 const proposalPayload = {
 	requestId: 'r-2',
 	message: 'Run "Digest" every Monday?',
@@ -166,14 +170,26 @@ describe('threadSharingView', () => {
 
 describe('teammateCardAccess', () => {
 	it.each<[string, SharedCard, Scope]>([
-		['delete a workflow', call('workflows', { action: 'delete', workflowId: 'wf-1' }), 'workflow:delete'],
-		['run a workflow', call('executions', { action: 'run', workflowId: 'wf-1' }), 'workflow:execute'],
+		[
+			'delete a workflow',
+			call('workflows', { action: 'delete', workflowId: 'wf-1' }),
+			'workflow:delete',
+		],
+		[
+			'run a workflow',
+			call('executions', { action: 'run', workflowId: 'wf-1' }),
+			'workflow:execute',
+		],
 		[
 			'delete a credential',
 			call('credentials', { action: 'delete', credentialId: 'c-1' }),
 			'credential:delete',
 		],
-		['create a data table', call('data-tables', { action: 'create', name: 'Leads' }), 'dataTable:create'],
+		[
+			'create a data table',
+			call('data-tables', { action: 'create', name: 'Leads' }),
+			'dataTable:create',
+		],
 		[
 			'create a folder in the chat project',
 			call('workspace', { action: 'create-folder', projectId: PROJECT }),
@@ -196,13 +212,25 @@ describe('teammateCardAccess', () => {
 
 	it.each<[string, SharedCard | undefined, string | undefined]>([
 		['a card without its tool call', undefined, PROJECT],
-		['a card in a chat without a project', call('workflows', { action: 'delete', workflowId: 'w' }), undefined],
+		[
+			'a card in a chat without a project',
+			call('workflows', { action: 'delete', workflowId: 'w' }),
+			undefined,
+		],
 		['a tool without teammate rules', call('build-workflow', { workflowId: 'wf-1' }), PROJECT],
-		['an action without teammate rules', call('workflows', { action: 'publish', workflowId: 'w' }), PROJECT],
+		[
+			'an action without teammate rules',
+			call('workflows', { action: 'publish', workflowId: 'w' }),
+			PROJECT,
+		],
 		['an action without its resource', call('workflows', { action: 'delete' }), PROJECT],
 		[
 			'a card that asks for more than a yes or no',
-			call('workflows', { action: 'delete', workflowId: 'w' }, { ...approvalPayload, inputType: 'text' }),
+			call(
+				'workflows',
+				{ action: 'delete', workflowId: 'w' },
+				{ ...approvalPayload, inputType: 'text' },
+			),
 			PROJECT,
 		],
 		[
@@ -241,8 +269,12 @@ describe('answerAuthorship', () => {
 	});
 
 	it('calls the viewer "you" in a shared chat, and says nothing in a private chat', () => {
-		expect(answerAuthorship({ approvedBy: viewer }, OWNER.id, true)).toEqual({ decision: 'approved' });
-		expect(answerAuthorship({ declinedBy: viewer }, OWNER.id, true)).toEqual({ decision: 'declined' });
+		expect(answerAuthorship({ approvedBy: viewer }, OWNER.id, true)).toEqual({
+			decision: 'approved',
+		});
+		expect(answerAuthorship({ declinedBy: viewer }, OWNER.id, true)).toEqual({
+			decision: 'declined',
+		});
 		expect(answerAuthorship({ approvedBy: viewer }, OWNER.id, false)).toBeUndefined();
 	});
 
@@ -288,10 +320,15 @@ describe('resumeFailureNotice', () => {
 
 	it('passes on the reason of any other refusal', () => {
 		expect(
-			resumeFailureNotice({ status: 403, message: 'Only editors in Marketing can approve this.' }, undefined),
+			resumeFailureNotice(
+				{ status: 403, message: 'Only editors in Marketing can approve this.' },
+				undefined,
+			),
 		).toEqual({ kind: 'refused', message: 'Only editors in Marketing can approve this.' });
 		expect(resumeFailureNotice({ status: 400 }, undefined)).toEqual({ kind: 'refused' });
-		expect(resumeFailureNotice({ status: 500, message: '' }, undefined)).toEqual({ kind: 'refused' });
+		expect(resumeFailureNotice({ status: 500, message: '' }, undefined)).toEqual({
+			kind: 'refused',
+		});
 	});
 
 	it('adds nothing to a stream error when nobody else answered', () => {

@@ -17,12 +17,13 @@ import {
 	type InputMenuItem,
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
+import { useOptionalThread } from '../instanceAi.store';
 
 const props = withDefaults(
 	defineProps<{
 		disabled?: boolean;
 		threadId?: string;
-		/** The project of the chat, or of the new chat on the start screen. */
+		/** The project of the new chat on the start screen. In a chat, the thread gives it. */
 		projectId?: string;
 	}>(),
 	{ disabled: false, threadId: undefined, projectId: undefined },
@@ -30,11 +31,12 @@ const props = withDefaults(
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const thread = useOptionalThread();
 const { menuItems, disconnectedConnectionCount, refreshAppliedPreferences } =
 	useInstanceAiInputMenuItems(
 		() => emit('attachFiles'),
 		() => props.threadId,
-		() => props.projectId,
+		() => props.projectId ?? thread?.projectId,
 	);
 
 const tooltip = computed(() => {

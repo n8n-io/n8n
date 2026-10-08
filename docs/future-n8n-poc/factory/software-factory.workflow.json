@@ -104,11 +104,11 @@
 					"conditions": [
 						{
 							"id": "e98d1872-b973-4ed6-ab3d-32580f2bd0dc",
-							"leftValue": "={{ $('Fresh critic').params.agentId?.value ?? '' }}",
+							"leftValue": "={{ typeof $('Fresh critic').params.agentId?.value === 'string' && $('Fresh critic').params.agentId.value.trim() !== '' }}",
 							"rightValue": "",
 							"operator": {
-								"type": "string",
-								"operation": "notEmpty",
+								"type": "boolean",
+								"operation": "true",
 								"singleValue": true
 							}
 						},
@@ -179,7 +179,7 @@
 					"mode": "list",
 					"value": ""
 				},
-				"message": "=Plan the change for Linear ticket {{ $('Read factory ticket').first().json.ticket }}: {{ $('Read factory ticket').first().json.title }}\n\n{{ $('Read factory ticket').first().json.description }}\n\nAcceptance criteria:\n{{ $('Read factory ticket').first().json.acceptanceCriteria.map((item, index) => (index + 1) + '. ' + item).join('\\n') }}\n\nDiff budget: {{ $('Read factory ticket').first().json.diffBudget }} changed lines.\n{{ $json.feedback ? 'The reviewer asked for changes to your last plan:\\n' + $json.feedback : '' }}",
+				"message": "=Plan the change for Linear ticket {{ $('Read factory ticket').first().json.ticket }}: {{ $('Read factory ticket').first().json.title }}\n\nRepository: {{ $('Factory settings').first().json.repositoryOwner }}/{{ $('Factory settings').first().json.repositoryName }} on GitHub. Read the code on the branch {{ $('Factory settings').first().json.baseBranch }}.\n\n{{ $('Read factory ticket').first().json.description }}\n\nAcceptance criteria:\n{{ $('Read factory ticket').first().json.acceptanceCriteria.map((item, index) => (index + 1) + '. ' + item).join('\\n') }}\n\nDiff budget: {{ $('Read factory ticket').first().json.diffBudget }} changed lines.\n{{ $json.feedback ? 'The reviewer asked for changes to your last plan:\\n' + $json.feedback : '' }}",
 				"useStructuredOutput": true,
 				"schemaType": "manual",
 				"outputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"summary\": {\n      \"type\": \"string\",\n      \"description\": \"Two or three sentences: what changes and why\"\n    },\n    \"steps\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Ordered implementation steps\"\n    },\n    \"files\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Repository-relative paths that the change touches\"\n    },\n    \"tests\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"One test for each acceptance criterion\"\n    },\n    \"risks\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Risks and open questions\"\n    },\n    \"estimatedChangedLines\": {\n      \"type\": \"integer\",\n      \"description\": \"Estimated added plus deleted lines\"\n    }\n  },\n  \"required\": [\n    \"summary\",\n    \"steps\",\n    \"files\",\n    \"tests\",\n    \"risks\",\n    \"estimatedChangedLines\"\n  ],\n  \"additionalProperties\": false\n}",
@@ -216,17 +216,17 @@
 					"conditions": [
 						{
 							"id": "184e1472-4caf-44d5-a937-7b08428a97dd",
-							"leftValue": "={{ $json.structuredOutput?.summary ?? '' }}",
+							"leftValue": "={{ typeof $json.structuredOutput?.summary === 'string' && $json.structuredOutput.summary.trim() !== '' }}",
 							"rightValue": "",
 							"operator": {
-								"type": "string",
-								"operation": "notEmpty",
+								"type": "boolean",
+								"operation": "true",
 								"singleValue": true
 							}
 						},
 						{
 							"id": "3befacec-71ca-4eaf-a8f8-7b2cdc8bdf8f",
-							"leftValue": "={{ ($json.structuredOutput?.steps ?? []).length }}",
+							"leftValue": "={{ Array.isArray($json.structuredOutput?.steps) ? $json.structuredOutput.steps.length : 0 }}",
 							"rightValue": 0,
 							"operator": {
 								"type": "number",
@@ -335,11 +335,12 @@
 								"conditions": [
 									{
 										"id": "70857e1d-2ab0-441c-a763-304943ef5472",
-										"leftValue": "={{ $json.data?.decision }}",
-										"rightValue": "Approve the plan",
+										"leftValue": "={{ $json.data?.decision === 'Approve the plan' }}",
+										"rightValue": "",
 										"operator": {
-											"type": "string",
-											"operation": "equals"
+											"type": "boolean",
+											"operation": "true",
+											"singleValue": true
 										}
 									}
 								],
@@ -359,11 +360,12 @@
 								"conditions": [
 									{
 										"id": "dbfa9088-f6b5-4a3e-a55d-0e038d963d54",
-										"leftValue": "={{ $json.data?.decision }}",
-										"rightValue": "Change the plan",
+										"leftValue": "={{ $json.data?.decision === 'Change the plan' }}",
+										"rightValue": "",
 										"operator": {
-											"type": "string",
-											"operation": "equals"
+											"type": "boolean",
+											"operation": "true",
+											"singleValue": true
 										}
 									}
 								],
@@ -419,7 +421,7 @@
 					"mode": "list",
 					"value": ""
 				},
-				"message": "=Write one failing test for the approved plan. The test must fail on the current code of {{ $('Factory settings').first().json.baseBranch }} and pass when the plan is done. Read the tests next to the files in the plan and follow their style.\nGive the command that runs only this test from the repository root. The command must name the test file. The factory runs it to decide if the change is done.\n\nApproved plan:\n{{ JSON.stringify($('Plan').last().json.structuredOutput, null, 2) }}",
+				"message": "=Write one failing test for the approved plan. The test must fail on the current code of the branch {{ $('Factory settings').first().json.baseBranch }} of {{ $('Factory settings').first().json.repositoryOwner }}/{{ $('Factory settings').first().json.repositoryName }} and pass when the plan is done. Read the tests next to the files in the plan and follow their style.\nGive the command that runs only this test from the repository root. The command must name the test file. The factory runs it to decide if the change is done.\n\nApproved plan:\n{{ JSON.stringify($('Plan').last().json.structuredOutput, null, 2) }}",
 				"useStructuredOutput": true,
 				"schemaType": "manual",
 				"outputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"testPath\": {\n      \"type\": \"string\",\n      \"description\": \"Repository-relative path of the new test file\"\n    },\n    \"testCode\": {\n      \"type\": \"string\",\n      \"description\": \"Full content of the test file\"\n    },\n    \"runCommand\": {\n      \"type\": \"string\",\n      \"description\": \"Command that runs only this test from the repository root. It names the test file.\"\n    },\n    \"expectedFailure\": {\n      \"type\": \"string\",\n      \"description\": \"Why the test fails on the current code\"\n    }\n  },\n  \"required\": [\n    \"testPath\",\n    \"testCode\",\n    \"runCommand\",\n    \"expectedFailure\"\n  ],\n  \"additionalProperties\": false\n}",
@@ -438,7 +440,7 @@
 			"typeVersion": 3.1,
 			"position": [
 				2040,
-				-140
+				-120
 			],
 			"notes": "Choose the agent that you imported from agents/planner.agent.json.",
 			"notesInFlow": true,
@@ -465,7 +467,7 @@
 			"typeVersion": 1.1,
 			"position": [
 				2040,
-				140
+				80
 			],
 			"credentials": {
 				"httpBearerAuth": {
@@ -504,26 +506,27 @@
 					"conditions": [
 						{
 							"id": "90077a98-de2e-452e-af16-f99dc07b4927",
-							"leftValue": "={{ $('Prepare workspace').first().json.structuredContent?.phase }}",
-							"rightValue": "ready",
+							"leftValue": "={{ $('Prepare workspace').first().json.structuredContent?.phase === 'ready' }}",
+							"rightValue": "",
 							"operator": {
-								"type": "string",
-								"operation": "equals"
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
 							}
 						},
 						{
-							"id": "f315a4eb-de90-4770-a8b9-b8be2e100da8",
-							"leftValue": "={{ $('Draft failing test').first().json.structuredOutput?.testPath ?? '' }}",
+							"id": "251451a5-e0d1-460a-a2c5-3887e921618b",
+							"leftValue": "={{ ((url, expected) => typeof url === 'string' && url.trim().toLowerCase().replace(/(\\.git)?\\/*$/, '') === expected.toLowerCase())($('Prepare workspace').first().json.structuredContent?.repositoryUrl, 'https://github.com/' + $('Factory settings').first().json.repositoryOwner + '/' + $('Factory settings').first().json.repositoryName) }}",
 							"rightValue": "",
 							"operator": {
-								"type": "string",
-								"operation": "notEmpty",
+								"type": "boolean",
+								"operation": "true",
 								"singleValue": true
 							}
 						},
 						{
 							"id": "a93d7cde-bde4-4fc4-ae91-a5602e75d865",
-							"leftValue": "={{ Boolean($('Draft failing test').first().json.structuredOutput?.testPath) && ($('Draft failing test').first().json.structuredOutput?.runCommand ?? '').includes($('Draft failing test').first().json.structuredOutput.testPath.split('/').pop()) }}",
+							"leftValue": "={{ ((file, command) => Boolean(file) && typeof command === 'string' && command.includes(file))(/[^\\/\\s]+$/.exec(String($('Draft failing test').first().json.structuredOutput?.testPath ?? '').trim())?.[0], $('Draft failing test').first().json.structuredOutput?.runCommand) }}",
 							"rightValue": "",
 							"operator": {
 								"type": "boolean",
@@ -650,20 +653,22 @@
 								"conditions": [
 									{
 										"id": "e91ce441-2991-4d57-ad5c-9ab0b203b3e0",
-										"leftValue": "={{ $json.structuredContent?.check }}",
-										"rightValue": "passed",
+										"leftValue": "={{ $json.structuredContent?.check === 'passed' }}",
+										"rightValue": "",
 										"operator": {
-											"type": "string",
-											"operation": "equals"
+											"type": "boolean",
+											"operation": "true",
+											"singleValue": true
 										}
 									},
 									{
 										"id": "d6131a35-7ca0-459f-ad4c-ae543e49c5aa",
-										"leftValue": "={{ $json.structuredContent?.test }}",
-										"rightValue": "passed",
+										"leftValue": "={{ $json.structuredContent?.test === 'passed' }}",
+										"rightValue": "",
 										"operator": {
-											"type": "string",
-											"operation": "equals"
+											"type": "boolean",
+											"operation": "true",
+											"singleValue": true
 										}
 									}
 								],
@@ -705,6 +710,31 @@
 							},
 							"renameOutput": true,
 							"outputKey": "Retry"
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "01ed4d2f-e72b-4b17-aa56-5a0fdc4cccbf",
+										"leftValue": "={{ typeof $json.structuredContent?.check !== 'string' }}",
+										"rightValue": "",
+										"operator": {
+											"type": "boolean",
+											"operation": "true",
+											"singleValue": true
+										}
+									}
+								],
+								"combinator": "and"
+							},
+							"renameOutput": true,
+							"outputKey": "No result"
 						}
 					]
 				},
@@ -721,7 +751,7 @@
 				3420,
 				0
 			],
-			"notes": "At most 3 retries in a run. The count includes the checks after critic rounds.",
+			"notes": "Only the first 3 checks of a run can get a retry. Checks that pass and checks after critic rounds also count.",
 			"notesInFlow": true
 		},
 		{
@@ -792,11 +822,11 @@
 					"conditions": [
 						{
 							"id": "cd7dc6d0-6e14-4fbb-a7aa-fb5ea7e30bf8",
-							"leftValue": "={{ $json.structuredContent?.diff ?? '' }}",
+							"leftValue": "={{ typeof $json.structuredContent?.diff === 'string' && $json.structuredContent.diff.trim() !== '' }}",
 							"rightValue": "",
 							"operator": {
-								"type": "string",
-								"operation": "notEmpty",
+								"type": "boolean",
+								"operation": "true",
 								"singleValue": true
 							}
 						}
@@ -818,6 +848,18 @@
 			"parameters": {
 				"assignments": {
 					"assignments": [
+						{
+							"id": "6e97c2a8-0c38-4308-aac5-143a94c10477",
+							"name": "repository",
+							"value": "={{ $('Factory settings').first().json.repositoryOwner + '/' + $('Factory settings').first().json.repositoryName }}",
+							"type": "string"
+						},
+						{
+							"id": "5b45e3d3-4aac-4844-9bf9-d2e6c990fc68",
+							"name": "baseBranch",
+							"value": "={{ $('Factory settings').first().json.baseBranch }}",
+							"type": "string"
+						},
 						{
 							"id": "c46f9105-d9e8-426f-a34f-5f5537f8683a",
 							"name": "ticket",
@@ -877,7 +919,7 @@
 					"mode": "list",
 					"value": ""
 				},
-				"message": "=Review this change. The JSON below is your complete input: the ticket, its acceptance criteria, the approved plan, the diff, and the results of the deterministic check and of the failing test.\n\n{{ JSON.stringify($json, null, 2) }}",
+				"message": "=Review this change. The JSON below is your complete input: the repository and its base branch, the ticket, its acceptance criteria, the approved plan, the diff, and the results of the deterministic check and of the failing test.\n\n{{ JSON.stringify($json, null, 2) }}",
 				"useStructuredOutput": true,
 				"schemaType": "manual",
 				"outputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"verdict\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"approve\",\n        \"request_changes\",\n        \"block\"\n      ]\n    },\n    \"findings\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"path\": {\n            \"type\": \"string\",\n            \"description\": \"Repository-relative file path\"\n          },\n          \"line\": {\n            \"type\": \"integer\",\n            \"description\": \"Line in the new version of the file\"\n          },\n          \"severity\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"blocker\",\n              \"major\",\n              \"minor\",\n              \"nit\"\n            ]\n          },\n          \"body\": {\n            \"type\": \"string\",\n            \"description\": \"The problem and the fix\"\n          }\n        },\n        \"required\": [\n          \"path\",\n          \"line\",\n          \"severity\",\n          \"body\"\n        ],\n        \"additionalProperties\": false\n      }\n    },\n    \"scopeCreep\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Changes that the ticket does not need\"\n    }\n  },\n  \"required\": [\n    \"verdict\",\n    \"findings\",\n    \"scopeCreep\"\n  ],\n  \"additionalProperties\": false\n}",
@@ -920,16 +962,17 @@
 								"conditions": [
 									{
 										"id": "b2ae1308-94c7-4b98-aaad-cdb82b31e4ae",
-										"leftValue": "={{ $json.structuredOutput?.verdict }}",
-										"rightValue": "approve",
+										"leftValue": "={{ $json.structuredOutput?.verdict === 'approve' }}",
+										"rightValue": "",
 										"operator": {
-											"type": "string",
-											"operation": "equals"
+											"type": "boolean",
+											"operation": "true",
+											"singleValue": true
 										}
 									},
 									{
 										"id": "a7cb7809-ae31-429b-abaa-738066b3d71c",
-										"leftValue": "={{ ($json.structuredOutput?.findings ?? []).every((finding) => finding.severity !== 'blocker' && finding.severity !== 'major') }}",
+										"leftValue": "={{ ((findings) => Array.isArray(findings) && findings.every((finding) => ['minor', 'nit'].includes(finding?.severity)))($json.structuredOutput?.findings ?? []) }}",
 										"rightValue": "",
 										"operator": {
 											"type": "boolean",
@@ -939,11 +982,11 @@
 									},
 									{
 										"id": "fe4775d3-491d-41c0-a444-414d9883cc8e",
-										"leftValue": "={{ $('Critic input').last().json.diff }}",
+										"leftValue": "={{ typeof $('Critic input').last().json.diff === 'string' && $('Critic input').last().json.diff.trim() !== '' }}",
 										"rightValue": "",
 										"operator": {
-											"type": "string",
-											"operation": "notEmpty",
+											"type": "boolean",
+											"operation": "true",
 											"singleValue": true
 										}
 									}
@@ -964,11 +1007,12 @@
 								"conditions": [
 									{
 										"id": "84c61c05-dbbb-4bb4-a42c-3b3a57272192",
-										"leftValue": "={{ $json.structuredOutput?.verdict }}",
-										"rightValue": "request_changes",
+										"leftValue": "={{ $json.structuredOutput?.verdict === 'request_changes' }}",
+										"rightValue": "",
 										"operator": {
-											"type": "string",
-											"operation": "equals"
+											"type": "boolean",
+											"operation": "true",
+											"singleValue": true
 										}
 									},
 									{
@@ -1033,7 +1077,7 @@
 					"mode": "list",
 					"value": ""
 				},
-				"message": "=Minimise the change before people review it. A fresh critic approved the change, and nobody reviews it again. So you can only remove changes.\nThe diff budget is {{ $('Read factory ticket').first().json.diffBudget }} changed lines. The change now has {{ ($('Get diff').last().json.structuredContent?.changes ?? []).reduce((total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0), 0) }} changed lines.\n- Remove every change that the acceptance criteria do not need.\n- Keep the failing test and the tests that prove the acceptance criteria.\n- Do not add or rewrite code. Do not fix findings. The pull request lists them for the person who reviews it.\n{{ ($('Fresh critic').last().json.structuredOutput?.scopeCreep ?? []).length ? '- Remove this scope creep: ' + $('Fresh critic').last().json.structuredOutput.scopeCreep.join('; ') : '' }}",
+				"message": "=Minimise the change before people review it. A fresh critic approved the change, and nobody reviews it again. So you can only remove changes.\nThe diff budget is {{ $('Read factory ticket').first().json.diffBudget }} changed lines. The change now has {{ ((changes) => (Array.isArray(changes) ? changes : []).reduce((total, change) => total + (Number(change?.additions) || 0) + (Number(change?.deletions) || 0), 0))($('Get diff').last().json.structuredContent?.changes) }} changed lines.\n- Remove every change that the acceptance criteria do not need.\n- Keep the failing test and the tests that prove the acceptance criteria.\n- Do not add, rewrite or move code. Do not fix findings. The pull request lists them for the person who reviews it.\n- After your turn, the factory compares the change with the change that the critic approved. A file or a line that the critic did not review stops the run.\n{{ ($('Fresh critic').last().json.structuredOutput?.scopeCreep ?? []).length ? '- Remove this scope creep: ' + $('Fresh critic').last().json.structuredOutput.scopeCreep.join('; ') : '' }}",
 				"useStructuredOutput": true,
 				"schemaType": "manual",
 				"outputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"summary\": {\n      \"type\": \"string\",\n      \"description\": \"What the change does after minimising\"\n    },\n    \"removed\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Changes that you removed\"\n    }\n  },\n  \"required\": [\n    \"summary\",\n    \"removed\"\n  ],\n  \"additionalProperties\": false\n}",
@@ -1093,72 +1137,170 @@
 		},
 		{
 			"parameters": {
-				"conditions": {
-					"options": {
-						"caseSensitive": true,
-						"leftValue": "",
-						"typeValidation": "strict",
-						"version": 3
-					},
-					"conditions": [
-						{
-							"id": "4a811a14-8e9c-4f83-a311-cf2441e3e1c4",
-							"leftValue": "={{ $json.structuredContent?.check }}",
-							"rightValue": "passed",
-							"operator": {
-								"type": "string",
-								"operation": "equals"
-							}
-						},
-						{
-							"id": "4d6cb4d0-7e03-4e64-a084-52cbebda0081",
-							"leftValue": "={{ $json.structuredContent?.test }}",
-							"rightValue": "passed",
-							"operator": {
-								"type": "string",
-								"operation": "equals"
-							}
-						},
-						{
-							"id": "d446532b-031f-475a-acfb-1e9cc768eee6",
-							"leftValue": "={{ ($json.structuredContent?.changes ?? []).reduce((total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0), 0) }}",
-							"rightValue": 0,
-							"operator": {
-								"type": "number",
-								"operation": "gt"
-							}
-						},
-						{
-							"id": "1f98f266-d818-4694-a41e-68882cb6fd9e",
-							"leftValue": "={{ ($json.structuredContent?.changes ?? []).reduce((total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0), 0) }}",
-							"rightValue": "={{ $('Read factory ticket').first().json.diffBudget }}",
-							"operator": {
-								"type": "number",
-								"operation": "lte"
-							}
-						},
-						{
-							"id": "9f284039-e3b5-4bcc-a538-d6a9f9135a73",
-							"leftValue": "={{ ($json.structuredContent?.changes ?? []).reduce((total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0), 0) }}",
-							"rightValue": "={{ ($('Get diff').last().json.structuredContent?.changes ?? []).reduce((total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0), 0) }}",
-							"operator": {
-								"type": "number",
-								"operation": "lte"
-							}
-						}
-					],
-					"combinator": "and"
+				"endpointUrl": "={{ $('Factory settings').first().json.n8nMcpUrl }}",
+				"authentication": "bearerAuth",
+				"tool": {
+					"__rl": true,
+					"mode": "id",
+					"value": "coding_diff"
 				},
-				"options": {}
+				"inputMode": "json",
+				"jsonInput": "={{ JSON.stringify({ agentId: $('Implement').params.agentId.value, session: $('Read factory ticket').first().json.runKey + '-implement' }) }}",
+				"options": {
+					"timeout": 1800000
+				}
 			},
-			"id": "7a18c34c-98dc-468a-a58d-4f43c7d9da3a",
-			"name": "Ready for PR?",
-			"type": "n8n-nodes-base.if",
-			"typeVersion": 2.3,
+			"id": "d9a81860-1836-4a8e-950d-85f5a402f19e",
+			"name": "Get minimised diff",
+			"type": "@n8n/n8n-nodes-langchain.mcpClient",
+			"typeVersion": 1.1,
 			"position": [
 				5280,
 				0
-			]
+			],
+			"credentials": {
+				"httpBearerAuth": {
+					"id": null,
+					"name": "n8n MCP access token"
+				}
+			},
+			"notes": "Calls the proposed n8n MCP tool \"coding_diff\". It does not exist yet. See the README.",
+			"notesInFlow": true,
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {
+				"jsCode": "// Facts for the gate \"Ready for PR?\". Minimise may only remove changes. So each file and each\n// changed line after Minimise must also be in the change that the critic approved.\nconst checked = $('Re-verify').last().json.structuredContent;\nconst minimised = $('Get minimised diff').last().json.structuredContent;\nconst approved = $('Get diff').last().json.structuredContent;\n\nconst changesOf = (content) => (Array.isArray(content?.changes) ? content.changes : []);\nconst countOf = (value) => Number(value) || 0;\nconst linesOf = (changes) =>\n\tchanges.reduce((total, change) => total + countOf(change?.additions) + countOf(change?.deletions), 0);\n\n// Each added or deleted line of a unified diff, as \"path: +line\" or \"path: -line\". A file without\n// hunks (a binary file, a mode change or a rename) is one change: its header lines.\nconst changedLinesOf = (diff) => {\n\tconst result = [];\n\tlet header = [];\n\tlet path = '';\n\tlet inHunk = false;\n\tconst endFile = () => {\n\t\tif (header.length > 0 && !inHunk) result.push(header.join(' '));\n\t};\n\tfor (const line of String(diff ?? '').split('\\n')) {\n\t\tif (line.startsWith('diff --git ')) {\n\t\t\tendFile();\n\t\t\theader = [line];\n\t\t\tpath = '';\n\t\t\tinHunk = false;\n\t\t} else if (inHunk) {\n\t\t\tif (/^[+-]/.test(line)) result.push(path + ': ' + line);\n\t\t} else if (line.startsWith('@@')) {\n\t\t\tinHunk = true;\n\t\t} else if (line !== '') {\n\t\t\theader.push(line);\n\t\t\tconst name = /^(?:---|\\+\\+\\+) (?:[ab]\\/)?(.+)$/.exec(line)?.[1];\n\t\t\tif (name !== undefined && name !== '/dev/null') path = name;\n\t\t}\n\t}\n\tendFile();\n\treturn result;\n};\n\n// The entries of `entries` that `reviewed` does not hold. A repeated entry needs as many copies.\nconst notReviewed = (entries, reviewed) => {\n\tconst left = new Map();\n\tfor (const entry of reviewed) left.set(entry, (left.get(entry) ?? 0) + 1);\n\treturn entries.filter((entry) => {\n\t\tconst count = left.get(entry) ?? 0;\n\t\tleft.set(entry, count - 1);\n\t\treturn count < 1;\n\t});\n};\n\nconst approvedFiles = new Map(changesOf(approved).map((change) => [String(change?.path), change]));\nconst fileProblems = changesOf(checked).flatMap((change) => {\n\tconst path = String(change?.path);\n\tconst before = approvedFiles.get(path);\n\tif (!before) return [path + ': a file that the critic did not review'];\n\tconst grew =\n\t\tcountOf(change.additions) > countOf(before.additions) ||\n\t\tcountOf(change.deletions) > countOf(before.deletions);\n\treturn grew ? [path + ': more changed lines than the critic reviewed'] : [];\n});\n\nreturn [\n\t{\n\t\tjson: {\n\t\t\thasResult: typeof checked?.check === 'string' && typeof minimised?.diff === 'string',\n\t\t\tcheck: typeof checked?.check === 'string' ? checked.check : '',\n\t\t\ttest: typeof checked?.test === 'string' ? checked.test : '',\n\t\t\tchangedLines: linesOf(changesOf(checked)),\n\t\t\tapprovedLines: linesOf(changesOf(approved)),\n\t\t\tdiffBudget: Number($('Read factory ticket').first().json.diffBudget),\n\t\t\tunreviewed: [\n\t\t\t\t\n\t\t\t\t...notReviewed(changedLinesOf(minimised?.diff), changedLinesOf(approved?.diff)),\n\t\t\t],\n\t\t},\n\t},\n];\n"
+			},
+			"id": "7af4dab4-c2a4-4217-9892-db4962f0d90e",
+			"name": "Compare with approved change",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				5500,
+				0
+			],
+			"notes": "Minimise may only remove changes. This node lists each file and line that the critic did not review.",
+			"notesInFlow": true,
+			"onError": "continueRegularOutput"
+		},
+		{
+			"parameters": {
+				"mode": "rules",
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "db5c5c40-539b-4731-afe2-ad780b339555",
+										"leftValue": "={{ $json.hasResult }}",
+										"rightValue": "",
+										"operator": {
+											"type": "boolean",
+											"operation": "true",
+											"singleValue": true
+										}
+									},
+									{
+										"id": "b1c2bd6e-04f9-4a32-8e4d-07c365f952a5",
+										"leftValue": "={{ $json.check }}",
+										"rightValue": "passed",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									},
+									{
+										"id": "d70d69f6-f2fc-4d89-810a-9d1a9ae21172",
+										"leftValue": "={{ $json.test }}",
+										"rightValue": "passed",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									},
+									{
+										"id": "de7368e8-abe8-4495-adaf-af5bf288c55c",
+										"leftValue": "={{ $json.changedLines }}",
+										"rightValue": 0,
+										"operator": {
+											"type": "number",
+											"operation": "gt"
+										}
+									},
+									{
+										"id": "e96ca063-6c60-4a1e-9774-29aa9acdcb8c",
+										"leftValue": "={{ $json.changedLines }}",
+										"rightValue": "={{ $json.diffBudget }}",
+										"operator": {
+											"type": "number",
+											"operation": "lte"
+										}
+									},
+									{
+										"id": "1e84c962-993c-463a-a565-ff1a7cde90cd",
+										"leftValue": "={{ $json.unreviewed?.length }}",
+										"rightValue": 0,
+										"operator": {
+											"type": "number",
+											"operation": "equals"
+										}
+									}
+								],
+								"combinator": "and"
+							},
+							"renameOutput": true,
+							"outputKey": "Ready"
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "59cefd3f-3577-4768-97c3-1d77b4ee9be9",
+										"leftValue": "={{ $json.hasResult }}",
+										"rightValue": "",
+										"operator": {
+											"type": "boolean",
+											"operation": "true",
+											"singleValue": true
+										}
+									}
+								],
+								"combinator": "and"
+							},
+							"renameOutput": true,
+							"outputKey": "Not ready"
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra",
+					"renameFallbackOutput": "No result"
+				}
+			},
+			"id": "7a18c34c-98dc-468a-a58d-4f43c7d9da3a",
+			"name": "Ready for PR?",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.4,
+			"position": [
+				5720,
+				0
+			],
+			"notes": "Opens a pull request only for a passing change that has only changes that the critic reviewed.",
+			"notesInFlow": true
 		},
 		{
 			"parameters": {
@@ -1180,7 +1322,7 @@
 			"type": "@n8n/n8n-nodes-langchain.mcpClient",
 			"typeVersion": 1.1,
 			"position": [
-				5500,
+				5940,
 				0
 			],
 			"credentials": {
@@ -1205,7 +1347,7 @@
 					"conditions": [
 						{
 							"id": "26690d53-adbe-40f4-a9a0-ae9855b3457b",
-							"leftValue": "={{ $json.structuredContent?.pushed }}",
+							"leftValue": "={{ $json.structuredContent?.pushed === true }}",
 							"rightValue": "",
 							"operator": {
 								"type": "boolean",
@@ -1215,20 +1357,22 @@
 						},
 						{
 							"id": "ce76e944-fd97-457b-ac7d-b6b6cfe92dfd",
-							"leftValue": "={{ $json.structuredContent?.branch }}",
-							"rightValue": "={{ $('Read factory ticket').first().json.branch }}",
+							"leftValue": "={{ $json.structuredContent?.branch === $('Read factory ticket').first().json.branch }}",
+							"rightValue": "",
 							"operator": {
-								"type": "string",
-								"operation": "equals"
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
 							}
 						},
 						{
 							"id": "d7863304-0f58-46e4-a605-7e2e0f3a73ac",
-							"leftValue": "={{ $json.structuredContent?.commit ?? '' }}",
-							"rightValue": "^[0-9a-f]{40,64}$",
+							"leftValue": "={{ typeof $json.structuredContent?.commit === 'string' && /^[0-9a-f]{40,64}$/.test($json.structuredContent.commit) }}",
+							"rightValue": "",
 							"operator": {
-								"type": "string",
-								"operation": "regex"
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
 							}
 						}
 					],
@@ -1241,7 +1385,7 @@
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
 			"position": [
-				5720,
+				6160,
 				0
 			],
 			"notes": "When a node fails as a whole, n8n sends its input to the success output. So this gate reads the result of Push branch.",
@@ -1265,7 +1409,7 @@
 				"base": "={{ $('Factory settings').first().json.baseBranch }}",
 				"head": "={{ $('Read factory ticket').first().json.branch }}",
 				"title": "={{ $('Read factory ticket').first().json.ticket + ': ' + $('Read factory ticket').first().json.title }}",
-				"body": "={{ $('Minimise').last().json.structuredOutput?.summary ?? $('Implement').last().json.structuredOutput?.summary ?? '' }}\n\n## Acceptance criteria\n{{ $('Read factory ticket').first().json.acceptanceCriteria.map((item) => '- [ ] ' + item).join('\\n') }}\n\n## Factory checks\n- Deterministic check: {{ $('Re-verify').last().json.structuredContent?.check }}\n- Failing test `{{ $('Draft failing test').first().json.structuredOutput.runCommand }}`: {{ $('Re-verify').last().json.structuredContent?.test }}\n- Changed lines: {{ ($('Re-verify').last().json.structuredContent?.changes ?? []).reduce((total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0), 0) }} of {{ $('Read factory ticket').first().json.diffBudget }}\n- Fresh critic: {{ $('Fresh critic').last().json.structuredOutput?.verdict }} ({{ ($('Fresh critic').last().json.structuredOutput?.findings ?? []).length }} findings)\n- Commit: {{ $('Push branch').last().json.structuredContent?.commit }}\n{{ ($('Fresh critic').last().json.structuredOutput?.findings ?? []).length ? '\\n## Critic findings to check\\n' + $('Fresh critic').last().json.structuredOutput.findings.map((finding) => '- `' + finding.path + ':' + finding.line + '` [' + finding.severity + '] ' + finding.body).join('\\n') : '' }}\n\nTicket: {{ $('Read factory ticket').first().json.url }}\n\nThe n8n software factory opened this draft. A person must review it before it can merge.",
+				"body": "={{ $('Minimise').last().json.structuredOutput?.summary ?? $('Implement').last().json.structuredOutput?.summary ?? '' }}\n\n## Acceptance criteria\n{{ $('Read factory ticket').first().json.acceptanceCriteria.map((item) => '- [ ] ' + item).join('\\n') }}\n\n## Factory checks\n- Deterministic check: {{ $('Compare with approved change').last().json.check }}\n- Failing test `{{ $('Draft failing test').first().json.structuredOutput.runCommand }}`: {{ $('Compare with approved change').last().json.test }}\n- Changed lines: {{ $('Compare with approved change').last().json.changedLines }} of {{ $('Compare with approved change').last().json.diffBudget }}\n- Minimise: each changed file and line is in the change that the critic approved\n- Fresh critic: {{ $('Fresh critic').last().json.structuredOutput?.verdict }} ({{ ($('Fresh critic').last().json.structuredOutput?.findings ?? []).length }} findings)\n- Commit: {{ $('Push branch').last().json.structuredContent?.commit }}\n{{ ($('Fresh critic').last().json.structuredOutput?.findings ?? []).length ? '\\n## Critic findings to check\\n' + $('Fresh critic').last().json.structuredOutput.findings.map((finding) => '- `' + finding.path + ':' + finding.line + '` [' + finding.severity + '] ' + finding.body).join('\\n') : '' }}\n\nTicket: {{ $('Read factory ticket').first().json.url }}\n\nThe n8n software factory opened this draft. A person must review it before it can merge.",
 				"draft": true
 			},
 			"id": "ad7497a2-152f-4d7e-a64d-8b159c4af855",
@@ -1273,7 +1417,7 @@
 			"type": "n8n-nodes-base.github",
 			"typeVersion": 1.1,
 			"position": [
-				5940,
+				6380,
 				0
 			],
 			"credentials": {
@@ -1296,11 +1440,12 @@
 					"conditions": [
 						{
 							"id": "3a0a8111-ea3f-42bb-a7cc-f6d39753834d",
-							"leftValue": "={{ $json.html_url ?? '' }}",
-							"rightValue": "^https://",
+							"leftValue": "={{ typeof $json.html_url === 'string' && $json.html_url.startsWith('https://') }}",
+							"rightValue": "",
 							"operator": {
-								"type": "string",
-								"operation": "regex"
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
 							}
 						}
 					],
@@ -1313,7 +1458,7 @@
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
 			"position": [
-				6160,
+				6600,
 				0
 			]
 		},
@@ -1417,7 +1562,7 @@
 						{
 							"id": "c99fd32e-4185-497b-af08-07a87210ac73",
 							"name": "summary",
-							"value": "={{ 'The preparation did not finish. Workspace: ' + ((typeof $('Prepare workspace').first().json?.error === 'string' ? $('Prepare workspace').first().json.error : $('Prepare workspace').first().json?.error?.message) ?? 'phase ' + ($('Prepare workspace').first().json.structuredContent?.phase ?? 'unknown')) + '. Failing test: ' + ((typeof $('Draft failing test').first().json?.error === 'string' ? $('Draft failing test').first().json.error : $('Draft failing test').first().json?.error?.message) ?? (!$('Draft failing test').first().json.structuredOutput?.testPath ? 'no test' : ($('Draft failing test').first().json.structuredOutput.runCommand ?? '').includes($('Draft failing test').first().json.structuredOutput.testPath.split('/').pop()) ? 'ready' : 'the run command does not name ' + $('Draft failing test').first().json.structuredOutput.testPath)) + '.' }}",
+							"value": "={{ 'The preparation did not finish. Workspace: ' + ((workspace, expected) => (typeof workspace.error === 'string' ? workspace.error : workspace.error?.message) ?? (workspace.structuredContent?.phase !== 'ready' ? 'phase ' + (workspace.structuredContent?.phase ?? 'unknown') : !(typeof workspace.structuredContent?.repositoryUrl === 'string' && workspace.structuredContent.repositoryUrl.trim().toLowerCase().replace(/(\\.git)?\\/*$/, '') === expected.toLowerCase()) ? 'the repository is ' + (workspace.structuredContent?.repositoryUrl || 'unknown') + ', not ' + expected : 'ready'))($('Prepare workspace').first().json, 'https://github.com/' + $('Factory settings').first().json.repositoryOwner + '/' + $('Factory settings').first().json.repositoryName) + '. Failing test: ' + ((draft, file) => (typeof draft.error === 'string' ? draft.error : draft.error?.message) ?? (!draft.structuredOutput?.testPath ? 'no test' : !file ? 'the test path ' + draft.structuredOutput.testPath + ' names no file' : !(typeof draft.structuredOutput.runCommand === 'string' && draft.structuredOutput.runCommand.includes(file)) ? 'the run command does not name ' + draft.structuredOutput.testPath : 'ready'))($('Draft failing test').first().json, /[^\\/\\s]+$/.exec(String($('Draft failing test').first().json.structuredOutput?.testPath ?? '').trim())?.[0]) + '.' }}",
 							"type": "string"
 						}
 					]
@@ -1475,7 +1620,7 @@
 						{
 							"id": "e98cca53-642d-4353-a726-2fbc5e0ae2ce",
 							"name": "summary",
-							"value": "={{ 'The deterministic check did not pass (check: ' + ($json.structuredContent?.check ?? 'no result') + ', exit code ' + ($json.structuredContent?.checkExitCode ?? 'none') + '; failing test: ' + ($json.structuredContent?.test ?? 'no result') + ', exit code ' + ($json.structuredContent?.testExitCode ?? 'none') + ').' + ($prevNode.runIndex >= 3 ? ' The run used all 3 check retries.' : '') }}",
+							"value": "={{ 'The deterministic check did not pass (check: ' + ($json.structuredContent?.check ?? 'no result') + ', exit code ' + ($json.structuredContent?.checkExitCode ?? 'none') + '; failing test: ' + ($json.structuredContent?.test ?? 'no result') + ', exit code ' + ($json.structuredContent?.testExitCode ?? 'none') + ').' + ($prevNode.runIndex >= 3 ? ' Only the first 3 checks of a run can get a retry, and this was check ' + ($prevNode.runIndex + 1) + '.' : '') }}",
 							"type": "string"
 						}
 					]
@@ -1533,7 +1678,7 @@
 						{
 							"id": "c36883ca-b76c-4ce4-a2f9-309d5b9b3602",
 							"name": "summary",
-							"value": "={{ 'After minimising, the check is ' + ($json.structuredContent?.check ?? 'unknown') + ', the failing test is ' + ($json.structuredContent?.test ?? 'unknown') + ' and the change has ' + ($json.structuredContent?.changes ?? []).reduce((total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0), 0) + ' changed lines (budget ' + $('Read factory ticket').first().json.diffBudget + ', the critic approved ' + ($('Get diff').last().json.structuredContent?.changes ?? []).reduce((total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0), 0) + ').' }}",
+							"value": "={{ 'After minimising, the check is ' + ($json.check || 'unknown') + ', the failing test is ' + ($json.test || 'unknown') + ' and the change has ' + $json.changedLines + ' changed lines (budget ' + $json.diffBudget + ', the critic approved ' + $json.approvedLines + ').' + (($json.unreviewed ?? []).length ? ' The critic did not review ' + $json.unreviewed.length + ' of the changes:\\n' + $json.unreviewed.slice(0, 5).map((entry) => '- ' + entry).join('\\n') + ($json.unreviewed.length > 5 ? '\\n- and ' + ($json.unreviewed.length - 5) + ' more' : '') : '') }}",
 							"type": "string"
 						}
 					]
@@ -1545,7 +1690,7 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
 			"position": [
-				5280,
+				5720,
 				420
 			]
 		},
@@ -1580,13 +1725,13 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
 			"position": [
-				6380,
+				6820,
 				0
 			]
 		},
 		{
 			"parameters": {
-				"jsCode": "// One record for each run, whatever the outcome.\nconst outcome = $input.first().json;\nconst ticket = $('Read factory ticket').first().json;\n// last(0) reads the success output. Without an output index, n8n can read the error output\n// of these nodes, because this node is also behind their error outputs.\nconst successJson = (node) => (node.isExecuted ? node.last(0)?.json : undefined);\nconst check = (successJson($('Re-verify')) ?? successJson($('Verify')))?.structuredContent;\nconst changes = Array.isArray(check?.changes) ? check.changes : [];\nconst changedLines = changes.reduce(\n\t(total, change) => total + (Number(change.additions) || 0) + (Number(change.deletions) || 0),\n\t0,\n);\nreturn [\n\t{\n\t\tjson: {\n\t\t\tticket: ticket.ticket,\n\t\t\tticketUrl: ticket.url,\n\t\t\tstatus: outcome.status,\n\t\t\tsummary: outcome.summary,\n\t\t\tcriticVerdict: successJson($('Fresh critic'))?.structuredOutput?.verdict ?? '',\n\t\t\tlinesChanged: changedLines,\n\t\t\tprUrl: outcome.prUrl ?? '',\n\t\t\texecutionId: String($execution.id),\n\t\t\tfinishedAt: new Date().toISOString(),\n\t\t},\n\t},\n];\n"
+				"jsCode": "// One record for each run, whatever the outcome.\nconst outcome = $input.first().json;\nconst ticket = $('Read factory ticket').first().json;\n// last(0) reads the success output. Without an output index, n8n can read the error output\n// of these nodes, because this node is also behind their error outputs.\nconst successJson = (node) => (node.isExecuted ? node.last(0)?.json : undefined);\nconst check =\n\tsuccessJson($('Re-verify'))?.structuredContent ?? successJson($('Verify'))?.structuredContent;\nconst changes = Array.isArray(check?.changes) ? check.changes : [];\nconst changedLines = changes.reduce(\n\t(total, change) => total + (Number(change?.additions) || 0) + (Number(change?.deletions) || 0),\n\t0,\n);\nreturn [\n\t{\n\t\tjson: {\n\t\t\tticket: ticket.ticket,\n\t\t\tticketUrl: ticket.url,\n\t\t\tstatus: outcome.status,\n\t\t\tsummary: outcome.summary,\n\t\t\tcriticVerdict: successJson($('Fresh critic'))?.structuredOutput?.verdict ?? '',\n\t\t\tlinesChanged: changedLines,\n\t\t\tprUrl: outcome.prUrl ?? '',\n\t\t\texecutionId: String($execution.id),\n\t\t\tfinishedAt: new Date().toISOString(),\n\t\t},\n\t},\n];\n"
 			},
 			"id": "999a086c-206c-4454-ad33-3b151653fe09",
 			"name": "Run record",
@@ -1603,7 +1748,7 @@
 				"resource": "comment",
 				"operation": "addComment",
 				"issueId": "={{ $('Read factory ticket').first().json.ticketId }}",
-				"comment": "=**n8n software factory**: {{ $json.status.replaceAll('_', ' ') }}\n\n{{ $json.summary }}\n{{ $json.prUrl ? '\\nDraft pull request: ' + $json.prUrl : '' }}\n\nExecution {{ $json.executionId }} · {{ $json.linesChanged }} changed lines · critic verdict: {{ $json.criticVerdict || 'none' }}",
+				"comment": "=**n8n software factory**: {{ $json.status.replaceAll('_', ' ') }}\n\n{{ $json.summary }}\n{{ $json.prUrl ? '\\nDraft pull request: ' + $json.prUrl : '' }}\n\nExecution {{ $json.executionId }} \u00b7 {{ $json.linesChanged }} changed lines \u00b7 critic verdict: {{ $json.criticVerdict || 'none' }}",
 				"additionalFields": {}
 			},
 			"id": "f3346f38-1ec3-415e-a511-a4195f9c8183",
@@ -1811,7 +1956,7 @@
 		},
 		{
 			"parameters": {
-				"content": "## Software factory\nOne run for each Linear ticket that gets the **factory** label:\nticket → plan → approval → (failing test ∥ workspace) → implement → verify → fresh critic → minimise → draft PR → Linear comment and a **factory_runs** row.\n\n**Set up**\n1. Import the three agents from `agents/` and publish them.\n2. Fill in **Factory settings**.\n3. Pick the agent on each Message an Agent node.\n4. Choose the credentials on each node.\n5. Publish this workflow.\n\n**Today** the coding steps call MCP tools that do not exist yet, so a run stops at \"Outcome: prep failed\" before a PR. See the README.",
+				"content": "## Software factory\nOne run for each Linear ticket that gets the **factory** label:\nticket \u2192 plan \u2192 approval \u2192 (failing test \u2225 workspace) \u2192 implement \u2192 verify \u2192 fresh critic \u2192 minimise \u2192 draft PR \u2192 Linear comment and a **factory_runs** row.\n\n**Set up**\n1. Import the three agents from `agents/` and publish them.\n2. Fill in **Factory settings**.\n3. Pick the agent on each Message an Agent node.\n4. Choose the credentials on each node.\n5. Publish this workflow.\n\n**Today** the coding steps call MCP tools that do not exist yet, so a run stops at \"Outcome: prep failed\" before a PR. See the README.",
 				"height": 980,
 				"width": 400,
 				"color": 4
@@ -1857,7 +2002,7 @@
 		},
 		{
 			"parameters": {
-				"content": "## 3. Prep\nThe planner drafts a failing test while the coding workspace is prepared.",
+				"content": "## 3. Prep\nThe planner drafts a failing test. The coding_prepare tool prepares the workspace on the repository of the pull request. n8n runs the two branches one after the other.",
 				"height": 560,
 				"width": 680
 			},
@@ -1872,7 +2017,7 @@
 		},
 		{
 			"parameters": {
-				"content": "## 4. Implement and verify\nThe implementer works in its coding session. A deterministic check runs the check command and the failing test. At most 3 retries in a run.",
+				"content": "## 4. Implement and verify\nThe implementer works in its coding session. A deterministic check runs the check command and the failing test. Only the first 3 checks of a run can get a retry.",
 				"height": 560,
 				"width": 900
 			},
@@ -1902,9 +2047,9 @@
 		},
 		{
 			"parameters": {
-				"content": "## 6. Minimise\nRemove scope creep only, then check again. The change must pass, must not grow and must stay inside the diff budget.",
+				"content": "## 6. Minimise\nRemove scope creep only, then check again. Each changed file and line must be in the change that the critic approved. The change must pass and stay inside the diff budget.",
 				"height": 560,
-				"width": 680
+				"width": 1120
 			},
 			"id": "6515cbac-70d1-44cf-a044-dc19899f35c8",
 			"name": "Note: minimise",
@@ -1926,7 +2071,7 @@
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
 			"position": [
-				5440,
+				5880,
 				-360
 			]
 		},
@@ -2227,6 +2372,13 @@
 				],
 				[
 					{
+						"node": "Outcome: step failed",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
 						"node": "Outcome: check failed",
 						"type": "main",
 						"index": 0
@@ -2368,7 +2520,7 @@
 			"main": [
 				[
 					{
-						"node": "Ready for PR?",
+						"node": "Get minimised diff",
 						"type": "main",
 						"index": 0
 					}
@@ -2376,6 +2528,35 @@
 				[
 					{
 						"node": "Outcome: step failed",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get minimised diff": {
+			"main": [
+				[
+					{
+						"node": "Compare with approved change",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Outcome: step failed",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compare with approved change": {
+			"main": [
+				[
+					{
+						"node": "Ready for PR?",
 						"type": "main",
 						"index": 0
 					}
@@ -2394,6 +2575,13 @@
 				[
 					{
 						"node": "Outcome: not ready for PR",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Outcome: step failed",
 						"type": "main",
 						"index": 0
 					}

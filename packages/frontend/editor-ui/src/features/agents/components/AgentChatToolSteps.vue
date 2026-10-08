@@ -144,6 +144,12 @@ function toolStepMetadata(tc: ToolCall): string[] {
 	return [];
 }
 
+/** The metadata of the row, then the note that the chat host gives it (for example who approved). */
+function toolStepRowMetadata(tc: ToolCall): string[] {
+	const note = toolStepNote?.(tc);
+	return note ? [...toolStepMetadata(tc), note] : toolStepMetadata(tc);
+}
+
 function hasToolData(tc: ToolCall): boolean {
 	return tc.input !== undefined || tc.output !== undefined;
 }
@@ -181,8 +187,7 @@ function isEmptyToolErrorPayload(value: unknown): boolean {
 function toolStepView(tc: ToolCall): ToolStepDisplay {
 	const isCompact = tc.state === TOOL_CALL_STATE.DONE && isCompactToolName(tc.tool, tc.output);
 	const details = isCompact ? '' : (getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '');
-	const note = toolStepNote?.(tc);
-	const metadata = note ? [...toolStepMetadata(tc), note] : toolStepMetadata(tc);
+	const metadata = toolStepRowMetadata(tc);
 	const hasChildProgress = Boolean(tc.childProgress);
 	return {
 		label: [toolStepLabel(tc, isCompact), ...metadata].join(' · '),

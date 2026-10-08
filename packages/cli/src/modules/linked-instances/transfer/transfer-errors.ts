@@ -91,7 +91,7 @@ export type RemoteRefusal = 'project-refused' | 'not-in-mcp' | 'archived';
 
 // Remote tool errors have no machine-readable reason, so the fixed texts of the n8n tools identify
 // them. The texts are compared only at fixed positions, because an error text can hold the name of
-// a workflow, and anyone who can rename a workflow sets that name.
+// a workflow, and a name can hold any text.
 const PROJECT_REFUSED_TEXT =
 	'The project does not exist, or you do not have permission to create workflows in it.';
 // The import names the workflow that it would update before this text, and its reason after it.

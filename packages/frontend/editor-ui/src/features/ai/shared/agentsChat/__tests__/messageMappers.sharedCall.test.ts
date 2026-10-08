@@ -34,7 +34,8 @@ describe('rebuildInteractiveFromHistory — the tool call behind an Assistant ca
 		// The parsed card gets `toolName` and `args` for "Always allow"; the raw payload must not.
 		expect(interactive?.input).toMatchObject({ toolName: 'executions' });
 		expect(
-			interactive?.toolName === ASSISTANT_CONFIRMATION_TOOL_NAME && interactive.call?.suspendPayload,
+			interactive?.toolName === ASSISTANT_CONFIRMATION_TOOL_NAME &&
+				interactive.call?.suspendPayload,
 		).toStrictEqual(approvalPayload);
 	});
 });

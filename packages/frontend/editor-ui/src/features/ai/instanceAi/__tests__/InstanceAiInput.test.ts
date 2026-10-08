@@ -204,14 +204,16 @@ const CustomRawPromptSuggestionsComponent = defineComponent({
 });
 
 const InputMenuStub = defineComponent({
+	props: { projectId: { type: String, default: undefined } },
 	emits: ['attach-files'],
-	setup(_props, { emit }) {
+	setup(props, { emit }) {
 		return () =>
 			h(
 				'button',
 				{
 					type: 'button',
 					'data-test-id': 'instance-ai-input-menu-attach',
+					'data-project-id': props.projectId,
 					onClick: () => emit('attach-files'),
 				},
 				'Attach file',
@@ -911,6 +913,18 @@ describe('InstanceAiInput', () => {
 
 		expect(fileInputClick).toHaveBeenCalledOnce();
 		fileInputClick.mockRestore();
+	});
+
+	it('gives the input menu the project of the new chat, where Simple mode adds new work', () => {
+		const { getByTestId } = renderComponent({
+			props: { mentionProjectId: 'team-a' },
+			global: { stubs: { InstanceAiInputMenu: InputMenuStub } },
+		});
+
+		expect(getByTestId('instance-ai-input-menu-attach')).toHaveAttribute(
+			'data-project-id',
+			'team-a',
+		);
 	});
 
 	it('does not restore a submitted draft over newer composer content', async () => {

@@ -2,12 +2,12 @@
 /**
  * An n8n Assistant card in a chat that can be shared. The owner gets the card as it is. A
  * teammate gets it with a footer that says who the answer runs as, or why the teammate
- * cannot answer. A card for the owner only shows only its request to a teammate, because
- * its controls (setup forms, domain access) would do nothing.
+ * cannot answer. When only the owner can answer a card, a teammate sees only its request:
+ * the controls of such a card (setup forms, domain access) cannot work for a teammate.
  */
 import { computed } from 'vue';
 import type { InstanceAiConfirmRequest, SharedCard } from '@n8n/api-types';
-import { N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AssistantConfirmationInput } from '@/features/ai/shared/agentsChat/assistantConfirmation';
 import InstanceAiConfirmationCard from '../components/agentsChat/InstanceAiConfirmationCard.vue';
@@ -32,23 +32,23 @@ const sharing = useOptionalThreadSharing();
 const access = computed(() => sharing?.cardAccess(props.call));
 const owner = computed(() => text.owner(sharing?.view.value.ownerName ?? ''));
 
-const footer = computed(() => {
+const footer = computed<{ icon: IconName; text: string }>(() => {
 	switch (access.value) {
 		case 'answer':
 			return {
-				icon: 'user' as const,
+				icon: 'user',
 				text: i18n.baseText('instanceAi.sharing.runsAs', { interpolate: { owner: owner.value } }),
 			};
 		case 'needs-role':
 			return {
-				icon: 'lock' as const,
+				icon: 'lock',
 				text: i18n.baseText('instanceAi.sharing.needsRole', {
 					interpolate: { project: text.project(sharing?.view.value.projectName ?? '') },
 				}),
 			};
 		default:
 			return {
-				icon: 'lock' as const,
+				icon: 'lock',
 				text: i18n.baseText('instanceAi.sharing.ownerOnly', {
 					interpolate: { owner: owner.value },
 				}),

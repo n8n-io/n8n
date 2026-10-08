@@ -7,7 +7,8 @@ defineOptions({ inheritAttrs: false });
 
 /**
  * One labelled text or password input with optional help text and an error line.
- * Autocomplete is off, so a password manager does not offer to save or fill an access token.
+ * Browsers ignore autocomplete "off" on a password input. "new-password" stops them from
+ * filling a saved sign-in password into the access token field.
  */
 const props = withDefaults(
 	defineProps<{
@@ -52,7 +53,7 @@ defineExpose({ focus: () => input.value?.focus() });
 				v-bind="$attrs"
 				:type="type"
 				:placeholder="placeholder"
-				autocomplete="off"
+				:autocomplete="type === 'password' ? 'new-password' : 'off'"
 				required
 				:aria-invalid="error ? 'true' : undefined"
 				:aria-describedby="describedBy"

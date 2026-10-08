@@ -543,6 +543,7 @@ describe('ProjectsNavigation', () => {
 			instanceAiStore.loadThreads.mockImplementation(async () => {
 				await threadsLoaded.promise;
 				instanceAiStore.threads = chats;
+				return true;
 			});
 			const automation: InstanceAiProvenanceListItem = {
 				workflowId: 'wf-1',

@@ -650,11 +650,7 @@ onBeforeUnmount(() => {
 			</template>
 			<!-- Same menu as the empty view: attachments, computer use, browser use and MCP tools -->
 			<template #footer-start>
-				<InstanceAiInputMenu
-					:thread-id="thread.id"
-					:project-id="projectId"
-					@attach-files="chatPanel?.openFilePicker()"
-				/>
+				<InstanceAiInputMenu :thread-id="thread.id" @attach-files="chatPanel?.openFilePicker()" />
 			</template>
 			<template v-if="composerContextChip || composerResources.length" #composer-attachments>
 				<InstanceAiResourceChip

@@ -243,11 +243,20 @@ export class TemplateRuntime {
 	}
 
 	private contextOf(nodeName: string, run: TemplateRun) {
-		this.assertNodesExist([nodeName, ...Object.keys(run.nodes ?? {}), ...Object.keys(run.failed ?? {})]);
+		this.assertNodesExist([
+			nodeName,
+			...Object.keys(run.nodes ?? {}),
+			...Object.keys(run.failed ?? {}),
+		]);
 		const executeData = this.executeDataOf(nodeName, run);
 		const input: INodeExecutionData[] = executeData.data.main[0] ?? [];
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-			$execution: { id: run.executionId ?? '1', mode: 'production', resumeUrl: '', resumeFormUrl: '' },
+			$execution: {
+				id: run.executionId ?? '1',
+				mode: 'production',
+				resumeUrl: '',
+				resumeFormUrl: '',
+			},
 		};
 		return {
 			input,

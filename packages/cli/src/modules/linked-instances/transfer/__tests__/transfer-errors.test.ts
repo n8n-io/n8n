@@ -131,7 +131,9 @@ describe('isProjectRefusal', () => {
 		expect(isProjectRefusal(toolError(REMOTE_TEXTS.notInMcp))).toBe(false);
 		expect(
 			isProjectRefusal(
-				toolError(updateRefusal('Invoices (permission to create workflows in it)', NOT_IN_MCP_REASON)),
+				toolError(
+					updateRefusal('Invoices (permission to create workflows in it)', NOT_IN_MCP_REASON),
+				),
 			),
 		).toBe(false);
 		expect(

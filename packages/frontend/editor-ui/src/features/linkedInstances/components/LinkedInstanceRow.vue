@@ -17,6 +17,8 @@ import { LINKED_INSTANCE_STATUS_DISPLAY } from '../linkedInstanceStatus';
 const props = defineProps<{
 	instance: LinkedInstanceSummary;
 	checking: boolean;
+	/** The row goes away when the request ends. Until then its actions are off. */
+	unlinking: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -60,13 +62,15 @@ function onMenuSelect(id: string) {
 <template>
 	<N8nSettingsRow
 		layout="custom"
+		role="listitem"
+		:aria-busy="unlinking || undefined"
 		:data-instance-id="instance.id"
 		data-test-id="linked-instance-row"
 	>
 		<div :class="$style.content">
 			<div :class="$style.info">
 				<div :class="$style.titleLine">
-					<N8nText :id="nameId" bold size="medium" color="text-dark" :class="$style.wrap">
+					<N8nText :id="nameId" tag="h2" bold size="medium" color="text-dark" :class="$style.wrap">
 						{{ instance.name }}
 					</N8nText>
 					<N8nBadge :variant="status.variant" size="small" data-test-id="linked-instance-status">
@@ -86,10 +90,18 @@ function onMenuSelect(id: string) {
 				</N8nText>
 			</div>
 			<div :class="$style.actions">
+				<N8nText
+					v-if="unlinking"
+					size="small"
+					color="text-base"
+					data-test-id="linked-instance-unlinking"
+				>
+					{{ i18n.baseText('settings.linkedInstances.row.unlinking') }}
+				</N8nText>
 				<N8nButton
 					variant="outline"
 					size="small"
-					:disabled="checking"
+					:disabled="checking || unlinking"
 					:label="
 						checking
 							? i18n.baseText('settings.linkedInstances.row.checking')
@@ -103,12 +115,18 @@ function onMenuSelect(id: string) {
 				<N8nButton
 					variant="outline"
 					size="small"
+					:disabled="unlinking"
 					:label="i18n.baseText('settings.linkedInstances.row.changeToken')"
 					:aria-describedby="nameId"
 					data-test-id="linked-instance-change-token"
 					@click="emit('changeToken')"
 				/>
-				<N8nDropdownMenu :items="menuItems" placement="bottom-end" @select="onMenuSelect">
+				<N8nDropdownMenu
+					:items="menuItems"
+					:disabled="unlinking"
+					placement="bottom-end"
+					@select="onMenuSelect"
+				>
 					<template #trigger>
 						<N8nIconButton
 							variant="ghost"
@@ -119,6 +137,7 @@ function onMenuSelect(id: string) {
 									interpolate: { name: instance.name },
 								})
 							"
+							data-action="menu"
 							data-test-id="linked-instance-menu"
 						/>
 					</template>

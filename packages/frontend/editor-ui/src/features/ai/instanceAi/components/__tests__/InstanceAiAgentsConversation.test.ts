@@ -9,11 +9,7 @@ import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import InstanceAiAgentsConversation from '../InstanceAiAgentsConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
 import { fetchThread } from '../../instanceAi.memory.api';
-import {
-	OWNER,
-	TEAMMATE,
-	setUpSharing,
-} from '../../sharing/__tests__/sharingFixtures';
+import { OWNER, TEAMMATE, setUpSharing } from '../../sharing/__tests__/sharingFixtures';
 import {
 	stashPendingFirstMessage,
 	stashPendingFirstMessageFiles,
@@ -425,9 +421,7 @@ describe('InstanceAiAgentsConversation in a shared chat', () => {
 				id: 'a-1',
 				role: 'assistant',
 				content: '',
-				toolCalls: [
-					{ tool: 'executions', toolCallId: 'tc-1', state: 'done', approvedBy: OWNER },
-				],
+				toolCalls: [{ tool: 'executions', toolCallId: 'tc-1', state: 'done', approvedBy: OWNER }],
 			},
 		];
 

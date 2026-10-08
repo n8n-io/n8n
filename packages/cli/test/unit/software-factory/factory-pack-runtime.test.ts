@@ -36,9 +36,14 @@ const small: TemplateWorkflow = {
 	name: 'Small',
 	nodes: [
 		node('Start', 'manualTrigger@1'),
-		node('Step', 'set@3.4', { assignments: { assignments: [] }, includeOtherFields: true }, {
-			onError: 'continueErrorOutput',
-		}),
+		node(
+			'Step',
+			'set@3.4',
+			{ assignments: { assignments: [] }, includeOtherFields: true },
+			{
+				onError: 'continueErrorOutput',
+			},
+		),
 		node('Gate', 'if@2.3', { conditions: filter('={{ $json.result }}', 'equals', 'ok') }),
 		node('Route', 'switch@3.4', {
 			mode: 'rules',
@@ -53,7 +58,8 @@ const small: TemplateWorkflow = {
 		node('Failure', 'set@3.4', { assignments: { assignments: [] } }),
 		node('Done', 'set@3.4', { assignments: { assignments: [] } }),
 		node('Record', 'code@2', {
-			jsCode: "return [{ json: { last: $('Step').last()?.json ?? null, success: $('Step').last(0)?.json ?? null } }];",
+			jsCode:
+				"return [{ json: { last: $('Step').last()?.json ?? null, success: $('Step').last(0)?.json ?? null } }];",
 		}),
 	],
 	connections: {
@@ -130,7 +136,11 @@ describe('TemplateRuntime', () => {
 		it.each([
 			['one expression keeps its number type', '={{ 1 + 1 }}', 2],
 			['one expression keeps its object type', '={{ { a: { b: [1, 2] } } }}', { a: { b: [1, 2] } }],
-			['nested braces inside one expression', '={{ JSON.stringify({ a: { b: 1 } }) }}', '{"a":{"b":1}}'],
+			[
+				'nested braces inside one expression',
+				'={{ JSON.stringify({ a: { b: 1 } }) }}',
+				'{"a":{"b":1}}',
+			],
 			['text around an expression makes a string', '=a{{ 1 + 1 }}b', 'a2b'],
 			['two expressions make a string', '={{ 1 }}-{{ 2 }}', '1-2'],
 			['a value without "=" is not an expression', '{{ 1 + 1 }}', '{{ 1 + 1 }}'],

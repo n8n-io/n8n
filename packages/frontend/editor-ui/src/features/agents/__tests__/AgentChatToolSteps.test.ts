@@ -788,9 +788,9 @@ describe('AgentChatToolSteps', () => {
 			global: { provide: { [AGENT_CHAT_TOOL_STEP_NOTE as symbol]: note } },
 		});
 
-		expect(
-			wrapper.findAll('[data-testid="tool-step-summary"]').map((part) => part.text()),
-		).toEqual(['Slack', 'Approved by Alice Owner']);
+		expect(wrapper.findAll('[data-testid="tool-step-summary"]').map((part) => part.text())).toEqual(
+			['Slack', 'Approved by Alice Owner'],
+		);
 		expect(note).toHaveBeenCalledWith(expect.objectContaining({ toolCallId: 'tc-2' }));
 	});
 

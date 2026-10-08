@@ -22,11 +22,11 @@ const sharedThreadSchema = z.object({
 	// A share always answers with a shared thread.
 	sharedWith: z.object({ projectId: z.string().min(1), projectName: z.string() }),
 	owner: z.object({ id: z.string().min(1), name: z.string() }),
-}) satisfies z.ZodType<InstanceAiThreadInfo>;
+}) satisfies z.ZodType<InstanceAiThreadInfo, z.ZodTypeDef, unknown>;
 
 const shareThreadResponseSchema = z.object({
 	thread: sharedThreadSchema,
-}) satisfies z.ZodType<InstanceAiShareThreadResponse>;
+}) satisfies z.ZodType<InstanceAiShareThreadResponse, z.ZodTypeDef, unknown>;
 
 /**
  * Shares the owner's chat with its team project. Sharing a shared chat again changes

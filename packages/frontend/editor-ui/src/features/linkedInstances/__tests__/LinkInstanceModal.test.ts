@@ -62,6 +62,10 @@ describe('LinkInstanceModal', () => {
 			await setup();
 
 			expect(tokenInput()).toHaveAttribute('type', 'password');
+			// Browsers ignore "off" on a password input and could fill a saved sign-in password.
+			expect(tokenInput()).toHaveAttribute('autocomplete', 'new-password');
+			expect(nameInput()).toHaveAttribute('autocomplete', 'off');
+			expect(urlInput()).toHaveAttribute('autocomplete', 'off');
 			expect(tokenInput()).toHaveAccessibleDescription(
 				'In the cloud instance, go to Settings > Instance-level MCP and create an access token.',
 			);
@@ -81,7 +85,7 @@ describe('LinkInstanceModal', () => {
 			await userEvent.click(submitButton());
 
 			expect(screen.getByText('Enter a name.')).toBeVisible();
-			expect(screen.getByText('Enter the address of the n8n instance.')).toBeVisible();
+			expect(screen.getByText('Enter the URL of the n8n instance.')).toBeVisible();
 			expect(screen.getByText('Enter the access token.')).toBeVisible();
 			expect(api.linkInstance).not.toHaveBeenCalled();
 		});
@@ -95,20 +99,20 @@ describe('LinkInstanceModal', () => {
 			expect(urlInput()).toHaveFocus();
 			expect(urlInput()).toHaveAttribute('aria-invalid', 'true');
 			expect(nameInput()).not.toHaveAttribute('aria-invalid');
-			expect(urlInput()).toHaveAccessibleDescription('Enter the address of the n8n instance.');
+			expect(urlInput()).toHaveAccessibleDescription('Enter the URL of the n8n instance.');
 		});
 
 		it('shows the address problem when the user leaves the field, not while typing', async () => {
 			await setup();
 
 			await userEvent.type(urlInput(), 'http://example.com');
-			expect(screen.queryByText(/Use https:\/\/ for this address/)).not.toBeInTheDocument();
+			expect(screen.queryByText(/Use https:\/\/ for this URL/)).not.toBeInTheDocument();
 
 			await userEvent.tab();
 
 			expect(
 				screen.getByText(
-					'Use https:// for this address. Plain http:// works only for an instance on this computer.',
+					'Use https:// for this URL. Plain http:// works only for an instance on this computer.',
 				),
 			).toBeVisible();
 			expect(screen.queryByText('Enter a name.')).not.toBeInTheDocument();
@@ -121,7 +125,7 @@ describe('LinkInstanceModal', () => {
 			await userEvent.tab();
 
 			expect(screen.queryByText('Enter a name.')).not.toBeInTheDocument();
-			expect(screen.queryByText('Enter the address of the n8n instance.')).not.toBeInTheDocument();
+			expect(screen.queryByText('Enter the URL of the n8n instance.')).not.toBeInTheDocument();
 			expect(nameInput()).not.toHaveAttribute('aria-invalid');
 		});
 
@@ -136,9 +140,9 @@ describe('LinkInstanceModal', () => {
 		});
 
 		it.each([
-			['ftp://acme.app.n8n.cloud', 'Enter an address that starts with https://'],
-			['https://user:pw@acme.app.n8n.cloud', 'Remove the user name and password from the address.'],
-			['acme app', 'That address is not valid. Check it and try again.'],
+			['ftp://acme.app.n8n.cloud', 'Use https:// at the start of the URL.'],
+			['https://user:pw@acme.app.n8n.cloud', 'Remove the user name and password from the URL.'],
+			['acme app', "That URL isn't valid. Check it and try again."],
 		])('explains why %j is refused', async (url, message) => {
 			await setup();
 
@@ -315,10 +319,37 @@ describe('LinkInstanceModal', () => {
 			expect(nameInput()).toHaveValue('');
 			expect(urlInput()).toHaveValue('');
 			expect(tokenInput()).toHaveValue('');
-			expect(screen.queryByText(/That address is not valid/)).not.toBeInTheDocument();
+			expect(screen.queryByText(/That URL isn't valid/)).not.toBeInTheDocument();
 		});
 
-		it('ignores the result of a request that ends after the dialog closed', async () => {
+		it('stays open until the check ends, then reports the new link', async () => {
+			const request = deferred<ReturnType<typeof linkedInstance>>();
+			api.linkInstance.mockReturnValue(request.promise);
+			const { emitted } = await setup();
+			await fillForm({ name: 'Acme', url: 'acme.app.n8n.cloud', token: fakeToken() });
+			expect(screen.getByRole('button', { name: 'Close dialog' })).toBeVisible();
+			await userEvent.click(submitButton());
+
+			expect(screen.getByTestId('link-instance-cancel')).toBeDisabled();
+			expect(screen.queryByRole('button', { name: 'Close dialog' })).not.toBeInTheDocument();
+			await userEvent.keyboard('{Escape}');
+			expect(emitted('update:open')).toBeUndefined();
+
+			request.resolve(linkedInstance());
+
+			await waitFor(() => expect(emitted('linked')).toEqual([[linkedInstance()]]));
+			expect(emitted('update:open')).toEqual([[false]]);
+		});
+
+		it('closes on Escape when no check runs', async () => {
+			const { emitted } = await setup();
+
+			await userEvent.keyboard('{Escape}');
+
+			expect(emitted('update:open')).toEqual([[false]]);
+		});
+
+		it('ignores the result of a request that ends after the page closed the dialog', async () => {
 			const request = deferred<ReturnType<typeof linkedInstance>>();
 			api.linkInstance.mockReturnValue(request.promise);
 			const { emitted, rerender, pinia } = await setup();

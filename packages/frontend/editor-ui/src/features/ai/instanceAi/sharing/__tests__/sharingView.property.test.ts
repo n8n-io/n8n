@@ -136,19 +136,25 @@ describe('answerAuthorship properties', () => {
 
 	it('names only another user, by that user’s name, and stays silent in a private chat of the viewer', () => {
 		fc.assert(
-			fc.property(authors, authors, userIds, fc.boolean(), (approvedBy, declinedBy, viewerId, shared) => {
-				const result = answerAuthorship({ approvedBy, declinedBy }, viewerId, shared);
-				const author = declinedBy ?? approvedBy;
-				if (!author || (author.id === viewerId && !shared)) {
-					expect(result).toBeUndefined();
-					return;
-				}
-				if (result?.name !== undefined) {
-					expect(author.id).not.toBe(viewerId);
-					expect(result.name).toBe(author.name);
-				}
-				if (result) expect(result.decision).toBe(declinedBy ? 'declined' : 'approved');
-			}),
+			fc.property(
+				authors,
+				authors,
+				userIds,
+				fc.boolean(),
+				(approvedBy, declinedBy, viewerId, shared) => {
+					const result = answerAuthorship({ approvedBy, declinedBy }, viewerId, shared);
+					const author = declinedBy ?? approvedBy;
+					if (!author || (author.id === viewerId && !shared)) {
+						expect(result).toBeUndefined();
+						return;
+					}
+					if (result?.name !== undefined) {
+						expect(author.id).not.toBe(viewerId);
+						expect(result.name).toBe(author.name);
+					}
+					if (result) expect(result.decision).toBe(declinedBy ? 'declined' : 'approved');
+				},
+			),
 		);
 	});
 });

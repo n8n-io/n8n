@@ -93,12 +93,17 @@ describe('SettingsLinkedInstancesView', () => {
 			const { container } = setup();
 
 			expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+			expect(screen.getByTestId('linked-instances-skeleton')).toHaveAttribute(
+				'aria-hidden',
+				'true',
+			);
 			expect(screen.queryByText('No linked instances yet.')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('linked-instances-list')).not.toBeInTheDocument();
 
 			read.resolve([acme]);
 			await screen.findByTestId('linked-instances-list');
 			expect(container.querySelector('[aria-busy="true"]')).toBeNull();
+			expect(screen.queryByTestId('linked-instances-skeleton')).not.toBeInTheDocument();
 		});
 
 		it('shows the empty state with a way to link an instance', async () => {
@@ -120,14 +125,83 @@ describe('SettingsLinkedInstancesView', () => {
 			setup();
 
 			const error = await screen.findByTestId('linked-instances-load-error');
-			expect(within(error).getByText('Could not load linked instances')).toBeVisible();
+			expect(within(error).getByText("Couldn't load linked instances")).toBeVisible();
 			expect(screen.queryByText('No linked instances yet.')).not.toBeInTheDocument();
+			await waitFor(() =>
+				expect(announcement()).toHaveTextContent("Couldn't load linked instances"),
+			);
 
 			await userEvent.click(within(error).getByRole('button', { name: 'Try again' }));
 
 			await screen.findByTestId('linked-instances-list');
 			expect(rowOf('Acme Cloud')).toBeVisible();
 			expect(api.fetchLinkedInstances).toHaveBeenCalledTimes(2);
+		});
+
+		describe('after "Try again"', () => {
+			async function pressTryAgain(nextRead: Promise<LinkedInstanceSummary[]>) {
+				api.fetchLinkedInstances
+					.mockRejectedValueOnce(new ResponseError("Can't connect to n8n."))
+					.mockReturnValueOnce(nextRead);
+				setup();
+				const error = await screen.findByTestId('linked-instances-load-error');
+				within(error).getByRole('button', { name: 'Try again' }).focus();
+				await userEvent.keyboard('{Enter}');
+			}
+
+			it('says that the list loads, then moves focus to "Link instance"', async () => {
+				const read = deferred<LinkedInstanceSummary[]>();
+				await pressTryAgain(read.promise);
+
+				expect(await screen.findByTestId('linked-instances-skeleton')).toBeInTheDocument();
+				await waitFor(() => expect(announcement()).toHaveTextContent('Loading linked instances…'));
+
+				read.resolve([acme]);
+
+				await screen.findByTestId('linked-instances-list');
+				await waitFor(() =>
+					expect(screen.getByTestId('linked-instances-link-button')).toHaveFocus(),
+				);
+				// The loading message does not stay in the region after the list shows.
+				await waitFor(() => expect(announcement().textContent).toBe(''));
+			});
+
+			it('moves focus to the "Link instance" of the empty state when no link exists', async () => {
+				await pressTryAgain(Promise.resolve([]));
+
+				const empty = await screen.findByTestId('linked-instances-empty');
+				await waitFor(() =>
+					expect(within(empty).getByRole('button', { name: 'Link instance' })).toHaveFocus(),
+				);
+			});
+
+			it('announces a second failure and puts focus back on "Try again"', async () => {
+				const read = deferred<LinkedInstanceSummary[]>();
+				await pressTryAgain(read.promise);
+				await waitFor(() => expect(announcement()).toHaveTextContent('Loading linked instances…'));
+
+				read.reject(new ResponseError("Can't connect to n8n."));
+
+				const error = await screen.findByTestId('linked-instances-load-error');
+				await waitFor(() =>
+					expect(within(error).getByRole('button', { name: 'Try again' })).toHaveFocus(),
+				);
+				expect(announcement()).toHaveTextContent("Couldn't load linked instances");
+			});
+
+			it('leaves focus where the user moved it while the list loaded', async () => {
+				const read = deferred<LinkedInstanceSummary[]>();
+				await pressTryAgain(read.promise);
+				const elsewhere = screen.getByRole('heading', { name: 'Linked instances' });
+				elsewhere.setAttribute('tabindex', '-1');
+				elsewhere.focus();
+
+				read.resolve([acme]);
+
+				await screen.findByTestId('linked-instances-list');
+				await waitFor(() => expect(announcement().textContent).toBe(''));
+				expect(elsewhere).toHaveFocus();
+			});
 		});
 	});
 
@@ -156,6 +230,18 @@ describe('SettingsLinkedInstancesView', () => {
 
 			const check = within(rowOf('Staging')).getByRole('button', { name: 'Check connection' });
 			expect(check).toHaveAccessibleDescription('Staging');
+		});
+
+		it('lists the links with a heading for each, so screen readers can count and skip them', async () => {
+			await renderList();
+
+			const list = screen.getByRole('list', { name: 'Linked instances' });
+			expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+			expect(
+				within(list)
+					.getAllByRole('heading', { level: 2 })
+					.map((heading) => heading.textContent?.trim()),
+			).toEqual(['Acme Cloud', 'Staging']);
 		});
 
 		it.each<[LinkedInstanceStatus, string]>([
@@ -244,7 +330,7 @@ describe('SettingsLinkedInstancesView', () => {
 			);
 
 			await waitFor(() =>
-				expect(showError).toHaveBeenCalledWith(error, 'Could not check Acme Cloud'),
+				expect(showError).toHaveBeenCalledWith(error, "Couldn't check the connection"),
 			);
 			expect(within(rowOf('Acme Cloud')).getByTestId('linked-instance-status')).toHaveTextContent(
 				'Online',
@@ -285,14 +371,48 @@ describe('SettingsLinkedInstancesView', () => {
 			await waitFor(() => expect(screen.getByTestId('linked-instances-link-button')).toHaveFocus());
 		});
 
-		it('shows the empty state after the last row goes', async () => {
+		it('shows the empty state after the last row goes and focuses its "Link instance"', async () => {
 			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 			api.unlinkInstance.mockResolvedValue(undefined);
 			await renderList([acme]);
 
 			await chooseUnlink('Acme Cloud');
 
-			expect(await screen.findByTestId('linked-instances-empty')).toBeVisible();
+			const empty = await screen.findByTestId('linked-instances-empty');
+			expect(empty).toBeVisible();
+			await waitFor(() =>
+				expect(within(empty).getByRole('button', { name: 'Link instance' })).toHaveFocus(),
+			);
+		});
+
+		it('turns off the row actions until the request ends, so the link is not unlinked twice', async () => {
+			const request = deferred<void>();
+			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+			api.unlinkInstance.mockReturnValue(request.promise);
+			await renderList();
+
+			await chooseUnlink('Acme Cloud');
+
+			const row = within(rowOf('Acme Cloud'));
+			await waitFor(() => expect(row.getByText('Unlinking…')).toBeVisible());
+			const menu = row.getByRole('button', { name: 'More actions for Acme Cloud' });
+			expect(menu).toBeDisabled();
+			expect(row.getByRole('button', { name: 'Check connection' })).toBeDisabled();
+			expect(row.getByRole('button', { name: 'Change token' })).toBeDisabled();
+			expect(rowOf('Acme Cloud')).toHaveAttribute('aria-busy', 'true');
+			await userEvent.click(menu);
+			expect(screen.queryByRole('menuitem', { name: 'Unlink' })).not.toBeInTheDocument();
+			// The other row keeps its actions.
+			expect(
+				within(rowOf('Staging')).getByRole('button', { name: 'More actions for Staging' }),
+			).toBeEnabled();
+
+			request.resolve();
+
+			await waitFor(() => expect(screen.queryByText('Acme Cloud')).not.toBeInTheDocument());
+			expect(mockConfirm).toHaveBeenCalledTimes(1);
+			expect(api.unlinkInstance).toHaveBeenCalledTimes(1);
+			expect(showError).not.toHaveBeenCalled();
 		});
 
 		it('keeps the row when the user cancels', async () => {
@@ -306,18 +426,28 @@ describe('SettingsLinkedInstancesView', () => {
 			expect(rowOf('Acme Cloud')).toBeVisible();
 		});
 
-		it('keeps the row and shows the error when the server refuses', async () => {
+		it('keeps the row, shows the error and puts focus back on its menu when the server refuses', async () => {
 			const error = new ResponseError('That link does not exist.', { httpStatusCode: 404 });
+			const request = deferred<void>();
 			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
-			api.unlinkInstance.mockRejectedValue(error);
+			api.unlinkInstance.mockReturnValue(request.promise);
 			await renderList();
 
 			await chooseUnlink('Acme Cloud');
+			const menu = within(rowOf('Acme Cloud')).getByRole('button', {
+				name: 'More actions for Acme Cloud',
+			});
+			await waitFor(() => expect(menu).toBeDisabled());
+			// A browser moves focus to the page body when the focused menu button turns off.
+			if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+			request.reject(error);
 
 			await waitFor(() =>
-				expect(showError).toHaveBeenCalledWith(error, 'Could not unlink Acme Cloud'),
+				expect(showError).toHaveBeenCalledWith(error, "Couldn't unlink the instance"),
 			);
 			expect(rowOf('Acme Cloud')).toBeVisible();
+			expect(menu).toBeEnabled();
+			await waitFor(() => expect(menu).toHaveFocus());
 		});
 	});
 

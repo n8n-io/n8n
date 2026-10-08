@@ -2,12 +2,7 @@ import { exportWorkflowPackage } from '@/modules/n8n-packages/capabilities/workf
 
 import { RemoteInstanceError } from '../../remote/remote-instance.errors';
 import { TRANSFER_WARNINGS } from '../transfer-errors';
-import {
-	EDITOR_LOCK,
-	importReturns,
-	pushSetup,
-	STUB_CREDENTIAL,
-} from './transfer.test-helpers';
+import { EDITOR_LOCK, importReturns, pushSetup, STUB_CREDENTIAL } from './transfer.test-helpers';
 
 vi.mock('@/modules/n8n-packages/capabilities/workflow-package-export', () => ({
 	exportWorkflowPackage: vi.fn(),

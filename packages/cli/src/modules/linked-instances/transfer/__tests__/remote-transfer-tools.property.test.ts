@@ -104,11 +104,13 @@ describe('importOnRemote', () => {
 		await fc.assert(
 			fc.asyncProperty(
 				tokenArb,
-				fc.array(remoteItemArb, { maxLength: 8 }),
-				fc.array(remoteItemArb, { maxLength: 8 }),
-				fc.array(remoteItemArb, { maxLength: 8 }),
-				fc.anything(),
-				async (token, credentials, nodeTypes, warnings, newVersionLive) => {
+				fc.record({
+					credentials: fc.array(remoteItemArb, { maxLength: 8 }),
+					nodeTypes: fc.array(remoteItemArb, { maxLength: 8 }),
+					warnings: fc.array(remoteItemArb, { maxLength: 8 }),
+					newVersionLive: fc.anything(),
+				}),
+				async (token, { credentials, nodeTypes, warnings, newVersionLive }) => {
 					const session = sessionReturning(token, {
 						workflowId: 'remote1',
 						created: false,

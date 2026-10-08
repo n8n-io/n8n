@@ -1,6 +1,11 @@
 import fc from 'fast-check';
 
-import { checkInstanceAddress, type InstanceAddressError } from '../linkFormValidation';
+import {
+	accessTokenError,
+	checkInstanceAddress,
+	linkNameError,
+	type InstanceAddressError,
+} from '../linkFormValidation';
 
 // Arbitraries from the server tests (cli linked-instances/__tests__/instance-address.property.test.ts).
 
@@ -216,5 +221,159 @@ describe('checkInstanceAddress properties', () => {
 				{ numRuns: 500 },
 			);
 		});
+	});
+});
+
+// The name and token limits of the server schemas (api-types linked-instance.schema.ts).
+const NAME_MAX = 64;
+const TOKEN_MAX = 4096;
+
+const padArb = fc.constantFrom('', ' ', '\t', ' \n ');
+
+/** Inserts `bad` at a position inside `body`, or returns `body` when `bad` is undefined. */
+function withCharacter(body: string, bad: [string, number] | undefined): string {
+	if (!bad) return body;
+	const at = bad[1] % (body.length + 1);
+	return `${body.slice(0, at)}${bad[0]}${body.slice(at)}`;
+}
+
+const nameCharArb = fc.constantFrom('a', 'Z', '7', ' ', '.', '_', '(', ')', '-', 'é', 'ß');
+// Characters that the server refuses in a name. None of them is removed by trim().
+const badNameCharArb = fc.constantFrom('<', '/', '@', '"', '!', '#', '+');
+
+// Short names and names near the length limit, with spaces around them and maybe one bad character.
+const nameBodyArb = fc
+	.oneof(
+		fc.array(nameCharArb, { maxLength: 8 }),
+		fc.array(nameCharArb, { minLength: NAME_MAX - 6, maxLength: NAME_MAX + 6 }),
+	)
+	.map((chars) => chars.join(''));
+
+const nameArb = fc.oneof(
+	fc.string({ unit: 'binary', maxLength: NAME_MAX + 10 }),
+	fc
+		.tuple(
+			padArb,
+			nameBodyArb,
+			fc.option(fc.tuple(badNameCharArb, fc.nat()), { nil: undefined }),
+			padArb,
+		)
+		.map(([before, body, bad, after]) => `${before}${withCharacter(body, bad)}${after}`),
+);
+
+// Characters that the server refuses in a token: spaces inside it and characters outside ASCII.
+const badTokenCharArb = fc.constantFrom(' ', '\t', 'é', 'ö', '\u00a0', '€');
+
+const tokenArb = fc.oneof(
+	fc.string({ unit: 'binary', maxLength: 40 }),
+	fc
+		.tuple(
+			padArb,
+			fc.oneof(
+				fc.integer({ min: 0, max: 8 }),
+				fc.integer({ min: TOKEN_MAX - 4, max: TOKEN_MAX + 4 }),
+			),
+			fc.option(fc.tuple(badTokenCharArb, fc.nat()), { nil: undefined }),
+			padArb,
+		)
+		.map(([before, length, bad, after]) => {
+			// The bad character goes between two visible characters, so trim() keeps it.
+			const body = length === 0 ? '' : `x${withCharacter('y'.repeat(length - 1), bad)}`;
+			return `${before}${body}${after}`;
+		}),
+);
+
+describe('name and token properties', () => {
+	it('asks for a name only when the trimmed name is empty', () => {
+		fc.assert(
+			fc.property(nameArb, (name) => {
+				const required = linkNameError(name) === 'settings.linkedInstances.form.name.required';
+
+				expect(required).toBe(name.trim() === '');
+			}),
+			{ numRuns: 1000 },
+		);
+	});
+
+	it('says that a name is too long only when the trimmed name is over the limit', () => {
+		fc.assert(
+			fc.property(nameArb, (name) => {
+				const tooLong = linkNameError(name) === 'settings.linkedInstances.form.name.tooLong';
+
+				expect(tooLong).toBe(name.trim().length > NAME_MAX);
+			}),
+			{ numRuns: 1000 },
+		);
+	});
+
+	it('accepts every name of allowed characters within the limit', () => {
+		fc.assert(
+			fc.property(
+				padArb,
+				fc.array(nameCharArb, { minLength: 1, maxLength: NAME_MAX }),
+				(pad, chars) => {
+					const name = chars.join('');
+					fc.pre(name.trim() !== '');
+
+					expect(linkNameError(`${pad}${name}${pad}`)).toBeUndefined();
+				},
+			),
+			{ numRuns: 500 },
+		);
+	});
+
+	it('names the bad character, not the length, for every name within the limit', () => {
+		fc.assert(
+			fc.property(
+				fc.array(nameCharArb, { maxLength: NAME_MAX - 1 }),
+				badNameCharArb,
+				fc.nat(),
+				(chars, bad, at) => {
+					const name = withCharacter(chars.join(''), [bad, at]);
+
+					expect(linkNameError(name)).toBe('settings.linkedInstances.form.name.invalid');
+				},
+			),
+			{ numRuns: 500 },
+		);
+	});
+
+	it('asks for a token only when the trimmed token is empty', () => {
+		fc.assert(
+			fc.property(tokenArb, (token) => {
+				const required = accessTokenError(token) === 'settings.linkedInstances.form.token.required';
+
+				expect(required).toBe(token.trim() === '');
+			}),
+			{ numRuns: 500 },
+		);
+	});
+
+	it('says that a token is too long only when the trimmed token is over the limit', () => {
+		fc.assert(
+			fc.property(tokenArb, (token) => {
+				const tooLong = accessTokenError(token) === 'settings.linkedInstances.form.token.tooLong';
+
+				expect(tooLong).toBe(token.trim().length > TOKEN_MAX);
+			}),
+			{ numRuns: 500 },
+		);
+	});
+
+	it('accepts a token of visible ASCII characters within the limit, and nothing with a bad character', () => {
+		fc.assert(
+			fc.property(tokenArb, (token) => {
+				const trimmed = token.trim();
+				fc.pre(trimmed !== '' && trimmed.length <= TOKEN_MAX);
+
+				const error = accessTokenError(token);
+				const visibleAscii = /^[\x21-\x7E]+$/.test(trimmed);
+
+				expect(error).toBe(
+					visibleAscii ? undefined : 'settings.linkedInstances.form.token.invalid',
+				);
+			}),
+			{ numRuns: 500 },
+		);
 	});
 });

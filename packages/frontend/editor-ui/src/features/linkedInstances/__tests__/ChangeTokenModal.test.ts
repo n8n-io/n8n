@@ -54,6 +54,7 @@ describe('ChangeTokenModal', () => {
 		expect(screen.getByRole('dialog', { name: 'Change token for Acme Cloud' })).toBeVisible();
 		expect(screen.getByLabelText(/^Access token/)).toBe(tokenInput());
 		expect(tokenInput()).toHaveAttribute('type', 'password');
+		expect(tokenInput()).toHaveAttribute('autocomplete', 'new-password');
 		expect(tokenInput()).toHaveAccessibleDescription(
 			'In the cloud instance, go to Settings > Instance-level MCP and create an access token.',
 		);
@@ -145,6 +146,25 @@ describe('ChangeTokenModal', () => {
 		await screen.findByTestId('change-token-form');
 
 		expect(tokenInput()).toHaveValue('');
+	});
+
+	it('stays open until the check ends, then says "Token updated" and closes', async () => {
+		const request = deferred<typeof instance>();
+		api.updateLinkedInstance.mockReturnValue(request.promise);
+		const { emitted } = await setup();
+		await userEvent.type(tokenInput(), fakeToken());
+		expect(screen.getByRole('button', { name: 'Close dialog' })).toBeVisible();
+		await userEvent.click(submitButton());
+
+		expect(screen.getByTestId('change-token-cancel')).toBeDisabled();
+		expect(screen.queryByRole('button', { name: 'Close dialog' })).not.toBeInTheDocument();
+		await userEvent.keyboard('{Escape}');
+		expect(emitted('update:open')).toBeUndefined();
+
+		request.resolve({ ...instance, status: 'online' });
+
+		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
+		expect(showMessage).toHaveBeenCalledWith({ title: 'Token updated', type: 'success' });
 	});
 
 	it('asks the page to close on Cancel', async () => {

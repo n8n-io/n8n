@@ -2508,16 +2508,18 @@ describe('AgentChatPanel', () => {
 		}
 
 		it('replaces the composer with the content of the slot', () => {
-			const wrapper = mountWithComposer(() => h('p', { 'data-testid': 'reader-notice' }, 'Read only'));
+			const wrapper = mountWithComposer(() =>
+				h('p', { 'data-testid': 'reader-notice' }, 'Read only'),
+			);
 
 			expect(wrapper.find('[data-testid="reader-notice"]').text()).toBe('Read only');
-			expect(wrapper.find('[data-testid="chat-input-stub"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="chat-input"]').exists()).toBe(false);
 		});
 
 		it('keeps the composer without the slot', () => {
 			const wrapper = mountWithComposer();
 
-			expect(wrapper.find('[data-testid="chat-input-stub"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="chat-input"]').exists()).toBe(true);
 		});
 	});
 

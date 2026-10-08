@@ -30,7 +30,7 @@ const PROBE_ANSWERS: readonly InstanceAiConfirmRequest[] = [
 /** The thread's project as the viewer's project list shows it. */
 export interface SharingProject {
 	type: string;
-	name: string;
+	name: string | null;
 	scopes?: readonly Scope[];
 }
 

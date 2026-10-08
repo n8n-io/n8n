@@ -175,6 +175,14 @@ describe('linkNameError', () => {
 	it('reports bad characters, not the length, for a long name with a bad character', () => {
 		expect(linkNameError(`${'a'.repeat(10)}<`)).toBe('settings.linkedInstances.form.name.invalid');
 	});
+
+	it('reports bad characters for a name of exactly 64 characters', () => {
+		expect(linkNameError(`${'a'.repeat(63)}<`)).toBe('settings.linkedInstances.form.name.invalid');
+	});
+
+	it('reports the length for a name of 65 characters with a bad character', () => {
+		expect(linkNameError(`${'a'.repeat(64)}<`)).toBe('settings.linkedInstances.form.name.tooLong');
+	});
 });
 
 describe('accessTokenError', () => {
@@ -202,6 +210,20 @@ describe('accessTokenError', () => {
 
 	it.each(['abc def', 'abcé', 'abc\tdef', 'tök'])('rejects the characters in %j', (value) => {
 		expect(accessTokenError(value)).toBe('settings.linkedInstances.form.token.invalid');
+	});
+
+	it.each([
+		['a space inside', `${'x'.repeat(2047)} ${'x'.repeat(2048)}`],
+		['an accented last character', `${'x'.repeat(4095)}é`],
+	])('reports bad characters for a token of exactly 4096 characters with %s', (_label, value) => {
+		expect(value).toHaveLength(4096);
+		expect(accessTokenError(value)).toBe('settings.linkedInstances.form.token.invalid');
+	});
+
+	it('reports the length for a token of 4097 characters with a bad character', () => {
+		expect(accessTokenError(`${'x'.repeat(4096)}é`)).toBe(
+			'settings.linkedInstances.form.token.tooLong',
+		);
 	});
 });
 

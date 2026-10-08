@@ -380,6 +380,7 @@ describe('findWriteAccess', () => {
 		['coding', { coding: { repositoryUrl: 'https://github.com/acme/repo' } }, 'coding lets'],
 		['an enabled sub-agent', { subAgents: { agents: [{ agentId: 'a1' }] } }, 'sub-agents'],
 		['a provider tool', { providerTools: { anthropic: { code_execution: {} } } }, 'provider tools'],
+		['an integration', { integrations: [{ type: 'n8n_chat' }] }, 'integrations let'],
 		[
 			'a custom tool',
 			{ tools: [{ type: 'custom', id: 'run_script' }] },

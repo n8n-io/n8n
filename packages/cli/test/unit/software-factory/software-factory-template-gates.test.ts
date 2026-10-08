@@ -1,5 +1,8 @@
+import fc from 'fast-check';
 import type { IDataObject } from 'n8n-workflow';
+import { z } from 'zod';
 
+import { nodeByName } from './factory-pack-files';
 import type { TemplateRun } from './factory-pack-runtime';
 import {
 	AGENT_IDS,
@@ -8,7 +11,9 @@ import {
 	earlierNodes,
 	failingTestOutput,
 	runtime,
+	settingsOutput,
 	ticketOutput,
+	workflow,
 } from './factory-pack-fixtures';
 
 /** Each gate of the template, decided with the expression engine and the filter logic of n8n. */
@@ -35,6 +40,84 @@ const checkResult = (fields: IDataObject = {}) => ({
 const lines = (additions: number, deletions = 0) => [
 	{ path: 'a.ts', status: 'M', additions, deletions },
 ];
+const isSwitch = (gate: string) => nodeByName(workflow, gate).type === 'n8n-nodes-base.switch';
+/** Whether an item leaves a gate on its first output, the one that continues the run. */
+const continues = (gate: string, run: TemplateRun) =>
+	isSwitch(gate) ? configured.routeOf(gate, run) === 0 : configured.passesIf(gate, run);
+const targetsOf = (gate: string) =>
+	(workflow.connections[gate]?.main ?? []).map((targets) => targets?.map((target) => target.node));
+
+/** One file of a unified diff: its added (+), deleted (-) and context lines. */
+interface DiffFile {
+	path: string;
+	lines: string[];
+}
+
+const unifiedDiff = (files: DiffFile[]) =>
+	files
+		.map(({ path, lines: body }) =>
+			[
+				`diff --git a/${path} b/${path}`,
+				'index 1111111..2222222 100644',
+				`--- a/${path}`,
+				`+++ b/${path}`,
+				`@@ -1,${body.length} +1,${body.length} @@`,
+				...body,
+				'',
+			].join('\n'),
+		)
+		.join('');
+const binaryDiff = (path: string, blob: string) =>
+	`diff --git a/${path} b/${path}\nindex 1111111..${blob} 100644\nBinary files a/${path} and b/${path} differ\n`;
+const changesOf = (files: DiffFile[]) =>
+	files.map(({ path, lines: body }) => ({
+		path,
+		status: 'M',
+		additions: body.filter((line) => line.startsWith('+')).length,
+		deletions: body.filter((line) => line.startsWith('-')).length,
+	}));
+
+const comparisonFacts = z
+	.array(
+		z.object({
+			json: z.object({
+				hasResult: z.boolean(),
+				check: z.string(),
+				test: z.string(),
+				changedLines: z.number(),
+				approvedLines: z.number(),
+				diffBudget: z.number(),
+				unreviewed: z.array(z.string()),
+			}),
+		}),
+	)
+	.length(1);
+
+/** Runs "Compare with approved change" and routes its item through "Ready for PR?". */
+function readyForPr(nodes: Record<string, IDataObject>) {
+	const facts = comparisonFacts.parse(
+		configured.runCode('Compare with approved change', {
+			nodes: { 'Read factory ticket': ticketOutput, ...nodes },
+		}),
+	)[0].json;
+	return { facts, route: configured.routeOf('Ready for PR?', { json: facts }) };
+}
+
+/** The run after Minimise: the approved diff, the minimised diff and the check of the minimised change. */
+function minimised(
+	after: DiffFile[],
+	{ approved, check = {} }: { approved: DiffFile[]; check?: IDataObject },
+) {
+	return readyForPr({
+		'Get diff': {
+			structuredContent: { diff: unifiedDiff(approved), changes: changesOf(approved) },
+		},
+		'Re-verify': checkResult({ changes: changesOf(after), ...check }),
+		'Get minimised diff': {
+			structuredContent: { diff: unifiedDiff(after), changes: changesOf(after) },
+		},
+	});
+}
 
 describe('software factory gates', () => {
 	describe('Critic is separate?', () => {
@@ -54,6 +137,7 @@ describe('software factory gates', () => {
 			['the agent of Minimise', { Minimise: agent(AGENT_IDS.critic) }],
 			['the agent of Draft failing test', { 'Draft failing test': agent(AGENT_IDS.critic) }],
 			['no agent', { 'Fresh critic': agent('') }],
+			['a blank agent id', { 'Fresh critic': agent('  ') }],
 		])('stops the run when the critic is %s', (_case, patches) => {
 			expect(separate(patches)).toBe(false);
 		});
@@ -64,7 +148,9 @@ describe('software factory gates', () => {
 	});
 
 	it('needs acceptance criteria', () => {
-		const run = (criteria: string[]) => ({ json: { ...ticketOutput, acceptanceCriteria: criteria } });
+		const run = (criteria: string[]) => ({
+			json: { ...ticketOutput, acceptanceCriteria: criteria },
+		});
 
 		expect(configured.passesIf('Has acceptance criteria?', run(['One']))).toBe(true);
 		expect(configured.passesIf('Has acceptance criteria?', run([]))).toBe(false);
@@ -76,13 +162,14 @@ describe('software factory gates', () => {
 
 		expect(ready(plan)).toBe(true);
 		expect(ready({ ...plan, summary: '' })).toBe(false);
+		expect(ready({ ...plan, summary: ' \n' })).toBe(false);
 		expect(ready({ ...plan, steps: [] })).toBe(false);
 		// Message an Agent returns null when the agent gives no structured output.
 		expect(ready(null)).toBe(false);
 	});
 
 	it('continues after the approval only on an explicit approval', () => {
-		const decide = (data?: Record<string, string>) =>
+		const decide = (data?: IDataObject) =>
 			configured.routeOf('Plan decision', { json: data ? { data } : {} });
 
 		expect(decide({ decision: 'Approve the plan' })).toBe(0);
@@ -95,10 +182,17 @@ describe('software factory gates', () => {
 	describe('Prep ready?', () => {
 		const prep = (workspace: IDataObject, test: IDataObject) =>
 			configured.passesIf('Prep ready?', {
-				nodes: { 'Prepare workspace': workspace, 'Draft failing test': test },
+				nodes: {
+					'Factory settings': settingsOutput,
+					'Prepare workspace': workspace,
+					'Draft failing test': test,
+				},
 				json: test,
 			});
-		const ready = { structuredContent: { phase: 'ready' } };
+		const workspaceOn = (repositoryUrl: unknown) => ({
+			structuredContent: { phase: 'ready', repositoryUrl },
+		});
+		const ready = workspaceOn('https://github.com/acme/factory');
 		const testWith = (fields: IDataObject) => ({
 			structuredOutput: { ...failingTestOutput.structuredOutput, ...fields },
 		});
@@ -108,9 +202,34 @@ describe('software factory gates', () => {
 		});
 
 		it.each([
+			'https://github.com/Acme/Factory',
+			'https://github.com/acme/factory.git',
+			'https://github.com/acme/factory/',
+		])('accepts the repository of the pull request as %s', (repositoryUrl) => {
+			expect(prep(workspaceOn(repositoryUrl), failingTestOutput)).toBe(true);
+		});
+
+		it.each([
 			['the workspace is in error', { structuredContent: { phase: 'error' } }, failingTestOutput],
 			['the workspace step failed', { error: { message: 'No tool' } }, failingTestOutput],
+			[
+				'the workspace is on another repository',
+				workspaceOn('https://github.com/n8n-io/n8n'),
+				failingTestOutput,
+			],
+			[
+				'the workspace repository only starts the same',
+				workspaceOn('https://github.com/acme/factory-old'),
+				failingTestOutput,
+			],
+			['the workspace names no repository', workspaceOn(undefined), failingTestOutput],
 			['the test has no path', ready, testWith({ testPath: '' })],
+			[
+				'the test path names no file',
+				ready,
+				testWith({ testPath: 'packages/cli/test/', runCommand: 'pnpm test packages/cli/test/' }),
+			],
+			['the test path is blank', ready, testWith({ testPath: '  ', runCommand: 'pnpm test  ' })],
 			['the command does not name the test file', ready, testWith({ runCommand: 'pnpm test' })],
 			['the planner failed', ready, { error: 'The agent stopped.' }],
 			['the planner returned no test', ready, { structuredOutput: null }],
@@ -122,13 +241,27 @@ describe('software factory gates', () => {
 	describe('Check result', () => {
 		const check = (fields: IDataObject, runIndex = 0) =>
 			configured.routeOf('Check result', { json: checkResult(fields), runIndex });
+		const NO_RESULT = 2;
+
+		it('sends each route to its step or outcome', () => {
+			expect(targetsOf('Check result')).toEqual([
+				['Get diff'],
+				['Fix the failing check'],
+				['Outcome: step failed'],
+				['Outcome: check failed'],
+			]);
+		});
 
 		it('continues only when the check and the failing test pass', () => {
 			expect(check({}, 3)).toBe(0);
 		});
 
-		it('retries when the check or the failing test fails, at most 3 times', () => {
-			const failures = [{ check: 'failed' }, { test: 'failed' }, { check: 'failed', test: 'failed' }];
+		it('retries a failed check only among the first 3 checks of a run', () => {
+			const failures = [
+				{ check: 'failed' },
+				{ test: 'failed' },
+				{ check: 'failed', test: 'failed' },
+			];
 
 			for (const failure of failures) {
 				expect([0, 1, 2].map((runIndex) => check(failure, runIndex))).toEqual([1, 1, 1]);
@@ -136,8 +269,12 @@ describe('software factory gates', () => {
 			}
 		});
 
-		it('counts the retries for the whole run, also after a critic round', () => {
-			// Three failed checks, a pass and a critic round: the next check is the fifth run.
+		it('counts the checks that passed before a critic round', () => {
+			// Two checks pass, each before a critic round. The third check fails and gets the only
+			// retry. The fourth check fails and stops the run.
+			expect([check({}, 0), check({}, 1)]).toEqual([0, 0]);
+			expect(check({ check: 'failed' }, 2)).toBe(1);
+			expect(check({ check: 'failed' }, 3)).toBe('fallback');
 			expect(check({ check: 'failed' }, 4)).toBe('fallback');
 		});
 
@@ -150,8 +287,13 @@ describe('software factory gates', () => {
 			expect(check(fields)).toBe('fallback');
 		});
 
-		it('never retries a missing result', () => {
-			expect(configured.routeOf('Check result', { json: {} })).toBe('fallback');
+		it.each([
+			// Verify failed as a whole, so n8n sent the output of Implement to its success output.
+			['the output of Implement', { structuredOutput: { summary: 'Done.' } }],
+			['an empty result', {}],
+			['a check result of the wrong type', checkResult({ check: true })],
+		])('sends %s to the step failed outcome, not to a retry', (_case, json) => {
+			expect(configured.routeOf('Check result', { json })).toBe(NO_RESULT);
 		});
 	});
 
@@ -161,6 +303,7 @@ describe('software factory gates', () => {
 
 		expect(hasDiff({ diff: 'diff --git a/a.ts b/a.ts', changes: lines(1) })).toBe(true);
 		expect(hasDiff({ diff: '', changes: [] })).toBe(false);
+		expect(hasDiff({ diff: ' \n', changes: [] })).toBe(false);
 		expect(hasDiff()).toBe(false);
 	});
 
@@ -174,15 +317,15 @@ describe('software factory gates', () => {
 				nodes: { 'Critic input': { diff: options.diff ?? 'diff --git a/a.ts b/a.ts' } },
 				runIndex: options.runIndex ?? 0,
 			});
-		const finding = (severity: string) => ({ path: 'a.ts', line: 1, severity, body: 'Fix it' });
+		const finding = (severity?: string) => ({ path: 'a.ts', line: 1, severity, body: 'Fix it' });
+		const approval = (findings: unknown) =>
+			review({ verdict: 'approve', findings, scopeCreep: [] });
 
-		expect(review({ verdict: 'approve', findings: [finding('minor')], scopeCreep: [] })).toBe(0);
-		expect(review({ verdict: 'approve', findings: [finding('major')], scopeCreep: [] })).toBe(
-			'fallback',
-		);
-		expect(review({ verdict: 'approve', findings: [finding('blocker')], scopeCreep: [] })).toBe(
-			'fallback',
-		);
+		expect(approval([finding('minor'), finding('nit')])).toBe(0);
+		expect(approval([finding('major')])).toBe('fallback');
+		expect(approval([finding('blocker')])).toBe('fallback');
+		expect(approval([finding()])).toBe('fallback');
+		expect(approval('none')).toBe('fallback');
 		expect(review({ verdict: 'approve', findings: [], scopeCreep: [] }, { diff: '' })).toBe(
 			'fallback',
 		);
@@ -195,30 +338,224 @@ describe('software factory gates', () => {
 	});
 
 	describe('Ready for PR?', () => {
-		const ready = (fields: IDataObject, reviewed = lines(60, 40)) =>
-			configured.passesIf('Ready for PR?', {
-				json: checkResult(fields),
-				nodes: { ...earlierNodes, 'Get diff': { structuredContent: { changes: reviewed } } },
+		const READY = 0;
+		const NOT_READY = 1;
+		const NO_RESULT = 'fallback';
+		const added = (count: number, prefix = 'line') =>
+			Array.from({ length: count }, (_, index) => `+const ${prefix}${index} = ${index};`);
+		const approved = [
+			{ path: 'a.ts', lines: ['+const a = 1;', '+const b = 2;', ' context', '-const old = 0;'] },
+			{ path: 'a.test.ts', lines: ["+it('counts', () => {});"] },
+		];
+
+		it('sends each route to its step or outcome', () => {
+			expect(targetsOf('Ready for PR?')).toEqual([
+				['Push branch'],
+				['Outcome: not ready for PR'],
+				['Outcome: step failed'],
+			]);
+		});
+
+		it('opens a pull request for the approved change and for a change that only lost parts', () => {
+			const unchanged = minimised(approved, { approved });
+			const smaller = minimised([{ path: 'a.ts', lines: ['+const a = 1;', ' context'] }], {
+				approved,
 			});
 
-		it('opens a pull request for a passing change that fits the budget and did not grow', () => {
-			expect(ready({ changes: lines(60, 40) })).toBe(true);
-			expect(ready({ changes: lines(10, 5) })).toBe(true);
+			expect(unchanged).toMatchObject({ route: READY, facts: { changedLines: 4, unreviewed: [] } });
+			expect(smaller).toMatchObject({ route: READY, facts: { changedLines: 1, approvedLines: 4 } });
 		});
 
 		it.each([
-			['the check failed', { check: 'failed', changes: lines(1) }],
-			['the failing test failed', { test: 'failed', changes: lines(1) }],
-			['the test result is missing', { test: undefined, changes: lines(1) }],
-			['the change is empty', { changes: [] }],
-			['the change is over the budget', { changes: lines(61, 40) }],
-		])('stops when %s', (_case, fields) => {
-			expect(ready(fields)).toBe(false);
+			['the check failed', { check: 'failed' }],
+			['the failing test failed', { test: 'failed' }],
+			['the test result is missing', { test: undefined }],
+			['the changes are not a list', { changes: 'many' }],
+		])('stops when %s', (_case, check) => {
+			expect(minimised(approved, { approved, check }).route).toBe(NOT_READY);
 		});
 
-		it('stops when minimising made the change larger than the change that the critic approved', () => {
-			expect(ready({ changes: lines(21) }, lines(20))).toBe(false);
-			expect(ready({ changes: lines(20) }, lines(20))).toBe(true);
+		it('stops when the change is empty or over the budget', () => {
+			const atBudget = [{ path: 'a.ts', lines: added(100) }];
+			const overBudget = [{ path: 'a.ts', lines: added(101) }];
+
+			expect(minimised([], { approved }).route).toBe(NOT_READY);
+			expect(minimised(atBudget, { approved: atBudget }).route).toBe(READY);
+			expect(minimised(overBudget, { approved: overBudget })).toMatchObject({
+				route: NOT_READY,
+				facts: { changedLines: 101, diffBudget: 100, unreviewed: [] },
+			});
+		});
+
+		it('stops when Minimise swapped the approved change for a file that the critic did not review', () => {
+			const result = minimised([{ path: 'new-unreviewed.ts', lines: added(15) }], {
+				approved: [{ path: 'a.ts', lines: added(20) }],
+			});
+
+			expect(result.route).toBe(NOT_READY);
+			expect(result.facts.unreviewed).toContain(
+				'new-unreviewed.ts: a file that the critic did not review',
+			);
+		});
+
+		it('stops when one file grew while another file got smaller', () => {
+			const result = minimised(
+				[
+					{ path: 'a.ts', lines: [...added(10), ...added(5, 'extra')] },
+					{ path: 'b.ts', lines: added(2) },
+				],
+				{
+					approved: [
+						{ path: 'a.ts', lines: added(10) },
+						{ path: 'b.ts', lines: added(10) },
+					],
+				},
+			);
+
+			expect(result.route).toBe(NOT_READY);
+			expect(result.facts.changedLines).toBeLessThan(result.facts.approvedLines);
+			expect(result.facts.unreviewed).toContain(
+				'a.ts: more changed lines than the critic reviewed',
+			);
+		});
+
+		it.each([
+			[
+				'a rewrite of the same size in one file',
+				[{ path: 'a.ts', lines: ['+const a = 2;'] }],
+				[{ path: 'a.ts', lines: ['+const a = 1;'] }],
+				'a.ts: +const a = 2;',
+			],
+			[
+				'an approved line moved to another file',
+				[
+					{ path: 'a.ts', lines: ['+x();'] },
+					{ path: 'b.ts', lines: ['+z();', '+y();'] },
+				],
+				[
+					{ path: 'a.ts', lines: ['+x();', '+y();'] },
+					{ path: 'b.ts', lines: ['+z();'] },
+				],
+				'b.ts: +y();',
+			],
+			[
+				'a deleted line that the critic did not see',
+				[{ path: 'a.ts', lines: ['+a();', '-base();'] }],
+				[{ path: 'a.ts', lines: ['+a();', '+b();'] }],
+				'a.ts: -base();',
+			],
+			[
+				'a second copy of an approved line',
+				[{ path: 'a.ts', lines: ['+}', '+}'] }],
+				[{ path: 'a.ts', lines: ['+}', '+a();'] }],
+				'a.ts: +}',
+			],
+			[
+				'a changed line that looks like a file header',
+				[{ path: 'a.sql', lines: ['--- other note', '+++ total'] }],
+				[{ path: 'a.sql', lines: ['--- old note', '+++ total'] }],
+				'a.sql: --- other note',
+			],
+		])('stops after %s', (_case, after, before, unreviewed) => {
+			const result = minimised(after, { approved: before });
+
+			expect(result.route).toBe(NOT_READY);
+			expect(result.facts.unreviewed).toContain(unreviewed);
+		});
+
+		it('compares a file without line changes by its header', () => {
+			const routeWith = (minimisedDiff: string) =>
+				readyForPr({
+					'Get diff': {
+						structuredContent: {
+							diff: unifiedDiff(approved) + binaryDiff('logo.png', '2222222'),
+							changes: changesOf(approved),
+						},
+					},
+					'Re-verify': checkResult({ changes: changesOf(approved) }),
+					'Get minimised diff': { structuredContent: { diff: minimisedDiff } },
+				}).route;
+
+			// The same binary file, the binary file removed, and other content in the binary file.
+			expect(routeWith(unifiedDiff(approved) + binaryDiff('logo.png', '2222222'))).toBe(READY);
+			expect(routeWith(unifiedDiff(approved))).toBe(READY);
+			expect(routeWith(unifiedDiff(approved) + binaryDiff('logo.png', '3333333'))).toBe(NOT_READY);
+		});
+
+		it('opens a pull request for any change that only removes parts of the approved change', () => {
+			const line = fc
+				.tuple(
+					fc.constantFrom('+', '-', ' '),
+					fc.constantFrom('const a = 1;', '}', '-- note', '++ total', '@@ x', 'diff --git y', ''),
+				)
+				.map(([sign, text]) => sign + text);
+			const file = fc.record({
+				path: fc.constantFrom('a.ts', 'b.ts', 'c/d.ts', 'e f.ts'),
+				lines: fc.array(fc.tuple(line, fc.boolean()), { minLength: 1, maxLength: 8 }),
+				kept: fc.boolean(),
+			});
+			const files = fc.uniqueArray(file, { minLength: 1, maxLength: 3, selector: (f) => f.path });
+
+			fc.assert(
+				fc.property(files, fc.nat(), (generated, pick) => {
+					const before = generated.map((f) => ({
+						path: f.path,
+						lines: f.lines.map(([text]) => text),
+					}));
+					const after = generated
+						.filter((f) => f.kept)
+						.map((f) => ({
+							path: f.path,
+							lines: f.lines.filter(([, kept]) => kept).map(([text]) => text),
+						}));
+					const removedOnly = minimised(after, { approved: before });
+
+					expect(removedOnly.facts.unreviewed).toEqual([]);
+					expect(removedOnly.route).toBe(removedOnly.facts.changedLines > 0 ? READY : NOT_READY);
+
+					// One added line that the critic did not review stops the run.
+					const target = after.length > 0 ? pick % after.length : -1;
+					const withExtra =
+						target === -1
+							? [{ path: 'new.ts', lines: ['+unreviewed();'] }]
+							: after.map((f, index) =>
+									index === target ? { ...f, lines: [...f.lines, '+unreviewed();'] } : f,
+								);
+
+					expect(minimised(withExtra, { approved: before }).route).toBe(NOT_READY);
+				}),
+				{ numRuns: 60 },
+			);
+		});
+
+		describe('a step that fails as a whole', () => {
+			// n8n then sends the input item of the step to its success output.
+			const approvedDiff = {
+				structuredContent: { diff: unifiedDiff(approved), changes: changesOf(approved) },
+			};
+
+			it.each([
+				[
+					'Re-verify',
+					{
+						'Re-verify': { structuredOutput: { summary: 'Smaller.', removed: [] } },
+						'Get minimised diff': approvedDiff,
+					},
+				],
+				[
+					'Get minimised diff',
+					{
+						'Re-verify': checkResult({ changes: changesOf(approved) }),
+						'Get minimised diff': checkResult({ changes: changesOf(approved) }),
+					},
+				],
+			])('sends the run to the step failed outcome when %s fails', (_step, nodes) => {
+				expect(readyForPr({ 'Get diff': approvedDiff, ...nodes }).route).toBe(NO_RESULT);
+			});
+
+			it('sends the run to the step failed outcome when the comparison fails', () => {
+				expect(configured.routeOf('Ready for PR?', { json: approvedDiff })).toBe(NO_RESULT);
+			});
 		});
 	});
 
@@ -256,20 +593,37 @@ describe('software factory gates', () => {
 		// n8n then sends the input item of the step to its success output. The gate after the step
 		// gets that item and must stop. Implement and Minimise have no gate of their own: the
 		// deterministic check after them decides on the code, not on the answer of the agent.
-		const passes = (gate: string, run: TemplateRun) =>
-			gate === 'Check result' || gate === 'Critic verdict'
-				? configured.routeOf(gate, run) === 0
-				: configured.passesIf(gate, run);
+		// "Ready for PR?" has its own cases above.
 		const approval = { data: { decision: 'Approve the plan' } };
+		const workspace = {
+			structuredContent: { phase: 'ready', repositoryUrl: 'https://github.com/acme/factory' },
+		};
 
 		it.each([
 			['Plan', 'Plan ready?', { json: ticketOutput }],
-			['Prepare workspace', 'Prep ready?', { nodes: { ...earlierNodes, 'Prepare workspace': approval } }],
-			['Draft failing test', 'Prep ready?', { nodes: { 'Prepare workspace': { structuredContent: { phase: 'ready' } }, 'Draft failing test': approval } }],
+			[
+				'Prepare workspace',
+				'Prep ready?',
+				{ nodes: { ...earlierNodes, 'Prepare workspace': approval } },
+			],
+			[
+				'Draft failing test',
+				'Prep ready?',
+				{
+					nodes: {
+						...earlierNodes,
+						'Prepare workspace': workspace,
+						'Draft failing test': approval,
+					},
+				},
+			],
 			['Verify', 'Check result', { json: { structuredOutput: { summary: 'Done.' } } }],
 			['Get diff', 'Has a diff?', { json: checkResult() }],
-			['Fresh critic', 'Critic verdict', { json: { diff: 'diff --git a/a.ts b/a.ts' }, nodes: { 'Critic input': { diff: 'diff' } } }],
-			['Re-verify', 'Ready for PR?', { json: { structuredOutput: { summary: 'Smaller.', removed: [] } }, nodes: { ...earlierNodes, 'Get diff': checkResult() } }],
+			[
+				'Fresh critic',
+				'Critic verdict',
+				{ json: { diff: 'diff --git a/a.ts b/a.ts' }, nodes: { 'Critic input': { diff: 'diff' } } },
+			],
 			['Push branch', 'Branch pushed?', { json: checkResult(), nodes: earlierNodes }],
 			[
 				'Open draft PR',
@@ -277,7 +631,60 @@ describe('software factory gates', () => {
 				{ json: { structuredContent: { pushed: true, branch: ticketOutput.branch, commit: sha } } },
 			],
 		])('stops the run when %s fails as a whole', (_step, gate, run) => {
-			expect(passes(gate, run)).toBe(false);
+			expect(continues(gate, run)).toBe(false);
+		});
+	});
+
+	describe('a field of the wrong type', () => {
+		// A strict filter throws on a value of another type, and the execution then ends without an
+		// outcome. So each gate compares typed values and only stops the run.
+		const withSettings = (nodes: Record<string, IDataObject>) => ({
+			nodes: { 'Factory settings': settingsOutput, ...nodes },
+		});
+
+		it.each([
+			[
+				'Plan ready?',
+				{ json: { structuredOutput: { ...plan, summary: 5, steps: 'Add a counter.' } } },
+			],
+			['Plan decision', { json: { data: { decision: ['Approve the plan'] } } }],
+			[
+				'Prep ready?',
+				withSettings({
+					'Prepare workspace': { structuredContent: { phase: ['ready'], repositoryUrl: 7 } },
+					'Draft failing test': { structuredOutput: { testPath: 7, runCommand: 7 } },
+				}),
+			],
+			['Check result', { json: checkResult({ check: ['passed'], test: 1 }) }],
+			['Has a diff?', { json: { structuredContent: { diff: 42 } } }],
+			[
+				'Critic verdict',
+				{
+					json: { structuredOutput: { verdict: 1, findings: 'none' } },
+					nodes: { 'Critic input': { diff: 'd' } },
+				},
+			],
+			[
+				'Branch pushed?',
+				{
+					json: { structuredContent: { pushed: 'true', branch: 1, commit: [sha] } },
+					nodes: earlierNodes,
+				},
+			],
+			['PR opened?', { json: { html_url: 42 } }],
+		])('%s stops the run and does not throw', (gate, run) => {
+			expect(() => continues(gate, run)).not.toThrow();
+			expect(continues(gate, run)).toBe(false);
+		});
+
+		it('Ready for PR? stops the run and does not throw', () => {
+			const run = readyForPr({
+				'Get diff': { structuredContent: { diff: 7, changes: 'all' } },
+				'Re-verify': { structuredContent: { check: 1, test: true, changes: [null, 'a.ts'] } },
+				'Get minimised diff': { structuredContent: { diff: ['diff'] } },
+			});
+
+			expect(run.route).toBe('fallback');
 		});
 	});
 });

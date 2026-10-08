@@ -205,7 +205,10 @@ describe('TransferService.push', () => {
 				scopes.includes('workflow:unpublish') ? null : workflowEntity(),
 			);
 
-			const result = await service.push(alice, linkId, { workflowId: 'wf1', deactivateLocal: true });
+			const result = await service.push(alice, linkId, {
+				workflowId: 'wf1',
+				deactivateLocal: true,
+			});
 
 			expect(result).toMatchObject({ remoteWorkflowId: 'remote1', localDeactivated: false });
 			expect(result.warnings).toEqual([]);

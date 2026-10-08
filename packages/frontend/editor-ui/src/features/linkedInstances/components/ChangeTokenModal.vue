@@ -88,6 +88,12 @@ async function submit() {
 	}
 }
 
+// The server check cannot be stopped. The dialog stays open until it ends, so the user sees the result.
+function onOpenChange(open: boolean) {
+	if (!open && isSubmitting.value) return;
+	emit('update:open', open);
+}
+
 function onOpenAutoFocus(event: Event) {
 	event.preventDefault();
 	tokenField.value?.focus();
@@ -104,9 +110,10 @@ function onCloseAutoFocus(event: Event) {
 		:header="title"
 		:description="i18n.baseText('settings.linkedInstances.token.description')"
 		size="medium"
+		:show-close-button="!isSubmitting"
 		@open-auto-focus="onOpenAutoFocus"
 		@close-auto-focus="onCloseAutoFocus"
-		@update:open="emit('update:open', $event)"
+		@update:open="onOpenChange"
 	>
 		<form :class="$style.form" novalidate data-test-id="change-token-form" @submit.prevent="submit">
 			<LinkFormField
@@ -132,9 +139,10 @@ function onCloseAutoFocus(event: Event) {
 				<N8nButton
 					type="button"
 					variant="outline"
+					:disabled="isSubmitting"
 					:label="i18n.baseText('generic.cancel')"
 					data-test-id="change-token-cancel"
-					@click="emit('update:open', false)"
+					@click="onOpenChange(false)"
 				/>
 				<N8nButton
 					type="submit"

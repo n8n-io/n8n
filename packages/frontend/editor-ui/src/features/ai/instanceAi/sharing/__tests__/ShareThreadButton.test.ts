@@ -11,7 +11,14 @@ import { fetchThread } from '../../instanceAi.memory.api';
 import ShareThreadButton from '../ShareThreadButton.vue';
 import SharedThreadChip from '../SharedThreadChip.vue';
 import { shareThread } from '../threadSharing.api';
-import { OWNER, PROJECT_ID, READ_SCOPES, TEAMMATE, THREAD_ID, setUpSharing } from './sharingFixtures';
+import {
+	OWNER,
+	PROJECT_ID,
+	READ_SCOPES,
+	TEAMMATE,
+	THREAD_ID,
+	setUpSharing,
+} from './sharingFixtures';
 
 const { confirm, showMessage, showError } = vi.hoisted(() => ({
 	confirm: vi.fn(),
@@ -151,7 +158,9 @@ describe('ShareThreadButton and SharedThreadChip', () => {
 		setUpSharing({ shared: true });
 		const { getByTestId, queryByTestId } = renderHeader();
 
-		expect(getByTestId('instance-ai-shared-thread-chip')).toHaveTextContent('Shared with Marketing');
+		expect(getByTestId('instance-ai-shared-thread-chip')).toHaveTextContent(
+			'Shared with Marketing',
+		);
 		expect(queryByTestId('instance-ai-share-thread')).not.toBeInTheDocument();
 	});
 
@@ -159,7 +168,9 @@ describe('ShareThreadButton and SharedThreadChip', () => {
 		setUpSharing({ shared: true, viewerId: TEAMMATE.id, scopes: READ_SCOPES });
 		const { getByTestId, queryByTestId } = renderHeader();
 
-		expect(getByTestId('instance-ai-shared-thread-chip')).toHaveTextContent('Shared with Marketing');
+		expect(getByTestId('instance-ai-shared-thread-chip')).toHaveTextContent(
+			'Shared with Marketing',
+		);
 		expect(queryByTestId('instance-ai-share-thread')).not.toBeInTheDocument();
 	});
 

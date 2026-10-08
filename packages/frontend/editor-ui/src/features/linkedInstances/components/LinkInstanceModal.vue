@@ -92,6 +92,12 @@ async function submit() {
 	}
 }
 
+// The server check cannot be stopped. The dialog stays open until it ends, so the user sees the result.
+function onOpenChange(open: boolean) {
+	if (!open && isSubmitting.value) return;
+	emit('update:open', open);
+}
+
 function onOpenAutoFocus(event: Event) {
 	event.preventDefault();
 	fields.name.value?.focus();
@@ -108,9 +114,10 @@ function onCloseAutoFocus(event: Event) {
 		:header="i18n.baseText('settings.linkedInstances.form.title')"
 		:description="i18n.baseText('settings.linkedInstances.form.description')"
 		size="medium"
+		:show-close-button="!isSubmitting"
 		@open-auto-focus="onOpenAutoFocus"
 		@close-auto-focus="onCloseAutoFocus"
-		@update:open="emit('update:open', $event)"
+		@update:open="onOpenChange"
 	>
 		<form
 			:class="$style.form"
@@ -161,9 +168,10 @@ function onCloseAutoFocus(event: Event) {
 				<N8nButton
 					type="button"
 					variant="outline"
+					:disabled="isSubmitting"
 					:label="i18n.baseText('generic.cancel')"
 					data-test-id="link-instance-cancel"
-					@click="emit('update:open', false)"
+					@click="onOpenChange(false)"
 				/>
 				<N8nButton
 					type="submit"

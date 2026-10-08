@@ -4,7 +4,6 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nEmptyState,
-	N8nLoading2,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRowGroup,
@@ -18,10 +17,14 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { MODAL_CONFIRM } from '@/app/constants';
 import ChangeTokenModal from '../components/ChangeTokenModal.vue';
 import LinkedInstanceRow from '../components/LinkedInstanceRow.vue';
+import LinkedInstancesSkeleton from '../components/LinkedInstancesSkeleton.vue';
 import LinkInstanceModal from '../components/LinkInstanceModal.vue';
 import { useFocusReturn } from '../composables/useFocusReturn';
 import { LINKED_INSTANCE_STATUS_DISPLAY } from '../linkedInstanceStatus';
 import { useLinkedInstancesStore } from '../linkedInstances.store';
+
+type ComponentRef = { $el?: HTMLElement };
+type RowAction = 'check' | 'menu';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -29,16 +32,20 @@ const message = useMessage();
 const documentTitle = useDocumentTitle();
 const store = useLinkedInstancesStore();
 
-const page = useTemplateRef<{ $el?: HTMLElement }>('page');
-const list = useTemplateRef<{ $el?: HTMLElement }>('list');
-const linkButton = useTemplateRef<{ $el?: HTMLElement }>('linkButton');
+const page = useTemplateRef<ComponentRef>('page');
+const list = useTemplateRef<ComponentRef>('list');
+const linkButton = useTemplateRef<ComponentRef>('linkButton');
+const emptyState = useTemplateRef<ComponentRef>('emptyState');
+const loadError = useTemplateRef<ComponentRef>('loadError');
 
 const linkDialogOpen = ref(false);
 const tokenDialogOpen = ref(false);
 // Kept while the dialog closes, so its title does not change during the close animation.
 const tokenTarget = ref<LinkedInstanceSummary>();
 const checkingIds = ref<ReadonlySet<string>>(new Set());
+const unlinkingIds = ref<ReadonlySet<string>>(new Set());
 const announcement = ref('');
+let announcements = 0;
 let linkedId: string | undefined;
 
 // Until the first read ends, the page shows a skeleton instead of an empty list.
@@ -47,17 +54,41 @@ const isBusy = computed(() => isFirstLoad.value || store.isLoading);
 
 const focus = useFocusReturn(() => page.value?.$el);
 
-function rowCheckButton(id: string): HTMLElement | null {
+function toggled(ids: ReadonlySet<string>, id: string, on: boolean): ReadonlySet<string> {
+	const next = new Set(ids);
+	if (on) next.add(id);
+	else next.delete(id);
+	return next;
+}
+
+function buttonIn(component: ComponentRef | null): HTMLElement | null {
+	return component?.$el?.querySelector<HTMLElement>('button') ?? null;
+}
+
+/** "Link instance" in the toolbar, or in the empty state when no row is left. */
+function linkAction(): HTMLElement | null {
+	return linkButton.value?.$el ?? buttonIn(emptyState.value);
+}
+
+function rowAction(id: string, action: RowAction): HTMLElement | null {
 	const rows = list.value?.$el?.querySelectorAll<HTMLElement>('[data-instance-id]') ?? [];
 	const row = Array.from(rows).find((element) => element.dataset.instanceId === id);
-	return row?.querySelector<HTMLElement>('[data-action="check"]') ?? null;
+	return row?.querySelector<HTMLElement>(`[data-action="${action}"]`) ?? null;
+}
+
+/** Moves focus only when the browser dropped it, so a user who moved on keeps their place. */
+async function focusIfLost(target: () => HTMLElement | null) {
+	await nextTick();
+	if (document.activeElement === document.body) target()?.focus();
 }
 
 async function announce(text: string) {
 	// Clear the region first, so a screen reader reads the same message again.
+	// Only the latest message is shown when two overlap.
+	const current = ++announcements;
 	announcement.value = '';
 	await nextTick();
-	announcement.value = text;
+	if (current === announcements) announcement.value = text;
 }
 
 function announceStatus(summary: LinkedInstanceSummary) {
@@ -67,6 +98,20 @@ function announceStatus(summary: LinkedInstanceSummary) {
 			interpolate: { name: summary.name, status: i18n.baseText(labelKey) },
 		}),
 	);
+}
+
+/** Reads the list. The error state is not a live region, so a failure is also announced. */
+async function load() {
+	await store.fetchInstances();
+	if (store.loadFailed) void announce(i18n.baseText('settings.linkedInstances.loadError.heading'));
+}
+
+async function retry() {
+	void announce(i18n.baseText('settings.linkedInstances.loading'));
+	await load();
+	if (!store.loadFailed) void announce('');
+	// "Try again" was removed while the list loaded. Focus goes to the next useful action.
+	await focusIfLost(() => (store.loadFailed ? buttonIn(loadError.value) : linkAction()));
 }
 
 function openLinkDialog() {
@@ -85,7 +130,7 @@ async function onLinkDialogOpenChange(open: boolean) {
 	// After a new link, focus goes to the new row. The button that opened the dialog can be gone.
 	const id = linkedId;
 	linkedId = undefined;
-	await focus.restore(() => (id ? rowCheckButton(id) : null));
+	await focus.restore(() => (id ? rowAction(id, 'check') : null));
 }
 
 function openTokenDialog(instance: LinkedInstanceSummary) {
@@ -99,31 +144,20 @@ async function onTokenDialogOpenChange(open: boolean) {
 	if (!open) await focus.restore();
 }
 
-function setChecking(id: string, checking: boolean) {
-	const next = new Set(checkingIds.value);
-	if (checking) next.add(id);
-	else next.delete(id);
-	checkingIds.value = next;
-}
-
 async function check(instance: LinkedInstanceSummary) {
-	if (checkingIds.value.has(instance.id)) return;
-	setChecking(instance.id, true);
+	const { id } = instance;
+	if (checkingIds.value.has(id) || unlinkingIds.value.has(id)) return;
+	checkingIds.value = toggled(checkingIds.value, id, true);
 	try {
-		announceStatus(await store.verify(instance.id));
+		announceStatus(await store.verify(id));
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('settings.linkedInstances.check.error', {
-				interpolate: { name: instance.name },
-			}),
-		);
+		// A fixed title: the toast title goes to telemetry, and the link name is user text.
+		toast.showError(error, i18n.baseText('settings.linkedInstances.check.error'));
 	} finally {
-		setChecking(instance.id, false);
+		checkingIds.value = toggled(checkingIds.value, id, false);
 	}
 	// The button was disabled during the check, so the browser moved focus to the page body.
-	await nextTick();
-	if (document.activeElement === document.body) rowCheckButton(instance.id)?.focus();
+	await focusIfLost(() => rowAction(id, 'check'));
 }
 
 async function confirmUnlink(instance: LinkedInstanceSummary): Promise<boolean> {
@@ -140,23 +174,36 @@ async function confirmUnlink(instance: LinkedInstanceSummary): Promise<boolean> 
 	return choice === MODAL_CONFIRM;
 }
 
-async function unlink(instance: LinkedInstanceSummary) {
-	if (!(await confirmUnlink(instance))) return;
-	const interpolate = { name: instance.name };
+/** @returns true when the server removed the link */
+async function sendUnlink(id: string): Promise<boolean> {
+	unlinkingIds.value = toggled(unlinkingIds.value, id, true);
 	try {
-		await store.unlink(instance.id);
+		await store.unlink(id);
+		return true;
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.linkedInstances.unlink.error', { interpolate }));
+		toast.showError(error, i18n.baseText('settings.linkedInstances.unlink.error'));
+		return false;
+	} finally {
+		unlinkingIds.value = toggled(unlinkingIds.value, id, false);
+	}
+}
+
+async function unlink(instance: LinkedInstanceSummary) {
+	const { id, name } = instance;
+	if (unlinkingIds.value.has(id) || !(await confirmUnlink(instance))) return;
+	if (!(await sendUnlink(id))) {
+		// The row actions were off during the request, so focus can be on the page body.
+		await focusIfLost(() => rowAction(id, 'menu'));
 		return;
 	}
-	void announce(i18n.baseText('settings.linkedInstances.unlink.done', { interpolate }));
-	// The row and its menu are gone. Focus goes to "Link instance", or to the page when no row is left.
-	await focus.restore(() => linkButton.value?.$el);
+	void announce(i18n.baseText('settings.linkedInstances.unlink.done', { interpolate: { name } }));
+	// The row and its menu are gone. Focus goes to "Link instance", also in the empty state.
+	await focus.restore(linkAction);
 }
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.linkedInstances.title'));
-	await store.fetchInstances();
+	await load();
 });
 </script>
 
@@ -169,18 +216,20 @@ onMounted(async () => {
 		/>
 
 		<N8nSettingsSection :aria-busy="isBusy || undefined">
-			<N8nLoading2 v-if="isFirstLoad" :rows="3" :shrink-last="false" />
+			<LinkedInstancesSkeleton v-if="isFirstLoad" />
 			<N8nEmptyState
 				v-else-if="store.loadFailed"
+				ref="loadError"
 				:heading="i18n.baseText('settings.linkedInstances.loadError.heading')"
 				:description="i18n.baseText('settings.linkedInstances.loadError.description')"
 				:button-text="i18n.baseText('settings.linkedInstances.loadError.tryAgain')"
 				button-variant="outline"
 				data-test-id="linked-instances-load-error"
-				@click:button="store.fetchInstances()"
+				@click:button="retry"
 			/>
 			<N8nEmptyState
 				v-else-if="store.instances.length === 0"
+				ref="emptyState"
 				:heading="i18n.baseText('settings.linkedInstances.empty.heading')"
 				:button-text="i18n.baseText('settings.linkedInstances.link')"
 				button-variant="solid"
@@ -197,12 +246,18 @@ onMounted(async () => {
 						@click="openLinkDialog"
 					/>
 				</div>
-				<N8nSettingsRowGroup ref="list" data-test-id="linked-instances-list">
+				<N8nSettingsRowGroup
+					ref="list"
+					role="list"
+					:aria-label="i18n.baseText('settings.linkedInstances.title')"
+					data-test-id="linked-instances-list"
+				>
 					<LinkedInstanceRow
 						v-for="instance in store.instances"
 						:key="instance.id"
 						:instance="instance"
 						:checking="checkingIds.has(instance.id)"
+						:unlinking="unlinkingIds.has(instance.id)"
 						@check="check(instance)"
 						@change-token="openTokenDialog(instance)"
 						@unlink="unlink(instance)"
