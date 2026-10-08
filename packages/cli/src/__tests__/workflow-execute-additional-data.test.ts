@@ -62,6 +62,8 @@ import {
 } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -141,6 +143,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(DataTableProxyService);
 	mockInstance(WorkflowHookContextService);
 	const workflowPublishedDataService = mockInstance(WorkflowPublishedDataService);
+	const deprecatedNodesValidationService = mockInstance(DeprecatedNodesValidationService);
 	const workflowsConfig = Container.get(WorkflowsConfig);
 	afterEach(() => {
 		// Keep the default (flag off) for every test; flag-on tests opt in.
@@ -1196,6 +1199,28 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(result.id).toBe('parent-workflow-id');
 			},
 		);
+
+		it('checks inline nodes for deprecated node types', async () => {
+			const nodes = [mock<INode>({ type: 'n8n-nodes-base.function' })];
+			const workflowCode = mock<IWorkflowBase>({ nodes, connections: {} });
+
+			await loadWorkflow({ code: workflowCode }, 'parent-workflow-id');
+
+			expect(deprecatedNodesValidationService.validateOnCreate).toHaveBeenCalledWith(
+				nodes,
+				'parent-workflow-id',
+			);
+		});
+
+		it('refuses inline nodes the deprecated node check rejects', async () => {
+			const workflowCode = mock<IWorkflowBase>({ nodes: [], connections: {} });
+			const error = new DeprecatedNodesError('deprecated', { violations: [] });
+			deprecatedNodesValidationService.validateOnCreate.mockImplementationOnce(() => {
+				throw error;
+			});
+
+			await expect(loadWorkflow({ code: workflowCode }, 'parent-workflow-id')).rejects.toBe(error);
+		});
 	});
 
 	describe('getPublishedWorkflowData', () => {
@@ -1423,6 +1448,17 @@ describe('WorkflowExecuteAdditionalData', () => {
 	describe('getDraftWorkflowData', () => {
 		beforeEach(() => {
 			workflowRepository.get.mockClear();
+		});
+
+		it('does not check a stored workflow for deprecated node types', async () => {
+			deprecatedNodesValidationService.validateOnCreate.mockClear();
+			workflowRepository.get.mockResolvedValue(
+				mock<WorkflowEntity>({ id: 'workflow-123', nodes: [], connections: {} }),
+			);
+
+			await getDraftWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
+
+			expect(deprecatedNodesValidationService.validateOnCreate).not.toHaveBeenCalled();
 		});
 
 		it('should use draft version', async () => {
