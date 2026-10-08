@@ -733,7 +733,8 @@ describe('GET /inbox', () => {
 
 		test('filters closed reviews by category too', async () => {
 			const closedMine = await openReviewBy(member.id, 'Closed mine', 'closed');
-			await openReviewBy(owner.id, 'Closed theirs', 'closed');
+			const closedTheirs = await openReviewBy(owner.id, 'Closed theirs', 'closed');
+			await assignMember(closedTheirs.id);
 
 			expect((await inbox(memberAgent, { state: 'closed', category: 'authored' })).ids).toEqual([
 				closedMine.id,

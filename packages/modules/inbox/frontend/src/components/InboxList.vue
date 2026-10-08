@@ -127,6 +127,10 @@ function onListBackgroundClick() {
 				@refresh-section="emit('refreshSection', section.key)"
 			/>
 			<div v-if="canAutoLoad" ref="loadMoreSentinel" :class="$style.sentinel" />
+			<div
+				v-else-if="activeTab === 'closed' && !loading && !showInitialLoadError"
+				:class="$style.sentinel"
+			/>
 		</div>
 	</aside>
 </template>
@@ -185,7 +189,6 @@ function onListBackgroundClick() {
 }
 
 .sentinel {
-	flex-shrink: 0;
 	height: var(--border-width);
 }
 </style>

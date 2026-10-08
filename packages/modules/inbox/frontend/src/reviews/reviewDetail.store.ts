@@ -46,8 +46,6 @@ export const useReviewDetailStore = defineStore('workflowReviewDetail', () => {
 	async function decideOnReview(id: string, input: WorkflowReviewDecisionInput) {
 		const response = await decideWorkflowReviewRequest(rootStore.restApiContext, id, input);
 		if (detail.value?.id === id) {
-			requestSeq++;
-			detailLoading.value = false;
 			detail.value.decision = response.decision;
 			detail.value.state = response.state;
 			detail.value.updatedAt = response.updatedAt;

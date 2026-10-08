@@ -4,7 +4,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nIcon, N8nInput, N8nPopover, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
-import { computed, onBeforeUnmount, ref, useId } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 import { useReviewActivityStore } from '../reviewActivity.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
@@ -26,10 +26,6 @@ const i18n = useI18n();
 const { showError } = useToast();
 const store = useReviewActivityStore();
 const { posting, decisionNote } = storeToRefs(store);
-let isMounted = true;
-onBeforeUnmount(() => {
-	isMounted = false;
-});
 
 const isOpen = ref(false);
 const noteInputId = useId();
@@ -69,7 +65,7 @@ async function onComment() {
 	try {
 		// A comment that landed after the viewer moved on says nothing about the review they
 		// are reading now, so neither its note nor its tab may be touched.
-		if (!(await store.postComment(body)) || !isMounted) return;
+		if (!(await store.postComment(body))) return;
 
 		store.clearDecisionNote(body);
 		// The trigger sits outside the tab panel, so a comment posted from the Changes tab

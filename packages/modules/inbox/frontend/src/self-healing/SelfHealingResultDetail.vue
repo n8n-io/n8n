@@ -6,7 +6,6 @@ import type { InboxSelection } from '../inbox.constants';
 
 // AST-1518 replaces this rollout-gated integration point with the report and actions.
 defineProps<{ selection: Extract<InboxSelection, { type: 'self_healing_result' }> }>();
-defineEmits<{ changed: [] }>();
 const i18n = useI18n();
 </script>
 

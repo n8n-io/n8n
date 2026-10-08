@@ -191,7 +191,6 @@ onBeforeUnmount(() => {
 								!store.disabledSources.includes(selection.type)
 							"
 							:selection="selection"
-							@changed="store.refreshListAndSummary()"
 						/>
 						<InboxEmptyState v-else />
 					</div>
@@ -217,7 +216,8 @@ onBeforeUnmount(() => {
 	--review-callout--max-width: 34rem;
 	--review-activity--max-width: 45rem;
 	--review-tab-bar--height: var(--height--sm);
-	--review-tab-bar--indicator-overhang: calc(var(--spacing--sm) - var(--border-width));
+	/* Keep the existing Reviews tab alignment at every root font size. */
+	--review-tab-bar--indicator-overhang: 15px;
 	--review-tab-bar--gap: calc(var(--spacing--sm) + var(--review-tab-bar--indicator-overhang));
 	display: flex;
 	width: 100%;

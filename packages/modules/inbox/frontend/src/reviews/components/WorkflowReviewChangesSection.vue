@@ -168,18 +168,23 @@ const targetLabel = computed(() =>
 }
 
 .versionBadge {
+	/* Keep the existing Reviews badge sizes when the root font changes. */
+	--review-version-badge--spacing: 12px;
+	--review-version-badge--radius: 4px;
+	--review-version-badge--height: 30px;
+	--review-version-badge--gap: 8px;
 	position: absolute;
-	top: var(--spacing--xs);
-	left: var(--spacing--xs);
+	top: var(--review-version-badge--spacing);
+	left: var(--review-version-badge--spacing);
 	z-index: 1;
-	border-radius: var(--radius--3xs);
+	border-radius: var(--review-version-badge--radius);
 	border: var(--border-width) solid var(--color--foreground--tint-1);
 	background: var(--color--foreground--tint-2);
 	display: flex;
-	height: calc(var(--height--md) - var(--spacing--5xs));
-	padding: 0 var(--spacing--xs);
+	height: var(--review-version-badge--height);
+	padding: 0 var(--review-version-badge--spacing);
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--review-version-badge--gap);
 	align-self: stretch;
 }
 

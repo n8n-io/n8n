@@ -27,7 +27,6 @@ type ListState = {
 	error: Error | null;
 	failedRequest: 'list' | 'loadMore' | null;
 	partial: boolean;
-	failedSources: InboxSourceType[];
 };
 
 function isSourceType(value: unknown): value is InboxSourceType {
@@ -54,7 +53,6 @@ export function createInboxListSlice(
 		error: null,
 		failedRequest: null,
 		partial: false,
-		failedSources: [],
 	});
 	let requestSeq = 0;
 
@@ -66,7 +64,6 @@ export function createInboxListSlice(
 		state.nextCursor = page.nextCursor;
 		state.hasMore = page.hasMore;
 		state.partial = page.partial;
-		state.failedSources = page.failedSources;
 	}
 
 	async function fetchList() {
@@ -125,7 +122,6 @@ export function createInboxListSlice(
 		state.error = null;
 		state.failedRequest = null;
 		state.partial = false;
-		state.failedSources = [];
 	}
 
 	return Object.assign(state, {

@@ -81,7 +81,7 @@ export class SelfHealingResultService {
 			this.roles.rolesWithScope('project', scopes),
 			this.roles.rolesWithScope('workflow', scopes),
 		]);
-		return { user, scopes, projectRoles, workflowRoles };
+		return { user, globalScopes: scopes, projectRoles, workflowRoles };
 	}
 
 	async listForInbox(user: User, query: InboxSourceQuery): Promise<InboxSelfHealingItem[]> {

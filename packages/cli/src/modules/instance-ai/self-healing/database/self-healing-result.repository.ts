@@ -30,7 +30,7 @@ export type CreateSelfHealingResult = Pick<
 
 export type SelfHealingInboxAccess = {
 	user: User;
-	scopes: Scope[];
+	globalScopes: Scope[];
 	projectRoles: string[];
 	workflowRoles: string[];
 };

@@ -92,20 +92,6 @@ describe('WorkflowReviewDecisionPopover', () => {
 		expect(tooltipOf(requestChanges)).toHaveAttribute('data-disabled', 'true');
 	});
 
-	it('does not clear a new entry note after an old comment completes', async () => {
-		const pending = createDeferredPromise<boolean>();
-		store.postComment.mockReturnValueOnce(pending.promise);
-		store.decisionNote = 'Sent comment';
-		const { getByTestId, unmount } = renderComponent();
-		await userEvent.click(getByTestId('workflow-review-decision-comment-button'));
-		unmount();
-		store.decisionNote = 'New note';
-		pending.resolve(true);
-		await waitAllPromises();
-		expect(store.clearDecisionNote).not.toHaveBeenCalled();
-		expect(store.decisionNote).toBe('New note');
-	});
-
 	it('reports a failed comment after the selected review changes', async () => {
 		const pending = createDeferredPromise<boolean>();
 		store.postComment.mockReturnValueOnce(pending.promise);

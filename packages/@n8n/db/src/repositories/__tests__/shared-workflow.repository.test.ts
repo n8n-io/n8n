@@ -44,14 +44,31 @@ describe('SharedWorkflowRepository', () => {
 			role: { slug: 'custom:reader', scopes: [{ slug: 'workflow:read' }] },
 		});
 
-		it('keeps global read behavior when the caller omits scopes', () => {
-			sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(readOnlyUser, {});
-			expect(queryBuilder.innerJoin).not.toHaveBeenCalled();
+		it.each([undefined, 'workflow:update', 'execution:read'] as const)(
+			'keeps global read behavior for legacy calls with scope %s',
+			(scope) => {
+				sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(readOnlyUser, {
+					scopes: scope ? [scope] : undefined,
+				});
+				expect(queryBuilder.innerJoin).not.toHaveBeenCalled();
+			},
+		);
+
+		it('keeps share filtering for legacy calls without global workflow read', () => {
+			const executionReader = mock<User>({ role: { scopes: [{ slug: 'execution:read' }] } });
+			sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(executionReader, {
+				scopes: ['execution:read'],
+				projectRoles: [],
+				workflowRoles: [],
+			});
+			expect(queryBuilder.where).toHaveBeenCalledWith('sw.role IN (:...workflowRoles)', {
+				workflowRoles: [],
+			});
 		});
 
 		it('requires a matching share when the global role lacks update', () => {
 			sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(readOnlyUser, {
-				scopes: ['workflow:read', 'workflow:update'],
+				globalScopes: ['workflow:read', 'workflow:update'],
 				projectRoles: ['project:editor'],
 				workflowRoles: ['workflow:owner', 'workflow:editor'],
 			});
@@ -71,7 +88,7 @@ describe('SharedWorkflowRepository', () => {
 				role: { scopes: [{ slug: 'workflow:read' }, { slug: 'workflow:update' }] },
 			});
 			sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(editor, {
-				scopes: ['workflow:read', 'workflow:update'],
+				globalScopes: ['workflow:read', 'workflow:update'],
 			});
 			expect(queryBuilder.innerJoin).not.toHaveBeenCalled();
 		});
@@ -82,7 +99,7 @@ describe('SharedWorkflowRepository', () => {
 		])('returns no rows when an eligible role list is empty', (roles) => {
 			sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(readOnlyUser, {
 				...roles,
-				scopes: ['workflow:read', 'workflow:update'],
+				globalScopes: ['workflow:read', 'workflow:update'],
 			});
 			expect(queryBuilder.where).toHaveBeenCalledWith('1 = 0');
 		});

@@ -107,35 +107,6 @@ it('applies a completed decision after the viewer returns to the same review', a
 	expect(store.detail?.decision).toBe('approved');
 });
 
-it.each(['success', 'notFound', 'error'])(
-	'keeps requested changes when an earlier detail request returns %s',
-	async (outcome) => {
-		const request = createDeferredPromise<WorkflowReviewRequestDetail>();
-		vi.mocked(api.fetchWorkflowReviewRequestDetail)
-			.mockResolvedValueOnce(detail('review'))
-			.mockReturnValueOnce(request.promise);
-		vi.mocked(api.decideWorkflowReviewRequest).mockResolvedValue({
-			...detail('review'),
-			state: 'open',
-			decision: 'changes_requested',
-			workflowVersionId: null,
-		});
-		const store = useReviewDetailStore();
-		await store.fetchDetail('review');
-		const pending = store.fetchDetail('review');
-		await store.decideOnReview('review', { decision: 'changes_requested' });
-		if (outcome === 'success') request.resolve(detail('review'));
-		else if (outcome === 'notFound')
-			request.reject(new ResponseError('unavailable', { httpStatusCode: 404 }));
-		else request.reject(new Error('Request failed'));
-		await pending;
-		expect(store.detail?.state).toBe('open');
-		expect(store.detail?.decision).toBe('changes_requested');
-		expect(store.detailNotFound).toBe(false);
-		expect(store.detailLoading).toBe(false);
-	},
-);
-
 it('keeps a different review request when an earlier decision finishes', async () => {
 	const request = createDeferredPromise<WorkflowReviewRequestDetail>();
 	const response = createDeferredPromise<DecideWorkflowReviewRequestResponse>();
