@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsEntity,
@@ -26,6 +27,8 @@ import type {
 } from 'n8n-workflow';
 import { hostRuntime } from '@n8n/node-sdk/host';
 import { addToStore, manifestTextOf, type CredentialManifest } from '@n8n/node-sdk/registry';
+import { workerRuntime } from '@n8n/node-sdk/runtimes';
+import { policyCredentialTypeLoader } from '@n8n/node-sdk/sandbox';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import { deepCopy, jsonParse, Workflow } from 'n8n-workflow';
 import { createHash, generateKeyPairSync } from 'node:crypto';
@@ -54,7 +57,7 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MissingExecutionContextError } from '@/modules/dynamic-credentials.ee/errors/missing-execution-context.error';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { ContractNodeLoader } from '@/node-contracts-registry';
+import { ContractNodeLoader, NodeContractsStore } from '@/node-contracts-registry';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -3485,8 +3488,8 @@ describe('CredentialsHelper', () => {
 			await rm(state.dir, { recursive: true, force: true });
 		});
 
-		const helperWith = async (overwrites: ICredentialDataDecryptedObject = {}) => {
-			const contracts = new ContractNodeLoader(
+		const bundledContracts = () =>
+			new ContractNodeLoader(
 				hostRuntime(),
 				[],
 				[],
@@ -3496,10 +3499,15 @@ describe('CredentialsHelper', () => {
 				() => ({}),
 				{ name: '@acme/nodes', dir: state.dir },
 			);
+
+		const helperWith = async (
+			overwrites: ICredentialDataDecryptedObject = {},
+			contracts = bundledContracts(),
+		) => {
 			await contracts.loadAll();
 			const nodesAndCredentials = mock<LoadNodesAndCredentials>();
 			// Set after the mock, so that the mock does not wrap the loader in a proxy.
-			nodesAndCredentials.loaders = { '@acme/nodes': contracts };
+			nodesAndCredentials.loaders = { [contracts.packageName]: contracts };
 			nodesAndCredentials.getCredential.mockImplementation((name) =>
 				name === 'oAuth2Api'
 					? { type: new OAuth2Api(), sourcePath: '' }
@@ -3550,6 +3558,49 @@ describe('CredentialsHelper', () => {
 
 			expect(data).toMatchObject({
 				server: 'https://ghe.acme.test/api/v3',
+				clientSecret: 'secret-1',
+				authUrl: 'https://ghe.acme.test/login/oauth/authorize',
+				accessTokenUrl: 'https://ghe.acme.test/login/oauth/access_token',
+				scope: 'repo,user',
+				authQueryParameters: 'allow_signup=false',
+			});
+		});
+
+		test('getDecrypted runs the derive of a stored community credential type in a worker', async () => {
+			mockInstance(NodeContractsStore, { dir: path.join(state.dir, 'instance') });
+			const log = vi.fn();
+			const policy = {
+				lists: {
+					'first-party': ['in-process' as const],
+					community: ['wasm' as const, 'container' as const],
+					private: ['wasm' as const, 'container' as const],
+				},
+				available: { missing: {} },
+				runtimes: { worker: () => workerRuntime() },
+				log,
+			};
+			const contracts = new ContractNodeLoader(
+				hostRuntime({
+					credentialTypeLoader: policyCredentialTypeLoader(policy, {
+						cacheDir: path.join(state.dir, 'sandbox'),
+					}),
+				}),
+				[],
+				[],
+				async () => ({
+					versions: async () => new Map(),
+					credentials: async () => new Map([[deriving.name, deriving]]),
+					credentialCodeOf: async () => ({ origin: 'community' as const, bundle: derivingBundle }),
+				}),
+				[],
+				() => false,
+				() => ({}),
+			);
+
+			const data = await decrypted(await helperWith({}, contracts));
+
+			expect(log).toHaveBeenCalledWith('acme.oauth2@1.0.0 (community credential) runs in worker');
+			expect(data).toMatchObject({
 				clientSecret: 'secret-1',
 				authUrl: 'https://ghe.acme.test/login/oauth/authorize',
 				accessTokenUrl: 'https://ghe.acme.test/login/oauth/access_token',

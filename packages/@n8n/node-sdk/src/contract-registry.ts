@@ -24,7 +24,12 @@ import {
 	type CredentialManifest,
 } from './manifest';
 import { npmRegistryOf, npmStoreReader } from './npm';
-import type { ContractOrigin, ContractVersionLoader, PackedVersion } from './runtime';
+import type {
+	ContractOrigin,
+	ContractVersionLoader,
+	CredentialCode,
+	PackedVersion,
+} from './runtime';
 import { canonicalJson } from './schema';
 import {
 	addStatusToStore,
@@ -270,6 +275,11 @@ export interface ContractStore {
 	 * bundles that id and major.
 	 */
 	credentials(): Promise<ReadonlyMap<string, CredentialManifest>>;
+	/**
+	 * The code of a stored credential manifest with a bundle: its bundle, the SDK runtime that it
+	 * pins and the origin that the store recorded. The host checks the bytes against the manifest.
+	 */
+	credentialCodeOf(manifest: CredentialManifest): Promise<CredentialCode>;
 	/**
 	 * The stored yank or revoke line of a version, or `undefined`. A line from the npm registry
 	 * applies to every version. Another line applies only when its signer proves at least the
@@ -1208,6 +1218,22 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 					? byName
 					: new Map(byName).set(manifest.name, manifest);
 			}, new Map<string, CredentialManifest>());
+		},
+
+		async credentialCodeOf({ id, semver, sdk }) {
+			const entry = (await store.credentialManifests()).find(
+				(each) => each.id === id && each.version === semver,
+			);
+			const bundle = entry && (await store.bundle(entry.manifest));
+			if (!entry || bundle === undefined)
+				throw new UserError(`The store has no bundle of ${id}@${semver}`);
+			// As for a stored version: a key change never raises the recorded origin.
+			const origin = signedOriginOf(entry, entry.manifestText);
+			return {
+				origin: entry.origin === 'first-party' ? origin : entry.origin,
+				bundle,
+				...(typeof sdk === 'object' ? { sdk: await sdkOf(sdk.digest) } : {}),
+			};
 		},
 
 		withdrawal,

@@ -2683,6 +2683,21 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
  */
 export type ContractOrigin = 'first-party' | 'community' | 'private';
 
+/** The code of a credential manifest with a bundle, and the origin that the store recorded. */
+export interface CredentialCode {
+	readonly origin: ContractOrigin;
+	/** The bundle. The host checks it against `bundleHash` of the manifest. */
+	readonly bundle: string;
+	/** The SDK runtime that the manifest pins. The host checks it against the digest. */
+	readonly sdk?: string;
+}
+
+/** Makes the credential type of a credential manifest with a bundle, in the runtime of its origin. */
+export type CredentialTypeLoader = (
+	manifest: CredentialManifest,
+	code: CredentialCode,
+) => Promise<AnyCredentialType>;
+
 /** A packed action version: its manifest, its origin and a reader for its bundle. */
 export interface PackedVersion {
 	/** The version manifest. */
@@ -2863,17 +2878,17 @@ export const credentialOfManifests =
 		return manifest && typeOfManifest(manifest);
 	};
 
+/** The hooks of a credential bundle, before the host checks what they give. */
+export interface CredentialHooks {
+	readonly derive?: (fields: unknown) => unknown;
+	readonly sign?: (fields: unknown, request: IHttpRequestOptions) => unknown;
+}
+
 /**
- * The credential type of a credential manifest with a bundle from `packCredential`, after the
- * bundle and the SDK runtime that it pins are checked against the manifest. The data comes from
- * the manifest. The bundle gives only the hooks that the manifest lists, and the host checks what
- * each hook gives. The bundle runs in this process, so it must be `first-party`.
+ * Checks a credential bundle and the SDK runtime that it pins against the manifest, and that this
+ * host implements its Node Contract.
  */
-export function credentialTypeOfBundle(
-	manifest: CredentialManifest,
-	bundle: string,
-	sdk?: string,
-): AnyCredentialType {
+export function assertCredentialCode(manifest: CredentialManifest, bundle: string, sdk?: string) {
 	const at = `${manifest.id}@${manifest.semver}`;
 	if (sha256(bundle) !== manifest.bundleHash) {
 		throw new UnexpectedError(`The bundle of ${at} does not match ${manifest.bundleHash}`);
@@ -2887,22 +2902,29 @@ export function credentialTypeOfBundle(
 			`This host cannot run Node Contract ${manifest.nodeContract}. It implements ${IMPLEMENTED_NODE_CONTRACTS.join(', ')}.`,
 		);
 	}
-	const modules =
-		pin && sdk !== undefined
-			? { ...HOST_MODULES, ...sdkModulesOf(sdk, () => undefined) }
-			: HOST_MODULES;
-	const exported = defaultExportOf(bundle, modules);
-	const hooks = manifest.hooks ?? [];
-	const hookOf = (owner: unknown, name: CredentialHook) => {
-		const hook = isRecord(owner) ? owner[name] : undefined;
-		if (!hooks.includes(name) || typeof hook !== 'function') {
-			throw new UnexpectedError(`The bundle of ${at} does not export ${name}`);
+}
+
+/**
+ * The credential type of a credential manifest with the hooks of its bundle. The data comes from
+ * the manifest. Only the hooks that the manifest lists run, and the host checks what each gives.
+ */
+export function credentialTypeOfHooks(
+	manifest: CredentialManifest,
+	hooks: CredentialHooks,
+): AnyCredentialType {
+	const listed = manifest.hooks ?? [];
+	const hookOf = <Name extends keyof CredentialHooks>(name: Name) => {
+		const hook = hooks[name];
+		if (!listed.includes(name) || !hook) {
+			throw new UnexpectedError(
+				`The bundle of ${manifest.id}@${manifest.semver} does not export ${name}`,
+			);
 		}
-		return (...args: unknown[]): unknown => Reflect.apply(hook, owner, args);
+		return hook;
 	};
 	const { scheme } = manifest;
 	const signOf =
-		(sign: (...args: unknown[]) => unknown) =>
+		(sign: NonNullable<CredentialHooks['sign']>) =>
 		async (data: unknown, request: IHttpRequestOptions) => {
 			const signed = await sign(data, request);
 			if (!isSignedRequest(signed)) {
@@ -2910,22 +2932,18 @@ export function credentialTypeOfBundle(
 			}
 			return signed;
 		};
-	const derive = hooks.includes('derive') ? hookOf(exported, 'derive') : undefined;
+	const derive = listed.includes('derive') ? hookOf('derive') : undefined;
 	return {
 		...manifest,
 		fields: shapeOf(manifest.fields),
 		scheme:
 			scheme.kind === 'custom'
-				? {
-						kind: 'custom',
-						reason: scheme.reason,
-						sign: signOf(hookOf(isRecord(exported) ? exported.scheme : undefined, 'sign')),
-					}
+				? { kind: 'custom', reason: scheme.reason, sign: signOf(hookOf('sign')) }
 				: typeOfManifest(manifest).scheme,
 		...(derive
 			? {
-					derive: (fields) => {
-						const derived = derive(fields);
+					derive: async (fields) => {
+						const derived = await derive(fields);
 						if (!isDerived(derived)) {
 							throw new UserError(`Credential ${manifest.id}: derive gave data that is not valid`);
 						}
@@ -2934,6 +2952,34 @@ export function credentialTypeOfBundle(
 				}
 			: {}),
 	};
+}
+
+/**
+ * The credential type of a credential manifest with a bundle from `packCredential`, after
+ * `assertCredentialCode`, see `credentialTypeOfHooks`. The bundle runs in this process, so it must
+ * be `first-party`.
+ */
+export function credentialTypeOfBundle(
+	manifest: CredentialManifest,
+	bundle: string,
+	sdk?: string,
+): AnyCredentialType {
+	assertCredentialCode(manifest, bundle, sdk);
+	const modules =
+		typeof manifest.sdk === 'object' && sdk !== undefined
+			? { ...HOST_MODULES, ...sdkModulesOf(sdk, () => undefined) }
+			: HOST_MODULES;
+	const exported = defaultExportOf(bundle, modules);
+	const own = (owner: unknown, name: CredentialHook) => {
+		const hook = isRecord(owner) ? owner[name] : undefined;
+		return typeof hook === 'function'
+			? (...args: unknown[]): unknown => Reflect.apply(hook, owner, args)
+			: undefined;
+	};
+	return credentialTypeOfHooks(manifest, {
+		derive: own(exported, 'derive'),
+		sign: own(isRecord(exported) ? exported.scheme : undefined, 'sign'),
+	});
 }
 
 /** A request that `sign` of a credential bundle gives. The host checks its URL again. */
@@ -3140,6 +3186,8 @@ export interface HostRuntime {
 	readonly credentialTypeOf?: CredentialTypeOf;
 	/** Makes the executor of a version, e.g. in the sandbox. Without it, the bundle runs in this process. */
 	readonly executorLoader?: ExecutorLoader;
+	/** Makes the type of a stored credential with a bundle. Without it, such a type does not load. */
+	readonly credentialTypeLoader?: CredentialTypeLoader;
 	/** Gets the profile of each node run. Without it, the runtime records nothing. */
 	readonly runProfile?: {
 		/** Gets the profile. It runs before n8n ends the node run. */
@@ -3176,6 +3224,8 @@ export interface HostRuntimeOptions {
 	readonly credentialTypeOf?: CredentialTypeOf;
 	/** Makes the executor of a version, e.g. by the runtime policy. */
 	readonly executorLoader?: ExecutorLoader;
+	/** Makes the type of a stored credential with a bundle, e.g. by the runtime policy. */
+	readonly credentialTypeLoader?: CredentialTypeLoader;
 	/** Gets the profile of each node run. */
 	readonly onRunProfile?: RunProfileListener;
 	/** The payloads that the run profile keeps. Default: none. */
@@ -3204,6 +3254,7 @@ export function hostRuntime(options: HostRuntimeOptions = {}): HostRuntime {
 			options.credentialManifestOf ?? (async () => await Promise.resolve(undefined)),
 		...(options.credentialTypeOf ? { credentialTypeOf: options.credentialTypeOf } : {}),
 		...(options.executorLoader ? { executorLoader: options.executorLoader } : {}),
+		...(options.credentialTypeLoader ? { credentialTypeLoader: options.credentialTypeLoader } : {}),
 		...(options.onRunProfile
 			? { runProfile: { listener: options.onRunProfile, payloads: options.tracePayloads } }
 			: {}),

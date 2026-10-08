@@ -114,6 +114,15 @@ export function triggerOf(): Trigger {
 	return exported;
 }
 
+/** A hook of the credential type that the bundle exports: `derive`, or `sign` of its scheme. */
+export function credentialHookOf(name: 'derive' | 'sign'): (...args: unknown[]) => unknown {
+	const exported = exportOf();
+	const owner = name === 'sign' && isRecord(exported) ? exported.scheme : exported;
+	const hook = isRecord(owner) ? owner[name] : undefined;
+	if (typeof hook !== 'function') throw new Error(`The bundle does not export ${name}`);
+	return (...args) => Reflect.apply(hook, owner, args);
+}
+
 /** `describe` of a kind interface: the contract of the bundle as JSON. */
 export const describe = () =>
 	JSON.stringify(exportOf(), (_key, value: unknown) =>

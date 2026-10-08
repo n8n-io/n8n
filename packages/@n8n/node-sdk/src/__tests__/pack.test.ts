@@ -672,7 +672,9 @@ export const token = defineCredential({
 		const blob = async (digest = '') => (await storeOf().blob(digest))?.toString('utf8') ?? '';
 		const [bundle, sdk] = [await blob(record?.bundle), await blob(manifest.sdk.digest)];
 		const type = credentialTypeOfBundle(manifest, bundle, sdk);
-		expect(derivedOf(type, { server: 'https://ghe.acme.test/api/v3', clientSecret: 's' })).toEqual({
+		await expect(
+			derivedOf(type, { server: 'https://ghe.acme.test/api/v3', clientSecret: 's' }),
+		).resolves.toEqual({
 			authorizationEndpoint: 'https://ghe.acme.test/login/oauth/authorize',
 			scope: 'repo,user',
 		});

@@ -15,7 +15,8 @@ import { replayFixtures } from '../publish';
 import { t } from '../schema';
 import type { ExecutorHost } from '../runtime';
 import { WORKER_GUEST, workerRuntime } from '../runtimes/worker';
-import { sandboxedVersionOf, type SandboxOptions } from '../sandbox';
+import type { CredentialManifest } from '../manifest';
+import { sandboxedCredentialTypeOf, sandboxedVersionOf, type SandboxOptions } from '../sandbox';
 import { NODE_CONTRACT_VERSION, parseFixtures, parseManifest, sha256 } from '../version';
 
 const SANDBOX = path.resolve(__dirname, '..', '..', 'sandbox');
@@ -193,6 +194,64 @@ describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 	it('stops only the worker when the guest exits', async () => {
 		await expect(runProbe('exitProbe')).rejects.toThrow('The sandbox stopped (exit 3)');
 		expect(await replay('items.set', options(runtime))).toEqual([]);
+	});
+
+	it('runs the derive and sign hooks of a credential bundle in the worker', async () => {
+		// As `packCredential` writes it: the default export is the credential type.
+		const bundle = `module.exports = { default: {
+	derive: (fields) => {
+		if (fields.server === 'fail') throw new Error('derive needs a server URL');
+		return {
+			authorizationEndpoint: new URL(fields.server).origin + '/login/oauth/authorize',
+			scope: ['repo', 'user'].join(','),
+			authorizationQuery: { allow_signup: 'false' },
+		};
+	},
+	scheme: { sign: async (fields, request) => ({
+		...request,
+		qs: { ...request.qs, sig: fields.key },
+		headers: { ...request.headers, 'x-signature': fields.key },
+	}) },
+} };`;
+		const manifest: CredentialManifest = {
+			kind: 'credential',
+			id: 'acme.signed',
+			name: 'acmeSignedApi',
+			semver: '1.0.0',
+			nodeContract: NODE_CONTRACT_VERSION,
+			displayName: 'Acme Signed API',
+			fields: { type: 'object', properties: {} },
+			scheme: { kind: 'custom', reason: 'The API signs each request with HMAC.' },
+			bundleHash: sha256(bundle),
+			hooks: ['sign', 'derive'],
+		};
+		const type = await sandboxedCredentialTypeOf(manifest, { bundle }, { cacheDir, runtime });
+		if (type.scheme.kind !== 'custom') throw new Error('not a custom scheme');
+
+		await expect(type.derive?.({ server: 'https://ghe.acme.test/api/v3' })).resolves.toEqual({
+			authorizationEndpoint: 'https://ghe.acme.test/login/oauth/authorize',
+			scope: 'repo,user',
+			authorizationQuery: { allow_signup: 'false' },
+		});
+		await expect(type.derive?.({ server: 'fail' })).rejects.toThrow('derive needs a server URL');
+		await expect(
+			type.scheme.sign(
+				{ key: 'k-1' },
+				{
+					method: 'POST',
+					baseURL: 'https://api.acme.test',
+					url: '/v1/items',
+					qs: { page: 2 },
+					body: { a: 1 },
+				},
+			),
+		).resolves.toEqual({
+			method: 'POST',
+			url: 'https://api.acme.test/v1/items',
+			qs: { page: '2', sig: 'k-1' },
+			headers: { 'x-signature': 'k-1' },
+			body: { a: 1 },
+		});
 	});
 
 	it('runs a self-contained bundle of Node Contract 2.10.0, which pins no SDK runtime', async () => {

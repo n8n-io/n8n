@@ -6,6 +6,7 @@ import { StringDecoder } from 'node:string_decoder';
 import type * as wit from 'n8n:node-contract/capabilities@2.13.0';
 
 import { action } from '../action';
+import { credentialHookOf } from '../guest';
 import { capabilities, provider } from '../provider';
 import {
 	camel,
@@ -26,7 +27,7 @@ export interface SyncTransport {
 
 /** The command line of the sidecar that the guest needs, and the kind instead of the world. */
 export interface GuestArgs {
-	readonly kind: 'action' | 'provider';
+	readonly kind: 'action' | 'provider' | 'credential';
 	readonly bundle?: string;
 	readonly bundleSha256?: string;
 	readonly sdk?: string;
@@ -46,6 +47,7 @@ const WORLD_IMPORTS: Readonly<Record<GuestArgs['kind'], ReadonlySet<string>>> = 
 		...['capabilities', 'chunk'],
 	]),
 	provider: new Set(BASE_IMPORTS),
+	credential: new Set(['http']),
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -57,8 +59,9 @@ export function guestArgsOf(argv: readonly string[]): GuestArgs {
 		index % 2 === 0 && flag.startsWith('--') ? [[flag.slice(2), argv[index + 1] ?? '']] : [],
 	);
 	const one = (name: string) => pairs.filter(([key]) => key === name).pop()?.[1];
+	const kind = one('kind');
 	return {
-		kind: one('kind') === 'provider' ? 'provider' : 'action',
+		kind: kind === 'provider' || kind === 'credential' ? kind : 'action',
 		bundle: one('bundle'),
 		bundleSha256: one('bundle-sha256'),
 		sdk: one('sdk'),
@@ -228,6 +231,56 @@ function chatRequestOf(value: unknown): wit.ChatRequest {
 	return request;
 }
 
+/** `[['id', 'a'], ['id', 'b']]` as `{ id: ['a', 'b'] }`, as the SDK reads a query or headers. */
+const recordOfPairs = (pairs: unknown) =>
+	(Array.isArray(pairs) ? pairs : []).reduce<Record<string, unknown>>((record, pair: unknown) => {
+		if (!Array.isArray(pair)) return record;
+		const [key, value]: unknown[] = pair;
+		const name = String(key);
+		const known = record[name];
+		const values = known === undefined ? [] : Array.isArray(known) ? known : [known];
+		return { ...record, [name]: values.length === 0 ? value : [...values, value] };
+	}, {});
+
+/** `{ id: ['a', 'b'] }` as `[['id', 'a'], ['id', 'b']]`. The host checks the values. */
+const pairsOfRecord = (record: unknown) =>
+	Object.entries(isRecord(record) ? record : {}).flatMap(([key, value]) =>
+		(Array.isArray(value) ? value : [value]).map((each: unknown) => [key, each]),
+	);
+
+/** The `derived` record of `credential.wit` from what `derive` gives. The host checks it. */
+function derivedJson(derived: unknown) {
+	if (!isRecord(derived)) return derived;
+	const { authorizationQuery, claims, hosts, ...rest } = derived;
+	return {
+		...rest,
+		authorizationQuery: pairsOfRecord(authorizationQuery),
+		claims: pairsOfRecord(claims),
+		hosts: hosts ?? [],
+	};
+}
+
+/** `sign` with a `signed-request` of `credential.wit`, in the form that the SDK reads. */
+async function signedJson(fields: unknown, request: unknown) {
+	const { query, headers, ...rest } = isRecord(request) ? request : {};
+	const signed: unknown = await credentialHookOf('sign')(fields, {
+		...rest,
+		qs: recordOfPairs(query),
+		headers: recordOfPairs(headers),
+	});
+	if (!isRecord(signed) || typeof signed.url !== 'string') {
+		throw new RpcError(-32000, 'sign gave no request with a URL');
+	}
+	const { url, baseURL, method, qs, headers: signedHeaders, body } = signed;
+	return {
+		method,
+		url: new URL(url, typeof baseURL === 'string' ? baseURL : undefined).href,
+		query: pairsOfRecord(qs),
+		headers: pairsOfRecord(signedHeaders),
+		...(body === undefined ? {} : { body }),
+	};
+}
+
 const replyOf = ({ toolCalls, ...reply }: wit.ChatReply) => ({
 	...reply,
 	toolCalls: toolCalls.map(toolCallOut),
@@ -293,6 +346,10 @@ export async function runGuest(transport: SyncTransport, args: GuestArgs): Promi
 				return inline(action.describe());
 			case 'provider.describe':
 				return inline(provider.describe());
+			case 'credential.derive':
+				return derivedJson(await credentialHookOf('derive')(params.fields));
+			case 'credential.sign':
+				return await signedJson(params.fields, params.request);
 			case 'action.migrate': {
 				const fromMajor = Number(params.fromMajor);
 				const given = JSON.stringify(params.params ?? null);

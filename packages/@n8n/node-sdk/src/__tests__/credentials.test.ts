@@ -1292,64 +1292,66 @@ describe('derivedOf', () => {
 			derive,
 		});
 
-	it('gives derive the fields without secrets, each default filled in', () => {
+	it('gives derive the fields without secrets, each default filled in', async () => {
 		const seen: unknown[] = [];
 		const type = serverOAuth2((fields) => {
 			seen.push(fields);
 			return { authorizationEndpoint: `${new URL(fields.server).origin}/login/oauth/authorize` };
 		});
-		expect(derivedOf(type, { clientSecret: 's', note: 'n' })).toEqual({
+		await expect(derivedOf(type, { clientSecret: 's', note: 'n' })).resolves.toEqual({
 			authorizationEndpoint: 'https://api.acme.test/login/oauth/authorize',
 		});
 		expect(seen).toEqual([{ server: 'https://api.acme.test', note: 'n' }]);
 	});
 
-	it('takes http and https URLs, and hosts of the type or of a URL field value', () => {
+	it('takes http and https URLs, and hosts of the type or of a URL field value', async () => {
 		const type = serverOAuth2(({ server }) => ({
 			authorizationEndpoint: 'http://ghe.internal/login/oauth/authorize',
 			tokenEndpoint: 'https://ghe.internal/login/oauth/access_token',
 			baseUrl: `${server}/api/v3`,
 			hosts: ['ghe.internal', 'files.acme-cdn.test'],
 		}));
-		expect(derivedOf(type, { server: 'http://ghe.internal' })).toMatchObject({
+		await expect(derivedOf(type, { server: 'http://ghe.internal' })).resolves.toMatchObject({
 			baseUrl: 'http://ghe.internal/api/v3',
 		});
 	});
 
-	it('refuses another URL scheme, another host and data that is not valid', () => {
+	it('refuses another URL scheme, another host and data that is not valid', async () => {
 		const at = 'Credential acme.oauth2: derive';
-		expect(() =>
+		await expect(
 			derivedOf(
 				serverOAuth2(() => ({ tokenEndpoint: 'javascript:alert(1)' })),
 				{},
 			),
-		).toThrow(`${at} gave javascript:alert(1), which is not an http or https URL`);
-		expect(() =>
+		).rejects.toThrow(`${at} gave javascript:alert(1), which is not an http or https URL`);
+		await expect(
 			derivedOf(
 				serverOAuth2(() => ({ hosts: ['evil.test'] })),
 				{},
 			),
-		).toThrow(`${at} gave the hosts evil.test, which are not hosts of the type or of a URL field`);
+		).rejects.toThrow(
+			`${at} gave the hosts evil.test, which are not hosts of the type or of a URL field`,
+		);
 		// The note is not a URL field.
-		expect(() =>
+		await expect(
 			derivedOf(
 				serverOAuth2(() => ({ baseUrl: 'https://note.test' })),
 				{ note: 'https://note.test' },
 			),
-		).toThrow(`${at} gave the hosts note.test`);
+		).rejects.toThrow(`${at} gave the hosts note.test`);
 		const loose = serverOAuth2(() => ({ scope: ['a', 'b'] }) as unknown as Derived);
-		expect(() => derivedOf(loose, {})).toThrow(`${at} gave data that is not valid`);
+		await expect(derivedOf(loose, {})).rejects.toThrow(`${at} gave data that is not valid`);
 	});
 
-	it('gives undefined for a type without derive', () => {
-		expect(
+	it('gives undefined for a type without derive', async () => {
+		await expect(
 			derivedOf(
 				serverOAuth2(() => ({})),
 				{},
 			),
-		).toEqual({});
+		).resolves.toEqual({});
 		const { derive: _, ...plain } = serverOAuth2(() => ({}));
-		expect(derivedOf(plain, {})).toBeUndefined();
+		await expect(derivedOf(plain, {})).resolves.toBeUndefined();
 	});
 });
 

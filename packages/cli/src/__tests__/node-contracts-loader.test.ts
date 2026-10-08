@@ -388,7 +388,12 @@ describe('ContractNodeLoader', () => {
 			versions: async () => new Map(),
 			credentials: async () => new Map(),
 		} as never);
-		const runtime = hostRuntime();
+		const runtime = hostRuntime({
+			credentialManifestOf: async (name) =>
+				await Promise.resolve(
+					bundledCredentialsOf().find(({ manifest }) => manifest.name === name)?.manifest,
+				),
+		});
 		const loaders = contractNodeLoadersOf(runtime, {
 			excludeNodes: [],
 			includeNodes: [],

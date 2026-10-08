@@ -5,7 +5,7 @@ import { once } from 'node:events';
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
-import { toHostname, UnexpectedError, UserError } from 'n8n-workflow';
+import { toHostname, UnexpectedError, UserError, type IHttpRequestOptions } from 'n8n-workflow';
 
 import { compatTypeOfManifest, type AnyCredentialType } from './credentials';
 import {
@@ -30,8 +30,12 @@ import {
 } from './define';
 import { allowsHost, permissionsOf } from './egress';
 import { fileRequestIssues, isFileExtractRequest } from './host-imports';
+import type { CredentialManifest } from './manifest';
 import type { RunRecorder, RunRequest, RunRpc, RunSandboxStats } from './profile';
 import {
+	assertCredentialCode,
+	credentialTypeOfBundle,
+	credentialTypeOfHooks,
 	executorOf,
 	loadExecutor,
 	verifiedCodeOf,
@@ -40,7 +44,9 @@ import {
 	type ChunkContext,
 	type ChunkRunner,
 	type Executor,
+	type CredentialCode,
 	type CredentialManifestOf,
+	type CredentialTypeLoader,
 	type ExecutorLoader,
 	type PackedVersion,
 	type HostRuntime,
@@ -69,7 +75,7 @@ import {
 	triggerCallOf,
 	type TriggerCall,
 } from './triggers';
-import { runtimeNameOf, type RuntimePolicy } from './runtime-policy';
+import { credentialRuntimeNameOf, runtimeNameOf, type RuntimePolicy } from './runtime-policy';
 import { NODE_CONTRACT_VERSION, sha256, type VersionManifest } from './version';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -192,8 +198,11 @@ export interface Connection {
 	close(): void;
 }
 
-/** The kinds whose interface the sandbox runs, each with its own guest component. */
-export type SandboxKind = 'action' | 'provider' | 'trigger';
+/**
+ * The kinds whose interface the sandbox runs, each with its own guest component. Only the Node
+ * guest runs `credential` for now.
+ */
+export type SandboxKind = 'action' | 'provider' | 'trigger' | 'credential';
 
 const SANDBOX_KINDS: readonly SandboxKind[] = ['action', 'provider', 'trigger'];
 
@@ -201,8 +210,9 @@ const SANDBOX_KINDS: readonly SandboxKind[] = ['action', 'provider', 'trigger'];
 export interface GuestSession {
 	/** The interface that the guest runs. */
 	readonly kind: SandboxKind;
-	/** The verified manifest of the bundle. */
-	readonly manifest: VersionManifest;
+	/** The verified manifest of the bundle. A credential bundle has no contract. */
+	readonly manifest: Pick<VersionManifest, 'id' | 'bundleHash' | 'nodeContract'> &
+		Partial<Pick<VersionManifest, 'contract' | 'guest'>>;
 	/** The verified bundle, named by its hash. */
 	readonly bundleFile: string;
 	/** The verified SDK runtime that `manifest.sdk` pins, named by its hash. A self-contained bundle has none. */
@@ -2201,7 +2211,7 @@ const guestSha256Of = async (file: string) => {
  * Verified code in the cache under its hash; the guest checks the hash again. The rename
  * makes the write atomic, so a sidecar that starts at the same time never reads part of a file.
  */
-async function bundleFileOf(options: SandboxOptions, hex: string, code: string) {
+async function bundleFileOf(options: Pick<SandboxOptions, 'cacheDir'>, hex: string, code: string) {
 	const dir = path.join(options.cacheDir, 'bundles');
 	await mkdir(dir, { recursive: true, mode: 0o700 });
 	const file = path.join(dir, `${hex}.cjs`);
@@ -2430,5 +2440,108 @@ export function policyExecutorLoader(
 			throw new UnexpectedError(`The ${name} runtime is available, but the host gave none`);
 		return (await sandboxedVersionOf(packed, { ...options, runtime: runtime() }, hostRuntime))
 			.executor;
+	};
+}
+
+/** A body that crosses as JSON. Another body, e.g. a buffer or a form, stays on the host. */
+const isJsonBody = (body: unknown) =>
+	typeof body === 'string' ||
+	Array.isArray(body) ||
+	(isRecord(body) && Object.getPrototypeOf(body) === Object.prototype);
+
+/** What a `credential.derive` answer gives in the form of `Derived`. `isDerived` checks it. */
+function derivedOfAnswer(answer: unknown): unknown {
+	if (!isRecord(answer)) return answer;
+	const { authorizationQuery = [], claims = [], hosts = [], ...rest } = answer;
+	if (!isPairs(authorizationQuery) || !isPairs(claims) || !Array.isArray(hosts)) return answer;
+	return {
+		...rest,
+		...(authorizationQuery.length > 0
+			? { authorizationQuery: Object.fromEntries(authorizationQuery) }
+			: {}),
+		...(claims.length > 0 ? { claims: Object.fromEntries(claims) } : {}),
+		...(hosts.length > 0 ? { hosts } : {}),
+	};
+}
+
+/**
+ * The credential type of a credential manifest with a bundle, with its hooks in a guest of
+ * `options.runtime`, after `assertCredentialCode`. Each hook call starts a session. The data comes
+ * from the manifest, see `credentialTypeOfHooks`.
+ */
+export async function sandboxedCredentialTypeOf(
+	manifest: CredentialManifest,
+	{ bundle, sdk }: Pick<CredentialCode, 'bundle' | 'sdk'>,
+	options: Pick<SandboxOptions, 'cacheDir' | 'limits'> & { readonly runtime: GuestRuntime },
+) {
+	assertCredentialCode(manifest, bundle, sdk);
+	const bundleHash = sha256(bundle);
+	const config: GuestSession = {
+		kind: 'credential',
+		limits: { ...DEFAULT_LIMITS, ...options.limits },
+		manifest: { id: manifest.id, bundleHash, nodeContract: manifest.nodeContract },
+		bundleFile: await bundleFileOf(options, bundleHash, bundle),
+		...(sdk === undefined
+			? {}
+			: { sdk: { file: await bundleFileOf(options, sha256(sdk), sdk), sha256: sha256(sdk) } }),
+		// The credential world imports only `http`, for `exchange` and `refresh`, which no hook uses yet.
+		grants: [],
+		cacheDir: options.cacheDir,
+	};
+	const call = async (method: string, params: Record<string, unknown>) => {
+		const connection = await openSession(options.runtime, config);
+		try {
+			return await connection.request(method, params);
+		} finally {
+			connection.close();
+		}
+	};
+	const sign = async (fields: unknown, request: IHttpRequestOptions) => {
+		const answer = await call('credential.sign', {
+			fields,
+			request: {
+				method: request.method ?? 'GET',
+				url: new URL(request.url, request.baseURL).href,
+				query: pairsOf(request.qs ?? {}),
+				headers: pairsOf(request.headers ?? {}),
+				...(isJsonBody(request.body) ? { body: request.body } : {}),
+			},
+		});
+		const { url, method, query, headers } = isRecord(answer) ? answer : {};
+		if (typeof url !== 'string' || !isHttpMethod(method) || !isPairs(query) || !isPairs(headers)) {
+			throw new UserError(`Credential ${manifest.id}: sign gave no signed request`);
+		}
+		const { baseURL: _, ...rest } = request;
+		return {
+			...rest,
+			method,
+			url,
+			qs: queryOf(query),
+			headers: queryOf(headers),
+			...(isRecord(answer) && 'body' in answer ? { body: answer.body } : {}),
+		};
+	};
+	return credentialTypeOfHooks(manifest, {
+		derive: async (fields) => derivedOfAnswer(await call('credential.derive', { fields })),
+		sign,
+	});
+}
+
+/**
+ * The credential type loader of the runtime policy: a credential bundle runs in the runtime that
+ * `credentialRuntimeNameOf` gives for its origin, `in-process` through `credentialTypeOfBundle`.
+ */
+export function policyCredentialTypeLoader(
+	policy: RuntimePolicy,
+	options: Pick<SandboxOptions, 'cacheDir' | 'limits'>,
+): CredentialTypeLoader {
+	return async (manifest, code) => {
+		const name = credentialRuntimeNameOf(policy, { manifest, origin: code.origin });
+		policy.log?.(`${manifest.id}@${manifest.semver} (${code.origin} credential) runs in ${name}`);
+		if (name === 'in-process') return credentialTypeOfBundle(manifest, code.bundle, code.sdk);
+		const runtime = policy.runtimes.worker;
+		if (!runtime)
+			throw new UnexpectedError('The worker runtime is available, but the host gave none');
+		return await sandboxedCredentialTypeOf(manifest, code, { ...options, runtime: runtime() });
 	};
 }

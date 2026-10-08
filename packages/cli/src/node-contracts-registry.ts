@@ -277,7 +277,7 @@ function publishedDateOf(published: string | undefined) {
 
 /** What the loader reads of the instance store. */
 type StoredContracts = Pick<ContractStore, 'versions' | 'credentials'> &
-	Partial<Pick<ContractStore, 'withdrawal'>>;
+	Partial<Pick<ContractStore, 'withdrawal' | 'credentialCodeOf'>>;
 
 const openContractStore = async (): Promise<StoredContracts> =>
 	await Container.get(NodeContractsStore).open();
@@ -558,11 +558,11 @@ export class ContractNodeLoader implements NodeLoader {
 				return [[nodeNameOf(id), node] as const];
 			}),
 		);
-		const credentials = this.credentialManifestsOf(storedCredentials).map(({ file, manifest }) => {
+		const withTypes = await this.credentialManifestsOf(storedCredentials);
+		const credentials = withTypes.map(({ file, manifest, withCode }) => {
 			const supportedNodes = [...this.nodes]
 				.filter(([, { type }]) => credentialNamesOf(type).includes(manifest.name))
 				.map(([name]) => name);
-			const withCode = manifest.bundleHash === undefined ? undefined : this.bundledTypeOf(manifest);
 			const type = {
 				...((withCode && toCredentialType(withCode)) ?? credentialTypeOfManifest(manifest)),
 				supportedNodes,
@@ -646,10 +646,10 @@ export class ContractNodeLoader implements NodeLoader {
 	 * name. `undefined` for a type without `derive`. It stays by bundle hash and the fields
 	 * without secrets.
 	 */
-	derivedCredentialData(
+	async derivedCredentialData(
 		credentialType: string,
 		data: ICredentialDataDecryptedObject,
-	): ICredentialDataDecryptedObject | undefined {
+	): Promise<ICredentialDataDecryptedObject | undefined> {
 		const deriving = this.derivingTypes.get(credentialType);
 		if (!deriving) return undefined;
 		const { type, bundleHash } = deriving;
@@ -657,7 +657,7 @@ export class ContractNodeLoader implements NodeLoader {
 		const key = `${bundleHash}:${fields.digest('hex')}`;
 		const known = this.derived.get(key);
 		if (known) return known;
-		const derived = derivedOf(type, data) ?? {};
+		const derived = (await derivedOf(type, data)) ?? {};
 		const { authorizationEndpoint, tokenEndpoint, scope, authorizationQuery } = derived;
 		const values: ICredentialDataDecryptedObject = {
 			...(authorizationEndpoint === undefined ? {} : { authUrl: authorizationEndpoint }),
@@ -716,10 +716,14 @@ export class ContractNodeLoader implements NodeLoader {
 	 * The bundled credential manifests of the package, and for `FALLBACK_PACKAGE` the stored ones
 	 * of names that n8n does not bundle, e.g. a type that a stored version pins. A stored type
 	 * never replaces the type of another package, e.g. a legacy class. A stored type that n8n
-	 * cannot project is skipped.
+	 * cannot project or run is skipped. A manifest with a bundle comes with its type.
 	 */
-	private credentialManifestsOf(stored: ReadonlyMap<string, CredentialManifest>) {
-		const bundled = bundledCredentialsOf(this.storeDir);
+	private async credentialManifestsOf(stored: ReadonlyMap<string, CredentialManifest>) {
+		const bundled = bundledCredentialsOf(this.storeDir).map(({ file, manifest }) => ({
+			file,
+			manifest,
+			withCode: manifest.bundleHash === undefined ? undefined : this.bundledTypeOf(manifest),
+		}));
 		if (this.packageName !== FALLBACK_PACKAGE) return bundled;
 		const names = new Set(
 			firstPartyPackages().flatMap((pkg) =>
@@ -728,14 +732,41 @@ export class ContractNodeLoader implements NodeLoader {
 		);
 		const others = [...stored.values()].filter((manifest) => {
 			if (names.has(manifest.name) || this.hasOtherCredentialType(manifest.name)) return false;
-			if (manifest.scheme.kind !== 'custom' && manifest.bundleHash === undefined) return true;
+			if (manifest.scheme.kind !== 'custom' || manifest.bundleHash !== undefined) return true;
 			Container.get(Logger).warn(
-				`${manifest.id}@${manifest.semver} does not load: n8n runs the code of a bundled credential type only`,
+				`${manifest.id}@${manifest.semver} does not load: a custom scheme needs a credential bundle`,
 			);
 			return false;
 		});
 		const file = others.length > 0 ? Container.get(NodeContractsStore).dir : '';
-		return [...bundled, ...others.map((manifest) => ({ file, manifest }))];
+		const loaded = await Promise.all(
+			others.map(async (manifest) => {
+				try {
+					const withCode =
+						manifest.bundleHash === undefined ? undefined : await this.storedTypeOf(manifest);
+					return [{ file, manifest, withCode }];
+				} catch (error) {
+					Container.get(Logger).warn(
+						`${manifest.id}@${manifest.semver} does not load: ${ensureError(error).message}`,
+					);
+					return [];
+				}
+			}),
+		);
+		return [...bundled, ...loaded.flat()];
+	}
+
+	/**
+	 * The credential type of a stored manifest with a bundle. It runs in the runtime that the
+	 * runtime policy gives for the origin that the store recorded.
+	 */
+	private async storedTypeOf(manifest: CredentialManifest) {
+		const load = this.runtime.credentialTypeLoader;
+		const store = await this.openStore();
+		if (!load || !store.credentialCodeOf) {
+			throw new UserError('this host runs no code of a stored credential type');
+		}
+		return await load(manifest, await store.credentialCodeOf(manifest));
 	}
 
 	/**
@@ -860,7 +891,7 @@ export async function nodeContractsRuntime(): Promise<HostRuntime> {
 	const nodes = Container.get(NodesConfig);
 	const [
 		{ containerRuntime, pooledRuntime, wasmReuseRuntime, workerRuntime },
-		{ policyExecutorLoader, warmSandbox },
+		{ policyCredentialTypeLoader, policyExecutorLoader, warmSandbox },
 		{ contractVersionLoader, credentialManifestsOf },
 	] = await Promise.all([
 		import('@n8n/node-sdk/runtimes'),
@@ -926,33 +957,31 @@ export async function nodeContractsRuntime(): Promise<HostRuntime> {
 		store,
 		onPermissionRefused,
 	});
-	const executorLoader = policyExecutorLoader(
-		{
-			lists,
-			available,
-			log: (message) => logger.debug(message),
-			runtimes: {
-				worker: () =>
-					runtimes.get('worker', () => pooledRuntime(workerRuntime(), { size: POOL_SIZE })),
-				...(!wasmMissing && {
-					wasm: () => runtimes.get('wasm', () => wasmReuseRuntime({ sidecar, guests })),
-				}),
-				...('oci' in container && {
-					container: () =>
-						runtimes.get('container', () =>
-							pooledRuntime(containerRuntime({ ociRuntime: container.oci }), { size: POOL_SIZE }),
-						),
-				}),
-			},
+	const policy = {
+		lists,
+		available,
+		log: (message: string) => logger.debug(message),
+		runtimes: {
+			worker: () =>
+				runtimes.get('worker', () => pooledRuntime(workerRuntime(), { size: POOL_SIZE })),
+			...(!wasmMissing && {
+				wasm: () => runtimes.get('wasm', () => wasmReuseRuntime({ sidecar, guests })),
+			}),
+			...('oci' in container && {
+				container: () =>
+					runtimes.get('container', () =>
+						pooledRuntime(containerRuntime({ ociRuntime: container.oci }), { size: POOL_SIZE }),
+					),
+			}),
 		},
-		{
-			cacheDir,
-			// The credential hosts and base URLs never come from a bundle.
-			credentialType: sandboxCredentialTypeOf((name) =>
-				Container.get(CredentialTypes).recognizes(name),
-			),
-		},
-	);
+	};
+	const executorLoader = policyExecutorLoader(policy, {
+		cacheDir,
+		// The credential hosts and base URLs never come from a bundle.
+		credentialType: sandboxCredentialTypeOf((name) =>
+			Container.get(CredentialTypes).recognizes(name),
+		),
+	});
 	return hostRuntime({
 		nodeContractRange: instanceAi.nodeContractRange,
 		versionLoader,
@@ -962,6 +991,7 @@ export async function nodeContractsRuntime(): Promise<HostRuntime> {
 			Container.get(CredentialTypes).recognizes(name),
 		),
 		executorLoader,
+		credentialTypeLoader: policyCredentialTypeLoader(policy, { cacheDir }),
 		onRunProfile: ({ executionId, nodeName }, profile) =>
 			Container.get(EventService).emit('node-contract-run-profiled', {
 				executionId,
@@ -1124,7 +1154,7 @@ export const contractImportsOf = (
  * The OAuth2 data that `derive` of a contract credential type gives from the stored data, see
  * `ContractNodeLoader.derivedCredentialData`. `undefined` for any other type.
  */
-export function derivedCredentialDataOf(
+export async function derivedCredentialDataOf(
 	loaders: Readonly<Record<string, NodeLoader>>,
 	credentialType: string,
 	data: ICredentialDataDecryptedObject,
@@ -1133,7 +1163,7 @@ export function derivedCredentialDataOf(
 		(each): each is ContractNodeLoader =>
 			each instanceof ContractNodeLoader && credentialType in each.known.credentials,
 	);
-	return loader?.derivedCredentialData(credentialType, data);
+	return await loader?.derivedCredentialData(credentialType, data);
 }
 
 /** The contract loader of the package of an id, when n8n loads it. */

@@ -74,7 +74,7 @@ const scripted = (script: (calls: Served) => Promise<unknown>): GuestRuntime => 
 					return { nodeContract: manifest.nodeContract, kind: 'action' };
 				}
 				if (method === 'action.describe') {
-					return { id: manifest.id, node: { id: manifest.contract.node, displayName: 'Probe' } };
+					return { id: manifest.id, node: { id: manifest.contract?.node, displayName: 'Probe' } };
 				}
 				if (method === 'action.chunk-run.[new]') return 1;
 				if (method === 'action.chunk-run.[take]') {

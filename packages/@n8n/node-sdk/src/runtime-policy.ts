@@ -1,5 +1,6 @@
 import { UserError } from 'n8n-workflow';
 
+import type { CredentialManifest } from './manifest';
 import type { ContractOrigin, PackedVersion } from './runtime';
 import type { GuestRuntime } from './sandbox';
 import type { VersionManifest } from './version';
@@ -144,4 +145,22 @@ export function runtimeNameOf(
 	});
 	if ('error' in resolved) throw new UserError(resolved.error);
 	return resolved.runtime;
+}
+
+/**
+ * The runtime of a credential bundle under the lists of the policy, by its origin. A worker is the
+ * only sandbox of a credential for now, so a sandboxed entry (worker, wasm, container) means a
+ * worker. Only a first-party credential may run in this process, and it does when its list has
+ * in-process. Throws when the list has neither.
+ */
+export function credentialRuntimeNameOf(
+	{ lists }: Pick<RuntimePolicy, 'lists'>,
+	{ manifest, origin }: { readonly manifest: CredentialManifest; readonly origin: ContractOrigin },
+): 'in-process' | 'worker' {
+	const list = lists[origin];
+	if (origin === 'first-party' && list.includes('in-process')) return 'in-process';
+	if (list.some((name) => name !== 'in-process')) return 'worker';
+	throw new UserError(
+		`${manifest.id}@${manifest.semver} (${origin} credential) needs a worker: the ${origin} runtime list has no worker, wasm or container${origin === 'first-party' ? ' and no in-process' : ', and a credential may use in-process only when it is first-party'}`,
+	);
 }

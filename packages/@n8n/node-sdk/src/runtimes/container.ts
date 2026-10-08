@@ -109,7 +109,7 @@ export function containerRuntime({
 		name: 'container',
 		async start(session) {
 			const { kind, limits, manifest, bundleFile, sdk, grants } = session;
-			const own = manifest.contract.runtime;
+			const own = manifest.contract?.runtime;
 			const used = own?.image ?? image;
 			if (!checked.has(used)) {
 				checkImage(used);

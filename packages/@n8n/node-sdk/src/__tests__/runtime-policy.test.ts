@@ -2,8 +2,10 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { firstPartyVersionsOf as versionsOf } from './first-party';
+import { firstPartyRuntime, firstPartyVersionsOf as versionsOf } from './first-party';
+import type { CredentialManifest } from '../manifest';
 import {
+	credentialRuntimeNameOf,
 	resolveRuntime,
 	runtimeNameOf,
 	type RuntimeAvailability,
@@ -12,7 +14,8 @@ import {
 	type RuntimeRequest,
 } from '../runtime-policy';
 import { hostRuntime, type ContractOrigin } from '../runtime';
-import { policyExecutorLoader, type GuestRuntime } from '../sandbox';
+import { policyCredentialTypeLoader, policyExecutorLoader, type GuestRuntime } from '../sandbox';
+import { sha256 } from '../version';
 
 const LISTS: RuntimeLists = {
 	'first-party': ['worker', 'in-process', 'wasm', 'container'],
@@ -164,7 +167,7 @@ describe('policyExecutorLoader', () => {
 		const loadTrigger = async (origin: ContractOrigin) =>
 			await policyExecutorLoader(policy(), { cacheDir, credentialType: () => undefined })(
 				{ ...trigger!, origin },
-				hostRuntime(),
+				firstPartyRuntime(),
 			);
 		await expect(loadTrigger('community')).rejects.toThrow('started wasm');
 		await expect(loadTrigger('first-party')).resolves.toBeInstanceOf(Function);
@@ -173,5 +176,79 @@ describe('policyExecutorLoader', () => {
 	it('runs in-process in this process', async () => {
 		const lists = { ...LISTS, 'first-party': ['in-process' as const] };
 		await expect(load(policy({ lists }), 'first-party')).resolves.toBeInstanceOf(Function);
+	});
+});
+
+describe('the runtime of a credential bundle', () => {
+	const cacheDir = mkdtempSync(path.join(tmpdir(), 'runtime-policy-credential-'));
+	afterAll(() => rmSync(cacheDir, { recursive: true, force: true }));
+
+	const bundle =
+		'module.exports = { default: { derive: (fields) => ({ scope: fields.scope ?? "a,b" }) } };';
+	const manifest: CredentialManifest = {
+		kind: 'credential',
+		id: 'acme.oauth2',
+		name: 'acmeOAuth2Api',
+		semver: '1.0.0',
+		nodeContract: '2.13.0',
+		displayName: 'Acme OAuth2 API',
+		fields: { type: 'object', properties: {} },
+		scheme: {
+			kind: 'oauth2',
+			grant: 'authorizationCode',
+			authorizationEndpoint: 'https://acme.test/authorize',
+			tokenEndpoint: 'https://acme.test/token',
+			scope: [],
+			clientAuth: 'client_secret_basic',
+			pkce: true,
+			authorizationQuery: {},
+		},
+		bundleHash: sha256(bundle),
+		hooks: ['derive'],
+	};
+	const runtimeOf = (lists: Partial<RuntimeLists>, origin: ContractOrigin) =>
+		credentialRuntimeNameOf({ lists: { ...LISTS, ...lists } }, { manifest, origin });
+
+	it('reads a sandboxed entry of the list as a worker, and in-process only for first-party', () => {
+		expect(runtimeOf({}, 'first-party')).toBe('in-process');
+		expect(runtimeOf({ 'first-party': ['container'] }, 'first-party')).toBe('worker');
+		expect(runtimeOf({}, 'community')).toBe('worker');
+		expect(runtimeOf({ community: ['in-process', 'worker'] }, 'community')).toBe('worker');
+		expect(runtimeOf({ private: ['container'] }, 'private')).toBe('worker');
+	});
+
+	it('refuses in-process for a community or a private credential', () => {
+		const refusal = (origin: ContractOrigin) =>
+			`acme.oauth2@1.0.0 (${origin} credential) needs a worker: the ${origin} runtime list has no worker, wasm or container, and a credential may use in-process only when it is first-party`;
+		expect(() => runtimeOf({ community: ['in-process'] }, 'community')).toThrow(
+			refusal('community'),
+		);
+		expect(() => runtimeOf({ private: ['in-process'] }, 'private')).toThrow(refusal('private'));
+	});
+
+	it('runs a first-party credential in this process and a community one in the worker', async () => {
+		const log = vi.fn();
+		const loader = policyCredentialTypeLoader(
+			{
+				lists: LISTS,
+				available: ALL,
+				log,
+				runtimes: {
+					worker: () => ({
+						name: 'worker',
+						start: async () => await Promise.reject(new Error('started worker')),
+					}),
+				},
+			},
+			{ cacheDir },
+		);
+		const firstParty = await loader(manifest, { origin: 'first-party', bundle });
+		await expect(firstParty.derive?.({})).resolves.toEqual({ scope: 'a,b' });
+		const community = await loader(manifest, { origin: 'community', bundle });
+		await expect(community.derive?.({})).rejects.toThrow('started worker');
+		expect(log.mock.calls).toEqual([
+			['acme.oauth2@1.0.0 (first-party credential) runs in in-process'],
+			['acme.oauth2@1.0.0 (community credential) runs in worker'],
+		]);
 	});
 });

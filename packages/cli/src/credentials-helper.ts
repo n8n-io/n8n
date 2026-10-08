@@ -857,7 +857,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// After the expressions, so that no derived value is read as an expression.
 		const { derivedCredentialDataOf } = await import('@/node-contracts-registry.js');
 		const { loaders } = this.credentialTypes;
-		const derived = derivedCredentialDataOf(loaders, type, decryptedData) ?? {};
+		const derived = (await derivedCredentialDataOf(loaders, type, decryptedData)) ?? {};
 		// An admin overwrite wins over derive.
 		const overwritten = (key: string) => dataWithOverwrites[key] !== storedData[key];
 		return {

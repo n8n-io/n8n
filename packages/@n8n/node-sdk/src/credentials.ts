@@ -608,11 +608,12 @@ export interface CredentialType<Name extends string = string, F extends Shape = 
 	readonly scheme: CredentialScheme<F>;
 	/**
 	 * Gives data that n8n runs from the fields without secrets, e.g. the OAuth2 endpoints of a
-	 * server URL. A type with it has a credential bundle.
+	 * server URL. A type with it has a credential bundle. It is async when the bundle runs in a
+	 * worker.
 	 *
 	 * @unstable The `credential-derive` feature of Node Contract 2.13.0.
 	 */
-	derive?(fields: CredentialData<PlainShape<F>>): Derived;
+	derive?(fields: CredentialData<PlainShape<F>>): Derived | Promise<Derived>;
 	/**
 	 * The API base URL, e.g. `https://{subdomain}.zendesk.com/api/v2`. It replaces the node's, and
 	 * its host is a credential host.
@@ -2008,10 +2009,13 @@ const webHostOf = (url: unknown) => {
  * base URL must be a host of the type or the host of the value of a URL field. `undefined` for a
  * type without `derive`.
  */
-export function derivedOf(type: AnyCredentialType, raw: unknown): Derived | undefined {
+export async function derivedOf(
+	type: AnyCredentialType,
+	raw: unknown,
+): Promise<Derived | undefined> {
 	if (!type.derive) return undefined;
 	const fields = plainFieldsOf(type, raw);
-	const derived: unknown = type.derive(fields);
+	const derived: unknown = await type.derive(fields);
 	const fail = (problem: string) => new UserError(`Credential ${type.id}: derive ${problem}`);
 	if (!isDerived(derived)) throw fail('gave data that is not valid');
 	const { authorizationEndpoint, tokenEndpoint, baseUrl, hosts = [] } = derived;
