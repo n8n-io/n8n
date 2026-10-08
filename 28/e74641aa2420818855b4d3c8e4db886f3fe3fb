@@ -1,0 +1,32 @@
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_71ad2034164515::t_aaeb640d2a3579 1,16-86
+  s_71ad2034164515::t_1cc4ae7dafe73b 87
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_71ad2034164515::t_aaeb640d2a3579 58-68
+packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
+  s_71ad2034164515::t_aaeb640d2a3579 1,6,11-22,45-66,90
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_71ad2034164515::t_aaeb640d2a3579 11,17,65,76
+packages/cli/src/modules/n8n-packages/engine/__tests__/package-layout.test.ts
+  s_71ad2034164515::t_9c71e97d4d6c85 1,4,9,16,25-28,32,36,43-46,55-57
+packages/cli/src/modules/promotions.ee/__tests__/import-manifest-bridge.test.ts
+  s_71ad2034164515::t_5c27aa955786e0 12,16-18,34-41,51,84,164
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_71ad2034164515::t_6aef5e57b8b68d 750
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "28e74641aa2420818855b4d3c8e4db886f3fe3fb",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
