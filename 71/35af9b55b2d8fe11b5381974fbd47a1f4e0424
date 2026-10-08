@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_2add348c74d9b2::t_80a9fd3d93c5e3 176-180,213-217
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_2add348c74d9b2::t_7e352bb461d094 15,62
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_761eb4a01ae6f3::t_9950765ec080ae 31,309
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionCapabilityItem.vue
+  s_2add348c74d9b2::t_fe9ce592bf68ab 96-100,102
+  s_2add348c74d9b2::t_3908306e87dec3 79
+  s_2add348c74d9b2::t_128aefe0bb42ee 19,28,80-95,101,103-105
+  s_2add348c74d9b2::t_f84905fc1a8d10 110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7135af9b55b2d8fe11b5381974fbd47a1f4e0424",
+  "prompts": {},
+  "sessions": {
+    "s_2add348c74d9b2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d85f-5bb4-72f5-81b3-39cbe050501c",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_761eb4a01ae6f3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d879-e076-72f5-81b3-39cd10e2c8b4",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
