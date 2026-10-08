@@ -20,26 +20,33 @@ export function serializeBuffer(buffer: Buffer): Base64Buffer {
 	return { type: 'Buffer', base64: buffer.toString('base64') };
 }
 
+function isBase64Buffer(candidate: object): candidate is Base64Buffer {
+	return (
+		'type' in candidate &&
+		candidate.type === 'Buffer' &&
+		'base64' in candidate &&
+		typeof candidate.base64 === 'string' &&
+		Object.keys(candidate).length === 2 // reduce collisions with JSON results of the same shape
+	);
+}
+
+function isByteArrayBuffer(candidate: object): candidate is ByteArrayBuffer {
+	return (
+		'type' in candidate &&
+		candidate.type === 'Buffer' &&
+		'data' in candidate &&
+		Array.isArray(candidate.data)
+	);
+}
+
 /** Converts the given SerializedBuffer to nodejs Buffer */
 export function toBuffer(serializedBuffer: SerializedBuffer): Buffer {
-	if ('base64' in serializedBuffer && typeof serializedBuffer.base64 === 'string') {
-		return Buffer.from(serializedBuffer.base64, 'base64');
-	}
-
-	if ('data' in serializedBuffer && Array.isArray(serializedBuffer.data)) {
-		return Buffer.from(serializedBuffer.data);
-	}
+	if (isBase64Buffer(serializedBuffer)) return Buffer.from(serializedBuffer.base64, 'base64');
+	if (isByteArrayBuffer(serializedBuffer)) return Buffer.from(serializedBuffer.data);
 
 	throw new UnexpectedError('Invalid serialized buffer');
 }
 
 export function isSerializedBuffer(candidate: unknown): candidate is SerializedBuffer {
-	if (!isObjectLiteral(candidate) || !('type' in candidate) || candidate.type !== 'Buffer') {
-		return false;
-	}
-
-	return (
-		('data' in candidate && Array.isArray(candidate.data)) ||
-		('base64' in candidate && typeof candidate.base64 === 'string')
-	);
+	return isObjectLiteral(candidate) && (isBase64Buffer(candidate) || isByteArrayBuffer(candidate));
 }
