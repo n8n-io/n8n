@@ -161,7 +161,7 @@ describe('InstanceAiOnboardingView', () => {
 	it('shows saved setup progress and opens a selected checklist step', async () => {
 		const { pinia, store } = setupStore({
 			modelCredentialId: 'model-credential',
-			modelName: 'claude-opus-5',
+			modelName: 'claude-opus-5-5',
 		});
 		store.$patch({
 			instanceModelCredentials: [
@@ -173,7 +173,7 @@ describe('InstanceAiOnboardingView', () => {
 		expect(getByTestId('intro-stub')).toHaveAttribute('data-incomplete', 'true');
 		expect(getByTestId('intro-stub')).toHaveAttribute(
 			'data-model-value',
-			'anthropic/claude-opus-5',
+			'anthropic/claude-opus-5-5',
 		);
 
 		await fireEvent.click(getByTestId('intro-open-search'));

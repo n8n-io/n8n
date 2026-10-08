@@ -445,9 +445,11 @@ describe('SettingsInstanceAiView', () => {
 			expect(modelInput).not.toBeDisabled();
 
 			await fireEvent.click(modelInput);
-			await fireEvent.click(await findByText('claude-opus-5 · instanceAi.onboarding.recommended'));
+			await fireEvent.click(
+				await findByText('claude-opus-5-5 · instanceAi.onboarding.recommended'),
+			);
 			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
-			await waitFor(() => expect(store.draft).toMatchObject({ modelName: 'claude-opus-5' }));
+			await waitFor(() => expect(store.draft).toMatchObject({ modelName: 'claude-opus-5-5' }));
 		});
 
 		it('shows fully environment-managed model and sandbox rows without edit affordances', async () => {
