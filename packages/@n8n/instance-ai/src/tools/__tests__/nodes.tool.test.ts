@@ -13,9 +13,6 @@ import { derivedNodeTypes } from './derived-node-types';
 import { nextNodeModule } from '../next-modules';
 import { addSetupPreference } from '../nodes/setup-preference';
 import { createNodesTool } from '../nodes.tool';
-import { warmWorkspace } from '../../workspace/warm-workspace';
-
-vi.mock('../../workspace/warm-workspace', () => ({ warmWorkspace: vi.fn() }));
 
 vi.mock('@n8n/workflow-sdk', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/workflow-sdk')>()),
@@ -2027,58 +2024,6 @@ describe('nodes tool', () => {
 			});
 
 			expect(result).toMatchObject({ found: true, properties: [{ type: 'credentialsSelect' }] });
-		});
-
-		it('warms the workspace when search returns a typed module', async () => {
-			const context = createContractContext();
-			await executeTool(createNodesTool(context, 'full'), {
-				action: 'search',
-				query: 'notion get many pages',
-				limit: 5,
-			});
-
-			expect(warmWorkspace).toHaveBeenCalledWith(context);
-		});
-
-		it('warms the workspace when type-definition returns a typed module', async () => {
-			const context = createContractContext();
-			await executeTool(createNodesTool(context, 'full'), {
-				action: 'type-definition',
-				nodeTypes: ['notion'],
-			});
-
-			expect(warmWorkspace).toHaveBeenCalledWith(context);
-		});
-
-		it('does not warm the workspace when no typed module is returned', async () => {
-			const context = createContractContext();
-			await executeTool(createNodesTool(context, 'full'), {
-				action: 'search',
-				query: 'mattermost send',
-				limit: 5,
-			});
-			await executeTool(createNodesTool(context, 'full'), {
-				action: 'type-definition',
-				nodeTypes: ['n8n-nodes-base.mattermost'],
-			});
-
-			expect(warmWorkspace).not.toHaveBeenCalled();
-		});
-
-		it('does not warm the workspace with node contracts disabled', async () => {
-			const context = createContractContext();
-			context.nodeContractsEnabled = false;
-			await executeTool(createNodesTool(context, 'full'), {
-				action: 'search',
-				query: 'notion',
-				limit: 5,
-			});
-			await executeTool(createNodesTool(context, 'full'), {
-				action: 'type-definition',
-				nodeTypes: ['n8n-nodes-base.notion'],
-			});
-
-			expect(warmWorkspace).not.toHaveBeenCalled();
 		});
 
 		it.each(['full', 'orchestrator'] as const)(

@@ -3,7 +3,7 @@ import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 
 import type { Logger } from '../../logger';
 import { createLazyRuntimeWorkspace } from '../lazy-runtime-workspace';
-import { warmWorkspace } from '../warm-workspace';
+import { warmOnBuilderSkill, warmWorkspace } from '../warm-workspace';
 
 function createLogger(): Logger {
 	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
@@ -60,5 +60,31 @@ describe('warmWorkspace', () => {
 
 		expect(() => warmWorkspace({ workspace: undefined, logger })).not.toThrow();
 		expect(logger.debug).not.toHaveBeenCalled();
+	});
+});
+
+describe('warmOnBuilderSkill', () => {
+	const skill = { id: 'workflow-builder', name: 'workflow-builder', instructions: 'Build.' };
+
+	it('provisions the workspace only when the workflow-builder skill loads', async () => {
+		const ensureWorkspace = vi.fn(async () => await Promise.resolve(createLocalWorkspace()));
+		const context = {
+			workspace: createLazyRuntimeWorkspace({ ensureWorkspace }),
+			logger: createLogger(),
+		};
+		const loadSkill = vi.fn(async () => await Promise.resolve(skill));
+		const source = warmOnBuilderSkill(
+			{ registry: { skills: [], skillsHash: 'h' }, loadSkill } as never,
+			context,
+		);
+
+		await source.loadSkill('planning');
+		await flush();
+		expect(ensureWorkspace).not.toHaveBeenCalled();
+
+		await expect(source.loadSkill('workflow-builder')).resolves.toBe(skill);
+		await flush();
+		expect(ensureWorkspace).toHaveBeenCalledTimes(1);
+		expect(loadSkill).toHaveBeenCalledWith('workflow-builder');
 	});
 });

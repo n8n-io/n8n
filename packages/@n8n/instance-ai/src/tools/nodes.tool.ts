@@ -48,7 +48,6 @@ import {
 	type NextNodeModule,
 } from './next-modules';
 import type { InstanceAiContext, NodeDescription } from '../types';
-import { warmWorkspace } from '../workspace/warm-workspace';
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
@@ -633,7 +632,6 @@ async function handleModuleSearch(
 		(nodeId) =>
 			nextNodeView(nodeId, shownActions) ?? derivedNodeView(nodeId, context, shownActions) ?? [],
 	);
-	if (nodeModules.length) warmWorkspace(context);
 	return withinSearchBudget(searches, nodeModules, (kept, modules) =>
 		moduleSearchResponse(queries, !queryList, kept, modules),
 	);
@@ -755,10 +753,7 @@ async function resolveNodeTypeDefinitions(
 			const moduleDefinition = context.nodeContractsEnabled
 				? resolveModuleDefinition(req, context)
 				: undefined;
-			if (moduleDefinition) {
-				warmWorkspace(context);
-				return moduleDefinition;
-			}
+			if (moduleDefinition) return moduleDefinition;
 
 			const options = typeof req === 'string' ? undefined : req;
 			const coreStepRow = context.nodeContractsEnabled ? coreStepRowOf(nodeType) : undefined;

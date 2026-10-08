@@ -494,7 +494,9 @@ describe('setupSandboxWorkspace', () => {
 						'/sandbox/.sandbox-initialized',
 					]),
 				);
-				expect(installCommandsFrom(runInSandbox)).toHaveLength(1);
+				expect(runInSandbox.mock.calls.some(([, command]) => command.includes('tar xzf'))).toBe(
+					true,
+				);
 			}
 		},
 	);
@@ -862,7 +864,11 @@ describe('setupSandboxWorkspace', () => {
 			nodeContractsEnabled: boolean,
 			failCachedInstall = false,
 			linkSdkEnv = true,
-		): Promise<string[]> {
+			{
+				extractResolves = false,
+				provider = 'daytona',
+			}: { extractResolves?: boolean; provider?: 'daytona' | 'n8n-sandbox' } = {},
+		): Promise<{ installs: string[]; extracts: string[] }> {
 			const runInSandbox: RunInSandboxMock =
 				vi.fn<
 					(
@@ -873,6 +879,9 @@ describe('setupSandboxWorkspace', () => {
 				await Promise.resolve();
 				if (failCachedInstall && command.includes('--prefer-offline')) {
 					return { exitCode: 1, stdout: '', stderr: 'npm error code ETARGET' };
+				}
+				if (!extractResolves && command.includes('tar xzf')) {
+					return { exitCode: 1, stdout: '', stderr: 'Missing or mismatched: @types/luxon@^3' };
 				}
 				return { exitCode: 0, stdout: '', stderr: '' };
 			});
@@ -889,10 +898,10 @@ describe('setupSandboxWorkspace', () => {
 				(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
 			>(async () => {});
 
-			const initialized = await setupSandboxWorkspace(createFilesystemWorkspace(writeFile), {
-				...createSetupContext(),
-				nodeContractsEnabled,
-			});
+			const initialized = await setupSandboxWorkspace(
+				createFilesystemWorkspace(writeFile, undefined, provider),
+				{ ...createSetupContext(), nodeContractsEnabled },
+			);
 
 			expect(initialized).toBe(true);
 			expect(writeFile).toHaveBeenCalledWith(
@@ -900,33 +909,99 @@ describe('setupSandboxWorkspace', () => {
 				linkedTarballs[0].tarball,
 				{ recursive: true },
 			);
-			return installCommandsFrom(runInSandbox);
+			const commands = runInSandbox.mock.calls.map(([, command]) => command);
+			return {
+				installs: installCommandsFrom(runInSandbox),
+				extracts: commands.filter((command) => command.includes('tar xzf')),
+			};
 		}
 
-		it('runs one npm install with the linked tarballs when node contracts are enabled', async () => {
-			expect(await runLinkedSetup(true)).toEqual([
-				`npm install ${tarballArgs} --no-save --force --ignore-scripts --no-audit --no-fund --prefer-offline`,
-			]);
+		const linkedInstall = (flags: string) =>
+			`npm install ${tarballArgs} --no-save --force --ignore-scripts --no-audit --no-fund ${flags}`;
+
+		it('extracts the host packages and skips npm install when their dependencies resolve', async () => {
+			const { installs, extracts } = await runLinkedSetup(true, false, true, {
+				extractResolves: true,
+			});
+
+			expect(installs).toEqual([]);
+			expect(extracts).toHaveLength(1);
+			expect(extracts[0]).toContain(
+				"tar xzf '/home/daytona/workspace/n8n-utils.tgz' -C 'node_modules/@n8n/utils' --strip-components=1",
+			);
+			expect(extracts[0]).toContain(
+				"tar xzf '/home/daytona/workspace/workflow-sdk.tgz' -C 'node_modules/@n8n/workflow-sdk' --strip-components=1",
+			);
+			expect(extracts[0]).toContain("'@n8n/utils' '@n8n/workflow-sdk'");
+		});
+
+		it('installs the host packages when the extracted dependencies do not resolve', async () => {
+			expect((await runLinkedSetup(true)).installs).toEqual([linkedInstall('--prefer-offline')]);
 		});
 
 		it('installs the host packages when node contracts are enabled without the link env', async () => {
 			// The registry copy of the host SDK version has no `./next` export.
-			expect(await runLinkedSetup(true, false, false)).toEqual([
-				`npm install ${tarballArgs} --no-save --force --ignore-scripts --no-audit --no-fund --prefer-offline`,
+			expect((await runLinkedSetup(true, false, false)).installs).toEqual([
+				linkedInstall('--prefer-offline'),
 			]);
+		});
+
+		it('tries the npm cache first on the n8n-sandbox provider when node contracts are enabled', async () => {
+			expect(
+				(await runLinkedSetup(true, true, true, { provider: 'n8n-sandbox' })).installs,
+			).toEqual([linkedInstall('--prefer-offline'), linkedInstall('--prefer-online')]);
 		});
 
 		it('keeps the linked tarballs when the combined install retries with fresh metadata', async () => {
-			expect(await runLinkedSetup(true, true)).toEqual([
-				`npm install ${tarballArgs} --no-save --force --ignore-scripts --no-audit --no-fund --prefer-offline`,
-				`npm install ${tarballArgs} --no-save --force --ignore-scripts --no-audit --no-fund --prefer-online`,
+			expect((await runLinkedSetup(true, true)).installs).toEqual([
+				linkedInstall('--prefer-offline'),
+				linkedInstall('--prefer-online'),
 			]);
 		});
 
+		it('syncs the knowledge base while the host packages go in', async () => {
+			const runInSandbox: RunInSandboxMock = vi.fn(
+				async () => await Promise.resolve({ exitCode: 0, stdout: '', stderr: '' }),
+			);
+			const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn(
+				async () => await Promise.resolve(null),
+			);
+			const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+				runInSandbox,
+				readFileViaSandbox,
+			);
+			packWorkspaceSdkMockState.isEnabled = true;
+			packWorkspaceSdkMockState.packHostSandboxPackages.mockResolvedValue(linkedTarballs);
+			const knowledgeBaseWrite = createDeferredPromise();
+			const writeFile = vi.fn<
+				(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
+			>(async (path) => {
+				if (path.includes('/knowledge-base/')) await knowledgeBaseWrite.promise;
+			});
+
+			const setup = setupSandboxWorkspace(createFilesystemWorkspace(writeFile), {
+				...createSetupContext(),
+				nodeContractsEnabled: true,
+			});
+
+			await vi.waitFor(() =>
+				expect(runInSandbox.mock.calls.some(([, command]) => command.includes('tar xzf'))).toBe(
+					true,
+				),
+			);
+			knowledgeBaseWrite.resolve();
+			await expect(setup).resolves.toBe(true);
+		});
+
 		it('runs the base install and then the tarball install when node contracts are disabled', async () => {
-			expect(await runLinkedSetup(false)).toEqual([
+			const { installs, extracts } = await runLinkedSetup(false, false, true, {
+				extractResolves: true,
+			});
+
+			expect(extracts).toEqual([]);
+			expect(installs).toEqual([
 				'npm install --ignore-scripts --no-audit --no-fund --prefer-offline',
-				`npm install ${tarballArgs} --no-save --force --ignore-scripts --no-audit --no-fund --prefer-offline`,
+				linkedInstall('--prefer-offline'),
 			]);
 		});
 	});

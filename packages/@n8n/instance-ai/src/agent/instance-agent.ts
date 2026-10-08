@@ -48,6 +48,7 @@ import type {
 	ModelConfig,
 } from '../types';
 import { withModalSession } from '../utils/modal-session';
+import { warmOnBuilderSkill } from '../workspace/warm-workspace';
 
 function resolveModalSessionModelId(
 	modelId: ModelConfig,
@@ -285,7 +286,11 @@ export async function createInstanceAgent(
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
 	}
-	const runtimeSkills = orchestrationContext?.runtimeSkills;
+	// Without node contracts, the skill source is in the sandbox, so any load_skill starts it.
+	const runtimeSkills =
+		domainContext.nodeContractsEnabled && orchestrationContext?.runtimeSkills
+			? warmOnBuilderSkill(orchestrationContext.runtimeSkills, domainContext)
+			: orchestrationContext?.runtimeSkills;
 	if (hasRuntimeSkills(runtimeSkills)) {
 		agent.skills(runtimeSkills);
 	}
@@ -294,7 +299,7 @@ export async function createInstanceAgent(
 	}
 	attachRuntimeWorkspaceCapabilities(agent, {
 		workspace: orchestrationContext?.workspace,
-		runtimeSkills: orchestrationContext?.runtimeSkills,
+		runtimeSkills,
 	});
 
 	if (options.memory) {

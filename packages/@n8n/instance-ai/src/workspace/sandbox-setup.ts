@@ -68,6 +68,7 @@ type SandboxWorkspaceSetupStep =
 	| 'materialize-knowledge-base'
 	| 'install-dependencies'
 	| 'link-workspace-sdk'
+	| 'extract-linked-packages'
 	| 'write-initialization-marker';
 
 export class SandboxWorkspaceSetupError extends Error {
@@ -557,64 +558,10 @@ export async function setupSandboxWorkspace(
 				'write-workspace-files',
 				async () => await writeWorkspaceFiles(workspace, root, files),
 			);
-			await materializeKnowledgeBaseStep(workspace, root, context);
-
-			// Node contracts import `@n8n/workflow-sdk/next`. The registry copy of the host
-			// version does not export it, so always install the host's own packages. One
-			// install covers package.json and the tarballs; a separate base install repeats work.
-			const mergeLinkedInstall = context.nodeContractsEnabled === true;
-			const linkedPackages = mergeLinkedInstall
-				? await setupStep(
-						'link-workspace-sdk',
-						async () => await uploadLinkedWorkspacePackages(workspace, root, context.logger, true),
-					)
-				: null;
-			const linkedInstallArgs = linkedPackages
-				? `${linkedPackages.tarballArgs} --no-save --force `
-				: '';
-
-			// npm install (must run after package.json is in place)
-			await setupStep('install-dependencies', async () => {
-				// One deadline covers both attempts. The signal stops us waiting; it does not kill
-				// the remote command, which the sandbox collects at its own timeout.
-				const deadline = Date.now() + INSTALL_STEP_BUDGET_MS;
-				const install = async (flags: string) =>
-					await runInSandbox(workspace, `npm install ${linkedInstallArgs}${flags}`, {
-						cwd: root,
-						abortSignal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
-					});
-
-				const flags = resolveNpmInstallFlags(workspace);
-				let npmResult = await install(flags);
-				if (
-					npmResult.exitCode !== 0 &&
-					flags !== NPM_INSTALL_FLAGS_REFRESH_METADATA &&
-					Date.now() < deadline
-				) {
-					// A snapshot older than the pinned SDK version holds a packument that cannot
-					// resolve it. That is the one failure the cache causes, and refreshing metadata
-					// is the only way out, so retry once with whatever budget is left. Providers
-					// that already refresh have nothing left to try.
-					context.logger.warn('Sandbox npm install failed against the cache; refreshing metadata', {
-						stderr: npmResult.stderr.slice(0, 500),
-						remainingMs: deadline - Date.now(),
-					});
-					npmResult = await install(NPM_INSTALL_FLAGS_REFRESH_METADATA);
-				}
-				if (npmResult.exitCode !== 0) {
-					throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
-				}
-			});
-			if (linkedPackages) {
-				logLinkedWorkspacePackages(context.logger, linkedPackages.packedPackages);
-			}
-
-			if (isLinkWorkspaceSdkEnabled() && !mergeLinkedInstall) {
-				await setupStep(
-					'link-workspace-sdk',
-					async () => await linkWorkspaceSdkIfEnabled(workspace, root, context.logger),
-				);
-			}
+			await Promise.all([
+				materializeKnowledgeBaseStep(workspace, root, context),
+				installDependencies(workspace, root, context),
+			]);
 
 			await setupStep(
 				'write-initialization-marker',
@@ -629,4 +576,137 @@ export async function setupSandboxWorkspace(
 			return true;
 		},
 	);
+}
+
+/**
+ * Checks, in the workspace root, that every dependency of package.json and of each named
+ * package resolves to a version in its range. Uses the semver copy that ships with npm.
+ */
+const CHECK_LINKED_DEPENDENCIES_JS = `
+const { createRequire } = require("module");
+const { existsSync, readFileSync } = require("fs");
+const { dirname, join } = require("path");
+const semver = require(join(dirname(process.execPath), "..", "lib", "node_modules", "npm", "node_modules", "semver"));
+const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
+const problems = [];
+const check = (dir, deps) => {
+  const req = createRequire(join(dir, "package.json"));
+  for (const [name, range] of Object.entries(deps ?? {})) {
+    const found = (req.resolve.paths(name) ?? []).map((p) => join(p, name, "package.json")).find((p) => existsSync(p));
+    const version = found && readJson(found).version;
+    if (!version || !semver.satisfies(version, range)) problems.push(name + "@" + range);
+  }
+};
+const root = readJson("package.json");
+check(process.cwd(), { ...root.dependencies, ...root.devDependencies });
+for (const name of process.argv.slice(1)) {
+  const dir = join(process.cwd(), "node_modules", name);
+  check(dir, readJson(join(dir, "package.json")).dependencies);
+}
+if (problems.length > 0) {
+  console.error("Missing or mismatched: " + problems.join(", "));
+  process.exit(1);
+}
+`;
+
+/**
+ * Unpack the host packages over the node_modules of the image. True when every dependency
+ * resolves, so no npm install is necessary. An image without the dependencies of the host
+ * packages gives false.
+ */
+async function extractLinkedPackages(
+	workspace: SandboxWorkspace,
+	root: string,
+	packedPackages: WorkspacePackageTarball[],
+	logger: Logger,
+): Promise<boolean> {
+	const quote = (value: string) => `'${escapeSingleQuotes(value)}'`;
+	const extract = packedPackages.map(({ packageName, filename }) => {
+		const target = quote(`node_modules/${packageName}`);
+		const tarball = quote(joinWorkspacePath(root, filename));
+		return `rm -rf ${target} && mkdir -p ${target} && tar xzf ${tarball} -C ${target} --strip-components=1`;
+	});
+	const names = packedPackages.map(({ packageName }) => quote(packageName)).join(' ');
+	const check = `node -e ${quote(CHECK_LINKED_DEPENDENCIES_JS)} ${names}`;
+	const result = await runInSandbox(workspace, [...extract, check].join(' && '), { cwd: root });
+	if (result.exitCode !== 0) {
+		logger.info('Sandbox image lacks dependencies of the host packages; running npm install', {
+			stderr: result.stderr.slice(0, 500),
+		});
+	}
+	return result.exitCode === 0;
+}
+
+async function installDependencies(
+	workspace: SandboxWorkspace,
+	root: string,
+	context: InstanceAiContext,
+): Promise<void> {
+	// Node contracts import `@n8n/workflow-sdk/next`. The registry copy of the host
+	// version does not export it, so always install the host's own packages. One
+	// install covers package.json and the tarballs; a separate base install repeats work.
+	const mergeLinkedInstall = context.nodeContractsEnabled === true;
+	const linkedPackages = mergeLinkedInstall
+		? await setupStep(
+				'link-workspace-sdk',
+				async () => await uploadLinkedWorkspacePackages(workspace, root, context.logger, true),
+			)
+		: null;
+	const extracted =
+		linkedPackages !== null &&
+		(await setupStep(
+			'extract-linked-packages',
+			async () =>
+				await extractLinkedPackages(workspace, root, linkedPackages.packedPackages, context.logger),
+		));
+	const linkedInstallArgs = linkedPackages
+		? `${linkedPackages.tarballArgs} --no-save --force `
+		: '';
+
+	if (!extracted) {
+		// npm install (must run after package.json is in place)
+		await setupStep('install-dependencies', async () => {
+			// One deadline covers both attempts. The signal stops us waiting; it does not kill
+			// the remote command, which the sandbox collects at its own timeout.
+			const deadline = Date.now() + INSTALL_STEP_BUDGET_MS;
+			const install = async (flags: string) =>
+				await runInSandbox(workspace, `npm install ${linkedInstallArgs}${flags}`, {
+					cwd: root,
+					abortSignal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
+				});
+
+			// The image cache holds most dependencies of the host packages, and the retry
+			// below refreshes metadata when it does not.
+			const flags = mergeLinkedInstall ? NPM_INSTALL_FLAGS : resolveNpmInstallFlags(workspace);
+			let npmResult = await install(flags);
+			if (
+				npmResult.exitCode !== 0 &&
+				flags !== NPM_INSTALL_FLAGS_REFRESH_METADATA &&
+				Date.now() < deadline
+			) {
+				// A snapshot older than the pinned SDK version holds a packument that cannot
+				// resolve it. That is the one failure the cache causes, and refreshing metadata
+				// is the only way out, so retry once with whatever budget is left. Providers
+				// that already refresh have nothing left to try.
+				context.logger.warn('Sandbox npm install failed against the cache; refreshing metadata', {
+					stderr: npmResult.stderr.slice(0, 500),
+					remainingMs: deadline - Date.now(),
+				});
+				npmResult = await install(NPM_INSTALL_FLAGS_REFRESH_METADATA);
+			}
+			if (npmResult.exitCode !== 0) {
+				throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
+			}
+		});
+	}
+	if (linkedPackages) {
+		logLinkedWorkspacePackages(context.logger, linkedPackages.packedPackages);
+	}
+
+	if (isLinkWorkspaceSdkEnabled() && !mergeLinkedInstall) {
+		await setupStep(
+			'link-workspace-sdk',
+			async () => await linkWorkspaceSdkIfEnabled(workspace, root, context.logger),
+		);
+	}
 }
