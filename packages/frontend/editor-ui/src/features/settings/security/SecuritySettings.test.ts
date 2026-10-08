@@ -955,7 +955,9 @@ describe('SecuritySettings', () => {
 			expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
 		});
 
-		it('keeps the saved policy when Inbox availability cannot load', async () => {
+		it('keeps Inbox accessible after a saved policy when settings cannot refresh', async () => {
+			settingsStore.settings.activeModules = ['inbox', 'workflow-reviews'];
+			settingsStore.settings.inbox = { enabled: false, availableTypes: [], failedTypes: [] };
 			settingsStore.getSettings.mockRejectedValueOnce(new Error('Settings unavailable'));
 			updateSecuritySettings.mockResolvedValue({ workflowReviews: { enabled: true } });
 			const { findByTestId } = renderView();
@@ -963,6 +965,11 @@ describe('SecuritySettings', () => {
 			await userEvent.click(toggle);
 			await waitFor(() => expect(showToast).toHaveBeenCalled());
 			expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
+			expect(settingsStore.settings.inbox).toEqual({
+				enabled: true,
+				availableTypes: ['workflow_review'],
+				failedTypes: [],
+			});
 			expect(toggle).not.toHaveClass('is-disabled');
 			expect(showError).not.toHaveBeenCalled();
 		});

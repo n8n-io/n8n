@@ -109,7 +109,7 @@ async function onDecide(input: WorkflowReviewDecisionInput) {
 			activityStore.clearDecisionNote(input.note ?? '');
 		}
 
-		if (isActive() && isSelected(id)) {
+		if (isSelected(id)) {
 			void activityStore.fetchFeed(id);
 
 			if (state === 'closed' || detail.value?.id !== id) {

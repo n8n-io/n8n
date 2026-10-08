@@ -57,7 +57,7 @@ const detailTab = computed(() => (route.query.tab === 'changes' ? 'changes' : 'a
 let isMounted = false;
 
 function isOnInbox() {
-	return isInboxRoute(route);
+	return isInboxRoute(router.currentRoute.value);
 }
 
 function isActive() {
@@ -65,7 +65,8 @@ function isActive() {
 }
 
 function isSelectedReview(id: string) {
-	return selection.value?.type === 'workflow_review' && selection.value.id === id;
+	const selected = selectionFromRoute(router.currentRoute.value);
+	return selected?.type === 'workflow_review' && selected.id === id;
 }
 
 // Reset on entry. A layout-swap copy can unmount after the next view has mounted.
@@ -109,16 +110,20 @@ function onDetailTabChange(tab: 'activity' | 'changes') {
 	void router.replace({ query });
 }
 function onItemChange(change: InboxItemChange) {
-	if (!isMounted || !isOnInbox()) return;
+	if (!change.state && !isActive()) return;
+	// A successful decision still updates shared state after this view unmounts.
 	store.reconcileItemChange(change);
+	if (!isOnInbox()) return;
 	if (!change.state) void store.fetchActiveTab();
+	const currentRoute = router.currentRoute.value;
+	const selected = selectionFromRoute(currentRoute);
 	if (
 		change.state === 'closed' &&
 		activeTab.value !== 'closed' &&
-		selection.value?.type === change.type &&
-		selection.value.id === change.id
+		selected?.type === change.type &&
+		selected.id === change.id
 	) {
-		void router.replace({ query: { ...route.query, state: 'closed' } });
+		void router.replace({ query: { ...currentRoute.query, state: 'closed' } });
 	}
 }
 

@@ -316,6 +316,21 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const setWorkflowReviewsPolicy = (policy: WorkflowReviewsPolicy) => {
 		settings.value.workflowReviews = policy;
+
+		const inbox = settings.value.inbox;
+		if (!inbox || !isModuleActive('inbox')) return;
+
+		// Keep access in sync with a saved policy if the next settings refresh fails.
+		inbox.availableTypes = inbox.availableTypes.filter((type) => type !== 'workflow_review');
+		inbox.failedTypes = inbox.failedTypes.filter((type) => type !== 'workflow_review');
+		if (
+			policy.enabled &&
+			isEnterpriseFeatureEnabled.value.workflowReviews &&
+			isModuleActive('workflow-reviews')
+		) {
+			inbox.availableTypes.push('workflow_review');
+		}
+		inbox.enabled = inbox.availableTypes.length > 0 || inbox.failedTypes.length > 0;
 	};
 
 	const setSaveDataErrorExecution = (newValue: WorkflowSettings.SaveDataExecution) => {
