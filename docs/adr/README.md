@@ -2,9 +2,7 @@
 
 An Architecture Decision Record (ADR) is a short, dated record of one
 important technical decision: the context, the decision, the alternatives,
-and the consequences. Each package keeps its records in its own `docs/adr/`
-directory, for example `packages/@n8n/engine/docs/adr/`. Records that concern
-the whole repository live in this directory.
+and the consequences.
 
 The company process is defined in the Notion page
 [Engineering Technical Decisions][process] and its sub-page
@@ -24,6 +22,14 @@ into one record.
 
 Do not write an ADR for an implementation detail, a refactor, or a choice that
 follows an existing decision.
+
+## Location
+
+Store a record in the package where the implementation lives, in its
+`docs/adr/` directory. For example, a record about engine v2 goes in
+`packages/@n8n/engine/docs/adr/`. A record that concerns the whole repository
+goes in the root `docs/adr/`, next to this README. CI rejects any other
+location.
 
 ## File name
 
