@@ -48,6 +48,7 @@ export type {
 	ReadOptions,
 	RemoveOptions,
 	SandboxInfo,
+	SandboxPortRoute,
 	SandboxProcessManager,
 	SpawnProcessOptions,
 	WorkspaceFilesystem,

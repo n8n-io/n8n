@@ -3,12 +3,19 @@ import { access, mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from 'n
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
-import { AgentCodingConfigSchema } from '@n8n/api-types';
+import { AgentCodingConfigSchema, type AgentCodingStatus } from '@n8n/api-types';
 import type { WorkspaceFilesystem, WorkspaceSandbox } from '@n8n/agents';
-import type { LockService } from '@n8n/backend-common';
+import type { SandboxProvider } from '@n8n/agents/sandbox';
+import type { LockService, Logger } from '@n8n/backend-common';
+import { createFakeOutboundHttp } from '@n8n/backend-network/testing';
+import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { BadRequestError } from '@n8n/errors';
+import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { JwtService } from '@/services/jwt.service';
+import type { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentCodingService } from '../agent-coding.service';
 import { codingSessionPaths } from '../agent-coding-session';
 import type { AgentSandboxRuntime } from '../agent-sandbox-runtime.service';
@@ -19,6 +26,8 @@ import type { AgentExecutionThread } from '../entities/agent-execution-thread.en
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import { SandboxPortCapability } from '../sandbox-preview/sandbox-port-capability.service';
+import { SandboxPreviewService } from '../sandbox-preview/sandbox-preview.service';
 
 const exec = promisify(execFile);
 
@@ -101,9 +110,218 @@ function localService(root: string) {
 		threads,
 		executions,
 		lock,
+		mock<SandboxPreviewService>(),
 	);
 	return { service, threads, executions };
 }
+
+function codingStatus(app: AgentCodingStatus['app']): AgentCodingStatus {
+	return {
+		phase: 'ready',
+		branch: 'main',
+		changes: [],
+		uncommittedChanges: 0,
+		uncommittedPaths: [],
+		app,
+		check: 'not_started',
+		setupExitCode: 0,
+		checkExitCode: null,
+	};
+}
+
+/**
+ * A coding service whose status probe answers `app` directly, so these tests
+ * do not depend on the status script that runs in the sandbox.
+ */
+function codingService(
+	provider: SandboxProvider,
+	sandbox: WorkspaceSandbox,
+	sandboxPreviewService: SandboxPreviewService,
+) {
+	const config = AgentCodingConfigSchema.parse({
+		repositoryUrl: 'https://example.invalid/demo.git',
+		port: 5173,
+	});
+	const agentRepository = mock<AgentRepository>();
+	agentRepository.findByIdAndProjectId.mockResolvedValue(
+		mock<Agent>({ schema: { name: 'Coding', model: 'test', instructions: '', coding: config } }),
+	);
+	const workspaceService = mock<AgentWorkspaceService>();
+	workspaceService.getAgentWorkspace.mockResolvedValue({
+		workspace: mock(),
+		handle: mock<AgentSandboxRuntime>({
+			provider,
+			sandbox,
+			filesystem: mock<WorkspaceFilesystem>(),
+			workspaceRoot: '/home/user/workspace',
+			cacheKey: 'workspace',
+		}),
+	});
+	const service = new AgentCodingService(
+		agentRepository,
+		workspaceService,
+		mock<CredentialsService>(),
+		mock<AgentExecutionThreadRepository>(),
+		mock<AgentExecutionRepository>(),
+		mock<LockService>(),
+		sandboxPreviewService,
+	);
+	const inspect = vi.spyOn(service as unknown as { inspect: () => Promise<unknown> }, 'inspect');
+	inspect.mockResolvedValue(codingStatus('running'));
+	return { service, inspect };
+}
+
+function previewService(provider: SandboxProvider, sandbox: WorkspaceSandbox) {
+	const sandboxPreviewService = mock<SandboxPreviewService>();
+	return { ...codingService(provider, sandbox, sandboxPreviewService), sandboxPreviewService };
+}
+
+/** The real preview service, with a sandbox service whose `/healthz` lists `capabilities`. */
+function realPreviewService(capabilities: string[]) {
+	const { outboundHttp } = createFakeOutboundHttp(
+		[{ pathname: '/healthz', status: 200, body: { status: 'ok', capabilities } }],
+		vi.fn as unknown as Parameters<typeof createFakeOutboundHttp>[1],
+	);
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
+	const jwtService = new JwtService(
+		mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
+		mock<GlobalConfig>({ userManagement: { jwtSecret: '' } }),
+		mock(),
+	);
+	return new SandboxPreviewService(
+		jwtService,
+		mock<SandboxSettingsService>(),
+		new SandboxPortCapability(logger, outboundHttp),
+		mock<GlobalConfig>({ path: '/' }),
+	);
+}
+
+describe('AgentCodingService.preview', () => {
+	const user = mock<User>({ id: 'test-user' });
+
+	describe('on the n8n sandbox service', () => {
+		it.each(['running', 'starting'] as const)(
+			'returns the n8n proxy URL while the app is %s',
+			async (app) => {
+				const getPreviewUrl = vi.fn();
+				const sandbox = mock<WorkspaceSandbox>({ getPreviewUrl });
+				const { service, sandboxPreviewService, inspect } = previewService('n8n-sandbox', sandbox);
+				inspect.mockResolvedValue(codingStatus(app));
+				sandboxPreviewService.open.mockResolvedValue({ url: '/sandbox-preview/token/' });
+
+				const preview = await service.preview('project', 'agent', user);
+
+				expect(preview).toEqual({ url: '/sandbox-preview/token/' });
+				expect(sandboxPreviewService.open).toHaveBeenCalledWith(sandbox, {
+					userId: 'test-user',
+					projectId: 'project',
+					port: 5173,
+				});
+				expect(getPreviewUrl).not.toHaveBeenCalled();
+			},
+		);
+
+		it('passes on the error of a service without the ports capability', async () => {
+			const { service, sandboxPreviewService } = previewService(
+				'n8n-sandbox',
+				mock<WorkspaceSandbox>(),
+			);
+			sandboxPreviewService.open.mockRejectedValue(
+				new BadRequestError('This sandbox service cannot show app previews yet.'),
+			);
+
+			await expect(service.preview('project', 'agent', user)).rejects.toThrow(
+				'This sandbox service cannot show app previews yet.',
+			);
+		});
+
+		it.each(['stopped', 'error'] as const)(
+			'asks to run the app first when the app is %s',
+			async (app) => {
+				const { service, sandboxPreviewService, inspect } = previewService(
+					'n8n-sandbox',
+					mock<WorkspaceSandbox>(),
+				);
+				inspect.mockResolvedValue(codingStatus(app));
+
+				await expect(service.preview('project', 'agent', user)).rejects.toThrow(
+					'Run the app for this session before opening its preview',
+				);
+				expect(sandboxPreviewService.open).not.toHaveBeenCalled();
+			},
+		);
+	});
+
+	describe('on the n8n sandbox service, with the real preview service', () => {
+		const route = {
+			serviceUrl: 'http://sandbox-service.test',
+			path: '/sandboxes/sb-1/ports/5173',
+		};
+
+		it('returns a URL whose token names the user, the project and the port route', async () => {
+			const getPortRoute = vi.fn().mockResolvedValue(route);
+			const previews = realPreviewService(['exec', 'ports']);
+			const { service } = codingService(
+				'n8n-sandbox',
+				mock<WorkspaceSandbox>({ getPortRoute }),
+				previews,
+			);
+
+			const { url } = await service.preview('project', 'agent', user);
+
+			expect(url).toMatch(/^\/sandbox-preview\/[^/]+\/$/);
+			expect(previews.resolveToken(url.split('/')[2])).toEqual(
+				expect.objectContaining({ userId: 'test-user', projectId: 'project', ...route }),
+			);
+			expect(getPortRoute).toHaveBeenCalledWith(5173);
+		});
+
+		it('shows the capability message when the service cannot serve ports', async () => {
+			const getPortRoute = vi.fn().mockResolvedValue(route);
+			const { service } = codingService(
+				'n8n-sandbox',
+				mock<WorkspaceSandbox>({ getPortRoute }),
+				realPreviewService(['exec']),
+			);
+
+			const error = await service.preview('project', 'agent', user).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error).toHaveProperty('message', 'This sandbox service cannot show app previews yet.');
+		});
+	});
+
+	describe('on Daytona', () => {
+		it('keeps returning the signed Daytona preview URL', async () => {
+			const getPreviewUrl = vi
+				.fn()
+				.mockResolvedValue('https://5173-sandbox.proxy.daytona.test/?t=1');
+			const { service, sandboxPreviewService } = previewService(
+				'daytona',
+				mock<WorkspaceSandbox>({ getPreviewUrl }),
+			);
+
+			const preview = await service.preview('project', 'agent', user);
+
+			expect(preview).toEqual({ url: 'https://5173-sandbox.proxy.daytona.test/?t=1' });
+			expect(getPreviewUrl).toHaveBeenCalledWith(5173);
+			expect(sandboxPreviewService.open).not.toHaveBeenCalled();
+		});
+
+		it('keeps the error for a sandbox without a preview URL', async () => {
+			const { service, sandboxPreviewService } = previewService(
+				'daytona',
+				mock<WorkspaceSandbox>({ getPreviewUrl: undefined }),
+			);
+
+			await expect(service.preview('project', 'agent', user)).rejects.toThrow(
+				'App preview requires the Daytona sandbox provider for this demo',
+			);
+			expect(sandboxPreviewService.open).not.toHaveBeenCalled();
+		});
+	});
+});
 
 it('keeps worktree edits and reviews separate through commits and archive/reopen', async () => {
 	const root = await mkdtemp(join(tmpdir(), 'n8n-coding-worktrees-'));

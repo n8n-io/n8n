@@ -22,6 +22,7 @@ export const TOKEN_PURPOSES = {
 	oauthSession: 'n8n:oauth-session',
 	tokenExchange: 'n8n:token-exchange',
 	teamsArmTemplate: 'n8n:teams-arm-template',
+	sandboxPreview: 'n8n:sandbox-preview',
 	publicApiKey: 'public-api',
 	mcpApiKey: 'mcp-server-api',
 } as const satisfies Record<string, string> & {

@@ -134,8 +134,20 @@ export interface SandboxInfo {
 	metadata?: Record<string, unknown>;
 }
 
+/**
+ * Where a sandbox service serves one port of one sandbox. It holds no
+ * credential: the server adds the service API key when it proxies.
+ */
+export interface SandboxPortRoute {
+	/** Sandbox service base URL, without a trailing slash. */
+	serviceUrl: string;
+	/** `/sandboxes/<id>/ports/<port>` on that service. */
+	path: string;
+}
+
 export interface WorkspaceSandbox {
 	getPreviewUrl?(port: number): Promise<string>;
+	getPortRoute?(port: number): Promise<SandboxPortRoute>;
 	readonly id: string;
 	readonly name: string;
 	readonly provider: string;

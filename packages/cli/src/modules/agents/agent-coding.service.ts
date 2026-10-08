@@ -45,6 +45,7 @@ import {
 	readCodingSession,
 } from './agent-coding-session';
 import { CODING_STATUS_SCRIPT, CODING_STOP_SCRIPT } from './agent-coding-status';
+import { SandboxPreviewService } from './sandbox-preview/sandbox-preview.service';
 
 interface CodingContext {
 	config: AgentCodingConfig;
@@ -56,6 +57,7 @@ interface CodingContext {
 
 @Service()
 export class AgentCodingService {
+	// oxlint-disable-next-line eslint/max-params -- DI constructor injection
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly workspaceService: AgentWorkspaceService,
@@ -63,6 +65,7 @@ export class AgentCodingService {
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly lockService: LockService,
+		private readonly sandboxPreviewService: SandboxPreviewService,
 	) {}
 
 	private async context(
@@ -514,6 +517,13 @@ export class AgentCodingService {
 			throw new BadRequestError('Run the app for this session before opening its preview');
 		}
 		const sandbox = context.handle.sandbox;
+		if (context.handle.provider === 'n8n-sandbox') {
+			return await this.sandboxPreviewService.open(sandbox, {
+				userId: user.id,
+				projectId,
+				port: context.config.port,
+			});
+		}
 		if (!sandbox.getPreviewUrl) {
 			throw new BadRequestError('App preview requires the Daytona sandbox provider for this demo');
 		}

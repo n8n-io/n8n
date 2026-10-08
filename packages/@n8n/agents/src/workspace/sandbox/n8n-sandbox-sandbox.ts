@@ -5,7 +5,13 @@ import { randomUUID } from 'node:crypto';
 import { BaseSandbox } from './base-sandbox';
 import { toShellCommand } from './shell-command';
 import { raceWithAbort } from '../../sdk/abort';
-import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
+import type {
+	CommandResult,
+	ExecuteCommandOptions,
+	ProviderStatus,
+	SandboxInfo,
+	SandboxPortRoute,
+} from '../types';
 
 export interface N8nSandboxServiceSandboxOptions {
 	/** Lowercase UUID to create or reconnect to; the service generates one when omitted. */
@@ -126,6 +132,23 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 			executionTimeMs: result.executionTimeMs,
 			timedOut: result.timedOut,
 			killed: result.killed,
+		};
+	}
+
+	/**
+	 * The service route to `port` inside this sandbox. It leaves out the API key,
+	 * so the caller can hand the route on and add the key only when it proxies.
+	 */
+	async getPortRoute(port: number): Promise<SandboxPortRoute> {
+		if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+			throw new Error(`Sandbox port must be a whole number from 1 to 65535, got ${port}`);
+		}
+		const serviceUrl = this.options.serviceUrl?.trim().replace(/\/+$/, '');
+		if (!serviceUrl) throw new Error('Sandbox service URL is not configured');
+		await this.ensureRunning();
+		return {
+			serviceUrl,
+			path: `/sandboxes/${encodeURIComponent(this.requireSandboxId())}/ports/${port}`,
 		};
 	}
 
