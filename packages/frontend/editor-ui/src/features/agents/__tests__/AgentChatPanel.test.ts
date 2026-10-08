@@ -256,8 +256,6 @@ vi.mock('../composables/useAgentChatStream', () => ({
 				// Mirrors the composable: every capability is off on the n8n Chat channel.
 				const isPreview = options.channel?.value !== 'n8n-chat';
 				return {
-					steer: isPreview,
-					reorder: isPreview,
 					previewHistory: isPreview,
 					traceLinks: isPreview,
 				};
@@ -488,6 +486,29 @@ describe('AgentChatPanel', () => {
 				const rows = wrapper.findAll('[data-testid="chat-queued-message"]');
 				expect(rows).toHaveLength(1);
 				expect(rows[0].text()).toContain('second message');
+				wrapper.unmount();
+			});
+
+			it('blocks reordering while the preview hides a queued message', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				sendMessageMock.mock.lastCall?.[2]?.('1');
+				queuedMessagesMock.value = ['1', '2', '3'].map((id) => ({
+					id,
+					steeringExecutionId: null,
+					message: id === '1' ? 'hello agent' : `message ${id}`,
+					createdAt: new Date().toISOString(),
+				}));
+				await flushPromises();
+
+				// The hidden item would be missing from the reorder's expected ids.
+				const handles = wrapper.findAll('[data-testid="chat-queue-drag-handle"]');
+				expect(handles).toHaveLength(2);
+				for (const handle of handles) {
+					expect(handle.attributes('disabled')).toBeDefined();
+				}
 				wrapper.unmount();
 			});
 
