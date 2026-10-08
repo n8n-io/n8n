@@ -17,7 +17,7 @@ import type { Response, Request, RequestHandler, Router } from 'express';
 
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthServerService } from './oauth-server.service';
@@ -81,10 +81,17 @@ const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
 // `/oauth/*` paths that future, non-MCP protected resources will advertise.
 const registerRouter = clientRegistrationHandler({
 	clientsStore: oauthServerService.clientsStore,
+	rateLimit: false,
 }) as Router;
-const authorizeRouter = authorizationHandler({ provider: oauthServerService }) as Router;
-const tokenRouter = tokenHandler({ provider: oauthServerService }) as Router;
-const revokeRouter = revocationHandler({ provider: oauthServerService }) as Router;
+const authorizeRouter = authorizationHandler({
+	provider: oauthServerService,
+	rateLimit: false,
+}) as Router;
+const tokenRouter = tokenHandler({ provider: oauthServerService, rateLimit: false }) as Router;
+const revokeRouter = revocationHandler({
+	provider: oauthServerService,
+	rateLimit: false,
+}) as Router;
 
 const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterMetadata[] => [
 	{
@@ -126,6 +133,9 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		),
 	},
 ];
+
+const discoverableResource = async (resource?: ProtectedResource) =>
+	resource && ((await resource.isAvailable?.()) ?? true) ? resource : undefined;
 
 const wellKnownIpRateLimit = createIpRateLimit(
 	oauthServerConfig.rateLimitWellKnown,
@@ -187,6 +197,8 @@ export class OAuthController {
 			token_endpoint: `${baseUrl}/mcp-oauth/token`,
 			registration_endpoint: `${baseUrl}/mcp-oauth/register`,
 			revocation_endpoint: `${baseUrl}/mcp-oauth/revoke`,
+			// RFC 8414 §2: public keys that verify the access tokens this server signs.
+			jwks_uri: this.urlService.getInstanceJwksUri(),
 			response_types_supported: ['code'],
 			grant_types_supported: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
@@ -200,6 +212,31 @@ export class OAuthController {
 		}
 
 		res.json(metadata);
+	}
+
+	@Options('/.well-known/oauth-authorization-server/*issuerPath', {
+		skipAuth: true,
+		usesTemplates: true,
+		ipRateLimit: wellKnownIpRateLimit,
+	})
+	pathInsertedMetadataOptions(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.status(204).end();
+	}
+
+	/**
+	 * RFC 8414 path-inserted probes target issuers with a path component; this
+	 * instance's issuer is the bare origin, so answer with a machine-readable
+	 * 404 rather than letting the probe fall through to Express's HTML 404.
+	 */
+	@Get('/.well-known/oauth-authorization-server/*issuerPath', {
+		skipAuth: true,
+		usesTemplates: true,
+		ipRateLimit: wellKnownIpRateLimit,
+	})
+	pathInsertedMetadata(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.status(404).json({ message: 'Unknown authorization server' });
 	}
 
 	@Options('/.well-known/oauth-protected-resource/*resourcePath', {
@@ -236,7 +273,9 @@ export class OAuthController {
 		const queryStart = req.originalUrl?.indexOf('?') ?? -1;
 		const search = queryStart === -1 ? '' : req.originalUrl.slice(queryStart);
 
-		const resource = await this.resourceRegistry.getByResourcePath(resourcePath + search);
+		const resource = await discoverableResource(
+			await this.resourceRegistry.getByResourcePath(resourcePath + search),
+		);
 		if (!resource) {
 			res.status(404).json({ message: 'Unknown protected resource' });
 			return;
@@ -270,17 +309,18 @@ export class OAuthController {
 	 *
 	 * Resolves to this instance's default protected resource (today, always
 	 * the single instance-wide MCP resource); returns 404 when no default is
-	 * registered so the caller can fall back to the resource-scoped URL.
+	 * registered, or when the registered one is currently unavailable, so the
+	 * caller can fall back to the resource-scoped URL.
 	 */
 	@Get('/.well-known/oauth-protected-resource', {
 		skipAuth: true,
 		usesTemplates: true,
 		ipRateLimit: wellKnownIpRateLimit,
 	})
-	defaultProtectedResourceMetadata(_req: Request, res: Response) {
+	async defaultProtectedResourceMetadata(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
 
-		const resource = this.resourceRegistry.getDefaultResource();
+		const resource = await discoverableResource(this.resourceRegistry.getDefaultResource());
 		if (!resource) {
 			res.status(404).json({ message: 'Unknown protected resource' });
 			return;

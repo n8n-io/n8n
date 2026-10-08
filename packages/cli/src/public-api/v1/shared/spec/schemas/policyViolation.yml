@@ -1,0 +1,31 @@
+type: object
+description: >
+  One reason a policy check objected. `kind`, `subjectType` and `scope` are open
+  strings, not enums, so later policy features can add values — a reader must
+  cope with values it does not recognise.
+required:
+  - kind
+  - checkId
+  - message
+properties:
+  kind:
+    type: string
+    description: 'e.g. `node-type-unavailable`. Do not assume you know every value.'
+  checkId:
+    type: string
+    description: Id of the check that objected.
+  message:
+    type: string
+    description: Readable on its own. Do not parse details out of it — use the fields below.
+  subject:
+    type: string
+    description: 'What was objected to: a node type name, a credential type name, …'
+  subjectType:
+    type: string
+    description: What kind of name `subject` is — node and credential type names can look alike.
+  scope:
+    type: string
+    description: Which level objected. Usually `instance` or `project`, but treat it as open.
+  matchedRuleId:
+    type: string
+    description: The rule that decided, if a rule did rather than a fallback default.

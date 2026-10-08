@@ -63,3 +63,45 @@ properties:
       already exist on the target.
     example: fail
     default: fail
+  workflowVersionPolicy:
+    type: string
+    enum:
+      - published-strict
+      - prefer-published
+      - ignore-unpublished
+      - latest
+    description: >-
+      Which version of each workflow travels in the package. `latest` exports
+      the latest version, published or not. `published-strict` exports the
+      published version and aborts the export if any workflow has none.
+      `prefer-published` falls back to the latest version where there is no
+      published one. `ignore-unpublished` leaves unpublished workflows out of
+      the package entirely. The chosen version decides which credentials, data
+      tables, variables and sub-workflows are bundled alongside it; the
+      workflow's name, settings and tags are not versioned and always come from
+      the latest version.
+    example: latest
+    default: latest
+  credentialExportPolicy:
+    type: string
+    enum:
+      - expression-values-only
+      - no-values
+    description: >-
+      Whether expression values from credential data are bundled into the
+      package. `expression-values-only` includes credential fields whose value
+      is an n8n expression (for example `={{ $secrets.apiKey }}`); literal
+      values never travel either way. `no-values` keeps credential data out of
+      the package entirely, so each credential file carries only its id, name
+      and type.
+    example: expression-values-only
+    default: expression-values-only
+  includeArchivedWorkflows:
+    type: boolean
+    description: >-
+      Whether folder and project exports include their archived workflows. When
+      `false` (default) they are left out. When `true` they travel with
+      `isArchived: true` and are archived on import. Workflows listed in
+      `workflowIds` always export, also when archived.
+    example: false
+    default: false

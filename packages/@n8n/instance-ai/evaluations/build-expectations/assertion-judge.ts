@@ -76,6 +76,14 @@ export async function judgeExpectations(
 			clearTimeout(timer);
 		}
 
+		// generate() never throws — API failures land in result.error and would otherwise
+		// read as an unexplained "produced no parseable results".
+		if (result.error !== undefined) {
+			const msg =
+				result.error instanceof Error ? result.error.message : JSON.stringify(result.error);
+			console.warn(`[expectations] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} model error: ${msg}`);
+		}
+
 		const parsed = expectationResultSchema.safeParse(result.structuredOutput);
 		const byIndex = new Map<number, { pass: boolean; reason: string }>();
 		if (parsed.success) {

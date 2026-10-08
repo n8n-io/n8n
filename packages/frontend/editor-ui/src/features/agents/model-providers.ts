@@ -41,7 +41,7 @@ export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 	openai: { displayName: 'OpenAI' },
 	anthropic: { displayName: 'Anthropic' },
 	google: { displayName: 'Google' },
-	'azure-openai': { displayName: 'Azure OpenAI' },
+	'azure-openai': { displayName: 'Microsoft Foundry' },
 	'aws-bedrock': { displayName: 'AWS Bedrock', isAggregator: true },
 	xai: { displayName: 'xAI' },
 	groq: { displayName: 'Groq' },
@@ -51,6 +51,9 @@ export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 	mistral: { displayName: 'Mistral' },
 	vercel: { displayName: 'Vercel AI Gateway', isAggregator: true },
 	nvidia: { displayName: 'NVIDIA' },
+	moonshotai: { displayName: 'Moonshot' },
+	alibaba: { displayName: 'Qwen Cloud' },
+	minimax: { displayName: 'MiniMax' },
 } satisfies Record<
 	AgentModelProvider,
 	{

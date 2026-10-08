@@ -20,7 +20,10 @@ import {
 } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
-import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
+import {
+	getInactiveCredentials,
+	usesParameterSelectedCredentials,
+} from '@/app/utils/nodeTypesUtils';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 /**
@@ -238,9 +241,20 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 			nodeType.credentials !== undefined
 		) {
 			const saveCredentials: INodeCredentials = {};
+			// Nodes that select their credential type through parameters (e.g. HTTP
+			// Request's nodeCredentialType / genericAuthType) don't declare those types
+			// in the node type description, so the display check below can't see them.
+			// Drop the ones the current configuration no longer uses instead, sharing the
+			// rule with the credential picker so both agree on what survives a save.
+			const parameterSelected = usesParameterSelectedCredentials(node);
+			const removableCredentialTypes = parameterSelected
+				? new Set(getInactiveCredentials(node, nodeType))
+				: new Set<string>();
 			for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
-				if (hasProxyAuth(node) || Object.keys(nodeParametersInput).includes('genericAuthType')) {
-					saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+				if (parameterSelected) {
+					if (!removableCredentialTypes.has(nodeCredentialTypeName)) {
+						saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+					}
 					continue;
 				}
 

@@ -5,9 +5,9 @@ import { mount } from '@vue/test-utils';
 import merge from 'lodash/merge';
 import { useBackendStatus } from './useBackendStatus';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 
 const mockStartHeartbeat = vi.fn();
 const mockStopHeartbeat = vi.fn();
@@ -42,6 +42,7 @@ describe('useBackendStatus', () => {
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 	});
@@ -89,6 +90,47 @@ describe('useBackendStatus', () => {
 
 		wrapper.unmount();
 	});
+
+	it.each([
+		{ name: 'configured', configuredTimeoutMs: 1500, timeoutMs: 1500 },
+		{
+			name: 'default when the setting is missing',
+			configuredTimeoutMs: undefined,
+			timeoutMs: 5000,
+		},
+	])(
+		'should abort the health check after the $name timeout',
+		async ({ configuredTimeoutMs, timeoutMs }) => {
+			vi.useFakeTimers();
+			if (configuredTimeoutMs === undefined) {
+				Reflect.deleteProperty(settingsStore.settings, 'healthCheckTimeoutMs');
+			} else {
+				settingsStore.settings.healthCheckTimeoutMs = configuredTimeoutMs;
+			}
+
+			mockFetch.mockImplementationOnce(
+				async (_url: string, { signal }: RequestInit) =>
+					await new Promise<Response>((_resolve, reject) => {
+						signal?.addEventListener('abort', () =>
+							reject(new DOMException('Aborted', 'AbortError')),
+						);
+					}),
+			);
+
+			const wrapper = createWrapper();
+			expect(mockFetch).toHaveBeenCalledOnce();
+			const request: RequestInit = mockFetch.mock.calls[0][1];
+			const signal = request.signal;
+
+			expect(signal?.aborted).toBe(false);
+			await vi.advanceTimersByTimeAsync(timeoutMs - 1);
+			expect(signal?.aborted).toBe(false);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(signal?.aborted).toBe(true);
+
+			wrapper.unmount();
+		},
+	);
 
 	it('should stop heartbeat on unmount', () => {
 		const wrapper = createWrapper();

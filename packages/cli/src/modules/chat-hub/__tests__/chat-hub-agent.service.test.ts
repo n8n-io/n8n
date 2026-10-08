@@ -5,7 +5,7 @@ import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
@@ -499,14 +499,10 @@ describe('ChatHubAgentService', () => {
 				executionData: {} as IRunExecutionData,
 			});
 
-			const mockTransaction = vi.fn(
-				async (cb: (trx: never) => Promise<unknown>) => await cb(mock()),
+			agentRepository.runInTransaction.mockImplementation(
+				async (ctx: unknown, fn: (em: never, ctx: unknown) => Promise<unknown>) =>
+					await fn(mock(), ctx),
 			);
-
-			Object.defineProperty(agentRepository, 'manager', {
-				value: { transaction: mockTransaction },
-				configurable: true,
-			});
 			workflowExecutionService.executeChatWorkflow.mockResolvedValue({
 				executionId: 'exec-1',
 			} as never);

@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import { computed, inject } from 'vue';
-import { N8nButton, N8nIcon, N8nNodeIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { computed, inject, ref } from 'vue';
+import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
+import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
-import { TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, type ToolConnectionItem } from './types';
+import ToolIcon from './ToolIcon.vue';
+import {
+	hasToolConnection,
+	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	TOOL_CONNECTION_CREDITS_LABEL_KEY,
+	type ToolConnectionItem,
+} from './types';
 import { resolveToolItemIcon } from './toolItemIcon';
 
 const props = defineProps<{
 	item: ToolConnectionItem;
+	showConnectAction?: boolean;
+	connectLabel?: string;
+	connectAriaLabel?: string;
+	connectedLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -22,16 +32,30 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+const creditsLabelKey = inject(TOOL_CONNECTION_CREDITS_LABEL_KEY, null);
 
 /**
- * The picker only does anything with an injected adapter: without one it lists
- * nothing and its create/edit actions go nowhere. Consumers that manage
- * credentials elsewhere (the agents panel does it in its tool config modal)
- * simply provide no adapter and get the static marker below instead.
+ * Gateway-backed rows share the credits pill copy with the node creator and
+ * model selector: "Free credits" until a top-up or a depleted allowance flips
+ * it to a blue "n8n credits" pill. Defaults to "Free credits" when no consumer
+ * injects the store-backed key.
+ */
+const creditsPill = computed(() => {
+	const key = creditsLabelKey?.value ?? 'generic.freeCredits';
+	return {
+		text: i18n.baseText(key),
+		type: key === 'generic.freeCredits' ? ('default' as const) : ('info' as const),
+	};
+});
+
+/**
+ * The picker needs both credential definitions and an injected adapter.
+ * Consumers that manage credentials elsewhere simply get the static marker below.
  */
 const shouldShowCredentialPicker = computed(() => {
-	if (!credentialAdapter) return false;
-	if (props.item.isConnected) return true;
+	if (!credentialAdapter || !props.item.credentials?.length) return false;
+	if (props.item.status === 'connecting') return false;
+	if (hasToolConnection(props.item.status)) return true;
 
 	return Boolean(
 		props.item.credentials?.some(
@@ -59,15 +83,32 @@ const placeholderIcon = computed(() => {
 
 const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 
-const actionLabel = computed(() =>
-	props.item.communityPreview
-		? i18n.baseText('communityNodeDetails.install')
-		: i18n.baseText('tools.connection.action.connect'),
+const serviceActionLabel = computed(() =>
+	i18n.baseText(
+		props.item.status === 'connected' ? 'generic.settings' : 'tools.connection.action.setup',
+	),
 );
+
+const actionLabel = computed(() => {
+	if (props.item.communityPreview) return i18n.baseText('communityNodeDetails.install');
+	if (props.item.status === 'disconnected') {
+		return i18n.baseText('tools.connection.action.reconnect');
+	}
+	return props.connectLabel ?? i18n.baseText('tools.connection.action.connect');
+});
 
 const installBlocked = computed(
 	() => Boolean(props.item.communityPreview) && Boolean(props.item.installDisabled),
 );
+
+const isDisabled = computed(() => Boolean(props.item.disabled));
+const isRowNavigable = computed(() => props.item.kind !== 'service');
+
+const restriction = computed(() =>
+	props.item.kind === 'node' ? props.item.restriction : undefined,
+);
+
+const rowRef = ref<HTMLElement | null>(null);
 
 /**
  * For most rows the button only repeated what clicking the row already does.
@@ -76,10 +117,16 @@ const installBlocked = computed(
  * its detail view.
  */
 const hasDirectAction = computed(
-	() => Boolean(props.item.communityPreview) || props.item.kind === 'mcp-server',
+	() =>
+		props.showConnectAction ||
+		Boolean(props.item.communityPreview) ||
+		props.item.kind === 'mcp-server',
 );
 
 function handleRowClick() {
+	if (props.item.disabled) return;
+	if (restriction.value) return;
+	if (props.item.status === 'connecting') return;
 	emit('open-detail', props.item);
 }
 
@@ -93,35 +140,43 @@ function handleConnect() {
 
 <template>
 	<div
-		:class="[$style.row, $style[`row--${item.kind}`]]"
+		ref="rowRef"
+		:class="[
+			$style.row,
+			$style[`row--${item.kind}`],
+			{ [$style.rowDisabled]: isDisabled, [$style.rowRestricted]: !!restriction },
+		]"
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
 	>
-		<button
-			type="button"
-			:class="$style.mainAction"
+		<component
+			:is="isRowNavigable ? 'button' : 'div'"
+			:type="isRowNavigable ? 'button' : undefined"
+			:class="[$style.mainAction, { [$style.mainActionStatic]: !isRowNavigable }]"
+			:disabled="isRowNavigable ? isDisabled || item.status === 'connecting' : undefined"
+			:aria-disabled="!!restriction || undefined"
 			data-test-id="tools-connection-row-main"
-			@click="handleRowClick"
+			@click="isRowNavigable && handleRowClick()"
 		>
 			<template v-if="item.kind === 'workflow'">
 				<span :class="$style.workflowIcon" aria-hidden="true">
 					<N8nIcon icon="workflow" :size="20" />
 				</span>
 				<N8nText :class="$style.workflowTitle" tag="span" bold>{{ item.title }}</N8nText>
+				<N8nText
+					v-if="item.warning"
+					:class="$style.workflowWarning"
+					tag="span"
+					size="small"
+					color="warning"
+					data-test-id="tools-connection-row-warning"
+				>
+					{{ item.warning }}
+				</N8nText>
 			</template>
 
 			<template v-else>
-				<span :class="$style.iconWrapper" aria-hidden="true">
-					<N8nNodeIcon
-						v-if="resolvedIcon"
-						:type="resolvedIcon.type"
-						:src="resolvedIcon.type === 'file' ? resolvedIcon.src : undefined"
-						:name="resolvedIcon.type === 'icon' ? resolvedIcon.name : undefined"
-						:color="resolvedIcon.type === 'icon' ? resolvedIcon.color : undefined"
-						:size="20"
-					/>
-					<N8nIcon v-else :icon="placeholderIcon" :size="20" :class="$style.iconFallback" />
-				</span>
+				<ToolIcon :source="resolvedIcon" :fallback-icon="placeholderIcon" />
 				<span :class="$style.text">
 					<span :class="$style.titleRow">
 						<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>
@@ -130,13 +185,22 @@ function handleConnect() {
 							:content="i18n.baseText('communityNodeInfo.approved')"
 							placement="top"
 						>
-							<ShieldIcon
+							<N8nIcon
+								icon="shield-half"
+								:size="14"
 								:class="$style.verifiedIcon"
-								role="img"
 								:aria-label="i18n.baseText('communityNodeInfo.approved')"
 								data-test-id="tools-connection-row-verified-badge"
 							/>
 						</N8nTooltip>
+						<N8nBadge
+							v-if="item.freeCredits"
+							size="xxsmall"
+							:variant="creditsPill.type === 'info' ? 'info' : 'success'"
+							data-test-id="tools-connection-row-free-credits"
+						>
+							{{ creditsPill.text }}
+						</N8nBadge>
 					</span>
 					<N8nText
 						v-if="item.description"
@@ -149,11 +213,41 @@ function handleConnect() {
 					</N8nText>
 				</span>
 			</template>
-		</button>
+		</component>
 
 		<div :class="$style.action">
+			<RestrictedNodePopover
+				v-if="restriction"
+				:node-type-name="item.title"
+				:scope="restriction.scope"
+				:anchor="rowRef"
+			/>
+			<N8nTooltip
+				v-else-if="isDisabled"
+				:content="item.disabledReason ?? ''"
+				:disabled="!item.disabledReason"
+				placement="top"
+			>
+				<span
+					:class="$style.disabledMarker"
+					role="img"
+					tabindex="0"
+					:aria-label="item.disabledReason"
+					data-test-id="tools-connection-row-disabled"
+				>
+					<N8nIcon icon="info" :size="14" color="text-light" />
+				</span>
+			</N8nTooltip>
+			<N8nButton
+				v-else-if="item.kind === 'service'"
+				variant="outline"
+				size="small"
+				:label="serviceActionLabel"
+				data-test-id="tools-connection-row-service-action"
+				@click="handleRowClick"
+			/>
 			<ToolCredentialPicker
-				v-if="shouldShowCredentialPicker"
+				v-else-if="shouldShowCredentialPicker"
 				:item="item"
 				:credentials="item.credentials ?? []"
 				connect-variant="outline"
@@ -166,12 +260,20 @@ function handleConnect() {
 				@new-credential-connect="emit('new-credential-connect', $event)"
 			/>
 			<span
-				v-else-if="item.isConnected"
-				:class="$style.connectedMarker"
+				v-else-if="item.status === 'connected'"
+				:class="$style.statusMarker"
 				data-test-id="tools-connection-row-connected"
 			>
-				<span :class="$style.statusDot" aria-hidden="true" />
-				{{ i18n.baseText('tools.connection.action.connected') }}
+				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
+				{{ connectedLabel ?? i18n.baseText('tools.connection.action.connected') }}
+			</span>
+			<span
+				v-else-if="item.status === 'connecting'"
+				:class="$style.statusMarker"
+				data-test-id="tools-connection-row-connecting"
+			>
+				<N8nSpinner size="small" />
+				{{ i18n.baseText('tools.connection.action.connecting') }}
 			</span>
 			<template v-else-if="hasDirectAction">
 				<N8nTooltip
@@ -191,16 +293,40 @@ function handleConnect() {
 				</N8nTooltip>
 				<N8nButton
 					v-else
-					:label="actionLabel"
 					variant="outline"
 					size="small"
 					:loading="item.installing"
+					:aria-label="connectAriaLabel"
 					:data-test-id="
 						item.communityPreview ? 'tools-connection-row-install' : 'tools-connection-row-connect'
 					"
 					@click="handleConnect"
-				/>
+				>
+					<N8nIcon
+						v-if="!item.communityPreview && item.status === 'disconnected'"
+						icon="circle-x"
+						:size="14"
+						:class="$style.statusIconDisconnected"
+						aria-hidden="true"
+					/>
+					{{ actionLabel }}
+				</N8nButton>
 			</template>
+			<N8nButton
+				v-else-if="item.status === 'disconnected'"
+				variant="outline"
+				size="small"
+				data-test-id="tools-connection-row-disconnected"
+				@click="handleRowClick"
+			>
+				<N8nIcon
+					icon="circle-x"
+					:size="14"
+					:class="$style.statusIconDisconnected"
+					aria-hidden="true"
+				/>
+				{{ i18n.baseText('tools.connection.action.reconnect') }}
+			</N8nButton>
 		</div>
 	</div>
 </template>
@@ -221,6 +347,28 @@ function handleConnect() {
 	}
 }
 
+.rowDisabled {
+	opacity: 0.6;
+
+	&:hover {
+		background: transparent;
+	}
+}
+
+.rowRestricted {
+	.mainAction {
+		cursor: not-allowed;
+
+		> * {
+			opacity: 0.45;
+		}
+	}
+
+	&:hover {
+		background: transparent;
+	}
+}
+
 .mainAction {
 	display: flex;
 	align-items: center;
@@ -235,30 +383,22 @@ function handleConnect() {
 	text-align: left;
 	cursor: pointer;
 
+	&:disabled {
+		cursor: not-allowed;
+	}
+
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--focus--border-color);
 		outline-offset: 2px;
 	}
 }
 
+.mainActionStatic {
+	cursor: default;
+}
+
 .row--workflow {
 	min-height: 48px;
-}
-
-.iconWrapper {
-	flex-shrink: 0;
-	width: 40px;
-	height: 40px;
-	border-radius: 50%;
-	background: var(--color--background--light-1);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	overflow: hidden;
-}
-
-.iconFallback {
-	color: var(--color--text--tint-1);
 }
 
 .workflowIcon {
@@ -285,6 +425,10 @@ function handleConnect() {
 	font-weight: var(--font-weight--medium);
 }
 
+.workflowWarning {
+	flex-shrink: 0;
+}
+
 .titleRow {
 	display: flex;
 	align-items: center;
@@ -298,15 +442,15 @@ function handleConnect() {
 
 .verifiedIcon {
 	flex-shrink: 0;
-	width: 12px;
-	height: 12px;
+	vertical-align: middle;
 	color: var(--color--success);
 }
 
 .description {
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+	// Wrap onto further lines rather than truncating; the virtual scroller
+	// measures each row's real height, so taller rows lay out correctly.
+	white-space: normal;
+	overflow-wrap: anywhere;
 }
 
 .action {
@@ -318,7 +462,7 @@ function handleConnect() {
 
 // Status only, for consumers that manage credentials elsewhere. Matches the
 // credential picker's connected pill minus the chevron and button semantics.
-.connectedMarker {
+.statusMarker {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
@@ -328,11 +472,23 @@ function handleConnect() {
 	white-space: nowrap;
 }
 
-.statusDot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background: var(--color--success);
+.statusIconConnected,
+.statusIconDisconnected {
 	flex-shrink: 0;
+}
+
+.disabledMarker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color--text--tint-2);
+}
+
+.statusIconConnected {
+	color: var(--color--success);
+}
+
+.statusIconDisconnected {
+	color: var(--color--danger);
 }
 </style>

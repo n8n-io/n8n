@@ -10,8 +10,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
 import { createOwner } from '@test-integration/db/users';
@@ -21,6 +20,7 @@ import { initNodeTypes } from '@test-integration/utils';
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { ImportPackageRequest } from '../n8n-packages.types';
 import { buildEntityPackageBuffer, serializedWorkflow } from './fixtures/package-fixtures';
+import { importPackageRequest } from './fixtures/import-request';
 import { streamToBuffer } from './utils/tar-support';
 
 let service: N8nPackagesService;
@@ -61,22 +61,9 @@ type ImportParams = { user: User; projectId?: string; packageBuffer: Buffer } & 
 >;
 
 async function importPackage(params: ImportParams) {
-	return await service.importPackage({
-		credentialMatchingMode: 'id-only',
-		credentialMissingMode: 'must-preexist',
-		workflowConflictPolicy: 'fail',
-		workflowPublishingPolicy: 'preserve-published-state',
-		workflowIdPolicy: 'new',
-		folderConflictPolicy: 'merge',
-		dataTableMatchingMode: 'by-id',
-		dataTableMissingMode: 'create',
-		dataTableSchemaConflictPolicy: 'keep-existing',
-		variableMissingMode: 'do-nothing',
-		missingNodeTypeMode: 'fail',
-		tagMissingMode: 'create',
-		tagConflictPolicy: 'skip',
-		...params,
-	});
+	return await service.importPackage(
+		importPackageRequest({ variableParentPolicy: 'project', ...params }),
+	);
 }
 
 async function exportWorkflowPackage(

@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { In } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 
 import { AgentEvalRating } from '../../entities/agent-eval-rating.ee';
@@ -101,7 +102,7 @@ describe('AgentEvalRatingRepository', () => {
 			expect(qb.where).toHaveBeenCalledWith('result.runId = :runId', { runId: 'run-1' });
 			// The superseded r-1 is never fetched, only the two winners.
 			expect(entityManager.find.mock.calls[0]?.[1]).toEqual({
-				where: { id: expect.objectContaining({ _value: ['r-2', 'r-3'] }) },
+				where: { id: In(['r-2', 'r-3']) },
 			});
 			expect(latest.map((rating) => rating.id)).toEqual(['r-2', 'r-3']);
 		});

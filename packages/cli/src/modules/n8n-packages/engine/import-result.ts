@@ -7,8 +7,11 @@ import type {
 import type { PackagePublishingResults } from '../entities/workflow/workflow-publisher';
 import { serializeBindings } from '../n8n-packages.types';
 import type {
+	RemovedFolderSummary,
+	RemovedWorkflowSummary,
 	ImportBindingMap,
 	ImportCredentialSummary,
+	ImportDataTableSummary,
 	ImportedFolderSummary,
 	ImportedProjectSummary,
 	ImportedWorkflowSummary,
@@ -51,6 +54,7 @@ export function toImportedWorkflowSummaries(
 			projectId,
 			parentFolderId: current.parentFolder?.id ?? null,
 			activeVersionId: current.activeVersionId ?? null,
+			isArchived: current.isArchived,
 			publishing: result?.publishing ?? { state: 'unchanged' },
 			status,
 		};
@@ -60,20 +64,26 @@ export function toImportedWorkflowSummaries(
 export function buildImportResult(input: {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
+	removedWorkflows: RemovedWorkflowSummary[];
+	removedFolders: RemovedFolderSummary[];
 	folders: ImportedFolderSummary[];
 	projects: ImportedProjectSummary[];
 	bindings: PackageImportBindings;
 	credentials: ImportCredentialSummary;
+	dataTables: ImportDataTableSummary;
 	variables: ImportVariableSummary;
 	tags: ImportTagSummary;
 }): ImportResult {
 	return {
 		package: input.package,
 		workflows: input.workflows,
+		removedWorkflows: input.removedWorkflows,
+		removedFolders: input.removedFolders,
 		folders: input.folders,
 		projects: input.projects,
 		bindings: serializeBindings(input.bindings),
 		credentials: input.credentials,
+		dataTables: input.dataTables,
 		variables: input.variables,
 		tags: input.tags,
 	};
@@ -85,21 +95,29 @@ export function reconcileVariableSummary(input: {
 	created: Iterable<string>;
 	stubbed: Iterable<string>;
 	skipped: Iterable<string>;
+	updated: Iterable<string>;
 }): ImportVariableSummary {
 	const matched = new Set(input.matched);
 	const created = new Set(input.created);
 	const stubbed = new Set(input.stubbed);
 	const skipped = new Set(input.skipped);
+	const updated = new Set(input.updated);
 
 	// A skipped name that no scope of this import created genuinely pre-existed, so it counts as matched.
 	for (const name of skipped) {
 		if (!created.has(name) && !stubbed.has(name)) matched.add(name);
 	}
 
+	// An overwritten name matched first, but the import rewrote it, so `updated` wins.
+	for (const name of updated) {
+		matched.delete(name);
+	}
+
 	return {
 		matched: [...matched],
 		created: [...created],
 		stubbed: [...stubbed],
+		updated: [...updated],
 		missing: [...new Set(input.missing)].filter(
 			(name) => !created.has(name) && !stubbed.has(name) && !skipped.has(name),
 		),
@@ -116,6 +134,7 @@ export function toVariableSummary(
 		created: result.created,
 		stubbed: result.stubbed,
 		skipped: result.skippedExisting,
+		updated: result.updated,
 	});
 }
 

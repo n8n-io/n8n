@@ -1,7 +1,7 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
-import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, deepCopy, safeRegex } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -189,8 +189,6 @@ export class RenameKeys implements INodeType {
 
 			const flags = (caseInsensitive as boolean) ? 'i' : undefined;
 
-			const regex = new RegExp(searchRegex as string, flags);
-
 			const renameObjectKeys = (obj: IDataObject, objDepth: number) => {
 				for (const key in obj) {
 					if (Array.isArray(obj)) {
@@ -202,8 +200,13 @@ export class RenameKeys implements INodeType {
 						if (typeof obj[key] === 'object' && objDepth !== 0) {
 							renameObjectKeys(obj[key] as IDataObject, objDepth - 1);
 						}
-						if (key.match(regex)) {
-							const newKey = key.replace(regex, replaceRegex as string);
+						if (safeRegex.test(searchRegex as string, key, flags)) {
+							const newKey = safeRegex.replace(
+								searchRegex as string,
+								key,
+								flags,
+								replaceRegex as string,
+							);
 							if (newKey !== key) {
 								obj[newKey] = obj[key];
 								delete obj[key];

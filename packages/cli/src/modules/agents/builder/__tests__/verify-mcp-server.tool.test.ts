@@ -35,6 +35,7 @@ function makeDeps(overrides: Partial<Parameters<typeof buildVerifyMcpServerTool>
 function makeMcpClient(overrides: Partial<McpClient> = {}): McpClient {
 	return {
 		listTools: vi.fn().mockResolvedValue([]),
+		getConnectionFailures: vi.fn().mockReturnValue([]),
 		close: vi.fn().mockResolvedValue(undefined),
 		...overrides,
 	} as unknown as McpClient;
@@ -56,6 +57,22 @@ describe('buildVerifyMcpServerTool', () => {
 				safeParse: (input: unknown) => { success: boolean };
 			}
 		).safeParse({ name: 'Linear production (EU)', url: 'https://example.test/mcp' });
+
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a native OAuth2 credential type', () => {
+		const tool = buildVerifyMcpServerTool(makeDeps());
+		const result = (
+			tool.inputSchema as unknown as {
+				safeParse: (input: unknown) => { success: boolean };
+			}
+		).safeParse({
+			name: 'GitHub',
+			url: 'https://api.githubcopilot.com/mcp/',
+			authentication: 'githubOAuth2Api',
+			credential: 'github-credential',
+		});
 
 		expect(result.success).toBe(true);
 	});
@@ -126,6 +143,59 @@ describe('buildVerifyMcpServerTool', () => {
 		});
 	});
 
+	it('returns { ok: false, error } when the connection fails with no tools', async () => {
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([]),
+			getConnectionFailures: vi
+				.fn()
+				.mockReturnValue([{ server: 'my-server', error: 'fetch failed' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(makeDeps());
+		const result = await tool.handler!(
+			{ name: 'my-server', url: 'https://example.test/mcp' },
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: false,
+			error: 'MCP server "my-server" connection failed: fetch failed',
+		});
+	});
+
+	it('does not apply the credential when the connection fails with no tools', async () => {
+		const applyCredentialToMcpServer = vi.fn();
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([]),
+			getConnectionFailures: vi
+				.fn()
+				.mockReturnValue([{ server: 'my-server', error: 'fetch failed' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(
+			makeDeps({
+				agentId: 'agent-1',
+				applyCredentialToMcpServer,
+			}),
+		);
+		const result = await tool.handler!(
+			{
+				name: 'my-server',
+				url: 'https://example.test/mcp',
+				credential: 'cred-42',
+			},
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: false,
+			error: 'MCP server "my-server" connection failed: fetch failed',
+		});
+		expect(applyCredentialToMcpServer).not.toHaveBeenCalled();
+	});
+
 	it('returns { ok: false, error } when listTools throws', async () => {
 		const mcpClient = makeMcpClient({
 			listTools: vi.fn().mockRejectedValue(new Error('connection timeout')),
@@ -184,7 +254,7 @@ describe('buildVerifyMcpServerTool', () => {
 		).resolves.toEqual({ ok: true, tools: [] });
 	});
 
-	it('forwards name, url, transport, authentication, credential, and connectionTimeoutMs to the factory', async () => {
+	it('forwards connection fields and registry metadata to the factory', async () => {
 		const mcpClient = makeMcpClient();
 		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
 
@@ -197,6 +267,7 @@ describe('buildVerifyMcpServerTool', () => {
 				transport: 'sse',
 				authentication: 'bearerAuth',
 				credential: 'cred-42',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.example' },
 				connectionTimeoutMs: 42_000,
 			},
 			{} as never,
@@ -209,6 +280,7 @@ describe('buildVerifyMcpServerTool', () => {
 				transport: 'sse',
 				authentication: 'bearerAuth',
 				credential: 'cred-42',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.example' },
 				connectionTimeoutMs: 42_000,
 			}),
 			expect.objectContaining({
@@ -293,8 +365,16 @@ describe('buildVerifyMcpServerTool', () => {
 		expect(closeMock).toHaveBeenCalledTimes(1);
 	});
 
-	it('auto-applies the credential when verification succeeds and the callback reports applied', async () => {
-		const applyCredentialToMcpServer = vi.fn().mockResolvedValue({ applied: true });
+	it('auto-applies the credential and returns the saved config and hash when the callback reports applied', async () => {
+		const savedConfig = {
+			name: 'Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Help.',
+			mcpServers: [{ name: 'notion', url: 'https://example.test/mcp', credential: 'cred-42' }],
+		};
+		const applyCredentialToMcpServer = vi
+			.fn()
+			.mockResolvedValue({ applied: true, config: savedConfig, configHash: 'config-hash' });
 		const mcpClient = makeMcpClient({
 			listTools: vi.fn().mockResolvedValue([{ name: 'echo', description: 'Echo the input' }]),
 		});
@@ -322,6 +402,8 @@ describe('buildVerifyMcpServerTool', () => {
 			credentialApplied: true,
 			configMutated: true,
 			agentId: 'agent-1',
+			config: savedConfig,
+			configHash: 'config-hash',
 		});
 	});
 

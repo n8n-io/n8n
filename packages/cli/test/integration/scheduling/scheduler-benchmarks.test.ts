@@ -12,6 +12,8 @@ import { DataSource } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { sleep } from '@n8n/utils/sleep';
 
+import { selfOwned } from './shared/job-factory';
+
 /**
  * Durable-scheduler performance benchmarks (CAT-3623), written to answer the
  * questions an operator actually asks before turning this on:
@@ -170,11 +172,11 @@ describe.runIf(runBenchmarks)('durable scheduler benchmarks', () => {
 
 	/** One interval job to hang the tasks off of (their `jobId`). */
 	async function createJob(): Promise<ScheduledJobEntity> {
+		const jobName = `bench-${Math.random().toString(36).slice(2)}`;
 		return await jobRepository.save(
 			jobRepository.create({
-				name: `bench-${Math.random().toString(36).slice(2)}`,
-				workflowId: null,
-				nodeId: null,
+				name: jobName,
+				...selfOwned(jobName),
 				taskType: TASK_TYPE,
 				payload: {},
 				kind: 'interval',

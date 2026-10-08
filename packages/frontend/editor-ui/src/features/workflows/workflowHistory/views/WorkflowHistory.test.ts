@@ -12,7 +12,7 @@ import WorkflowHistoryPage from './WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { STORES } from '@n8n/stores';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { VIEWS } from '@/app/constants';
 import { workflowHistoryDataFactory, workflowVersionDataFactory } from '../__tests__/utils';
 import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
@@ -20,8 +20,9 @@ import type { IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/app/plugins/telemetry';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 
-vi.mock('vue-router', () => {
-	const params = {};
+vi.mock('vue-router', async () => {
+	const { reactive } = await import('vue');
+	const params = reactive({});
 	const query = {};
 	const push = vi.fn();
 	const replace = vi.fn();
@@ -278,6 +279,20 @@ describe('WorkflowHistory', () => {
 
 		beforeEach(cleanRouteState);
 		afterEach(cleanRouteState);
+
+		it('should remount the timeline only when the workflow route changes', async () => {
+			route.params.workflowId = workflowId;
+			route.query.tab = 'publishTimeline';
+			const { findByTestId, getByTestId } = renderComponent({ pinia });
+			const oldTimeline = await findByTestId('stub-publish-timeline-select');
+			route.params.versionId = 'another-version';
+			await flushPromises();
+			expect(getByTestId('stub-publish-timeline-select')).toBe(oldTimeline);
+			route.params.workflowId = 'another-workflow';
+			await flushPromises();
+			expect(oldTimeline.isConnected).toBe(false);
+			expect(getByTestId('stub-publish-timeline-select')).not.toBe(oldTimeline);
+		});
 
 		it('should track telemetry when landing on the publish timeline tab via query param', async () => {
 			route.params.workflowId = workflowId;

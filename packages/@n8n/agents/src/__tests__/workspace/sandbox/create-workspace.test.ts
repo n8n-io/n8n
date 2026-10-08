@@ -135,6 +135,53 @@ describe('createSandbox', () => {
 		expect(result?.provider).toBe('n8n-sandbox');
 	});
 
+	it('passes the configured id through to the N8nSandboxServiceSandbox', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'n8n-sandbox',
+			serviceUrl: 'https://sandbox.example.com',
+			id: '11111111-1111-4111-8111-111111111111',
+			timeout: 45_000,
+		};
+
+		const result = await createSandbox(config);
+
+		expect(result).toBeInstanceOf(N8nSandboxServiceSandbox);
+		expect(result?.id).toBe('11111111-1111-4111-8111-111111111111');
+	});
+
+	it('passes ephemeral through to the N8nSandboxServiceSandbox', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'n8n-sandbox',
+			serviceUrl: 'https://sandbox.example.com',
+			ephemeral: true,
+			timeout: 45_000,
+		};
+
+		const result = await createSandbox(config);
+
+		expect(result).toBeInstanceOf(N8nSandboxServiceSandbox);
+		expect((result as unknown as { options: { ephemeral?: boolean } }).options.ephemeral).toBe(
+			true,
+		);
+	});
+
+	it('omits ephemeral from the N8nSandboxServiceSandbox when not configured', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'n8n-sandbox',
+			serviceUrl: 'https://sandbox.example.com',
+			timeout: 45_000,
+		};
+
+		const result = await createSandbox(config);
+
+		expect(
+			(result as unknown as { options: { ephemeral?: boolean } }).options.ephemeral,
+		).toBeUndefined();
+	});
+
 	it('does not include sandbox secrets in unsupported provider errors', async () => {
 		const config = {
 			enabled: true,

@@ -10,15 +10,9 @@ export function subAgentsSkill(): RuntimeSkill {
 		id: 'agent-builder-sub-agents',
 		name: 'Agent Builder Sub-Agents',
 		description:
-			'Use when configuring inline or saved sub-agent delegation for the target agent, selecting published same-project sub-agents, or changing subAgents.maxChildren.',
-		recommendedTools: ['list_sub_agents', 'ask_questions', 'read_config', 'patch_config'],
-		allowedTools: [
-			'list_sub_agents',
-			'ask_questions',
-			'read_config',
-			'patch_config',
-			'write_config',
-		],
+			'Use when configuring inline or saved sub-agent delegation for the target agent, selecting same-project sub-agents, or changing subAgents.maxChildren.',
+		recommendedTools: ['agent-context', 'ask_questions', 'patch_config'],
+		allowedTools: ['agent-context', 'ask_questions', 'patch_config', 'write_config'],
 		instructions: `\
 ## Purpose
 
@@ -34,9 +28,8 @@ The target agent can call \`delegate_subagent\` with \`subAgentId: "inline"\`
 without any saved-agent refs. Inline subagents are ad-hoc child agents for
 one-off focused tasks.
 
-\`subAgents.agents\` is only for optional saved/published n8n Agent specialists
-that the target agent may select by id when they are a better fit than an inline
-subagent.
+\`subAgents.agents\` is only for optional saved n8n Agent specialists that the
+target agent may select by id when they are a better fit than an inline subagent.
 
 ## When to configure
 
@@ -47,43 +40,49 @@ subagent.
   delegated tasks in a run. It is not the same as \`config.toolCallConcurrency\`.
 - Do not create fields such as \`subAgents.maxConcurrentDelegations\`,
   \`delegationConcurrency\`, or \`delegateConcurrency\`.
-- Add saved subagent refs only when the user asks to use specific published
-  agents, reusable specialists, named helper agents, or saved-agent delegation.
+- Add saved subagent refs only when the user asks to use specific agents,
+  reusable specialists, named helper agents, or saved-agent delegation.
 
 ## Saved sub-agent workflow
 
-1. Call \`list_sub_agents\` to discover published same-project agents that can be
-   added. Do not write agent ids from memory, prose, or user-entered free text.
-2. If published agents are available and the user has not named exact agents,
+1. Call \`agent-context({ type: "config" })\` to get the target agent's id.
+   Then call \`agent-context({ type: "agents" })\` to discover same-project agents.
+   Exclude the target id from the result. Do not write agent ids
+   from memory, prose, or user-entered free text.
+2. If other agents are available and the user has not named exact agents,
    call \`ask_questions\` with one \`type: "multi"\` question whose \`options\`
    are the returned agent names. Map each selected option back to the
-   matching \`agentId\` from the \`list_sub_agents\` result.
-3. If no published agents are available, do not configure saved subagents.
-   Inline delegation still works without saved-agent refs.
+   matching \`agentId\` from the \`agent-context({ type: "agents" })\` result.
+3. If no other agents are available, do not configure saved subagents. Inline
+   delegation still works without saved-agent refs.
 4. Determine the parent-owned routing guidance for each selected saved
    subagent. Store it as \`useWhen\`, for example
    \`{ "agentId": "<returned-agent-id>", "useWhen": "Use for billing-policy questions and invoice investigations." }\`.
 5. If it is unclear when a selected saved subagent should be used, ask the user
    a follow-up before patching \`subAgents.agents\`. Do not invent vague routing
    guidance.
-6. Call \`read_config\`.
+6. Call \`agent-context({ type: "config" })\`.
 7. Patch selected saved agents into \`subAgents.agents\`. Avoid duplicates.
 
 Example patch flow:
 
-1. \`list_sub_agents()\`.
-2. If it returns one or more agents and the user has not named exact ones, call
+1. \`agent-context({ type: "config" })\`, then \`agent-context({ type: "agents" })\`.
+2. If it returns one or more other agents and the user has not named exact ones, call
    \`ask_questions({ questions: [{ type: "multi", ... }] })\` with those agents
    as options.
 3. If the user's request does not make the routing rule clear, ask when each
    selected saved subagent should be used.
-4. \`read_config()\`.
+4. \`agent-context({ type: "config" })\`.
 5. \`patch_config(...)\` adding selected
    \`{ "agentId": "<returned-agent-id>", "useWhen": "Use for ..." }\` refs to
    \`/subAgents/agents\`.
 
 ## Rules
 
+- Saved subagents use their current draft in Preview and test sessions, and their
+  published version in production sessions. Delegating to a never-published agent
+  fails in production, so tell the user to publish saved subagents the target
+  agent relies on before production use.
 - If the resumed values include text that is not one of the listed agent ids,
   do not persist it as an agent id; ask a follow-up.
 - \`useWhen\` is relationship-specific routing guidance owned by this parent
@@ -125,7 +124,7 @@ Example shape:
 ## Verify
 
 - Inline delegation still works even when \`subAgents.agents\` is absent.
-- Saved refs use only returned same-project published agent ids.
+- Saved refs use only returned same-project agent ids.
 - New or updated saved refs include concrete \`useWhen\` guidance.
 - Any \`subAgents.maxChildren\` value stays within ${SUB_AGENT_MAX_CHILDREN_MIN} to ${SUB_AGENT_MAX_CHILDREN_MAX}.`,
 	};

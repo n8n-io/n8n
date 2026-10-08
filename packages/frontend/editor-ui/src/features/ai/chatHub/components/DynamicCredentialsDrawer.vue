@@ -70,7 +70,6 @@ const i18n = useI18n();
 							<N8nSpinner v-if="cred.isConnecting" size="small" />
 							<N8nButton
 								v-else-if="cred.credentialStatus === 'configured'"
-								type="tertiary"
 								size="small"
 								data-testid="dynamic-credential-disconnect"
 								@click="emit('revoke', cred.credentialId)"
@@ -79,7 +78,6 @@ const i18n = useI18n();
 							</N8nButton>
 							<N8nButton
 								v-else
-								type="secondary"
 								size="small"
 								data-testid="dynamic-credential-connect"
 								@click="emit('authorize', cred.credentialId)"

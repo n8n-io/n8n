@@ -16,7 +16,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 
 const BREADCRUMBS_MIN_LOADING_TIME = 300;
 

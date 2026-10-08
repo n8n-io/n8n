@@ -19,14 +19,26 @@ export class TtlMap<K, V> {
 	 * @param ttlMs          Time-to-live for each entry in milliseconds.
 	 * @param sweepIntervalMs How often to run the background sweep (defaults to `ttlMs`).
 	 *                        Set to `0` to disable the background sweep entirely.
+	 * @param onExpire        Called after an entry is removed because its TTL elapsed.
 	 */
 	constructor(
 		private readonly ttlMs: number,
 		sweepIntervalMs: number = ttlMs,
+		private readonly onExpire?: (value: V) => void,
 	) {
 		if (sweepIntervalMs > 0) {
 			this.sweepTimer = setInterval(() => this.sweep(), sweepIntervalMs).unref();
 		}
+	}
+
+	private deleteIfExpired(
+		key: K,
+		entry: { value: V; expiresAt: number },
+		now = Date.now(),
+	): boolean {
+		if (now <= entry.expiresAt) return false;
+		if (this.store.delete(key)) this.onExpire?.(entry.value);
+		return true;
 	}
 
 	set(key: K, value: V): this {
@@ -37,21 +49,24 @@ export class TtlMap<K, V> {
 	get(key: K): V | undefined {
 		const entry = this.store.get(key);
 		if (!entry) return undefined;
-		if (Date.now() > entry.expiresAt) {
-			this.store.delete(key);
-			return undefined;
-		}
+		if (this.deleteIfExpired(key, entry)) return undefined;
 		return entry.value;
 	}
 
 	has(key: K): boolean {
-		if (!this.store.has(key)) return false;
-		const expiresAt = this.store.get(key)?.expiresAt;
-		if (!expiresAt) return false;
-		if (Date.now() > expiresAt) {
-			this.store.delete(key);
-			return false;
-		}
+		const entry = this.store.get(key);
+		return entry !== undefined && !this.deleteIfExpired(key, entry);
+	}
+
+	/**
+	 * Refresh a live entry's expiry to a full TTL from now (sliding expiration).
+	 * Returns `false` if the key is missing or already expired (expired entries are evicted).
+	 */
+	touch(key: K): boolean {
+		const entry = this.store.get(key);
+		if (!entry) return false;
+		if (this.deleteIfExpired(key, entry)) return false;
+		entry.expiresAt = Date.now() + this.ttlMs;
 		return true;
 	}
 
@@ -94,9 +109,7 @@ export class TtlMap<K, V> {
 	sweep(): void {
 		const now = Date.now();
 		for (const [key, entry] of this.store) {
-			if (now > entry.expiresAt) {
-				this.store.delete(key);
-			}
+			this.deleteIfExpired(key, entry, now);
 		}
 	}
 

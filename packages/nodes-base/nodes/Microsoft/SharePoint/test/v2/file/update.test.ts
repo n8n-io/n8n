@@ -8,21 +8,22 @@ import { execute } from '../../../v2/actions/file/update.operation';
 import {
 	MAX_SIMPLE_UPLOAD_BYTES,
 	SHAREPOINT_ILLEGAL_FILE_NAME_CHARS,
-} from '../../../v2/helpers/utils';
-import * as transport from '../../../v2/transport';
-import type * as _importType0 from '../../../v2/transport';
+} from '../../../helpers/utils';
+import * as transport from '../../../transport';
+import type * as _importType0 from '../../../transport';
 
 // Real transport module except the network helper, so getSharePointCredentialType
 // keeps its real behavior; only microsoftApiRequest is stubbed.
-vi.mock('../../../v2/transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
 	};
 });
 
-const SITE_ID = 'contoso.sharepoint.com,g1,g2';
+const SITE_ID =
+	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
 const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const FILE_ID = '01SPEVVYELNAJ4S3XKNBBIEUJZOWXGE64U';
 const ITEM_PATH = `/v1.0/sites/${ENCODED_SITE_ID}/drive/items/${FILE_ID}`;

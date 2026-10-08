@@ -5,7 +5,8 @@ export type InstanceAiEditorActionSource =
 	| 'canvas_choice_prompt'
 	| 'credential_edit'
 	| 'credentials_list'
-	| 'node_error_view';
+	| 'node_error_view'
+	| 'workflow_error_nudge'; // Experiment cleanup (119_surface_assistant_on_workflow_error)
 
 /** The credential type (and optional node) the user wants setup guidance for. */
 export interface InstanceAiCredentialContext {
@@ -18,10 +19,21 @@ export interface InstanceAiCredentialContext {
 	/** The existing credential's id, when one is already selected (vs. creating a
 	 *  new one) — lets the agent act on it directly instead of guessing. */
 	id?: string;
+	/** Guided-form input labels of a recipe-created (Simplified Custom Auth)
+	 *  credential. Present when the form is pre-filled and the user only pastes
+	 *  these values — the help thread then asks where to find them instead of
+	 *  how to configure the credential. */
+	placeholderTitles?: string[];
+	/** The provider's key page from the recipe (where the user creates/copies
+	 *  the secret) — the help thread directs the user there instead of
+	 *  re-researching. Distinct from documentationUrl (the n8n docs page). */
+	docsUrl?: string;
 	/** n8n docs URL for this credential type, when available in the modal. */
 	documentationUrl?: string;
 	/** OAuth redirect/callback URL shown in the modal, when this is an OAuth credential. */
 	oauthRedirectUrl?: string;
+	/** Instance-specific setup guidance appended to the help question. */
+	setupContext?: string;
 }
 
 /**

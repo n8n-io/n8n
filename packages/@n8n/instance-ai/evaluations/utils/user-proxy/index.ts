@@ -1,5 +1,6 @@
 // LLM-backed user simulator for multi-turn workflow evals.
 
+import { credentialSetupHintSchema } from '@n8n/api-types';
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -18,6 +19,7 @@ import { createOneCredential } from '../../credentials/seeder';
 import { buildAutoApprovePayload } from '../../harness/chat-loop';
 import type { NextMessageDecision } from '../../harness/chat-loop';
 import type { EvalLogger } from '../../harness/logger';
+import { savedWorkflowsFromEvents } from '../../outcome/event-parser';
 import type { CapturedEvent, ConversationTurn } from '../../types';
 import { getEventPayload } from '../confirmation-payload';
 import { getNestedRecord, getString } from '../safe-extract';
@@ -36,6 +38,10 @@ export interface CredentialCreationConfig {
 	 *  `setThreadCredentialAllowlist` REPLACES the whole list, so a mid-run
 	 *  creation must include these or it clobbers the case's declared set. */
 	allowlistedCredentialIds: string[];
+	/** Of those, the ids the backend already resolves as passing their connection
+	 *  test — carried for the same reason: a mid-run creation replaces the whole
+	 *  bypass list, so leaving them out un-bypasses the case's declared set. */
+	bypassCredentialTestIds?: string[];
 	/** Run-level registry newly-created ids are added to for end-of-run cleanup. */
 	createdCredentialIds?: Set<string>;
 	/** Shared with the same `Map` passed to `createDeclaredCredentials` for this
@@ -87,6 +93,7 @@ const DEFAULT_MESSAGE_BUDGET = 5;
 export interface UserProxyConfig {
 	conversation: ConversationTurn[];
 	messageBudget?: number;
+	allowUserExecution?: boolean;
 	modelId?: string;
 	logger?: EvalLogger;
 	/** Test seam — inject a fake agent. */
@@ -118,27 +125,37 @@ export class UserProxyLlm {
 	private readonly responseByRequestId = new Map<string, InstanceAiConfirmRequest>();
 	private readonly sentScriptUserTurnIndexes = new Set<number>();
 	private readonly decisionStats: ProxyDecisionStats = {};
+	private readonly allowUserExecution: boolean;
+	private savedWorkflows: ReturnType<typeof savedWorkflowsFromEvents> = [];
 
 	private readonly credentialCreation?: CredentialCreationConfig;
 	/** Mutable running copy of `credentialCreation.allowlistedCredentialIds` —
 	 *  grows as `createCredential` mints new ones, since the allowlist endpoint
 	 *  replaces the whole list rather than appending. */
 	private allowlistedCredentialIds: string[];
-	/** Ids the backend should resolve as passing their connection test — grows as
-	 *  the proxy creates credentials a stage direction described as working. */
-	private bypassCredentialTestIds: string[] = [];
+	/** Ids the backend should resolve as passing their connection test — starts
+	 *  with the case's seeded credentials and grows as the proxy creates ones a
+	 *  stage direction described as working. */
+	private bypassCredentialTestIds: string[];
 	/** Defaults to a fresh Map when the caller doesn't share one from pre-run
 	 *  seeding — see `CredentialCreationConfig.nameCounts`. */
 	private readonly createdCredentialNameCounts: Map<string, number>;
 
 	constructor(config: UserProxyConfig) {
 		this.script = config.conversation;
+		this.allowUserExecution = config.allowUserExecution ?? false;
 		this.messageBudget = config.messageBudget ?? DEFAULT_MESSAGE_BUDGET;
 		this.logger = config.logger;
 		this.agent =
-			config.agent ?? createUserProxyAgent({ modelId: config.modelId, logger: config.logger });
+			config.agent ??
+			createUserProxyAgent({
+				modelId: config.modelId,
+				logger: config.logger,
+				allowUserExecution: config.allowUserExecution,
+			});
 		this.credentialCreation = config.credentialCreation;
 		this.allowlistedCredentialIds = config.credentialCreation?.allowlistedCredentialIds ?? [];
+		this.bypassCredentialTestIds = config.credentialCreation?.bypassCredentialTestIds ?? [];
 		this.createdCredentialNameCounts =
 			config.credentialCreation?.nameCounts ?? new Map<string, number>();
 		// Seed with the opener — the harness has already sent it.
@@ -154,6 +171,14 @@ export class UserProxyLlm {
 	}
 
 	ingestEvents(events: CapturedEvent[]): void {
+		if (this.allowUserExecution) {
+			this.savedWorkflows = [
+				...new Map(
+					savedWorkflowsFromEvents(events).map((workflow) => [workflow.id, workflow]),
+				).values(),
+			];
+		}
+
 		const newEvents = events.slice(this.ingestedEventCount);
 		this.ingestedEventCount = events.length;
 
@@ -253,7 +278,7 @@ export class UserProxyLlm {
 			credentialType,
 			undefined,
 			this.createdCredentialNameCounts,
-			{ logger: this.logger },
+			{ logger: this.logger, setupHint: options?.setupHint },
 		);
 		createdCredentialIds?.add(created.id);
 		this.allowlistedCredentialIds = [...this.allowlistedCredentialIds, created.id];
@@ -266,17 +291,11 @@ export class UserProxyLlm {
 			this.bypassCredentialTestIds = [...this.bypassCredentialTestIds, created.id];
 			this.bumpStat('credential-test-bypassed');
 		}
-		// Call with two args in the default case so the request stays byte-identical
-		// to before for every case that doesn't opt into the bypass.
-		if (this.bypassCredentialTestIds.length > 0) {
-			await client.setThreadCredentialAllowlist(
-				threadId,
-				this.allowlistedCredentialIds,
-				this.bypassCredentialTestIds,
-			);
-		} else {
-			await client.setThreadCredentialAllowlist(threadId, this.allowlistedCredentialIds);
-		}
+		await client.setThreadCredentialAllowlist(
+			threadId,
+			this.allowlistedCredentialIds,
+			this.bypassCredentialTestIds,
+		);
 		return created;
 	};
 
@@ -309,7 +328,11 @@ export class UserProxyLlm {
 		}
 
 		const prompt = buildFollowUpPrompt(this.promptContext());
-		const decision = await this.agent.decide(prompt, 'user-turn');
+		const decision = await this.agent.decide(
+			prompt,
+			'user-turn',
+			this.savedWorkflows.map(({ id }) => id),
+		);
 		if (!decision) {
 			const [next] = this.remainingUserScriptTurns();
 			if (!next || hasStageDirection(next.text)) {
@@ -329,7 +352,17 @@ export class UserProxyLlm {
 			if (!message) return { kind: 'done' };
 			this.messagesSent++;
 			this.actualTranscript.push({ role: 'user', text: message });
-			return { kind: 'followUp', message };
+			// The rename is a side effect the harness performs at this turn boundary,
+			// not something the user says — it stays out of `actualTranscript` so the
+			// judge reads the conversation the agent actually saw.
+			return {
+				kind: 'followUp',
+				message,
+				...(decision.renameWorkflowTo ? { renameWorkflowTo: decision.renameWorkflowTo } : {}),
+				// Like the rename, the mid-run execution is a harness side effect at
+				// this turn boundary, not something the user says.
+				...(decision.runWorkflowId ? { runWorkflowId: decision.runWorkflowId } : {}),
+			};
 		}
 		if (decision.action !== 'declare_done') {
 			// The user-turn schema offers only the two actions above, so this only
@@ -349,6 +382,7 @@ export class UserProxyLlm {
 		return {
 			script: this.script,
 			actualTranscript: this.actualTranscript,
+			savedWorkflows: this.allowUserExecution ? this.savedWorkflows : undefined,
 		};
 	}
 
@@ -447,7 +481,7 @@ export class UserProxyLlm {
 		const turns: Array<{ index: number; text: string }> = [];
 		for (let index = 0; index < this.script.length; index++) {
 			const turn = this.script[index];
-			if (!turn || turn.role !== 'user' || this.sentScriptUserTurnIndexes.has(index)) continue;
+			if (turn?.role !== 'user' || this.sentScriptUserTurnIndexes.has(index)) continue;
 			turns.push({ index, text: turn.text });
 		}
 		return turns;
@@ -519,9 +553,17 @@ function extractSetupWizardParseContext(event: CapturedEvent): SetupWizardParseC
 
 		const credentialType = getString(item, 'credentialType');
 		if (credentialType) {
+			// Only httpTemplatedCustomAuth carries a setupHint; every other type's
+			// wire payload simply omits the field, so a failed parse is the norm,
+			// not an error — drop it silently rather than log/throw.
+			const setupHint = credentialSetupHintSchema.safeParse(item.setupHint);
 			existing.credentialRequests = [
 				...existing.credentialRequests,
-				{ credentialType, existingCredentials: extractExistingCredentials(item) },
+				{
+					credentialType,
+					existingCredentials: extractExistingCredentials(item),
+					...(setupHint.success ? { setupHint: setupHint.data } : {}),
+				},
 			];
 		}
 

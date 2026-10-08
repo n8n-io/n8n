@@ -1,3 +1,4 @@
+import { buildUpdateWorkflowSessionGrantKey } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
 import {
@@ -10,6 +11,43 @@ import type { WorkflowBuildOutcome } from '../../workflow-loop/workflow-loop-sta
 export function isApprovedBuildContext(context: InstanceAiContext): boolean {
 	const buildContext = context.workflowBuildContext;
 	return Boolean(buildContext?.plannedTaskService ?? buildContext?.allowPostPlanWorkflowCreate);
+}
+
+/**
+ * True when update HITL can be skipped for this workflow in this session:
+ * created earlier in the current run (`aiCreatedWorkflowIds`), or covered by a
+ * `workflows:update:<id>` thread grant (written on create, or when the user
+ * chose "always allow" for an edit — including foreign workflows). Untrusted
+ * workflows without a grant still require approval.
+ */
+export function canSkipWorkflowUpdateHitl(context: InstanceAiContext, workflowId: string): boolean {
+	if (context.aiCreatedWorkflowIds?.has(workflowId) === true) return true;
+	const grantKey = buildUpdateWorkflowSessionGrantKey(workflowId);
+	return context.sessionApprovedToolKeys?.has(grantKey) === true;
+}
+
+/**
+ * Persist a thread grant so later update HITL for this workflow is skipped
+ * (same run and later runs in the thread). Used when the user chooses
+ * "always allow" on an edit confirmation.
+ */
+export async function grantSessionWorkflowUpdate(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<void> {
+	await context.grantSessionToolApproval?.(buildUpdateWorkflowSessionGrantKey(workflowId));
+}
+
+/**
+ * Mark a newly created workflow as owned by this session: in-memory for the
+ * current run, and as a persisted thread grant so later runs skip update HITL.
+ */
+export async function recordSessionOwnedWorkflow(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<void> {
+	(context.aiCreatedWorkflowIds ??= new Set<string>()).add(workflowId);
+	await grantSessionWorkflowUpdate(context, workflowId);
 }
 
 export async function resolveWorkflowName(

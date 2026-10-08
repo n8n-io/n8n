@@ -5,7 +5,7 @@ import type { IconName } from '../components/N8nIcon/icons';
 export interface TabOptions<Value extends string | number> {
 	value: Value;
 	label?: string;
-	icon?: IconName;
+	icon?: IconName | (string & {});
 	iconPosition?: 'left' | 'right';
 	variant?: 'default' | 'danger';
 	href?: string;

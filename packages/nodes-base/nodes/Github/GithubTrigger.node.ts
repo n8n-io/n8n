@@ -14,6 +14,17 @@ import { githubApiRequest } from './GenericFunctions';
 import { verifySignature } from './GithubTriggerHelpers';
 import { getRepositories, getUsers } from './SearchFunctions';
 
+const CANNOT_CREATE_MESSAGE = 'Github refused to create the webhook for this workflow';
+
+/** Github's reason is in `description`; NodeApiError overwrites `message` on a 4XX. */
+function describeGithubRejection(error: unknown): string {
+	const reason = (error as { description?: string } | undefined)?.description;
+	const advice =
+		'If a webhook for this URL already exists on the repository, delete it there and activate the workflow again.';
+
+	return reason ? `Github said: ${reason}. ${advice}` : advice;
+}
+
 export class GithubTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Github Trigger',
@@ -479,6 +490,12 @@ export class GithubTrigger implements INodeType {
 					return false;
 				}
 
+				// Same falsy test as `verifySignature`: a blank secret must not count as
+				// present here and absent there.
+				if (!webhookData.webhookSecret) {
+					return false;
+				}
+
 				// Webhook got created before so check if it still exists
 				const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
 				const repository = this.getNodeParameter('repository', '', {
@@ -493,6 +510,7 @@ export class GithubTrigger implements INodeType {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
+						delete webhookData.webhookSecret;
 
 						return false;
 					}
@@ -546,29 +564,87 @@ export class GithubTrigger implements INodeType {
 					if (error.httpCode === '422') {
 						// Webhook exists already
 
-						// Get the data of the already registered webhook
-						responseData = await githubApiRequest.call(this, 'GET', endpoint, body);
-
-						for (const webhook of responseData as IDataObject[]) {
-							if ((webhook.config! as IDataObject).url! === webhookUrl) {
-								// Webhook got found
-								if (JSON.stringify(webhook.events) === JSON.stringify(events)) {
-									// Webhook with same events exists already so no need to
-									// create it again simply save the webhook-id
-									webhookData.webhookId = webhook.id as string;
-									webhookData.webhookEvents = webhook.events as string[];
-									// Legacy webhook without secret on GitHub's side - not setting webhookData.webhookSecret
-									// so signature verification is skipped. To enable it, deactivate and reactivate the workflow.
-									return true;
-								}
-							}
+						// Without a stored id there is no hook to fetch, so nothing is adoptable.
+						if (webhookData.webhookId === undefined) {
+							throw new NodeOperationError(this.getNode(), CANNOT_CREATE_MESSAGE, {
+								description: describeGithubRejection(error),
+								level: 'warning',
+							});
 						}
 
-						throw new NodeOperationError(
-							this.getNode(),
-							'A webhook with the identical URL probably exists already. Please delete it manually on Github!',
-							{ level: 'warning' },
-						);
+						// Asking for it by id is what makes adopting someone else's hook
+						// impossible: Github never returns a hook's secret, so rotating ours onto a
+						// foreign hook would silently rewrite their config.
+						let existingWebhook: IDataObject;
+						try {
+							existingWebhook = await githubApiRequest.call(
+								this,
+								'GET',
+								`${endpoint}/${webhookData.webhookId}`,
+								{},
+							);
+						} catch (error2) {
+							if (error2.httpCode === '404') {
+								// Ours is gone, so whatever Github is objecting to is not ours to fix.
+								throw new NodeOperationError(this.getNode(), CANNOT_CREATE_MESSAGE, {
+									description: describeGithubRejection(error),
+									level: 'warning',
+								});
+							}
+
+							throw error2;
+						}
+
+						// A different URL means some other hook is the one Github is objecting to,
+						// and repointing this one would leave two hooks on the same URL.
+						if ((existingWebhook.config as IDataObject | undefined)?.url !== webhookUrl) {
+							throw new NodeOperationError(this.getNode(), CANNOT_CREATE_MESSAGE, {
+								description: describeGithubRejection(error),
+								level: 'warning',
+							});
+						}
+
+						// `active` is re-asserted so a disabled hook cannot look like a successful
+						// activation.
+						let patchResponse;
+						try {
+							patchResponse = await githubApiRequest.call(
+								this,
+								'PATCH',
+								`${endpoint}/${existingWebhook.id}`,
+								{ config: body.config, events, active: true },
+							);
+						} catch (patchError) {
+							// Re-label in place: NodeApiError's constructor hands back the instance it
+							// is given unchanged, so building a new one would drop this message.
+							if (patchError instanceof NodeApiError) {
+								patchError.message =
+									'The Github webhook for this URL already exists but could not be updated with a signing secret';
+								patchError.description = [
+									patchError.description,
+									"Check that the credential is allowed to manage this repository's webhooks, or delete the webhook on Github and activate the workflow again.",
+								]
+									.filter(Boolean)
+									.join(' ');
+							}
+
+							throw patchError;
+						}
+
+						if (patchResponse?.active !== true) {
+							throw new NodeApiError(this.getNode(), (patchResponse ?? {}) as JsonObject, {
+								message: 'Github did not apply the update to the existing webhook',
+								description:
+									'The webhook exists but could not be enabled with a signing secret. Delete it on Github and activate the workflow again.',
+								level: 'warning',
+							});
+						}
+
+						webhookData.webhookId = String(existingWebhook.id);
+						webhookData.webhookEvents = existingWebhook.events as string[];
+						webhookData.webhookSecret = webhookSecret;
+
+						return true;
 					}
 
 					if (error.httpCode === '404') {
@@ -589,9 +665,18 @@ export class GithubTrigger implements INodeType {
 					});
 				}
 
+				const strandedWebhookId = webhookData.webhookId;
+
 				webhookData.webhookId = responseData.id as string;
 				webhookData.webhookEvents = responseData.events as string[];
 				webhookData.webhookSecret = webhookSecret;
+
+				if (strandedWebhookId !== undefined) {
+					this.logger.warn(
+						`Github Trigger "${this.getNode().name}" registered a new webhook. Webhook ${String(strandedWebhookId)} may still be on the repository and is no longer tracked; check the repository's webhook settings.`,
+						{ workflowId: this.getWorkflow().id, strandedWebhookId },
+					);
+				}
 
 				return true;
 			},

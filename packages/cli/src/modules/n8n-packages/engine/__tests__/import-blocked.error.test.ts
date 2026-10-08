@@ -1,5 +1,4 @@
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { ConflictError, UnprocessableRequestError } from '@n8n/errors';
 
 import type { BlockingIssue } from '../../n8n-packages.types';
 import { toImportBlockedError } from '../import-blocked.error';
@@ -11,6 +10,13 @@ const folderConflict: BlockingIssue = {
 	name: 'in_progress',
 	existingParentFolderId: null,
 	expectedParentFolderId: 'anchor',
+};
+
+const projectConflict: BlockingIssue = {
+	type: 'project-conflict',
+	kind: 'fail-policy',
+	sourceProjectId: 'p1',
+	name: 'billing',
 };
 
 const credentialUnresolved: BlockingIssue = {
@@ -26,6 +32,16 @@ const variableUnresolved: BlockingIssue = {
 	usedByWorkflows: ['w1'],
 };
 
+const workflowLineageConflict: BlockingIssue = {
+	type: 'workflow-lineage-conflict',
+	sourceWorkflowId: 'source-1',
+	projectId: 'project-1',
+	existingWorkflows: [
+		{ id: 'workflow-1', name: 'First', isArchived: false },
+		{ id: 'workflow-2', name: 'Second', isArchived: false },
+	],
+};
+
 const tagUnresolved = (
 	kind: 'rename-drift' | 'name-collision' | 'invalid-name',
 ): BlockingIssue => ({
@@ -39,6 +55,16 @@ const tagUnresolved = (
 describe('toImportBlockedError', () => {
 	it('maps a folder-conflict to 409 Conflict', () => {
 		const error = toImportBlockedError([folderConflict]);
+		expect(error).toBeInstanceOf(ConflictError);
+	});
+
+	it('maps a project-conflict to 409 Conflict', () => {
+		const error = toImportBlockedError([projectConflict]);
+		expect(error).toBeInstanceOf(ConflictError);
+	});
+
+	it('maps a workflow-lineage-conflict to 409 Conflict', () => {
+		const error = toImportBlockedError([workflowLineageConflict]);
 		expect(error).toBeInstanceOf(ConflictError);
 	});
 

@@ -107,6 +107,115 @@ describe('CodeFlow', () => {
 						'response_type=code&scope=notifications',
 				);
 			});
+
+			it('should keep the URL value and drop the default when a query param key exists in both', () => {
+				const authWithPromptInUrl = new ClientOAuth2({
+					clientId: config.clientId,
+					clientSecret: config.clientSecret,
+					accessTokenUri: config.accessTokenUri,
+					authorizationUri: `${config.authorizationUri}?prompt=consent`,
+					authorizationGrants: ['code'],
+					redirectUri: config.redirectUri,
+					scopes: ['notifications'],
+					query: { prompt: 'select_account', response_mode: 'query' },
+				});
+				expect(authWithPromptInUrl.code.getUri()).toEqual(
+					`${config.authorizationUri}?prompt=consent&response_mode=query&client_id=abc&` +
+						`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
+						'response_type=code&scope=notifications',
+				);
+			});
+
+			it('should replace flow-owned params carried by the URL with the flow values', () => {
+				const authWithStaleFlowParams = new ClientOAuth2({
+					clientId: config.clientId,
+					clientSecret: config.clientSecret,
+					accessTokenUri: config.accessTokenUri,
+					authorizationUri: `${config.authorizationUri}?client_id=stale&state=stale`,
+					authorizationGrants: ['code'],
+					redirectUri: config.redirectUri,
+					scopes: ['notifications'],
+				});
+				expect(authWithStaleFlowParams.code.getUri({ state: config.state })).toEqual(
+					`${config.authorizationUri}?client_id=abc&state=${config.state}&` +
+						`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
+						'response_type=code&scope=notifications',
+				);
+			});
+
+			it('should replace a PKCE challenge carried by the URL with the generated one', () => {
+				const authWithStaleChallenge = new ClientOAuth2({
+					clientId: config.clientId,
+					clientSecret: config.clientSecret,
+					accessTokenUri: config.accessTokenUri,
+					authorizationUri: `${config.authorizationUri}?code_challenge=stale&code_challenge_method=plain`,
+					authorizationGrants: ['code'],
+					redirectUri: config.redirectUri,
+					scopes: ['notifications'],
+					query: { code_challenge: 'abc123', code_challenge_method: 'S256' },
+				});
+				expect(authWithStaleChallenge.code.getUri()).toEqual(
+					`${config.authorizationUri}?code_challenge=abc123&code_challenge_method=S256&client_id=abc&` +
+						`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
+						'response_type=code&scope=notifications',
+				);
+			});
+
+			it('should keep a URL-carried scope when the flow scope is empty', () => {
+				const authWithBlankScope = new ClientOAuth2({
+					clientId: config.clientId,
+					clientSecret: config.clientSecret,
+					accessTokenUri: config.accessTokenUri,
+					authorizationUri: `${config.authorizationUri}?scope=custom.read`,
+					authorizationGrants: ['code'],
+					redirectUri: config.redirectUri,
+					// A blank Scope field reaches this package as [''] via the oauth service.
+					scopes: [''],
+				});
+				expect(authWithBlankScope.code.getUri()).toEqual(
+					`${config.authorizationUri}?scope=custom.read&client_id=abc&` +
+						`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
+						'response_type=code',
+				);
+			});
+
+			it('should emit repeated resource params from an array value separately', () => {
+				const authWithResourceArray = new ClientOAuth2({
+					clientId: config.clientId,
+					clientSecret: config.clientSecret,
+					accessTokenUri: config.accessTokenUri,
+					authorizationUri: config.authorizationUri,
+					authorizationGrants: ['code'],
+					redirectUri: config.redirectUri,
+					scopes: ['notifications'],
+					query: { resource: ['https://a.example.com', 'https://b.example.com'] },
+				});
+				expect(authWithResourceArray.code.getUri()).toEqual(
+					`${config.authorizationUri}?resource=${encodeURIComponent('https://a.example.com')}&` +
+						`resource=${encodeURIComponent('https://b.example.com')}&client_id=abc&` +
+						`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
+						'response_type=code&scope=notifications',
+				);
+			});
+
+			it('should not deduplicate the repeatable resource param', () => {
+				const authWithResourceInUrl = new ClientOAuth2({
+					clientId: config.clientId,
+					clientSecret: config.clientSecret,
+					accessTokenUri: config.accessTokenUri,
+					authorizationUri: `${config.authorizationUri}?resource=${encodeURIComponent('https://a.example.com')}`,
+					authorizationGrants: ['code'],
+					redirectUri: config.redirectUri,
+					scopes: ['notifications'],
+					resource: 'https://b.example.com',
+				});
+				expect(authWithResourceInUrl.code.getUri()).toEqual(
+					`${config.authorizationUri}?resource=${encodeURIComponent('https://a.example.com')}&client_id=abc&` +
+						`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
+						'response_type=code&' +
+						`resource=${encodeURIComponent('https://b.example.com')}&scope=notifications`,
+				);
+			});
 		});
 	});
 

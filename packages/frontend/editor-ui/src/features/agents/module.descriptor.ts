@@ -1,25 +1,23 @@
-import { i18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
-import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import { i18n } from '@n8n/i18n';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import {
 	AGENTS_LIST_VIEW,
-	AGENT_BUILDER_SETTINGS_VIEW,
+	AGENTS_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
+	AGENT_N8N_CHAT_VIEW,
+	AGENT_N8N_CHAT_LIBRARY_VIEW,
 	AGENT_PREVIEW_VIEW,
-	AGENT_TOOLS_MODAL_KEY,
-	AGENT_TOOL_CONFIG_MODAL_KEY,
-	AGENT_SKILL_MODAL_KEY,
-	AGENT_TASK_MODAL_KEY,
-	AGENT_SUB_AGENTS_MODAL_KEY,
-	AGENT_VECTOR_STORES_MODAL_KEY,
-	AGENT_JSON_IMPORT_MODAL_KEY,
-	NEW_AGENT_VIEW,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
+import { isAgentsN8nChatFlagEnabledOnceEvaluated } from '@/features/agents/composables/useAgentsN8nChatFlag';
+import { AGENTS_MODALS } from '@/features/agents/modals';
 
 const AgentsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentsListView.vue');
@@ -27,106 +25,40 @@ const AgentView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentView.vue');
 const AgentBuilderView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentBuilderView.vue');
-const NewAgentView = async (): Promise<unknown> =>
-	await import('@/features/agents/views/NewAgentView.vue');
 const AgentSessionsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionsListView.vue');
 const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
-const SettingsAgentBuilderView = async (): Promise<unknown> =>
-	await import('@/features/agents/views/SettingsAgentBuilderView.vue');
+const AgentN8nChatView = async (): Promise<unknown> =>
+	await import('@/features/agents/n8nChatPage/AgentN8nChatView.vue');
+const N8nChatAgentLibraryView = async (): Promise<unknown> =>
+	await import('@/features/agents/n8nChatPage/N8nChatAgentLibraryView.vue');
 
-export const AgentsModule: FrontendModuleDescription = {
+// Same availability gate as `/assistant` itself, then the PostHog flag — posthog
+// loads flags asynchronously, so the guard waits for them before deciding.
+const n8nChatRouteGuard = async () => {
+	if (!useInstanceAiAvailable().value) return { name: VIEWS.HOMEPAGE };
+	return (await isAgentsN8nChatFlagEnabledOnceEvaluated()) ? true : { name: INSTANCE_AI_VIEW };
+};
+
+export const AgentsModule = defineFrontendModule({
 	id: 'agents',
 	name: 'Agents',
 	description: 'Build and manage AI agents',
 	icon: 'robot',
-	modals: [
-		{
-			key: AGENT_TOOLS_MODAL_KEY,
-			component: async () => await import('./components/AgentToolsConnectionModalWrapper.vue'),
-			initialState: {
-				open: false,
-				data: {
-					tools: [],
-					mcpServers: [],
-					onConfirm: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_TOOL_CONFIG_MODAL_KEY,
-			component: async () => await import('./components/AgentToolConfigModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					kind: 'node',
-					toolRef: null,
-					onConfirm: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_SKILL_MODAL_KEY,
-			component: async () => await import('./components/AgentSkillModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					projectId: '',
-					agentId: '',
-					onConfirm: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_TASK_MODAL_KEY,
-			component: async () => await import('./components/AgentTaskModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					projectId: '',
-					agentId: '',
-					isPublished: false,
-					onSaved: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_SUB_AGENTS_MODAL_KEY,
-			component: async () => await import('./components/AgentSubAgentsModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					agents: [],
-					onConfirm: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_VECTOR_STORES_MODAL_KEY,
-			component: async () => await import('./components/AgentVectorStoresModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					projectId: '',
-					agentId: '',
-					existingNames: [],
-					onConfirm: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_JSON_IMPORT_MODAL_KEY,
-			component: async () => await import('./components/AgentJsonImportModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					onConfirm: () => {},
-				},
-			},
-		},
-	],
+	modals: AGENTS_MODALS,
 	routes: [
+		{
+			name: AGENTS_SETTINGS_VIEW,
+			path: 'agents',
+			component: async () => await import('./views/SettingsAgentsView.vue'),
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'rbac', 'custom'],
+				middlewareOptions: { rbac: { scope: 'agent:manage' } },
+				telemetry: { pageCategory: 'settings' },
+			},
+		},
 		{
 			name: AGENTS_LIST_VIEW,
 			path: '/home/agents',
@@ -141,14 +73,6 @@ export const AgentsModule: FrontendModuleDescription = {
 			component: AgentsListView,
 			meta: {
 				projectRoute: true,
-				middleware: ['authenticated', 'custom'],
-			},
-		},
-		{
-			name: NEW_AGENT_VIEW,
-			path: '/new-agent',
-			component: NewAgentView,
-			meta: {
 				middleware: ['authenticated', 'custom'],
 			},
 		},
@@ -186,21 +110,29 @@ export const AgentsModule: FrontendModuleDescription = {
 			],
 		},
 		{
-			name: AGENT_BUILDER_SETTINGS_VIEW,
-			path: 'agent-builder',
-			component: SettingsAgentBuilderView,
+			name: AGENT_N8N_CHAT_LIBRARY_VIEW,
+			// A static path outranks `:agentId` and instanceAi's `/assistant/:threadId`, regardless of registration order.
+			path: '/assistant/agents',
+			component: N8nChatAgentLibraryView,
 			meta: {
-				layout: 'settings',
-				middleware: ['authenticated', 'rbac'],
-				middlewareOptions: {
-					rbac: {
-						scope: 'agent:manage',
-					},
-				},
-				telemetry: {
-					pageCategory: 'settings',
-				},
+				layout: 'instanceAi',
+				middleware: ['authenticated', 'custom'],
 			},
+			beforeEnter: n8nChatRouteGuard,
+		},
+		{
+			name: AGENT_N8N_CHAT_VIEW,
+			// `agentThreadId`, not `threadId`: the sibling instanceAi routes read
+			// `route.params.threadId` for an n8n Assistant thread id, and the two
+			// param names must not collide on this route.
+			path: '/assistant/agents/:agentId/:agentThreadId?',
+			component: AgentN8nChatView,
+			props: true,
+			meta: {
+				layout: 'instanceAi',
+				middleware: ['authenticated', 'custom'],
+			},
+			beforeEnter: n8nChatRouteGuard,
 		},
 	],
 	projectTabs: {
@@ -228,23 +160,23 @@ export const AgentsModule: FrontendModuleDescription = {
 			},
 		],
 	},
+	settingsPages: [
+		{
+			id: 'settings-agents',
+			icon: 'robot',
+			label: i18n.baseText('settings.agents'),
+			position: 'top',
+			route: { to: { name: AGENTS_SETTINGS_VIEW } },
+			preview: true,
+			get available() {
+				return hasPermission(['rbac'], { rbac: { scope: 'agent:manage' } });
+			},
+		},
+	],
 	resources: [
 		{
 			key: 'agent',
 			displayName: 'Agent',
 		},
 	],
-	settingsPages: [
-		{
-			id: 'settings-agent-builder',
-			icon: 'robot',
-			label: i18n.baseText('settings.agentBuilder.title'),
-			position: 'top',
-			preview: true,
-			route: { to: { name: AGENT_BUILDER_SETTINGS_VIEW } },
-			get available() {
-				return hasPermission(['rbac'], { rbac: { scope: 'agent:manage' } });
-			},
-		},
-	],
-};
+});

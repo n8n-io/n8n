@@ -6,18 +6,10 @@ export function useCredentialTestInBackground() {
 
 	/**
 	 * Checks whether a credential type has a test mechanism defined.
-	 * Returns true if either the credential type itself defines a `test` block
-	 * or any node with access declares `testedBy` for it.
+	 * Kept as part of this composable's surface — several callers consume it from here.
 	 */
-	const isCredentialTypeTestable = (credentialTypeName: string): boolean => {
-		const credType = credentialsStore.getCredentialTypeByName(credentialTypeName);
-		if (credType?.test) return true;
-
-		const nodesWithAccess = credentialsStore.getNodesWithAccess(credentialTypeName);
-		return nodesWithAccess.some((node) =>
-			node.credentials?.some((cred) => cred.name === credentialTypeName && cred.testedBy),
-		);
-	};
+	const isCredentialTypeTestable = (credentialTypeName: string): boolean =>
+		credentialsStore.isCredentialTypeTestable(credentialTypeName);
 
 	/**
 	 * Tests a saved credential in the background.

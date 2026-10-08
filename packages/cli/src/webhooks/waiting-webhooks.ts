@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -24,15 +25,13 @@ import type {
 	WaitingWebhookRequest,
 } from './webhook.types';
 
-import { EventService } from '@/events/event.service';
-
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NodeTypes } from '@/node-types';
 import { applyCors } from '@/utils/cors.util';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { preserveInputOverride } from '@/workflow-helpers';
 
@@ -230,6 +229,18 @@ export class WaitingWebhooks implements IWebhookManager {
 		return { valid, webhookPath };
 	}
 
+	/**
+	 * Removes the waiting token from the request's query so it never reaches
+	 * the resumed node's own output data.
+	 */
+	private stripTokenFromRequest(req: express.Request) {
+		delete req.query[WAITING_TOKEN_QUERY_PARAM];
+
+		const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+		url.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
+		req.url = `${url.pathname}${url.search}`;
+	}
+
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
@@ -251,7 +262,9 @@ export class WaitingWebhooks implements IWebhookManager {
 		if (execution?.data.resumeToken) {
 			const { workflowData } = execution;
 			const { nodes } = this.createWorkflow(workflowData);
-			const isSendAndWait = this.isSendAndWaitRequest(nodes, suffix);
+			// Send-and-wait node ids carried in the signature query value require HMAC validation too.
+			const effectiveSuffix = suffix ?? this.parseSignatureParam(req).webhookPath;
+			const isSendAndWait = this.isSendAndWaitRequest(nodes, effectiveSuffix);
 
 			// Send-and-wait uses HMAC to protect tamper-sensitive query params (e.g. approved=true).
 			// All other waiting URLs use a simple random token comparison.
@@ -261,12 +274,14 @@ export class WaitingWebhooks implements IWebhookManager {
 
 			if (!valid) {
 				if (isSendAndWait) {
+					applyFormSandboxCSP(res);
 					res.status(401).render('form-invalid-token');
 				} else {
 					res.status(401).json({ error: 'Invalid token' });
 				}
 				return { noWebhookResponse: true };
 			}
+			this.stripTokenFromRequest(req);
 			// Use webhook path parsed from token if not in route (backwards compat for old URL format)
 			if (!suffix && webhookPath) {
 				suffix = webhookPath;
@@ -295,10 +310,12 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new ConflictError(message);
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (execution.finished) {
 			const { workflowData } = execution;
 			const { nodes } = this.createWorkflow(workflowData);
 			if (this.isSendAndWaitRequest(nodes, suffix)) {
+				applyFormSandboxCSP(res);
 				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 				return { noWebhookResponse: true };
 			} else {
@@ -393,6 +410,7 @@ export class WaitingWebhooks implements IWebhookManager {
 				const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
 
 				if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
+					applyFormSandboxCSP(res);
 					res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 					return { noWebhookResponse: true };
 				}
@@ -427,6 +445,8 @@ export class WaitingWebhooks implements IWebhookManager {
 						}
 						resolve(data);
 					},
+					undefined,
+					{ storedAt: execution.storedAt },
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {

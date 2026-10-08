@@ -24,6 +24,15 @@ export class MicrosoftSharePointOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Subdomain',
+			name: 'subdomain',
+			type: 'string',
+			required: true,
+			placeholder: 'tenant123',
+			default: '',
+			hint: 'You can extract the subdomain from the URL. For example, in the URL "https://tenant123.sharepoint.com", the subdomain is "tenant123".',
+		},
+		{
 			displayName: 'Custom Scopes',
 			name: 'customScopes',
 			type: 'boolean',
@@ -32,7 +41,7 @@ export class MicrosoftSharePointOAuth2Api implements ICredentialType {
 		},
 		{
 			displayName:
-				'The default scopes needed for the node to work are already set, If you change these the node may not function correctly. Use the <code>{subdomain}</code> placeholder to reference the Subdomain value below.',
+				'The default scopes needed for the node to work are already set, If you change these the node may not function correctly. Use the <code>{subdomain}</code> placeholder to reference the Subdomain value above.',
 			name: 'customScopesNotice',
 			type: 'notice',
 			default: '',
@@ -62,14 +71,7 @@ export class MicrosoftSharePointOAuth2Api implements ICredentialType {
 			default:
 				'={{($self["customScopes"] ? $self["enabledScopes"] : "' +
 				defaultScopes.join(' ') +
-				'").replace(/\\{subdomain\\}/g, $self["subdomain"])}}',
-		},
-		{
-			displayName: 'Subdomain',
-			name: 'subdomain',
-			type: 'string',
-			default: '',
-			hint: 'You can extract the subdomain from the URL. For example, in the URL "https://tenant123.sharepoint.com", the subdomain is "tenant123".',
+				'").replace(/\\{subdomain\\}/g, ($self["subdomain"] || "").trim())}}',
 		},
 		{
 			displayName: 'Microsoft Graph API Base URL',

@@ -6,11 +6,9 @@ import type {
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
 import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
-import {
-	HTTP_REQUEST_NODE_TYPE,
-	CREDENTIAL_ONLY_HTTP_NODE_VERSION,
-	MODULE_ENABLED_NODES,
-} from '@/app/constants';
+import { HTTP_REQUEST_NODE_TYPE, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/app/constants';
+import { getNodeGatingModule } from '@n8n/constants';
+import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
 import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@n8n/i18n';
@@ -34,7 +32,7 @@ import { groupNodeTypesByNameAndType } from '@/app/utils/nodeTypes/nodeTypeTrans
 import { computed, shallowRef } from 'vue';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import type { WorkflowObjectAccessors } from '../types';
 
@@ -107,23 +105,13 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			.filter(Boolean);
 	});
 
-	// Nodes defined with `hidden: true` that are still shown if their modules are enabled
-	const moduleEnabledNodeTypes = computed<INodeTypeDescription[]>(() => {
-		return MODULE_ENABLED_NODES.flatMap((node) => {
-			const nodeVersions = nodeTypes.value[node.nodeType] ?? {};
-			const versionNumbers = Object.keys(nodeVersions).map(Number);
-			const latest = nodeVersions[Math.max(...versionNumbers)];
-
-			if (latest?.hidden && settingsStore.isModuleActive(node.module)) {
-				return {
-					...latest,
-					hidden: undefined,
-				};
-			}
-
-			return [];
-		});
-	});
+	// True for a module-gated node type whose module is off. Admins can also turn agents off in settings.
+	function isNodeTypeModuleDisabled(nodeTypeName: string): boolean {
+		const moduleName = getNodeGatingModule(nodeTypeName);
+		if (!moduleName) return false;
+		if (moduleName === AGENTS_MODULE_NAME) return !settingsStore.isAgentsEnabled;
+		return !settingsStore.isModuleActive(moduleName);
+	}
 
 	const getNodeType = computed(() => {
 		return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
@@ -225,8 +213,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const visibleNodeTypes = computed(() => {
 		return allLatestNodeTypes.value
 			.concat(officialCommunityNodeTypes.value)
-			.concat(moduleEnabledNodeTypes.value)
-			.filter((nodeType) => !nodeType.hidden);
+			.filter((nodeType) => !nodeType.hidden && !isNodeTypeModuleDisabled(nodeType.name));
 	});
 
 	const nativelyNumberSuffixedDefaults = computed(() => {
@@ -504,6 +491,16 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	// True for types the instance does not load (NODES_EXCLUDE, NODES_INCLUDE). Vetted community
+	// types stay available: the node creator offers them for installation. Before the types load,
+	// nothing counts as unavailable, so callers do not hide or skip every node.
+	function isNodeTypeUnavailable(nodeTypeName: string): boolean {
+		if (Object.keys(nodeTypes.value).length === 0) return false;
+		return (
+			!getNodeType.value(removePreviewToken(nodeTypeName)) && !communityNodeType.value(nodeTypeName)
+		);
+	}
+
 	const getIsNodeInstalled = computed(() => {
 		return (nodeTypeName: string) => {
 			const cleanedNodeTypeName = removePreviewToken(nodeTypeName);
@@ -564,6 +561,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
 		communityNodesAndActions,
+		vettedCommunityNodeTypes,
 		communityNodeType,
 		officialCommunityNodeTypes,
 		unofficialCommunityNodeTypes,
@@ -583,5 +581,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		removeNodeTypes,
 		getCommunityNodeAttributes,
 		getIsNodeInstalled,
+		isNodeTypeUnavailable,
+		isNodeTypeModuleDisabled,
 	};
 });

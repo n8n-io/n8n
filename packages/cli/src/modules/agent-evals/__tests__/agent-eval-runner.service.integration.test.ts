@@ -15,6 +15,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { License } from '@/license';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -64,6 +65,7 @@ const buildRunner = () =>
 		// the env overrides — exercising the operator force-enable path the
 		// `agentEvalsEnabled` assignment in `beforeEach` relies on.
 		Container.get(AgentEvalsFlagGate),
+		Container.get(AgentsSettingsService),
 	);
 
 /** Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds. */
@@ -93,6 +95,7 @@ beforeEach(async () => {
 		'AgentEvalDataset',
 	]);
 	Container.get(GlobalConfig).evaluation.agentEvalsEnabled = true;
+	await Container.get(AgentsSettingsService).setEnabled(true);
 });
 
 afterAll(async () => {
@@ -158,7 +161,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 		const inputsSent = evalAgentExecutionService.executeWithLlmMock.mock.calls.map((c) => c[3]);
 		expect(inputsSent).toEqual(expect.arrayContaining(['What is 2+2?', 'Capital of France?']));
 
-		const results = await Container.get(AgentEvalResultRepository).findByRunId(runId);
+		const [results] = await Container.get(AgentEvalResultRepository).findAndCountByRunId(runId);
 		expect(results).toHaveLength(2);
 		for (const result of results) {
 			expect(result.status).toBe('success');
@@ -217,7 +220,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 		expect(summary.status).toBe('completed');
 		expect(summary.counts).toMatchObject({ total: 1, success: 0, error: 1 });
 
-		const [result] = await Container.get(AgentEvalResultRepository).findByRunId(runId);
+		const [[result]] = await Container.get(AgentEvalResultRepository).findAndCountByRunId(runId);
 		expect(result.status).toBe('error');
 		expect(result.errorCode).toBe('execution_failed');
 	});

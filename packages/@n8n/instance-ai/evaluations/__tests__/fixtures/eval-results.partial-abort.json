@@ -40,7 +40,8 @@
 				}
 			],
 			"transcriptPerRun": [null],
-			"buildErrorPerRun": [null]
+			"buildErrorPerRun": [null],
+			"buildTimeoutPerRun": [null]
 		},
 		{
 			"name": "build me something",
@@ -66,6 +67,7 @@
 							"score": 0,
 							"reasoning": "Scenario execution error: TimeoutError: The operation was aborted due to timeout",
 							"failureCategory": "framework_issue",
+							"attribution": "framework_issue",
 							"rootCause": "Scenario execution exceeded its per-iteration time budget and was aborted before a verdict: TimeoutError: The operation was aborted due to timeout",
 							"execErrors": []
 						}
@@ -73,7 +75,8 @@
 				}
 			],
 			"transcriptPerRun": [null],
-			"buildErrorPerRun": ["TimeoutError: The operation was aborted due to timeout"]
+			"buildErrorPerRun": ["TimeoutError: The operation was aborted due to timeout"],
+			"buildTimeoutPerRun": [null]
 		}
 	]
 }

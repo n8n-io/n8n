@@ -27,7 +27,6 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { ExecutionService } from '@/executions/execution.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 
@@ -48,7 +47,6 @@ export async function initActiveWorkflowManager() {
 	});
 
 	mockInstance(Push);
-	mockInstance(ExecutionService);
 	const { ActiveWorkflowManager } = await import('@/active-workflow-manager.js');
 	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 	await activeWorkflowManager.init();
@@ -136,7 +134,9 @@ function buildDefaultNodes(): INodeTypeData {
 			sourcePath: '',
 		},
 		'n8n-nodes-base.webhook': {
-			type: mock<INodeType>({ description: new WebhookNode().description } as never) as INodeType,
+			// The real node: publishing resolves a webhook node's parameters against its
+			// description, which a mock-wrapped description does not survive.
+			type: new WebhookNode() as unknown as INodeType,
 			sourcePath: '',
 		},
 		// Minimal mocks for node types the package-import fixtures reference at typeVersion 1.
@@ -146,6 +146,11 @@ function buildDefaultNodes(): INodeTypeData {
 		// publishing validates it, and a dropped parameter silently skips that check.
 		'n8n-nodes-base.executeWorkflow': minimalNodeType('n8n-nodes-base.executeWorkflow', [
 			{ displayName: 'Workflow', name: 'workflowId', type: 'workflowSelector', default: '' },
+		]),
+		// Declares the inline agent parameters so the policy can read the tools they hold.
+		'n8n-nodes-base.messageAnAgent': minimalNodeType('n8n-nodes-base.messageAnAgent', [
+			{ displayName: 'Agent Source', name: 'agentSource', type: 'string', default: '' },
+			{ displayName: 'Inline Agent', name: 'inlineAgent', type: 'json', default: '' },
 		]),
 	};
 }

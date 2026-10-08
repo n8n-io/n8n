@@ -375,6 +375,7 @@ describe('AlicloudModelStudio Operations', () => {
 				usage: { input_tokens: 10 },
 			});
 			expect(result.binary).toBeUndefined();
+			expect(mockPollTaskResult).not.toHaveBeenCalled();
 		});
 
 		it('should auto-download image as binary when downloadImage is true', async () => {
@@ -439,6 +440,392 @@ describe('AlicloudModelStudio Operations', () => {
 					imageUrl: 'https://result.aliyuncs.com/generated.png',
 				}),
 			);
+		});
+
+		it('should use async image-generation and poll for wan2.6-t2i with default size and n=1', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any) => {
+					const params: Record<string, unknown> = {
+						modelId: 'wan2.6-t2i',
+						prompt: 'A flower shop with wooden door',
+						imageOptions: {},
+						downloadImage: false,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			mockApiRequest.mockResolvedValue({
+				output: { task_id: 'wan-t2i-task-1', task_status: 'PENDING' },
+			});
+			mockPollTaskResult.mockResolvedValue({
+				output: {
+					task_status: 'SUCCEEDED',
+					choices: [
+						{
+							message: {
+								content: [{ image: 'https://result.aliyuncs.com/wan-t2i.png', type: 'image' }],
+							},
+						},
+					],
+				},
+				usage: { image_count: 1, size: '1280*1280' },
+			});
+
+			const result = await imageGenerateExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/api/v1/services/aigc/image-generation/generation',
+				expect.objectContaining({
+					headers: { 'X-DashScope-Async': 'enable' },
+					body: expect.objectContaining({
+						model: 'wan2.6-t2i',
+						parameters: expect.objectContaining({
+							n: 1,
+							size: '1280*1280',
+							prompt_extend: false,
+						}),
+					}),
+				}),
+			);
+			expect(mockPollTaskResult).toHaveBeenCalledWith('wan-t2i-task-1');
+			expect(result.json).toEqual({
+				model: 'wan2.6-t2i',
+				imageUrl: 'https://result.aliyuncs.com/wan-t2i.png',
+				usage: { image_count: 1, size: '1280*1280' },
+			});
+		});
+
+		it('should download reference image URLs and send them as data URIs for wan2.6-image', async () => {
+			const deepMock = mockDeep<IExecuteFunctions>();
+			deepMock.getNode.mockReturnValue({ typeVersion: 1 } as any);
+			deepMock.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any) => {
+					const params: Record<string, unknown> = {
+						modelId: 'wan2.6-image',
+						prompt: 'Edit this scene',
+						referenceImages: {
+							values: [{ inputType: 'url', imageUrl: 'https://example.com/ref.jpg' }],
+						},
+						imageOptions: {},
+						downloadImage: false,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+			deepMock.helpers.httpRequest.mockResolvedValue({
+				body: Buffer.from('fake-jpg-data'),
+				headers: { 'content-type': 'image/jpeg' },
+			});
+
+			mockApiRequest.mockResolvedValue({
+				output: { task_id: 'wan-image-task-1', task_status: 'PENDING' },
+			});
+			mockPollTaskResult.mockResolvedValue({
+				output: {
+					task_status: 'SUCCEEDED',
+					choices: [
+						{
+							message: {
+								content: [
+									{ text: 'Here is the edited image' },
+									{ image: 'https://result.aliyuncs.com/wan-image.png', type: 'image' },
+								],
+							},
+						},
+					],
+				},
+				usage: { image_count: 1 },
+			});
+
+			const result = await imageGenerateExecute.call(deepMock, 0);
+
+			expect(deepMock.helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'GET',
+					url: 'https://example.com/ref.jpg',
+					encoding: 'arraybuffer',
+					returnFullResponse: true,
+				}),
+			);
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/api/v1/services/aigc/image-generation/generation',
+				expect.objectContaining({
+					headers: { 'X-DashScope-Async': 'enable' },
+					body: expect.objectContaining({
+						model: 'wan2.6-image',
+						input: {
+							messages: [
+								{
+									role: 'user',
+									content: [
+										{ text: 'Edit this scene' },
+										{
+											image: `data:image/jpeg;base64,${Buffer.from('fake-jpg-data').toString('base64')}`,
+										},
+									],
+								},
+							],
+						},
+						parameters: expect.objectContaining({
+							n: 1,
+							size: '1280*1280',
+						}),
+					}),
+				}),
+			);
+			expect(mockPollTaskResult).toHaveBeenCalledWith('wan-image-task-1');
+			expect(result.json).toEqual({
+				model: 'wan2.6-image',
+				imageUrl: 'https://result.aliyuncs.com/wan-image.png',
+				usage: { image_count: 1 },
+			});
+		});
+
+		it('should use old text2image synthesis and input.prompt for wan2.5-t2i-preview', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any) => {
+					const params: Record<string, unknown> = {
+						modelId: 'wan2.5-t2i-preview',
+						prompt: 'A sitting orange cat',
+						imageOptions: {},
+						downloadImage: false,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			mockApiRequest.mockResolvedValue({
+				output: { task_id: 'wan-old-t2i-1', task_status: 'PENDING' },
+			});
+			mockPollTaskResult.mockResolvedValue({
+				output: {
+					task_status: 'SUCCEEDED',
+					results: [{ url: 'https://result.aliyuncs.com/wan-old-t2i.png' }],
+				},
+				usage: { image_count: 1 },
+			});
+
+			const result = await imageGenerateExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/api/v1/services/aigc/text2image/image-synthesis',
+				expect.objectContaining({
+					headers: { 'X-DashScope-Async': 'enable' },
+					body: {
+						model: 'wan2.5-t2i-preview',
+						input: { prompt: 'A sitting orange cat' },
+						parameters: {
+							prompt_extend: false,
+							n: 1,
+							size: '1280*1280',
+						},
+					},
+				}),
+			);
+			expect(mockPollTaskResult).toHaveBeenCalledWith('wan-old-t2i-1');
+			expect(result.json).toEqual({
+				model: 'wan2.5-t2i-preview',
+				imageUrl: 'https://result.aliyuncs.com/wan-old-t2i.png',
+				usage: { image_count: 1 },
+			});
+		});
+
+		it('should default wan2.2-t2i-flash size to 1024*1024 on the old t2i endpoint', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any) => {
+					const params: Record<string, unknown> = {
+						modelId: 'wan2.2-t2i-flash',
+						prompt: 'A flower shop',
+						imageOptions: {},
+						downloadImage: false,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			mockApiRequest.mockResolvedValue({
+				output: { task_id: 'wan-22-1', task_status: 'PENDING' },
+			});
+			mockPollTaskResult.mockResolvedValue({
+				output: {
+					task_status: 'SUCCEEDED',
+					results: [{ url: 'https://result.aliyuncs.com/wan-22.png' }],
+				},
+			});
+
+			await imageGenerateExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/api/v1/services/aigc/text2image/image-synthesis',
+				expect.objectContaining({
+					body: expect.objectContaining({
+						model: 'wan2.2-t2i-flash',
+						input: { prompt: 'A flower shop' },
+						parameters: expect.objectContaining({ size: '1024*1024', n: 1 }),
+					}),
+				}),
+			);
+		});
+
+		it('should route wanx2.1-t2i-plus to the old t2i endpoint', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any) => {
+					const params: Record<string, unknown> = {
+						modelId: 'wanx2.1-t2i-plus',
+						prompt: 'A mountain landscape',
+						imageOptions: {},
+						downloadImage: false,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			mockApiRequest.mockResolvedValue({
+				output: { task_id: 'wanx-21-1', task_status: 'PENDING' },
+			});
+			mockPollTaskResult.mockResolvedValue({
+				output: {
+					task_status: 'SUCCEEDED',
+					results: [{ url: 'https://result.aliyuncs.com/wanx.png' }],
+				},
+			});
+
+			await imageGenerateExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/api/v1/services/aigc/text2image/image-synthesis',
+				expect.objectContaining({
+					body: expect.objectContaining({ model: 'wanx2.1-t2i-plus' }),
+				}),
+			);
+		});
+
+		it('should use old image2image synthesis and input.images for wan2.5-i2i-preview', async () => {
+			const deepMock = mockDeep<IExecuteFunctions>();
+			deepMock.getNode.mockReturnValue({ typeVersion: 1 } as any);
+			deepMock.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any) => {
+					const params: Record<string, unknown> = {
+						modelId: 'wan2.5-i2i-preview',
+						prompt: 'Make it sunset',
+						referenceImages: {
+							values: [{ inputType: 'url', imageUrl: 'https://example.com/ref.jpg' }],
+						},
+						imageOptions: {},
+						downloadImage: false,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+			deepMock.helpers.httpRequest.mockResolvedValue({
+				body: Buffer.from('fake-jpg-data'),
+				headers: { 'content-type': 'image/jpeg' },
+			});
+
+			mockApiRequest.mockResolvedValue({
+				output: { task_id: 'wan-i2i-1', task_status: 'PENDING' },
+			});
+			mockPollTaskResult.mockResolvedValue({
+				output: {
+					task_status: 'SUCCEEDED',
+					results: [{ url: 'https://result.aliyuncs.com/wan-i2i.png' }],
+				},
+			});
+
+			const result = await imageGenerateExecute.call(deepMock, 0);
+
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/api/v1/services/aigc/image2image/image-synthesis',
+				expect.objectContaining({
+					headers: { 'X-DashScope-Async': 'enable' },
+					body: {
+						model: 'wan2.5-i2i-preview',
+						input: {
+							prompt: 'Make it sunset',
+							images: [`data:image/jpeg;base64,${Buffer.from('fake-jpg-data').toString('base64')}`],
+						},
+						parameters: {
+							prompt_extend: false,
+							n: 1,
+							size: '1280*1280',
+						},
+					},
+				}),
+			);
+			expect(result.json.imageUrl).toBe('https://result.aliyuncs.com/wan-i2i.png');
+		});
+
+		it('should keep wan2.7-image on the new async endpoint without requiring refs', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any) => {
+					const params: Record<string, unknown> = {
+						modelId: 'wan2.7-image',
+						prompt: 'A flower shop',
+						imageOptions: {},
+						downloadImage: false,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			mockApiRequest.mockResolvedValue({
+				output: { task_id: 'wan-27-1', task_status: 'PENDING' },
+			});
+			mockPollTaskResult.mockResolvedValue({
+				output: {
+					task_status: 'SUCCEEDED',
+					choices: [
+						{
+							message: {
+								content: [{ image: 'https://result.aliyuncs.com/wan-27.png', type: 'image' }],
+							},
+						},
+					],
+				},
+			});
+
+			await imageGenerateExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/api/v1/services/aigc/image-generation/generation',
+				expect.objectContaining({
+					body: expect.objectContaining({
+						model: 'wan2.7-image',
+						input: {
+							messages: [{ role: 'user', content: [{ text: 'A flower shop' }] }],
+						},
+					}),
+				}),
+			);
+			expect(mockPollTaskResult).toHaveBeenCalledWith('wan-27-1');
+		});
+
+		it('should fail before create when wan2.6-image has no reference images', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any) => {
+					const params: Record<string, unknown> = {
+						modelId: 'wan2.6-image',
+						prompt: 'a cat on a tree',
+						imageOptions: {},
+						downloadImage: false,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			await expect(imageGenerateExecute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'This Wan image-edit model needs 1 to 4 reference images. Use a Wan t2i model for text-only generate.',
+			);
+			expect(mockApiRequest).not.toHaveBeenCalled();
+			expect(mockPollTaskResult).not.toHaveBeenCalled();
 		});
 	});
 

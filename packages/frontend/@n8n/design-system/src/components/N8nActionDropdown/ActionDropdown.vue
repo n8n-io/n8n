@@ -2,37 +2,20 @@
 import { computed, getCurrentInstance, ref, useAttrs, useCssModule } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
+import type { ActionDropdownItem } from '../../types';
 import N8nBadge from '../N8nBadge';
 import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
-import { type IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+import type { ActionDropdownProps } from './ActionDropdown.types';
 
 const { t } = useI18n();
 
-const TRIGGER = ['click', 'hover'] as const;
-
 defineOptions({ inheritAttrs: false });
 
-interface ActionDropdownProps {
-	items: Array<ActionDropdownItem<T>>;
-	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
-	activatorIcon?: IconName;
-	activatorSize?: ButtonSize;
-	iconSize?: IconSize;
-	trigger?: (typeof TRIGGER)[number];
-	teleported?: boolean;
-	disabled?: boolean;
-	extraPopperClass?: string;
-	maxHeight?: string | number;
-	width?: string;
-	modal?: boolean;
-}
-
-const props = withDefaults(defineProps<ActionDropdownProps>(), {
+const props = withDefaults(defineProps<ActionDropdownProps<T>>(), {
 	placement: 'bottom',
 	activatorIcon: 'ellipsis',
 	activatorSize: 'medium',
@@ -42,6 +25,7 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	disabled: false,
 	maxHeight: '',
 	modal: true,
+	suppressCloseAutoFocus: false,
 });
 
 const $style = useCssModule();
@@ -65,17 +49,22 @@ const getItemTestId = (id: T): string => {
 	return `action-${id}`;
 };
 
+const toMenuItem = (
+	item: ActionDropdownItem<T>,
+): DropdownMenuItemProps<T, ActionDropdownItem<T>> => ({
+	id: item.id,
+	testId: item.testId ?? getItemTestId(item.id),
+	label: item.label,
+	icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
+	disabled: item.disabled,
+	divided: item.divided,
+	class: getItemClasses(item),
+	data: item,
+	children: item.children?.map(toMenuItem),
+});
+
 const items = computed((): Array<DropdownMenuItemProps<T, ActionDropdownItem<T>>> => {
-	return props.items.map((item) => ({
-		id: item.id,
-		testId: item.testId ?? getItemTestId(item.id),
-		label: item.label,
-		icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
-		disabled: item.disabled,
-		divided: item.divided,
-		class: getItemClasses(item),
-		data: item,
-	}));
+	return props.items.map(toMenuItem);
 });
 
 const emit = defineEmits<{
@@ -122,6 +111,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			:disabled="disabled"
 			:teleported="teleported"
 			:modal="modal"
+			:suppress-close-auto-focus="suppressCloseAutoFocus"
 			:extra-popper-class="`${extraPopperClass ?? ''}`"
 			:max-height="maxHeight"
 			:width="width"
@@ -135,6 +125,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 					variant="ghost"
 					:class="$style.activator"
 					:size="activatorSize"
+					:icon-size="activatorIconSize"
 					:icon="activatorIcon"
 					:disabled="disabled"
 					:aria-label="t('actionDropdown.activator')"
@@ -169,7 +160,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 						:class="{ [$style.clickableBadge]: !!slotProps.item.data?.disabled }"
 						@click.stop="slotProps.item.data?.disabled && onBadgeClick(slotProps.item.id)"
 					>
-						<N8nBadge theme="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
+						<N8nBadge variant="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
 							{{ slotProps.item.data.badge }}
 						</N8nBadge>
 					</span>

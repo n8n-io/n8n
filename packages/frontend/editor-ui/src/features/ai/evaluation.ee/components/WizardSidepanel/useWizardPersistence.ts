@@ -193,7 +193,7 @@ export function useWizardPersistence() {
 			await evaluationStore.fetchTestRuns(workflowId);
 			return true;
 		} catch (error) {
-			toast.showError(error, locale.baseText('evaluations.wizardSidepanel.step2.dispatchError'));
+			toast.showError(error, locale.baseText('evaluations.tests.dispatchError'));
 			return false;
 		} finally {
 			isPersisting.value = false;

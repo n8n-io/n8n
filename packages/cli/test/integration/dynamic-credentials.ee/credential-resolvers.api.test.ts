@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
@@ -171,16 +172,20 @@ describe('Credential Resolvers API', () => {
 				name: 'Test Resolver',
 				type: 'credential-resolver.oauth2-1.0',
 			});
+			// Secret fields are blanked in the response; non-secret fields stay intact.
 			expect(response.body.data.decryptedConfig).toMatchObject({
 				metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
 				clientId: 'test-client-id',
-				clientSecret: 'test-client-secret',
+				clientSecret: CREDENTIAL_BLANKING_VALUE,
 				validation: 'oauth2-introspection',
 			});
+			expect(response.body.data.config).toBe('');
 
-			// Verify it was actually created (system row + 1 custom)
+			// The real secret is still persisted (encrypted) and readable internally.
 			const resolvers = await repository.find();
 			expect(resolvers).toHaveLength(2);
+			const created = await service.findById(response.body.data.id);
+			expect(created.decryptedConfig?.clientSecret).toBe('test-client-secret');
 		});
 
 		it('should reject unknown resolver type', async () => {
@@ -231,6 +236,10 @@ describe('Credential Resolvers API', () => {
 				name: 'Test Resolver',
 				type: 'credential-resolver.oauth2-1.0',
 			});
+			// Secret fields are blanked; non-secret fields stay intact.
+			expect(response.body.data.decryptedConfig.clientSecret).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(response.body.data.decryptedConfig.clientId).toBe('test-client-id');
+			expect(response.body.data.config).toBe('');
 		});
 
 		it('should return 404 for non-existent resolver', async () => {
@@ -258,6 +267,37 @@ describe('Credential Resolvers API', () => {
 				.expect(200);
 
 			expect(response.body.data.name).toBe('Updated Name');
+		});
+
+		it('keeps the stored secret when the blanked value is saved back', async () => {
+			const resolver = await service.create({
+				name: 'Round-trip Resolver',
+				type: 'credential-resolver.oauth2-1.0',
+				config: {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					clientId: 'test-client-id',
+					clientSecret: 'original-secret',
+					validation: 'oauth2-introspection',
+				},
+				user: owner,
+			});
+
+			// Simulate the editor saving back the blanked secret while changing another field.
+			await ownerAgent
+				.patch(`/credential-resolvers/${resolver.id}`)
+				.send({
+					config: {
+						metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+						clientId: 'updated-client-id',
+						clientSecret: CREDENTIAL_BLANKING_VALUE,
+						validation: 'oauth2-introspection',
+					},
+				})
+				.expect(200);
+
+			const stored = await service.findById(resolver.id);
+			expect(stored.decryptedConfig?.clientSecret).toBe('original-secret');
+			expect(stored.decryptedConfig?.clientId).toBe('updated-client-id');
 		});
 
 		it('should return 404 for non-existent resolver', async () => {

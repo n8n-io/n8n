@@ -1,11 +1,15 @@
-import type { JsonObject, JsonValue, StepExecutionRequest, WorkflowGraph } from '@n8n/engine';
+import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from '@n8n/engine';
+import { noopResponseEmitter } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
+// The Wait node's source pulls in Webhook utils that fail this package's tsconfig, so it comes from dist.
+import { Wait } from 'n8n-nodes-base/dist/nodes/Wait/Wait.node';
 import type {
 	CloseFunction,
 	IConnections,
 	IDataObject,
+	INodeCredentials,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -15,8 +19,9 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Node, NodeConnectionTypes } from 'n8n-workflow';
+import { Node, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import type { AdditionalDataContext } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
 
 class EchoParam implements INodeType {
@@ -57,6 +62,28 @@ class AlwaysFails implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return await Promise.reject(new Error('boom from node'));
+	}
+}
+
+class FailsWithDescription implements INodeType {
+	description = {
+		displayName: 'Fails With Description',
+		name: 'failsWithDescription',
+		group: ['transform'],
+		version: 1,
+		description: 'Throws a node error with a description',
+		defaults: { name: 'Fails With Description' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await Promise.reject(
+			new NodeOperationError(this.getNode(), 'request to https://api.test?key=secret failed', {
+				description: 'The service rejected the request',
+			}),
+		);
 	}
 }
 
@@ -183,16 +210,84 @@ class ReturnsEngineRequest extends Node {
 	}
 }
 
+/**
+ * Calls `putExecutionToWait` with any date, including invalid dates and
+ * sentinels, and with or without the resume flag. The real Wait node cannot do
+ * this without a resume URL. The return value is marked, so a test can tell it
+ * from the input.
+ */
+class WaitsUntil implements INodeType {
+	description = {
+		displayName: 'Waits Until',
+		name: 'waitsUntil',
+		group: ['transform'],
+		version: 1,
+		description: 'Puts the execution to wait until a date',
+		defaults: { name: 'Waits Until' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [
+			{ displayName: 'Wait Till', name: 'waitTill', type: 'string', default: '' },
+			{
+				displayName: 'Accepts Resume Request',
+				name: 'acceptsResumeRequest',
+				type: 'options',
+				options: [
+					{ name: 'Omitted', value: 'omitted' },
+					{ name: 'True', value: 'true' },
+					{ name: 'False', value: 'false' },
+				],
+				default: 'omitted',
+			},
+		],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const waitTill = new Date(this.getNodeParameter('waitTill', 0) as string);
+		const flag = this.getNodeParameter('acceptsResumeRequest', 0) as string;
+		if (flag === 'omitted') {
+			await this.putExecutionToWait(waitTill);
+		} else {
+			await this.putExecutionToWait(waitTill, { acceptsResumeRequest: flag === 'true' });
+		}
+		return [this.getInputData().map((item) => ({ json: { ...item.json, returned: true } }))];
+	}
+}
+
+/** Runs a sub-workflow through the host, as the Execute Workflow node does. */
+class RunsSubWorkflow implements INodeType {
+	description = {
+		displayName: 'Runs Sub Workflow',
+		name: 'runsSubWorkflow',
+		group: ['transform'],
+		version: 1,
+		description: 'Executes a sub-workflow and returns its input',
+		defaults: { name: 'Runs Sub Workflow' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		await this.executeWorkflow({ id: 'child' }, this.getInputData());
+		return [this.getInputData()];
+	}
+}
+
 const registry = new Map<string, INodeType>([
 	['n8n-nodes-base.noOp', new NoOp()],
 	['test.echoParam', new EchoParam()],
 	['test.alwaysFails', new AlwaysFails()],
+	['test.failsWithDescription', new FailsWithDescription()],
 	['test.noExecute', new NoExecute()],
 	['test.newStyleEcho', new NewStyleEcho() as unknown as INodeType],
 	['test.twoOutputs', new TwoOutputs()],
 	['test.succeedsWithFailingCleanup', new SucceedsWithFailingCleanup()],
 	['test.failsWithFailingCleanup', new FailsWithFailingCleanup()],
 	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
+	['test.waitsUntil', new WaitsUntil()],
+	['test.runsSubWorkflow', new RunsSubWorkflow()],
+	['n8n-nodes-base.wait', new Wait() as unknown as INodeType],
 ]);
 
 export const testNodeTypes: INodeTypes = {
@@ -209,9 +304,9 @@ export const testNodeTypes: INodeTypes = {
 	getKnownTypes: (): IDataObject => ({}),
 };
 
-export const testAdditionalDataFactory = async (
-	executionId: string,
-): Promise<IWorkflowExecuteAdditionalData> =>
+export const testAdditionalDataFactory = async ({
+	executionId,
+}: AdditionalDataContext): Promise<IWorkflowExecuteAdditionalData> =>
 	await Promise.resolve({
 		executionId,
 		restApiUrl: 'http://localhost:5678/rest',
@@ -232,6 +327,7 @@ export const v1Workflow = (
 		type: string;
 		typeVersion?: number;
 		parameters?: IDataObject;
+		credentials?: INodeCredentials;
 	}>,
 	connections: IConnections = {},
 ): IWorkflowBase =>
@@ -246,21 +342,37 @@ export const v1Workflow = (
 export const stepRequest = (
 	graph: WorkflowGraph,
 	nodeId: string,
-	inputs: JsonValue,
+	inputs: StepSlots,
 ): StepExecutionRequest => ({
 	node: graph.nodes.find((n) => n.id === nodeId)!,
 	inputs,
-	context: { executionId: 'exec-1', stepId: nodeId, workflowId: 'wf-1', mode: 'manual' },
+	context: {
+		executionId: 'exec-1',
+		stepId: nodeId,
+		workflowId: 'wf-1',
+		mode: 'manual',
+		iteration: 0,
+		callerContext: { hostMode: 'manual' },
+		responseExpectation: { kind: 'none' },
+	},
+	respond: noopResponseEmitter,
 });
 
 export const testStepExecutor = (
 	graph: WorkflowGraph,
-	outputsByStepId: Record<string, JsonValue> = {},
+	outputsByNodeId: Record<string, StepSlots> = {},
 ): V1StepExecutor =>
 	new V1StepExecutor({
 		nodeTypes: testNodeTypes,
 		additionalDataFactory: testAdditionalDataFactory,
-		loadStepData: async () => await Promise.resolve({ graph, outputsByStepId }),
+		// every fixture node runs once, so its outputs sit at iteration 0
+		loadStepData: async () =>
+			await Promise.resolve({
+				graph,
+				outputsByNode: Object.fromEntries(
+					Object.entries(outputsByNodeId).map(([nodeId, outputs]) => [nodeId, { 0: outputs }]),
+				),
+			}),
 	});
 
-export const items = (...objects: JsonObject[]): JsonValue => [objects.map((json) => ({ json }))];
+export const items = (...objects: JsonObject[]): StepSlots => [objects.map((json) => ({ json }))];

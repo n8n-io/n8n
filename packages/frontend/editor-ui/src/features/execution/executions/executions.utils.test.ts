@@ -61,11 +61,6 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: {
 		baseText: (key: string, options?: { interpolate?: { error?: string; details?: string } }) => {
 			const texts: { [key: string]: string } = {
-				'ndv.output.waitNodeWaiting.description.timer': 'Waiting for execution to resume...',
-				'ndv.output.waitNodeWaiting.description.form': 'Waiting for form submission: ',
-				'ndv.output.waitNodeWaiting.description.webhook': 'Waiting for webhook call: ',
-				'ndv.output.githubNodeWaitingForWebhook': 'Waiting for webhook call: ',
-				'ndv.output.sendAndWaitWaitingApproval': 'Waiting for approval...',
 				'pushConnection.executionError': `Execution error${options?.interpolate?.error}`,
 				'pushConnection.executionError.details': `Details: ${options?.interpolate?.details}`,
 			};

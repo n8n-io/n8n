@@ -1,8 +1,5 @@
 import type { ModalDefinition } from '@n8n/frontend-module-sdk';
-import {
-	SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY,
-	SURFACE_MCP_ONBOARDING_MODAL_KEY,
-} from './constants';
+import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from './constants';
 
 export const SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS: ModalDefinition[] = [
 	{
@@ -14,10 +11,5 @@ export const SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS: ModalDefinition[] = [
 				surface: 'tile',
 			},
 		},
-	},
-	{
-		key: SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY,
-		component: async () => await import('./components/SurfaceMcpFirstOpenIntroModal.vue'),
-		initialState: { open: false },
 	},
 ];

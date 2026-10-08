@@ -10,15 +10,14 @@ import { type Scope } from '@n8n/permissions';
 import express from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { resolveConfigMetricScales, runMetricScales } from './metric-scales';
+
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-
-import { resolveConfigMetricScales, runMetricScales } from './metric-scales';
 
 @RestController('/workflows')
 export class TestRunsController {
@@ -107,13 +106,17 @@ export class TestRunsController {
 		});
 	}
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/:workflowId/test-runs', { middlewares: listQueryMiddleware })
 	async getMany(req: TestRunsRequest.GetMany) {
 		const { workflowId } = req.params;
 
 		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
 
-		const testRuns = await this.testRunRepository.getMany(workflowId, req.listQueryOptions);
+		const testRuns = await this.testRunRepository.getMany(workflowId, {
+			offset: req.listQueryOptions?.skip,
+			limit: req.listQueryOptions?.take,
+		});
 		return await this.attachMetricScales(testRuns, workflowId);
 	}
 

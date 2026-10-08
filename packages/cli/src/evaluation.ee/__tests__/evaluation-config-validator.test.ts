@@ -4,7 +4,7 @@ import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { DataTable as DataTableEntity } from '@/modules/data-table/data-table.entity';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
@@ -250,6 +250,50 @@ describe('EvaluationConfigValidator', () => {
 		it('does not emit for a single-parent entry', async () => {
 			const errors = await validator.validate({
 				workflow: makeWorkflow(),
+				config: makeConfig(),
+				user: makeUser(),
+			});
+			expect(errors.find((e) => e.code === 'AMBIGUOUS_ENTRY_NODE')).toBeUndefined();
+		});
+
+		it('does not emit when a pre-existing Evaluation Trigger converges with the real trigger (TRUST-407)', async () => {
+			const wf: IWorkflowBase = {
+				...makeWorkflow(),
+				nodes: [
+					makeNode({ name: 'RealTrigger', type: 'n8n-nodes-base.manualTrigger' }),
+					makeNode({ name: 'EvalTrigger', type: 'n8n-nodes-base.evaluationTrigger' }),
+					makeNode({ name: 'Start' }),
+					makeNode({ name: 'End' }),
+				],
+				connections: {
+					RealTrigger: { main: [[{ node: 'Start', type: 'main', index: 0 }]] },
+					EvalTrigger: { main: [[{ node: 'Start', type: 'main', index: 0 }]] },
+					Start: { main: [[{ node: 'End', type: 'main', index: 0 }]] },
+				},
+			};
+			const errors = await validator.validate({
+				workflow: wf,
+				config: makeConfig(),
+				user: makeUser(),
+			});
+			expect(errors.find((e) => e.code === 'AMBIGUOUS_ENTRY_NODE')).toBeUndefined();
+		});
+
+		it("does not emit when the entry's sole parent is a pre-existing Evaluation Trigger (TRUST-407)", async () => {
+			const wf: IWorkflowBase = {
+				...makeWorkflow(),
+				nodes: [
+					makeNode({ name: 'EvalTrigger', type: 'n8n-nodes-base.evaluationTrigger' }),
+					makeNode({ name: 'Start' }),
+					makeNode({ name: 'End' }),
+				],
+				connections: {
+					EvalTrigger: { main: [[{ node: 'Start', type: 'main', index: 0 }]] },
+					Start: { main: [[{ node: 'End', type: 'main', index: 0 }]] },
+				},
+			};
+			const errors = await validator.validate({
+				workflow: wf,
 				config: makeConfig(),
 				user: makeUser(),
 			});

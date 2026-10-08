@@ -1,0 +1,291 @@
+import { Service } from '@n8n/di';
+import { And, DataSource, In, LessThan, LessThanOrEqual, MoreThan, Repository } from '@n8n/typeorm';
+import type { FindOperator, FindOptionsWhere } from '@n8n/typeorm';
+import type { IDataObject } from 'n8n-workflow';
+
+import { ActivityEvent } from '../entities';
+import type { ActivityResourceType } from '../entities';
+
+/** Long enough for any name a list needs to show, short enough that a row stays a pointer. */
+export const activityResourceNameMaxLength = 128;
+
+/** Serialized `data` budget. A row that needs more than this is asking to be expanded instead. */
+export const activityDataMaxLength = 512;
+
+/**
+ * Rows per retention pass. Bounded so a first sweep over a long backlog does not hold one
+ * transaction — and one set of locks — over the highest-write table in the schema.
+ */
+const retentionBatchSize = 500;
+
+/**
+ * `find` drops a falsy `take`, so `take: 0` reads the whole table rather than nothing. Every
+ * limited read goes through this first.
+ */
+function isEmptyPage(limit: number): boolean {
+	return !Number.isInteger(limit) || limit <= 0;
+}
+
+export type ActivityEventInput = Pick<ActivityEvent, 'category' | 'action' | 'projectId'> &
+	Partial<Pick<ActivityEvent, 'typeVersion' | 'userId' | 'resourceType' | 'resourceId'>> & {
+		resourceName?: string | null;
+		data?: IDataObject | null;
+	};
+
+/**
+ * The projects whose entries a caller may see.
+ *
+ * A list, or the explicit `'all-projects'` for a reader whose scope is genuinely the whole
+ * instance. Spelling that case out beats enumerating every project id and binding them: a global
+ * reader on a large estate would otherwise bind one parameter per project — one exists per user —
+ * which crosses sqlite's ceiling and pushes Postgres off the `(projectId, id)` index.
+ *
+ * It is a literal rather than an optional field on purpose. An omitted scope reading everything is
+ * the failure this type exists to prevent, so the widest scope has to be asked for by name.
+ */
+export type ActivityProjectScope = string[] | 'all-projects';
+
+export type ActivityFeedQuery = {
+	limit: number;
+	/**
+	 * The projects whose entries the caller may see. Required, not optional: an omitted scope
+	 * would read every project on the instance, including ones the user cannot open. Entries
+	 * with no project are excluded, since there is no way to prove they are in scope.
+	 */
+	projectIds: ActivityProjectScope;
+	userId?: string;
+	resourceId?: string;
+	/** Optional category filter. It must be in `allowedCategories`. */
+	filterCategory?: ActivityEvent['category'];
+	/** The categories the caller has permission to read. */
+	allowedCategories: Array<ActivityEvent['category']>;
+	/**
+	 * Exclusive lower bound — entries newer than an id a caller has already seen. Ids are not a
+	 * completeness watermark; see `ActivityEvent.id` before using this to tail the feed.
+	 */
+	afterId?: number;
+	/** Exclusive upper bound, for paging backwards through older entries. */
+	beforeId?: number;
+};
+
+/** Nothing in scope means nothing is visible, which is not the same as no filter. */
+function isEmptyScope(scope: ActivityProjectScope): boolean {
+	return scope !== 'all-projects' && scope.length === 0;
+}
+
+/** No project predicate at all for a whole-instance reader, so the scope costs no bind parameters. */
+function projectScopeWhere(scope: ActivityProjectScope): FindOptionsWhere<ActivityEvent> {
+	return scope === 'all-projects' ? {} : { projectId: In(scope) };
+}
+
+@Service()
+export class ActivityEventRepository extends Repository<ActivityEvent> {
+	constructor(dataSource: DataSource) {
+		super(ActivityEvent, dataSource.manager);
+	}
+
+	/**
+	 * The only write path, so the row-size guarantees hold whatever the caller passes.
+	 * Deliberately not transaction-aware: an entry describes something that already happened, so
+	 * it must not be rolled back with the operation that produced it.
+	 */
+	async record(input: ActivityEventInput): Promise<void> {
+		await this.insert({
+			category: input.category,
+			action: input.action,
+			typeVersion: input.typeVersion ?? 1,
+			userId: input.userId ?? null,
+			projectId: input.projectId,
+			resourceType: input.resourceType ?? null,
+			resourceId: input.resourceId ?? null,
+			resourceName: truncateResourceName(input.resourceName),
+			data: capData(input.data),
+		});
+	}
+
+	/**
+	 * Newest first, which is both the render order and the order the indexes are built for.
+	 * Scoping is by project, not by user: a scheduled run that failed at 03:00 has no user, and
+	 * it is exactly the entry worth surfacing. `userId` is carried per row so a reader can tell
+	 * the current user's own actions apart from everyone else's.
+	 */
+	async findFeed(query: ActivityFeedQuery): Promise<ActivityEvent[]> {
+		if (isEmptyPage(query.limit)) return [];
+		// Empty project or category permissions must not widen the query.
+		if (isEmptyScope(query.projectIds) || query.allowedCategories.length === 0) return [];
+		if (
+			query.filterCategory !== undefined &&
+			!query.allowedCategories.includes(query.filterCategory)
+		)
+			return [];
+
+		const where: FindOptionsWhere<ActivityEvent> = {
+			...projectScopeWhere(query.projectIds),
+			category: query.filterCategory ?? In(query.allowedCategories),
+		};
+		if (query.userId !== undefined) where.userId = query.userId;
+		if (query.resourceId !== undefined) where.resourceId = query.resourceId;
+
+		// Both bounds can apply at once — "what arrived while this page was open" pages an
+		// already-bounded range — so they combine rather than overwrite each other.
+		const bounds = [
+			...(query.afterId !== undefined ? [MoreThan(query.afterId)] : []),
+			...(query.beforeId !== undefined ? [LessThan(query.beforeId)] : []),
+		];
+		if (bounds.length === 1) where.id = bounds[0];
+		else if (bounds.length === 2) where.id = And(...bounds);
+
+		return await this.find({ where, order: { id: 'DESC' }, take: query.limit });
+	}
+
+	/**
+	 * One entry by id, or null when it is not in scope — which is also what a pruned id returns.
+	 * The two are deliberately indistinguishable: an id is a guess a reader may get wrong, and a
+	 * distinct "exists but not yours" would turn this into a probe for what other projects hold.
+	 *
+	 * Scoped here rather than by the caller, so the guarantee holds for every future caller.
+	 */
+	async findEntry(query: {
+		id: number;
+		projectIds: ActivityProjectScope;
+		allowedCategories: Array<ActivityEvent['category']>;
+	}): Promise<ActivityEvent | null> {
+		if (isEmptyScope(query.projectIds) || query.allowedCategories.length === 0) return null;
+
+		return await this.findOne({
+			where: {
+				id: query.id,
+				...projectScopeWhere(query.projectIds),
+				category: In(query.allowedCategories),
+			},
+		});
+	}
+
+	/**
+	 * Everything the feed holds about one resource, newest first — the history shown when a reader
+	 * expands a single entry.
+	 *
+	 * There is no `(resourceType, resourceId, id)` index yet, so this walks the project index and
+	 * filters. That was affordable while the only caller was a reader expanding an entry by hand,
+	 * bounded by one project's entries. It no longer is: an agent calls this once per entry it
+	 * finds interesting, and a whole-instance reader is not bounded by one project at all. This is
+	 * the highest-write table in the schema, so the index is a deliberate follow-up rather than a
+	 * free add — but the read that has to pay for it now exists.
+	 *
+	 * In practice the scan stays small: `N8N_ACTIVITY_LOG_MAX_ENTRIES` defaults to 1,000
+	 * instance-wide with an hourly sweep. The case that needs the index is an instance that sets
+	 * that cap to `0`, which removes the only bound this read has left now that `'all-projects'`
+	 * removes the project one.
+	 *
+	 * `resourceType` is part of the query, not just the index prefix: ids are unique per resource
+	 * kind but nothing in the schema says so, and an entry is a dangling pointer by design.
+	 */
+	async findByResource(query: {
+		resourceType: ActivityResourceType;
+		resourceId: string;
+		projectIds: ActivityProjectScope;
+		limit: number;
+	}): Promise<ActivityEvent[]> {
+		if (isEmptyPage(query.limit)) return [];
+		if (isEmptyScope(query.projectIds)) return [];
+
+		return await this.find({
+			where: {
+				resourceType: query.resourceType,
+				resourceId: query.resourceId,
+				...projectScopeWhere(query.projectIds),
+			},
+			order: { id: 'DESC' },
+			take: query.limit,
+		});
+	}
+
+	/** Retention by age. Returns how many entries went, so a caller can log a sweep worth noticing. */
+	async deleteOlderThan(cutoff: Date, signal?: AbortSignal): Promise<number> {
+		return await this.deleteInBatches({ createdAt: LessThan(cutoff) }, undefined, signal);
+	}
+
+	/**
+	 * Retention by count, as a backstop for the age sweep on an instance busy enough to write
+	 * more in a day than the window is meant to hold. Finds the oldest entry worth keeping and
+	 * deletes below it, rather than counting rows twice.
+	 */
+	async deleteBeyondNewest(keep: number, signal?: AbortSignal): Promise<number> {
+		// A cap of 0 means unlimited, as it does for `EXECUTIONS_DATA_PRUNE_MAX_COUNT`. Reading it
+		// as "keep nothing" would empty the table on a config typo. Also guards `skip: keep - 1`,
+		// which would otherwise ask the driver for a negative offset.
+		if (!Number.isInteger(keep) || keep <= 0) return 0;
+
+		const [oldestKept] = await this.find({
+			order: { id: 'DESC' },
+			skip: keep - 1,
+			take: 1,
+			select: { id: true },
+		});
+		if (!oldestKept) return 0;
+
+		return await this.deleteInBatches({}, LessThan(oldestKept.id), signal);
+	}
+
+	/**
+	 * Deletes everything matching `scope` (and `idBound`, if the caller restricts ids), oldest
+	 * first, a batch at a time.
+	 *
+	 * Each pass reads the id that ends the next batch and deletes up to it, rather than deleting
+	 * by an id list: SQLite caps a statement at 999 bound variables, so a list would put a ceiling
+	 * on the batch size, and `DELETE ... LIMIT` needs a SQLite compiled with an option we cannot
+	 * assume.
+	 *
+	 * `idBound` is taken apart from `scope` so the per-batch bound can be *added* to it rather
+	 * than replacing it. A caller cannot hand over a batch predicate that drops its own scope.
+	 *
+	 * `signal` stops the walk at a batch boundary. Without it a long backlog holds its caller for
+	 * as many round trips as it takes, which on a sweeper means blocking shutdown and stepdown.
+	 */
+	private async deleteInBatches(
+		scope: Omit<FindOptionsWhere<ActivityEvent>, 'id'>,
+		idBound?: FindOperator<number>,
+		signal?: AbortSignal,
+	): Promise<number> {
+		const scoped: FindOptionsWhere<ActivityEvent> = idBound ? { ...scope, id: idBound } : scope;
+		let total = 0;
+
+		for (;;) {
+			const batch = await this.find({
+				where: scoped,
+				order: { id: 'ASC' },
+				take: retentionBatchSize,
+				select: { id: true },
+			});
+			if (batch.length === 0) return total;
+
+			const upTo = LessThanOrEqual(batch[batch.length - 1].id);
+			const { affected } = await this.delete({
+				...scope,
+				id: idBound ? And(idBound, upTo) : upTo,
+			});
+			total += affected ?? 0;
+
+			if (batch.length < retentionBatchSize) return total;
+			// Checked between passes, so a caller that has to stop — a shutdown, or a leader losing
+			// the role — waits for one bounded delete rather than the whole backlog.
+			if (signal?.aborted) return total;
+		}
+	}
+}
+
+function truncateResourceName(name: string | null | undefined): string | null {
+	if (!name) return null;
+	return name.length > activityResourceNameMaxLength
+		? name.slice(0, activityResourceNameMaxLength)
+		: name;
+}
+
+/**
+ * Oversized detail is replaced rather than trimmed: half a JSON object is worse than an honest
+ * marker, and the marker tells a reader the full record is only a fetch away.
+ */
+function capData(data: IDataObject | null | undefined): IDataObject | null {
+	if (!data) return null;
+	return JSON.stringify(data).length > activityDataMaxLength ? { truncated: true } : data;
+}

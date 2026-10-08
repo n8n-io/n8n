@@ -4,12 +4,14 @@ import type {
 	CanvasNodeInjectionData,
 	GroupExpansionMode,
 } from '@/features/workflows/canvas/canvas.types';
-import type { ComputedRef, InjectionKey, Ref, ShallowRef } from 'vue';
+import type { ComputedRef, InjectionKey, MaybeRefOrGetter, Ref, ShallowRef } from 'vue';
+import type { LogsPanelContext } from '@/features/execution/logs/logs.types';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { TelemetryContext } from '@/app/types/telemetry';
 import type { useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
+import type { INodeUpdatePropertiesInformation } from '@/Interface';
 
 export const WorkflowIdKey = 'workflowId' as unknown as InjectionKey<ComputedRef<string>>;
 export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData>;
@@ -30,6 +32,13 @@ export const ExecutionDataStoreKey: InjectionKey<
 // derived from it via injectWorkflowExecutionStateStore(), so a subtree's
 // document scope and execution scope can never diverge.
 export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('CanvasRenderData');
+/** Keep setup hints compact while retaining their full text on the field. */
+export const CompactParameterHintsKey: InjectionKey<boolean> = Symbol('CompactParameterHints');
+/** Lets modal hosts coordinate focus and portals for expanded parameter editors. */
+export const ParameterInputModalContextKey: InjectionKey<{
+	openDialogs: Ref<Set<string>>;
+	appendTo: string;
+}> = Symbol('ParameterInputModalContext');
 /**
  * Opts resource-locator dropdowns into teleporting to `<body>`. Defaults to
  * `false` (stay in the local stacking context, e.g. inside the NDV dialog).
@@ -41,6 +50,22 @@ export const ResourceLocatorDropdownTeleportedKey: InjectionKey<boolean> = Symbo
 	'ResourceLocatorDropdownTeleported',
 );
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
+/** Whether resource mappers may reconcile cached schemas without an explicit user action. */
+export const ResourceMapperSchemaAutoRefreshKey: InjectionKey<boolean> = Symbol(
+	'ResourceMapperSchemaAutoRefresh',
+);
+/** Whether an empty resource mapper may load once its dependencies first become available. */
+export const ResourceMapperRefreshEmptySchemaKey: InjectionKey<boolean> = Symbol(
+	'ResourceMapperRefreshEmptySchema',
+);
+/**
+ * Optional callback for hosts that keep a local node draft (e.g. tool-config
+ * modals). ParameterInput invokes this when CredentialsSelect picks a
+ * credential, so the draft stays in sync with the document store write.
+ */
+export const ToolConfigCredentialSelectedKey: InjectionKey<
+	(update: INodeUpdatePropertiesInformation) => void
+> = Symbol('ToolConfigCredentialSelected');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
 /**
  * AI editor capabilities a host can toggle per editor, using enablement
@@ -75,6 +100,23 @@ export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
 	executionSuccessToasts?: boolean;
 	executionErrorToasts?: boolean;
 	executionButtonType?: 'primary' | 'secondary';
+	/** Show missing credentials as setup warnings in hosts with a setup panel. */
+	credentialSetupWarnings?: boolean;
 };
 export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
 	Symbol('EditorEnabledFeatures');
+
+/**
+ * Host-specific setup of the logs panel (INS-1192). The editor provides nothing:
+ * `useLogsPanelLayout` falls back to the editor setup. A host that renders the
+ * panel inside a pane, like the Instance AI artifact, provides its own.
+ */
+export interface LogsPanelHost {
+	/** Host name in the `User toggled log view` telemetry event. */
+	context: LogsPanelContext;
+	/** localStorage key of the panel height. Each host keeps its own height. */
+	heightStorageKey: string;
+	/** Element the panel height is relative to. Defaults to the document body. */
+	heightContainer?: MaybeRefOrGetter<HTMLElement | null | undefined>;
+}
+export const LogsPanelHostKey: InjectionKey<LogsPanelHost> = Symbol('LogsPanelHost');

@@ -6,17 +6,18 @@ import {
 	N8nBadge,
 	N8nCard,
 	N8nIcon,
+	N8nIconButton,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { MODAL_CONFIRM } from '@/app/constants';
+import PublicationIndicator from '@/app/components/PublicationIndicator.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useToast } from '@n8n/composables/useToast';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
 import { deleteAgent } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
@@ -24,6 +25,7 @@ import { useAgentPublish } from '../composables/useAgentPublish';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
 
 const props = defineProps<{
 	agent: AgentResource;
@@ -35,6 +37,8 @@ const emit = defineEmits<{
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	deleted: [agentId: string];
+	'new-chat': [agentId: string, projectId: string];
+	duplicate: [agentId: string];
 }>();
 
 const locale = useI18n();
@@ -45,11 +49,17 @@ const mcpStore = useMCPStore();
 const mcp = useMcp();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const { publish, unpublish } = useAgentPublish();
-const { canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
+const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
 	() => props.projectId,
 );
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
+
+// Saving a draft bumps `versionId`, so a mismatch means unpublished edits.
+const hasUnpublishedChanges = computed(
+	() => isPublished.value && props.agent.versionId !== props.agent.activeVersionId,
+);
+const isUntitled = computed(() => props.agent.name === locale.baseText('agents.new.defaultName'));
 
 const isMcpEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
@@ -73,18 +83,32 @@ const favoriteStore = useFavoritesStore();
 const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));
 
 const actions = computed(() => {
-	const items: Array<{ value: string; label: string; divided?: boolean }> = [];
-
-	if (isPublished.value && canUnpublish.value) {
-		items.push({ value: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') });
-	} else if (!isPublished.value && canPublish.value) {
-		items.push({ value: 'publish', label: locale.baseText('agents.list.actions.publish') });
-	}
+	const items: ActionToggleItem[] = [];
 
 	items.push({
 		value: 'toggleFavorite',
 		label: locale.baseText(isFavorite.value ? 'favorites.remove' : 'favorites.add'),
+		divided: !isPublished.value ? !canPublish.value : !canUnpublish.value,
 	});
+
+	if (canCreate.value) {
+		items.push({
+			value: 'duplicate',
+			label: locale.baseText('agents.list.actions.duplicate'),
+		});
+	}
+
+	if (isPublished.value && canUnpublish.value) {
+		items.push({
+			value: 'unpublish',
+			label: locale.baseText('agents.list.actions.unpublish'),
+		});
+	} else if (!isPublished.value && canPublish.value) {
+		items.push({
+			value: 'publish',
+			label: locale.baseText('agents.list.actions.publish'),
+		});
+	}
 
 	if (isMcpEnabled.value && canUpdate.value) {
 		items.push({
@@ -94,6 +118,7 @@ const actions = computed(() => {
 					? 'agents.list.actions.disableMCPAccess'
 					: 'agents.list.actions.enableMCPAccess',
 			),
+			divided: true,
 		});
 	}
 
@@ -101,7 +126,8 @@ const actions = computed(() => {
 		items.push({
 			value: 'delete',
 			label: locale.baseText('agents.list.actions.delete'),
-			divided: items.length > 0,
+			divided: true,
+			destructive: true,
 		});
 	}
 
@@ -146,6 +172,8 @@ async function onAction(action: string) {
 		removeProjectAgentFromListCache(props.projectId, props.agent.id);
 		favoriteStore.removeFavoriteLocally(props.agent.id, 'agent');
 		emit('deleted', props.agent.id);
+	} else if (action === 'duplicate') {
+		emit('duplicate', props.agent.id);
 	}
 }
 
@@ -165,13 +193,18 @@ async function toggleMCPAccess(enabled: boolean) {
 <template>
 	<N8nCard :class="$style.cardLink" data-test-id="agent-card" @click="emit('select', agent.id)">
 		<template #header>
-			<N8nText tag="h2" bold :class="$style.cardHeading" data-test-id="agent-card-name">
+			<N8nText
+				tag="h2"
+				:bold="!isUntitled"
+				:color="isUntitled ? 'text-light' : undefined"
+				:class="[$style.cardHeading, { [$style.untitledName]: isUntitled }]"
+				data-test-id="agent-card-name"
+			>
 				{{ agent.name }}
 				<N8nBadge
 					v-if="!canUpdate"
 					:class="$style.readonlyBadge"
-					theme="tertiary"
-					bold
+					variant="outline"
 					data-test-id="agent-card-readonly-badge"
 				>
 					{{ locale.baseText('agents.list.readonly') }}
@@ -193,16 +226,27 @@ async function toggleMCPAccess(enabled: boolean) {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<div
+				<PublicationIndicator
 					v-if="isPublished"
-					:class="$style.publishIndicator"
+					:label="
+						locale.baseText(
+							hasUnpublishedChanges ? 'agents.list.changesToPublish' : 'agents.list.published',
+						)
+					"
+					:variant="hasUnpublishedChanges ? 'warning' : 'success'"
+					:data-state="hasUnpublishedChanges ? 'changes-to-publish' : 'published'"
 					data-test-id="agent-card-publish-indicator"
-				>
-					<span :class="$style.publishIndicatorDot" />
-					<N8nText size="small" color="text-base">
-						{{ locale.baseText('agents.list.published') }}
-					</N8nText>
-				</div>
+				/>
+				<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">
+					<N8nIconButton
+						icon="message-circle-plus"
+						variant="ghost"
+						size="medium"
+						:aria-label="locale.baseText('agents.list.actions.newChat')"
+						data-test-id="agent-card-new-chat"
+						@click="emit('new-chat', agent.id, projectId)"
+					/>
+				</N8nTooltip>
 				<N8nActionToggle
 					v-if="showActions"
 					:actions="actions"
@@ -216,6 +260,8 @@ async function toggleMCPAccess(enabled: boolean) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -233,6 +279,10 @@ async function toggleMCPAccess(enabled: boolean) {
 	font-size: var(--font-size--sm);
 	word-break: break-word;
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+}
+
+.untitledName {
+	font-style: italic;
 }
 
 .readonlyBadge {
@@ -256,7 +306,7 @@ async function toggleMCPAccess(enabled: boolean) {
 
 .cardActions {
 	display: flex;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
@@ -265,28 +315,7 @@ async function toggleMCPAccess(enabled: boolean) {
 	cursor: default;
 }
 
-.publishIndicator {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--spacing--4xs);
-	border: var(--border);
-
-	* {
-		// This is needed to line height up with ownership badge
-		line-height: calc(var(--font-size--sm) + 1px);
-	}
-}
-
-.publishIndicatorDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	background-color: var(--color--mint-600);
-}
-
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;

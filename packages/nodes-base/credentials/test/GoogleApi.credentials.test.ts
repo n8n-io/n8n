@@ -86,7 +86,7 @@ describe('GoogleApi Credential', () => {
 		it('posts the JWT assertion as a form-urlencoded token request', async () => {
 			await credential.authenticate(baseCredentials, requestOptions);
 
-			expect(requestsMock).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(requestsMock).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({
 					url: 'https://oauth2.googleapis.com/token',

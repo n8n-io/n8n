@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ExpressionEditorModalInput from './ExpressionEditorModal/ExpressionEditorModalInput.vue';
-import { computed, ref, toRaw, watch } from 'vue';
+import { computed, inject, ref, toRaw, watch } from 'vue';
 import Close from 'virtual:icons/mdi/close';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -10,7 +10,7 @@ import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { Segment } from '@/app/types/expressions';
-import type { INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { outputTheme } from './ExpressionEditorModal/theme';
 import ExpressionOutput from '@/features/shared/editors/components/InlineExpressionEditor/ExpressionOutput.vue';
@@ -22,19 +22,22 @@ import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
+import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 import { useThrottleFn } from '@vueuse/core';
 
 import { ElDialog } from 'element-plus';
 import {
 	N8nIcon,
 	N8nInput,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nResizeWrapper,
 	N8nText,
 	type ResizeData,
 } from '@n8n/design-system';
+import { useStyles } from '@n8n/composables/useStyles';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
+const parameterModalContext = inject(ParameterInputModalContextKey, undefined);
 
 type Props = {
 	parameter: INodeProperties;
@@ -44,6 +47,7 @@ type Props = {
 	eventSource?: string;
 	redactValues?: boolean;
 	isReadOnly?: boolean;
+	additionalExpressionData?: IDataObject;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -51,6 +55,7 @@ const props = withDefaults(defineProps<Props>(), {
 	dialogVisible: false,
 	redactValues: false,
 	isReadOnly: false,
+	additionalExpressionData: () => ({}),
 });
 const emit = defineEmits<{
 	'update:model-value': [value: string];
@@ -60,6 +65,7 @@ const emit = defineEmits<{
 const ndvStore = injectNDVStore();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const { APP_Z_INDEXES } = useStyles();
 
 const lastSuccessfulExecution = computed(
 	() => workflowExecutionStateStore.value.lastSuccessfulExecution,
@@ -162,10 +168,12 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 <template>
 	<ElDialog
 		width="calc(100% - var(--spacing--3xl))"
-		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+		:append-to="parameterModalContext?.appendTo ?? `#${APP_MODALS_ELEMENT_ID}`"
+		:append-to-body="parameterModalContext?.appendTo === 'body'"
 		:class="$style.modal"
 		:model-value="dialogVisible"
 		:before-close="closeDialog"
+		:z-index="APP_Z_INDEXES.MODALS"
 	>
 		<button :class="$style.close" @click="closeDialog">
 			<Close height="18" width="18" />
@@ -223,6 +231,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								:model-value="modelValue"
 								:is-read-only="isReadOnly"
 								:path="path"
+								:additional-data="additionalExpressionData"
 								:class="[
 									$style.editor,
 									{
@@ -244,7 +253,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						</N8nText>
 						<div :class="$style.headerControls">
 							<OutputItemSelect />
-							<N8nRadioButtons
+							<N8nSegmentControl
 								v-model="outputRenderMode"
 								size="small"
 								:options="[
@@ -273,6 +282,8 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 .modal {
 	--dialog--close--spacing--top: var(--spacing--md);
 	display: flex;

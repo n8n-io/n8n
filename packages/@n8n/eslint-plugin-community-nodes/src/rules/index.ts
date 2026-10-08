@@ -26,6 +26,7 @@ import { NoRestrictedImportsRule } from './no-restricted-imports.js';
 import { NoRuntimeDependenciesRule } from './no-runtime-dependencies.js';
 import { NoSilentErrorSwallowingRule } from './no-silent-error-swallowing.js';
 import { NoTemplatePlaceholdersRule } from './no-template-placeholders.js';
+import { NoUnsafeConnectionTypeCastRule } from './no-unsafe-connection-type-cast.js';
 import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
@@ -41,6 +42,7 @@ import { TriggerNodeConventionsRule } from './trigger-node-conventions.js';
 import { ValidAuthorRule } from './valid-author.js';
 import { ValidCredentialReferencesRule } from './valid-credential-references.js';
 import { ValidDescriptionRule } from './valid-description.js';
+import { ValidNodeCategoriesRule } from './valid-node-categories.js';
 import { ValidPeerDependenciesRule } from './valid-peer-dependencies.js';
 import { WebhookLifecycleCompleteRule } from './webhook-lifecycle-complete.js';
 
@@ -65,6 +67,7 @@ export const rules = {
 	'no-runtime-dependencies': NoRuntimeDependenciesRule,
 	'no-silent-error-swallowing': NoSilentErrorSwallowingRule,
 	'no-template-placeholders': NoTemplatePlaceholdersRule,
+	'no-unsafe-connection-type-cast': NoUnsafeConnectionTypeCastRule,
 	'icon-validation': IconValidationRule,
 	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
@@ -86,6 +89,7 @@ export const rules = {
 	'valid-author': ValidAuthorRule,
 	'valid-credential-references': ValidCredentialReferencesRule,
 	'valid-description': ValidDescriptionRule,
+	'valid-node-categories': ValidNodeCategoriesRule,
 	'valid-peer-dependencies': ValidPeerDependenciesRule,
 	'webhook-lifecycle-complete': WebhookLifecycleCompleteRule,
 } satisfies Record<string, AnyRuleModule>;

@@ -16,6 +16,7 @@ export type {
 	Schedule,
 } from './types';
 export { computeFirstRunAt, computeNextRunAt } from './recurrence/next-run';
+export { scheduleFromDefinition } from './recurrence/resolve';
 export { validateSchedule } from './recurrence/validate';
 
 export {
@@ -30,6 +31,7 @@ export { provision, deprovision, createJobProvisioner, scheduleFingerprint } fro
 export type {
 	JobProvisioner,
 	JobProvisionerDeps,
+	OwnedScope,
 	ProvisionTransaction,
 	RunInProvisionTransaction,
 	DeprovisionTransaction,
@@ -43,25 +45,60 @@ export type {
 	ExistingJob,
 	ProvisionedJob,
 	ProvisionSummary,
+	StoredJobs,
 } from './provisioning';
-export { createDispatchReporter } from './executor';
+export { createDispatchReporter, backoff } from './executor';
 export type {
 	ExecutorOptions,
 	TaskHandler,
 	DispatchReporter,
 	DispatchDecision,
+	BackoffOptions,
 } from './executor';
-export { DEFAULT_MATERIALIZER_OPTIONS, materialize, totalDiscarded } from './materializer';
+export {
+	DEFAULT_MATERIALIZER_OPTIONS,
+	totalDiscarded,
+	ownerKeyFor,
+	withOwnerKeys,
+} from './materializer';
 export type {
 	MaterializerOptions,
 	MaterializerSummary,
 	MisfireCount,
 	NewOccurrence,
 	RunInTransaction,
+	ScheduledJobOwner,
 } from './materializer';
 export { pollLookaheadSeconds } from './lifecycle';
 export type { ConcurrencyMode, LifecycleOptions } from './lifecycle';
-export type { ReaperOptions, ReapResult } from './reaper';
+export type {
+	ReaperOptions,
+	ReapResult,
+	RetireMissedResult,
+	RetiredTask,
+} from './reaper';
+export {
+	reconcile,
+	DEFAULT_RECONCILIATION_OPTIONS,
+	ScheduledJobOwnerRegistry,
+} from './reconciliation';
+export type {
+	QuarantinedJob,
+	ReconciliationCursor,
+	ReconciliationHooks,
+	ReconciliationJobStore,
+	ReconciliationOptions,
+	ReconciliationSummary,
+	ScheduledJobOwnerResolver,
+} from './reconciliation';
+export {
+	DuplicateOwnerResolverError,
+	InvalidOwnerTypeError,
+	UnregisteredOwnerTypeError,
+	InvalidOwnerIdError,
+	InvalidOwnerMemberIdError,
+	LeaseLostError,
+} from './errors';
 export type { RetentionOptions, RetentionSummary } from './retention';
 
 export { SpanStatus, noopTracer } from '../observability/tracer';

@@ -1,26 +1,50 @@
 <script lang="ts" setup>
+import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 import { VIEWS } from '@/app/constants';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
-import type { IMenuItem } from '@n8n/design-system/types';
+import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useProjectsStore } from '../projects.store';
 import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
-import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import {
+	INSTANCE_AI_THREADS_VIEW,
+	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_VIEW,
+} from '@/features/ai/instanceAi/constants';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import {
+	AGENT_N8N_CHAT_VIEW,
+	AGENT_N8N_CHAT_RECENT_THREADS_LIMIT,
+} from '@/features/agents/constants';
+import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
+import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
+import { useRecentChats } from '@/features/agents/n8nChatPage/useRecentChats';
+import {
+	chatItemRoute,
+	chatItemTitle,
+	type RecentChatItem,
+} from '@/features/agents/n8nChatPage/mergeRecentChats';
+import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatIcon.vue';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const PROJECTS_COLLAPSED_KEY = 'n8n:sidebar:projects-collapsed';
+const INSTANCE_AI_CHATS_COLLAPSED_KEY = 'n8n:sidebar:instance-ai-chats-collapsed';
 
 type Props = {
 	collapsed: boolean;
@@ -30,12 +54,17 @@ type Props = {
 const props = defineProps<Props>();
 
 const locale = useI18n();
+const route = useRoute();
 const globalEntityCreation = useGlobalEntityCreation();
 
 const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
+const instanceAiStore = useInstanceAiStore();
+const agentThreadsStore = useAgentN8nChatThreadsStore();
+const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
+const agentTelemetry = useAgentTelemetry();
 
 const {
 	favoriteGroups,
@@ -52,11 +81,7 @@ const isChatLinkAvailable = computed(
 		settingsStore.isChatFeatureEnabled &&
 		hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 );
-const isInstanceAiNavVisible = computed(() => {
-	if (!settingsStore.isModuleActive('instance-ai')) return false;
-	const ms = settingsStore.moduleSettings['instance-ai'];
-	return ms?.enabled !== false;
-});
+const isInstanceAiNavVisible = useInstanceAiAvailable();
 const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
 );
@@ -67,11 +92,42 @@ const FAVORITES_COLLAPSED_KEY = computed(
 
 const favoritesCollapsed = ref(localStorage.getItem(FAVORITES_COLLAPSED_KEY.value) === 'true');
 const projectsCollapsed = ref(localStorage.getItem(PROJECTS_COLLAPSED_KEY) === 'true');
+const instanceAiChatsCollapsed = ref(
+	localStorage.getItem(INSTANCE_AI_CHATS_COLLAPSED_KEY) === 'true',
+);
+
+// Split so a flag turning on later only fetches agent threads, not the Instance AI list too.
+watch(
+	isInstanceAiNavVisible,
+	(visible) => {
+		if (visible) void instanceAiStore.loadThreads();
+	},
+	{ immediate: true },
+);
+watch(
+	[isInstanceAiNavVisible, isAgentsN8nChatFlag],
+	([visible, flagOn]) => {
+		if (visible && flagOn) void agentThreadsStore.fetchRecent(AGENT_N8N_CHAT_RECENT_THREADS_LIMIT);
+	},
+	{ immediate: true },
+);
+
+// Another tab can start a chat; refresh the list when the user comes back to this one.
+const { onDocumentVisible } = useDocumentVisibility();
+onDocumentVisible(() => {
+	if (!isInstanceAiNavVisible.value) return;
+	void instanceAiStore.loadThreads();
+	if (isAgentsN8nChatFlag.value)
+		void agentThreadsStore.fetchRecent(AGENT_N8N_CHAT_RECENT_THREADS_LIMIT);
+});
 
 watch(favoritesCollapsed, (val) =>
 	localStorage.setItem(FAVORITES_COLLAPSED_KEY.value, String(val)),
 );
 watch(projectsCollapsed, (val) => localStorage.setItem(PROJECTS_COLLAPSED_KEY, String(val)));
+watch(instanceAiChatsCollapsed, (val) =>
+	localStorage.setItem(INSTANCE_AI_CHATS_COLLAPSED_KEY, String(val)),
+);
 
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
@@ -119,11 +175,42 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 
 const instanceAi = computed<IMenuItem>(() => ({
 	id: 'instance-ai',
-	icon: 'sparkles',
-	label: locale.baseText('projects.menu.instanceAi'),
+	icon: isAgentsN8nChatFlag.value ? 'message-square-plus' : 'sparkles',
+	label: isAgentsN8nChatFlag.value
+		? locale.baseText('instanceAi.thread.new')
+		: locale.baseText('projects.menu.instanceAi'),
 	route: { to: { name: INSTANCE_AI_VIEW } },
 	preview: true,
 }));
+
+function onNewChatClick(): void {
+	agentTelemetry.trackClickedSidebarItem({ item: 'new_chat' });
+}
+
+const isInstanceAiThreadView = computed(() => route.name === INSTANCE_AI_THREAD_VIEW);
+// Only an agent THREAD page forces "New chat" inactive, not the agent-only "new chat" URL.
+const isAgentN8nChatThreadView = computed(
+	() => route.name === AGENT_N8N_CHAT_VIEW && typeof route.params.agentThreadId === 'string',
+);
+
+const { recentChats } = useRecentChats();
+const sidebarActiveTabId = computed(() =>
+	isInstanceAiThreadView.value ? undefined : activeTabId.value,
+);
+
+const getChatMenuItem = (item: RecentChatItem): IMenuItem => ({
+	id:
+		item.kind === 'assistant'
+			? `instance-ai-thread-${item.thread.id}`
+			: `agent-n8n-chat-thread-${item.thread.id}`,
+	icon: 'message-circle',
+	label: chatItemTitle(item, locale),
+	route: { to: chatItemRoute(item) },
+});
+
+function onChatItemClick(item: RecentChatItem): void {
+	agentTelemetry.trackClickedSidebarItem({ item: 'chat', chatType: item.kind });
+}
 
 const { isWorkflowReviewsEnabled: isWorkflowReviewsNavVisible } = useWorkflowReviewsFeature();
 
@@ -132,7 +219,6 @@ const workflowReviews = computed<IMenuItem>(() => ({
 	icon: 'message-square-text',
 	label: locale.baseText('workflowReviews.menu.title'),
 	route: { to: { name: WORKFLOW_REVIEW_REQUESTS_VIEW } },
-	preview: true,
 }));
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
@@ -140,21 +226,24 @@ const chat = computed<IMenuItem>(() => ({
 	label: locale.baseText('projects.menu.chat'),
 	position: 'bottom',
 	route: { to: { name: CHAT_VIEW } },
-	preview: true,
 }));
 
-async function onSourceControlPull() {
-	// Update myProjects for the sidebar display
+/** A pull or an applied package can create and delete projects behind the sidebar. */
+async function reloadMyProjects() {
 	await projectsStore.getMyProjects();
 }
 
 onBeforeMount(async () => {
 	await usersStore.fetchUsers({ filter: { isPending: false }, take: 2 });
-	sourceControlEventBus.on('pull', onSourceControlPull);
+	sourceControlEventBus.on('pull', reloadMyProjects);
+	promotionEventBus.on('applied', reloadMyProjects);
+	promotionEventBus.on('projectRemoved', reloadMyProjects);
 });
 
 onBeforeUnmount(() => {
-	sourceControlEventBus.off('pull', onSourceControlPull);
+	sourceControlEventBus.off('pull', reloadMyProjects);
+	promotionEventBus.off('applied', reloadMyProjects);
+	promotionEventBus.off('projectRemoved', reloadMyProjects);
 });
 </script>
 
@@ -165,20 +254,29 @@ onBeforeUnmount(() => {
 				v-if="isInstanceAiNavVisible"
 				:item="instanceAi"
 				:compact="props.collapsed"
-				:active="activeTabId === 'instance-ai'"
+				:active="
+					activeTabId === 'instance-ai' && !isInstanceAiThreadView && !isAgentN8nChatThreadView
+				"
+				:class="{
+					[$style.instanceAiParentInactive]: isInstanceAiThreadView || isAgentN8nChatThreadView,
+				}"
 				data-test-id="project-instance-ai-menu-item"
+				@click="onNewChatClick"
 			/>
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
-				:active="activeTabId === 'home'"
+				:active="sidebarActiveTabId === 'home'"
 				data-test-id="project-home-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
+				v-if="
+					projectsStore.personalProject?.id &&
+					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled)
+				"
 				:item="personalProject"
 				:compact="props.collapsed"
-				:active="activeTabId === personalProject.id"
+				:active="sidebarActiveTabId === personalProject.id"
 				data-test-id="project-personal-menu-item"
 			/>
 			<N8nMenuItem
@@ -188,21 +286,21 @@ onBeforeUnmount(() => {
 				"
 				:item="shared"
 				:compact="props.collapsed"
-				:active="activeTabId === 'shared'"
+				:active="sidebarActiveTabId === 'shared'"
 				data-test-id="project-shared-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isWorkflowReviewsNavVisible"
 				:item="workflowReviews"
 				:compact="props.collapsed"
-				:active="activeTabId === 'workflow-reviews'"
+				:active="sidebarActiveTabId === 'workflow-reviews'"
 				data-test-id="project-workflow-reviews-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"
 				:item="chat"
 				:compact="props.collapsed"
-				:active="activeTabId === 'chat'"
+				:active="sidebarActiveTabId === 'chat'"
 				data-test-id="project-chat-menu-item"
 			/>
 		</div>
@@ -238,7 +336,7 @@ onBeforeUnmount(() => {
 							<N8nMenuItem
 								:item="entry.menuItem"
 								:compact="props.collapsed"
-								:active="activeTabId === entry.menuItem.id"
+								:active="sidebarActiveTabId === entry.menuItem.id"
 							/>
 							<button
 								v-if="!props.collapsed"
@@ -254,6 +352,47 @@ onBeforeUnmount(() => {
 				</template>
 			</div>
 		</template>
+		<div
+			v-if="isInstanceAiNavVisible && !props.collapsed && recentChats.length > 0"
+			:class="$style.instanceAiSidebar"
+			data-test-id="instance-ai-sidebar-chats"
+		>
+			<div :class="$style.instanceAiChatsHeader">
+				<button
+					type="button"
+					:class="$style.instanceAiChatsToggle"
+					:aria-expanded="!instanceAiChatsCollapsed"
+					@click="instanceAiChatsCollapsed = !instanceAiChatsCollapsed"
+				>
+					<N8nText size="small" bold color="text-light">
+						{{ locale.baseText('instanceAi.threads.chats') }}
+					</N8nText>
+					<N8nIcon
+						icon="chevron-down"
+						size="medium"
+						:class="[$style.chevron, instanceAiChatsCollapsed ? $style.chevronCollapsed : '']"
+					/>
+				</button>
+				<RouterLink :to="{ name: INSTANCE_AI_THREADS_VIEW }" :class="$style.instanceAiChatsViewAll">
+					{{ locale.baseText('instanceAi.threads.viewAll') }}
+				</RouterLink>
+			</div>
+			<template v-if="!instanceAiChatsCollapsed">
+				<div :class="$style.instanceAiChatItems">
+					<N8nMenuItem
+						v-for="item in recentChats"
+						:key="item.thread.id"
+						:item="getChatMenuItem(item)"
+						scroll-label-on-overflow
+						@click="onChatItemClick(item)"
+					>
+						<template v-if="isAgentsN8nChatFlag" #icon>
+							<RecentChatIcon :item="item" />
+						</template>
+					</N8nMenuItem>
+				</div>
+			</template>
+		</div>
 		<template v-if="projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0">
 			<button
 				v-if="!props.collapsed"
@@ -285,7 +424,7 @@ onBeforeUnmount(() => {
 				}"
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
-				:active="activeTabId === project.id"
+				:active="sidebarActiveTabId === project.id"
 				data-test-id="project-menu-item"
 			/>
 		</div>
@@ -306,6 +445,90 @@ onBeforeUnmount(() => {
 
 .projectItems {
 	padding: var(--spacing--2xs) var(--spacing--3xs);
+}
+
+.instanceAiSidebar {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--3xs) var(--spacing--3xs) var(--spacing--xs);
+}
+
+.instanceAiParentInactive {
+	:global(.router-link-active) {
+		background-color: transparent;
+	}
+
+	:global(.router-link-active:hover) {
+		background-color: var(--color--background--light-1);
+		color: var(--color--text--shade-1);
+	}
+}
+
+.instanceAiChatsHeader {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	box-sizing: border-box;
+	margin-top: var(--spacing--4xs);
+	border-radius: var(--spacing--4xs);
+	color: inherit;
+
+	&:hover {
+		background-color: var(--color--background--light-1);
+		color: var(--color--text--shade-1);
+
+		.chevron {
+			color: var(--color--text--shade-1);
+		}
+	}
+}
+
+.instanceAiChatsToggle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	flex: 1;
+	min-width: 0;
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: inherit;
+
+	&:focus-visible {
+		outline: 1px solid var(--color--secondary);
+		outline-offset: -1px;
+	}
+}
+
+.instanceAiChatsViewAll {
+	flex-shrink: 0;
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	text-decoration: none;
+
+	&:hover,
+	&:focus-visible {
+		color: var(--text-color--subtle);
+		text-decoration: none;
+	}
+}
+
+@media (hover: hover) {
+	.instanceAiChatsViewAll {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.instanceAiChatsHeader:hover .instanceAiChatsViewAll,
+	.instanceAiChatsHeader:has(.instanceAiChatsToggle:focus-visible) .instanceAiChatsViewAll,
+	.instanceAiChatsViewAll:focus-visible {
+		opacity: 1;
+		pointer-events: auto;
+	}
 }
 
 .upgradeLink {

@@ -487,8 +487,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
 			tool('e1', 3, 'workspace_str_replace_file', {
 				path: FILE,
-				old_str: 'CODE_V1',
-				new_str: 'CODE_V2',
+				replacements: [{ old_str: 'CODE_V1', new_str: 'CODE_V2' }],
 			}),
 			tool(
 				'b1',
@@ -520,7 +519,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 				'e1',
 				3,
 				'workspace_str_replace_file',
-				{ path: FILE, old_str: 'GOOD', new_str: 'BAD' },
+				{ path: FILE, replacements: [{ old_str: 'GOOD', new_str: 'BAD' }] },
 				{ success: false },
 			),
 			tool('b1', 4, 'build-workflow', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
@@ -550,8 +549,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			// (mimics an untracked shell edit having changed the file first).
 			tool('e1', 4, 'workspace_str_replace_file', {
 				path: FILE,
-				old_str: 'NOT_IN_REPLAY',
-				new_str: 'X',
+				replacements: [{ old_str: 'NOT_IN_REPLAY', new_str: 'X' }],
 			}),
 			tool('b1', 5, 'build-workflow', { filePath: FILE }, { success: true, workflowId: 'WF1' }),
 			turn('r2', 30, 'change'),
@@ -584,7 +582,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
 			// One anchor matches, one is absent. The real tool is atomic (all-or-nothing),
 			// so the file must stay CODE_V1 — never a half-applied 'GOOD'.
-			tool('e1', 3, 'workspace_batch_str_replace_file', {
+			tool('e1', 3, 'workspace_str_replace_file', {
 				path: FILE,
 				replacements: [
 					{ old_str: 'CODE_V1', new_str: 'GOOD' },

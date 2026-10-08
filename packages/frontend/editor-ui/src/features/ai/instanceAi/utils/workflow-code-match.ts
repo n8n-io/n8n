@@ -2,12 +2,9 @@ import type {
 	InstanceAiRunDebugStep,
 	InstanceAiRunDebugWorkflowCodeSnapshot,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 const WORKFLOW_CODE_TOOL_NAMES = new Set(['build-workflow']);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 export function isWorkflowCodeToolName(name: string | undefined): boolean {
 	return name !== undefined && WORKFLOW_CODE_TOOL_NAMES.has(name);

@@ -5,6 +5,7 @@ import uniqWith from 'lodash/uniqWith';
 import type { Extension, ExtensionMap } from './extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
 import { compact as oCompact } from './object-extensions';
+import { defineField } from './utils';
 
 // DIVERGENCE from packages/workflow/src/extensions/array-extensions.ts:
 // The original uses crypto.getRandomValues() which is a Web API unavailable
@@ -12,6 +13,13 @@ import { compact as oCompact } from './object-extensions';
 // are backed by Math.random() and randomItem() is non-security-critical.
 function randomInt(max: number): number {
 	return random(0, max - 1);
+}
+
+// Report whether a field resolves on the object itself and not through its prototype chain.
+function hasReadableField(value: object, field: string): boolean {
+	if (Object.hasOwn(value, field)) return true;
+	const proto = Object.getPrototypeOf(value) as object | null;
+	return field in value && (proto === null || !(field in proto));
 }
 
 function first(value: unknown[]): unknown {
@@ -30,6 +38,12 @@ function last(value: unknown[]): unknown {
 	return value[value.length - 1];
 }
 
+// reverse() deliberately stays copy-first: it has shadowed the native for
+// years and is documented as an extension. Do NOT add other native mutator
+// names here — registry names shadow natives on every receiver the expression
+// transformer sees, including plain local arrays created inside expressions
+// (in-place mutation on lazy-proxied workflow data is handled by the proxies
+// themselves, see CAT-4266).
 function reverse(value: unknown[]): unknown[] {
 	return [...value].reverse();
 }
@@ -69,7 +83,8 @@ function unique(value: unknown[], extraArgs: string[]): unknown[] {
 	const mapForEqualityCheck = (item: unknown): unknown => {
 		if (extraArgs.length > 0 && item && typeof item === 'object') {
 			return extraArgs.reduce<Record<string, unknown>>((acc, key) => {
-				acc[key] = (item as Record<string, unknown>)[key];
+				const source = item as Record<string, unknown>;
+				defineField(acc, key, hasReadableField(source, key) ? source[key] : undefined);
 				return acc;
 			}, {});
 		}
@@ -163,13 +178,16 @@ function smartJoin(value: unknown[], extraArgs: string[]): object {
 			'smartJoin(): expected two string args, e.g. .smartJoin("name", "value")',
 		);
 	}
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
-	return value.reduce<any>((o, v) => {
-		if (typeof v === 'object' && v !== null && keyField in v && valueField in v) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-			o[(v as any)[keyField]] = (v as any)[valueField];
+	return value.reduce<Record<string, unknown>>((o, v) => {
+		if (
+			typeof v === 'object' &&
+			v !== null &&
+			hasReadableField(v, keyField) &&
+			hasReadableField(v, valueField)
+		) {
+			const entry = v as Record<string, unknown>;
+			defineField(o, entry[keyField] as PropertyKey, entry[valueField]);
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return o;
 	}, {});
 }
@@ -196,18 +214,14 @@ function renameKeys(value: unknown[], extraArgs: string[]): unknown[] {
 		if (typeof v !== 'object' || v === null) {
 			return v;
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-		const newObj = { ...(v as any) };
+		const newObj: Record<string, unknown> = { ...(v as Record<string, unknown>) };
 		const chunkedArgs = chunk(extraArgs, [2]) as string[][];
 		chunkedArgs.forEach(([from, to]) => {
-			if (from in newObj) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-				newObj[to] = newObj[from];
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (Object.hasOwn(newObj, from)) {
+				defineField(newObj, to, newObj[from]);
 				delete newObj[from];
 			}
 		});
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return newObj;
 	});
 }
@@ -225,8 +239,8 @@ function mergeObjects(value: Record<string, unknown>, extraArgs: unknown[]): unk
 
 	const newObject = { ...value };
 	for (const [key, val] of Object.entries(other)) {
-		if (!(key in newObject)) {
-			newObject[key] = val;
+		if (!Object.hasOwn(newObject, key)) {
+			defineField(newObject, key, val);
 		}
 	}
 	return newObject;
@@ -252,14 +266,48 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 		);
 	}
 	const listLength = value.length > others.length ? value.length : others.length;
-	let merged = {};
+	const merged: Record<string, unknown> = {};
 	for (let i = 0; i < listLength; i++) {
 		if (value[i] !== undefined) {
 			if (typeof value[i] === 'object' && typeof others[i] === 'object') {
-				merged = Object.assign(
-					merged,
-					mergeObjects(value[i] as Record<string, unknown>, [others[i]]),
-				);
+				const pair = mergeObjects(value[i] as Record<string, unknown>, [others[i]]) as Record<
+					string,
+					unknown
+				>;
+				for (const [key, val] of Object.entries(pair)) {
+					defineField(merged, key, val);
+				}
+			}
+		}
+	}
+	return merged;
+}
+
+function mergeIntoObject(value: unknown[], extraArgs: unknown[][]): unknown {
+	const [others] = extraArgs;
+
+	if (!Array.isArray(others)) {
+		throw new ExpressionExtensionError(
+			'mergeIntoObject(): expected array arg, e.g. .mergeIntoObject([{ id: 1, otherValue: 3 }])',
+		);
+	}
+	const listLength = value.length > others.length ? value.length : others.length;
+	const merged: Record<string, unknown> = {};
+	for (let i = 0; i < listLength; i++) {
+		const baseIsObject = value[i] !== null && typeof value[i] === 'object';
+		const otherIsObject = others[i] !== null && typeof others[i] === 'object';
+		let source: Record<string, unknown> | undefined;
+		if (baseIsObject) {
+			source = mergeObjects(
+				value[i] as Record<string, unknown>,
+				otherIsObject ? [others[i]] : [],
+			) as Record<string, unknown>;
+		} else if (otherIsObject) {
+			source = others[i] as Record<string, unknown>;
+		}
+		if (source) {
+			for (const [key, val] of Object.entries(source)) {
+				defineField(merged, key, val);
 			}
 		}
 	}
@@ -348,7 +396,8 @@ average.doc = {
 		'Returns the average of the numbers in the array. Throws an error if there are any non-numbers.',
 	examples: [{ example: '[12, 1, 5].average()', evaluated: '6' }],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-average',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayaverage',
 };
 
 compact.doc = {
@@ -358,7 +407,8 @@ compact.doc = {
 		'Removes any empty values from the array. <code>null</code>, <code>""</code> and <code>undefined</code> count as empty.',
 	examples: [{ example: '[2, null, 1, ""].compact()', evaluated: '[2, 1]' }],
 	returnType: 'Array',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-compact',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraycompact',
 };
 
 isEmpty.doc = {
@@ -369,7 +419,8 @@ isEmpty.doc = {
 		{ example: "['quick', 'brown', 'fox'].isEmpty()", evaluated: 'false' },
 	],
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-isEmpty',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayisempty',
 };
 
 isNotEmpty.doc = {
@@ -380,7 +431,8 @@ isNotEmpty.doc = {
 		{ example: '[].isNotEmpty()', evaluated: 'false' },
 	],
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-isNotEmpty',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayisnotempty',
 };
 
 first.doc = {
@@ -389,7 +441,8 @@ first.doc = {
 	description: 'Returns the first element of the array',
 	examples: [{ example: "['quick', 'brown', 'fox'].first()", evaluated: "'quick'" }],
 	returnType: 'any',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-first',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayfirst',
 };
 
 last.doc = {
@@ -398,7 +451,8 @@ last.doc = {
 	description: 'Returns the last element of the array',
 	examples: [{ example: "['quick', 'brown', 'fox'].last()", evaluated: "'fox'" }],
 	returnType: 'any',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-last',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraylast',
 };
 
 max.doc = {
@@ -407,7 +461,8 @@ max.doc = {
 		'Returns the largest number in the array. Throws an error if there are any non-numbers.',
 	examples: [{ example: '[1, 12, 5].max()', evaluated: '12' }],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-max',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraymax',
 };
 
 min.doc = {
@@ -416,7 +471,8 @@ min.doc = {
 		'Returns the smallest number in the array. Throws an error if there are any non-numbers.',
 	examples: [{ example: '[12, 1, 5].min()', evaluated: '1' }],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-min',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraymin',
 };
 
 randomItem.doc = {
@@ -427,7 +483,8 @@ randomItem.doc = {
 		{ example: "['quick', 'brown', 'fox'].randomItem()", evaluated: "'quick'" },
 	],
 	returnType: 'any',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-randomItem',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayrandomitem',
 };
 
 sum.doc = {
@@ -436,7 +493,8 @@ sum.doc = {
 		'Returns the total of all the numbers in the array. Throws an error if there are any non-numbers.',
 	examples: [{ example: '[12, 1, 5].sum()', evaluated: '18' }],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-sum',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraysum',
 };
 
 chunk.doc = {
@@ -452,7 +510,8 @@ chunk.doc = {
 			type: 'number',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-chunk',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraychunk',
 };
 
 difference.doc = {
@@ -469,7 +528,8 @@ difference.doc = {
 			type: 'Array',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-difference',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraydifference',
 };
 
 intersection.doc = {
@@ -487,13 +547,14 @@ intersection.doc = {
 		},
 	],
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-intersection',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayintersection',
 };
 
 merge.doc = {
 	name: 'merge',
 	description:
 		'Merges two Object-arrays into one object by merging the key-value pairs of each element.',
+	hidden: true,
 	examples: [
 		{
 			example:
@@ -510,7 +571,30 @@ merge.doc = {
 			type: 'Array',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-merge',
+	docURL: 'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array',
+};
+
+mergeIntoObject.doc = {
+	name: 'mergeIntoObject',
+	description:
+		'Merges two Object-arrays into one object by merging the key-value pairs of each element. If the arrays have different lengths, elements from the longer array are kept.',
+	examples: [
+		{
+			example: "[{ name: 'Nathan' }, { age: 42 }].mergeIntoObject([{ city: 'Berlin' }])",
+			evaluated: "{ name: 'Nathan', age: 42, city: 'Berlin' }",
+		},
+	],
+	returnType: 'Object',
+	args: [
+		{
+			name: 'otherArray',
+			optional: false,
+			description: 'The array to merge into the base array',
+			type: 'Array',
+		},
+	],
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraymergeintoobject',
 };
 
 pluck.doc = {
@@ -537,7 +621,8 @@ pluck.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-pluck',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraypluck',
 };
 
 renameKeys.doc = {
@@ -560,7 +645,8 @@ renameKeys.doc = {
 		},
 		{ name: 'to', optional: false, description: 'The new key name', type: 'string' },
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-renameKeys',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayrenamekeys',
 };
 
 smartJoin.doc = {
@@ -589,7 +675,8 @@ smartJoin.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-smartJoin',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraysmartjoin',
 };
 
 union.doc = {
@@ -605,7 +692,8 @@ union.doc = {
 			type: 'Array',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-union',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayunion',
 };
 
 unique.doc = {
@@ -624,7 +712,8 @@ unique.doc = {
 	],
 	returnType: 'any',
 	aliases: ['removeDuplicates'],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-unique',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayunique',
 	args: [
 		{
 			name: 'fieldNames',
@@ -647,7 +736,7 @@ toJsonString.doc = {
 		},
 	],
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-toJsonString',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraytojsonstring',
 	returnType: 'string',
 };
 
@@ -665,7 +754,8 @@ append.doc = {
 			description: 'Consider using spread syntax instead',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-append',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayappend',
 	returnType: 'Array',
 	args: [
 		{
@@ -702,6 +792,7 @@ export const arrayExtensions: ExtensionMap = {
 		chunk,
 		renameKeys,
 		merge,
+		mergeIntoObject,
 		union,
 		difference,
 		intersection,

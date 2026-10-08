@@ -7,13 +7,16 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
+	IWorkflowSettings,
 	JsonValue,
 	WorkflowExecuteMode,
 	WorkflowSettings,
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type { CredentialAuthProbeOutcome } from '@/services/credentials-tester.service';
 import type {
+	CredentialExportPolicy,
 	ExportPackageEventCounts,
 	ImportAuditCredentialIds,
 	ImportPackageEventCounts,
@@ -21,6 +24,19 @@ import type {
 	PackageFailureReason,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
+import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
+import type {
+	AuditedActor,
+	PolicyDecisionAudit,
+} from '@/modules/policy-infrastructure/policy-decision-audit';
+import type {
+	PolicyAction,
+	PolicyAttachment,
+	PolicyRule,
+} from '@/modules/type-availability-policies/policy-rule.types';
+import type { TracingContext } from '@/modules/otel/tracing-context';
+import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
+import type { UserLike } from '@/types/user-like.types';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -32,15 +48,21 @@ export type WorkflowActionSource =
 	| 'import'
 	| 'review-approval';
 
-export type UserLike = {
-	id: string;
-	email?: string;
-	firstName?: string;
-	lastName?: string;
-	role?: {
-		slug: string;
-	};
-};
+export type { UserLike };
+
+/**
+ * Which write path produced a policy document event. A composed save emits a document event
+ * of its own, so a consumer that already reports the composed save uses this to skip it
+ * instead of counting one save twice.
+ */
+export type PolicyWriteOrigin = 'composed-save' | 'document-api';
+
+export type CrashDetector =
+	| 'stall'
+	| 'queue-recovery'
+	| 'startup-recovery'
+	| 'start-failure'
+	| 'workflow-deactivation';
 
 export type ProjectSummary = {
 	id: string;
@@ -84,6 +106,12 @@ export type RelayEventMap = {
 		credentialId?: string;
 	};
 
+	// Delivery outcome of an instance usage report. No payload: the event name is
+	// the whole signal a log-streaming consumer needs.
+	'instance-report-delivered': {};
+
+	'instance-report-failed': {};
+
 	// #endregion
 
 	// #region Workflow
@@ -116,6 +144,8 @@ export type RelayEventMap = {
 		folderIds?: string[];
 		projectIds?: string[];
 		counts: ExportPackageEventCounts;
+		credentialExportPolicy: CredentialExportPolicy;
+		includeArchivedWorkflows: boolean;
 	};
 
 	'n8n-package-export-failed': {
@@ -136,6 +166,14 @@ export type RelayEventMap = {
 	'workflow-deleted': {
 		user: UserLike;
 		workflowId: string;
+		/**
+		 * Both resolved before the delete runs. The cascade takes the workflow row and its
+		 * `shared_workflow` rows with it, so a listener cannot recover either afterwards.
+		 * `projectId` stays required-to-pass but nullable, so a caller has to decide rather than
+		 * forget, and an unowned workflow is still expressible.
+		 */
+		workflowName: string;
+		projectId: string | undefined;
 		publicApi: boolean;
 	};
 
@@ -229,6 +267,11 @@ export type RelayEventMap = {
 		versionId: string;
 		versionName?: string | null;
 		versionDescription?: string | null;
+	};
+
+	/** A source-control pull wrote a workflow, which happens outside the save path. */
+	'workflow-imported': {
+		workflowId: string;
 	};
 
 	// #endregion
@@ -388,7 +431,8 @@ export type RelayEventMap = {
 			| 'Workflow auto-deactivated'
 			| 'Workflow shared'
 			| 'Credentials shared'
-			| 'Project shared';
+			| 'Project shared'
+			| 'Email change confirmation';
 		publicApi: boolean;
 	};
 
@@ -433,7 +477,8 @@ export type RelayEventMap = {
 			| 'Workflow shared'
 			| 'Workflow auto-deactivated'
 			| 'Credentials shared'
-			| 'Project shared';
+			| 'Project shared'
+			| 'Email change confirmation';
 		publicApi: boolean;
 	};
 
@@ -445,6 +490,8 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		credentialName: string;
+		credentialDescriptionLength?: number;
 		publicApi: boolean;
 		projectId?: string;
 		projectType?: string;
@@ -469,6 +516,8 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		credentialName: string;
+		credentialDescriptionLength?: number;
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
@@ -480,12 +529,21 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		/** Both resolved before the delete, which cascades away the rows that name the project. */
+		credentialName: string;
+		projectId: string | undefined;
 	};
 
 	'credentials-user-disconnected': {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+	};
+
+	'credentials-probed': {
+		user: UserLike;
+		credentialId: string;
+		outcome: CredentialAuthProbeOutcome;
 	};
 
 	'oauth-callback-binding-rejected': {
@@ -594,6 +652,22 @@ export type RelayEventMap = {
 		reason: CancellationReason;
 	};
 
+	'execution-crashed': {
+		executionId: string;
+		workflowId: string;
+		workflowName?: string;
+		mode: WorkflowExecuteMode;
+		startedAt?: Date;
+		stoppedAt: Date;
+		detector: CrashDetector;
+		hostId: string;
+		tracingContext?: TracingContext;
+		workflowVersionId?: string;
+		retryOf?: string;
+		workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
+		project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
+	};
+
 	'execution-deleted': {
 		user: UserLike;
 		executionIds: string[];
@@ -674,6 +748,7 @@ export type RelayEventMap = {
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
+		publicApi: boolean;
 	};
 
 	'source-control-user-finished-pull-ui': {
@@ -693,6 +768,7 @@ export type RelayEventMap = {
 		credsEligible: number;
 		credsEligibleWithConflicts: number;
 		variablesEligible: number;
+		publicApi: boolean;
 	};
 
 	'source-control-user-finished-push-ui': {
@@ -701,6 +777,7 @@ export type RelayEventMap = {
 		workflowsPushed: number;
 		credsPushed: number;
 		variablesPushed: number;
+		publicApi: boolean;
 	};
 
 	// #endregion
@@ -993,6 +1070,11 @@ export type RelayEventMap = {
 		executionId: string;
 	};
 
+	'runner-disconnected': {
+		reason: 'failed-heartbeat-check' | 'runner-unresponsive';
+		mode: 'internal' | 'external';
+	};
+
 	// #endregion
 
 	// #region queue
@@ -1052,6 +1134,10 @@ export type RelayEventMap = {
 	// #endregion
 
 	// region Agents
+	'agent-saved': {
+		agentId: string;
+	};
+
 	'agent-deleted': {
 		agentId: string;
 		projectId: string;
@@ -1082,12 +1168,73 @@ export type RelayEventMap = {
 
 	// #endregion
 
+	// #region Workflow Reviews
+
+	'workflow-review-requested': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		/** The project owning the review when it was opened. */
+		projectId: string;
+		workflowId: string;
+		workflowVersionId: string;
+		reviewerCount: number;
+	};
+
+	'workflow-review-version-updated': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		workflowId: string;
+		workflowVersionId: string;
+	};
+
+	'workflow-review-decided': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		workflowId: string;
+		/** Null when the pinned version was pruned before the decision. */
+		workflowVersionId: string | null;
+		decision: 'approved' | 'changes_requested';
+		decidedVia: 'assigned-reviewer' | 'admin-override';
+		reviewCreatedAt: Date;
+	};
+
+	/**
+	 * Closed without a decision, by the workflow lifecycle hooks or the reconciliation
+	 * sweep. An approval closes the request too but emits 'workflow-review-decided'
+	 * instead, never both: every close path filters `state = 'open'` and `decide()`
+	 * closes in-line.
+	 */
+	'workflow-review-closed': {
+		workflowReviewRequestId: string;
+		/**
+		 * What left the review with no reviewable workflow, and who caused that — not who
+		 * closed the review, which nobody does. `'unknown'` is not the activity feed's
+		 * `no-reviewable-workflows`: the feed records that value on every close, whatever the
+		 * trigger, while `'unknown'` says the trigger itself went unrecorded.
+		 */
+		cause: {
+			trigger: 'workflow-archived' | 'workflow-moved' | 'workflow-deleted' | 'unknown';
+			/** 'system' means no actor was recorded, not that automation acted. */
+			actorKind: 'user' | 'system';
+			userId: string | null;
+		};
+	};
+
+	'workflow-review-comment-created': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+	};
+
+	// #endregion
+
 	// #region Custom Roles
 
 	'custom-role-created': {
 		userId: string;
 		roleSlug: string;
 		scopes: string[];
+		/** Which surface created the role. Both reach the same service, so the caller names its own. */
+		source: 'ui' | 'public-api';
 	};
 
 	'custom-role-updated': {
@@ -1107,6 +1254,17 @@ export type RelayEventMap = {
 
 	'instance-ai-settings-updated': {
 		mcpSettingsChanged: boolean;
+		/** Instance credential assignments before and after the save; absent when the update carried none (e.g. multi-main reload). Ids and model names only, never credential data. */
+		credentialSelections?: {
+			previous: InstanceAiCredentialSelection;
+			next: InstanceAiCredentialSelection;
+			/** Components whose connection payload was written in this save. Same-provider key rotations update the credential in place and keep its id, so an id diff alone cannot see them. */
+			connectionsUpdated: {
+				model: boolean;
+				sandbox: boolean;
+				search: boolean;
+			};
+		};
 	};
 
 	'instance-ai-mcp-registry-connection-created': {
@@ -1147,6 +1305,23 @@ export type RelayEventMap = {
 		clientName?: string;
 	};
 
+	/**
+	 * `authType` reports how the call authenticated, so an absent `clientId` is
+	 * explicit rather than inferred. `api_key` covers every non-OAuth bearer
+	 * token the MCP server admits, including token-exchange scoped JWTs, which
+	 * is the same grouping the MCP connection telemetry uses.
+	 *
+	 * `clientId` is the OAuth client the call was authenticated with, as
+	 * registered with this instance. Unlike `clientName` (self-reported by the
+	 * client), it identifies the client, so it is what usage can be attributed
+	 * by. Treat it as opaque: a first-party client's id is a URL rather than a
+	 * generated id.
+	 *
+	 * The two travel paired because they are not independent: verification
+	 * rejects an OAuth token carrying no `client_id` claim, and an API key is
+	 * never issued to a client. The pair is absent only where no caller was
+	 * resolved.
+	 */
 	'mcp-tool-called': {
 		user: UserLike;
 		toolName: string;
@@ -1154,12 +1329,85 @@ export type RelayEventMap = {
 		status: 'success' | 'error';
 		errorMessage?: string;
 		clientName?: string;
-	};
+	} & (McpCallerAuth | { authType?: undefined; clientId?: undefined });
 
 	'mcp-access-updated': {
 		user: UserLike;
 		enabled: boolean;
 	};
+
+	// #endregion
+
+	// #region Node type policy
+
+	/**
+	 * `updatedBy` is a plain user id, or the literal `environment` for an env-bootstrap
+	 * write — never a `UserLike`, since an env-bootstrap write has no user to describe.
+	 */
+	'node-type-policy-scope-updated': {
+		updatedBy: string;
+		kind: string;
+		projectId: string | null;
+		scopeId: string;
+		before: { defaultAction: PolicyAction; version: number } | null;
+		after: { defaultAction: PolicyAction; version: number };
+	};
+
+	'node-type-policy-document-created': {
+		updatedBy: string;
+		kind: string;
+		policyId: string;
+		origin: PolicyWriteOrigin;
+		after: { rules: readonly PolicyRule[]; version: number };
+	};
+
+	'node-type-policy-document-updated': {
+		updatedBy: string;
+		kind: string;
+		policyId: string;
+		origin: PolicyWriteOrigin;
+		before: { rules: readonly PolicyRule[]; version: number };
+		after: { rules: readonly PolicyRule[]; version: number };
+	};
+
+	'node-type-policy-document-deleted': {
+		updatedBy: string;
+		kind: string;
+		policyId: string;
+		before: { rules: readonly PolicyRule[]; version: number };
+	};
+
+	/**
+	 * One composed save of a scope's whole effective policy: its default action and its rules.
+	 * Emitted alongside the granular scope and document events, which the audit log needs, so a
+	 * consumer that wants one row per save listens to this one instead of joining those two.
+	 */
+	'node-type-policy-saved': {
+		updatedBy: string;
+		kind: string;
+		projectId: string | null;
+		scopeId: string;
+		before: { defaultAction: PolicyAction; version: number } | null;
+		after: { defaultAction: PolicyAction; version: number };
+		rulesBefore: readonly PolicyRule[] | null;
+		rulesAfter: readonly PolicyRule[];
+		warningCount: number;
+	};
+
+	'node-type-policy-attachments-updated': {
+		updatedBy: string;
+		kind: string;
+		projectId: string | null;
+		scopeId: string;
+		before: { attachments: readonly PolicyAttachment[]; version: number };
+		after: { attachments: readonly PolicyAttachment[]; version: number };
+	};
+
+	// #endregion
+
+	// #region Policy enforcement
+
+	'policy-decision-blocked': PolicyDecisionAudit & AuditedActor;
 
 	// #endregion
 } & AiEventMap;

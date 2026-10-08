@@ -175,7 +175,7 @@ export class Amqp implements INodeType {
 				| object;
 			const options = this.getNodeParameter('options', 0, {});
 			const containerId = options.containerId as string;
-			const containerReconnect = (options.reconnect as boolean) || true;
+			const containerReconnect = (options.reconnect as boolean) ?? true;
 			const containerReconnectLimit = (options.reconnectLimit as number) || 50;
 
 			let headerProperties: Dictionary<any>;
@@ -215,7 +215,8 @@ export class Amqp implements INodeType {
 
 				container.on('disconnected', function (context: EventContext) {
 					//handling this manually as container, despite reconnect_limit, does reconnect on disconnect
-					if (limit <= 0) {
+					// with reconnect off there is no retry to wait for, so the first drop is final
+					if (limit <= 0 || !containerReconnect) {
 						connection!.options.reconnect = false;
 						const error = new NodeOperationError(
 							node,

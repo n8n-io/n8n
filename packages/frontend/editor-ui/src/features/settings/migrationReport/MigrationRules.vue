@@ -17,12 +17,16 @@ import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAsyncState } from '@vueuse/core';
 import { computed, ref, useCssModule } from 'vue';
+import { I18nT } from 'vue-i18n';
 import orderBy from 'lodash/orderBy';
-import SeverityTag from './components/SeverityTag.vue';
+import ImpactTag from './components/ImpactTag.vue';
 import EmptyTab from './components/EmptyTab.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useI18n } from '@n8n/i18n';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
+import type { BreakingChangeLightReportResult, BreakingChangeRuleImpact } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -31,7 +35,10 @@ const i18n = useI18n();
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const currentTab = ref('workflow-issues');
-const shouldShowRefreshButton = ref(false);
+
+// A user who can edit every workflow sees the whole instance and may refresh it.
+// Everyone else sees the workflows they can edit, and the instance issues are not theirs.
+const canManageReport = hasPermission(['rbac'], { rbac: { scope: 'workflow:update' } });
 
 const versionQuery = MIGRATION_REPORT_TARGET_VERSION
 	? { version: MIGRATION_REPORT_TARGET_VERSION }
@@ -41,39 +48,46 @@ const targetVersionMajor = MIGRATION_REPORT_TARGET_VERSION?.slice(1) ?? '2';
 const targetVersionDisplay = `${targetVersionMajor}.0.0`;
 const documentationUrl = `https://docs.n8n.io/${targetVersionMajor}-0-breaking-changes/`;
 
+type WorkflowRuleResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
+
+// A rule with only won't fix findings has no open findings left, so it counts as resolved.
+function isOpenRule(rule: WorkflowRuleResult) {
+	return rule.nbAffectedWorkflows > 0;
+}
+
 const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = false) => {
 	if (refresh) {
 		const response = await breakingChangesApi.refreshReport(rootStore.restApiContext, versionQuery);
 		// set tab based on available issues
 		if (
-			response.report.workflowResults.length === 0 &&
+			!response.report.workflowResults.some(isOpenRule) &&
 			response.report.instanceResults.length > 0
 		) {
 			currentTab.value = 'instance-issues';
 		}
-		shouldShowRefreshButton.value = response.shouldCache;
 
 		return response;
 	}
-	const response = await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
-	shouldShowRefreshButton.value = response.shouldCache;
-
-	return response;
+	return await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
 }, undefined);
+
+const openWorkflowRulesCount = computed(
+	() => state.value?.report.workflowResults.filter(isOpenRule).length ?? 0,
+);
 
 async function refreshReport() {
 	await execute(0, true);
 }
 
 const tabs = computed(() => {
+	const workflowIssues = {
+		label: i18n.baseText('settings.migrationReport.tabs.workflowIssues'),
+		value: 'workflow-issues',
+		tag: openWorkflowRulesCount.value ? String(openWorkflowRulesCount.value) : undefined,
+	};
+	if (!canManageReport) return [workflowIssues];
 	return [
-		{
-			label: i18n.baseText('settings.migrationReport.tabs.workflowIssues'),
-			value: 'workflow-issues',
-			tag: state.value?.report.workflowResults.length
-				? String(state.value.report.workflowResults.length)
-				: undefined,
-		},
+		workflowIssues,
 		{
 			label: i18n.baseText('settings.migrationReport.tabs.instanceIssues'),
 			value: 'instance-issues',
@@ -84,39 +98,57 @@ const tabs = computed(() => {
 	];
 });
 
-const workflowTooltips = computed(() => {
-	return {
-		critical: i18n.baseText('settings.migrationReport.workflowTooltip.critical'),
-		medium: i18n.baseText('settings.migrationReport.workflowTooltip.medium'),
-		low: i18n.baseText('settings.migrationReport.workflowTooltip.low'),
-	} as const;
-});
+const workflowTooltips = computed<Record<BreakingChangeRuleImpact, string>>(() => ({
+	upgradeBlocked: i18n.baseText('settings.migrationReport.workflowTooltip.upgradeBlocked'),
+	executionsFail: i18n.baseText('settings.migrationReport.workflowTooltip.executionsFail'),
+	behaviorChanges: i18n.baseText('settings.migrationReport.workflowTooltip.behaviorChanges'),
+	capabilityRemoved: i18n.baseText('settings.migrationReport.workflowTooltip.capabilityRemoved'),
+}));
 
-const instanceTooltips = computed(() => {
-	return {
-		critical: i18n.baseText('settings.migrationReport.instanceTooltip.critical'),
-		medium: i18n.baseText('settings.migrationReport.instanceTooltip.medium'),
-		low: i18n.baseText('settings.migrationReport.instanceTooltip.low'),
-	} as const;
-});
+const instanceTooltips = computed<Record<BreakingChangeRuleImpact, string>>(() => ({
+	upgradeBlocked: i18n.baseText('settings.migrationReport.instanceTooltip.upgradeBlocked'),
+	executionsFail: i18n.baseText('settings.migrationReport.instanceTooltip.executionsFail'),
+	behaviorChanges: i18n.baseText('settings.migrationReport.instanceTooltip.behaviorChanges'),
+	capabilityRemoved: i18n.baseText('settings.migrationReport.instanceTooltip.capabilityRemoved'),
+}));
 
 const compatibleWorkflowsCount = computed(() => {
 	if (!state.value) return 0;
-	return (
-		state.value.totalWorkflows -
-		state.value.report.workflowResults.reduce((acc, issue) => acc + issue.nbAffectedWorkflows, 0)
-	);
+	return state.value.totalWorkflows - state.value.totalAffectedWorkflows;
 });
 
-// Severity order: critical (highest) -> medium -> low (lowest)
-const severityOrder = { critical: 0, medium: 1, low: 2 };
+const compatiblePercentage = computed(() => {
+	const total = state.value?.totalWorkflows ?? 0;
+	if (total === 0) return 0;
+	// Floor so the bar only fills once every workflow is compatible
+	return Math.floor((compatibleWorkflowsCount.value / total) * 100);
+});
 
+const progressLabel = computed(() =>
+	i18n.baseText('settings.migrationReport.progress.label', {
+		interpolate: {
+			compatibleCount: compatibleWorkflowsCount.value.toLocaleString(),
+			totalCount: (state.value?.totalWorkflows ?? 0).toLocaleString(),
+		},
+	}),
+);
+
+// Impact order: the impact that blocks the update comes first, the one with no
+// runtime effect comes last.
+const impactOrder: Record<BreakingChangeRuleImpact, number> = {
+	upgradeBlocked: 0,
+	executionsFail: 1,
+	behaviorChanges: 2,
+	capabilityRemoved: 3,
+};
+
+// Resolved rules come last. They stay listed so a user can open them and undo a won't fix.
 const sortedWorkflowResults = computed(() => {
 	if (!state.value?.report.workflowResults) return [];
 	return orderBy(
 		state.value.report.workflowResults,
-		[(issue) => severityOrder[issue.ruleSeverity]],
-		['asc'],
+		[(issue) => (isOpenRule(issue) ? 0 : 1), (issue) => impactOrder[issue.ruleImpact]],
+		['asc', 'asc'],
 	);
 });
 
@@ -124,7 +156,7 @@ const sortedInstanceResults = computed(() => {
 	if (!state.value?.report.instanceResults) return [];
 	return orderBy(
 		state.value.report.instanceResults,
-		[(issue) => severityOrder[issue.ruleSeverity]],
+		[(issue) => impactOrder[issue.ruleImpact]],
 		['asc'],
 	);
 });
@@ -137,8 +169,8 @@ const sortedInstanceResults = computed(() => {
 			:description="
 				i18n.baseText('settings.migrationReport.description', {
 					interpolate: {
-						compatibleCount: String(compatibleWorkflowsCount),
-						totalCount: String(state?.totalWorkflows ?? 0),
+						compatibleCount: compatibleWorkflowsCount.toLocaleString(),
+						totalCount: (state?.totalWorkflows ?? 0).toLocaleString(),
 						version: targetVersionDisplay,
 					},
 				})
@@ -148,17 +180,57 @@ const sortedInstanceResults = computed(() => {
 			docs-leading-text=""
 		/>
 		<div>
+			<N8nText
+				v-if="!canManageReport"
+				tag="p"
+				size="small"
+				color="text-light"
+				class="mb-s"
+				data-test-id="migration-report-scope-note"
+			>
+				{{ i18n.baseText('settings.migrationReport.scopeNote') }}
+			</N8nText>
+			<div v-if="state" :class="$style.Progress">
+				<div
+					:class="$style.ProgressTrack"
+					role="progressbar"
+					:aria-valuenow="compatiblePercentage"
+					aria-valuemin="0"
+					aria-valuemax="100"
+					:aria-label="progressLabel"
+					data-test-id="migration-report-progress"
+				>
+					<div :class="$style.ProgressFill" :style="{ width: `${compatiblePercentage}%` }" />
+				</div>
+				<N8nText size="medium" color="text-base" :class="$style.NoLineBreak">
+					{{ progressLabel }}
+				</N8nText>
+			</div>
 			<div :class="$style.ActionBar">
 				<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
-				<N8nButton
-					variant="subtle"
-					v-if="shouldShowRefreshButton"
-					:label="i18n.baseText('settings.migrationReport.refreshButton')"
-					icon="refresh-cw"
-					:loading="isLoading"
-					:disabled="isLoading"
-					@click="refreshReport"
-				/>
+				<div :class="$style.RefreshGroup">
+					<N8nText
+						v-if="state?.report.generatedAt"
+						size="small"
+						color="text-light"
+						data-test-id="migration-report-last-synced"
+					>
+						<I18nT keypath="settings.migrationReport.lastSynced" tag="span" scope="global">
+							<template #time>
+								<TimeAgo :date="state.report.generatedAt.toString()" />
+							</template>
+						</I18nT>
+					</N8nText>
+					<N8nButton
+						v-if="canManageReport"
+						variant="subtle"
+						:label="i18n.baseText('settings.migrationReport.refreshButton')"
+						icon="refresh-cw"
+						:loading="isLoading"
+						:disabled="isLoading"
+						@click="refreshReport"
+					/>
+				</div>
 			</div>
 
 			<N8nSettingsRowGroup v-if="isLoading">
@@ -172,7 +244,7 @@ const sortedInstanceResults = computed(() => {
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 			<template v-else-if="currentTab === 'workflow-issues'">
-				<template v-if="state?.report.workflowResults.length === 0">
+				<template v-if="state && openWorkflowRulesCount === 0">
 					<EmptyTab>
 						<template #title>{{
 							i18n.baseText('settings.migrationReport.emptyWorkflowIssues.title')
@@ -184,17 +256,17 @@ const sortedInstanceResults = computed(() => {
 						}}</template>
 					</EmptyTab>
 				</template>
-				<N8nSettingsRowGroup v-else>
+				<N8nSettingsRowGroup v-if="sortedWorkflowResults.length > 0">
 					<N8nSettingsRow v-for="issue in sortedWorkflowResults" :key="issue.ruleId">
 						<template #info>
 							<div :class="$style.CardTitleContainer">
 								<N8nText tag="h3" size="medium" color="text-dark">{{ issue.ruleTitle }}</N8nText>
 								<N8nTooltip
-									:content="workflowTooltips[issue.ruleSeverity]"
+									:content="workflowTooltips[issue.ruleImpact]"
 									placement="top"
 									:enterable="false"
 								>
-									<SeverityTag :severity="issue.ruleSeverity" />
+									<ImpactTag :impact="issue.ruleImpact" />
 								</N8nTooltip>
 							</div>
 							<N8nText tag="p" color="text-base">
@@ -225,9 +297,11 @@ const sortedInstanceResults = computed(() => {
 							>
 								<span :class="$style.NoLineBreak">
 									{{
-										i18n.baseText('settings.migrationReport.workflowsCount', {
-											interpolate: { count: issue.nbAffectedWorkflows },
-										})
+										isOpenRule(issue)
+											? i18n.baseText('settings.migrationReport.workflowsCount', {
+													interpolate: { count: issue.nbAffectedWorkflows },
+												})
+											: i18n.baseText('settings.migrationReport.resolved')
 									}}
 									<N8nIcon icon="chevron-right" :size="24" />
 								</span>
@@ -255,11 +329,11 @@ const sortedInstanceResults = computed(() => {
 							<div :class="$style.CardTitleContainer">
 								<N8nText tag="h3">{{ issue.ruleTitle }}</N8nText>
 								<N8nTooltip
-									:content="instanceTooltips[issue.ruleSeverity]"
+									:content="instanceTooltips[issue.ruleImpact]"
 									placement="top"
 									:enterable="false"
 								>
-									<SeverityTag :severity="issue.ruleSeverity" />
+									<ImpactTag :impact="issue.ruleImpact" />
 								</N8nTooltip>
 							</div>
 							<N8nText tag="p" color="text-base">
@@ -301,11 +375,38 @@ const sortedInstanceResults = computed(() => {
 	gap: var(--spacing--4xs);
 }
 
+.Progress {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--lg);
+	margin-bottom: var(--spacing--xl);
+}
+
+.ProgressTrack {
+	flex: 1;
+	height: var(--height--5xs);
+	border-radius: var(--radius--3xs);
+	background-color: var(--color--foreground--tint-1);
+	overflow: hidden;
+}
+
+.ProgressFill {
+	height: 100%;
+	border-radius: inherit;
+	background-color: var(--color--primary);
+}
+
 .ActionBar {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: var(--spacing--sm);
+}
+
+.RefreshGroup {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
 }
 
 .PLoading {

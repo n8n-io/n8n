@@ -7,6 +7,7 @@
 import type { CliArgs } from '../cli/args';
 import { unsupportedMcpBuildSetupFields } from '../cli/mcp-builder';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { resolveEvalPromptSettings } from '../harness/build-mode';
 import type { EvalLogger } from '../harness/logger';
 import {
 	loadPrebuiltManifest,
@@ -64,9 +65,10 @@ export function selectCases(
 	}
 
 	// `claude -p` builds get only the flattened conversation — build-side setup
-	// (credentials, seeds) is orchestrator-only. Skip cases that declare it
-	// rather than building them without prerequisites and reporting misleading
-	// failures (mirrors the prebuilt-coverage partition above).
+	// the fused path can't provide (conversation/thread seeds) is
+	// orchestrator-only. Skip cases that declare it rather than building them
+	// without prerequisites and reporting misleading failures (mirrors the
+	// prebuilt-coverage partition above).
 	if (args.buildViaMcp) {
 		const skippedMcp: string[] = [];
 		testCasesWithFiles = testCasesWithFiles.filter(({ testCase, fileSlug }) => {
@@ -85,6 +87,10 @@ export function selectCases(
 				'--build-via-mcp supports none of the selected test cases (all declare orchestrator-only setup fields) — nothing to run.',
 			);
 		}
+	}
+	if (!args.buildViaMcp && !prebuiltManifest) {
+		// Reject invalid configuration before provisioning lanes or recording results.
+		for (const { testCase } of testCasesWithFiles) resolveEvalPromptSettings(testCase);
 	}
 	return { testCasesWithFiles, prebuiltManifest };
 }

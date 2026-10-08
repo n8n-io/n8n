@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import type { ParsedHitlCallbackReference } from 'n8n-core';
-import { parseHitlCallbackReference } from 'n8n-core';
+import { markTelegramInteractionRequest, parseHitlCallbackReference } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 import { HitlInteractionWebhooks } from './hitl-interaction-webhooks';
@@ -19,6 +19,8 @@ interface TelegramCallbackUpdate {
  */
 @Service()
 export class TelegramInteractionWebhooks extends HitlInteractionWebhooks {
+	protected readonly platformNodeType = 'n8n-nodes-base.telegram';
+
 	protected async parseCallback(
 		req: WaitingWebhookRequest,
 	): Promise<ParsedHitlCallbackReference | null> {
@@ -27,5 +29,13 @@ export class TelegramInteractionWebhooks extends HitlInteractionWebhooks {
 			fallbackValue: {},
 		});
 		return parseHitlCallbackReference(update.callback_query?.data ?? '');
+	}
+
+	/**
+	 * Flag the request so the Telegram node's webhook handler knows it arrived via this route and
+	 * must take its chat-approval branch, mirroring `SlackInteractionWebhooks`.
+	 */
+	protected beforeResume(req: WaitingWebhookRequest): void {
+		markTelegramInteractionRequest(req);
 	}
 }

@@ -4,9 +4,12 @@ import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import type { AiGatewayModelCredentialResolver } from '../json-config/model-config';
+import type { AiGatewaySearchCredentialResolver } from '../json-config/web-search-credential';
+import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
 
 function toResolvedCredential(data: unknown): ResolvedCredential {
 	const resolved = data !== null && typeof data === 'object' && !Array.isArray(data) ? data : {};
@@ -24,12 +27,13 @@ function toResolvedCredential(data: unknown): ResolvedCredential {
  * Published runtime execution can omit the user and stays project-scoped.
  */
 export class AgentsCredentialProvider
-	implements CredentialProvider, AiGatewayModelCredentialResolver
+	implements CredentialProvider, AiGatewayModelCredentialResolver, AiGatewaySearchCredentialResolver
 {
 	constructor(
 		private readonly credentialsService: CredentialsService,
 		private readonly projectId: string,
 		private readonly user?: User,
+		private readonly agentId?: string,
 	) {}
 
 	/**
@@ -40,20 +44,36 @@ export class AgentsCredentialProvider
 	 * this provider's construction sites.
 	 */
 	async resolveAiGatewayModelCredential(provider: string): Promise<ResolvedCredential> {
-		const aiGatewayService = Container.get(AiGatewayService);
-		const credentialType = await aiGatewayService.getCredentialTypeForProvider(provider);
+		const credentialType =
+			await Container.get(AiGatewayService).getCredentialTypeForProvider(provider);
 		if (!credentialType) {
-			throw new UserError(`n8n credits does not support the "${provider}" model provider.`);
+			throw new UserError(`Gateway credits do not support the "${provider}" model provider.`);
 		}
-		return await aiGatewayService.getSyntheticCredential({
+		return await this.mintGatewayCredential(credentialType);
+	}
+
+	/**
+	 * Mint the n8n Connect (AI Gateway) synthetic credential for a web-search
+	 * provider, keyed by n8n credential type (e.g. `braveSearchApi`). Same gateway
+	 * mint as models — the returned credential points the search at the gateway
+	 * instead of the real provider, so no user API key is needed.
+	 */
+	async resolveAiGatewaySearchCredential(credentialType: string): Promise<ResolvedCredential> {
+		return toResolvedCredential(await this.mintGatewayCredential(credentialType));
+	}
+
+	/** Mint the gateway synthetic credential for an already-resolved credential type. */
+	private async mintGatewayCredential(credentialType: string) {
+		return await Container.get(AiGatewayService).getSyntheticCredential({
 			credentialType,
 			userId: this.user?.id,
 			projectId: this.projectId,
+			agentId: this.agentId,
 		});
 	}
 
 	/**
-	 * Resolve a credential by ID, then decrypt and return the raw data.
+	 * Resolve a credential by ID, then decrypt and return the usable data.
 	 *
 	 * Only credentials visible to this provider's scope are considered — the
 	 * same user-scoped intersection as `list()` when a request user is set, so
@@ -66,7 +86,10 @@ export class AgentsCredentialProvider
 			throw new Error(`Credential "${credentialId}" not found or not accessible`);
 		}
 
-		const data = await this.credentialsService.decrypt(credential, true);
+		const data = await decryptAgentCredential(Container.get(CredentialsHelper), credential, {
+			userId: this.user?.id,
+			projectId: this.projectId,
+		});
 		return toResolvedCredential(data);
 	}
 
@@ -120,7 +143,9 @@ export class AgentsCredentialProvider
 		const projectCredentials = await this.credentialsService.findAllCredentialIdsForProject(
 			this.projectId,
 		);
-		const globalCredentials = await this.credentialsService.findAllGlobalCredentialIds(true);
+		// No `includeData` — only id/name/type are read here, and `getDecrypted`
+		// re-reads the row it decrypts.
+		const globalCredentials = await this.credentialsService.findAllGlobalCredentialIds();
 		const allCredsSet = new Set();
 		const allCreds: CredentialsEntity[] = [];
 

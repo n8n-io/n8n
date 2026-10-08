@@ -4,10 +4,10 @@ import type {
 	CustomFetch,
 	HttpTransport,
 	SsrfBridge,
-	SsrfOption,
 	SsrfProtectionService,
 } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import dns from 'node:dns';
@@ -327,10 +327,17 @@ describe('fetchAndExtract', () => {
 
 		// Builds a real transport (the wiring the adapter service performs) so the
 		// SSRF (and optional authorize) interceptors run for real against the
-		// redirecting server below.
-		function realTransport(ssrf: SsrfOption, authorize?: (url: URL) => Promise<void>) {
-			return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>()).transport({
-				ssrf,
+		// redirecting server below. A given bridge is installed as the instance's
+		// protection service; `'disabled'` builds an unsafe transport instead.
+		function realTransport(ssrf: SsrfBridge | 'disabled', authorize?: (url: URL) => Promise<void>) {
+			const service =
+				ssrf === 'disabled' ? mock<SsrfProtectionService>() : mock<SsrfProtectionService>(ssrf);
+			return new OutboundHttp(
+				service,
+				mock<SsrfProtectionConfig>({ enabled: true }),
+				mock<Logger>(),
+			).transport({
+				useDefaultSsrfPolicy: ssrf === 'disabled' ? 'unsafe' : 'safe',
 				authorize,
 			});
 		}

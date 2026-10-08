@@ -7,7 +7,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useDebugInfo } from '@/app/composables/useDebugInfo';
-import { useInstanceRegistryStore } from '@/features/instanceRegistry/stores/instanceRegistry.store';
+import { useInstanceRegistryStore } from '@n8n/frontend-module-instance-registry';
 import { useI18n } from '@n8n/i18n';
 import { getThirdPartyLicenses } from '@n8n/rest-api-client';
 

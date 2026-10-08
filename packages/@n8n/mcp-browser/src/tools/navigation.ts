@@ -5,10 +5,10 @@ import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { createConnectedTool, extractDomain, pageIdField, withSnapshotEnvelope } from './helpers';
 
-const waitUntilField = z
+export const waitUntilField = z
 	.enum(['load', 'domcontentloaded', 'networkidle'])
 	.optional()
-	.describe('When to consider navigation done (default: "load")');
+	.describe('When to consider navigation done (default: "domcontentloaded")');
 
 export function createNavigationTools(connection: BrowserConnection): ToolDefinition[] {
 	return [
@@ -48,6 +48,7 @@ function browserNavigate(connection: BrowserConnection): ToolDefinition {
 }
 
 const browserBackSchema = z.object({
+	waitUntil: waitUntilField,
 	pageId: pageIdField,
 });
 
@@ -62,8 +63,8 @@ function browserBack(connection: BrowserConnection): ToolDefinition {
 		'browser_back',
 		'Navigate back in browser history.',
 		browserBackSchema,
-		async (state, _input, pageId) => {
-			const result = await state.adapter.back(pageId);
+		async (state, input, pageId) => {
+			const result = await state.adapter.back(pageId, input.waitUntil);
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserBackOutputSchema,
@@ -72,6 +73,7 @@ function browserBack(connection: BrowserConnection): ToolDefinition {
 }
 
 const browserForwardSchema = z.object({
+	waitUntil: waitUntilField,
 	pageId: pageIdField,
 });
 
@@ -86,8 +88,8 @@ function browserForward(connection: BrowserConnection): ToolDefinition {
 		'browser_forward',
 		'Navigate forward in browser history.',
 		browserForwardSchema,
-		async (state, _input, pageId) => {
-			const result = await state.adapter.forward(pageId);
+		async (state, input, pageId) => {
+			const result = await state.adapter.forward(pageId, input.waitUntil);
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserForwardOutputSchema,

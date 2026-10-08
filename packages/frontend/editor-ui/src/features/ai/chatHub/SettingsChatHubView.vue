@@ -2,7 +2,7 @@
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { usePostHog } from '@/app/stores/posthog.store';

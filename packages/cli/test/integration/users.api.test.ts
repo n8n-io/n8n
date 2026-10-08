@@ -24,16 +24,9 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { v4 as uuid } from 'uuid';
-
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { UsersController } from '@/controllers/users.controller';
-import { ExecutionService } from '@/executions/execution.service';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { OwnershipService } from '@/services/ownership.service';
-import { Telemetry } from '@/telemetry';
 import { createFolder } from '@test-integration/db/folders';
 import { createRole } from '@test-integration/db/roles';
+import { v4 as uuid } from 'uuid';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
@@ -45,6 +38,13 @@ import { createAdmin, createMember, createOwner, createUser, getUserById } from 
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 import { validateUser } from './shared/utils/users';
+
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { ExecutionService } from '@/executions/execution.service';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { OwnershipService } from '@/services/ownership.service';
+import { CHANGE_ROLE_ERROR_MESSAGES } from '@/services/user.service';
+import { Telemetry } from '@/telemetry';
 
 mockInstance(Telemetry);
 mockInstance(ExecutionService);
@@ -1165,7 +1165,7 @@ describe('DELETE /users/:id', () => {
 					projectId: transfereePersonalProject.id,
 					role: 'workflow:owner',
 				}),
-			).resolves.not.toBeNull,
+			).resolves.not.toBeNull(),
 			expect(
 				sharedCredentialsRepository.findOneBy({
 					credentialsId: ownedCredential.id,
@@ -1188,7 +1188,7 @@ describe('DELETE /users/:id', () => {
 					projectId: transfereePersonalProject.id,
 					role: 'credential:user',
 				}),
-			),
+			).resolves.not.toBeNull(),
 
 			// the transferee is still owner of the workflow and credential they shared with the user to delete
 			expect(
@@ -1385,19 +1385,18 @@ describe('PATCH /users/:id/role', () => {
 	let memberAgent: SuperAgentTest;
 	let authlessAgent: SuperAgentTest;
 
-	const { NO_ADMIN_ON_OWNER, NO_USER, CANNOT_CHANGE_OWN_ROLE } =
-		UsersController.ERROR_MESSAGES.CHANGE_ROLE;
+	const { NO_ADMIN_ON_OWNER, NO_USER, CANNOT_CHANGE_OWN_ROLE } = CHANGE_ROLE_ERROR_MESSAGES;
 
 	beforeAll(async () => {
 		await testDb.truncate(['User']);
 
-		[owner, admin, otherAdmin, member, otherMember] = await Promise.all([
+		[owner, admin, otherAdmin, member, otherMember] = [
 			await createOwner(),
 			await createAdmin(),
 			await createAdmin(),
 			await createMember(),
 			await createMember(),
-		]);
+		];
 
 		ownerAgent = testServer.authAgentFor(owner);
 		adminAgent = testServer.authAgentFor(admin);

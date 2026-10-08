@@ -1,7 +1,12 @@
 import { inDevelopment, Logger } from '@n8n/backend-common';
+import {
+	classifyRestError,
+	isResponseError,
+	serializeInternalRestError,
+} from '@n8n/backend-services';
 import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ReportingOptions } from '@n8n/errors';
+import { type ReportingOptions } from '@n8n/errors';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -9,9 +14,7 @@ import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
-import { classifyHttpError, isResponseError } from './errors/http-error-classifier';
-import { serializeInternalRestError } from './errors/http-error-serializers';
-import { ResponseError } from './errors/response-errors/abstract/response.error';
+import { applyFormSandboxCSP } from './webhooks/webhook-response-headers';
 
 export function sendSuccessResponse(
 	res: Response,
@@ -62,6 +65,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 			if (isFormTrigger || isLegacyFormTrigger) {
 				const isTestWebhook = basePath.includes('test');
 				res.status(404);
+				applyFormSandboxCSP(res);
 				return res.render('form-trigger-404', { isTestWebhook });
 			}
 		}
@@ -69,13 +73,14 @@ export function sendErrorResponse(res: Response, error: Error) {
 		if (error.errorCode === 409 && originalUrl && originalUrl.includes('form-waiting')) {
 			//codes other than 200  breaks redirection to form-waiting page from form trigger
 			//render form page instead of json
+			applyFormSandboxCSP(res);
 			return res.render('form-trigger-409', {
 				message: error.message,
 			});
 		}
 	}
 
-	const descriptor = classifyHttpError(error);
+	const descriptor = classifyRestError(error);
 	const { status, body: response } = serializeInternalRestError(descriptor);
 
 	if (error instanceof NodeApiError) {
@@ -97,7 +102,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 export { isUniqueConstraintError };
 
 export function reportError(error: Error, options?: ReportingOptions) {
-	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
+	if (!isResponseError(error) || error.httpStatusCode > 404) {
 		Container.get(ErrorReporter).error(error, options);
 	}
 }

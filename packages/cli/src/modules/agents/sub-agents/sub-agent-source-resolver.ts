@@ -1,30 +1,34 @@
-import type { ToolDescriptor } from '@n8n/agents';
 import {
-	type AgentSkill,
 	RunnableAgentJsonConfigSchema,
 	type AgentJsonConfig,
 	type ResolvedSubAgentSource,
 	type SubAgentSource,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
+import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
-import type { AgentHistory } from '../entities/agent-history.entity';
-import type { Agent } from '../entities/agent.entity';
+import { getAgentOrThrow } from '../utils/get-agent-or-throw';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentRepository } from '../repositories/agent.repository';
+import { getAgentRuntimeAssets, type AgentRuntimeAssets } from '../utils/agent-runtime-assets';
 
 export interface ResolveSubAgentSourceContext {
 	projectId: string;
+	/**
+	 * Resolve the published version instead of the current draft. Set for
+	 * production runs, mirroring how sub-workflows and "Message an Agent"
+	 * resolve referenced entities.
+	 */
+	usePublishedVersion?: boolean;
+	/** Saved background configuration, including draft tool and skill bodies. */
+	runtimeSnapshot?: string;
 }
 
-export interface ResolvedSubAgentRuntimeSource {
+export interface ResolvedSubAgentRuntimeSource extends AgentRuntimeAssets {
 	source: ResolvedSubAgentSource;
-	toolDescriptors: Record<string, ToolDescriptor>;
-	toolCodeByName: Record<string, string>;
-	skills: Record<string, AgentSkill>;
 }
 
 @Service()
@@ -35,19 +39,39 @@ export class SubAgentSourceResolver {
 	) {}
 
 	/**
-	 * Resolve a saved n8n agent (its current published version, or a pinned
-	 * specific version) into a runnable config plus its tool/skill assets.
+	 * Resolve a saved n8n agent into a runnable config plus its tool/skill
+	 * assets: a pinned historical version (resumes), the published version
+	 * (production runs), or the current draft (test runs).
 	 */
 	async resolveForRuntime(
 		source: SubAgentSource,
 		context: ResolveSubAgentSourceContext,
 	): Promise<ResolvedSubAgentRuntimeSource> {
-		const agent = await this.agentRepository.findByIdAndProjectId(
-			source.agentId,
-			context.projectId,
-		);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${source.agentId}" not found`);
+		const agent = await getAgentOrThrow(this.agentRepository, source.agentId, context.projectId);
+		if (context.runtimeSnapshot !== undefined) {
+			const saved = jsonParse<ResolvedSubAgentRuntimeSource | null>(context.runtimeSnapshot, {
+				fallbackValue: null,
+			});
+			if (
+				!isRecord(saved) ||
+				!isRecord(saved.source) ||
+				typeof saved.source.sourceId !== 'string'
+			) {
+				throw new UnexpectedError('Invalid saved background task configuration');
+			}
+			if (saved.source.sourceId !== source.agentId) {
+				throw new UserError('Saved background task configuration does not match this agent');
+			}
+			const result = RunnableAgentJsonConfigSchema.safeParse(saved.source.config);
+			if (!result.success) {
+				throw new UnexpectedError('Invalid saved background task configuration', {
+					cause: result.error,
+				});
+			}
+			return {
+				...saved,
+				source: { ...saved.source, config: result.data },
+			};
 		}
 
 		if (source.versionId) {
@@ -76,23 +100,34 @@ export class SubAgentSourceResolver {
 			};
 		}
 
-		// No pinned version: resolve the child's current published version at
-		// delegation time, not its draft. Reading `agent.activeVersion` fresh
-		// (rather than trusting a version baked into the parent's cached
-		// runtime) means a re-publish of the child takes effect on the very
-		// next delegation, without needing to clear the parent's cache.
-		const publishedVersion = agent.activeVersion;
-		if (!agent.activeVersionId || !publishedVersion?.schema) {
-			throw new UserError(`Sub-agent "${source.agentId}" is not published`);
+		if (context.usePublishedVersion) {
+			const activeVersion = agent.activeVersion;
+			if (!activeVersion?.schema) {
+				throw new UserError(
+					`Sub-agent "${agent.name}" is not published. Publish it before delegating to it in a production run.`,
+				);
+			}
+
+			return {
+				source: {
+					sourceId: source.agentId,
+					versionId: activeVersion.versionId,
+					config: this.toRunnableConfig(activeVersion.schema),
+				},
+				...getAgentRuntimeAssets(activeVersion),
+			};
+		}
+
+		if (!agent.schema) {
+			throw new UserError(`Sub-agent "${source.agentId}" has no config`);
 		}
 
 		return {
 			source: {
 				sourceId: source.agentId,
-				versionId: agent.activeVersionId,
-				config: this.toRunnableConfig(publishedVersion.schema),
+				config: this.toRunnableConfig(agent.schema),
 			},
-			...getAgentRuntimeAssets(publishedVersion),
+			...getAgentRuntimeAssets(agent),
 		};
 	}
 
@@ -106,22 +141,4 @@ export class SubAgentSourceResolver {
 
 		return result.data;
 	}
-}
-
-function getAgentRuntimeAssets(
-	agent: Pick<Agent | AgentHistory, 'tools' | 'skills'>,
-): Omit<ResolvedSubAgentRuntimeSource, 'source'> {
-	const toolDescriptors: Record<string, ToolDescriptor> = {};
-	const toolCodeByName: Record<string, string> = {};
-
-	for (const [toolId, toolEntry] of Object.entries(agent.tools ?? {})) {
-		toolDescriptors[toolId] = toolEntry.descriptor;
-		toolCodeByName[toolEntry.descriptor.name] = toolEntry.code;
-	}
-
-	return {
-		toolDescriptors,
-		toolCodeByName,
-		skills: agent.skills ?? {},
-	};
 }

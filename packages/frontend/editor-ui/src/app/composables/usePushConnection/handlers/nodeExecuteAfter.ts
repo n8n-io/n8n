@@ -66,6 +66,7 @@ export async function nodeExecuteAfter(
 	);
 
 	workflowExecutionStateStore.executingNode.removeExecutingNode(pushData.nodeName);
+	workflowExecutionStateStore.clearAgentNodeProgress(pushData.nodeName);
 
 	// Side effects
 	if (pushData.data.executionStatus === 'waiting' && pushData.data.metadata?.resumeFormUrl) {

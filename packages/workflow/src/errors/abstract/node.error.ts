@@ -1,4 +1,5 @@
 import { ExecutionBaseError } from './execution-base.error';
+import type { Failure } from '../failure';
 import type { IDataObject, INode, JsonObject } from '../../interfaces';
 import { isTraversableObject, jsonParse } from '../../utils';
 
@@ -37,6 +38,9 @@ const COMMON_ERRORS: IDataObject = {
 export abstract class NodeError extends ExecutionBaseError {
 	messages: string[] = [];
 
+	/** Why the operation failed, when the node declared it. */
+	failure?: Failure;
+
 	constructor(
 		readonly node: INode,
 		error: Error | JsonObject,
@@ -48,6 +52,7 @@ export abstract class NodeError extends ExecutionBaseError {
 
 		if (error instanceof NodeError) {
 			this.tags.reWrapped = true;
+			this.failure = error.failure;
 		}
 	}
 

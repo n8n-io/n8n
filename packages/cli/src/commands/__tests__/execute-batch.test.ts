@@ -1,4 +1,4 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
@@ -17,8 +17,10 @@ import { mock } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -40,12 +42,14 @@ const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 const shutdownService = mockInstance(ShutdownService);
 const deprecationService = mockInstance(DeprecationService);
 mockInstance(MessageEventBus);
+mockInstance(ExpressionObservabilityProvider);
 const posthogClient = mockInstance(PostHogClient);
 const telemetryEventRelay = mockInstance(TelemetryEventRelay);
 const externalHooks = mockInstance(ExternalHooks);
 mockInstance(License);
 mockInstance(LicenseState);
 mockInstance(CommunityPackagesService);
+mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 
 const dbConnection = mockInstance(DbConnection);
@@ -55,10 +59,10 @@ mockInstance(AuthRolesService);
 mockInstance(BinaryDataRepository);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
-deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
-deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
+deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
 
-test('should start a task runner', async () => {
+test('should start a task runner and the policy modules', async () => {
 	// arrange
 
 	const workflow = mock<WorkflowEntity>({
@@ -93,6 +97,8 @@ test('should start a task runner', async () => {
 		}),
 	);
 
+	const initModules = vi.spyOn(Container.get(ModuleRegistry), 'initModules');
+
 	const cmd = new ExecuteBatch();
 	// @ts-expect-error Protected property
 	cmd.flags = {};
@@ -107,4 +113,12 @@ test('should start a task runner', async () => {
 	// assert
 
 	expect(taskRunnerModule.start).toHaveBeenCalledTimes(1);
+	expect(initModules).toHaveBeenCalledWith(expect.anything(), [
+		'policy-infrastructure',
+		'type-availability-policies',
+	]);
+});
+
+test('execute:batch needs the expression engine', () => {
+	expect(new ExecuteBatch().needsExpressionEngine).toBe(true);
 });

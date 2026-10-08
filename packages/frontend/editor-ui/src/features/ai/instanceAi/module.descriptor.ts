@@ -1,41 +1,96 @@
 import { i18n } from '@n8n/i18n';
-import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
-import {
-	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
-	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
-} from '@/app/constants/modals';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import type { LocationQuery } from 'vue-router';
 import { VIEWS } from '@/app/constants';
+import { INSTANCE_AI_MODALS } from './modals';
 import {
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
+	INSTANCE_AI_THREADS_VIEW,
+	INSTANCE_AI_SOURCE_QUERY,
 } from './constants';
 import {
 	ensurePersonalProjectId,
 	provisionLaunchedThread,
+	provisionOnboardingThread,
+	type InstanceAiOnboardingLaunch,
 } from './composables/useInstanceAiHandoff';
-import { useInstanceAiAvailable } from './composables/useInstanceAiAvailability';
-import { hasPermission } from '@/app/utils/rbac/permissions';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { launchWorkflowThread } from '@/experiments/openWorkflowInAssistant/launchWorkflowThread';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+import {
+	useInstanceAiAvailable,
+	useInstanceAiReady,
+} from './composables/useInstanceAiAvailability';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { canManageInstanceAi } from './instanceAiPermissions';
+
+/**
+ * The settings page renders its sections only for a viewer who can manage
+ * Instance AI. Everybody else gets a page with nothing but its header. The one
+ * exception is the default editor row, which the openWorkflowInAssistant
+ * experiment adds for members in its treatment group. The sidebar entry and the
+ * route use the same gate, so n8n does not offer or serve an empty page.
+ *
+ * Experiment cleanup: drop the treatment term with openWorkflowInAssistant.
+ */
+function hasInstanceAiSettingsContent(): boolean {
+	if (canManageInstanceAi()) return true;
+
+	// The view drops the default editor row while the assistant is off — it shows
+	// the empty state instead — so the row is the member's only reason to visit.
+	// A member never loads the admin settings, so `enabled` on the module
+	// settings is the flag the view falls back to for them.
+	const isAssistantEnabled = useSettingsStore().moduleSettings['instance-ai']?.enabled === true;
+
+	return isAssistantEnabled && useOpenWorkflowInAssistantStore().isTreatment;
+}
+
+/** `?team=` on the onboarding handoff URL answers the survey's team question, on any deployment. */
+const ONBOARDING_TEAM_QUERY = 'team';
+
+/**
+ * The team question of the n8n Cloud signup survey: from the URL when it carries one (a test
+ * run, or a handoff that passes it), otherwise from the cloud account. Only n8n Cloud has one;
+ * elsewhere the onboarding card asks the team itself.
+ */
+async function readSignupSurvey(
+	query: LocationQuery,
+): Promise<InstanceAiOnboardingLaunch | undefined> {
+	const teamFromUrl = query[ONBOARDING_TEAM_QUERY];
+	if (typeof teamFromUrl === 'string' && teamFromUrl) {
+		return { survey: { what_team_are_you_on: teamFromUrl }, surveySource: 'url' };
+	}
+	if (!useSettingsStore().isCloudDeployment) return undefined;
+	const cloudPlanStore = useCloudPlanStore();
+	// Idempotent; a failed fetch leaves the account empty and logs a warning.
+	await cloudPlanStore.initialize();
+	const team = cloudPlanStore.currentUserCloudInfo?.information?.what_team_are_you_on;
+	return typeof team === 'string' && team
+		? { survey: { what_team_are_you_on: team }, surveySource: 'cloud' }
+		: undefined;
+}
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
+const InstanceAiThreadsView = async () => await import('./InstanceAiThreadsView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
-const ComputerUseSetupModal = async () =>
-	await import('./components/modals/ComputerUseSetupModal.vue');
-const BrowserUseSetupModal = async () =>
-	await import('./components/modals/BrowserUseSetupModal.vue');
 
-export const InstanceAiModule: FrontendModuleDescription = {
+export const InstanceAiModule = defineFrontendModule({
 	id: 'instance-ai',
-	name: 'AI Assistant',
+	name: 'n8n Assistant',
 	description: 'Chat with your n8n instance.',
 	icon: 'sparkles',
 	routes: [
 		{
 			path: '/assistant',
 			component: InstanceAiView,
+			beforeEnter: () => (useInstanceAiAvailable().value ? true : { name: VIEWS.HOMEPAGE }),
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],
@@ -46,6 +101,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 					path: 'new',
 					component: InstanceAiEmptyView,
 					beforeEnter: async (to) => {
+						// Experiment cleanup: remove with openWorkflowInAssistant.
+						const workflowRedirect = await launchWorkflowThread(to.query);
+						if (workflowRedirect) return workflowRedirect;
+
 						// Numeric ids only, so a crafted URL can't inject prompt text.
 						const raw = to.query.templateId;
 						if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
@@ -55,8 +114,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 
 						// Same canonical gate as the button and website beacon, so the guard
 						// never refuses an entry point they advertise. Whoever can't use
-						// the assistant still gets the template.
-						if (!useInstanceAiAvailable().value) {
+						// the assistant — including an admin who hasn't finished setup, since
+						// the launched thread sends its kickoff on arrival — still gets the
+						// template.
+						if (!useInstanceAiReady().value) {
 							return { name: VIEWS.TEMPLATE_SETUP, params: { id: templateId } };
 						}
 
@@ -74,6 +135,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 								message: i18n.baseText('instanceAi.launch.templateById.message', {
 									interpolate: { id: templateId },
 								}),
+								authorship: { kind: 'prefill', prefillType: 'template_adjustment' },
 							},
 							{ source: 'website-template', origin: 'external', sourceContext: { templateId } },
 						);
@@ -89,6 +151,27 @@ export const InstanceAiModule: FrontendModuleDescription = {
 					name: INSTANCE_AI_VIEW,
 					path: '',
 					component: InstanceAiEmptyView,
+					// n8n Cloud sends a new signup to `/assistant?source=onboarding` after its survey.
+					// The onboarding thread opens with the greeting and the first question card in
+					// place, so the guard creates it with the survey and lands on it. `&team=Sales`
+					// answers the team question from the URL, so one account can run it again.
+					beforeEnter: async (to) => {
+						if (to.query[INSTANCE_AI_SOURCE_QUERY] !== 'onboarding') return true;
+						// Whoever cannot use the assistant yet lands on the empty view and its setup.
+						const projectId = useInstanceAiReady().value ? await ensurePersonalProjectId() : null;
+						const threadId = projectId
+							? await provisionOnboardingThread(projectId, await readSignupSurvey(to.query))
+							: null;
+						// Both redirects drop the query, so the back button creates no second thread.
+						return threadId
+							? { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } }
+							: { name: INSTANCE_AI_VIEW };
+					},
+				},
+				{
+					name: INSTANCE_AI_THREADS_VIEW,
+					path: 'history',
+					component: InstanceAiThreadsView,
 				},
 				{
 					name: INSTANCE_AI_THREAD_VIEW,
@@ -116,10 +199,14 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			path: 'assistant',
 			name: INSTANCE_AI_SETTINGS_VIEW,
 			component: SettingsInstanceAiView,
+			beforeEnter: () => (hasInstanceAiSettingsContent() ? true : { name: VIEWS.HOMEPAGE }),
 			meta: {
 				layout: 'settings',
 				middleware: ['authenticated', 'rbac', 'custom'],
 				middlewareOptions: {
+					// `beforeEnter` is the gate that matters. Keep `instanceAi:message`
+					// here, because a member in the openWorkflowInAssistant treatment
+					// must also pass this check to reach their default editor row.
 					rbac: {
 						scope: ['instanceAi:message', 'instanceAi:manage'],
 					},
@@ -155,10 +242,20 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		project: [],
 	},
 	resources: [],
-	modals: [
-		{ key: INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY, component: ComputerUseSetupModal },
-		{ key: INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY, component: BrowserUseSetupModal },
-	],
+	modals: INSTANCE_AI_MODALS,
+	pushHandlers: {
+		// Credits are instance-level state, so the module owns this push type through
+		// the SDK registry instead of a view-scoped store listener. The store is
+		// imported lazily so it stays out of the startup bundle.
+		updateInstanceAiCredits: async (event) => {
+			const { useInstanceAiStore } = await import('./instanceAi.store');
+			useInstanceAiStore().handleCreditsPush(event.data);
+		},
+		instanceAiMcpToolCallFailed: async (event) => {
+			const { useInstanceAiMcpStore } = await import('./instanceAiMcp.store');
+			useInstanceAiMcpStore().handleToolCallFailed(event.data.connectionId);
+		},
+	},
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',
@@ -168,10 +265,8 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
 			preview: true,
 			get available() {
-				return hasPermission(['rbac'], {
-					rbac: { scope: ['instanceAi:message', 'instanceAi:manage'] },
-				});
+				return hasInstanceAiSettingsContent();
 			},
 		},
 	],
-};
+});

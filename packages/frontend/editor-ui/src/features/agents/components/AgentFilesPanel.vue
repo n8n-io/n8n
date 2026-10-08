@@ -5,7 +5,8 @@ import {
 	N8nButton,
 	N8nIcon,
 	N8nTableBase,
-	N8nTooltip,
+	N8nEmptyState,
+	N8nBadge,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -41,9 +42,16 @@ const i18n = useI18n();
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 const isMutating = computed(() => props.uploading || props.deletingFileId !== null);
 const isUploadDisabled = computed(() => props.disabled || props.loading || isMutating.value);
-const uploadTooltip = computed(() => i18n.baseText('agents.builder.files.addFile' as BaseTextKey));
+const uploadButtonLabel = computed(() =>
+	i18n.baseText('agents.builder.files.addFile' as BaseTextKey),
+);
 
 const acceptAttr = ALLOWED_AGENT_FILE_EXTENSIONS.join(',');
+
+const emptyStateHeader = computed(() => i18n.baseText('agents.builder.files.empty' as BaseTextKey));
+const emptyStateDescription = computed(() =>
+	i18n.baseText('agents.builder.files.emptyDescription' as BaseTextKey),
+);
 
 function getFileIcon(file: AgentFileDto) {
 	const extension = file.fileName.split('.').pop()?.toLowerCase();
@@ -127,42 +135,17 @@ function onFilesSelected(event: Event) {
 
 <template>
 	<div :class="$style.panel" data-testid="agent-files-panel">
-		<div :class="$style.toolbar">
-			<span :class="$style.title" data-testid="agent-files-title">
-				{{ i18n.baseText('agents.builder.files.title') }}
-				<N8nTooltip
-					:content="i18n.baseText('agents.builder.files.titleTooltip' as BaseTextKey)"
-					placement="top"
-				>
-					<N8nIcon icon="circle-help" size="small" :class="$style.titleIcon" />
-				</N8nTooltip>
-			</span>
-
-			<input
-				ref="fileInput"
-				type="file"
-				:accept="acceptAttr"
-				multiple
-				:class="$style.fileInput"
-				data-testid="agent-files-upload-input"
-				@change="onFilesSelected"
-			/>
-
-			<N8nTooltip :content="uploadTooltip" placement="top">
-				<N8nButton
-					variant="ghost"
-					size="small"
-					icon="plus"
-					icon-only
-					:disabled="isUploadDisabled"
-					:aria-label="uploadTooltip"
-					data-testid="agent-files-upload"
-					@click="openFilePicker"
-				/>
-			</N8nTooltip>
-		</div>
-
-		<div :class="$style.tableContainer">
+		<N8nEmptyState
+			v-if="!props.loading && props.files.length === 0"
+			:icon="{ type: 'icon', value: 'file' }"
+			:class="$style.emptyState"
+			:heading="emptyStateHeader"
+			:description="emptyStateDescription"
+			:button-text="uploadButtonLabel"
+			:button-disabled="isUploadDisabled"
+			@click:button="openFilePicker"
+		/>
+		<div v-else :class="$style.tableContainer">
 			<N8nTableBase :max-displayed-rows="10">
 				<tbody>
 					<tr
@@ -180,10 +163,9 @@ function onFilesSelected(event: Event) {
 							</span>
 						</td>
 						<td :class="$style.originCell" data-testid="agent-file-origin">
-							<span :class="$style.originPill" data-testid="agent-file-origin-pill">
-								<N8nIcon icon="user" size="large" />
-								<span>{{ i18n.baseText('agents.builder.files.origin.user' as BaseTextKey) }}</span>
-							</span>
+							<N8nBadge leading-icon="user" data-testid="agent-file-origin-pill">
+								{{ i18n.baseText('agents.builder.files.origin.user') }}
+							</N8nBadge>
 						</td>
 						<td :class="$style.dateCell" data-testid="agent-file-created-at">
 							{{ formatDate(file.createdAt) }}
@@ -212,16 +194,31 @@ function onFilesSelected(event: Event) {
 							</td>
 						</tr>
 					</template>
-
-					<tr v-if="!props.loading && props.files.length === 0" :class="$style.lastRow">
-						<td :colspan="6">
-							<span :class="$style.emptyMessage" data-testid="agent-files-empty">
-								{{ i18n.baseText('agents.builder.files.empty') }}
-							</span>
-						</td>
-					</tr>
 				</tbody>
 			</N8nTableBase>
+		</div>
+		<div :class="$style.toolbar">
+			<input
+				ref="fileInput"
+				type="file"
+				:accept="acceptAttr"
+				multiple
+				:class="$style.fileInput"
+				data-testid="agent-files-upload-input"
+				@change="onFilesSelected"
+			/>
+
+			<N8nButton
+				v-if="!props.loading && props.files.length > 0"
+				variant="ghost"
+				icon="plus"
+				:disabled="isUploadDisabled"
+				:aria-label="uploadButtonLabel"
+				data-testid="agent-files-upload"
+				@click="openFilePicker"
+			>
+				{{ uploadButtonLabel }}
+			</N8nButton>
 		</div>
 	</div>
 </template>
@@ -230,7 +227,7 @@ function onFilesSelected(event: Event) {
 .panel {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--xs);
 	width: 100%;
 }
 
@@ -239,22 +236,8 @@ function onFilesSelected(event: Event) {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--xs);
+	padding-inline: var(--spacing--4xs);
 	width: 100%;
-}
-
-.title {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	min-width: 0;
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
-	line-height: var(--line-height--sm);
-}
-
-.titleIcon {
-	color: var(--text-color--subtler);
 }
 
 .fileInput {

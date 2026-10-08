@@ -3,6 +3,7 @@ import type { ComponentPublicInstance } from 'vue';
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { isPlaceholderValue } from '@n8n/utils/placeholder';
 import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
@@ -118,15 +119,11 @@ const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDrop
 );
 
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
-	if (typeof props.modelValue !== 'object') {
-		return props.modelValue ?? '';
-	}
-
-	if (isListMode.value) {
-		return props.modelValue ? (props.modelValue.cachedResultName ?? props.modelValue.value) : '';
-	}
-
-	return props.modelValue ? props.modelValue.value : '';
+	const value = typeof props.modelValue === 'object' ? props.modelValue?.value : props.modelValue;
+	const fallback = isPlaceholderValue(value) ? '' : (value ?? '');
+	return isListMode.value && typeof props.modelValue === 'object'
+		? (props.modelValue?.cachedResultName ?? fallback)
+		: fallback;
 });
 
 const placeholder = computed(() => {
@@ -143,7 +140,7 @@ const placeholder = computed(() => {
 const agentUrl = computed(() => {
 	if (!isListMode.value || !projectId.value) return null;
 	const agentId = props.modelValue?.value;
-	if (typeof agentId !== 'string' || !agentId) return null;
+	if (typeof agentId !== 'string' || !agentId || isPlaceholderValue(agentId)) return null;
 	return router.resolve({
 		name: AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId },
@@ -229,7 +226,12 @@ async function refreshCachedAgent() {
 	// Read-only surfaces (execution preview, history) must never write the param.
 	if (props.isReadOnly) return;
 	const modelValue = props.modelValue;
-	if (modelValue?.mode !== 'list' || typeof modelValue.value !== 'string' || !modelValue.value) {
+	if (
+		modelValue?.mode !== 'list' ||
+		typeof modelValue.value !== 'string' ||
+		!modelValue.value ||
+		isPlaceholderValue(modelValue.value)
+	) {
 		return;
 	}
 	const freshName = await refreshAgentName(modelValue.value);
@@ -308,6 +310,7 @@ defineExpose({ showDropdown });
 			:model-value="modelValue"
 			:disable-inactive-items="false"
 			@update:model-value="onListItemSelected"
+			@update:show="!$event && hideDropdown()"
 			@filter="onSearchFilter"
 			@load-more="loadMore"
 		>
@@ -317,7 +320,6 @@ defineExpose({ showDropdown });
 						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
 					</N8nText>
 					<N8nButton
-						type="tertiary"
 						size="small"
 						:label="i18n.baseText('generic.retry')"
 						data-test-id="rlc-error-retry"

@@ -215,12 +215,14 @@ export const buildFolderFilterOptions = (workflows: SourceControlledFile[]) => {
 	const folderPathSet = new Set<string>();
 
 	for (const workflow of workflows) {
-		const pathSegments = workflow.folderPath ?? [];
-		let path = '';
+		// Include the prior/remote path so a moved workflow's source folder stays selectable.
+		for (const pathSegments of [workflow.folderPath, workflow.remoteFolderPath]) {
+			let path = '';
 
-		for (const segment of pathSegments) {
-			path = path ? `${path}/${segment}` : segment;
-			folderPathSet.add(path);
+			for (const segment of pathSegments ?? []) {
+				path = path ? `${path}/${segment}` : segment;
+				folderPathSet.add(path);
+			}
 		}
 	}
 

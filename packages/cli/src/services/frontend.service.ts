@@ -11,9 +11,14 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { UrlService } from '@n8n/backend-services';
+
+import { AiUsageService } from './ai-usage.service';
+import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
+
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
-import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -21,8 +26,7 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { isApiEnabled } from '@/public-api';
+import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -32,10 +36,6 @@ import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
-
-import { AiUsageService } from './ai-usage.service';
-import { UrlService } from './url.service';
-import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 const DYNAMIC_BANNER_FILTERS_CACHE_TTL = 30 * Time.seconds.toMilliseconds;
 
@@ -115,8 +115,6 @@ export type PublicFrontendSettings = {
 export class FrontendService {
 	private settings: FrontendSettings;
 
-	private communityPackagesService?: CommunityPackagesService;
-
 	private publishedWorkflowCountCache?: { value: number; expiresAt: number };
 
 	private publishedWorkflowCountRequest?: Promise<number>;
@@ -145,14 +143,6 @@ export class FrontendService {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
 		void this.generateTypes();
-		// @TODO: Move to community-packages module
-		if (Container.get(CommunityPackagesConfig).enabled) {
-			void import('@/modules/community-packages/community-packages.service.js').then(
-				({ CommunityPackagesService }) => {
-					this.communityPackagesService = Container.get(CommunityPackagesService);
-				},
-			);
-		}
 	}
 
 	private collectEnvFeatureFlags(): N8nEnvFeatFlags {
@@ -213,6 +203,7 @@ export class FrontendService {
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
 			endpointHealth: resolveFrontendHealthEndpointPath(this.globalConfig),
+			healthCheckTimeoutMs: this.globalConfig.endpoints.frontendHealthCheckTimeoutMs,
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
@@ -220,6 +211,7 @@ export class FrontendService {
 			executionTimeout: this.globalConfig.executions.timeout,
 			maxExecutionTimeout: this.globalConfig.executions.maxTimeout,
 			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
+			excludeNodes: this.globalConfig.nodes.exclude,
 			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
@@ -271,6 +263,7 @@ export class FrontendService {
 				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
+				// oxlint-disable-next-line typescript/no-deprecated
 				quota: this.license.getUsersLimit(),
 				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 				smtpSetup: this.mailer.isEmailSetUp,
@@ -300,7 +293,7 @@ export class FrontendService {
 				maxSize: this.globalConfig.dataTable.maxSize,
 			},
 			publicApi: {
-				enabled: isApiEnabled(),
+				enabled: isApiKeyAuthEnabled(),
 				latestVersion: 1,
 				path: this.globalConfig.publicApi.path,
 				swaggerUi: {
@@ -309,12 +302,17 @@ export class FrontendService {
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
+			workflowsGroupsWithTriggersEnabled: this.globalConfig.workflows.groupsWithTriggersEnabled,
+			workflowsGroupsWithManyBoundariesEnabled:
+				this.globalConfig.workflows.groupsWithManyBoundariesEnabled,
 			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
+			granularCredentialSharing: isCredSharingEnabled(),
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
 				enabled: false,
 				setup: false,
+				cloudUbbEnabled: false,
 			},
 			templates: {
 				enabled: this.globalConfig.templates.enabled,
@@ -434,6 +432,9 @@ export class FrontendService {
 			folders: {
 				enabled: false,
 			},
+			workerPools: {
+				enabled: false,
+			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
@@ -441,11 +442,12 @@ export class FrontendService {
 				agentEvalsEnabled: this.globalConfig.evaluation.agentEvalsEnabled,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
-			canvasOnly: this.globalConfig.canvasOnly,
+			canvasOnly: this.globalConfig.canvasOnly.enabled,
 			collaboration: {
 				crdt: this.globalConfig.collaboration.crdt,
 			},
 			envFeatureFlags: this.collectEnvFeatureFlags(),
+			expressionEngine: this.globalConfig.expressionEngine.frontendEngine,
 		};
 	}
 
@@ -483,6 +485,7 @@ export class FrontendService {
 
 		// refresh user management status
 		Object.assign(this.settings.userManagement, {
+			// oxlint-disable-next-line typescript/no-deprecated
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
@@ -503,16 +506,22 @@ export class FrontendService {
 			this.settings.easyAIWorkflowOnboarded = false;
 		}
 		try {
-			this.settings.ai.allowSendingParameterValues = await this.aiUsageService.getAiUsageSettings();
+			this.settings.ai.allowSendingParameterValues =
+				await this.aiUsageService.isParameterValueSharingAllowed();
 		} catch {
-			this.settings.ai.allowSendingParameterValues = true;
+			this.settings.ai.allowSendingParameterValues =
+				this.globalConfig.ai.allowSendingParameterValues;
 		}
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isAskAiEnabled = this.license.isAskAiEnabled();
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
 		const isAiBuilderEnabled = this.license.isLicensed(LICENSE_FEATURES.AI_BUILDER);
 
@@ -529,21 +538,32 @@ export class FrontendService {
 
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
+			// oxlint-disable-next-line typescript/no-deprecated
 			sharing: this.license.isSharingEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			logStreaming: this.license.isLogStreamingEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			ldap: this.license.isLdapEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			saml: this.license.isSamlEnabled(),
 			oidc: this.licenseState.isOidcLicensed(),
 			mfaEnforcement: this.licenseState.isMFAEnforcementLicensed(),
 			provisioning: false, // temporarily disabled until this feature is ready for release
+			// oxlint-disable-next-line typescript/no-deprecated
 			advancedExecutionFilters: this.license.isAdvancedExecutionFiltersEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			variables: this.license.isVariablesEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			sourceControl: this.license.isSourceControlLicensed(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			externalSecrets: this.license.isExternalSecretsEnabled(),
 			showNonProdBanner: this.license.isLicensed(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
+			// oxlint-disable-next-line typescript/no-deprecated
 			debugInEditor: this.license.isDebugInEditorLicensed(),
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
+			// oxlint-disable-next-line typescript/no-deprecated
 			workerView: this.license.isWorkerViewLicensed(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
@@ -555,6 +575,10 @@ export class FrontendService {
 			workflowReviews: this.licenseState.isWorkflowReviewsLicensed(),
 		});
 
+		this.settings.workerPools.enabled =
+			this.globalConfig.queue.workerPool.enabled && this.licenseState.isWorkerPoolsLicensed();
+
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {
 				loginLabel: this.globalConfig.sso.ldap.loginLabel,
@@ -562,6 +586,7 @@ export class FrontendService {
 			});
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isSamlEnabled()) {
 			Object.assign(this.settings.sso.saml, {
 				loginLabel: getSamlLoginLabel(),
@@ -575,26 +600,28 @@ export class FrontendService {
 			});
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isVariablesEnabled()) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			this.settings.variables.limit = this.license.getVariablesLimit();
-		}
-
-		if (this.communityPackagesService) {
-			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
 		}
 
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
 			this.settings.aiAssistant.setup =
 				!!this.globalConfig.aiAssistant.baseUrl || !!process.env.N8N_AI_ANTHROPIC_KEY;
+			this.settings.aiAssistant.cloudUbbEnabled =
+				this.licenseState.isAiAssistantCloudUbbEntitlementLicensed();
 		}
 
 		if (isAskAiEnabled) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			this.settings.askAi.enabled = isAskAiEnabled;
 		}
 
 		if (isAiCreditsEnabled) {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
+			// oxlint-disable-next-line typescript/no-deprecated
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
@@ -607,6 +634,7 @@ export class FrontendService {
 			this.settings.aiGateway = {
 				enabled: true,
 				budget: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_BUDGET) ?? 0,
+				cloudUbbEnabled: this.licenseState.isAiGatewayCloudUbbLicensed(),
 			};
 		}
 
@@ -621,7 +649,7 @@ export class FrontendService {
 		// TODO: read from settings
 		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
 
-		if (isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed())) {
+		if (this.licenseState.isWorkflowReviewsLicensed()) {
 			this.settings.workflowReviews = await this.workflowReviewPolicyService.get();
 		} else {
 			delete this.settings.workflowReviews;
@@ -631,8 +659,10 @@ export class FrontendService {
 
 		this.settings.binaryDataMode = this.binaryDataConfig.mode;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		this.settings.folders.enabled = this.license.isFoldersEnabled();
 
 		// Refresh evaluation settings
@@ -764,11 +794,12 @@ export class FrontendService {
 	private overwriteCredentialsProperties() {
 		const { credentials } = this.loadNodesAndCredentials.types;
 		const credentialsOverwrites = this.credentialsOverwrites.getAll();
-		const { skipTypes } = this.globalConfig.credentials.overwrite;
+		const { showScopes = [], skipTypes } = this.globalConfig.credentials.overwrite;
 		for (const credential of credentials) {
 			// Clear any existing overwritten properties to prevent stale data
 			delete credential.__overwrittenProperties;
 			delete credential.__skipManagedCreation;
+			delete credential.__showManagedOAuthScopes;
 
 			const overwrittenProperties = [];
 			this.credentialTypes
@@ -791,6 +822,10 @@ export class FrontendService {
 			// (overwrite is conditional on stored data; users should provide their own credentials)
 			if (skipTypes.includes(credential.name)) {
 				credential.__skipManagedCreation = true;
+			}
+
+			if (showScopes.includes(credential.name)) {
+				credential.__showManagedOAuthScopes = true;
 			}
 
 			// Inject the per-instance JWKS URI as the default of any `jwksUri`

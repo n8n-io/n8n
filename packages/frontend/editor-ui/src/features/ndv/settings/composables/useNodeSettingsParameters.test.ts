@@ -8,7 +8,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNodeSettingsParameters } from './useNodeSettingsParameters';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';

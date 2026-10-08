@@ -207,7 +207,7 @@ export async function parseRawEmail(
 //------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function encodeEmail(email: IEmail) {
-	// https://nodemailer.com/extras/mailcomposer/#e-mail-message-fields
+	// https://nodemailer.com/extras/mailcomposer#message-fields
 	const mailOptions = {
 		from: email.from,
 		to: email.to,
@@ -239,6 +239,9 @@ export async function encodeEmail(email: IEmail) {
 
 		mailOptions.attachments = attachments;
 	}
+
+	mailOptions.disableFileAccess = true;
+	mailOptions.disableUrlAccess = true;
 
 	const mail = new MailComposer(mailOptions).compile();
 

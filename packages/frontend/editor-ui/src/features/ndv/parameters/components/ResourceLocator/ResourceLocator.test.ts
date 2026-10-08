@@ -24,6 +24,8 @@ import {
 	TEST_PARAMETER_SINGLE_MODE,
 	TEST_PARAMETER_SKIP_CREDENTIALS_CHECK,
 	TEST_PARAMETER_URL_REDIRECT,
+	TEST_PARAMETER_URL_TEMPLATE,
+	TEST_NODE_URL_TEMPLATE,
 } from './ResourceLocator.test.constants';
 
 vi.mock('vue-router', async () => {
@@ -151,6 +153,31 @@ describe('ResourceLocator', () => {
 		TEST_ITEMS.forEach((item) => {
 			expect(getByText(item.name)).toBeInTheDocument();
 		});
+	});
+
+	it('reopens a non-searchable list after Escape closes it', async () => {
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [{ name: 'Choice', value: 'choice' }],
+		});
+		const view = renderComponent({
+			props: {
+				parameter: {
+					...TEST_PARAMETER_MULTI_MODE,
+					modes: TEST_PARAMETER_MULTI_MODE.modes?.map((mode) => ({
+						...mode,
+						typeOptions: { ...mode.typeOptions, searchable: false },
+					})),
+				},
+			},
+		});
+		const input = view.getByTestId('rlc-input');
+		await userEvent.click(input);
+		expect(await view.findByText('Choice')).toBeVisible();
+		await userEvent.keyboard('{Escape}');
+		await waitFor(() => expect(input).not.toHaveFocus());
+		expect(view.queryByText('Choice')).toBeNull();
+		await userEvent.click(input);
+		expect(await view.findByText('Choice')).toBeVisible();
 	});
 
 	it('renders add resource button', async () => {
@@ -435,6 +462,49 @@ describe('ResourceLocator', () => {
 					value: '={{  }}',
 				},
 			],
+		]);
+	});
+
+	it('switches to expression when user pastes a complete "{{ }}" expression', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { modelValue: { ...TEST_MODEL_VALUE, value: '', mode: 'id' } },
+		});
+
+		const input = getByTestId('rlc-input');
+		await userEvent.click(input);
+		const expression = new DataTransfer();
+		expression.setData('text', '{{ $json.fileId }}');
+		await userEvent.paste(expression);
+
+		expect(emitted('update:modelValue')).toEqual([
+			[
+				{
+					__rl: true,
+					mode: 'id',
+					value: '={{ $json.fileId }}',
+				},
+			],
+		]);
+	});
+
+	it('switches to expression when user pastes an expression over a stored id', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { modelValue: { ...TEST_MODEL_VALUE, value: 'stored-id', mode: 'id' } },
+		});
+
+		const input = getByTestId('rlc-input');
+		await userEvent.click(input);
+		await userEvent.clear(input);
+		const expression = new DataTransfer();
+		expression.setData('text', '{{ $json.fileId }}');
+		await userEvent.paste(expression);
+
+		expect(emitted('update:modelValue')?.at(-1)).toEqual([
+			{
+				__rl: true,
+				mode: 'id',
+				value: '={{ $json.fileId }}',
+			},
 		]);
 	});
 
@@ -1239,6 +1309,89 @@ describe('ResourceLocator', () => {
 					testContext,
 				);
 			});
+		});
+	});
+
+	describe('url template link resolution', () => {
+		const mockResolveExpression = vi.fn().mockImplementation((val) => val);
+
+		beforeEach(() => {
+			vi.mocked(useWorkflowHelpers).mockReturnValue({
+				resolveExpression: mockResolveExpression,
+				resolveRequiredParameters: vi.fn().mockImplementation((_, params) => params),
+			} as unknown as ReturnType<typeof useWorkflowHelpers>);
+		});
+
+		afterEach(() => {
+			mockResolveExpression.mockClear();
+		});
+
+		it('resolves a link when the value is a literal', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					modelValue: { __rl: true, mode: 'id', value: 'clean-id' },
+					parameter: TEST_PARAMETER_URL_TEMPLATE,
+					path: `parameters.${TEST_PARAMETER_URL_TEMPLATE.name}`,
+					node: TEST_NODE_URL_TEMPLATE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			await waitFor(() => {
+				expect(mockResolveExpression).toHaveBeenCalledWith(
+					'=https://test.com/clean-id',
+					expect.anything(),
+					expect.anything(),
+				);
+			});
+			expect(await waitFor(() => getByTestId('rlc-open-resource-link'))).toBeInTheDocument();
+		});
+
+		it.each([
+			['opening braces', '{{ 1 + 1 }}'],
+			['a closing brace fragment', 'abc }}'],
+			['an opening brace fragment', '{{ abc'],
+		])(
+			'does not splice a literal value containing %s into the url template',
+			async (_label, value) => {
+				const { queryByTestId } = renderComponent({
+					props: {
+						modelValue: { __rl: true, mode: 'id', value },
+						parameter: TEST_PARAMETER_URL_TEMPLATE,
+						path: `parameters.${TEST_PARAMETER_URL_TEMPLATE.name}`,
+						node: TEST_NODE_URL_TEMPLATE,
+						displayTitle: 'Test Resource Locator',
+						expressionComputedValue: '',
+						isValueExpression: false,
+					},
+				});
+
+				await flushPromises();
+
+				expect(mockResolveExpression).not.toHaveBeenCalled();
+				expect(queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
+			},
+		);
+
+		it('does not splice a computed expression value containing braces into the url template', async () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					modelValue: { __rl: true, mode: 'id', value: '={{ $json.id }}' },
+					parameter: TEST_PARAMETER_URL_TEMPLATE,
+					path: `parameters.${TEST_PARAMETER_URL_TEMPLATE.name}`,
+					node: TEST_NODE_URL_TEMPLATE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '{{ 1 + 1 }}',
+					isValueExpression: true,
+				},
+			});
+
+			await flushPromises();
+
+			expect(mockResolveExpression).not.toHaveBeenCalled();
+			expect(queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
 		});
 	});
 });

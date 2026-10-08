@@ -1,0 +1,59 @@
+{
+	"name": "Gitlab User getRepositories trailing slash server URL Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getRepositories",
+				"owner": "test-owner"
+			},
+			"type": "n8n-nodes-base.gitlab",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "gitlab-node-id",
+			"name": "Get User Repositories",
+			"credentials": {
+				"gitlabApi": {
+					"id": "credential-id",
+					"name": "Test Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get User Repositories": [
+			{
+				"json": {
+					"id": 1,
+					"name": "r1",
+					"path_with_namespace": "test-owner/r1"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get User Repositories",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

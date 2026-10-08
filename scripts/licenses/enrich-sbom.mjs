@@ -26,8 +26,10 @@
  * test/fixture/exports-subpath package.json) — only relevant for image scans.
  *
  * Usage: node enrich-sbom.mjs <sbom-path> [output-path] [--license-file=<path>]
- *                             [--lenient-config] [--drop-phantom-npm]
+ *                             [--overrides=<path>] [--lenient-config]
+ *                             [--drop-phantom-npm]
  *        output-path defaults to <sbom-path> (in-place).
+ *        --overrides defaults to license-overrides.json next to this script.
  */
 
 import { readFile, writeFile, readdir } from 'node:fs/promises';
@@ -48,9 +50,9 @@ const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '.turbo', 'coverage']
 export const FIRST_PARTY_LICENSE_REF = 'LicenseRef-n8n-sustainable-use';
 export const ELECTED_PROPERTY = 'cdx:license:elected';
 
-export async function loadLicenseConfig() {
+export async function loadLicenseConfig(overridesPath = OVERRIDES_PATH) {
 	try {
-		const raw = await readFile(OVERRIDES_PATH, 'utf-8');
+		const raw = await readFile(overridesPath, 'utf-8');
 		const parsed = JSON.parse(raw);
 		return {
 			overrides: parsed.overrides ?? {},
@@ -63,8 +65,26 @@ export async function loadLicenseConfig() {
 	}
 }
 
+// cdxgen and syft record the same fact under different property names.
+const SRC_FILE_PROPERTIES = ['SrcFile', 'syft:location:0:path'];
+
 function srcFileOf(component) {
-	return component.properties?.find((p) => p.name === 'SrcFile')?.value ?? null;
+	const properties = component.properties ?? [];
+	for (const name of SRC_FILE_PROPERTIES) {
+		const found = properties.find((p) => p.name === name);
+		if (found?.value) return found.value;
+	}
+	return null;
+}
+
+/**
+ * An npm name is `name` or `@scope/name` — neither part may contain a slash. A
+ * further slash means the scanner named a directory inside a package, i.e. an
+ * `exports` subpath (@google/genai/node, @linear/sdk/webhooks).
+ */
+function isExportsSubpath(component) {
+	const qualified = qualifiedName(component) ?? '';
+	return qualified.replace(/^@[^/]+\//, '').includes('/');
 }
 
 /**
@@ -73,17 +93,35 @@ function srcFileOf(component) {
  * as standalone components: `exports` subpaths (@google/genai/web), sub-builds
  * (web-streams-polyfill-es6), and test/benchmark fixtures bundled inside real
  * deps (resolve/test/.../false_main, tedious/benchmarks). None are real shippable
- * packages. Two robust signals identify them:
- *   - no version (real npm packages always carry one), or
- *   - the package.json does not sit at its own canonical
- *     node_modules/<name>/package.json (it's nested inside another package).
+ * packages.
+ *
+ * The path is the stronger signal, so it decides whenever it is present. The
+ * version is only a fallback for components carrying no path at all — used
+ * alone it drops real packages whose version the scanner could not resolve.
  */
 export function isPhantomNpm(component) {
 	const purl = component.purl ?? '';
 	if (!purl.startsWith('pkg:npm/')) return false;
-	if (!component.version) return true;
+
+	// Checked before the path rules: a subpath stub lives at
+	// node_modules/@google/genai/node/package.json, which *does* end with its own
+	// qualified name, so the canonical-path check below would call it real.
+	if (isExportsSubpath(component)) return true;
+
 	const src = srcFileOf(component);
-	if (!src) return false; // can't prove it's a phantom — keep it
+	// syft writes "UNKNOWN" where cdxgen omits the field. Neither is a real
+	// version. cdxgen emits `exports`-subpath phantoms with no path either, so
+	// this is the only signal left for them.
+	if (!src) return !component.version || component.version === 'UNKNOWN';
+
+	// An application root sits outside anyone's node_modules — a real shipped
+	// package, whatever its version resolved to. The runners images copy the JS
+	// task runner to /opt/runners/task-runner-javascript, so this is not
+	// hypothetical.
+	if (!src.includes('/node_modules/')) return false;
+
+	// Inside node_modules the canonical path proves the package is real, and
+	// anything else is nested inside another package.
 	return !src.endsWith(`/node_modules/${qualifiedName(component)}/package.json`);
 }
 
@@ -210,6 +248,11 @@ export function enrichSbom(
 	const source = sbom.components ?? [];
 	const kept = dropPhantomNpm ? source.filter((c) => !isPhantomNpm(c)) : source;
 	const droppedPhantoms = source.length - kept.length;
+	// A dropped component leaves the signed SBOM, so record which ones, not just how
+	// many, in case the heuristic catches a real package.
+	const droppedPhantomPurls = dropPhantomNpm
+		? source.filter(isPhantomNpm).map((c) => c.purl ?? c.name)
+		: [];
 
 	const components = kept.map((component) =>
 		enrichComponent(component, {
@@ -231,6 +274,7 @@ export function enrichSbom(
 
 	return {
 		droppedPhantoms,
+		droppedPhantomPurls,
 		sbom: { ...sbom, components },
 		summary: {
 			totalComponents: components.length,
@@ -248,6 +292,9 @@ async function main() {
 	const args = process.argv.slice(2);
 	const positional = args.filter((a) => !a.startsWith('--'));
 	const licenseFileArg = args.find((a) => a.startsWith('--license-file='));
+	// Lets a test drive the chain against a frozen fixture config instead of the
+	// shipped one, so a dependency change can't break a behaviour test.
+	const overridesArg = args.find((a) => a.startsWith('--overrides='));
 	// A per-image scan contains only the npm subset present in that image, so most
 	// overrides/elections won't match — that's expected, not a stale pin. Lenient
 	// mode warns instead of failing. The full release-closure run stays strict.
@@ -260,7 +307,7 @@ async function main() {
 	const sbomPath = positional[0];
 	if (!sbomPath) {
 		console.error(
-			'Usage: enrich-sbom.mjs <sbom-path> [output-path] [--license-file=<path>] [--lenient-config] [--drop-phantom-npm]',
+			'Usage: enrich-sbom.mjs <sbom-path> [output-path] [--license-file=<path>] [--overrides=<path>] [--lenient-config] [--drop-phantom-npm]',
 		);
 		process.exit(1);
 	}
@@ -268,9 +315,12 @@ async function main() {
 	const licenseFile = licenseFileArg
 		? licenseFileArg.slice('--license-file='.length)
 		: DEFAULT_LICENSE_FILE;
+	const overridesPath = overridesArg
+		? overridesArg.slice('--overrides='.length)
+		: OVERRIDES_PATH;
 
 	const sbom = JSON.parse(await readFile(sbomPath, 'utf-8'));
-	const { overrides, byName, elections } = await loadLicenseConfig();
+	const { overrides, byName, elections } = await loadLicenseConfig(overridesPath);
 	const validIds = await loadSpdxIds();
 	const firstPartyOsi = await buildFirstPartyOsiMap(DEFAULT_PACKAGES_DIR, validIds);
 
@@ -288,6 +338,7 @@ async function main() {
 		summary,
 		staleOverrides,
 		staleElections,
+		droppedPhantomPurls,
 	} = enrichSbom(sbom, {
 		overrides,
 		byName,
@@ -298,6 +349,11 @@ async function main() {
 	});
 
 	console.log(JSON.stringify(summary, null, 2));
+
+	if (droppedPhantomPurls.length > 0) {
+		console.error(`\nDropped ${droppedPhantomPurls.length} phantom component(s):`);
+		for (const purl of droppedPhantomPurls) console.error('  ' + purl);
+	}
 
 	if (staleOverrides.length > 0 || staleElections.length > 0) {
 		// A pinned override/election no longer matches any component. In a full

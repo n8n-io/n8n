@@ -1,80 +1,88 @@
 <script setup lang="ts">
+import { N8nIcon, N8nIconButton, N8nTag, N8nText } from '@n8n/design-system';
 import { i18n } from '@n8n/i18n';
+import ParameterIssues from '../ParameterIssues.vue';
 
-import { N8nIcon, N8nText } from '@n8n/design-system';
-import AiStarsIcon from '@/app/components/AiStarsIcon.vue';
 defineProps<{
 	isReadOnly?: boolean;
+	issues?: string[];
 }>();
 
-const emit = defineEmits<{
-	close: [];
-}>();
+const emit = defineEmits<{ close: [] }>();
 </script>
 
 <template>
-	<div :class="$style.contentOverrideContainer" data-test-id="fromAI-override-field">
-		<div :class="[$style.iconStars, $style.noCornersRight]">
-			<AiStarsIcon />
-		</div>
-		<div :class="$style.overrideInput">
-			<N8nText
-				v-n8n-html="i18n.baseText('parameterOverride.overridePanelText')"
-				color="text-dark"
-				size="small"
-			/>
-		</div>
-		<div v-if="!isReadOnly" :class="[$style.overrideCloseButton]" @click="emit('close')">
-			<N8nIcon v-if="!isReadOnly" icon="x" size="small" />
-		</div>
+	<div :class="$style.field" data-test-id="fromAI-override-field">
+		<N8nTag
+			:text="i18n.baseText('parameterOverride.overridePanelText')"
+			:clickable="false"
+			size="md"
+			:class="$style.tag"
+		>
+			<template #tag>
+				<N8nIcon icon="sparkles" size="small" :class="$style.icon" />
+				<N8nText size="small" compact :class="$style.label">
+					{{ i18n.baseText('parameterOverride.overridePanelText') }}
+				</N8nText>
+				<N8nIconButton
+					v-if="!isReadOnly"
+					icon="x"
+					variant="ghost"
+					size="xsmall"
+					:class="$style.remove"
+					:aria-label="i18n.baseText('parameterOverride.editValue')"
+					@click="emit('close')"
+				/>
+			</template>
+		</N8nTag>
+		<ParameterIssues v-if="issues?.length" :class="$style.issues" :issues="issues" />
 	</div>
 </template>
 
 <style lang="scss" module>
-.iconStars {
-	align-self: center;
-	padding-left: 8px;
-	width: 22px;
-	text-align: center;
-	border: 0;
-	color: var(--color--foreground--shade-2);
-	background-color: unset;
+@use '@n8n/design-system/css/mixins/_input.scss' as input;
+
+.field {
+	@include input.size-variables('small');
+	@include input.theme-variables;
+	display: flex;
+	align-items: center;
+	width: 100%;
+	height: var(--input--height);
+	box-sizing: border-box;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--5xs);
+	border-radius: var(--input--radius);
+	background-color: var(--input--color--background);
+	box-shadow: inset var(--input--border--shadow);
 }
 
-.noCornersRight {
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
+.tag {
+	--tag--min-width: 0;
+	--tag--max-width: 100%;
+	gap: var(--spacing--3xs);
+	height: 100%;
+	min-height: 0;
+	padding-block: 0;
 }
 
-.overrideInput {
-	height: 30px;
-	align-content: center;
+.issues {
+	margin-left: auto;
+}
+
+.icon {
+	flex-shrink: 0;
+}
+
+.label {
+	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-
-.overrideCloseButton {
-	border: 0;
-	color: var(--color--text--tint-1);
-	margin-left: auto;
-	padding: 0 var(--spacing--2xs);
-	align-self: stretch;
-	display: flex;
-	align-items: center;
-	cursor: pointer;
-
-	&:hover {
-		color: var(--color--text);
-	}
-}
-
-.contentOverrideContainer {
-	display: flex;
-	align-items: center;
 	white-space: nowrap;
-	width: 100%;
-	gap: var(--spacing--4xs);
-	border-radius: var(--radius);
-	background-color: var(--color--foreground);
+}
+
+.remove {
+	flex-shrink: 0;
+	color: var(--text-color--subtler);
 }
 </style>

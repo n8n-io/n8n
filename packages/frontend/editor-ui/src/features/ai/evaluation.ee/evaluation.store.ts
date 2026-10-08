@@ -5,7 +5,7 @@ import * as evaluationsApi from './evaluation.api';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
 import type { AddDatasetRowDto, EvaluationConfigDto } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 export const useEvaluationStore = defineStore(
 	STORES.EVALUATION,

@@ -699,7 +699,7 @@ describe('createDelegateSubAgentTool', () => {
 		expect(executionCounter.incrementTokenCount).toHaveBeenCalledWith(42);
 	});
 
-	it('forwards the parent persistence thread id and resource id', async () => {
+	it('forwards the parent persistence scope', async () => {
 		const runSubAgent = vi
 			.fn<DelegateSubAgentRunner>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
@@ -707,13 +707,18 @@ describe('createDelegateSubAgentTool', () => {
 
 		await tool.handler?.(input, {
 			runId: 'parent-run-1',
-			persistence: { threadId: 'parent-thread-1', resourceId: 'resource-1' },
+			persistence: {
+				threadId: 'parent-thread-1',
+				resourceId: 'resource-1',
+				hostMetadata: { tenant: 'tenant-1', scope: { id: 'scope-1' } },
+			},
 		});
 
 		expect(runSubAgent).toHaveBeenCalledWith(
 			expect.objectContaining({
 				parentThreadId: 'parent-thread-1',
 				parentResourceId: 'resource-1',
+				parentHostMetadata: { tenant: 'tenant-1', scope: { id: 'scope-1' } },
 			}),
 			expect.objectContaining({
 				runInlineSubAgent: expect.any(Function),
@@ -1005,10 +1010,14 @@ describe('createDelegateSubAgentTool', () => {
 		expect(runSubAgent.mock.calls[2]?.[0]).toMatchObject({ taskPath: '/root/research_api_0' });
 	});
 
-	it('returns a failed output when the runner callback throws', async () => {
+	it.each([
+		{ error: new Error('Runner failed'), message: 'Runner failed' },
+		{ error: undefined, message: 'Unknown error' },
+		{ error: Symbol('failure'), message: 'Unknown error' },
+	])('reports the runner error: $error', async ({ error, message }) => {
 		const events: AgentEventData[] = [];
 		const tool = createDelegateSubAgentTool({
-			runSubAgent: async () => await Promise.reject(new Error('Runner failed')),
+			runSubAgent: vi.fn<DelegateSubAgentRunner>().mockRejectedValue(error),
 		});
 
 		await expect(
@@ -1020,12 +1029,12 @@ describe('createDelegateSubAgentTool', () => {
 			status: 'failed',
 			taskPath: '/root/research_api_0',
 			answer: '',
-			error: 'Runner failed',
+			error: message,
 		});
 		expect(events[events.length - 1]).toMatchObject({
 			type: AgentEvent.SubAgentCompleted,
 			status: 'failed',
-			error: 'Runner failed',
+			error: message,
 		});
 	});
 

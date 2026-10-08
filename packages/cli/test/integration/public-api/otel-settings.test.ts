@@ -1,6 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { SettingsRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import { vi } from 'vitest';
 
 import { OtelSettingsService, OTEL_SETTINGS_KEY } from '@/modules/otel/otel-settings.service';
@@ -12,6 +13,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 const validSettings = {
 	enabled: false,
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://collector.example.com:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterServiceName: 'n8n-prod',
@@ -24,6 +26,7 @@ const validSettings = {
 };
 
 const testConnection = {
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://collector.example.com:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterServiceName: 'n8n-prod',
@@ -64,10 +67,23 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(response.status).toBe(200);
 			expect(response.body).toMatchObject({
 				enabled: false,
+				exporterProtocol: 'http/protobuf',
 				exporterServiceName: 'n8n',
 				exporterTracingPath: '/v1/traces',
 			});
 			expect(typeof response.body.exporterEndpoint).toBe('string');
+		});
+
+		it('returns saved settings with masked exporter headers', async () => {
+			await testServer.publicApiAgentFor(owner).put('/settings/otel').send(validSettings);
+
+			const response = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+
+			expect(response.status).toBe(200);
+			expect(response.body).toStrictEqual({
+				...validSettings,
+				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
+			});
 		});
 
 		it('exposes exactly the fields the UI configures, and nothing more', async () => {
@@ -77,6 +93,7 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(Object.keys(response.body).sort()).toEqual(
 				[
 					'enabled',
+					'exporterProtocol',
 					'exporterEndpoint',
 					'exporterTracingPath',
 					'exporterServiceName',
@@ -104,6 +121,17 @@ describe('OpenTelemetry settings in Public API', () => {
 			const response = await testServer.publicApiAgentFor(scopedOwner).get('/settings/otel');
 
 			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+
+		it('rejects an unknown query parameter with 400', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/settings/otel')
+				.query({ unexpected: 'value' });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('unexpected');
 		});
 	});
 
@@ -115,7 +143,10 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(validSettings);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toMatchObject(validSettings);
+			expect(response.body).toStrictEqual({
+				...validSettings,
+				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
+			});
 		});
 
 		it('takes effect the same way as the UI (write via public API, read via internal API)', async () => {
@@ -125,7 +156,10 @@ describe('OpenTelemetry settings in Public API', () => {
 			const internal = await testServer.authAgentFor(owner).get('/otel/settings');
 
 			expect(internal.status).toBe(200);
-			expect(internal.body.data).toMatchObject(validSettings);
+			expect(internal.body.data).toMatchObject({
+				...validSettings,
+				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
+			});
 		});
 
 		it('reads back a configuration written through the internal API (public API is a faithful stand-in)', async () => {
@@ -134,7 +168,10 @@ describe('OpenTelemetry settings in Public API', () => {
 			const publicRead = await testServer.publicApiAgentFor(owner).get('/settings/otel');
 
 			expect(publicRead.status).toBe(200);
-			expect(publicRead.body).toMatchObject(validSettings);
+			expect(publicRead.body).toMatchObject({
+				...validSettings,
+				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
+			});
 		});
 
 		it('toggles enabled both ways', async () => {
@@ -166,7 +203,71 @@ describe('OpenTelemetry settings in Public API', () => {
 
 			expect(putResponse.status).toBe(200);
 			expect(putResponse.body.exporterServiceName).toBe('n8n-updated');
-			expect(putResponse.body.exporterHeaders).toBe(validSettings.exporterHeaders);
+			expect(putResponse.body.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
+		});
+
+		it('switches the exporter protocol to gRPC and back', async () => {
+			const grpc = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({
+					...validSettings,
+					exporterProtocol: 'grpc',
+					exporterEndpoint: 'http://collector.example.com:4317',
+				});
+			expect(grpc.status).toBe(200);
+			expect(grpc.body.exporterProtocol).toBe('grpc');
+			expect(grpc.body.exporterTracingPath).toBe(validSettings.exporterTracingPath);
+
+			const http = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send(validSettings);
+			expect(http.status).toBe(200);
+			expect(http.body.exporterProtocol).toBe('http/protobuf');
+		});
+
+		it('resets an omitted exporterProtocol to the default (PUT is a full replacement)', async () => {
+			const grpc = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({
+					...validSettings,
+					exporterProtocol: 'grpc',
+					exporterEndpoint: 'http://collector.example.com:4317',
+				});
+			expect(grpc.body.exporterProtocol).toBe('grpc');
+
+			const { exporterProtocol: _omitted, ...bodyWithoutProtocol } = validSettings;
+			const replaced = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send(bodyWithoutProtocol);
+
+			expect(replaced.status).toBe(200);
+			expect(replaced.body.exporterProtocol).toBe('http/protobuf');
+		});
+
+		it('stores the exporter endpoint without surrounding whitespace', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({ ...validSettings, exporterEndpoint: `  ${validSettings.exporterEndpoint}  ` });
+
+			expect(response.status).toBe(200);
+			expect(response.body.exporterEndpoint).toBe(validSettings.exporterEndpoint);
+
+			const read = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+			expect(read.body.exporterEndpoint).toBe(validSettings.exporterEndpoint);
+		});
+
+		it('rejects an unsupported exporter protocol with 400', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({ ...validSettings, exporterProtocol: 'http/json' });
+
+			expect(response.status).toBe(400);
 		});
 
 		it('rejects a partial body with 400', async () => {
@@ -187,6 +288,31 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(partial);
 
 			expect(response.status).toBe(400);
+			expect(response.body.message).toContain(
+				"request/body must have required property 'exporterServiceName'",
+			);
+		});
+
+		it('rejects a body with an unknown field', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({ ...validSettings, unexpectedField: true });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('unexpectedField');
+		});
+
+		it('rejects an unknown query parameter without changing the settings', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel?unexpectedField=1')
+				.send(validSettings);
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('unexpectedField');
+			const read = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+			expect(read.body.exporterServiceName).not.toBe(validSettings.exporterServiceName);
 		});
 
 		it('rejects a well-formed body with invalid values with 400', async () => {
@@ -217,6 +343,8 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(validSettings);
 
 			expect(response.status).toBe(403);
+			const read = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+			expect(read.body.exporterServiceName).not.toBe(validSettings.exporterServiceName);
 		});
 	});
 
@@ -284,6 +412,108 @@ describe('OpenTelemetry settings in Public API', () => {
 		});
 	});
 
+	describe('GET with env-managed exporterHeaders', () => {
+		const ENV_HEADERS = 'authorization=Bearer env-managed-token';
+		let originalHeaders: string;
+
+		beforeEach(async () => {
+			process.env[OTEL_ENV_VARS.exporterHeaders] = ENV_HEADERS;
+			originalHeaders = Container.get(OtelConfig).exporterHeaders;
+			Container.get(OtelConfig).exporterHeaders = ENV_HEADERS;
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		afterEach(async () => {
+			delete process.env[OTEL_ENV_VARS.exporterHeaders];
+			Container.get(OtelConfig).exporterHeaders = originalHeaders;
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		it('internal API returns the blanking placeholder for exporterHeaders', async () => {
+			const response = await testServer.authAgentFor(owner).get('/otel/settings');
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
+			expect(response.body.data.envManagedFields).toContain('exporterHeaders');
+		});
+
+		it('public API returns the blanking placeholder for exporterHeaders', async () => {
+			const response = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+
+			expect(response.status).toBe(200);
+			expect(response.body.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
+		});
+
+		it('accepts a GET response body echoed straight back (clean round-trip)', async () => {
+			const getResponse = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+			expect(getResponse.status).toBe(200);
+
+			const putResponse = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send(getResponse.body);
+
+			expect(putResponse.status).toBe(200);
+			expect(putResponse.body.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
+		});
+	});
+
+	describe('GET with headers supplied via the _FILE env variant', () => {
+		let originalHeaders: string;
+
+		beforeEach(async () => {
+			// Simulate `N8N_OTEL_EXPORTER_OTLP_HEADERS_FILE` being set: mark it
+			// env-managed and pin the file-supplied value on the (singleton) config.
+			process.env[`${OTEL_ENV_VARS.exporterHeaders}_FILE`] = '/run/secrets/otel-headers';
+			originalHeaders = Container.get(OtelConfig).exporterHeaders;
+			Container.get(OtelConfig).exporterHeaders = 'authorization=Bearer file-managed-token';
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		afterEach(async () => {
+			delete process.env[`${OTEL_ENV_VARS.exporterHeaders}_FILE`];
+			Container.get(OtelConfig).exporterHeaders = originalHeaders;
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		it('internal API returns the blanking placeholder for exporterHeaders', async () => {
+			const response = await testServer.authAgentFor(owner).get('/otel/settings');
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
+			expect(response.body.data.envManagedFields).toContain('exporterHeaders');
+		});
+	});
+
+	describe('PUT /settings/otel with an env-managed exporter protocol', () => {
+		let originalProtocol: OtelConfig['exporterProtocol'];
+
+		beforeEach(async () => {
+			process.env[OTEL_ENV_VARS.exporterProtocol] = 'grpc';
+			originalProtocol = Container.get(OtelConfig).exporterProtocol;
+			Container.get(OtelConfig).exporterProtocol = 'grpc';
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		afterEach(async () => {
+			delete process.env[OTEL_ENV_VARS.exporterProtocol];
+			Container.get(OtelConfig).exporterProtocol = originalProtocol;
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		it('rejects a body that omits the env-managed protocol with 409', async () => {
+			const { exporterProtocol: _omitted, ...bodyWithoutProtocol } = validSettings;
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send(bodyWithoutProtocol);
+
+			expect(response.status).toBe(409);
+			expect(response.body.message).toContain('exporterProtocol');
+		});
+	});
+
 	describe('POST /settings/otel/test-trace', () => {
 		it('reports a successful connection', async () => {
 			vi.spyOn(Container.get(OtelService), 'sendTestTrace').mockResolvedValue({ success: true });
@@ -312,6 +542,22 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(response.body).toEqual({ success: false, error: '401 Unauthorized' });
 		});
 
+		it('sends the exporter endpoint to the collector without surrounding whitespace', async () => {
+			const sendTestTrace = vi
+				.spyOn(Container.get(OtelService), 'sendTestTrace')
+				.mockResolvedValue({ success: true });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/otel/test-trace')
+				.send({ ...testConnection, exporterEndpoint: `  ${testConnection.exporterEndpoint}  ` });
+
+			expect(response.status).toBe(200);
+			expect(sendTestTrace).toHaveBeenCalledWith(
+				expect.objectContaining({ exporterEndpoint: testConnection.exporterEndpoint }),
+			);
+		});
+
 		it('rejects a partial body with 400', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
@@ -321,6 +567,37 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(response.status).toBe(400);
 		});
 
+		it('rejects an unknown field with 400', async () => {
+			const sendTestTrace = vi
+				.spyOn(Container.get(OtelService), 'sendTestTrace')
+				.mockResolvedValue({ success: true });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/otel/test-trace')
+				.send({ ...testConnection, unknown: true });
+
+			expect(response.status).toBe(400);
+			expect(sendTestTrace).not.toHaveBeenCalled();
+		});
+
+		it('accepts a connection body written before exporterProtocol existed', async () => {
+			const sendTestTrace = vi
+				.spyOn(Container.get(OtelService), 'sendTestTrace')
+				.mockResolvedValue({ success: true });
+			const { exporterProtocol: _omitted, ...connectionWithoutProtocol } = testConnection;
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/otel/test-trace')
+				.send(connectionWithoutProtocol);
+
+			expect(response.status).toBe(200);
+			expect(sendTestTrace).toHaveBeenCalledWith(
+				expect.objectContaining({ exporterProtocol: 'http/protobuf' }),
+			);
+		});
+
 		it('rejects with 401 without a valid API key', async () => {
 			const response = await testServer
 				.publicApiAgentWithoutApiKey()
@@ -328,6 +605,22 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(testConnection);
 
 			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 403 when the API key lacks the otel:manage scope', async () => {
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
+			const sendTestTrace = vi
+				.spyOn(Container.get(OtelService), 'sendTestTrace')
+				.mockResolvedValue({ success: true });
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.post('/settings/otel/test-trace')
+				.send(testConnection);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+			expect(sendTestTrace).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -12,7 +12,7 @@ import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/app/event-b
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -21,18 +21,26 @@ import {
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+// Experiment cleanup (119_surface_assistant_on_workflow_error)
 import {
-	SampleTemplates,
-	isTutorialTemplateId,
-} from '@/features/workflows/templates/utils/workflowSamples';
+	WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
+	dismissWorkflowErrorNudge,
+	releaseWorkflowErrorNudge,
+	useSurfaceAssistantOnWorkflowError,
+} from '@/experiments/surfaceAssistantOnWorkflowError/composables/useSurfaceAssistantOnWorkflowError';
+// EOF Experiment cleanup
+import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
 } from '@/features/execution/executions/executions.utils';
+import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
+import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
@@ -108,6 +116,15 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 		return;
 	}
 
+	// Experiment cleanup (119_surface_assistant_on_workflow_error)
+	dismissWorkflowErrorNudge();
+	// EOF Experiment cleanup
+
+	// A run using an n8n-managed credential consumes credits; invalidate the wallet
+	// cache so any balance pill reflects them. Gated on managed credentials so
+	// ordinary runs don't trigger a refetch.
+	refreshWalletAfterBilledRun(documentId);
+
 	const telemetry = useTelemetry();
 
 	clearPopupWindowState();
@@ -136,11 +153,6 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 			} else {
 				readyToRunStore.trackExecuteAiWorkflow(data.status);
 			}
-		} else if (isTutorialTemplateId(templateId)) {
-			telemetry.track('User executed tutorial template', {
-				template: templateId,
-				status: data.status,
-			});
 		}
 	}
 
@@ -195,6 +207,26 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	setRunExecutionData(execution, runExecutionData, documentId);
 
 	continueEvaluationLoop(execution, options);
+}
+
+/**
+ * Force-refreshes the AI gateway wallet when the finished run used an n8n-managed
+ * credential. No-op when the gateway is disabled or no managed credential is present.
+ */
+export function refreshWalletAfterBilledRun(documentId: WorkflowDocumentId) {
+	const settingsStore = useSettingsStore();
+	if (!settingsStore.isAiGatewayEnabled) {
+		return;
+	}
+
+	const aiGatewayStore = useAiGatewayStore();
+	const { nodes } = useWorkflowDocumentStore(documentId).getSnapshot();
+	const usedManagedCredential = nodes.some((node) =>
+		aiGatewayStore.hasGatewayManagedCredential(node),
+	);
+	if (usedManagedCredential) {
+		void aiGatewayStore.fetchWallet({ force: true });
+	}
 }
 
 /**
@@ -416,7 +448,30 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
 			});
 
-			toast.showMessage({ title, message, type: 'error', duration: 0 });
+			const { showPolicyViolationToast } = usePolicyViolationToast();
+			const policyTitle = i18n.baseText('typeAvailabilityPolicies.violations.executeTitle');
+			const violations = getPolicyViolations(execution.data.resultData.error);
+
+			if (violations) {
+				showPolicyViolationToast(violations, policyTitle, 'execute', documentId);
+			} else {
+				toast.showMessage({
+					title,
+					message,
+					type: 'error',
+					duration: 0,
+					// Experiment cleanup (119_surface_assistant_on_workflow_error)
+					customClass: WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
+					onClose: () => releaseWorkflowErrorNudge(execution.id),
+					// EOF Experiment cleanup
+				});
+				// Experiment cleanup (119_surface_assistant_on_workflow_error)
+				useSurfaceAssistantOnWorkflowError().triggerOnWorkflowError(
+					execution.id,
+					execution.workflowId ?? execution.workflowData.id,
+				);
+				// EOF Experiment cleanup
+			}
 		}
 
 		useBuilderStore().incrementManualExecutionStats('error');

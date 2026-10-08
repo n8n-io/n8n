@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive } from 'vue';
+import { computed, inject, onBeforeUnmount, reactive } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
-import { formatBytes } from '@/app/utils/typesUtils';
+import { formatBytes } from '@n8n/utils/number/bytes';
+import { getChatAttachmentUrl } from '../composables/useAgentApi';
+import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
 
 const props = defineProps<{
 	attachments: ChatMessageAttachment[];
@@ -14,6 +16,8 @@ const props = defineProps<{
 
 const rootStore = useRootStore();
 const i18n = useI18n();
+// Preview fallback: used when no panel provided a builder (e.g. a standalone render).
+const attachmentUrlBuilder = inject(AGENT_ATTACHMENT_URL_KEY, null);
 
 // Thumbnails whose bytes are gone from the server (e.g. pruned binary data):
 // their <img> requests 404, and the browser's broken-image glyph is replaced
@@ -35,8 +39,13 @@ function objectUrlFor(file: File): string {
 
 function downloadUrl(attachment: ChatMessageAttachment): string | undefined {
 	if (!attachment.fileId) return undefined;
-	const { baseUrl } = rootStore.restApiContext;
-	return `${baseUrl}/projects/${encodeURIComponent(props.projectId)}/agents/v2/${encodeURIComponent(props.agentId)}/chat/attachments/${encodeURIComponent(attachment.fileId)}`;
+	if (attachmentUrlBuilder) return attachmentUrlBuilder(attachment.fileId);
+	return getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		attachment.fileId,
+	);
 }
 
 function isImage(attachment: ChatMessageAttachment): boolean {

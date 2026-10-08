@@ -78,6 +78,16 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: ['anthropic.web_search'],
 		attachments: { image: true, pdf: true, audio: false },
 	},
+	// Claude on Vertex — same Messages capabilities as Anthropic; providerTools
+	// stay empty because Vertex only exposes a subset and Instance AI does not
+	// wire Vertex-specific Anthropic provider tools yet.
+	'google-vertex-anthropic': {
+		thinking: 'budgetTokens',
+		promptCaching: 'ttl',
+		webSearch: false,
+		providerTools: [],
+		attachments: { image: true, pdf: true, audio: false },
+	},
 	openai: {
 		thinking: 'reasoningEffort',
 		promptCaching: true,
@@ -93,7 +103,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		attachments: { image: true, pdf: true, audio: true },
 	},
 	xai: {
-		thinking: false,
+		thinking: 'reasoningEffort',
 		promptCaching: false,
 		webSearch: false,
 		providerTools: [],
@@ -121,6 +131,35 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		attachments: NO_ATTACHMENTS,
 	},
 	openrouter: {
+		thinking: false,
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
+	// OpenAI-compatible custom endpoints (N8N_INSTANCE_AI_MODEL_URL / custom/*).
+	custom: {
+		thinking: 'reasoningEffort',
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
+	moonshotai: {
+		thinking: 'reasoningEffort',
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
+	alibaba: {
+		thinking: false,
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
+	minimax: {
 		thinking: false,
 		promptCaching: false,
 		webSearch: false,

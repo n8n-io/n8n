@@ -16,6 +16,27 @@ function createNodeCode(body: string): string {
 	`;
 }
 
+/**
+ * Versioned node layout from the node-building docs: the version class assigns
+ * `description` in its constructor instead of as a property initializer.
+ */
+function createVersionedNodeCode(body: string): string {
+	return `
+		import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
+
+		export class TestNodeV1 implements INodeType {
+			description: INodeTypeDescription;
+
+			constructor(baseDescription: INodeTypeBaseDescription) {
+				this.description = {
+					...baseDescription,
+					${body}
+				};
+			}
+		}
+	`;
+}
+
 ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 	valid: [
 		{
@@ -75,6 +96,62 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 		},
 	],
 	invalid: [
+		{
+			name: 'emoji in option name of a versioned node assigning description in its constructor',
+			filename: '/tmp/v1/TestNodeV1.node.ts',
+			code: createVersionedNodeCode(`
+				version: 1,
+				properties: [
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						options: [
+							{ name: '✅ Create', value: 'create' },
+							{ name: 'Delete', value: 'delete' },
+						],
+						default: 'create',
+					},
+				],
+			`),
+			errors: [{ messageId: 'emojiInOption', data: { key: 'name', emoji: '✅' } }],
+		},
+		{
+			name: 'emoji in a description that is cast with `as`',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNode implements INodeType {
+					description = {
+						displayName: '🚀 Rocket Node',
+						name: 'testNode',
+						properties: [],
+					} as INodeTypeDescription;
+				}
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
+		},
+		{
+			name: 'emoji in a constructor-assigned description that is cast with `as`',
+			filename: '/tmp/v1/TestNodeV1.node.ts',
+			code: `
+				import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNodeV1 implements INodeType {
+					description: INodeTypeDescription;
+
+					constructor(baseDescription: INodeTypeBaseDescription) {
+						this.description = {
+							...baseDescription,
+							displayName: '🚀 Rocket Node',
+							properties: [],
+						} as INodeTypeDescription;
+					}
+				}
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
+		},
 		{
 			name: 'emoji in node displayName',
 			filename: '/tmp/TestNode.node.ts',

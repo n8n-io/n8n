@@ -29,6 +29,7 @@ export class AiService {
 	) {}
 
 	async init() {
+		// oxlint-disable-next-line typescript/no-deprecated
 		const aiAssistantEnabled = this.licenseService.isAiAssistantEnabled();
 
 		if (!aiAssistantEnabled) {
@@ -65,6 +66,7 @@ export class AiService {
 		return await client.applySuggestion(payload, { id: user.id });
 	}
 
+	/** @deprecated Serves `POST /rest/ai/ask-ai`. Removed in v3. */
 	async askAi(payload: AiAskRequestDto, user: IUser) {
 		const client = await this.getClient();
 		return await client.askAi(payload, { id: user.id });
@@ -72,6 +74,7 @@ export class AiService {
 
 	/** Whether the AI service proxy is enabled (license + base URL configured). */
 	isProxyEnabled(): boolean {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return this.licenseService.isAiAssistantEnabled() && !!this.globalConfig.aiAssistant.baseUrl;
 	}
 
@@ -97,5 +100,11 @@ export class AiService {
 			this.errorReporter,
 			{ retryOnTimeout: false },
 		);
+	}
+
+	/** Forfeit the remaining Instance AI quota for this instance. Idempotent server-side. */
+	async lockInstanceAiQuota(user: IUser, activatedAt?: number) {
+		const client = await this.getClient();
+		return await client.lockInstanceAiQuota(user, { activatedAt });
 	}
 }

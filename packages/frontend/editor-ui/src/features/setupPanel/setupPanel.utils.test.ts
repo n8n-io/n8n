@@ -33,9 +33,29 @@ const mockNodeTypeProvider = { getNodeType: vi.fn() };
 describe('setupPanel.utils', () => {
 	beforeEach(() => {
 		mockGetNodeTypeDisplayableCredentials.mockReset().mockReturnValue([]);
+		// Reset so a node type set by one test can't leak into the next
+		mockNodeTypeProvider.getNodeType.mockReset();
 	});
 
 	describe('getNodeCredentialTypes', () => {
+		it('resolves predefined HTTP credentials before a binding or node issue exists', () => {
+			const node = createNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { authentication: 'predefinedCredentialType', nodeCredentialType: 'slackApi' },
+			});
+			mockNodeTypeProvider.getNodeType.mockReturnValue({
+				credentials: [],
+				properties: [
+					{
+						name: 'nodeCredentialType',
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+				],
+			});
+			expect(getNodeCredentialTypes(mockNodeTypeProvider, node)).toEqual(['slackApi']);
+			node.parameters.authentication = 'none';
+			expect(getNodeCredentialTypes(mockNodeTypeProvider, node)).toEqual([]);
+		});
 		it('should return credential types from displayable credentials', () => {
 			const node = createNode();
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([
@@ -126,6 +146,38 @@ describe('setupPanel.utils', () => {
 			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
 
 			expect(result).toEqual([]);
+		});
+
+		it('should skip an assigned credential type the node no longer uses', () => {
+			// The stale type is removed when the workflow is saved, so a card for it would
+			// let the user connect a credential that silently disappears.
+			const node = createNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+				},
+				credentials: {
+					httpHeaderAuth: { id: 'cred-1', name: 'Header Auth' },
+					slackApi: { id: 'cred-2', name: 'Stale Slack' },
+				},
+			});
+			mockNodeTypeProvider.getNodeType.mockReturnValue({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				version: 1,
+				description: '',
+				defaults: {},
+				inputs: [],
+				outputs: [],
+				group: [],
+				properties: [],
+				credentials: [],
+			});
+
+			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
+
+			expect(result).toEqual(['httpHeaderAuth']);
 		});
 	});
 

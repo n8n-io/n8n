@@ -1,13 +1,24 @@
 import type { BuiltTool, CredentialProvider, McpClient, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { McpAuthenticationSchemaTypes } from '@n8n/api-types';
+import {
+	type AgentJsonConfig,
+	McpAuthenticationSchemaTypes,
+	McpOAuth2CredentialTypeSchema,
+} from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { z } from 'zod';
 
 import type { OauthService } from '@/oauth/oauth.service';
 
 import { BUILDER_TOOLS } from './builder-tool-names';
-import { buildMcpClientForServer } from '../json-config/mcp-client-factory';
+import {
+	type BuildMcpClientDeps,
+	buildMcpClientForServer,
+} from '../json-config/mcp-client-factory';
+
+export type McpCredentialApplyResult =
+	| { applied: false }
+	| { applied: true; config: AgentJsonConfig; configHash: string };
 
 export interface VerifyMcpServerDeps {
 	agentId?: string;
@@ -15,12 +26,13 @@ export interface VerifyMcpServerDeps {
 	oauthService: OauthService;
 	projectId: string;
 	proxyFetch: CustomFetch;
+	resolveRegistryConnection?: BuildMcpClientDeps['resolveRegistryConnection'];
 	/** When verification succeeds with a credential, writes it into the matching
-	 *  mcpServers entry so the builder can skip read_config → patch_config. */
+	 *  mcpServers entry so the builder can skip agent-context → patch_config. */
 	applyCredentialToMcpServer?: (
 		serverName: string,
 		credentialId: string,
-	) => Promise<{ applied: boolean }>;
+	) => Promise<McpCredentialApplyResult>;
 }
 
 /** Default deadline for the whole verify operation (connect + listTools) when the
@@ -86,7 +98,7 @@ const verifyMcpServerInputSchema = z.object({
 		.default('streamableHttp')
 		.describe('Transport type. Defaults to streamableHttp'),
 	authentication: z
-		.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
+		.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
 		.default('none')
 		.describe('Authentication scheme'),
 	credential: z
@@ -95,6 +107,7 @@ const verifyMcpServerInputSchema = z.object({
 		.describe(
 			'Credential id returned by ask_credential. Required when authentication is not "none"',
 		),
+	metadata: z.object({ nodeTypeName: z.string().optional() }).optional(),
 	connectionTimeoutMs: z
 		.number()
 		.int()
@@ -118,7 +131,9 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 				'Tool names are the original MCP names without the model-facing server prefix. ' +
 				'When a credential is provided and a matching mcpServers entry already exists, ' +
 				'a successful verify also writes the credential into that entry ' +
-				'({ credentialApplied: true, configMutated: true, agentId }) — no read_config/patch_config follow-up. ' +
+				'({ credentialApplied: true, configMutated: true, agentId, config, configHash }) — no ' +
+				'agent-context/patch_config follow-up. Treat the returned config as the current state and use ' +
+				'its configHash as baseConfigHash for your next config write. ' +
 				'Call this after ask_credential when authentication is not "none".',
 		)
 		.input(verifyMcpServerInputSchema)
@@ -133,11 +148,23 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 						transport: input.transport,
 						authentication: input.authentication,
 						credential: input.credential,
+						metadata: input.metadata,
 						connectionTimeoutMs: timeoutMs,
 					},
 					deps,
 				);
 				const tools = await listToolsWithinDeadline(client, timeoutMs, ctx.abortSignal);
+				const failures = client.getConnectionFailures();
+				if (failures.length > 0) {
+					return {
+						ok: false,
+						error: failures
+							.map(
+								(failure) => `MCP server "${failure.server}" connection failed: ${failure.error}`,
+							)
+							.join('; '),
+					};
+				}
 				const mappedTools = tools.map((t) => ({
 					name: t.mcpToolName ?? t.name,
 					description: t.description ?? '',
@@ -145,14 +172,16 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 
 				if (input.credential && deps.applyCredentialToMcpServer) {
 					try {
-						const { applied } = await deps.applyCredentialToMcpServer(input.name, input.credential);
-						if (applied && deps.agentId) {
+						const applyResult = await deps.applyCredentialToMcpServer(input.name, input.credential);
+						if (applyResult.applied && deps.agentId) {
 							return {
 								ok: true,
 								tools: mappedTools,
 								credentialApplied: true,
 								configMutated: true,
 								agentId: deps.agentId,
+								config: applyResult.config,
+								configHash: applyResult.configHash,
 							};
 						}
 					} catch {

@@ -44,11 +44,15 @@ describe('Utils: experiments', () => {
 
 	describe('getExperimentTelemetryPayload()', () => {
 		it('adds PostHog experiment attribution properties', () => {
-			expect(
-				getExperimentTelemetryPayload({ name: 'example_experiment' }, 'control', {
-					source: 'empty_state',
-				}),
-			).toEqual({
+			const payload: {
+				source: string;
+				variant: 'control';
+				'$feature/example_experiment': 'control';
+			} = getExperimentTelemetryPayload({ name: 'example_experiment' }, 'control', {
+				source: 'empty_state',
+			});
+
+			expect(payload).toEqual({
 				source: 'empty_state',
 				variant: 'control',
 				'$feature/example_experiment': 'control',

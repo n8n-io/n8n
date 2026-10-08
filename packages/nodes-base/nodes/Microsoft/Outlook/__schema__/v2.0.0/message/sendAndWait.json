@@ -7,11 +7,14 @@
                 "approved": {
                     "type": "boolean"
                 },
+                "respondedAt": {
+                    "type": "string"
+                },
                 "text": {
                     "type": "string"
                 }
             }
         }
     },
-    "version": 2
+    "version": 3
 }

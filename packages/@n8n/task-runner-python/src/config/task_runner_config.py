@@ -17,6 +17,7 @@ from src.constants import (
     ENV_GRANT_TOKEN,
     ENV_MAX_CONCURRENCY,
     ENV_MAX_PAYLOAD_SIZE,
+    ENV_RUNNER_ID,
     ENV_STDLIB_ALLOW,
     ENV_TASK_BROKER_URI,
     ENV_TASK_TIMEOUT,
@@ -48,6 +49,10 @@ def parse_allowlist(allowlist_str: str, list_name: str) -> set[str]:
 @dataclass
 class TaskRunnerConfig:
     grant_token: str
+    # Empty to self-assign an ID, the default in `external` mode where no one else
+    # knows this runner beforehand. Must be unique per runner when set: the broker keys
+    # connections by runner ID, so two runners sharing one keep evicting each other.
+    runner_id: str
     task_broker_uri: str
     max_concurrency: int
     max_payload_size: int
@@ -102,6 +107,7 @@ class TaskRunnerConfig:
 
         return cls(
             grant_token=grant_token,
+            runner_id=read_str_env(ENV_RUNNER_ID, ""),
             task_broker_uri=read_str_env(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
             max_concurrency=read_int_env(ENV_MAX_CONCURRENCY, DEFAULT_MAX_CONCURRENCY),
             max_payload_size=max_payload_size,

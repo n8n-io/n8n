@@ -18,6 +18,9 @@
         "avalanche-2": {
             "type": "object",
             "properties": {
+                "last_updated_at": {
+                    "type": "integer"
+                },
                 "usd": {
                     "type": "number"
                 },
@@ -117,6 +120,9 @@
         "dogecoin": {
             "type": "object",
             "properties": {
+                "last_updated_at": {
+                    "type": "integer"
+                },
                 "mxn": {
                     "type": "number"
                 },
@@ -207,6 +213,9 @@
         "polkadot": {
             "type": "object",
             "properties": {
+                "last_updated_at": {
+                    "type": "integer"
+                },
                 "usd": {
                     "type": "number"
                 },
@@ -289,6 +298,9 @@
         "uniswap": {
             "type": "object",
             "properties": {
+                "last_updated_at": {
+                    "type": "integer"
+                },
                 "usd": {
                     "type": "number"
                 },
@@ -318,5 +330,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }

@@ -143,7 +143,10 @@ export function useAutosizeTextarea({
 		if (!toValue(enabled) || !textareaElement) return;
 
 		textareaStyles.value = calcTextareaHeight(textareaElement, toValue(rows));
-		void scrollCaretIntoView();
+		// Only scroll when the content genuinely exceeds maxRows.
+		if (textareaStyles.value.overflowY === 'auto') {
+			void scrollCaretIntoView();
+		}
 	};
 
 	function clearTextareaHeight() {

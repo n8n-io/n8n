@@ -1,3 +1,5 @@
+import { parseRegexLiteral } from 'n8n-workflow';
+
 export const splitByComma = (str: string) => {
 	return str
 		.split(',')
@@ -6,16 +8,5 @@ export const splitByComma = (str: string) => {
 };
 
 export const parseRegex = (input: string) => {
-	const regexMatch = (input || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
-
-	let regex: RegExp;
-	if (!regexMatch) {
-		regex = new RegExp((input || '').toString());
-	} else if (regexMatch.length === 1) {
-		regex = new RegExp(regexMatch[1]);
-	} else {
-		regex = new RegExp(regexMatch[1], regexMatch[2]);
-	}
-
-	return regex;
+	return parseRegexLiteral((input || '').toString());
 };

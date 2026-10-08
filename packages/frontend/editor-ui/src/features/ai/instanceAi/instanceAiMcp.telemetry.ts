@@ -1,39 +1,53 @@
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import type { McpToolInclusionMode } from '@/features/shared/toolsConnection/types';
+import type { McpToolPermissions } from '@n8n/api-types';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
+
+type ToolsListSource = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.INSTANCE_AI.TOOLS_LIST_OPENED
+>['source'];
+
+type McpSettingsSource = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.INSTANCE_AI.MCP_SETTINGS_OPENED
+>['source'];
 
 export function useInstanceAiMcpTelemetry() {
 	const telemetry = useTelemetry();
 	return {
-		trackToolsListOpened() {
-			telemetry.track('Instance AI tools list opened');
+		trackToolsListOpened(source: ToolsListSource) {
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.TOOLS_LIST_OPENED, { source });
 		},
-		trackSettingsOpened(serverSlug: string) {
-			telemetry.track('Instance AI mcp settings opened', { server_slug: serverSlug });
+		trackSettingsOpened(serverSlug: string, source: McpSettingsSource) {
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.MCP_SETTINGS_OPENED, {
+				server_slug: serverSlug,
+				source,
+			});
 		},
 		trackFirstCredentialConnectionStart(serverSlug: string) {
-			telemetry.track('Instance AI mcp first credential connection start', {
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.MCP_FIRST_CREDENTIAL_CONNECTION_STARTED, {
 				server_slug: serverSlug,
 			});
 		},
 		trackCredentialDropdownOpened(serverSlug: string) {
-			telemetry.track('Instance AI mcp credential dropdown opened', {
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.MCP_CREDENTIAL_DROPDOWN_OPENED, {
 				server_slug: serverSlug,
 			});
 		},
 		trackExistingCredentialSelected(serverSlug: string) {
-			telemetry.track('Instance AI mcp existing credential selected', {
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.MCP_EXISTING_CREDENTIAL_SELECTED, {
 				server_slug: serverSlug,
 			});
 		},
 		trackNewCredentialConnectionStart(serverSlug: string) {
-			telemetry.track('Instance AI mcp new credential connection start', {
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.MCP_NEW_CREDENTIAL_CONNECTION_STARTED, {
 				server_slug: serverSlug,
 			});
 		},
-		trackToolFilterSettingsUpdated(serverSlug: string, inclusionMode: McpToolInclusionMode) {
-			telemetry.track('Instance AI mcp tool filter settings updated', {
+		trackToolPermissionsUpdated(serverSlug: string, permissions: McpToolPermissions) {
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.MCP_TOOL_PERMISSIONS_UPDATED, {
 				server_slug: serverSlug,
-				inclusion_mode: inclusionMode,
+				read_permission: permissions.categories.read,
+				write_permission: permissions.categories.write,
+				tool_override_count: Object.keys(permissions.tools ?? {}).length,
 			});
 		},
 	};

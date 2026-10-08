@@ -17,11 +17,8 @@ export interface ConnectResponse {
 export interface StatusResponse {
 	connected?: boolean;
 	tabIds?: ControlledTabId[];
-}
-
-export interface TabManagementSettings {
-	allowTabCreation: boolean;
-	allowTabClosing: boolean;
+	/** Relay URL of the live session, so any view can name the instance it is bound to. */
+	relayUrl?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -46,15 +43,6 @@ export interface GetStatusMessage {
 	type: 'getStatus';
 }
 
-export interface UpdateSettingsMessage {
-	type: 'updateSettings';
-	settings: TabManagementSettings;
-}
-
-export interface GetSettingsMessage {
-	type: 'getSettings';
-}
-
 export interface GetRelayUrlMessage {
 	type: 'getRelayUrl';
 }
@@ -68,10 +56,38 @@ export type ExtensionMessage =
 	| ConnectMessage
 	| DisconnectMessage
 	| GetStatusMessage
-	| UpdateSettingsMessage
-	| GetSettingsMessage
 	| GetRelayUrlMessage
 	| ClearRelayUrlMessage;
+
+// ---------------------------------------------------------------------------
+// External messages (web page → background, via externally_connectable)
+// ---------------------------------------------------------------------------
+
+export interface ExternalConnectMessage {
+	type: 'connect';
+	relayUrl: string;
+}
+
+export interface ExternalConnectResultMessage {
+	type: 'connectResult';
+	relayUrl: string;
+}
+
+export type ExternalMessage = ExternalConnectMessage | ExternalConnectResultMessage;
+
+export interface ExternalConnectResponse {
+	accepted: boolean;
+	/**
+	 * False when the host was already allowed and no confirmation was shown, so the page can
+	 * say "connecting" rather than point at a popup that never appears. Older extensions
+	 * omit it — treat as true.
+	 */
+	confirmationRequired?: boolean;
+}
+
+export interface ExternalConnectResultResponse {
+	connected: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Background → UI push messages
@@ -86,6 +102,7 @@ export interface StatusChangedMessage {
 	type: 'statusChanged';
 	connected: boolean;
 	tabIds?: ControlledTabId[];
+	relayUrl?: string;
 }
 
 export type BackgroundPushMessage = RelayUrlReadyMessage | StatusChangedMessage;
@@ -93,6 +110,14 @@ export type BackgroundPushMessage = RelayUrlReadyMessage | StatusChangedMessage;
 // ---------------------------------------------------------------------------
 // Type guards
 // ---------------------------------------------------------------------------
+
+export function isExternalMessage(raw: unknown): raw is ExternalMessage {
+	if (raw === null || typeof raw !== 'object') return false;
+	const obj = raw as Record<string, unknown>;
+	return (
+		(obj.type === 'connect' || obj.type === 'connectResult') && typeof obj.relayUrl === 'string'
+	);
+}
 
 export function isConnectResponse(raw: unknown): raw is ConnectResponse {
 	if (raw === null || typeof raw !== 'object') return false;
@@ -106,6 +131,7 @@ export function isStatusResponse(raw: unknown): raw is StatusResponse {
 	if (raw === null || typeof raw !== 'object') return false;
 	const obj = raw as Record<string, unknown>;
 	if ('connected' in obj && typeof obj.connected !== 'boolean') return false;
+	if (obj.relayUrl !== undefined && typeof obj.relayUrl !== 'string') return false;
 	if ('tabIds' in obj) {
 		if (!Array.isArray(obj.tabIds)) return false;
 		for (const item of obj.tabIds) {
@@ -120,15 +146,4 @@ export function isStatusResponse(raw: unknown): raw is StatusResponse {
 		}
 	}
 	return true;
-}
-
-export function isTabManagementSettings(raw: unknown): raw is TabManagementSettings {
-	return (
-		raw !== null &&
-		typeof raw === 'object' &&
-		'allowTabCreation' in raw &&
-		'allowTabClosing' in raw &&
-		typeof (raw as Record<string, unknown>).allowTabCreation === 'boolean' &&
-		typeof (raw as Record<string, unknown>).allowTabClosing === 'boolean'
-	);
 }

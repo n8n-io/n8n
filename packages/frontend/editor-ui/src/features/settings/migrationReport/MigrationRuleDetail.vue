@@ -4,9 +4,14 @@ import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropd
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME, MIGRATE_WORKFLOW_MODAL_KEY, VIEWS } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import type {
+	BreakingChangeRuleDetailResult,
+	BreakingChangeRuleDetailWorkflow,
+	MigrationFindingTriageStatus,
+} from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
+	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
 	N8nIcon,
@@ -17,22 +22,27 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nSettingsLayout,
-	N8nTag,
 	N8nText,
 } from '@n8n/design-system';
-import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useAsyncState, useDebounceFn } from '@vueuse/core';
 import orderBy from 'lodash/orderBy';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import SeverityTag from './components/SeverityTag.vue';
+import FindingStateSelect from './components/FindingStateSelect.vue';
+import ImpactTag from './components/ImpactTag.vue';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const rootStore = useRootStore();
+const rbacStore = useRBACStore();
+const toast = useToast();
 
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
@@ -40,10 +50,14 @@ const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
 
-const { state, isLoading } = useAsyncState(
+// The page needs only `breakingChanges:list`, but a migration or a state change
+// needs `breakingChanges:migrate`.
+const canMigrate = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
+
+const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 	async () => {
 		const response = await breakingChangesApi.getReportForRule(
-			useRootStore().restApiContext,
+			rootStore.restApiContext,
 			props.migrationRuleId,
 		);
 
@@ -53,21 +67,21 @@ const { state, isLoading } = useAsyncState(
 		ruleId: '',
 		ruleTitle: '',
 		ruleDescription: '',
-		ruleSeverity: 'low',
+		ruleImpact: 'capabilityRemoved',
 		affectedWorkflows: [],
 		recommendations: [],
 		migratable: false,
 	},
 );
 
-type AffectedWorkflow = BreakingChangeWorkflowRuleResult['affectedWorkflows'][number];
+type AffectedWorkflow = BreakingChangeRuleDetailWorkflow;
 
 const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 	const headers: Array<TableHeader<AffectedWorkflow>> = [
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.name'),
 			key: 'name',
-			width: 200,
+			width: 240,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.status'),
@@ -76,30 +90,36 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 				row.active
 					? i18n.baseText('settings.migrationReport.detail.table.active')
 					: i18n.baseText('settings.migrationReport.detail.table.deactivated'),
-			width: 40,
+			width: 120,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.nodesAffected'),
 			key: 'issues',
+			width: 240,
+		},
+		{
+			title: i18n.baseText('settings.migrationReport.detail.table.state'),
+			key: 'status',
+			width: 120,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.numberOfExecutions'),
 			key: 'numberOfExecutions',
-			width: 40,
+			width: 160,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.lastExecuted'),
 			key: 'lastExecutedAt',
-			width: 40,
+			width: 120,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.lastUpdated'),
 			key: 'lastUpdatedAt',
-			width: 40,
+			width: 120,
 		},
 	];
 
-	if (state.value.migratable) {
+	if (state.value.migratable && canMigrate.value) {
 		headers.push({
 			title: '',
 			key: 'actions',
@@ -132,6 +152,54 @@ function openMigrateModal(workflow: AffectedWorkflow) {
 			eventBus: migrateModalBus,
 		},
 	});
+}
+
+// Won't fix counts as resolved, so the badge counts only the open findings. A
+// migration fixes the finding on save, so a migrated row is not open either.
+const openCount = computed(
+	() =>
+		state.value.affectedWorkflows.filter(
+			(workflow) => workflow.status === 'open' && !migratedWorkflowIds.value.has(workflow.id),
+		).length,
+);
+
+// Rows with a state change in flight. One change at a time keeps the revert correct.
+const savingWorkflowIds = ref<Set<string>>(new Set());
+
+// The state is a shallow ref, so replace the list to make the table update.
+function setFindingStatus(workflowId: string, status: MigrationFindingTriageStatus) {
+	state.value = {
+		...state.value,
+		affectedWorkflows: state.value.affectedWorkflows.map((workflow) =>
+			workflow.id === workflowId ? { ...workflow, status } : workflow,
+		),
+	};
+}
+
+async function onFindingStatusChange(
+	workflow: AffectedWorkflow,
+	status: MigrationFindingTriageStatus,
+) {
+	const previousStatus = workflow.status;
+	if (status === previousStatus || savingWorkflowIds.value.has(workflow.id)) return;
+
+	setFindingStatus(workflow.id, status);
+	savingWorkflowIds.value = new Set(savingWorkflowIds.value).add(workflow.id);
+	try {
+		await breakingChangesApi.updateFindingStatus(
+			rootStore.restApiContext,
+			props.migrationRuleId,
+			workflow.id,
+			status,
+		);
+	} catch (error) {
+		setFindingStatus(workflow.id, previousStatus);
+		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
+	} finally {
+		const saving = new Set(savingWorkflowIds.value);
+		saving.delete(workflow.id);
+		savingWorkflowIds.value = saving;
+	}
 }
 
 function handleRowClick(_event: MouseEvent, { item }: { item: AffectedWorkflow }) {
@@ -256,15 +324,14 @@ const sortedWorkflows = computed(() => {
 					style="display: flex; align-items: center; gap: 4px"
 				>
 					{{ state.ruleTitle }}
-					<SeverityTag :severity="state.ruleSeverity" />
-					<N8nTag
-						:text="
+					<ImpactTag :impact="state.ruleImpact" />
+					<N8nBadge>
+						{{
 							i18n.baseText('settings.migrationReport.detail.affectedTag', {
-								interpolate: { count: String(state.affectedWorkflows.length) },
+								interpolate: { count: String(openCount) },
 							})
-						"
-						:clickable="false"
-					/>
+						}}
+					</N8nBadge>
 				</N8nText>
 				<N8nText tag="p" color="text-base">
 					{{ state.ruleDescription }}{{ state.ruleDescription.endsWith('.') ? '' : '.' }}
@@ -365,6 +432,16 @@ const sortedWorkflows = computed(() => {
 			<template #[`item.lastUpdatedAt`]="{ item }">
 				<TimeAgo :date="item.lastUpdatedAt.toString()" />
 			</template>
+			<template #[`item.status`]="{ item }">
+				<FindingStateSelect
+					:model-value="item.status"
+					:disabled="
+						!canMigrate || savingWorkflowIds.has(item.id) || migratedWorkflowIds.has(item.id)
+					"
+					@update:model-value="onFindingStatusChange(item, $event)"
+					@click.stop
+				/>
+			</template>
 			<template #[`item.actions`]="{ item }">
 				<N8nText v-if="migratedWorkflowIds.has(item.id)" color="text-light" size="small">
 					{{ i18n.baseText('settings.migrationReport.detail.migrate.migrated') }}
@@ -372,7 +449,6 @@ const sortedWorkflows = computed(() => {
 				<N8nButton
 					v-else
 					size="small"
-					type="secondary"
 					:label="i18n.baseText('settings.migrationReport.detail.migrate.button')"
 					data-test-id="migrate-workflow-button"
 					@click.stop="openMigrateModal(item)"

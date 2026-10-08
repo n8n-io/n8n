@@ -33,4 +33,12 @@ export class RefreshToken extends WithTimestamps {
 	/** OAuth scopes of the originating grant, reissued on every rotation. */
 	@JsonColumn()
 	scope: string[];
+
+	/**
+	 * RFC 8707 resource the grant was approved for — the audience of every access
+	 * token minted from it, carried unchanged across rotations. Never null: the
+	 * mint path resolves the default resource before the row is written.
+	 */
+	@Column({ type: 'varchar' })
+	resource: string;
 }

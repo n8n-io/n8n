@@ -9,6 +9,8 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vue';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -22,6 +24,7 @@ const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
 	focus: [id: string];
 	'add:ai': [id: string];
+	'add-nodes-to-chat': [id: string];
 }>();
 
 const props = withDefaults(
@@ -50,6 +53,12 @@ const focusedNodesStore = useFocusedNodesStore();
 // Per-editor host overrides — e.g. the Instance AI artifact preview supersedes
 // the AI capabilities of its embedded editor, which must hide this entry point.
 const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
+const isNodeContextEnabled = useIsNodeContextEnabled();
+
+const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+	() => workflowDocumentStore?.value?.usedCredentials,
+	() => workflowDocumentStore?.value?.allNodes,
+);
 
 const node = computed(() =>
 	name.value ? workflowDocumentStore?.value?.getNodeByName(name.value) : null,
@@ -58,6 +67,14 @@ const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node
 
 const nodeDisabledTitle = computed(() => {
 	return isDisabled.value ? i18n.baseText('node.enable') : i18n.baseText('node.disable');
+});
+
+const executeNodeTooltip = computed(() => {
+	if (unusableCredentialReason.value) return unusableCredentialReason.value;
+
+	return isDisabled.value
+		? i18n.baseText('ndv.execute.deactivated')
+		: i18n.baseText('node.testStep');
 });
 
 const isStickyColorSelectorOpen = ref(false);
@@ -99,6 +116,10 @@ const isDeleteNodeVisible = computed(() => !props.readOnly);
 
 const isFocusNodeVisible = computed(() => experimentalNdvStore.isZoomedViewEnabled);
 
+const isAddToChatVisible = computed(
+	() => isNodeContextEnabled.value && render.value.type !== CanvasNodeRenderType.StickyNote,
+);
+
 // Feeds the builder side panel, so mirror the context menu's
 // assistant-or-builder semantics on top of the focused-nodes experiment.
 // Hidden when Instance AI supersedes the legacy builder/assistant.
@@ -107,7 +128,10 @@ const isAddToAiVisible = computed(
 		!props.readOnly &&
 		focusedNodesStore.isFeatureEnabled &&
 		(aiAssistant.value || aiBuilder.value) &&
-		!instanceAi.value,
+		!instanceAi.value &&
+		// The Instance AI add-to-chat button is the same sparkles affordance;
+		// when it shows, don't render a second identical icon.
+		!isAddToChatVisible.value,
 );
 
 const isStickyNoteChangeColorVisible = computed(
@@ -155,6 +179,12 @@ function onAddToAi() {
 		emit('add:ai', node.value.id);
 	}
 }
+
+function onAddToChat() {
+	if (node.value) {
+		emit('add-nodes-to-chat', node.value.id);
+	}
+}
 </script>
 
 <template>
@@ -167,19 +197,13 @@ function onAddToAi() {
 		@click.stop
 	>
 		<div :class="[$style.canvasNodeToolbarItems, itemsClass]">
-			<N8nTooltip
-				v-if="isExecuteNodeVisible"
-				placement="top"
-				:content="
-					isDisabled ? i18n.baseText('ndv.execute.deactivated') : i18n.baseText('node.testStep')
-				"
-			>
+			<N8nTooltip v-if="isExecuteNodeVisible" placement="top" :content="executeNodeTooltip">
 				<N8nIconButton
 					variant="ghost"
 					data-test-id="execute-node-button"
 					size="small"
 					icon="node-play"
-					:disabled="isExecuting || isDisabled"
+					:disabled="isExecuting || isDisabled || !!unusableCredentialReason"
 					:aria-label="i18n.baseText('node.testStep')"
 					@click.stop="executeNode"
 				/>
@@ -230,6 +254,21 @@ function onAddToAi() {
 					icon="sparkles"
 					:aria-label="i18n.baseText('node.addToAi')"
 					@click.stop="onAddToAi"
+				/>
+			</N8nTooltip>
+			<N8nTooltip
+				v-if="isAddToChatVisible"
+				placement="top"
+				:content="i18n.baseText('node.addToChat')"
+			>
+				<N8nIconButton
+					data-test-id="canvas-node-add-to-chat"
+					variant="ghost"
+					size="small"
+					text
+					icon="sparkles"
+					:aria-label="i18n.baseText('node.addToChat')"
+					@click.stop="onAddToChat"
 				/>
 			</N8nTooltip>
 			<N8nTooltip placement="top" :content="i18n.baseText('node.moreActions')">

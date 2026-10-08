@@ -2,7 +2,7 @@
 import ContextMenu from '@/features/shared/contextMenu/components/ContextMenu.vue';
 import type { ContextMenuTarget } from '@/features/shared/contextMenu/composables/useContextMenu';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
-import type { CanvasLayoutEvent } from '../composables/useCanvasLayout';
+import type { CanvasLayoutEvent, CanvasLayoutResult } from '../composables/useCanvasLayout';
 import { useCanvasLayout } from '../composables/useCanvasLayout';
 import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
@@ -12,12 +12,17 @@ import {
 	CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION,
 	CanvasKey,
 	MODAL_CONFIRM,
+	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
+import { findGroupIdsWithTrigger } from '../nodeGroups.utils';
+import { useNodeGroupRules } from '@/app/composables/useNodeGroupRules';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
 import type { NodeCreatorOpenSource } from '@/Interface';
@@ -33,6 +38,7 @@ import type {
 } from '../canvas.types';
 import {
 	CanvasNodeRenderType,
+	CanvasConnectionMode,
 	createCanvasGroupNodeId,
 	isCanvasGroupNode,
 	parseCanvasGroupNodeId,
@@ -46,6 +52,9 @@ import {
 import { isPresent } from '@/app/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type {
@@ -59,9 +68,18 @@ import type {
 } from '@vue-flow/core';
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
-import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
-import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
-import { shouldIgnoreCanvasShortcut, type CanvasRenderData } from '../canvas.utils';
+import { onKeyDown, onKeyUp, useThrottleFn, watchDebounced } from '@vueuse/core';
+import {
+	getEmptyGroupAnchor,
+	NodeConnectionTypes,
+	type IConnections,
+	type IWorkflowGroup,
+} from 'n8n-workflow';
+import {
+	createCanvasConnectionHandleString,
+	shouldIgnoreCanvasShortcut,
+	type CanvasRenderData,
+} from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
@@ -99,6 +117,13 @@ import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
+import {
+	useAddNodesToChat,
+	type AddNodesToChatSource,
+} from '@/features/ai/instanceAi/composables/useAddNodesToChat';
+import type { NodeContextWorkflow } from '@/features/ai/instanceAi/utils/buildNodesAttachment';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
+import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
 const $style = useCssModule();
 
@@ -128,12 +153,12 @@ const emit = defineEmits<{
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
 	'create:sticky': [];
-	'delete:nodes': [ids: string[]];
+	'delete:nodes': [ids: string[], deleteWholeGroupIds?: string[]];
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
 	'duplicate:nodes': [ids: string[]];
 	'update:nodes:pin': [ids: string[], source: PinDataSource];
-	'cut:nodes': [ids: string[]];
+	'cut:nodes': [ids: string[], deleteWholeGroupIds?: string[]];
 	'delete:connection': [connection: Connection];
 	'create:connection:start': [handle: ConnectStartEvent];
 	'create:connection': [connection: Connection];
@@ -206,6 +231,8 @@ const props = withDefaults(
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+const nodeTypesStore = useNodeTypesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const message = useMessage();
 const toast = useToast();
@@ -217,6 +244,11 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
+const { addSelectedNodesToChat, isNodeContextEnabled } = useAddNodesToChat();
+const instanceAiStore = useInstanceAiStore();
+const instanceAiCapability = useInstanceAiEditorCapability();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -256,7 +288,7 @@ const {
 	onNodeMouseLeave,
 } = vueFlow;
 
-const agentNodeGeometry = useCanvasAgentNodeGeometry({
+useCanvasAgentNodeGeometry({
 	canvasId: props.id,
 	getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 	setNodePosition: (id, position) =>
@@ -433,12 +465,28 @@ const {
 	readOnly: () => props.readOnly || props.suppressInteraction,
 });
 
-const { isSelectionExtractable } = useSelectionValidation();
+const { isSelectionExtractable, isSubworkflowConversionDisabled } = useSelectionValidation();
+const { allowTriggerInGroup } = useNodeGroupRules();
+
+// Groups that start the workflow themselves
+const groupIdsWithTrigger = computed(() => {
+	if (!allowTriggerInGroup.value) {
+		return new Set<string>();
+	}
+
+	return findGroupIdsWithTrigger(
+		workflowDocumentStore.value.allGroups,
+		(nodeId) => workflowDocumentStore.value.getNodeById(nodeId),
+		(nodeType) => nodeTypesStore.isTriggerNode(nodeType),
+	);
+});
 
 // Groups that can be extracted to sub-workflows
 const extractableGroupIds = computed(() => {
 	const ids = new Set<string>();
+	if (isSubworkflowConversionDisabled()) return ids;
 	for (const group of workflowDocumentStore.value.allGroups) {
+		if (isEmptyGroup(group.id)) continue;
 		if (isSelectionExtractable(group.nodeIds).valid) {
 			ids.add(group.id);
 		}
@@ -457,6 +505,23 @@ const soleSelectedGroupId = computed<string | null>(() => {
 
 	const memberIds = new Set(group.nodeIds);
 	return selectedNodes.value.every((node) => memberIds.has(node.id)) ? groupId : null;
+});
+
+const soleSelectedEmptyGroup = computed(() => {
+	const selectedGroups = selectedNodesAndGroups.value.filter(isCanvasGroupNode);
+	if (selectedGroups.length !== 1) return false;
+
+	const groupNode = selectedGroups[0];
+	if (groupNode.data?.isEmptyGroup !== true) return false;
+
+	const groupId = parseCanvasGroupNodeId(groupNode.id);
+	if (!groupId) return false;
+
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return false;
+
+	const memberIds = new Set(group.nodeIds);
+	return selectedNodes.value.every((node) => memberIds.has(node.id));
 });
 
 const groupTelemetry = useCanvasNodeGroupTelemetry();
@@ -518,7 +583,7 @@ const keyMap = computed(() => {
 
 	const fullKeymap: KeyMap = {
 		...readOnlyKeymap,
-		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
+		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids, getDeleteWholeGroupIds())),
 		'delete|backspace': onDeleteSelection,
 		ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
 		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
@@ -531,20 +596,39 @@ const keyMap = computed(() => {
 				props.eventBus.emit('deprecated:tab-shortcut');
 			},
 		},
-		shift_s: () => emit('create:sticky'),
+		shift_s: {
+			disabled: () => nodeTypesStore.isNodeTypeUnavailable(STICKY_NODE_TYPE),
+			run: () => emit('create:sticky'),
+		},
 		shift_f: () => emit('toggle:focus-panel'),
-		ctrl_alt_n: () => emit('create:workflow'),
+		ctrl_alt_n: {
+			disabled: () => settingsStore.isCanvasOnly,
+			run: () => emit('create:workflow'),
+		},
 		ctrl_enter: () => emit('run:workflow'),
 		// override the default cmd+s which saves the page html as file
 		// also triggers manual save when autosave is disabled
-		ctrl_s: () => emit('save:workflow'),
+		ctrl_s: {
+			disabled: () => settingsStore.isCanvasOnly,
+			run: () => emit('save:workflow'),
+		},
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
-		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
+		alt_x: {
+			disabled: () => isSubworkflowConversionDisabled() || soleSelectedEmptyGroup.value,
+			run: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
+		},
 		c: () => emit('start-chat'),
-		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
+		r: () => {
+			const id = getReplaceTargetId();
+			if (id) emit('replace:node', id);
+		},
 		shift_alt_u: emitWithLastSelectedNode((id) => emit('copy:test:url', id)),
 		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
-		alt_i: emitWithSelectedNodes((ids) => onAddSelectedNodesToAi(ids)),
+		// Alt+I adds the selected nodes to the AI chat. The two features are mutually
+		// exclusive (Focus AI requires !instanceAi), so they share the same key.
+		alt_i: emitWithSelectedNodes((ids) =>
+			isNodeContextEnabled.value ? onAddNodesToChat(ids) : onAddSelectedNodesToAi(ids),
+		),
 	};
 
 	fullKeymap.ctrl_g = {
@@ -588,7 +672,35 @@ const selectedNodeIdsWithGroupMembers = computed(() => {
 	return [...ids];
 });
 
+function buildNodeContextWorkflow(): NodeContextWorkflow {
+	const s = workflowDocumentStore.value;
+	return {
+		nodes: s.allNodes.map((n) => ({ id: n.id, name: n.name, type: n.type })),
+		connections: s.connectionsBySourceNode,
+		groupsById: new Map(s.allGroups.map((g) => [g.id, { id: g.id, name: g.name }])),
+		nodeIdToGroupId: s.nodeIdToGroupId,
+	};
+}
+
+async function onAddNodesToChat(
+	ids: string[] = selectedNodeIdsWithGroupMembers.value,
+	source: AddNodesToChatSource = 'keyboard',
+) {
+	const doc = workflowDocumentStore.value;
+	await addSelectedNodesToChat({
+		workflowId: doc.workflowId,
+		selectedNodeIds: ids,
+		workflow: buildNodeContextWorkflow(),
+		isInsideThread: !instanceAiCapability.openWorkflow,
+		onStaged: () => instanceAiStore.requestComposerFocus(),
+		workflowName: doc.name,
+		workflowSnapshot: doc.getSnapshot(),
+		source,
+	});
+}
+
 const lastSelectedNode = ref<GraphNode>();
+const lastInteractedNode = ref<{ id: string; documentId: string }>();
 const triggerNodes = computed<CanvasNode[]>(() =>
 	props.nodes.filter((node): node is CanvasNode => {
 		if (isCanvasGroupNode(node)) return false;
@@ -611,6 +723,24 @@ watch(selectedNodes, (nodes) => {
 		lastSelectedNode.value = nodes[nodes.length - 1];
 	}
 });
+
+// Report a multi-selection once it settles. Debouncing keeps a rubber-band drag from emitting an
+// event for every node it sweeps over; keying the watch on the selected ids (not just the count)
+// means swapping one settled selection for a different one of the same size still reports.
+watchDebounced(
+	() => selectedNodeIds.value.join(','),
+	() => {
+		const nodeCount = selectedNodeIds.value.length;
+		if (nodeCount >= 2) {
+			telemetry.track(TELEMETRY_EVENT.WORKFLOW.MULTIPLE_NODES_SELECTED, {
+				workflow_id: workflowDocumentStore.value.workflowId,
+				node_count: nodeCount,
+				push_ref: rootStore.pushRef,
+			});
+		}
+	},
+	{ debounce: 500 },
+);
 
 watch(selectedNodeIds, (newIds) => {
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
@@ -653,6 +783,29 @@ function commitManualNodePositions(events: CanvasNodeMoveEvent[]) {
 	);
 }
 
+function getCanvasNodesByIds(nodeIds: string[]) {
+	return nodeIds.map(findNode).filter(isPresent);
+}
+
+function settleLayoutResult(result: CanvasLayoutResult): CanvasLayoutResult {
+	const settled = injectedNodeGroupView?.settleManualNodePositions(
+		result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
+		getStoredNodePositionById,
+	);
+	if (!settled) return result;
+
+	const resultNodeById = new Map(result.nodes.map((node) => [node.id, node]));
+	return {
+		...result,
+		nodes: settled.map(({ id, position }) => ({
+			...resultNodeById.get(id),
+			id,
+			x: position.x,
+			y: position.y,
+		})),
+	};
+}
+
 // Bake the positions of nodes that `sourceGroupIds` were visually pushing into
 // the document, so those targets stay put instead of snapping back when the
 // source stops pushing — whether it was moved or removed via ungroup.
@@ -682,14 +835,19 @@ const groupDrag = useCanvasNodeGroupDrag({
 
 // Groups select as one unit: title bar and member selection stay in sync,
 // and a fully selected group surfaces the selection instead of its members.
-const { fullySelectedGroupMemberIds, selectedElementCount, selectionBoxBounds } =
-	useCanvasNodeGroupSelection({
-		canvasId: props.id,
-		isEnabled: () => props.showNodeGroups,
-		getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
-		getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
-		isGroupCollapsed: (id) => injectedNodeGroupView?.isGroupCollapsed(id) ?? false,
-	});
+const {
+	fullySelectedGroupMemberIds,
+	selectedElementCount,
+	selectionBoxBounds,
+	explicitlySelectedGroupIds,
+} = useCanvasNodeGroupSelection({
+	canvasId: props.id,
+	isEnabled: () => props.showNodeGroups,
+	getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
+	getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
+	isEmptyGroup,
+	isGroupCollapsed: (id) => injectedNodeGroupView?.isGroupCollapsed(id) ?? false,
+});
 
 // VueFlow sizes its selection box to the selected VueFlow nodes, but a group
 // node is only the title bar — its expanded frame overflows the box. Feed the
@@ -714,11 +872,7 @@ function onNodeDrag(event: NodeDragEvent) {
 }
 
 function onNodeDragStop(event: NodeDragEvent) {
-	const moves = agentNodeGeometry.snapDraggedNodeMoves(
-		event.node,
-		groupDrag.processNodeDragStop(event),
-		event.nodes,
-	);
+	const moves = groupDrag.processNodeDragStop(event);
 	if (moves.length > 0) commitManualNodePositions(moves);
 }
 
@@ -886,6 +1040,7 @@ function onCanvasGroupUngroup(
 ) {
 	// Capture before deletion — the group is gone by the time we track.
 	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group || isEmptyGroup(groupId)) return;
 	// Ungrouping a collapsed group makes its hidden members reappear, so expand
 	// it first: the expansion pushes overlapping nodes aside, and the commit
 	// below persists that displacement (the group is gone after, so the push
@@ -898,17 +1053,31 @@ function onCanvasGroupUngroup(
 	commitPushedPositionsForSourceGroups([groupId]);
 	ungroup(groupId);
 
-	if (group) {
-		groupTelemetry.trackUngrouped(group, source);
-	}
+	groupTelemetry.trackUngrouped(group, source);
 }
 
 // Same downstream path as extracting the members through Alt+X or the
 // context menu, so collapsed and expanded groups behave identically.
 function onCanvasGroupExtract(groupId: string) {
 	const group = workflowDocumentStore.value.getGroupById(groupId);
-	if (!group) return;
+	if (!group || isEmptyGroup(groupId)) return;
 	emit('extract-workflow', [...group.nodeIds]);
+}
+
+function isEmptyGroup(groupId: string): boolean {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return false;
+
+	const memberNodes = group.nodeIds
+		.map((nodeId) => workflowDocumentStore.value.getNodeById(nodeId))
+		.filter(isPresent);
+	return getEmptyGroupAnchor(group, memberNodes) !== undefined;
+}
+
+function onCanvasGroupAddNodesToChat(groupId: string) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+	void onAddNodesToChat([...group.nodeIds], 'group_title_bar');
 }
 
 // Expand or collapse groups through the same path as the single toggle so
@@ -997,8 +1166,22 @@ function onKeyboardSetGroupsExpanded(expanded: boolean) {
  */
 function onDeleteSelection() {
 	const ids = selectedNodeIdsWithGroupMembers.value;
-	// Removing the last group member also deletes the group via the document store
-	if (ids.length > 0) emit('delete:nodes', ids);
+	// Expand selected groups to their member nodes before deletion.
+	if (ids.length > 0) {
+		emit('delete:nodes', ids, getDeleteWholeGroupIds());
+	}
+}
+
+function getDeleteWholeGroupIds() {
+	return selectedNodesAndGroups.value
+		.filter(isCanvasGroupNode)
+		.map((node) => parseCanvasGroupNodeId(node.id))
+		.filter(
+			(groupId) =>
+				groupId &&
+				(selectedNodeIds.value.length === 0 || explicitlySelectedGroupIds.value.has(groupId)),
+		)
+		.filter(isPresent);
 }
 
 // Last header-click toggle, for double-click suppression in onNodeClick.
@@ -1024,6 +1207,11 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 		}
 		return;
 	}
+
+	lastInteractedNode.value = {
+		id: node.id,
+		documentId: workflowDocumentStore.value.documentId,
+	};
 
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
@@ -1065,6 +1253,11 @@ function onSetNodeDeactivated(id: string) {
 function clearSelectedNodes() {
 	removeSelectedNodes(selectedNodesAndGroups.value);
 }
+
+watch(
+	() => instanceAiStore.clearCanvasSelectionRequest,
+	() => clearSelectedNodes(),
+);
 
 function onSelectAllNodes() {
 	addSelectedNodes(selectableNodesAndGroups.value);
@@ -1168,17 +1361,66 @@ const connectionCreated = ref(false);
 const connectingHandle = ref<ConnectStartEvent>();
 const connectedHandle = ref<Connection>();
 
-function onConnectStart(handle: ConnectStartEvent) {
-	emit('create:connection:start', handle);
+function getEmptyGroupAnchorFromCanvasNode(
+	nodeId: string | undefined,
+): { nodeId: string; isCollapsed: boolean } | undefined {
+	if (!nodeId) return undefined;
+	const node = findNode(nodeId);
+	if (!node || !isCanvasGroupNode(node) || !node.data?.isEmptyGroup) return undefined;
 
-	connectingHandle.value = handle;
+	const anchorId = node.data.group.nodeIds[0];
+	if (!anchorId) return undefined;
+
+	return { nodeId: anchorId, isCollapsed: node.data.isCollapsed };
+}
+
+function normalizeEmptyGroupConnection(connection: Connection): Connection {
+	const normalized = { ...connection };
+	const sourceGroup = getEmptyGroupAnchorFromCanvasNode(connection.source);
+	if (sourceGroup?.isCollapsed) {
+		normalized.source = sourceGroup.nodeId;
+		normalized.sourceHandle = createCanvasConnectionHandleString({ mode: 'outputs' });
+	}
+
+	const targetGroup = getEmptyGroupAnchorFromCanvasNode(connection.target);
+	if (targetGroup?.isCollapsed) {
+		normalized.target = targetGroup.nodeId;
+		normalized.targetHandle = createCanvasConnectionHandleString({ mode: 'inputs' });
+	}
+
+	return normalized;
+}
+
+function normalizeEmptyGroupConnectionStart(handle: ConnectStartEvent): ConnectStartEvent {
+	const group = getEmptyGroupAnchorFromCanvasNode(handle.nodeId);
+	if (!group?.isCollapsed) return handle;
+
+	return {
+		...handle,
+		nodeId: group.nodeId,
+		isEmptyGroupTargetStart: handle.handleType === 'target',
+		// Preserve the side the user started from. A left/input drag should add
+		// a node into the group's input, not turn into an output replacement.
+		handleId: createCanvasConnectionHandleString({
+			mode:
+				handle.handleType === 'target' ? CanvasConnectionMode.Input : CanvasConnectionMode.Output,
+		}),
+	};
+}
+
+function onConnectStart(handle: ConnectStartEvent) {
+	const normalizedHandle = normalizeEmptyGroupConnectionStart(handle);
+	emit('create:connection:start', normalizedHandle);
+
+	connectingHandle.value = normalizedHandle;
 	connectionCreated.value = false;
 }
 
 function onConnect(connection: Connection) {
-	emit('create:connection', connection);
+	const normalizedConnection = normalizeEmptyGroupConnection(connection);
+	emit('create:connection', normalizedConnection);
 
-	connectedHandle.value = connection;
+	connectedHandle.value = normalizedConnection;
 	connectionCreated.value = true;
 }
 
@@ -1280,6 +1522,26 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
 			emitFn(lastSelectedNode.value.id);
 		}
 	};
+}
+
+function getReplaceTargetId(): string | undefined {
+	const lastInteractedNodeId =
+		lastInteractedNode.value?.documentId === workflowDocumentStore.value.documentId
+			? lastInteractedNode.value.id
+			: undefined;
+
+	if (
+		lastInteractedNodeId &&
+		selectedNodes.value.some((node) => node.id === lastInteractedNodeId)
+	) {
+		return lastInteractedNodeId;
+	}
+
+	if (selectedNodes.value.length === 1) {
+		return selectedNodes.value[0].id;
+	}
+
+	return lastSelectedNode.value?.id;
 }
 
 /**
@@ -1452,8 +1714,12 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return emit('create:sticky');
 		case 'copy':
 			return emit('copy:nodes', nodeIds);
-		case 'delete':
-			return emit('delete:nodes', nodeIds);
+		case 'delete': {
+			const deleteWholeGroupIds = new Set(getDeleteWholeGroupIds());
+			if (groupId) deleteWholeGroupIds.add(groupId);
+
+			return emit('delete:nodes', nodeIds, [...deleteWholeGroupIds]);
+		}
 		case 'select_all':
 			return onSelectAllNodes();
 		case 'deselect_all':
@@ -1474,12 +1740,21 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return onSetNodeActivated(nodeIds[0]);
 		case 'rename':
 			return emit('update:node:name', nodeIds[0]);
-		case 'replace':
-			return emit('replace:node', nodeIds[0]);
+		case 'replace': {
+			const contextTarget = contextMenu.target.value;
+			const targetNodeId =
+				contextTarget && contextTarget.source !== 'group' ? contextTarget.nodeId : nodeIds[0];
+			if (targetNodeId) return emit('replace:node', targetNodeId);
+			return;
+		}
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
-			return await onTidyUp({ source: 'context-menu' });
+			return await onTidyUp(
+				groupId !== undefined || nodeIds.length > 1
+					? { source: 'context-menu', target: 'selection', nodeIdsFilter: nodeIds }
+					: { source: 'context-menu', target: 'all' },
+			);
 		case 'extract_sub_workflow':
 			return emit('extract-workflow', nodeIds);
 		case 'group_nodes': {
@@ -1525,21 +1800,29 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			void chatPanelStore.open({ mode: 'builder' });
 			return;
 		}
+		case 'add_nodes_to_chat': {
+			void onAddNodesToChat(nodeIds, 'context_menu');
+			return;
+		}
 	}
 }
 
 async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
-	if (payload.nodeIdsFilter && payload.nodeIdsFilter.length > 0) {
-		clearSelectedNodes();
-		addSelectedNodes(payload.nodeIdsFilter.map(findNode).filter(isPresent));
-	}
-	const applyOnSelection = selectedNodes.value.length > 1;
-	const target = applyOnSelection ? 'selection' : 'all';
-	const result = layout(target);
+	const explicitNodes = payload.nodeIdsFilter ? getCanvasNodesByIds(payload.nodeIdsFilter) : [];
+	const explicitNodeIds = explicitNodes.length > 0 ? explicitNodes.map(({ id }) => id) : undefined;
+	const target =
+		payload.target ??
+		(explicitNodeIds !== undefined || selectedNodes.value.length > 1 ? 'selection' : 'all');
+	const applyOnSelection = target === 'selection';
+	const layoutResult = layout(
+		target,
+		applyOnSelection && explicitNodeIds ? { nodeIdsFilter: explicitNodeIds } : {},
+	);
+	const result = settleLayoutResult(layoutResult);
 
 	emit(
 		'tidy-up',
-		{ result, target, source: payload.source },
+		{ result, target, targetNodeCount: layoutResult.nodes.length, source: payload.source },
 		{
 			trackEvents: payload.trackEvents,
 			trackHistory: payload.trackHistory,
@@ -1549,7 +1832,7 @@ async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
 
 	await nextTick();
 	if (applyOnSelection) {
-		await onFitBounds(selectedNodes.value);
+		await onFitBounds(explicitNodes.length > 0 ? explicitNodes : selectedNodes.value);
 	} else {
 		await onFitView();
 	}
@@ -1808,12 +2091,14 @@ defineExpose({
 				:autofocus-group-id="autofocusGroupTitleId"
 				:read-only="readOnly || suppressInteraction"
 				:can-extract="extractableGroupIds.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
+				:has-trigger="groupIdsWithTrigger.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
 				@toggle="onCanvasGroupToggle"
 				@update:name="onCanvasGroupNameUpdate"
 				@update:description="onCanvasGroupDescriptionUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
 				@extract="onCanvasGroupExtract"
+				@add-nodes-to-chat="onCanvasGroupAddNodesToChat"
 				@open:contextmenu="onOpenGroupContextMenu"
 			/>
 		</template>
@@ -1845,6 +2130,7 @@ defineExpose({
 					@focus="onFocusNode"
 					@replace:node="onReplaceNode"
 					@add:ai="onAddToAi"
+					@add-nodes-to-chat="onAddNodesToChat([$event], 'node_toolbar')"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
 						<slot name="nodeToolbar" v-bind="toolbarProps" />
@@ -1887,6 +2173,7 @@ defineExpose({
 			:read-only="readOnly || suppressInteraction"
 			@group-created="onNodeGroupCreated"
 			@extract-workflow="emit('extract-workflow', $event)"
+			@add-nodes-to-chat="onAddNodesToChat($event, 'selection_toolbar')"
 		/>
 
 		<Transition name="minimap">
@@ -1918,7 +2205,6 @@ defineExpose({
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
-			@reset-zoom="onResetZoom"
 			@tidy-up="onTidyUp({ source: 'canvas-button' })"
 			@toggle-zoom-mode="onToggleZoomMode"
 		/>

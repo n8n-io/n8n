@@ -3,9 +3,12 @@ import ExpressionEditModal from './ExpressionEditModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { setActivePinia, type Pinia } from 'pinia';
-import { defaultSettings } from '@/__tests__/defaults';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { defaultSettings } from '@n8n/frontend-test-utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestNodeProperties } from '@/__tests__/mocks';
+import { useUIStore } from '@/app/stores/ui.store';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { Expression } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -82,9 +85,32 @@ describe('ExpressionEditModal', () => {
 		});
 	});
 
-	describe('output render mode radio buttons', () => {
+	it('previews external secrets with the data passed by the credential modal', async () => {
+		// The evaluator returns undefined for a transformed secret, which its type does not admit.
+		vi.spyOn(Expression, 'resolveWithoutWorkflow').mockReturnValue(undefined as unknown as string);
+		useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+
+		const { getByTestId } = renderModal({
+			pinia,
+			props: {
+				parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
+				path: '',
+				modelValue: "={{ JSON.parse($secrets.vault['json/path']).password }}",
+				dialogVisible: true,
+				additionalExpressionData: { $secrets: { vault: { 'json/path': '*********' } } },
+			},
+		});
+
+		await waitFor(() => {
+			expect(getByTestId('expression-modal-output')).toHaveTextContent(
+				'[evaluated during execution]',
+			);
+		});
+	});
+
+	describe('output render mode', () => {
 		it('renders all three render mode options', async () => {
-			const { getByText } = renderModal({
+			const { getByRole } = renderModal({
 				pinia,
 				props: {
 					parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
@@ -95,14 +121,14 @@ describe('ExpressionEditModal', () => {
 			});
 
 			await waitFor(() => {
-				expect(getByText('Text')).toBeInTheDocument();
-				expect(getByText('Html')).toBeInTheDocument();
-				expect(getByText('Markdown')).toBeInTheDocument();
+				expect(getByRole('radio', { name: 'Text' })).toBeInTheDocument();
+				expect(getByRole('radio', { name: 'Html' })).toBeInTheDocument();
+				expect(getByRole('radio', { name: 'Markdown' })).toBeInTheDocument();
 			});
 		});
 
 		it('has Text as default render mode', async () => {
-			const { getByText } = renderModal({
+			const { getByRole } = renderModal({
 				pinia,
 				props: {
 					parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
@@ -113,13 +139,12 @@ describe('ExpressionEditModal', () => {
 			});
 
 			await waitFor(() => {
-				const textButton = getByText('Text').closest('label');
-				expect(textButton).toHaveAttribute('aria-checked', 'true');
+				expect(getByRole('radio', { name: 'Text' })).toBeChecked();
 			});
 		});
 
 		it('allows switching to Html render mode', async () => {
-			const { getByText } = renderModal({
+			const { getByRole } = renderModal({
 				pinia,
 				props: {
 					parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
@@ -129,19 +154,19 @@ describe('ExpressionEditModal', () => {
 				},
 			});
 
-			await waitFor(async () => {
-				const htmlButton = getByText('Html').closest('label');
-				const htmlInput = htmlButton?.querySelector('input');
+			await waitFor(() => {
+				expect(getByRole('radio', { name: 'Html' })).toBeInTheDocument();
+			});
 
-				if (htmlInput) {
-					htmlInput.click();
-					expect(htmlInput).toBeChecked();
-				}
+			await fireEvent.click(getByRole('radio', { name: 'Html' }));
+
+			await waitFor(() => {
+				expect(getByRole('radio', { name: 'Html' })).toBeChecked();
 			});
 		});
 
 		it('allows switching to Markdown render mode', async () => {
-			const { getByText } = renderModal({
+			const { getByRole } = renderModal({
 				pinia,
 				props: {
 					parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
@@ -151,14 +176,14 @@ describe('ExpressionEditModal', () => {
 				},
 			});
 
-			await waitFor(async () => {
-				const markdownButton = getByText('Markdown').closest('label');
-				const markdownInput = markdownButton?.querySelector('input');
+			await waitFor(() => {
+				expect(getByRole('radio', { name: 'Markdown' })).toBeInTheDocument();
+			});
 
-				if (markdownInput) {
-					markdownInput.click();
-					expect(markdownInput).toBeChecked();
-				}
+			await fireEvent.click(getByRole('radio', { name: 'Markdown' }));
+
+			await waitFor(() => {
+				expect(getByRole('radio', { name: 'Markdown' })).toBeChecked();
 			});
 		});
 

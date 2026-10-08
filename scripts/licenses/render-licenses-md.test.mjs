@@ -360,19 +360,15 @@ describe('renderSbom — edge cases', () => {
 	});
 
 	it('all documented overrides resolve to zero unresolved (end-to-end)', async () => {
-		const purls = [
-			'pkg:npm/%40ewoudenberg/difflib@0.1.0',
-			'pkg:npm/binascii@0.0.2',
-			'pkg:npm/busboy@1.6.0',
-			'pkg:npm/imap@0.8.19',
-			'pkg:npm/js-nacl@1.4.0',
-			'pkg:npm/seq-queue@0.0.5',
-			'pkg:npm/streamsearch@1.1.0',
-			'pkg:npm/utf7@1.0.2',
-			'pkg:npm/nub@0.0.0',
-			'pkg:npm/xml-escape@1.1.0',
-			'pkg:npm/duck@0.1.12',
-		];
+		// Derived from the shipped config, never hand-listed: a copy here would
+		// break on every override the repo adds or drops. This is the one suite
+		// that reads the real file — it asserts each documented override yields a
+		// resolvable license, and (via unusedOverrides) that the matcher still
+		// recognises every key shape, including percent-encoded scopes.
+		const overridesModule = await loadOverrides();
+		const purls = Object.keys(overridesModule);
+		assert.ok(purls.length > 0, 'expected at least one documented override');
+
 		const sbom = {
 			components: purls.map((purl) => {
 				const m = purl.match(/^pkg:npm\/(?:%40([^/]+)\/)?([^@]+)@(.+)$/);
@@ -386,7 +382,6 @@ describe('renderSbom — edge cases', () => {
 			}),
 		};
 
-		const overridesModule = await loadOverrides();
 		const { summary, unresolved, unusedOverrides } = await renderSbom(sbom, overridesModule);
 		assert.equal(unresolved.length, 0, `unresolved: ${unresolved.join(', ')}`);
 		assert.equal(summary.unresolved, 0);

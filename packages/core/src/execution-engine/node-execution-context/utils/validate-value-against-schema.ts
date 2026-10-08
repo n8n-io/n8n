@@ -52,6 +52,14 @@ const validateResourceMapperValue = (
 	const result: ExtendedValidationResult = { valid: true, newValue: paramValues };
 	const skipRequiredCheck = resourceMapperTypeOptions?.mode !== 'add';
 	const enableTypeValidationOptions = Boolean(resourceMapperTypeOptions?.showTypeConversionOptions);
+	// When the node description sets this, the stored `convertFieldsToString` is
+	// ignored: the UI wrote it unconditionally and offers no way to see or change it,
+	// so only programmatic authors could produce a differing value. Nodes opt in per
+	// version, because turning casting on also turns on the `strict` check, which
+	// would reject inputs that saved workflows pass through today.
+	const alwaysConvertFieldsToString = Boolean(
+		resourceMapperTypeOptions?.alwaysConvertFieldsToString,
+	);
 	const paramNameParts = parameterName.split('.');
 	if (paramNameParts.length !== 2) {
 		return result;
@@ -86,7 +94,9 @@ const validateResourceMapperValue = (
 			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
 				valueOptions: schemaEntry.options,
 				strict: enableTypeValidationOptions && !resourceMapperField.attemptToConvertTypes,
-				parseStrings: enableTypeValidationOptions && resourceMapperField.convertFieldsToString,
+				parseStrings:
+					enableTypeValidationOptions &&
+					(alwaysConvertFieldsToString || resourceMapperField.convertFieldsToString),
 			});
 
 			if (!validationResult.valid) {

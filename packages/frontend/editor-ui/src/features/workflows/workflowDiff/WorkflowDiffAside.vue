@@ -34,7 +34,6 @@ const emit = defineEmits<{
 		:min-width="260"
 		:supported-directions="['left']"
 		:grid-size="8"
-		outset
 		@resize="onResize"
 	>
 		<div :class="$style.asideHeader">

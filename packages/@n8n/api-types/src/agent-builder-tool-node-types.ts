@@ -19,8 +19,12 @@ const AGENT_BUILDER_AI_UTILITY_TOOL_NODE_TYPES = [
 export const AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES: readonly string[] = [
 	...AI_VENDOR_NODE_TYPES.map((nodeType) => `${nodeType}Tool`),
 	CHAT_TOOL_NODE_TYPE,
+	// Replaced by the standard HTTP Request node's usable-as-tool variant
+	'@n8n/n8n-nodes-langchain.toolHttpRequest',
 	// Agents call workflows via native workflow tools, not the sub-workflow node
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+	// Agents call other agents as native sub-agents, not through the workflow node
+	'n8n-nodes-base.messageAnAgentTool',
 	// Reasoning helpers an agent does not need
 	...AGENT_BUILDER_AI_UTILITY_TOOL_NODE_TYPES,
 	// Provider nodes: an agent already has its own model

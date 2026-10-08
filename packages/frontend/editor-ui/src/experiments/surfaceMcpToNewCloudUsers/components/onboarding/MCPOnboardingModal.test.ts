@@ -36,7 +36,6 @@ const mockExperimentStore = {
 	trackClientSelected: vi.fn(),
 	trackSetupShown: vi.fn(),
 	trackCopiedParameter: vi.fn(),
-	dismissFirstOpenModal: vi.fn(),
 };
 
 vi.mock('@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store', () => ({
@@ -52,7 +51,8 @@ type MockMcpStore = {
 
 let mockMcpStore: MockMcpStore;
 
-vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
+vi.mock('@n8n/frontend-module-mcp', async (importOriginal) => ({
+	...(await importOriginal()),
 	useMCPStore: () => mockMcpStore,
 }));
 
@@ -70,7 +70,7 @@ const ModalStub = defineComponent({
 const renderComponent = createComponentRenderer(MCPOnboardingModal, {
 	props: {
 		data: {
-			surface: 'first_open_modal',
+			surface: 'tile',
 		},
 	},
 	global: {
@@ -111,9 +111,9 @@ describe('MCPOnboardingModal', () => {
 		await user.click(getByRole('switch'));
 
 		expect(mockMcpStore.setMcpAccessEnabled).toHaveBeenCalledWith(true);
-		expect(mockExperimentStore.trackEnableClicked).toHaveBeenCalledWith('first_open_modal');
+		expect(mockExperimentStore.trackEnableClicked).toHaveBeenCalledWith('tile');
 		expect(await findByText(/Show me the n8n MCP connector/)).toBeInTheDocument();
-		expect(mockExperimentStore.trackEnabled).toHaveBeenCalledWith('first_open_modal');
+		expect(mockExperimentStore.trackEnabled).toHaveBeenCalledWith('tile');
 	});
 
 	it('hides the prompt when toggled off', async () => {
@@ -160,11 +160,7 @@ describe('MCPOnboardingModal', () => {
 		expect(await findByText('Paste Server URL')).toBeInTheDocument();
 		expect(await findByTestId('mcp-onboarding-claude-server-url')).toBeInTheDocument();
 		expect(getByTestId('mcp-onboarding-copy-server-url-button')).toBeEnabled();
-		expect(mockExperimentStore.trackSetupShown).toHaveBeenCalledWith(
-			'first_open_modal',
-			'claude',
-			'prompt',
-		);
+		expect(mockExperimentStore.trackSetupShown).toHaveBeenCalledWith('tile', 'claude', 'prompt');
 	});
 
 	it('copies the Claude server URL with server-url telemetry', async () => {
@@ -177,7 +173,7 @@ describe('MCPOnboardingModal', () => {
 
 		expect(mockClipboardCopy).toHaveBeenCalledWith('https://example.n8n.cloud/mcp-server/http');
 		expect(mockExperimentStore.trackCopiedParameter).toHaveBeenCalledWith(
-			'first_open_modal',
+			'tile',
 			'claude',
 			'server-url',
 		);
@@ -209,12 +205,9 @@ describe('MCPOnboardingModal', () => {
 
 		await user.click(getByText('Claude Code'));
 
-		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith(
-			'first_open_modal',
-			'claude_code',
-		);
+		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith('tile', 'claude_code');
 		expect(mockExperimentStore.trackSetupShown).toHaveBeenCalledWith(
-			'first_open_modal',
+			'tile',
 			'claude_code',
 			'prompt',
 		);
@@ -232,10 +225,7 @@ describe('MCPOnboardingModal', () => {
 
 		await user.click(getByText('Codex'));
 
-		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith(
-			'first_open_modal',
-			'codex',
-		);
+		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith('tile', 'codex');
 		expect(container.textContent).toContain('Paste the prompt in Codex');
 		expect(container.textContent).toContain('[mcp_servers.n8n]');
 		expect(queryByTestId('mcp-onboarding-claude-server-url')).not.toBeInTheDocument();
@@ -268,12 +258,9 @@ describe('MCPOnboardingModal', () => {
 
 		await user.click(getByText('ChatGPT'));
 
-		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith(
-			'first_open_modal',
-			'chatgpt',
-		);
+		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith('tile', 'chatgpt');
 		expect(mockExperimentStore.trackSetupShown).toHaveBeenCalledWith(
-			'first_open_modal',
+			'tile',
 			'chatgpt',
 			'chatgpt_custom_app',
 		);
@@ -301,7 +288,7 @@ describe('MCPOnboardingModal', () => {
 
 		expect(mockClipboardCopy).toHaveBeenCalledWith('https://example.n8n.cloud/mcp-server/http');
 		expect(mockExperimentStore.trackCopiedParameter).toHaveBeenCalledWith(
-			'first_open_modal',
+			'tile',
 			'chatgpt',
 			'server-url',
 		);
@@ -310,7 +297,7 @@ describe('MCPOnboardingModal', () => {
 
 		expect(mockClipboardCopy).toHaveBeenCalledWith('n8n');
 		expect(mockExperimentStore.trackCopiedParameter).toHaveBeenCalledWith(
-			'first_open_modal',
+			'tile',
 			'chatgpt',
 			'chatgpt-app-name',
 		);
@@ -324,10 +311,7 @@ describe('MCPOnboardingModal', () => {
 
 		await user.click(getByText('Cursor'));
 
-		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith(
-			'first_open_modal',
-			'cursor',
-		);
+		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith('tile', 'cursor');
 		expect(container.textContent).toContain('~/.cursor/mcp.json');
 		expect(container.textContent).toContain('complete the n8n OAuth flow');
 		expect(container.textContent).not.toContain('Authorization');
@@ -346,7 +330,7 @@ describe('MCPOnboardingModal', () => {
 		await user.click(getByTestId('mcp-onboarding-copy-prompt-button'));
 
 		expect(mockExperimentStore.trackCopiedParameter).toHaveBeenCalledWith(
-			'first_open_modal',
+			'tile',
 			'cursor',
 			'agent-prompt',
 		);
@@ -363,6 +347,5 @@ describe('MCPOnboardingModal', () => {
 			enabledDuringThisOpen: false,
 			mcpAccessEnabled: false,
 		});
-		expect(mockExperimentStore.dismissFirstOpenModal).not.toHaveBeenCalled();
 	});
 });

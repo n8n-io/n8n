@@ -1,5 +1,6 @@
 @use '@n8n/design-system/css/_primitives' as primitives;
 @use '@n8n/design-system/css/_tokens' as tokens;
+@use '@n8n/design-system/css/fonts/inter';
 
 :root {
 	color-scheme: light dark;
@@ -11,14 +12,6 @@
 	body:not([data-theme]) {
 		@include tokens.theme-dark;
 	}
-}
-
-@font-face {
-	font-family: InterVariable;
-	font-style: normal;
-	font-weight: 100 900;
-	font-display: swap;
-	src: url('@n8n/design-system/../assets/fonts/InterVariable.woff2') format('woff2');
 }
 
 *,

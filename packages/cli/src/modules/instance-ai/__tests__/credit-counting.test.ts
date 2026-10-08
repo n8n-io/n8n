@@ -1,8 +1,15 @@
 import type { Mock } from 'vitest';
+import type { Thread } from '@n8n/agents';
+import { UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { BuilderUsageItem } from '@n8n/instance-ai';
+import { mock } from 'vitest-mock-extended';
+
+import type { InstanceActivationService } from '@/services/instance-activation.service';
 
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
+import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import type { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
 import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 // Skip the real backoff sleeps so retry tests run instantly.
@@ -19,9 +26,18 @@ function createService(deps: {
 	aiService: { isProxyEnabled: Mock; getClient: Mock };
 	push: { sendToUsers: Mock };
 	telemetry: { track: Mock };
+	activationCapped?: boolean;
 }) {
 	const scopedLogger = { warn: vi.fn(), debug: vi.fn() };
 	const logger = { scoped: vi.fn().mockReturnValue(scopedLogger) };
+	const settingsService = mock<InstanceAiSettingsService>();
+	settingsService.isActivationCapped.mockReturnValue(deps.activationCapped ?? false);
+
+	// Typed, so a rename on either collaborator fails the build instead of silently
+	// producing `undefined` and sending the caller down its catch. Neither is exercised
+	// by the claim path this file covers — the lock has its own suite.
+	const activationService = mock<InstanceActivationService>();
+	const messageRepo = mock<InstanceAiMessageRepository>();
 	return new InstanceAiCreditService(
 		logger as never,
 		deps.aiService as never,
@@ -29,6 +45,9 @@ function createService(deps: {
 		{ instanceId: 'inst-1' } as never,
 		deps.push as never,
 		deps.threadRepo as never,
+		settingsService,
+		activationService,
+		messageRepo,
 	);
 }
 
@@ -39,9 +58,23 @@ function claimedRunIds(service: InstanceAiCreditService) {
 function createMockThreadRepo(
 	thread?: { id: string; metadata: Record<string, unknown> | null } | null,
 ) {
+	let current: Thread | null = thread
+		? {
+				id: thread.id,
+				resourceId: 'user-1',
+				metadata: thread.metadata ?? undefined,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			}
+		: null;
 	return {
-		findOneBy: vi.fn().mockResolvedValue(thread ?? null),
-		save: vi.fn().mockImplementation(async (entity: unknown) => entity),
+		updateThread: vi.fn<InstanceAiThreadRepository['updateThread']>(async ({ update }) => {
+			if (!current) return null;
+			const patch = update(structuredClone(current));
+			if (patch) current = { ...current, ...patch };
+			return await Promise.resolve(current);
+		}),
+		getCurrent: () => current,
 	};
 }
 
@@ -137,7 +170,7 @@ describe('claimRunUsage', () => {
 			{ Authorization: 'Bearer ia-tok' },
 			{ dedupeId: 'run-1', usage, threadId: 't1' },
 		);
-		expect(threadRepo.save).toHaveBeenCalledWith(
+		expect(threadRepo.getCurrent()).toEqual(
 			expect.objectContaining({ metadata: expect.objectContaining({ creditsUsed: 2.5 }) }),
 		);
 		expect(push.sendToUsers).toHaveBeenCalledWith(
@@ -152,6 +185,38 @@ describe('claimRunUsage', () => {
 			['user-1'],
 		);
 		expect(delta).toBe(0.5);
+	});
+
+	it('masks the pushed balance for the activation-capped cohort', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditsUsed: 2 } });
+		const ai = createMockAiService({
+			claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: 100 },
+		});
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
+
+		const service = createService({
+			threadRepo,
+			aiService: ai,
+			push,
+			telemetry,
+			activationCapped: true,
+		});
+		await callClaim(service);
+
+		// No `quotaLocked`: a claim knows nothing about the lock, and saying `false` here would
+		// retract the warning a preceding lock had raised. Claims can land after the lock.
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'updateInstanceAiCredits',
+				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 },
+			}),
+			['user-1'],
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'Builder credits claimed',
+			expect.objectContaining({ credits_claimed_total: 5.5, credits_quota: 100 }),
+		);
 	});
 
 	it('fires the "Builder credits claimed" event with success true on the happy path', async () => {
@@ -277,7 +342,7 @@ describe('claimRunUsage', () => {
 
 	it('keeps the claim successful when persisting the thread total fails', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditsUsed: 2 } });
-		threadRepo.save = vi.fn().mockRejectedValue(new Error('db down'));
+		threadRepo.updateThread.mockRejectedValueOnce(new Error('db down'));
 		const ai = createMockAiService({
 			claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: 100 },
 		});
@@ -337,6 +402,23 @@ describe('claimRunUsage', () => {
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 	});
 
+	it('does not charge an errored segment with no billable usage', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+		const ai = createMockAiService();
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
+
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		await callClaim(service, { usage: [], status: 'errored' });
+
+		expect(ai.getClient).not.toHaveBeenCalled();
+		expect(ai.__getInstanceAiApiProxyToken).not.toHaveBeenCalled();
+		expect(ai.__markInstanceAiTokenUsage).not.toHaveBeenCalled();
+		expect(threadRepo.updateThread).not.toHaveBeenCalled();
+		expect(push.sendToUsers).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
 	it('does nothing when the proxy is disabled', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ proxyEnabled: false });
@@ -358,7 +440,7 @@ describe('claimRunUsage', () => {
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const result = await callClaim(service);
 
-		expect(threadRepo.save).not.toHaveBeenCalled();
+		expect(threadRepo.updateThread).not.toHaveBeenCalled();
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 		expect(result).toBeUndefined();
 	});

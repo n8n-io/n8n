@@ -1,3 +1,5 @@
+import { JSDOM } from 'jsdom';
+
 import {
 	COPY_BUTTON_PATTERN,
 	REVEAL_BUTTON_PATTERN,
@@ -5,8 +7,44 @@ import {
 	SENSITIVE_ARIA_LABEL_PATTERN,
 	SENSITIVE_FIELD_LABEL_PATTERN,
 	SENSITIVE_TESTID_PATTERN,
+	highEntropyCandidates,
+	isSecretLabelledCell,
+	opaqueTokenCandidates,
 	shannonEntropy,
 } from './dom-matchers';
+
+describe('highEntropyCandidates', () => {
+	// Two tokens can share a high-entropy fragment. Picking one token's span would
+	// leave the other — and the shared fragment inside it — untouched.
+	it('falls back to the shared fragment when two tokens disagree', () => {
+		const fragment = 'Zt7vLpQ9mKdW4xR2bNfH3jEuXaGoT5wPqYs1BcRmZxQ';
+
+		const hits = highEntropyCandidates(`first alpha.${fragment} second bravo.${fragment} end`);
+
+		expect(hits.map((hit) => hit.value)).toEqual([fragment]);
+	});
+
+	// The same key shown bare and inside a wrapper is one secret. Keeping both
+	// spans would offer the model a marker that captures the wrapper text.
+	it('merges a bare key with a wrapped rendering of it', () => {
+		const key = 'Zt7vLpQ9mKdW4xR2bNfH3jEuXaGoT5wPqYs1BcRmZxQ';
+
+		const hits = highEntropyCandidates(`bare ${key} and wrapped session.${key}`);
+
+		expect(hits.map((hit) => hit.value)).toEqual([key]);
+	});
+
+	// A large inline script is one long undelimited run. Expansion must not
+	// rescan it for every match, or sensitivity analysis stalls the tool call.
+	it('stays linear on a large run of high-entropy segments', () => {
+		const text = Array.from({ length: 3200 }, () => 'aB3xY9zQ7wE2rT5yU8iO1pL4kJ6hG0fD').join('.');
+
+		const started = performance.now();
+		highEntropyCandidates(text);
+
+		expect(performance.now() - started).toBeLessThan(1000);
+	});
+});
 
 describe('shannonEntropy', () => {
 	it('returns 0 for empty and repeated strings', () => {
@@ -180,5 +218,69 @@ describe('REVEAL_PHRASE_PATTERNS', () => {
 		'Show details',
 	])('does not match neutral phrase %p', (phrase) => {
 		expect(matchesAny(phrase)).toBe(false);
+	});
+});
+
+/** The value cell of a label/value fixture, which is always the last one. */
+function cell(html: string): Element {
+	const cells = new JSDOM(`<dl>${html}</dl>`).window.document.querySelectorAll('dd, td');
+	return cells[cells.length - 1];
+}
+
+describe('isSecretLabelledCell', () => {
+	it.each([
+		{ named: 'a dt partner naming a secret', html: '<dt>Client Secret</dt><dd>v</dd>' },
+		{
+			named: 'a th partner naming a secret',
+			html: '<table><tr><th>API Key</th><td>v</td></tr></table>',
+		},
+		{
+			named: 'a td partner naming a secret',
+			html: '<table><tr><td>Client Secret</td><td>v</td></tr></table>',
+		},
+		{ named: 'a decorated label', html: '<dt>Client Secret:</dt><dd>v</dd>' },
+		{ named: 'the cell id', html: '<dt>Issued</dt><dd id="client-secret">v</dd>' },
+		{ named: 'the cell test id', html: '<dt>Issued</dt><dd data-testid="client-secret">v</dd>' },
+		{ named: 'a camelCase test id', html: '<dt>Issued</dt><dd data-testid="clientSecret">v</dd>' },
+		{ named: 'a camelCase id', html: '<dt>Issued</dt><dd id="apiKeyValue">v</dd>' },
+	])('accepts $named', ({ html }) => {
+		expect(isSecretLabelledCell(cell(html))).toBe(true);
+	});
+
+	it.each([
+		{ named: 'a label the noun only qualifies', html: '<dt>Token expiry</dt><dd>v</dd>' },
+		{ named: 'a qualified label behind decoration', html: '<dt>Credential type:</dt><dd>v</dd>' },
+		{
+			named: 'a camelCase identifier merely containing a noun',
+			html: '<dt>Issued</dt><dd id="tokenizerOutput">v</dd>',
+		},
+		{
+			named: 'a camelCase test id merely containing a noun',
+			html: '<dt>Issued</dt><dd data-testid="secretaryPanel">v</dd>',
+		},
+		{
+			named: 'an identifier merely containing a noun',
+			html: '<dt>Issued</dt><dd id="tokenizer-output">v</dd>',
+		},
+		{ named: 'an unrelated label', html: '<dt>Client ID</dt><dd>v</dd>' },
+		{ named: 'no label at all', html: '<dd>v</dd>' },
+	])('rejects $named', ({ html }) => {
+		expect(isSecretLabelledCell(cell(html))).toBe(false);
+	});
+});
+
+describe('opaqueTokenCandidates', () => {
+	it('takes a long unbroken run whatever its charset', () => {
+		expect(opaqueTokenCandidates(cell('<dd>f8c1b2d47e6a903b5c4d1e8f2a7b6c95</dd>'))).toEqual([
+			{ type: 'password', value: 'f8c1b2d47e6a903b5c4d1e8f2a7b6c95' },
+		]);
+	});
+
+	it.each([
+		{ named: 'prose', html: '<dd>Every 90 days</dd>' },
+		{ named: 'a value under the length floor', html: '<dd>OAuth2</dd>' },
+		{ named: 'a mask', html: '<dd>••••••••••••••••••••</dd>' },
+	])('ignores $named', ({ html }) => {
+		expect(opaqueTokenCandidates(cell(html))).toEqual([]);
 	});
 });

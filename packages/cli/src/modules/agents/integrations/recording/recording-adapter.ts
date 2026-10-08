@@ -26,6 +26,17 @@ const METHODS_BY_PLATFORM: Record<string, string[]> = {
 		'fetchMessages',
 	],
 	linear: ['postMessage', 'editMessage', 'deleteMessage', 'addReaction', 'fetchMessages'],
+	discord: [
+		'postMessage',
+		'postChannelMessage',
+		'editMessage',
+		'deleteMessage',
+		'addReaction',
+		'removeReaction',
+		'startTyping',
+		'openDM',
+		'fetchMessages',
+	],
 };
 
 type UnknownMethod = (this: unknown, ...args: unknown[]) => unknown;

@@ -1,7 +1,6 @@
 import type { TagEntity, ITagWithCountDb } from '@n8n/db';
-import { TagRepository, TransactionRunner } from '@n8n/db';
+import { isUniqueConstraintError, TagRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { QueryFailedError } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -9,16 +8,6 @@ import { validateEntity } from '@/generic-helpers';
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
 
 type Action = 'Create' | 'Update';
-
-// n8n supports postgres (SQLSTATE 23505) and sqlite (SQLITE_CONSTRAINT_UNIQUE,
-// or the older SQLITE_CONSTRAINT with a "UNIQUE constraint" message).
-function isUniqueConstraintViolation(error: unknown): error is QueryFailedError {
-	if (!(error instanceof QueryFailedError)) return false;
-	const driver = (error as { driverError?: { code?: unknown } }).driverError;
-	const code = driver && typeof driver.code !== 'undefined' ? String(driver.code) : undefined;
-	if (code === '23505' || code === 'SQLITE_CONSTRAINT_UNIQUE') return true;
-	return code === 'SQLITE_CONSTRAINT' && /UNIQUE constraint/i.test(error.message);
-}
 
 @Service()
 export class TagService {
@@ -75,17 +64,10 @@ export class TagService {
 		options?: T,
 	): Promise<GetAllResult<T>> {
 		if (options?.withUsageCount) {
-			const qb = this.tagRepository
-				.createQueryBuilder('tag')
-				.select(['tag.id', 'tag.name', 'tag.createdAt', 'tag.updatedAt'])
-				.loadRelationCountAndMap('tag.usageCount', 'tag.workflowMappings', 'wm', (qb2) =>
-					qb2.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
-						isArchived: false,
-					}),
-				);
-			if (options.orderByName) qb.orderBy('tag.name', 'ASC');
-			if (options.limit !== undefined) qb.limit(options.limit);
-			const tags = await qb.getMany();
+			const tags = await this.tagRepository.findAllWithUsageCount({
+				orderByName: options.orderByName,
+				limit: options.limit,
+			});
 
 			return tags as GetAllResult<T>;
 		}
@@ -124,6 +106,10 @@ export class TagService {
 	async getByNames(names: string[]): Promise<TagEntity[]> {
 		if (names.length === 0) return [];
 		return await this.tagRepository.findManyByName(names);
+	}
+
+	async getAllByWorkflowId(workflowId: string): Promise<TagEntity[]> {
+		return await this.tagRepository.findBy({ workflows: { id: workflowId } });
 	}
 
 	/**
@@ -179,7 +165,7 @@ export class TagService {
 				const created = await this.save(this.toEntity({ name }), 'create');
 				result.push(created);
 			} catch (error) {
-				if (!isUniqueConstraintViolation(error)) throw error;
+				if (!isUniqueConstraintError(error)) throw error;
 				const raced = await this.tagRepository.findOneBy({ name });
 				if (!raced) throw error;
 				result.push(raced);

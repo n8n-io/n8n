@@ -186,7 +186,7 @@ describe('AlicloudModelStudio Transport', () => {
 				NodeOperationError,
 			);
 			await expect(pollTaskResult.call(mockExecuteFunctions, 'task-789', 0)).rejects.toThrow(
-				'Video generation task was canceled',
+				'Task was canceled',
 			);
 		});
 

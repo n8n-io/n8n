@@ -1,30 +1,32 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import {
-	In,
 	type IExecutionResponse,
+	ExecutionRepository,
 	ProjectRelationRepository,
 	WorkflowEntity,
+	WorkflowRepository,
 	User,
 } from '@n8n/db';
-import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { DateTime } from 'luxon';
 import { sleep } from '@n8n/utils/sleep';
+import type { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
-import { ExecutionStatus, type IRun, type ITaskData } from 'n8n-workflow';
+import type { IRun, ITaskData } from 'n8n-workflow';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 
 import { isNodeEventMessage, type EventMessageTypes } from '../eventbus/event-message-classes';
 
@@ -44,6 +46,8 @@ export class ExecutionRecoveryService {
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly ownershipService: OwnershipService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly workflowPushNotifier: WorkflowPushNotifier,
+		private readonly executionCrashService: ExecutionCrashService,
 	) {}
 
 	async autoDeactivateWorkflowsIfNeeded(workflowIds: Set<string>) {
@@ -88,7 +92,10 @@ export class ExecutionRecoveryService {
 
 						this.push.once('editorUiConnected', async () => {
 							await sleep(1000);
-							this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
+							await this.workflowPushNotifier.notify(workflowId, {
+								type: 'workflowAutoDeactivated',
+								data: { workflowId },
+							});
 						});
 					} catch (error) {
 						// A throw here would abort startup recovery for the remaining
@@ -101,10 +108,7 @@ export class ExecutionRecoveryService {
 					}
 				}
 
-				await this.executionRepository.update(
-					{ workflowId, status: In<ExecutionStatus>(['running', 'new']) },
-					{ status: 'crashed', stoppedAt: new Date() },
-				);
+				await this.executionCrashService.markWorkflowExecutionsAsCrashed(workflowId);
 			}
 		}
 	}
@@ -127,9 +131,14 @@ export class ExecutionRecoveryService {
 
 		await this.runHooks(amendedExecution);
 
+		const { workflowId } = amendedExecution;
+
 		this.push.once('editorUiConnected', async () => {
 			await sleep(1000);
-			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
+			await this.workflowPushNotifier.notify(workflowId, {
+				type: 'executionRecovered',
+				data: { executionId },
+			});
 		});
 
 		return amendedExecution;
@@ -161,7 +170,7 @@ export class ExecutionRecoveryService {
 		 * */
 		if (
 			!execution ||
-			(['success', 'error', 'canceled'].includes(execution.status) && execution.data)
+			(['success', 'error', 'canceled', 'crashed'].includes(execution.status) && execution.data)
 		) {
 			return null;
 		}
@@ -171,8 +180,6 @@ export class ExecutionRecoveryService {
 		// CAT-752: runData can be missing even tho according to the type it shouldn't be.
 		// We initialize it to avoid referencing a property of undefined later on.
 		runExecutionData.resultData.runData ??= {};
-
-		let lastNodeRunTimestamp: DateTime | undefined;
 
 		for (const node of execution.workflowData.nodes) {
 			const nodeMessages = nodeMessagesByName[node.name] ?? [];
@@ -201,23 +208,40 @@ export class ExecutionRecoveryService {
 				taskData.executionStatus = 'success';
 				taskData.data ??= ARTIFICIAL_TASK_DATA;
 				taskData.executionTime = nodeFinishedMessage.ts.diff(nodeStartedMessage.ts).toMillis();
-				lastNodeRunTimestamp = nodeFinishedMessage.ts;
 			} else {
 				taskData.executionStatus = 'crashed';
 				taskData.error = new NodeCrashedError(node);
 				taskData.executionTime = 0;
 				runExecutionData.resultData.error = new WorkflowCrashedError();
-				lastNodeRunTimestamp = nodeStartedMessage.ts;
 			}
 
 			runExecutionData.resultData.lastNodeExecuted = node.name;
 			runExecutionData.resultData.runData[node.name] = [taskData];
 		}
 
+		const stoppedAt = this.toStoppedAt(
+			this.latestNodeEventTs(nodeMessagesByName),
+			workflowMessages,
+		);
+
+		// A finished row that lost its data is past the claim's status guard, so it is amended directly.
+		if (!['success', 'error', 'canceled'].includes(execution.status)) {
+			const [claimed] = await this.executionCrashService.markAsCrashedWithoutCounting(
+				executionId,
+				'startup-recovery',
+				{ stoppedAt },
+			);
+
+			// Another detector crashed it first, or it moved on to a status that must be kept.
+			if (!claimed) return null;
+		}
+
 		return {
 			...execution,
 			status: execution.status === 'error' ? 'error' : 'crashed',
-			stoppedAt: this.toStoppedAt(lastNodeRunTimestamp, workflowMessages),
+			stoppedAt,
+			// The claim clears `waitTill`, so the later write must not restore the stale value.
+			waitTill: null,
 			data: runExecutionData,
 		} as IExecutionResponse;
 	}
@@ -227,7 +251,7 @@ export class ExecutionRecoveryService {
 
 		if (!exists) return null;
 
-		await this.executionRepository.markAsCrashed(executionId);
+		await this.executionCrashService.markAsCrashedWithoutCounting(executionId, 'startup-recovery');
 
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
@@ -255,6 +279,17 @@ export class ExecutionRecoveryService {
 			},
 			{ nodeMessagesByName: {}, workflowMessages: [] },
 		);
+	}
+
+	/** The node list follows canvas order, not run order, so pick the latest event by time. */
+	private latestNodeEventTs(nodeMessagesByName: Record<string, EventMessageTypes[]>) {
+		let latest: DateTime | undefined;
+
+		for (const { ts } of Object.values(nodeMessagesByName).flat()) {
+			if (!latest || ts > latest) latest = ts;
+		}
+
+		return latest;
 	}
 
 	private toStoppedAt(timestamp: DateTime | undefined, messages: EventMessageTypes[]) {

@@ -12,4 +12,13 @@ export class ExportPackageRequestDto extends Z.class({
 		.enum(['fail', 'reference-only', 'include-in-package'])
 		.optional()
 		.default('fail'),
+	workflowVersionPolicy: z
+		.enum(['published-strict', 'prefer-published', 'ignore-unpublished', 'latest'])
+		.optional()
+		.default('latest'),
+	credentialExportPolicy: z
+		.enum(['expression-values-only', 'no-values'])
+		.optional()
+		.default('expression-values-only'),
+	includeArchivedWorkflows: z.boolean().default(false),
 }) {}

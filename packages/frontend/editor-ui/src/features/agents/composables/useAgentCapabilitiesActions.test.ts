@@ -52,8 +52,9 @@ function makeActions(
 	const scheduleSkillSave = vi.fn();
 	const agent = ref<AgentResource | null>(null);
 	const agentId = ref('agent-1');
+	const localConfig = ref<AgentJsonConfig | null>(makeConfig(overrides));
 	const actions = useAgentCapabilitiesActions({
-		localConfig: ref<AgentJsonConfig | null>(makeConfig(overrides)),
+		localConfig,
 		agent,
 		projectId: computed(() => 'proj-1'),
 		agentId: computed(() => agentId.value),
@@ -62,12 +63,22 @@ function makeActions(
 		scheduleSkillSave,
 		telemetry,
 	});
-	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId };
+	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId, localConfig };
 }
 
 describe('useAgentCapabilitiesActions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('forwards the selected picker mode to the tools modal', () => {
+		const { actions } = makeActions();
+
+		actions.onOpenAddToolModal('workflows');
+
+		expect(openModalWithData).toHaveBeenCalledWith(
+			expect.objectContaining({ data: expect.objectContaining({ mode: 'workflows' }) }),
+		);
 	});
 
 	it('schedules array-shaped tools + mcpServers from the add-tools modal confirm payload', () => {
@@ -103,6 +114,25 @@ describe('useAgentCapabilitiesActions', () => {
 		modalData.data.onConfirm({ tools });
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools });
+	});
+
+	it('changes only the selected skill activation flag through autosave', () => {
+		const { actions, scheduleConfigUpdate, scheduleSkillSave } = makeActions({
+			skills: [
+				{ type: 'skill', id: 'skill-1' },
+				{ type: 'skill', id: 'skill-2', enabled: true },
+			],
+		});
+
+		actions.onToggleSkill({ id: 'skill-1', enabled: false });
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+			skills: [
+				{ type: 'skill', id: 'skill-1', enabled: false },
+				{ type: 'skill', id: 'skill-2', enabled: true },
+			],
+		});
+		expect(scheduleSkillSave).not.toHaveBeenCalled();
 	});
 
 	it('opens the MCP-server modal for a numeric target past the tools array', () => {
@@ -156,7 +186,7 @@ describe('useAgentCapabilitiesActions', () => {
 
 	it('saves a skill-modal confirm for the agent it was opened on', () => {
 		const skill: AgentSkill = { name: 'PR Reviewer', description: '', instructions: 'Review.' };
-		const { actions, scheduleSkillSave, agent } = makeActions({
+		const { actions, scheduleConfigUpdate, scheduleSkillSave, agent } = makeActions({
 			skills: [{ type: 'skill', id: 's1' }],
 		} as Partial<AgentJsonConfig>);
 		agent.value = { id: 'agent-1', skills: { s1: skill } } as unknown as AgentResource;
@@ -171,28 +201,91 @@ describe('useAgentCapabilitiesActions', () => {
 			skillId: 's1',
 			skill: expect.objectContaining({ instructions: 'Edited.' }),
 		});
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
 	});
 
-	it('drops the tool ref from the config when onRemoveTool removes it', () => {
-		const removedTool = {
-			type: 'node',
-			name: 'get_dates',
-		} as AgentJsonToolConfig;
-		const { actions, scheduleConfigUpdate } = makeActions({ tools: [removedTool] });
+	it('persists a skill rename without scheduling a config save', () => {
+		const skill: AgentSkill = { name: 'PR Reviewer', description: '', instructions: 'Review.' };
+		const { actions, scheduleConfigUpdate, scheduleSkillSave, agent } = makeActions({
+			skills: [{ type: 'skill', id: 's1' }],
+		} as Partial<AgentJsonConfig>);
+		agent.value = { id: 'agent-1', skills: { s1: skill } } as unknown as AgentResource;
 
-		actions.onRemoveTool(0);
+		actions.onOpenSkillFromList('s1');
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: { onConfirm: (payload: { id?: string; skill: AgentSkill }) => void };
+		};
+		modalData.data.onConfirm({ id: 's1', skill: { ...skill, name: 'Renamed skill' } });
 
-		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools: [] });
+		expect(scheduleSkillSave).toHaveBeenCalledWith({
+			skillId: 's1',
+			skill: expect.objectContaining({ name: 'Renamed skill' }),
+		});
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+		expect(agent.value.skills?.s1?.name).toBe('Renamed skill');
 	});
 
-	it('drops the MCP server from the config when removed from the tool-config modal', () => {
+	it.each([0, 1, 2, 3])(
+		'removes combined tool entry %i and keeps the other references',
+		(index) => {
+			const tools: AgentJsonToolConfig[] = [
+				{
+					type: 'node',
+					name: 'get_dates',
+					node: { nodeType: 'n8n-nodes-base.dateTimeTool', nodeTypeVersion: 1, nodeParameters: {} },
+				},
+				{ type: 'workflow', workflow: 'shared-workflow', name: 'First lookup' },
+				{ type: 'workflow', workflow: 'shared-workflow', name: 'Second lookup' },
+			];
+			const mcpServer: AgentJsonMcpServerConfig = {
+				name: 'remote',
+				url: 'https://example.com/mcp',
+				authentication: 'none',
+				transport: 'streamableHttp',
+			};
+			const { actions, scheduleConfigUpdate } = makeActions({ tools, mcpServers: [mcpServer] });
+			actions.onRemoveTool(index);
+			const expected = [
+				{ tools: [tools[1], tools[2]] },
+				{ tools: [tools[0], tools[2]] },
+				{ tools: [tools[0], tools[1]] },
+				{ mcpServers: [] },
+			];
+			expect(scheduleConfigUpdate).toHaveBeenCalledWith(expected[index]);
+		},
+	);
+
+	it('keeps MCP servers when the tool in an open modal no longer exists', () => {
+		const { actions, scheduleConfigUpdate, localConfig } = makeActions({
+			tools: [{ type: 'custom', id: 'helper' }],
+			mcpServers: [
+				{
+					name: 'remote',
+					url: 'https://example.com/mcp',
+					authentication: 'none',
+					transport: 'streamableHttp',
+				},
+			],
+		});
+		actions.onOpenToolFromList(0);
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: { onRemove: () => void };
+		};
+		localConfig.value!.tools = [];
+
+		modalData.data.onRemove();
+
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+	});
+
+	it('removes the MCP server from its modal after the tools list changes', () => {
 		const mcpServer: AgentJsonMcpServerConfig = {
 			name: 'srv',
 			url: 'https://mcp.example.com',
 			authentication: 'none',
 			transport: 'streamableHttp',
 		};
-		const { actions, scheduleConfigUpdate } = makeActions({
+		const { actions, scheduleConfigUpdate, localConfig } = makeActions({
 			tools: [{ type: 'node', name: 'get_dates' } as AgentJsonToolConfig],
 			mcpServers: [mcpServer],
 		});
@@ -202,6 +295,7 @@ describe('useAgentCapabilitiesActions', () => {
 		const modalData = openModalWithData.mock.calls[0][0] as {
 			data: { onRemove?: () => void };
 		};
+		localConfig.value!.tools = [];
 		modalData.data.onRemove?.();
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ mcpServers: [] });

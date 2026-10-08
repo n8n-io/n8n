@@ -5,15 +5,15 @@ import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../../v2/actions/versionDescription';
-import { LIST_SIMPLIFY_SELECT } from '../../../v2/helpers/utils';
+import { LIST_SIMPLIFY_SELECT } from '../../../helpers/utils';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
-import * as transport from '../../../v2/transport';
-import type * as _importType0 from '../../../v2/transport';
+import * as transport from '../../../transport';
+import type * as _importType0 from '../../../transport';
 
 // Real transport module except the network helper, so getSharePointCredentialType
 // keeps its real behavior; only microsoftApiRequest is stubbed.
-vi.mock('../../../v2/transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
@@ -44,7 +44,8 @@ const V1_SIMPLIFIED_OUTPUT: IDataObject = {
 	displayName: 'list1',
 };
 
-const SITE_ID = 'contoso.sharepoint.com,g1,g2';
+const SITE_ID =
+	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
 const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const LIST_ID = '58a279af-1f06-4392-a5ed-2b37fa1d6c1d';
 

@@ -1,7 +1,8 @@
 import type { AgentMessage, Message } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH } from '@n8n/api-types';
+import { UnexpectedError } from 'n8n-workflow';
 
-import type { StoredAttachmentRef } from '../agent-chat-attachment.service';
+import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 
 /** Media-type families that can be promoted to model file parts (see `isAttachmentMediaTypeSupported`). */
 function modelEligibleFamily(mimeType: string): 'image' | 'pdf' | 'audio' | null {
@@ -51,7 +52,7 @@ export async function resolveInboundMimeType(
 export function buildInboundUserMessage(
 	text: string,
 	attachments: StoredAttachmentRef[],
-): AgentMessage[] {
+): [Message] {
 	const content: Message['content'] = [];
 	if (text) {
 		content.push({ type: 'text', text });
@@ -68,4 +69,31 @@ export function buildInboundUserMessage(
 		});
 	}
 	return [{ role: 'user', content }];
+}
+
+/** Read the original input without display normalization or file hydration. */
+export function readInboundUserMessage(input: AgentMessage): {
+	message: string;
+	attachments: StoredAttachmentRef[];
+} {
+	if (!('role' in input) || input.role !== 'user') {
+		throw new UnexpectedError('Queued input must be a user message');
+	}
+	return {
+		message: input.content
+			.filter((part) => part.type === 'text')
+			.map((part) => part.text)
+			.join('\n'),
+		attachments: input.content.flatMap((part) => {
+			if (part.type !== 'file' || !part.fileRef) return [];
+			return [
+				{
+					id: part.fileRef.id,
+					fileName: part.fileRef.fileName ?? '',
+					mimeType: part.mediaType ?? 'application/octet-stream',
+					sizeBytes: part.fileRef.sizeBytes ?? 0,
+				},
+			];
+		}),
+	};
 }

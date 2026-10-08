@@ -583,7 +583,6 @@ function onOptionMouseEnter(idx: number) {
 
 					<N8nButton
 						v-if="showNextButton"
-						:type="isNextEnabled ? 'primary' : 'secondary'"
 						size="small"
 						:disabled="disabled || isSubmitted || !isNextEnabled"
 						data-test-id="plan-mode-questions-next"

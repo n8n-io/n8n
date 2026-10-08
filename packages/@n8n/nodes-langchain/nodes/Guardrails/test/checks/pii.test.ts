@@ -25,4 +25,14 @@ describe('pii guardrail', () => {
 		expect(result.info?.maskEntities).toEqual({});
 		expect(result.info?.analyzerResults).toEqual([]);
 	});
+
+	it('uses custom regex patterns to detect configured entities', async () => {
+		const result = await createPiiCheckFn({
+			entities: [],
+			customRegex: [{ name: 'ORDER_ID', value: '/ORD-\\d{4}/g' }],
+		})('Process ORD-1234 and ORD-5678');
+
+		expect(result.tripwireTriggered).toBe(true);
+		expect(result.info?.maskEntities?.ORDER_ID).toEqual(['ORD-1234', 'ORD-5678']);
+	});
 });

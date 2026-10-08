@@ -7,7 +7,7 @@ import { UserError } from 'n8n-workflow';
 import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
 import { OAuthConsentService } from './oauth-consent.service';
 import { OAuthSessionService } from './oauth-session.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 
 @RestController('/consent')
 export class OAuthConsentController {
@@ -44,6 +44,19 @@ export class OAuthConsentController {
 				return;
 			}
 
+			if (consentDetails.autoApproved) {
+				// The session's decision is already made — consume it, same as a manual approval.
+				this.oauthSessionService.clearSession(res);
+				res.json({
+					data: {
+						autoApproved: true,
+						redirectUrl: consentDetails.redirectUrl,
+						uiHints: consentDetails.uiHints,
+					},
+				});
+				return;
+			}
+
 			res.json({
 				data: {
 					clientName: consentDetails.clientName,
@@ -53,6 +66,8 @@ export class OAuthConsentController {
 					scopes: consentDetails.scopes,
 					previousScopes: consentDetails.previousScopes,
 					scopeTools: consentDetails.scopeTools,
+					uiHints: consentDetails.uiHints,
+					isFirstParty: consentDetails.isFirstParty,
 				},
 			});
 		} catch (error) {

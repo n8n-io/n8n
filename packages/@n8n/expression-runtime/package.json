@@ -1,6 +1,6 @@
 {
   "name": "@n8n/expression-runtime",
-  "version": "0.25.0",
+  "version": "0.34.0",
   "description": "Secure, isolated expression evaluation runtime for n8n",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -12,6 +12,7 @@
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
     },
+    "./runtime-bundle.iife.js": "./dist/bundle/runtime.iife.js",
     "./*": "./*"
   },
   "scripts": {
@@ -36,6 +37,7 @@
   "dependencies": {
     "@n8n/errors": "workspace:*",
     "@n8n/tournament": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "isolated-vm": "catalog:",
     "jmespath": "0.16.0",
     "js-base64": "catalog:",
@@ -43,6 +45,7 @@
     "lodash": "catalog:",
     "luxon": "catalog:",
     "md5": "2.3.0",
+    "quickjs-emscripten": "^0.32.0",
     "title-case": "3.0.3",
     "transliteration": "2.3.5",
     "zod": "catalog:"

@@ -17,8 +17,10 @@ export class WorkflowReviewPublishGuard implements WorkflowPublishGuard {
 	async assertCanPublish(workflowId: string): Promise<void> {
 		if (!(await this.featureGate.isAvailable())) return;
 
-		const request =
-			await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(workflowId);
+		const request = await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(
+			workflowId,
+			{},
+		);
 		if (!request) return;
 
 		const reason: WorkflowPublishBlockedReason =

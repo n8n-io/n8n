@@ -1,4 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
 import type { entities } from '@n8n/db';
 import { AuthRolesService, DbConnection, DbConnectionOptions } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -6,6 +6,8 @@ import type { DataSourceOptions } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
 import assert from 'assert';
 import { randomString } from 'n8n-workflow';
+import path from 'node:path';
+import { vi } from 'vitest';
 
 export const testDbPrefix = 'n8n_test_';
 let isInitialized = false;
@@ -28,12 +30,21 @@ export const getBootstrapDBOptions = (): DataSourceOptions => {
 	};
 };
 
+/** Path of the SQLite database file for the current config. Mirrors `DbConnectionOptions`. */
+function getSqliteDatabasePath() {
+	const { n8nFolder } = Container.get(InstanceSettingsConfig);
+	return path.resolve(n8nFolder, Container.get(GlobalConfig).database.sqlite.database);
+}
+
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
  *
  * When `N8N_TEST_TEMPLATE_DB` is set (Postgres only), the new test DB is created
  * via `CREATE DATABASE ... TEMPLATE <name>`, which clones the schema as a file
  * copy and skips the multi-second migration replay per file.
+ *
+ * When `N8N_TEST_SQLITE_TEMPLATE` is set (SQLite only) and the database file
+ * does not exist yet, init copies the template file instead of migrating.
  */
 export async function init() {
 	if (isInitialized) return;
@@ -43,6 +54,19 @@ export async function init() {
 	testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
 
 	const templateDb = dbType === 'postgresdb' ? process.env.N8N_TEST_TEMPLATE_DB : undefined;
+	let fromTemplate = Boolean(templateDb);
+
+	const sqliteTemplate = dbType === 'sqlite' ? process.env.N8N_TEST_SQLITE_TEMPLATE : undefined;
+	if (sqliteTemplate) {
+		// Some test files mock `fs`, so use the real module.
+		const fs = await vi.importActual<typeof import('node:fs')>('node:fs');
+		// An existing file keeps its data, as it does without a template.
+		const databasePath = getSqliteDatabasePath();
+		if (!fs.existsSync(databasePath)) {
+			await fs.promises.copyFile(sqliteTemplate, databasePath);
+			fromTemplate = true;
+		}
+	}
 
 	if (dbType === 'postgresdb') {
 		originalDatabase = globalConfig.database.postgresdb.database;
@@ -60,7 +84,7 @@ export async function init() {
 	const dbConnection = Container.get(DbConnection);
 	await dbConnection.init();
 
-	if (templateDb) {
+	if (fromTemplate) {
 		// Template already carries migrations + seeded roles — just mark state.
 		dbConnection.connectionState.migrated = true;
 	} else {
@@ -110,6 +134,38 @@ export async function initTemplateDb(templateName: string): Promise<void> {
 	await finalizer.destroy();
 }
 
+/**
+ * Build a SQLite template database with all migrations + auth roles seeded,
+ * and return its file path. Called from Vitest globalSetup before the workers
+ * start. Each worker's `init()` then copies the file instead of migrating.
+ *
+ * Some migrations read the n8n folder, so the config must already point at
+ * `n8nFolder`. The function refuses to migrate a database outside that folder.
+ */
+export async function initSqliteTemplateDb(n8nFolder: string): Promise<string> {
+	const databasePath = getSqliteDatabasePath();
+	if (
+		Container.get(GlobalConfig).database.type !== 'sqlite' ||
+		Container.get(InstanceSettingsConfig).n8nFolder !== n8nFolder ||
+		path.dirname(databasePath) !== n8nFolder
+	) {
+		throw new Error(`initSqliteTemplateDb expected a SQLite database in ${n8nFolder}`);
+	}
+
+	const dbConnection = Container.get(DbConnection);
+	await dbConnection.init();
+	try {
+		await dbConnection.migrate();
+		await Container.get(AuthRolesService).init();
+		// Move all WAL content into the main file, so a copy of that file is complete.
+		await Container.get(Connection).query('PRAGMA wal_checkpoint(TRUNCATE)');
+	} finally {
+		await dbConnection.close();
+	}
+
+	return databasePath;
+}
+
 export function isReady() {
 	const { connectionState } = Container.get(DbConnection);
 	return connectionState.connected && connectionState.migrated;
@@ -156,6 +212,7 @@ type EntityName =
 	| 'InsightsRaw'
 	| 'InsightsByPeriod'
 	| 'InsightsMetadata'
+	| 'InstanceMonitoringReport'
 	| 'DataTable'
 	| 'DataTableColumn'
 	| 'ChatHubSession'
@@ -170,9 +227,14 @@ type EntityName =
 	| 'DynamicCredentialEntry'
 	| 'DynamicCredentialResolver'
 	| 'DynamicCredentialUserEntry'
+	| 'TypeAvailabilityPolicy'
+	| 'TypeAvailabilityPolicyScope'
+	| 'TypeAvailabilityPolicyAttachment'
 	| 'TokenExchangeJti'
 	| 'TrustedKeySourceEntity'
 	| 'TrustedKeyEntity'
+	| 'TrustedSourceEntity'
+	| 'TrustedSourceIdentityEntity'
 	| 'WorkflowStatisticsDelta';
 
 /**
@@ -204,6 +266,12 @@ export async function truncate(entities: EntityName[]) {
 		await connection.query(`DELETE FROM ${tableName}`);
 	}
 
+	// `workflow_published_version` references workflows and history rows with
+	// RESTRICT, so it has to go before either of them.
+	if (entities.includes('WorkflowEntity') || entities.includes('WorkflowHistory')) {
+		await connection.getRepository('WorkflowPublishedVersion').delete({});
+	}
+
 	for (const name of entities) {
 		// `workflow_statistics_delta` is a raw-SQL, Postgres-only table with no TypeORM entity, so it
 		// can't go through the repository, so we clear it directly.
@@ -217,4 +285,37 @@ export async function truncate(entities: EntityName[]) {
 		}
 		await connection.getRepository(name).delete({});
 	}
+}
+
+export async function resetDeploymentKeys() {
+	const connection = Container.get(Connection);
+	const { type, tablePrefix } = Container.get(GlobalConfig).database;
+	const table = connection.driver.escape(`${tablePrefix}deployment_key`);
+	const deleteTrigger = connection.driver.escape(`${tablePrefix}prevent_deployment_key_delete`);
+
+	if (type === 'postgresdb') {
+		const truncateTrigger = connection.driver.escape(
+			`${tablePrefix}prevent_deployment_key_truncate`,
+		);
+		await connection.transaction(async (tx) => {
+			await tx.query(`ALTER TABLE ${table} DISABLE TRIGGER ${deleteTrigger}`);
+			await tx.query(`ALTER TABLE ${table} DISABLE TRIGGER ${truncateTrigger}`);
+			await tx.query(`DELETE FROM ${table}`);
+			await tx.query(`ALTER TABLE ${table} ENABLE TRIGGER ${deleteTrigger}`);
+			await tx.query(`ALTER TABLE ${table} ENABLE TRIGGER ${truncateTrigger}`);
+		});
+		return;
+	}
+
+	await connection.transaction(async (tx) => {
+		await tx.query(`DROP TRIGGER ${deleteTrigger}`);
+		await tx.query(`DELETE FROM ${table}`);
+		await tx.query(`
+			CREATE TRIGGER ${deleteTrigger}
+			BEFORE DELETE ON ${table}
+			BEGIN
+				SELECT RAISE(ABORT, 'Deployment keys must not be deleted');
+			END
+		`);
+	});
 }

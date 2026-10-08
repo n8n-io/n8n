@@ -1,4 +1,10 @@
-import { type APPROVAL_TOOL_NAME, type N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import {
+	type AgentMessageAuthor,
+	type APPROVAL_TOOL_NAME,
+	type AgentBackgroundJobSignal,
+	type N8N_CHAT_ACTION_TOOL_NAME,
+	type WAIT_TOOL_NAME,
+} from '@n8n/api-types';
 
 import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
 
@@ -68,11 +74,13 @@ export interface ApprovalInput {
 	type: 'approval';
 	toolName: string;
 	displayName?: string;
+	supportsSessionApproval?: boolean;
 	args: unknown;
 }
 
 export interface ApprovalResume {
 	approved: boolean;
+	scope?: 'once' | 'session';
 }
 
 /**
@@ -87,6 +95,16 @@ export type InteractivePayload =
 	  })
 	| (InteractivePayloadBase & {
 			toolName: typeof N8N_CHAT_ACTION_TOOL_NAME;
+			input: N8nChatInteractionInput;
+			resolvedValue?: N8nChatResumeValue;
+	  })
+	/**
+	 * A workflow tool parked on a Wait node. Same card contract as a chat card —
+	 * it reuses that renderer — but it is not a question, so typing must not
+	 * cancel and steer it (see `AgentChatPanel`).
+	 */
+	| (InteractivePayloadBase & {
+			toolName: typeof WAIT_TOOL_NAME;
 			input: N8nChatInteractionInput;
 			resolvedValue?: N8nChatResumeValue;
 	  });
@@ -108,9 +126,12 @@ export interface ChatMessageAttachment {
 }
 
 export interface AgentsChatMessage {
+	backgroundJobSignal?: AgentBackgroundJobSignal;
 	id: string;
 	role: 'user' | 'assistant';
 	content: string;
+	/** Chat platform user who wrote a user turn in a shared integration thread. */
+	author?: AgentMessageAuthor;
 	renderParts?: ChatMessageRenderPart[];
 	thinkingSegments?: ThinkingSegment[];
 	/** Legacy aggregate kept for messages created before timed segments were added. */
@@ -122,6 +143,10 @@ export interface AgentsChatMessage {
 	attachments?: ChatMessageAttachment[];
 	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
 	executionId?: string;
+	/** Epoch ms when this turn was sent. Drives the chat's timestamp dividers. */
+	createdAt?: number;
+	/** Live preview only. Budget stop or alert cards for this turn. */
+	budgetNotices?: Array<{ id: string; code: 'budget.monthly' | 'budget.session' | 'budget.alert' }>;
 }
 
 export type ChatMessage = AgentsChatMessage;

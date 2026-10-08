@@ -15,10 +15,11 @@ import {
 	jsonParse,
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
-import { icsCalendarToObject } from 'ts-ics';
 
 import { encodeDecodeOptions } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { parseIcsCalendar } from './parseIcsCalendar';
 
 export const properties: INodeProperties[] = [
 	{
@@ -152,7 +153,7 @@ export async function execute(
 			}
 
 			if (operation === 'fromIcs') {
-				convertedValue = icsCalendarToObject(convertedValue as string);
+				convertedValue = parseIcsCalendar(convertedValue as string);
 			}
 
 			const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;

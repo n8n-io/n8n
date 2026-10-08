@@ -37,7 +37,7 @@ describe('Expression VM error handling', () => {
 		nodeTypes,
 	});
 
-	let originalEngine: 'legacy' | 'vm';
+	let originalEngine: 'legacy' | 'vm' | 'quickjs';
 	let originalEvaluator: IExpressionEvaluator | undefined;
 
 	beforeEach(async () => {

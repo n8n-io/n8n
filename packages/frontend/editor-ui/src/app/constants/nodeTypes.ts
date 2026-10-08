@@ -1,5 +1,3 @@
-import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
-import { DATA_TABLE_MODULE_NAME } from '@/features/core/dataTable/constants';
 import { MICROSOFT_AGENT365_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -91,6 +89,15 @@ export const MARKDOWN_NODE_TYPE = 'n8n-nodes-base.markdown';
 export const XML_NODE_TYPE = 'n8n-nodes-base.xml';
 export const CRYPTO_NODE_TYPE = 'n8n-nodes-base.crypto';
 export const RSS_READ_NODE_TYPE = 'n8n-nodes-base.rssFeedRead';
+
+// These nodes can use arbitrary providers. Gateway credentials require a known provider.
+export const AI_GATEWAY_UNSUPPORTED_NODE_TYPES: readonly string[] = [
+	'n8n-nodes-base.httpRequest',
+	'n8n-nodes-base.httpRequestTool',
+	'@n8n/n8n-nodes-langchain.toolHttpRequest',
+	'n8n-nodes-base.graphql',
+	'n8n-nodes-base.graphqlTool',
+];
 export const COMPRESSION_NODE_TYPE = 'n8n-nodes-base.compression';
 export const EDIT_IMAGE_NODE_TYPE = 'n8n-nodes-base.editImage';
 export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
@@ -132,11 +139,6 @@ export const NODES_USING_CODE_NODE_EDITOR = [
 	AI_CODE_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
 ];
-export const MODULE_ENABLED_NODES = [
-	...DATA_TABLE_NODES.map((nodeType) => ({ nodeType, module: DATA_TABLE_MODULE_NAME })),
-	{ nodeType: MESSAGE_AN_AGENT_NODE_TYPE, module: AGENTS_MODULE_NAME },
-];
-
 export const NODE_POSITION_CONFLICT_ALLOWLIST = [STICKY_NODE_TYPE];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE, STICKY_NODE_TYPE];

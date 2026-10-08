@@ -16,6 +16,7 @@ import {
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
+import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { randomInt } from 'n8n-workflow';
 import assert from 'node:assert';
@@ -28,12 +29,16 @@ import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
 import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
+import type { EventService } from '@n8n/backend-services';
+import { WorkflowSharingService } from '@n8n/backend-services';
 import { createExecution } from '@test-integration/db/executions';
 
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
@@ -46,7 +51,10 @@ describe('ExecutionRecoveryService', () => {
 	const projectRelationRepository = mockInstance(ProjectRelationRepository);
 	const externalHooks = mockInstance(ExternalHooks);
 	const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+	const workflowSharingService = mockInstance(WorkflowSharingService);
+	const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
 	mockInstance(WorkflowPublicationNotifier);
+	const eventService = mock<EventService>();
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;
@@ -72,11 +80,15 @@ describe('ExecutionRecoveryService', () => {
 			mock(),
 			ownershipService,
 			projectRelationRepository,
+			workflowPushNotifier,
+			new ExecutionCrashService(executionRepository, mock(), eventService, instanceSettings),
 		);
 	});
 
 	beforeEach(() => {
+		eventService.emit.mockClear();
 		instanceSettings.markAsLeader();
+		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue([]);
 	});
 
 	afterEach(async () => {
@@ -121,7 +133,6 @@ describe('ExecutionRecoveryService', () => {
 				 * Arrange
 				 */
 				instanceSettings.markAsFollower();
-				// @ts-expect-error Private method
 				const amendSpy = vi.spyOn(executionRecoveryService, 'amend');
 				const messages = setupMessages('123', 'Some workflow');
 
@@ -184,6 +195,44 @@ describe('ExecutionRecoveryService', () => {
 
 				expect(amendedExecution.status).toBe('crashed');
 				expect(amendedExecution.stoppedAt).not.toBe(execution.stoppedAt);
+			});
+
+			test('pushes `executionRecovered` only to users with workflow access, once a client connects', async () => {
+				/**
+				 * Arrange
+				 */
+				const workflow = await createWorkflow(OOM_WORKFLOW);
+				const execution = await createExecution(
+					{
+						status: 'running',
+						data: stringify(IN_PROGRESS_EXECUTION_DATA),
+					},
+					workflow,
+				);
+				workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(['user-1']);
+				let editorUiConnectedCallback: (() => Promise<void>) | undefined;
+				push.once.mockImplementation((event: string, callback: () => Promise<void>) => {
+					if (event === 'editorUiConnected') editorUiConnectedCallback = callback;
+					return push;
+				});
+
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.recoverFromLogs(execution.id, []);
+				expect(editorUiConnectedCallback).toBeDefined();
+				await editorUiConnectedCallback?.();
+
+				/**
+				 * Assert
+				 */
+				expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+					workflow.id,
+				);
+				expect(push.sendToUsers).toHaveBeenCalledWith(
+					{ type: 'executionRecovered', data: { executionId: execution.id } },
+					['user-1'],
+				);
 			});
 		});
 
@@ -313,6 +362,86 @@ describe('ExecutionRecoveryService', () => {
 				expect(amendedExecution.stoppedAt).not.toBe(execution.stoppedAt);
 				expect(amendedExecution.data).toEqual({ version: 1, resultData: { runData: {} } });
 				expect(amendedExecution.status).toBe('crashed');
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			test('for errored dataless execution, should keep `error` and announce no crash', async () => {
+				const workflow = await createWorkflow();
+				const execution = await createExecution(
+					{ status: 'error', data: stringify(undefined) },
+					workflow,
+				);
+				const messages = setupMessages(execution.id, 'Some workflow');
+
+				const amendedExecution = await executionRecoveryService.recoverFromLogs(
+					execution.id,
+					messages,
+				);
+
+				expect(amendedExecution?.status).toBe('error');
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			test.each([
+				{
+					status: 'crashed' as const,
+					label: 'dataful',
+					data: stringify(IN_PROGRESS_EXECUTION_DATA),
+				},
+				{ status: 'crashed' as const, label: 'dataless', data: stringify(undefined) },
+				{
+					status: 'waiting' as const,
+					label: 'dataful',
+					data: stringify(IN_PROGRESS_EXECUTION_DATA),
+				},
+			])(
+				'for $label $status execution, should leave it as is and announce nothing',
+				async ({ status, data }) => {
+					const workflow = await createWorkflow(OOM_WORKFLOW);
+					const execution = await createExecution({ status, data }, workflow);
+					const messages = setupMessages(execution.id, workflow.name);
+					const updateSpy = vi.spyOn(executionPersistence, 'updateExistingExecution');
+
+					const amendedExecution = await executionRecoveryService.recoverFromLogs(
+						execution.id,
+						messages,
+					);
+
+					expect(amendedExecution).toBeNull();
+					expect(updateSpy).not.toHaveBeenCalled();
+					expect(eventService.emit).not.toHaveBeenCalled();
+					const stored = await executionRepository.findOneByOrFail({ id: execution.id });
+					expect(stored.status).toBe(status);
+				},
+			);
+
+			test('for running execution, should announce the crash once with the last node timestamp', async () => {
+				const workflow = await createWorkflow(OOM_WORKFLOW);
+				const execution = await createExecution(
+					{ status: 'running', data: stringify(IN_PROGRESS_EXECUTION_DATA) },
+					workflow,
+				);
+				const messages = setupMessages(execution.id, workflow.name);
+				const startOfLastNodeRun = messages
+					.find((m) => m.eventName === 'n8n.node.started' && m.payload.nodeName === 'DebugHelper')
+					?.ts.toJSDate();
+
+				await executionRecoveryService.recoverFromLogs(execution.id, messages);
+
+				expect(eventService.emit.mock.calls).toEqual([
+					[
+						'execution-crashed',
+						expect.objectContaining({
+							executionId: execution.id,
+							workflowId: workflow.id,
+							detector: 'startup-recovery',
+							stoppedAt: startOfLastNodeRun,
+						}),
+					],
+				]);
+				const stored = await executionRepository.findOneByOrFail({ id: execution.id });
+				expect(stored.status).toBe('crashed');
+				expect(stored.stoppedAt).toEqual(startOfLastNodeRun);
 			});
 
 			test('for running execution without `runData`, should reconstruct missing node data', async () => {
@@ -432,6 +561,57 @@ describe('ExecutionRecoveryService', () => {
 				expect(debugHelperTaskData.error).toBeInstanceOf(NodeCrashedError);
 			});
 
+			test('should stop at the latest node event when nodes ran out of canvas order', async () => {
+				const workflow = await createWorkflow(OOM_WORKFLOW);
+				const execution = await createExecution(
+					{ status: 'running', data: stringify(undefined) },
+					workflow,
+				);
+				const nodeEvent = (
+					eventName: 'n8n.node.started' | 'n8n.node.finished',
+					nodeName: string,
+					ts: string,
+				) =>
+					new EventMessageNode({
+						eventName,
+						ts: DateTime.fromISO(ts),
+						payload: {
+							executionId: execution.id,
+							workflowName: workflow.name,
+							nodeName,
+							nodeType: 'n8n-nodes-base.debugHelper',
+							nodeId: '123',
+						},
+					});
+				// The trigger comes first in the node list but finishes last.
+				const messages = [
+					nodeEvent('n8n.node.started', 'DebugHelper', '2025-01-01T00:00:01.000Z'),
+					nodeEvent('n8n.node.finished', 'DebugHelper', '2025-01-01T00:00:02.000Z'),
+					nodeEvent(
+						'n8n.node.started',
+						'When clicking "Execute workflow"',
+						'2025-01-01T00:00:03.000Z',
+					),
+					nodeEvent(
+						'n8n.node.finished',
+						'When clicking "Execute workflow"',
+						'2025-01-01T00:00:04.000Z',
+					),
+				];
+
+				const amendedExecution = await executionRecoveryService.recoverFromLogs(
+					execution.id,
+					messages,
+				);
+
+				const latest = new Date('2025-01-01T00:00:04.000Z');
+				expect(amendedExecution?.stoppedAt).toEqual(latest);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-crashed',
+					expect.objectContaining({ stoppedAt: latest }),
+				);
+			});
+
 			test('should update `status`, `stoppedAt` and `data` if last node finished', async () => {
 				/**
 				 * Arrange
@@ -524,6 +704,40 @@ describe('ExecutionRecoveryService', () => {
 				const updatedWorkflow = await getWorkflowById(workflow.id);
 				if (!updatedWorkflow) expect.fail('Expected `updatedWorkflow` to be defined');
 				expect(updatedWorkflow.activeVersionId).toBeNull();
+			});
+
+			test('pushes `workflowAutoDeactivated` only to users with workflow access, once a client connects', async () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.recovery.workflowDeactivationEnabled = true;
+
+				const workflow = await createCrashedActiveWorkflow();
+				mockOwnershipForDeactivation();
+				workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(['user-1']);
+				let editorUiConnectedCallback: (() => Promise<void>) | undefined;
+				push.once.mockImplementation((event: string, callback: () => Promise<void>) => {
+					if (event === 'editorUiConnected') editorUiConnectedCallback = callback;
+					return push;
+				});
+
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.autoDeactivateWorkflowsIfNeeded(new Set([workflow.id]));
+				expect(editorUiConnectedCallback).toBeDefined();
+				await editorUiConnectedCallback?.();
+
+				/**
+				 * Assert
+				 */
+				expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+					workflow.id,
+				);
+				expect(push.sendToUsers).toHaveBeenCalledWith(
+					{ type: 'workflowAutoDeactivated', data: { workflowId: workflow.id } },
+					['user-1'],
+				);
 			});
 
 			test('should unpublish via outbox and record publish history on auto-deactivation', async () => {

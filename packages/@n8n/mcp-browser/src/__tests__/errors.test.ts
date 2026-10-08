@@ -1,6 +1,9 @@
 import {
 	AlreadyConnectedError,
 	BrowserNotAvailableError,
+	ConnectionLostError,
+	ElementNotActionableError,
+	ExtensionConflictError,
 	McpBrowserError,
 	NotConnectedError,
 	PageNotFoundError,
@@ -84,6 +87,24 @@ describe('StaleRefError', () => {
 	});
 });
 
+describe('ElementNotActionableError', () => {
+	const disabled = new ElementNotActionableError("button:has-text('Add')", 'disabled');
+	const readonly = new ElementNotActionableError('#token', 'readonly');
+
+	it('should include the target in the message', () => {
+		expect(disabled.message).toContain("button:has-text('Add')");
+	});
+
+	it('should name the cause, which decides what the caller does next', () => {
+		expect(disabled.message).toContain('disabled');
+		expect(readonly.message).toContain('read-only');
+	});
+
+	it('should hint per cause rather than give one generic remedy', () => {
+		expect(disabled.hint).not.toEqual(readonly.hint);
+	});
+});
+
 describe('UnsupportedOperationError', () => {
 	const error = new UnsupportedOperationError('pdf', 'SafariDriverAdapter');
 
@@ -111,5 +132,54 @@ describe('BrowserNotAvailableError', () => {
 	it('should describe no browsers found when none available', () => {
 		const error = new BrowserNotAvailableError('firefox');
 		expect(error.hint).toContain('No compatible Chromium-based browsers');
+	});
+});
+
+describe('ConnectionLostError', () => {
+	it('should tell the agent to reconnect for ordinary losses', () => {
+		expect(new ConnectionLostError('browser_closed').hint).toContain(
+			'browser_connect to reconnect',
+		);
+	});
+
+	it('should say to reconnect when a block took the session down', () => {
+		// Only renders once the session is gone, so reconnecting is right here.
+		const hint = new ConnectionLostError('blocked_by_extension').hint ?? '';
+		expect(hint).toContain('browser_connect');
+		expect(hint).toContain('fresh tab');
+	});
+});
+
+describe('ExtensionConflictError', () => {
+	const error = ExtensionConflictError.tabLost(['offendingextensionid']);
+
+	it('should name the blocking extension', () => {
+		expect(error.message).toContain('offendingextensionid');
+	});
+
+	it('should steer a still-live session to a fresh tab, not a reconnect', () => {
+		// browser_connect throws AlreadyConnectedError while the session is up.
+		expect(error.hint).toContain('cannot be recovered');
+		expect(error.hint).toContain('browser_tab_open');
+		expect(error.hint).toContain('do not call browser_connect');
+	});
+
+	it('should send a dead session through browser_connect first', () => {
+		const hint = ExtensionConflictError.sessionLost(['abc']).hint ?? '';
+		expect(hint).toContain('call browser_connect first');
+		expect(hint).not.toContain('do not call browser_connect');
+	});
+
+	it('should not route the hand-off through ask-user', () => {
+		// ask-user renders an input field; this hand-off belongs in the reply.
+		expect(error.hint).not.toContain('ask-user');
+	});
+
+	it('should stay readable when no extension could be identified', () => {
+		expect(ExtensionConflictError.tabLost([]).message).toContain('another browser extension');
+	});
+
+	it('should be instanceof McpBrowserError', () => {
+		expect(error).toBeInstanceOf(McpBrowserError);
 	});
 });

@@ -21,6 +21,8 @@ import { retryUntil } from '../shared/retry-until';
 import * as utils from '../shared/utils';
 import { loadNodesFromDist } from '../shared/utils/node-types-data';
 
+import { workflowOwned } from './shared/job-factory';
+
 /**
  * The whole schedule-trigger path against a real database and the real engine:
  * a due occurrence materialized from a job, claimed and fired by the executor,
@@ -71,7 +73,7 @@ describe('schedule-trigger occurrence to a real execution', () => {
 	});
 
 	// A published workflow whose Schedule Trigger the handler fires. The published
-	// version mapping is what `loadPublishedWorkflowData` reads, so all three parts
+	// version mapping is what `findPublishedWorkflowData` reads, so all three parts
 	// (workflow, history, mapping) must exist.
 	const createPublishedScheduleWorkflow = async () => {
 		const triggerNodeId = uuid();
@@ -117,6 +119,7 @@ describe('schedule-trigger occurrence to a real execution', () => {
 		await jobRepo.save(
 			jobRepo.create({
 				name: `schedule-job-${++seq}`,
+				...workflowOwned(workflowId, nodeId),
 				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
 				payload: { workflowId, nodeId },
 				kind: 'interval',

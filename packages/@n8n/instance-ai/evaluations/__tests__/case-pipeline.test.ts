@@ -2,6 +2,7 @@ import type { CliArgs } from '../cli/args';
 import type { BuildResult } from '../harness/build-workflow';
 import { cleanupBuild } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
+import { PROVIDER_OUTAGE_ROOT_CAUSE } from '../harness/transient-error';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type { BuildOrchestrator, CachedBuild, LaneState } from '../run/build-orchestrator';
 import { createCasePipeline, type CasePipelineDeps } from '../run/case-pipeline';
@@ -18,14 +19,6 @@ vi.mock('../harness/cleanup', async (importOriginal) => {
 	return {
 		...actual,
 		cleanupBuild: vi.fn().mockResolvedValue(true),
-	};
-});
-
-vi.mock('../harness/seed-tables', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('../harness/seed-tables')>();
-	return {
-		...actual,
-		warnAgentSeedDataTablesIgnored: vi.fn(),
 	};
 });
 
@@ -55,6 +48,8 @@ function makeLane(): LaneState {
 			client: {} as never,
 			baseUrl: 'http://lane1.test',
 			preRunWorkflowIds: new Set<string>(),
+			preRunDataTableIds: new Set<string>(),
+			preRunFolderIds: new Set<string>(),
 			claimedWorkflowIds: new Set<string>(),
 			createdCredentialIds: new Set<string>(),
 			workflowIdsToDelete: new Set<string>(),
@@ -164,6 +159,67 @@ describe('createCasePipeline', () => {
 		expect(orchestrator.buildCache.size).toBe(0);
 	});
 
+	// A staged prior run that produced no execution record leaves the case grading
+	// against history the instance does not have. The biting case is a build that
+	// SUCCEEDED: `buildFailedOnInfra` returns false there, so without this branch the
+	// row would be scored as an agent failure on a premise that never existed.
+	it('routes a successful build with a failed prior run to framework_issue', async () => {
+		const lane = makeLane();
+		const cached: CachedBuild = {
+			build: { ...okBuild(), priorRunFailed: 'seedWf1: fetch failed' },
+			lane,
+			buildDurationMs: 42,
+		};
+		const orchestrator = makeOrchestrator(cached);
+		const pipeline = createCasePipeline(makeDeps(orchestrator));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			buildSuccess: true,
+			passed: false,
+			// Not graded rather than failed — stays out of the builder's baseline.
+			incomplete: true,
+			failureCategory: 'framework_issue',
+			attribution: 'framework_issue',
+		});
+		expect(String(output.reasoning)).toContain('premise is missing');
+		// The scenario must never run: its result would describe absent history.
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
+	it('preserves agent metadata when a prior run failed', async () => {
+		const lane = makeLane();
+		const build = okBuild({
+			priorRunFailed: 'seedWf1: fetch failed',
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 42 });
+		const agentArtifact = {
+			agentId: 'agent-1',
+			config: { name: 'Support agent' },
+			skills: {},
+		};
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: agentArtifact })],
+				]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			incomplete: true,
+			failureCategory: 'framework_issue',
+			agentId: 'agent-1',
+			agentContext: 'AGENT CONTEXT',
+			agentArtifact,
+		});
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
 	it('keeps everything when --keep-workflows is set', async () => {
 		const lane = makeLane();
 		vi.mocked(lane.tracedExecute).mockResolvedValue({
@@ -222,6 +278,64 @@ describe('createCasePipeline', () => {
 		});
 	});
 
+	it('grades the saved workflow of a timed-out conversation but keeps the row out of the pass rate', async () => {
+		const lane = makeLane();
+		vi.mocked(lane.tracedExecute).mockResolvedValue({
+			success: true,
+			score: 1,
+			reasoning: 'the saved workflow handles the scenario',
+		} as never);
+		const timeout = { kind: 'turn' as const, turn: 3, elapsedMs: 900_400 };
+		const orchestrator = makeOrchestrator({
+			build: okBuild({ timeout }),
+			lane,
+			buildDurationMs: 1_500_000,
+		});
+		const pipeline = createCasePipeline(makeDeps(orchestrator));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(vi.mocked(lane.tracedExecute)).toHaveBeenCalledTimes(1);
+		expect(output).toMatchObject({
+			buildSuccess: true,
+			passed: true,
+			reasoning: 'the saved workflow handles the scenario',
+			incomplete: true,
+			attribution: 'timeout',
+			failureCategory: 'build_timeout',
+			buildTimeout: timeout,
+		});
+	});
+
+	it('stamps a timed-out conversation that saved nothing as build_timeout, not build_failure', async () => {
+		const lane = makeLane();
+		const timeout = { kind: 'inactivity' as const, turn: 1, elapsedMs: 240_100 };
+		const orchestrator = makeOrchestrator({
+			build: okBuild({
+				success: false,
+				workflowId: undefined,
+				error: 'Run timed out after 240100ms (inactivity budget, user turn 1)',
+				timeout,
+			}),
+			lane,
+			buildDurationMs: 5,
+		});
+		const pipeline = createCasePipeline(makeDeps(orchestrator));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+		expect(output).toMatchObject({
+			buildSuccess: false,
+			passed: false,
+			incomplete: true,
+			attribution: 'timeout',
+			failureCategory: 'build_timeout',
+			buildTimeout: timeout,
+			execErrors: ['Run timed out after 240100ms (inactivity budget, user turn 1)'],
+		});
+	});
+
 	it('classifies transport-failed builds as framework_issue, not build_failure', async () => {
 		const lane = makeLane();
 		const orchestrator = makeOrchestrator({
@@ -239,6 +353,27 @@ describe('createCasePipeline', () => {
 		const output = await pipeline.runRow(rowInputs('happy-path'));
 
 		expect(output.failureCategory).toBe('framework_issue');
+	});
+
+	it('stamps the pinned root cause on a provider-outage build so LangTracer sees infra', async () => {
+		const lane = makeLane();
+		const orchestrator = makeOrchestrator({
+			build: okBuild({
+				success: false,
+				workflowId: undefined,
+				error: 'Agent error: Internal server error; No output generated.',
+				transportFailure: true,
+				providerOutage: 'provider HTTP 529: Overloaded',
+			}),
+			lane,
+			buildDurationMs: 5,
+		});
+		const pipeline = createCasePipeline(makeDeps(orchestrator));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output.failureCategory).toBe('framework_issue');
+		expect(output.rootCause).toBe(`${PROVIDER_OUTAGE_ROOT_CAUSE}: provider HTTP 529: Overloaded`);
 	});
 
 	it('scores a build-only sentinel row from the expectation verdicts', async () => {
@@ -313,9 +448,16 @@ describe('createCasePipeline', () => {
 			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
 		});
 		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+		const agentArtifact = {
+			agentId: 'agent-1',
+			config: { name: 'Support agent', model: 'openai/gpt-5-mini' },
+			skills: {},
+		};
 		const pipeline = createCasePipeline(
 			makeDeps(orchestrator, {
-				agentContextByKey: new Map([['0:case-a', Promise.resolve('AGENT CONTEXT')]]),
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: agentArtifact })],
+				]),
 			}),
 		);
 
@@ -326,10 +468,217 @@ describe('createCasePipeline', () => {
 			passed: true,
 			agentId: 'agent-1',
 			agentContext: 'AGENT CONTEXT',
+			agentArtifact,
 			reasoning: 'agent did it',
 		});
 		expect(lane.tracedExecute).not.toHaveBeenCalled();
 		expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not run a draft Agent and owns the red as framework_issue when no LLM credential was declared', async () => {
+		const lane = makeLane();
+		const build = okBuild({
+			workflowId: undefined,
+			workflowJsons: [],
+			transcript: [] as never,
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+		const draftArtifact = { agentId: 'agent-1', config: { name: 'Draft', model: '' }, skills: {} };
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: draftArtifact })],
+				]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			passed: false,
+			agentId: 'agent-1',
+			attribution: 'framework_issue',
+			failureCategory: 'framework_issue',
+		});
+		expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
+	});
+
+	it('counts googlePalmApi as a declared LLM credential', async () => {
+		const lane = makeLane();
+		const build = okBuild({
+			workflowId: undefined,
+			workflowJsons: [],
+			transcript: [] as never,
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+		const draftArtifact = { agentId: 'agent-1', config: { name: 'Draft', model: '' }, skills: {} };
+		const testCase = { ...scenarioCase(['happy-path']), credentials: [{ type: 'googlePalmApi' }] };
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				testCaseByFileSlug: new Map([['case-a', testCase]]),
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: draftArtifact })],
+				]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({ passed: false, attribution: 'builder_issue' });
+	});
+
+	it('owns a draft Agent as builder_issue when the case declared an LLM credential', async () => {
+		const lane = makeLane();
+		const build = okBuild({
+			workflowId: undefined,
+			workflowJsons: [],
+			transcript: [] as never,
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+		const draftArtifact = { agentId: 'agent-1', config: { name: 'Draft', model: '' }, skills: {} };
+		const testCase = { ...scenarioCase(['happy-path']), credentials: [{ type: 'openAiApi' }] };
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				testCaseByFileSlug: new Map([['case-a', testCase]]),
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: draftArtifact })],
+				]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({ passed: false, attribution: 'builder_issue' });
+		expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
+	});
+
+	describe('a seeded Agent whose model has no declared credential', () => {
+		// The restore binds a seeded Agent's model only to a declared credential of
+		// its provider's type, and the builder sees only declared credentials. With
+		// none declared, the Agent cannot run whatever the builder does.
+		const lowTier = (model: string) => ({ modelsByDifficulty: { low: { model, credential: '' } } });
+		const seededCase = (credentials: Array<{ type: string }> = [], subAgents?: object) => ({
+			...scenarioCase(['happy-path']),
+			credentials,
+			seed: {
+				mode: 'inline',
+				messages: [],
+				agents: [
+					{
+						id: 'seed-agent',
+						config: { name: 'Support', model: 'anthropic/claude-sonnet-4-5', subAgents },
+					},
+				],
+			},
+		});
+		const runWith = async (opts: {
+			testCase: object;
+			createdAgentIds: string[];
+			model: string;
+			subAgents?: object;
+		}) => {
+			const lane = makeLane();
+			vi.mocked(lane.tracedExecuteAgent).mockResolvedValue({
+				success: false,
+				score: 0,
+				reasoning: 'runtime failed',
+				agentEvalResult: { errors: [] },
+			} as never);
+			const build = okBuild({
+				workflowId: undefined,
+				workflowJsons: [],
+				transcript: [] as never,
+				artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+				createdAgentIds: opts.createdAgentIds,
+			});
+			const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+			const artifact = {
+				agentId: 'agent-1',
+				config: { name: 'Support', model: opts.model, subAgents: opts.subAgents },
+				skills: {},
+			};
+			const pipeline = createCasePipeline(
+				makeDeps(orchestrator, {
+					testCaseByFileSlug: new Map([['case-a', opts.testCase as never]]),
+					agentContextByKey: new Map([
+						['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact })],
+					]),
+				}),
+			);
+			return { output: await pipeline.runRow(rowInputs('happy-path')), lane };
+		};
+
+		it('is not run, and the red is the framework_issue', async () => {
+			const { output, lane } = await runWith({
+				testCase: seededCase(),
+				createdAgentIds: ['agent-1'],
+				model: 'anthropic/claude-sonnet-4-5',
+			});
+
+			expect(output).toMatchObject({ passed: false, attribution: 'framework_issue' });
+			expect(output.reasoning).toContain('anthropicApi');
+			expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
+		});
+
+		it('runs when the case declares a credential of the model provider', async () => {
+			const { lane } = await runWith({
+				testCase: seededCase([{ type: 'anthropicApi' }]),
+				createdAgentIds: ['agent-1'],
+				model: 'anthropic/claude-sonnet-4-5',
+			});
+
+			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
+		});
+
+		it('never blames the framework for an Agent the builder built', async () => {
+			// Not among the restored ids: the live turn created it.
+			const { output, lane } = await runWith({
+				testCase: seededCase(),
+				createdAgentIds: ['seed-restored-elsewhere'],
+				model: 'anthropic/claude-sonnet-4-5',
+			});
+
+			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
+			expect(output.attribution).not.toBe('framework_issue');
+		});
+
+		it('checks a seeded sub-agent model the same way', async () => {
+			const { output, lane } = await runWith({
+				testCase: seededCase([{ type: 'anthropicApi' }], lowTier('openai/gpt-4.1-nano')),
+				createdAgentIds: ['agent-1'],
+				model: 'anthropic/claude-sonnet-4-5',
+				subAgents: lowTier('openai/gpt-4.1-nano'),
+			});
+
+			expect(output).toMatchObject({ passed: false, attribution: 'framework_issue' });
+			expect(output.reasoning).toContain('openAiApi');
+			expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
+		});
+
+		it('never blames the framework for a sub-agent model the builder changed', async () => {
+			const { lane } = await runWith({
+				testCase: seededCase([{ type: 'anthropicApi' }], lowTier('openai/gpt-4.1-nano')),
+				createdAgentIds: ['agent-1'],
+				model: 'anthropic/claude-sonnet-4-5',
+				subAgents: lowTier('xai/grok-4'),
+			});
+
+			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
+		});
+
+		it('never blames the framework when the builder changed the seeded model', async () => {
+			const { output, lane } = await runWith({
+				testCase: seededCase(),
+				createdAgentIds: ['agent-1'],
+				model: 'xai/grok-4',
+			});
+
+			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
+			expect(output.attribution).not.toBe('framework_issue');
+		});
 	});
 });
 
@@ -411,6 +760,86 @@ describe('seed-table scenarios (TRUST-311 parity)', () => {
 		});
 	});
 
+	const seededAgentBuild = (overrides: Partial<BuildResult> = {}) =>
+		okBuild({
+			workflowId: undefined,
+			workflowJsons: [],
+			transcript: [] as never,
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+			...overrides,
+		});
+	const runnableAgentContext = () =>
+		new Map([
+			[
+				'0:case-a',
+				Promise.resolve({
+					rendered: 'AGENT CONTEXT',
+					artifact: {
+						agentId: 'agent-1',
+						config: { name: 'Support agent', model: 'openai/gpt-5-mini' },
+						skills: {},
+					},
+				}),
+			],
+		]);
+
+	it('passes the build seed context to an agent scenario', async () => {
+		const lane = makeLane();
+		vi.mocked(lane.tracedExecuteAgent).mockResolvedValue({
+			success: true,
+			score: 1,
+			reasoning: 'agent did it',
+			agentEvalResult: { errors: [] },
+		} as never);
+		const orchestrator = makeOrchestrator({
+			build: seededAgentBuild({
+				threadId: 'thread-1',
+				seededScenarioTableIdsByName: { Jobs: 'dt-real-1' },
+			}),
+			lane,
+			buildDurationMs: 1,
+		});
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				testCaseByFileSlug: new Map([['case-a', seededCase(['happy-path'])]]),
+				agentContextByKey: runnableAgentContext(),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({ passed: true, agentId: 'agent-1' });
+		expect(lane.tracedExecuteAgent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				scenario: expect.objectContaining({
+					seedDataTables: [expect.objectContaining({ name: 'Jobs' })],
+				}) as unknown,
+				seedContext: { threadId: 'thread-1', tableIdsByName: { Jobs: 'dt-real-1' } },
+			}),
+		);
+	});
+
+	it('refuses to run a seeded agent scenario when the build carries no seeded-table mapping', async () => {
+		const lane = makeLane();
+		const orchestrator = makeOrchestrator({ build: seededAgentBuild(), lane, buildDurationMs: 1 });
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				testCaseByFileSlug: new Map([['case-a', seededCase(['happy-path'])]]),
+				agentContextByKey: runnableAgentContext(),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
+		expect(output).toMatchObject({
+			passed: false,
+			agentId: 'agent-1',
+			failureCategory: 'framework_issue',
+			reasoning: expect.stringContaining('no seeded-table mapping') as unknown,
+		});
+	});
+
 	it('serializes rows of a seeded case so table reseeding cannot interleave', async () => {
 		const lane = makeLane();
 		const started: string[] = [];
@@ -463,6 +892,96 @@ describe('seed-table scenarios (TRUST-311 parity)', () => {
 			}),
 		);
 
+		const rows = Promise.all([pipeline.runRow(rowInputs('s1')), pipeline.runRow(rowInputs('s2'))]);
+		await vi.waitFor(() => expect(started).toHaveLength(2));
+		first.resolve({ success: true, score: 1, reasoning: 'ok' });
+		second.resolve({ success: true, score: 1, reasoning: 'ok' });
+		await rows;
+	});
+});
+
+describe('dedupe scenarios queue on the workflow they run', () => {
+	const TRIGGER = 'n8n-nodes-base.manualTrigger';
+	const dedupeWorkflow = (id: string) =>
+		({ id, nodes: [{ type: TRIGGER }, { type: 'n8n-nodes-base.removeDuplicates' }] }) as never;
+
+	function laneWithTwoDeferredRuns() {
+		const lane = makeLane();
+		const started: string[] = [];
+		const first = deferred();
+		const second = deferred();
+		vi.mocked(lane.tracedExecute).mockImplementation(((execArgs: {
+			scenario: { name: string };
+		}) => {
+			started.push(execArgs.scenario.name);
+			return (started.length === 1 ? first.promise : second.promise) as never;
+		}) as never);
+		return { lane, started, first, second };
+	}
+
+	async function expectSerialized(
+		rows: Promise<unknown>,
+		started: string[],
+		first: ReturnType<typeof deferred>,
+		second: ReturnType<typeof deferred>,
+	) {
+		await vi.waitFor(() => expect(started).toHaveLength(1));
+		for (let i = 0; i < 5; i++) await Promise.resolve();
+		// The second row must not start while the first still runs.
+		expect(started).toHaveLength(1);
+		first.resolve({ success: true, score: 1, reasoning: 'ok' });
+		await vi.waitFor(() => expect(started).toHaveLength(2));
+		second.resolve({ success: true, score: 1, reasoning: 'ok' });
+		await rows;
+	}
+
+	it('serializes scenarios routed to a deduping sibling, not only the first workflow', async () => {
+		const { lane, started, first, second } = laneWithTwoDeferredRuns();
+		// The first workflow has no trigger and no dedupe; the only runnable entry point dedupes.
+		const build = okBuild({
+			workflowId: 'wf-producer',
+			workflowJsons: [
+				{ id: 'wf-producer', nodes: [{ type: 'n8n-nodes-base.set' }] },
+				dedupeWorkflow('wf-incidents'),
+			] as never,
+		});
+		const pipeline = createCasePipeline(
+			makeDeps(makeOrchestrator({ build, lane, buildDurationMs: 1 }), {
+				testCaseByFileSlug: new Map([['case-a', scenarioCase(['s1', 's2'])]]),
+			}),
+		);
+		const rows = Promise.all([pipeline.runRow(rowInputs('s1')), pipeline.runRow(rowInputs('s2'))]);
+		await expectSerialized(rows, started, first, second);
+	});
+
+	it('serializes rows of different iterations that run the same prebuilt workflow', async () => {
+		const { lane, started, first, second } = laneWithTwoDeferredRuns();
+		// Prebuilt: no workflow JSON to read, one id shared by both iterations.
+		const cached = {
+			build: okBuild({ workflowId: 'wf-prebuilt', workflowJsons: [] }),
+			lane,
+			buildDurationMs: 1,
+		};
+		const orchestrator = makeOrchestrator(cached);
+		orchestrator.buildCache.set('1:case-a', Promise.resolve(cached));
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, { testCaseByFileSlug: new Map([['case-a', scenarioCase(['s1'])]]) }),
+		);
+		const rows = Promise.all([
+			pipeline.runRow(rowInputs('s1')),
+			pipeline.runRow({ ...rowInputs('s1'), _iteration: 1 }),
+		]);
+		await expectSerialized(rows, started, first, second);
+	});
+
+	it('does not serialize a case whose workflows do not deduplicate', async () => {
+		const { lane, started, first, second } = laneWithTwoDeferredRuns();
+		const build = okBuild({ workflowJsons: [{ id: 'wf-1', nodes: [{ type: TRIGGER }] }] as never });
+		const pipeline = createCasePipeline(
+			makeDeps(makeOrchestrator({ build, lane, buildDurationMs: 1 }), {
+				testCaseByFileSlug: new Map([['case-a', scenarioCase(['s1', 's2'])]]),
+			}),
+		);
 		const rows = Promise.all([pipeline.runRow(rowInputs('s1')), pipeline.runRow(rowInputs('s2'))]);
 		await vi.waitFor(() => expect(started).toHaveLength(2));
 		first.resolve({ success: true, score: 1, reasoning: 'ok' });

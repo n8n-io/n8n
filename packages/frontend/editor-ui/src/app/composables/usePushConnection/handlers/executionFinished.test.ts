@@ -6,10 +6,15 @@ import {
 	getRunExecutionData,
 	handleExecutionFinishedWithSuccessOrOther,
 	handleExecutionFinishedWithErrorOrCanceled,
+	refreshWalletAfterBilledRun,
 	type SimplifiedExecution,
 } from './executionFinished';
 import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
-import { createRunExecutionData, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { Router } from 'vue-router';
@@ -28,6 +33,8 @@ import { mockedStore } from '@/__tests__/utils';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import type { PushHandlerOptions } from './types';
 
@@ -54,6 +61,12 @@ vi.mock('@n8n/composables/useToast', () => ({
 	}),
 }));
 
+const mockShowPolicyViolationToast = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/usePolicyViolationToast', () => ({
+	usePolicyViolationToast: () => ({ showPolicyViolationToast: mockShowPolicyViolationToast }),
+}));
+
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		setDocumentTitle: vi.fn(),
@@ -67,6 +80,70 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 		runWorkflow,
 	})),
 }));
+
+// Experiment cleanup (119_surface_assistant_on_workflow_error)
+const nudge = vi.hoisted(() => ({
+	dismiss: vi.fn(),
+	release: vi.fn(),
+	trigger: vi.fn(),
+}));
+
+vi.mock(
+	'@/experiments/surfaceAssistantOnWorkflowError/composables/useSurfaceAssistantOnWorkflowError',
+	() => ({
+		WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS: 'content-toast workflow-error-nudge-toast',
+		dismissWorkflowErrorNudge: nudge.dismiss,
+		releaseWorkflowErrorNudge: nudge.release,
+		useSurfaceAssistantOnWorkflowError: () => ({ triggerOnWorkflowError: nudge.trigger }),
+	}),
+);
+// EOF Experiment cleanup
+
+describe('refreshWalletAfterBilledRun()', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	function stubSnapshotNodes(nodes: INodeUi[]) {
+		vi.spyOn(useWorkflowDocumentStore(documentId), 'getSnapshot').mockReturnValue({
+			nodes,
+		} as IWorkflowDb);
+	}
+
+	it('does nothing when the AI gateway is disabled', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isAiGatewayEnabled = false;
+		const aiGatewayStore = mockedStore(useAiGatewayStore);
+
+		refreshWalletAfterBilledRun(documentId);
+
+		expect(aiGatewayStore.fetchWallet).not.toHaveBeenCalled();
+	});
+
+	it('does not refresh the wallet when no node used a managed credential', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isAiGatewayEnabled = true;
+		const aiGatewayStore = mockedStore(useAiGatewayStore);
+		aiGatewayStore.hasGatewayManagedCredential.mockReturnValue(false);
+		stubSnapshotNodes([mock<INodeUi>()]);
+
+		refreshWalletAfterBilledRun(documentId);
+
+		expect(aiGatewayStore.fetchWallet).not.toHaveBeenCalled();
+	});
+
+	it('force-refreshes the wallet when a node used a managed credential', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isAiGatewayEnabled = true;
+		const aiGatewayStore = mockedStore(useAiGatewayStore);
+		aiGatewayStore.hasGatewayManagedCredential.mockReturnValue(true);
+		stubSnapshotNodes([mock<INodeUi>()]);
+
+		refreshWalletAfterBilledRun(documentId);
+
+		expect(aiGatewayStore.fetchWallet).toHaveBeenCalledWith({ force: true });
+	});
+});
 
 describe('continueEvaluationLoop()', () => {
 	beforeEach(() => {
@@ -939,6 +1016,53 @@ describe('manual execution stats tracking', () => {
 			expect(incrementSpy).toHaveBeenCalledWith('error');
 		});
 
+		it('leaves a run refused by policy to the policy violation toast for the document that ran', () => {
+			setActivePinia(createTestingPinia());
+			mockShowMessage.mockClear();
+			const violations = [{ kind: 'workflow-start-denied', checkId: 'c', message: 'Blocked' }];
+			const error = Object.assign(
+				new WorkflowOperationError('Workflow start is blocked by a project policy'),
+				{ violations },
+			);
+			// A mock would turn the violation fields it lacks into functions, so the run data stays plain.
+			const runExecutionData = createRunExecutionData({ resultData: { error } });
+			const execution = mock<SimplifiedExecution>({ status: 'error' });
+			execution.data = runExecutionData;
+
+			handleExecutionFinishedWithErrorOrCanceled(
+				execution,
+				runExecutionData,
+				createWorkflowDocumentId(''),
+			);
+
+			expect(mockShowPolicyViolationToast).toHaveBeenCalledWith(
+				violations,
+				'Problem executing workflow',
+				'execute',
+				createWorkflowDocumentId(''),
+			);
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('shows the generic error toast when the run error carries no violations', () => {
+			setActivePinia(createTestingPinia());
+			mockShowMessage.mockClear();
+
+			const error = { message: 'test error', name: 'Error' };
+			const execution = mock<SimplifiedExecution>({
+				status: 'error',
+				data: { resultData: { error } },
+			});
+
+			handleExecutionFinishedWithErrorOrCanceled(
+				execution,
+				mock<IRunExecutionData>({ resultData: { error } }),
+				createWorkflowDocumentId(''),
+			);
+
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		});
+
 		it('does not increment stats for canceled executions', () => {
 			setActivePinia(createTestingPinia());
 
@@ -959,3 +1083,89 @@ describe('manual execution stats tracking', () => {
 		});
 	});
 });
+
+// Experiment cleanup (119_surface_assistant_on_workflow_error)
+describe('workflow error nudge', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		vi.clearAllMocks();
+	});
+
+	function finish(executionId: string, status: 'success' | 'error') {
+		return executionFinished(
+			{ type: 'executionFinished', data: { executionId, workflowId: '1', status } },
+			opts,
+		);
+	}
+
+	it('dismisses the nudge when a tracked execution finishes', async () => {
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue('exec-1');
+		vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById').mockResolvedValue(null);
+
+		await finish('exec-1', 'success');
+
+		expect(nudge.dismiss).toHaveBeenCalledTimes(1);
+		expect(nudge.trigger).not.toHaveBeenCalled();
+	});
+
+	it('leaves the nudge alone for an execution this document is not tracking', async () => {
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue('our-exec');
+
+		await finish('foreign-exec', 'success');
+
+		expect(nudge.dismiss).not.toHaveBeenCalled();
+	});
+
+	it('triggers the nudge for the failed execution and releases it when the toast closes', () => {
+		const error = { message: 'test error', name: 'Error' };
+		const execution = mock<SimplifiedExecution>({
+			id: 'exec-1',
+			workflowId: 'wf-1',
+			status: 'error',
+			data: { resultData: { error } },
+		});
+
+		handleExecutionFinishedWithErrorOrCanceled(
+			execution,
+			mock<IRunExecutionData>({ resultData: { error } }),
+			documentId,
+		);
+
+		expect(nudge.trigger).toHaveBeenCalledWith('exec-1', 'wf-1');
+		expect(mockShowMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'error',
+				customClass: 'content-toast workflow-error-nudge-toast',
+				onClose: expect.any(Function),
+			}),
+		);
+
+		const { onClose } = mockShowMessage.mock.calls[0][0];
+		onClose();
+
+		expect(nudge.release).toHaveBeenCalledWith('exec-1');
+	});
+
+	it('does not trigger the nudge when error toasts are suppressed', () => {
+		const error = { message: 'test error', name: 'Error' };
+		const execution = mock<SimplifiedExecution>({
+			id: 'exec-1',
+			workflowId: 'wf-1',
+			status: 'error',
+			data: { resultData: { error } },
+		});
+
+		handleExecutionFinishedWithErrorOrCanceled(
+			execution,
+			mock<IRunExecutionData>({ resultData: { error } }),
+			documentId,
+			true,
+		);
+
+		expect(nudge.trigger).not.toHaveBeenCalled();
+		expect(mockShowMessage).not.toHaveBeenCalled();
+	});
+});
+// EOF Experiment cleanup

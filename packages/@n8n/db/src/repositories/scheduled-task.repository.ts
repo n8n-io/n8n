@@ -83,6 +83,25 @@ export interface NewOccurrence {
 	missedAfter?: Date | null;
 }
 
+/** A task that {@link ScheduledTaskRepository.retireMissedPending} set to `missed`. */
+export interface RetiredTask {
+	id: string;
+	jobId: number;
+	taskType: string;
+}
+
+/** Result of {@link ScheduledTaskRepository.retireMissedPending}. */
+export interface RetireMissedResult {
+	/** Number of tasks set to `missed`. */
+	retired: number;
+	/**
+	 * The retired tasks whose job had at least `concurrencyLimit` runs in progress
+	 * at the task's deadline. This is an estimate. It uses the job's current limit,
+	 * and it does not count a claimed task that has not started yet.
+	 */
+	heldByConcurrencyLimit: RetiredTask[];
+}
+
 /** Identity of a row {@link ScheduledTaskRepository.insertIgnoringDuplicates} just created. */
 export interface RecordedOccurrence {
 	id: string;
@@ -123,20 +142,24 @@ export type ScheduledTaskMetricSnapshot = {
 export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	private readonly isPostgres: boolean;
 	private readonly tableName: string;
+	private readonly jobTableName: string;
 	// Quoted here so the reaper update below doesn't have to quote these
 	// camelCase columns itself for Postgres (SQLite accepts the same
 	// double-quoted identifier).
 	private readonly leaseExpiresAtColumn: string;
 	private readonly dispatchedAtColumn: string;
 	private readonly runAtColumn: string;
+	private readonly missedAfterColumn: string;
 
 	constructor(dataSource: DataSource, config: DatabaseConfig) {
 		super(ScheduledTask, dataSource.manager);
 		this.isPostgres = config.type === 'postgresdb';
 		this.tableName = this.manager.connection.driver.escape(`${config.tablePrefix}scheduled_task`);
+		this.jobTableName = this.manager.connection.driver.escape(`${config.tablePrefix}scheduled_job`);
 		this.leaseExpiresAtColumn = this.manager.connection.driver.escape('leaseExpiresAt');
 		this.dispatchedAtColumn = this.manager.connection.driver.escape('dispatchedAt');
 		this.runAtColumn = this.manager.connection.driver.escape('runAt');
+		this.missedAfterColumn = this.manager.connection.driver.escape('missedAfter');
 	}
 
 	/**
@@ -250,10 +273,11 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	/**
 	 * Recompute `missedAfter` on a job's still-`pending` occurrences from the given
 	 * grace, anchored to each row's own `runAt` or DB-now, whichever is later, so a
-	 * policy or grace change reaches rows already queued under the old grace
-	 * without dragging an overdue-but-still-live row's deadline into the past. Rows
-	 * with a `null` `missedAfter` are left alone: reconciliation only adjusts an
-	 * existing deadline, never gives one to a row that never had one.
+	 * grace change reaches rows already queued under the old grace without dragging
+	 * an overdue-but-still-live row's deadline into the past. Rows with a `null`
+	 * `missedAfter` are left alone: reconciliation only adjusts an existing
+	 * deadline, never gives one to a row that never had one. A deadline already in
+	 * the past stays as it is, so an overdue occurrence is never made live again.
 	 */
 	async updateMissedAfterForJobs(
 		manager: EntityManager,
@@ -269,6 +293,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 					columnOrNowPlusMsLiteral(this.isPostgres, this.runAtColumn, misfireGraceSeconds * 1000),
 			})
 			.where({ jobId: In(jobIds), status: ScheduledTaskStatus.Pending, missedAfter: Not(IsNull()) })
+			.andWhere(`${this.missedAfterColumn} > ${dbNowLiteral(this.isPostgres)}`)
 			.execute();
 	}
 
@@ -280,13 +305,60 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 *
 	 * Rows past their deadline are left alone (see {@link claimableSql}).
 	 *
-	 * Concurrent claimers never take the same row: Postgres skips locked rows
-	 * (`FOR UPDATE SKIP LOCKED`); SQLite serialises via the sqlite-pooled driver's
-	 * `BEGIN IMMEDIATE`, which reserves the write lock upfront.
+	 * A job's `concurrencyLimit` caps how many of its tasks run at once. Extra tasks
+	 * stay `pending` for a later claim, and other jobs still fill the batch.
+	 *
+	 * Concurrent claimers never take the same row.
 	 */
 	async claimDueTasks(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
 		if (opts.taskTypes.length === 0) return [];
 		return this.isPostgres ? await this.claimWithPostgres(opts) : await this.claimWithSqlite(opts);
+	}
+
+	private claimCandidateSql(alias: string, taskTypesSql: string, dueBeforeSql: string): string {
+		return `${alias}"status" = '${ScheduledTaskStatus.Pending}'
+			AND ${alias}"taskType" ${taskTypesSql}
+			AND ${alias}"runAt" <= ${dueBeforeSql}
+			AND ${this.claimableSql(alias)}`;
+	}
+
+	private limitedJobIdsSql(): string {
+		return `SELECT "id" FROM ${this.jobTableName} WHERE "concurrencyLimit" IS NOT NULL`;
+	}
+
+	private withinConcurrencyLimitSql(alias: string): string {
+		return `(${alias}"jobId" NOT IN (${this.limitedJobIdsSql()})
+			OR ${alias}"id" IN (${this.allowedByConcurrencyLimitSql()}))`;
+	}
+
+	private allowedByConcurrencyLimitSql(): string {
+		return `
+			SELECT ranked."id"
+			FROM (
+				SELECT
+					c."id",
+					c."status",
+					ROW_NUMBER() OVER (
+						PARTITION BY c."jobId"
+						ORDER BY
+							CASE WHEN c."status" = '${ScheduledTaskStatus.Pending}' THEN 0 ELSE 1 END,
+							c."runAt",
+							c."id"
+					) AS "slot",
+					cj."concurrencyLimit" - SUM(
+						CASE WHEN c."status" = '${ScheduledTaskStatus.Running}' THEN 1 ELSE 0 END
+					) OVER (PARTITION BY c."jobId") AS "freeSlots"
+				FROM ${this.tableName} c
+				JOIN ${this.jobTableName} cj ON cj."id" = c."jobId"
+				WHERE cj."concurrencyLimit" IS NOT NULL
+					AND (
+						c."status" = '${ScheduledTaskStatus.Running}'
+						OR (c."status" = '${ScheduledTaskStatus.Pending}' AND ${this.claimableSql('c.')})
+					)
+			) ranked
+			WHERE ranked."status" = '${ScheduledTaskStatus.Pending}'
+				AND ranked."slot" <= ranked."freeSlots"
+		`;
 	}
 
 	/**
@@ -294,9 +366,6 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * table alias. A row past its `missedAfter` is left alone, unless it has no
 	 * deadline at all, or has already been attempted: a retry's backoff pushes it past
 	 * its deadline by design, and the attempt count decides its fate from then on.
-	 *
-	 * Shared by both dialects' claims and by the metric snapshot, so what the snapshot
-	 * calls due cannot drift from what the claim would take.
 	 */
 	private claimableSql(alias = ''): string {
 		const deadline = `${alias}"missedAfter"`;
@@ -304,22 +373,43 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	private async claimWithPostgres(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
+		const taskTypesSql = '= ANY($3)';
+		const dueBeforeSql = "now() + ($4 || ' milliseconds')::interval";
+
+		// Two claimers must not both use a job's last free place. The `xmin` guard skips
+		// a job that another claim changed, and `claimed_jobs` changes each job it uses.
 		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw UPDATE
 		// ... RETURNING, so destructure the rows out of the tuple.
 		const [rows]: [ScheduledTask[], number] = await this.query(
-			`UPDATE ${this.tableName}
+			`WITH candidates AS MATERIALIZED (
+			   SELECT t."id", t."jobId", j."concurrencyLimit"
+			     FROM ${this.tableName} t
+			     JOIN ${this.jobTableName} j ON j."id" = t."jobId"
+			    WHERE ${this.claimCandidateSql('t.', taskTypesSql, dueBeforeSql)}
+			      AND ${this.withinConcurrencyLimitSql('t.')}
+			      AND (j."concurrencyLimit" IS NULL OR EXISTS (
+			        SELECT 1 FROM ${this.jobTableName} guard
+			         WHERE guard."id" = j."id" AND guard.xmin = j.xmin
+			         FOR NO KEY UPDATE OF guard SKIP LOCKED
+			      ))
+			    ORDER BY t."runAt"
+			    LIMIT $5
+			    FOR UPDATE OF t SKIP LOCKED
+			 ), claimed_jobs AS (
+			   UPDATE ${this.jobTableName} j
+			      SET "concurrencyLimit" = j."concurrencyLimit"
+			    WHERE j."id" IN (
+			      SELECT "jobId" FROM candidates WHERE "concurrencyLimit" IS NOT NULL
+			    )
+			   RETURNING j."id"
+			 )
+			 UPDATE ${this.tableName}
 			   SET "status" = '${ScheduledTaskStatus.Running}', "claimedBy" = $1,
 			       "leaseExpiresAt" = now() + ($2 || ' milliseconds')::interval,
 			       "leaseEpoch" = "leaseEpoch" + 1
 			 WHERE "id" IN (
-			   SELECT t."id" FROM ${this.tableName} t
-			    WHERE t."status" = '${ScheduledTaskStatus.Pending}'
-			      AND t."taskType" = ANY($3)
-			      AND t."runAt" <= now() + ($4 || ' milliseconds')::interval
-			      AND ${this.claimableSql('t.')}
-			    ORDER BY t."runAt"
-			    LIMIT $5
-			    FOR UPDATE SKIP LOCKED)
+			   SELECT "id" FROM candidates
+			    WHERE "concurrencyLimit" IS NULL OR "jobId" IN (SELECT "id" FROM claimed_jobs))
 			 RETURNING *`,
 			[opts.host, String(opts.leaseMs), opts.taskTypes, String(opts.lookaheadMs), opts.batchSize],
 		);
@@ -332,18 +422,18 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		// so concurrent claimers serialise here rather than both reading the same
 		// pending rows. Two statements (select then update) because SQLite can't
 		// return the updated rows from an UPDATE.
+		const taskTypesSql = 'IN (:...taskTypes)';
+		// Reach `lookaheadMs` past now so a task due before the next poll is claimed
+		// early and fired precisely by the timer. STRFTIME takes the offset as whole
+		// seconds.
+		const dueBeforeSql = "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', :lookahead)";
+		const params = { taskTypes: opts.taskTypes, lookahead: `+${opts.lookaheadMs / 1000} seconds` };
+
 		return await this.manager.transaction(async (tx) => {
 			const candidates = await tx
 				.createQueryBuilder(ScheduledTask, 't')
-				.where('t.status = :pending', { pending: ScheduledTaskStatus.Pending })
-				.andWhere('t.taskType IN (:...taskTypes)', { taskTypes: opts.taskTypes })
-				// Reach `lookaheadMs` past now so a task due before the next poll is claimed
-				// early and fired precisely by the timer. STRFTIME takes the offset as whole
-				// seconds.
-				.andWhere("t.runAt <= STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', :lookahead)", {
-					lookahead: `+${opts.lookaheadMs / 1000} seconds`,
-				})
-				.andWhere(this.claimableSql('t.'))
+				.where(this.claimCandidateSql('t.', taskTypesSql, dueBeforeSql), params)
+				.andWhere(this.withinConcurrencyLimitSql('t.'))
 				.orderBy('t.runAt', 'ASC')
 				.limit(opts.batchSize)
 				.getMany();
@@ -404,6 +494,22 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
+	 * Extend the lease of a running claim, so the reaper leaves a handler that is
+	 * still working alone. Only the claiming host, at the current epoch, can renew.
+	 *
+	 * @param {HostedClaimedRef} claim the claim to renew
+	 * @param {number} expiresInMs the new lease expiry, in milliseconds from the database's now
+	 * @returns {Promise<boolean>} `true` when the lease was extended, `false` when the
+	 *   claim is gone (reclaimed, finished or deleted)
+	 */
+	async renewLease(claim: HostedClaimedRef, expiresInMs: number): Promise<boolean> {
+		const rowsAffected = await this.runGuardedUpdate(claim, {
+			leaseExpiresAt: () => dbNowPlusMsLiteral(this.isPostgres, expiresInMs),
+		});
+		return rowsAffected > 0;
+	}
+
+	/**
 	 * Stamp `dispatchedAt`, the effect-boundary marker, once the handler reports its
 	 * effect was handed off. Guarded so it only affects the row this `claim` still
 	 * owns; 0 rows is a benign no-op (the row was reclaimed meanwhile — the new owner
@@ -422,6 +528,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Succeeded,
 			finishedAt: () => dbNowLiteral(this.isPostgres),
+			errorMessage: null,
 		});
 	}
 
@@ -506,9 +613,10 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * (`oldestPendingAgeMs`). Everything reads the DB clock, so `due`-ness and the
 	 * oldest-age reference are consistent regardless of any instance clock skew.
 	 *
-	 * `due` and the oldest age count only what the claim would actually take, so a
+	 * `due` and the oldest age skip rows past their deadline, like the claim, so a
 	 * backlog the reaper has yet to retire doesn't read as work the scheduler is behind
-	 * on. `pending` stays the whole backlog, retirable rows included.
+	 * on. Rows a `concurrencyLimit` holds back still count as due. `pending` stays the
+	 * whole backlog, retirable rows included.
 	 *
 	 * The caller runs this behind a short scrape cache.
 	 */
@@ -549,9 +657,17 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		};
 	}
 
-	/** Current time on the database clock, used to check this instance's clock for skew. */
-	async readDbTime(): Promise<Date> {
-		const [row]: Array<{ dbNow: Date | string }> = await this.query(
+	/**
+	 * Current time on the database clock, used to check this instance's clock for skew.
+	 *
+	 * A caller already inside a transaction must pass its `manager`: reading off the
+	 * data source would take a second pooled connection while the first one is held,
+	 * which deadlocks once the pool is saturated. On Postgres the value is then the
+	 * transaction's start time, consistent with the `CURRENT_TIMESTAMP` its own writes
+	 * record.
+	 */
+	async readDbTime(manager?: EntityManager): Promise<Date> {
+		const [row]: Array<{ dbNow: Date | string }> = await (manager ?? this.manager).query(
 			`SELECT ${dbNowLiteral(this.isPostgres)} AS "dbNow"`,
 		);
 		return parseDbTime(row.dbNow);
@@ -623,6 +739,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			{
 				status: ScheduledTaskStatus.Succeeded,
 				finishedAt: () => dbNowLiteral(this.isPostgres),
+				errorMessage: null,
 			},
 			'post-dispatch',
 		);
@@ -766,56 +883,136 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * only ever collapses backlog that is still unrecorded at the moment a pass
 	 * plans it; once recorded, an occurrence that goes unclaimed past its deadline is
 	 * always retired here, regardless of its job's policy.
+	 *
+	 * @returns {RetireMissedResult} the number of retired tasks, and the ones whose
+	 * job was at its concurrency limit at their deadline.
 	 */
-	async retireMissedPending(limit: number): Promise<number> {
+	async retireMissedPending(limit: number): Promise<RetireMissedResult> {
 		// A non-integer bound to LIMIT errors on SQLite (datatype mismatch), and NaN
 		// binds as NULL, which on Postgres means LIMIT ALL.
 		if (!Number.isSafeInteger(limit)) {
 			throw new UnexpectedError(`retireMissedPending needs an integer limit, got: ${limit}`);
 		}
-		if (limit <= 0) return 0;
+		if (limit <= 0) {
+			return { retired: 0, heldByConcurrencyLimit: [] };
+		}
 		return this.isPostgres
 			? await this.retireMissedPendingWithPostgres(limit)
 			: await this.retireMissedPendingWithSqlite(limit);
 	}
 
-	private async retireMissedPendingWithPostgres(limit: number): Promise<number> {
-		const [, affected] = await this.manager.query<[unknown[], number]>(
-			`UPDATE ${this.tableName}
-			    SET "status" = $1, "finishedAt" = ${dbNowLiteral(true)}
-			  WHERE "id" IN (
-			    SELECT t."id" FROM ${this.tableName} t
-			     WHERE t."status" = $2
-			       AND t."missedAfter" IS NOT NULL
-			       AND t."missedAfter" <= ${dbNowLiteral(true)}
-			       AND t."attempts" = 0
-			     ORDER BY t."missedAfter"
-			     LIMIT $3
-			     FOR UPDATE SKIP LOCKED)`,
-			[ScheduledTaskStatus.Missed, ScheduledTaskStatus.Pending, limit],
-		);
-		return affected;
+	/**
+	 * SQL condition that is true when the job had at least `concurrencyLimit` other
+	 * tasks in progress at the task's deadline. Always false for a job without a limit.
+	 *
+	 * The count uses each task's `startedAt` and `finishedAt`, not the tasks that run
+	 * now. The run that blocked the task has usually ended before this check. A run
+	 * that started after the deadline did not block it.
+	 *
+	 * No row stores the limit that applied at the deadline, so the check uses the
+	 * current limit. A limit changed after the deadline can give a wrong result.
+	 */
+	private atConcurrencyLimitSql(alias: string, jobAlias: string): string {
+		const deadline = `${alias}"missedAfter"`;
+		return `${jobAlias}"concurrencyLimit" IS NOT NULL
+			AND ${jobAlias}"concurrencyLimit" <= (
+				SELECT COUNT(*) FROM ${this.tableName} sibling
+				 WHERE sibling."jobId" = ${alias}"jobId"
+				   AND sibling."id" <> ${alias}"id"
+				   AND sibling."startedAt" IS NOT NULL
+				   AND sibling."startedAt" <= ${deadline}
+				   AND (sibling."finishedAt" IS NULL OR sibling."finishedAt" > ${deadline}))`;
 	}
 
-	private async retireMissedPendingWithSqlite(limit: number): Promise<number> {
-		const result = await this.createQueryBuilder()
-			.update()
-			.set({
-				status: ScheduledTaskStatus.Missed,
-				finishedAt: () => dbNowLiteral(false),
-			})
-			.where(
-				`id IN (
-					SELECT "id" FROM ${this.tableName}
-					 WHERE "status" = :pending
-					   AND "missedAfter" IS NOT NULL
-					   AND "missedAfter" <= ${dbNowLiteral(false)}
-					   AND "attempts" = 0
-					 ORDER BY "missedAfter"
-					 LIMIT :limit)`,
-				{ pending: ScheduledTaskStatus.Pending, limit },
-			)
-			.execute();
-		return result.affected ?? 0;
+	/** SQL condition for a first attempt that is still `pending` after its deadline. */
+	private staleSql(alias: string, nowSql: string): string {
+		return `${alias}"status" = '${ScheduledTaskStatus.Pending}'
+			AND ${alias}"missedAfter" IS NOT NULL
+			AND ${alias}"missedAfter" <= ${nowSql}
+			AND ${alias}"attempts" = 0`;
 	}
+
+	/**
+	 * One statement locks, retires and returns the tasks. Each task is reported
+	 * only by the call that retired it, also when another instance runs at the
+	 * same time.
+	 */
+	private async retireMissedPendingWithPostgres(limit: number): Promise<RetireMissedResult> {
+		const rows = await this.manager.query<PostgresRetiredRow[]>(
+			`WITH stale AS MATERIALIZED (
+			   SELECT t."id"
+			     FROM ${this.tableName} t
+			    WHERE ${this.staleSql('t.', dbNowLiteral(true))}
+			    ORDER BY t."missedAfter"
+			    LIMIT $2
+			    FOR UPDATE SKIP LOCKED
+			 ), retired AS (
+			   UPDATE ${this.tableName}
+			      SET "status" = $1, "finishedAt" = ${dbNowLiteral(true)}
+			    WHERE "id" IN (SELECT "id" FROM stale)
+			   RETURNING "id", "jobId", "taskType", "missedAfter"
+			 )
+			 SELECT r."id", r."jobId", r."taskType",
+			        (${this.atConcurrencyLimitSql('r.', 'j.')}) AS "heldByConcurrencyLimit"
+			   FROM retired r
+			   JOIN ${this.jobTableName} j ON j."id" = r."jobId"`,
+			[ScheduledTaskStatus.Missed, limit],
+		);
+		return retireResult(rows);
+	}
+
+	/**
+	 * One statement. SQLite runs one write at a time, so each task is reported only
+	 * by the call that retired it. The SQL must start with `WITH`, because the
+	 * driver returns no rows for SQL that starts with `UPDATE`.
+	 */
+	private async retireMissedPendingWithSqlite(limit: number): Promise<RetireMissedResult> {
+		const rows = await this.manager.query<SqliteRetiredRow[]>(
+			`WITH stale AS MATERIALIZED (
+			   SELECT t."id", (${this.atConcurrencyLimitSql('t.', 'j.')}) AS "heldByConcurrencyLimit"
+			     FROM ${this.tableName} t
+			     JOIN ${this.jobTableName} j ON j."id" = t."jobId"
+			    WHERE ${this.staleSql('t.', dbNowLiteral(false))}
+			    ORDER BY t."missedAfter"
+			    LIMIT ?
+			 )
+			 UPDATE ${this.tableName}
+			    SET "status" = '${ScheduledTaskStatus.Missed}', "finishedAt" = ${dbNowLiteral(false)}
+			  WHERE "id" IN (SELECT "id" FROM stale)
+			 RETURNING "id", "jobId", "taskType",
+			           (SELECT s."heldByConcurrencyLimit" FROM stale s WHERE s."id" = ${this.tableName}."id")
+			             AS "heldByConcurrencyLimit"`,
+			[limit],
+		);
+		return retireResult(rows);
+	}
+}
+
+/** Columns that both databases return with the same type. */
+interface RetiredRowBase {
+	jobId: number;
+	taskType: string;
+}
+
+/** Postgres returns the `bigint` id as a string and `heldByConcurrencyLimit` as a boolean. */
+interface PostgresRetiredRow extends RetiredRowBase {
+	id: string;
+	heldByConcurrencyLimit: boolean;
+}
+
+/** SQLite returns the id as a number and `heldByConcurrencyLimit` as 0 or 1. */
+interface SqliteRetiredRow extends RetiredRowBase {
+	id: number;
+	heldByConcurrencyLimit: 0 | 1;
+}
+
+type RetiredRow = PostgresRetiredRow | SqliteRetiredRow;
+
+function retireResult(rows: RetiredRow[]): RetireMissedResult {
+	return {
+		retired: rows.length,
+		heldByConcurrencyLimit: rows
+			.filter((row) => Boolean(row.heldByConcurrencyLimit))
+			.map(({ id, jobId, taskType }) => ({ id: String(id), jobId, taskType })),
+	};
 }

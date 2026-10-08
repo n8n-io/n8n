@@ -1,4 +1,8 @@
+import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import { CredentialsEntity, CredentialsRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -7,7 +11,7 @@ import { ExportCredentialsCommand } from '@/commands/export/credentials';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { createCredentials } from '../../shared/db/credentials';
+import { createCredentials, encryptCredentialData } from '../../shared/db/credentials';
 
 mockInstance(LoadNodesAndCredentials);
 
@@ -21,9 +25,46 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+	delete Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG];
 	if (fs.existsSync(testOutputDir)) {
 		fs.rmSync(testOutputDir, { recursive: true, force: true });
 	}
+});
+
+describe.each([true, false])('credential exports with decrypted=%s', (decrypted) => {
+	test.each([true, false, undefined])('gates descriptions when the flag is %s', async (enabled) => {
+		if (enabled !== undefined) {
+			Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG] = enabled;
+		}
+		const credential = await createCredentials({
+			...(await encryptCredentialData(
+				Object.assign(new CredentialsEntity(), {
+					name: 'Reporting account',
+					type: 'test',
+					data: { apiKey: 'test-key' },
+				}),
+			)),
+			description: 'Read-only reporting account',
+		});
+		const outputFile = path.join(testOutputDir, 'output.json');
+
+		await command.run(['--all', `--output=${outputFile}`, ...(decrypted ? ['--decrypted'] : [])]);
+
+		const exported: Array<{ id: string; description?: string }> = JSON.parse(
+			fs.readFileSync(outputFile, 'utf-8'),
+		);
+		expect(exported).toHaveLength(1);
+		expect(exported[0].id).toBe(credential.id);
+		if (enabled) {
+			expect(exported[0].description).toBe('Read-only reporting account');
+		} else {
+			expect(exported[0]).not.toHaveProperty('description');
+		}
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: credential.id,
+		});
+		expect(stored.description).toBe('Read-only reporting account');
+	});
 });
 
 test('should reject --all with --projectId', async () => {

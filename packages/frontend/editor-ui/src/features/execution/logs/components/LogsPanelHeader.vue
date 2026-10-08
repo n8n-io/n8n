@@ -29,9 +29,10 @@ function handleClick() {
 .container {
 	font-size: var(--font-size--2xs);
 	text-align: left;
-	padding-inline-start: var(--spacing--sm);
-	padding-inline-end: var(--spacing--2xs);
-	padding-block: var(--spacing--2xs);
+	height: var(--logs-panel--header-height);
+	/* Keep the height fixed even when a sibling flex item overflows the panel */
+	flex-shrink: 0;
+	padding-inline: var(--spacing--2xs);
 	background-color: var(--color--foreground--tint-2);
 	display: flex;
 	justify-content: space-between;
@@ -62,7 +63,5 @@ function handleClick() {
 	align-items: center;
 	color: var(--color--text);
 	max-width: 70%;
-	/* Let button heights not affect the header height */
-	margin-block: calc(-1 * var(--spacing--sm));
 }
 </style>

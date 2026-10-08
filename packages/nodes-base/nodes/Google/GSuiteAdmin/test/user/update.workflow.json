@@ -38,7 +38,8 @@
 								"address": "newone@example.com"
 							}
 						]
-					}
+					},
+					"orgUnitPath": "/"
 				}
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",

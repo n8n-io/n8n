@@ -1,16 +1,14 @@
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useInstanceRegistryStore } from '@/features/instanceRegistry/stores/instanceRegistry.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useInstanceRegistryStore } from '@n8n/frontend-module-instance-registry';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import type { InstanceRegistration } from '@n8n/api-types';
 import type { WorkflowSettings } from 'n8n-workflow';
 
-type ClusterInstanceSummary = {
-	instanceKey: string;
-	hostId: string;
-	instanceType: 'main' | 'worker' | 'webhook';
-	instanceRole: 'leader' | 'follower' | 'unset';
-	version: string;
-};
+type ClusterInstanceSummary = Pick<
+	InstanceRegistration,
+	'instanceKey' | 'hostId' | 'instanceType' | 'instanceRole' | 'version'
+>;
 
 type ClusterCheckSummary = {
 	check: string;

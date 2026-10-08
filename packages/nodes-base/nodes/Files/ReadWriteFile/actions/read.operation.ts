@@ -9,7 +9,7 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { errorMapper, normalizeFileSelector } from '../helpers/utils';
+import { errorMapper, escapeBracketsAndParens, normalizeFileSelector } from '../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -29,7 +29,7 @@ export const properties: INodeProperties[] = [
 		default: '',
 		required: true,
 		placeholder: 'e.g. /home/user/Pictures/**/*.png',
-		hint: 'Supports patterns, learn more <a href="https://github.com/micromatch/picomatch#basic-globbing" target="_blank">here</a>',
+		hint: 'Supports patterns, learn more <a href="https://github.com/micromatch/picomatch#basic-globbing" target="_blank">here</a>. [ ] and ( ) are literal by default.',
 		description:
 			"Specify a file's path or path pattern to read multiple files. Always use forward-slashes for path separator even on Windows.",
 	},
@@ -73,6 +73,14 @@ export const properties: INodeProperties[] = [
 				description: "By default 'data' is used",
 				hint: 'The name of the output binary field to put the file in',
 			},
+			{
+				displayName: 'Treat Brackets and Parentheses as Literal',
+				name: 'literalBrackets',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to match [ ] and ( ) as literal characters instead of glob syntax',
+				hint: 'Turn off for character classes like [0-9] or groups like (a|b). Does not affect * ? { }.',
+			},
 		],
 	},
 ];
@@ -104,12 +112,25 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				dataPropertyName = options.dataPropertyName as string;
 			}
 
-			const files = await glob(fileSelector);
+			const literalBrackets = (options.literalBrackets ?? true) as boolean;
+			const escaped = escapeBracketsAndParens(fileSelector);
+			// Unescaped `(` would otherwise open extglob, whose nested quantifiers make
+			// matching cost grow exponentially with the length of a file name
+			const files = literalBrackets
+				? await glob(escaped)
+				: await glob(fileSelector, { extglob: false });
 
 			if (files.length === 0 && nodeVersion > 1) {
+				const hasUnescapedBrackets = escaped !== fileSelector;
+				const optionHint = !hasUnescapedBrackets
+					? ''
+					: literalBrackets
+						? ". If [ ] and ( ) were meant as a character class or group, turn off 'Treat Brackets and Parentheses as Literal' in Options"
+						: ". If [ ] and ( ) were meant as literal characters, turn on 'Treat Brackets and Parentheses as Literal' in Options";
+
 				throw new NodeOperationError(this.getNode(), 'No file(s) found', {
 					itemIndex,
-					description: `No file matching the selector "${fileSelector}" found`,
+					description: `No file matching the selector "${fileSelector}" found${optionHint}`,
 				});
 			}
 

@@ -1,4 +1,11 @@
+import type { AuthenticatedRequest, User } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
+
+import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
 import { AgentThreadsController } from '../agent-threads.controller';
+import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { AgentExecution } from '../entities/agent-execution.entity';
 import {
 	getControllerMetadata,
 	expectProjectScopedAgentRoutes,
@@ -19,6 +26,7 @@ describe('AgentThreadsController route access scopes', () => {
 	it.each([
 		['listThreads', 'get', '/:agentId/threads'],
 		['getThread', 'get', '/:agentId/threads/:threadId'],
+		['exportThreadToLangSmith', 'post', '/:agentId/threads/:threadId/langsmith-export'],
 		['deleteThread', 'delete', '/:agentId/threads/:threadId'],
 	])('%s uses %s %s', (handlerName, method, path) => {
 		expect(routes.get(handlerName)).toMatchObject({ method, path });
@@ -27,8 +35,80 @@ describe('AgentThreadsController route access scopes', () => {
 	it.each([
 		['listThreads', 'agent:read'],
 		['getThread', 'agent:read'],
+		['exportThreadToLangSmith', 'agent:read'],
 		['deleteThread', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
+
+	it('omits internal ownership fields from a thread response', async () => {
+		const agentExecutionService = mock<AgentExecutionService>();
+		const controller = new AgentThreadsController(
+			agentExecutionService,
+			mock<AgentSessionLangSmithExportService>(),
+		);
+		agentExecutionService.getThreadDetail.mockResolvedValue({
+			thread: mock<AgentExecutionThread>({
+				id: 'thread-1',
+				ownerId: 'user-1',
+				accessScope: 'user',
+				owner: null,
+			}),
+			executions: [],
+		});
+
+		const result = await controller.getThread({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: { id: 'user-1' },
+		} as never);
+
+		expect(result.thread).toMatchObject({ id: 'thread-1' });
+		expect(result.thread).not.toHaveProperty('ownerId');
+		expect(result.thread).not.toHaveProperty('accessScope');
+		expect(result.thread).not.toHaveProperty('owner');
+	});
+});
+
+describe('AgentThreadsController session details', () => {
+	it.each([
+		['private root', 'user', null, 'chat', true],
+		['MCP root', 'user', null, 'mcp', false],
+		['Instance AI root', 'user', null, 'instance-ai', false],
+		['shared root', 'project', null, 'mcp', false],
+		['child', 'user', 'parent', 'mcp', false],
+		['legacy sub-agent', 'user', null, 'subagent', false],
+		['source-less private root', 'user', null, null, true],
+	] as const)(
+		'returns origin and Preview eligibility for a %s session',
+		async (_name, accessScope, parentThreadId, source, expected) => {
+			const service = mock<AgentExecutionService>();
+			const controller = new AgentThreadsController(
+				service,
+				mock<AgentSessionLangSmithExportService>(),
+			);
+			service.getThreadDetail.mockResolvedValue({
+				thread: mock<AgentExecutionThread>({
+					id: 'thread-1',
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					ownerId: 'user-1',
+					accessScope,
+					parentThreadId,
+					taskId: null,
+				}),
+				executions: [mock<AgentExecution>({ source: null }), mock<AgentExecution>({ source })],
+			});
+			const result = await controller.getThread(
+				mock<AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>>({
+					params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+					user: mock<User>({ id: 'user-1' }),
+				}),
+			);
+
+			expect(result.thread.canContinueInPreview).toBe(expected);
+			expect(result.thread.source).toBe(source);
+			expect(result.thread).not.toHaveProperty('ownerId');
+			expect(result.thread).not.toHaveProperty('accessScope');
+		},
+	);
 });

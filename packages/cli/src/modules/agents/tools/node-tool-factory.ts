@@ -4,11 +4,16 @@ import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilit
 import type { AgentJsonToolConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import type { IDataObject, INodeParameters, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { isToolType, nodeNameToToolName } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeCredentialsDetails,
+	INodeParameters,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+import { nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { EphemeralNodeExecutor } from '@/node-execution';
+import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
@@ -25,30 +30,24 @@ export interface NodeToolFactoryContext {
 /**
  * Shape the config's credential map for the executor. Both introspection (at
  * tool-registration time) and invocation (at LLM-call time) need to hand the
- * executor a `Record<slot, { id, name }>`, and both want to drop entries whose
- * credential hasn't been persisted yet (no id).
+ * executor an `INodeCredentialsDetails` map, and both drop entries whose
+ * credential hasn't been persisted yet (no id). n8n Connect managed slots have
+ * no stored id — the executor mints them per execution — so they are carried
+ * through by their `__aiGatewayManaged` flag rather than by id.
  */
 function toExecutorCredentials(
 	credentials: Extract<AgentJsonToolConfig, { type: 'node' }>['node']['credentials'],
-): Record<string, { id: string; name: string }> | undefined {
+): Record<string, INodeCredentialsDetails> | undefined {
 	if (!credentials) return undefined;
-	const out: Record<string, { id: string; name: string }> = {};
+	const out: Record<string, INodeCredentialsDetails> = {};
 	for (const [slot, ref] of Object.entries(credentials)) {
-		if (ref.id) out[slot] = { id: ref.id, name: ref.name };
+		if ('__aiGatewayManaged' in ref) {
+			out[slot] = { id: null, name: ref.name, __aiGatewayManaged: true };
+		} else if (ref.id) {
+			out[slot] = { id: ref.id, name: ref.name };
+		}
 	}
 	return Object.keys(out).length > 0 ? out : undefined;
-}
-
-function resolveToolNodeType(nodeType: string, nodeTypeVersion: number): string {
-	if (isToolType(nodeType)) return nodeType;
-
-	const toolNodeType = `${nodeType}Tool`;
-	try {
-		Container.get(NodeTypes).getByNameAndVersion(toolNodeType, nodeTypeVersion);
-		return toolNodeType;
-	} catch {
-		return nodeType;
-	}
 }
 
 function createNativeStringToolInputSchema(description: string): z.ZodType {
@@ -188,7 +187,7 @@ export async function resolveNodeTool(
 			// can render the real node config alongside the LLM's runtime
 			// input. Without this the synthetic execution viewer shows empty
 			// parameters and input/output read as the same thing.
-			nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
+			nodeParameters: toolSchema.node.nodeParameters,
 		},
 	};
 }

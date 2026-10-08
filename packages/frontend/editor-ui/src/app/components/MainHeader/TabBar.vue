@@ -2,7 +2,7 @@
 import { MAIN_HEADER_TABS } from '@/app/constants';
 import type { ITabBarItem } from '@/Interface';
 
-import { N8nRadioButtons } from '@n8n/design-system';
+import { N8nSegmentControl } from '@n8n/design-system';
 withDefaults(
 	defineProps<{
 		items: ITabBarItem[];
@@ -33,7 +33,7 @@ function onUpdateModelValue(tab: string, event: MouseEvent): void {
 			['tab-bar-container']: true,
 		}"
 	>
-		<N8nRadioButtons
+		<N8nSegmentControl
 			:model-value="modelValue"
 			:options="items"
 			@update:model-value="onUpdateModelValue"
@@ -49,12 +49,8 @@ function onUpdateModelValue(tab: string, event: MouseEvent): void {
 	transform: translateX(-50%) translateY(50%);
 	min-height: 30px;
 	display: flex;
-	padding: var(--spacing--5xs);
-	background-color: var(--color--foreground);
-	border-radius: var(--radius);
-	transition: all 150ms ease-in-out;
-	z-index: 100; // Should float above other layout components in any page
 	align-items: center;
+	z-index: 100; // Should float above other layout components in any page
 }
 
 .floating {

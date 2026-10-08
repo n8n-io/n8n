@@ -5,34 +5,17 @@ import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.type
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
-import N8nLoading from '../N8nLoading';
-
-type ActionToggleItem<T extends string> = {
-	label: string;
-	disabled?: boolean;
-	type?: 'external-link';
-} & ({ id: T; value?: T } | { id?: T; value: T });
-
-interface ActionToggleProps {
-	actions?: Array<ActionToggleItem<T>>;
-	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
-	theme?: 'default' | 'dark';
-	iconOrientation?: 'horizontal' | 'vertical';
-	loading?: boolean;
-	loadingRowCount?: number;
-	disabled?: boolean;
-	popperClass?: string;
-	trigger?: 'click' | 'hover';
-}
+import N8nTooltip from '../N8nTooltip';
+import type { ActionToggleItem, ActionToggleProps } from './ActionToggle.types';
 
 type ActionValue = T;
 
 defineOptions({ name: 'N8nActionToggle' });
-const props = withDefaults(defineProps<ActionToggleProps>(), {
+const props = withDefaults(defineProps<ActionToggleProps<T>>(), {
 	actions: () => [],
-	placement: 'bottom',
+	placement: 'bottom-end',
 	theme: 'default',
-	iconOrientation: 'vertical',
+	iconOrientation: 'horizontal',
 	loading: false,
 	loadingRowCount: 3,
 	disabled: false,
@@ -51,10 +34,9 @@ const dropdownId = `n8n-action-toggle-dropdown-${getCurrentInstance()?.uid ?? 0}
 
 const items = computed((): Array<DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>> => {
 	return props.actions.map((action) => ({
+		...action,
 		id: (action.id ?? action.value) as ActionValue,
 		testId: `action-${String(action.id ?? action.value)}`,
-		label: action.label,
-		disabled: action.disabled,
 		data: action,
 	}));
 });
@@ -99,8 +81,8 @@ defineExpose({
 		@click.stop.prevent
 	>
 		<N8nDropdownMenu
-			ref="dropdownRef"
 			:id="dropdownId"
+			ref="dropdownRef"
 			:items="items"
 			content-test-id="action-toggle-dropdown"
 			:modal="false"
@@ -127,16 +109,14 @@ defineExpose({
 					/>
 				</slot>
 			</template>
-			<template #loading>
-				<N8nLoading
-					v-for="i in loadingRowCount"
-					:key="i"
-					:class="$style['loading-item']"
-					animated
-					variant="text"
-				/>
-			</template>
 			<template #item-trailing="slotProps">
+				<N8nTooltip
+					v-if="slotProps.item.data?.tooltip"
+					:content="slotProps.item.data.tooltip"
+					placement="left"
+				>
+					<N8nIcon icon="info" size="xsmall" color="text-base" />
+				</N8nTooltip>
 				<N8nIcon
 					v-if="slotProps.item.data?.type === 'external-link'"
 					icon="external-link"
@@ -166,11 +146,5 @@ defineExpose({
 	&:focus {
 		background-color: var(--color--background--light-3);
 	}
-}
-
-.loading-item {
-	display: flex;
-	width: 100%;
-	min-width: var(--spacing--3xl);
 }
 </style>

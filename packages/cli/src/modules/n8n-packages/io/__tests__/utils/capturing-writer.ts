@@ -1,5 +1,3 @@
-import type { Readable } from 'node:stream';
-
 import type { PackageWriter } from '../../package-writer';
 
 export class CapturingWriter implements PackageWriter {
@@ -15,7 +13,5 @@ export class CapturingWriter implements PackageWriter {
 		this.directories.push(path);
 	}
 
-	finalize(): Readable {
-		throw new Error('CapturingWriter is for unit tests and does not produce a stream');
-	}
+	finalize(): void {}
 }

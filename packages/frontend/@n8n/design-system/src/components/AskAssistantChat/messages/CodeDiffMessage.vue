@@ -3,7 +3,7 @@ import BaseMessage from './BaseMessage.vue';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import CodeDiff from '../../CodeDiff/CodeDiff.vue';
 
-interface Props {
+export interface Props {
 	message: ChatUI.CodeDiffMessage & { id: string; read: boolean };
 	isFirstOfRole: boolean;
 	user?: {

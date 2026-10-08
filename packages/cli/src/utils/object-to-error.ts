@@ -27,11 +27,7 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 			const node = workflow.getNode(errorObject.node.name);
 
 			if (node) {
-				error = new NodeOperationError(
-					node,
-					errorObject as unknown as Error,
-					errorObject as object,
-				);
+				error = new NodeOperationError(node, errorObject as unknown as Error, errorObject);
 			}
 		}
 

@@ -5,27 +5,66 @@ import type {
 	DeepPartial,
 	EntityManager,
 	FindOptionsWhere,
+	Repository,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
-import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
+import { GLOBAL_OWNER_ROLE } from '../constants';
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 @Service()
-export class UserRepository extends Repository<User> {
-	constructor(dataSource: DataSource) {
-		super(User, dataSource.manager);
+export class UserRepository extends BaseRepository<User> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(User, dataSource.manager, transactionRunner);
 	}
 
 	async findManyByIds(
 		userIds: string[],
 		options?: {
-			includeRole: boolean;
+			includeRole?: boolean;
+			offset?: number;
+			limit?: number;
 		},
 	) {
 		return await this.find({
 			where: { id: In(userIds) },
+			skip: options?.offset,
+			take: options?.limit,
 			relations: options?.includeRole ? ['role'] : undefined,
+			order: { id: 'ASC' },
+		});
+	}
+
+	async findMany(options?: { includeRole?: boolean; offset?: number; limit?: number }) {
+		return await this.find({
+			skip: options?.offset,
+			take: options?.limit,
+			relations: options?.includeRole ? ['role'] : undefined,
+			order: { id: 'ASC' },
+		});
+	}
+
+	async findByIdWithRole(id: string, ctx: OperationContext = {}): Promise<User | null> {
+		return await this.managerFor(ctx).findOne(User, {
+			where: { id },
+			relations: ['role'],
+		});
+	}
+
+	async findByEmailWithRole(email: string): Promise<User | null> {
+		return await this.findOne({
+			where: { email },
+			relations: ['role'],
+		});
+	}
+
+	async findOneByProjectIdOrFail(projectId: string): Promise<User> {
+		return await this.findOneByOrFail({
+			projectRelations: { projectId },
 		});
 	}
 
@@ -55,6 +94,54 @@ export class UserRepository extends Repository<User> {
 	 */
 	async update(...args: Parameters<Repository<User>['update']>) {
 		return await super.update(...args);
+	}
+
+	/**
+	 * Change a user's email only if it still equals `oldEmail`. Returns `'stale'`
+	 * when the email changed concurrently and `'email-taken'` when another user
+	 * already owns `newEmail`, so the caller can reject the request.
+	 * Uses `save` (not `update`) so the personal-project rename subscriber fires.
+	 */
+	async changeEmail(
+		userId: string,
+		oldEmail: string,
+		newEmail: string,
+	): Promise<'changed' | 'stale' | 'email-taken'> {
+		return await this.manager.transaction(async (trx) => {
+			const user = await trx.findOne(User, {
+				where: { id: userId },
+				// Serialize concurrent changes on Postgres; SQLite serializes writes.
+				...(trx.connection.options.type === 'postgres'
+					? { lock: { mode: 'pessimistic_write' as const } }
+					: {}),
+			});
+			if (user?.email !== oldEmail) return 'stale';
+			user.email = newEmail;
+			try {
+				await trx.save(User, user);
+			} catch (error) {
+				// Another user took `newEmail` between the caller's check and this save.
+				if (isUniqueConstraintError(error)) return 'email-taken';
+				throw error;
+			}
+			return 'changed';
+		});
+	}
+
+	/**
+	 * True when a claimed instance owner exists. A claimed owner has logged in
+	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password
+	 * before the first login, so the password check is required. The unclaimed
+	 * "shell" owner that first boot creates matches neither condition.
+	 */
+	async hasClaimedInstanceOwner(): Promise<boolean> {
+		return await this.exists({
+			where: [
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
+			],
+			relations: ['role'],
+		});
 	}
 
 	async deleteAllExcept(user: User) {
@@ -190,6 +277,35 @@ export class UserRepository extends Repository<User> {
 			where,
 			relations: { role: true, authIdentities: true },
 		});
+	}
+
+	/**
+	 * IDs of enabled users who either hold one of `globalRoleSlugs` globally,
+	 * or hold one of `projectRoleSlugs` in one of `projectIds`.
+	 */
+	async findIdsWithGlobalOrProjectRoles({
+		projectIds,
+		projectRoleSlugs,
+		globalRoleSlugs,
+	}: {
+		projectIds: string[];
+		projectRoleSlugs: string[];
+		globalRoleSlugs: string[];
+	}): Promise<string[]> {
+		const where: Array<FindOptionsWhere<User>> = [];
+		if (globalRoleSlugs.length > 0) {
+			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+		}
+		if (projectIds.length > 0 && projectRoleSlugs.length > 0) {
+			where.push({
+				disabled: false,
+				projectRelations: { projectId: In(projectIds), role: { slug: In(projectRoleSlugs) } },
+			});
+		}
+		if (where.length === 0) return [];
+
+		const users = await this.find({ where, select: ['id'] });
+		return [...new Set(users.map(({ id }) => id))];
 	}
 
 	/**
@@ -391,7 +507,7 @@ export class UserRepository extends Repository<User> {
 		}
 		const { filter, select, take, skip, expand, sortBy } = listQueryOptions;
 
-		this.applyUserListSelect(queryBuilder, select as Array<keyof User>);
+		this.applyUserListSelect(queryBuilder, select);
 		this.applyUserListFilter(queryBuilder, filter);
 		this.applyUserListExpand(queryBuilder, expand);
 		this.applyUserListPagination(queryBuilder, take, skip);

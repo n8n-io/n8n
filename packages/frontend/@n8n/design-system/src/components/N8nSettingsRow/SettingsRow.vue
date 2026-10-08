@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useResizeObserver } from '@vueuse/core';
-import { computed, ref, watch, useId, useSlots } from 'vue';
+import { computed, ref, watch, useId } from 'vue';
 
-import N8nIcon from '../N8nIcon';
+import N8nSettingsRowButton from '../N8nSettingsRowButton';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 
@@ -87,7 +87,16 @@ const emit = defineEmits<{
 	click: [event: MouseEvent | KeyboardEvent];
 }>();
 
-const slots = useSlots();
+// Declared rather than inferred from `useSlots()`: `slots` is read by a computed
+// that the template renders, so inferring it is circular and the compiler falls
+// back to `any` (TS7022), which publishes untyped slots for this component.
+const slots = defineSlots<{
+	default?: () => unknown;
+	visual?: () => unknown;
+	info?: () => unknown;
+	action?: () => unknown;
+	expanded?: () => unknown;
+}>();
 
 // Stable, per-instance id so the disclosure trigger can `aria-controls` its region.
 const expandRegionId = `settings-row-expand-${useId()}`;
@@ -260,11 +269,10 @@ function onKeydown(event: KeyboardEvent) {
 			>
 				<slot name="action" />
 			</div>
-			<button
+			<N8nSettingsRowButton
 				v-if="expandable && disclosure"
-				type="button"
 				:class="$style.disclosure"
-				:aria-expanded="isExpanded"
+				:expanded="isExpanded"
 				:aria-controls="expandRegionId"
 				:aria-label="title ? `Toggle ${title}` : 'Toggle details'"
 				@click="toggleExpanded"
@@ -277,8 +285,7 @@ function onKeydown(event: KeyboardEvent) {
 				>
 					{{ disclosureLabel }}
 				</N8nText>
-				<N8nIcon :class="$style.disclosureIcon" icon="chevron-down" />
-			</button>
+			</N8nSettingsRowButton>
 		</template>
 
 		<div
@@ -458,39 +465,11 @@ $expand-easing: motion.$blur-motion-easing;
 }
 
 .disclosure {
-	flex: 0 0 auto;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--spacing--5xs);
 	margin-inline-start: var(--spacing--2xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: none;
-	background: transparent;
-	border-radius: var(--radius);
-	color: var(--text-color--subtle);
-	cursor: pointer;
-}
-
-.disclosure:hover {
-	background: var(--background--hover);
-}
-
-.disclosure:focus-visible {
-	outline: var(--focus--border-width, 2px) solid var(--focus--border-color);
-	outline-offset: calc(-1 * var(--focus--border-width, 2px));
 }
 
 .disclosureLabel {
 	white-space: nowrap;
-}
-
-.disclosureIcon {
-	transition: transform $expand-duration $expand-easing;
-}
-
-.disclosure[aria-expanded='true'] .disclosureIcon {
-	transform: rotate(180deg);
 }
 
 /*
@@ -544,10 +523,6 @@ $expand-easing: motion.$blur-motion-easing;
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.disclosureIcon {
-		transition: none;
-	}
-
 	// Drop the blur and the height animation; keep only a simple, quick fade.
 	.expandRegion {
 		filter: none;

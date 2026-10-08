@@ -8,6 +8,8 @@ import type {
 	ISupplyDataFunctions,
 	SupplyData,
 	INodeProperties,
+	IExecuteSingleFunctions,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 import { getAdditionalOptions } from '../gemini-common/additional-options';
@@ -16,6 +18,24 @@ import {
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
+import { shouldIncludeGoogleModel } from '@n8n/ai-utilities/model-discovery';
+
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
+/** Drop non-chat models (embedding, image, TTS, Veo, etc.) from the dropdown. */
+async function filterChatModels(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	return items.filter(
+		(item) =>
+			typeof item.json.name === 'string' &&
+			shouldIncludeGoogleModel({
+				name: item.json.name,
+				supportedGenerationMethods: item.json.supportedGenerationMethods,
+			}),
+	);
+}
 
 function errorDescriptionMapper(error: NodeError) {
 	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
@@ -79,10 +99,52 @@ const modelRLC: INodeProperties = {
 	},
 	default: 'models/gemini-2.5-flash',
 	builderHint: {
-		propertyHint:
-			'Default to the latest flagship Gemini (models/gemini-3.1-pro-preview). Use models/gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
+		propertyHint: MODEL_SELECTION_HINT,
 	},
 };
+
+// v1.2+: same routing as modelRLC, but the dropdown drops non-chat models
+// (embedding, image) through the shared `shouldIncludeGoogleModel` predicate.
+const modelRLCV2: INodeProperties = {
+	...modelRLC,
+	default: 'models/gemini-3-flash-preview',
+	typeOptions: {
+		loadOptions: {
+			routing: {
+				request: {
+					method: 'GET',
+					url: '/v1beta/models',
+				},
+				output: {
+					postReceive: [
+						{
+							type: 'rootProperty',
+							properties: {
+								property: 'models',
+							},
+						},
+						filterChatModels,
+						{
+							type: 'setKeyValue',
+							properties: {
+								name: '={{$responseItem.name}}',
+								value: '={{$responseItem.name}}',
+								description: '={{$responseItem.description}}',
+							},
+						},
+						{
+							type: 'sort',
+							properties: {
+								key: 'name',
+							},
+						},
+					],
+				},
+			},
+		},
+	},
+};
+
 export class LmChatGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Gemini Chat Model',
@@ -90,7 +152,7 @@ export class LmChatGoogleGemini implements INodeType {
 		name: 'lmChatGoogleGemini',
 		icon: 'file:google.svg',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Chat Model Google Gemini',
 		defaults: {
 			name: 'Google Gemini Chat Model',
@@ -139,7 +201,15 @@ export class LmChatGoogleGemini implements INodeType {
 				default: 'models/gemini-3-flash-preview',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.1 } }],
+						'@version': [{ _cnd: { eq: 1.1 } }],
+					},
+				},
+			},
+			{
+				...modelRLCV2,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
 					},
 				},
 			},

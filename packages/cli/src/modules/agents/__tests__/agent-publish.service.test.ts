@@ -1,19 +1,26 @@
+import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { User, TransactionRunner, OperationContext, Transaction } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { ConflictError } from '@n8n/errors';
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
+import { AgentSaveCompletionService } from '../agent-save-completion.service';
+import { AgentDefinitionService } from '../agent-definition.service';
 import { AgentPublishService } from '../agent-publish.service';
-import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import { AgentTaskService } from '../agent-task.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
@@ -23,7 +30,7 @@ import type { AgentHistoryRepository } from '../repositories/agent-history.repos
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
+import type { AgentPolicyService } from '../agent-policy.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -52,6 +59,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		skills: {},
 		integrations: [],
 		setupCompletedAt: null,
+		revision: 0,
 		...overrides,
 	} as unknown as Agent;
 }
@@ -82,24 +90,6 @@ function makeTaskSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTask
 	} as AgentTaskSnapshot;
 }
 
-function makeTransaction() {
-	const taskRepo = {
-		findBy: vi.fn().mockResolvedValue([]),
-		delete: vi.fn(),
-		update: vi.fn(),
-		insert: vi.fn(),
-	};
-	const trx = {
-		save: vi.fn(),
-		getRepository: vi.fn().mockReturnValue(taskRepo),
-	};
-	const transaction = vi.fn(async (callback: (manager: typeof trx) => Promise<void>) => {
-		await callback(trx);
-	});
-
-	return { trx, taskRepo, transaction };
-}
-
 function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const agentHistoryRepository = mock<AgentHistoryRepository>();
@@ -109,25 +99,28 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const taskService = mock<AgentTaskService>();
-	const subAgentCleanupService = mock<SubAgentCleanupService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const credentialsService = mock<CredentialsService>();
 	const telemetry = mock<Telemetry>();
-	const { trx, taskRepo, transaction } = makeTransaction();
-
-	Object.defineProperty(agentRepository, 'manager', {
-		value: { transaction },
-		configurable: true,
-	});
+	const eventService = mock<EventService>();
+	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
+	const ctx: OperationContext = { trx: mock<Transaction>() };
+	const transactionRunner = mock<TransactionRunner>();
+	transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
+	taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
+	agentTaskRepository.replaceForAgent.mockResolvedValue(false);
+	Container.set(AgentRuntimeCacheService, runtimeCacheService);
+	const agentPolicyService = mock<AgentPolicyService>();
 
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
+	agentRepository.setActiveVersionFenced.mockResolvedValue(true);
+	agentRepository.saveDraftFenced.mockResolvedValue(true);
 	agentHistoryRepository.saveVersion.mockResolvedValue(makeHistory());
 	customToolsService.snapshotConfiguredTools.mockReturnValue(null);
 	chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
 	chatIntegrationService.disconnect.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	taskService.requestReconcile.mockResolvedValue();
-	subAgentCleanupService.removeSubAgentFromParents.mockResolvedValue();
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
 	agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
 		status: 'valid',
@@ -148,16 +141,31 @@ function makeService() {
 		agentTaskRepository,
 		customToolsService,
 		runtimeCacheService,
-		subAgentCleanupService,
 		agentValidationService,
 		credentialsService,
 		telemetry,
+		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
-		new AgentModificationTelemetryService(telemetry),
+		agentUpdateBroadcaster,
+		transactionRunner,
+		new AgentSaveCompletionService(
+			eventService,
+			agentUpdateBroadcaster,
+			new AgentModificationTelemetryService(telemetry),
+		),
+		new AgentDefinitionService(
+			agentTaskRepository,
+			taskSnapshotRepository,
+			agentRepository,
+			transactionRunner,
+		),
+		agentPolicyService,
 	);
 
 	return {
 		service,
+		agentPolicyService,
+		agentUpdateBroadcaster,
 		agentRepository,
 		agentHistoryRepository,
 		taskSnapshotRepository,
@@ -166,12 +174,12 @@ function makeService() {
 		runtimeCacheService,
 		chatIntegrationService,
 		taskService,
-		subAgentCleanupService,
 		agentValidationService,
 		credentialsService,
 		telemetry,
-		trx,
-		taskRepo,
+		eventService,
+		ctx,
+		transactionRunner,
 	};
 }
 
@@ -189,7 +197,9 @@ describe('AgentPublishService', () => {
 			taskSnapshotRepository,
 			agentValidationService,
 			runtimeCacheService,
-			trx,
+			eventService,
+			agentUpdateBroadcaster,
+			telemetry,
 		} = makeService();
 		const agent = makeAgent();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -211,9 +221,226 @@ describe('AgentPublishService', () => {
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 		expect(taskSnapshotRepository.saveForVersion).not.toHaveBeenCalled();
-		expect(trx.save).not.toHaveBeenCalled();
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBeNull();
+	});
+
+	it('names unpublished workflow tools when rejecting the publish', async () => {
+		const { service, agentRepository, agentHistoryRepository, agentValidationService } =
+			makeService();
+		const agent = makeAgent();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
+			status: 'invalid',
+			issues: [
+				{
+					code: 'incompatible_reference',
+					path: 'tools.0.workflowId',
+					capability: { kind: 'tool', toolType: 'workflow', id: 'Lookup' },
+					reason: 'not_published',
+				},
+				{
+					code: 'incompatible_reference',
+					path: 'tools.1.workflowId',
+					capability: { kind: 'tool', toolType: 'workflow', id: 'Notify' },
+					reason: 'not_published',
+				},
+			],
+		});
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+			'Cannot publish agent: workflow "Lookup" is not published; workflow "Notify" is not published. Publish these workflows first.',
+		);
+		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBeNull();
+	});
+
+	describe('policy', () => {
+		it('polices the draft it publishes before validating it', async () => {
+			const { service, agentRepository, agentPolicyService, agentValidationService } =
+				makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentPolicyService.enforcePublish.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+				'Blocked by policy',
+			);
+
+			expect(agentPolicyService.enforcePublish).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				agent.schema,
+				{ kind: 'user', user },
+			);
+			expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();
+			expect(agent.activeVersionId).toBeNull();
+		});
+
+		it('polices the snapshot, not the draft, when republishing a version', async () => {
+			const { service, agentRepository, agentHistoryRepository, agentPolicyService } =
+				makeService();
+			const agent = makeAgent({ versionId: 'draft-v2', activeVersionId: 'v0' });
+			const target = makeHistory({ versionId: 'v1', schema: { ...schema, name: 'Older' } });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
+			agentPolicyService.enforcePublish.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(service.publishAgent(agentId, projectId, user, byUser, 'v1')).rejects.toThrow(
+				'Blocked by policy',
+			);
+
+			expect(agentPolicyService.enforcePublish).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				target.schema,
+				{ kind: 'user', user },
+			);
+			expect(agent.activeVersionId).toBe('v0');
+		});
+
+		it('polices a revert as a save of the restored schema over the current draft', async () => {
+			const {
+				service,
+				agentRepository,
+				agentHistoryRepository,
+				agentPolicyService,
+				transactionRunner,
+			} = makeService();
+			const draft = { ...schema, name: 'Draft Agent' };
+			const agent = makeAgent({ schema: draft });
+			const target = makeHistory({ versionId: 'older', schema: { ...schema, name: 'Older' } });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
+			agentPolicyService.enforceSave.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(
+				service.revertToVersion(agentId, projectId, 'older', user, 'user'),
+			).rejects.toThrow('Blocked by policy');
+
+			expect(agentPolicyService.enforceSave).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				target.schema,
+				draft,
+				{ kind: 'user', user },
+			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(agent.schema).toBe(draft);
+		});
+
+		it('polices a revert to the published version the same way', async () => {
+			const { service, agentRepository, agentPolicyService, transactionRunner } = makeService();
+			const draft = { ...schema, name: 'Draft Agent' };
+			const activeVersion = makeHistory({ versionId: 'published-v1', schema });
+			const agent = makeAgent({
+				schema: draft,
+				activeVersionId: 'published-v1',
+				activeVersion,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentPolicyService.enforceSave.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(
+				service.revertToPublishedAgent(agentId, projectId, user, 'user'),
+			).rejects.toThrow('Blocked by policy');
+
+			expect(agentPolicyService.enforceSave).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				schema,
+				draft,
+				{ kind: 'user', user },
+			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('channel startup preflight', () => {
+		const telegram = { type: 'telegram', credentialId: 'cred-1' } as const;
+
+		it('rejects the publish when a channel cannot start, leaving nothing written', async () => {
+			const {
+				service,
+				agentRepository,
+				agentHistoryRepository,
+				chatIntegrationService,
+				runtimeCacheService,
+				eventService,
+				agentUpdateBroadcaster,
+				telemetry,
+			} = makeService();
+			const agent = makeAgent({ integrations: [telegram] });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			chatIntegrationService.assertStartupPreconditions.mockRejectedValue(
+				new ConflictError('This Telegram credential is already connected to agent "Other"'),
+			);
+
+			await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+				ConflictError,
+			);
+
+			expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+			expect(chatIntegrationService.syncToConfig).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalled();
+			expect(agent.activeVersionId).toBeNull();
+		});
+
+		it('checks every configured channel and skips draft entries, which have no credential', async () => {
+			const { service, agentRepository, chatIntegrationService } = makeService();
+			const draft = { type: 'slack', credentialId: '' } as const;
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ integrations: [telegram, draft] }),
+			);
+
+			await service.publishAgent(agentId, projectId, user, byUser);
+
+			expect(chatIntegrationService.assertStartupPreconditions).toHaveBeenCalledTimes(1);
+			expect(chatIntegrationService.assertStartupPreconditions).toHaveBeenCalledWith(
+				agentId,
+				telegram,
+				projectId,
+			);
+		});
+
+		it('preflights a channel whose settings a later version made required', async () => {
+			// Whether the preflight re-runs a platform's own `validateConfig` is
+			// asserted against the real service in `chat-integration.service.test.ts`;
+			// here the point is only that a legacy entry still reaches the preflight.
+			const { service, agentRepository, chatIntegrationService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ integrations: [{ type: 'telegram', credentialId: 'cred-1' }] }),
+			);
+
+			await expect(service.publishAgent(agentId, projectId, user, byUser)).resolves.toBeDefined();
+
+			expect(chatIntegrationService.assertStartupPreconditions).toHaveBeenCalledWith(
+				agentId,
+				{ type: 'telegram', credentialId: 'cred-1' },
+				projectId,
+			);
+		});
+
+		it('runs before the version is written, so a rejection cannot leave a half-publish', async () => {
+			const { service, agentRepository, chatIntegrationService, agentHistoryRepository } =
+				makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ integrations: [telegram] }),
+			);
+			chatIntegrationService.assertStartupPreconditions.mockImplementation(async () => {
+				expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+			});
+
+			await service.publishAgent(agentId, projectId, user, byUser);
+
+			expect(agentHistoryRepository.saveVersion).toHaveBeenCalled();
+		});
 	});
 
 	it('rejects publishing a specific version when its snapshot fails validation, without touching the current draft validator', async () => {
@@ -262,11 +489,14 @@ describe('AgentPublishService', () => {
 			chatIntegrationService,
 			agentValidationService,
 			telemetry,
-			trx,
+			eventService,
+			agentUpdateBroadcaster,
+			ctx,
 		} = makeService();
 		const configuredTools = { tool: { descriptor: { name: 'tool' } } };
 		const configuredSkills = {
 			skill: { name: 'Skill', description: 'desc', instructions: 'Use it' },
+			disabled_skill: { name: 'Disabled skill', description: 'desc', instructions: 'Keep it' },
 		};
 		const integrations = [
 			{ type: 'slack', credentialId: 'slack-1' },
@@ -280,11 +510,15 @@ describe('AgentPublishService', () => {
 			schema: {
 				...schema,
 				tools: [{ type: 'custom', id: 'tool' }],
-				skills: [{ type: 'skill', id: 'skill' }],
+				skills: [
+					{ type: 'skill', id: 'skill' },
+					{ type: 'skill', id: 'disabled_skill', enabled: false },
+					{ type: 'skill', id: 'missing_skill', enabled: false },
+				],
 				tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 			},
 			skills: configuredSkills,
-			integrations,
+			integrations: [...integrations, { type: 'n8n_chat', credentialId: '' }],
 		});
 		const draftValidation = { status: 'valid' as const, issues: [] };
 		const task = {
@@ -315,19 +549,24 @@ describe('AgentPublishService', () => {
 			{
 				versionId,
 				agentId,
-				schema: agent.schema,
+				schema: { ...agent.schema, integrations: [{ type: 'n8n_chat', credentialId: '' }] },
 				tools: configuredTools,
 				skills: configuredSkills,
 				publishedBy: user,
 			},
-			trx,
+			ctx,
 		);
 		expect(taskSnapshotRepository.saveForVersion).toHaveBeenCalledWith(
 			[expect.objectContaining({ versionId, taskId: 'task-1', objective: 'Summarize messages' })],
-			trx,
+			ctx,
 		);
 		expect(agent.activeVersionId).toBe(versionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
+		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+			{ projectId, agentId, source: 'builder' },
+			undefined,
+		);
 		expect(chatIntegrationService.syncToConfig).toHaveBeenCalledWith(agent, [], integrations);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.BUILDER_PUBLISHED_AGENT,
@@ -420,7 +659,6 @@ describe('AgentPublishService', () => {
 			agentHistoryRepository,
 			agentValidationService,
 			chatIntegrationService,
-			subAgentCleanupService,
 			telemetry,
 		} = makeService();
 		const agent = makeAgent({
@@ -443,10 +681,6 @@ describe('AgentPublishService', () => {
 		await service.unpublishAgent(agentId, projectId, user, 'user');
 		expect(agent.activeVersionId).toBeNull();
 		expect(agent.versionId).not.toBe('v1');
-		expect(subAgentCleanupService.removeSubAgentFromParents).toHaveBeenCalledWith(
-			agentId,
-			projectId,
-		);
 		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(
 			agentId,
 			{
@@ -484,9 +718,13 @@ describe('AgentPublishService', () => {
 	});
 
 	it('switches to an existing history row when publishing a specific version', async () => {
-		const { service, agentRepository, agentHistoryRepository, trx } = makeService();
-		const agent = makeAgent({ versionId: 'draft-v2', activeVersionId: 'v0' });
-		const target = makeHistory({ versionId: 'v1' });
+		const { service, agentRepository, agentHistoryRepository, ctx } = makeService();
+		const agent = makeAgent({
+			versionId: 'draft-v2',
+			activeVersionId: 'v0',
+			integrations: [{ type: 'n8n_chat', credentialId: '' }],
+		});
+		const target = makeHistory({ versionId: 'v1', schema: { ...schema, integrations: [] } });
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
@@ -499,8 +737,16 @@ describe('AgentPublishService', () => {
 		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith('v1', agentId);
 		expect(agent.activeVersionId).toBe('v1');
 		expect(agent.activeVersion).toBe(target);
+		expect(agent.integrations).toEqual([{ type: 'n8n_chat', credentialId: '' }]);
+		expect(target.schema?.integrations).toEqual([]);
+		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 		expect(agent.versionId).not.toBe('draft-v2');
-		expect(trx.save).toHaveBeenCalledWith(agent);
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(
+			agent.id,
+			0,
+			{ activeVersionId: 'v1', versionId: agent.versionId },
+			ctx,
+		);
 	});
 
 	it('reports activating an older version as a republish, not the explicit publish the caller asked for', async () => {
@@ -537,10 +783,26 @@ describe('AgentPublishService', () => {
 	});
 
 	it('reverts draft fields and task bodies from the active published snapshot', async () => {
-		const { service, agentRepository, taskSnapshotRepository, taskRepo } = makeService();
+		const { service, agentRepository, taskSnapshotRepository, agentTaskRepository } = makeService();
 		const activeVersion = makeHistory({
 			versionId: 'published-v1',
-			schema,
+			schema: {
+				...schema,
+				tools: [
+					{ type: 'custom', id: 'tool', enabled: false, requireApproval: true },
+					{
+						type: 'workflow',
+						workflow: 'Test workflow',
+						inputs: {
+							constructor: { mode: 'ai' as const, description: 'Use the label.' },
+							hasOwnProperty: { mode: 'fixed' as const, value: '=literal' },
+						},
+					},
+				],
+				skills: [{ type: 'skill', id: 'skill', enabled: false }],
+				subAgents: { agents: [{ agentId: 'agent-2', enabled: false, useWhen: 'Review notes' }] },
+				tasks: [{ type: 'task', id: 'task-1', enabled: false }],
+			},
 			tools: { tool: { descriptor: { name: 'published' } } } as unknown as AgentHistory['tools'],
 			skills: { skill: { name: 'Skill', description: 'desc', instructions: 'Use it' } },
 		});
@@ -556,34 +818,40 @@ describe('AgentPublishService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		taskSnapshotRepository.findByVersionId.mockResolvedValue([makeTaskSnapshot()]);
-		taskRepo.findBy.mockResolvedValue([{ id: 'task-1' }, { id: 'draft-only' }]);
+		agentTaskRepository.replaceForAgent.mockResolvedValue(true);
 
 		await expect(service.revertToPublishedAgent(agentId, projectId, user, 'user')).resolves.toBe(
 			agent,
 		);
 
-		expect(agent.schema).toEqual(schema);
+		expect(agent.schema).toEqual(activeVersion.schema);
 		expect(agent.name).toBe(schema.name);
 		expect(agent.versionId).toBe('published-v1');
 		expect(agent.tools).toEqual(activeVersion.tools);
 		expect(agent.skills).toEqual(activeVersion.skills);
-		expect(taskRepo.delete).toHaveBeenCalledWith(['draft-only']);
-		expect(taskRepo.update).toHaveBeenCalledWith(
-			'task-1',
-			expect.objectContaining({ objective: 'Summarize messages' }),
+		expect(agentTaskRepository.replaceForAgent).toHaveBeenCalledWith(
+			agentId,
+			new Map([['task-1', expect.objectContaining({ objective: 'Summarize messages' })]]),
+			expect.anything(),
 		);
 	});
 
 	it('reverts to a selected history row and task snapshot without changing the active published version', async () => {
-		const { service, agentRepository, agentHistoryRepository, taskSnapshotRepository, taskRepo } =
-			makeService();
+		const {
+			service,
+			agentRepository,
+			agentHistoryRepository,
+			taskSnapshotRepository,
+			agentTaskRepository,
+		} = makeService();
 		const agent = makeAgent({
 			activeVersionId: 'current-active',
 			activeVersion: makeHistory({ versionId: 'current-active' }),
+			integrations: [{ type: 'n8n_chat', credentialId: '' }],
 		});
 		const target = makeHistory({
 			versionId: 'older-version',
-			schema: { ...schema, name: 'Older Agent' },
+			schema: { ...schema, name: 'Older Agent', integrations: [] },
 		});
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -596,18 +864,19 @@ describe('AgentPublishService', () => {
 				objective: 'Use the older task objective',
 			}),
 		]);
-		taskRepo.findBy.mockResolvedValue([{ id: 'task-1' }, { id: 'draft-only' }]);
+		agentTaskRepository.replaceForAgent.mockResolvedValue(true);
 
 		await service.revertToVersion(agentId, projectId, 'older-version', user, 'user');
 
-		expect(agent.schema).toEqual(target.schema);
+		expect(agent.schema).toEqual({ ...schema, name: 'Older Agent' });
 		expect(agent.name).toBe('Older Agent');
 		expect(agent.activeVersionId).toBe('current-active');
+		expect(agent.integrations).toEqual([{ type: 'n8n_chat', credentialId: '' }]);
 		expect(agent.versionId).not.toBe('older-version');
-		expect(taskRepo.delete).toHaveBeenCalledWith(['draft-only']);
-		expect(taskRepo.update).toHaveBeenCalledWith(
-			'task-1',
-			expect.objectContaining({ objective: 'Use the older task objective' }),
+		expect(agentTaskRepository.replaceForAgent).toHaveBeenCalledWith(
+			agentId,
+			new Map([['task-1', expect.objectContaining({ objective: 'Use the older task objective' })]]),
+			expect.anything(),
 		);
 	});
 
@@ -639,7 +908,8 @@ describe('AgentPublishService', () => {
 	});
 
 	it('reports sidecar body-only reverts when schema references are unchanged', async () => {
-		const { service, agentRepository, taskSnapshotRepository, taskRepo, telemetry } = makeService();
+		const { service, agentRepository, taskSnapshotRepository, agentTaskRepository, telemetry } =
+			makeService();
 		const schemaWithRefs: AgentJsonConfig = {
 			...schema,
 			tools: [{ type: 'custom', id: 'tool-1' }],
@@ -674,14 +944,7 @@ describe('AgentPublishService', () => {
 				objective: 'Published objective',
 			}),
 		]);
-		taskRepo.findBy.mockResolvedValue([
-			{
-				id: 'task-1',
-				name: 'Daily summary',
-				objective: 'Draft objective',
-				cronExpression: '0 9 * * *',
-			},
-		]);
+		agentTaskRepository.replaceForAgent.mockResolvedValue(true);
 
 		await service.revertToPublishedAgent(agentId, projectId, user, 'user');
 
@@ -696,13 +959,53 @@ describe('AgentPublishService', () => {
 		expect(telemetry.track).toHaveBeenCalledTimes(1);
 	});
 
-	it('returns a version snapshot with its task snapshots', async () => {
-		const { service, agentRepository, agentHistoryRepository, taskSnapshotRepository } =
-			makeService();
-		const version = makeHistory({ versionId: 'old-version' });
-		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+	it('reads the selected version without using draft or active-version bodies', async () => {
+		const {
+			service,
+			agentRepository,
+			agentHistoryRepository,
+			taskSnapshotRepository,
+			agentTaskRepository,
+		} = makeService();
+		const version = makeHistory({
+			versionId: 'old-version',
+			schema: {
+				...schema,
+				name: 'Older agent',
+				tasks: [{ type: 'task', id: 'task-1', enabled: false }],
+				integrations: [{ type: 'n8n_chat', credentialId: '' }],
+			},
+			skills: {
+				skill: {
+					name: 'Older skill',
+					description: 'Older description',
+					instructions: 'Older body',
+				},
+			},
+		});
+		const agent = makeAgent({
+			schema: { ...schema, name: 'Draft agent' },
+			tools: {
+				draft_tool: { code: 'return 1;', descriptor: mock<ToolDescriptor>({ name: 'draft_tool' }) },
+			},
+			skills: {
+				skill: {
+					name: 'Draft skill',
+					description: 'Draft description',
+					instructions: 'Draft body',
+				},
+			},
+			activeVersion: makeHistory({
+				versionId: 'active-version',
+				schema: { ...schema, name: 'Active agent' },
+			}),
+			activeVersionId: 'active-version',
+			integrations: [{ type: 'slack', credentialId: 'current-credential' }],
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(version);
-		taskSnapshotRepository.findByVersionId.mockResolvedValue([makeTaskSnapshot()]);
+		const snapshot = makeTaskSnapshot({ versionId: 'old-version', enabled: false });
+		taskSnapshotRepository.findByVersionId.mockResolvedValue([snapshot]);
 
 		const result = await service.getVersion(agentId, projectId, 'old-version');
 
@@ -711,7 +1014,26 @@ describe('AgentPublishService', () => {
 			agentId,
 		);
 		expect(result.version).toBe(version);
-		expect(result.tasks).toEqual([makeTaskSnapshot()]);
+		expect(result.definition).toEqual({
+			schema: version.schema,
+			tools: {},
+			skills: version.skills,
+			tasks: new Map([
+				[
+					'task-1',
+					{
+						name: 'Daily summary',
+						objective: 'Summarize messages',
+						cronExpression: '0 9 * * *',
+						timezone: null,
+					},
+				],
+			]),
+		});
+		expect(result.agent.integrations).toEqual([
+			{ type: 'slack', credentialId: 'current-credential' },
+		]);
+		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
 	});
 
 	it('throws when the requested version does not exist for the agent', async () => {
@@ -746,5 +1068,148 @@ describe('AgentPublishService', () => {
 				isActive: false,
 			}),
 		]);
+	});
+
+	it('loses the fence and conflicts when a concurrent edit bumped revision before publish', async () => {
+		const {
+			service,
+			agentRepository,
+			agentHistoryRepository,
+			telemetry,
+			eventService,
+			agentUpdateBroadcaster,
+			ctx,
+		} = makeService();
+		const agent = makeAgent({ revision: 5 });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentRepository.setActiveVersionFenced.mockResolvedValue(false);
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+			'Agent was modified concurrently while publishing; please retry',
+		);
+
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(
+			agentId,
+			5,
+			expect.objectContaining({ activeVersionId: versionId, versionId }),
+			ctx,
+		);
+		expect(agentHistoryRepository.saveVersion).toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBeNull();
+		expect(agent.activeVersion).toBeNull();
+		expect(agent.versionId).toBe(versionId);
+		expect(agent.revision).toBe(5);
+	});
+
+	it('conflicts when a second publish races the same agent', async () => {
+		const {
+			service,
+			agentRepository,
+			agentHistoryRepository,
+			telemetry,
+			eventService,
+			agentUpdateBroadcaster,
+		} = makeService();
+		const agent = makeAgent({ revision: 1 });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(
+			makeHistory({ versionId: 'v1' }),
+		);
+		agentRepository.setActiveVersionFenced.mockResolvedValue(false);
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser, 'v1')).rejects.toThrow(
+			'Agent was modified concurrently while publishing; please retry',
+		);
+
+		// Republishing an existing snapshot skips the draft save, so the only
+		// write attempted is the fenced UPDATE — which lost. The in-memory
+		// entity must stay on the pre-publish active version.
+		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBeNull();
+		expect(agent.versionId).toBe(versionId);
+		expect(agent.revision).toBe(1);
+	});
+
+	it('conflicts when a concurrent publish already inserted the same draft version snapshot', async () => {
+		const {
+			service,
+			agentRepository,
+			agentHistoryRepository,
+			telemetry,
+			eventService,
+			agentUpdateBroadcaster,
+		} = makeService();
+		const agent = makeAgent({ revision: 2 });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		// Both racers share the draft's versionId as the history primary key,
+		// so the loser collides on the insert before reaching the fence.
+		agentHistoryRepository.saveVersion.mockRejectedValue(
+			new QueryFailedError(
+				'insert',
+				undefined,
+				Object.assign(new Error('duplicate key'), { code: '23505' }),
+			),
+		);
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+			'Agent was modified concurrently while publishing; please retry',
+		);
+
+		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBeNull();
+		expect(agent.revision).toBe(2);
+	});
+
+	it('propagates non-unique-constraint failures from the draft snapshot insert as-is', async () => {
+		const { service, agentRepository, agentHistoryRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.saveVersion.mockRejectedValue(new Error('db down'));
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow('db down');
+	});
+
+	it('unpublish conflicts on a stale revision and skips telemetry', async () => {
+		const { service, agentRepository, telemetry, eventService, agentUpdateBroadcaster } =
+			makeService();
+		const agent = makeAgent({ activeVersionId: 'v1', revision: 3 });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentRepository.setActiveVersionFenced.mockResolvedValue(false);
+
+		await expect(service.unpublishAgent(agentId, projectId, user, 'user')).rejects.toThrow(
+			'Agent was modified concurrently while unpublishing; please retry',
+		);
+
+		// Losing the fence means the active version is left untouched and no
+		// unpublish side effects or telemetry run.
+		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBe('v1');
+	});
+
+	it('passes the loaded revision as the fence expectation on publish', async () => {
+		const { service, agentRepository, ctx } = makeService();
+		const agent = makeAgent({ revision: 7 });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		await service.publishAgent(agentId, projectId, user, byUser);
+
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(
+			agentId,
+			7,
+			expect.objectContaining({ activeVersionId: versionId, versionId }),
+			ctx,
+		);
+		expect(agent.revision).toBe(8);
+		expect(agent.activeVersionId).toBe(versionId);
 	});
 });

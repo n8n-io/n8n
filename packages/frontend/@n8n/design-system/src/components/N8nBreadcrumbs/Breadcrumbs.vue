@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 
+import { useI18n } from '../../composables/useI18n';
 import N8nActionToggle from '../N8nActionToggle';
 import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nLink from '../N8nLink';
@@ -50,6 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
 	hiddenItemsTrigger: 'click',
 	dragActive: false,
 });
+const { t } = useI18n();
 
 const loadedHiddenItems = ref<PathItem[]>([]);
 const isLoadingHiddenItems = ref(false);
@@ -208,7 +210,15 @@ const handleTooltipClose = () => {
 						@action="emitItemSelected"
 						@item-mouseup="onHiddenItemMouseUp"
 					>
-						<N8nText :bold="true" :class="$style.dots">...</N8nText>
+						<N8nText
+							tag="button"
+							type="button"
+							:aria-label="t('breadcrumbs.showMoreItems')"
+							:bold="true"
+							:class="$style.dots"
+						>
+							...
+						</N8nText>
 					</N8nActionToggle>
 				</div>
 				<!-- Just a tooltip for smaller versions -->
@@ -395,7 +405,12 @@ const handleTooltipClose = () => {
 }
 
 .dots {
+	appearance: none;
 	padding: 0 var(--spacing--4xs);
+	border: none;
+	background: none;
+	font: inherit;
+	cursor: pointer;
 	color: var(--color--text--tint-1);
 	border-radius: var(--radius);
 
@@ -443,7 +458,6 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color--text);
 		font-size: var(--font-size--sm);
-		line-height: var(--line-height--xs);
 	}
 
 	.item {

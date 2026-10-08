@@ -11,6 +11,7 @@ import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useNdvAgentConfig, type UseNdvAgentConfigReturn } from '../useNdvAgentConfig';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 // The API layer is the seam under our control; `useAgentConfig` is the REAL
 // composable so its stale-fetch drop is exercised authentically.
@@ -52,6 +53,10 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 		tools: [],
 		...overrides,
 	} as AgentJsonConfig;
+}
+
+function makeConfigResponse(overrides: Partial<AgentJsonConfig> = {}) {
+	return { config: makeConfig(overrides), configHash: 'config-hash' };
 }
 
 function makeAgent(overrides: Partial<AgentResource> = {}): AgentResource {
@@ -132,8 +137,9 @@ function mountComposable(activeNode: Ref<INodeUi | null>) {
 describe('useNdvAgentConfig', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
+		vi.spyOn(useSettingsStore(), 'isAgentsEnabled', 'get').mockReturnValue(true);
 		getAgentMock.mockReset().mockResolvedValue(makeAgent());
-		getAgentConfigMock.mockReset().mockResolvedValue(makeConfig());
+		getAgentConfigMock.mockReset().mockResolvedValue(makeConfigResponse());
 	});
 
 	afterEach(() => {
@@ -154,7 +160,9 @@ describe('useNdvAgentConfig', () => {
 
 	describe('referenced mode', () => {
 		it('fetches config + agent on mount and populates the summary / isPublished', async () => {
-			getAgentConfigMock.mockResolvedValue(makeConfig({ instructions: 'Fetched instructions.' }));
+			getAgentConfigMock.mockResolvedValue(
+				makeConfigResponse({ instructions: 'Fetched instructions.' }),
+			);
 			getAgentMock.mockResolvedValue(makeAgent({ activeVersionId: 'published-v1' }));
 
 			const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
@@ -171,6 +179,19 @@ describe('useNdvAgentConfig', () => {
 			expect(api.referenced.isPublished.value).toBe(true);
 		});
 
+		it('does not fetch, or mark the agent unavailable, while agents are disabled', async () => {
+			vi.spyOn(useSettingsStore(), 'isAgentsEnabled', 'get').mockReturnValue(false);
+
+			const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
+			const { api } = mountComposable(node);
+			await flushPromises();
+
+			expect(api.referenced.agentsDisabled.value).toBe(true);
+			expect(api.referenced.isUnavailable.value).toBe(false);
+			expect(getAgentConfigMock).not.toHaveBeenCalled();
+			expect(getAgentMock).not.toHaveBeenCalled();
+		});
+
 		it('short-circuits when no agent is referenced (agentId === "")', async () => {
 			const node = ref<INodeUi | null>(makeAgentNode(''));
 			const { api } = mountComposable(node);
@@ -184,7 +205,7 @@ describe('useNdvAgentConfig', () => {
 
 		it('loads agent B after switching A→B and never applies A load onto B', async () => {
 			getAgentConfigMock.mockImplementation(async (_ctx, _pid, aid: string) =>
-				makeConfig({ instructions: `config-${aid}` }),
+				makeConfigResponse({ instructions: `config-${aid}` }),
 			);
 			getAgentMock.mockImplementation(async (_ctx, _pid, aid: string) =>
 				makeAgent({ id: aid, name: `agent-${aid}` }),
@@ -242,7 +263,7 @@ describe('useNdvAgentConfig', () => {
 
 		it('resolves skill names from the agent record for the summary chips', async () => {
 			getAgentConfigMock.mockResolvedValue(
-				makeConfig({ skills: [{ type: 'skill', id: 'triage' }] }),
+				makeConfigResponse({ skills: [{ type: 'skill', id: 'triage' }] }),
 			);
 			getAgentMock.mockResolvedValue(
 				makeAgent({

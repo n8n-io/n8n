@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "properties": {
+        "add_time": {
+            "type": "string"
+        },
+        "address": {
+            "type": "null"
+        },
+        "annual_revenue": {
+            "type": "null"
+        },
+        "employee_count": {
+            "type": "null"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "industry": {
+            "type": "null"
+        },
+        "is_deleted": {
+            "type": "boolean"
+        },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "linkedin": {
+            "type": "null"
+        },
+        "name": {
+            "type": "string"
+        },
+        "website": {
+            "type": "null"
+        }
+    },
+    "version": 2
+}

@@ -15,6 +15,7 @@ import { type OidcConfigDto } from '@n8n/api-types';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
+import { openSafeUrl } from '@/app/utils/htmlUtils';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
@@ -254,7 +255,7 @@ const onTest = async () => {
 	try {
 		const { url } = await ssoStore.testOidcConfig();
 		if (typeof window !== 'undefined') {
-			window.open(url, '_blank');
+			openSafeUrl(url);
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.test.error'));

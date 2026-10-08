@@ -71,6 +71,7 @@ describe('ActiveWorkflowTriggers', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		pollFunctions.__runPoll.mockImplementation(async (poll) => await poll());
 		workflow.id = workflowId;
 		scheduledTaskManager.getGroupIds.mockReturnValue([]);
 		scheduledTaskManager.getTargetIds.mockReturnValue([]);
@@ -84,7 +85,7 @@ describe('ActiveWorkflowTriggers', () => {
 			scheduledTaskManager,
 			triggersAndPollers,
 			errorReporter,
-			new PollTriggerExecutor(logger, triggersAndPollers, tracing),
+			new PollTriggerExecutor(logger, triggersAndPollers, tracing, errorReporter),
 		);
 	});
 
@@ -130,6 +131,16 @@ describe('ActiveWorkflowTriggers', () => {
 			getPollFunctions,
 		);
 	};
+
+	it('counts a workflow with multiple triggers once and removes it after deactivation', async () => {
+		expect(activeWorkflowTriggers.getDiagnosticCounts()).toEqual({ workflows: 0 });
+
+		await addWorkflow({ triggerNodes: [triggerNode], pollNodes: [pollNode] });
+		expect(activeWorkflowTriggers.getDiagnosticCounts()).toEqual({ workflows: 1 });
+
+		await activeWorkflowTriggers.remove(workflowId);
+		expect(activeWorkflowTriggers.getDiagnosticCounts()).toEqual({ workflows: 0 });
+	});
 
 	describe('addAllTriggers()', () => {
 		describe('should activate workflow', () => {
@@ -1315,7 +1326,7 @@ describe('ActiveWorkflowTriggers', () => {
 				realScheduledTaskManager,
 				triggersAndPollers,
 				errorReporter,
-				new PollTriggerExecutor(realLogger, triggersAndPollers, tracing),
+				new PollTriggerExecutor(realLogger, triggersAndPollers, tracing, errorReporter),
 			);
 		});
 
@@ -1500,7 +1511,7 @@ describe('ActiveWorkflowTriggers', () => {
 				scheduledTaskManager,
 				triggersAndPollers,
 				errorReporter,
-				new PollTriggerExecutor(logger, triggersAndPollers, tracing),
+				new PollTriggerExecutor(logger, triggersAndPollers, tracing, errorReporter),
 			);
 		};
 

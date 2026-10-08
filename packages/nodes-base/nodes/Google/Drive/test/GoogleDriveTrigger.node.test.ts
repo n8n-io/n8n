@@ -463,6 +463,160 @@ describe('GoogleDriveTrigger', () => {
 		});
 	});
 
+	describe('Poll Function - Declared Failures', () => {
+		const setParameters = (params: Record<string, unknown>) => {
+			mockPollFunctions.getNodeParameter.mockImplementation(
+				(paramName: string) => params[paramName] ?? '',
+			);
+		};
+
+		const driveApiError = (statusCode: number, reason?: string) => {
+			const requestError = Object.assign(new Error(`${statusCode} - request failed`), {
+				statusCode,
+				error: {
+					error: {
+						code: statusCode,
+						message: 'request failed',
+						...(reason ? { errors: [{ domain: 'usageLimits', reason }] } : {}),
+					},
+				},
+			});
+			return new NodeApiError(mockNode, requestError as never);
+		};
+
+		beforeEach(() => {
+			setParameters({
+				triggerOn: 'specificFile',
+				event: 'fileUpdated',
+				fileToWatch: 'test-file-id',
+				options: {},
+			});
+		});
+
+		it.each(['rateLimitExceeded', 'userRateLimitExceeded', 'sharingRateLimitExceeded'])(
+			'should declare a 403 with reason %s as rate-limited',
+			async (reason) => {
+				const apiError = driveApiError(403, reason);
+				googleApiRequestAllItemsSpy.mockRejectedValue(apiError);
+
+				await expect(trigger.poll.call(mockPollFunctions)).rejects.toBe(apiError);
+				expect(apiError.failure).toEqual({ cause: 'rate-limited' });
+				expect(apiError.httpCode).toBe('403');
+			},
+		);
+
+		it('should declare a 403 with reason dailyLimitExceeded as quota-exhausted, resetting at the next Pacific midnight', async () => {
+			const apiError = driveApiError(403, 'dailyLimitExceeded');
+			googleApiRequestAllItemsSpy.mockRejectedValue(apiError);
+
+			await expect(trigger.poll.call(mockPollFunctions)).rejects.toBe(apiError);
+			expect(apiError.failure?.cause).toBe('quota-exhausted');
+
+			const { resetsAtEpochMs } = apiError.failure as { resetsAtEpochMs?: number };
+			expect(resetsAtEpochMs).toBeGreaterThan(Date.now());
+			expect(moment(resetsAtEpochMs).tz('America/Los_Angeles').format('HH:mm:ss')).toBe('00:00:00');
+		});
+
+		it('should declare a 429 as rate-limited', async () => {
+			const apiError = driveApiError(429);
+			googleApiRequestAllItemsSpy.mockRejectedValue(apiError);
+
+			await expect(trigger.poll.call(mockPollFunctions)).rejects.toBe(apiError);
+			expect(apiError.failure).toEqual({ cause: 'rate-limited' });
+			expect(apiError.httpCode).toBe('429');
+		});
+
+		it('should declare a 403 whose payload is a plain object stored under errorResponse', async () => {
+			const apiError = new NodeApiError(mockNode, {
+				statusCode: 403,
+				error: {
+					error: {
+						code: 403,
+						message: 'request failed',
+						errors: [{ domain: 'usageLimits', reason: 'userRateLimitExceeded' }],
+					},
+				},
+			} as never);
+			googleApiRequestAllItemsSpy.mockRejectedValue(apiError);
+
+			await expect(trigger.poll.call(mockPollFunctions)).rejects.toBe(apiError);
+			expect(apiError.failure).toEqual({ cause: 'rate-limited' });
+		});
+
+		it('should declare a 401 as credential-invalid', async () => {
+			const apiError = driveApiError(401);
+			googleApiRequestAllItemsSpy.mockRejectedValue(apiError);
+
+			await expect(trigger.poll.call(mockPollFunctions)).rejects.toBe(apiError);
+			expect(apiError.failure).toEqual({ cause: 'credential-invalid' });
+			expect(apiError.httpCode).toBe('401');
+		});
+
+		it('should declare a 404 as configuration-invalid when the query filters on the watched folder', async () => {
+			setParameters({
+				triggerOn: 'specificFolder',
+				event: 'fileCreated',
+				folderToWatch: 'test-folder-id',
+				options: {},
+			});
+			const apiError = driveApiError(404);
+			googleApiRequestAllItemsSpy.mockRejectedValue(apiError);
+
+			await expect(trigger.poll.call(mockPollFunctions)).rejects.toBe(apiError);
+			expect(apiError.failure).toEqual({ cause: 'configuration-invalid' });
+			expect(apiError.message).toBe(
+				'The folder this node watches no longer exists. Please update it in the workflow.',
+			);
+		});
+
+		it.each([
+			['any file or folder', { triggerOn: 'anyFileFolder', event: 'fileUpdated', options: {} }],
+			[
+				'a specific file, whose id never reaches the API',
+				{
+					triggerOn: 'specificFile',
+					event: 'fileUpdated',
+					fileToWatch: 'test-file-id',
+					options: {},
+				},
+			],
+			[
+				'a specific folder for updates, whose id never reaches the API',
+				{
+					triggerOn: 'specificFolder',
+					event: 'watchFolderUpdated',
+					folderToWatch: 'test-folder-id',
+					options: {},
+				},
+			],
+		])('should not declare a 404 when watching %s', async (_name, params) => {
+			setParameters(params);
+			const apiError = driveApiError(404);
+			googleApiRequestAllItemsSpy.mockRejectedValue(apiError);
+
+			const promise = trigger.poll.call(mockPollFunctions);
+
+			await expect(promise).rejects.toBe(apiError);
+			expect(apiError.failure).toBeUndefined();
+		});
+
+		it('should rethrow a 403 with an unrecognized reason unannotated', async () => {
+			const apiError = driveApiError(403, 'domainPolicy');
+			googleApiRequestAllItemsSpy.mockRejectedValue(apiError);
+
+			await expect(trigger.poll.call(mockPollFunctions)).rejects.toBe(apiError);
+			expect(apiError.failure).toBeUndefined();
+		});
+
+		it('should rethrow an error that is not a NodeApiError unannotated', async () => {
+			const plainError = new Error('socket hang up');
+			googleApiRequestAllItemsSpy.mockRejectedValue(plainError);
+
+			await expect(trigger.poll.call(mockPollFunctions)).rejects.toBe(plainError);
+			expect(plainError).not.toHaveProperty('failure');
+		});
+	});
+
 	describe('Poll Function - Edge Cases', () => {
 		it('should return null when no files found in trigger mode', async () => {
 			mockPollFunctions.getNodeParameter.mockImplementation((paramName: string) => {

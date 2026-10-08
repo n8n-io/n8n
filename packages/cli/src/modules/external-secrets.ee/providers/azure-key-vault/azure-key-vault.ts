@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
-import type { AzureKeyVaultContext } from './types';
+import type { AzureKeyVaultContext, AzureKeyVaultEnvironment } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
 import {
 	buildFailureSummaryLogContext,
@@ -22,6 +22,26 @@ type AzureHttpLikeError = Error & {
 	code?: string;
 };
 
+const DEFAULT_AUTHORITY_HOST = 'https://login.microsoftonline.com';
+
+const AZURE_CLOUD_ENDPOINTS: Record<
+	Exclude<AzureKeyVaultEnvironment, 'custom'>,
+	{ vaultSuffix: string; authorityHost: string }
+> = {
+	public: {
+		vaultSuffix: 'vault.azure.net',
+		authorityHost: DEFAULT_AUTHORITY_HOST,
+	},
+	usGovernment: {
+		vaultSuffix: 'vault.usgovcloudapi.net',
+		authorityHost: 'https://login.microsoftonline.us',
+	},
+	china: {
+		vaultSuffix: 'vault.azure.cn',
+		authorityHost: 'https://login.partner.microsoftonline.cn',
+	},
+};
+
 export class AzureKeyVault extends SecretsProvider {
 	name = 'azureKeyVault';
 
@@ -29,6 +49,40 @@ export class AzureKeyVault extends SecretsProvider {
 
 	properties: INodeProperties[] = [
 		DOCS_HELP_NOTICE,
+		{
+			displayName: 'Azure Cloud',
+			name: 'environment',
+			hint: 'The Azure cloud environment your Key Vault is hosted in.',
+			type: 'options',
+			options: [
+				{
+					name: 'Azure Public Cloud',
+					value: 'public',
+					description:
+						'Uses <code>vault.azure.net</code> and <code>login.microsoftonline.com</code>',
+				},
+				{
+					name: 'Azure US Government',
+					value: 'usGovernment',
+					description:
+						'Uses <code>vault.usgovcloudapi.net</code> and <code>login.microsoftonline.us</code>',
+				},
+				{
+					name: 'Azure China',
+					value: 'china',
+					description:
+						'Uses <code>vault.azure.cn</code> and <code>login.partner.microsoftonline.cn</code>',
+				},
+				{
+					name: 'Custom',
+					value: 'custom',
+					description:
+						'Provide the vault URL and authority host directly, for setups such as Azure Stack or proxied environments',
+				},
+			],
+			default: 'public',
+			noDataExpression: true,
+		},
 		{
 			displayName: 'Vault Name',
 			hint: 'The name of your existing Azure Key Vault.',
@@ -38,6 +92,26 @@ export class AzureKeyVault extends SecretsProvider {
 			required: true,
 			placeholder: 'e.g. my-vault',
 			noDataExpression: true,
+			displayOptions: {
+				hide: {
+					environment: ['custom'],
+				},
+			},
+		},
+		{
+			displayName: 'Vault URL',
+			hint: 'The full URL of your existing Azure Key Vault.',
+			name: 'vaultUrl',
+			type: 'string',
+			default: '',
+			required: true,
+			placeholder: 'e.g. https://my-vault.vault.usgovcloudapi.net',
+			noDataExpression: true,
+			displayOptions: {
+				show: {
+					environment: ['custom'],
+				},
+			},
 		},
 		{
 			displayName: 'Tenant ID',
@@ -70,6 +144,20 @@ export class AzureKeyVault extends SecretsProvider {
 			typeOptions: { password: true },
 			noDataExpression: true,
 		},
+		{
+			displayName: 'Authority Host',
+			hint: 'The Microsoft Entra authority to authenticate against. Leave empty to use the default (https://login.microsoftonline.com).',
+			name: 'authorityHost',
+			type: 'string',
+			default: '',
+			placeholder: 'e.g. https://login.microsoftonline.us',
+			noDataExpression: true,
+			displayOptions: {
+				show: {
+					environment: ['custom'],
+				},
+			},
+		},
 	];
 
 	private cachedSecrets: Record<string, string> = {};
@@ -91,14 +179,17 @@ export class AzureKeyVault extends SecretsProvider {
 
 	protected async doConnect(): Promise<void> {
 		try {
-			const { vaultName, tenantId, clientId, clientSecret } = this.settings;
+			const { tenantId, clientId, clientSecret } = this.settings;
+			const { vaultUrl, authorityHost } = this.resolveEndpoints();
 
 			const { ClientSecretCredential } = await import('@azure/identity');
 			const { SecretClient } = await import('@azure/keyvault-secrets');
 
 			// TODO: Not routed through OutboundHttp for now. It would require `@azure/core-rest-pipeline`, which is not worth it just to share agents.
-			const credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
-			this.client = new SecretClient(`https://${vaultName}.vault.azure.net/`, credential);
+			const credential = new ClientSecretCredential(tenantId, clientId, clientSecret, {
+				authorityHost,
+			});
+			this.client = new SecretClient(vaultUrl, credential);
 
 			this.logger.debug('Azure Key Vault provider connected');
 		} catch (error) {
@@ -109,6 +200,24 @@ export class AzureKeyVault extends SecretsProvider {
 			});
 			throw error;
 		}
+	}
+
+	private resolveEndpoints(): { vaultUrl: string; authorityHost: string } {
+		const { environment = 'public', vaultName, vaultUrl, authorityHost } = this.settings;
+
+		if (environment === 'custom') {
+			const trimmedAuthorityHost = authorityHost?.trim();
+			return {
+				vaultUrl: (vaultUrl ?? '').trim(),
+				authorityHost: trimmedAuthorityHost ? trimmedAuthorityHost : DEFAULT_AUTHORITY_HOST,
+			};
+		}
+
+		const cloudEndpoints = AZURE_CLOUD_ENDPOINTS[environment];
+		return {
+			vaultUrl: `https://${vaultName}.${cloudEndpoints.vaultSuffix}/`,
+			authorityHost: cloudEndpoints.authorityHost,
+		};
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {

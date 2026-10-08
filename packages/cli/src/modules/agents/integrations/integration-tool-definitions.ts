@@ -1,5 +1,6 @@
 import {
 	richMessageSchema,
+	type AgentApproval,
 	type RichCardComponent,
 	type RICH_CARD_BUTTON_STYLES,
 } from '@n8n/api-types';
@@ -10,7 +11,6 @@ import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
 } from './platforms/linear-tool-definitions';
-import { SLACK_ACTION_TOOL_DEFINITIONS } from './platforms/slack-tool-definitions';
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
@@ -187,12 +187,36 @@ const editMessageActionInputSchema = z.object({
 		.strict(),
 });
 
+const addReactionActionInputSchema = z.object({
+	action: z.literal('add_reaction'),
+	input: z
+		.object({
+			emoji: z.string().min(1).describe('Emoji name, shortcode, or Unicode emoji to add.'),
+			threadId: z
+				.string()
+				.min(1)
+				.optional()
+				.describe('Optional platform thread ID. Defaults to the latest message context.'),
+			messageId: z
+				.string()
+				.min(1)
+				.optional()
+				.describe('Optional platform message ID. Defaults to the latest message context.'),
+		})
+		.strict(),
+});
+
+const doNotRespondActionInputSchema = z.object({
+	action: z.literal('do_not_respond'),
+	input: noInputSchema,
+});
+
 export const GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 	{
 		name: 'get_current_message_context',
 		inputSchema: getCurrentMessageContextInputSchema,
 		description:
-			'get_current_message_context: no input. Returns the latest place this agent communicated in this thread. For Slack, context.agentUserId is the bot user ID for this agent; do not look it up as another user.',
+			'get_current_message_context: no input. Returns the latest place this agent communicated in this thread and any allow-listed platformMessage metadata. For Slack, context.agentUserId is the bot user ID for this agent; do not look it up as another user.',
 	},
 	{
 		name: 'get_current_subject',
@@ -248,12 +272,14 @@ export const GENERIC_ACTION_TOOL_DEFINITIONS = [
 	{
 		name: 'send_dm',
 		inputSchema: sendDmActionInputSchema,
+		sensitive: true,
 		description:
 			'send_dm: input.userId and input.message are required. userId must be a platform user ID, not a name, handle, or email.',
 	},
 	{
 		name: 'send_channel_message',
 		inputSchema: sendChannelMessageActionInputSchema,
+		sensitive: true,
 		description:
 			'send_channel_message: input.channelId and input.message are required. channelId must be a platform channel ID, not a channel name.',
 	},
@@ -263,8 +289,24 @@ const EDIT_MESSAGE_ACTION_TOOL_DEFINITIONS = [
 	{
 		name: 'edit_message',
 		inputSchema: editMessageActionInputSchema,
+		sensitive: true,
 		description:
 			"edit_message: input.messageId and input.message are required. Uses the latest message context to choose the conversation, so input.threadId isn't accepted.",
+	},
+] satisfies IntegrationActionDefinition[];
+
+const OPT_IN_ACTION_TOOL_DEFINITIONS = [
+	{
+		name: 'add_reaction',
+		inputSchema: addReactionActionInputSchema,
+		description:
+			'add_reaction: input.emoji is required. Optional input.threadId and input.messageId target a specific message; otherwise the latest message context is used.',
+	},
+	{
+		name: 'do_not_respond',
+		inputSchema: doNotRespondActionInputSchema,
+		description:
+			'do_not_respond: no input. Ends the turn without sending any message. Use only for messages in subscribed group channels or threads that need no reaction from you, or when the user explicitly asked you not to reply. Never use it for direct messages or direct mentions. After calling it, stop immediately — do not write any text and never post a message saying you are staying silent.',
 	},
 ] satisfies IntegrationActionDefinition[];
 
@@ -280,7 +322,7 @@ const ALL_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 const ALL_ACTION_TOOL_DEFINITIONS = [
 	...GENERIC_ACTION_TOOL_DEFINITIONS,
 	...EDIT_MESSAGE_ACTION_TOOL_DEFINITIONS,
-	...SLACK_ACTION_TOOL_DEFINITIONS,
+	...OPT_IN_ACTION_TOOL_DEFINITIONS,
 	...LINEAR_ACTION_TOOL_DEFINITIONS,
 ] satisfies IntegrationActionDefinition[];
 
@@ -310,6 +352,19 @@ export function resolveIntegrationActionDefinitions(
 	actions: IntegrationAction[],
 ): IntegrationActionDefinition[] {
 	return actions.map((action) => requireDefinition(actionDefinitionsByName, action));
+}
+
+/** Whether a channel's approval config gates this action. */
+export function actionNeedsApproval(
+	approval: AgentApproval | undefined,
+	action: IntegrationAction,
+): boolean {
+	if (!approval) return false;
+	// Staying silent has no effect to approve; asking would post a card instead
+	// of the silence the model chose.
+	if (action === 'do_not_respond') return false;
+	if (approval.mode === 'global') return true;
+	return approval.tools.includes(action);
 }
 
 function toDefinitionMap<

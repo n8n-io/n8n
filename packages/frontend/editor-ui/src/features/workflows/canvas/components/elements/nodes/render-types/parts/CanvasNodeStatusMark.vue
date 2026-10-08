@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nIcon } from '@n8n/design-system';
-import type { IconSize } from '@n8n/design-system/types';
+import type { IconSize } from '@n8n/design-system';
 
 const STATUS_ICONS = {
 	success: 'node-success',

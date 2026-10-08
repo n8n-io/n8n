@@ -1,16 +1,24 @@
 import type { Tool } from '@langchain/core/tools';
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
+import { MAX_INTEGER_32BITS_SIGNED } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { InstanceSettings, WorkflowExecute, SupplyDataContext, StructuredToolkit } from 'n8n-core';
 import {
-	WorkflowHasIssuesError,
-	InstanceSettings,
-	WorkflowExecute,
-	SupplyDataContext,
-} from 'n8n-core';
+	ManualExecutionCancelledError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	TimeoutExecutionCancelledError,
+	Workflow,
+	UnexpectedError,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
+} from 'n8n-workflow';
 import type {
+	CancellationReason,
 	ExecutionStatus,
 	IDataObject,
 	IExecuteData,
@@ -24,19 +32,8 @@ import type {
 	CloseFunction,
 	GenericValue,
 } from 'n8n-workflow';
-import {
-	ManualExecutionCancelledError,
-	NodeConnectionTypes,
-	NodeOperationError,
-	Workflow,
-	UnexpectedError,
-	createRunExecutionData,
-	runDataAttemptedDynamicCredentials,
-	runDataUsedDynamicCredentials,
-} from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { prepareExecutionDataForDbUpdate } from '@/execution-lifecycle/shared/shared-hook-functions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -59,12 +56,48 @@ import type {
 } from './scaling.types';
 import { WebhookResponseRelay } from './webhook-response-relay';
 
+function isInvokableTool(value: unknown): value is Pick<Tool, 'invoke'> {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'invoke' in value &&
+		typeof value.invoke === 'function'
+	);
+}
+
+/**
+ * Runs `fn` at `timestamp`, returning a function to cancel it. `setTimeout` truncates delays past
+ * its 32-bit signed limit (~24.8 days) and fires almost immediately, so longer waits are split
+ * into bounded chunks.
+ */
+function scheduleAt(timestamp: number, fn: () => void): () => void {
+	let timer: NodeJS.Timeout;
+
+	const schedule = () => {
+		const delay = Math.max(timestamp - Date.now(), 0);
+		timer =
+			delay > MAX_INTEGER_32BITS_SIGNED
+				? setTimeout(schedule, MAX_INTEGER_32BITS_SIGNED)
+				: setTimeout(fn, delay);
+		timer.unref(); // A pending tick must not hold the process open on its own.
+	};
+	schedule();
+
+	return () => clearTimeout(timer);
+}
+
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
  */
 @Service()
 export class JobProcessor {
 	private readonly runningJobs: Record<JobId, RunningJob> = {};
+
+	/** Execution id per job id for every job in `processJob`, including jobs still in preflight. */
+	private readonly trackedJobs = new Map<string, string>();
+
+	/** Cause of the cancellation of each job cancelled so far, kept until its run settles. */
+	private readonly cancellationReasons: Record<JobId, CancellationReason> = {};
 
 	constructor(
 		private readonly logger: Logger,
@@ -82,6 +115,15 @@ export class JobProcessor {
 	}
 
 	async processJob(job: Job): Promise<JobResult> {
+		this.trackedJobs.set(String(job.id), job.data.executionId);
+		try {
+			return await this.runJob(job);
+		} finally {
+			this.trackedJobs.delete(String(job.id));
+		}
+	}
+
+	private async runJob(job: Job): Promise<JobResult> {
 		const { executionId, loadStaticData } = job.data;
 
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {
@@ -194,7 +236,7 @@ export class JobProcessor {
 		if (pushRef) {
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef,
-			}) as (type: string, data: IDataObject | IDataObject[]) => void;
+			});
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
@@ -271,7 +313,12 @@ export class JobProcessor {
 		const { startData, resultData, manualData } = execution.data;
 
 		if (execution.data?.executionData) {
-			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
+			workflowExecute = new WorkflowExecute(
+				additionalData,
+				execution.mode,
+				execution.data,
+				execution.storedAt,
+			);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			const data: IWorkflowExecutionDataProcess = {
@@ -284,36 +331,17 @@ export class JobProcessor {
 				dirtyNodeNames: manualData?.dirtyNodeNames,
 				triggerToStartFrom: manualData?.triggerToStartFrom,
 				userId: manualData?.userId,
+				agentRequest: manualData?.agentRequest,
 			};
 
-			try {
-				workflowRun = this.manualExecutionService.runManually(
-					data,
-					workflow,
-					additionalData,
-					executionId,
-					resultData.pinData,
-				);
-			} catch (error) {
-				if (error instanceof WorkflowHasIssuesError) {
-					// execution did not even start, but we call `workflowExecuteAfter` to notify main
-
-					const now = new Date();
-					const runData: IRun = {
-						mode: 'manual',
-						status: 'error',
-						finished: false,
-						startedAt: now,
-						stoppedAt: now,
-						data: createRunExecutionData({ resultData: { error, runData: {} } }),
-						storedAt: execution.storedAt,
-					};
-
-					await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
-					return { success: false };
-				}
-				throw error;
-			}
+			workflowRun = this.manualExecutionService.runManually(
+				data,
+				workflow,
+				additionalData,
+				executionId,
+				resultData.pinData,
+				execution.storedAt,
+			);
 		}
 
 		const runningJob: RunningJob = {
@@ -329,12 +357,43 @@ export class JobProcessor {
 
 		this.runningJobs[job.id] = runningJob;
 
-		const run = await workflowRun;
+		// The engine only checks `executionTimeoutTimestamp` between node executions, so it cannot
+		// interrupt a node stuck mid-execution (e.g. a hanging HTTP call). This watchdog cancels
+		// the job for abort-aware operations, mirroring the regular-process timeout in
+		// `WorkflowRunner.runMainProcess`.
+		const clearTimeoutWatchdog =
+			executionTimeoutTimestamp !== undefined
+				? scheduleAt(executionTimeoutTimestamp, () => this.cancelJob(job.id, 'timeout'))
+				: undefined;
 
-		delete this.runningJobs[job.id];
+		let run: IRun;
+		let cancellationReason: CancellationReason | undefined;
+		try {
+			run = await workflowRun;
+		} finally {
+			// A pending watchdog would cancel the job belatedly.
+			clearTimeoutWatchdog?.();
+			cancellationReason = this.cancellationReasons[job.id];
+			delete this.cancellationReasons[job.id];
+			// An entry left behind on rejection keeps the count of running jobs
+			// above zero forever, which prevents shutdown from ever completing.
+			delete this.runningJobs[job.id];
+		}
 
-		if (run?.status === 'canceled') {
-			throw new ManualExecutionCancelledError(executionId);
+		// A cancel this worker performed names its own cause. The engine cancels itself when its
+		// between-node check finds the deadline passed, and records no reason, so read the
+		// deadline the same way the engine does.
+		const timedOut =
+			cancellationReason === undefined
+				? executionTimeoutTimestamp !== undefined && Date.now() >= executionTimeoutTimestamp
+				: cancellationReason === 'timeout';
+
+		// A cancelled job is already reported as cancelled through `execution-cancelled`, even
+		// when the run itself ignored the cancel and ran to completion.
+		if (run?.status === 'canceled' || cancellationReason !== undefined) {
+			throw timedOut
+				? new TimeoutExecutionCancelledError(executionId)
+				: new ManualExecutionCancelledError(executionId);
 		}
 
 		const props = this.deriveJobFinishedProps(run, startedAt);
@@ -376,17 +435,19 @@ export class JobProcessor {
 				toolResult = await withExpressionIsolate(
 					workflow,
 					async () =>
-						await this.invokeTool(
+						await this.invokeTool({
 							workflow,
 							sourceNodeName,
+							toolName,
 							toolArgs,
+							toolInput: job.data.mcpToolInput,
 							additionalData,
-							run.data,
+							runExecutionData: run.data,
 							// The execution context (e.g. the OAuth identity for private credentials)
 							// is established on the main and loaded with the execution here; pass it
 							// through so the tool node can resolve dynamic credentials on the worker.
-							execution.data?.executionData?.runtimeData,
-						),
+							executionContext: execution.data?.executionData?.runtimeData,
+						}),
 				);
 
 				// A tool result is not a response, so it has no offload path: this limit
@@ -486,6 +547,10 @@ export class JobProcessor {
 	}
 
 	stopJob(jobId: JobId) {
+		this.cancelJob(jobId, 'manual'); // Job stops via scaling service are always user-initiated
+	}
+
+	private cancelJob(jobId: JobId, reason: CancellationReason) {
 		const runningJob = this.runningJobs[jobId];
 		if (!runningJob) return;
 
@@ -494,15 +559,25 @@ export class JobProcessor {
 			executionId,
 			workflowId,
 			workflowName,
-			reason: 'manual', // Job stops via scaling service are always user-initiated
+			reason,
 		});
 
 		runningJob.run.cancel();
 		delete this.runningJobs[jobId];
+		// The run may ignore cancellation and never settle; drop tracking now instead of waiting for it.
+		this.trackedJobs.delete(String(jobId));
+		this.cancellationReasons[jobId] = reason;
 	}
 
-	getRunningJobIds(): JobId[] {
-		return Object.keys(this.runningJobs);
+	/** Ids of the jobs tracked from the start of processing, including jobs still in preflight. */
+	getTrackedJobIds(): JobId[] {
+		return [...this.trackedJobs.keys()];
+	}
+
+	getJobsInPreflight(): Array<{ jobId: JobId; executionId: string }> {
+		return [...this.trackedJobs]
+			.filter(([jobId]) => !(jobId in this.runningJobs))
+			.map(([jobId, executionId]) => ({ jobId, executionId }));
 	}
 
 	getRunningJobsSummary(): RunningJobSummary[] {
@@ -516,18 +591,25 @@ export class JobProcessor {
 	 * For tool wrapper nodes without supplyData (e.g. httpRequestTool), calls
 	 * execute directly — mirroring the fallback in get-input-connection-data.ts.
 	 */
-	private async invokeTool(
-		workflow: Workflow,
-		sourceNodeName: string,
-		toolArgs: Record<string, unknown>,
-		additionalData: ReturnType<typeof WorkflowExecuteAdditionalData.getBase> extends Promise<
-			infer T
-		>
-			? T
-			: never,
-		runExecutionData: IRunExecutionData,
-		executionContext?: IExecutionContext,
-	): Promise<unknown> {
+	private async invokeTool({
+		workflow,
+		sourceNodeName,
+		toolName,
+		toolArgs,
+		toolInput,
+		additionalData,
+		runExecutionData,
+		executionContext,
+	}: {
+		workflow: Workflow;
+		sourceNodeName: string;
+		toolName: string;
+		toolArgs: Record<string, unknown>;
+		toolInput?: IDataObject;
+		additionalData: Awaited<ReturnType<typeof WorkflowExecuteAdditionalData.getBase>>;
+		runExecutionData: IRunExecutionData;
+		executionContext?: IExecutionContext;
+	}): Promise<unknown> {
 		const toolNode = workflow.getNode(sourceNodeName);
 		if (!toolNode) {
 			throw new UnexpectedError(`Tool node "${sourceNodeName}" not found in workflow`);
@@ -540,14 +622,15 @@ export class JobProcessor {
 		const validatedToolArgs =
 			typeof toolArgs === 'object' && toolArgs !== null && !Array.isArray(toolArgs) ? toolArgs : {};
 
-		// Create input data for the tool node with the tool arguments
-		const inputData: INodeExecutionData[][] = [
-			[
-				{
-					json: validatedToolArgs as INodeExecutionData['json'],
-				},
-			],
-		];
+		// A tool can feed several MCP triggers, and connection order says nothing about which
+		// one this execution came from — only the trigger that ran has run data. Recording it
+		// as parent points the tool's run data `source` at it, as in direct mode.
+		const { runData } = runExecutionData.resultData;
+		const triggerNames = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);
+		const triggerName = triggerNames.find((name) => runData[name]) ?? triggerNames[0];
+		const parentNode = triggerName ? (workflow.getNode(triggerName) ?? undefined) : undefined;
+
+		const inputData: INodeExecutionData[][] = [[{ json: toolInput ?? {} }]];
 
 		// `executionData` must exist for output recording; init it if the run lacks it.
 		runExecutionData.executionData ??= {
@@ -572,11 +655,6 @@ export class JobProcessor {
 
 		const closeFunctions: CloseFunction[] = [];
 
-		// Parent = the node the tool feeds (the MCP trigger), so the recorded run
-		// data's `source` points back at it, as in direct mode.
-		const [parentNodeName] = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);
-		const parentNode = parentNodeName ? (workflow.getNode(parentNodeName) ?? undefined) : undefined;
-
 		// Create SupplyDataContext for the tool node
 		const context = new SupplyDataContext(
 			workflow,
@@ -597,9 +675,21 @@ export class JobProcessor {
 		try {
 			if (nodeType.supplyData) {
 				const supplyDataResult = await nodeType.supplyData.call(context, 0);
-				const tool = supplyDataResult.response as Tool;
+				if (supplyDataResult.closeFunction) {
+					closeFunctions.push(supplyDataResult.closeFunction);
+				}
 
-				if (!tool || typeof tool.invoke !== 'function') {
+				let tool = supplyDataResult.response;
+				if (tool instanceof StructuredToolkit) {
+					tool = tool.tools.find((member) => member.name === toolName);
+					if (!tool) {
+						throw new UnexpectedError(
+							`Tool "${toolName}" not found in toolkit from node "${sourceNodeName}"`,
+						);
+					}
+				}
+
+				if (!isInvokableTool(tool)) {
 					throw new UnexpectedError(`Tool node "${sourceNodeName}" did not return a valid Tool`);
 				}
 
@@ -607,6 +697,7 @@ export class JobProcessor {
 			}
 
 			if (nodeType.execute && nodeType.description.outputs.includes(NodeConnectionTypes.AiTool)) {
+				// oxlint-disable-next-line typescript/no-deprecated
 				context.addInputData(NodeConnectionTypes.AiTool, [
 					[{ json: validatedToolArgs as INodeExecutionData['json'] }],
 				]);
@@ -617,6 +708,7 @@ export class JobProcessor {
 				} catch (error) {
 					// Record the failure so the tool node shows as errored, not stuck
 					// "running"; rethrow so the caller returns an error to the client.
+					// oxlint-disable-next-line typescript/no-deprecated
 					context.addOutputData(
 						NodeConnectionTypes.AiTool,
 						0,
@@ -632,9 +724,8 @@ export class JobProcessor {
 					response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
 				}
 
-				context.addOutputData(NodeConnectionTypes.AiTool, 0, [
-					[{ json: { response } as INodeExecutionData['json'] }],
-				]);
+				// oxlint-disable-next-line typescript/no-deprecated
+				context.addOutputData(NodeConnectionTypes.AiTool, 0, [[{ json: { response } }]]);
 
 				return response;
 			}

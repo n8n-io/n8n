@@ -1,5 +1,4 @@
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { ConflictError, UnprocessableRequestError } from '@n8n/errors';
 
 import type { BlockingIssue } from '../n8n-packages.types';
 
@@ -14,9 +13,13 @@ export function toImportBlockedError(
 		issues.some(
 			(issue) =>
 				issue.type === 'workflow-conflict' ||
+				issue.type === 'workflow-lineage-conflict' ||
 				issue.type === 'workflow-id-conflict' ||
 				issue.type === 'workflow-folder-conflict' ||
+				issue.type === 'workflow-removal-conflict' ||
+				issue.type === 'project-conflict' ||
 				issue.type === 'folder-conflict' ||
+				issue.type === 'variable-conflict' ||
 				(issue.type === 'data-table-unresolved' &&
 					(issue.kind === 'id-conflict' || issue.kind === 'name-conflict')) ||
 				(issue.type === 'tag-unresolved' &&

@@ -622,6 +622,10 @@ describe('WaitingForms', () => {
 
 			expect(mockStatus).toHaveBeenCalledWith(401);
 			expect(mockRender).toHaveBeenCalledWith('form-invalid-token');
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.stringContaining('sandbox'),
+			);
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 

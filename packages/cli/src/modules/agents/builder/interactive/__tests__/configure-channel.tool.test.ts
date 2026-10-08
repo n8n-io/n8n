@@ -72,7 +72,7 @@ describe('configure_channel tool', () => {
 		const ctx = makeCtx();
 
 		const result = await buildTool().handler!(
-			{ integrationType: 'discord' },
+			{ integrationType: 'carrier-pigeon' },
 			ctx as unknown as InterruptibleToolContext,
 		);
 
@@ -82,7 +82,7 @@ describe('configure_channel tool', () => {
 				ok: false,
 				errors: [
 					expect.objectContaining({
-						message: expect.stringContaining('Unsupported chat channel "discord"'),
+						message: expect.stringContaining('Unsupported chat channel "carrier-pigeon"'),
 					}),
 				],
 			}),

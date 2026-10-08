@@ -1,0 +1,172 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.3,
+			"position": [-192, 0],
+			"id": "node-0",
+			"name": "Start"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [528, -208],
+			"id": "node-1",
+			"name": "Upper result"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 3
+					},
+					"conditions": [
+						{
+							"id": "9999bc45-3f1e-46ce-9ad8-cc9a6aa8713d",
+							"leftValue": 1,
+							"rightValue": 2,
+							"operator": {
+								"type": "number",
+								"operation": "equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"position": [256, 144],
+			"id": "node-2",
+			"name": "Last"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [608, 96],
+			"id": "node-3",
+			"name": "Unused result"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 3
+					},
+					"conditions": [
+						{
+							"id": "9999bc45-3f1e-46ce-9ad8-cc9a6aa8713d",
+							"leftValue": "={{ $json.id }}",
+							"rightValue": 55,
+							"operator": {
+								"type": "number",
+								"operation": "equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"position": [256, -128],
+			"id": "node-4",
+			"name": "Upper IF"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [816, -16],
+			"id": "node-5",
+			"name": "Upper terminal"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Last",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Upper IF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upper result": {
+			"main": [
+				[
+					{
+						"node": "Upper terminal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Last": {
+			"main": [
+				[
+					{
+						"node": "Unused result",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"Unused result": {
+			"main": [
+				[
+					{
+						"node": "Upper terminal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upper IF": {
+			"main": [
+				[
+					{
+						"node": "Upper result",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Upper terminal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"name": "Sub-workflow branch outputs",
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -6,14 +6,9 @@ import { UnexpectedError, UserError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
-import {
-	DollarSignValidator,
-	PrototypeSanitizer,
-	ThisSanitizer,
-	sanitizer,
-	sanitizerName,
-} from './expression-sandboxing';
+import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
+import { evaluateNatively } from './expressions/native-evaluation';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -224,9 +219,15 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 };
 
 export class Expression {
-	private static expressionEngine: 'legacy' | 'vm' = 'legacy';
+	private static expressionEngine: 'legacy' | 'vm' | 'quickjs' = 'legacy';
 
 	private static vmEvaluator?: IExpressionEvaluator;
+
+	private static readonly BROWSER_CALLER = {};
+
+	private static useSharedCaller = false;
+
+	private static nativeEvaluation = false;
 
 	constructor(private readonly timezone: string) {}
 
@@ -235,47 +236,111 @@ export class Expression {
 	 * @private
 	 */
 	private static shouldUseVm(): boolean {
-		return this.expressionEngine === 'vm' && !IS_FRONTEND && !!this.vmEvaluator;
+		return !!this.vmEvaluator && this.isVmEngineSelected();
 	}
 
 	/**
-	 * Initialize the VM evaluator (if feature flag is enabled).
+	 * Whether an engine other than legacy is selected for this runtime, whether or
+	 * not one started. `vm` is Node-only, because isolated-vm is a native module,
+	 * so the browser can only select quickjs.
+	 * @private
+	 */
+	private static isVmEngineSelected(): boolean {
+		if (this.expressionEngine === 'quickjs') return true;
+		return this.expressionEngine === 'vm' && !IS_FRONTEND;
+	}
+
+	/**
+	 * Initialize the VM evaluator (no-op when the legacy engine is selected).
 	 * Should be called once during application startup.
 	 * Only available in Node.js environments (not in browser).
 	 */
 	static async initExpressionEngine(options: {
-		engine: 'legacy' | 'vm';
+		engine: 'legacy' | 'vm' | 'quickjs';
 		bridgeTimeout: number;
 		bridgeMemoryLimit: number;
 		poolSize: number;
 		maxCodeCacheSize: number;
 		observability?: ObservabilityProvider;
 		idleTimeoutMs?: number;
+		runtimeBundle?: string;
+		/**
+		 * Evaluate every expression through one shared bridge rather than one per
+		 * caller. The browser needs this: its synchronous `evaluate()` requires a
+		 * caller that already holds a scope, and the editor creates a new
+		 * Expression for every workflow it builds. Node leaves this off, so the
+		 * pool hands each execution its own bridge and disposes it on release.
+		 */
+		sharedCaller?: boolean;
+		lazyAcquire?: boolean;
+		compileCache?: boolean;
+		/** Experimental: interpret expressions that fit the native subset in-process. Applies to every engine. */
+		nativeEvaluation?: boolean;
 	}): Promise<void> {
-		if (options.engine !== 'vm' || IS_FRONTEND) return;
+		this.nativeEvaluation = options.nativeEvaluation ?? false;
+		if (options.engine === 'legacy') return;
+		if (options.engine === 'vm' && IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
 
 		if (!this.vmEvaluator) {
 			// Dynamic import to avoid loading expression-runtime in browser environments
-			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
-			this.vmEvaluator = new ExpressionEvaluator({
-				createBridge: () =>
-					new IsolatedVmBridge({
-						timeout: options.bridgeTimeout,
-						memoryLimit: options.bridgeMemoryLimit,
-						logger: LoggerProxy,
-					}),
+			const runtime = await import('@n8n/expression-runtime');
+			const createBridge =
+				options.engine === 'quickjs'
+					? () =>
+							new runtime.QuickJsBridge({
+								timeout: options.bridgeTimeout,
+								memoryLimit: options.bridgeMemoryLimit,
+								logger: LoggerProxy,
+								runtimeBundle: options.runtimeBundle,
+							})
+					: () =>
+							new runtime.IsolatedVmBridge({
+								timeout: options.bridgeTimeout,
+								memoryLimit: options.bridgeMemoryLimit,
+								logger: LoggerProxy,
+								compileCache: options.compileCache,
+							});
+			const evaluator = new runtime.ExpressionEvaluator({
+				createBridge,
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
 				idleTimeoutMs: options.idleTimeoutMs,
-				hooks: {
-					before: [ThisSanitizer],
-					after: [PrototypeSanitizer, DollarSignValidator],
-				},
+				lazyAcquire: options.lazyAcquire,
+				hooks: expressionSandboxHooks,
 				logger: LoggerProxy,
 				observability: options.observability,
 			});
-			await this.vmEvaluator.initialize();
+
+			// Publish the evaluator only once it is usable. A half-started one
+			// would leave `shouldUseVm` reporting the engine as active while no
+			// bridge is acquired, so callers could neither retry the start nor
+			// fall back to the legacy evaluator.
+			try {
+				await evaluator.initialize();
+				// Requested explicitly rather than inferred from `runtimeBundle`.
+				// That option only means "the bundle is already loaded, skip the disk
+				// read"; a backend that pre-loaded it to save an fs call per pooled
+				// bridge would otherwise be switched to one shared caller and lose
+				// per-execution isolation without asking for it. IS_FRONTEND is not
+				// usable as the signal either: vite-plugin-node-polyfills shims
+				// `process` with extra keys, which defeats its detection.
+				if (options.sharedCaller) {
+					// Under `lazyAcquire` this only opens the scope. The pool has already
+					// seeded its bridges in initialize(), so this does not decide when a
+					// runtime is built — only which caller owns one.
+					await evaluator.acquire(Expression.BROWSER_CALLER);
+					this.useSharedCaller = true;
+				}
+				this.vmEvaluator = evaluator;
+			} catch (error) {
+				// Tear down what the start already built. The pool replenishes in
+				// the background, so an orphaned one keeps creating bridges that
+				// nobody owns, and a retried start would add another.
+				await evaluator.dispose().catch(() => {});
+				this.useSharedCaller = false;
+				throw error;
+			}
 		}
 	}
 
@@ -310,18 +375,22 @@ export class Expression {
 	 */
 	static async disposeExpressionEngine(): Promise<void> {
 		if (this.vmEvaluator) {
+			// The browser holds one shared scope, and an acquired bridge leaves the
+			// pool, so disposing the pool alone would leave that runtime alive.
+			if (this.useSharedCaller) await this.vmEvaluator.release(Expression.BROWSER_CALLER);
 			await this.vmEvaluator.dispose();
 			this.vmEvaluator = undefined;
 		}
+		this.useSharedCaller = false;
 	}
 
 	/**
 	 * Get the active expression evaluation implementation.
 	 * Used for testing and verification.
 	 */
-	static getActiveImplementation(): 'legacy' | 'vm' {
-		if (this.shouldUseVm()) return 'vm';
-		return 'legacy';
+	static getActiveImplementation(): 'legacy' | 'vm' | 'quickjs' {
+		if (!this.shouldUseVm()) return 'legacy';
+		return this.expressionEngine === 'quickjs' ? 'quickjs' : 'vm';
 	}
 
 	/**
@@ -329,11 +398,17 @@ export class Expression {
 	 *
 	 * WARNING: This is a global setting — switching engines mid-execution could
 	 * cause a workflow to evaluate some expressions with one engine and some with
-	 * another. Only use this in benchmarks and tests, never in production code.
-	 * In production, set `N8N_EXPRESSION_ENGINE` before process startup instead.
+	 * another. Only call this during process startup (or in benchmarks and tests),
+	 * never mid-execution. In production, set `N8N_EXPRESSION_ENGINE` before
+	 * process startup instead.
 	 */
-	static setExpressionEngine(engine: 'legacy' | 'vm'): void {
+	static setExpressionEngine(engine: 'legacy' | 'vm' | 'quickjs'): void {
 		this.expressionEngine = engine;
+	}
+
+	/** Toggle native evaluation without restarting the engine. For tests and benchmarks; production sets `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION`. */
+	static setNativeEvaluation(enabled: boolean): void {
+		this.nativeEvaluation = enabled;
 	}
 
 	static initializeGlobalContext(data: IDataObject) {
@@ -559,6 +634,14 @@ export class Expression {
 		// Remove the equal sign
 		parameterValue = parameterValue.substr(1);
 
+		// An expression that fits the native subset grammar is interpreted
+		// in-process, skipping the global-context setup, extendSyntax, and the
+		// engine (isolate). Everything else takes the regular pipeline below.
+		if (Expression.nativeEvaluation) {
+			const native = evaluateNatively(parameterValue, data);
+			if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
+		}
+
 		// Support only a subset of process properties
 		data.process =
 			typeof process !== 'undefined'
@@ -624,39 +707,51 @@ export class Expression {
 		// Execute the expression
 		const extendedExpression = extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
+		return this.finalizeResolvedValue(returnValue, returnObjectAsString);
+	}
+
+	private finalizeResolvedValue(
+		returnValue: unknown,
+		returnObjectAsString: boolean,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === 'DateTime')
 				throw new UserError('this is a DateTime, please access its methods');
 
 			throw new UserError('this is a function, please add ()');
-		} else if (typeof returnValue === 'string') {
-			return returnValue;
-		} else if (returnValue !== null && typeof returnValue === 'object') {
-			if (returnObjectAsString) {
-				return this.convertObjectValueToString(returnValue);
-			}
+		} else if (returnValue !== null && typeof returnValue === 'object' && returnObjectAsString) {
+			return this.convertObjectValueToString(returnValue);
 		}
 
-		return returnValue;
+		// The engines return arbitrary JSON-ish values; mirror the loose typing
+		// the previous inline code relied on.
+		return returnValue as NodeParameterValue;
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
-		// Use VM evaluator if engine is set to 'vm' and we're not in the browser
-		if (Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
-			if (!Expression.vmEvaluator) {
-				throw new UnexpectedError(
-					'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initExpressionEngine() during application startup.',
-				);
-			}
+		const evaluator = Expression.vmEvaluator;
 
+		if (evaluator && Expression.isVmEngineSelected()) {
+			const caller = Expression.useSharedCaller ? Expression.BROWSER_CALLER : this;
 			try {
-				const result = Expression.vmEvaluator.evaluate(expression, data, this, {
+				const result = evaluator.evaluate(expression, data, caller, {
 					timezone: this.timezone,
 				});
 				return result as string | null | (() => unknown);
 			} catch (error) {
 				throw mapVmError(error);
 			}
+		}
+
+		// A host that recorded an engine but started none must not evaluate through
+		// `new Function` without saying so: the backend does this on purpose for
+		// commands that should never evaluate an expression. The editor is the
+		// exception — it falls back to legacy below, so a policy that blocks WASM
+		// leaves expression previews working instead of breaking the editor.
+		if (!evaluator && Expression.isVmEngineSelected() && !IS_FRONTEND) {
+			throw new UnexpectedError(
+				`The ${Expression.expressionEngine} expression engine has not been initialized. Call Expression.initExpressionEngine() during application startup.`,
+			);
 		}
 
 		// Fall back to current implementation

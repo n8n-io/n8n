@@ -1,10 +1,13 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel, Output } from 'ai';
 
-import type { AgentRuntimeConfig } from './agent-runtime';
+import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
+import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
 import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
-import type { AgentPersistenceOptions, ExecutionOptions, ModelConfig } from '../../types/sdk/agent';
+import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
+import { getModelIdString } from '../../utils/model';
 import { isZodSchema } from '../../utils/zod';
 import {
 	createRecallMemoryTool,
@@ -13,15 +16,27 @@ import {
 	isEpisodicMemoryEnabled,
 	RECALL_MEMORY_TOOL_NAME,
 } from '../memory/episodic-memory';
+import {
+	createFlagMemoryTool,
+	FLAG_MEMORY_TOOL_NAME,
+	resolveEpisodicMemoryCapture,
+} from '../memory/episodic-memory-capture';
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
-import { createModel } from '../model/model-factory';
-import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prompt-cache';
+import { createModel, supportsSplitSystemMessages } from '../model/model-factory';
+import {
+	applyRuntimeCacheBreakpoints,
+	buildCallPromptCacheOptions,
+	buildInstructionPromptCacheOptions,
+	buildSkillInstructionCacheOptions,
+	mergeProviderOptions,
+} from '../model/prompt-cache';
 import {
 	getProviderQuirks,
 	PROVIDER_QUIRKS,
-	providerIdFromModelId,
+	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
+import type { ActiveSkills } from '../skills/active-skills';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
@@ -31,19 +46,11 @@ function wrapBuiltInRules(fragments: string[]): string | undefined {
 	return `<built_in_rules>\n${fragments.map((f) => `- ${f}`).join('\n')}\n</built_in_rules>`;
 }
 
-/** Resolve a model config to its canonical `provider/model` id string. */
-export function getModelIdString(model: ModelConfig): string {
-	if (typeof model === 'string') return model;
-	if ('id' in model && typeof model.id === 'string') return model.id;
-	if ('modelId' in model && typeof model.modelId === 'string') {
-		const rawProvider = 'provider' in model ? String(model.provider) : 'unknown';
-		// AI SDK providers stamp a dotted sub-namespace (e.g. 'anthropic.messages',
-		// 'openai.chat'); strip it so the id matches the canonical 'provider/model'
-		// the billing rate table is keyed on.
-		const provider = rawProvider.split('.')[0];
-		return `${provider}/${model.modelId}`;
-	}
-	return 'unknown';
+function prependBuiltInRules(fragments: string[], instructions: string): string {
+	const rules = wrapBuiltInRules(fragments);
+	if (!rules) return instructions;
+	if (!instructions) return rules;
+	return `${rules}\n\n${instructions}`;
 }
 
 export interface StaticLoopContext {
@@ -52,6 +59,7 @@ export interface StaticLoopContext {
 	reasoning: AgentRuntimeConfig['reasoning'];
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
+	maxOutputTokens?: number;
 }
 
 /**
@@ -74,7 +82,7 @@ export class RuntimeContextBuilder {
 	buildStaticLoopContext(
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
 	): StaticLoopContext {
-		const { Output, jsonSchema } = loadAi();
+		const ai = loadAi();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(this.config.model, this.config.modelFetch);
 		const outputSchema = this.config.structuredOutput;
@@ -84,16 +92,7 @@ export class RuntimeContextBuilder {
 			isRawJsonSchemaOutput,
 		);
 
-		const outputSpec = outputSchema
-			? Output.object({
-					// Zod schemas pass through directly; a raw JSON Schema gets
-					// `additionalProperties: false` locked onto every object (required by Anthropic)
-					// and wrapped with the AI SDK's `jsonSchema()` helper.
-					schema: isZodSchema(outputSchema)
-						? outputSchema
-						: jsonSchema(lockAdditionalProperties(outputSchema)),
-				})
-			: undefined;
+		const outputSpec = this.buildOutputSpec(outputSchema, ai);
 
 		return {
 			model,
@@ -101,7 +100,28 @@ export class RuntimeContextBuilder {
 			reasoning: this.config.reasoning,
 			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
+			maxOutputTokens: execOptions?.maxOutputTokens ?? resolveDefaultMaxOutputTokens(this.modelId),
 		};
+	}
+
+	private buildOutputSpec(
+		outputSchema: AgentRuntimeConfig['structuredOutput'],
+		{ Output, jsonSchema }: ReturnType<typeof loadAi>,
+	): StaticLoopContext['outputSpec'] {
+		if (!outputSchema) return undefined;
+		// Anthropic requires additionalProperties: false on each raw schema object.
+		const schema = isZodSchema(outputSchema)
+			? outputSchema
+			: jsonSchema(lockAdditionalProperties(outputSchema));
+		return Output.object({ schema });
+	}
+
+	buildInstructionProviderOptions(): ProviderOptions | undefined {
+		// Explicit instruction options take precedence over cache defaults.
+		return mergeProviderOptions(
+			buildInstructionPromptCacheOptions(this.config.promptCaching, this.modelId),
+			this.config.instructionProviderOptions,
+		);
 	}
 
 	/** Build the current local tool view; deferred loads can change this between iterations. */
@@ -109,8 +129,9 @@ export class RuntimeContextBuilder {
 		aiProviderTools: ReturnType<typeof toAiSdkProviderTools>,
 		persistence?: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
+		list?: AgentMessageList,
 	) {
-		const allUserTools = this.getCurrentTools(persistence, executionCounter);
+		const allUserTools = this.getCurrentTools(persistence, executionCounter, list);
 		const aiTools = toAiSdkTools(allUserTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
 		const aiToolCount = Object.keys(allTools).length;
@@ -128,6 +149,53 @@ export class RuntimeContextBuilder {
 		};
 	}
 
+	buildModelPrompt({
+		list,
+		tools,
+		instructionProviderOptions,
+		hostVolatileInstructions,
+		activeSkills,
+	}: {
+		list: AgentMessageList;
+		tools: ReturnType<RuntimeContextBuilder['buildToolLoopContext']>;
+		instructionProviderOptions: ProviderOptions | undefined;
+		hostVolatileInstructions: string | undefined;
+		activeSkills: ActiveSkills | undefined;
+	}) {
+		const combinedVolatileInstructions = [tools.volatileInstructions, hostVolatileInstructions]
+			.map((value) => value?.trim())
+			.filter((value): value is string => Boolean(value))
+			.join('\n\n');
+		const skillContent = activeSkills?.instructions();
+		const { system, messages } = list.forLlm(
+			tools.effectiveInstructions,
+			instructionProviderOptions,
+			combinedVolatileInstructions || undefined,
+			supportsSplitSystemMessages(this.config.model),
+			skillContent
+				? {
+						content: skillContent,
+						cacheOptions: (messages) =>
+							buildSkillInstructionCacheOptions(
+								instructionProviderOptions,
+								tools.aiTools,
+								messages,
+							),
+					}
+				: undefined,
+		);
+		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
+		const cached = applyRuntimeCacheBreakpoints({
+			system,
+			messages: activeSkills?.modelMessages(messages, list) ?? messages,
+			aiTools: tools.aiTools,
+			promptCaching: this.config.promptCaching,
+			modelId: this.modelId,
+			staticToolCacheName: tools.staticToolCacheName,
+		});
+		return { system, ...cached };
+	}
+
 	/**
 	 * Name of the tool eligible for an Anthropic tool-definitions cache
 	 * breakpoint, or `undefined` if the tool set isn't fully static. Deferred
@@ -143,6 +211,7 @@ export class RuntimeContextBuilder {
 	getCurrentTools(
 		persistence?: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
+		list?: AgentMessageList,
 	): BuiltTool[] {
 		const baseTools = this.config.tools ?? [];
 		const tools = [
@@ -156,7 +225,9 @@ export class RuntimeContextBuilder {
 		];
 
 		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
-		return recallTool ? [...tools, recallTool] : tools;
+		const toolsWithRecall = recallTool ? [...tools, recallTool] : tools;
+		const flagTool = this.createFlagMemoryToolForRun(persistence, toolsWithRecall, list);
+		return flagTool ? [...toolsWithRecall, flagTool] : toolsWithRecall;
 	}
 
 	hydrateDeferredToolsFromList(list: AgentMessageList): void {
@@ -213,7 +284,34 @@ export class RuntimeContextBuilder {
 				`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
 			);
 		}
-		return createRecallMemoryTool({ memory, config: episodicMemory, scope, executionCounter });
+		return createRecallMemoryTool({
+			memory,
+			config: episodicMemory,
+			scope,
+			executionCounter,
+			agentName: this.config.name,
+		});
+	}
+
+	private createFlagMemoryToolForRun(
+		persistence: AgentPersistenceOptions | undefined,
+		existingTools: BuiltTool[],
+		list?: AgentMessageList,
+	): BuiltTool | undefined {
+		if (!persistence || !list) return undefined;
+		const capture = resolveEpisodicMemoryCapture(this.config, persistence);
+		if (!capture) return undefined;
+		if (existingTools.some((tool) => tool.name === FLAG_MEMORY_TOOL_NAME)) {
+			throw new Error(
+				`Tool name "${FLAG_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
+			);
+		}
+		return createFlagMemoryTool({
+			memory: capture.memory,
+			scope: capture.scope,
+			persistence,
+			list,
+		});
 	}
 
 	/**
@@ -234,6 +332,14 @@ export class RuntimeContextBuilder {
 		instructions: string;
 		volatileInstructions: string | undefined;
 	} {
+		const { stableFragments, volatileFragments } = this.collectInstructionFragments(tools);
+		return {
+			instructions: prependBuiltInRules(stableFragments, this.config.instructions),
+			volatileInstructions: wrapBuiltInRules(volatileFragments),
+		};
+	}
+
+	private collectInstructionFragments(tools: BuiltTool[]) {
 		const loadedToolNames = new Set(
 			this.deferredToolManager?.getLoadedTools().map((t) => t.name) ?? [],
 		);
@@ -246,36 +352,30 @@ export class RuntimeContextBuilder {
 			) {
 				continue;
 			}
-			(loadedToolNames.has(tool.name) ? volatileFragments : stableFragments).push(
-				tool.systemInstruction,
-			);
+			const fragments = loadedToolNames.has(tool.name) ? volatileFragments : stableFragments;
+			fragments.push(tool.systemInstruction);
 		}
 
-		const userInstructions = this.config.instructions;
-		const stableBlock = wrapBuiltInRules(stableFragments);
-		const instructions = stableBlock
-			? userInstructions
-				? `${stableBlock}\n\n${userInstructions}`
-				: stableBlock
-			: userInstructions;
+		// Define the untrusted-data boundary ahead of the first wrapped result.
+		// Goes in the cached block unless the only untrusted tools were loaded
+		// mid-conversation, mirroring the fragment split above.
+		const untrustedTools = tools.filter((tool) => tool.outputTrust === 'untrusted');
+		if (untrustedTools.length > 0) {
+			const target = untrustedTools.some((tool) => !loadedToolNames.has(tool.name))
+				? stableFragments
+				: volatileFragments;
+			target.unshift(UNTRUSTED_OUTPUT_DOCTRINE);
+		}
 
-		return {
-			instructions,
-			volatileInstructions: wrapBuiltInRules(volatileFragments),
-		};
+		return { stableFragments, volatileFragments };
 	}
 
-	/** Build the providerOptions object for thinking/reasoning config. */
+	/** Build the providerOptions object for provider-specific thinking config. */
 	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
-		const quirks = getProviderQuirks(providerIdFromModelId(this.modelId));
+		if (!this.config.thinking) return undefined;
 
-		if (this.config.thinking) {
-			return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
-		}
-		if (this.config.reasoning) {
-			return quirks.reasoningToProviderOptions?.(this.config.reasoning, this.modelId);
-		}
-		return undefined;
+		const quirks = getProviderQuirks(getProviderPrefix(this.modelId));
+		return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
 	}
 
 	/**
@@ -291,8 +391,6 @@ export class RuntimeContextBuilder {
 			agentName: this.config.name,
 			instructions: this.config.instructions,
 		});
-		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions) as
-			| Record<string, Record<string, unknown>>
-			| undefined;
+		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions);
 	}
 }

@@ -35,6 +35,7 @@ const validConfig = {
 	prompt: 'consent' as const,
 	authenticationContextClassReference: ['mfa'],
 	additionalScopes: 'groups',
+	emailVerifiedRequired: false,
 	rpInitiatedLogoutEnabled: false,
 };
 
@@ -79,15 +80,17 @@ describe('OIDC SSO configuration in Public API', () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/sso/oidc');
 
 			expect(response.status).toBe(200);
-			expect(response.body).toMatchObject({
-				clientId: expect.any(String),
+			expect(response.body).toStrictEqual({
+				clientId: '',
+				clientSecret: '',
+				discoveryEndpoint: 'http://n8n.io/not-set',
 				loginEnabled: false,
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
 				additionalScopes: '',
+				emailVerifiedRequired: false,
 				rpInitiatedLogoutEnabled: false,
 			});
-			expect(typeof response.body.discoveryEndpoint).toBe('string');
 		});
 
 		it('exposes exactly the fields the UI configures, and nothing more', async () => {
@@ -103,6 +106,7 @@ describe('OIDC SSO configuration in Public API', () => {
 					'clientId',
 					'clientSecret',
 					'discoveryEndpoint',
+					'emailVerifiedRequired',
 					'loginEnabled',
 					'prompt',
 					'rpInitiatedLogoutEnabled',
@@ -119,6 +123,19 @@ describe('OIDC SSO configuration in Public API', () => {
 			expect(response.status).toBe(200);
 			expect(response.body.clientSecret).toBe(OIDC_CLIENT_SECRET_REDACTED_VALUE);
 			expect(response.body.clientSecret).not.toBe(validConfig.clientSecret);
+		});
+
+		it('returns every field of a stored configuration with the secret redacted', async () => {
+			testServer.license.enable('feat:oidc');
+			await testServer.publicApiAgentFor(owner).put('/settings/sso/oidc').send(validConfig);
+
+			const response = await testServer.publicApiAgentFor(owner).get('/settings/sso/oidc');
+
+			expect(response.status).toBe(200);
+			expect(response.body).toStrictEqual({
+				...validConfig,
+				clientSecret: OIDC_CLIENT_SECRET_REDACTED_VALUE,
+			});
 		});
 
 		it('rejects with 403 when not licensed', async () => {
@@ -156,14 +173,17 @@ describe('OIDC SSO configuration in Public API', () => {
 				.send(validConfig);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toMatchObject({
+			expect(response.body).toStrictEqual({
 				clientId: validConfig.clientId,
+				clientSecret: OIDC_CLIENT_SECRET_REDACTED_VALUE,
 				discoveryEndpoint: validConfig.discoveryEndpoint,
-				prompt: 'consent',
-				authenticationContextClassReference: ['mfa'],
-				additionalScopes: 'groups',
+				loginEnabled: validConfig.loginEnabled,
+				prompt: validConfig.prompt,
+				authenticationContextClassReference: validConfig.authenticationContextClassReference,
+				additionalScopes: validConfig.additionalScopes,
+				emailVerifiedRequired: validConfig.emailVerifiedRequired,
+				rpInitiatedLogoutEnabled: validConfig.rpInitiatedLogoutEnabled,
 			});
-			expect(response.body.clientSecret).toBe(OIDC_CLIENT_SECRET_REDACTED_VALUE);
 		});
 
 		it('takes effect the same way as the UI (write via public API, read via internal API)', async () => {
@@ -225,6 +245,32 @@ describe('OIDC SSO configuration in Public API', () => {
 			expect(read.body.rpInitiatedLogoutEnabled).toBe(true);
 		});
 
+		it('persists emailVerifiedRequired', async () => {
+			testServer.license.enable('feat:oidc');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/oidc')
+				.send({ ...validConfig, emailVerifiedRequired: true });
+			expect(response.status).toBe(200);
+			expect(response.body.emailVerifiedRequired).toBe(true);
+
+			const read = await testServer.publicApiAgentFor(owner).get('/settings/sso/oidc');
+			expect(read.body.emailVerifiedRequired).toBe(true);
+		});
+
+		it('rejects a partial body missing emailVerifiedRequired with 400', async () => {
+			testServer.license.enable('feat:oidc');
+			const { emailVerifiedRequired: _emailVerifiedRequired, ...partial } = validConfig;
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/oidc')
+				.send(partial);
+
+			expect(response.status).toBe(400);
+		});
+
 		it('keeps the stored secret when the redacted sentinel is submitted', async () => {
 			testServer.license.enable('feat:oidc');
 			await testServer.publicApiAgentFor(owner).put('/settings/sso/oidc').send(validConfig);
@@ -254,6 +300,18 @@ describe('OIDC SSO configuration in Public API', () => {
 				.send({ clientId: 'only-id' });
 
 			expect(response.status).toBe(400);
+		});
+
+		it('rejects an unknown body key with 400 and names the key', async () => {
+			testServer.license.enable('feat:oidc');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/oidc')
+				.send({ ...validConfig, extra: true });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('extra');
 		});
 
 		it('rejects a partial body missing loginEnabled with 400', async () => {

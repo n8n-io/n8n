@@ -68,6 +68,9 @@ const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(
 vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(() => mockAgent),
 	extractText: mockExtractText,
+}));
+
+vi.mock('@n8n/agents/tool', () => ({
 	Tool: vi.fn().mockImplementation(function (name: string) {
 		const built: { _name: string; _handler?: unknown } = { _name: name };
 		const builder = {
@@ -104,8 +107,9 @@ vi.mock('@n8n/di', () => ({
 }));
 
 import type { Mock } from 'vitest';
+import { Tool } from '@n8n/agents/tool';
 import { Container } from '@n8n/di';
-import { createEvalAgent, Tool } from '@n8n/instance-ai';
+import { createEvalAgent } from '@n8n/instance-ai';
 import { fileTypeFromBuffer } from 'file-type';
 import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
@@ -515,6 +519,31 @@ describe('createLlmMockHandler', () => {
 		// … but the first caller's mutation must not leak into it.
 		expect(second.body).toEqual({ items: [{ id: 1 }] });
 		expect(second.body).not.toBe(first.body);
+	});
+
+	it('lets timers run before it serves a cached repeat, like a real request', async () => {
+		llmSubmits({ type: 'json', body: { records: [] } });
+		const handler = createLlmMockHandler();
+		await callHandler(handler);
+
+		const order: string[] = [];
+		setTimeout(() => order.push('timer'), 0);
+		await callHandler(handler).then(() => order.push('cached reply'));
+
+		// A loop of instant repeats would starve the timer that ends the run's budget.
+		expect(order).toEqual(['timer', 'cached reply']);
+	});
+
+	it('fails every request once the run is aborted, like a cancelled request', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const abort = new AbortController();
+		const handler = createLlmMockHandler({ signal: abort.signal });
+		await callHandler(handler);
+
+		abort.abort();
+
+		await expect(handler(baseRequest, baseNode)).rejects.toThrow(/cancelled/);
+		expect(mockGenerate).toHaveBeenCalledTimes(1);
 	});
 
 	it('evicts a soft-fallback response so the next identical request regenerates', async () => {

@@ -34,7 +34,7 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 				status: 'new',
 				runId: c.runId,
 				sourceRowId: c.sourceRowId ?? null,
-				// Fall back to the seed position so `findByRunId` (orders by
+				// Fall back to the seed position so `findAndCountByRunId` (orders by
 				// runIndex ASC) returns a stable order on every database. A null
 				// runIndex would sort first on SQLite but last on Postgres.
 				runIndex: c.runIndex ?? index,
@@ -103,8 +103,21 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 		});
 	}
 
-	async findByRunId(runId: string): Promise<AgentEvalResult[]> {
-		return await this.find({ where: { runId }, order: { runIndex: 'ASC' } });
+	/**
+	 * Paged in SQL, not by slicing a full read: every row carries its `input`,
+	 * `output` and `toolCalls` JSON. `runIndex` is distinct per run, so it is
+	 * already a total order and needs no tiebreak.
+	 */
+	async findAndCountByRunId(
+		runId: string,
+		options: { skip?: number; take?: number } = {},
+	): Promise<[AgentEvalResult[], number]> {
+		return await this.findAndCount({
+			where: { runId },
+			order: { runIndex: 'ASC' },
+			skip: options.skip,
+			take: options.take,
+		});
 	}
 
 	async findById(id: string): Promise<AgentEvalResult | null> {

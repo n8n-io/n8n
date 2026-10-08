@@ -1,19 +1,18 @@
-import type {
-	AcceptableInputValue,
-	TagsInputInputProps,
-	TagsInputRootEmits,
-	TagsInputRootProps,
-} from './reka-ui';
+import type { AcceptableInputValue, TagsInputRootEmits, TagsInputRootProps } from './reka-ui';
 import type { InputSize } from '../../../components/N8nInput/Input.types';
 
 export type TagsInputValue = AcceptableInputValue;
 
 export type TagsInputSizes = InputSize;
 
-export type TagsInputProps = TagsInputRootProps<TagsInputValue> &
-	Pick<TagsInputInputProps, 'placeholder' | 'autoFocus'> & {
-		size?: TagsInputSizes;
-	};
+export interface TagsInputOwnProps {
+	size?: TagsInputSizes;
+	embedded?: boolean;
+	placeholder?: string;
+	autoFocus?: boolean;
+}
+
+export type TagsInputProps = TagsInputRootProps<TagsInputValue> & TagsInputOwnProps;
 
 export type TagsInputEmits = TagsInputRootEmits<TagsInputValue>;
 
@@ -30,6 +29,11 @@ export type TagsInputSlots = {
 		disabled?: boolean;
 		class: string;
 	}) => unknown;
+	/**
+	 * Content at the end of the field, outside the scrolling tags.
+	 * The slot is unstyled. The caller positions it.
+	 */
+	trailing?: () => unknown;
 	tag?: (props: {
 		value: TagsInputValue;
 		displayValue: string;

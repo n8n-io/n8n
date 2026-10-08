@@ -34,6 +34,7 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
 - `benchmark` - Benchmark CLI changes
 - `core` - Core/backend/private API
 - `editor` - Editor UI changes
+- `engine` - New workflow execution engine v2 (@n8n/engine package & engine-v2 module in cli)
 - `* Node` - Specific node (e.g., `Slack Node`, `GitHub Node`)
 
 ### Summary Rules
@@ -42,7 +43,7 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
 - Capitalize first letter
 - No period at the end
 - No ticket IDs (e.g., N8N-1234)
-- Add `(no-changelog)` suffix to exclude from changelog
+- Add `(no-changelog)` suffix to exclude from changelog, unless the type already excludes it
 
 ## Steps
 
@@ -92,6 +93,9 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
 ## PR Body Guidelines
 
 Based on `.github/pull_request_template.md`:
+
+Write the PR body in ASD-STE100 Simplified Technical English: use short
+sentences, the active voice, and one instruction for each sentence.
 
 ### Summary Section
 - Describe what the PR does
@@ -143,7 +147,7 @@ feat(API)!: Remove deprecated v1 endpoints
 
 ### No changelog entry
 ```
-refactor(core): Simplify error handling (no-changelog)
+feat(core): Experimental feature not enabled yet (no-changelog)
 ```
 
 ### No scope (affects multiple areas)

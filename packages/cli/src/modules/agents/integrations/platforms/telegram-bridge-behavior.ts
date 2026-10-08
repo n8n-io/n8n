@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
 
 import type {
@@ -6,27 +7,70 @@ import type {
 	BridgeResumeExecutionContext,
 	BridgeStatusHandle,
 } from '../agent-chat-integration';
+import type {
+	IntegrationPlatformMessageContext,
+	TelegramMessageAttachmentContext,
+} from '../integration-tools';
+import { startTypingIndicator } from './typing-indicator';
 
 /** Telegram's typing action expires after ~5s, so keep it alive on an interval. */
 const TELEGRAM_TYPING_REFRESH_MS = 4000;
 
-/**
- * Backstop against an interval leak: `clearBeforeResponse` runs on every
- * stream-consumer path, but an error between context creation and stream
- * consumption would leave the interval running with nothing to stop it.
- */
-const TELEGRAM_TYPING_MAX_LIFETIME_MS = 10 * 60 * 1000;
-
 export function createTelegramBridgeExecutionContext(
 	params: BridgeMessageContextParams,
 ): BridgeExecutionContext {
+	const platformMessage = getTelegramPlatformMessageContext(params.message);
 	return {
 		platformAgentContext: {},
-		statusHandle: startTelegramTypingIndicator(params.thread, {
-			logger: params.logger,
-			agentId: params.agentId,
-		}),
+		...(platformMessage ? { platformMessage } : {}),
+		statusHandle:
+			params.startStatus === false
+				? undefined
+				: startTelegramTypingIndicator(params.thread, {
+						logger: params.logger,
+						agentId: params.agentId,
+					}),
 	};
+}
+
+export function getTelegramPlatformMessageContext(
+	message: BridgeMessageContextParams['message'],
+): IntegrationPlatformMessageContext | undefined {
+	if (!isRecord(message.raw) || !isRecord(message.raw.chat)) return undefined;
+
+	const chatId = toTelegramId(message.raw.chat.id);
+	const messageId = toTelegramId(message.raw.message_id);
+	if (!chatId || !messageId) return undefined;
+
+	const messageThreadId = toTelegramId(message.raw.message_thread_id);
+	const attachments = (message.attachments ?? []).flatMap(
+		(attachment): TelegramMessageAttachmentContext[] => {
+			const fileId = attachment.fetchMetadata?.fileId;
+			if (!fileId) return [];
+			const fileUniqueId = attachment.fetchMetadata?.fileUniqueId;
+			return [
+				{
+					type: attachment.type,
+					file_id: fileId,
+					...(fileUniqueId ? { file_unique_id: fileUniqueId } : {}),
+				},
+			];
+		},
+	);
+
+	return {
+		type: 'telegram',
+		chat_id: chatId,
+		message_id: messageId,
+		...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
+		attachments,
+	};
+}
+
+function toTelegramId(value: unknown): string | undefined {
+	if (typeof value === 'string' && value.length > 0) return value;
+	if (typeof value === 'number' && Number.isSafeInteger(value)) return String(value);
+	return undefined;
 }
 
 export function createTelegramResumeExecutionContext(params: {
@@ -56,46 +100,9 @@ export function startTelegramTypingIndicator(
 		agentId: string;
 	},
 ): BridgeStatusHandle {
-	let failedStreak = false;
-	let inFlight: Promise<void> | null = null;
-
-	const sendTyping = () => {
-		// A slow send outliving the refresh interval must not pile up requests.
-		if (inFlight) return;
-		inFlight = thread
-			.startTyping()
-			.then(() => {
-				failedStreak = false;
-			})
-			.catch((error) => {
-				// Warn once per failure streak; a send failing every 4s must not
-				// spam the logs.
-				const log = failedStreak ? options.logger.debug : options.logger.warn;
-				failedStreak = true;
-				log.call(options.logger, '[AgentChatBridge] Failed to send Telegram typing indicator', {
-					agentId: options.agentId,
-					threadId: thread.id,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			})
-			.finally(() => {
-				inFlight = null;
-			});
-	};
-
-	sendTyping();
-	const interval = setInterval(sendTyping, TELEGRAM_TYPING_REFRESH_MS);
-	interval.unref();
-	const maxLifetime = setTimeout(() => clearInterval(interval), TELEGRAM_TYPING_MAX_LIFETIME_MS);
-	maxLifetime.unref();
-
-	return {
-		clearBeforeResponse: async () => {
-			clearInterval(interval);
-			clearTimeout(maxLifetime);
-			// Let an in-flight typing send land before the reply posts, so the
-			// send can't arrive after the message and re-show a stale indicator.
-			await inFlight;
-		},
-	};
+	return startTypingIndicator(thread, {
+		...options,
+		platform: 'Telegram',
+		refreshMs: TELEGRAM_TYPING_REFRESH_MS,
+	});
 }

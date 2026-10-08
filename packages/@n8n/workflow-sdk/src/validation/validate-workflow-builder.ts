@@ -1,3 +1,5 @@
+import escapeRegExp from 'lodash/escapeRegExp';
+
 import { lintWorkflowSource, type SourceLintIssue } from '../lint';
 import { type IssueSeverity, partitionValidationIssues } from './issue-severity';
 import { getSchemaBaseDirs, setSchemaBaseDirs } from './node-parameter-schema/schema-validator';
@@ -90,10 +92,6 @@ export function buildUncheckedNotes(options: {
 		unchecked.push(UNCHECKED_WITHOUT_PROVIDER);
 	}
 	return unchecked;
-}
-
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**

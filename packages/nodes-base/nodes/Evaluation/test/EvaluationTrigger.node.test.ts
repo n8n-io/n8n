@@ -451,6 +451,71 @@ describe('Evaluation Trigger Node', () => {
 					},
 				});
 			});
+
+			test('should stop after maxRows when the table has more matching rows', async () => {
+				mockDataTable.getManyRowsAndCount
+					.mockResolvedValueOnce({ data: [{ id: 1 }], count: 5 })
+					.mockResolvedValueOnce({ data: [{ id: 2 }], count: 4 })
+					.mockResolvedValueOnce({ data: [{ id: 3 }], count: 3 });
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+						const mockParams: { [key: string]: unknown } = {
+							source: 'dataTable',
+							limitRows: true,
+							maxRows: 3,
+							dataTableId: 'mockDataTableId',
+							'filters.conditions': [],
+							matchType: 'anyCondition',
+						};
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
+					},
+				);
+
+				const evaluationTrigger = new EvaluationTrigger();
+
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				const result1 = await evaluationTrigger.execute.call(mockExecuteFunctions);
+				expect(result1[0][0].json._rowsLeft).toBe(2);
+
+				mockExecuteFunctions.getInputData.mockReturnValue(result1[0]);
+				const result2 = await evaluationTrigger.execute.call(mockExecuteFunctions);
+				expect(result2[0][0].json._rowsLeft).toBe(1);
+
+				mockExecuteFunctions.getInputData.mockReturnValue(result2[0]);
+				const result3 = await evaluationTrigger.execute.call(mockExecuteFunctions);
+				expect(result3[0][0].json._rowsLeft).toBe(0);
+			});
+
+			test('should stop early when the table runs out before maxRows', async () => {
+				mockDataTable.getManyRowsAndCount
+					.mockResolvedValueOnce({ data: [{ id: 1 }], count: 2 })
+					.mockResolvedValueOnce({ data: [{ id: 2 }], count: 1 });
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+						const mockParams: { [key: string]: unknown } = {
+							source: 'dataTable',
+							limitRows: true,
+							maxRows: 10,
+							dataTableId: 'mockDataTableId',
+							'filters.conditions': [],
+							matchType: 'anyCondition',
+						};
+						return (mockParams[key] ?? fallbackValue) as NodeParameterValueType;
+					},
+				);
+
+				const evaluationTrigger = new EvaluationTrigger();
+
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				const result1 = await evaluationTrigger.execute.call(mockExecuteFunctions);
+				expect(result1[0][0].json._rowsLeft).toBe(1);
+
+				mockExecuteFunctions.getInputData.mockReturnValue(result1[0]);
+				const result2 = await evaluationTrigger.execute.call(mockExecuteFunctions);
+				expect(result2[0][0].json._rowsLeft).toBe(0);
+			});
 		});
 	});
 

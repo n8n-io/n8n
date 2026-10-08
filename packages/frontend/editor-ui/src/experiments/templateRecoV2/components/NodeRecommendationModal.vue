@@ -11,7 +11,7 @@ import TemplateCard from './TemplateCard.vue';
 import YoutubeCard from './YoutubeCard.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nLink, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nLink, N8nSegmentControl, N8nSpinner, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	modalName: string;
@@ -134,10 +134,9 @@ watchEffect(async () => {
 	>
 		<template #header>
 			<div :class="$style.header">
-				<N8nRadioButtons
+				<N8nSegmentControl
 					v-model="selectedNode"
 					:options="nodes"
-					size="medium"
 					@update:model-value="onSelectedNodeChange"
 				>
 					<template #option="option">
@@ -150,7 +149,7 @@ watchEffect(async () => {
 							/>
 						</div>
 					</template>
-				</N8nRadioButtons>
+				</N8nSegmentControl>
 			</div>
 		</template>
 		<template #content>

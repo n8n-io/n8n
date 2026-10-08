@@ -1,10 +1,10 @@
-import { GLOBAL_OWNER_ROLE, type IWorkflowDb } from '@n8n/db';
+import { EventService } from '@n8n/backend-services';
+import { GLOBAL_OWNER_ROLE, type IWorkflowDb, type User, type UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 
@@ -13,7 +13,8 @@ describe('LogStreamingEventRelay', () => {
 	const eventService = new EventService();
 	const hostId = 'host-xyz';
 	const instanceSettings = mock<InstanceSettings>({ hostId });
-	new LogStreamingEventRelay(eventService, eventBus, instanceSettings).init();
+	const userRepository = mock<UserRepository>();
+	new LogStreamingEventRelay(eventService, eventBus, instanceSettings, userRepository).init();
 
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -73,10 +74,14 @@ describe('LogStreamingEventRelay', () => {
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
 					missingNodeTypeMode: 'fail',
+					projectConflictPolicy: 'merge',
+					folderConflictPolicy: 'merge',
+					overwriteDeletionPolicy: 'archive',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
 					variableMissingMode: 'create-stub',
+					variableConflictPolicy: 'keep-existing',
 					variableParentPolicy: 'project',
 					tagMissingMode: 'create',
 					tagConflictPolicy: 'skip',
@@ -94,6 +99,11 @@ describe('LogStreamingEventRelay', () => {
 						created: 1,
 						updated: 1,
 						skipped: 0,
+						archived: 1,
+						deleted: 0,
+					},
+					folders: {
+						removed: 1,
 					},
 					credentials: {
 						matched: 1,
@@ -103,6 +113,7 @@ describe('LogStreamingEventRelay', () => {
 					dataTables: {
 						matched: 0,
 						created: 1,
+						updated: 0,
 						requirements: 1,
 					},
 					variables: {
@@ -110,6 +121,7 @@ describe('LogStreamingEventRelay', () => {
 						missing: 1,
 						created: 0,
 						stubbed: 0,
+						updated: 0,
 						requirements: 1,
 					},
 					tags: {
@@ -143,10 +155,14 @@ describe('LogStreamingEventRelay', () => {
 						credentialMissingMode: 'must-preexist',
 						workflowPublishingPolicy: 'preserve-published-state',
 						missingNodeTypeMode: 'fail',
+						projectConflictPolicy: 'merge',
+						folderConflictPolicy: 'merge',
+						overwriteDeletionPolicy: 'archive',
 						dataTableMatchingMode: 'by-id',
 						dataTableMissingMode: 'create',
 						dataTableSchemaConflictPolicy: 'keep-existing',
 						variableMissingMode: 'create-stub',
+						variableConflictPolicy: 'keep-existing',
 						variableParentPolicy: 'project',
 						tagMissingMode: 'create',
 						tagConflictPolicy: 'skip',
@@ -183,6 +199,9 @@ describe('LogStreamingEventRelay', () => {
 					variables: 1,
 					tags: 1,
 				},
+				// Telemetry-only; must not appear in the audit payload below.
+				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: false,
 			};
 
 			eventService.emit('n8n-package-exported', event);
@@ -426,6 +445,8 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `workflow-deleted` event', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
+				workflowName: 'Deleted Workflow',
+				projectId: 'project789',
 				user: {
 					id: '456',
 					email: 'jane@n8n.io',
@@ -1262,6 +1283,8 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `credentials-created` event', () => {
 			const event: RelayEventMap['credentials-created'] = {
+				credentialName: 'My GitHub account',
+				credentialDescriptionLength: 0,
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1297,6 +1320,8 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `credentials-deleted` event', () => {
 			const event: RelayEventMap['credentials-deleted'] = {
+				credentialName: 'Retired token',
+				projectId: 'project707',
 				user: {
 					id: 'user707',
 					email: 'creduser@example.com',
@@ -1326,6 +1351,8 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `credentials-updated` event', () => {
 			const event: RelayEventMap['credentials-updated'] = {
+				credentialName: 'Rotated token',
+				credentialDescriptionLength: 0,
 				user: {
 					id: 'user808',
 					email: 'updatecred@example.com',
@@ -2946,6 +2973,340 @@ describe('LogStreamingEventRelay', () => {
 
 			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
 		});
+
+		it('should log `workflow-reviews.enabled` when workflow_reviews is turned on', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user505',
+					email: 'admin8@example.com',
+					firstName: 'Eighth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'workflow_reviews',
+				value: true,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow-reviews.enabled',
+				payload: {
+					userId: 'user505',
+					_email: 'admin8@example.com',
+					_firstName: 'Eighth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
+		it('should log `workflow-reviews.disabled` when workflow_reviews is turned off', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user606',
+					email: 'admin9@example.com',
+					firstName: 'Ninth',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				settingName: 'workflow_reviews',
+				value: false,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow-reviews.disabled',
+				payload: {
+					userId: 'user606',
+					_email: 'admin9@example.com',
+					_firstName: 'Ninth',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+				},
+			});
+		});
+	});
+
+	describe('policy enforcement events', () => {
+		const blocked: RelayEventMap['policy-decision-blocked'] = {
+			point: 'workflowSave',
+			outcome: 'violation',
+			durationMs: 12,
+			checkIds: ['node-types'],
+			violations: [
+				{
+					checkId: 'node-types',
+					kind: 'node-type-unavailable',
+					subject: 'n8n-nodes-base.slack',
+					subjectType: null,
+					scope: null,
+					matchedRuleId: null,
+				},
+			],
+			policyVersions: [{ scope: 'instance', version: 4 }],
+			workflowId: 'wf-1',
+			workflowName: 'My workflow',
+			projectId: 'proj-1',
+			actorType: 'user',
+			user: {
+				id: 'user-1',
+				email: 'alice@example.com',
+				firstName: 'Alice',
+				lastName: 'Admin',
+				role: { slug: 'global:admin' },
+			},
+		};
+
+		it('should log on `policy-decision-blocked` event, with the user redactable', () => {
+			eventService.emit('policy-decision-blocked', { ...blocked });
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.policy.decision.blocked',
+				payload: {
+					userId: 'user-1',
+					_email: 'alice@example.com',
+					_firstName: 'Alice',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+					point: 'workflowSave',
+					outcome: 'violation',
+					durationMs: 12,
+					checkIds: ['node-types'],
+					violations: [
+						{
+							checkId: 'node-types',
+							kind: 'node-type-unavailable',
+							subject: 'n8n-nodes-base.slack',
+							subjectType: null,
+							scope: null,
+							matchedRuleId: null,
+						},
+					],
+					policyVersions: [{ scope: 'instance', version: 4 }],
+					workflowId: 'wf-1',
+					workflowName: 'My workflow',
+					projectId: 'proj-1',
+					actorType: 'user',
+				},
+			});
+		});
+
+		it('should send a null user id and the reason when no user asked for the action', () => {
+			eventService.emit('policy-decision-blocked', {
+				...blocked,
+				point: 'workflowStart',
+				outcome: 'checkFailure',
+				correlationIds: ['corr-1'],
+				policyVersions: undefined,
+				actorType: 'system',
+				user: null,
+				systemReason: 'execution',
+				executionId: 'exec-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.policy.decision.blocked',
+				payload: expect.objectContaining({
+					userId: null,
+					actorType: 'system',
+					systemReason: 'execution',
+					executionId: 'exec-1',
+					point: 'workflowStart',
+					outcome: 'checkFailure',
+					correlationIds: ['corr-1'],
+					policyVersions: [],
+				}),
+			});
+		});
+
+		it('should not send an event when a destination credential was blocked', () => {
+			eventService.emit('policy-decision-blocked', {
+				...blocked,
+				point: 'credentialDecrypt',
+				actorType: 'system',
+				user: null,
+				systemReason: 'log-streaming',
+			});
+
+			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
+		});
+
+		it('should read the user fields when the host passed only the user id', async () => {
+			userRepository.findByIdWithRole.mockResolvedValue(
+				mock<User>({
+					id: 'user-1',
+					email: 'alice@example.com',
+					firstName: 'Alice',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				}),
+			);
+
+			eventService.emit('policy-decision-blocked', { ...blocked, user: { id: 'user-1' } });
+
+			await vi.waitFor(() =>
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.policy.decision.blocked',
+					payload: expect.objectContaining({
+						userId: 'user-1',
+						_email: 'alice@example.com',
+						_firstName: 'Alice',
+						_lastName: 'Admin',
+						globalRole: 'global:admin',
+					}),
+				}),
+			);
+			expect(userRepository.findByIdWithRole).toHaveBeenCalledWith('user-1');
+		});
+
+		it.each([
+			['no longer exists', () => userRepository.findByIdWithRole.mockResolvedValue(null)],
+			[
+				'cannot be read',
+				() => userRepository.findByIdWithRole.mockRejectedValue(new Error('db down')),
+			],
+		])('should still send the event with the user id when the user %s', async (_, arrange) => {
+			arrange();
+
+			eventService.emit('policy-decision-blocked', { ...blocked, user: { id: 'user-1' } });
+
+			await vi.waitFor(() =>
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.policy.decision.blocked',
+					payload: expect.objectContaining({ userId: 'user-1', actorType: 'user' }),
+				}),
+			);
+		});
+
+		it('should not read the user when the host passed a full user', () => {
+			eventService.emit('policy-decision-blocked', { ...blocked });
+
+			expect(userRepository.findByIdWithRole).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('workflow review events', () => {
+		const reviewer = {
+			id: 'user123',
+			email: 'reviewer@n8n.io',
+			firstName: 'Rita',
+			lastName: 'Reviewer',
+			role: { slug: 'global:member' },
+		};
+		const redactedReviewer = {
+			userId: 'user123',
+			_email: 'reviewer@n8n.io',
+			_firstName: 'Rita',
+			_lastName: 'Reviewer',
+			globalRole: 'global:member',
+		};
+
+		it('should log `workflow-review.requested` with the submitted version', () => {
+			eventService.emit('workflow-review-requested', {
+				user: reviewer,
+				workflowReviewRequestId: 'review-1',
+				projectId: 'project-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+				reviewerCount: 2,
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow-review.requested',
+				payload: {
+					...redactedReviewer,
+					projectId: 'project-1',
+					workflowId: 'wf-1',
+					versionId: 'ver-1',
+					workflowReviewRequestId: 'review-1',
+				},
+			});
+		});
+
+		it('should log `workflow-review.version-updated` with the newly pinned version', () => {
+			eventService.emit('workflow-review-version-updated', {
+				user: reviewer,
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-2',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow-review.version-updated',
+				payload: {
+					...redactedReviewer,
+					workflowId: 'wf-1',
+					versionId: 'ver-2',
+					workflowReviewRequestId: 'review-1',
+				},
+			});
+		});
+
+		it('should log `workflow-review.approved` with who was entitled to approve', () => {
+			eventService.emit('workflow-review-decided', {
+				user: reviewer,
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+				decision: 'approved',
+				decidedVia: 'assigned-reviewer',
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow-review.approved',
+				payload: {
+					...redactedReviewer,
+					workflowId: 'wf-1',
+					versionId: 'ver-1',
+					workflowReviewRequestId: 'review-1',
+					decidedVia: 'assigned-reviewer',
+				},
+			});
+		});
+
+		// A separate name, because SIEM rules key on the event name and cannot filter on payload.
+		it('should log `workflow-review.changes-requested` under its own name', () => {
+			eventService.emit('workflow-review-decided', {
+				user: reviewer,
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: null,
+				decision: 'changes_requested',
+				decidedVia: 'admin-override',
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow-review.changes-requested',
+				payload: {
+					...redactedReviewer,
+					workflowId: 'wf-1',
+					versionId: null,
+					workflowReviewRequestId: 'review-1',
+					decidedVia: 'admin-override',
+				},
+			});
+		});
+
+		it('should log `workflow-review.closed` with what made the workflow unreviewable and who caused it', () => {
+			eventService.emit('workflow-review-closed', {
+				workflowReviewRequestId: 'review-1',
+				cause: { trigger: 'workflow-archived', actorKind: 'user', userId: 'user123' },
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow-review.closed',
+				payload: {
+					workflowReviewRequestId: 'review-1',
+					causeTrigger: 'workflow-archived',
+					causeActorKind: 'user',
+					causeUserId: 'user123',
+				},
+			});
+		});
 	});
 
 	describe('redaction enforcement events', () => {
@@ -3069,6 +3430,8 @@ describe('LogStreamingEventRelay', () => {
 				toolName: 'execute_workflow',
 				workflowId: 'wf-789',
 				status: 'success',
+				authType: 'oauth',
+				clientId: 'client-abc',
 				clientName: 'Cursor',
 			};
 
@@ -3086,6 +3449,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-789',
 					status: 'success',
 					errorMessage: undefined,
+					authType: 'oauth',
+					clientId: 'client-abc',
 					clientName: 'Cursor',
 				},
 			});
@@ -3103,6 +3468,7 @@ describe('LogStreamingEventRelay', () => {
 				toolName: 'get_workflow_details',
 				status: 'error',
 				errorMessage: 'Workflow not found',
+				authType: 'api_key',
 			};
 
 			eventService.emit('mcp-tool-called', event);
@@ -3119,6 +3485,9 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: undefined,
 					status: 'error',
 					errorMessage: 'Workflow not found',
+					// An API-key caller has no OAuth client and reports no name
+					authType: 'api_key',
+					clientId: undefined,
 					clientName: undefined,
 				},
 			});
@@ -3149,6 +3518,24 @@ describe('LogStreamingEventRelay', () => {
 					enabled: false,
 				},
 			});
+		});
+	});
+
+	describe('instance reporting events', () => {
+		it('should log on instance-report-delivered event', () => {
+			eventService.emit('instance-report-delivered');
+
+			expect(eventBus.send).toHaveBeenCalledWith(
+				expect.objectContaining({ eventName: 'n8n.instanceReporting.success' }),
+			);
+		});
+
+		it('should log on instance-report-failed event', () => {
+			eventService.emit('instance-report-failed');
+
+			expect(eventBus.send).toHaveBeenCalledWith(
+				expect.objectContaining({ eventName: 'n8n.instanceReporting.failed' }),
+			);
 		});
 	});
 });

@@ -20,11 +20,10 @@ import { jsonParse, jsonStringify } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
@@ -90,6 +89,7 @@ export class AgentEvalRunnerService {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
 		private readonly flagGate: AgentEvalsFlagGate,
+		private readonly agentsSettingsService: AgentsSettingsService,
 	) {}
 
 	/**
@@ -113,6 +113,7 @@ export class AgentEvalRunnerService {
 
 		// Backstop for direct callers; the REST path asserts before its own lookups.
 		assertRequiredModulesActive(this.moduleRegistry);
+		await this.agentsSettingsService.assertEnabled();
 
 		// Authorize up front. `executeWithLlmMock` also checks `agent:execute`, but
 		// it returns an error result rather than throwing — without this a caller
@@ -263,6 +264,22 @@ export class AgentEvalRunnerService {
 				await this.resultRepository.markAsCancelled(resultRow.id);
 			};
 
+			// An empty input can't produce an execution, so its verdict is recorded
+			// without taking a queue slot. Self-contained like `runCase`: one unusable
+			// case must not fail the run just because recording it failed.
+			const markEmptyInput = async (resultRow: AgentEvalResult) => {
+				try {
+					await this.resultRepository.markAsError(resultRow.id, 'empty_input', {
+						message: 'Case has no value in the mapped input column.',
+					});
+				} catch (error) {
+					this.logger.error(
+						`[AgentEvalRunner] Could not record empty input for case ${resultRow.id}`,
+						{ error: error instanceof Error ? error.message : String(error) },
+					);
+				}
+			};
+
 			const deadline = this.startRunDeadline(abort);
 
 			// The stop reads/writes around `runCase` sit outside its safety net, so
@@ -278,9 +295,16 @@ export class AgentEvalRunnerService {
 								return;
 							}
 
+							// Screened before the slot, after the stop: a cancel still outranks it.
+							if (resolvedCase.input.trim().length === 0) {
+								await markEmptyInput(resultRow);
+								return;
+							}
+
 							// The helper owns release/remove when the run stops while queued;
 							// the finally owns release once a slot is held.
-							const executionId = `${runId}-case-${index}`;
+							// Prefixed so the id is attributable in `n8n.execution.throttled`.
+							const executionId = `agent-eval:${runId}-case-${index}`;
 							if (!(await this.acquireEvaluationSlot(executionId, abort.signal))) {
 								await stopCase(resultRow);
 								return;
@@ -486,7 +510,8 @@ export class AgentEvalRunnerService {
 	 * Execute one case and persist its result. Returns the case's token usage.
 	 * Fully self-contained: a thrown execution or DB error is converted into a
 	 * per-case error so one case can never abort the batch or leave its result
-	 * stuck `running`.
+	 * stuck `running`. Assumes a non-empty input — the caller screens those out
+	 * before taking a queue slot.
 	 */
 	private async runCase(
 		resultRow: AgentEvalResult,
@@ -494,13 +519,6 @@ export class AgentEvalRunnerService {
 		ctx: { agentId: string; projectId: string; user: User; timeoutMs?: number },
 	): Promise<CaseUsage | undefined> {
 		try {
-			if (resolvedCase.input.trim().length === 0) {
-				await this.resultRepository.markAsError(resultRow.id, 'empty_input', {
-					message: 'Case has no value in the mapped input column.',
-				});
-				return undefined;
-			}
-
 			await this.resultRepository.markAsRunning(resultRow.id);
 
 			const execResult = await this.evalAgentExecutionService.executeWithLlmMock(
@@ -568,7 +586,7 @@ export class AgentEvalRunnerService {
 
 		// Validate the mapping against the live columns so a renamed/deleted column
 		// fails loudly here instead of silently turning every case into an
-		// "empty input" error at execution time.
+		// "empty input" error once the run starts.
 		const columnNames = new Set(
 			(await this.dataTableService.getColumns(dataTableId, tableProjectId)).map((c) => c.name),
 		);

@@ -19,7 +19,7 @@ export function useWorkflowSetupBootstrap(workflowId: Ref<string | undefined>): 
 		}
 		try {
 			await Promise.all([
-				credentialsStore.fetchAllCredentialsForWorkflow({ workflowId: wid }),
+				credentialsStore.fetchUsableCredentials({ workflowId: wid }),
 				credentialsStore.fetchCredentialTypes(false),
 				nodeTypesStore.loadNodeTypesIfNotLoaded(),
 			]);

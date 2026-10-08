@@ -1,7 +1,7 @@
 import { computed, type ComputedRef } from 'vue';
 
 import { collectActiveBuilderAgents } from '../builderAgents';
-import { useThread } from '../instanceAi.store';
+import { useThread, type ThreadRuntime } from '../instanceAi.store';
 
 /**
  * Whether the agent is busy anywhere in this thread — the lock signal shared by
@@ -14,9 +14,13 @@ import { useThread } from '../instanceAi.store';
  * `isAwaitingConfirmation` is deliberately unused — it can linger on
  * confirmations left unresolved by a finished run. A live confirmation keeps
  * `activeRunId` set, so `isStreaming` already covers that case.
+ *
+ * Pass `runtime` from the component that *provides* the thread — it can't
+ * inject what it provides, and forking this logic there would leave two copies
+ * to keep in sync. Everything below it just calls this with no argument.
  */
-export function useIsAgentWorking(): ComputedRef<boolean> {
-	const thread = useThread();
+export function useIsAgentWorking(runtime?: ThreadRuntime): ComputedRef<boolean> {
+	const thread = runtime ?? useThread();
 
 	return computed(
 		() =>

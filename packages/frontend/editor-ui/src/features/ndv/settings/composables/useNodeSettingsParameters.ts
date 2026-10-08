@@ -32,7 +32,7 @@ import {
 	isAuthRelatedParameter,
 } from '@/app/utils/nodeTypesUtils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { reconcileNodeFromAIKeys } from '@/features/ndv/parameters/utils/fromAIOverride.utils';
 
@@ -171,6 +171,8 @@ export function useNodeSettingsParameters() {
 
 		nodeHelpers.updateNodeParameterIssuesByName(node.name);
 		nodeHelpers.updateNodeCredentialIssuesByName(node.name);
+		// A parameter can change which inputs the node exposes, e.g. `autoFix`.
+		nodeHelpers.updateNodeInputIssuesByName(node.name);
 		telemetry.trackNodeParametersValuesChange(nodeTypeDescription.name, parameterData);
 	}
 

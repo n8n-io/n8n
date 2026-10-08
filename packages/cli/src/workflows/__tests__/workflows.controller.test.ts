@@ -1,17 +1,15 @@
 import type { Mock } from 'vitest';
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { SsrfBlockedIpError } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionResponse } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowsController } from '../workflows.controller';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
@@ -21,8 +19,6 @@ describe('WorkflowsController', () => {
 	const res = mock<Response>();
 	const projectService = mock<ProjectService>();
 	const logger = mock<Logger>();
-	const ssrfConfig = { enabled: false } as SsrfProtectionConfig;
-	const ssrfProtectionService = mock<SsrfProtectionService>();
 	const httpClient = mock<HttpRequestClient>();
 	const outboundHttp = mock<OutboundHttp>();
 	const requestMock = httpClient.request as Mock;
@@ -30,10 +26,7 @@ describe('WorkflowsController', () => {
 	beforeEach(() => {
 		controller.projectService = projectService;
 		controller.logger = logger;
-		controller.ssrfConfig = ssrfConfig;
-		controller.ssrfProtectionService = ssrfProtectionService;
 		controller.outboundHttp = outboundHttp;
-		ssrfConfig.enabled = false;
 		vi.clearAllMocks();
 		outboundHttp.requests.mockReturnValue(httpClient);
 	});
@@ -134,13 +127,12 @@ describe('WorkflowsController', () => {
 			});
 		});
 
-		describe('when URL protection is enabled', () => {
+		describe('URL protection', () => {
 			beforeEach(() => {
-				ssrfConfig.enabled = true;
 				projectService.getProjectWithScope.mockResolvedValue({} as any);
 			});
 
-			it('should create the client with the SSRF protection service', async () => {
+			it('should create the client with the default safe mode', async () => {
 				const mockWorkflowData = { nodes: [], connections: {} };
 				requestMock.mockResolvedValue(mockWorkflowData);
 
@@ -150,7 +142,7 @@ describe('WorkflowsController', () => {
 				};
 				await controller.getFromUrl(req, res, query);
 
-				expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: ssrfProtectionService });
+				expect(outboundHttp.requests).toHaveBeenCalledWith();
 				expect(requestMock).toHaveBeenCalledWith({ method: 'GET', url: query.url });
 			});
 
@@ -178,23 +170,6 @@ describe('WorkflowsController', () => {
 				};
 
 				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(SsrfBlockedIpError);
-			});
-		});
-
-		describe('when URL protection is disabled', () => {
-			it('should create the client with SSRF disabled', async () => {
-				ssrfConfig.enabled = false;
-				projectService.getProjectWithScope.mockResolvedValue({} as any);
-				const mockWorkflowData = { nodes: [], connections: {} };
-				requestMock.mockResolvedValue(mockWorkflowData);
-
-				const query: ImportWorkflowFromUrlDto = {
-					url: 'https://example.com/workflow.json',
-					projectId,
-				};
-				await controller.getFromUrl(req, res, query);
-
-				expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
 			});
 		});
 	});

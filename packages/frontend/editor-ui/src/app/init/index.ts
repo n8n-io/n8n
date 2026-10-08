@@ -4,13 +4,17 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
+import { registerExperimentModals } from '@/app/modals.manifest';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
 import type { AuthenticationMethod } from '@n8n/api-types';
 import {
+	registerModuleCommands,
 	registerModuleModals,
+	registerModuleParameterInputs,
 	registerModuleProjectTabs,
+	registerModulePushHandlers,
 	registerModuleResources,
 	registerModuleSettingsPages,
 } from '@/app/moduleInitializer/moduleInitializer';
@@ -20,7 +24,7 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
@@ -34,6 +38,7 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { initializeExpressionEngine } from '@/app/init/expressionEngine';
 
 export const state = {
 	initialized: false,
@@ -75,6 +80,14 @@ export async function initializeCore() {
 			type: 'error',
 			duration: 0,
 		});
+	}
+
+	// Must run before any view renders: expressions evaluate as soon as workflow
+	// data is displayed, and the engine has to be in place by then.
+	try {
+		await initializeExpressionEngine(settingsStore.settings.expressionEngine);
+	} catch (error) {
+		console.error('Failed to initialize the expression engine', error);
 	}
 
 	ssoStore.initialize({
@@ -236,7 +249,11 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleResources();
 	registerModuleProjectTabs();
 	registerModuleModals();
+	registerExperimentModals();
 	registerModuleSettingsPages();
+	registerModulePushHandlers();
+	registerModuleCommands();
+	registerModuleParameterInputs();
 
 	// Initialize run data worker and load node types
 	if (isDataWorkerEnabled()) {
@@ -264,6 +281,16 @@ function registerAuthenticationHooks() {
 	usersStore.registerLoginHook(async (user) => {
 		await settingsStore.getSettings();
 
+		// Start the expression engine now if the app booted unauthenticated.
+		// Public settings omit the engine, so `initializeCore` left the legacy
+		// evaluator in place; this is the first point where the choice is known.
+		// Nothing evaluates an expression before login, so this is early enough.
+		try {
+			await initializeExpressionEngine(settingsStore.settings.expressionEngine);
+		} catch (error) {
+			console.error('Failed to initialize the expression engine', error);
+		}
+
 		// Re-initialize SSO store with authenticated settings.
 		// Before login, public settings omit callbackUrl, leaving it empty.
 		// Without this, navigating to SSO settings after login shows an empty redirect URL.
@@ -287,7 +314,7 @@ function registerAuthenticationHooks() {
 			userRole: user.role,
 		});
 		try {
-			postHogStore.init(user.featureFlags);
+			postHogStore.init(user.featureFlags, user.featureFlagPayloads);
 		} catch (e) {
 			// don't let posthog failing prevent further function calls
 			console.error(e);
@@ -305,5 +332,7 @@ function registerAuthenticationHooks() {
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 		favoritesStore.reset();
+		// So a soft-redirect re-login (no page reload) re-fetches per-user data.
+		authenticatedFeaturesInitialized = false;
 	});
 }

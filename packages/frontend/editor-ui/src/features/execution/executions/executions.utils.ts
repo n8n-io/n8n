@@ -59,7 +59,6 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		status: 'all',
 		startDate: '',
 		endDate: '',
-		tags: [],
 		annotationTags: [],
 		metadata: [],
 		vote: 'all',
@@ -73,10 +72,6 @@ export const executionFilterToQueryFilter = (
 	const queryFilter: IDataObject = {};
 	if (filter.workflowId !== 'all') {
 		queryFilter.workflowId = filter.workflowId;
-	}
-
-	if (!isEmpty(filter.tags)) {
-		queryFilter.tags = filter.tags;
 	}
 
 	if (!isEmpty(filter.annotationTags)) {

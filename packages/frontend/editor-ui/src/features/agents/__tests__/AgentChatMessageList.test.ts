@@ -1,22 +1,60 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AgentChatMessageList from '../components/AgentChatMessageList.vue';
-import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
+import { planMessage, planTask, planView } from './fixtures/agent-plan';
 
 const copySpy = vi.fn();
 
+vi.mock('@n8n/composables/useClipboard', () => ({
+	useClipboard: function useClipboard() {
+		return { copy: copySpy };
+	},
+}));
+
 vi.mock('@n8n/design-system', () => ({
+	N8nAiActivityStep: {
+		props: ['label', 'loading'],
+		data: () => ({ open: false }),
+		template:
+			'<section><button :aria-expanded="open" @click="open = !open">{{ label }}</button><div v-if="open"><slot /></div></section>',
+	},
+
+	N8nChatActions: {
+		props: ['content'],
+		setup: function setup(props: { content: string }) {
+			function copyContent() {
+				return copySpy(props.content);
+			}
+			return { copyContent };
+		},
+		template: `<div v-bind="$attrs">
+			<button data-test-id="agent-chat-message-copy" @click="copyContent" />
+			<button data-test-id="agent-chat-message-read-aloud" />
+			<slot />
+		</div>`,
+	},
 	N8nIcon: { template: '<i />' },
 	N8nIconButton: {
-		template:
-			'<button :data-test-id="$attrs[\'data-test-id\']" @click="$emit(\'click\')">{{ icon }}</button>',
-		props: ['icon'],
+		template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ icon }}</button>',
+		props: ['icon', 'variant', 'size'],
 		emits: ['click'],
 	},
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
 	N8nText: {
 		template: '<span v-bind="$attrs"><slot /></span>',
 		props: ['size', 'color', 'tag'],
+	},
+	N8nCallout: {
+		template:
+			'<div v-bind="$attrs"><slot /><slot name="actions" /><slot name="trailingContent" /></div>',
+		props: ['theme', 'icon', 'iconless', 'slim'],
+	},
+	N8nButton: {
+		template:
+			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
+		emits: ['click'],
+		props: ['variant', 'size'],
 	},
 }));
 
@@ -44,14 +82,20 @@ vi.mock('@/features/ai/shared/components/AiReasoningBlock.vue', () => ({
 	},
 }));
 
-vi.mock('@/features/ai/chatHub/components/ChatTypingIndicator.vue', () => ({
-	default: { template: '<div data-test-id="typing-indicator" />' },
-}));
-
 vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
 	default: {
 		name: 'AgentChatToolSteps',
-		template: '<button data-test-id="tool-steps-fix-stub" @click="$emit(\'fixWithAssistant\')" />',
+		template: `<button
+			data-test-id="tool-steps-fix-stub"
+			@click="$emit('fixWithAssistant', [{
+				toolCallId: 'tc-1',
+				toolName: 'http_request',
+				toolDisplayName: 'HTTP request',
+				error: 'boom',
+				startedAt: 1000,
+				endedAt: 1250
+			}])"
+		/>`,
 		props: ['toolCalls', 'projectId', 'canFixWithAssistant', 'executionId'],
 		emits: ['fixWithAssistant'],
 	},
@@ -65,14 +109,12 @@ vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
 	},
 }));
 
-vi.mock('@/features/ai/chatHub/components/CopyButton.vue', () => ({
+vi.mock('@/features/agents/components/AgentBudgetNoticeCard.vue', () => ({
 	default: {
 		template:
-			'<button data-test-id="agent-chat-message-copy" @click="copySpy(content)">copy</button>',
-		props: ['content'],
-		setup() {
-			return { copySpy };
-		},
+			'<div data-testid="agent-budget-notice-card" :data-code="code" :data-can-increase="String(canIncrease)" :data-pending="String(pending)"><button data-testid="agent-budget-notice-increase" @click="$emit(\'increase\', { field: \'sessionCostCapUsd\', amount: 10 })" /></div>',
+		props: ['code', 'canIncrease', 'pending'],
+		emits: ['increase'],
 	},
 }));
 
@@ -90,8 +132,267 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	it('keeps the budget notice and action when the plan progress call is hidden', async () => {
+		const initial = planView();
+		const previous = { ...planMessage(initial), content: 'Starting research.' };
+		const stopped: ChatMessage = {
+			...planMessage({ ...initial, revision: 2 }, { tool: 'update_plan' }),
+			status: 'success',
+			budgetNotices: [{ id: 'budget-stop', code: 'budget.session' }],
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [previous, stopped],
+				messagingState: 'idle',
+				canIncreaseBudget: true,
+			},
+		});
+
+		const cards = wrapper.findAll('[data-testid="agent-budget-notice-card"]');
+		expect(cards).toHaveLength(1);
+		expect(cards[0].attributes('data-can-increase')).toBe('true');
+		await cards[0].get('button').trigger('click');
+		expect(wrapper.emitted('increase-budget')).toEqual([
+			[{ field: 'sessionCostCapUsd', amount: 10 }],
+		]);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it.each(['success', 'awaitingUser'] as const)(
+		'hides tool-run typing dots when the final message is %s',
+		async (status) => {
+			const initial = planView();
+			const previous = { ...planMessage(initial), content: 'Starting research.' };
+			const progress: ChatMessage = {
+				...planMessage(undefined, {
+					tool: 'update_plan',
+					state: 'running',
+					input: { planId: initial.planId, expectedRevision: 1, document: initial.document },
+				}),
+				status: 'streaming',
+			};
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages: [previous, progress], messagingState: 'receiving' },
+			});
+			expect(wrapper.findAll('[data-test-id="agent-typing-indicator"]')).toHaveLength(1);
+
+			const finalMessage: ChatMessage = { id: 'final', role: 'assistant', content: '', status };
+			await wrapper.setProps({ messages: [previous, progress, finalMessage] });
+			expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+
+			await wrapper.setProps({
+				messages: [previous, progress, { ...finalMessage, status: 'streaming' }],
+			});
+			expect(wrapper.findAll('[data-test-id="agent-typing-indicator"]')).toHaveLength(1);
+
+			await wrapper.setProps({
+				messages: [
+					previous,
+					progress,
+					{ ...finalMessage, status: 'streaming', content: 'Found candidates.' },
+				],
+			});
+			expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+			wrapper.unmount();
+		},
+	);
+
+	it('hides plan progress during streaming and completion but keeps errors and chat text', async () => {
+		const initial = planView();
+		const document = { ...initial.document, presentation: { label: 'Research candidates' } };
+		const previous = { ...planMessage(initial), id: 'previous', content: 'Starting research.' };
+		const pending: ChatMessage = {
+			...planMessage(undefined, {
+				tool: 'update_plan',
+				toolCallId: 'update',
+				state: 'running',
+				input: { planId: initial.planId, expectedRevision: 1, document },
+			}),
+			id: 'update',
+			status: 'streaming',
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [previous, pending], messagingState: 'receiving' },
+		});
+		const calls = () =>
+			wrapper
+				.findAllComponents({ name: 'AgentChatToolSteps' })
+				.flatMap((steps) => steps.props('toolCalls') as ToolCall[]);
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(true);
+		const completed: ChatMessage = {
+			...pending,
+			status: 'success',
+			toolCalls: [
+				{ ...pending.toolCalls![0], state: 'done', output: { ...initial, revision: 2, document } },
+			],
+		};
+		await wrapper.setProps({ messages: [previous, completed], messagingState: 'idle' });
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+		expect(wrapper.findAll('[data-testid="markdown-chunk"]')).toHaveLength(1);
+		await wrapper.setProps({
+			messages: [previous, { ...completed, content: 'Found candidates.' }],
+		});
+		expect(wrapper.text()).toContain('Found candidates.');
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
+		await wrapper.setProps({
+			messages: [
+				previous,
+				{
+					...completed,
+					toolCalls: [{ ...completed.toolCalls![0], output: { error: 'conflict' } }],
+				},
+			],
+		});
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan', 'update_plan']);
+		await wrapper.setProps({
+			messages: [
+				previous,
+				{
+					...completed,
+					toolCalls: [
+						{
+							...completed.toolCalls![0],
+							output: {
+								...initial,
+								revision: 2,
+								document: { ...document, items: [...document.items, planTask(99)] },
+							},
+						},
+					],
+				},
+			],
+		});
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan', 'update_plan']);
+		wrapper.unmount();
+	});
+
+	it('keeps signal expansion and order when the response gains tools and text', async () => {
+		const message: ChatMessage = {
+			id: 'wake:assistant',
+			executionId: 'wake',
+			role: 'assistant',
+			content: '',
+			backgroundJobSignal: {
+				tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			},
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [message], messagingState: 'idle' },
+		});
+		const row = () => wrapper.get('[data-testid="agent-chat-background-job-signal"]');
+		expect(row().get('button').attributes('aria-expanded')).toBe('false');
+		expect(wrapper.find('[data-test-id="agent-chat-message-copy"]').exists()).toBe(false);
+		await row().get('button').trigger('click');
+		await wrapper.setProps({
+			messages: [
+				{ ...message, toolCalls: [{ tool: 'search', toolCallId: 'search-1', state: 'done' }] },
+			],
+		});
+		expect(row().get('button').attributes('aria-expanded')).toBe('true');
+		await wrapper.setProps({ messages: [{ ...message, content: 'Done' }] });
+		expect(row().get('button').attributes('aria-expanded')).toBe('true');
+		expect(
+			wrapper
+				.findAll('[data-testid="agent-chat-background-job-signal"], [data-testid="markdown-chunk"]')
+				.map((el) => el.attributes('data-testid')),
+		).toEqual(['agent-chat-background-job-signal', 'markdown-chunk']);
+		expect(wrapper.findAll('[data-test-id="agent-chat-message-copy"]')).toHaveLength(1);
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('agent change requests', () => {
+		beforeEach(() => {
+			sessionStorage.clear();
+		});
+
+		const changeRequest = {
+			id: 'user-1',
+			role: 'user',
+			content: 'Please update your instructions to always answer in German',
+			status: 'success',
+		} satisfies ChatMessage;
+
+		it('offers the assistant hand-off for a change request in the preview', async () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [changeRequest],
+					messagingState: 'idle',
+					agentId: 'agent-1',
+					sessionId: 'thread-1',
+					canSendToAssistant: true,
+				},
+			});
+
+			expect(wrapper.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(true);
+			await wrapper.find('[data-testid="agent-preview-change-request-link"]').trigger('click');
+			expect(wrapper.emitted('sendToAssistant')?.[0]).toEqual([
+				{ changeRequest: changeRequest.content },
+			]);
+		});
+
+		it('stays dismissed for the rest of the chat session, but asks again in a new one', async () => {
+			const props = {
+				messages: [changeRequest],
+				messagingState: 'idle' as const,
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				canSendToAssistant: true,
+			};
+			const wrapper = mount(AgentChatMessageList, { props });
+
+			await wrapper.find('[data-testid="agent-preview-change-request-dismiss"]').trigger('click');
+			expect(wrapper.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+				false,
+			);
+
+			// Resuming the same session — the chat panel remounts on navigation, so
+			// the dismissal has to outlive the component.
+			const resumed = mount(AgentChatMessageList, {
+				props: {
+					...props,
+					messages: [{ ...changeRequest, id: 'user-2', content: 'add a slack channel' }],
+				},
+			});
+			expect(resumed.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+				false,
+			);
+
+			// A new chat starts over.
+			const newSession = mount(AgentChatMessageList, {
+				props: { ...props, sessionId: 'thread-2' },
+			});
+			expect(newSession.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+				true,
+			);
+		});
+
+		it('stays hidden outside the preview and for ordinary messages', () => {
+			const outsidePreview = mount(AgentChatMessageList, {
+				props: { messages: [changeRequest], messagingState: 'idle' },
+			});
+			expect(
+				outsidePreview.find('[data-testid="agent-preview-change-request-note"]').exists(),
+			).toBe(false);
+
+			const ordinary = mount(AgentChatMessageList, {
+				props: {
+					messages: [{ ...changeRequest, content: 'What is the weather in Berlin?' }],
+					messagingState: 'idle',
+					agentId: 'agent-1',
+					sessionId: 'thread-1',
+					canSendToAssistant: true,
+				},
+			});
+			expect(ordinary.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+				false,
+			);
+		});
 	});
 
 	it('renders streamed reasoning with the shared thinking components', () => {
@@ -122,7 +423,7 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-test-id="shared-reasoning-block"]').text()).toBe(
 			'Inspect the request. Then answer.',
 		);
-		expect(wrapper.find('[data-test-id="typing-indicator"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
 	});
 
 	it('renders thinking below standalone assistant output', () => {
@@ -249,10 +550,7 @@ describe('AgentChatMessageList', () => {
 		);
 	});
 
-	it('shows copy and read-aloud actions for assistant text messages', async () => {
-		const speakSpy = vi.spyOn(window.speechSynthesis, 'speak');
-		const cancelSpy = vi.spyOn(window.speechSynthesis, 'cancel');
-
+	it('shows copy and read-aloud actions for assistant text messages', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
 				messages: [
@@ -270,10 +568,6 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-test-id="agent-chat-message-actions"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="agent-chat-message-copy"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="agent-chat-message-read-aloud"]').exists()).toBe(true);
-
-		await wrapper.find('[data-test-id="agent-chat-message-read-aloud"]').trigger('click');
-		expect(cancelSpy).toHaveBeenCalled();
-		expect(speakSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('shows send-to-assistant for preview assistant messages and re-emits clicks', async () => {
@@ -338,7 +632,23 @@ describe('AgentChatMessageList', () => {
 
 		await wrapper.find('[data-test-id="tool-steps-fix-stub"]').trigger('click');
 
-		expect(wrapper.emitted('sendToAssistant')).toEqual([['exec-turn-1']]);
+		expect(wrapper.emitted('sendToAssistant')).toEqual([
+			[
+				{
+					executionId: 'exec-turn-1',
+					failures: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'http_request',
+							toolDisplayName: 'HTTP request',
+							error: 'boom',
+							startedAt: 1_000,
+							endedAt: 1_250,
+						},
+					],
+				},
+			],
+		]);
 	});
 
 	it('does not render actions for user text messages', () => {
@@ -358,6 +668,107 @@ describe('AgentChatMessageList', () => {
 
 		expect(wrapper.find('[data-test-id="agent-chat-message-actions"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="agent-chat-message-read-aloud"]').exists()).toBe(false);
+	});
+
+	it('renders the budget stop card when the stopped turn has only tool calls', () => {
+		// A budget stop lands on the current message; when the run had only made
+		// tool calls, that message folds into a toolRun group with no finalMessage.
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-tools',
+						role: 'assistant',
+						content: '',
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+						status: 'success',
+						budgetNotices: [{ id: 'n1', code: 'budget.session' }],
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		const cards = wrapper.findAll('[data-testid="agent-budget-notice-card"]');
+		expect(cards).toHaveLength(1);
+		expect(cards[0].attributes('data-code')).toBe('budget.session');
+	});
+
+	it('renders budget notices from the final text message of a tool run once', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-tools',
+						role: 'assistant',
+						content: '',
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+						status: 'success',
+						budgetNotices: [{ id: 'n1', code: 'budget.alert' }],
+					},
+					{
+						id: 'assistant-final',
+						role: 'assistant',
+						content: 'done',
+						status: 'success',
+						budgetNotices: [{ id: 'n2', code: 'budget.session' }],
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		const codes = wrapper
+			.findAll('[data-testid="agent-budget-notice-card"]')
+			.map((card) => card.attributes('data-code'));
+		expect(codes).toEqual(['budget.alert', 'budget.session']);
+	});
+
+	it('forwards the increase-budget event from a folded stop card', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-tools',
+						role: 'assistant',
+						content: '',
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+						status: 'success',
+						budgetNotices: [{ id: 'n1', code: 'budget.session' }],
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		await wrapper.get('[data-testid="agent-budget-notice-increase"]').trigger('click');
+		expect(wrapper.emitted('increase-budget')?.[0]).toEqual([
+			{ field: 'sessionCostCapUsd', amount: 10 },
+		]);
+	});
+
+	it('passes the increase permission and pending state to the notice cards', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-tools',
+						role: 'assistant',
+						content: '',
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+						status: 'success',
+						budgetNotices: [{ id: 'n1', code: 'budget.session' }],
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+				canIncreaseBudget: true,
+				budgetIncreasePending: true,
+			},
+		});
+
+		const card = wrapper.get('[data-testid="agent-budget-notice-card"]');
+		expect(card.attributes('data-can-increase')).toBe('true');
+		expect(card.attributes('data-pending')).toBe('true');
 	});
 
 	it('renders external-wait notice via toolRun path for suspended integration action', () => {
@@ -565,43 +976,53 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-testid="interactive-card-stub"]').exists()).toBe(false);
 	});
 
-	it('renders only reload-restored open cards that can still be resumed', () => {
-		const wrapper = mount(AgentChatMessageList, {
-			props: {
-				messages: [
-					{
-						id: 'assistant-open-cards',
-						role: 'assistant',
-						content: '',
-						interactives: [
-							{
-								toolName: 'chat_action',
-								toolCallId: 'tc-stale',
-								input: {
-									card: { components: [{ type: 'button', label: 'Old', value: 'old' }] },
+	it.each(['', 'Here is the request.'])(
+		'keeps active chat cards inline and tool approvals in the composer: %s',
+		(content) => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{
+							id: 'assistant-open-cards',
+							role: 'assistant',
+							content,
+							toolCalls: [{ tool: 'send_message', toolCallId: 'tc-approval', state: 'suspended' }],
+							interactives: [
+								{
+									toolName: 'approval',
+									toolCallId: 'tc-approval',
+									runId: 'run-active',
+									input: { type: 'approval', toolName: 'send_message', args: {} },
 								},
-							},
-							{
-								toolName: 'chat_action',
-								toolCallId: 'tc-active',
-								runId: 'run-active',
-								input: {
-									card: { components: [{ type: 'button', label: 'Approve', value: 'approve' }] },
+								{
+									toolName: 'chat_action',
+									toolCallId: 'tc-stale',
+									input: {
+										card: { components: [{ type: 'button', label: 'Old', value: 'old' }] },
+									},
 								},
-							},
-						],
-						status: 'awaitingUser',
-					} satisfies ChatMessage,
-				],
-				messagingState: 'idle',
-			},
-		});
+								{
+									toolName: 'chat_action',
+									toolCallId: 'tc-active',
+									runId: 'run-active',
+									input: {
+										card: { components: [{ type: 'button', label: 'Approve', value: 'approve' }] },
+									},
+								},
+							],
+							status: 'awaitingUser',
+						} satisfies ChatMessage,
+					],
+					messagingState: 'idle',
+				},
+			});
 
-		const cards = wrapper.findAll('[data-testid="interactive-card-stub"]');
-		expect(cards).toHaveLength(1);
-		expect(cards[0].attributes('data-tool-call-id')).toBe('tc-active');
-		expect(cards[0].attributes('data-run-id')).toBe('run-active');
-	});
+			const cards = wrapper.findAll('[data-testid="interactive-card-stub"]');
+			expect(cards).toHaveLength(1);
+			expect(cards[0].attributes('data-tool-call-id')).toBe('tc-active');
+			expect(cards[0].attributes('data-run-id')).toBe('run-active');
+		},
+	);
 
 	it('does not render external-wait notice for suspended chat_action tool (toolRun path)', () => {
 		// isGroupable: role=assistant, toolCalls.length>0, content is empty → toolRun group
@@ -718,5 +1139,86 @@ describe('AgentChatMessageList', () => {
 		await wrapper.find('[data-test-id="agent-chat-message-copy"]').trigger('click');
 		await flushPromises();
 		expect(copySpy).toHaveBeenCalledWith('First reply\n\nSecond reply');
+	});
+
+	describe('timestamp dividers', () => {
+		const T0 = Date.parse('2026-04-26T10:00:00Z');
+
+		it('renders a divider above the first user message', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'user-1', role: 'user', content: 'Hi', status: 'success', createdAt: T0 },
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.findAll('[data-testid="agent-chat-timestamp-divider"]')).toHaveLength(1);
+		});
+
+		it('renders a divider again only once the gap exceeds the window', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'user-1', role: 'user', content: 'Hi', status: 'success', createdAt: T0 },
+						{
+							id: 'user-2',
+							role: 'user',
+							content: 'Again',
+							status: 'success',
+							createdAt: T0 + 5 * 60_000,
+						},
+						{
+							id: 'user-3',
+							role: 'user',
+							content: 'Later',
+							status: 'success',
+							createdAt: T0 + 2 * 60 * 60_000,
+						},
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.findAll('[data-testid="agent-chat-timestamp-divider"]')).toHaveLength(2);
+		});
+
+		it('renders a divider across midnight even inside the window', () => {
+			// Local time on purpose: the rule is about the viewer's calendar day.
+			const lateNight = new Date('2026-04-26T23:40:00').getTime();
+			const afterMidnight = new Date('2026-04-27T00:20:00').getTime();
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'user-1', role: 'user', content: 'Hi', status: 'success', createdAt: lateNight },
+						{
+							id: 'user-2',
+							role: 'user',
+							content: 'Again',
+							status: 'success',
+							createdAt: afterMidnight,
+						},
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.findAll('[data-testid="agent-chat-timestamp-divider"]')).toHaveLength(2);
+		});
+
+		it('renders no divider at all when createdAt is absent', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'user-1', role: 'user', content: 'Hi', status: 'success' },
+						{ id: 'user-2', role: 'user', content: 'Again', status: 'success' },
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.findAll('[data-testid="agent-chat-timestamp-divider"]')).toHaveLength(0);
+		});
 	});
 });

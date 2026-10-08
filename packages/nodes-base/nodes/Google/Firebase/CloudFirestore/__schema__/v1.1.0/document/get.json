@@ -13,6 +13,9 @@
         "_updateTime": {
             "type": "string"
         },
+        "name": {
+            "type": "string"
+        },
         "status": {
             "type": "string"
         },
@@ -20,5 +23,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

@@ -1,9 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ContextEstablishmentOptions } from '@n8n/decorators';
 import type { Cipher } from 'n8n-core';
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData, PlaintextExecutionContext } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+
+import type { ExecutingUserIdentifierProxy } from '@/credentials/executing-user-identifier-proxy';
 
 import { ChatHubExtractor } from '../chat-hub-extractor';
 
@@ -18,12 +20,15 @@ describe('ChatHubExtractor', () => {
 	let extractor: ChatHubExtractor;
 	let mockLogger: Mocked<Logger>;
 	let mockCipher: Mocked<Cipher>;
+	let mockExecutingUserIdentifierProxy: Mocked<ExecutingUserIdentifierProxy>;
 
 	beforeEach(() => {
 		mockLogger = mock<Logger>();
 		mockLogger.scoped.mockReturnValue(mockLogger);
 		mockCipher = mock<Cipher>();
-		extractor = new ChatHubExtractor(mockLogger, mockCipher);
+		mockExecutingUserIdentifierProxy = mock<ExecutingUserIdentifierProxy>();
+		mockExecutingUserIdentifierProxy.identify.mockResolvedValue(undefined);
+		extractor = new ChatHubExtractor(mockLogger, mockCipher, mockExecutingUserIdentifierProxy);
 	});
 
 	describe('execute', () => {
@@ -90,6 +95,49 @@ describe('ChatHubExtractor', () => {
 					},
 				},
 			});
+			expect(mockExecutingUserIdentifierProxy.identify).not.toHaveBeenCalled();
+		});
+
+		it('attributes the owner when the workflow uses a private credential', async () => {
+			mockCipher.decryptV2.mockResolvedValue(
+				JSON.stringify({ authToken: 'jwt', method: 'POST', endpoint: '/e' }),
+			);
+			mockExecutingUserIdentifierProxy.identify.mockResolvedValue('user-7');
+			const triggerItem = createTriggerItem({ encryptedMetadata: 'enc' });
+			const options = {
+				triggerItems: [triggerItem],
+				context: { usesDynamicCredentials: true } as PlaintextExecutionContext,
+			} as ContextEstablishmentOptions;
+
+			const result = await extractor.execute(options);
+
+			expect(mockExecutingUserIdentifierProxy.identify).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'jwt',
+				metadata: {
+					source: 'chat-hub-injected',
+					browserId: undefined,
+					method: 'POST',
+					endpoint: '/e',
+				},
+			});
+			expect(result.contextUpdate?.executedByUserId).toBe('user-7');
+		});
+
+		it('does not attribute an owner when the workflow uses no private credential', async () => {
+			mockCipher.decryptV2.mockResolvedValue(
+				JSON.stringify({ authToken: 'jwt', method: 'POST', endpoint: '/e' }),
+			);
+			const triggerItem = createTriggerItem({ encryptedMetadata: 'enc' });
+			const options = {
+				triggerItems: [triggerItem],
+				context: { usesDynamicCredentials: false } as PlaintextExecutionContext,
+			} as ContextEstablishmentOptions;
+
+			const result = await extractor.execute(options);
+
+			expect(mockExecutingUserIdentifierProxy.identify).not.toHaveBeenCalled();
+			expect(result.contextUpdate?.executedByUserId).toBeUndefined();
 		});
 
 		it('should extract authToken without browserId', async () => {

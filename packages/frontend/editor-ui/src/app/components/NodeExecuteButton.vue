@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { ButtonSize, IUpdateInformation } from '@/Interface';
 import type { ButtonVariant } from '@n8n/design-system';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -23,6 +23,7 @@ const props = withDefaults(
 		size?: ButtonSize;
 		icon?: IconName;
 		square?: boolean;
+		iconOnly?: boolean;
 		transparent?: boolean;
 		hideIcon?: boolean;
 		hideLabel?: boolean;
@@ -107,7 +108,11 @@ const tooltipText = computed(() => {
 		return i18n.baseText('ndv.execute.generateCodeAndTestNode.description');
 	}
 	if (disabledHint.value) return disabledHint.value;
-	if (props.tooltip && !isExecuting.value && testStepButtonPopupCount() < MAX_POPUP_COUNT) {
+	if (
+		props.tooltip &&
+		!isExecuting.value &&
+		(props.iconOnly || testStepButtonPopupCount() < MAX_POPUP_COUNT)
+	) {
 		return props.tooltip;
 	}
 	return '';
@@ -156,6 +161,7 @@ async function onClick() {
 			:size="size"
 			:icon="buttonIcon"
 			:square="square"
+			:icon-only="iconOnly"
 			:transparent-background="transparent"
 			:title="
 				!isTriggerNode && !tooltipText ? i18n.baseText('ndv.execute.testNode.description') : ''

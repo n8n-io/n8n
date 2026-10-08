@@ -7,7 +7,7 @@ import MessageRating from './MessageRating.vue';
 const stubs = ['N8nButton', 'N8nIconButton', 'N8nInput'];
 
 // Mock i18n to return keys instead of translated text
-vi.mock('@n8n/design-system/composables/useI18n', () => ({
+vi.mock('../../../composables/useI18n', () => ({
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),

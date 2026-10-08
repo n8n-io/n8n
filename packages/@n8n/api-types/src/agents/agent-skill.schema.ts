@@ -2,12 +2,10 @@ import { z } from 'zod';
 
 export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 65_536;
 export const AGENT_SKILL_REFERENCE_MAX_COUNT = 20;
-export const AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES = 65_536;
-export const AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES = 262_144;
+export const AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH = 65_536;
+export const AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH = 262_144;
 
 const agentSkillStringArraySchema = z.array(z.string().trim().min(1));
-
-const utf8ByteLength = (value: string) => new TextEncoder().encode(value).byteLength;
 
 const agentSkillReferenceSchema = z
 	.object({
@@ -25,27 +23,24 @@ const agentSkillReferenceSchema = z
 					segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
 				);
 			}, 'Reference path must be a markdown file under references/'),
-		content: z.string().min(1),
+		content: z
+			.string()
+			.min(1)
+			.max(
+				AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+				`Reference content must be ${AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH} characters or fewer`,
+			),
 	})
-	.strict()
-	.superRefine((reference, ctx) => {
-		if (utf8ByteLength(reference.content) > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: `Reference content must be ${AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES} bytes or fewer`,
-				path: ['content'],
-			});
-		}
-	});
+	.strict();
 
 const agentSkillReferencesSchema = z
 	.array(agentSkillReferenceSchema)
 	.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
 	.superRefine((references, ctx) => {
 		const paths = new Set<string>();
-		let totalBytes = 0;
+		let totalLength = 0;
 		for (const [index, reference] of references.entries()) {
-			totalBytes += utf8ByteLength(reference.content);
+			totalLength += reference.content.length;
 			if (paths.has(reference.path)) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
@@ -55,10 +50,10 @@ const agentSkillReferencesSchema = z
 			}
 			paths.add(reference.path);
 		}
-		if (totalBytes > AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES) {
+		if (totalLength > AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				message: `Reference content must total ${AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES} bytes or fewer`,
+				message: `Reference content must total ${AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH} characters or fewer`,
 			});
 		}
 	});
@@ -71,14 +66,15 @@ const agentSkillReferencesSchema = z
 export const agentSkillShape = {
 	name: z.string().min(1).max(128),
 	description: z.string().min(1).max(512),
-	// Measured in UTF-8 bytes like the reference limits, so multi-byte
-	// content cannot exceed the stated cap.
+	// Measured in characters like the name, description and reference limits,
+	// so the editor can show the user the same count the server enforces.
 	instructions: z
 		.string()
 		.min(1)
-		.refine((value) => utf8ByteLength(value) <= AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH, {
-			message: `Instructions must be ${AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH} bytes or fewer`,
-		}),
+		.max(
+			AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+			`Instructions must be ${AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH} characters or fewer`,
+		),
 	allowedTools: agentSkillStringArraySchema.optional(),
 	references: agentSkillReferencesSchema.optional(),
 	scripts: z.never().optional(),

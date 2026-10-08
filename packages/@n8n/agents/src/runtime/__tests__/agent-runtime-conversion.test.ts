@@ -64,6 +64,95 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(toolResultPart.output.value).toEqual({ result: 3 });
 	});
 
+	it('repairs a saved tool-call ID that Anthropic cannot accept', () => {
+		// AGENT-1054: A saved ID must not break every later turn in the thread.
+		const invalidId = 'toolu.invalid/id';
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: invalidId,
+						toolName: 'lookup',
+						input: {},
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		];
+
+		const [assistant, tool] = toAiMessages(input);
+		if (
+			assistant.role !== 'assistant' ||
+			typeof assistant.content === 'string' ||
+			tool.role !== 'tool'
+		) {
+			throw new Error('Expected a tool call and its result');
+		}
+		const toolCall = assistant.content[0];
+		const toolResult = tool.content[0];
+		if (toolCall.type !== 'tool-call' || toolResult.type !== 'tool-result') {
+			throw new Error('Expected a tool call and its result');
+		}
+		expect(toolCall.toolCallId).toMatch(/^[A-Za-z0-9_-]+$/);
+		expect(toolCall.toolCallId).not.toBe(invalidId);
+		expect(toolResult.toolCallId).toBe(toolCall.toolCallId);
+		expect(input[0].content[0]).toMatchObject({ toolCallId: invalidId });
+	});
+
+	it('keeps repaired IDs distinct and pairs provider-executed results', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'bad/id',
+						toolName: 'search',
+						input: {},
+						providerExecuted: true,
+						state: 'resolved',
+						output: { hits: 1 },
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'bad/id',
+						toolName: 'lookup',
+						input: {},
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		];
+
+		const [assistant, tool] = toAiMessages(input);
+		if (
+			assistant.role !== 'assistant' ||
+			typeof assistant.content === 'string' ||
+			tool.role !== 'tool'
+		) {
+			throw new Error('Expected a tool call and its result');
+		}
+		const [serverCall, serverResult, clientCall] = assistant.content;
+		const clientResult = tool.content[0];
+		if (
+			serverCall.type !== 'tool-call' ||
+			serverResult.type !== 'tool-result' ||
+			clientCall.type !== 'tool-call' ||
+			clientResult.type !== 'tool-result'
+		) {
+			throw new Error('Expected paired tool calls and results');
+		}
+		expect(serverCall.toolCallId).toMatch(/^[A-Za-z0-9_-]+$/);
+		expect(clientCall.toolCallId).toMatch(/^[A-Za-z0-9_-]+$/);
+		expect(serverCall.toolCallId).not.toBe(clientCall.toolCallId);
+		expect(serverResult.toolCallId).toBe(serverCall.toolCallId);
+		expect(clientResult.toolCallId).toBe(clientCall.toolCallId);
+	});
+
 	it('preserves provider metadata on replayed assistant tool-call parts', () => {
 		const providerMetadata = { google: { thoughtSignature: 'gemini-signature' } };
 		const input: Message[] = [
@@ -122,6 +211,58 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(reasoningPart.providerOptions).toEqual({
 			anthropic: { signature: 'anthropic-thinking-signature' },
 		});
+	});
+
+	it('keeps only the last Anthropic signature when assistant responses are adjacent', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'First response reasoning',
+						providerMetadata: { anthropic: { signature: 'first-signature' } },
+					},
+					{ type: 'text', text: 'First response' },
+				],
+			},
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'Second response reasoning',
+						providerMetadata: { anthropic: { signature: 'second-signature' } },
+					},
+					{ type: 'text', text: 'Second response' },
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const content = aiMessages.map(
+			(message) =>
+				(
+					message as {
+						content: Array<{
+							type: string;
+							text?: string;
+							providerOptions?: { anthropic?: { signature?: string } };
+						}>;
+					}
+				).content,
+		);
+
+		expect(content.flatMap((parts) => parts).filter((part) => part.type === 'text')).toEqual([
+			{ type: 'text', text: 'First response' },
+			{ type: 'text', text: 'Second response' },
+		]);
+		expect(
+			content
+				.flatMap((parts) => parts)
+				.map((part) => part.providerOptions?.anthropic?.signature)
+				.filter((signature) => signature !== undefined),
+		).toEqual(['second-signature']);
 	});
 
 	it('copies OpenAI reasoning replay metadata into providerOptions on replay', () => {
@@ -654,6 +795,69 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(block.type).toBe('tool-call');
 		expect((block as { state: string }).state).toBe('resolved');
 		expect((block as { output: unknown }).output).toEqual({ result: 3 });
+	});
+
+	it('round-trips provider-executed tool results inside the assistant message', () => {
+		// Native web search: the AI SDK places the result in the assistant message,
+		// never in a role:tool message.
+		const results = [{ url: 'https://n8n.io', title: 'n8n', type: 'web_search_result' }];
+		const searchError = { type: 'web_search_tool_result_error', errorCode: 'max_uses_exceeded' };
+		const error = JSON.stringify(searchError);
+		const aiMessages: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'srvtoolu_1',
+						toolName: 'web_search',
+						input: { query: 'n8n' },
+						providerExecuted: true,
+					},
+					{
+						type: 'tool-result',
+						toolCallId: 'srvtoolu_1',
+						toolName: 'web_search',
+						output: { type: 'json', value: results },
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'srvtoolu_2',
+						toolName: 'web_search',
+						input: { query: 'more' },
+						providerExecuted: true,
+					},
+					{
+						type: 'tool-result',
+						toolCallId: 'srvtoolu_2',
+						toolName: 'web_search',
+						output: { type: 'error-json', value: searchError },
+					},
+					{ type: 'text', text: 'Here is what I found.' },
+				],
+			},
+		];
+
+		const persisted = fromAiMessages(aiMessages) as Message[];
+		expect(persisted[0].content).toMatchObject([
+			{ type: 'tool-call', state: 'resolved', output: results },
+			{ type: 'tool-call', state: 'rejected', error },
+			{ type: 'text' },
+		]);
+
+		const replayed = toAiMessages(persisted);
+		expect(replayed).toHaveLength(1);
+		expect(replayed[0].content).toMatchObject([
+			{ type: 'tool-call', toolCallId: 'srvtoolu_1', providerExecuted: true },
+			{ type: 'tool-result', toolCallId: 'srvtoolu_1', output: { type: 'json', value: results } },
+			{ type: 'tool-call', toolCallId: 'srvtoolu_2', providerExecuted: true },
+			{
+				type: 'tool-result',
+				toolCallId: 'srvtoolu_2',
+				output: { type: 'error-json', value: error },
+			},
+			{ type: 'text', text: 'Here is what I found.' },
+		]);
 	});
 
 	it('round-trip is structurally equivalent for a resolved tool-call', () => {

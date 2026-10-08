@@ -5,8 +5,7 @@ import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
@@ -81,7 +80,7 @@ export class SecuritySettingsController {
 	}
 
 	private isWorkflowReviewsAvailable(): boolean {
-		return isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed());
+		return this.licenseState.isWorkflowReviewsLicensed();
 	}
 
 	private async getWorkflowReviewsIfAvailable() {

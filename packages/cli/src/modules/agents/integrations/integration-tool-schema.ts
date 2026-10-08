@@ -147,7 +147,7 @@ export function toSingleActionOperation(input: RawActionToolInput): RawActionToo
 	if (input.action === undefined) {
 		throw new Error('Integration action tool input was not validated.');
 	}
-	return { action: input.action, input: input.input ?? {} };
+	return { action: input.action, input: normalizeActionInput(input.input ?? {}) };
 }
 
 function validateOperationSchema<TName extends string>(
@@ -168,8 +168,16 @@ function validateOperationSchema<TName extends string>(
 		});
 		return;
 	}
-	const result = definition.inputSchema.safeParse(operation);
+	const normalizedOperation =
+		'action' in operation
+			? { ...operation, input: normalizeActionInput(operation.input) }
+			: operation;
+	const result = definition.inputSchema.safeParse(normalizedOperation);
 	if (!result.success) addSchemaIssues(ctx, result.error, pathPrefix);
+}
+
+function normalizeActionInput(input: Record<string, unknown>): Record<string, unknown> {
+	return typeof input.message === 'string' ? { ...input, message: { text: input.message } } : input;
 }
 
 function addSchemaIssues(

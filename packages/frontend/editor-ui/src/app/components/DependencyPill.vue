@@ -1,17 +1,12 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useRouter } from 'vue-router';
 import type { BaseTextKey } from '@n8n/i18n';
-import { N8nBadge, N8nIcon, N8nTooltip } from '@n8n/design-system';
-import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import { VIEWS } from '@/app/constants';
-import { useUIStore } from '@/app/stores/ui.store';
+import { N8nBadge, N8nTooltip } from '@n8n/design-system';
+import { N8nDropdownMenu } from '@n8n/design-system';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import type { DependencyType, ResolvedDependency } from '@n8n/api-types';
 import { useDependencies } from '@/app/composables/useDependencies';
-import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
+import { useDependencyMenu } from '@/app/composables/useDependencyMenu';
 
 const MIN_ITEMS_FOR_SEARCH = 6;
 
@@ -27,19 +22,18 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const router = useRouter();
-const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const { getDependencies, fetchDependencies, getTotalCount } = useDependencies();
+const { buildDependencyMenuItems, resolveDependencyMenuId, openDependency } = useDependencyMenu();
 
 const isLoadingDetails = ref(false);
 
-const depsResult = computed(() => getDependencies(props.resourceId));
+const depsResult = computed(() => getDependencies(props.resourceId, props.resourceType));
 
 const effectiveCount = computed(() => {
 	const result = depsResult.value;
 	if (result) return result.dependencies.length + result.inaccessibleCount;
-	return getTotalCount(props.resourceId) ?? 0;
+	return getTotalCount(props.resourceId, props.resourceType) ?? 0;
 });
 
 const hasHiddenDeps = computed(() => (depsResult.value?.inaccessibleCount ?? 0) > 0);
@@ -54,95 +48,12 @@ const showSearch = computed(
 
 const searchTerm = ref('');
 
-const typeConfig: Record<DependencyType, { icon: IconName; labelKey: BaseTextKey }> = {
-	credentialId: {
-		icon: 'key-round',
-		labelKey: 'workflows.dependencies.type.credentials' as BaseTextKey,
-	},
-	dataTableId: {
-		icon: 'table',
-		labelKey: 'workflows.dependencies.type.dataTables' as BaseTextKey,
-	},
-	errorWorkflow: {
-		icon: 'bug',
-		labelKey: 'workflows.dependencies.type.errorWorkflow' as BaseTextKey,
-	},
-	errorWorkflowParent: {
-		icon: 'bug',
-		labelKey: 'workflows.dependencies.type.errorWorkflowParent' as BaseTextKey,
-	},
-	workflowCall: {
-		icon: 'log-in',
-		labelKey: 'workflows.dependencies.type.subWorkflows' as BaseTextKey,
-	},
-	workflowParent: {
-		icon: 'log-in',
-		labelKey: 'workflows.dependencies.type.parentWorkflows' as BaseTextKey,
-	},
-};
-
-const displayOrder: DependencyType[] = [
-	'credentialId',
-	'dataTableId',
-	'workflowCall',
-	'workflowParent',
-	'errorWorkflow',
-	'errorWorkflowParent',
-];
-
-const menuItems = computed(() => {
-	const deps = depsResult.value?.dependencies ?? [];
-	if (deps.length === 0) return [];
-
-	const query = searchTerm.value.toLowerCase().trim();
-	const filtered = query ? deps.filter((dep) => dep.name.toLowerCase().includes(query)) : deps;
-
-	const groups: Record<DependencyType, ResolvedDependency[]> = {
-		credentialId: [],
-		dataTableId: [],
-		errorWorkflow: [],
-		errorWorkflowParent: [],
-		workflowCall: [],
-		workflowParent: [],
-	};
-	for (const dep of filtered) {
-		const key = dep.type as DependencyType;
-		if (groups[key]) {
-			groups[key].push(dep);
-		}
-	}
-
-	const items: Array<DropdownMenuItemProps<string>> = [];
-	for (const typeKey of displayOrder) {
-		const deps = groups[typeKey];
-		if (deps.length === 0) continue;
-
-		const config = typeConfig[typeKey];
-		// Add a disabled "header" item as group label, with divider if not the first group
-		items.push({
-			id: `header-${typeKey}`,
-			label: i18n.baseText(config.labelKey),
-			icon: { type: 'icon', value: config.icon },
-			disabled: true,
-			divided: items.length > 0,
-		});
-
-		for (const dep of deps) {
-			items.push({
-				id: `${dep.type}:${dep.id}`,
-				label: dep.name,
-			});
-		}
-	}
-
-	return items;
-});
+const menuItems = computed(() =>
+	buildDependencyMenuItems(depsResult.value?.dependencies ?? [], searchTerm.value),
+);
 
 function onSelect(value: string) {
-	const [type, id] = value.split(':') as [string, string];
-	if (!type || !id) return;
-
-	const dep = (depsResult.value?.dependencies ?? []).find((d) => d.type === type && d.id === id);
+	const dep = resolveDependencyMenuId(depsResult.value?.dependencies ?? [], value);
 	if (!dep) return;
 
 	telemetry.track('User clicked dependency pill item', {
@@ -151,27 +62,7 @@ function onSelect(value: string) {
 		dependency_count: effectiveCount.value,
 	});
 
-	switch (dep.type) {
-		case 'credentialId':
-			uiStore.openExistingCredential(dep.id);
-			break;
-		case 'workflowCall':
-		case 'workflowParent':
-		case 'errorWorkflow':
-		case 'errorWorkflowParent':
-			const href = router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId: dep.id } }).href;
-			window.open(href, '_blank');
-			break;
-		case 'dataTableId':
-			if (dep.projectId) {
-				const href = router.resolve({
-					name: DATA_TABLE_DETAILS,
-					params: { projectId: dep.projectId, id: dep.id },
-				}).href;
-				window.open(href, '_blank');
-			}
-			break;
-	}
+	openDependency(dep);
 }
 
 function onSearch(term: string) {
@@ -201,69 +92,41 @@ async function onDropdownToggle(open: boolean) {
 </script>
 
 <template>
-	<N8nTooltip :content="tooltipText" placement="top" :show-after="300">
-		<N8nDropdownMenu
-			:items="menuItems"
-			placement="bottom-end"
-			:loading="isLoadingDetails"
-			:loading-item-count="1"
-			:searchable="showSearch"
-			extra-popper-class="dependency-pill-dropdown"
-			:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder')"
-			:max-height="280"
-			:data-test-id="dataTestId"
-			@select="onSelect"
-			@search="onSearch"
-			@update:model-value="onDropdownToggle"
-		>
-			<template #trigger>
-				<!-- We use a custom border to align color with the other related badges -->
-				<N8nBadge theme="tertiary" :show-border="false" :class="$style.badge">
-					<span :class="$style.badgeText">
-						<N8nIcon icon="link" size="small" />
-						{{ effectiveCount }}
-					</span>
+	<N8nDropdownMenu
+		:items="menuItems"
+		placement="bottom-end"
+		:loading="isLoadingDetails"
+		:loading-item-count="1"
+		:searchable="showSearch"
+		extra-popper-class="dependency-pill-dropdown"
+		:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder')"
+		:max-height="280"
+		:data-test-id="dataTestId"
+		@select="onSelect"
+		@search="onSearch"
+		@update:model-value="onDropdownToggle"
+	>
+		<template #trigger>
+			<N8nTooltip :content="tooltipText" placement="top" as-child>
+				<N8nBadge variant="outline" leading-icon="link" clickable>
+					{{ effectiveCount }}
 				</N8nBadge>
-			</template>
-			<template v-if="hasHiddenDeps" #footer>
-				<div :class="$style.hiddenNotice">
-					{{
-						i18n.baseText('workflows.dependencies.hiddenNotice', {
-							adjustToNumber: depsResult!.inaccessibleCount,
-							interpolate: { count: String(depsResult!.inaccessibleCount) },
-						})
-					}}
-				</div>
-			</template>
-		</N8nDropdownMenu>
-	</N8nTooltip>
+			</N8nTooltip>
+		</template>
+		<template v-if="hasHiddenDeps" #footer>
+			<div :class="$style.hiddenNotice">
+				{{
+					i18n.baseText('workflows.dependencies.hiddenNotice', {
+						adjustToNumber: depsResult!.inaccessibleCount,
+						interpolate: { count: String(depsResult!.inaccessibleCount) },
+					})
+				}}
+			</div>
+		</template>
+	</N8nDropdownMenu>
 </template>
 
 <style lang="scss" module>
-.badge {
-	cursor: pointer;
-	border: var(--border);
-	border-radius: var(--radius);
-
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	color: var(--color--text);
-
-	&:hover {
-		background-color: var(--background--hover);
-	}
-
-	:global([aria-expanded='true']) & {
-		background-color: var(--background--active);
-	}
-}
-
-.badgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	line-height: calc(var(--font-size--sm) + 1px);
-}
-
 .hiddenNotice {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-top: var(--border);

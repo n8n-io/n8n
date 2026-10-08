@@ -8,20 +8,21 @@ import { versionDescription } from '../../../v2/actions/versionDescription';
 import {
 	MAX_SIMPLE_UPLOAD_BYTES,
 	SHAREPOINT_ILLEGAL_FILE_NAME_CHARS,
-} from '../../../v2/helpers/utils';
+} from '../../../helpers/utils';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
-import * as transport from '../../../v2/transport';
-import type * as _importType0 from '../../../v2/transport';
+import * as transport from '../../../transport';
+import type * as _importType0 from '../../../transport';
 
-vi.mock('../../../v2/transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
 	};
 });
 
-const SITE_ID = 'contoso.sharepoint.com,g1,g2';
+const SITE_ID =
+	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
 const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const FOLDER_ID = '01SPEVVYBKV2ZKHGJASRA2HC7MOGBMUMAA';
 const FILE_BYTES = Buffer.from('col1,col2\n1,2\n');

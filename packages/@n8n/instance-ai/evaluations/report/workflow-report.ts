@@ -18,6 +18,7 @@ import type {
 	BuildExpectationResult,
 	ConversationMetrics,
 	ExecutionScenarioResult,
+	SetupWizardSkippedNode,
 	ToolInteraction,
 	TranscriptStep,
 	TranscriptTurn,
@@ -294,8 +295,12 @@ function firstPromptText(result: WorkflowTestCaseResult): string {
 
 function promptReview(result: WorkflowTestCaseResult, sr: ExecutionScenarioResult): StageReview {
 	const evidence = `${sr.reasoning} ${sr.rootCause ?? ''}`.toLowerCase();
+	// Gated on the failure being the builder's: a mock or infra failure says
+	// nothing about the prompt. Used to read `failureCategory ===
+	// 'legitimate_failure'` — a lang-tracer bucket the harness never emits, so
+	// this stage could never fail (TRUST-375).
 	const promptLooksUnderspecified =
-		sr.failureCategory === 'legitimate_failure' &&
+		sr.attribution === 'builder_issue' &&
 		['ambiguous', 'unclear', 'not specified', 'not define', 'does not specify'].some((needle) =>
 			evidence.includes(needle),
 		);
@@ -461,8 +466,11 @@ function verifierReview(sr: ExecutionScenarioResult): StageReview {
 	};
 }
 
+/** Keyed on the attribution buckets, not the raw verifier category: the old
+ *  switch mixed our categories with lang-tracer's bucket names, so two of its
+ *  arms were unreachable (TRUST-375). */
 function promptImprovementSuggestion(sr: ExecutionScenarioResult): string {
-	switch (sr.failureCategory) {
+	switch (sr.attribution) {
 		case 'builder_issue':
 			return 'For workflows with multiple required effects, branches, or error paths, state each required action explicitly and add observable acceptance conditions for every branch. This reduces silent omission during planning or build.';
 		case 'mock_issue':
@@ -471,8 +479,6 @@ function promptImprovementSuggestion(sr: ExecutionScenarioResult): string {
 			return 'Make trigger preconditions and scenario setup requirements explicit in the test prompt or fixture description so empty-input framework failures are easier to separate from workflow defects.';
 		case 'verification_gap':
 			return 'Add concrete, inspectable success evidence to the prompt, such as the exact side effect, branch behavior, or output field that should be observed, so the verifier has less room to infer.';
-		case 'legitimate_failure':
-			return 'If this behavior is required, move it from an implied expectation into an explicit prompt requirement with a clear fallback path and observable success criterion.';
 		default:
 			return 'Turn the failed behavior into a more explicit, testable requirement in future prompts: name the required step, the expected branch, and the observable evidence that proves it happened.';
 	}
@@ -1012,6 +1018,7 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			}
 			const lines = interaction.questions
 				.map((q) => {
+					const type = q.type ? ` <code>${escapeHtml(q.type)}</code>` : '';
 					const opts =
 						q.options && q.options.length > 0
 							? ` <em>(${q.options.map((o) => escapeHtml(o)).join(' / ')})</em>`
@@ -1020,7 +1027,7 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 					const answerHtml = answer
 						? `<div class="transcript-answer">👤 ${escapeHtml(answer)}</div>`
 						: '';
-					return `<li>${escapeHtml(q.question)}${opts}${answerHtml}</li>`;
+					return `<li>${escapeHtml(q.question)}${type}${opts}${answerHtml}</li>`;
 				})
 				.join('');
 			const summary =
@@ -1030,7 +1037,8 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			return `<details class="transcript-aside" open><summary>${summary}</summary><ul class="transcript-questions">${lines}</ul></details>`;
 		}
 		case 'setup-wizard': {
-			const skipped = interaction.skippedNodes;
+			const skipped = interaction.nodesStillNeedingSetup;
+			const declined = interaction.skippedByUser ?? [];
 			const needCreds = skipped.filter((s) => Boolean(s.credentialType)).length;
 			const needParams = skipped.length - needCreds;
 			const breakdown: string[] = [];
@@ -1042,8 +1050,11 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			}
 			if (skipped.length > 0) {
 				headerParts.push(
-					`${String(skipped.length)} skipped${breakdown.length > 0 ? ` (${breakdown.join(', ')})` : ''}`,
+					`${String(skipped.length)} unconfigured${breakdown.length > 0 ? ` (${breakdown.join(', ')})` : ''}`,
 				);
+			}
+			if (declined.length > 0) {
+				headerParts.push(`${String(declined.length)} skipped by user`);
 			}
 			const header = headerParts.length > 0 ? headerParts.join(', ') : 'nothing to apply';
 
@@ -1059,17 +1070,20 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 					`<div class="transcript-section-label">configured (${String(interaction.completedNodes.length)})</div><ul class="transcript-plan">${items}</ul>`,
 				);
 			}
-			if (skipped.length > 0) {
-				const items = skipped
+			const renderNodeList = (nodes: SetupWizardSkippedNode[], label: string) => {
+				const items = nodes
 					.map(
 						(s) =>
 							`<li>${escapeHtml(s.nodeName)}${s.credentialType ? ` — needs <code>${escapeHtml(s.credentialType)}</code> credential` : ' — needs parameters'}</li>`,
 					)
 					.join('');
 				sections.push(
-					`<div class="transcript-section-label">skipped (${String(skipped.length)})</div><ul class="transcript-plan">${items}</ul>`,
+					`<div class="transcript-section-label">${label} (${String(nodes.length)})</div><ul class="transcript-plan">${items}</ul>`,
 				);
-			}
+			};
+			if (skipped.length > 0) renderNodeList(skipped, 'unconfigured');
+			// Separate section: re-asking for one of these is the failure a judge looks for.
+			if (declined.length > 0) renderNodeList(declined, 'skipped by user');
 			return `<details class="transcript-aside" open><summary>🛠 setup wizard — ${escapeHtml(header)}</summary>${sections.join('')}</details>`;
 		}
 		case 'setup-card': {
