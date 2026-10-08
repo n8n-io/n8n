@@ -4,15 +4,14 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_N8N_CHAT_SEARCH_MAX_LENGTH,
 	AGENTS_MODULE_NAME,
 } from '@/features/agents/constants';
 import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
+import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
 import type { AgentResource } from '@/features/agents/types';
 import type {
@@ -34,7 +33,6 @@ export function useAgentNavigationCommands(options: {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const projectsStore = useProjectsStore();
-	const sourceControlStore = useSourceControlStore();
 	const { createAgent } = useCreateAgent();
 
 	const router = useRouter();
@@ -42,6 +40,7 @@ export function useAgentNavigationCommands(options: {
 	const isAgentsModuleActive = () => settingsStore.isModuleActive(AGENTS_MODULE_NAME) === true;
 
 	const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+	const { canCreate: canCreateInHomeProject } = useAgentPermissions(() => homeProject.value?.id);
 
 	const getProjectName = (agent: AgentResource) => {
 		if (agent.project?.type === 'personal') {
@@ -90,13 +89,7 @@ export function useAgentNavigationCommands(options: {
 
 	const agentNavigationCommands = computed<CommandBarItem[]>(() => {
 		const projectId = homeProject.value?.id;
-		const canCreate =
-			isAgentsModuleActive() &&
-			!!projectId &&
-			!sourceControlStore.preferences.branchReadOnly &&
-			getResourcePermissions(homeProject.value?.scopes).agent?.create === true;
-
-		if (!canCreate) return [];
+		if (!isAgentsModuleActive() || !projectId || !canCreateInHomeProject.value) return [];
 
 		return [
 			{

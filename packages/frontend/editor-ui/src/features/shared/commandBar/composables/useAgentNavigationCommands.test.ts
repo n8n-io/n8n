@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAgentNavigationCommands } from './useAgentNavigationCommands';
 import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
@@ -11,6 +12,8 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { AGENT_BUILDER_VIEW, AGENTS_MODULE_NAME } from '@/features/agents/constants';
 import type { AgentResource } from '@/features/agents/types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
+import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { mockedStore } from '@/__tests__/utils';
 
 const routerPushMock = vi.fn();
 const routerResolveMock = vi.fn(() => ({ href: '/resolved-href' }));
@@ -40,6 +43,8 @@ vi.mock('@/features/agents/composables/useAgentApi', () => ({
 vi.mock('@/features/agents/composables/useCreateAgent', () => ({
 	useCreateAgent: () => ({ createAgent: createAgentMock }),
 }));
+
+const toListItem = (project: Project): ProjectListItem => ({ ...project, role: 'project:editor' });
 
 const createAgent = (overrides: Partial<AgentResource> = {}): AgentResource =>
 	({
@@ -75,6 +80,7 @@ describe('useAgentNavigationCommands', () => {
 			id: 'project-1',
 			scopes: ['agent:create'],
 		});
+		projectsStore.myProjects = [toListItem(projectsStore.currentProject)];
 		sourceControlStore.preferences.branchReadOnly = false;
 	});
 
@@ -222,9 +228,16 @@ describe('useAgentNavigationCommands', () => {
 		});
 
 		it('hides the create command when the project does not allow agent creation', () => {
-			projectsStore.currentProject = createTestProject({ id: 'project-1', scopes: [] });
+			projectsStore.myProjects = [toListItem(createTestProject({ id: 'project-1', scopes: [] }))];
 
 			expect(findCreateCommand()).toBeUndefined();
+		});
+
+		it('shows the create command when the user can create agents through a global scope', () => {
+			projectsStore.myProjects = [toListItem(createTestProject({ id: 'project-1', scopes: [] }))];
+			mockedStore(useUsersStore).currentUser = { globalScopes: ['agent:create'] } as never;
+
+			expect(findCreateCommand()).toBeDefined();
 		});
 
 		it('uses the personal project when there is no current project', () => {
@@ -234,6 +247,7 @@ describe('useAgentNavigationCommands', () => {
 				type: 'personal',
 				scopes: ['agent:create'],
 			});
+			projectsStore.myProjects = [toListItem(projectsStore.personalProject)];
 
 			findCreateCommand()?.handler?.();
 
