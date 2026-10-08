@@ -184,9 +184,7 @@ describe('NodeErrorView.vue', () => {
 	});
 
 	it('tags the node version as deprecated when the node type is deprecated', () => {
-		// @ts-expect-error - Mock node type store method
-		mockNodeTypeStore.getNodeType = vi.fn(() => ({ deprecated: true }));
-		mockNodeTypeStore.getNodeVersions = vi.fn(() => [2]);
+		mockNodeTypeStore.isNodeDeprecated = vi.fn(() => true);
 
 		const { getByText } = renderComponent({
 			props: { error, showDetails: true },

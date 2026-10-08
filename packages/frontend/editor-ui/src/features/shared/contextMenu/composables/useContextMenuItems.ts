@@ -157,8 +157,7 @@ export function useContextMenuItems(
 		if (isRestricted(node)) return false;
 
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		if (!nodeType) return false;
-		if (nodeType.deprecated) return false;
+		if (!nodeType || nodeTypesStore.isNodeDeprecated(node)) return false;
 		if (NOT_DUPLICATABLE_NODE_TYPES.includes(nodeType.name)) return false;
 
 		return canAddNodeOfType(nodeType);

@@ -3684,7 +3684,7 @@ export function useCanvasOperations() {
 	async function copyNodes(ids: string[]): Promise<boolean> {
 		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
 		const hasRestrictedNode = nodes.some((node) => isNodeTypeRestricted(node.type));
-		if (hasRestrictedNode || nodes.some(nodeTypesStore.isNodeDeprecated)) return false;
+		if (hasRestrictedNode) return false;
 
 		const workflowData = deepCopy(getNodesToSave(nodes));
 		if (!emptyCanvasGroupsEnabled.value) {
@@ -3707,6 +3707,8 @@ export function useCanvasOperations() {
 	}
 
 	async function cutNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (nodes.some(nodeTypesStore.isNodeDeprecated)) return;
 		if (!(await copyNodes(ids))) return;
 
 		deleteNodes(ids, { deleteWholeGroupIds });

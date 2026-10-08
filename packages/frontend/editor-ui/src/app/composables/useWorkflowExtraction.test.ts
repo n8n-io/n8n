@@ -28,6 +28,7 @@ const {
 		homeProject: { id: 'home-project' },
 		parentFolder: null as { id: string } | null,
 		getNodeById: vi.fn(),
+		getNodesByIds: vi.fn().mockReturnValue([]),
 		getNodeByName: vi.fn(),
 		getParentNodes: vi.fn().mockReturnValue([]),
 		getChildNodes: vi.fn().mockReturnValue([]),
@@ -150,6 +151,9 @@ function setWorkflowNodes(nodes: INodeUi[]) {
 	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
 
 	mockWorkflowDocumentStore.getNodeById.mockImplementation((id: string) => nodesById.get(id));
+	mockWorkflowDocumentStore.getNodesByIds.mockImplementation((ids: string[]) =>
+		ids.flatMap((id) => nodesById.get(id) ?? []),
+	);
 	mockWorkflowDocumentStore.getNodeByName.mockImplementation(
 		(name: string) => nodesByName.get(name) ?? null,
 	);

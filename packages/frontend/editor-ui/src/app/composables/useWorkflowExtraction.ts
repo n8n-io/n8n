@@ -513,9 +513,9 @@ export function useWorkflowExtraction() {
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {
 		const expandedNodeIds = expandSelectionWithSubNodes(nodeIds);
-		const deprecatedNodes = workflowDocumentStore.value.allNodes.filter(
-			(node) => expandedNodeIds.includes(node.id) && nodeTypesStore.isNodeDeprecated(node),
-		);
+		const deprecatedNodes = workflowDocumentStore.value
+			.getNodesByIds(expandedNodeIds)
+			.filter(nodeTypesStore.isNodeDeprecated);
 		if (deprecatedNodes.length > 0) {
 			showError(
 				i18n.baseText('workflowExtraction.error.deprecatedSelected', {

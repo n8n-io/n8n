@@ -114,7 +114,7 @@ describe('PolicyViolationList', () => {
 		});
 
 		expect(groupTexts(getAllByTestId('policy-violation-group'))).toEqual([
-			['Function node is deprecated'],
+			['Function node is deprecated. Replace it or remove it from the workflow.'],
 		]);
 	});
 

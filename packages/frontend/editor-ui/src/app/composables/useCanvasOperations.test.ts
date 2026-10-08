@@ -1903,19 +1903,17 @@ describe('useCanvasOperations', () => {
 			expect(addNodeSpy).not.toHaveBeenCalled();
 		});
 
-		it('should not copy or cut a deprecated node', async () => {
+		it('should not cut a deprecated node', async () => {
 			const node = setupDeprecatedNode();
 			const startRecordingUndoSpy = vi.spyOn(useHistoryStore(), 'startRecordingUndo');
 
-			const { copyNodes, cutNodes } = useCanvasOperations();
+			await useCanvasOperations().cutNodes([node.id]);
 
-			expect(await copyNodes([node.id])).toBe(false);
-			await cutNodes([node.id]);
 			expect(useClipboard().copy).not.toHaveBeenCalled();
 			expect(startRecordingUndoSpy).not.toHaveBeenCalled();
 		});
 
-		it('should add a deprecated node on paste', async () => {
+		it('should add a deprecated node unchanged', async () => {
 			const toast = useToast();
 			const nodeTypesStore = useNodeTypesStore();
 
