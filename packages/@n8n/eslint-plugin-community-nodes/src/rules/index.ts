@@ -20,6 +20,7 @@ import { NoEmojiInOptionsRule } from './no-emoji-in-options.js';
 import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-scripts.js';
 import { NoHardcodedSecretsRule } from './no-hardcoded-secrets.js';
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
+import { NoMonorepoRule } from './no-monorepo.js';
 import { NoOverridesFieldRule } from './no-overrides-field.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
@@ -63,6 +64,7 @@ export const rules = {
 	'no-forbidden-lifecycle-scripts': NoForbiddenLifecycleScriptsRule,
 	'no-hardcoded-secrets': NoHardcodedSecretsRule,
 	'no-http-request-with-manual-auth': NoHttpRequestWithManualAuthRule,
+	'no-monorepo': NoMonorepoRule,
 	'no-overrides-field': NoOverridesFieldRule,
 	'no-runtime-dependencies': NoRuntimeDependenciesRule,
 	'no-silent-error-swallowing': NoSilentErrorSwallowingRule,
