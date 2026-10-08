@@ -6,7 +6,7 @@ import {
 	UpdateMigrationFindingStatusRequestDto,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
-import { WorkflowSharingService } from '@n8n/backend-services';
+import { EventService, WorkflowSharingService } from '@n8n/backend-services';
 import { AuthenticatedRequest, type User } from '@n8n/db';
 import { Body, Get, RestController, GlobalScope, Query, Patch, Post, Param } from '@n8n/decorators';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -35,6 +35,7 @@ export class BreakingChangesController {
 		private readonly ruleRegistry: RuleRegistry,
 		private readonly triageService: MigrationFindingTriageService,
 		private readonly workflowSharingService: WorkflowSharingService,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -64,7 +65,14 @@ export class BreakingChangesController {
 		const version = query.version ?? DEFAULT_TARGET_VERSION;
 		const scope = await this.scopeFor(req.user);
 		await this.syncService.syncIfStale(version);
-		return await this.queryService.getLightReport(version, scope);
+		const report = await this.queryService.getLightReport(version, scope);
+		this.eventService.emit('migration-report-viewed', {
+			user: req.user,
+			targetVersion: version,
+			refreshed: false,
+			report,
+		});
+		return report;
 	}
 
 	/** Re-scans every workflow, updates the finding table, and returns the fresh overview. */
@@ -82,7 +90,14 @@ export class BreakingChangesController {
 			throw new ForbiddenError('Only a user who can edit every workflow can refresh the report');
 		}
 		await this.syncService.sync(version);
-		return await this.queryService.getLightReport(version, scope);
+		const report = await this.queryService.getLightReport(version, scope);
+		this.eventService.emit('migration-report-viewed', {
+			user: req.user,
+			targetVersion: version,
+			refreshed: true,
+			report,
+		});
+		return report;
 	}
 
 	/**

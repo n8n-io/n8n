@@ -85,3 +85,10 @@ export const ASSISTANT_THREAD_PARAM = 'assistantThread';
  * query cannot force the builder to adopt an arbitrary id.
  */
 export const PENDING_AGENT_ID_STATE = 'instanceAiPendingAgentId';
+
+/**
+ * History-state key for the empty-state starter (typed prompt or template id)
+ * that the builder sends as the assistant's first message. Kept beside the
+ * pending agent id, and out of the URL, for the same reason.
+ */
+export const PENDING_AGENT_STARTER_STATE = 'instanceAiPendingAgentStarter';

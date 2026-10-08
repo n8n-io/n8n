@@ -369,10 +369,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findByIdsAndProjectId(
 		ids: string[],
 		projectId: string,
-	): Promise<Array<Pick<Agent, 'id' | 'activeVersionId'>>> {
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'activeVersionId'>>> {
 		if (ids.length === 0) return [];
 		return await this.find({
-			select: ['id', 'activeVersionId'],
+			select: ['id', 'name', 'activeVersionId'],
 			where: { id: In(ids), projectId },
 		});
 	}

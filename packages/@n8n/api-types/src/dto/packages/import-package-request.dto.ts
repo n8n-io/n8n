@@ -1,6 +1,15 @@
 import { z } from 'zod';
 
+import {
+	importPackageRequestFieldDocs,
+	importPackageSelectionRequestFieldDocs,
+} from './import-package-request.openapi';
+import { publicApiUploadedFileSchema } from '../../schemas/public-api-uploaded-file.schema';
 import { Z } from '../../zod-class';
+
+const packageFileSchema = publicApiUploadedFileSchema.openapi(
+	importPackageRequestFieldDocs.package,
+);
 
 /** Multipart text field names validated by {@link ImportPackageRequestDto}. */
 export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
@@ -90,37 +99,73 @@ const bindingsSchema = z
 		return result.data;
 	});
 
-export class ImportPackageRequestDto extends Z.class({
-	projectId: optionalFormId,
-	folderId: optionalFormId,
-	credentialMatchingMode: optionalEnum(['id-only', 'name-and-type', 'type-only'], 'id-only'),
-	credentialMissingMode: optionalEnum(['must-preexist', 'create-stub'], 'create-stub'),
-	bindings: bindingsSchema,
-	workflowConflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version'),
-	workflowPublishingPolicy: optionalEnum(
-		['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],
-		'preserve-published-state',
-	),
-	workflowIdPolicy: optionalEnum(['new', 'source'], 'source'),
-	missingNodeTypeMode: optionalEnum(['fail', 'import-anyway'], 'fail'),
-	projectConflictPolicy: optionalEnum(['merge', 'fail', 'overwrite'], 'merge'),
-	folderConflictPolicy: optionalEnumNoDefault(['merge', 'fail', 'overwrite']),
-	overwriteDeletionPolicy: optionalEnum(['archive', 'hard-delete'], 'archive'),
-	dataTableMatchingMode: optionalEnum(['by-id'], 'by-id'),
-	dataTableMissingMode: optionalEnum(['create', 'must-preexist', 'do-nothing'], 'create'),
-	dataTableSchemaConflictPolicy: optionalEnum(
-		['keep-existing', 'fail', 'overwrite', 'overwrite-non-destructive'],
-		'keep-existing',
-	),
-	variableMissingMode: optionalEnum(
-		['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'],
-		'create-with-value',
-	),
-	variableConflictPolicy: optionalEnum(['keep-existing', 'overwrite', 'fail'], 'keep-existing'),
-	variableParentPolicy: optionalEnumNoDefault(['project', 'global']),
-	tagMissingMode: optionalEnum(['create', 'do-nothing'], 'create'),
-	tagConflictPolicy: optionalEnum(['skip', 'fail', 'rename'], 'skip'),
-}) {}
+export class ImportPackageRequestDto extends Z.class(
+	{
+		package: packageFileSchema,
+		projectId: optionalFormId.openapi(importPackageRequestFieldDocs.projectId),
+		folderId: optionalFormId.openapi(importPackageRequestFieldDocs.folderId),
+		credentialMatchingMode: optionalEnum(
+			['id-only', 'name-and-type', 'type-only'],
+			'id-only',
+		).openapi(importPackageRequestFieldDocs.credentialMatchingMode),
+		credentialMissingMode: optionalEnum(['must-preexist', 'create-stub'], 'create-stub').openapi(
+			importPackageRequestFieldDocs.credentialMissingMode,
+		),
+		bindings: bindingsSchema.openapi(importPackageRequestFieldDocs.bindings),
+		// Required (unlike every other mode/policy field here), matching the legacy handler, which
+		// required it even though this schema alone would otherwise default it to `new-version`.
+		workflowConflictPolicy: z
+			.enum(['new-version', 'fail', 'skip'])
+			.openapi(importPackageRequestFieldDocs.workflowConflictPolicy),
+		workflowPublishingPolicy: optionalEnum(
+			['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],
+			'preserve-published-state',
+		).openapi(importPackageRequestFieldDocs.workflowPublishingPolicy),
+		workflowIdPolicy: optionalEnum(['new', 'source'], 'source').openapi(
+			importPackageRequestFieldDocs.workflowIdPolicy,
+		),
+		missingNodeTypeMode: optionalEnum(['fail', 'import-anyway'], 'fail').openapi(
+			importPackageRequestFieldDocs.missingNodeTypeMode,
+		),
+		projectConflictPolicy: optionalEnum(['merge', 'fail', 'overwrite'], 'merge').openapi(
+			importPackageRequestFieldDocs.projectConflictPolicy,
+		),
+		folderConflictPolicy: optionalEnumNoDefault(['merge', 'fail', 'overwrite']).openapi(
+			importPackageRequestFieldDocs.folderConflictPolicy,
+		),
+		overwriteDeletionPolicy: optionalEnum(['archive', 'hard-delete'], 'archive').openapi(
+			importPackageRequestFieldDocs.overwriteDeletionPolicy,
+		),
+		dataTableMatchingMode: optionalEnum(['by-id'], 'by-id').openapi(
+			importPackageRequestFieldDocs.dataTableMatchingMode,
+		),
+		dataTableMissingMode: optionalEnum(['create', 'must-preexist', 'do-nothing'], 'create').openapi(
+			importPackageRequestFieldDocs.dataTableMissingMode,
+		),
+		dataTableSchemaConflictPolicy: optionalEnum(
+			['keep-existing', 'fail', 'overwrite', 'overwrite-non-destructive'],
+			'keep-existing',
+		).openapi(importPackageRequestFieldDocs.dataTableSchemaConflictPolicy),
+		variableMissingMode: optionalEnum(
+			['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'],
+			'create-with-value',
+		).openapi(importPackageRequestFieldDocs.variableMissingMode),
+		variableConflictPolicy: optionalEnum(
+			['keep-existing', 'overwrite', 'fail'],
+			'keep-existing',
+		).openapi(importPackageRequestFieldDocs.variableConflictPolicy),
+		variableParentPolicy: optionalEnumNoDefault(['project', 'global']).openapi(
+			importPackageRequestFieldDocs.variableParentPolicy,
+		),
+		tagMissingMode: optionalEnum(['create', 'do-nothing'], 'create').openapi(
+			importPackageRequestFieldDocs.tagMissingMode,
+		),
+		tagConflictPolicy: optionalEnum(['skip', 'fail', 'rename'], 'skip').openapi(
+			importPackageRequestFieldDocs.tagConflictPolicy,
+		),
+	},
+	{ strict: true },
+) {}
 
 /** Multipart text field names validated by {@link ImportPackageSelectionRequestDto}. */
 export const IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS = [
@@ -157,21 +202,15 @@ function parseIdArray(value: string, ctx: z.RefinementCtx, errorMessage: string)
 	return result.data;
 }
 
-/**
- * Multipart fields carry arrays as JSON text.
- * Reject blank or omitted fields, but accept `[]`.
- */
+/** Multipart fields carry arrays as JSON text. Reject a blank value, but accept `[]`. */
 const requiredJsonStringIdArray = (errorMessage: string) =>
-	z
-		.string()
-		.optional()
-		.transform((value, ctx): string[] => {
-			if (value === undefined || value.trim().length === 0) {
-				ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
-				return z.NEVER;
-			}
-			return parseIdArray(value, ctx, errorMessage);
-		});
+	z.string().transform((value, ctx): string[] => {
+		if (value.trim().length === 0) {
+			ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
+			return z.NEVER;
+		}
+		return parseIdArray(value, ctx, errorMessage);
+	});
 
 /** Treat blank or omitted fields as `undefined`. */
 const optionalJsonStringIdArray = (errorMessage: string) =>
@@ -183,11 +222,29 @@ const optionalJsonStringIdArray = (errorMessage: string) =>
 			return parseIdArray(value, ctx, errorMessage);
 		});
 
-export class ImportPackageSelectionRequestDto extends Z.class({
-	selectedProjectId: z.string().trim().min(1),
-	selectedWorkflowIds: requiredJsonStringIdArray(SELECTED_WORKFLOW_IDS_ERROR_MESSAGE),
-	deletedWorkflowIds: optionalJsonStringIdArray(DELETED_WORKFLOW_IDS_ERROR_MESSAGE),
-	workflowConflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version'),
-	workflowIdPolicy: optionalEnum(['new', 'source'], 'source'),
-	overwriteDeletionPolicy: optionalEnum(['archive', 'hard-delete'], 'archive'),
-}) {}
+export class ImportPackageSelectionRequestDto extends Z.class(
+	{
+		package: packageFileSchema,
+		selectedProjectId: z
+			.string()
+			.trim()
+			.min(1)
+			.openapi(importPackageSelectionRequestFieldDocs.selectedProjectId),
+		selectedWorkflowIds: requiredJsonStringIdArray(SELECTED_WORKFLOW_IDS_ERROR_MESSAGE).openapi(
+			importPackageSelectionRequestFieldDocs.selectedWorkflowIds,
+		),
+		deletedWorkflowIds: optionalJsonStringIdArray(DELETED_WORKFLOW_IDS_ERROR_MESSAGE).openapi(
+			importPackageSelectionRequestFieldDocs.deletedWorkflowIds,
+		),
+		workflowConflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version').openapi(
+			importPackageSelectionRequestFieldDocs.workflowConflictPolicy,
+		),
+		workflowIdPolicy: optionalEnum(['new', 'source'], 'source').openapi(
+			importPackageSelectionRequestFieldDocs.workflowIdPolicy,
+		),
+		overwriteDeletionPolicy: optionalEnum(['archive', 'hard-delete'], 'archive').openapi(
+			importPackageSelectionRequestFieldDocs.overwriteDeletionPolicy,
+		),
+	},
+	{ strict: true },
+) {}

@@ -1,0 +1,694 @@
+oneOf:
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-conflict
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      name:
+        type: string
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - name
+    description: A workflow whose source id already matches one in the target project, under the `fail` conflict policy.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-lineage-conflict
+      sourceWorkflowId:
+        type: string
+      projectId:
+        type: string
+      existingWorkflows:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            isArchived:
+              type: boolean
+          required:
+            - id
+            - name
+            - isArchived
+    required:
+      - type
+      - sourceWorkflowId
+      - projectId
+      - existingWorkflows
+    description: A package workflow whose source id matches multiple workflows in the target project. The import cannot choose a workflow safely.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-id-conflict
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      existingProjectId:
+        type: string
+        nullable: true
+        description: Project that owns the existing workflow, or null when no owning project could be determined.
+      isArchived:
+        type: boolean
+        description: Whether the existing workflow is archived.
+      name:
+        type: string
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - existingProjectId
+      - isArchived
+      - name
+    description: A `source`-policy workflow whose id is already taken on the instance. Workflow ids are globally unique, so the id cannot be created in the target project. The existing workflow can be in another project, can lack an owner share, or can use a different source id. It can also be archived.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-folder-conflict
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      existingParentFolderId:
+        type: string
+        nullable: true
+        description: Folder that currently contains the matched workflow, or null when it lives at the project root.
+      targetFolderId:
+        type: string
+        description: Folder the import was requested to land in.
+      name:
+        type: string
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - existingParentFolderId
+      - targetFolderId
+      - name
+    description: A workflow whose source id already matches one in the target project but lives outside the requested import folder. Folder-targeted imports cannot update workflows in place at a different location.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-archive-forbidden
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      name:
+        type: string
+      projectId:
+        type: string
+        description: Project that owns the matched workflow.
+      transition:
+        type: string
+        enum:
+          - archive
+          - unarchive
+        description: The step the import needs to bring the workflow to the package's state.
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - name
+      - projectId
+      - transition
+    description: A matched workflow whose archived state differs from the package, so the import must archive or unarchive it, but the caller lacks `workflow:delete` on it. Reported at plan time so nothing is written.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - credential-unresolved
+      kind:
+        type: string
+        enum:
+          - not_found
+          - unknown_type
+          - source_not_found
+          - type_mismatch
+      sourceId:
+        type: string
+      targetId:
+        type: string
+        description: 'Target credential id: for `not_found`, the explicit binding that could not be resolved; for `type_mismatch`, the credential id that was resolved — via an explicit binding or automatic matching — but has the wrong type.'
+      expectedType:
+        type: string
+        description: "For `type_mismatch`: the credential type the package's workflow node requires."
+      actualType:
+        type: string
+        description: 'For `type_mismatch`: the actual type of the resolved target credential.'
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+    required:
+      - type
+      - kind
+      - sourceId
+      - usedByWorkflows
+    description: A credential reference that could not be resolved in the target project.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - project-conflict
+      kind:
+        type: string
+        enum:
+          - fail-policy
+      sourceProjectId:
+        type: string
+      name:
+        type: string
+        description: The project's name as it appears in the package.
+    required:
+      - type
+      - kind
+      - sourceProjectId
+      - name
+    description: A project defined by the package that already exists on this instance, under `projectConflictPolicy=fail`.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - folder-conflict
+      kind:
+        type: string
+        enum:
+          - parent-mismatch
+          - id-in-other-project
+          - fail-policy
+      sourceFolderId:
+        type: string
+      name:
+        type: string
+      existingParentFolderId:
+        type: string
+        nullable: true
+        description: "For `parent-mismatch`: the matched folder's current parent in the target."
+      expectedParentFolderId:
+        type: string
+        nullable: true
+        description: 'For `parent-mismatch`: the parent the package would place the folder under.'
+      existingProjectId:
+        type: string
+        nullable: true
+        description: 'For `id-in-other-project`: the project that already owns the id.'
+    required:
+      - type
+      - kind
+      - sourceFolderId
+      - name
+    description: 'A package folder that cannot be imported as-is. `kind` distinguishes the cause: `parent-mismatch` (a folder matched by id sits under a different parent than the package places it), `id-in-other-project` (the folder id already exists in a different project — ids are globally unique), or `fail-policy` (the folder already exists and `folderConflictPolicy` is `fail`).'
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-removal-forbidden
+      workflowId:
+        type: string
+      name:
+        type: string
+      projectId:
+        type: string
+        description: Project the workflow was being reconciled against.
+    required:
+      - type
+      - workflowId
+      - name
+      - projectId
+    description: "A workflow the import would remove but the caller lacks `workflow:delete` on: either `folderConflictPolicy=overwrite` would remove it because the package does not contain it, or it is named in the selection's `deletedWorkflowIds`. Reported instead of removing a subset, which would leave the project matching neither the package nor its previous state."
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-removal-conflict
+      sourceWorkflowId:
+        type: string
+      workflowId:
+        type: string
+        description: The destination id of the selected workflow.
+      projectId:
+        type: string
+    required:
+      - type
+      - sourceWorkflowId
+      - workflowId
+      - projectId
+    description: A selected workflow resolves to a destination id in `deletedWorkflowIds`. The import stops before any writes, including when the conflict policy is `skip`.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - folder-removal-forbidden
+      folderId:
+        type: string
+      name:
+        type: string
+      projectId:
+        type: string
+        description: Project the folder was being reconciled against.
+    required:
+      - type
+      - folderId
+      - name
+      - projectId
+    description: A folder that `folderConflictPolicy=overwrite` would delete — the package does not define it and reconciliation leaves it empty — but the caller lacks `folder:delete` on the target project. Reported instead of removing a subset, which would leave the project matching neither the package nor its previous state.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - data-table-unresolved
+      kind:
+        type: string
+        enum:
+          - missing
+          - id-conflict
+          - name-conflict
+          - schema-incompatible
+          - module-disabled
+          - permission-denied
+      sourceId:
+        type: string
+        description: Absent for import-wide failures (`module-disabled`, `permission-denied`).
+      name:
+        type: string
+      existingProjectId:
+        type: string
+        description: 'For `id-conflict`: the project owning the conflicting target table.'
+      missingColumns:
+        type: array
+        items:
+          type: string
+        description: 'For `schema-incompatible`: package columns absent from the target table.'
+      typeMismatches:
+        type: array
+        items:
+          type: object
+          properties:
+            column:
+              type: string
+            expectedType:
+              type: string
+            actualType:
+              type: string
+          required:
+            - column
+            - expectedType
+            - actualType
+        description: 'For `schema-incompatible`: package columns whose target type differs.'
+      extraColumns:
+        type: array
+        items:
+          type: string
+        description: 'For `schema-incompatible` under the `fail` policy: target columns not in the package schema.'
+      overwriteChanges:
+        type: array
+        items:
+          oneOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - add-column
+                column:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                destructive:
+                  type: boolean
+                  enum:
+                    - false
+              required:
+                - kind
+                - column
+                - type
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - remove-column
+                column:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                destructive:
+                  type: boolean
+                  enum:
+                    - true
+              required:
+                - kind
+                - column
+                - type
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - change-column-type
+                column:
+                  type: string
+                from:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                to:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                destructive:
+                  type: boolean
+                  enum:
+                    - true
+              required:
+                - kind
+                - column
+                - from
+                - to
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - reorder-columns
+                destructive:
+                  type: boolean
+                  enum:
+                    - false
+              required:
+                - kind
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - rename-table
+                from:
+                  type: string
+                to:
+                  type: string
+                destructive:
+                  type: boolean
+                  enum:
+                    - false
+              required:
+                - kind
+                - from
+                - to
+                - destructive
+          description: A single change `dataTableSchemaConflictPolicy=overwrite` would make (or made) to a matched target table's schema. `destructive` operations delete the data in a column.
+          type: object
+        description: 'For `schema-incompatible`: the changes `overwrite` would make to the target table.'
+      missingScope:
+        type: string
+        enum:
+          - dataTable:create
+          - dataTable:update
+        description: 'For `permission-denied`: the project scope the user lacks.'
+      conflictingTableId:
+        type: string
+        description: 'For `name-conflict`: the other table that holds or claims the name.'
+      currentName:
+        type: string
+        description: "For a rename `name-conflict`: the matched table's current name."
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+    required:
+      - type
+      - kind
+      - usedByWorkflows
+    description: A data table referenced by the package's workflows that could not be resolved against the target project — under `dataTableMissingMode=must-preexist` or `dataTableSchemaConflictPolicy`, or because the data table module is disabled on this instance, or the caller lacks the scope the resolution needs.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - tag-unresolved
+      kind:
+        type: string
+        enum:
+          - rename-drift
+          - name-collision
+          - invalid-name
+          - invalid-id
+          - permission-denied
+      sourceId:
+        type: string
+        description: Tag id as it appears in the package. Absent for `permission-denied`.
+      name:
+        type: string
+        description: The (trimmed) package tag name. Absent for `permission-denied`.
+      missingScope:
+        type: string
+        enum:
+          - tag:create
+          - tag:update
+        description: 'For `permission-denied`: the global scope the importing user lacks.'
+      existingTagId:
+        type: string
+        description: Id of the contested target tag — the different tag currently holding the wanted name, or the target tag a blocked reconcile would re-key. Absent when two package tags collide with each other rather than over a target tag.
+      existingName:
+        type: string
+        description: 'For `rename-drift`: the current name of the same-id target tag.'
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: Package workflow ids (non-skipped) that reference the source tag — not workflows attached to the contested target tag.
+    required:
+      - type
+      - kind
+      - usedByWorkflows
+    description: "A tag referenced by the package's workflows that could not be resolved on the target instance. `kind` distinguishes the cause: `rename-drift` (the same-id target tag carries a different name — under `tagConflictPolicy=fail`, or `rename` when the package name is held by another tag), `name-collision` (the id is free but the name belongs to a different tag under `tagMissingMode=create` with `tagConflictPolicy=fail`; also raised when two package tags collide with each other, or when the target tag a reconcile would re-key is claimed by another package tag), `invalid-name` / `invalid-id` (the package tag's name or id cannot be written on this instance), or `permission-denied` (the importing user lacks the global `tag:create` / `tag:update` scope the plan needs)."
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - variable-unresolved
+      name:
+        type: string
+        description: Requirement name with no match in the target project or global scope.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+    required:
+      - type
+      - name
+      - usedByWorkflows
+    description: A variable reference that could not be resolved in the target project or the global scope, under `variableMissingMode=must-preexist`.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - variable-conflict
+      name:
+        type: string
+        description: Name of the variable whose value differs.
+      projectId:
+        type: string
+        description: Project owning the resolved variable. Absent when it resolved at the global scope.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+    required:
+      - type
+      - name
+      - usedByWorkflows
+    description: A variable that resolved in the target project or the global scope, but whose value differs from the one the package bundles for it, under `variableConflictPolicy=fail`. Also reported under `overwrite`, once per scope, when the projects of a package resolve one row and disagree about the value it should hold. Values are never reported — only the name and the scope the variable was found in.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - variable-limit-exceeded
+      limit:
+        type: integer
+        description: The instance variable quota.
+      remaining:
+        type: integer
+        description: Variable rows still available under the quota. The import is blocked because `requested` exceeds this, not because it exceeds `limit`.
+      requested:
+        type: integer
+        description: Number of new variable rows the import would create (destination-deduplicated).
+      names:
+        type: array
+        items:
+          type: string
+        description: The unique variable names the import would create.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: Package workflow ids that reference any of the listed variables.
+    required:
+      - type
+      - limit
+      - remaining
+      - requested
+      - names
+      - usedByWorkflows
+    description: Creating the package's variables under `create-stub` or `create-with-value` would exceed the instance variable quota (`quota:maxVariables`). Reported once for the whole import; nothing is created.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - missing-node-type
+      nodeType:
+        type: string
+        description: Full node type name as used by the package's workflows.
+      typeVersion:
+        type: number
+        description: Node type version the package's workflows use.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: Package workflow ids that use this node type and version.
+    required:
+      - type
+      - nodeType
+      - typeVersion
+      - usedByWorkflows
+    description: A node type — or a version of a node type — used by a package workflow that this instance does not have, under `missingNodeTypeMode=fail`. One issue is reported per missing `(nodeType, typeVersion)` pair.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - policy-violation
+      sourceWorkflowId:
+        type: string
+        description: Workflow id as it appears in the package.
+      name:
+        type: string
+      violations:
+        type: array
+        items:
+          type: object
+          properties:
+            kind:
+              type: string
+            checkId:
+              type: string
+            message:
+              type: string
+            subject:
+              type: string
+            subjectType:
+              type: string
+            scope:
+              type: string
+            matchedRuleId:
+              type: string
+          required:
+            - kind
+            - checkId
+            - message
+    required:
+      - type
+      - sourceWorkflowId
+      - name
+      - violations
+    description: 'A workflow the content-import policy refused. Takes down the whole package rather than skipping the workflow: the import rewrites cross-workflow references to the ids each workflow would get, so dropping one leaves the workflows that call it pointing at a row nothing ever wrote.'
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - credential-policy-violation
+      sourceId:
+        type: string
+        description: Credential id as it appears in the package.
+      name:
+        type: string
+      credentialType:
+        type: string
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: Package workflow ids that use this credential.
+      violations:
+        type: array
+        items:
+          type: object
+          properties:
+            kind:
+              type: string
+            checkId:
+              type: string
+            message:
+              type: string
+            subject:
+              type: string
+            subjectType:
+              type: string
+            scope:
+              type: string
+            matchedRuleId:
+              type: string
+          required:
+            - kind
+            - checkId
+            - message
+    required:
+      - type
+      - sourceId
+      - credentialType
+      - usedByWorkflows
+      - violations
+    description: A credential the import would write that the credential-save policy refused, for example a stub of a credential type this instance does not allow. The import stops before any writes.
+type: object

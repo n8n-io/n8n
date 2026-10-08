@@ -128,7 +128,10 @@ const dataTableChangeSchema = z.discriminatedUnion('kind', [
 	}),
 ]);
 
-/** Conflicts need a package or target correction before creation can proceed. */
+/**
+ * Continue can confirm a `destructive-change` conflict.
+ * The other conflicts need a package or target correction before creation can proceed.
+ */
 export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	credentialConflictSchema.extend({ code: z.literal('missing-id') }),
 	credentialConflictSchema.extend({ code: z.literal('conflicting-types') }),
