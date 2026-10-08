@@ -4,7 +4,7 @@ import type {
 	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
-	SeededStep,
+	SeededSteps,
 	TriggerOutputs,
 	WorkflowDocument,
 } from './execution.types';
@@ -21,7 +21,7 @@ interface BaseExecutionRecord {
 	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
 	/** Recorded as completed at start, beside the trigger. */
-	seededSteps?: SeededStep[] | null;
+	seededSteps?: SeededSteps | null;
 	callerContext: CallerContext;
 	/** What kind of a response the caller expects. */
 	responseExpectation: ResponseExpectation;

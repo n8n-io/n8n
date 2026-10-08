@@ -13,7 +13,7 @@ import type { ExecutionStore } from './execution-store';
 import type {
 	CallerContext,
 	ExecutionMode,
-	SeededStep,
+	SeededSteps,
 	TriggerOutputs,
 	WorkflowDocument,
 } from './execution.types';
@@ -29,7 +29,7 @@ export interface StartExecutionRequest {
 	/** Trigger step's output slots, one entry per output. */
 	triggerOutputs?: TriggerOutputs | null;
 	/** Steps to record as completed at start, with the outputs the caller holds. */
-	seededSteps?: SeededStep[] | null;
+	seededSteps?: SeededSteps | null;
 	mode?: ExecutionMode;
 	/** Stored with the execution and handed to every step executor. */
 	callerContext: CallerContext;
@@ -58,7 +58,7 @@ export class StartExecutionService {
 		// Rejected before admittance: a graph that can never run shouldn't spend
 		// admittance capacity, and nothing is persisted for it.
 		this.validateGraph(request.graph);
-		validateSeededSteps(request.graph, request.seededSteps ?? []);
+		validateSeededSteps(request.graph, request.seededSteps ?? {});
 
 		const decision = await this.admittance.evaluate({ workflowId: request.workflowId });
 		if (!decision.accept) {
@@ -108,18 +108,15 @@ export class StartExecutionService {
  * - is not in a loop: a loop member runs once per iteration, and a row for
  *   iteration 0 does not stop the later iterations from running it.
  *   TODO(CAT-4875): seed every iteration instead.
- * - is seeded only once: the store keeps one row per node and iteration and
- *   would silently drop the second.
  */
-function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededStep[]): void {
+function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): void {
 	// The graph was validated first, so the trigger exists.
 	const trigger = findTriggerNode(graph);
 	const reachable = new Set(trigger ? getDescendantNodeIds(graph, trigger.id) : []);
 	const loopByMember = new Map(
 		deriveLoops(graph).flatMap((loop) => [...loop.memberIds].map((id) => [id, loop] as const)),
 	);
-	const seen = new Set<string>();
-	for (const { nodeId } of seededSteps) {
+	for (const nodeId of Object.keys(seededSteps)) {
 		if (nodeId === trigger?.id) {
 			throw new GraphValidationError(
 				'The trigger cannot be seeded; send its payload as triggerOutputs',
@@ -136,9 +133,5 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededStep[]): v
 				`Seeded step names node ${nodeId}, which is inside the loop of ${loop.batchNodeId}; a loop member runs once per pass and cannot be seeded`,
 			);
 		}
-		if (seen.has(nodeId)) {
-			throw new GraphValidationError(`Node ${nodeId} is seeded more than once`);
-		}
-		seen.add(nodeId);
 	}
 }

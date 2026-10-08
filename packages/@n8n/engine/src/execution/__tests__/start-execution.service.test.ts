@@ -232,7 +232,7 @@ describe('StartExecutionService', () => {
 		it('persists the seeded steps with the execution', async () => {
 			const store = makeStore();
 			const service = new StartExecutionService(admittance, store, makeQueue());
-			const seededSteps = [{ nodeId: 'a', outputs: [[{ json: { from: 'earlier' } }]] }];
+			const seededSteps = { a: [[{ json: { from: 'earlier' } }]] };
 
 			await service.start({ ...base, seededSteps });
 
@@ -248,9 +248,9 @@ describe('StartExecutionService', () => {
 			const queue = makeQueue();
 			const service = new StartExecutionService(admittance, store, queue);
 
-			await expect(
-				service.start({ ...base, seededSteps: [{ nodeId, outputs: [] }] }),
-			).rejects.toThrow(GraphValidationError);
+			await expect(service.start({ ...base, seededSteps: { [nodeId]: [] } })).rejects.toThrow(
+				GraphValidationError,
+			);
 			expect(store.createExecution).not.toHaveBeenCalled();
 			expect(queue.publish).not.toHaveBeenCalled();
 		});
@@ -278,24 +278,8 @@ describe('StartExecutionService', () => {
 			const service = new StartExecutionService(admittance, store, makeQueue());
 
 			await expect(
-				service.start({ ...base, graph: loopGraph, seededSteps: [{ nodeId, outputs: [] }] }),
+				service.start({ ...base, graph: loopGraph, seededSteps: { [nodeId]: [] } }),
 			).rejects.toThrow(/inside the loop of loop/);
-			expect(store.createExecution).not.toHaveBeenCalled();
-		});
-
-		it('rejects the same node seeded twice', async () => {
-			const store = makeStore();
-			const service = new StartExecutionService(admittance, store, makeQueue());
-
-			await expect(
-				service.start({
-					...base,
-					seededSteps: [
-						{ nodeId: 'a', outputs: [] },
-						{ nodeId: 'a', outputs: [] },
-					],
-				}),
-			).rejects.toThrow(GraphValidationError);
 			expect(store.createExecution).not.toHaveBeenCalled();
 		});
 	});

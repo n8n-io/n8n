@@ -11,7 +11,7 @@ import type {
 	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
-	SeededStep,
+	SeededSteps,
 	TriggerOutputs,
 	WorkflowDocument,
 } from '../../execution/execution.types';
@@ -45,7 +45,7 @@ export class WorkflowExecution {
 	triggerOutputs!: TriggerOutputs | null;
 
 	@Column('jsonb', { name: 'seeded_steps', nullable: true })
-	seededSteps!: SeededStep[] | null;
+	seededSteps!: SeededSteps | null;
 
 	/** Caller-supplied, opaque to the engine. See `CallerContext`. */
 	@Column('jsonb', { name: 'caller_context' })
