@@ -2028,7 +2028,9 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
 			expect.not.objectContaining({ allowBackgroundTasks: expect.anything() }),
 		);
-		expect(runtime.agent.stream.mock.calls[0][1]?.onInputBoundary).toBeUndefined();
+		// n8n Chat accepts steering, same as Preview, so the turn gets an
+		// `onInputBoundary` hook to consume mid-run steered input.
+		expect(runtime.agent.stream.mock.calls[0][1]?.onInputBoundary).toBeInstanceOf(Function);
 		// The resume_background_jobs tool only runs this turn when the marker is set,
 		// same as Preview.
 		expect(runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata).toMatchObject({
@@ -2048,6 +2050,8 @@ describe('AgentExecutionOrchestratorService', () => {
 				access: { accessScope: 'user', ownerId: user.id },
 				source: 'n8n_chat_production',
 				telemetry: expect.objectContaining({ runType: 'production', userId: user.id }),
+				previewChat: undefined,
+				acceptsSteering: true,
 			}),
 			expect.any(Date),
 		);
