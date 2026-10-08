@@ -3,8 +3,9 @@
 //
 // A route watcher asks the judge before each orchestrator tool call runs (see
 // judge.ts). The first `stop` verdict ends the run and decides the route. When
-// the turn ends first, the judge picks the route from the full trace. No tool
-// names appear here, so a new or renamed tool needs no grader change.
+// the turn ends first, the judge picks the route from the full trace. Only
+// the read-only actions below skip the check, so a new or renamed tool still
+// gets a check and needs no grader change.
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiEvent } from '@n8n/api-types';
@@ -16,6 +17,30 @@ import {
 	type DiscoveryStreamStatus,
 	type PendingToolCall,
 } from '../discovery/types';
+import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
+
+/**
+ * A check before a read almost never stops the run, and the next check sees
+ * the read, so the run skips it. A tool or action not listed here gets a check.
+ */
+const READ_ONLY_ACTIONS: Readonly<Record<string, ReadonlySet<unknown>>> = {
+	// `load_skill` has no action.
+	load_skill: new Set([undefined]),
+	[DOMAIN_TOOL_IDS.NODES]: new Set([
+		'list',
+		'search',
+		'describe',
+		'type-definition',
+		'suggested',
+		'explore-resources',
+	]),
+	[DOMAIN_TOOL_IDS.CREDENTIALS]: new Set(['list', 'get', 'search-types']),
+	[DOMAIN_TOOL_IDS.N8N_DOCS]: new Set(['lookup', 'search', 'read']),
+	[DOMAIN_TOOL_IDS.RESEARCH]: new Set(['web-search', 'fetch-url']),
+};
+
+const isReadOnly = ({ toolName, args }: PendingToolCall): boolean =>
+	READ_ONLY_ACTIONS[toolName]?.has(args.action) ?? false;
 
 export interface RouteResolution {
 	route: Route;
@@ -94,6 +119,7 @@ export function createRouteWatcher(
 		beforeToolCall: async (call, events) => {
 			const check = queue.then(async () => {
 				if (stopped) return true;
+				if (isReadOnly(call)) return false;
 				const verdict = await ask({ steps: traceSteps(events, call) });
 				// A stop without a route lets the run go on.
 				if (verdict?.decision !== 'stop' || verdict.route === 'none') return false;
