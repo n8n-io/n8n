@@ -1,6 +1,6 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
 import { NEW_ASSISTANT_SESSION_MODAL } from '@/app/constants';
-import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatPanelStore } from '../../chatPanel.store';
@@ -8,7 +8,17 @@ import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { ICredentialType } from 'n8n-workflow';
 
-import { N8nAssistantIcon, N8nAssistantText, N8nButton, N8nText } from '@n8n/design-system';
+import {
+	N8nAssistantIcon,
+	N8nAssistantText,
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nText,
+} from '@n8n/design-system';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const i18n = useI18n();
@@ -24,9 +34,19 @@ const props = defineProps<{
 	};
 }>();
 
+const modalOpen = computed(() => uiStore.modalsById[NEW_ASSISTANT_SESSION_MODAL]?.open === true);
+
 const close = () => {
 	uiStore.closeModal(NEW_ASSISTANT_SESSION_MODAL);
 };
+
+async function closeDialog() {
+	close();
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 const startNewSession = async () => {
 	if ('errorHelp' in props.data.context) {
@@ -45,21 +65,22 @@ const startNewSession = async () => {
 </script>
 
 <template>
-	<Modal
-		width="460px"
-		height="250px"
-		data-test-id="new-assistant-session-modal"
-		:name="NEW_ASSISTANT_SESSION_MODAL"
-		:center="true"
-		:append-to-body="true"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		stacked
+		:container-class="$style.dialog"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			{{ i18n.baseText('aiAssistant.newSessionModal.title.part1') }}
-			<span :class="$style.assistantIcon"><N8nAssistantIcon size="medium" /></span>
-			<N8nAssistantText size="xlarge" :text="i18n.baseText('aiAssistant.assistant')" />
-			{{ i18n.baseText('aiAssistant.newSessionModal.title.part2') }}
-		</template>
-		<template #content>
+		<N8nDialogHeader data-test-id="new-assistant-session-modal">
+			<N8nDialogTitle>
+				{{ i18n.baseText('aiAssistant.newSessionModal.title.part1') }}
+				<span :class="$style.assistantIcon"><N8nAssistantIcon size="medium" /></span>
+				<N8nAssistantText size="xlarge" :text="i18n.baseText('aiAssistant.assistant')" />
+				{{ i18n.baseText('aiAssistant.newSessionModal.title.part2') }}
+			</N8nDialogTitle>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<div :class="$style.container">
 				<p>
 					<N8nText>{{ i18n.baseText('aiAssistant.newSessionModal.message') }}</N8nText>
@@ -68,8 +89,8 @@ const startNewSession = async () => {
 					<N8nText>{{ i18n.baseText('aiAssistant.newSessionModal.question') }}</N8nText>
 				</p>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton variant="subtle" :label="i18n.baseText('generic.cancel')" @click="close" />
 				<N8nButton
@@ -77,11 +98,16 @@ const startNewSession = async () => {
 					@click="startNewSession"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
+.dialog {
+	/* No height token matches the previous 250px dialog height. */
+	min-height: 250px;
+}
+
 .container {
 	p {
 		line-height: normal;
