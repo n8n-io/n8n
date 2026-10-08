@@ -1156,9 +1156,9 @@ export class WorkflowDataProxy {
 						? createNotOnBranchError(destinationNodeName)
 						: createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
 
-				// Executions have always resolved this case to null, so only the editor
-				// gets the expression error for now. The expression engines swallow
-				// errors that are not expression errors.
+				// An expression error here would fail executions that resolve this case
+				// to null today. The expression engines swallow other errors, so the
+				// backend throws a UserError and only the editor shows the error.
 				if (IS_FRONTEND) throw error;
 				throw new UserError(error.message);
 			}

@@ -40,13 +40,13 @@ describe('InlineExpressionTip.vue', () => {
 		expect(container).toHaveTextContent('Tip: Anything inside {{ }} is JavaScript. Learn more');
 	});
 
-	test('should suggest .first() when a referenced node is on another branch', async () => {
+	test('should suggest alternatives to .item when a referenced node is on another branch', async () => {
 		const { container } = renderComponent(InlineExpressionTip, {
 			pinia: createTestingPinia(),
 			props: { pairedItemNotOnBranch: true },
 		});
 		expect(container).toHaveTextContent(
-			'Tip: Use .first() to read from a node on another branch. Learn more',
+			'Tip: Use .first(), .last() or .all()[index] to read from a node on another branch. Learn more',
 		);
 	});
 
