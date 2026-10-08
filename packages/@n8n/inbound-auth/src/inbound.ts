@@ -4,10 +4,12 @@ import type { Extracted, Inbound, Result } from './pipeline';
 /** Derives `Inbound` from the resource, so a surface integration cannot stamp it wrong. */
 export function inboundFrom(resource: ProtectedResource, request: Inbound['request']): Inbound {
 	const acceptedSourceIds = resource.getAcceptedSourceIds?.();
+	const grant = resource.getGrant?.();
 	return {
 		surface: resource.surface,
 		resource: { url: resource.getResourceUrl(), acceptedAudiences: resource.getAudiences() },
 		...(acceptedSourceIds !== undefined && { acceptedSourceIds }),
+		...(grant !== undefined && { grant }),
 		request,
 		receivedAt: new Date(),
 	};
