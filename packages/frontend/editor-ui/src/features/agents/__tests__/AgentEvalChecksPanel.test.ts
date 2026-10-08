@@ -712,7 +712,7 @@ describe('AgentEvalChecksPanel', () => {
 			});
 		});
 
-		it('sends at most one request’s worth of results', async () => {
+		it('sends a long list as successive requests of at most one request’s worth', async () => {
 			const user = userEvent.setup();
 			const many = Array.from({ length: MAX_APPLY_SUGGESTIONS + 2 }, (_, i) =>
 				failedWith(`c${i}`, `Fix ${i}.`),
@@ -722,10 +722,46 @@ describe('AgentEvalChecksPanel', () => {
 
 			await user.click(getByTestId(BUTTON));
 
-			await vi.waitFor(() => expect(store.applySuggestions).toHaveBeenCalled());
-			expect(vi.mocked(store.applySuggestions).mock.calls[0][2]).toHaveLength(
-				MAX_APPLY_SUGGESTIONS,
+			await vi.waitFor(() => expect(store.applySuggestions).toHaveBeenCalledTimes(2));
+			const calls = vi.mocked(store.applySuggestions).mock.calls;
+			expect(calls[0][2]).toHaveLength(MAX_APPLY_SUGGESTIONS);
+			expect(calls[1][2]).toEqual(['c10', 'c11']);
+		});
+
+		it('stops sending batches after the first one fails', async () => {
+			const user = userEvent.setup();
+			const many = Array.from({ length: MAX_APPLY_SUGGESTIONS + 2 }, (_, i) =>
+				failedWith(`c${i}`, `Fix ${i}.`),
 			);
+			const { getByTestId, store } = render({ results: many });
+			vi.mocked(store.applySuggestions).mockRejectedValue(new Error('boom'));
+
+			await user.click(getByTestId(BUTTON));
+
+			await vi.waitFor(() => expect(showError).toHaveBeenCalled());
+			expect(store.applySuggestions).toHaveBeenCalledTimes(1);
+		});
+
+		it('ignores a second apply while one is still being sent', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, store } = render({
+				results: [failedWith('c1', 'Fix 1.'), failedWith('c2', 'Fix 2.')],
+			});
+			let finish: (value: { configHash: string; results: never[] }) => void = () => {};
+			vi.mocked(store.applySuggestions).mockImplementation(
+				async () => await new Promise((resolve) => (finish = resolve)),
+			);
+
+			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('apply suggestion'));
+			await vi.waitFor(() => expect(store.applySuggestions).toHaveBeenCalledTimes(1));
+			expect(getByTestId('agent-eval-check-c2')).toHaveAttribute('data-disabled', 'true');
+			expect(getByTestId(BUTTON)).toBeDisabled();
+
+			// A click that still reaches the composable is ignored, not sent as a second write.
+			await user.click(within(getByTestId('agent-eval-check-c2')).getByText('apply suggestion'));
+			expect(store.applySuggestions).toHaveBeenCalledTimes(1);
+
+			finish({ configHash: 'h', results: [] });
 		});
 
 		it('toasts and does not tell the builder to refetch when applying fails', async () => {

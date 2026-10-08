@@ -520,7 +520,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			expect(queryByTestId('instance-ai-test-agent-examples-case-2-suggestion')).toBeNull();
 		});
 
-		it('sends at most one request’s worth of cases', async () => {
+		it('emits every case with a suggestion, however many there are', async () => {
 			const user = userEvent.setup();
 			const many = Array.from({ length: MAX_APPLY_SUGGESTIONS + 2 }, (_, i) => failed(i + 1));
 			const { getByTestId, emitted } = renderComponent({ props: { caseRuns: many } });
@@ -528,7 +528,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			await user.click(getByTestId(BUTTON));
 
 			expect((emitted('apply-suggestions')[0] as [string[]])[0]).toHaveLength(
-				MAX_APPLY_SUGGESTIONS,
+				MAX_APPLY_SUGGESTIONS + 2,
 			);
 		});
 

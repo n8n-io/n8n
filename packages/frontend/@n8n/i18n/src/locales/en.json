@@ -9001,6 +9001,7 @@
 	"agents.builder.agentEvals.suggestion.keep": "Keep as is",
 	"agents.builder.agentEvals.suggestion.applyAll": "Apply all suggestions",
 	"agents.builder.agentEvals.suggestion.applyError": "Couldn't apply the suggestion",
+	"agents.builder.agentEvals.suggestion.rerunError": "The suggestion was applied, but the check could not run again.",
 	"agents.builder.agentEvals.suggestion.conflictError": "Someone changed this agent. Reload the page, then try again.",
 	"agents.builder.agentEvals.review.progress": "{done} of {total} cases done",
 	"agents.builder.agentEvals.review.running": "Running…",

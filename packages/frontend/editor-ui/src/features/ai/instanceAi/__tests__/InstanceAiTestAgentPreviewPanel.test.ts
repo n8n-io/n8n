@@ -1471,8 +1471,8 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			});
 		});
 
-		it('toasts and keeps the card when the rerun of the case does not complete', async () => {
-			const { store, user, getByTestId } = await renderFailed();
+		it('says the suggestion was applied and hides the card when the rerun of the case does not complete', async () => {
+			const { store, user, getByTestId, queryByTestId } = await renderFailed();
 			vi.spyOn(store, 'applyPreviewSuggestion').mockResolvedValue({
 				configHash: 'hash-2',
 				preview: { status: 'failed' },
@@ -1483,10 +1483,12 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			await waitFor(() =>
 				expect(showErrorMock).toHaveBeenCalledWith(
 					expect.any(Error),
-					"Couldn't apply the suggestion",
+					'The suggestion was applied, but the check could not run again.',
 				),
 			);
-			expect(getByTestId(CARD)).toHaveTextContent(SUGGESTION);
+			// The instructions are saved, so the same suggestion is not offered again.
+			expect(queryByTestId(CARD)).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeInTheDocument();
 		});
 
 		it('toasts and keeps the card when applying fails', async () => {

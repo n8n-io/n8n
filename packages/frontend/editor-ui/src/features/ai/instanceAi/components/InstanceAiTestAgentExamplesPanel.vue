@@ -9,7 +9,6 @@ import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
-import { MAX_APPLY_SUGGESTIONS } from '@/features/agents/agentEvals.types';
 import AgentAvatar, { type AgentAvatarKind } from '@/features/agents/components/AgentAvatar.vue';
 import AgentEvalExamplesSlider from '@/features/agents/components/AgentEvalExamplesSlider.vue';
 import AgentEvalSuggestionCard from '@/features/agents/components/AgentEvalSuggestionCard.vue';
@@ -110,12 +109,10 @@ function suggestionFor(run: SuiteCaseRun): string | null {
 
 const applyingAny = computed(() => (props.applyingSuggestionIds?.length ?? 0) > 0);
 
-// One request takes at most MAX_APPLY_SUGGESTIONS cases; any beyond that keep their card.
 const applicableSuggestionIds = computed(() =>
 	(props.caseRuns ?? [])
 		.filter((run) => suggestionFor(run) !== null)
-		.flatMap((run) => (run.resultId ? [run.resultId] : []))
-		.slice(0, MAX_APPLY_SUGGESTIONS),
+		.flatMap((run) => (run.resultId ? [run.resultId] : [])),
 );
 
 const applyingAll = ref(false);

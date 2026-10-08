@@ -333,7 +333,12 @@ export class AgentEvalCaseGenerationService {
 			projectId,
 			user,
 		);
-		return await resolveCredentialAwareModelConfig(model, credential, credentialProvider);
+		return await resolveCredentialAwareModelConfig(
+			model,
+			credential,
+			credentialProvider,
+			config.modelDeploymentName,
+		);
 	}
 
 	/**

@@ -37,6 +37,7 @@ vi.mock('@/modules/agents/utils/agent-credential-provider', () => ({
 }));
 
 const CURRENT = 'You are a helpful invoice support agent. Always answer in English and be brief.';
+const BOTH_ADDED = `${CURRENT} Politely decline requests outside invoice support. Never reveal internal ticket ids.`;
 
 describe('rewriteAgentInstructions', () => {
 	const user = mock<User>({ id: 'user-1' });
@@ -70,15 +71,14 @@ describe('rewriteAgentInstructions', () => {
 	});
 
 	it('returns the rewritten instructions from a single call', async () => {
-		const rewritten = `${CURRENT} Politely decline requests outside invoice support.`;
-		generateMock.mockResolvedValue(answer(rewritten));
+		generateMock.mockResolvedValue(answer(BOTH_ADDED));
 
-		await expect(rewriteAgentInstructions(deps, subject, ctx)).resolves.toBe(rewritten);
+		await expect(rewriteAgentInstructions(deps, subject, ctx)).resolves.toBe(BOTH_ADDED);
 		expect(generateMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('sends the whole current instructions and every suggestion in one prompt', async () => {
-		generateMock.mockResolvedValue(answer(`${CURRENT} More.`));
+		generateMock.mockResolvedValue(answer(BOTH_ADDED));
 
 		await rewriteAgentInstructions(deps, subject, ctx);
 
@@ -91,10 +91,9 @@ describe('rewriteAgentInstructions', () => {
 	});
 
 	it('retries once with a stricter prompt when the first answer is empty', async () => {
-		const rewritten = `${CURRENT} Be polite.`;
-		generateMock.mockResolvedValueOnce(answer('   ')).mockResolvedValueOnce(answer(rewritten));
+		generateMock.mockResolvedValueOnce(answer('   ')).mockResolvedValueOnce(answer(BOTH_ADDED));
 
-		await expect(rewriteAgentInstructions(deps, subject, ctx)).resolves.toBe(rewritten);
+		await expect(rewriteAgentInstructions(deps, subject, ctx)).resolves.toBe(BOTH_ADDED);
 		expect(generateMock).toHaveBeenCalledTimes(2);
 		expect(generateMock.mock.calls[1][0]).toContain('Your last answer was not valid');
 	});
@@ -104,6 +103,58 @@ describe('rewriteAgentInstructions', () => {
 
 		await expect(rewriteAgentInstructions(deps, subject, ctx)).rejects.toThrow(OperationalError);
 		expect(generateMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('rejects an answer that left the instructions unchanged, then throws after the retry', async () => {
+		generateMock.mockResolvedValue(answer(`  ${CURRENT.replace('. ', '.\n')}  `));
+
+		await expect(rewriteAgentInstructions(deps, subject, ctx)).rejects.toThrow(OperationalError);
+		expect(generateMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('rejects an answer that kept the length but dropped existing directions', async () => {
+		generateMock.mockResolvedValue(
+			answer(
+				'Politely decline requests outside invoice support. Never reveal internal ticket ids. Speak French always.',
+			),
+		);
+
+		await expect(rewriteAgentInstructions(deps, subject, ctx)).rejects.toThrow(OperationalError);
+	});
+
+	it('rejects an answer that ignored one of the suggestions', async () => {
+		generateMock.mockResolvedValue(
+			answer(`${CURRENT} Politely decline requests outside invoice support.`),
+		);
+
+		await expect(rewriteAgentInstructions(deps, subject, ctx)).rejects.toThrow(OperationalError);
+	});
+
+	it('accepts a paraphrased suggestion and a light edit of the old text', async () => {
+		const rewritten =
+			'You are a helpful invoice support agent. Always answer in English and be brief. Decline politely any request outside invoice support, and never reveal ticket ids from our internal system.';
+		generateMock.mockResolvedValue(answer(rewritten));
+
+		await expect(rewriteAgentInstructions(deps, subject, ctx)).resolves.toBe(rewritten);
+	});
+
+	it('passes the Azure deployment name to the model resolver', async () => {
+		agentConfigService.getConfig.mockResolvedValue({
+			model: 'azure-openai/gpt-4o',
+			credential: 'cred-1',
+			modelDeploymentName: 'my-deployment',
+			instructions: CURRENT,
+		} as never);
+		generateMock.mockResolvedValue(answer(BOTH_ADDED));
+
+		await rewriteAgentInstructions(deps, subject, ctx);
+
+		expect(resolveModelMock).toHaveBeenCalledWith(
+			'azure-openai/gpt-4o',
+			'cred-1',
+			expect.anything(),
+			'my-deployment',
+		);
 	});
 
 	it('rejects an answer that is far longer than the old text', async () => {

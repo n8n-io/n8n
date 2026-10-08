@@ -86,6 +86,24 @@ describe('generateFixSuggestion', () => {
 		);
 	});
 
+	it('passes the Azure deployment name to the model resolver', async () => {
+		agentConfigService.getConfig.mockResolvedValue({
+			model: 'azure-openai/gpt-4o',
+			credential: 'cred-1',
+			modelDeploymentName: 'my-deployment',
+			instructions: 'Be brief.',
+		} as never);
+
+		await generateFixSuggestion(deps, subject, ctx);
+
+		expect(resolveModelMock).toHaveBeenCalledWith(
+			'azure-openai/gpt-4o',
+			'cred-1',
+			expect.anything(),
+			'my-deployment',
+		);
+	});
+
 	it('truncates long instructions and long fields', async () => {
 		agentConfigService.getConfig.mockResolvedValue({
 			model: 'anthropic/claude-sonnet-4-5',

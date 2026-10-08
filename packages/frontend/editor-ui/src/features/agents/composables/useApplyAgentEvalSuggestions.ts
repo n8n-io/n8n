@@ -6,6 +6,7 @@ import type { ApplyPreviewSuggestionOptions, ApplyPreviewSuggestionResult } from
 
 import { agentsEventBus } from '../agents.eventBus';
 import { useAgentEvalsStore } from '../agentEvals.store';
+import { MAX_APPLY_SUGGESTIONS } from '../agentEvals.types';
 import { AGENT_CONFIG_FLUSH_KEY } from '../components/agentBuilderInjectionKeys';
 
 /**
@@ -48,15 +49,30 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 		}
 	}
 
-	async function applySuggestions(resultIds: string[]) {
-		if (resultIds.length === 0 || resultIds.some((id) => applyingIds.value.includes(id))) return;
-		applyingIds.value = [...applyingIds.value, ...resultIds];
+	// Every write rewrites the agent from the config the server holds, so two at once would
+	// start from the same config hash and one would hit a conflict. Only one runs at a time.
+	const busy = () => applyingIds.value.length > 0 || applyingPreview.value;
+
+	/**
+	 * Applies the suggestions of these results. One request takes at most
+	 * MAX_APPLY_SUGGESTIONS results, so a longer list goes out as successive requests; the
+	 * first failure stops the rest. Resolves to whether every request applied.
+	 */
+	async function applySuggestions(resultIds: string[]): Promise<boolean> {
+		const ids = [...new Set(resultIds)];
+		if (ids.length === 0 || busy()) return false;
+		applyingIds.value = ids;
 		try {
-			await applyAndRefresh(
-				async (projectId, agentId) => await store.applySuggestions(projectId, agentId, resultIds),
-			);
+			for (let start = 0; start < ids.length; start += MAX_APPLY_SUGGESTIONS) {
+				const batch = ids.slice(start, start + MAX_APPLY_SUGGESTIONS);
+				const applied = await applyAndRefresh(
+					async (projectId, agentId) => await store.applySuggestions(projectId, agentId, batch),
+				);
+				if (!applied) return false;
+			}
+			return true;
 		} finally {
-			applyingIds.value = applyingIds.value.filter((id) => !resultIds.includes(id));
+			applyingIds.value = [];
 		}
 	}
 
@@ -64,7 +80,7 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 	async function applyPreviewSuggestion(
 		options: ApplyPreviewSuggestionOptions,
 	): Promise<ApplyPreviewSuggestionResult | null> {
-		if (applyingPreview.value) return null;
+		if (busy()) return null;
 		applyingPreview.value = true;
 		try {
 			return await applyAndRefresh(

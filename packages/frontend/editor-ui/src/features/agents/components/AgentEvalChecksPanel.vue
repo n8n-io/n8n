@@ -17,7 +17,6 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { useApplyAgentEvalSuggestions } from '../composables/useApplyAgentEvalSuggestions';
-import { MAX_APPLY_SUGGESTIONS } from '../agentEvals.types';
 import {
 	readAgentAnswer,
 	readCaseRequest,
@@ -231,14 +230,17 @@ const { applyingIds: applyingSuggestionIds, applySuggestions } = useApplyAgentEv
 );
 const applyingAll = ref(false);
 
-// One request takes at most MAX_APPLY_SUGGESTIONS results; any beyond that keep their
-// suggestion and the button stays for the next press.
+// A long list goes out as successive requests, so the cap on one request is the
+// composable's concern, not this button's.
 const applicableSuggestionIds = computed(() =>
 	rows.value
 		.filter((row) => row.fixSuggestion !== null && row.status !== 'waiting')
-		.map((row) => row.id)
-		.slice(0, MAX_APPLY_SUGGESTIONS),
+		.map((row) => row.id),
 );
+
+// While one suggestion is being applied the others wait: each write starts from the saved config.
+const isBlockedByApply = (resultId: string) =>
+	applyingSuggestionIds.value.length > 0 && !applyingSuggestionIds.value.includes(resultId);
 
 async function onApplySuggestion(resultId: string) {
 	await applySuggestions([resultId]);
@@ -506,7 +508,7 @@ onBeforeUnmount(store.stopPollingRun);
 				:what-to-check="row.whatToCheck"
 				:fix-suggestion="row.fixSuggestion"
 				:applying-suggestion="applyingSuggestionIds.includes(row.id)"
-				:disabled="disabled || showingPreviousRun"
+				:disabled="disabled || showingPreviousRun || isBlockedByApply(row.id)"
 				:running-check="row.status === 'waiting'"
 				hide-revise
 				view="complete"

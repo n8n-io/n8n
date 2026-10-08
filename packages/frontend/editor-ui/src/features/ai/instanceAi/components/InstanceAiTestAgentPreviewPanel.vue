@@ -481,9 +481,11 @@ async function onApplySuggestion() {
 	if (!applied || !isMounted) return;
 	const { preview } = applied;
 	if (preview.status !== 'completed') {
+		// The instructions are already saved, so the old suggestion must not be offered again.
+		suggestionDismissed.value = true;
 		toast.showError(
 			new Error('Preview run did not complete successfully'),
-			i18n.baseText('agents.builder.agentEvals.suggestion.applyError'),
+			i18n.baseText('agents.builder.agentEvals.suggestion.rerunError'),
 		);
 		return;
 	}

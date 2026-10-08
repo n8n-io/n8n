@@ -17,6 +17,11 @@ const MIN_LENGTH_RATIO = 0.5;
 /** The config schema has no instructions limit, so this caps runaway growth instead. */
 const MAX_LENGTH_RATIO = 2;
 const MIN_LENGTH_CEILING = 8_000;
+/** Share of the old words that must survive. A same-length rewrite can still drop directions. */
+const MIN_WORD_RETENTION = 0.85;
+/** Share of each suggestion's distinctive words that must show up. Paraphrasing is allowed. */
+const MIN_SUGGESTION_COVERAGE = 0.4;
+const MIN_DISTINCTIVE_WORD_LENGTH = 4;
 
 const rewriteSchema = z.object({ instructions: z.string() });
 
@@ -54,12 +59,51 @@ function buildUserPrompt({ currentInstructions, suggestions }: RewriteSubject): 
 	return `<current_instructions>\n${currentInstructions}\n</current_instructions>\n\n${additions}`;
 }
 
+const wordsOf = (text: string) => text.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? [];
+
+/** Share of the current instructions' words that are still in the candidate. */
+function wordRetention(current: string, candidate: string): number {
+	const currentWords = wordsOf(current);
+	if (currentWords.length === 0) return 1;
+	const available = new Map<string, number>();
+	for (const word of wordsOf(candidate)) available.set(word, (available.get(word) ?? 0) + 1);
+	let kept = 0;
+	for (const word of currentWords) {
+		const left = available.get(word) ?? 0;
+		if (left > 0) {
+			kept++;
+			available.set(word, left - 1);
+		}
+	}
+	return kept / currentWords.length;
+}
+
+function coversSuggestion(candidateWords: Set<string>, suggestion: string): boolean {
+	const distinctive = [...new Set(wordsOf(suggestion))].filter(
+		(word) => word.length >= MIN_DISTINCTIVE_WORD_LENGTH,
+	);
+	if (distinctive.length === 0) return true;
+	const present = distinctive.filter((word) => candidateWords.has(word)).length;
+	return present / distinctive.length >= MIN_SUGGESTION_COVERAGE;
+}
+
 /** Returns the rewrite when it is safe to save, or `null` when it is not. */
-function validateRewrite(candidate: string, currentInstructions: string): string | null {
+function validateRewrite(candidate: string, { currentInstructions, suggestions }: RewriteSubject) {
 	if (candidate.trim().length === 0) return null;
+	// A rewrite that changed nothing did not apply any suggestion.
+	if (
+		candidate.trim().replaceAll(/\s+/g, ' ') === currentInstructions.trim().replaceAll(/\s+/g, ' ')
+	) {
+		return null;
+	}
 	if (candidate.length < currentInstructions.length * MIN_LENGTH_RATIO) return null;
 	const maxLength = Math.max(currentInstructions.length * MAX_LENGTH_RATIO, MIN_LENGTH_CEILING);
 	if (candidate.length > maxLength) return null;
+	if (wordRetention(currentInstructions, candidate) < MIN_WORD_RETENTION) return null;
+	const candidateWords = new Set(wordsOf(candidate));
+	if (!suggestions.every(({ suggestion }) => coversSuggestion(candidateWords, suggestion))) {
+		return null;
+	}
 	return candidate;
 }
 
@@ -93,6 +137,7 @@ export async function rewriteAgentInstructions(
 		config.model,
 		config.credential,
 		credentialProvider,
+		config.modelDeploymentName,
 	);
 
 	// Lazy-loaded: `@n8n/agents` is heavy, and this only runs when a user applies a suggestion.
@@ -109,7 +154,7 @@ export async function rewriteAgentInstructions(
 		});
 		const parsed = rewriteSchema.safeParse(result.structuredOutput);
 		if (!parsed.success) return null;
-		return validateRewrite(parsed.data.instructions, subject.currentInstructions);
+		return validateRewrite(parsed.data.instructions, subject);
 	};
 
 	const first = await attempt(userPrompt);
