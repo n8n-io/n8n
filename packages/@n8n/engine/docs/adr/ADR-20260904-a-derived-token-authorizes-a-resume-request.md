@@ -176,10 +176,6 @@ sequenceDiagram
 - A step-bound resume URL binds its query as the node built it, without the token parameter. The
   data plane compares the same string when the request arrives. It does not rebuild the query from
   parsed values, because two different queries can parse to the same values.
-- Every data-plane process needs the resume secrets. A process signs only with a secret that every
-  other process accepts. The operator sets them in every deployment that enables engine v2, also
-  where both planes run in one process. The engine does not generate them. A process without them
-  fails at start, so a resume request never fails without a log entry.
 - The Slack and Telegram approval callback reaches a fixed URL, with its signed reference in the
   request body. Engine v1 verifies that reference in the control plane. Here the data plane verifies
   it. The control plane reads only the id in the reference, to pick the engine, and forwards the
@@ -199,15 +195,9 @@ sequenceDiagram
   only if the execution belongs to the tenant of that identity token. The trust layer between the
   planes specifies that check.
 - The engine cannot revoke one resume URL. A URL stops working when the step leaves the `waiting`
-  status, or when its secret leaves the accepted set.
-- The data plane signs with one secret and accepts every secret in a configured set.
-- A rotation takes two rollouts. The first adds the new secret to the accepted set. The second makes
-  it the signing secret. The order matters, because during a rolling rollout a process that has not
-  updated yet must already accept the new secret. A third rollout removes the old secret, when the
-  operator chooses.
-- The token does not expire, so an old secret stays in the accepted set while a step that it signed
-  still waits. The removal of a secret from the set makes every outstanding resume URL that it
-  signed stop working. That removal is the only way to revoke resume URLs.
+  status, or when the engine no longer accepts the secret that signed it.
+- The token does not expire. Therefore a secret that signed a token must stay accepted while its
+  step waits, or that resume URL stops working.
 - The token authenticates the request. It does not authorize the workflow. Who can resume a given
   wait is a separate decision, if that rule becomes narrower than "the caller that holds the URL".
 - An execution-bound resume URL covers every wait of the execution, not one wait. A request resumes
@@ -221,7 +211,6 @@ sequenceDiagram
   does not remove a database read. It decides if the request can continue.
 - Two resume requests for the same step can both run the webhook of the node. The compare-and-set
   lets only the first one resume the step. The other one gets a conflict (409).
-- A rotation of the shared secret of the two planes does not affect outstanding resume URLs.
 - The token primitive must allow a token without an expiry. Therefore the lifetime is optional in
   the token spec.
 - A resume request can still arrive before the engine records the suspension
