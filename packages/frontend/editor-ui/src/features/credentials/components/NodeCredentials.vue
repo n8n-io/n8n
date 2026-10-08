@@ -1198,21 +1198,24 @@ function buildCurrentRow(credentialType: string, usable: boolean): CredentialRow
  * workflow lives in, which a personal space does not name.
  */
 function ownerMeta(credentialType: string, usable: boolean): string {
-	const projectName = pickerHomeProject.value?.name;
-	const notShared =
-		!isPersonalSpace.value && projectName
+	const projectName = !isPersonalSpace.value ? pickerHomeProject.value?.name : undefined;
+
+	// The owner is already part of the name of a credential the user cannot use.
+	if (!usable) {
+		return projectName
 			? i18n.baseText('nodeCredentials.unusable.notShared', {
 					interpolate: { project: projectName },
 				})
 			: '';
+	}
 
-	// The owner is already part of the name of a credential the user cannot use.
-	if (!usable) return notShared;
+	const owner = getUnlistedOwnerName(credentialType);
 
-	const owner = i18n.baseText('nodeCredentials.unusable.owner', {
-		interpolate: { owner: getUnlistedOwnerName(credentialType) },
-	});
-	return notShared ? `${owner} · ${notShared}` : owner;
+	return projectName
+		? i18n.baseText('nodeCredentials.unusable.ownerNotShared', {
+				interpolate: { owner, project: projectName },
+			})
+		: i18n.baseText('nodeCredentials.unusable.owner', { interpolate: { owner } });
 }
 
 /**

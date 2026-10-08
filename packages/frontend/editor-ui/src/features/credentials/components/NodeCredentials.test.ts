@@ -3766,7 +3766,7 @@ describe('NodeCredentials', () => {
 			).toHaveTextContent('Available to you');
 			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
 			expect(option).not.toHaveClass('is-disabled');
-			expect(option).toHaveTextContent("Alice Chen's · Not shared with Marketing");
+			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
 			expect(screen.queryByTestId(UNUSABLE_HEADER)).not.toBeInTheDocument();
 		});
 
