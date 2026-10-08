@@ -318,6 +318,27 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 	}
 
+	/**
+	 * Deletes a project credential that has no `shared_credentials` row. Such a credential has no
+	 * owner, so the project-scoped lookups cannot find it. Returns the deleted credential, or `null`
+	 * if the credential does not exist or still has an owner.
+	 */
+	async deleteProjectCredentialWithoutOwner(
+		credentialId: string,
+		ctx: OperationContext = {},
+	): Promise<CredentialsEntity | null> {
+		return await this.runInTransaction(ctx, async (manager) => {
+			const credential = await manager.findOne(CredentialsEntity, {
+				where: { id: credentialId, usageScope: 'project' },
+				relations: { shared: true },
+			});
+			if (!credential || credential.shared.length > 0) return null;
+
+			await manager.delete(CredentialsEntity, { id: credentialId, usageScope: 'project' });
+			return credential;
+		});
+	}
+
 	async deleteInstanceCredentialIfUnassigned(
 		credentialId: string,
 		ctx: OperationContext = {},

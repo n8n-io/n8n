@@ -1412,13 +1412,13 @@ export class CredentialsService {
 	 * Deletes a credential.
 	 *
 	 * If the user does not have permission to delete the credential this does
-	 * nothing and returns void.
+	 * nothing and returns `false`. Returns `true` when the credential was deleted.
 	 */
 	async delete(
 		user: User,
 		credentialId: string,
 		options: { includeInstanceCredentials?: boolean } = {},
-	) {
+	): Promise<boolean> {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
@@ -1427,7 +1427,7 @@ export class CredentialsService {
 		);
 
 		if (!credential) {
-			return;
+			return false;
 		}
 
 		// Read before the delete cascades away the `shared_credentials` rows that name it. An
@@ -1467,11 +1467,31 @@ export class CredentialsService {
 			if (result.status === 'deleted') {
 				this.emitCredentialDeleted(user, credential, owningProject?.id);
 			}
-			return;
+			return result.status === 'deleted';
 		}
 
 		await this.credentialsRepository.remove(credential);
 		this.emitCredentialDeleted(user, credential, owningProject?.id);
+		return true;
+	}
+
+	/**
+	 * Deletes a project credential that has no owner project. `delete()` cannot find such a
+	 * credential, because its lookup goes through the owner. Only an instance-wide
+	 * `credential:delete` covers a credential without a project. Does nothing if the
+	 * credential does not exist or still has an owner.
+	 */
+	async deleteUnowned(user: User, credentialId: string) {
+		if (!hasGlobalScope(user, 'credential:delete')) {
+			throw new ForbiddenError('You do not have permission to delete credentials without an owner');
+		}
+
+		const credential =
+			await this.credentialsRepository.deleteProjectCredentialWithoutOwner(credentialId);
+		if (!credential) return;
+
+		await this.externalHooks.run('credentials.delete', [credentialId]);
+		this.emitCredentialDeleted(user, credential, undefined);
 	}
 
 	private emitCredentialDeleted(

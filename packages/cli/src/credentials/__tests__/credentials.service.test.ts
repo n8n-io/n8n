@@ -1525,7 +1525,7 @@ describe('CredentialsService', () => {
 		it('does not opt generic callers into instance credential access', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-			await service.delete(ownerUser, 'credential-id');
+			await expect(service.delete(ownerUser, 'credential-id')).resolves.toBe(false);
 
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 				'credential-id',
@@ -1549,7 +1549,9 @@ describe('CredentialsService', () => {
 				status: 'deleted',
 			});
 
-			await service.delete(ownerUser, credential.id, { includeInstanceCredentials: true });
+			await expect(
+				service.delete(ownerUser, credential.id, { includeInstanceCredentials: true }),
+			).resolves.toBe(true);
 
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 				credential.id,
@@ -1601,7 +1603,9 @@ describe('CredentialsService', () => {
 				status: 'notFound',
 			});
 
-			await service.delete(ownerUser, credential.id, { includeInstanceCredentials: true });
+			await expect(
+				service.delete(ownerUser, credential.id, { includeInstanceCredentials: true }),
+			).resolves.toBe(false);
 
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
@@ -1650,7 +1654,7 @@ describe('CredentialsService', () => {
 				new Error('db is gone'),
 			);
 
-			await expect(service.delete(ownerUser, credential.id)).resolves.not.toThrow();
+			await expect(service.delete(ownerUser, credential.id)).resolves.toBe(true);
 
 			expect(credentialsRepository.remove).toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith(
@@ -1680,6 +1684,68 @@ describe('CredentialsService', () => {
 			});
 			const emittedEventNames = eventService.emit.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-deleted');
+		});
+	});
+
+	describe('deleteUnowned', () => {
+		it('deletes a credential without an owner and reports the deletion', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'unowned-credential',
+				name: 'Unowned',
+				type: 'openAiApi',
+				isResolvable: false,
+			});
+			credentialsRepository.deleteProjectCredentialWithoutOwner.mockResolvedValue(credential);
+
+			await service.deleteUnowned(ownerUser, credential.id);
+
+			expect(credentialsRepository.deleteProjectCredentialWithoutOwner).toHaveBeenCalledWith(
+				credential.id,
+			);
+			expect(externalHooks.run).toHaveBeenCalledWith('credentials.delete', [credential.id]);
+			expect(eventService.emit).toHaveBeenCalledWith('credentials-deleted', {
+				user: ownerUser,
+				credentialType: credential.type,
+				credentialId: credential.id,
+				credentialName: credential.name,
+				projectId: undefined,
+			});
+			const emittedEventNames = eventService.emit.mock.calls.map((call) => call[0]);
+			expect(emittedEventNames).not.toContain('private-credential-deleted');
+		});
+
+		it('reports the deletion of an end-user credential', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'unowned-credential',
+				type: 'openAiApi',
+				isResolvable: true,
+			});
+			credentialsRepository.deleteProjectCredentialWithoutOwner.mockResolvedValue(credential);
+
+			await service.deleteUnowned(ownerUser, credential.id);
+
+			expect(eventService.emit).toHaveBeenCalledWith('private-credential-deleted', {
+				user: ownerUser,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		});
+
+		it('does nothing when the credential does not exist or still has an owner', async () => {
+			credentialsRepository.deleteProjectCredentialWithoutOwner.mockResolvedValue(null);
+
+			await service.deleteUnowned(ownerUser, 'credential-id');
+
+			expect(externalHooks.run).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('rejects a user without instance-wide credential:delete', async () => {
+			await expect(service.deleteUnowned(memberUser, 'credential-id')).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			expect(credentialsRepository.deleteProjectCredentialWithoutOwner).not.toHaveBeenCalled();
 		});
 	});
 

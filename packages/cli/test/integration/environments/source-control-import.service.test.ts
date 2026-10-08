@@ -42,6 +42,7 @@ import { readFile } from 'node:fs/promises';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import type { IWorkflowToImport } from '@/interfaces';
 import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
@@ -115,7 +116,11 @@ describe('SourceControlImportService', () => {
 			async (context, actor) =>
 				await Container.get(PolicyEnforcementService).enforceContentImport(context, actor),
 		);
-		service = new SourceControlImportService(
+		service = createService(mock());
+	});
+
+	const createService = (credentialsService: CredentialsService) =>
+		new SourceControlImportService(
 			mock(),
 			mock(),
 			mock(),
@@ -130,7 +135,7 @@ describe('SourceControlImportService', () => {
 			workflowRepository,
 			workflowTagMappingRepository,
 			mock(),
-			mock(),
+			credentialsService,
 			mock(),
 			folderRepository,
 			mock<InstanceSettings>({ n8nFolder: '/some-path' }),
@@ -149,7 +154,6 @@ describe('SourceControlImportService', () => {
 			mock(), // workflowMutationHooks
 			Container.get(WorkflowFinderService),
 		);
-	});
 
 	afterEach(async () => {
 		await testDb.truncate([
@@ -2159,6 +2163,62 @@ describe('SourceControlImportService', () => {
 					workflowRepository.findOne({ where: { id: workflow.id } }),
 				).resolves.toBeNull();
 			});
+		});
+	});
+
+	describe('credential deletion on pull', () => {
+		let pullService: SourceControlImportService;
+
+		beforeAll(() => {
+			pullService = createService(Container.get(CredentialsService));
+		});
+
+		const credentialAttributes = () => ({ name: `credential-${nanoid()}`, data: '', type: 'test' });
+
+		it('deletes the credentials owned by a deleted team project', async () => {
+			const owner = await getGlobalOwner();
+			const project = await createTeamProject();
+			const credential = await createCredentials(credentialAttributes(), project);
+
+			await pullService.deleteTeamProjectsNotInWorkfolder(owner, [
+				mock<SourceControlledFile>({ id: project.id }),
+			]);
+
+			await expect(projectRepository.findOneBy({ id: project.id })).resolves.toBeNull();
+			await expect(credentialsRepository.findOneBy({ id: credential.id })).resolves.toBeNull();
+		});
+
+		it('deletes a credential that has no owner', async () => {
+			const owner = await getGlobalOwner();
+			const credential = await createCredentials(credentialAttributes());
+
+			await pullService.deleteCredentialsNotInWorkfolder(owner, [
+				mock<SourceControlledFile>({ id: credential.id }),
+			]);
+
+			await expect(credentialsRepository.findOneBy({ id: credential.id })).resolves.toBeNull();
+		});
+
+		it('deletes a credential owned by a project that the puller is not a member of', async () => {
+			const owner = await getGlobalOwner();
+			const project = await createTeamProject();
+			const credential = await createCredentials(credentialAttributes(), project);
+
+			await pullService.deleteCredentialsNotInWorkfolder(owner, [
+				mock<SourceControlledFile>({ id: credential.id }),
+			]);
+
+			await expect(credentialsRepository.findOneBy({ id: credential.id })).resolves.toBeNull();
+		});
+
+		it('keeps a credential that still has an owner when deleting credentials without an owner', async () => {
+			const owner = await getGlobalOwner();
+			const project = await createTeamProject();
+			const credential = await createCredentials(credentialAttributes(), project);
+
+			await Container.get(CredentialsService).deleteUnowned(owner, credential.id);
+
+			await expect(credentialsRepository.findOneBy({ id: credential.id })).resolves.not.toBeNull();
 		});
 	});
 });

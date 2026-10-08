@@ -1849,9 +1849,12 @@ export class SourceControlImportService {
 
 	async deleteCredentialsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
 		for (const candidate of candidates) {
-			await this.credentialsService.delete(user, candidate.id, {
+			const deleted = await this.credentialsService.delete(user, candidate.id, {
 				includeInstanceCredentials: true,
 			});
+			// A project deleted by an earlier pull can leave a credential without an owner,
+			// which `delete()` cannot find.
+			if (!deleted) await this.credentialsService.deleteUnowned(user, candidate.id);
 		}
 	}
 
@@ -1908,13 +1911,21 @@ export class SourceControlImportService {
 		}
 	}
 
-	async deleteTeamProjectsNotInWorkfolder(candidates: SourceControlledFile[]) {
+	async deleteTeamProjectsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
 		if (candidates.length === 0) {
 			return;
 		}
 		const candidateIds = candidates.map((c) => c.id);
 
 		try {
+			// Deleting a project removes its `shared_credentials` rows but keeps the credentials.
+			// A credential without an owner row cannot be found or deleted later, so delete them first.
+			const ownedCredentials =
+				await this.sharedCredentialsRepository.findOwnedCredentialsByProjects(candidateIds);
+			for (const credential of ownedCredentials) {
+				await this.credentialsService.delete(user, credential.id);
+			}
+
 			// Deleting a project cascades to its folders and workflows. Workflows are
 			// normally deleted individually before this point, but any still owned by
 			// the project (e.g. skipped for lack of permission) must be prepared for

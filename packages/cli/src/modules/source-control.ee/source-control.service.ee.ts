@@ -706,7 +706,10 @@ export class SourceControlService {
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);
 
 		const projectsToBeDeleted = getDeletedResources(statusResult, 'project');
-		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(projectsToBeDeleted);
+		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(
+			user,
+			projectsToBeDeleted,
+		);
 
 		// #region Tracking Information
 		this.eventService.emit(
