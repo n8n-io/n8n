@@ -19,6 +19,8 @@ import {
 } from './run-target';
 
 type LinkedRunTarget = Extract<InstanceAiThreadRunTarget, { kind: 'linked' }>;
+/** The part of a chat message request that the run target reads. */
+type ChatRequest = { runTarget?: RunTarget };
 
 /**
  * Decides where an Assistant chat runs. The run target of a chat is set by its first message
@@ -40,14 +42,14 @@ export class RunTargetService {
 	async forChatTurn(
 		thread: AgentExecutionThread,
 		defaults: unknown,
-		requested: RunTarget | undefined,
+		request: ChatRequest | undefined,
 	): Promise<InstanceAiThreadRunTarget> {
 		const ownerId = thread.ownerId;
 		if (!ownerId) return LOCAL_RUN_TARGET;
 		const stored = storedRunTargetOf(defaults);
 		// Defaults without a target come from a chat that started before run targets existed.
 		if (stored === undefined && isRecord(defaults)) return LOCAL_RUN_TARGET;
-		const target = stored ?? (await this.storeFirstTarget(thread.id, ownerId, requested));
+		const target = stored ?? (await this.storeFirstTarget(thread.id, ownerId, request?.runTarget));
 		if (target.kind === 'local' || isSharedThread(thread)) return LOCAL_RUN_TARGET;
 		if (await this.findLink(ownerId, target.instanceId)) return target;
 		return await this.dropLostLink(thread, ownerId, target);
@@ -120,7 +122,10 @@ export class RunTargetService {
 	}
 
 	/** The owner's link with this id, or `null`. Without the linked-instances module there are no links. */
-	private async findLink(ownerId: string, instanceId: string): Promise<LinkedInstanceSummary | null> {
+	private async findLink(
+		ownerId: string,
+		instanceId: string,
+	): Promise<LinkedInstanceSummary | null> {
 		if (!this.moduleRegistry.isActive('linked-instances')) return null;
 		return await Container.get(LinkedInstanceStore).getForUser(ownerId, instanceId);
 	}

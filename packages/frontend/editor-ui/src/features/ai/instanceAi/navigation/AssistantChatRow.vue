@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { N8nIcon, N8nMenuItem, N8nTooltip } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
@@ -69,14 +69,37 @@ const shownState = computed(() => {
 const rowLabel = computed(
 	() => shownState.value?.rowLabel ?? (sharedLabel.value ? titleLabel.value : undefined),
 );
+
+/**
+ * Keyboard focus on the row shows the shared label, as the pointer on the row icon does.
+ * A mouse click also focuses the row link, but shows no tooltip.
+ */
+const isKeyboardFocused = ref(false);
+
+/** Whether the element shows a focus ring. Without `:focus-visible` support, every focus does. */
+function hasFocusRing(element: Element): boolean {
+	try {
+		return element.matches(':focus-visible');
+	} catch {
+		return true;
+	}
+}
+
+function onFocusIn(event: FocusEvent): void {
+	isKeyboardFocused.value = event.target instanceof Element && hasFocusRing(event.target);
+}
 </script>
 
 <template>
-	<div :class="[$style.chatRow, { [$style.withState]: shownState, [$style.shared]: sharedLabel }]">
+	<div
+		:class="[$style.chatRow, { [$style.withState]: shownState, [$style.shared]: sharedLabel }]"
+		@focusin="onFocusIn"
+		@focusout="isKeyboardFocused = false"
+	>
 		<N8nMenuItem :item="item" :aria-label="rowLabel" scroll-label-on-overflow />
 		<!-- Shows the shared label on the row icon. Screen readers get it from the row label. -->
 		<span v-if="sharedLabel" :class="$style.sharedSlot">
-			<N8nTooltip placement="right" as-child>
+			<N8nTooltip placement="right" as-child :visible="isKeyboardFocused">
 				<template #content>{{ sharedLabel }}</template>
 				<RouterLink
 					:to="to"

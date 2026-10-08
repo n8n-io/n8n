@@ -96,6 +96,18 @@ function setLabelWidths(label: HTMLElement, scrollWidth: number, clientWidth: nu
 
 const renderHeader = createComponentRenderer(Header);
 
+/**
+ * A share that fails. While the request runs, the button is disabled, and a browser then moves
+ * the focus to the page body. jsdom does not, so the request does it.
+ */
+function failShare(error: Error, { focusDuringShare }: { focusDuringShare?: HTMLElement } = {}) {
+	vi.mocked(shareThread).mockImplementation(async () => {
+		if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+		focusDuringShare?.focus();
+		throw error;
+	});
+}
+
 describe('ShareThreadButton and SharedThreadChip', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
@@ -157,9 +169,9 @@ describe('ShareThreadButton and SharedThreadChip', () => {
 		expect(chip).toHaveAttribute('tabindex', '-1');
 	});
 
-	it('keeps the focus on the button when the share fails', async () => {
+	it('gives the focus back to the button when the share fails', async () => {
 		setUpSharing();
-		vi.mocked(shareThread).mockRejectedValue(new Error('No connection'));
+		failShare(new Error('No connection'));
 		const { getByTestId } = renderHeader();
 		const button = getByTestId('instance-ai-share-thread');
 		button.focus();
@@ -168,7 +180,24 @@ describe('ShareThreadButton and SharedThreadChip', () => {
 		await waitFor(() => expect(showError).toHaveBeenCalled());
 		await flushPromises();
 
+		expect(button).toBeEnabled();
 		expect(button).toHaveFocus();
+	});
+
+	it('leaves the focus on a control that the user chose while the share ran', async () => {
+		setUpSharing();
+		const search = document.createElement('input');
+		document.body.appendChild(search);
+		failShare(new Error('No connection'), { focusDuringShare: search });
+		const { getByTestId } = renderHeader();
+		getByTestId('instance-ai-share-thread').focus();
+
+		await fireEvent.click(getByTestId('instance-ai-share-thread'));
+		await waitFor(() => expect(showError).toHaveBeenCalled());
+		await flushPromises();
+
+		expect(search).toHaveFocus();
+		search.remove();
 	});
 
 	it('does not share when the owner cancels', async () => {
@@ -186,16 +215,19 @@ describe('ShareThreadButton and SharedThreadChip', () => {
 	it('shows the reason of a refused share and reads the chat again', async () => {
 		setUpSharing();
 		const refused = new Error('This chat changed while it was shared. Try again.');
-		vi.mocked(shareThread).mockRejectedValue(refused);
+		failShare(refused);
 		vi.mocked(fetchThread).mockResolvedValue({ thread: sharedThreadInfo });
 		const { getByTestId, findByTestId } = renderHeader();
+		getByTestId('instance-ai-share-thread').focus();
 
 		await fireEvent.click(getByTestId('instance-ai-share-thread'));
 
 		await waitFor(() => expect(showError).toHaveBeenCalledWith(refused, "Couldn't share the chat"));
 		// Another tab shared the chat meanwhile: the header shows the state of the server.
 		expect(fetchThread).toHaveBeenCalledWith(expect.anything(), THREAD_ID);
-		expect(await findByTestId('instance-ai-shared-thread-chip')).toBeInTheDocument();
+		const chip = await findByTestId('instance-ai-shared-thread-chip');
+		// The button went away, so the chip takes the focus.
+		await waitFor(() => expect(chip).toHaveFocus());
 	});
 
 	it.each([

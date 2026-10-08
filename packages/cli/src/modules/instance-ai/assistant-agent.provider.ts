@@ -139,7 +139,7 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 			computerUseChannels: context?.computerUseChannels ?? defaults.computerUseChannels,
 			buildMode: context?.mode ?? defaults.buildMode,
 			promptVersion: context?.promptVersion ?? defaults.promptVersion,
-			runTarget: await this.runTargets.forChatTurn(thread, stored, context?.runTarget),
+			runTarget: await this.runTargets.forChatTurn(thread, stored, context),
 			...(context?.threadArtifacts ? { threadArtifacts: context.threadArtifacts } : {}),
 			...(context?.context ? { handoffContext: context.context } : {}),
 			...(references?.length ? { attachments: references } : {}),

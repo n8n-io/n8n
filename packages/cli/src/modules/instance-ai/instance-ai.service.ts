@@ -2763,7 +2763,10 @@ export class InstanceAiService {
 					// The stored run target outlives the turn defaults, which each turn replaces.
 					[ASSISTANT_TURN_DEFAULTS_KEY]: {
 						...defaults,
-						runTarget: keepFirstRunTarget(metadata?.[ASSISTANT_TURN_DEFAULTS_KEY], defaults.runTarget),
+						runTarget: keepFirstRunTarget(
+							metadata?.[ASSISTANT_TURN_DEFAULTS_KEY],
+							defaults.runTarget,
+						),
 					},
 				},
 			}),

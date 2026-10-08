@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, type Component } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -74,7 +74,9 @@ function renderCard(props: CardProps, { stubCard = false } = {}) {
 			return () => h(SharedThreadCard, { ...props, onSubmit });
 		},
 	});
-	const stubs = stubCard ? { InstanceAiConfirmationCard: ConfirmationCardStub } : {};
+	const stubs: Record<string, Component> = stubCard
+		? { InstanceAiConfirmationCard: ConfirmationCardStub }
+		: {};
 	return { ...createComponentRenderer(Host)({ global: { stubs } }), onSubmit };
 }
 
@@ -137,12 +139,15 @@ describe('SharedThreadCard', () => {
 			expect(getByTestId('approval-card-allow-once')).toBeDisabled();
 		});
 
-		it('gives the footer to screen readers with the card', () => {
+		it('gives the footer to screen readers with the card, in a group with a name', () => {
 			const { getByRole, getByTestId } = renderCard({ input: runInput, call: runCall });
 
-			expect(getByRole('group', { description: 'Runs as Alice Owner' })).toBe(
-				getByTestId('instance-ai-shared-card'),
-			);
+			expect(
+				getByRole('group', {
+					name: 'Request in a shared chat',
+					description: 'Runs as Alice Owner',
+				}),
+			).toBe(getByTestId('instance-ai-shared-card'));
 		});
 
 		it('hands the answer and the tool call of an answered card to the Assistant card', () => {

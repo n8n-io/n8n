@@ -504,7 +504,7 @@ describe('InstanceAiAgentsConversation with chat sharing', () => {
 		});
 	});
 
-	it('shows the reason when the server refuses the answer', async () => {
+	it('shows the reason when the server refuses the answer, in a toast that is not tracked', async () => {
 		await renderAs(TEAMMATE.id);
 
 		chatState.emitResumeFailed?.({
@@ -513,11 +513,15 @@ describe('InstanceAiAgentsConversation with chat sharing', () => {
 			message: 'Only editors in Marketing can approve this.',
 		});
 
-		expect(toast.showMessage).toHaveBeenCalledWith({
-			type: 'error',
-			title: "Couldn't send your answer",
-			message: 'Only editors in Marketing can approve this.',
-		});
+		// The reason names a project, so it must not go to telemetry.
+		expect(toast.showMessage).toHaveBeenCalledWith(
+			{
+				type: 'error',
+				title: "Couldn't send your answer",
+				message: 'Only editors in Marketing can approve this.',
+			},
+			false,
+		);
 	});
 
 	it('adds no toast to a stream error when nobody else answered', async () => {

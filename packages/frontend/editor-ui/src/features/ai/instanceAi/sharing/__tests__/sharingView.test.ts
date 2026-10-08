@@ -3,6 +3,7 @@ import type { SharedCard } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import {
 	answerAuthorship,
+	asksForInput,
 	canShareThread,
 	isTeammate,
 	resumeFailureNotice,
@@ -294,6 +295,75 @@ describe('answerAuthorship', () => {
 			decision: 'declined',
 			name: 'Bob Teammate',
 		});
+	});
+
+	describe('for a card that a message from the owner cancelled', () => {
+		// The server records the cancellation like an answer, with the owner as its author.
+		it.each([
+			['the cancelled flag', { canceled: true }],
+			['the cancelled state', { state: 'cancelled' as const }],
+		])('names nobody, from %s', (_, cancelled) => {
+			expect(answerAuthorship({ approvedBy: other, ...cancelled }, OWNER.id, true)).toBeUndefined();
+			expect(answerAuthorship({ approvedBy: viewer, ...cancelled }, OWNER.id, true)).toBeUndefined();
+			expect(answerAuthorship({ declinedBy: other, ...cancelled }, OWNER.id, true)).toBeUndefined();
+		});
+
+		it('still names the author of a card that is done or that was not cancelled', () => {
+			expect(
+				answerAuthorship({ approvedBy: other, canceled: false, state: 'done' }, OWNER.id, true),
+			).toEqual({ decision: 'approved', name: 'Bob Teammate' });
+		});
+	});
+
+	describe('for a card that asks for input', () => {
+		const questions = { inputType: 'questions', questions: [{ id: 'q', question: 'Which?' }] };
+
+		it('says "answered" for a given answer, by another user and by the viewer', () => {
+			expect(
+				answerAuthorship({ approvedBy: other, suspendPayload: questions }, OWNER.id, true),
+			).toEqual({ decision: 'answered', name: 'Bob Teammate' });
+			expect(
+				answerAuthorship({ approvedBy: viewer, suspendPayload: questions }, OWNER.id, true),
+			).toEqual({ decision: 'answered' });
+		});
+
+		it('still says "declined" for a dismissed card', () => {
+			expect(
+				answerAuthorship({ declinedBy: other, suspendPayload: questions }, OWNER.id, true),
+			).toEqual({ decision: 'declined', name: 'Bob Teammate' });
+		});
+
+		it('says nothing about the viewer’s own answer in a private chat', () => {
+			expect(
+				answerAuthorship({ approvedBy: viewer, suspendPayload: questions }, OWNER.id, false),
+			).toBeUndefined();
+		});
+	});
+});
+
+describe('asksForInput', () => {
+	it.each([
+		['questions', { inputType: 'questions' }],
+		['free text', { inputType: 'text' }],
+		['a workflow setup', { setupRequests: [{ node: 'Slack' }] }],
+		['a credential setup', { credentialRequests: [{ credentialType: 'slackApi' }] }],
+	])('is true for %s', (_, payload) => {
+		expect(asksForInput({ requestId: 'r', message: '', ...payload })).toBe(true);
+	});
+
+	it.each([
+		['a plain approval', approvalPayload],
+		['an approval with its input type', { ...approvalPayload, inputType: 'approval' }],
+		['a plan review', { ...approvalPayload, inputType: 'plan-review' }],
+		['a resource decision', { ...approvalPayload, inputType: 'resource-decision' }],
+		['an empty setup list', { ...approvalPayload, setupRequests: [] }],
+		['an empty credential list', { ...approvalPayload, credentialRequests: [] }],
+		['a setup list that is not an array', { ...approvalPayload, setupRequests: { node: 'x' } }],
+		['no payload', undefined],
+		['a payload that is not an object', 'questions'],
+		['an array', [{ inputType: 'questions' }]],
+	])('is false for %s', (_, payload) => {
+		expect(asksForInput(payload)).toBe(false);
 	});
 });
 

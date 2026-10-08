@@ -28,6 +28,7 @@ import { useInstanceAiStore } from './instanceAi.store';
 import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from './prefills';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useNewChatProject } from './experience/useNewChatProject';
+import { useRunTargetPicker } from './runTarget/useRunTargetPicker';
 import {
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_SOURCE_QUERY,
@@ -88,6 +89,7 @@ import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavai
 import LimitedModeNotice from './components/LimitedModeNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import ProjectSelect from './components/ProjectSelect.vue';
+import RunTargetPicker from './runTarget/RunTargetPicker.vue';
 import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
 import {
 	EMPTY_ASSISTANT_MENTION_COUNTS,
@@ -124,6 +126,7 @@ const cloudPlanStore = useCloudPlanStore();
 const route = useRoute();
 const router = useRouter();
 const { selectedProject, canSelectProject, rememberChatProject } = useNewChatProject();
+const { showRunTargetPicker, runTarget, links } = useRunTargetPicker();
 
 /** Prefer a hand-off source from navigation; fall back for direct empty-state visits. */
 function resolveLaunchSource(): InstanceAiThreadSource {
@@ -590,6 +593,7 @@ async function handleSubmit(
 		authorship,
 		...(references.length ? { attachments: references } : {}),
 		...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
+		...(showRunTargetPicker.value ? { runTarget: runTarget.value } : {}),
 	});
 	stashPendingFirstMessageFiles(threadId, files);
 	// Track message-with-nodes only after a successful send, so refused sends and
@@ -650,9 +654,10 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						@submit="handleSubmit"
 						@content-change="composerHasContent = $event"
 					>
-						<template v-if="canSelectProject" #footer>
+						<template v-if="canSelectProject || showRunTargetPicker" #footer>
 							<div :class="$style.inputFooter">
-								<ProjectSelect v-model="selectedProject" />
+								<ProjectSelect v-if="canSelectProject" v-model="selectedProject" />
+								<RunTargetPicker v-if="showRunTargetPicker" v-model="runTarget" :links="links" />
 							</div>
 						</template>
 					</InstanceAiInput>
@@ -697,9 +702,10 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							@submit="handleSubmit"
 							@content-change="composerHasContent = $event"
 						>
-							<template v-if="canSelectProject" #footer>
+							<template v-if="canSelectProject || showRunTargetPicker" #footer>
 								<div :class="$style.inputFooter" data-test-id="instance-ai-split-project-select">
-									<ProjectSelect v-model="selectedProject" />
+									<ProjectSelect v-if="canSelectProject" v-model="selectedProject" />
+									<RunTargetPicker v-if="showRunTargetPicker" v-model="runTarget" :links="links" />
 								</div>
 							</template>
 						</InstanceAiInput>
@@ -737,9 +743,10 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						@workflow-preview="handleWorkflowPreview"
 						@content-change="composerHasContent = $event"
 					>
-						<template v-if="canSelectProject" #footer>
+						<template v-if="canSelectProject || showRunTargetPicker" #footer>
 							<div :class="$style.inputFooter">
-								<ProjectSelect v-model="selectedProject" />
+								<ProjectSelect v-if="canSelectProject" v-model="selectedProject" />
+								<RunTargetPicker v-if="showRunTargetPicker" v-model="runTarget" :links="links" />
 							</div>
 						</template>
 					</InstanceAiInput>

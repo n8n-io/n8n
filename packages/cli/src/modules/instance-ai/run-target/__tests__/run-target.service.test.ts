@@ -1,4 +1,4 @@
-import type { LinkedInstanceSummary } from '@n8n/api-types';
+import type { LinkedInstanceSummary, RunTarget } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -54,6 +54,16 @@ function chatThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 	} as AgentExecutionThread;
 }
 
+/** A chat message that names `requested` as its run target. */
+async function forTurn(
+	service: RunTargetService,
+	thread: AgentExecutionThread,
+	defaults: unknown,
+	requested: RunTarget | undefined,
+) {
+	return await service.forChatTurn(thread, defaults, { runTarget: requested });
+}
+
 function defaultsOf(thread: { metadata: Record<string, unknown> }) {
 	return thread.metadata[ASSISTANT_TURN_DEFAULTS_KEY];
 }
@@ -85,11 +95,10 @@ describe('RunTargetService', () => {
 			const { memory, thread } = createMemory();
 			const service = createService(memory);
 
-			const target = await service.forChatTurn(
-				chatThread(),
-				undefined,
-				{ kind: 'linked', instanceId: LINK_ID },
-			);
+			const target = await forTurn(service, chatThread(), undefined, {
+				kind: 'linked',
+				instanceId: LINK_ID,
+			});
 
 			expect(target).toEqual({ kind: 'linked', instanceId: LINK_ID, name: 'Office' });
 			expect(store.getForUser).toHaveBeenCalledWith(OWNER_ID, LINK_ID);
@@ -103,7 +112,7 @@ describe('RunTargetService', () => {
 			const { memory, thread } = createMemory();
 			const service = createService(memory);
 
-			const target = await service.forChatTurn(chatThread(), undefined, {
+			const target = await forTurn(service, chatThread(), undefined, {
 				kind: 'linked',
 				instanceId: OTHER_LINK_ID,
 			});
@@ -116,7 +125,7 @@ describe('RunTargetService', () => {
 			const { memory, thread } = createMemory();
 			const service = createService(memory);
 
-			const target = await service.forChatTurn(chatThread(), undefined, undefined);
+			const target = await forTurn(service, chatThread(), undefined, undefined);
 
 			expect(target).toEqual({ kind: 'local' });
 			expect(store.getForUser).not.toHaveBeenCalled();
@@ -128,8 +137,8 @@ describe('RunTargetService', () => {
 			const service = createService(memory);
 			const firstChoice = { kind: 'linked', instanceId: LINK_ID } as const;
 
-			await service.forChatTurn(chatThread(), undefined, firstChoice);
-			const second = await service.forChatTurn(chatThread(), undefined, { kind: 'local' });
+			await forTurn(service, chatThread(), undefined, firstChoice);
+			const second = await forTurn(service, chatThread(), undefined, { kind: 'local' });
 
 			expect(second).toEqual({ kind: 'linked', instanceId: LINK_ID, name: 'Office' });
 			expect(defaultsOf(thread)).toEqual({
@@ -142,7 +151,7 @@ describe('RunTargetService', () => {
 			const { memory, thread } = createMemory();
 			const service = createService(memory);
 
-			const target = await service.forChatTurn(chatThread(), undefined, {
+			const target = await forTurn(service, chatThread(), undefined, {
 				kind: 'linked',
 				instanceId: LINK_ID,
 			});
@@ -160,11 +169,10 @@ describe('RunTargetService', () => {
 			});
 			const service = createService(memory);
 
-			const target = await service.forChatTurn(
-				chatThread(),
-				defaultsOf(thread),
-				{ kind: 'linked', instanceId: LINK_ID },
-			);
+			const target = await forTurn(service, chatThread(), defaultsOf(thread), {
+				kind: 'linked',
+				instanceId: LINK_ID,
+			});
 
 			expect(target).toEqual({ kind: 'local' });
 			expect(store.getForUser).not.toHaveBeenCalled();
@@ -178,7 +186,7 @@ describe('RunTargetService', () => {
 			});
 			const service = createService(memory);
 
-			const target = await service.forChatTurn(chatThread(), defaultsOf(thread), {
+			const target = await forTurn(service, chatThread(), defaultsOf(thread), {
 				kind: 'local',
 			});
 
@@ -192,7 +200,7 @@ describe('RunTargetService', () => {
 			});
 			const service = createService(memory);
 
-			const target = await service.forChatTurn(chatThread(), defaultsOf(thread), {
+			const target = await forTurn(service, chatThread(), defaultsOf(thread), {
 				kind: 'linked',
 				instanceId: LINK_ID,
 			});
@@ -211,7 +219,8 @@ describe('RunTargetService', () => {
 			});
 			const service = createService(memory);
 
-			const target = await service.forChatTurn(
+			const target = await forTurn(
+				service,
 				chatThread({ accessScope: 'project' }),
 				defaultsOf(thread),
 				undefined,
@@ -234,8 +243,8 @@ describe('RunTargetService', () => {
 			});
 			const service = createService(memory);
 
-			const first = await service.forChatTurn(chatThread(), defaultsOf(thread), undefined);
-			const second = await service.forChatTurn(chatThread(), defaultsOf(thread), undefined);
+			const first = await forTurn(service, chatThread(), defaultsOf(thread), undefined);
+			const second = await forTurn(service, chatThread(), defaultsOf(thread), undefined);
 
 			expect(first).toEqual({ kind: 'local' });
 			expect(second).toEqual({ kind: 'local' });
@@ -250,7 +259,9 @@ describe('RunTargetService', () => {
 							content: [
 								{
 									type: 'text',
-									text: expect.stringContaining('This chat runs in Office, which isn\'t linked any more.'),
+									text: expect.stringContaining(
+										"This chat runs in Office, which isn't linked any more.",
+									),
 								},
 							],
 						}),
@@ -266,7 +277,7 @@ describe('RunTargetService', () => {
 			});
 			const service = createService(memory);
 
-			const target = await service.forChatTurn(chatThread(), defaultsOf(thread), undefined);
+			const target = await forTurn(service, chatThread(), defaultsOf(thread), undefined);
 
 			expect(target).toEqual({ kind: 'local' });
 			expect(store.getForUser).not.toHaveBeenCalled();
@@ -281,7 +292,7 @@ describe('RunTargetService', () => {
 			saveMessages.mockRejectedValueOnce(new Error('write failed'));
 			const service = createService(memory);
 
-			const target = await service.forChatTurn(chatThread(), defaultsOf(thread), undefined);
+			const target = await forTurn(service, chatThread(), defaultsOf(thread), undefined);
 
 			expect(target).toEqual({ kind: 'local' });
 			expect(logger.warn).toHaveBeenCalledWith(
@@ -295,11 +306,10 @@ describe('RunTargetService', () => {
 		const { memory, thread } = createMemory();
 		const service = createService(memory);
 
-		const target = await service.forChatTurn(
-			chatThread({ ownerId: null }),
-			undefined,
-			{ kind: 'linked', instanceId: LINK_ID },
-		);
+		const target = await forTurn(service, chatThread({ ownerId: null }), undefined, {
+			kind: 'linked',
+			instanceId: LINK_ID,
+		});
 
 		expect(target).toEqual({ kind: 'local' });
 		expect(store.getForUser).not.toHaveBeenCalled();

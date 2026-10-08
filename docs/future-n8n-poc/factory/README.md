@@ -361,6 +361,8 @@ pnpm test test/unit/software-factory
   decides each gate with sample results.
 - [software-factory-template-steps.test.ts](../../../packages/cli/test/unit/software-factory/software-factory-template-steps.test.ts)
   runs the Code nodes and the expressions of the steps and the outcomes.
+- [software-factory-template-approval.test.ts](../../../packages/cli/test/unit/software-factory/software-factory-template-approval.test.ts)
+  renders the Slack message and the review page of the plan approval.
 - [software-factory-template-diff.test.ts](../../../packages/cli/test/unit/software-factory/software-factory-template-diff.test.ts)
   decides the diff gates with sample diffs and runs the comparison after Minimise.
 

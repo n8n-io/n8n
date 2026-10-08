@@ -125,7 +125,7 @@ function warningKey(warning: AgentChatWarning): string {
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
 	const locale = useI18n();
-	const { showError } = useToast();
+	const { showError, showMessage } = useToast();
 
 	const messages = ref<ChatMessage[]>([]);
 	const isStreamOpen = ref(false);
@@ -592,6 +592,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		errorEmitted: boolean;
 		/** Set when the stream reaches a valid terminal event. */
 		terminalEventReceived: boolean;
+		/** Set when the error text is the server's reason for a refusal. It can name users. */
+		serverRefusal?: boolean;
 		/**
 		 * Cursor pointing at the ChatMessage currently being filled by
 		 * text/reasoning/tool-input events. `start-step` / `finish-step`
@@ -1249,7 +1251,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (event.errorCode === 'agent_misconfigured') {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
 				} else if (session.userMessage && !session.executionId) {
-					showError(new Error(event.message), locale.baseText('agents.chat.queue.sendError'));
+					showSendError(event.message, session);
 				} else {
 					messages.value.push(
 						reactive<ChatMessage>({
@@ -1492,8 +1494,22 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	): Promise<{ outcome: StreamOutcome; rejection?: ChatRejection }> {
 		const rejection = await readChatRejection(response);
 		if (!isCurrent() || session.controller.signal.aborted) return { outcome: 'aborted' };
+		session.serverRefusal = rejection.message !== undefined;
 		handleEvent({ type: 'error', message: rejectionMessage(rejection, response) }, session);
 		return { outcome: 'failed', rejection };
+	}
+
+	/**
+	 * A message that did not go through. The server's reason for a refusal can name users or
+	 * projects, so its toast is not tracked.
+	 */
+	function showSendError(message: string, session: StreamSession): void {
+		const title = locale.baseText('agents.chat.queue.sendError');
+		if (session.serverRefusal) {
+			showMessage({ type: 'error', title, message, duration: 0 }, false);
+			return;
+		}
+		showError(new Error(message), title);
 	}
 
 	async function streamChat(

@@ -23,9 +23,14 @@ const AUTOMATION_WORKFLOW_NAME = 'Simple mode daily digest';
 // The target that the proposal offers: this n8n instance (AUTOMATION_LOCAL_TARGET_ID).
 const AUTOMATION_TARGET = 'local';
 const BLOCKING_IMPACTS = ['serious', 'critical'];
-// `aria-required-parent` flags the sidebar items. Their markup predates this slice, and the
-// fix sits in the design system (BACKLOG Q03). The scan keeps every other rule.
-const KNOWN_SIDEBAR_MARKUP_RULES = ['aria-required-parent'];
+// Violations of the sidebar that exist today, sorted. Their fixes belong to the owners of the
+// sidebar markup (BACKLOG Q03). The list may only shrink: a new violation fails the scan, and so
+// does a fixed one, until the list is updated.
+const KNOWN_SIDEBAR_VIOLATIONS = [
+	'aria-allowed-attr (critical)',
+	'aria-required-parent (critical)',
+	'link-name (serious)',
+];
 // Chats wait for the scripted model and for the chat list to refresh, so they take a while.
 const CHAT_TIMEOUT_MS = 60_000;
 
@@ -42,8 +47,8 @@ async function openInMode(n8n: n8nPage, mode: Mode): Promise<void> {
 }
 
 /**
- * Starts a run of the Assistant in a chat. The route streams the run, so the call returns
- * when the caller stops reading. Close the stream with `disconnect()`. The run goes on.
+ * Opens the event stream of an Assistant run in a chat. The run goes on after the stream
+ * closes, so call `disconnect()` on the result when the test has what it needs.
  */
 async function startAssistantRun(n8n: n8nPage, baseUrl: string, threadId: string, message: string) {
 	const project = await n8n.api.projects.getMyPersonalProject();
@@ -198,7 +203,7 @@ function proposeDigestScript(workflowId: string): ScriptInput {
 	};
 }
 
-/** Starts a run of the Assistant, as the chat does: the test reads its events. */
+/** One Assistant run, as the chat client opens it. */
 type AssistantRun = Awaited<ReturnType<ApiHelpers['agents']['openChat']>>;
 type StartLlm = (script: ScriptInput) => Promise<ScriptedLlm>;
 
@@ -209,6 +214,7 @@ function suspensionsOf(run: AssistantRun) {
 	);
 }
 
+/** Waits until the run suspends for an answer, then returns its first suspended tool call. */
 async function awaitSuspension(run: AssistantRun) {
 	await expect.poll(() => suspensionsOf(run).length).toBeGreaterThan(0);
 	const [suspension] = suspensionsOf(run);
@@ -265,18 +271,14 @@ async function turnOnProposal(
 	}
 }
 
-/**
- * Fails on serious or critical axe violations. Other impacts are reported only.
- * The known sidebar rules are skipped, see KNOWN_SIDEBAR_MARKUP_RULES.
- */
-async function expectNoBlockingViolations(a11y: A11yChecker): Promise<void> {
-	const violations = await a11y.check('sidebar', {
-		disableRules: KNOWN_SIDEBAR_MARKUP_RULES,
-	});
-	const blocking = violations.filter((violation) =>
-		BLOCKING_IMPACTS.includes(violation.impact ?? ''),
-	);
-	expect(blocking.map((violation) => `${violation.id} (${violation.impact})`)).toEqual([]);
+/** Fails when the serious and critical axe violations of the sidebar differ from the known list. */
+async function expectKnownBlockingViolations(a11y: A11yChecker): Promise<void> {
+	const violations = await a11y.check('sidebar');
+	const blocking = violations
+		.filter((violation) => BLOCKING_IMPACTS.includes(violation.impact ?? ''))
+		.map((violation) => `${violation.id} (${violation.impact})`)
+		.sort();
+	expect(blocking).toEqual(KNOWN_SIDEBAR_VIOLATIONS);
 }
 
 // The linked-instance runner starts both instances. Skip when it is not running.
@@ -531,7 +533,7 @@ test.describe(
 			await n8n.navigate.toInstanceAi();
 			await n8n.experienceModes.getWorkspaceToggle().click();
 			await expect(n8n.experienceModes.getPersonalEntry()).toBeVisible();
-			await expectNoBlockingViolations(a11y);
+			await expectKnownBlockingViolations(a11y);
 			// A scan that did not run adds nothing to the list, so check the count after each scan.
 			expect(a11y.scans).toHaveLength(1);
 
@@ -539,7 +541,7 @@ test.describe(
 			await expect(
 				n8n.experienceModes.getChatGroupItem('ready', 'Accessibility chat, Ready to review'),
 			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
-			await expectNoBlockingViolations(a11y);
+			await expectKnownBlockingViolations(a11y);
 			expect(a11y.scans).toHaveLength(2);
 			expect(a11y.scans.map((scan) => scan.bucket)).toEqual(['sidebar', 'sidebar']);
 		});

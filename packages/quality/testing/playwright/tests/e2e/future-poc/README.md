@@ -134,6 +134,9 @@ context also starts with the sidebar expanded: the sidebar experiment has no
 PostHog variant in e2e, and its control group starts collapsed. A test that
 stores a choice in `sidebar.collapsed` keeps it.
 
+After each test, the fixtures deactivate the active workflows of "This
+computer". A published workflow cannot be deleted by the next reset.
+
 | Fixture | Purpose |
 |---|---|
 | `n8n`, `api` | The usual page and API helpers for "This computer". |

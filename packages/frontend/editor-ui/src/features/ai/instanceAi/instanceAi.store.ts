@@ -208,6 +208,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			lastActivityAt: thread.lastActivityAt,
 			sharedWith: thread.sharedWith,
 			owner: thread.owner,
+			runTarget: thread.runTarget,
 		};
 	}
 
@@ -277,6 +278,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			entry.metadata = thread.metadata ?? undefined;
 			entry.sharedWith = thread.sharedWith;
 			entry.owner = thread.owner;
+			entry.runTarget = thread.runTarget;
 		}
 	}
 

@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, ref } from 'vue';
 import type { AgentSseEvent } from '@n8n/api-types';
@@ -12,12 +11,13 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-const { showError, getTestChatMessages } = vi.hoisted(() => ({
+const { showError, showMessage, getTestChatMessages } = vi.hoisted(() => ({
 	showError: vi.fn(),
+	showMessage: vi.fn(),
 	getTestChatMessages: vi.fn(),
 }));
 
-vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError, showMessage }) }));
 
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: () => ({
@@ -167,7 +167,7 @@ describe('useAgentChatStream — card answers that do not go through', () => {
 		expect(onResumeFailed).not.toHaveBeenCalled();
 	});
 
-	it('shows the server reason when it refuses a new message', async () => {
+	it('shows the server reason when it refuses a new message, in a toast that is not tracked', async () => {
 		fetchMock.mockResolvedValue(
 			errorResponse(403, { code: 403, message: 'Only Alice Owner can send messages here.' }),
 		);
@@ -175,10 +175,31 @@ describe('useAgentChatStream — card answers that do not go through', () => {
 
 		await hook.sendMessage('Hello');
 
+		// The reason names a user, so it must not go to telemetry.
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'error',
+				title: 'agents.chat.queue.sendError',
+				message: 'Only Alice Owner can send messages here.',
+			}),
+			false,
+		);
+		expect(showError).not.toHaveBeenCalled();
+	});
+
+	it('reports a refused message without a server reason as before, with the status text', async () => {
+		fetchMock.mockResolvedValue(
+			new Response('<html />', { status: 502, statusText: 'Bad Gateway' }),
+		);
+		const hook = buildHook(vi.fn());
+
+		await hook.sendMessage('Hello');
+
 		expect(showError).toHaveBeenCalledWith(
-			expect.objectContaining({ message: 'Only Alice Owner can send messages here.' }),
+			expect.objectContaining({ message: 'Bad Gateway' }),
 			'agents.chat.queue.sendError',
 		);
+		expect(showMessage).not.toHaveBeenCalled();
 	});
 
 	it('falls back to the status text when the refusal has no readable body', async () => {

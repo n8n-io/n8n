@@ -244,7 +244,8 @@ const composerResources = ref<InstanceAiResourceAttachment[]>([]);
 /** Text n8n wrote into the composer, to tell a pre-fill from a typed message. */
 const activePrefill = ref<InstanceAiPrefillPayload | null>(null);
 /** A programmatic send: its context replaces the composer state for one message. */
-let oneShotMessage: Pick<ThreadChatMessage, 'attachments' | 'handoffContext'> | null = null;
+let oneShotMessage: Pick<ThreadChatMessage, 'attachments' | 'handoffContext' | 'runTarget'> | null =
+	null;
 
 const restoredWorkflowAttachment = getPendingWorkflowAttachment(thread.id);
 if (restoredWorkflowAttachment) thread.setPendingWorkflowAttachment(restoredWorkflowAttachment);
@@ -417,6 +418,7 @@ function buildHostContext(): Record<string, unknown> {
 		...(threadArtifacts ? { threadArtifacts } : {}),
 		...(context ? { context } : {}),
 		...(attachments.length ? { attachments } : {}),
+		...(message?.runTarget ? { runTarget: message.runTarget } : {}),
 	};
 	// A programmatic send leaves the composer state alone when it is accepted.
 	if (message) programmaticHostContexts.add(hostContext);
@@ -483,6 +485,7 @@ async function sendThroughChat(message: ThreadChatMessage): Promise<boolean> {
 	oneShotMessage = {
 		...(message.attachments ? { attachments: message.attachments } : {}),
 		...(message.handoffContext ? { handoffContext: message.handoffContext } : {}),
+		...(message.runTarget ? { runTarget: message.runTarget } : {}),
 	};
 	const sent = await panel.sendMessageFromOutside(message.message, message.files);
 	if (!sent) oneShotMessage = null;
@@ -506,12 +509,18 @@ function sendPendingFirstMessage() {
 		useOpenWorkflowInAssistantStore().handleRedirectLanding(thread.id);
 	}
 	if (!pending) return;
-	void thread.sendMessage(pending.message, {
-		authorship: pending.authorship,
-		attachments: pending.attachments,
-		files,
-		handoffContext: pending.context,
-	});
+	void thread
+		.sendMessage(pending.message, {
+			authorship: pending.authorship,
+			attachments: pending.attachments,
+			files,
+			handoffContext: pending.context,
+			...(pending.runTarget ? { runTarget: pending.runTarget } : {}),
+		})
+		.then(() => {
+			// The server stores the run target with the first message. Read it back for the header.
+			if (pending.runTarget) void store.refreshThread(thread.id).catch(() => {});
+		});
 }
 
 /** Apply a stashed composer draft once the chat can take it. */

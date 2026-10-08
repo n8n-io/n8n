@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import type { SharedCard } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
+import { TOOL_CALL_STATE } from '@/features/ai/shared/agentsChat/constants';
 import {
 	answerAuthorship,
+	asksForInput,
 	canShareThread,
 	resumeFailureNotice,
 	sharedRowLabel,
@@ -133,18 +135,35 @@ describe('teammateCardAccess properties', () => {
 
 describe('answerAuthorship properties', () => {
 	const authors = fc.option(owners, { nil: undefined });
+	const states = fc.option(fc.constantFrom(...Object.values(TOOL_CALL_STATE)), { nil: undefined });
+	const cancelledFlags = fc.option(fc.boolean(), { nil: undefined });
+	const payloads = fc.option(
+		fc.oneof(
+			fc.record({ inputType: fc.constantFrom('approval', 'questions', 'text', 'plan-review') }),
+			fc.record({ setupRequests: fc.array(fc.constant({ node: 'n' }), { maxLength: 2 }) }),
+			fc.record({ credentialRequests: fc.array(fc.constant({ type: 't' }), { maxLength: 2 }) }),
+			fc.constant('not a payload'),
+		),
+		{ nil: undefined },
+	);
 
 	it('names only another user, by that user’s name, and stays silent in a private chat of the viewer', () => {
 		fc.assert(
 			fc.property(
-				authors,
-				authors,
+				fc.record({
+					approvedBy: authors,
+					declinedBy: authors,
+					canceled: cancelledFlags,
+					state: states,
+					suspendPayload: payloads,
+				}),
 				userIds,
 				fc.boolean(),
-				(approvedBy, declinedBy, viewerId, shared) => {
-					const result = answerAuthorship({ approvedBy, declinedBy }, viewerId, shared);
-					const author = declinedBy ?? approvedBy;
-					if (!author || (author.id === viewerId && !shared)) {
+				(call, viewerId, shared) => {
+					const result = answerAuthorship(call, viewerId, shared);
+					const author = call.declinedBy ?? call.approvedBy;
+					const cancelled = call.canceled === true || call.state === TOOL_CALL_STATE.CANCELLED;
+					if (!author || cancelled || (author.id === viewerId && !shared)) {
 						expect(result).toBeUndefined();
 						return;
 					}
@@ -152,9 +171,22 @@ describe('answerAuthorship properties', () => {
 						expect(author.id).not.toBe(viewerId);
 						expect(result.name).toBe(author.name);
 					}
-					if (result) expect(result.decision).toBe(declinedBy ? 'declined' : 'approved');
+					if (!result) return;
+					if (call.declinedBy) expect(result.decision).toBe('declined');
+					else expect(result.decision).not.toBe('declined');
 				},
 			),
+		);
+	});
+
+	it('says "answered" to a card that asks for input and "approved" to any other card', () => {
+		fc.assert(
+			fc.property(authors, authors, payloads, (approvedBy, declinedBy, suspendPayload) => {
+				const result = answerAuthorship({ approvedBy, declinedBy, suspendPayload }, 'viewer', true);
+				if (result === undefined || result.decision === 'declined') return;
+				expect(declinedBy).toBeUndefined();
+				expect(result.decision).toBe(asksForInput(suspendPayload) ? 'answered' : 'approved');
+			}),
 		);
 	});
 });

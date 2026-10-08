@@ -152,9 +152,16 @@ describe('AssistantAgentProvider', () => {
 			const thread = { id: 'thread-1' } as AgentExecutionThread;
 			const requested = { kind: 'linked', instanceId: '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c' };
 
-			await provider.chatTurnOptions(mock<User>(), thread, { timeZone: 'UTC', runTarget: requested });
+			await provider.chatTurnOptions(mock<User>(), thread, {
+				timeZone: 'UTC',
+				runTarget: requested,
+			});
 
-			expect(runTargets.forChatTurn).toHaveBeenCalledWith(thread, stored, requested);
+			expect(runTargets.forChatTurn).toHaveBeenCalledWith(
+				thread,
+				stored,
+				expect.objectContaining({ runTarget: requested }),
+			);
 		});
 
 		it('passes no run target when the request carries an invalid one', async () => {
@@ -167,7 +174,8 @@ describe('AssistantAgentProvider', () => {
 				runTarget: { kind: 'linked', instanceId: 'not-a-uuid' },
 			});
 
-			expect(runTargets.forChatTurn).toHaveBeenCalledWith(thread, undefined, undefined);
+			const [, , request] = runTargets.forChatTurn.mock.calls[0];
+			expect(request?.runTarget).toBeUndefined();
 		});
 
 		it('returns only the ids when the thread has no stored defaults', async () => {

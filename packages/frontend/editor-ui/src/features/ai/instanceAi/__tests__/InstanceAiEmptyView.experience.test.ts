@@ -5,6 +5,7 @@ import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import type { ExperienceMode } from '@n8n/api-types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { fetchLinkedInstances } from '@/features/linkedInstances/linkedInstances.api';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -33,6 +34,10 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 
 vi.mock('uuid', () => ({ v4: () => 'new-thread' }));
+
+vi.mock('@/features/linkedInstances/linkedInstances.api', () => ({
+	fetchLinkedInstances: vi.fn(),
+}));
 
 /**
  * The composer: a send button, and the footer that holds the project picker. It shows the
@@ -218,6 +223,33 @@ describe('InstanceAiEmptyView project choice', () => {
 			await startChat(getByTestId);
 
 			expect(startedProject()).toBe(PERSONAL);
+		});
+	});
+
+	describe('run target picker', () => {
+		beforeEach(() => {
+			mockedStore(useSettingsStore).isModuleActive.mockImplementation(
+				(name: string) => name === 'linked-instances',
+			);
+			vi.mocked(fetchLinkedInstances).mockResolvedValue([]);
+		});
+
+		it('shows the picker in the composer footer in Power mode', async () => {
+			useMode('power');
+
+			const { findByTestId } = renderView();
+
+			expect(await findByTestId('run-target-picker')).toHaveTextContent('Runs on: This computer');
+		});
+
+		it('hides the picker in Simple mode, even when linked instances are on', async () => {
+			useMode('simple');
+
+			const { queryByTestId } = renderView();
+			await flushPromises();
+
+			expect(queryByTestId('run-target-picker')).not.toBeInTheDocument();
+			expect(fetchLinkedInstances).not.toHaveBeenCalled();
 		});
 	});
 

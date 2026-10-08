@@ -85,10 +85,15 @@ const request = computed(
 		v-else
 		:class="$style.sharedCard"
 		role="group"
+		:aria-label="i18n.baseText('instanceAi.sharing.cardLabel')"
 		:aria-describedby="showsFooter ? footerId : undefined"
 		data-test-id="instance-ai-shared-card"
 	>
-		<N8nCard v-if="access === 'owner-only'" data-test-id="instance-ai-shared-card-request">
+		<N8nCard
+			v-if="access === 'owner-only'"
+			:class="$style.requestCard"
+			data-test-id="instance-ai-shared-card-request"
+		>
 			<N8nText tag="p" :class="$style.request">{{ request }}</N8nText>
 		</N8nCard>
 		<InstanceAiConfirmationCard
@@ -112,10 +117,16 @@ const request = computed(
 </template>
 
 <style lang="scss" module>
+@use '../../shared/styles/assistant-card' as assistantCard;
+
 .sharedCard {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+}
+
+.requestCard {
+	@include assistantCard.surface;
 }
 
 .request {

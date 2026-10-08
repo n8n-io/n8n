@@ -7,6 +7,9 @@ import {
 	type SharedCard,
 } from '@n8n/api-types';
 import { hasScope, type Scope } from '@n8n/permissions';
+import { isRecord } from '@n8n/utils/is-record';
+import { TOOL_CALL_STATE } from '@/features/ai/shared/agentsChat/constants';
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 
 /**
  * View rules for shared Assistant chats. They mirror the server rules
@@ -63,12 +66,20 @@ export interface ThreadSharingView {
 /** What a teammate can do with a card. */
 export type CardAccess = 'answer' | 'needs-role' | 'owner-only';
 
+/** How a card was answered: a yes, a no, or the input that the card asked for. */
+export type AnswerDecision = 'approved' | 'declined' | 'answered';
+
 /** Who answered a card, as the tool-step row shows it. */
 export interface AnswerAuthorship {
-	decision: 'approved' | 'declined';
+	decision: AnswerDecision;
 	/** Undefined when the viewer gave the answer. */
 	name?: string;
 }
+
+/** The fields of a tool call that tell who answered its card, and how. */
+export type AnsweredCall = Partial<
+	Pick<ToolCall, 'approvedBy' | 'declinedBy' | 'canceled' | 'state' | 'suspendPayload'>
+>;
 
 /** A card answer that did not go through. */
 export interface ResumeFailureFacts {
@@ -160,18 +171,48 @@ export function teammateCardAccess(
 	return holdsAll(rule.scopes, scopes) ? 'answer' : 'needs-role';
 }
 
+const hasItems = (value: unknown) => Array.isArray(value) && value.length > 0;
+
+/**
+ * Whether a card asks for input (answers, text or a setup), not for a yes or a no. The server
+ * records every answer that is not a no as an approval, so the card type tells them apart.
+ */
+export function asksForInput(suspendPayload: unknown): boolean {
+	if (!isRecord(suspendPayload)) return false;
+	const { inputType, setupRequests, credentialRequests } = suspendPayload;
+	return (
+		inputType === 'questions' ||
+		inputType === 'text' ||
+		hasItems(setupRequests) ||
+		hasItems(credentialRequests)
+	);
+}
+
+/**
+ * A message from the owner cancels a waiting card. The server records the cancellation like an
+ * answer, but nobody approved the card and it did not run.
+ */
+const isCancelled = (call: AnsweredCall) =>
+	call.canceled === true || call.state === TOOL_CALL_STATE.CANCELLED;
+
+function decisionOf(call: AnsweredCall): AnswerDecision {
+	if (call.declinedBy) return 'declined';
+	return asksForInput(call.suspendPayload) ? 'answered' : 'approved';
+}
+
 /**
  * Who answered a card. A private chat has one person, so its answers need no name. A shared
- * chat names every answer, and calls the viewer's own answers "you".
+ * chat names every answer, and calls the viewer's own answers "you". A cancelled card names
+ * nobody.
  */
 export function answerAuthorship(
-	answers: { approvedBy?: AgentMessageAuthor; declinedBy?: AgentMessageAuthor },
+	call: AnsweredCall,
 	viewerId: string | undefined,
 	isShared: boolean,
 ): AnswerAuthorship | undefined {
-	const author = answers.declinedBy ?? answers.approvedBy;
-	if (!author) return undefined;
-	const decision = answers.declinedBy ? 'declined' : 'approved';
+	const author = call.declinedBy ?? call.approvedBy;
+	if (!author || isCancelled(call)) return undefined;
+	const decision = decisionOf(call);
 	if (author.id === viewerId) return isShared ? { decision } : undefined;
 	return author.name ? { decision, name: author.name } : undefined;
 }

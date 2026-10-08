@@ -230,7 +230,7 @@ describe('software factory gates', () => {
 			[
 				'a command that succeeds after the test',
 				ready,
-				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts; true' }),
+				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts ; true' }),
 			],
 			[
 				'a fallback after the test',

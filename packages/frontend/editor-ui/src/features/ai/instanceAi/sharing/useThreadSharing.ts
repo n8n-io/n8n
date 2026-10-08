@@ -90,11 +90,15 @@ export function provideThreadSharing(thread: SharingThreadRef, messages: () => C
 			isShared: view.value.isShared,
 		});
 		if (notice?.kind === 'refused') {
-			toast.showMessage({
-				type: 'error',
-				title: i18n.baseText('instanceAi.sharing.answerError'),
-				...(notice.message && { message: notice.message }),
-			});
+			// Not tracked: the server's text can name users and projects.
+			toast.showMessage(
+				{
+					type: 'error',
+					title: i18n.baseText('instanceAi.sharing.answerError'),
+					...(notice.message && { message: notice.message }),
+				},
+				false,
+			);
 		} else if (notice) {
 			toast.showMessage({ type: 'info', title: text.alreadyAnswered(notice) });
 		}

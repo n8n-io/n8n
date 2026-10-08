@@ -29,7 +29,10 @@ describe('storedRunTargetOf', () => {
 	it.each([
 		['an unknown kind', { kind: 'remote', instanceId: LINK_ID, name: 'Cloud' }],
 		['a linked target without a name', { kind: 'linked', instanceId: LINK_ID }],
-		['a linked target with an id that is not a uuid', { kind: 'linked', instanceId: 'x', name: 'C' }],
+		[
+			'a linked target with an id that is not a uuid',
+			{ kind: 'linked', instanceId: 'x', name: 'C' },
+		],
 		['a linked target with an empty name', { kind: 'linked', instanceId: LINK_ID, name: '' }],
 	])('returns undefined for %s', (_label, runTarget) => {
 		expect(storedRunTargetOf({ runTarget })).toBeUndefined();
@@ -43,11 +46,13 @@ describe('storedRunTargetOf', () => {
 					instanceId: fc.uuid(),
 					name: fc.string({ minLength: 1, maxLength: 64 }),
 				})
-				.map(({ instanceId, name }): InstanceAiThreadRunTarget => ({
-					kind: 'linked',
-					instanceId,
-					name,
-				})),
+				.map(
+					({ instanceId, name }): InstanceAiThreadRunTarget => ({
+						kind: 'linked',
+						instanceId,
+						name,
+					}),
+				),
 		);
 		fc.assert(
 			fc.property(targetArb, (target) => {
@@ -79,13 +84,13 @@ describe('keepFirstRunTarget', () => {
 		});
 		const firstArb = fc.oneof(
 			fc.constant<InstanceAiThreadRunTarget>({ kind: 'local' }),
-			fc
-				.record({ instanceId: fc.uuid(), name: fc.string({ minLength: 1, maxLength: 64 }) })
-				.map(({ instanceId, name }): InstanceAiThreadRunTarget => ({
+			fc.record({ instanceId: fc.uuid(), name: fc.string({ minLength: 1, maxLength: 64 }) }).map(
+				({ instanceId, name }): InstanceAiThreadRunTarget => ({
 					kind: 'linked',
 					instanceId,
 					name,
-				})),
+				}),
+			),
 		);
 		fc.assert(
 			fc.property(storedArb, firstArb, (stored, first) => {

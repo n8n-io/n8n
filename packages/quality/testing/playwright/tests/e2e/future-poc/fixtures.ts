@@ -94,6 +94,17 @@ async function resetLocal(baseURL: string): Promise<void> {
 	});
 }
 
+/** Deactivates the active workflows of "This computer" after a test. */
+async function deactivateActiveWorkflows(baseURL: string): Promise<void> {
+	await withApi(baseURL, async (api) => {
+		await api.signin('owner');
+		const workflows: Array<{ id: string; active: boolean }> = await api.workflows.getWorkflows();
+		for (const workflow of workflows.filter((candidate) => candidate.active)) {
+			await api.workflows.deactivate(workflow.id);
+		}
+	});
+}
+
 async function resetCloud(baseURL: string): Promise<void> {
 	await withApi(baseURL, async (api) => await api.resetDatabase());
 }
@@ -152,6 +163,8 @@ export const test = base.extend<LinkedInstancesFixtures, LinkedInstancesWorkerFi
 			if (testInfo.timeout !== 0) testInfo.setTimeout(Math.max(testInfo.timeout, TEST_TIMEOUT_MS));
 			await Promise.all([resetLocal(urls.localUrl), resetCloud(urls.cloudUrl)]);
 			await use(undefined);
+			// A published workflow blocks the next reset, so turn off what the test left on.
+			await deactivateActiveWorkflows(urls.localUrl);
 		},
 		{ auto: true },
 	],

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -71,6 +71,34 @@ describe('AssistantChatRow', () => {
 		expect(await hoverTooltip(getByTestId('instance-ai-thread-shared-a'))).toHaveTextContent(
 			'Shared with Marketing',
 		);
+	});
+
+	it('shows the shared label while the keyboard focus is on the row', async () => {
+		const { getByRole } = render(chat('a', 'Weekly digest', { sharedWith, owner: OWNER }));
+		const row = getByRole('menuitem');
+
+		row.focus();
+
+		await waitFor(() =>
+			expect(screen.getByTestId('tooltip-content')).toHaveTextContent('Shared by Alice Owner'),
+		);
+
+		row.blur();
+
+		await waitFor(() => expect(screen.queryByTestId('tooltip-content')).not.toBeInTheDocument());
+	});
+
+	it('shows no shared label when a focused row has no keyboard focus ring', async () => {
+		const { getByRole } = render(chat('a', 'Weekly digest', { sharedWith, owner: OWNER }));
+		const row = getByRole('menuitem');
+		// A mouse click focuses the link without `:focus-visible`.
+		const matches = vi.spyOn(row, 'matches').mockReturnValue(false);
+
+		row.focus();
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		expect(matches).toHaveBeenCalledWith(':focus-visible');
+		expect(screen.queryByTestId('tooltip-content')).not.toBeInTheDocument();
 	});
 
 	it('shows a name with markup as text in the tooltip', async () => {
