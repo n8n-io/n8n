@@ -208,6 +208,9 @@ export const HANDLED_CORPUS: string[] = [
 	'={{ $json.item.names.map(n => $json.item.count) }}',
 	'={{ $json.item.names.map(item => item) }}',
 	'={{ $json.item.names.map($n => $json.item.name + $n) }}',
+	// value2 is itself an expression; the body reads it once per evaluation.
+	'={{ $json.item.names.some(n => n === $parameter.value2) }}',
+	'={{ $json.item.names.map(n => $parameter.value2 + n) }}',
 	"={{ $json.item.names.filter(n => n.startsWith('b')).map(n => n.toUpperCase()).join(', ') }}",
 	'={{ $input.all().map(i => i.json.item.name) }}',
 	'={{ $input.all().filter(i => i.json.item.count > 1).length }}',

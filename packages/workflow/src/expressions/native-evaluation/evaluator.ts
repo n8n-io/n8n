@@ -38,6 +38,7 @@ export interface Env {
 	param: unknown;
 	steps: number;
 	work: number;
+	parameters: Map<string | number, unknown>;
 }
 
 export const createEnv = (data: IWorkflowDataProxyData): Env => ({
@@ -45,6 +46,7 @@ export const createEnv = (data: IWorkflowDataProxyData): Env => ({
 	param: undefined,
 	steps: 0,
 	work: 0,
+	parameters: new Map(),
 });
 
 function charge(env: Env, units: number): void {
@@ -143,7 +145,7 @@ function evalMember(node: Extract<SimpleNode, { kind: 'member' }>, env: Env): un
 		throw new EngineFallbackError();
 	}
 
-	const value = object[node.key];
+	const value = isParameterRead(node) ? readParameter(object, node.key, env) : object[node.key];
 
 	// Neither crosses an engine boundary the same way twice (the vm bridge
 	// drops a nested function but fails on an inherited one; legacy throws),
@@ -153,6 +155,22 @@ function evalMember(node: Extract<SimpleNode, { kind: 'member' }>, env: Env): un
 	}
 
 	return value;
+}
+
+const isParameterRead = (node: Extract<SimpleNode, { kind: 'member' }>): boolean =>
+	node.object.kind === 'root' && node.object.name === '$parameter';
+
+/**
+ * A `$parameter` read resolves a nested `=` expression through the proxy on
+ * every access, each in its own evaluation with its own budgets. A callback
+ * body would resolve it once per element, multiplying the budgets. The vm
+ * bridge resolves each parameter once per evaluation; do the same, so nested
+ * work is one budget per key the expression names.
+ */
+function readParameter(proxy: Record<string | number, unknown>, key: string | number, env: Env) {
+	if (!env.parameters.has(key)) env.parameters.set(key, proxy[key]);
+
+	return env.parameters.get(key);
 }
 
 /**

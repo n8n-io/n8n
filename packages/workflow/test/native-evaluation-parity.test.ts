@@ -524,6 +524,27 @@ describe('Expression - fast native evaluation parity', () => {
 			).toEqual({ handled: false });
 		});
 
+		// A `$parameter` read resolves a nested expression in its own evaluation,
+		// with its own budgets. Read once per evaluation (as the vm bridge does),
+		// a body cannot resolve it once per element.
+		test('a $parameter value is resolved once per evaluation', () => {
+			let reads = 0;
+			const $parameter = new Proxy(
+				{},
+				{
+					get: (_, key) => {
+						reads++;
+						return key === 'x' ? 'z' : undefined;
+					},
+				},
+			);
+			const many = new Array<string>(1_000).fill('y');
+			expect(
+				nativeOn('{{ $json.many.some(n => $parameter.x === n) }}', { $json: { many }, $parameter }),
+			).toEqual({ handled: true, value: false });
+			expect(reads).toBe(1);
+		});
+
 		// map results that reference one payload string are bounded like concat
 		// operands: by content, before the result is cloned.
 		test('map is bounded by the content its results reference', () => {
