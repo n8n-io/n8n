@@ -70,9 +70,9 @@ The bar this decision must meet is parity with engine v1: a resume request is as
 as it is there. The decision meets that bar. It goes past v1 in two places. Only the runtime of the
 data plane can build a token. A step-bound resume URL and an approval callback end one wait only.
 
-1. **The token has its own spec.** A third `SharedSecretTokenSpec` holds its own issuer and
-   audience. Therefore a resume token is not valid at the other endpoints of either plane, and the
-   tokens of those endpoints are not valid at the resume endpoint.
+1. **The token has its own spec.** That spec holds its own issuer and audience. Therefore a resume
+   token is not valid at the other endpoints of either plane, and the tokens of those endpoints are
+   not valid at the resume endpoint.
 2. **The engine derives the token and does not persist it.** The engine calculates the token from
    its claims and the resume secret. It does this each time it needs a token. This needs no column
    and no migration. Any data-plane code that holds the claims can build the token. The
@@ -100,12 +100,8 @@ data plane can build a token. A step-bound resume URL and an approval callback e
    planes. Only the runtime of the data plane reads it, also where the control plane hosts that
    runtime in its own process. The data plane mints every resume token and verifies every resume
    request. No node code runs for a resume request before the data plane accepts its token. The
-   control plane passes the token to the data plane and does not read it. The engine does not start
-   without the resume secret.
-8. **A rolling rollout rotates the resume secret.** A rotation rejects no valid token. Processes
-   with the old configuration and the new configuration can run side by side. An outstanding resume
-   URL keeps working until the operator removes the secret that signed it.
-9. **The control plane sends each resume request to the engine that runs the execution.** It picks
+   control plane passes the token to the data plane and does not read it.
+8. **The control plane sends each resume request to the engine that runs the execution.** It picks
    engine v1 or engine v2, and it does not read the token to do so.
 
 This diagram shows how a resume request moves through the decisions above.
