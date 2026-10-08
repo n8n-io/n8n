@@ -393,17 +393,28 @@ export class SkillService {
 	// ---------------------------------------------------------------- permission
 
 	/**
-	 * Whether the user may change the skill, from the skill's own scope: `projectSkill:update`
-	 * on its project, the owner for a "Just you" skill, or the global `skill:update`.
+	 * Whether the user may do `operation` on the skill, from the skill's own scope:
+	 * `projectSkill:*` on its project for a project skill, the owner or the global
+	 * `skill:*` for a "Just you" skill, and the global `skill:*` for an instance skill.
+	 * Every user may read an instance skill.
 	 */
-	async canEdit(user: User, skill: Pick<Skill, 'userId' | 'projectId'>): Promise<boolean> {
+	async canAccess(
+		user: User,
+		skill: Pick<Skill, 'userId' | 'projectId'>,
+		operation: 'read' | 'update' | 'delete',
+	): Promise<boolean> {
 		if (skill.projectId) {
-			return await userHasScopes(user, ['projectSkill:update'], false, {
+			return await userHasScopes(user, [`projectSkill:${operation}`], false, {
 				projectId: skill.projectId,
 			});
 		}
 		if (skill.userId === user.id) return true;
-		return hasGlobalScope(user, 'skill:update');
+		if (skill.userId === null && operation === 'read') return true;
+		return hasGlobalScope(user, `skill:${operation}`);
+	}
+
+	async canEdit(user: User, skill: Pick<Skill, 'userId' | 'projectId'>): Promise<boolean> {
+		return await this.canAccess(user, skill, 'update');
 	}
 
 	async assertCanEdit(user: User, skillIds: string[], ctx: OperationContext = {}): Promise<void> {
