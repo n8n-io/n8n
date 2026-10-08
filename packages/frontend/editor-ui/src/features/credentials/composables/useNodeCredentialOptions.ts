@@ -113,7 +113,9 @@ export function useNodeCredentialOptions(
 		if (credentialTypeName && option.type !== credentialTypeName) {
 			return false;
 		}
-		if ((option.usageScope ?? 'project') !== 'project') {
+		// Only an explicit non-project string scope is rejected. Proxies/mocks may
+		// expose a non-string usageScope trap; treat those like the unset default.
+		if (typeof option.usageScope === 'string' && option.usageScope !== 'project') {
 			return false;
 		}
 		if (toValue(node)?.type === HTTP_REQUEST_NODE_TYPE && option.isManaged) {
