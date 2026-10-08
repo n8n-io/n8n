@@ -17,8 +17,8 @@ export default {
 	incrementalFile: 'reports/mutation/stryker-incremental.json',
 	// Skip module-level (static) mutants: each forces a full re-instrument.
 	ignoreStatic: true,
-	// Default empty: the `mutate` npm script always passes --mutate <file>.
-	// Direct invocation with no --mutate will fail fast (allowEmpty: false).
+	// Empty: mutate.mjs sets `mutate` to the run's targets in the run config
+	// that it gives Stryker (reports/mutation/stryker.run.json).
 	mutate: [],
 	jsonReporter: { fileName: 'reports/mutation/raw.json' },
 	// Cap low: a string/utils mutant running 15s+ is a spinning loop-condition mutant; fail it fast.

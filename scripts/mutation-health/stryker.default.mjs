@@ -10,6 +10,11 @@
  *
  * Reporter paths are relative to the run cwd, so reports land in
  * <package-dir>/reports/mutation/ and mutate.mjs reads raw.json from there.
+ *
+ * mutate.mjs runs this config with a few changes (see stryker.mjs): the
+ * `vitest-compat` runner in place of `vitest`, because the plain runner kills
+ * no mutant under Vitest 5 (see vitest-compat.mjs), and Stryker's sandbox in a
+ * mirror of the repo (see sandbox-mirror.mjs).
  */
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
 export default {
@@ -26,7 +31,8 @@ export default {
 	// static ones is an acceptable trade. Scores tick up slightly on
 	// static-heavy files (smaller denominator) — expected, not a regression.
 	ignoreStatic: true,
-	// Empty — mutate.mjs always passes --mutate <file>.
+	// Empty: mutate.mjs sets `mutate` to the run's targets in the run config
+	// that it gives Stryker (reports/mutation/stryker.run.json).
 	mutate: [],
 	htmlReporter: { fileName: 'reports/mutation/raw.html' },
 	jsonReporter: { fileName: 'reports/mutation/raw.json' },
