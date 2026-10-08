@@ -569,9 +569,10 @@ workflow-builder, or spawned-agent entries in the spawned-agent section.
 
 Routing mode measures which route the orchestrator takes for a request: build
 an Agent, build a workflow, do the task once, debug, answer, ask a question,
-do many tasks, or decline. Before each tool call, a judge reads what the
-Assistant did so far and stops the trial when it has picked a route. A trial
-takes seconds, not minutes.
+do many tasks, or decline. Before each tool call that is not read-only, a judge
+reads what the Assistant did so far and stops the trial when it has picked a
+route. Read-only calls (loading a skill, reading nodes, credentials or docs,
+searching the web) skip the judge. A trial takes seconds, not minutes.
 
 ```bash
 pnpm eval:discovery --cases-dir <dir> --timeout 120000

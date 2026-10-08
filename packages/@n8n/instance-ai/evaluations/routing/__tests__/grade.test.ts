@@ -281,6 +281,23 @@ describe('createRouteWatcher', () => {
 		expect(answeredQuestions(resolution)).toBe(2);
 	});
 
+	it('ties the answer to the question it replies to when the user skipped an earlier card', async () => {
+		const judge = judgeReturning(stop('clarify'), stop('clarify', 'agent'), stop('agent', 'agent'));
+		const watcher = createRouteWatcher(judge, isQuestion);
+		const skipped = [callEvent('ask-user'), ...answerEvents('ask-user', { answered: false })];
+		const answered = [...skipped, callEvent('ask-user-2'), ...answerEvents('ask-user-2')];
+
+		expect(await watcher.beforeToolCall(pending('ask-user'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(pending('ask-user-2'), skipped)).toBe(false);
+		expect(await watcher.beforeToolCall(pending('build-agent'), answered)).toBe(true);
+		const resolution = await watcher.resolve({
+			instanceEvents: answered,
+			streamStatus: 'stopped-on-route',
+		});
+
+		expect(routeLabel(resolution)).toBe('clarify:agent>agent');
+	});
+
 	it('stops on a second question when the turn has one answer left', async () => {
 		const watcher = createRouteWatcher(judgeReturning(stop('clarify')), isQuestion, 1);
 		const answered = [callEvent('ask-user'), ...answerEvents()];

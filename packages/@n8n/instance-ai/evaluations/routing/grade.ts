@@ -181,7 +181,8 @@ export function createRouteWatcher(
 				};
 				const answers = countAnswers(steps);
 				if (answers < maxAnswers && canReply?.(resolution)) {
-					if (questions.length === answers) questions.push(resolution);
+					// The next answer replies to the latest question. A skipped card adds no answer.
+					questions[answers] = resolution;
 					return false;
 				}
 				stopped = resolution;

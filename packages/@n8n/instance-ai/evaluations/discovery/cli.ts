@@ -50,6 +50,7 @@ import {
 	type RouteResolution,
 } from '../routing/grade';
 import { judgeRoute } from '../routing/judge';
+import type { CapturedEvent } from '../types';
 import { UserProxyLlm } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
@@ -313,6 +314,7 @@ async function runRoutingTurn(
 	scenario: RoutingCase,
 	proxy?: UserProxyLlm,
 	maxAnswers?: number,
+	earlierEvents: CapturedEvent[] = [],
 ): Promise<{ turn: OrchestratorTurnResult; resolution: RouteResolution }> {
 	const watcher = createRouteWatcher(
 		judgeRoute,
@@ -328,7 +330,7 @@ async function runRoutingTurn(
 		...(proxy
 			? {
 					answerQuestions: async (suspension, events) => {
-						proxy.ingestEvents(events);
+						proxy.ingestEvents([...earlierEvents, ...events]);
 						const answer = await proxy.respondToConfirmation({
 							timestamp: Date.now(),
 							type: 'confirmation-request',
@@ -360,9 +362,11 @@ async function runRoutingTrial(args: CliArgs, routingCase: RoutingCase) {
 	// The text question that the last reply answered, with the questions before it.
 	let earlier: RouteResolution | undefined;
 	let durationMs = 0;
+	// The proxy reads only the events past the ones it has seen, so it gets the events of all turns.
+	const events: CapturedEvent[] = [];
 	for (;;) {
 		const used = earlier ? answeredQuestions(earlier) + 1 : 0;
-		const run = await runRoutingTurn(args, scenario, proxy, MAX_ANSWERS - used);
+		const run = await runRoutingTurn(args, scenario, proxy, MAX_ANSWERS - used, events);
 		durationMs += run.turn.durationMs;
 		const resolution = earlier ? afterQuestion(run.resolution, earlier) : run.resolution;
 		const result = {
@@ -378,7 +382,8 @@ async function runRoutingTrial(args: CliArgs, routingCase: RoutingCase) {
 		) {
 			return result;
 		}
-		proxy.ingestEvents(run.turn.events);
+		events.push(...run.turn.events);
+		proxy.ingestEvents(events);
 		const reply = await proxy.decideFollowUp();
 		// ponytail: a proxy that sees nothing to answer leaves the trial graded on the question.
 		if (reply.kind !== 'followUp') return result;
