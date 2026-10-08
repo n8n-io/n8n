@@ -1063,7 +1063,12 @@ describe('useContextMenu', () => {
 		it('should disable mutating actions when the node type is deprecated', () => {
 			const node = nodeFactory();
 			nodeTypesStore.nodeTypes = {
-				[node.type]: { [node.typeVersion]: { deprecated: true } as INodeTypeDescription },
+				[node.type]: {
+					[node.typeVersion]: {
+						deprecated: true,
+						group: [],
+					} as Partial<INodeTypeDescription> as INodeTypeDescription,
+				},
 			};
 			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(node);
 

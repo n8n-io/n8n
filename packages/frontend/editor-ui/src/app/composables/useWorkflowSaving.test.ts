@@ -1763,13 +1763,8 @@ describe('useWorkflowSaving', () => {
 		});
 
 		it('should not retry autosave when the backend rejects deprecated nodes', async () => {
-			const workflow = createTestWorkflow({
-				id: 'w-deprecated-nodes',
-				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
-				active: true,
-			});
-
-			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			const { workflow } = prepareHydratedWorkflow('w-deprecated-nodes');
+			mockedStore(useSettingsStore).isAutosaveEnabled = true;
 
 			const errorMessage =
 				'Cannot use a "n8n-nodes-base.function" node ("Code in JavaScript1"): this node type is deprecated. Replace it with the Code node or remove it from the workflow.';
@@ -1783,15 +1778,13 @@ describe('useWorkflowSaving', () => {
 			});
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(deprecatedNodesError);
 
-			workflowsStore.setWorkflowId(workflow.id);
-			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
-			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.setWorkflowId(workflow.id);
-
 			const uiStore = useUIStore();
 			const saveStore = useWorkflowSaveStore();
 
-			const { saveCurrentWorkflow, autoSaveWorkflow } = useWorkflowSaving({ router });
+			const { saveCurrentWorkflow, autoSaveWorkflow } = useWorkflowSaving({
+				router,
+				ownsAutoSave: true,
+			});
 
 			const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);
 

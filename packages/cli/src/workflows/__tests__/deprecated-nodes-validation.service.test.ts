@@ -107,17 +107,17 @@ describe('DeprecatedNodesValidationService', () => {
 		it('names the configured replacement node in the error message', () => {
 			nodeTypes.getByNameAndVersion.mockImplementation((type) => {
 				if (type === 'n8n-nodes-base.function') {
-					return mock<INodeType>({
-						description: mock<INodeTypeDescription>({
+					return Object.assign(mock<INodeType>(), {
+						description: {
 							name: type,
 							deprecated: true,
 							replacedByNodeType: 'n8n-nodes-base.code',
-						}),
+						} as INodeTypeDescription,
 					});
 				}
 				if (type === 'n8n-nodes-base.code') {
-					return mock<INodeType>({
-						description: mock<INodeTypeDescription>({ name: type, displayName: 'Code' }),
+					return Object.assign(mock<INodeType>(), {
+						description: { name: type, displayName: 'Code' } as INodeTypeDescription,
 					});
 				}
 				return nodeTypeFor(type, false);
