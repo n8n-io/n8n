@@ -1,0 +1,21 @@
+packages/cli/src/services/pruning/executions-pruning.service.ts
+  s_0a178bf49161fd::t_fba7abc075a4a1 5,9-10,28,53,63-98
+packages/cli/test/integration/executions-pruning.service.test.ts
+  s_0a178bf49161fd::t_ac785751ce75b9 7,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfed34d5aac0925da2f058448b63f34fca5cc971",
+  "prompts": {},
+  "sessions": {
+    "s_0a178bf49161fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6518d2d6-9ea1-49fa-9fa3-50b64bef0c32",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
