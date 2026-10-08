@@ -95,6 +95,7 @@ import {
 	CircleUserRound as BrandCircleUserRound,
 	CircleX as BrandCircleX,
 	Clipboard as BrandClipboard,
+	ClipboardList as BrandClipboardList,
 	Clock as BrandClock,
 	Cloud as BrandCloud,
 	Code as BrandCode,
@@ -242,7 +243,6 @@ import IconLucideCaseUpper from '~icons/lucide/case-upper';
 import IconLucideCircleDot from '~icons/lucide/circle-dot';
 import IconLucideCirclePause from '~icons/lucide/circle-pause';
 import IconLucideClipboardCheck from '~icons/lucide/clipboard-check';
-import IconLucideClipboardList from '~icons/lucide/clipboard-list';
 import IconLucideCloudDownload from '~icons/lucide/cloud-download';
 import IconLucideColumns3Cog from '~icons/lucide/columns-3-cog';
 import IconLucideContrast from '~icons/lucide/contrast';
@@ -391,7 +391,7 @@ export const deprecatedIconSet = {
 	comments: BrandMessagesSquare,
 	clipboard: BrandClipboard,
 	'clipboard-check': IconLucideClipboardCheck,
-	'clipboard-list': IconLucideClipboardList,
+	'clipboard-list': BrandClipboardList,
 	clock: BrandClock,
 	clone: BrandCopy,
 	cloud: BrandCloud,
@@ -641,7 +641,7 @@ export const updatedIconSet = {
 	'circle-x': BrandCircleX,
 	clipboard: BrandClipboard,
 	'clipboard-check': IconLucideClipboardCheck,
-	'clipboard-list': IconLucideClipboardList,
+	'clipboard-list': BrandClipboardList,
 	clock: BrandClock,
 	cloud: BrandCloud,
 	'cloud-download': IconLucideCloudDownload,

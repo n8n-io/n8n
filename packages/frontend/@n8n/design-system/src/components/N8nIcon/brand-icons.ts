@@ -46,6 +46,7 @@ export { default as CirclePlus } from './custom/brand/plus-circle--outline-16.sv
 export { default as CircleUserRound } from './custom/brand/person-circle--outline-16.svg';
 export { default as CircleX } from './custom/brand/x-circle--outline-16.svg';
 export { default as Clipboard } from './custom/brand/clipboard--outline-16.svg';
+export { default as ClipboardList } from './custom/brand/clipboard--outline-16.svg';
 export { default as Clock } from './custom/brand/clock--outline-16.svg';
 export { default as Cloud } from './custom/brand/cloud--outline-16.svg';
 export { default as Code } from './custom/brand/chevrons-left-right--outline-16.svg';
