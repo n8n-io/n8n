@@ -41,6 +41,8 @@ export {
 	AGENT_EVAL_MAX_COMMENT_CHARS,
 	AGENT_EVAL_MAX_CORRECTION_TEXT_CHARS,
 	AGENT_EVAL_RESULTS_DEFAULT_TAKE,
+	// One apply request takes at most this many results.
+	MAX_APPLY_SUGGESTIONS,
 	// The server clamps `take` to this rather than rejecting it, so a re-read asking
 	// for more silently returns fewer rows than the caller had.
 	MAX_ITEMS_PER_PAGE,

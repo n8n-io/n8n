@@ -18,6 +18,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { agentsEventBus } from '../agents.eventBus';
 import { useAgentEvalsStore } from '../agentEvals.store';
+import { MAX_APPLY_SUGGESTIONS } from '../agentEvals.types';
 import {
 	readAgentAnswer,
 	readCaseRequest,
@@ -229,16 +230,28 @@ async function onRerunCheck(resultId: string) {
 
 const flushAgentConfig = inject(AGENT_CONFIG_FLUSH_KEY, null);
 const applyingSuggestionIds = ref<string[]>([]);
+const applyingAll = ref(false);
+
+// One request takes at most MAX_APPLY_SUGGESTIONS results; any beyond that keep their
+// suggestion and the button stays for the next press.
+const applicableSuggestionIds = computed(() =>
+	rows.value
+		.filter((row) => row.fixSuggestion !== null && row.status !== 'waiting')
+		.map((row) => row.id)
+		.slice(0, MAX_APPLY_SUGGESTIONS),
+);
 
 // The backend rewrites the agent's instructions from the *saved* config, so pending
-// local edits are flushed first. It then reruns just this result. The builder does not
+// local edits are flushed first. It then reruns just these results. The builder does not
 // hear about its own tab's write over push, so it is told to refetch the config.
-async function onApplySuggestion(resultId: string) {
-	if (applyingSuggestionIds.value.includes(resultId)) return;
-	applyingSuggestionIds.value = [...applyingSuggestionIds.value, resultId];
+async function applySuggestions(resultIds: string[]) {
+	if (resultIds.length === 0 || resultIds.some((id) => applyingSuggestionIds.value.includes(id))) {
+		return;
+	}
+	applyingSuggestionIds.value = [...applyingSuggestionIds.value, ...resultIds];
 	try {
 		await flushAgentConfig?.();
-		const applied = await store.applySuggestions(props.projectId, props.agentId, [resultId]);
+		const applied = await store.applySuggestions(props.projectId, props.agentId, resultIds);
 		if (applied) {
 			agentsEventBus.emit('agentUpdated', { agentId: props.agentId, source: 'agent-evals' });
 		}
@@ -253,7 +266,22 @@ async function onApplySuggestion(resultId: string) {
 			),
 		);
 	} finally {
-		applyingSuggestionIds.value = applyingSuggestionIds.value.filter((id) => id !== resultId);
+		applyingSuggestionIds.value = applyingSuggestionIds.value.filter(
+			(id) => !resultIds.includes(id),
+		);
+	}
+}
+
+async function onApplySuggestion(resultId: string) {
+	await applySuggestions([resultId]);
+}
+
+async function onApplyAllSuggestions() {
+	applyingAll.value = true;
+	try {
+		await applySuggestions(applicableSuggestionIds.value);
+	} finally {
+		applyingAll.value = false;
 	}
 }
 
@@ -472,6 +500,17 @@ onBeforeUnmount(store.stopPollingRun);
 				</N8nButton>
 			</div>
 			<div :class="$style.actions">
+				<N8nButton
+					v-if="applicableSuggestionIds.length > 0 && !showingPreviousRun"
+					variant="solid"
+					size="small"
+					:disabled="disabled || rerunning || inFlight || applyingSuggestionIds.length > 0"
+					:loading="applyingAll"
+					data-testid="agent-eval-checks-apply-all-suggestions"
+					@click="onApplyAllSuggestions"
+				>
+					{{ i18n.baseText('agents.builder.agentEvals.suggestion.applyAll') }}
+				</N8nButton>
 				<N8nButton
 					variant="subtle"
 					size="small"

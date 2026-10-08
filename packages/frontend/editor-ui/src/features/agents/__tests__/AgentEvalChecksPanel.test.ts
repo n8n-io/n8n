@@ -9,7 +9,11 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { createComponentRenderer } from '@/__tests__/render';
 import { agentsEventBus } from '../agents.eventBus';
 import { useAgentEvalsStore } from '../agentEvals.store';
-import type { AgentEvalResultRecord, AgentEvalResultStatus } from '../agentEvals.types';
+import {
+	MAX_APPLY_SUGGESTIONS,
+	type AgentEvalResultRecord,
+	type AgentEvalResultStatus,
+} from '../agentEvals.types';
 import {
 	AGENT_CONFIG_FLUSH_KEY,
 	type AgentConfigFlush,
@@ -640,6 +644,102 @@ describe('AgentEvalChecksPanel', () => {
 				await vi.waitFor(() => expect(showError).toHaveBeenCalled());
 				expect(store.applySuggestions).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('apply all suggestions', () => {
+		const failedWith = (id: string, suggestion: string) => ({
+			...result(id, 'success'),
+			verdict: {
+				status: 'completed' as const,
+				outcome: 'fail' as const,
+				reasoning: 'Off-task.',
+				suggestion,
+			},
+		});
+		const BUTTON = 'agent-eval-checks-apply-all-suggestions';
+
+		it('is hidden when no failed check has a suggestion', () => {
+			const { queryByTestId } = render({
+				results: [result('c1', 'success'), result('c2', 'error')],
+			});
+
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+		});
+
+		it('is hidden when a failed check has no suggestion', () => {
+			const failedWithout = {
+				...result('c1', 'success'),
+				verdict: { status: 'completed' as const, outcome: 'fail' as const, reasoning: 'No.' },
+			};
+			const { queryByTestId } = render({ results: [failedWithout] });
+
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+		});
+
+		it('applies every suggestion in one request, saving pending edits first', async () => {
+			const user = userEvent.setup();
+			const order: string[] = [];
+			const flush = vi.fn(async () => {
+				order.push('flush');
+			});
+			const emit = vi.spyOn(agentsEventBus, 'emit');
+			const { getByTestId, store } = render(
+				{
+					results: [
+						failedWith('c1', 'Decline off-topic requests.'),
+						result('c2', 'success'),
+						failedWith('c3', 'Answer in one sentence.'),
+					],
+				},
+				false,
+				flush,
+			);
+			vi.mocked(store.applySuggestions).mockImplementation(async () => {
+				order.push('apply');
+				return { configHash: 'hash-2', results: [] };
+			});
+
+			await user.click(getByTestId(BUTTON));
+
+			await vi.waitFor(() => expect(emit).toHaveBeenCalled());
+			expect(order).toEqual(['flush', 'apply']);
+			expect(store.applySuggestions).toHaveBeenCalledTimes(1);
+			expect(store.applySuggestions).toHaveBeenCalledWith('project-1', 'agent-1', ['c1', 'c3']);
+			expect(emit).toHaveBeenCalledWith('agentUpdated', {
+				agentId: 'agent-1',
+				source: 'agent-evals',
+			});
+		});
+
+		it('sends at most one request’s worth of results', async () => {
+			const user = userEvent.setup();
+			const many = Array.from({ length: MAX_APPLY_SUGGESTIONS + 2 }, (_, i) =>
+				failedWith(`c${i}`, `Fix ${i}.`),
+			);
+			const { getByTestId, store } = render({ results: many });
+			vi.mocked(store.applySuggestions).mockResolvedValue({ configHash: 'h', results: [] });
+
+			await user.click(getByTestId(BUTTON));
+
+			await vi.waitFor(() => expect(store.applySuggestions).toHaveBeenCalled());
+			expect(vi.mocked(store.applySuggestions).mock.calls[0][2]).toHaveLength(
+				MAX_APPLY_SUGGESTIONS,
+			);
+		});
+
+		it('toasts and does not tell the builder to refetch when applying fails', async () => {
+			const user = userEvent.setup();
+			const emit = vi.spyOn(agentsEventBus, 'emit');
+			const { getByTestId, store } = render({ results: [failedWith('c1', 'Fix.')] });
+			vi.mocked(store.applySuggestions).mockRejectedValue(new Error('boom'));
+
+			await user.click(getByTestId(BUTTON));
+
+			await vi.waitFor(() =>
+				expect(showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't apply the suggestion"),
+			);
+			expect(emit).not.toHaveBeenCalled();
 		});
 	});
 

@@ -9002,6 +9002,7 @@
 	"agents.builder.agentEvals.suggestion.title": "Suggested instruction",
 	"agents.builder.agentEvals.suggestion.apply": "Apply suggestion",
 	"agents.builder.agentEvals.suggestion.keep": "Keep as is",
+	"agents.builder.agentEvals.suggestion.applyAll": "Apply all suggestions",
 	"agents.builder.agentEvals.suggestion.applyError": "Couldn't apply the suggestion",
 	"agents.builder.agentEvals.suggestion.conflictError": "Someone changed this agent. Reload the page, then try again.",
 	"agents.builder.agentEvals.review.progress": "{done} of {total} cases done",
