@@ -36,7 +36,7 @@ Use this to discover, configure, and wire node tools into the target agent's
 ## Web Search vs Direct HTTP Requests
 
 Generic web search, browsing, research, current-information, and source-finding
-requests must use \`config.webSearch\` according to the system prompt's
+requests must use \`config.webSearch\` according to the \`agent-builder-config\` skill's
 web-search rules. Do not search integrations or nodes for
 these requests.
 

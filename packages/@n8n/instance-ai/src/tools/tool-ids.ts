@@ -41,7 +41,7 @@ export const ORCHESTRATION_TOOL_IDS = {
 	VERIFY_BUILT_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW,
 	REPORT_VERIFICATION_VERDICT: WORKFLOW_BUILDER_TOOL_NAMES.REPORT_VERIFICATION_VERDICT,
 	APPLY_WORKFLOW_CREDENTIALS: WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
-	BUILD_AGENT: AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT,
+	SELECT_AGENT: AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
 	GET_SESSION: 'get-session',
 } as const;
 
@@ -56,6 +56,11 @@ export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
 export const N8N_DOCS_TOOL_ID = DOMAIN_TOOL_IDS.N8N_DOCS;
 
 export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRATION_TOOL_IDS));
+
+/** Agent builder tools the orchestrator runs itself. The agents module supplies all but the selector. */
+export const AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES: readonly string[] = Object.values(
+	AGENT_BUILDER_TOOL_NAMES,
+).filter((name) => name !== AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT);
 
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.ASK_USER,
@@ -76,8 +81,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// search_tools + load_tool while web search stayed one call away — so the agent
 	// web-searched things the docs answer (INS-749).
 	DOMAIN_TOOL_IDS.N8N_DOCS,
-	// Agent research and session diagnosis are direct operations. Deferring this
-	// tool causes the model to hand read-only work to the builder sub-agent.
+	// Agent research, session diagnosis, and every Agent build read through this tool.
 	DOMAIN_TOOL_IDS.AGENT_CONTEXT,
 	// Deferring this one defeats its purpose: it exists for the case where
 	// nothing is connected, which is exactly when `search_tools` has no MCP tool
@@ -95,10 +99,10 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
 	'web-search',
 	'fetch-url',
-	// agent_builder_build_agent is the primary route for agent-anchored intents; deferring it
-	// costs 2 LLM rounds (search_tools + load_tool) and a prompt-cache rewrite
-	// on every agent build.
-	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.BUILD_AGENT] : []),
+	// The orchestrator builds Agents with these tools directly. Deferring them would cost
+	// 2 LLM rounds (search_tools + load_tool) per tool and a prompt-cache rewrite on
+	// every agent build. They are registered only when the agents module is active.
+	...(isAgentFeatureEnabled() ? AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES : []),
 ]);
 
 export const CHECKPOINT_FOLLOW_UP_TOOL_NAMES = new Set<string>([

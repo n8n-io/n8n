@@ -167,7 +167,7 @@ export function buildAskCredentialTool(deps: CredentialSetupDeps): BuiltTool {
 			'Show a credential picker card in the chat UI and suspend until the user selects ' +
 				'a credential. Call ONCE per credential slot. For an addition to an existing agent, ' +
 				'call it before the agent_builder_write_config / agent_builder_patch_config that introduces the tool. Never call ' +
-				'this during an initial build — follow the Initial Build rules in your system prompt; ' +
+				'this during an initial build — follow the Initial Build rules in the agent-builder skill; ' +
 				'use it for additions to an existing agent and follow-up setup turns. ' +
 				'Returns { credentialId, credentialName, credentials } on success ' +
 				'or { skipped: true } if the user skips credential setup so the tool can be added ' +

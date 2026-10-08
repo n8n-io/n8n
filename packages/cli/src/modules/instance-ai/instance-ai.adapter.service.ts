@@ -629,7 +629,10 @@ export class InstanceAiAdapterService {
 									getCredentialIdAllowlist,
 								),
 							credentialService,
-							{ useEvalModelCatalog: getCredentialIdAllowlist?.() !== undefined },
+							{
+								useEvalModelCatalog: getCredentialIdAllowlist?.() !== undefined,
+								resumeAgentBuild,
+							},
 						),
 					}
 				: {}),
@@ -661,7 +664,7 @@ export class InstanceAiAdapterService {
 	 * active. The adapter class is statically imported (so its `@Service` is
 	 * always registered), so the module-enabled check is what gates
 	 * agent-building. Returns null when the module is off, so `builderDelegate`
-	 * (and the agent_builder_build_agent sub-agent tool it powers) is simply absent from the
+	 * (and the agent builder tools it supplies) is simply absent from the
 	 * context.
 	 */
 	private getBuilderDelegateAdapter(

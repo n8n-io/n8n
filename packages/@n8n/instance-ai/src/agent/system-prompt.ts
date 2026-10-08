@@ -119,7 +119,7 @@ If the user asks you to create something in, move something to, or use a credent
  * Agents are deliberately absent. `agents` is registered only when the builder
  * delegate is present, so naming it here would point at a tool the model cannot call
  * on instances without the agents module — and it is list-only regardless
- * (`agent_builder_build_agent` owns create and edit). The existing-agent path is already claimed
+ * (the `agent_builder_*` tools own create and edit). The existing-agent path is already claimed
  * by the intent-recognition and agent-builder skills. Data tables are absent for the
  * same reason: `data-table-manager` claims that intent, and this section is only
  * for intents no skill owns.

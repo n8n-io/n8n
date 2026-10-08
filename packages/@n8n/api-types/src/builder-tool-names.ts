@@ -24,9 +24,11 @@ export const WORKFLOW_BUILDER_TOOL_NAMES = {
 	COMPLETE_CHECKPOINT: 'workflow_builder_complete_checkpoint',
 } as const;
 
-/** Tools of the agents-module builder, plus the orchestrator tool that delegates to it. */
+/** Tools that the Instance AI orchestrator uses to build Agents. */
 export const AGENT_BUILDER_TOOL_NAMES = {
+	/** No longer registered. Stored threads still contain its calls and results. */
 	BUILD_AGENT: 'agent_builder_build_agent',
+	SELECT_AGENT: 'agent_builder_select_agent',
 	WRITE_CONFIG: 'agent_builder_write_config',
 	PATCH_CONFIG: 'agent_builder_patch_config',
 	BUILD_CUSTOM_TOOL: 'agent_builder_build_custom_tool',

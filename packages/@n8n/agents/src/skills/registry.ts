@@ -96,6 +96,42 @@ export function filterRuntimeSkillSource(
 	};
 }
 
+/**
+ * Add in-memory skills to an already-loaded source. Skills of the base source
+ * win on an id collision. Recomputes `skillsHash` for the merged catalog.
+ */
+export function extendRuntimeSkillSource(
+	source: RuntimeSkillSource,
+	skills: RuntimeSkill[],
+): RuntimeSkillSource {
+	const baseIds = new Set(source.registry.skills.map((skill) => skill.id));
+	const added = createRuntimeSkillSource(skills.filter((skill) => !baseIds.has(skill.id)));
+	if (added.registry.skills.length === 0) return source;
+
+	const addedIds = new Set(added.registry.skills.map((skill) => skill.id));
+	const entries = [...source.registry.skills, ...added.registry.skills].sort(
+		compareRegistryEntries,
+	);
+	const { loadFile } = source;
+
+	return {
+		...source,
+		registry: {
+			...source.registry,
+			skillsHash: hashRegistry(entries),
+			skills: entries,
+		},
+		loadSkill: async (skillId) =>
+			addedIds.has(skillId) ? await added.loadSkill(skillId) : await source.loadSkill(skillId),
+		...(loadFile
+			? {
+					loadFile: async (skillId: string, filePath: string) =>
+						addedIds.has(skillId) ? null : await loadFile(skillId, filePath),
+				}
+			: {}),
+	};
+}
+
 export function loadRuntimeSkillSourceFromDirectory(
 	rootDir: string,
 	options: LoadRuntimeSkillSourceFromDirectoryOptions = {},

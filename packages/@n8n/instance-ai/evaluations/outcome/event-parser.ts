@@ -2,7 +2,7 @@
 // Event parsing: extract outcome and metrics from captured SSE events
 // ---------------------------------------------------------------------------
 
-import { resolveBuilderToolName } from '@n8n/api-types';
+import { AGENT_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import {
@@ -115,6 +115,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				extractResourceIds(toolName, args, result, workflowIds, executionIds, dataTableIds);
 				// Config-eval rides the same tool-result signal (eval-config create).
 				captureConfigEvalRef(toolName, args, result, artifactRefsByKey);
+				captureBuilderToolAgentRef(toolName, result, artifactRefsByKey);
 				break;
 			}
 
@@ -167,7 +168,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 					activity.reasoning = `Tools: ${tools.join(', ')}`;
 				}
 
-				// The agent_builder_build_agent sub-agent announces the created agent via targetResource.
+				// Threads from before the builder ran inline announce the target via targetResource.
 				captureAgentRef(getRecord(payload, 'targetResource'), artifactRefsByKey);
 				break;
 			}
@@ -252,9 +253,28 @@ function captureConfigEvalRef(
 }
 
 /**
- * Capture an agent ref from an `agent-spawned` event's `targetResource`. The agent_builder_build_agent
- * sub-agent announces itself with `targetResource: { type: 'agent', id }` — the only agent
- * signal (its tool result carries no id). Deduped by type+id.
+ * Capture an agent ref from the builder tools that the orchestrator runs: a successful
+ * `agent_builder_select_agent` result, or any result stamped `configMutated: true`.
+ * Both carry the target `agentId`. Deduped by type+id.
+ */
+function captureBuilderToolAgentRef(
+	toolName: string,
+	result: unknown,
+	out: Map<string, ArtifactRef>,
+): void {
+	const record = toResultRecord(result);
+	const agentId = record ? getString(record, 'agentId') : undefined;
+	if (!record || !agentId) return;
+	const selected = toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT && record.ok === true;
+	if (selected || record.configMutated === true) {
+		out.set(`agent:${agentId}`, { type: 'agent', id: agentId });
+	}
+}
+
+/**
+ * Capture an agent ref from an `agent-spawned` event's `targetResource`. Threads from
+ * before the builder ran inline announce the target with
+ * `targetResource: { type: 'agent', id }`. Deduped by type+id.
  */
 function captureAgentRef(
 	targetResource: Record<string, unknown> | undefined,

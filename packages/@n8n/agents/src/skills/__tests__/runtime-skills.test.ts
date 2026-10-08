@@ -8,6 +8,7 @@ import {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillSourceFromDirectory,
@@ -388,6 +389,60 @@ Use the workflow SDK.`,
 		await expect(filtered.loadFile?.('kept_skill', 'references/a.md')).resolves.toMatchObject({
 			content: 'file body',
 		});
+	});
+
+	it('extends a source with in-memory skills, keeping the base skill on an id collision', async () => {
+		const base = [
+			{ id: 'base_skill', name: 'Base skill', description: 'Base.', instructions: 'Base body.' },
+			{ id: 'shared_skill', name: 'Shared', description: 'From base.', instructions: 'Base.' },
+		];
+		const source = {
+			...createRuntimeSkillSource(base),
+			loadFile: async (skillId: string, filePath: string) =>
+				await Promise.resolve({ skillId, filePath, content: 'file body' }),
+		};
+		const added = [
+			{
+				id: 'added_skill',
+				name: 'Added skill',
+				description: 'Added.',
+				instructions: 'Added body.',
+			},
+			{ id: 'shared_skill', name: 'Shared', description: 'From added.', instructions: 'Added.' },
+		];
+
+		const extended = extendRuntimeSkillSource(source, added);
+
+		expect(extended.registry.skills.map((skill) => skill.id)).toEqual([
+			'added_skill',
+			'base_skill',
+			'shared_skill',
+		]);
+		expect(extended.registry.skillsHash).toBe(
+			createRuntimeSkillRegistry([...base, added[0]]).skillsHash,
+		);
+		await expect(extended.loadSkill('added_skill')).resolves.toMatchObject({
+			instructions: 'Added body.',
+		});
+		await expect(extended.loadSkill('shared_skill')).resolves.toMatchObject({
+			description: 'From base.',
+		});
+		await expect(extended.loadFile?.('added_skill', 'references/a.md')).resolves.toBeNull();
+		await expect(extended.loadFile?.('base_skill', 'references/a.md')).resolves.toMatchObject({
+			content: 'file body',
+		});
+	});
+
+	it('returns the source unchanged when every added skill collides', () => {
+		const source = createRuntimeSkillSource([
+			{ id: 'base_skill', name: 'Base skill', description: 'Base.', instructions: 'Body.' },
+		]);
+
+		expect(
+			extendRuntimeSkillSource(source, [
+				{ id: 'base_skill', name: 'Other', description: 'Other.', instructions: 'Other.' },
+			]),
+		).toBe(source);
 	});
 
 	it('renders a compact skill catalog without skill bodies', () => {

@@ -5,7 +5,7 @@ import {
 	getModelRecommendationsSection,
 	resetModelRecommendationsCacheForTest,
 } from '../agents-builder-model-recommendations';
-import { buildBuilderPrompt, buildBuilderSessionContext } from '../agents-builder-prompts';
+import { buildBuilderSessionContext } from '../agent-builder-session-context';
 import { getBuilderRuntimeSkills } from '../skills';
 
 const { fetchProviderCatalog } = vi.hoisted(() => ({ fetchProviderCatalog: vi.fn() }));
@@ -94,13 +94,6 @@ const catalog: ProviderCatalog = {
 	},
 };
 
-function buildSessionContext(modelRecommendationsSection: string | null) {
-	return buildBuilderSessionContext({
-		agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
-		modelRecommendationsSection,
-	});
-}
-
 describe('builder model recommendations', () => {
 	it('formats the latest tool-capable model ids from the provider catalog', () => {
 		const section = buildModelRecommendationsSection(catalog);
@@ -118,17 +111,7 @@ describe('builder model recommendations', () => {
 	});
 
 	it('routes distinct target-agent functions into autonomously managed skills', () => {
-		const prompt = buildBuilderPrompt();
 		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-target-skills');
-
-		expect(prompt).toContain(
-			'Keep the target agent instructions lightweight: identity, overall purpose, and rules that apply to every operation',
-		);
-		expect(prompt).toContain('even when the user never calls it a skill');
-		expect(prompt).toContain('create missing skills or update existing ones as part of the build');
-		expect(prompt).not.toContain('Infer and create these skills');
-		expect(prompt).toContain('creating tickets, reviewing images, and generating reports');
-		expect(prompt).not.toContain('create any requested tools, skills, or tasks');
 
 		expect(skill?.description).toContain('designing, creating, or editing target-agent behavior');
 		expect(skill?.description).toContain('without calling it a skill');
@@ -163,28 +146,17 @@ describe('builder model recommendations', () => {
 		expect(updateIndex).toBeGreaterThan(readIndex);
 	});
 
-	it('tells the builder to preserve fallback web search on model switches', () => {
-		const prompt = buildBuilderPrompt();
+	it('tells the builder to preserve fallback web search on model-only changes', () => {
+		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-config');
 
-		expect(prompt).toContain(
-			'When changing models, preserve existing Brave or SearXNG\n  `config.webSearch` unchanged',
-		);
-		expect(prompt).toContain(
-			'Only OpenAI and Anthropic models support native web search. Use native web\n  search by default for those providers only',
-		);
-		expect(prompt).toContain('For every provider other than OpenAI or Anthropic');
-		expect(prompt).toContain(
+		expect(skill?.instructions).toContain(
 			'Model-only changes must preserve existing Brave or SearXNG `config.webSearch`.',
 		);
+		expect(skill?.instructions).toContain('#### Config Schema Reference');
 	});
 
 	it('defers custom tool builder guidance to the agent-builder-custom-tools skill', () => {
-		const prompt = buildBuilderPrompt();
 		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-custom-tools');
-
-		expect(prompt).not.toContain("import { Tool } from '@n8n/agents';");
-		expect(prompt).not.toContain('Custom handlers run in a V8 isolate');
-		expect(prompt).toContain('agent-builder-custom-tools');
 
 		expect(skill).toBeDefined();
 		expect(skill?.instructions).toContain("import { Tool } from '@n8n/agents';");
@@ -197,14 +169,25 @@ describe('builder model recommendations', () => {
 		);
 	});
 
-	it('injects the recommendation section into the session context, not the static prompt', () => {
-		const section = buildModelRecommendationsSection(catalog);
+	it('puts the recommendation section and the Preview link into the session context', async () => {
+		resetModelRecommendationsCacheForTest();
+		fetchProviderCatalog.mockResolvedValueOnce(catalog);
 
-		expect(buildSessionContext(section)).toContain('### Recommended LLM Models');
-		expect(buildSessionContext(section)).toContain('`openai/gpt-5` GPT-5');
-		expect(buildBuilderPrompt()).not.toContain('### Recommended LLM Models');
-		expect(buildSessionContext(null)).not.toContain('### Recommended LLM Models');
-		expect(buildSessionContext(null)).toContain('do not recommend or name');
+		const context = await buildBuilderSessionContext('project-1', 'agent-1');
+
+		expect(context).toContain('### Recommended LLM Models');
+		expect(context).toContain('`openai/gpt-5` GPT-5');
+		expect(context).toContain('[Preview](/projects/project-1/agents/agent-1');
+	});
+
+	it('tells the builder not to name models when the catalog is unavailable', async () => {
+		resetModelRecommendationsCacheForTest();
+		fetchProviderCatalog.mockRejectedValueOnce(new Error('offline'));
+
+		const context = await buildBuilderSessionContext('project-1', 'agent-1');
+
+		expect(context).not.toContain('### Recommended LLM Models');
+		expect(context).toContain('do not recommend or name');
 	});
 
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {

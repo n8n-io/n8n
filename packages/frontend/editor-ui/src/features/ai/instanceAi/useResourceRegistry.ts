@@ -204,7 +204,31 @@ function entryFromAgentBuilderTarget(
 	return entry;
 }
 
+/**
+ * Agent builder results: `agent_builder_select_agent` on create, and any builder tool
+ * stamped with `configMutated: true`. Both carry `agentId`, `projectId`, and `agentName`.
+ */
+function extractFromAgentBuilderResult(tc: InstanceAiToolCallState, col: Collections): void {
+	if (!tc.result || typeof tc.result !== 'object') return;
+	const result = tc.result as Record<string, unknown>;
+	if (typeof result.agentId !== 'string') return;
+	const isCreate =
+		tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT && result.agentChange === 'created';
+	if (!isCreate && result.configMutated !== true) return;
+
+	const existing = col.produced.get(result.agentId);
+	const entry: ResourceEntry = {
+		type: 'agent',
+		id: result.agentId,
+		name: optionalString(result.agentName) ?? existing?.name ?? 'Untitled',
+	};
+	const projectId = optionalString(result.projectId);
+	if (projectId !== undefined) entry.projectId = projectId;
+	recordProduced(col, entry);
+}
+
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
+	extractFromAgentBuilderResult(tc, col);
 	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
@@ -273,7 +297,8 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 
 	// --- Agents ------------------------------------------------------------
-	// agent_builder_build_agent: { agentId, agentName? } — produced. Follow-up calls may omit
+	// agent_builder_build_agent (threads from before the builder ran inline):
+	// { agentId, agentName? } — produced. Follow-up calls may omit
 	// the name, so fall back to the existing entry before regressing to
 	// 'Untitled'. projectId is preserved from the agent-spawned entry by
 	// recordProduced's merge.
@@ -377,7 +402,7 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
 	if (target.type === 'agent') {
 		// A read-only turn cannot confirm that this Agent changed. Wait for the
-		// agent_builder_build_agent result. A mutating build registers the Agent at spawn.
+		// build result. A mutating build registers the Agent at spawn.
 		if (node.activity === 'exploring' && (!existing || existing.pending)) return;
 		const entry = entryFromAgentBuilderTarget(target, existing, name);
 		if (entry) recordProduced(col, entry);

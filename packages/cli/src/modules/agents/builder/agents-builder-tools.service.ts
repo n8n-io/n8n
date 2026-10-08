@@ -46,7 +46,7 @@ import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { ConflictError, LockedError } from '@n8n/errors';
+import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -320,6 +320,9 @@ interface BuilderToolsOptions {
 	useEvalModelCatalog?: boolean;
 }
 
+/** Placeholder agent id for the tool set that only supplies tool definitions. */
+const UNRESOLVED_TARGET_AGENT_ID = '';
+
 function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot {
 	return {
 		config,
@@ -507,6 +510,54 @@ export class AgentsBuilderToolsService {
 			),
 			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
 		};
+	}
+
+	/**
+	 * Builder tools for a host that selects the target agent per call. Each
+	 * handler resolves the target when it runs, then delegates to the tool built
+	 * for that agent. Tool names, schemas, and descriptions do not depend on the
+	 * agent, so a tool set built for a placeholder id supplies them.
+	 */
+	getToolsForResolvedTarget(
+		resolveTargetAgentId: () => Promise<string>,
+		projectId: string,
+		credentialProviderFor: (agentId: string) => CredentialProvider,
+		credentialService: InstanceAiCredentialService,
+		user: User,
+		options: BuilderToolsOptions & { excludeToolNames?: string[] } = {},
+	): BuiltTool[] {
+		const excluded = new Set(options.excludeToolNames ?? []);
+		const buildToolSet = (agentId: string) => {
+			const { json, shared } = this.getTools(
+				agentId,
+				projectId,
+				credentialProviderFor(agentId),
+				credentialService,
+				user,
+				options,
+			);
+			return [...json, ...shared].filter((tool) => !excluded.has(tool.name));
+		};
+
+		const toolSetsByAgentId = new Map<string, Map<string, BuiltTool>>();
+		const toolFor = (agentId: string, toolName: string): BuiltTool | undefined => {
+			let toolSet = toolSetsByAgentId.get(agentId);
+			if (!toolSet) {
+				toolSet = new Map(buildToolSet(agentId).map((tool) => [tool.name, tool]));
+				toolSetsByAgentId.set(agentId, toolSet);
+			}
+			return toolSet.get(toolName);
+		};
+
+		return buildToolSet(UNRESOLVED_TARGET_AGENT_ID).map((template) => ({
+			...template,
+			handler: async (input, ctx) => {
+				const agentId = await resolveTargetAgentId();
+				const handler = toolFor(agentId, template.name)?.handler;
+				if (!handler) throw new UnexpectedError(`Builder tool "${template.name}" has no handler`);
+				return await handler(input, ctx);
+			},
+		}));
 	}
 
 	private getJsonTools(

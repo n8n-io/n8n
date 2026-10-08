@@ -708,6 +708,71 @@ describe('useResourceRegistry', () => {
 			expect(resourceNameIndex.get('support bot')?.id).toBe('agent-1');
 		});
 
+		test('registers an agent created by the select-agent tool', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'agent_builder_select_agent',
+								result: {
+									ok: true,
+									agentId: 'agent-1',
+									agentName: 'Support Bot',
+									projectId: 'project-1',
+									agentChange: 'created',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Bot',
+				projectId: 'project-1',
+			});
+		});
+
+		test('registers an agent from a builder tool config change, not from a plain selection', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'agent_builder_select_agent',
+								result: { ok: true, agentId: 'agent-2', agentChange: 'none' },
+							}),
+							makeToolCall({
+								toolName: 'agent_builder_patch_config',
+								result: {
+									ok: true,
+									configMutated: true,
+									agentId: 'agent-1',
+									agentName: 'Support Bot',
+									projectId: 'project-1',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toMatchObject({
+				type: 'agent',
+				name: 'Support Bot',
+			});
+			expect(producedArtifacts.has('agent-2')).toBe(false);
+		});
+
 		test('does not register an Agent after a read-only builder turn', async () => {
 			const { messages, producedArtifacts } = setup(
 				undefined,

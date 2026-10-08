@@ -1,5 +1,5 @@
 /**
- * agent_builder_build_agent — orchestration tool that drives the agents-module builder
+ * build-agent — orchestration tool that drives the agents-module builder
  * (`AgentsBuilderService`) as an embedded sub-agent, one conversational turn
  * per invocation.
  *
@@ -24,7 +24,6 @@
 import type { InterruptibleToolContext } from '@n8n/agents';
 import { APPROVAL_SUSPEND_SCHEMA, createAbortError, Tool } from '@n8n/agents';
 import {
-	getLegacyBuilderToolNames,
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	BUILDER_NOT_CONFIGURED_CODE,
 	agentActivitySchema,
@@ -744,7 +743,7 @@ async function handleResume(
 		return {
 			ok: false,
 			error:
-				'The suspended build state is missing its builder checkpoint reference; the answer cannot be routed. Start a new agent_builder_build_agent call.',
+				'The suspended build state is missing its builder checkpoint reference; the answer cannot be routed. Start a new build-agent call.',
 		};
 	}
 	const ref = refParse.data.builderCheckpoint;
@@ -782,7 +781,7 @@ async function handleResume(
 		return {
 			ok: false,
 			error:
-				"The answer does not match the builder's open question (stale or superseded suspension). Ask the user again with a fresh agent_builder_build_agent call.",
+				"The answer does not match the builder's open question (stale or superseded suspension). Ask the user again with a fresh build-agent call.",
 			configUpdated: ref.configUpdated,
 			...(ref.requiredArtifacts ? { requiredArtifacts: ref.requiredArtifacts } : {}),
 			...targetIdentity(target),
@@ -1066,7 +1065,6 @@ async function resolveTargetForCall(
 
 export function createBuildAgentTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.BUILD_AGENT)
-		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.BUILD_AGENT))
 		.description(
 			'Builds and edits n8n **Agent** artifacts (instructions, model, tools, skills, tasks, ' +
 				'integrations, sub-agents) and delegates draft agent test runs to the agents-module ' +
@@ -1082,7 +1080,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				'at all — not to inspect nodes, not to list workflows, and not to compile custom ' +
 				'tools. If a workflow build seems to need a utility tool the workspace does not ' +
 				'provide, ask the user or use a placeholder; do not route around that by calling ' +
-				'`agent_builder_build_agent`. Returns the builder’s reply, the target `agentRef`/`agentId`, and ' +
+				'`build-agent`. Returns the builder’s reply, the target `agentRef`/`agentId`, and ' +
 				'whether it updated the Agent config. It can also return structured ' +
 				'`requiredArtifacts` for workflows or data tables Instance AI must create. Build ' +
 				'an `agent-entrypoint` workflow around the returned Agent; never pass it back in ' +

@@ -119,7 +119,7 @@ be a direct agent tool or a workflow tool:
 - Use a **workflow tool** only when one agent tool call must run an ordered
   multi-node procedure, or when the user explicitly needs that workflow
   reusable, manually callable, or usable outside the agent. Build the workflow
-  first, pass it to `agent_builder_build_agent` via `workflowContext`, and set
+  first, attach it to the Agent as a workflow tool, and set
   `embeds_other: true`.
 
 Count the nodes required inside one tool invocation, not the total number of
@@ -127,9 +127,9 @@ tools on the agent. For example, looking up and inserting Data Table rows are
 two direct node tools; an atomic lookup-transform-write procedure is one
 workflow tool.
 
-After choosing an agent-anchored design, load `agent-builder` before calling
-`agent_builder_build_agent`. It owns prerequisite creation and the handoff to the delegated
-builder.
+After choosing an agent-anchored design, load `agent-builder` before the first
+`agent_builder_*` call. It owns targeting, prerequisite creation, and the Agent
+build.
 
 ## Decision Steps
 
@@ -266,7 +266,7 @@ user did not build in this conversation but opened in the editor. When the
 editor/canvas context shows an existing agent and the user asks to change,
 add, or remove its configuration or capabilities (instructions, model,
 tools, skills, tasks, channels, memory, sub-agents), classify
-**agent-anchored** and route to `agent_builder_build_agent` targeting that agent. Do not
+**agent-anchored** and build that agent with the `agent-builder` skill. Do not
 route to `workflow-builder`, and do not treat the request as a workflow
 change even when a workflow is also in context, unless the user explicitly
 names the workflow as the target. A capability the agent cannot have is
@@ -404,7 +404,7 @@ valid, apply the growth tiebreaker instead of asking a theoretical preference.
   and do not claim the channel is configured.
 - (An existing agent is open in the editor.) "Make it also file a Linear
   ticket when it can't resolve an issue." -> **agent-anchored**: the open
-  agent is the target; route to `agent_builder_build_agent` targeting that agent to add the
+  agent is the target; build that agent with the `agent-builder` skill to add the
   capability. Do not start a workflow build, even though a workflow could
   also file a ticket — the user asked to change the agent.
 - (Both an agent and a workflow are open.) "Add a daily summary of new

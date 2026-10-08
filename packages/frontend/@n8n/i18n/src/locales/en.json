@@ -7991,6 +7991,7 @@
 	"instanceAi.tools.agent_builder_unpublish_agent": "Unpublishing agent",
 	"instanceAi.tools.resolve_integration": "Adding integration",
 	"instanceAi.tools.agent_builder_build_agent": "Working with agent",
+	"instanceAi.tools.agent_builder_select_agent": "Selecting agent",
 	"instanceAi.tools.agent_builder_build_agent.editing": "Editing agent",
 	"instanceAi.tools.agent_builder_build_agent.exploring": "Exploring agent",
 	"instanceAi.tools.agent_builder_build_agent.testing": "Testing agent",

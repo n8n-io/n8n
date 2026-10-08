@@ -34,7 +34,6 @@ import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentsService } from '../agents.service';
-import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import {
 	expectProjectScopedAgentRoutes,
@@ -52,7 +51,7 @@ function makeController() {
 			>
 		>();
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
-	const agentsBuilderService = mock<AgentsBuilderService>();
+	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
 	agentChatAttachmentService.deleteByIds.mockResolvedValue(undefined);
 	agentChatAttachmentService.storeInbound.mockResolvedValue(
@@ -96,7 +95,7 @@ function makeController() {
 		agentExecutionOrchestratorService,
 		agentTestRunService,
 		mock<AgentTestChatService>(),
-		agentsBuilderService,
+		checkpointStorage,
 		mock<CredentialsService>(),
 		agentsService as unknown as AgentsService,
 		agentChatAttachmentService,
@@ -114,7 +113,7 @@ function makeController() {
 		messageQueue,
 		previewStreams,
 		chatExecutionService,
-		agentsBuilderService,
+		checkpointStorage,
 		agentExecutionService,
 		backgroundJobService,
 		agentExecutionOrchestratorService,
@@ -456,7 +455,7 @@ describe('AgentChatController background tasks', () => {
 
 describe('AgentChatController chat message history', () => {
 	it('uses an owned checkpoint only when execution history is absent', async () => {
-		const { controller, agentsService, agentsBuilderService, agentExecutionService } =
+		const { controller, agentsService, checkpointStorage, agentExecutionService } =
 			makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 		agentsService.getConversationHistory.mockResolvedValue(null);
@@ -465,7 +464,7 @@ describe('AgentChatController chat message history', () => {
 			messageList: { messages: [] },
 			pendingToolCalls: {},
 		});
-		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(checkpoint);
+		checkpointStorage.findSuspendedForThread.mockResolvedValue(checkpoint);
 		const request = {
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 			user: { id: 'user-1' },
@@ -486,13 +485,13 @@ describe('AgentChatController chat message history', () => {
 				ownerId: null,
 			}),
 		);
-		agentsBuilderService.findOpenCheckpointForThread.mockClear();
+		checkpointStorage.findSuspendedForThread.mockClear();
 		await expect(controller.getChatMessages(request as never)).rejects.toThrow(NotFoundError);
-		expect(agentsBuilderService.findOpenCheckpointForThread).not.toHaveBeenCalled();
+		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
 	});
 
 	it('accepts only shared checkpoints for a project-scoped thread', async () => {
-		const { controller, agentsService, agentsBuilderService, agentExecutionService } =
+		const { controller, agentsService, checkpointStorage, agentExecutionService } =
 			makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 		agentsService.getConversationHistory.mockResolvedValue(null);
@@ -513,7 +512,7 @@ describe('AgentChatController chat message history', () => {
 			messageList: { messages: [] },
 			pendingToolCalls: {},
 		});
-		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(checkpoint);
+		checkpointStorage.findSuspendedForThread.mockResolvedValue(checkpoint);
 
 		await expect(controller.getChatMessages(request as never)).resolves.toEqual({
 			messages: [],
@@ -521,7 +520,7 @@ describe('AgentChatController chat message history', () => {
 			activeExecutionId: null,
 		});
 
-		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue({
+		checkpointStorage.findSuspendedForThread.mockResolvedValue({
 			...checkpoint,
 			persistence: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
 		});
@@ -1502,14 +1501,14 @@ describe('AgentChatController n8n Chat read-route ownership', () => {
 
 	describe('getProductionChatMessages', () => {
 		it("serves the requesting user's own thread", async () => {
-			const { controller, agentsService, agentExecutionOrchestratorService, agentsBuilderService } =
+			const { controller, agentsService, agentExecutionOrchestratorService, checkpointStorage } =
 				makeController();
 			agentsService.isN8nChatPublished.mockResolvedValue(true);
 			agentExecutionOrchestratorService.getConversationHistory.mockResolvedValue({
 				messages: [],
 				activeExecutionId: null,
 			} as never);
-			agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(null);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 
 			const req = { params: { projectId, agentId, threadId: 'thread-1' }, user: { id: userId } };
 

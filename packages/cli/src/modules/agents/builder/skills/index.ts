@@ -1,5 +1,6 @@
 import type { RuntimeSkill } from '@n8n/agents';
 
+import { configSkill } from './config.skill';
 import { customToolsSkill } from './custom-tools.skill';
 import { externalServicesSkill } from './external-services.skill';
 import { memorySkill } from './memory.skill';
@@ -11,6 +12,7 @@ import { targetTasksSkill } from './target-tasks.skill';
 
 export function getBuilderRuntimeSkills(): RuntimeSkill[] {
 	return [
+		configSkill(),
 		customToolsSkill(),
 		externalServicesSkill(),
 		memorySkill(),

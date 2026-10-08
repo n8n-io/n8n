@@ -1,4 +1,4 @@
-import { resolveBuilderToolName, type InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiEvent } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { DOMAIN_TOOL_IDS } from '../tools/tool-ids';
@@ -57,10 +57,8 @@ export class WorkSummaryAccumulator {
 	observe(event: InstanceAiEvent): void {
 		switch (event.type) {
 			case 'tool-call': {
-				const { toolCallId, args } = event.payload;
+				const { toolCallId, toolName, args } = event.payload;
 				if (!toolCallId) break;
-				// Resumed streams can replay calls stored under a former tool name.
-				const toolName = resolveBuilderToolName(event.payload.toolName);
 				const action = typeof args?.action === 'string' ? args.action : undefined;
 				const filteredByNodeTypes =
 					toolName === DOMAIN_TOOL_IDS.WORKFLOWS &&

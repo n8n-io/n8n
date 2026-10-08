@@ -15,6 +15,7 @@ import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
+import { isAgentTargetingToolName } from '../../src/tools/orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
 import {
 	extractAskUserAnswers,
@@ -694,11 +695,7 @@ export function activeSeedAgentId(seed: ConversationSeed): string | undefined {
 		if (!Array.isArray(message.content)) continue;
 		for (const block of message.content) {
 			if (!isRecord(block) || block.type !== 'tool-call') continue;
-			if (
-				typeof block.toolName !== 'string' ||
-				resolveBuilderToolName(block.toolName) !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT
-			)
-				continue;
+			if (!isAgentTargetingToolName(block.toolName)) continue;
 			const output = isRecord(block.output) ? block.output : undefined;
 			if (typeof output?.agentId === 'string') active = output.agentId;
 		}
