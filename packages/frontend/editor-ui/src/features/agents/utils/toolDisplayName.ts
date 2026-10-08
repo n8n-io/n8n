@@ -47,6 +47,7 @@ const BUILDER_TOOL_TRANSLATION_KEYS: Record<string, BaseTextKey> = {
 	search_nodes: 'instanceAi.tools.search_nodes',
 	get_node_types: 'instanceAi.tools.get_node_types',
 	list_credentials: 'instanceAi.tools.list_credentials',
+	propose_automation: 'instanceAi.automation.toolStep',
 };
 
 export function getToolNameTranslationKey(

@@ -1,4 +1,4 @@
-import type { BaseTextKey } from '@n8n/i18n';
+import { i18n, type BaseTextKey } from '@n8n/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -45,6 +45,11 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('list_skills')).toBe('instanceAi.tools.list_skills');
 		expect(getToolNameTranslationKey('read_skill')).toBe('instanceAi.tools.read_skill');
 		expect(getToolNameTranslationKey('update_skill')).toBe('instanceAi.tools.update_skill');
+	});
+
+	it('labels the automation proposal step with the real copy', () => {
+		expect(getToolNameTranslationKey('propose_automation')).toBe('instanceAi.automation.toolStep');
+		expect(resolveToolNameForDisplay('propose_automation', i18n)).toBe('Prepared an automation');
 	});
 
 	it('returns an empty string for missing or blank names', () => {

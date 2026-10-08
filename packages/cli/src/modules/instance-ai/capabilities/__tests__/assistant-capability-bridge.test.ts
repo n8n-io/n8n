@@ -415,6 +415,7 @@ describe('toAssistantTool with confirmation', () => {
 				severity: 'warning',
 				resourceName: 'Invoices',
 				offered: { target: ['staging'] },
+				capability: true,
 			});
 			expect(confirm).toHaveBeenCalledWith(input, { user, surface: 'assistant' });
 			expect(handler).not.toHaveBeenCalled();
@@ -450,6 +451,18 @@ describe('toAssistantTool with confirmation', () => {
 				offered: { target: ['staging'] },
 			});
 			expect(payload).not.toMatchObject({ requestId: 'forged' });
+		});
+
+		it('marks the card as a capability card, so the chat hides "Always allow"', async () => {
+			confirm.mockResolvedValue({ ...targetCard(), fields: { capability: false } });
+
+			const { payload } = await firstCall(buildTool({ confirm }));
+
+			// The answer schema has no session scope, so a session approval would apply once only.
+			expect(payload).toMatchObject({ capability: true });
+			expect(
+				confirmationRequestPayloadSchema.partial().passthrough().parse(payload).capability,
+			).toBe(true);
 		});
 
 		it('runs at once when confirm returns no card', async () => {
@@ -541,6 +554,23 @@ describe('toAssistantTool with confirmation', () => {
 			await expect(result).rejects.toThrow(UserError);
 			await expect(result).rejects.toThrow(`did not offer this value for "${field}"`);
 			expect(handler).not.toHaveBeenCalled();
+		});
+
+		it('accepts the answer to a card that was saved before the capability flag', async () => {
+			const { payload } = await firstCall(buildTool({ confirm }));
+			const { capability, ...savedCard } = jsonParse<Record<string, unknown>>(
+				JSON.stringify(payload),
+			);
+			expect(capability).toBe(true);
+
+			const output = await callTool(buildTool({ confirm }), input, {
+				suspend: vi.fn(),
+				resumeData: { approved: true, values: { target: 'staging' } },
+				suspendPayload: savedCard,
+			});
+
+			expect(output).toEqual({ deployed: true });
+			expect(handler).toHaveBeenCalledTimes(1);
 		});
 
 		it('rejects an answer when the checkpoint holds no card', async () => {
@@ -645,6 +675,7 @@ describe('toAssistantTool with confirmation', () => {
 				message: 'Allow the n8n Assistant to run "Deploy workflow"?',
 				severity: 'destructive',
 				offered: {},
+				capability: true,
 			});
 			expect(confirm).toHaveBeenCalledTimes(1);
 			expect(handler).not.toHaveBeenCalled();

@@ -1,4 +1,4 @@
-import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
+import { APPROVAL_TOOL_NAME, automationProposalCardSchema } from '@n8n/api-types';
 
 import {
 	ASSISTANT_CONFIRMATION_TOOL_NAME,
@@ -16,6 +16,26 @@ const questionsPayload = {
 	message: 'A few questions',
 	inputType: 'questions',
 	questions: [{ id: 'q1', question: 'Which channel?', type: 'single', options: ['a', 'b'] }],
+};
+
+/** The card of `propose_automation`, as the server sends it. */
+const automationCard = {
+	workflowId: 'wf-1',
+	versionId: 'v-1',
+	title: 'Morning digest',
+	why: [],
+	trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: 'Europe/London' },
+	steps: [{ name: 'Send digest', type: 'n8n-nodes-base.slack' }],
+	stepCount: 1,
+	recommended: { targetId: 'local', kind: 'local', reasons: ['always-on-trigger'] },
+	targets: [{ id: 'local', kind: 'local', status: 'online' }],
+	visibleTo: { projectId: 'project-1', projectName: 'Ops', projectType: 'team' },
+	sharedWith: { projects: [], total: 0 },
+	archived: false,
+	active: false,
+	hasUnpublishedChanges: false,
+	canActivate: true,
+	offered: { target: ['local'], activate: [true, false] },
 };
 
 describe('parseAssistantConfirmationInput', () => {
@@ -47,6 +67,34 @@ describe('parseAssistantConfirmationInput', () => {
 				severity: 42,
 			}),
 		).toEqual({ requestId: 'req-3', message: 'Do it?' });
+	});
+
+	it('detects a payload by its automation proposal and keeps the proposal', () => {
+		const automationProposal = automationProposalCardSchema.parse(automationCard);
+
+		const parsed = parseAssistantConfirmationInput({ requestId: 'req-5', automationProposal });
+
+		expect(parsed).toMatchObject({ requestId: 'req-5', message: '' });
+		expect(parsed?.automationProposal).toEqual(automationProposal);
+	});
+
+	it('keeps the capability flag of a valid payload and of the fallback', () => {
+		const card = { requestId: 'req-6', message: 'Deploy?', toolName: 'deploy', capability: true };
+
+		expect(parseAssistantConfirmationInput({ ...card, severity: 'info' })).toMatchObject({
+			capability: true,
+		});
+		// An invalid card field makes the parser fall back to the minimal card.
+		expect(
+			parseAssistantConfirmationInput({
+				...card,
+				severity: 'info',
+				automationProposal: { ...automationCard, trigger: { kind: 'never' } },
+			}),
+		).toEqual(card);
+		expect(
+			parseAssistantConfirmationInput({ ...card, severity: 'info', capability: 'yes' }),
+		).toEqual({ requestId: 'req-6', message: 'Deploy?', toolName: 'deploy' });
 	});
 
 	it('ignores payloads of other tools', () => {
