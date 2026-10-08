@@ -230,12 +230,12 @@ defineExpose({
 
 		<template #item-trailing="{ item, ui }">
 			<span v-if="item.data?.restrictedLabel" :class="[$style.restricted, ui.class]">
-				<N8nText size="small" color="text-light" data-test-id="ai-model-selector-restriction">
+				<N8nText size="xsmall" color="text-light" data-test-id="ai-model-selector-restriction">
 					{{ item.data.restrictedLabel }}
 				</N8nText>
 				<N8nIcon
 					icon="lock"
-					size="small"
+					size="xsmall"
 					color="text-light"
 					data-test-id="ai-model-selector-restricted-icon"
 				/>
@@ -360,6 +360,10 @@ defineExpose({
 	gap: var(--spacing--4xs);
 	flex-shrink: 0;
 	white-space: nowrap;
+}
+
+.restricted {
+	padding-left: var(--spacing--md);
 }
 
 .connectedIcon {
