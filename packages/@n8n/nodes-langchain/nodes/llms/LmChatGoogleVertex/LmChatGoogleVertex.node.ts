@@ -1,5 +1,8 @@
 import { ProjectsClient } from '@google-cloud/resource-manager';
-import { getGoogleServiceAccountCredentials } from 'n8n-nodes-base/google-service-account';
+import {
+	getGoogleServiceAccountCredentials,
+	googleApiCredentialTest,
+} from 'n8n-nodes-base/google-service-account';
 import type { GoogleAISafetySetting } from '@langchain/google-common';
 import { ChatVertexAI, type ChatVertexAIInput } from '@langchain/google-vertexai';
 import {
@@ -118,6 +121,7 @@ export class LmChatGoogleVertex implements INodeType {
 	};
 
 	methods = {
+		credentialTest: { googleApiCredentialTest },
 		listSearch: {
 			async gcpProjectsList(this: ILoadOptionsFunctions) {
 				const results: Array<{ name: string; value: string }> = [];

@@ -47,3 +47,9 @@ export const googleServiceAccountPrivateKeyProperty: INodeProperties = {
 		password: true,
 	},
 };
+
+export const googleServiceAccountProperties: INodeProperties[] = [
+	googleRegionProperty,
+	googleServiceAccountEmailProperty,
+	googleServiceAccountPrivateKeyProperty,
+];

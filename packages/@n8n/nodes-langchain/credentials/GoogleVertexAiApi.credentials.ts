@@ -1,8 +1,4 @@
-import {
-	googleRegionProperty,
-	googleServiceAccountEmailProperty,
-	googleServiceAccountPrivateKeyProperty,
-} from 'n8n-nodes-base/google-service-account';
+import { googleServiceAccountProperties } from 'n8n-nodes-base/google-service-account';
 import type { ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class GoogleVertexAiApi implements ICredentialType {
@@ -15,8 +11,7 @@ export class GoogleVertexAiApi implements ICredentialType {
 	icon: Icon = 'file:icons/google.svg';
 
 	properties: INodeProperties[] = [
-		googleServiceAccountEmailProperty,
-		googleServiceAccountPrivateKeyProperty,
+		...googleServiceAccountProperties,
 		{
 			displayName: 'Project ID',
 			name: 'projectId',
@@ -26,6 +21,5 @@ export class GoogleVertexAiApi implements ICredentialType {
 			placeholder: 'my-project-id',
 			description: 'Google Cloud project to use with Vertex AI',
 		},
-		googleRegionProperty,
 	];
 }

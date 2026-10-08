@@ -17,6 +17,7 @@ export const googleVertexCredentials: INodeCredentialDescription[] = [
 	{
 		name: 'googleVertexAiApi',
 		required: true,
+		testedBy: 'googleApiCredentialTest',
 		displayOptions: { show: { authentication: ['googleVertexAiApi'] } },
 	},
 ];

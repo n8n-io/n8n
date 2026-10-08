@@ -8,11 +8,7 @@ import type {
 	Icon,
 } from 'n8n-workflow';
 
-import {
-	googleRegionProperty,
-	googleServiceAccountEmailProperty,
-	googleServiceAccountPrivateKeyProperty,
-} from './common/google/descriptions';
+import { googleServiceAccountProperties } from './common/google/descriptions';
 import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
 
 export class GoogleApi implements ICredentialType {
@@ -25,9 +21,7 @@ export class GoogleApi implements ICredentialType {
 	icon: Icon = 'file:icons/Google.svg';
 
 	properties: INodeProperties[] = [
-		googleRegionProperty,
-		googleServiceAccountEmailProperty,
-		googleServiceAccountPrivateKeyProperty,
+		...googleServiceAccountProperties,
 		{
 			displayName: 'Impersonate a User',
 			name: 'inpersonate',

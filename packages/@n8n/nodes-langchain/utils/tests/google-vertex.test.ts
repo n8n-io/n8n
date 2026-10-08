@@ -1,8 +1,24 @@
+import {
+	googleApiCredentialTest,
+	googleServiceAccountProperties,
+} from 'n8n-nodes-base/google-service-account';
 import { NodeHelpers, Workflow, type INode, type INodeTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { GoogleVertexAiApi } from '../../credentials/GoogleVertexAiApi.credentials';
 import { EmbeddingsGoogleVertex } from '../../nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node';
 import { LmChatGoogleVertex } from '../../nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node';
+
+it('keeps the shared service-account fields first in their existing order', () => {
+	const credential = new GoogleVertexAiApi();
+	expect(credential.properties.slice(0, 3).map((property) => property.name)).toEqual([
+		'region',
+		'email',
+		'privateKey',
+	]);
+	expect(credential.properties.slice(0, 3)).toEqual(googleServiceAccountProperties);
+});
+
 describe.each([new LmChatGoogleVertex(), new EmbeddingsGoogleVertex()])(
 	'$description.displayName credential selection',
 	(node) => {
@@ -34,6 +50,11 @@ describe.each([new LmChatGoogleVertex(), new EmbeddingsGoogleVertex()])(
 				expect(visibleCredentials?.map((credential) => credential.name)).toEqual([
 					authentication ?? 'googleApi',
 				]);
+				if (authentication === 'googleVertexAiApi') {
+					expect(visibleCredentials?.[0].testedBy).toBe('googleApiCredentialTest');
+					expect(node.methods.credentialTest.googleApiCredentialTest).toBeTypeOf('function');
+					expect(node.methods.credentialTest.googleApiCredentialTest).toBe(googleApiCredentialTest);
+				}
 				const projectField = description.properties.find(
 					(property) => property.name === 'projectId',
 				)!;
