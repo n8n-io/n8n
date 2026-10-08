@@ -6,8 +6,9 @@ import { useDependencies } from '@/app/composables/useDependencies';
  * - `covered`: the configuration covers the sub-workflow.
  * - `uncovered`: it lives in this project but the configuration does not cover it.
  * - `external`: it lives in another project, so this configuration cannot cover it.
+ * - `elsewhere`: another active configuration in this project already covers it.
  */
-export type SubWorkflowStatus = 'covered' | 'uncovered' | 'external';
+export type SubWorkflowStatus = 'covered' | 'uncovered' | 'external' | 'elsewhere';
 
 export interface SubWorkflowEntry {
 	id: string;
@@ -22,8 +23,10 @@ export interface SelectedWorkflowRow {
 	name: string;
 	/** Every sub-workflow the workflow reaches, in call order. Each one shows once. */
 	subWorkflows: SubWorkflowEntry[];
-	/** Sub-workflows in `subWorkflows` that the configuration does not cover. */
+	/** Sub-workflows in `subWorkflows` that no configuration covers. */
 	uncoveredCount: number;
+	/** Of those, the ones in another project. No setting in this configuration covers them. */
+	externalCount: number;
 	/** The first dependency lookup for this workflow has not returned yet. */
 	checking: boolean;
 }
@@ -38,6 +41,8 @@ export function useSubWorkflowScope(options: {
 	/** Workflows in this project, by id. Only these can be covered. */
 	projectWorkflowNames: Ref<Map<string, string>>;
 	includeSubWorkflows: Ref<boolean>;
+	/** Workflows another active configuration covers. This one cannot cover them too. */
+	elsewhereIds: Ref<Set<string>>;
 }) {
 	const { fetchDependencies, getDependencies } = useDependencies();
 	const pendingIds = ref(new Set<string>());
@@ -78,10 +83,9 @@ export function useSubWorkflowScope(options: {
 
 	function statusOf(workflowId: string): SubWorkflowStatus {
 		if (!options.projectWorkflowNames.value.has(workflowId)) return 'external';
-		if (options.includeSubWorkflows.value || options.selectedIds.value.includes(workflowId)) {
-			return 'covered';
-		}
-		return 'uncovered';
+		if (options.selectedIds.value.includes(workflowId)) return 'covered';
+		if (options.elsewhereIds.value.has(workflowId)) return 'elsewhere';
+		return options.includeSubWorkflows.value ? 'covered' : 'uncovered';
 	}
 
 	function subWorkflowsOf(rootId: string): SubWorkflowEntry[] {
@@ -116,7 +120,10 @@ export function useSubWorkflowScope(options: {
 					id,
 					name,
 					subWorkflows,
-					uncoveredCount: subWorkflows.filter((entry) => entry.status !== 'covered').length,
+					uncoveredCount: subWorkflows.filter(
+						(entry) => entry.status === 'uncovered' || entry.status === 'external',
+					).length,
+					externalCount: subWorkflows.filter((entry) => entry.status === 'external').length,
 					checking: pendingIds.value.has(id) && !getDependencies(id, 'workflow'),
 				},
 			];

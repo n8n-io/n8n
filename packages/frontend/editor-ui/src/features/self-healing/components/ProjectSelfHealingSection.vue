@@ -5,7 +5,8 @@ import {
 	N8nAvatar,
 	N8nButton,
 	N8nDataTableServer,
-	N8nStatusDot,
+	N8nLink,
+	N8nSwitch,
 	N8nText,
 	type IUser,
 	type TableHeader,
@@ -15,20 +16,25 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, nextTick, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 
-import { SELF_HEALING_SETTINGS_HASH } from '../selfHealing.constants';
+import {
+	SELF_HEALING_CONFIG_VIEW,
+	SELF_HEALING_NEW_CONFIG_ID,
+	SELF_HEALING_SETTINGS_HASH,
+} from '../selfHealing.constants';
 import { useSelfHealingStore } from '../selfHealing.store';
 import type { SelfHealingConfig } from '../selfHealing.types';
-import SelfHealingConfigDialog from './SelfHealingConfigDialog.vue';
 
-type ConfigAction = 'edit' | 'pause' | 'resume' | 'delete';
+type ConfigAction = 'edit' | 'delete';
 
 const props = defineProps<{
 	projectId: string;
@@ -38,13 +44,12 @@ const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
 const route = useRoute();
+const router = useRouter();
 const store = useSelfHealingStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 
 const sectionRef = ref<HTMLElement | null>(null);
-const dialogOpen = ref(false);
-const editingConfig = ref<SelfHealingConfig | null>(null);
 
 const configs = computed(() => store.getProjectConfigs(props.projectId));
 
@@ -55,25 +60,32 @@ const headers = computed<Array<TableHeader<SelfHealingConfig>>>(() => [
 	{
 		title: i18n.baseText('selfHealing.projectSettings.column.scope'),
 		key: 'scope',
-		width: 260,
+		width: 240,
 		disableSort: true,
 		value: (row: SelfHealingConfig) => `${row.scope}:${row.selectedWorkflowIds.length}`,
 	},
 	{
 		title: i18n.baseText('selfHealing.projectSettings.column.autonomy'),
 		key: 'autonomy',
-		width: 220,
+		width: 200,
 		disableSort: true,
 	},
 	{
 		title: i18n.baseText('selfHealing.projectSettings.column.reviewers'),
 		key: 'reviewers',
-		width: 220,
+		width: 200,
 		disableSort: true,
 		value: (row: SelfHealingConfig) => row.reviewerIds,
 	},
 	{
-		title: i18n.baseText('selfHealing.projectSettings.column.status'),
+		title: i18n.baseText('selfHealing.projectSettings.column.lastActivity'),
+		key: 'lastActivity',
+		width: 200,
+		disableSort: true,
+		value: (row: SelfHealingConfig) => store.getLastActivity(props.projectId, row.id)?.at,
+	},
+	{
+		title: i18n.baseText('selfHealing.projectSettings.column.active'),
 		key: 'status',
 		width: 110,
 		disableSort: true,
@@ -90,24 +102,56 @@ const headers = computed<Array<TableHeader<SelfHealingConfig>>>(() => [
 	},
 ]);
 
+/** Configurations that select workflows win, so an active "All workflows" one gets what is left. */
+const hasActiveSelectedConfig = computed(() =>
+	configs.value.some((config) => config.scope === 'selected' && config.status === 'active'),
+);
+
 function scopeLabel(config: SelfHealingConfig): string {
-	if (config.scope === 'all') return i18n.baseText('selfHealing.scope.all');
-	const count = String(config.selectedWorkflowIds.length);
+	if (config.scope === 'all') {
+		return i18n.baseText(
+			config.status === 'active' && hasActiveSelectedConfig.value
+				? 'selfHealing.scope.allOther'
+				: 'selfHealing.scope.all',
+		);
+	}
+	const count = config.selectedWorkflowIds.length;
 	const subCount = config.includeSubWorkflows ? config.subWorkflowIds.length : 0;
-	return subCount > 0
-		? i18n.baseText('selfHealing.scope.selectedWithSubWorkflows', {
-				adjustToNumber: subCount,
-				interpolate: { count, subCount: String(subCount) },
-			})
-		: i18n.baseText('selfHealing.scope.selected', { interpolate: { count } });
+	// Each count takes its own plural form.
+	const selected = i18n.baseText('selfHealing.scope.selected', {
+		adjustToNumber: count,
+		interpolate: { count: String(count) },
+	});
+	if (subCount === 0) return selected;
+	return i18n.baseText('selfHealing.scope.selectedWithSubWorkflows', {
+		adjustToNumber: subCount,
+		interpolate: { selected, subCount: String(subCount) },
+	});
 }
+
+/** The latest outcome of a configuration, worded like its item in the review inbox. */
+function lastActivityFor(config: SelfHealingConfig) {
+	const activity = store.getLastActivity(props.projectId, config.id);
+	if (!activity) return null;
+	const labelKey = {
+		fix_ready: 'selfHealing.inbox.kind.fix',
+		healed: 'selfHealing.badge.healed',
+		needs_you: 'selfHealing.inbox.kind.needs_you',
+		could_not_fix: 'selfHealing.inbox.kind.could_not_fix',
+	} as const;
+	return {
+		label: i18n.baseText(labelKey[activity.outcome]),
+		at: activity.at,
+		route: { name: WORKFLOW_REVIEW_REQUESTS_VIEW, params: { reviewRequestId: activity.reviewId } },
+	};
+}
+
+const lastActivities = computed(
+	() => new Map(configs.value.map((config) => [config.id, lastActivityFor(config)])),
+);
 
 function autonomyLabel(config: SelfHealingConfig): string {
 	return i18n.baseText(`selfHealing.autonomy.${config.autonomy}.label`);
-}
-
-function statusLabel(config: SelfHealingConfig): string {
-	return i18n.baseText(`selfHealing.status.${config.status}`);
 }
 
 const projectName = computed(() => projectsStore.currentProject?.name ?? '');
@@ -134,36 +178,24 @@ function userName(user: IUser): string {
 	return [user.firstName, user.lastName].filter(Boolean).join(' ') || (user.email ?? '');
 }
 
-function actionsFor(config: SelfHealingConfig): Array<UserAction<IUser>> {
-	return [
-		{ label: i18n.baseText('generic.edit'), value: 'edit' },
-		config.status === 'active'
-			? { label: i18n.baseText('selfHealing.projectSettings.action.pause'), value: 'pause' }
-			: { label: i18n.baseText('selfHealing.projectSettings.action.resume'), value: 'resume' },
-		{ label: i18n.baseText('generic.delete'), value: 'delete' },
-	];
-}
+// Pausing and resuming moved to the switch in the Active column.
+const configActions = computed<Array<UserAction<IUser>>>(() => [
+	{ label: i18n.baseText('generic.edit'), value: 'edit' },
+	{ label: i18n.baseText('generic.delete'), value: 'delete' },
+]);
 
-function openCreate() {
-	editingConfig.value = null;
-	dialogOpen.value = true;
-}
-
-function openEdit(config: SelfHealingConfig) {
-	editingConfig.value = config;
-	dialogOpen.value = true;
+/** Creating and editing happen on a sub-page; `configId` "new" creates one. */
+async function openConfig(configId: string) {
+	await router.push({
+		name: SELF_HEALING_CONFIG_VIEW,
+		params: { projectId: props.projectId, configId },
+	});
 }
 
 async function onAction(config: SelfHealingConfig, action: string) {
 	switch (action as ConfigAction) {
 		case 'edit':
-			openEdit(config);
-			break;
-		case 'pause':
-			store.setConfigStatus(props.projectId, config.id, 'paused');
-			break;
-		case 'resume':
-			store.setConfigStatus(props.projectId, config.id, 'active');
+			await openConfig(config.id);
 			break;
 		case 'delete': {
 			const confirmed = await message.confirm(
@@ -186,14 +218,45 @@ async function onAction(config: SelfHealingConfig, action: string) {
 	}
 }
 
-function onSaved() {
+/**
+ * Saves at once, like the switches on the instance settings pages. Turning one
+ * on can fail (a workflow is already in another active configuration) or pause
+ * the other "All workflows" configuration; the toast says which.
+ */
+function onActiveChange(config: SelfHealingConfig, active: boolean) {
+	if (!active) {
+		store.setConfigStatus(props.projectId, config.id, 'paused');
+		toast.showMessage({
+			title: i18n.baseText('selfHealing.projectSettings.paused'),
+			type: 'success',
+		});
+		return;
+	}
+
+	const result = store.activateConfig(props.projectId, config.id);
+	if (result.status === 'conflict') {
+		toast.showMessage({
+			title: i18n.baseText('selfHealing.projectSettings.conflict.title'),
+			message: i18n.baseText('selfHealing.projectSettings.conflict.message', {
+				adjustToNumber: result.workflowIds.length,
+				interpolate: { count: String(result.workflowIds.length) },
+			}),
+			type: 'error',
+		});
+		return;
+	}
 	toast.showMessage({
-		title: i18n.baseText('selfHealing.projectSettings.saved'),
+		title: i18n.baseText('selfHealing.projectSettings.activated'),
+		message:
+			result.pausedConfigIds.length > 0
+				? i18n.baseText('selfHealing.projectSettings.otherAllPaused')
+				: undefined,
 		type: 'success',
 	});
 }
 
-// The workflow settings modal deep-links here, so bring the section into view.
+// The workflow settings modal and the configuration page link here, so bring
+// the section into view.
 onMounted(async () => {
 	if (route.hash !== SELF_HEALING_SETTINGS_HASH) return;
 	await nextTick();
@@ -258,15 +321,31 @@ onMounted(async () => {
 						{{ i18n.baseText('selfHealing.projectSettings.noReviewers') }}
 					</N8nText>
 				</template>
+				<template #[`item.lastActivity`]="{ item }">
+					<N8nLink
+						v-if="lastActivities.get(item.id)"
+						:to="lastActivities.get(item.id)?.route"
+						theme="text"
+						size="medium"
+						data-test-id="self-healing-config-last-activity"
+					>
+						{{ lastActivities.get(item.id)?.label }} ·
+						<TimeAgo :date="lastActivities.get(item.id)?.at ?? ''" />
+					</N8nLink>
+					<N8nText v-else size="medium" color="text-light">
+						{{ i18n.baseText('selfHealing.projectSettings.lastActivity.none') }}
+					</N8nText>
+				</template>
 				<template #[`item.status`]="{ item }">
-					<div :class="$style.statusCell">
-						<N8nStatusDot :variant="item.status === 'active' ? 'success' : 'warning'" />
-						<N8nText size="medium" color="text-dark">{{ statusLabel(item) }}</N8nText>
-					</div>
+					<N8nSwitch
+						:model-value="item.status === 'active'"
+						data-test-id="self-healing-config-active"
+						@update:model-value="onActiveChange(item, $event)"
+					/>
 				</template>
 				<template #[`item.actions`]="{ item }">
 					<N8nActionToggle
-						:actions="actionsFor(item)"
+						:actions="configActions"
 						placement="bottom"
 						theme="dark"
 						data-test-id="self-healing-config-actions"
@@ -292,14 +371,7 @@ onMounted(async () => {
 			native-type="button"
 			:label="i18n.baseText('selfHealing.projectSettings.add')"
 			data-test-id="self-healing-add-config"
-			@click="openCreate"
-		/>
-
-		<SelfHealingConfigDialog
-			v-model:open="dialogOpen"
-			:project-id="projectId"
-			:config="editingConfig"
-			@saved="onSaved"
+			@click="openConfig(SELF_HEALING_NEW_CONFIG_ID)"
 		/>
 	</fieldset>
 </template>
@@ -307,13 +379,6 @@ onMounted(async () => {
 <style lang="scss" module>
 .table {
 	margin-bottom: var(--spacing--sm);
-}
-
-.statusCell {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	white-space: nowrap;
 }
 
 .people {

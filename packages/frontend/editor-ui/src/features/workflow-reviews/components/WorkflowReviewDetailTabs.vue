@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
-import { N8nCallout, N8nTabs, N8nText } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nSegmentControl,
+	N8nTabs,
+	N8nText,
+	type SegmentOption,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, provide } from 'vue';
+import { computed, provide, ref, watch } from 'vue';
+
+import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
 
 import { ReviewLinkedWorkflowsKey } from '../constants';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
@@ -101,6 +109,40 @@ const showApprovedAndPublished = computed(() => {
 		)
 	);
 });
+
+/**
+ * A review can cover more than one workflow, such as a fix across a workflow
+ * and its sub-workflow. The Changes tab shows one diff at a time, because each
+ * diff needs the full height of the panel.
+ */
+const selfHealingStore = useSelfHealingStore();
+const selectedChangesWorkflowId = ref<string | null>(null);
+
+watch(
+	() => props.review.id,
+	() => {
+		selectedChangesWorkflowId.value = null;
+	},
+);
+
+const shownChangesWorkflow = computed(() => {
+	const workflows = detail.value?.workflows ?? [];
+	return (
+		workflows.find((workflow) => workflow.workflowId === selectedChangesWorkflowId.value) ??
+		workflows[0]
+	);
+});
+
+const changesWorkflowOptions = computed<Array<SegmentOption<string>>>(() =>
+	(detail.value?.workflows ?? []).map((workflow) => ({
+		value: workflow.workflowId,
+		label: selfHealingStore.isSubWorkflowOf(props.review.id, workflow.workflowId)
+			? i18n.baseText('selfHealing.review.subWorkflowLabel', {
+					interpolate: { name: workflow.workflowName },
+				})
+			: workflow.workflowName,
+	})),
+);
 
 const tabOptions = computed(() => [
 	{
@@ -211,7 +253,11 @@ const tabOptions = computed(() => [
 				<slot name="trace" />
 			</div>
 
-			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
+			<div
+				v-else
+				:class="[$style.panel, $style.changesPanel]"
+				data-test-id="workflow-review-changes-panel"
+			>
 				<N8nCallout
 					v-if="!detail"
 					theme="warning"
@@ -220,14 +266,23 @@ const tabOptions = computed(() => [
 				>
 					{{ i18n.baseText('workflowReviews.changes.unavailable') }}
 				</N8nCallout>
-				<template v-else-if="detail.workflows.length > 0">
-					<WorkflowReviewChangesSection
-						v-for="workflow in detail.workflows"
-						:key="workflow.workflowId"
-						:workflow="workflow"
-						:state="detail.state"
-						:decision="detail.decision"
+				<template v-else-if="shownChangesWorkflow">
+					<N8nSegmentControl
+						v-if="changesWorkflowOptions.length > 1"
+						:model-value="shownChangesWorkflow.workflowId"
+						:options="changesWorkflowOptions"
+						:class="$style.workflowSwitcher"
+						data-test-id="workflow-review-changes-workflow-switcher"
+						@update:model-value="selectedChangesWorkflowId = $event"
 					/>
+					<div :class="$style.changesBody">
+						<WorkflowReviewChangesSection
+							:key="shownChangesWorkflow.workflowId"
+							:workflow="shownChangesWorkflow"
+							:state="detail.state"
+							:decision="detail.decision"
+						/>
+					</div>
 				</template>
 				<!-- No rows left: the workflow was deleted, or the requester lost access to it. -->
 				<N8nCallout
@@ -280,6 +335,21 @@ const tabOptions = computed(() => [
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
+}
+
+.changesPanel {
+	display: flex;
+	flex-direction: column;
+}
+
+.workflowSwitcher {
+	align-self: flex-start;
+	margin-bottom: var(--spacing--2xs);
+}
+
+.changesBody {
+	flex: 1;
+	min-height: 0;
 }
 
 /* Separate from `.panel`: the feed brings its own scroll container, and the

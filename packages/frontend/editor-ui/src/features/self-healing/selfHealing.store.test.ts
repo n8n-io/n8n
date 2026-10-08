@@ -41,13 +41,6 @@ function failedExecution(overrides: Partial<ExecutionSummary> = {}): ExecutionSu
 	};
 }
 
-/** `startFix` resolves `null` under "diagnose"; these tests expect a review. */
-async function expectReviewId(pending: Promise<string | null>): Promise<string> {
-	const reviewId = await pending;
-	if (reviewId === null) throw new Error('Expected startFix to create a review');
-	return reviewId;
-}
-
 describe('useSelfHealingStore', () => {
 	let store: ReturnType<typeof useSelfHealingStore>;
 
@@ -91,7 +84,7 @@ describe('useSelfHealingStore', () => {
 			store.setConfigStatus(PROJECT_ID, defaultConfig.id, 'paused');
 
 			expect(store.getProjectConfigs(PROJECT_ID)[0].status).toBe('paused');
-			expect(store.getActiveConfig(PROJECT_ID)).toBeNull();
+			expect(store.getWorkflowStatus('wf-1', PROJECT_ID).enrolled).toBe(false);
 		});
 
 		it('creates, updates and deletes configurations', () => {
@@ -150,18 +143,18 @@ describe('useSelfHealingStore', () => {
 	});
 
 	describe('reviews', () => {
-		it('seeds a fix review, a teammate review, two outcomes and one closed review', () => {
+		it('seeds two fix reviews, a teammate review, two outcomes and one closed review', () => {
 			const open = store.getInboxItems('open', 'waiting');
 			const closed = store.getInboxItems('closed');
 
-			expect(open).toHaveLength(4);
+			expect(open).toHaveLength(5);
 			expect(closed).toHaveLength(1);
 			expect(open[0].title).toMatch(/^Auto-fix:/);
 			const byAssistant = open.filter((item) => item.requester?.id === SELF_HEALING_ASSISTANT.id);
-			expect(byAssistant).toHaveLength(3);
+			expect(byAssistant).toHaveLength(4);
 			// Seeded items are reviewed by the signed-in user.
 			expect(open.every((item) => item.reviewers[0]?.id === 'user-1')).toBe(true);
-			expect(store.countByState('open')).toBe(4);
+			expect(store.countByState('open')).toBe(5);
 		});
 
 		it('publishes an approved teammate review without marking the workflow healed', () => {
@@ -364,7 +357,7 @@ describe('useSelfHealingStore', () => {
 			expect(store.getWorkflowStatus('wf-1', PROJECT_ID)).toMatchObject({ state: 'fixing' });
 
 			await vi.advanceTimersByTimeAsync(SELF_HEALING_FIX_DURATION_MS);
-			const reviewId = await expectReviewId(pending);
+			const reviewId = await pending;
 
 			expect(isSelfHealingReviewId(reviewId)).toBe(true);
 			expect(store.getFixJob('501')).toMatchObject({
@@ -400,7 +393,7 @@ describe('useSelfHealingStore', () => {
 				projectId: PROJECT_ID,
 			});
 			await vi.advanceTimersByTimeAsync(SELF_HEALING_FIX_DURATION_MS);
-			const reviewId = await expectReviewId(pending);
+			const reviewId = await pending;
 
 			expect(store.findReview(reviewId)?.item.reviewers.map((user) => user.id)).toEqual(['user-2']);
 		});
@@ -408,21 +401,42 @@ describe('useSelfHealingStore', () => {
 		it('only diagnoses when the project is set to diagnose and notify', async () => {
 			const [defaultConfig] = store.getProjectConfigs(PROJECT_ID);
 			store.updateConfig(PROJECT_ID, defaultConfig.id, { autonomy: 'diagnose' });
-			const openBefore = store.countByState('open');
 
 			const pending = store.startFix(failedExecution(), {
 				workflowName: 'Order sync',
 				projectId: PROJECT_ID,
 			});
 			await vi.advanceTimersByTimeAsync(SELF_HEALING_FIX_DURATION_MS);
+			const itemId = await pending;
 
-			expect(await pending).toBeNull();
 			expect(store.getFixJob('501')).toMatchObject({
 				status: 'diagnosed',
+				reviewId: itemId,
 				suggestedFix: expect.stringContaining('Post to Slack'),
 			});
 			expect(store.getWorkflowStatus('wf-1', PROJECT_ID)).toMatchObject({ state: 'diagnosed' });
-			expect(store.countByState('open')).toBe(openBefore);
+			expect(store.getInboxKind(itemId)).toBe('needs_you');
+			expect(store.getDetail(itemId)?.workflows[0].pinnedVersion).toEqual(
+				store.getDetail(itemId)?.workflows[0].baselineVersion,
+			);
+		});
+
+		it('sends the diagnosis to the people the configuration notifies', async () => {
+			const [defaultConfig] = store.getProjectConfigs(PROJECT_ID);
+			store.updateConfig(PROJECT_ID, defaultConfig.id, {
+				autonomy: 'diagnose',
+				notifyProjectMembers: false,
+				reviewerIds: ['user-2'],
+			});
+
+			const pending = store.startFix(failedExecution(), {
+				workflowName: 'Order sync',
+				projectId: PROJECT_ID,
+			});
+			await vi.advanceTimersByTimeAsync(SELF_HEALING_FIX_DURATION_MS);
+			const itemId = await pending;
+
+			expect(store.findReview(itemId)?.item.reviewers.map((user) => user.id)).toEqual(['user-2']);
 		});
 
 		it('deploys straight away when the project auto-deploys', async () => {
@@ -434,7 +448,7 @@ describe('useSelfHealingStore', () => {
 				projectId: PROJECT_ID,
 			});
 			await vi.advanceTimersByTimeAsync(SELF_HEALING_FIX_DURATION_MS);
-			const reviewId = await expectReviewId(pending);
+			const reviewId = await pending;
 
 			expect(store.findReview(reviewId)?.item).toMatchObject({
 				state: 'closed',

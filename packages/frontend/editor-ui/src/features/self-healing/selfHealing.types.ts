@@ -45,6 +45,15 @@ export type SelfHealingConfigInput = Omit<
 	'id' | 'projectId' | 'createdAt' | 'updatedAt'
 >;
 
+/**
+ * Result of turning a configuration on. `conflict` lists the workflows that
+ * another active configuration already selects; `pausedConfigIds` lists the
+ * "All workflows" configurations that were paused to make room.
+ */
+export type SelfHealingActivation =
+	| { status: 'activated'; pausedConfigIds: string[] }
+	| { status: 'conflict'; workflowIds: string[] };
+
 /** What the workflow list badge and the workflow settings row show for one workflow. */
 export type WorkflowHealingStatus =
 	| { enrolled: false; config: SelfHealingConfig | null }
@@ -73,6 +82,8 @@ export type SelfHealingFixJob =
 			status: 'diagnosed';
 			executionId: string;
 			workflowId: string;
+			/** The "Action needed" inbox item that carries the diagnosis. */
+			reviewId: string;
 			summary: string;
 			suggestedFix: string;
 	  }
@@ -115,6 +126,15 @@ export interface SelfHealingChatHandoff {
 	report: string;
 }
 
+/** The latest outcome of a configuration, for the project settings list. */
+export interface SelfHealingLastActivity {
+	/** The inbox item that records it. */
+	reviewId: string;
+	/** A fix review reads `healed` once approved and `fix_ready` before that. */
+	outcome: 'fix_ready' | 'healed' | Exclude<SelfHealingInboxKind, 'fix'>;
+	at: string;
+}
+
 /** What an investigation cost. `null` when the pre-check stopped it before any AI ran. */
 export interface SelfHealingUsage {
 	credits: number;
@@ -153,6 +173,11 @@ export interface SelfHealingReview {
 	summary: string;
 	/** Name of the node the fix touched. */
 	changedNode: string;
+	/**
+	 * Sub-workflows the fix also changes, in `detail.workflows` order. The first
+	 * workflow in the detail calls them. Empty when the fix stays in one workflow.
+	 */
+	subWorkflowIds: string[];
 	/** Execution that triggered the fix; `null` for seeded fixtures. */
 	executionId: string | null;
 }

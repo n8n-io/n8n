@@ -173,7 +173,13 @@ const statusSummary = computed(
 		>
 			<template #header>
 				<N8nText bold color="text-light" size="medium">
-					{{ i18n.baseText('workflowReviews.detail.metadata.workflow') }}
+					{{
+						i18n.baseText(
+							detail.workflows.length > 1
+								? 'workflowReviews.detail.metadata.workflows'
+								: 'workflowReviews.detail.metadata.workflow',
+						)
+					}}
 				</N8nText>
 			</template>
 			<div :class="$style.workflows">
@@ -187,7 +193,18 @@ const statusSummary = computed(
 					data-test-id="workflow-review-detail-workflow-link"
 				>
 					<N8nIcon icon="workflow" size="medium" :class="$style.workflowIcon" />
-					<span :class="$style.workflowName">{{ workflow.workflowName }}</span>
+					<span :class="$style.workflowName">
+						{{ workflow.workflowName }}
+						<N8nText
+							v-if="selfHealingStore.isSubWorkflowOf(review.id, workflow.workflowId)"
+							size="small"
+							color="text-light"
+							:class="$style.workflowCaption"
+							data-test-id="workflow-review-detail-sub-workflow-caption"
+						>
+							{{ i18n.baseText('selfHealing.review.subWorkflow') }}
+						</N8nText>
+					</span>
 				</N8nLink>
 			</div>
 		</N8nCard>
@@ -287,9 +304,14 @@ const statusSummary = computed(
 
 .workflowName {
 	flex: 1;
+	flex-direction: column;
 	min-width: 0;
 	/* A name with no spaces still has to break somewhere. */
 	overflow-wrap: anywhere;
+}
+
+.workflowCaption {
+	display: block;
 }
 
 .workflowIcon {

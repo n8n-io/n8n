@@ -83,8 +83,9 @@ const runningLabel = computed(() =>
 	),
 );
 
+/** A fix opens a review; a diagnosis opens an "Action needed" item. Both live in the inbox. */
 const reviewRoute = computed(() =>
-	job.value?.status === 'submitted'
+	job.value?.status === 'submitted' || job.value?.status === 'diagnosed'
 		? { name: WORKFLOW_REVIEW_REQUESTS_VIEW, params: { reviewRequestId: job.value.reviewId } }
 		: null,
 );
@@ -180,7 +181,13 @@ async function onFix() {
 				:class="$style.action"
 				data-test-id="self-healing-view-review-link"
 			>
-				{{ i18n.baseText('selfHealing.executionBanner.viewReview') }}
+				{{
+					i18n.baseText(
+						job.status === 'diagnosed'
+							? 'selfHealing.executionBanner.viewDiagnosis'
+							: 'selfHealing.executionBanner.viewReview',
+					)
+				}}
 			</N8nLink>
 		</div>
 	</N8nCallout>

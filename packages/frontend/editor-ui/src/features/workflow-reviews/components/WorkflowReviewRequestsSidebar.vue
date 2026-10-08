@@ -12,6 +12,7 @@ import {
 	N8nLoading,
 	N8nTabs,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { isSelfHealingAssistant } from '@/features/self-healing/selfHealing.constants';
@@ -58,6 +59,21 @@ const i18n = useI18n();
 const usersStore = useUsersStore();
 const selfHealingStore = useSelfHealingStore();
 const { isCollapsed, toggleSection } = useReviewInboxSectionCollapse();
+
+/** Sub-workflows an assistant fix changes on top of the card's workflow. */
+function subWorkflowNames(item: WorkflowReviewInboxItem): string[] {
+	return isSelfHealingAssistant(item.requester)
+		? selfHealingStore.getSubWorkflowNames(item.id)
+		: [];
+}
+
+function subWorkflowsTooltip(item: WorkflowReviewInboxItem): string {
+	const names = subWorkflowNames(item);
+	return i18n.baseText('selfHealing.inbox.subWorkflows.tooltip', {
+		adjustToNumber: names.length,
+		interpolate: { names: names.map((name) => `"${name}"`).join(', ') },
+	});
+}
 
 function inboxKind(item: WorkflowReviewInboxItem) {
 	return isSelfHealingAssistant(item.requester) ? selfHealingStore.getInboxKind(item.id) : null;
@@ -269,18 +285,38 @@ function onListBackgroundClick() {
 									/>
 								</div>
 								<div :class="$style.cardMeta">
-									<N8nBadge
-										v-if="item.workflowName"
-										theme="tertiary"
-										:show-border="false"
-										:class="$style.workflowBadge"
-										data-test-id="workflow-review-request-workflow-badge"
-									>
-										<span :class="$style.workflowBadgeText" :title="item.workflowName">
-											<N8nIcon icon="workflow" size="small" />
-											<span>{{ item.workflowName }}</span>
-										</span>
-									</N8nBadge>
+									<div :class="$style.cardWorkflows">
+										<N8nBadge
+											v-if="item.workflowName"
+											theme="tertiary"
+											:show-border="false"
+											:class="$style.workflowBadge"
+											data-test-id="workflow-review-request-workflow-badge"
+										>
+											<span :class="$style.workflowBadgeText" :title="item.workflowName">
+												<N8nIcon icon="workflow" size="small" />
+												<span>{{ item.workflowName }}</span>
+											</span>
+										</N8nBadge>
+										<N8nTooltip
+											v-if="subWorkflowNames(item).length > 0"
+											:content="subWorkflowsTooltip(item)"
+											placement="top"
+										>
+											<N8nBadge
+												theme="tertiary"
+												:show-border="false"
+												:class="$style.moreWorkflowsBadge"
+												data-test-id="workflow-review-request-sub-workflows-badge"
+											>
+												{{
+													i18n.baseText('selfHealing.inbox.subWorkflows.count', {
+														interpolate: { count: String(subWorkflowNames(item).length) },
+													})
+												}}
+											</N8nBadge>
+										</N8nTooltip>
+									</div>
 									<div :class="$style.cardMetaActions">
 										<N8nText
 											size="xsmall"
@@ -514,6 +550,24 @@ function onListBackgroundClick() {
 	> span {
 		max-width: 100%;
 	}
+}
+
+// The card's workflow and, for a fix across workflows, how many sub-workflows it also changes.
+.cardWorkflows {
+	display: flex;
+	flex: 0 1 auto;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
+.moreWorkflowsBadge {
+	flex-shrink: 0;
+	border: var(--border);
+	border-radius: var(--radius);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	color: var(--color--text);
+	line-height: calc(var(--font-size--sm) + var(--border-width));
 }
 
 .workflowBadgeText {

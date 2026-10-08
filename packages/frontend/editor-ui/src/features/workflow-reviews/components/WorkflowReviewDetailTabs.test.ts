@@ -4,6 +4,7 @@ import type {
 	WorkflowReviewRequestWorkflowDetail,
 } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import WorkflowReviewDetailTabs from './WorkflowReviewDetailTabs.vue';
@@ -13,7 +14,7 @@ vi.mock('./WorkflowReviewChangesSection.vue', () => ({
 		name: 'WorkflowReviewChangesSection',
 		props: ['workflow', 'state', 'decision'],
 		template:
-			'<div data-test-id="workflow-review-changes-section" :data-state="state" :data-decision="decision" />',
+			'<div data-test-id="workflow-review-changes-section" :data-workflow-id="workflow.workflowId" :data-state="state" :data-decision="decision" />',
 	},
 }));
 
@@ -294,8 +295,8 @@ describe('WorkflowReviewDetailTabs', () => {
 	});
 
 	describe('changes tab', () => {
-		it('renders one section per workflow', () => {
-			const { getAllByTestId } = renderComponent({
+		it('shows one workflow at a time and switches between them', async () => {
+			const { getAllByTestId, getByTestId, getByText } = renderComponent({
 				props: {
 					review: makeDetail({
 						workflows: [
@@ -308,7 +309,18 @@ describe('WorkflowReviewDetailTabs', () => {
 				},
 			});
 
-			expect(getAllByTestId('workflow-review-changes-section')).toHaveLength(2);
+			expect(getAllByTestId('workflow-review-changes-section')).toHaveLength(1);
+			expect(getByTestId('workflow-review-changes-section')).toHaveAttribute(
+				'data-workflow-id',
+				'wf-1',
+			);
+
+			await userEvent.click(getByText('Other workflow'));
+
+			expect(getByTestId('workflow-review-changes-section')).toHaveAttribute(
+				'data-workflow-id',
+				'wf-2',
+			);
 		});
 
 		// A closed review keeps its diff: the backend serves the baseline frozen at

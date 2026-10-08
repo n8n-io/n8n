@@ -17,6 +17,12 @@ export const SELF_HEALING_FIX_DURATION_MS = 2600;
 /** Anchor of the self-healing section on the project settings page. */
 export const SELF_HEALING_SETTINGS_HASH = '#self-healing';
 
+/** Route of the project settings sub-page that creates or edits one configuration. */
+export const SELF_HEALING_CONFIG_VIEW = 'SelfHealingConfigView';
+
+/** `configId` route param that opens the configuration page for a new configuration. */
+export const SELF_HEALING_NEW_CONFIG_ID = 'new';
+
 /** Plain boolean on purpose: a type predicate would narrow the `v-else` branch to `never`. */
 export function isSelfHealingAssistant(user: { id?: string | null } | null | undefined): boolean {
 	return user?.id === SELF_HEALING_ASSISTANT.id;

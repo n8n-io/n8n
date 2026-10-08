@@ -26,11 +26,12 @@ window.featureFlags.override('self_healing_workflows_prototype', 'control');
 
 | Surface | Component | Host |
 | --- | --- | --- |
-| Project settings section | `components/ProjectSelfHealingSection.vue`, `components/SelfHealingConfigDialog.vue` | `ProjectSettings.vue` |
+| Project settings section | `components/ProjectSelfHealingSection.vue` | `ProjectSettings.vue` |
+| Configuration page (create and edit) | `views/SelfHealingConfigView.vue` | `projects/:projectId/settings/self-healing/:configId` route |
 | Read-only trace of the Assistant's work | `components/SelfHealingTrace.vue` | Trace tab in `WorkflowReviewDetailTabs.vue` |
 | Three inbox kinds: Fix ready, Action needed, Could not fix | `components/SelfHealingOutcomeNotice.vue` (notice with the reason and the next step), `components/SelfHealingOutcomeActions.vue`, `selfHealingStatus.ts` | `WorkflowReviewRequestsSidebar.vue` (status colour only), `WorkflowReviewDetailTabs.vue` (next step in the description, Review disabled, no Changes tab) |
-| Sub-workflows of selected workflows | `SelfHealingConfigDialog.vue`, `composables/useSubWorkflowScope.ts` | Selected-workflows scope (reads the real workflow dependency index) |
-| Reviewers per configuration | `SelfHealingConfigDialog.vue` (project members picker) | seeded and live reviews list them as reviewers |
+| Sub-workflows of selected workflows | `SelfHealingConfigView.vue`, `components/SelfHealingSubWorkflowPill.vue`, `composables/useSubWorkflowScope.ts` | Selected-workflows scope (reads the real workflow dependency index) |
+| Reviewers per configuration | `SelfHealingConfigView.vue` (project members picker) | seeded and live reviews list them as reviewers |
 | Workflow list badge | `components/SelfHealingWorkflowBadge.vue` | `WorkflowCard.vue` |
 | Failed execution banner | `components/SelfHealingExecutionBanner.vue` | `WorkflowExecutionsPreview.vue` |
 | Workflow settings row | `components/SelfHealingWorkflowSettingsValue.vue` | `WorkflowSettings.vue` |
@@ -43,13 +44,28 @@ Workflow Reviews backend feature is off. See `isReviewInboxEnabled` in
 ## Demo script
 
 1. Turn the flag on and open a project's **Settings**. The **Self-healing**
-   section lists one default configuration. Edit it, add another, pause it.
+   section lists one default configuration. Edit it, add another, and pause
+   or resume one with its **Active** switch. Several configurations can be
+   active: one that selects a workflow wins over "All workflows" (which then
+   reads "All other workflows"), a workflow belongs to one active
+   configuration at most, and turning on an "All workflows" configuration
+   pauses the other one. **Last activity** shows each configuration's latest
+   outcome and links to it in the review inbox. A fix started in this session
+   shows there; until then, a configuration older than an hour borrows a
+   seeded demo item, and a new one reads "No failures yet".
+   Editing and adding open a configuration page under the project settings,
+   built from the same `N8nSettings*` components as the instance settings.
+   An edit saves in place with the Save button at the end of the page; a new
+   configuration returns to the list.
    In a new configuration, choose **Selected workflows** and add a workflow
-   that calls sub-workflows. Its row reads "Calls 3 sub-workflows"; click it
-   to see them. **Include sub-workflows** is on by default,
-   so the configuration covers them too. A sub-workflow in another project
-   shows as **Other project** and is not covered. This step reads real
-   Execute Workflow nodes, so the project must have such workflows.
+   that calls sub-workflows. Its row shows a link pill with their count, the
+   same pill as on workflow cards; click it to list them. **Include
+   sub-workflows** is on by default, so the configuration covers them too. A
+   sub-workflow in another project shows as **Other project** in that list,
+   and the row says it is not covered. A workflow that a selected
+   workflow already calls shows "Covered by …" and cannot be added again.
+   This step reads real Execute Workflow nodes, so the project must have
+   such workflows.
 2. Open the project's **Workflows**. Enrolled workflows show a chip:
    "Monitoring" or "Healed 3 hours ago". Workflows outside the scope show nothing.
 3. Open the project's **Executions** tab. A coachmark points at the newest
@@ -68,7 +84,8 @@ Workflow Reviews backend feature is off. See `isReviewInboxEnabled` in
 5. Switch the configuration to **Deploy fixes automatically** and repeat
    step 3. The fix lands already approved and published. Switch it to
    **Diagnose and notify** instead and the banner shows a root-cause summary
-   with a suggested fix, and nothing is changed.
+   with a suggested fix, and nothing is changed. The diagnosis also goes to
+   the people to notify, as an **Action needed** item in the inbox.
 
 ## Files
 

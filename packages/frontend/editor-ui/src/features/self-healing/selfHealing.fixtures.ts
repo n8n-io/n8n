@@ -12,6 +12,7 @@ import { deepCopy } from 'n8n-workflow';
 
 import { SELF_HEALING_ASSISTANT, SELF_HEALING_REVIEW_ID_PREFIX } from './selfHealing.constants';
 import type {
+	SelfHealingAutonomy,
 	SelfHealingConfig,
 	SelfHealingOutcome,
 	SelfHealingReview,
@@ -249,6 +250,159 @@ const INVOICE_REMINDER_FIXED_CONNECTIONS: IConnections = {
 };
 
 // ---------------------------------------------------------------------------
+// Fixture workflows: order fulfilment and its stock lookup sub-workflow
+// (open review, one fix across a parent and a sub-workflow)
+// ---------------------------------------------------------------------------
+
+const ORDER_FULFILMENT_NODES: INode[] = [
+	{
+		id: 'of-trigger',
+		name: 'Every 30 minutes',
+		type: 'n8n-nodes-base.scheduleTrigger',
+		typeVersion: 1.2,
+		position: [0, 0],
+		parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 30 }] } },
+	},
+	{
+		id: 'of-orders',
+		name: 'Get paid orders',
+		type: 'n8n-nodes-base.shopify',
+		typeVersion: 1,
+		position: [220, 0],
+		parameters: { operation: 'getAll', returnAll: true },
+	},
+	{
+		id: 'of-stock',
+		name: 'Check stock',
+		type: 'n8n-nodes-base.executeWorkflow',
+		typeVersion: 1.2,
+		position: [440, 0],
+		parameters: {
+			source: 'database',
+			workflowId: {
+				__rl: true,
+				mode: 'list',
+				value: 'self-healing-demo-stock-lookup',
+				cachedResultName: 'Look up stock level',
+			},
+			workflowInputs: {
+				mappingMode: 'defineBelow',
+				value: { sku: '={{ $json.line_items[0].sku }}' },
+			},
+			options: {},
+		},
+	},
+	{
+		id: 'of-ship',
+		name: 'Create shipment',
+		type: 'n8n-nodes-base.httpRequest',
+		typeVersion: 4.2,
+		position: [660, 0],
+		parameters: { method: 'POST', url: 'https://api.example-warehouse.com/v2/shipments' },
+	},
+];
+
+const ORDER_FULFILMENT_CONNECTIONS = connect(
+	'Every 30 minutes',
+	'Get paid orders',
+	'Check stock',
+	'Create shipment',
+);
+
+/** The parent now passes the warehouse the order ships from. */
+function orderFulfilmentFixedNodes(): INode[] {
+	return deepCopy(ORDER_FULFILMENT_NODES).map((node) =>
+		node.name === 'Check stock'
+			? {
+					...node,
+					parameters: {
+						...node.parameters,
+						workflowInputs: {
+							mappingMode: 'defineBelow',
+							value: {
+								sku: '={{ $json.line_items[0].sku }}',
+								warehouseId: '={{ $json.location_id }}',
+							},
+						},
+					},
+				}
+			: node,
+	);
+}
+
+const STOCK_LOOKUP_NODES: INode[] = [
+	{
+		id: 'sl-trigger',
+		name: 'When called by another workflow',
+		type: 'n8n-nodes-base.executeWorkflowTrigger',
+		typeVersion: 1.1,
+		position: [0, 0],
+		parameters: { inputSource: 'workflowInputs', workflowInputs: { values: [{ name: 'sku' }] } },
+	},
+	{
+		id: 'sl-get',
+		name: 'Get stock level',
+		type: 'n8n-nodes-base.httpRequest',
+		typeVersion: 4.2,
+		position: [220, 0],
+		parameters: {
+			method: 'GET',
+			url: '=https://api.example-warehouse.com/v1/stock/{{ $json.sku }}',
+		},
+	},
+	{
+		id: 'sl-return',
+		name: 'Return stock',
+		type: 'n8n-nodes-base.set',
+		typeVersion: 3.4,
+		position: [440, 0],
+		parameters: {
+			assignments: {
+				assignments: [
+					{
+						id: 'sl-in-stock',
+						name: 'inStock',
+						value: '={{ $json.quantity > 0 }}',
+						type: 'boolean',
+					},
+				],
+			},
+		},
+	},
+];
+
+const STOCK_LOOKUP_CONNECTIONS = connect(
+	'When called by another workflow',
+	'Get stock level',
+	'Return stock',
+);
+
+/** The sub-workflow now takes a warehouse and calls the v2 endpoint. */
+function stockLookupFixedNodes(): INode[] {
+	return deepCopy(STOCK_LOOKUP_NODES).map((node) => {
+		if (node.name === 'When called by another workflow') {
+			return {
+				...node,
+				parameters: {
+					...node.parameters,
+					workflowInputs: { values: [{ name: 'sku' }, { name: 'warehouseId' }] },
+				},
+			};
+		}
+		if (node.name === 'Get stock level') {
+			return {
+				...node,
+				parameters: {
+					...node.parameters,
+					url: '=https://api.example-warehouse.com/v2/warehouses/{{ $json.warehouseId }}/stock/{{ $json.sku }}',
+				},
+			};
+		}
+		return node;
+	});
+}
+
+// ---------------------------------------------------------------------------
 // Review builder
 // ---------------------------------------------------------------------------
 
@@ -268,6 +422,13 @@ export interface BuildReviewOptions {
 	projectId: string;
 	baseline: WorkflowReviewVersionSnapshot;
 	pinned: WorkflowReviewVersionSnapshot;
+	/** Sub-workflows the fix changes too. `workflowId` calls each of them. */
+	subWorkflows?: Array<{
+		workflowId: string;
+		workflowName: string;
+		baseline: WorkflowReviewVersionSnapshot;
+		pinned: WorkflowReviewVersionSnapshot;
+	}>;
 	reviewers: WorkflowReviewEligibleReviewer[];
 	createdAt: string;
 	usage: SelfHealingUsage | null;
@@ -288,9 +449,19 @@ export function buildSelfHealingReview(
 	const state = options.state ?? 'open';
 	const decision = options.decision ?? 'pending';
 	const updatedAt = options.approval?.at ?? options.createdAt;
-	const workflowVersions = [
-		{ workflowId: options.workflowId, workflowVersionId: options.pinned.versionId },
+	const changed = [
+		{
+			workflowId: options.workflowId,
+			workflowName: options.workflowName,
+			baseline: options.baseline,
+			pinned: options.pinned,
+		},
+		...(options.subWorkflows ?? []),
 	];
+	const workflowVersions = changed.map((workflow) => ({
+		workflowId: workflow.workflowId,
+		workflowVersionId: workflow.pinned.versionId,
+	}));
 
 	const item: WorkflowReviewInboxItem = {
 		id: options.id,
@@ -319,18 +490,16 @@ export function buildSelfHealingReview(
 		authors: item.authors,
 		reviewers: item.reviewers,
 		description: options.description,
-		workflows: [
-			{
-				workflowId: options.workflowId,
-				workflowName: options.workflowName,
-				workflowVersionId: options.pinned.versionId,
-				pinnedVersion: options.pinned,
-				publishedVersionId: options.approval
-					? options.pinned.versionId
-					: options.baseline.versionId,
-				baselineVersion: options.baseline,
-			},
-		],
+		workflows: changed.map((workflow) => ({
+			workflowId: workflow.workflowId,
+			workflowName: workflow.workflowName,
+			workflowVersionId: workflow.pinned.versionId,
+			pinnedVersion: workflow.pinned,
+			publishedVersionId: options.approval
+				? workflow.pinned.versionId
+				: workflow.baseline.versionId,
+			baselineVersion: workflow.baseline,
+		})),
 		viewerCanDecide: state === 'open',
 		viewerDecisionIneligibilityReason: null,
 		viewerCanComment: true,
@@ -375,14 +544,14 @@ export function buildSelfHealingReview(
 				createdAt: options.approval.at,
 				data: { workflowVersions, note: options.approval.note },
 			},
-			{
+			...workflowVersions.map((version) => ({
 				id: nextEntryId(),
-				typeVersion: 1,
-				type: 'workflow.published',
-				createdBy: options.approval.by,
-				createdAt: options.approval.at,
-				data: workflowVersions[0],
-			},
+				typeVersion: 1 as const,
+				type: 'workflow.published' as const,
+				createdBy: options.approval?.by ?? null,
+				createdAt: options.approval?.at ?? options.createdAt,
+				data: version,
+			})),
 		);
 	}
 
@@ -396,6 +565,7 @@ export function buildSelfHealingReview(
 		activity,
 		summary: options.summary,
 		changedNode: options.changedNode,
+		subWorkflowIds: (options.subWorkflows ?? []).map((workflow) => workflow.workflowId),
 		executionId: options.executionId,
 	};
 }
@@ -406,6 +576,8 @@ export const SEED_WORKFLOWS = {
 	dealAlerts: { id: 'self-healing-demo-deal-alerts', name: 'Deal alerts to Slack' },
 	orderSync: { id: 'self-healing-demo-order-sync', name: 'Order sync to warehouse' },
 	weeklyReport: { id: 'self-healing-demo-weekly-report', name: 'Weekly pipeline report' },
+	orderFulfilment: { id: 'self-healing-demo-order-fulfilment', name: 'Order fulfilment' },
+	stockLookup: { id: 'self-healing-demo-stock-lookup', name: 'Look up stock level' },
 } as const;
 
 /**
@@ -536,6 +708,7 @@ export function buildSelfHealingOutcome(
 		activity,
 		summary: options.summary,
 		changedNode: '',
+		subWorkflowIds: [],
 		executionId: options.executionId,
 	};
 }
@@ -590,6 +763,7 @@ export function createSeedReviews(
 	now = Date.now(),
 ): SelfHealingReview[] {
 	const openedAt = hoursAgo(2, now);
+	const fulfilmentOpenedAt = hoursAgo(1, now);
 	const invoiceOpenedAt = daysAgo(3, now);
 	const invoiceApprovedAt = daysAgo(2, now);
 	const reviewers = reviewer ? [reviewer] : [];
@@ -708,6 +882,149 @@ export function createSeedReviews(
 						output: 'Completed. 100 of 100 items enriched and updated.',
 					},
 					{ type: 'event', at: 240, label: 'Fix submitted for review' },
+				],
+			},
+			nextEntryId,
+		),
+		// One fix across two workflows: the sub-workflow and the parent that calls it.
+		buildSelfHealingReview(
+			{
+				id: `${SELF_HEALING_REVIEW_ID_PREFIX}seed-order-fulfilment`,
+				description:
+					'Fix ready for review. It changes 2 workflows: "Order fulfilment" and the sub-workflow it calls, "Look up stock level". Approving publishes both.\n\nImpact: no paid orders were shipped since 06:00. Every run stopped at "Check stock".\nCause: the warehouse API removed /v1/stock/{sku}. The sub-workflow still called it and got 404 Not Found.\nChange: "Look up stock level" now takes a warehouse ID and calls /v2/warehouses/{warehouseId}/stock/{sku}. "Order fulfilment" now passes the warehouse ID of each order to it.\nChecked: no other workflow calls "Look up stock level". Replayed the failed execution against both changes. All 38 orders went through.',
+				title: 'Auto-fix: Move the stock lookup to the v2 warehouse API in Order fulfilment',
+				summary:
+					'Failed: the sub-workflow "Look up stock level" got 404 from the removed /v1/stock endpoint. Changed: the sub-workflow calls the v2 endpoint, and "Order fulfilment" passes it the warehouse ID.',
+				analysis:
+					'What failed: execution #48420 of "Order fulfilment" stopped at "Check stock". The sub-workflow "Look up stock level" failed at "Get stock level" with 404 Not Found: "/v1/stock/{sku} was removed. Use /v2/warehouses/{warehouseId}/stock/{sku}."\n\nWhat I changed:\n1. In the sub-workflow "Look up stock level", I added the input "warehouseId" and changed "Get stock level" to call the v2 path.\n2. In "Order fulfilment", I changed "Check stock" to pass the order\'s location_id as "warehouseId".\n\nWhy both: the v2 endpoint needs the warehouse, and only the parent workflow knows which warehouse an order ships from. No other workflow calls "Look up stock level", so the new input does not break another caller.\n\nHow I checked: replayed #48420 against both drafts with pinned data. All 38 orders got a stock level and a shipment.',
+				changedNode: 'Get stock level',
+				executionId: '48420',
+				workflowId: SEED_WORKFLOWS.orderFulfilment.id,
+				workflowName: SEED_WORKFLOWS.orderFulfilment.name,
+				projectId,
+				baseline: snapshot(
+					'of-v12',
+					'Published',
+					ORDER_FULFILMENT_NODES,
+					ORDER_FULFILMENT_CONNECTIONS,
+					daysAgo(20, now),
+				),
+				pinned: snapshot(
+					'of-v13',
+					'Auto-fix: pass warehouse ID',
+					orderFulfilmentFixedNodes(),
+					ORDER_FULFILMENT_CONNECTIONS,
+					fulfilmentOpenedAt,
+				),
+				subWorkflows: [
+					{
+						workflowId: SEED_WORKFLOWS.stockLookup.id,
+						workflowName: SEED_WORKFLOWS.stockLookup.name,
+						baseline: snapshot(
+							'sl-v4',
+							'Published',
+							STOCK_LOOKUP_NODES,
+							STOCK_LOOKUP_CONNECTIONS,
+							daysAgo(41, now),
+						),
+						pinned: snapshot(
+							'sl-v5',
+							'Auto-fix: v2 stock endpoint',
+							stockLookupFixedNodes(),
+							STOCK_LOOKUP_CONNECTIONS,
+							fulfilmentOpenedAt,
+						),
+					},
+				],
+				reviewers,
+				createdAt: fulfilmentOpenedAt,
+				usage: { credits: 21, turns: 11, durationSeconds: 310 },
+				trace: [
+					{ type: 'event', at: 0, label: 'Execution #48420 failed at "Check stock"' },
+					{ type: 'event', at: 1, label: 'Pre-check passed. Investigation started' },
+					{
+						type: 'tool',
+						at: 3,
+						tool: 'executions',
+						label: 'Read failed execution #48420',
+						input: { executionId: '48420', include: ['error', 'subExecutions'] },
+						output:
+							'Stopped at "Check stock". Sub-execution #48421 of "Look up stock level" failed at "Get stock level":\n404 Not Found: "/v1/stock/{sku} was removed. Use /v2/warehouses/{warehouseId}/stock/{sku}."',
+					},
+					{
+						type: 'text',
+						at: 18,
+						text: 'The error is in the sub-workflow, but the new path needs a warehouse ID that the sub-workflow does not receive. The parent has it on every order as location_id.',
+					},
+					{
+						type: 'tool',
+						at: 25,
+						tool: 'workflows',
+						label: 'Read published workflow "Look up stock level"',
+						input: { workflowId: 'self-healing-demo-stock-lookup', version: 'published' },
+						output:
+							'3 nodes, published version sl-v4.\nInputs: sku.\n"Get stock level" calls /v1/stock/{{ $json.sku }}.',
+					},
+					{
+						type: 'tool',
+						at: 40,
+						tool: 'workflows',
+						label: 'Find workflows that call "Look up stock level"',
+						input: { dependencyOf: 'self-healing-demo-stock-lookup', type: 'workflowCall' },
+						output: '1 caller: "Order fulfilment".',
+					},
+					{
+						type: 'tool',
+						at: 62,
+						tool: 'research',
+						label: 'Fetch the warehouse API reference for GET /v2/warehouses/{id}/stock/{sku}',
+						input: { url: 'https://docs.example-warehouse.com/api/v2/stock#get' },
+						output:
+							'Path parameters: warehouseId (required), sku (required). Response: { quantity, reserved }.',
+					},
+					{
+						type: 'tool',
+						at: 120,
+						tool: 'draft-workflow',
+						label: 'Draft a change to "Look up stock level"',
+						input: {
+							workflow: 'Look up stock level',
+							addInput: 'warehouseId',
+							node: 'Get stock level',
+							set: { url: '/v2/warehouses/{{ $json.warehouseId }}/stock/{{ $json.sku }}' },
+						},
+						output: 'Draft saved. 2 nodes changed.',
+					},
+					{
+						type: 'tool',
+						at: 170,
+						tool: 'draft-workflow',
+						label: 'Draft a change to "Order fulfilment"',
+						input: {
+							workflow: 'Order fulfilment',
+							node: 'Check stock',
+							set: { 'workflowInputs.warehouseId': '={{ $json.location_id }}' },
+						},
+						output: 'Draft saved. 1 node changed.',
+					},
+					{
+						type: 'tool',
+						at: 210,
+						tool: 'validate-draft',
+						label: 'Validate both drafts',
+						input: { drafts: ['of-v13', 'sl-v5'] },
+						output:
+							'Structure and parameters are valid. The inputs of "Check stock" match the sub-workflow.',
+					},
+					{
+						type: 'tool',
+						at: 270,
+						tool: 'executions',
+						label: 'Replay #48420 on both drafts with pinned data',
+						input: { executionId: '48420', drafts: ['of-v13', 'sl-v5'], pinnedData: true },
+						output: 'Completed. 38 of 38 orders got a stock level and a shipment.',
+					},
+					{ type: 'event', at: 310, label: 'Fix submitted for review. 2 workflows changed' },
 				],
 			},
 			nextEntryId,
@@ -1006,17 +1323,21 @@ export function createLiveFixSnapshots(input: {
 }
 
 /** Title, summary and feed comment for a fix started from a real execution. */
-/** Trace for a fix started from the execution banner. */
+/**
+ * Trace for a fix started from the execution banner. Under "diagnose" it stops
+ * after the investigation, because the Assistant may not change the workflow.
+ */
 export function createLiveTrace(input: {
 	executionId: string;
 	workflowId: string;
 	workflowName: string;
+	/** The node the fix changes, or under "diagnose" the node that failed. */
 	changedNode: string;
 	errorMessage: string | null;
-	autoDeployed: boolean;
+	autonomy: SelfHealingAutonomy;
 }): SelfHealingTraceEntry[] {
 	const error = input.errorMessage ?? 'an unhandled error';
-	return [
+	const investigation: SelfHealingTraceEntry[] = [
 		{
 			type: 'event',
 			at: 0,
@@ -1044,6 +1365,21 @@ export function createLiveTrace(input: {
 			at: 40,
 			text: 'The input data looks valid and the same node succeeded on earlier runs, so the failure is most likely transient. A retry covers it.',
 		},
+	];
+
+	if (input.autonomy === 'diagnose') {
+		return [
+			...investigation,
+			{
+				type: 'event',
+				at: 45,
+				label: 'Sent to the inbox as Action needed. The workflow was not changed',
+			},
+		];
+	}
+
+	return [
+		...investigation,
 		{
 			type: 'tool',
 			at: 70,
@@ -1074,7 +1410,8 @@ export function createLiveTrace(input: {
 		{
 			type: 'event',
 			at: 150,
-			label: input.autoDeployed ? 'Fix published automatically' : 'Fix submitted for review',
+			label:
+				input.autonomy === 'deploy' ? 'Fix published automatically' : 'Fix submitted for review',
 		},
 	];
 }
@@ -1109,5 +1446,33 @@ export function createDiagnosisCopy(input: {
 	return {
 		summary: `Execution #${input.executionId} stopped at "${input.failedNode}" with ${error}. The upstream data looked valid, so the failure is most likely transient.`,
 		suggestedFix: `Turn on Retry On Fail for "${input.failedNode}" with 3 attempts, 5 seconds apart.`,
+	};
+}
+
+/**
+ * Copy for the inbox item a diagnosis sends to the people the configuration
+ * notifies. It is an "Action needed" item: the next step is theirs.
+ */
+export function createDiagnosisItemCopy(input: {
+	executionId: string;
+	failedNode: string;
+	workflowName: string;
+	errorMessage: string | null;
+}): {
+	title: string;
+	summary: string;
+	description: string;
+	analysis: string;
+	reason: string;
+} {
+	const error = input.errorMessage ?? 'an unhandled error';
+	const diagnosis = createDiagnosisCopy(input);
+	return {
+		title: `Turn on Retry On Fail for "${input.failedNode}" in ${input.workflowName}`,
+		summary: `Failed: "${input.failedNode}" stopped execution #${input.executionId} with ${error}. Suggested: turn on Retry On Fail. Nothing was changed.`,
+		description: `Cause: ${diagnosis.summary}\nSuggested fix: ${diagnosis.suggestedFix}\nNext: apply the fix in the workflow, or continue in chat to let AI Assistant prepare it.`,
+		analysis: `What failed: execution #${input.executionId} stopped at "${input.failedNode}" with ${error}.\n\nWhat I found: the input data looked valid and the same node succeeded on earlier runs, so the failure is most likely transient.\n\nSuggested fix: ${diagnosis.suggestedFix}\n\nWhy I did not change it: this project's self-healing is set to "Diagnose and notify".`,
+		reason:
+			'Apply the suggested fix. This configuration only diagnoses failures, so AI Assistant did not change the workflow.',
 	};
 }
