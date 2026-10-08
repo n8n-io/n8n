@@ -38,13 +38,9 @@ const OAuthResourceGrantSchema = z.object({
 	executeAccessWorkflowId: z.string().optional(),
 }) satisfies z.ZodType<OAuthResourceGrant, z.ZodTypeDef, unknown>;
 
-const N8nOAuthMetadataSchema = z.object({
+const N8nOAuthMetadataBaseSchema = z.object({
 	source: z.literal(N8N_OAUTH_SOURCE),
-	/** `2` marks a seal that always carries `grant`. Absent on legacy seals. */
-	version: z.literal(2).optional(),
 	resource: z.string(),
-	/** Required when `version` is `2`. Absent only on legacy seals. */
-	grant: OAuthResourceGrantSchema.optional(),
 	/**
 	 * The resolved n8n user, sealed at establishment. When present, resolution trusts it
 	 * (bound to `executionPath`, principal re-checked) instead of re-verifying the token.
@@ -57,12 +53,56 @@ const N8nOAuthMetadataSchema = z.object({
 	binding: z.object({ sourceId: z.string(), subject: z.string() }).optional(),
 });
 
+/** A seal made at admission. It always carries the grant that admitted the caller. */
+const N8nOAuthMetadataV2Schema = N8nOAuthMetadataBaseSchema.extend({
+	version: z.literal(2),
+	grant: OAuthResourceGrantSchema,
+});
+
+/**
+ * A seal made before grants were required, so `grant` can be absent. Remove this schema,
+ * and the legacy path in {@link N8NIdentifier}, when no legacy seals remain.
+ */
+const LegacyN8nOAuthMetadataSchema = N8nOAuthMetadataBaseSchema.extend({
+	version: z.undefined(),
+	grant: OAuthResourceGrantSchema.optional(),
+});
+
+/** Any other `version`, or a `version: 2` seal without a grant, fails to parse. */
+const N8nOAuthMetadataSchema = z.discriminatedUnion('version', [
+	N8nOAuthMetadataV2Schema,
+	LegacyN8nOAuthMetadataSchema,
+]);
+
+type N8nOAuthMetadata = z.infer<typeof N8nOAuthMetadataSchema>;
+
+/**
+ * Only routes on `source`: zod 3 cannot nest the `version` union above in a
+ * discriminated union, so {@link N8NIdentifier} parses that shape in a second step.
+ */
+const N8nOAuthSourceSchema = z.object({ source: z.literal(N8N_OAUTH_SOURCE) });
+
 /** Exported for the drift test that keeps {@link N8N_IDENTITY_SOURCES} in step with it. */
 export const N8NIdentifierMetadataSchema = z.discriminatedUnion('source', [
 	ManualExecutionMetadataSchema,
 	RequestBoundMetadataSchema,
-	N8nOAuthMetadataSchema,
+	N8nOAuthSourceSchema,
 ]);
+
+type N8NIdentifierMetadata =
+	| Exclude<z.infer<typeof N8NIdentifierMetadataSchema>, { source: typeof N8N_OAUTH_SOURCE }>
+	| N8nOAuthMetadata;
+
+type MetadataParseResult =
+	| { success: true; data: N8NIdentifierMetadata }
+	| { success: false; error: string };
+
+/** One `path: message` entry for each issue, instead of zod's JSON dump. */
+function describeIssues(error: z.ZodError): string {
+	return error.issues
+		.map(({ path, message }) => (path.length > 0 ? `${path.join('.')}: ${message}` : message))
+		.join('; ');
+}
 
 /**
  * Every `source` the union above accepts, built from the same constants the schemas
@@ -123,11 +163,9 @@ export class N8NIdentifier implements ITokenIdentifier {
 		_: Record<string, unknown>,
 		executionId?: string,
 	): Promise<string> {
-		const metadataResult = N8NIdentifierMetadataSchema.safeParse(context.metadata);
+		const metadataResult = this.parseMetadata(context.metadata);
 		if (!metadataResult.success) {
-			throw new CredentialResolverError(
-				`Invalid context metadata: ${metadataResult.error.message}`,
-			);
+			throw new CredentialResolverError(`Invalid context metadata: ${metadataResult.error}`);
 		}
 
 		if (metadataResult.data.source === 'manual-execution') {
@@ -137,16 +175,6 @@ export class N8NIdentifier implements ITokenIdentifier {
 		}
 
 		if (metadataResult.data.source === 'n8n-oauth') {
-			if (metadataResult.data.version === 2 && !metadataResult.data.grant) {
-				// A version 2 seal is always made with a grant, so this is a bug upstream.
-				this.logger.warn('Sealed identity has no grant', {
-					resource: metadataResult.data.resource,
-				});
-				throw new CredentialResolverError(
-					`Invalid OAuth token for resource ${metadataResult.data.resource}`,
-				);
-			}
-
 			// Sealed identity: trust the resolved user, bound to its execution, without
 			// re-verifying the token (so it resolves past the token's TTL, e.g. after a Wait).
 			if (metadataResult.data.subject) {
@@ -215,7 +243,7 @@ export class N8NIdentifier implements ITokenIdentifier {
 	 * resolve as.
 	 */
 	async identify(context: ICredentialContext): Promise<string | undefined> {
-		const metadataResult = N8NIdentifierMetadataSchema.safeParse(context.metadata);
+		const metadataResult = this.parseMetadata(context.metadata);
 		if (!metadataResult.success) return undefined;
 
 		try {
@@ -225,8 +253,7 @@ export class N8NIdentifier implements ITokenIdentifier {
 			}
 
 			if (metadataResult.data.source === 'n8n-oauth') {
-				const { version, subject, grant } = metadataResult.data;
-				if (version === 2 && !grant) return undefined;
+				const { subject } = metadataResult.data;
 				if (subject) {
 					const authorized = await this.isSealedSubjectAuthorized(subject, metadataResult.data);
 					return authorized ? subject : undefined;
@@ -255,12 +282,42 @@ export class N8NIdentifier implements ITokenIdentifier {
 		}
 	}
 
+	private parseMetadata(metadata: unknown): MetadataParseResult {
+		const result = N8NIdentifierMetadataSchema.safeParse(metadata);
+		if (!result.success) return { success: false, error: describeIssues(result.error) };
+		if (result.data.source !== N8N_OAUTH_SOURCE) return { success: true, data: result.data };
+
+		const sealed = N8nOAuthMetadataSchema.safeParse(metadata);
+		if (!sealed.success) {
+			// Only n8n writes this shape, and it is encrypted, so a parse failure is a bug upstream.
+			const error = describeIssues(sealed.error);
+			this.logger.warn('Sealed identity metadata is invalid', { error });
+			return { success: false, error };
+		}
+		return { success: true, data: sealed.data };
+	}
+
 	private async isSealedSubjectAuthorized(
 		userId: string,
-		{ grant, binding }: z.infer<typeof N8nOAuthMetadataSchema>,
+		metadata: N8nOAuthMetadata,
+	): Promise<boolean> {
+		if (metadata.version === 2) {
+			return await this.trustedSourceGate.authorizeSealed({
+				userId,
+				grant: metadata.grant,
+				binding: metadata.binding,
+			});
+		}
+		return await this.isLegacySealedSubjectAuthorized(userId, metadata);
+	}
+
+	/** Remove with {@link LegacyN8nOAuthMetadataSchema}. */
+	private async isLegacySealedSubjectAuthorized(
+		userId: string,
+		{ grant, binding }: z.infer<typeof LegacyN8nOAuthMetadataSchema>,
 	): Promise<boolean> {
 		if (grant) return await this.trustedSourceGate.authorizeSealed({ userId, grant, binding });
-		// Legacy seal from before grants were required: only the principal can be re-checked.
+		// Sealed before grants were required: only the principal can be re-checked.
 		const user = await this.userRepository.findOneBy({ id: userId });
 		return !!user && !user.disabled;
 	}

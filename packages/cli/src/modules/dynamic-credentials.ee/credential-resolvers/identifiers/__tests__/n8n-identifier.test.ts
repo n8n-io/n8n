@@ -159,9 +159,7 @@ describe('N8NIdentifier', () => {
 				};
 
 				await expect(identifier.resolve(context, {})).rejects.toThrow(
-					expect.objectContaining({
-						message: expect.stringMatching(/Invalid context metadata/),
-					}),
+					'Invalid context metadata: browserId: Expected string, received number',
 				);
 
 				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
@@ -427,9 +425,30 @@ describe('N8NIdentifier', () => {
 						},
 						{},
 					),
-				).rejects.toThrow(CredentialResolverError);
+				).rejects.toThrow('Invalid context metadata: grant: Required');
 				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
-				expect(mockLogger.warn).toHaveBeenCalled();
+				expect(mockLogger.warn).toHaveBeenCalledWith('Sealed identity metadata is invalid', {
+					error: 'grant: Required',
+				});
+			});
+
+			it('rejects a carrier with an unknown version', async () => {
+				await expect(
+					identifier.resolve(
+						{
+							identity: 'oauth-access-token',
+							version: 1 as const,
+							metadata: {
+								source: 'n8n-oauth' as const,
+								version: 3,
+								resource: 'https://host/mcp/workflow-a',
+								grant: { audiences: ['https://host/mcp/workflow-a'] },
+							},
+						},
+						{},
+					),
+				).rejects.toThrow(/Invalid context metadata/);
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
 			});
 
 			it('should throw CredentialResolverError when the token resolves to no user', async () => {
@@ -560,7 +579,7 @@ describe('N8NIdentifier', () => {
 			it('rejects a version 2 seal without a grant, without asking the gate or loading the user', async () => {
 				await expect(
 					identifier.resolve(sealedContext({ grant: undefined }), {}, 'exec-root'),
-				).rejects.toThrow(CredentialResolverError);
+				).rejects.toThrow('Invalid context metadata: grant: Required');
 				expect(mockTrustedSourceGate.authorizeSealed).not.toHaveBeenCalled();
 				expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
 				expect(mockLogger.warn).toHaveBeenCalled();
