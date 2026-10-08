@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import MCPAgentsSelect from '@/features/ai/mcpAccess/components/MCPAgentsSelect.vue';
-import { N8nButton, N8nDialog, N8nDialogFooter, N8nNotice } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nNotice,
+} from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -60,10 +66,6 @@ function onConfirm() {
 		void save();
 	}
 }
-
-function preventOutsideClose(event: Event) {
-	event.preventDefault();
-}
 </script>
 
 <template>
@@ -71,25 +73,27 @@ function preventOutsideClose(event: Event) {
 		v-model:open="open"
 		size="xlarge"
 		:header="i18n.baseText('settings.mcp.connectAgents.modalTitle')"
+		:close-on-overlay-click="false"
 		data-test-id="mcp-connect-agents-dialog"
-		@interact-outside="preventOutsideClose"
 	>
-		<div :class="$style.content">
-			<N8nNotice
-				data-test-id="mcp-connect-agents-info-notice"
-				theme="info"
-				:content="i18n.baseText('settings.mcp.connectAgents.notice')"
-				:class="$style.notice"
-			/>
-			<MCPAgentsSelect
-				ref="selectRef"
-				v-model="selectedAgentIds"
-				:placeholder="i18n.baseText('settings.mcp.connectAgents.input.placeholder')"
-				:disabled="isSaving"
-				@ready="onSelectReady"
-				@confirm="onConfirm"
-			/>
-		</div>
+		<N8nDialogBody>
+			<div :class="$style.content">
+				<N8nNotice
+					data-test-id="mcp-connect-agents-info-notice"
+					theme="info"
+					:content="i18n.baseText('settings.mcp.connectAgents.notice')"
+					:class="$style.notice"
+				/>
+				<MCPAgentsSelect
+					ref="selectRef"
+					v-model="selectedAgentIds"
+					:placeholder="i18n.baseText('settings.mcp.connectAgents.input.placeholder')"
+					:disabled="isSaving"
+					@ready="onSelectReady"
+					@confirm="onConfirm"
+				/>
+			</div>
+		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
 				variant="subtle"
