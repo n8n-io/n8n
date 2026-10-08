@@ -5,7 +5,7 @@ packages/cli/src/modules/n8n-packages/entities/agent/agent-requirements.extracto
   s_2397c9db9d923f::t_2534fa89ebfb8f 8-13,17-25,27,29-47,59-60,73-74
 packages/cli/src/modules/n8n-packages/entities/agent/agent-export.types.ts
   s_2397c9db9d923f::t_3b0ae306eaaad4 2,10,13-19,23-24,46,48
-  s_2397c9db9d923f::t_cbba575f20861b 25-45,47
+  s_2397c9db9d923f::t_cbba575f20861b 25-45,25-28,29-45,47
   s_2397c9db9d923f::t_2534fa89ebfb8f 11-12,20-21
   s_2397c9db9d923f::t_d4fbbe482b25d2 1,3-9
   s_2397c9db9d923f::t_dac435fa9c419b 22
@@ -21,16 +21,20 @@ packages/cli/src/modules/n8n-packages/entities/agent/agent.exporter.ts
 packages/cli/src/modules/n8n-packages/__tests__/export-agent-package.integration.test.ts
   s_2397c9db9d923f::t_c9def1cb00dd4d 1-82,84-92,101-108,117-140,198-200,204
   s_2397c9db9d923f::t_350da864cd1a29 93,100,109-116,141-197,201-203
+  s_2397c9db9d923f::t_23ace2afb12cd0 83,94-99
 packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
   s_2397c9db9d923f::t_350da864cd1a29 21-23,42-45,63-69,80-84,86-108,113-115,146-148,152-172,182-196,217-220,249-251,260-264
   s_2397c9db9d923f::t_a02cd22a343397 7,47
   s_2397c9db9d923f::t_21179e5969d137 1-6,8-20,24-41,46,48-62,70-79,85,109-112,116-145,149-151,173-181,197-216,221-248,252-259,265-269,299
+  s_2397c9db9d923f::t_1b62ffe4ae25df 270
+  s_2397c9db9d923f::t_5c4c3aa91d279f 271-298
 packages/cli/src/modules/agents/json-config/agent-config-composition.ts
   s_2397c9db9d923f::t_3b0ae306eaaad4 11-13
 packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
   s_2397c9db9d923f::t_3b0ae306eaaad4 1,3-26,28-38,40-70,72-90,92-118
   s_2397c9db9d923f::t_350da864cd1a29 71,91
   s_2397c9db9d923f::t_21179e5969d137 2,39
+  s_2397c9db9d923f::t_38309df1c931e2 27
 packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
   s_2397c9db9d923f::t_3beb7e943b92b3 9,15,17-19,24,47,56,82,88,105-111,113-116
   s_2397c9db9d923f::t_882d9f35e407d6 102
@@ -55,6 +59,11 @@ packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integrati
   s_2397c9db9d923f::t_f4fe95367ba2d7 241
   s_2397c9db9d923f::t_527d6892bf4636 1,9-27,33,34-36,37-44,45-67,80-87,99,103-111,113-118,138-148,247,267,270,301-303,312-316,325-326,349,371,477-480,487,497-498,512,526
   s_2397c9db9d923f::t_ea2887e58f9c6d 68-71,112,129
+  s_2397c9db9d923f::t_802baff86dc55d 503,505-509
+  s_2397c9db9d923f::t_4711a5d92b0cad 499,502
+  s_2397c9db9d923f::t_24b980013dec4c 205-209,215-218,221-225,237,240,243-245
+  s_2397c9db9d923f::t_b4f02d24d14408 210-214,527-543
+  s_2397c9db9d923f::t_9f07c67712cfd9 504
 packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow.exporter.ts
   s_2397c9db9d923f::t_175fb86c18d53a 5,21,41,99
 packages/cli/src/modules/n8n-packages/entities/workflow/node-type-usage.ts
@@ -69,6 +78,9 @@ packages/cli/src/modules/n8n-packages/__tests__/import-agent-package.integration
   s_2397c9db9d923f::t_882d9f35e407d6 162-188
   s_2397c9db9d923f::t_bd463cc09c7d43 29-30,161
   s_2397c9db9d923f::t_66eec4a14055ea 189
+  s_2397c9db9d923f::t_6cf0e67851d0b8 204,206
+  s_2397c9db9d923f::t_102e44825907e4 1-28,31-67,69-81,83-120,122-124,126-128,130-142,144-145,147-155,157,159-160,190-203,207,209-211
+  s_2397c9db9d923f::t_148ba7efc2ff3d 68,82,121,125,129,143,146,156,158,205,208
 packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
   s_2397c9db9d923f::t_09cb8df00375aa 12,86,147,205
 packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
@@ -79,8 +91,11 @@ packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow-r
   s_2397c9db9d923f::t_2534fa89ebfb8f 44,57-59,63-65,120,125
   s_2397c9db9d923f::t_882d9f35e407d6 14-17,60-62
 packages/cli/src/modules/agents/repositories/agent.repository.ts
-  s_2397c9db9d923f::t_cbba575f20861b 61-62,76-78,85-87,121-122
+  s_2397c9db9d923f::t_cbba575f20861b 61-62,76-78,85-87,94-95,121-122
   s_2397c9db9d923f::t_4f7652eab9eac6 3,63-75,79-84,88-93
+  s_2397c9db9d923f::t_38309df1c931e2 23-24,96-117,119-121
+  s_2397c9db9d923f::t_2a22037e7e9406 118
+  s_2397c9db9d923f::t_131e11768f7d1f 122
 packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
   s_2397c9db9d923f::t_e9716f3324c168 7,9,11-12,15-21
   s_2397c9db9d923f::t_2ab5e2ddf2ec55 22
@@ -117,16 +132,19 @@ packages/cli/src/modules/n8n-packages/entities/variable/variable-requirements.ex
 packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
   s_2397c9db9d923f::t_42f78404358030 38,68-69
   s_2397c9db9d923f::t_882d9f35e407d6 39-50,52,54-55,67
+  s_2397c9db9d923f::t_b4f02d24d14408 58-65
+  s_2397c9db9d923f::t_b01427a250b460 2-8,51,53,56-57,66
 packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
   s_2397c9db9d923f::t_e9716f3324c168 8-10
 packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
-  s_2397c9db9d923f::t_cbba575f20861b 1-17,22-53,61,66-69,73-99,105,109-122,126-129,136-141,146,152-154,163-164,171-174,181-183,192-202,205-207,211-213,223-228
+  s_2397c9db9d923f::t_cbba575f20861b 1-17,1-3,4-17,22-53,61,66-69,73-99,105,109-122,109-120,121-122,126-129,136-141,146,152-154,163-164,171-174,181-183,192-202,205-207,211-213,223-228
   s_2397c9db9d923f::t_882d9f35e407d6 18-21,54-60,62-65,70-72,100-104,106-108,123-125,130-135,142-145,147-150,165-170,175-180,184-191,203-204,208-210,214-222
   s_2397c9db9d923f::t_53d868c5024628 151,155-162
 packages/workflow/src/node-helpers.ts
   s_2397c9db9d923f::t_4141c5cb560e99 1911,2172-2175
 packages/@n8n/permissions/src/constants.ee.ts
   s_2397c9db9d923f::t_4141c5cb560e99 4
+  s_2397c9db9d923f::t_c5aed79099682d 106
 packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
   s_2397c9db9d923f::t_42f78404358030 11,90
   s_2397c9db9d923f::t_882d9f35e407d6 62-89
@@ -135,6 +153,244 @@ packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.
 packages/cli/test/integration/database/repositories/agent.repository.test.ts
   s_2397c9db9d923f::t_8e57963930c6d4 83-101,104-108,112-136
   s_2397c9db9d923f::t_6e494a763f7808 102-103,109-111
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_2397c9db9d923f::t_5d3d360c5e13dc 170-172
+  s_2397c9db9d923f::t_44b4b74c721935 163-166,168,174-175,177-179
+  s_2397c9db9d923f::t_a5cea363e7c7b3 5,12,18,19-20,21,22,26-28,29,30,82-84,87-91,136-143,145-150,152-158,162,180-181,183-188,192-193,195-196,197,198-213
+  s_2397c9db9d923f::t_08d26281303f5d 214
+  s_2397c9db9d923f::t_6106e11b273654 144,151,159-161,167,169,173,176,182,194
+  s_2397c9db9d923f::t_abbf5a7e26c888 189-191
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  s_2397c9db9d923f::t_47b6a1c7d579b9 152
+packages/cli/src/modules/n8n-packages/spec/serialized/agent.schema.ts
+  s_2397c9db9d923f::t_47b6a1c7d579b9 1-2,4-12,18-36,37-43,44-47,67-68,70-71
+  s_2397c9db9d923f::t_6106e11b273654 3,14-17,48-66,69
+  s_2397c9db9d923f::t_abbf5a7e26c888 13
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/agent-package-fixtures.ts
+  s_2397c9db9d923f::t_95fb7566a24330 3-5,7-17,19-21,25-26,27-29,31-42,43-46,51-56,60,62-64,68-74,75-91,93-113,115-145
+  s_2397c9db9d923f::t_503aa10707f294 18,22,24,30
+  s_2397c9db9d923f::t_251fb9f1b6d7c8 23,61,92,114
+  s_2397c9db9d923f::t_6106e11b273654 1-2,6,47-50,57-59,65-67
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_2397c9db9d923f::t_47b6a1c7d579b9 27,45,84-87
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_2397c9db9d923f::t_5d3d360c5e13dc 14-19,25,28,35-37
+packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
+  s_2397c9db9d923f::t_47b6a1c7d579b9 51,62
+  s_2397c9db9d923f::t_312e958d3a7eb2 1,10-21
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_2397c9db9d923f::t_47b6a1c7d579b9 474,532,553-560,567
+  s_2397c9db9d923f::t_6a593458810dbd 14,78,143,154,203,214-219,232,257,265,276,301,303,342,351,357,377,389,453-463,464-471,659,667,670
+  s_2397c9db9d923f::t_5a52191c5e0f88 204-208,398-452
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_2397c9db9d923f::t_47b6a1c7d579b9 3-6,8-47,52-66,77-84,91-96,137-140,167
+  s_2397c9db9d923f::t_5d3d360c5e13dc 74
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_2397c9db9d923f::t_a5cea363e7c7b3 16-17,27
+  s_2397c9db9d923f::t_9919026d00107a 28
+  s_2397c9db9d923f::t_4aec3aba3492c1 7
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_2397c9db9d923f::t_a5cea363e7c7b3 2,7-8,68
+  s_2397c9db9d923f::t_abbf5a7e26c888 4
+  s_2397c9db9d923f::t_6106e11b273654 6
+  s_2397c9db9d923f::t_5cedb55a681091 1-3,10-68
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_2397c9db9d923f::t_95fb7566a24330 55-70,197
+  s_2397c9db9d923f::t_2dde4f73d93700 1,16-34
+  s_2397c9db9d923f::t_f2105217084d69 35-36
+packages/cli/src/modules/n8n-packages/spec/__tests__/requirements.schema.test.ts
+  s_2397c9db9d923f::t_95fb7566a24330 77-85,89-92,94-101,103-119,121,123-129,131-132
+  s_2397c9db9d923f::t_2407655d2c9fd2 86-88
+  s_2397c9db9d923f::t_09de89f6b01d23 93,102,120,122,130
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.agent.test.ts
+  s_2397c9db9d923f::t_2407655d2c9fd2 1-22,24-29,30-45,47-50,52-87,89-97,99,104-107,110-112,114,116-117,118,129-130,143-145,147-153,156-158,161-162,164-169,171-177,179-180,183-184,186-188,201,203,262-263,266,268-269,271,273,276,278,280-281,283,285,287-292,294,296,298,299
+  s_2397c9db9d923f::t_503aa10707f294 204-205,245-252,259,261
+  s_2397c9db9d923f::t_3c6207b857ca37 98,108,146,163,170,178,185,270,279,295,297
+  s_2397c9db9d923f::t_abbf5a7e26c888 23,46,51,88,100-103,109,142,154-155,159-160,181-182,189-200,202,206-244,253-258,260,264-265,267,272,274-275,277,282,284,286,293
+  s_2397c9db9d923f::t_4aec3aba3492c1 113,115,119-128
+  s_2397c9db9d923f::t_2dde4f73d93700 131-137,139-141
+  s_2397c9db9d923f::t_7676668458b0a0 138
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_2397c9db9d923f::t_5d3d360c5e13dc 56-59
+  s_2397c9db9d923f::t_54097eb6dd2568 242
+packages/cli/src/modules/promotions.ee/__tests__/import-manifest-bridge.test.ts
+  s_b1680ee198a948::t_47c9794d63f340 30-34,35-36
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_2397c9db9d923f::t_c5aed79099682d 6,12-19
+packages/cli/test/integration/public-api/n8n-packages-export-agents.test.ts
+  s_2397c9db9d923f::t_b4f02d24d14408 3-9,69-74,83-91,109-114,116,129-132,134-139,140-182,187-200,202-213,217-219,223-228,232-234,239-242,244-248,250-252,255,301-318,320-322,325-328,336-371
+  s_2397c9db9d923f::t_7beb1564829a17 15,35-36,95-96,115
+  s_2397c9db9d923f::t_802baff86dc55d 32,297-300,319,323-324,329-333
+  s_2397c9db9d923f::t_4711a5d92b0cad 122-126
+  s_2397c9db9d923f::t_70ab50c2866ac3 117
+  s_2397c9db9d923f::t_1ca8607f00f192 14,27
+  s_2397c9db9d923f::t_db99a152a26406 1-2,10-13,16-26,28-29,31,33-34,37-68,75-82,92-94,97-108,118-121,127-128,183-186,201,214-216,220-222,229-231,235-238,243,249,253-254,289-296,334-335
+  s_2397c9db9d923f::t_752101b569d0e4 133
+  s_2397c9db9d923f::t_9f07c67712cfd9 30,256-288
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.export.yml
+  s_2397c9db9d923f::t_9f13db44c7c101 3,7,11-17,29-32,34,48
+  s_2397c9db9d923f::t_9f07c67712cfd9 21-28
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_2397c9db9d923f::t_b4f02d24d14408 17-18,139-144,146-147,150-154,159-160
+  s_2397c9db9d923f::t_4bdf6aa7ef09f9 4-8,156,165,169
+  s_2397c9db9d923f::t_24b980013dec4c 12-16
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_2397c9db9d923f::t_52db68c8139dd4 189,195,218,236,252
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_2397c9db9d923f::t_c5aed79099682d 1402,1417,1425
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  s_2397c9db9d923f::t_9f13db44c7c101 4-6,8-16,40-42,52,63-92,100-101
+  s_2397c9db9d923f::t_de37ccc06afa0a 17
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_2397c9db9d923f::t_1ca8607f00f192 294
+  s_2397c9db9d923f::t_c2c9c80946c68e 235,270,558
+packages/cli/src/events/maps/relay.event-map.ts
+  s_2397c9db9d923f::t_c5aed79099682d 143,155
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_2397c9db9d923f::t_b4f02d24d14408 142-144
+  s_2397c9db9d923f::t_54097eb6dd2568 30,53,64-66,116,128,134-138,141,149,157,158-159,177
+  s_2397c9db9d923f::t_1ca8607f00f192 35
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_2397c9db9d923f::t_52db68c8139dd4 3233,3237,3253,3268,3277
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_2397c9db9d923f::t_c5aed79099682d 10,118,187
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_2397c9db9d923f::t_b4f02d24d14408 145-147,149-151
+  s_2397c9db9d923f::t_4711a5d92b0cad 1
+  s_2397c9db9d923f::t_6690e7a2dfd342 10,30,56,66,144,148,152-154
+packages/cli/test/integration/public-api/n8n-packages-export.test.ts
+  s_2397c9db9d923f::t_b4f02d24d14408 39-42,44,47-62,168-170,183-185
+  s_2397c9db9d923f::t_27815e6e625f17 1,45,166-167,171-173,175-178,179-182
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_2397c9db9d923f::t_c5aed79099682d 231,241-242,243-244,440
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_2397c9db9d923f::t_54097eb6dd2568 199
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_2397c9db9d923f::t_52db68c8139dd4 42,192,208,218,275,276-277,306,307-308,411,412-413,462,463-464,551,552-553,582,583-584,613,614-615,644,645-646
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_2397c9db9d923f::t_6690e7a2dfd342 1,10,42,89,132,578
+  s_2397c9db9d923f::t_de37ccc06afa0a 386,524-534,579,1627,1629-1632,1650
+  s_2397c9db9d923f::t_3d3904faf83069 1628
+packages/@n8n/db/src/migrations/common/1791356250367-AddAgentImportSourceIds.ts
+  s_2397c9db9d923f::t_f82bb84ac0374d 1-2,8,22-23,31-32
+  s_2397c9db9d923f::t_38309df1c931e2 3-7,9-21,24-30
+packages/cli/src/modules/agents/repositories/agent-task.repository.ts
+  s_2397c9db9d923f::t_38309df1c931e2 2,4,10-11,29-54
+  s_2397c9db9d923f::t_00dcabe3b50a37 55
+packages/cli/src/modules/agents/entities/agent-task.entity.ts
+  s_2397c9db9d923f::t_38309df1c931e2 17,26-29,31-32
+  s_2397c9db9d923f::t_1b62ffe4ae25df 30
+  s_2397c9db9d923f::t_2a7a76f4adba9a 33
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-match.service.ts
+  s_2397c9db9d923f::t_5cedb55a681091 1-47,51,55,65-86,94-99,105-128,132,137-159,165,172-182,190-213,219-220,227-250,254-256
+  s_2397c9db9d923f::t_2a22037e7e9406 48-50,52-54,56-64,87-93,100-104,129-131,133-136,160-164,166-171,183-189,214-218,221-226,251-253
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-import-match.service.test.ts
+  s_2397c9db9d923f::t_d9259e8d052a7e 1-6,11-25,29-39,68-73,77-94,99-100,104-109,113-114,118-120,135-137
+  s_2397c9db9d923f::t_2a22037e7e9406 7-10,26-28,40-67,74-76,95-98,101-103,110-112,115-117,121-134
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_2397c9db9d923f::t_1b62ffe4ae25df 25
+  s_2397c9db9d923f::t_38309df1c931e2 4,9,21-24,26-27
+  s_2397c9db9d923f::t_7aab876919724e 28
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-identities.integration.test.ts
+  s_2397c9db9d923f::t_5c4c3aa91d279f 188-196
+  s_2397c9db9d923f::t_1b62ffe4ae25df 6,131-139,185,187
+  s_2397c9db9d923f::t_2a22037e7e9406 57-60,65-85,87-105,107-125,142-144,150-181,198-206,209-216,222-228,236-238,241-243,260-266
+  s_2397c9db9d923f::t_d9259e8d052a7e 1-5,7-56,61-64,86,106,126-130,140-141,145-149,182-184,186,197,207-208,217-221,229-235,239-240,244-259,267-280
+packages/cli/test/migration/1791356250367-add-agent-import-source-ids.test.ts
+  s_2397c9db9d923f::t_23ace2afb12cd0 1-33,43-47,60-70,85-90,95-100
+  s_2397c9db9d923f::t_2a22037e7e9406 34-42,48-59,71-84,91-94
+docs/generated/postgres-schema/README.md
+  s_2397c9db9d923f::t_c6ed8dc6682fec 32,37,675,721
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_2397c9db9d923f::t_cdf7940caa39dc 100
+docs/generated/postgres-schema/public.agent_channel_status.md
+  s_2397c9db9d923f::t_94834dbe3c7cd7 75
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_2397c9db9d923f::t_b15ed56def4b6b 80
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_2397c9db9d923f::t_93c691efc7a523 61
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_2397c9db9d923f::t_d2e34b5e0de149 63
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_2397c9db9d923f::t_562ed75e2e1011 54
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  s_2397c9db9d923f::t_0b42df66890318 74
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_2397c9db9d923f::t_b6af74fd43fc34 107
+docs/generated/postgres-schema/public.agent_files.md
+  s_2397c9db9d923f::t_0f76f6c8ddafc6 75
+docs/generated/postgres-schema/public.agent_history.md
+  s_2397c9db9d923f::t_e5ed84c4186bb6 71
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_2397c9db9d923f::t_b11500ab33f562 13,35,53,69
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_2397c9db9d923f::t_275d21ce2bc9d9 60
+docs/generated/postgres-schema/public.agent_workflow_dependency.md
+  s_2397c9db9d923f::t_0b2835fb7e44c8 54
+docs/generated/postgres-schema/public.agents.md
+  s_2397c9db9d923f::t_c8c912564300ad 18,47,90,229
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_2397c9db9d923f::t_efc7f111dc6c1b 87
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_2397c9db9d923f::t_5b3537a3aaf786 96
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_2397c9db9d923f::t_95806ee2f27719 63
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_2397c9db9d923f::t_7a0ede8b2ef63f 85
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_2397c9db9d923f::t_1ab4fe2ebd6a4b 63
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_2397c9db9d923f::t_a84d5c579640f9 67
+docs/generated/postgres-schema/public.agents_observations.md
+  s_2397c9db9d923f::t_9011ddae3ac424 86
+docs/generated/postgres-schema/public.project.md
+  s_2397c9db9d923f::t_1f3d65699ce225 151
+docs/generated/sqlite-schema/README.md
+  s_2397c9db9d923f::t_286f31582e8946 32,37,661,707
+docs/generated/sqlite-schema/agent_background_job.md
+  s_2397c9db9d923f::t_55f3fc075b3fb9 102
+docs/generated/sqlite-schema/agent_channel_status.md
+  s_2397c9db9d923f::t_8b36c45d26af03 82
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_2397c9db9d923f::t_ca1d9a27e7b84d 82
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_2397c9db9d923f::t_290e9da151acce 70
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_2397c9db9d923f::t_7883bcd0678575 71
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_2397c9db9d923f::t_18891f9c32c149 64
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  s_2397c9db9d923f::t_f781c82f27da77 79
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_2397c9db9d923f::t_ac439578463d5b 107
+docs/generated/sqlite-schema/agent_files.md
+  s_2397c9db9d923f::t_6e1a2bb2de072e 78
+docs/generated/sqlite-schema/agent_history.md
+  s_2397c9db9d923f::t_462e4f62de917a 78
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_2397c9db9d923f::t_3e004440e2c131 9,24,40,58,74
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_2397c9db9d923f::t_91ff4c62a00e4f 67
+docs/generated/sqlite-schema/agent_workflow_dependency.md
+  s_2397c9db9d923f::t_0e44d56c7c609e 64
+docs/generated/sqlite-schema/agents.md
+  s_2397c9db9d923f::t_ccb02dc05a23ec 9,29,49,92,231
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_2397c9db9d923f::t_f1376bbab63a57 90
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_2397c9db9d923f::t_8e3ed55ea4eab2 95
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_2397c9db9d923f::t_56f80a19dcfc37 70
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_2397c9db9d923f::t_ac2050cead9557 89
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_2397c9db9d923f::t_71e806744ad053 70
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_2397c9db9d923f::t_78f159cf0470f9 74
+docs/generated/sqlite-schema/agents_observations.md
+  s_2397c9db9d923f::t_7a327d24aa0b9c 89
+docs/generated/sqlite-schema/project.md
+  s_2397c9db9d923f::t_c2f8595ceb597e 157
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -146,6 +402,14 @@ packages/cli/test/integration/database/repositories/agent.repository.test.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b1680ee198a948": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11166-00fe-7481-aef4-f4cde237287f",
         "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
