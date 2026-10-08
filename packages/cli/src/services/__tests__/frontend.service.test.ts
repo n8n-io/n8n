@@ -1,3 +1,6 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Mock } from 'vitest';
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
@@ -5,7 +8,7 @@ import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { jsonParse, type ICredentialType, type INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -1265,6 +1268,51 @@ describe('FrontendService', () => {
 			} finally {
 				writeStaticJSONSpy.mockRestore();
 			}
+		});
+
+		describe('concurrent calls', () => {
+			let cacheDir: string;
+
+			const createNodes = (count: number) =>
+				Array.from({ length: count }, (_, index) => ({
+					name: `n8n-nodes-base.node${index}`,
+					version: 1,
+					description: 'x'.repeat(200),
+				}));
+
+			const readTypesFile = (name: string) =>
+				jsonParse<unknown>(readFileSync(join(cacheDir, 'types', `${name}.json`), 'utf-8'));
+
+			beforeEach(() => {
+				cacheDir = mkdtempSync(join(tmpdir(), 'n8n-frontend-types-'));
+				Object.assign(instanceSettings, { staticCacheDir: cacheDir });
+			});
+
+			afterEach(() => {
+				rmSync(cacheDir, { recursive: true, force: true });
+				Object.assign(instanceSettings, { staticCacheDir: '/tmp/test-cache' });
+			});
+
+			it('should leave complete types files when calls overlap', async () => {
+				const largeNodes = createNodes(5000);
+				const smallNodes = createNodes(1);
+				const collectTypes = loadNodesAndCredentials.collectTypes as Mock;
+				collectTypes.mockReturnValueOnce(new Promise(() => {}));
+
+				const { service } = createMockService();
+
+				for (let attempt = 0; attempt < 10; attempt++) {
+					collectTypes
+						.mockResolvedValueOnce({ nodes: largeNodes, credentials: [] })
+						.mockResolvedValueOnce({ nodes: smallNodes, credentials: [] });
+
+					await Promise.all([service.generateTypes(), service.generateTypes()]);
+
+					expect([largeNodes, smallNodes]).toContainEqual(readTypesFile('nodes'));
+					expect(readTypesFile('credentials')).toEqual([]);
+					expect(readTypesFile('node-versions')).toEqual(expect.any(Array));
+				}
+			});
 		});
 	});
 });
