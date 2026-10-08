@@ -56,11 +56,6 @@
       "import": "./dist/runtime/confirmation-payload.js",
       "types": "./dist/runtime/confirmation-payload.d.ts"
     },
-    "./thread-context": {
-      "require": "./dist/prompts/thread-context.js",
-      "import": "./dist/prompts/thread-context.js",
-      "types": "./dist/prompts/thread-context.d.ts"
-    },
     "./evaluations": "./evaluations/index.ts"
   },
   "typesVersions": {
@@ -73,9 +68,6 @@
       ],
       "confirmation-payload": [
         "dist/runtime/confirmation-payload.d.ts"
-      ],
-      "thread-context": [
-        "dist/prompts/thread-context.d.ts"
       ]
     }
   },
