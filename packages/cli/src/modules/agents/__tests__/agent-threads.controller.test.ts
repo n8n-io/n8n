@@ -7,7 +7,10 @@ import { AgentThreadsController } from '../agent-threads.controller';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
-import type { SystemAgentProvider } from '../system-agents/system-agent.types';
+import type {
+	SystemAgentProvider,
+	SystemAgentSharingPolicy,
+} from '../system-agents/system-agent.types';
 import {
 	getControllerMetadata,
 	expectProjectScopedAgentRoutes,
@@ -154,10 +157,14 @@ describe('AgentThreadsController session details', () => {
 });
 
 describe('AgentThreadsController instance agent sessions', () => {
-	function setup(authorized: boolean) {
+	function setup(authorized: boolean, readsShared = true) {
 		const service = mock<AgentExecutionService>();
 		const registry = new SystemAgentRegistry();
 		const provider = mock<SystemAgentProvider>({ agentId: 'n8n-assistant', name: 'Assistant' });
+		const sharing = mock<SystemAgentSharingPolicy>();
+		sharing.canReadSharedIn.mockResolvedValue(readsShared);
+		sharing.canRead.mockResolvedValue(readsShared);
+		Object.defineProperty(provider, 'sharing', { value: sharing });
 		provider.authorize.mockResolvedValue(authorized);
 		registry.register(provider);
 		const controller = new AgentThreadsController(
@@ -171,7 +178,7 @@ describe('AgentThreadsController instance agent sessions', () => {
 				params: { projectId: 'project-1', agentId: 'n8n-assistant', threadId: threadId ?? '' },
 				user,
 			});
-		return { service, controller, provider, user, request };
+		return { service, controller, provider, sharing, user, request };
 	}
 
 	it('answers 404 to a user who cannot use the instance agent in the project', async () => {
@@ -189,13 +196,14 @@ describe('AgentThreadsController instance agent sessions', () => {
 	});
 
 	it('lists the sessions for a user who can use the instance agent', async () => {
-		const { service, controller, request } = setup(true);
+		const { service, controller, sharing, user, request } = setup(true);
 		service.getThreads.mockResolvedValue({ threads: [], nextCursor: null });
 
 		await expect(controller.listThreads(request(), mock(), {})).resolves.toEqual({
 			threads: [],
 			nextCursor: null,
 		});
+		expect(sharing.canReadSharedIn).toHaveBeenCalledWith(user, 'project-1');
 		expect(service.getThreads).toHaveBeenCalledWith(
 			'project-1',
 			'n8n-assistant',
@@ -204,5 +212,42 @@ describe('AgentThreadsController instance agent sessions', () => {
 			undefined,
 			{},
 		);
+	});
+
+	it('lists only the own sessions of a user who cannot read shared threads in the project', async () => {
+		const { service, controller, request } = setup(true, false);
+		service.getThreads.mockResolvedValue({ threads: [], nextCursor: null });
+
+		await controller.listThreads(request(), mock(), { scope: 'all', status: 'failed' });
+
+		expect(service.getThreads).toHaveBeenCalledWith(
+			'project-1',
+			'n8n-assistant',
+			'user-1',
+			20,
+			undefined,
+			{ scope: 'mine', status: 'failed' },
+		);
+	});
+
+	it.each([
+		['the owner', 'user-1', false, true],
+		['a reader of the shared thread', 'owner-1', true, true],
+		['a user whom the sharing rules refuse', 'owner-1', false, false],
+	])('shows a session to %s: %s', async (_label, ownerId, readsShared, shown) => {
+		const { service, controller, sharing, request } = setup(true, readsShared);
+		const thread = mock<AgentExecutionThread>({
+			id: 'thread-1',
+			agentId: 'n8n-assistant',
+			ownerId,
+			accessScope: 'project',
+		});
+		service.getThreadDetail.mockResolvedValue({ thread, executions: [] });
+
+		const detail = controller.getThread(request('thread-1'));
+
+		if (shown) await expect(detail).resolves.toMatchObject({ thread: { id: 'thread-1' } });
+		else await expect(detail).rejects.toThrow('Thread "thread-1" not found');
+		expect(sharing.canRead).toHaveBeenCalledTimes(ownerId === 'user-1' ? 0 : 1);
 	});
 });

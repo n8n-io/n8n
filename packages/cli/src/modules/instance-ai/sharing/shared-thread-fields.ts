@@ -5,8 +5,8 @@ import { Service } from '@n8n/di';
 import { ProjectService } from '@/services/project.service.ee';
 
 import type { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
-import { renderAuthor } from '../../agents/repositories/agent-history.repository';
 import { AgentExecutionThreadRepository } from '../../agents/repositories/agent-execution-thread.repository';
+import { userDisplayName } from '../../agents/utils/user-display-name';
 import { ASSISTANT_AGENT_ID, ASSISTANT_TURN_DEFAULTS_KEY } from '../assistant-turn-options';
 
 type SharingFields = Pick<InstanceAiThreadInfo, 'sharedWith' | 'owner'>;
@@ -72,6 +72,6 @@ export class SharedThreadFields {
 
 	private async ownerNames(ownerIds: string[]): Promise<Map<string, string>> {
 		const owners = await this.users.findManyByIds([...new Set(ownerIds)]);
-		return new Map(owners.map((owner): [string, string] => [owner.id, renderAuthor(owner)]));
+		return new Map(owners.map((owner): [string, string] => [owner.id, userDisplayName(owner)]));
 	}
 }

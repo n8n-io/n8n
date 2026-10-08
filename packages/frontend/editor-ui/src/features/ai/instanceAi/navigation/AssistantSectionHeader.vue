@@ -11,7 +11,7 @@ const props = defineProps<{
 	 * A link at the end of the header, for example to the full list. `ariaLabel` must start with
 	 * the visible `label`, so that speech input finds the link by its visible text.
 	 */
-	link: { to: RouteLocationRaw; label: string; ariaLabel?: string; testId?: string };
+	link?: { to: RouteLocationRaw; label: string; ariaLabel?: string; testId?: string };
 }>();
 
 const collapsed = defineModel<boolean>('collapsed', { required: true });
@@ -45,6 +45,7 @@ defineExpose({ focus: () => toggleButton.value?.focus() });
 		</div>
 		<!-- The link text is short, so the section title describes it, e.g. "View all, Chats". -->
 		<RouterLink
+			v-if="props.link"
 			:to="props.link.to"
 			:class="$style.link"
 			:aria-label="props.link.ariaLabel"

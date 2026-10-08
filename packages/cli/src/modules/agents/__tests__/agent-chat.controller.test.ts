@@ -41,7 +41,10 @@ import {
 	type CheckedAnswer,
 	SystemAgentThreadGuard,
 } from '../system-agents/system-agent-thread-guard';
-import type { SystemAgentProvider } from '../system-agents/system-agent.types';
+import type {
+	SystemAgentProvider,
+	SystemAgentSharingPolicy,
+} from '../system-agents/system-agent.types';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -1428,13 +1431,26 @@ describe('AgentChatController instance agent reads', () => {
 	const user = { id: 'reader-1' };
 	const params = { projectId: 'project-1', agentId: AGENT_ID, threadId: 'thread-1' };
 
-	function makeReadController(authorized: boolean) {
+	function makeReadController(authorized: boolean, readsShared = true) {
 		const registry = new SystemAgentRegistry();
 		const provider = mock<SystemAgentProvider>({ agentId: AGENT_ID, name: 'Test Assistant' });
+		const sharing = mock<SystemAgentSharingPolicy>();
+		sharing.canRead.mockResolvedValue(readsShared);
+		Object.defineProperty(provider, 'sharing', { value: sharing });
 		provider.authorize.mockResolvedValue(authorized);
 		registry.register(provider);
-		return { ...makeController(registry), provider };
+		return { ...makeController(registry), provider, sharing };
 	}
+
+	/** A thread that another user shared with the project. */
+	const sharedThread = mock<AgentExecutionThread>({
+		id: 'thread-1',
+		agentId: AGENT_ID,
+		projectId: 'project-1',
+		accessScope: 'project',
+		ownerId: 'owner-1',
+		parentThreadId: null,
+	});
 
 	it('answers 404 on every read route to a user who cannot use the instance agent', async () => {
 		const {
@@ -1460,6 +1476,67 @@ describe('AgentChatController instance agent reads', () => {
 		expect(agentExecutionService.findThreadById).not.toHaveBeenCalled();
 		expect(messageQueue.listPending).not.toHaveBeenCalled();
 		expect(agentChatAttachmentService.getForAgent).not.toHaveBeenCalled();
+	});
+
+	it('answers 404 on every read route when the sharing rules refuse the shared thread', async () => {
+		const {
+			controller,
+			sharing,
+			messageQueue,
+			agentExecutionService,
+			agentExecutionOrchestratorService,
+			backgroundJobService,
+			agentChatAttachmentService,
+		} = makeReadController(true, false);
+		agentExecutionService.findThreadById.mockResolvedValue(sharedThread);
+		agentChatAttachmentService.getForAgent.mockResolvedValue(
+			mock<AgentChatAttachment>({ id: 'att-1', threadId: 'thread-1', source: 'chat' }),
+		);
+		const request = { params, user } as never;
+
+		await expect(controller.getChatMessages(request)).rejects.toThrow(
+			'Thread "thread-1" not found',
+		);
+		await expect(controller.getQueuedMessages(request)).rejects.toThrow('Session not found');
+		await expect(controller.getBackgroundJobs(request)).rejects.toThrow(
+			'Thread "thread-1" not found',
+		);
+		await expect(
+			controller.getChatAttachment(
+				{ params: { ...params, attachmentId: 'att-1' }, user } as never,
+				mock<FlushableResponse>(),
+			),
+		).rejects.toThrow('Attachment "att-1" not found');
+
+		expect(sharing.canRead).toHaveBeenCalledWith(user, sharedThread);
+		expect(agentExecutionOrchestratorService.getConversationHistory).not.toHaveBeenCalled();
+		expect(messageQueue.listPending).not.toHaveBeenCalled();
+		expect(backgroundJobService.listCurrentGroupForThread).not.toHaveBeenCalled();
+		expect(agentChatAttachmentService.getStream).not.toHaveBeenCalled();
+	});
+
+	it('reads a shared thread for a reader whom the sharing rules accept', async () => {
+		const {
+			controller,
+			messageQueue,
+			agentExecutionService,
+			agentExecutionOrchestratorService,
+			backgroundJobService,
+		} = makeReadController(true, true);
+		agentExecutionService.findThreadById.mockResolvedValue(sharedThread);
+		agentExecutionOrchestratorService.getConversationHistory.mockResolvedValue({
+			messages: [],
+			activeExecutionId: null,
+		} as never);
+		messageQueue.listPending.mockResolvedValue({ items: [], steerableExecutionId: null });
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([]);
+		const request = { params, user } as never;
+
+		await expect(controller.getChatMessages(request)).resolves.toMatchObject({
+			activeExecutionId: null,
+		});
+		await expect(controller.getQueuedMessages(request)).resolves.toMatchObject({ items: [] });
+		await expect(controller.getBackgroundJobs(request)).resolves.toMatchObject({ tasks: [] });
 	});
 
 	it('reads the queue for a user who can use the instance agent', async () => {

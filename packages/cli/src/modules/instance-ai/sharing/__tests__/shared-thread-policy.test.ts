@@ -127,6 +127,29 @@ describe('SharedThreadPolicy', () => {
 		});
 	});
 
+	describe('canReadSharedIn', () => {
+		it.each([
+			['a member with the read scopes', READER, true],
+			['a member with project read only', ['project:read'] satisfies Scope[], false],
+			['a user who is not a member', null, false],
+		])('answers for %s: %s', async (_label, scopes, expected) => {
+			const { policy, projectService } = setup(scopes);
+
+			await expect(policy.canReadSharedIn(teammate, 'project-1')).resolves.toBe(expected);
+			expect(projectService.getProjectRelationForUserAndProject).toHaveBeenCalledWith(
+				'teammate-1',
+				'project-1',
+			);
+		});
+
+		it('refuses a global admin who is not a member, as canRead does', async () => {
+			const { policy } = setup(null);
+			const admin = makeUser('admin-1', 'Alan', 'Turing', EDITOR);
+
+			await expect(policy.canReadSharedIn(admin, 'project-1')).resolves.toBe(false);
+		});
+	});
+
 	describe('sendError', () => {
 		it('names the owner', async () => {
 			const { policy, users } = setup();
@@ -136,6 +159,17 @@ describe('SharedThreadPolicy', () => {
 			expect(error).toBeInstanceOf(ForbiddenError);
 			expect(error.message).toBe('Only Ada Lovelace can send messages here.');
 			expect(users.findOneBy).toHaveBeenCalledWith({ id: 'owner-1' });
+		});
+
+		it('names the owner by email when the owner has no name', async () => {
+			const { policy, users } = setup();
+			users.findOneBy.mockResolvedValue(
+				mock<User>({ id: 'owner-1', firstName: '', lastName: '', email: 'ada@example.com' }),
+			);
+
+			const error = await policy.sendError(teammate, shared);
+
+			expect(error.message).toBe('Only ada@example.com can send messages here.');
 		});
 
 		it('falls back to "the owner" when the owner is gone', async () => {
@@ -220,6 +254,24 @@ describe('SharedThreadPolicy', () => {
 			await expect(policy.authorizeAnswer(teammate, shared, archiveCall, answer)).rejects.toThrow(
 				'Only Ada Lovelace can answer this.',
 			);
+		});
+
+		it.each([
+			['an approval without its decision', { kind: 'approval' }],
+			['an unknown answer kind', { kind: 'deploy', approved: true }],
+			[
+				'a capability decision with a wrong value type',
+				{ ...approve, kind: 'capabilityDecision', values: { activate: 1 } },
+			],
+		])('answers 400 for %s, before any scope lookup', async (_label, answer) => {
+			const { policy, projectService, cardAccess } = setup();
+
+			const refusal = policy.authorizeAnswer(teammate, shared, archiveCall, answer);
+
+			await expect(refusal).rejects.toThrow(BadRequestError);
+			await expect(refusal).rejects.toThrow('The answer is not valid.');
+			expect(projectService.getProjectRelationForUserAndProject).not.toHaveBeenCalled();
+			expect(cardAccess.canAnswer).not.toHaveBeenCalled();
 		});
 
 		it('refuses a member without the scope of the card, with the project name', async () => {

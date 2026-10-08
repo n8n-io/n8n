@@ -1672,12 +1672,13 @@ export class InstanceAiService {
 
 		// The client reports which + menu entries it renders, because only it can see
 		// its own rollout and the device. The admin switches are still applied here,
-		// so the report can only narrow.
+		// so the report can only narrow. A shared chat has no computer or browser, so the
+		// prompt must not ask the owner to connect one.
 		context.computerUseState = resolveComputerUseState({
 			localGatewayDisabledGlobally,
 			localGatewayDisabledForUser,
 			browserUseEnabledGlobally,
-			clientChannels: turnOptions.computerUseChannels,
+			clientChannels: sharedThread ? [] : turnOptions.computerUseChannels,
 			localComputerToolCategories: gatewayMcpServer
 				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
 				: undefined,

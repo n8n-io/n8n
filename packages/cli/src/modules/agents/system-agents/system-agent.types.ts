@@ -76,6 +76,8 @@ export interface SystemAgentTurnHandle {
 export interface SystemAgentSharingPolicy {
 	/** Whether the user can read a thread that another user owns. */
 	canRead(user: User, thread: AgentExecutionThread): Promise<boolean>;
+	/** Whether the user can read the threads that other users shared in the project. */
+	canReadSharedIn(user: User, projectId: string): Promise<boolean>;
 	/** The error for a reader who tries to send a message to the thread. */
 	sendError(user: User, thread: AgentExecutionThread): Promise<Error>;
 	/**

@@ -80,7 +80,7 @@ const kept = (active: boolean) => ({
 
 describe('propose_automation on the n8n Assistant', () => {
 	const world = createAutomationWorld();
-	const provider = new AssistantAgentProvider(mock(), mock(), mock());
+	const provider = new AssistantAgentProvider(mock(), mock(), mock(), mock());
 	let eventService: ReturnType<typeof mock<EventService>>;
 
 	const buildTool = (permissions?: InstanceAiPermissions) =>

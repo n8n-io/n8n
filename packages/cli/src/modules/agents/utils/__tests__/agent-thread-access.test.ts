@@ -1,8 +1,10 @@
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
+import { draftChatMemoryResourceId } from '../agent-memory-scope';
 import {
 	canContinueThreadInN8nChat,
 	canContinueThreadInPreview,
 	canUseTopLevelDraftThread,
+	isProjectThreadCheckpoint,
 	isSharedThread,
 	N8N_CHAT_PRODUCTION_SOURCE,
 	threadBelongsTo,
@@ -102,5 +104,29 @@ describe('canContinueThreadInN8nChat', () => {
 		expect(
 			canContinueThreadInN8nChat(privateThread, 'teammate-1', N8N_CHAT_PRODUCTION_SOURCE),
 		).toBe(false);
+	});
+});
+
+describe('isProjectThreadCheckpoint', () => {
+	it("shows the checkpoint of a shared thread in its owner's draft-chat memory", () => {
+		expect(isProjectThreadCheckpoint(sharedThread, draftChatMemoryResourceId('owner-1'))).toBe(
+			true,
+		);
+	});
+
+	it('hides a checkpoint in the draft-chat memory of another user', () => {
+		expect(
+			isProjectThreadCheckpoint(sharedThread, draftChatMemoryResourceId('teammate-1')),
+		).toBe(false);
+		expect(
+			isProjectThreadCheckpoint(integrationThread, draftChatMemoryResourceId('owner-1')),
+		).toBe(false);
+	});
+
+	it('shows a checkpoint that is not in a draft-chat memory', () => {
+		expect(isProjectThreadCheckpoint(integrationThread, 'integration:slack:U1')).toBe(true);
+		expect(isProjectThreadCheckpoint(integrationThread, undefined)).toBe(true);
+		// A draft-chat prefix without a user names nobody.
+		expect(isProjectThreadCheckpoint(integrationThread, draftChatMemoryResourceId(''))).toBe(true);
 	});
 });

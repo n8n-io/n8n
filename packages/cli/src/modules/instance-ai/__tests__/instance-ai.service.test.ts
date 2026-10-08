@@ -3244,6 +3244,7 @@ describe('InstanceAiService — personal integrations in a shared thread', () =>
 			threadId: string,
 			runId: string,
 			abortSignal: AbortSignal,
+			...rest: unknown[]
 		) => Promise<unknown>;
 	} & Record<string, unknown>;
 
@@ -3340,12 +3341,22 @@ describe('InstanceAiService — personal integrations in a shared thread', () =>
 		};
 	}
 
-	const start = async (service: EnvironmentService) =>
+	/** The owner's client reports both computer-use channels on every turn. */
+	const bothChannels = { computerUseChannels: ['localComputer', 'browser'] };
+
+	const start = async (service: EnvironmentService, turnOptions: object = bothChannels) =>
 		await service.createExecutionEnvironment(
 			fakeUser,
 			'thread-1',
 			'run-1',
 			new AbortController().signal,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			false,
+			turnOptions,
 		);
 
 	it('gives a private thread the computer, the browser, the MCP connections and the past chats of its owner', async () => {
@@ -3358,11 +3369,28 @@ describe('InstanceAiService — personal integrations in a shared thread', () =>
 			expect.objectContaining({ mcpConnectionsAvailable: true }),
 		);
 		expect(environment).toMatchObject({ sharedThread: false });
+		expect(withGateway.context.computerUseState).toEqual({
+			localComputer: { status: 'connected', toolCategories: [] },
+			browser: { status: 'unavailable' },
+		});
 
 		const withBrowser = makeService('user', true);
 		withBrowser.service.gatewayService = { findGateway: vi.fn(), applyToolPolicy: vi.fn() };
 		await start(withBrowser.service);
 		expect(withBrowser.context.localMcpServer).toBe(browser);
+	});
+
+	it('offers a private thread to connect the computer and the browser that the client renders', async () => {
+		const { service, context, findMcpServer } = makeService('user', true);
+		service.gatewayService = { findGateway: vi.fn(), applyToolPolicy: vi.fn() };
+		findMcpServer.mockReturnValue(undefined as never);
+
+		await start(service);
+
+		expect(context.computerUseState).toEqual({
+			localComputer: { status: 'disconnected' },
+			browser: { status: 'disconnected' },
+		});
 	});
 
 	it('runs a shared thread without the computer, the browser, the MCP connections or the past chats of its owner', async () => {
@@ -3385,6 +3413,11 @@ describe('InstanceAiService — personal integrations in a shared thread', () =>
 			}),
 		);
 		expect(environment).toMatchObject({ sharedThread: true });
+		// The prompt must not ask the owner to connect what a shared chat never uses.
+		expect(context.computerUseState).toEqual({
+			localComputer: { status: 'unavailable' },
+			browser: { status: 'unavailable' },
+		});
 	});
 
 	it('treats a project thread without an owner as not shared', async () => {

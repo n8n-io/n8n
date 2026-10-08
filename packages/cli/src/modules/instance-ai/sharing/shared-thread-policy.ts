@@ -9,16 +9,17 @@ import { UserRepository, type ProjectRelation, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { combineScopes, getAuthPrincipalScopes, type Scope } from '@n8n/permissions';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { ProjectService } from '@/services/project.service.ee';
 
 import type { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
-import { renderAuthor } from '../../agents/repositories/agent-history.repository';
 import type {
 	SystemAgentPendingCall,
 	SystemAgentSharingPolicy,
 } from '../../agents/system-agents/system-agent.types';
 import { isSharedThread } from '../../agents/utils/agent-thread-access';
+import { userDisplayName } from '../../agents/utils/user-display-name';
 import { SharedCardAccess } from './shared-card-access';
 import { withoutStandingApproval } from './teammate-answer';
 import {
@@ -61,6 +62,10 @@ export class SharedThreadPolicy implements SystemAgentSharingPolicy {
 		// Only a shared thread needs the user's scopes in its project.
 		if (!isSharedThread(thread)) return false;
 		return canRead(user, thread, await this.memberScopes(user, thread.projectId));
+	}
+
+	async canReadSharedIn(user: User, projectId: string): Promise<boolean> {
+		return canReadSharedThreads(await this.memberScopes(user, projectId));
 	}
 
 	async sendError(_user: User, thread: AgentExecutionThread): Promise<Error> {
@@ -140,18 +145,27 @@ export class SharedThreadPolicy implements SystemAgentSharingPolicy {
 
 	private async ownerName(thread: AgentExecutionThread): Promise<string> {
 		const owner = thread.ownerId ? await this.users.findOneBy({ id: thread.ownerId }) : null;
-		return owner ? renderAuthor(owner) : 'the owner';
+		return owner ? userDisplayName(owner) : 'the owner';
 	}
 }
 
-/** The answer and the card rule that let a teammate give it, or undefined for the owner only. */
+/**
+ * The answer and the card rule that let a teammate give it, or undefined for the owner only.
+ * A card answer (it names its kind) with wrong fields is a client error. Other resume data,
+ * such as a cancellation, is valid only from the owner.
+ */
 function teammateAnswerFor(
 	call: SystemAgentPendingCall,
 	resumeData: unknown,
 	projectId: string,
 ): TeammateAnswer | undefined {
 	const parsed = InstanceAiConfirmRequestDto.safeParse(resumeData);
-	if (!parsed.success) return undefined;
+	if (!parsed.success) {
+		if (isRecord(resumeData) && 'kind' in resumeData) {
+			throw new BadRequestError('The answer is not valid.');
+		}
+		return undefined;
+	}
 	const rule = sharedCardRule(call, parsed.data, projectId);
 	return rule ? { answer: parsed.data, rule } : undefined;
 }

@@ -20,6 +20,8 @@ import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '@/features/ai/instanc
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import AssistantChatsSection from '@/features/ai/instanceAi/navigation/AssistantChatsSection.vue';
 import AssistantAutomationsSection from '@/features/ai/instanceAi/navigation/AssistantAutomationsSection.vue';
+import SimpleWorkspaceDisclosure from '@/features/ai/instanceAi/navigation/SimpleWorkspaceDisclosure.vue';
+import { useExperienceMode } from '@/features/ai/instanceAi/experience/useExperienceMode';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
@@ -59,6 +61,10 @@ const isChatLinkAvailable = computed(
 		hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 );
 const isInstanceAiNavVisible = useInstanceAiAvailable();
+// Simple mode keeps the chats on top and puts Favorites and Projects in the Workspace disclosure.
+const { isSimple } = useExperienceMode();
+const workspaceOpen = ref(false);
+const showWorkspaceItems = computed(() => !isSimple.value || workspaceOpen.value);
 const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
 );
@@ -187,7 +193,8 @@ onBeforeUnmount(() => {
 			<N8nMenuItem
 				v-if="
 					projectsStore.personalProject?.id &&
-					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled)
+					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
+					!isSimple
 				"
 				:item="personalProject"
 				:compact="props.collapsed"
@@ -197,7 +204,8 @@ onBeforeUnmount(() => {
 			<N8nMenuItem
 				v-if="
 					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
-					hasMultipleVerifiedUsers
+					hasMultipleVerifiedUsers &&
+					!isSimple
 				"
 				:item="shared"
 				:compact="props.collapsed"
@@ -205,21 +213,30 @@ onBeforeUnmount(() => {
 				data-test-id="project-shared-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="isWorkflowReviewsNavVisible"
+				v-if="isWorkflowReviewsNavVisible && !isSimple"
 				:item="workflowReviews"
 				:compact="props.collapsed"
 				:active="sidebarActiveTabId === 'workflow-reviews'"
 				data-test-id="project-workflow-reviews-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="isChatLinkAvailable"
+				v-if="isChatLinkAvailable && !isSimple"
 				:item="chat"
 				:compact="props.collapsed"
 				:active="sidebarActiveTabId === 'chat'"
 				data-test-id="project-chat-menu-item"
 			/>
 		</div>
-		<template v-if="hasFavorites">
+		<template v-if="isSimple">
+			<AssistantChatsSection :collapsed="props.collapsed" />
+			<AssistantAutomationsSection :collapsed="props.collapsed" />
+			<SimpleWorkspaceDisclosure
+				v-if="hasFavorites || displayProjects.length > 0"
+				v-model:open="workspaceOpen"
+				:collapsed="props.collapsed"
+			/>
+		</template>
+		<template v-if="hasFavorites && showWorkspaceItems">
 			<button
 				v-if="!props.collapsed"
 				:class="$style.sectionHeader"
@@ -267,11 +284,11 @@ onBeforeUnmount(() => {
 				</template>
 			</div>
 		</template>
-		<AssistantChatsSection :collapsed="props.collapsed" />
-		<AssistantAutomationsSection :collapsed="props.collapsed" />
+		<AssistantChatsSection v-if="!isSimple" :collapsed="props.collapsed" />
+		<AssistantAutomationsSection v-if="!isSimple" :collapsed="props.collapsed" />
 		<template v-if="projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0">
 			<button
-				v-if="!props.collapsed"
+				v-if="!props.collapsed && showWorkspaceItems"
 				:class="$style.sectionHeader"
 				@click="projectsCollapsed = !projectsCollapsed"
 			>
@@ -288,7 +305,8 @@ onBeforeUnmount(() => {
 		<div
 			v-if="
 				(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
-				(!projectsStore.isTeamProjectFeatureEnabled || !projectsCollapsed || props.collapsed)
+				(!projectsStore.isTeamProjectFeatureEnabled || !projectsCollapsed || props.collapsed) &&
+				showWorkspaceItems
 			"
 			:class="$style.projectItems"
 		>

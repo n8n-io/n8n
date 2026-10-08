@@ -14,7 +14,7 @@ import type { SystemAgentProvider, SystemAgentSharingPolicy } from '../system-ag
 const AGENT_ID = 'test-assistant';
 
 const makeUser = (id: string, firstName: string, lastName: string) =>
-	mock<User>({ id, firstName, lastName, disabled: false });
+	mock<User>({ id, firstName, lastName, email: `${id}@example.com`, disabled: false });
 const owner = makeUser('owner-1', 'Ada', 'Lovelace');
 const teammate = makeUser('teammate-1', 'Grace', 'Hopper');
 
@@ -181,6 +181,17 @@ describe('SystemAgentThreadGuard.checkSend', () => {
 			guard.checkSend({ agentId: AGENT_ID, user: teammate, sessionId: 'thread-1' }),
 		).rejects.toThrow(NotFoundError);
 	});
+
+	it('answers 404 to a reader who cannot use the agent, for example while it is turned off', async () => {
+		const { guard, sharing, provider } = setup();
+		provider.authorize.mockResolvedValue(false);
+
+		await expect(
+			guard.checkSend({ agentId: AGENT_ID, user: teammate, sessionId: 'thread-1' }),
+		).rejects.toThrow(NotFoundError);
+		expect(provider.authorize).toHaveBeenCalledWith(teammate, 'project-1');
+		expect(sharing.sendError).not.toHaveBeenCalled();
+	});
 });
 
 describe('SystemAgentThreadGuard.checkAnswer', () => {
@@ -243,11 +254,43 @@ describe('SystemAgentThreadGuard.checkAnswer', () => {
 	])('refuses a teammate answer for %s', async (_label, stored, authorized) => {
 		const { guard, users, provider } = setup();
 		users.findByIdWithRole.mockResolvedValue(stored as User | null);
-		provider.authorize.mockResolvedValue(authorized);
+		provider.authorize.mockImplementation(async (user) => user.id === teammate.id || authorized);
 
 		const refusal = guard.checkAnswer(answerFrom(teammate));
 		await expect(refusal).rejects.toThrow(ForbiddenError);
 		await expect(refusal).rejects.toThrow('The owner of this chat can no longer run it');
+	});
+
+	it.each([
+		['the owner', owner],
+		['a teammate', teammate],
+	])(
+		'answers 404 to %s who cannot use the agent in the project, for example while it is turned off',
+		async (_label, user) => {
+			const { guard, provider, sharing, executions } = setup();
+			provider.authorize.mockResolvedValue(false);
+
+			await expect(guard.checkAnswer(answerFrom(user))).rejects.toThrow(NotFoundError);
+			expect(provider.authorize).toHaveBeenCalledWith(user, 'project-1');
+			expect(sharing.canRead).not.toHaveBeenCalled();
+			expect(sharing.authorizeAnswer).not.toHaveBeenCalled();
+			expect(executions.getThreadDetail).not.toHaveBeenCalled();
+		},
+	);
+
+	it('records a teammate without a name by email', async () => {
+		const { guard } = setup();
+		const unnamed = mock<User>({
+			id: 'sso-1',
+			firstName: '',
+			lastName: '',
+			email: 'sso-user@example.com',
+			disabled: false,
+		});
+
+		await expect(guard.checkAnswer(answerFrom(unnamed))).resolves.toMatchObject({
+			answeredBy: { id: 'sso-1', name: 'sso-user@example.com' },
+		});
 	});
 
 	it('answers 404 to a user who cannot read the thread, before any other check', async () => {

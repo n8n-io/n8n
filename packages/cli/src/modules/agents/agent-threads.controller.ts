@@ -36,16 +36,19 @@ export class AgentThreadsController {
 		@Query query: ListAgentSessionsQueryDto,
 	) {
 		await this.assertCanReadThreads(req);
+		const { projectId, agentId } = req.params;
 		const { cursor, limit: requestedLimit, ...filters } = query;
 		const limit = Math.min(Math.max(Number(requestedLimit) || 20, 1), 100);
+		// A user who cannot read other users' threads of the agent lists only their own.
+		const readsOthers = await this.systemAgents.readsOthersThreads(agentId, req.user, projectId);
 
 		return await this.agentExecutionService.getThreads(
-			req.params.projectId,
-			req.params.agentId,
+			projectId,
+			agentId,
 			req.user.id,
 			limit,
 			cursor,
-			filters,
+			readsOthers ? filters : { ...filters, scope: 'mine' },
 		);
 	}
 
@@ -61,7 +64,7 @@ export class AgentThreadsController {
 			req.params.agentId,
 			req.user.id,
 		);
-		if (!result) {
+		if (!result || !(await this.systemAgents.canReadThread(req.user, result.thread))) {
 			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
 		}
 		const {

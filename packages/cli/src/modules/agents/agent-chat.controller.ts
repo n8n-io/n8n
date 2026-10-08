@@ -39,6 +39,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
+import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
@@ -50,6 +51,7 @@ import {
 import { AgentExecutionService } from './agent-execution.service';
 import {
 	type AgentSessionMode,
+	isProjectThreadCheckpoint,
 	N8N_CHAT_PRODUCTION_SOURCE,
 	threadBelongsTo,
 } from './utils/agent-thread-access';
@@ -63,7 +65,6 @@ import { AgentBackgroundJobService } from './background/agent-background-job.ser
 import {
 	draftChatMemoryResourceId,
 	productionChatMemoryResourceId,
-	userIdFromDraftChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 import { withOpenSuspensions } from './utils/messages-envelope';
@@ -101,6 +102,32 @@ export class AgentChatController {
 	private async findReadableChatAgent(agentId: string, projectId: string, user: User) {
 		if (!(await this.systemAgents.allows(agentId, user, projectId))) return null;
 		return await this.findChatAgent(agentId, projectId);
+	}
+
+	/**
+	 * 404 unless `user` reads the chat thread: a thread of the route's project and agent that
+	 * the user owns or may read as a project reader, and for a private thread the preview chat.
+	 */
+	private async assertCanReadChatThread(
+		thread: AgentExecutionThread,
+		{ projectId, agentId, threadId }: { projectId: string; agentId: string; threadId: string },
+		user: User,
+	): Promise<void> {
+		const readable =
+			threadBelongsTo(thread, projectId, agentId, user.id) &&
+			(await this.systemAgents.canReadThread(user, thread)) &&
+			(thread.accessScope !== 'user' ||
+				(await this.agentExecutionService.canUseDraftThread(threadId, projectId, agentId, user.id, {
+					previewChat: true,
+					sessionMode: 'existing',
+				})));
+		if (!readable) throw new NotFoundError(`Thread "${threadId}" not found`);
+	}
+
+	/** False for another user's thread of an instance agent that `user` may not read. */
+	private async isThreadReadable(user: User, threadId: string): Promise<boolean> {
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		return !thread || (await this.systemAgents.canReadThread(user, thread));
 	}
 
 	private createChatExecution(res: FlushableResponse) {
@@ -204,6 +231,40 @@ export class AgentChatController {
 	 * Enqueue a chat message and relay its execution to the browser stream.
 	 * `accept` validates the request and stores attachments. It returns nothing after it sends its own error.
 	 */
+	/** Code-defined instance agents (the n8n Assistant) build their own runtime. */
+	private async chatWithSystemAgent(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: FlushableResponse,
+		agentId: string,
+		payload: AgentChatMessageDto,
+	): Promise<void> {
+		const { projectId } = req.params;
+		const sessionId = payload.newSession ? undefined : payload.sessionId;
+		// Answer with an HTTP status before the stream opens.
+		await Container.get(SystemAgentThreadGuard).checkSend({ agentId, user: req.user, sessionId });
+		await this.relayQueuedMessage(
+			res,
+			async () =>
+				await Container.get(SystemAgentExecutionService).prepareChatMessage({
+					agentId,
+					user: req.user,
+					projectId,
+					sessionId,
+					message: payload.message,
+					messageId: payload.messageId,
+					hostContext: payload.hostContext,
+					storeAttachments: async (threadId) =>
+						await this.storeChatAttachments({
+							attachments: payload.attachments,
+							agentId,
+							projectId,
+							threadId,
+							resourceId: draftChatMemoryResourceId(req.user.id),
+						}),
+				}),
+		);
+	}
+
 	private async relayQueuedMessage(
 		res: FlushableResponse,
 		accept: (
@@ -379,35 +440,7 @@ export class AgentChatController {
 		const { message, sessionId, messageId, newSession, attachments } = payload;
 
 		if (this.systemAgents.has(agentId)) {
-			// Code-defined instance agents (the n8n Assistant) build their own runtime.
-			const systemAgents = Container.get(SystemAgentExecutionService);
-			// Answer with an HTTP status before the stream opens.
-			await Container.get(SystemAgentThreadGuard).checkSend({
-				agentId,
-				user: req.user,
-				sessionId: newSession ? undefined : sessionId,
-			});
-			await this.relayQueuedMessage(
-				res,
-				async () =>
-					await systemAgents.prepareChatMessage({
-						agentId,
-						user: req.user,
-						projectId,
-						sessionId: newSession ? undefined : sessionId,
-						message,
-						messageId,
-						hostContext: payload.hostContext,
-						storeAttachments: async (threadId) =>
-							await this.storeChatAttachments({
-								attachments,
-								agentId,
-								projectId,
-								threadId,
-								resourceId: draftChatMemoryResourceId(req.user.id),
-							}),
-					}),
-			);
+			await this.chatWithSystemAgent(req, res, agentId, payload);
 			return;
 		}
 
@@ -722,9 +755,12 @@ export class AgentChatController {
 	async getQueuedMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	): Promise<AgentChatQueueResponse> {
-		const { agentId, projectId } = req.params;
+		const { agentId, projectId, threadId } = req.params;
 		const agent = await this.findReadableChatAgent(agentId, projectId, req.user);
 		if (!agent) throw new NotFoundError('Agent not found');
+		if (!(await this.isThreadReadable(req.user, threadId))) {
+			throw new NotFoundError('Session not found');
+		}
 		return await this.messageQueue.listPending({
 			...req.params,
 			userId: req.user.id,
@@ -829,21 +865,7 @@ export class AgentChatController {
 
 		// A new preview session has no thread until its first execution starts.
 		if (!thread) return { tasks: [] };
-
-		if (!threadBelongsTo(thread, projectId, agentId, req.user.id)) {
-			throw new NotFoundError(`Thread "${threadId}" not found`);
-		}
-		if (
-			thread.accessScope === 'user' &&
-			!(await this.agentExecutionService.canUseDraftThread(
-				threadId,
-				projectId,
-				agentId,
-				req.user.id,
-				{ previewChat: true, sessionMode: 'existing' },
-			))
-		)
-			throw new NotFoundError(`Thread "${threadId}" not found`);
+		await this.assertCanReadChatThread(thread, req.params, req.user);
 
 		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
 		return {
@@ -938,20 +960,7 @@ export class AgentChatController {
 		const agent = await this.findReadableChatAgent(agentId, projectId, req.user);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const thread = await this.agentExecutionService.findThreadById(threadId);
-		if (thread && !threadBelongsTo(thread, projectId, agentId, req.user.id)) {
-			throw new NotFoundError(`Thread "${threadId}" not found`);
-		}
-		if (
-			thread?.accessScope === 'user' &&
-			!(await this.agentExecutionService.canUseDraftThread(
-				threadId,
-				projectId,
-				agentId,
-				req.user.id,
-				{ previewChat: true, sessionMode: 'existing' },
-			))
-		)
-			throw new NotFoundError(`Thread "${threadId}" not found`);
+		if (thread) await this.assertCanReadChatThread(thread, req.params, req.user);
 		const history = await this.agentExecutionOrchestratorService.getConversationHistory({
 			threadId,
 			projectId,
@@ -962,14 +971,10 @@ export class AgentChatController {
 			agentId,
 			threadId,
 		);
-		const checkpointUserId = userIdFromDraftChatMemoryResourceId(
-			checkpoint?.persistence?.resourceId ?? '',
-		);
 		if (
 			checkpoint &&
 			(thread?.accessScope === 'project'
-				? // A shared thread runs in its owner's memory. Other project threads use none.
-					checkpointUserId !== undefined && checkpointUserId !== thread.ownerId
+				? !isProjectThreadCheckpoint(thread, checkpoint.persistence?.resourceId)
 				: checkpoint.persistence?.resourceId !== draftChatMemoryResourceId(req.user.id) ||
 					(!thread &&
 						!(await this.agentExecutionService.canUseDraftThread(
@@ -1039,8 +1044,11 @@ export class AgentChatController {
 			projectId,
 			userId: req.user.id,
 		});
-		if (!attachment) throw new NotFoundError(`Attachment "${attachmentId}" not found`);
-		if (attachment.source === N8N_CHAT_PRODUCTION_SOURCE) {
+		if (
+			!attachment ||
+			attachment.source === N8N_CHAT_PRODUCTION_SOURCE ||
+			!(await this.isThreadReadable(req.user, attachment.threadId))
+		) {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
 		await this.streamAttachment(attachment, res);

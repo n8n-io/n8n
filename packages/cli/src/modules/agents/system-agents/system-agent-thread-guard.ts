@@ -9,7 +9,7 @@ import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
-import { renderAuthor } from '../repositories/agent-history.repository';
+import { userDisplayName } from '../utils/user-display-name';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
 	SystemAgentPendingCall,
@@ -82,7 +82,7 @@ export class SystemAgentThreadGuard {
 		const thread = await this.executions.findThreadById(params.sessionId);
 		if (!thread || thread.ownerId === params.user.id) return;
 		const sharing = this.sharingFor(params.agentId, thread);
-		if (sharing && (await sharing.canRead(params.user, thread))) {
+		if (sharing && (await this.canRead(params.user, thread, params.agentId))) {
 			throw await sharing.sendError(params.user, thread);
 		}
 		throw new NotFoundError('Session not found');
@@ -120,7 +120,7 @@ export class SystemAgentThreadGuard {
 			runId: request.runId,
 			toolCallId,
 			...(await this.answerAs(provider, thread, pending, request)),
-			answeredBy: { id: user.id, name: renderAuthor(user) },
+			answeredBy: { id: user.id, name: userDisplayName(user) },
 		};
 	}
 
@@ -129,10 +129,14 @@ export class SystemAgentThreadGuard {
 		return this.registry.get(agentId)?.sharing;
 	}
 
+	/**
+	 * The same rule as the read routes: a user who cannot use the agent in the project
+	 * reads none of its threads, and another owner's thread needs the sharing rules.
+	 */
 	private async canRead(user: User, thread: AgentExecutionThread, agentId: string) {
 		if (thread.agentId !== agentId) return false;
-		if (thread.ownerId === user.id) return true;
-		return (await this.sharingFor(agentId, thread)?.canRead(user, thread)) === true;
+		if (!(await this.registry.allows(agentId, user, thread.projectId))) return false;
+		return await this.registry.canReadThread(user, thread);
 	}
 
 	/** The owner answers as before. A reader's answer runs as the owner. */

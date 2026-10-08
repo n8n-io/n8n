@@ -6,13 +6,15 @@ import type {
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 
 import { AgentExecutionThreadRepository } from '../../agents/repositories/agent-execution-thread.repository';
+import { isSharedThread } from '../../agents/utils/agent-thread-access';
 import { ASSISTANT_AGENT_ID } from '../assistant-turn-options';
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import { SharedThreadFields } from './shared-thread-fields';
 import { SharedThreadPolicy } from './shared-thread-policy';
+import { isThreadOwner } from './thread-access';
 
 /**
  * Shares Assistant threads with their team project, and lists and reads them for the owner
@@ -27,13 +29,29 @@ export class ThreadSharingService {
 		private readonly fields: SharedThreadFields,
 	) {}
 
-	/** Share the owner's thread with its team project. Sharing a shared thread again changes nothing. */
+	/**
+	 * Share the owner's chat with its team project. Sharing a shared chat again changes
+	 * nothing. A child session of a chat is not a chat, so it is not found.
+	 */
 	async share(user: User, threadId: string): Promise<InstanceAiThreadInfo> {
 		const thread = await this.threads.findOneBy({ id: threadId, agentId: ASSISTANT_AGENT_ID });
-		if (!thread) throw new NotFoundError('Thread not found');
+		if (!thread || thread.parentThreadId !== null) throw new NotFoundError('Thread not found');
 		await this.policy.assertCanShare(user, thread);
-		if (thread.accessScope === 'user') await this.threads.shareWithProject(thread.id, user.id);
+		if (thread.accessScope === 'user' && !(await this.threads.shareWithProject(thread.id, user.id))) {
+			await this.assertSharedBy(user, thread.id);
+		}
 		return await this.getThreadInfo(user, thread.id);
+	}
+
+	/**
+	 * After a share that changed no row. Another request can have shared the chat at the same
+	 * time, which is the result that the user wants. Any other change makes the share fail.
+	 */
+	private async assertSharedBy(user: User, threadId: string): Promise<void> {
+		const current = await this.threads.findOneBy({ id: threadId });
+		if (!current || !isSharedThread(current) || !isThreadOwner(user, current)) {
+			throw new ConflictError('This chat changed while it was shared. Try again.');
+		}
 	}
 
 	/** Throws NotFoundError unless the user owns the thread or can read it as a teammate. */

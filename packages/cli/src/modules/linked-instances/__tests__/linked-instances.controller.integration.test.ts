@@ -339,15 +339,19 @@ describe('LinkedInstancesController', () => {
 			await expect(storedToken(alice, id)).resolves.toBe(oldToken);
 		});
 
-		it('sets a default project that the instance lists', async () => {
+		it('sets a default project that the instance lists, and records it as online', async () => {
 			const id = await linkedId();
+			await repository.updateForUser(alice.id, id, { status: 'offline' });
 
 			const response = await recorded(
 				aliceAgent.patch(`/linked-instances/${id}`).send({ defaultRemoteProjectId: SALES.id }),
 			);
 
 			expect(response.status).toBe(200);
-			expect(response.body.data.defaultRemoteProject).toEqual({ id: SALES.id, name: 'Sales' });
+			expect(response.body.data).toMatchObject({
+				status: 'online',
+				defaultRemoteProject: { id: SALES.id, name: 'Sales' },
+			});
 		});
 
 		it.each([
