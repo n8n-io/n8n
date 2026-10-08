@@ -1,0 +1,55 @@
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 543-549,563-569,574-580
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 783-785,789,796-801,805-806,809,814,818-825,835-836,845
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 1047,1065
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 702,1370,1374,1487-1489,1491,1499
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 168,191-202,204,215,217-222
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 1202-1203,1205,1214,1217,1228
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 291,481-486
+packages/cli/src/modules/agents/utils/agent-resource-id.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 6,12-13,17
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 6,22,47,62-74,80-81,84-92
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 16,35-40,56,78,91
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 134-136
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 4,21,35-42,112,153,165,170-239
+  s_7c67b2f5561b1e::t_c31563290e591c 240
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 1541-1563,1565-1568,1570-1587
+packages/@n8n/db/src/migrations/common/1791455618098-NormalizeAgentCustomToolIds.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 3,85,144-181,188-189
+  s_7c67b2f5561b1e::t_5358c962b904c0 1-2,4-84,86-143,182-187
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 643,653
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 122
+packages/cli/src/modules/agents/builder/skills/custom-tools.skill.ts
+  s_7c67b2f5561b1e::t_e343af153c5db0 27-28,30-31,53,57
+packages/cli/test/migration/1791455618098-normalize-agent-custom-tool-ids.test.ts
+  s_7c67b2f5561b1e::t_cc77f7b7daddc5 1-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "52b4d7a31d3605a12bba771b70bdf07bd7b3bf86",
+  "prompts": {},
+  "sessions": {
+    "s_7c67b2f5561b1e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11a84-1db0-74f0-8284-8cd79b3c5e60",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

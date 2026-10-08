@@ -1,0 +1,26 @@
+packages/@n8n/instance-ai/evaluations/routing/__tests__/grade.test.ts
+  s_fd6e130ca898c8::t_2fa7020f3315d8 284-300
+packages/@n8n/instance-ai/evaluations/README.md
+  s_fd6e130ca898c8::t_0ac559918cbfda 572-573
+  s_fd6e130ca898c8::t_032994b8b41380 574-575
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_fd6e130ca898c8::t_7870617e203bbc 53,317,333,365-366,369,385-386
+packages/@n8n/instance-ai/evaluations/routing/grade.ts
+  s_fd6e130ca898c8::t_c626286b5ac339 184-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c454168e51b6b68e58df7b2937f991d9ca678e3",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
