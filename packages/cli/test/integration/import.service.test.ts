@@ -717,6 +717,21 @@ describe('ImportService', () => {
 			expect(mockWorkflowService.deactivateWorkflow).not.toHaveBeenCalled();
 		});
 
+		test('rejects re-importing a workflow whose deprecated node was edited', async () => {
+			const existing = await createWorkflow({ nodes: [deprecatedNode] });
+			const edited = {
+				...existing,
+				nodes: [{ ...deprecatedNode, parameters: { functionCode: 'return [];' } }],
+			};
+
+			await expect(
+				blockingImportService.importWorkflows([edited], ownerPersonalProject.id, owner.id, {}),
+			).rejects.toThrow(DeprecatedNodesError);
+
+			const dbWorkflow = await getWorkflowById(existing.id);
+			expect(dbWorkflow?.nodes).toEqual([deprecatedNode]);
+		});
+
 		test('allows re-importing a workflow whose deprecated node is unchanged', async () => {
 			const existing = await createWorkflow({ nodes: [deprecatedNode] });
 
