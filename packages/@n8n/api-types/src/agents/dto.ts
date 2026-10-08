@@ -389,6 +389,12 @@ export class AgentTeamsProvisionBotDto extends Z.class({
 	subscriptionId: microsoftId,
 }) {}
 
+export class AgentTeamsPublishDto extends Z.class({
+	managerCredentialId: z.string().min(1),
+	credentialId: z.string().min(1),
+	settings: AgentTeamsSettingsSchema.optional(),
+}) {}
+
 export class AgentDisconnectIntegrationDto extends Z.class({
 	type: z.string().min(1),
 	// Empty string targets a draft integration entry (`credentialId: ''`).

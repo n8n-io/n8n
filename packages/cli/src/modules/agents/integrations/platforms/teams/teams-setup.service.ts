@@ -24,6 +24,8 @@ interface AgentScope {
 interface BotIdentity {
 	clientId: string;
 	tenantId: string;
+	/** Written by the recommended setup, so a hand-made credential lacks it. */
+	provisionedForAgentId?: string;
 }
 
 @Service()
@@ -64,6 +66,7 @@ export class TeamsSetupService {
 					? this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId, credentialId)
 					: null,
 			credentialClaimedBy: claimedBy,
+			provisionedByN8n: identity?.provisionedForAgentId === agent.id,
 			...this.defaultIdentity(agent.name),
 		};
 	}
@@ -265,7 +268,8 @@ export class TeamsSetupService {
 				);
 		const clientId = stringProperty(data, 'clientId');
 		const tenantId = stringProperty(data, 'tenantId');
-		return clientId && tenantId ? { clientId, tenantId } : null;
+		const provisionedForAgentId = stringProperty(data, 'provisionedForAgentId');
+		return clientId && tenantId ? { clientId, tenantId, provisionedForAgentId } : null;
 	}
 
 	private messagingEndpointUrl(scope: AgentScope): string {

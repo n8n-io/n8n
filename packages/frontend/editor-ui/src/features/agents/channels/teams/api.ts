@@ -4,6 +4,7 @@ import type {
 	TeamsAgentSetupState,
 	TeamsCredentialCheck,
 	TeamsAzureSubscription,
+	TeamsCatalogState,
 	TeamsManagedSetupState,
 	TeamsProvisionedAppSummary,
 	TeamsProvisionedBotSummary,
@@ -130,3 +131,34 @@ export const provisionTeamsBot = async (
 		`${integrationPath(projectId, agentId)}/provision-bot`,
 		payload,
 	);
+
+export const publishTeamsApp = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: {
+		managerCredentialId: string;
+		credentialId: string;
+		settings?: AgentTeamsIntegrationSettings;
+	},
+): Promise<TeamsCatalogState> =>
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`${integrationPath(projectId, agentId)}/publish`,
+		payload,
+	);
+
+export const getTeamsCatalogState = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	managerCredentialId: string,
+	/** The channel's own credential, which carries what the last publish made. */
+	credentialId?: string,
+): Promise<TeamsCatalogState> =>
+	await makeRestApiRequest(context, 'GET', `${integrationPath(projectId, agentId)}/catalog`, {
+		managerCredentialId,
+		...(credentialId ? { credentialId } : {}),
+	});
+

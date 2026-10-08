@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import type { TeamsManagedSetupState } from '@n8n/api-types';
+import type { TeamsCatalogState, TeamsManagedSetupState } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, waitFor, within } from '@testing-library/vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -61,9 +61,13 @@ const buildRuntime = (overrides: Partial<TeamsChannelRuntime> = {}): TeamsChanne
 	botSetupState: ref(null),
 	provisionedBot: ref(null),
 	subscriptions: ref([]),
+	catalogState: ref(null),
+	connectedCredentialId: ref(''),
 	provisionApp: vi.fn(),
 	loadSubscriptions: vi.fn(),
 	provisionBot: vi.fn(),
+	publishApp: vi.fn(),
+	refreshCatalogState: vi.fn(),
 	...overrides,
 });
 
@@ -326,6 +330,8 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						resourceGroup: 'n8n-agents',
 						subscriptionId: 'sub-1',
 					}),
+					catalogState: ref<TeamsCatalogState | null>(null),
+					publishApp: vi.fn(),
 				}),
 			);
 			const { getByTestId } = createComponentRenderer(Host, {
@@ -334,8 +340,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 			await waitFor(() => expect(getByTestId('can-finish')).toHaveTextContent('false'));
 
-			// Handing over the package is what persists the channel here.
-			await fireEvent.click(getByTestId('teams-install-download-package'));
+			await fireEvent.click(getByTestId('teams-publish'));
 
 			await waitFor(() => expect(getByTestId('can-finish')).toHaveTextContent('true'));
 		});
@@ -458,6 +463,37 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			await waitFor(() => expect(runtime.subscriptions.value).toEqual([]));
 			expect(runtime.provisionedApp.value).toBeNull();
 			expect(runtime.loadSubscriptions).toHaveBeenCalledTimes(2);
+		});
+
+		/**
+		 * `refreshCatalogState` refuses to let an `unknown` read overwrite a known
+		 * state, so a verdict left over from the previous tenant does not merely
+		 * flicker -- it survives the new tenant's read.
+		 */
+		it('forgets where the app stood when the account changes', async () => {
+			const otherCredential = { ...connectedCredential, id: 'cred-2', name: 'Other organization' };
+			const runtime = buildRuntime({
+				catalogState: ref<TeamsCatalogState | null>({
+					status: 'published',
+					teamsAppId: 'teams-app-1',
+				}),
+			});
+			const { rerender } = render({
+				modelValue: 'cred-1',
+				setup: setupState({ managerCredentials: [connectedCredential, otherCredential] }),
+				runtime,
+			});
+			await waitFor(() => expect(runtime.loadSubscriptions).toHaveBeenCalled());
+
+			await rerender(
+				props({
+					modelValue: 'cred-2',
+					setup: setupState({ managerCredentials: [connectedCredential, otherCredential] }),
+					runtime,
+				}),
+			);
+
+			await waitFor(() => expect(runtime.catalogState.value).toBeNull());
 		});
 
 		/** The subscription is the bot step's problem, and it says so there. */
@@ -599,6 +635,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						botId: 'app-1',
 						deployToAzureUrl: 'https://portal.azure.com/template',
 						credentialClaimedBy: null,
+						provisionedByN8n: true,
 						defaultDisplayName: 'Support Bot',
 						defaultDescription: 'An agent',
 					}),
@@ -707,6 +744,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						resourceGroup: 'n8n-agents',
 						subscriptionId: 'sub-1',
 					}),
+					catalogState: ref({ status: 'submitted', teamsAppId: 'teams-app-1' }),
 				}),
 			);
 
@@ -880,6 +918,221 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			await fireEvent.click(getByTestId('teams-use-own-app-from-bot-step'));
 
 			expect(runtime.setupKind.value).toBe('manual');
+		});
+
+		it('sends a rejected app to the Teams admin centre, inventing no reason', async () => {
+			const { getByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState: ref({ status: 'rejected', teamsAppId: 'teams-app-1' }),
+				}),
+			);
+
+			// Microsoft supplies no reason field, so the copy must point at the
+			// admin centre rather than guess at one.
+			await waitFor(() =>
+				expect(getByTestId('teams-catalog-state')).toHaveTextContent(
+					'agents.channels.teams.managed.install.rejected',
+				),
+			);
+		});
+
+		/**
+		 * Publishing and installing are sequential, not alternatives. Once the app
+		 * is in the catalogue the only thing left is adding it, so that is the only
+		 * thing the step offers.
+		 */
+		/**
+		 * The catalogue answers "not listed yet" about an app it is still being
+		 * given, so that line beside a running publish reads as the answer to
+		 * that publish -- and it was shown before the user had published at all.
+		 */
+		it('says nothing about the catalogue while it is being asked', async () => {
+			let finishPublish = () => {};
+			const { getByTestId, queryByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState: ref<TeamsCatalogState | null>({ status: 'unknown', teamsAppId: null }),
+					publishApp: vi.fn(
+						async () => await new Promise<void>((resolve) => (finishPublish = resolve)),
+					),
+				}),
+			);
+
+			await fireEvent.click(getByTestId('teams-publish'));
+
+			await waitFor(() => expect(getByTestId('teams-install-progress')).toBeVisible());
+			expect(queryByTestId('teams-catalog-state')).not.toBeInTheDocument();
+
+			finishPublish();
+			await waitFor(() => expect(getByTestId('teams-catalog-state')).toBeVisible());
+		});
+
+		/**
+		 * Publishing is the end of n8n's part, so the step closes on it. The
+		 * package stays reachable because the published app is in nobody's Teams
+		 * until Microsoft lets it be added.
+		 */
+		/**
+		 * Microsoft keeps the app through a disconnect, so a re-run publishes
+		 * nothing and hands over no package -- neither of the routes that writes
+		 * the channel runs. Without Done the credential can never be bound back
+		 * to the agent, which is the state this lands in.
+		 */
+		it('offers Done for an app the catalogue already has', async () => {
+			const Host = defineComponent({
+				components: { AgentChannelTeamsManagedSetup },
+				props: { hostProps: { type: Object, required: true } },
+				setup: () => ({ view: ref<{ canFinish?: boolean }>() }),
+				template: `
+					<div>
+						<AgentChannelTeamsManagedSetup ref="view" v-bind="hostProps" />
+						<span data-testid="can-finish">{{ String(view?.canFinish) }}</span>
+					</div>
+				`,
+			});
+			const hostProps = props(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState: ref({ status: 'published', teamsAppId: 'teams-app-1' }),
+				}),
+			);
+			const { getByTestId } = createComponentRenderer(Host, { global: { stubs } })({
+				props: { hostProps },
+				pinia: createTestingPinia(),
+			});
+
+			// Nothing was downloaded and nothing published in this session.
+			await waitFor(() => expect(getByTestId('can-finish')).toHaveTextContent('true'));
+		});
+
+		it('moves to the last step on a publish, and keeps the package reachable', async () => {
+			const catalogState = ref<TeamsCatalogState | null>({ status: 'unknown', teamsAppId: null });
+			const { getByTestId, queryByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState,
+					publishApp: vi.fn(async () => {
+						catalogState.value = { status: 'published', teamsAppId: 'teams-app-1' };
+					}),
+				}),
+			);
+
+			await fireEvent.click(getByTestId('teams-publish'));
+
+			// The last step says where the app stands, and keeps the package on
+			// offer: a published app is in nobody's Teams until Microsoft lists it.
+			await waitFor(() =>
+				expect(getByTestId('teams-finish-published')).toHaveTextContent(
+					'agents.channels.teams.managed.finish.published',
+				),
+			);
+			expect(getByTestId('teams-finish-download-package')).toBeVisible();
+			// Nothing was added to anyone's Teams, so nothing says it was.
+			expect(queryByTestId('teams-finish-instructions')).not.toBeInTheDocument();
+		});
+
+		it('copies an approval request once the app is in for review', async () => {
+			const { getByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState: ref({ status: 'submitted', teamsAppId: 'teams-app-1' }),
+				}),
+			);
+
+			await fireEvent.click(getByTestId('teams-copy-approval-request'));
+
+			await waitFor(() => expect(copySpy).toHaveBeenCalled());
+			const [copied] = copySpy.mock.calls[0] as [string];
+			expect(copied).toContain('Support Bot (n8n)');
+			expect(copied).toContain('https://admin.teams.microsoft.com/policies/manage-apps');
+		});
+
+		it('shows where the app stands in the catalogue', async () => {
+			const { getByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState: ref({ status: 'submitted', teamsAppId: 'teams-app-1' }),
+				}),
+			);
+
+			await waitFor(() =>
+				expect(getByTestId('teams-catalog-state')).toHaveTextContent(
+					'agents.channels.teams.managed.install.submitted',
+				),
+			);
 		});
 	});
 

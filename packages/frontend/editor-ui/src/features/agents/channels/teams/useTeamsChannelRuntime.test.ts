@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, ref } from 'vue';
@@ -6,6 +7,7 @@ import { computed, ref } from 'vue';
 import {
 	createTeamsManagerCredential,
 	getTeamsAzureSubscriptions,
+	getTeamsCatalogState,
 	getTeamsManagedSetup,
 	getTeamsSetupState,
 	provisionTeamsApp,
@@ -17,6 +19,8 @@ vi.mock('./api', () => ({
 	createTeamsManagerCredential: vi.fn(),
 	getTeamsSetupState: vi.fn(),
 	getTeamsAzureSubscriptions: vi.fn(),
+	getTeamsCatalogState: vi.fn(),
+	publishTeamsApp: vi.fn(),
 	provisionTeamsApp: vi.fn(),
 	provisionTeamsBot: vi.fn(),
 }));
@@ -232,5 +236,105 @@ describe('useTeamsChannelRuntime', () => {
 
 			expect(runtime.subscriptions.value).toEqual([]);
 		});
+	});
+
+	/**
+	 * Publishing can take a day to take effect, so reopening the setup later is
+	 * the ordinary path. Until this the step only knew what it had done itself,
+	 * and an app published or removed since read as whatever it last saw.
+	 */
+	it('reads the catalogue back when there is a sign-in to read it with', async () => {
+		vi.mocked(getTeamsManagedSetup).mockResolvedValue({
+			managedSetupAvailable: true,
+			managerCredentials: [
+				{
+					id: 'cred-1',
+					name: 'Microsoft organization',
+					connected: true,
+					reconnectRequired: false,
+					organizationName: 'Acme Corp',
+					tenantId: 'tenant-1',
+				},
+			],
+			adminConsentUrl: null,
+		});
+		vi.mocked(getTeamsCatalogState).mockResolvedValue({
+			status: 'published',
+			teamsAppId: 'teams-app-1',
+		});
+		const runtime = buildRuntime();
+
+		await runtime.load();
+		await flushPromises();
+
+		expect(getTeamsCatalogState).toHaveBeenCalled();
+		expect(runtime.catalogState.value).toEqual({ status: 'published', teamsAppId: 'teams-app-1' });
+	});
+
+	/**
+	 * For minutes after a publish the catalogue answers "unknown" to everyone,
+	 * including about an app it has just been given. Taking that as the truth
+	 * sent the step back to offering a publish that had already happened, which
+	 * Microsoft then refused as a duplicate.
+	 */
+	it('keeps a state it watched Microsoft report over a catalogue that cannot answer', async () => {
+		vi.mocked(getTeamsManagedSetup).mockResolvedValue({
+			managedSetupAvailable: true,
+			managerCredentials: [
+				{
+					id: 'cred-1',
+					name: 'Microsoft organization',
+					connected: true,
+					reconnectRequired: false,
+					organizationName: 'Acme Corp',
+					tenantId: 'tenant-1',
+				},
+			],
+			adminConsentUrl: null,
+		});
+		vi.mocked(getTeamsCatalogState).mockResolvedValue({ status: 'unknown', teamsAppId: null });
+		const runtime = buildRuntime();
+		// Through load, or there is no sign-in to read the catalogue with and
+		// the read never happens.
+		await runtime.load();
+		runtime.catalogState.value = { status: 'published', teamsAppId: 'teams-app-1' };
+
+		await runtime.refreshCatalogState();
+
+		expect(runtime.catalogState.value).toEqual({ status: 'published', teamsAppId: 'teams-app-1' });
+	});
+
+	it('takes an answer the catalogue can give', async () => {
+		vi.mocked(getTeamsManagedSetup).mockResolvedValue({
+			managedSetupAvailable: true,
+			managerCredentials: [
+				{
+					id: 'cred-1',
+					name: 'Microsoft organization',
+					connected: true,
+					reconnectRequired: false,
+					organizationName: 'Acme Corp',
+					tenantId: 'tenant-1',
+				},
+			],
+			adminConsentUrl: null,
+		});
+		vi.mocked(getTeamsCatalogState).mockResolvedValue({ status: 'rejected', teamsAppId: 'a-1' });
+		const runtime = buildRuntime();
+		await runtime.load();
+		runtime.catalogState.value = { status: 'published', teamsAppId: 'teams-app-1' };
+
+		await runtime.refreshCatalogState();
+
+		expect(runtime.catalogState.value).toEqual({ status: 'rejected', teamsAppId: 'a-1' });
+	});
+
+	it('does not ask the catalogue without a sign-in to ask with', async () => {
+		const runtime = buildRuntime();
+
+		await runtime.load();
+		await flushPromises();
+
+		expect(getTeamsCatalogState).not.toHaveBeenCalled();
 	});
 });
