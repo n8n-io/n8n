@@ -6,7 +6,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { rcompare, satisfies, subset, validRange } from 'semver';
+import { intersects, rcompare, satisfies, subset, validRange } from 'semver';
 import {
 	LoggerProxy,
 	UserError,
@@ -32,6 +32,7 @@ import {
 	credentialRangesOf,
 	embeddedStoreDirOf,
 	isVersionManifest,
+	parseAnyManifest,
 	storeBlobFileOf,
 	storeIndexFileOf,
 	storeStatusTextOf,
@@ -51,7 +52,6 @@ import {
 	addedPermissionsOf,
 	compareSemver,
 	parseManifest,
-	parseNativeManifest,
 	parseSemver,
 	type NodeContractVersion,
 	type VersionManifest,
@@ -431,9 +431,80 @@ const assertSameBytes = (stored: readonly StoredManifest[], versions: readonly S
 };
 
 /** The manifest of a stored version that can pin credentials: a version with a bundle or a native version. */
-const pinningManifestOf = ({ kind, bundle, manifestText }: StoredVersion) => {
+const pinningManifestOf = ({
+	kind,
+	manifestText,
+}: Pick<StoredManifest, 'kind' | 'manifestText'>) => {
 	if (kind === 'credential' || kind === 'sdk') return undefined;
-	return bundle === undefined ? parseNativeManifest(manifestText) : parseManifest(manifestText);
+	const manifest = parseAnyManifest(manifestText);
+	return manifest.kind === 'credential' || manifest.kind === 'sdk' ? undefined : manifest;
+};
+
+/** A credential pin of a version. */
+interface CredentialPin {
+	/** The version that pins, e.g. `notion.user.get@1.0.0`. */
+	readonly at: string;
+	/** The credential id, e.g. `notion.token`. */
+	readonly id: string;
+	/** The semver range, e.g. `^1.0.0`. */
+	readonly range: string;
+}
+
+const credentialPinsOf = (row: Pick<StoredManifest, 'id' | 'version' | 'kind' | 'manifestText'>) =>
+	credentialRangesOf(pinningManifestOf(row)?.credentials).map(
+		([id, range]): CredentialPin => ({ at: `${row.id}@${row.version}`, id, range }),
+	);
+
+/** The credential pins of the installed versions in the store. A row that does not parse is skipped. */
+const storedCredentialPinsOf = async (store: InstanceStore) =>
+	(await store.manifests()).flatMap((row) => {
+		try {
+			return credentialPinsOf(row);
+		} catch {
+			return [];
+		}
+	});
+
+/**
+ * The versions of a credential id that n8n can keep. n8n stores credential data by name, so it
+ * keeps one version of each credential. A bundled version is the only choice: the release fixes
+ * it. Else the choices are the stored and `offered` versions from the installed (newest stored)
+ * version up, so an install never takes an older version.
+ */
+const credentialChoicesOf = (
+	id: string,
+	bundled: readonly CredentialManifest[],
+	stored: readonly CredentialManifest[],
+	offered: readonly string[],
+) => {
+	const semversOf = (manifests: readonly CredentialManifest[]) =>
+		manifests.filter((manifest) => manifest.id === id).map(({ semver }) => semver);
+	const newestOf = (versions: readonly string[]) => [...versions].sort(compareSemver).at(-1);
+	const embedded = semversOf(bundled);
+	if (embedded.length > 0) {
+		return { bundled: true, installed: newestOf(embedded), versions: embedded };
+	}
+	const installed = newestOf(semversOf(stored));
+	return {
+		bundled: false,
+		installed,
+		versions: [...semversOf(stored), ...offered].filter(
+			(version) => installed === undefined || compareSemver(version, installed) >= 0,
+		),
+	};
+};
+
+type CredentialChoices = ReturnType<typeof credentialChoicesOf>;
+
+/** The one credential version that every range takes: the installed one, else the newest. */
+const chosenCredentialOf = (
+	{ installed, versions }: CredentialChoices,
+	ranges: readonly string[],
+) => {
+	const fits = (version: string) => ranges.every((range) => satisfies(version, range));
+	return installed !== undefined && fits(installed)
+		? installed
+		: versions.filter(fits).sort(compareSemver).at(-1);
 };
 
 /** The credential manifests of stored rows. A row that does not parse is skipped. */
@@ -447,32 +518,88 @@ const parsedCredentialsOf = (rows: ReadonlyArray<Pick<StoredManifest, 'manifestT
 	});
 
 /**
- * Refuses the versions whose credential pins resolve to no credential manifest: none in `added`,
- * none in the store and none that n8n bundles. Without it, n8n cannot project the credential
- * type that the version signs with.
+ * Refuses the versions whose credential pins resolve to no credential version that n8n can keep,
+ * see `credentialChoicesOf`: the version must take the ranges of `added` and of each installed
+ * version that pins the credential, and the contract must list its name. It also refuses a
+ * credential version that becomes the stored version in use when a range of `added` or of an
+ * installed version does not take it. Without it, n8n cannot project the credential type that
+ * the version signs with.
  */
 async function assertPinsResolve(store: InstanceStore, added: readonly StoredVersion[]) {
-	const pinning = added.flatMap((version) => {
+	const pins = added.flatMap(credentialPinsOf);
+	const offered = parsedCredentialsOf(added.filter(({ kind }) => kind === 'credential'));
+	if (pins.length === 0 && offered.length === 0) return;
+	const installed = await storedCredentialPinsOf(store);
+	const stored = parsedCredentialsOf(await store.credentialManifests());
+	const known = [...store.embedded.credentials(), ...stored, ...offered];
+	const unresolved = added.flatMap((version) => {
 		const manifest = pinningManifestOf(version);
-		return manifest?.credentials ? [{ version, manifest }] : [];
-	});
-	if (pinning.length === 0) return;
-	const known = [
-		...store.embedded.credentials(),
-		...parsedCredentialsOf(await store.credentialManifests()),
-		...parsedCredentialsOf(added.filter(({ kind }) => kind === 'credential')),
-	];
-	const unresolved = pinning.flatMap(({ version, manifest }) => {
-		const pins = unresolvedCredentialPinsOf(manifest, known);
-		return pins.length > 0
-			? [`${version.id}@${version.version} pins the credential ${pins.join(', ')}`]
+		const missing = manifest ? unresolvedCredentialPinsOf(manifest, known) : [];
+		return missing.length > 0
+			? [`${version.id}@${version.version} pins the credential ${missing.join(', ')}`]
 			: [];
 	});
-	if (unresolved.length > 0) {
+	const choicesOf = (id: string) =>
+		credentialChoicesOf(
+			id,
+			store.embedded.credentials(),
+			stored,
+			offered.filter((manifest) => manifest.id === id).map(({ semver }) => semver),
+		);
+	const pinFailures = [...new Set(pins.map(({ id }) => id))].flatMap((id) => {
+		const fresh = pins.filter((pin) => pin.id === id);
+		const choices = choicesOf(id);
+		// The release fixes a bundled version, so only the new pins must take it.
+		const ranges = choices.bundled
+			? fresh
+			: [...fresh, ...installed.filter((pin) => pin.id === id)];
+		const chosen = chosenCredentialOf(
+			choices,
+			ranges.map(({ range }) => range),
+		);
+		if (chosen !== undefined) return [];
+		return fresh.map((pin) => {
+			const conflicts = ranges.filter(
+				(other) => other !== pin && !intersects(pin.range, other.range),
+			);
+			const kept =
+				choices.installed === undefined
+					? []
+					: [`n8n ${choices.bundled ? 'bundles' : 'has'} ${id}@${choices.installed}`];
+			return {
+				subject: `${pin.at} pins the credential ${id}@${pin.range}`,
+				conflicts: [...kept, ...conflicts.map((other) => `${other.at} pins ${id}@${other.range}`)],
+			};
+		});
+	});
+	// n8n projects the newest stored version, so a newer stored version must take every range.
+	const inUseFailures = [...new Set(offered.map(({ id }) => id))].flatMap((id) => {
+		const choices = choicesOf(id);
+		const newest = [...choices.versions].sort(compareSemver).at(-1);
+		if (choices.bundled || newest === undefined || newest === choices.installed) return [];
+		const conflicts = [...pins, ...installed].filter(
+			(pin) => pin.id === id && !satisfies(newest, pin.range),
+		);
+		return conflicts.length === 0
+			? []
+			: [
+					{
+						subject: `${id}@${newest} becomes the version of the credential in use`,
+						conflicts: conflicts.map((pin) => `${pin.at} pins ${id}@${pin.range}`),
+					},
+				];
+	});
+	const conflictMessage = (failures: ReadonlyArray<{ subject: string; conflicts: string[] }>) =>
+		`${failures.map(({ subject, conflicts }) => `${subject}, but ${conflicts.join(' and ')}`).join('; ')}. n8n keeps one version of each credential, and no version of it takes all these ranges.`;
+	const pinConflicts = pinFailures.filter(({ conflicts }) => conflicts.length > 0);
+	if (pinConflicts.length > 0) throw new UserError(conflictMessage(pinConflicts));
+	const missing = unresolved.length > 0 ? unresolved : pinFailures.map(({ subject }) => subject);
+	if (missing.length > 0) {
 		throw new UserError(
-			`${unresolved.join('; ')}, but n8n has no credential manifest of that id and range. Add the credential manifest to the store first, e.g. with "n8n contracts:import".`,
+			`${missing.join('; ')}, but n8n has no credential manifest of that id and range. Add the credential manifest to the store first, e.g. with "n8n contracts:import".`,
 		);
 	}
+	if (inUseFailures.length > 0) throw new UserError(conflictMessage(inUseFailures));
 }
 
 /** The `sha256:<hex>` digest of the SDK runtime that a stored version pins, or `undefined`. */
@@ -744,24 +871,33 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		});
 
 	/**
-	 * The credential manifests that a version pins, from the registry: the newest version in the
-	 * range, unless n8n bundles or the store has one in the range. A pin that the registry lacks
-	 * fails the admission. A manifest with a bad signature fails the download. Without a key,
-	 * nothing comes: the node pin anchors the version only, not a credential manifest.
+	 * The credential manifests that a version pins, from the registry: the version that n8n keeps,
+	 * see `credentialChoicesOf`, when n8n does not bundle or store it. A pin without such a
+	 * version fails the admission. A manifest with a bad signature fails the download. Without a
+	 * key, nothing comes: the node pin anchors the version only, not a credential manifest.
 	 */
 	const pinnedCredentials = async (manifest: VersionManifest): Promise<StoredVersion[]> => {
-		if (!hasKey(keys)) return [];
-		const known = [...store.embedded.credentials(), ...(await storedCredentials())];
-		const missing = unresolvedCredentialPinsOf(manifest, known);
-		if (missing.length === 0) return [];
-		const registry = registryOf();
+		const pins = credentialRangesOf(manifest.credentials);
+		if (!hasKey(keys) || pins.length === 0) return [];
+		const [stored, installed] = await Promise.all([
+			storedCredentials(),
+			storedCredentialPinsOf(store),
+		]);
 		const found = await Promise.all(
-			missing.map(async (pin) => {
-				const [id = '', range = ''] = pin.split('@');
-				const record = (await registry.records(id))
-					.filter(({ version }) => satisfies(version, range))
-					.sort((a, b) => compareSemver(a.version, b.version))
-					.at(-1);
+			pins.map(async ([id, range]) => {
+				const ranges = [range, ...installed.filter((pin) => pin.id === id).map((pin) => pin.range)];
+				const known = credentialChoicesOf(id, store.embedded.credentials(), stored, []);
+				if (known.bundled || chosenCredentialOf(known, ranges) !== undefined) return [];
+				const registry = registryOf();
+				const records = await registry.records(id);
+				const choices = credentialChoicesOf(
+					id,
+					[],
+					stored,
+					records.map(({ version }) => version),
+				);
+				const chosen = chosenCredentialOf(choices, ranges);
+				const record = records.find(({ version }) => version === chosen);
 				const read = record && (await registry.readManifest(record));
 				if (!record || !read) return [];
 				const origin = signedOriginOf(record, read.text);
@@ -1314,10 +1450,6 @@ export async function importContractStore(
 	return added;
 }
 
-/** The `[id, range]` pins of the credentials that a stored version uses. */
-const credentialPinsOf = (version: StoredVersion) =>
-	credentialRangesOf(pinningManifestOf(version)?.credentials);
-
 /**
  * Writes the stored versions that `include` accepts to `dir`, in the store layout, with the
  * stored credential manifests and SDK runtimes that they pin, and the status lines of the written
@@ -1337,7 +1469,7 @@ export async function exportContractStore(
 		(version) =>
 			!included.includes(version) &&
 			((version.kind === 'credential' &&
-				pins.some(([id, range]) => id === version.id && satisfies(version.version, range))) ||
+				pins.some(({ id, range }) => id === version.id && satisfies(version.version, range))) ||
 				(version.kind === 'sdk' && sdks.has(runtimeDigestOf(version)))),
 	);
 	const versions = [...included, ...pinned].sort(

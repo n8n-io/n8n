@@ -271,7 +271,8 @@ const digestOf = (bytes: string | Uint8Array) =>
 export const manifestTextOf = (manifest: StoreManifest) =>
 	`${JSON.stringify(manifest, null, '\t')}\n`;
 
-const parseAnyManifest = (text: string): StoreManifest => {
+/** Reads a manifest of any kind that pack wrote. */
+export const parseAnyManifest = (text: string): StoreManifest => {
 	const value: unknown = JSON.parse(text);
 	if (isRecord(value) && value.kind === 'credential') return parseCredentialManifest(text);
 	if (isRecord(value) && value.kind === 'sdk') return parseSdkManifest(text);

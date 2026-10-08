@@ -15,6 +15,7 @@ import { gunzipSync } from 'node:zlib';
 import { UserError } from 'n8n-workflow';
 
 import {
+	credentialRangesOf,
 	manifestTextOf,
 	signStoreManifest,
 	storeBlobFileOf,
@@ -85,7 +86,7 @@ const descriptionOf = (manifest: StoreManifest) =>
 
 /**
  * The files of the npm package of one version, by file name. A version that pins the SDK runtime
- * depends on its exact version.
+ * depends on its exact version, and on the range of each credential that it pins.
  */
 export function npmPackageOf(
 	{ manifest, bundle, fixtures }: NpmVersion,
@@ -101,6 +102,12 @@ export function npmPackageOf(
 	const manifestText = manifestTextOf(manifest);
 	const fixturesText = fixtures === undefined ? undefined : jsonText(fixtures);
 	const sdk = 'sdk' in manifest ? manifest.sdk : undefined;
+	const dependencies = Object.fromEntries([
+		...(typeof sdk === 'object' ? [[npmNameOf(SDK_RUNTIME_ID, options.scope), sdk.version]] : []),
+		...('credentials' in manifest ? credentialRangesOf(manifest.credentials) : []).map(
+			([id, range]) => [npmNameOf(id, options.scope), range],
+		),
+	]);
 	const {
 		version: _,
 		manifest: digest,
@@ -115,9 +122,7 @@ export function npmPackageOf(
 		version: manifest.semver,
 		description: descriptionOf(manifest),
 		...options.source,
-		...(typeof sdk === 'object'
-			? { dependencies: { [npmNameOf(SDK_RUNTIME_ID, options.scope)]: sdk.version } }
-			: {}),
+		...(Object.keys(dependencies).length > 0 ? { dependencies } : {}),
 		// Publish compares `digest` with the manifest, so it needs no tarball for a known version.
 		n8n: { ...index, digest },
 	};

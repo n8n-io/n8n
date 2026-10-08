@@ -496,6 +496,11 @@ const token = defineCredential({
 
 			await publishPackage(pkg, [], (line) => log.push(line));
 			expect(log).toEqual([`sdkRuntime@${sdkVersion()}`, 'demo.token@1.0.0', 'demo.pass@1.0.0']);
+			const pass = fake().packuments.get(npmNameOf('demo.pass'))?.versions as Json;
+			expect((pass['1.0.0'] as Json).dependencies).toEqual({
+				'@n8n-nodes/sdk-runtime': sdkVersion(),
+				'@n8n-nodes/demo.token': '^1.0.0',
+			});
 			const versions = await npmVersionsOf(fake().url, npmNameOf('demo.token'));
 			expect(versions.map(({ version }) => version).sort()).toEqual(['1.0.0', '1.0.1', '2.0.0']);
 		} finally {

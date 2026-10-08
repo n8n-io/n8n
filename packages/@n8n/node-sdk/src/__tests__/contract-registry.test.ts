@@ -1281,6 +1281,131 @@ describe('contractStore with triggers and credentials', () => {
 		await expect(storeOf().locked('ping.pinged', pin)).rejects.toThrow('ping.token@1.0.0 (sha256:');
 		expect((await storeOf({ keys: noKeys }).credentials()).has('pingApi')).toBe(false);
 	});
+
+	describe('one version of a credential', () => {
+		const rowOf = (manifest: StoreManifest): StoredVersion => {
+			const manifestText = manifestTextOf(manifest);
+			return {
+				id: manifest.id,
+				version: manifest.semver,
+				kind: manifest.kind,
+				manifest: `sha256:${sha256(manifestText)}`,
+				manifestText,
+				signatures: [signStoreManifest(manifestText, privateKey)],
+				origin: 'private',
+			};
+		};
+		const tokenOf = (version: `${number}.${number}.${number}`) => {
+			const manifest = packCredential({ ...pingToken, semver: version });
+			if (!manifest) throw new Error('ping.token has no manifest');
+			return manifest;
+		};
+		/**
+		 * Publishes ping.token 1.0.0 to 2.0.0 and ping.pinged with the credential range `pinned`.
+		 * The store has ping.token `installed` and ping.called with the credential range `range`.
+		 */
+		const setUp = async (
+			range: string,
+			pinned: string,
+			installed: `${number}.${number}.${number}` = '1.0.0',
+		) => {
+			(['1.0.0', '1.1.0', '1.2.0', '2.0.0'] as const).forEach((version) =>
+				fake().put(npmPackageOf({ manifest: tokenOf(version) }, { privateKey })),
+			);
+			await admitVersions(instance.current.store, [
+				rowOf(tokenOf(installed)),
+				rowOf({ ...packNative(pingCalled), credentials: { 'ping.token': range } }),
+			]);
+			const entry = path.join(dirs.root, 'ranged.ts');
+			await writeFile(
+				entry,
+				pingSource.replace('types: [pingToken]', `types: [pingToken.range('${pinned}')]`),
+			);
+			const trigger = await packAction(entry, 'pinged');
+			fake().put(npmPackageOf(trigger, { privateKey }));
+			return {
+				version: trigger.manifest.semver,
+				digest: `sha256:${sha256(manifestTextOf(trigger.manifest))}`,
+			};
+		};
+		const storedTokens = () =>
+			[...instance.current.rows.values()]
+				.filter(({ kind }) => kind === 'credential')
+				.map(({ version }) => version)
+				.sort();
+
+		it('keeps the installed version when every range takes it', async () => {
+			const pin = await setUp('^1.0.0', '^1.0.0');
+			await storeOf().locked('ping.pinged', pin);
+			expect(storedTokens()).toEqual(['1.0.0']);
+		});
+
+		it('takes the newest version that the ranges of all installed versions take', async () => {
+			const pin = await setUp('>=1.0.0 <1.2.0', '^1.1.0');
+			await storeOf().locked('ping.pinged', pin);
+			expect(storedTokens()).toEqual(['1.0.0', '1.1.0']);
+			expect((await storeOf().credentials()).get('pingApi')?.semver).toBe('1.1.0');
+		});
+
+		it('refuses a range that conflicts with an installed version, and names both', async () => {
+			const pin = await setUp('~1.0.0', '^1.1.0');
+			await expect(storeOf().locked('ping.pinged', pin)).rejects.toThrow(
+				'ping.pinged@1.0.0 pins the credential ping.token@^1.1.0, but n8n has ping.token@1.0.0 and ping.called@1.0.0 pins ping.token@~1.0.0. n8n keeps one version of each credential',
+			);
+			expect(storedTokens()).toEqual(['1.0.0']);
+		});
+
+		it('never takes a version below the installed one', async () => {
+			const pin = await setUp('^1.0.0', '~1.1.0', '1.2.0');
+			await expect(storeOf().locked('ping.pinged', pin)).rejects.toThrow(
+				'ping.pinged@1.0.0 pins the credential ping.token@~1.1.0, but n8n has ping.token@1.2.0.',
+			);
+			expect(storedTokens()).toEqual(['1.2.0']);
+		});
+
+		it('refuses to import a newer credential version that the range of a stored version does not take', async () => {
+			await admitVersions(instance.current.store, [
+				rowOf(tokenOf('1.0.0')),
+				rowOf({ ...packNative(pingCalled), credentials: { 'ping.token': '~1.0.0' } }),
+			]);
+			const dir = await mkdtemp(path.join(dirs.root, 'newer-'));
+			const manifestText = manifestTextOf(tokenOf('1.1.0'));
+			await addToStore(dir, [
+				{ manifestText, signatures: [signStoreManifest(manifestText, privateKey)] },
+			]);
+			await expect(
+				importContractStore(storeReader(storeFilesOfDir(dir)), instance.current.store, vettingKeys),
+			).rejects.toThrow(
+				'ping.token@1.1.0 becomes the version of the credential in use, but ping.called@1.0.0 pins ping.token@~1.0.0. n8n keeps one version of each credential',
+			);
+			expect(storedTokens()).toEqual(['1.0.0']);
+		});
+
+		it('refuses a pin whose credential has a name that the contract does not list', async () => {
+			await expect(
+				admitVersions(instance.current.store, [
+					rowOf({ ...tokenOf('1.0.0'), name: 'otherApi' }),
+					rowOf(packNative(pingCalled)),
+				]),
+			).rejects.toThrow(
+				'ping.called@1.0.0 pins the credential ping.token@^1.0.0, but n8n has no credential manifest of that id and range',
+			);
+		});
+
+		it('takes only the bundled version of a credential that n8n bundles', async () => {
+			const [bundledToken] = embedded.credentials().filter(({ id }) => id === 'notion.token');
+			if (!bundledToken) throw new Error('notion.token is not bundled');
+			const newer = { ...bundledToken, semver: '1.1.0' };
+			await expect(
+				admitVersions(instance.current.store, [
+					rowOf(newer),
+					rowOf({ ...packNative(pingCalled), credentials: { 'notion.token': '^1.1.0' } }),
+				]),
+			).rejects.toThrow(
+				`ping.called@1.0.0 pins the credential notion.token@^1.1.0, but n8n bundles notion.token@${bundledToken.semver}.`,
+			);
+		});
+	});
 });
 
 describe('syncContractStore', () => {
