@@ -55,7 +55,7 @@ export async function updateAgentsSettings(
  * Which chat backend a request targets — the value is the URL segment
  * itself. `'chat'` (default) is the agent builder's draft/test chat;
  * `'n8n-chat'` is the published n8n Chat channel (see `useAgentChatStream`'s
- * `capabilities` for what that channel cannot do).
+ * `capabilities` for the differences between channels).
  */
 export type AgentChatChannel = 'chat' | 'n8n-chat';
 
@@ -710,11 +710,12 @@ export const getAgentBackgroundJobs = async (
 	projectId: string,
 	agentId: string,
 	threadId: string,
+	channel: AgentChatChannel = 'chat',
 ): Promise<AgentBackgroundJobsResponse> => {
 	return await makeRestApiRequest<AgentBackgroundJobsResponse>(
 		context,
 		'GET',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks`,
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/background-tasks`,
 	);
 };
 
@@ -724,11 +725,12 @@ export const resumeAgentBackgroundJob = async (
 	agentId: string,
 	threadId: string,
 	payload: AgentChatResumeDto,
+	channel: AgentChatChannel = 'chat',
 ): Promise<void> => {
 	await makeRestApiRequest(
 		context,
 		'POST',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks/resume`,
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/background-tasks/resume`,
 		payload,
 	);
 };
@@ -738,11 +740,12 @@ export const stopAgentBackgroundJobs = async (
 	projectId: string,
 	agentId: string,
 	threadId: string,
+	channel: AgentChatChannel = 'chat',
 ): Promise<AgentBackgroundJobsResponse> => {
 	return await makeRestApiRequest<AgentBackgroundJobsResponse>(
 		context,
 		'POST',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks/stop`,
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/background-tasks/stop`,
 	);
 };
 

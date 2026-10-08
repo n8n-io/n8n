@@ -15,14 +15,17 @@ import {
 	logStreamingDestinationCommonFieldDocs,
 	logStreamingDestinationDocs,
 	logStreamingDestinationListFieldDocs,
+	logStreamingDestinationRequestReadOnlyFieldDocs,
 	logStreamingEventTypesFieldDocs,
 	logStreamingParameterFieldDocs,
 	logStreamingParameterListDocs,
 	logStreamingSentryFieldDocs,
 	logStreamingSyslogFieldDocs,
+	logStreamingTestResultFieldDocs,
 	logStreamingWebhookFieldDocs,
 	logStreamingWebhookOptionsFieldDocs,
 } from './log-streaming-public.openapi';
+import { readOnlyPublicSchema } from '../../schemas/read-only-public.schema';
 import { Z } from '../../zod-class';
 
 const logStreamingEventTypesPublicSchema = z
@@ -36,6 +39,11 @@ export class LogStreamingEventTypesPublicDto extends Z.class(
 ) {
 	static schema = logStreamingEventTypesPublicSchema;
 }
+
+export class LogStreamingTestResultPublicDto extends Z.class(
+	{ success: z.boolean().openapi(logStreamingTestResultFieldDocs.success) },
+	{ strict: true },
+) {}
 
 // Only the fields the log streaming UI exposes. Credentials and auth settings stay out, so a
 // read never returns them.
@@ -166,29 +174,34 @@ const publicSentrySchema = z.object({
 	dsn: sentryShape.dsn.openapi(sentryDocs.dsn),
 });
 
-export const PublicCreateDestinationDto = z.discriminatedUnion('type', [
-	publicWebhookSchema,
-	publicSyslogSchema,
-	publicSentrySchema,
-]);
-
-export type PublicCreateDestination = z.infer<typeof PublicCreateDestinationDto>;
-
-export type PublicDestinationType = PublicCreateDestination['type'];
-
 const idSchema = z.string().openapi(commonDocs.id);
 
-export const logStreamingDestinationPublicSchema = z
-	.discriminatedUnion('type', [
-		publicWebhookSchema.extend({ id: idSchema }),
-		publicSyslogSchema.extend({ id: idSchema }),
-		publicSentrySchema.extend({ id: idSchema }),
-	])
+const readOnlyIdSchema = readOnlyPublicSchema(logStreamingDestinationRequestReadOnlyFieldDocs.id);
+
+const destinationUnion = <Id extends z.ZodTypeAny>(id: Id) =>
+	z
+		.discriminatedUnion('type', [
+			publicWebhookSchema.extend({ id }),
+			publicSyslogSchema.extend({ id }),
+			publicSentrySchema.extend({ id }),
+		])
+		.openapi(logStreamingDestinationDocs);
+
+export const logStreamingDestinationPublicSchema = destinationUnion(idSchema);
+const createLogStreamingDestinationPublicSchema = destinationUnion(readOnlyIdSchema);
+const updateLogStreamingDestinationPublicSchema = z
+	.discriminatedUnion('type', [publicWebhookSchema, publicSyslogSchema, publicSentrySchema])
 	.openapi(logStreamingDestinationDocs);
 
 export type LogStreamingDestinationPublic = z.infer<typeof logStreamingDestinationPublicSchema>;
+export type CreateLogStreamingDestinationPublic = z.infer<
+	typeof createLogStreamingDestinationPublicSchema
+>;
+export type UpdateLogStreamingDestinationPublic = z.infer<
+	typeof updateLogStreamingDestinationPublicSchema
+>;
+export type LogStreamingDestinationPublicType = LogStreamingDestinationPublic['type'];
 
-/** A discriminated union has no object shape, so this cannot extend `Z.class`. */
 export class LogStreamingDestinationPublicDto {
 	static schema = logStreamingDestinationPublicSchema;
 
@@ -200,6 +213,32 @@ export class LogStreamingDestinationPublicDto {
 		return logStreamingDestinationPublicSchema.parse(data);
 	}
 }
+
+export type CreateLogStreamingDestinationPublicDto = CreateLogStreamingDestinationPublic;
+export const CreateLogStreamingDestinationPublicDto = class {
+	static schema = createLogStreamingDestinationPublicSchema;
+
+	static safeParse(data: unknown) {
+		return createLogStreamingDestinationPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown): CreateLogStreamingDestinationPublic {
+		return createLogStreamingDestinationPublicSchema.parse(data);
+	}
+};
+
+export type UpdateLogStreamingDestinationPublicDto = UpdateLogStreamingDestinationPublic;
+export const UpdateLogStreamingDestinationPublicDto = class {
+	static schema = updateLogStreamingDestinationPublicSchema;
+
+	static safeParse(data: unknown) {
+		return updateLogStreamingDestinationPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown): UpdateLogStreamingDestinationPublic {
+		return updateLogStreamingDestinationPublicSchema.parse(data);
+	}
+};
 
 const logStreamingDestinationListPublicSchema = z
 	.object({

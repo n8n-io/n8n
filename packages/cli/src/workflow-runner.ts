@@ -17,10 +17,10 @@ import {
 	InstanceSettings,
 	StorageConfig,
 	WorkflowExecute,
-	WorkflowHasIssuesError,
 } from 'n8n-core';
 import type {
 	ExecutionError,
+	ExecutionStorageLocation,
 	IExecuteResponsePromiseData,
 	INode,
 	IPinData,
@@ -135,6 +135,7 @@ export class WorkflowRunner {
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
 		hooks?: ExecutionLifecycleHooks,
+		storedAt: ExecutionStorageLocation = this.storageConfig.modeTag,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -311,7 +312,7 @@ export class WorkflowRunner {
 			startedAt,
 			stoppedAt: new Date(),
 			status: error instanceof MaxStalledCountError ? 'crashed' : 'error',
-			storedAt: this.storageConfig.modeTag,
+			storedAt,
 		};
 
 		// Remove from active execution with empty data. That will
@@ -472,7 +473,7 @@ export class WorkflowRunner {
 					executionId,
 					data,
 					shouldReloadStaticData,
-					existingExecution?.executionId,
+					existingExecution,
 					executionWorkflow,
 				);
 			}
@@ -557,7 +558,7 @@ export class WorkflowRunner {
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
-		restartExecutionId?: string,
+		existingExecution?: ResumableExecution,
 		executionWorkflow?: Workflow,
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
@@ -599,12 +600,14 @@ export class WorkflowRunner {
 				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 			workflowSettings,
 		});
-		additionalData.restartExecutionId = restartExecutionId;
+		additionalData.restartExecutionId = existingExecution?.executionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
 		additionalData.encryptedRunnerIdentity = data.encryptedRunnerIdentity;
 
 		additionalData.executionId = executionId;
 		additionalData.evaluationRunId = data.evaluationRunId;
+
+		const storedAt = existingExecution?.storedAt ?? this.storageConfig.modeTag;
 
 		this.logger.debug(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
@@ -648,6 +651,7 @@ export class WorkflowRunner {
 					additionalData,
 					data.executionMode,
 					data.executionData,
+					storedAt,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else {
@@ -705,20 +709,17 @@ export class WorkflowRunner {
 							data.executionMode,
 							executionId,
 							additionalData.hooks,
+							storedAt,
 						),
 				);
 		} catch (error) {
-			if (error instanceof WorkflowHasIssuesError) {
-				await this.failExecution(data, executionId, error);
-				return;
-			}
-
 			await this.processError(
 				error,
 				new Date(),
 				data.executionMode,
 				executionId,
 				additionalData.hooks,
+				storedAt,
 			);
 
 			throw error;

@@ -52,6 +52,7 @@ export {
 export type { DiscoverDataPublic } from './discover/discover-public.dto';
 
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
+export { UpdateMigrationFindingStatusRequestDto } from './breaking-changes/update-migration-finding-status-request.dto';
 
 export {
 	AuditPublicDto,
@@ -337,10 +338,13 @@ export {
 	LogStreamingDestinationListPublicDto,
 	LogStreamingDestinationPublicDto,
 	LogStreamingEventTypesPublicDto,
-	PublicCreateDestinationDto,
+	LogStreamingTestResultPublicDto,
+	CreateLogStreamingDestinationPublicDto,
+	UpdateLogStreamingDestinationPublicDto,
 	type LogStreamingDestinationPublic,
-	type PublicCreateDestination,
-	type PublicDestinationType,
+	type CreateLogStreamingDestinationPublic,
+	type UpdateLogStreamingDestinationPublic,
+	type LogStreamingDestinationPublicType,
 } from './log-streaming/log-streaming-public.dto';
 
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';

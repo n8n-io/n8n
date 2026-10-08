@@ -11,7 +11,6 @@ import {
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
 
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 

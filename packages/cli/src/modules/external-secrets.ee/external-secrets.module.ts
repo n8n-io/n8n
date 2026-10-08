@@ -22,6 +22,11 @@ export class ExternalSecretsModule implements ModuleInterface {
 		externalSecretsProxy.setManager(externalSecretsManager);
 	}
 
+	async systemTasks() {
+		const { ExternalSecretsRefreshTask } = await import('./external-secrets-refresh.task.js');
+		return [ExternalSecretsRefreshTask];
+	}
+
 	async settings() {
 		const { ExternalSecretsConfig } = await import('./external-secrets.config.js');
 		const config = Container.get(ExternalSecretsConfig);
