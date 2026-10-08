@@ -521,6 +521,19 @@ describe('serverToCredentialDescription', () => {
 		expect(serverToCredentialDescription(unsupportedServer, isKnownCredentialType)).toBeNull();
 	});
 
+	it('returns a hidden Gateway credits description for an n8n Connect server', () => {
+		const description = serverToCredentialDescription(
+			{ ...notionMockServer, authType: '__aiGatewayManaged' },
+			isKnownCredentialType,
+		);
+
+		expect(description).toMatchObject({
+			name: 'notionMcpGatewayApi',
+			extends: ['mcpGatewayApi'],
+			hidden: true,
+		});
+	});
+
 	it('does not create a synthetic credential for usesCredentials', () => {
 		expect(
 			serverToCredentialDescription(githubUsesCredentialsMockServer, isKnownCredentialType),

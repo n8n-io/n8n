@@ -2392,6 +2392,7 @@
 	"aiGateway.picker.readyToRun": "Ready to run",
 	"aiGateway.picker.useOwnCredential": "Use my own credential",
 	"aiGateway.picker.bringYourOwnKey": "Bring your own API key",
+	"aiGateway.picker.gatewayCreditsOnly": "Currently available only with Gateway credits. Ready to run, no setup required.",
 	"aiGateway.credentialMode.sectionLabel": "Credential",
 	"aiGateway.credentialMode.n8nConnect.title": "Gateway credits",
 	"aiGateway.credentialMode.n8nConnect.subtitle": "No API key required",

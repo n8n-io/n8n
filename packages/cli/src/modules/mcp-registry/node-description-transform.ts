@@ -136,6 +136,8 @@ function serverToGatewayCredentialDescription(server: McpRegistryServer): ICrede
 		icon: `node:${MCP_REGISTRY_PACKAGE_NAME}.${getMcpRegistryNodeTypeName(server)}`,
 		displayName: `${server.title} MCP Gateway Credits`,
 		extends: [MCP_BASE_GATEWAY_CREDENTIAL_NAME],
+		// `hidden` does not pass down through `extends`, so set it again here.
+		hidden: true,
 		properties: buildDomainRestrictionProperties(remote.endpointHostname),
 	};
 }
