@@ -12,13 +12,13 @@ export class CreateSelfHealingResultTable1791378361769 implements ReversibleMigr
 					.varchar(16)
 					.notNull.withEnumCheck(['fix_ready', 'needs_you', 'could_not_fix'])
 					.comment('Accepted investigation outcome, separate from review closure'),
-				column('summary').varchar(2000).notNull,
+				column('summary').text.notNull,
 				column('report').text.notNull.comment(
 					'Saved report, independent of execution and chat data',
 				),
 				column('completedAt').timestampTimezone().notNull,
 				column('executionId')
-					.varchar(255)
+					.varchar(36)
 					.notNull.comment(
 						'Execution reference retained after pruning; also supports the external v2 data plane',
 					),

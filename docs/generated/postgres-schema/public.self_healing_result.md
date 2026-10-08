@@ -9,13 +9,13 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | dismissedAt | timestamp(3) with time zone |  | true |  |  |  |
 | dismissedById | uuid |  | true |  | [public.user](public.user.md) | Reviewer who dismissed the result |
-| executionId | varchar(255) |  | false |  |  | Execution reference retained after pruning; also supports the external v2 data plane |
+| executionId | varchar(36) |  | false |  |  | Execution reference retained after pruning; also supports the external v2 data plane |
 | id | varchar(36) |  | false |  |  |  |
 | outcome | varchar(16) |  | false |  |  | Accepted investigation outcome, separate from review closure |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Original workflow owner project |
 | report | text |  | false |  |  | Saved report, independent of execution and chat data |
 | suggestionId | varchar(36) |  | true |  | [public.workflow_suggestion](public.workflow_suggestion.md) | Optional isolated workflow suggestion |
-| summary | varchar(2000) |  | false |  |  |  |
+| summary | text |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | usage | json |  | false |  |  | Recorded runtime and accounting usage; null measurements mean unknown |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) | Investigated workflow |
@@ -72,13 +72,13 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone dismissedAt
   uuid dismissedById FK
-  varchar_255_ executionId
+  varchar_36_ executionId
   varchar_36_ id
   varchar_16_ outcome
   varchar_36_ projectId FK
   text report
   varchar_36_ suggestionId FK
-  varchar_2000_ summary
+  text summary
   timestamp_3__with_time_zone updatedAt
   json usage
   varchar_36_ workflowId FK

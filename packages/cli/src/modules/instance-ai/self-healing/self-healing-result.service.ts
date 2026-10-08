@@ -30,7 +30,7 @@ const referenceSchema = z.object({
 	workflowId: z.string().min(1).max(36),
 	projectId: z.string().min(1).max(36),
 	backgroundUserId: z.string().uuid(),
-	executionId: z.string().min(1).max(64),
+	executionId: z.string().min(1).max(36),
 	completedAt: z
 		.date()
 		.optional()

@@ -41,7 +41,7 @@ export class SelfHealingResult extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	outcome: SelfHealingResultOutcome;
 
-	@Column({ type: 'varchar', length: 2000 })
+	@Column({ type: 'text' })
 	summary: string;
 
 	@Column({ type: 'text' })
@@ -51,7 +51,7 @@ export class SelfHealingResult extends WithTimestampsAndStringId {
 	completedAt: Date;
 
 	// Execution references can outlive v1 pruning and can point to the v2 data plane.
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: 36 })
 	executionId: string;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })

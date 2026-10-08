@@ -20,7 +20,7 @@ export type SelfHealingResultUsage = z.infer<typeof selfHealingResultUsageSchema
 export const selfHealingResultContentSchema = z
 	.object({
 		outcome: selfHealingResultOutcomeSchema,
-		summary: z.string().trim().min(1).max(2000),
+		summary: z.string().trim().min(1),
 		report: z.string().trim().min(1).max(50_000),
 		usage: selfHealingResultUsageSchema,
 	})

@@ -381,13 +381,13 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ dismissedAt
   varchar dismissedById FK
-  varchar_255_ executionId
+  varchar_36_ executionId
   varchar_36_ id PK
   varchar_16_ outcome
   varchar_36_ projectId FK
   TEXT report
   varchar_36_ suggestionId FK
-  varchar_2000_ summary
+  TEXT summary
   datetime_3_ updatedAt
   TEXT usage
   varchar_36_ workflowId FK
