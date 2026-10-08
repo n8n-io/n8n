@@ -558,7 +558,7 @@ onBeforeUnmount(() => {
 				phaseLabels[status?.phase ?? 'not_started']
 			}}</span>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				size="xsmall"
 				:disabled="!canExecute || busy || preparing || Boolean(session?.archivedAt)"
 				@click="act({ action: 'prepare' })"
@@ -567,7 +567,7 @@ onBeforeUnmount(() => {
 		</div>
 		<div v-if="session?.archivedAt" :class="$style.archiveBanner">
 			<N8nText size="small">{{ i18n.baseText('agents.coding.sessions.archivedHint') }}</N8nText
-			><N8nButton size="small" variant="subtle" :disabled="!canExecute" @click="emit('reopen')">{{
+			><N8nButton size="small" variant="outline" :disabled="!canExecute" @click="emit('reopen')">{{
 				i18n.baseText('agents.coding.sessions.reopen')
 			}}</N8nButton>
 		</div>
@@ -777,7 +777,7 @@ onBeforeUnmount(() => {
 							@click="act({ action: 'start' })"
 							>{{ runLabel }}</N8nButton
 						>
-						<N8nButton v-else variant="subtle" :disabled="!canExecute" @click="loadPreview">{{
+						<N8nButton v-else variant="outline" :disabled="!canExecute" @click="loadPreview">{{
 							i18n.baseText('agents.coding.app.show')
 						}}</N8nButton>
 					</div>
@@ -798,7 +798,7 @@ onBeforeUnmount(() => {
 						</N8nTooltip>
 						<template v-if="logsOpen">
 							<N8nButton
-								:variant="logStream === 'setup' ? 'subtle' : 'ghost'"
+								:variant="logStream === 'setup' ? 'outline' : 'ghost'"
 								size="xsmall"
 								:aria-pressed="logStream === 'setup'"
 								@click="logStream = 'setup'"
@@ -806,7 +806,7 @@ onBeforeUnmount(() => {
 							>
 							<N8nTooltip :content="appLabels[status?.app ?? 'stopped']" as-child>
 								<N8nButton
-									:variant="logStream === 'app' ? 'subtle' : 'ghost'"
+									:variant="logStream === 'app' ? 'outline' : 'ghost'"
 									size="xsmall"
 									:aria-label="appLabels[status?.app ?? 'stopped']"
 									:aria-pressed="logStream === 'app'"
@@ -818,7 +818,7 @@ onBeforeUnmount(() => {
 							</N8nTooltip>
 							<N8nTooltip :content="checkLabels[status?.check ?? 'not_started']" as-child>
 								<N8nButton
-									:variant="logStream === 'check' ? 'subtle' : 'ghost'"
+									:variant="logStream === 'check' ? 'outline' : 'ghost'"
 									size="xsmall"
 									:aria-label="checkLabels[status?.check ?? 'not_started']"
 									:aria-pressed="logStream === 'check'"
@@ -951,14 +951,14 @@ onBeforeUnmount(() => {
 							@click="toggleFiles"
 						/>
 						<N8nButton
-							:variant="saved.treeTab === 'files' ? 'subtle' : 'ghost'"
+							:variant="saved.treeTab === 'files' ? 'outline' : 'ghost'"
 							size="xsmall"
 							:aria-pressed="saved.treeTab === 'files'"
 							@click="saved.treeTab = 'files'"
 							>{{ i18n.baseText('agents.coding.allFiles') }}</N8nButton
 						>
 						<N8nButton
-							:variant="saved.treeTab === 'changes' ? 'subtle' : 'ghost'"
+							:variant="saved.treeTab === 'changes' ? 'outline' : 'ghost'"
 							size="xsmall"
 							:aria-pressed="saved.treeTab === 'changes'"
 							@click="saved.treeTab = 'changes'"
@@ -1096,7 +1096,7 @@ onBeforeUnmount(() => {
 								size="small"
 							/>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:disabled="reviewDisabled || !commitMessage.trim() || !status.uncommittedChanges"
 								@click="act({ action: 'commit', message: commitMessage.trim() })"

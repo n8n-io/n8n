@@ -182,13 +182,13 @@ async function save() {
 				>
 				<N8nButton
 					v-if="config"
-					variant="subtle"
+					variant="outline"
 					size="small"
 					:disabled="canExecute === false || busy"
 					@click="emit('open')"
 					>{{ i18n.baseText('agents.coding.open') }}</N8nButton
 				>
-				<N8nButton v-else variant="subtle" size="small" :disabled="disabled" @click="configure">{{
+				<N8nButton v-else variant="outline" size="small" :disabled="disabled" @click="configure">{{
 					i18n.baseText('agents.coding.setup')
 				}}</N8nButton>
 			</div>
