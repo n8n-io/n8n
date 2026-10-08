@@ -34,7 +34,7 @@ import {
 	isAgentModelProvider,
 	type AgentModelsByProvider,
 } from '../model-providers';
-import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
+import { PROVIDER_CAPABILITIES, promptCachingCapabilityForModel } from '../provider-capabilities';
 import type { AgentJsonConfig } from '../types';
 import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
 import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
@@ -257,7 +257,7 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 		'config' in webSearchChanges ? webSearchChanges.config : props.config?.config;
 	const promptCachingChanges = normalizePromptCachingForModelChange(
 		webSearchConfig,
-		capabilities?.promptCaching ?? false,
+		promptCachingCapabilityForModel(model),
 	);
 	const normalizedConfig =
 		'config' in promptCachingChanges ? promptCachingChanges.config : webSearchConfig;

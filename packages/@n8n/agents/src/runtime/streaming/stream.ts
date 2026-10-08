@@ -17,6 +17,35 @@ function getOpenAiCachedPromptTokens(providerMetadata: Record<string, unknown> |
 		: undefined;
 }
 
+/**
+ * Partition prompt tokens into no-cache, cache-read, and cache-write tiers.
+ *
+ * OpenRouter's SDK sets `noCache` to `promptTokens - cacheRead` and also
+ * reports `cacheWrite`. Those write tokens sit inside `noCache`. When
+ * `noCache + cacheRead` already equals the prompt total, subtract
+ * `cacheWrite` from `noCache` so `computeCost()` bills each token once.
+ * Leave every other shape unchanged, including Anthropic details that do
+ * not partition the prompt total this way.
+ */
+function partitionInputTokenDetails(
+	promptTokens: number,
+	noCache: number | undefined,
+	cacheRead: number | undefined,
+	cacheWrite: number | undefined,
+): NonNullable<TokenUsage['inputTokenDetails']> {
+	let uncached = noCache ?? 0;
+	const read = cacheRead ?? 0;
+	const write = cacheWrite ?? 0;
+	if (write > 0 && uncached + read === promptTokens) {
+		uncached = Math.max(uncached - write, 0);
+	}
+	return {
+		...(uncached > 0 && { noCache: uncached }),
+		...(read > 0 && { cacheRead: read }),
+		...(write > 0 && { cacheWrite: write }),
+	};
+}
+
 /** Map AI SDK v6 LanguageModelUsage to our TokenUsage type. */
 export function toTokenUsage(
 	usage:
@@ -46,11 +75,12 @@ export function toTokenUsage(
 	const cacheRead = usage.inputTokenDetails?.cacheReadTokens;
 	const cacheWrite = usage.inputTokenDetails?.cacheWriteTokens;
 	if (noCache || cacheRead || cacheWrite) {
-		result.inputTokenDetails = {
-			...(noCache && { noCache }),
-			...(cacheRead && { cacheRead }),
-			...(cacheWrite && { cacheWrite }),
-		};
+		result.inputTokenDetails = partitionInputTokenDetails(
+			result.promptTokens,
+			noCache,
+			cacheRead,
+			cacheWrite,
+		);
 	} else {
 		const openaiCacheRead = getOpenAiCachedPromptTokens(providerMetadata);
 		if (openaiCacheRead) {

@@ -7672,6 +7672,48 @@ describe('promptCaching', () => {
 		});
 	});
 
+	it('applies Anthropic cache breakpoints to Claude routed through OpenRouter', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openrouter/anthropic/claude-opus-5.5',
+			instructions: 'You are a test assistant.',
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const systemMsg = callArgs.instructions as Record<string, unknown>;
+		expect(systemMsg.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		expect(messages[messages.length - 1].providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	it('sends config.reasoning on the OpenRouter request body', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openrouter/anthropic/claude-opus-5.5',
+			instructions: 'You are a test assistant.',
+			reasoning: 'high',
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		expect(callArgs.reasoning).toBe('high');
+		expect(callArgs.providerOptions).toEqual({
+			openrouter: { reasoning: { effort: 'high' } },
+		});
+	});
+
 	it('defaults OpenAI to 24h retention with an auto-generated promptCacheKey', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 

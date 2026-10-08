@@ -55,10 +55,16 @@ function isEnabledForProvider(
 	return config[provider] !== false;
 }
 
-/** Providers that speak the Anthropic Messages API (including Vertex Claude). */
+/**
+ * Providers that speak the Anthropic Messages API, including Vertex Claude and
+ * Claude routed through OpenRouter (`openrouter/anthropic/…`). OpenRouter
+ * translates Chat Completions `cache_control` into Anthropic breakpoints.
+ */
 export function isAnthropicMessagesProvider(modelId: string): boolean {
 	const provider = getProviderPrefix(modelId);
-	return provider === 'anthropic' || provider === 'google-vertex-anthropic';
+	if (provider === 'anthropic' || provider === 'google-vertex-anthropic') return true;
+	if (provider !== 'openrouter') return false;
+	return getProviderPrefix(modelId.slice(provider.length + 1)) === 'anthropic';
 }
 
 /**

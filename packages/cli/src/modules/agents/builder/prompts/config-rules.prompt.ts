@@ -52,12 +52,14 @@ export function getConfigRulesSection(): string {
 - Sub-agent configuration lives at top level under \`subAgents\`. Load
   \`agent-builder-sub-agents\` before adding refs or changing
   \`subAgents.maxChildren\`.
-- For OpenAI and Anthropic models, always include
-  \`config.promptCaching: { "enabled": true }\` — this is mandatory and must
-  never be disabled, even if the user asks. Omit \`config.promptCaching\`
-  entirely for every other provider. For Anthropic only, you may set
+- For OpenAI models, Anthropic models, and Anthropic models routed through
+  OpenRouter (\`openrouter/anthropic/…\`), always include
+  \`config.promptCaching: { "enabled": true }\`. This is mandatory. Never
+  disable it, even if the user asks. Omit \`config.promptCaching\` for every
+  other model, including other OpenRouter routes. For Anthropic and
+  \`openrouter/anthropic/…\` only, you may set
   \`config.promptCaching.anthropic.ttl\` to \`"5m"\` or \`"1h"\` (default
-  \`"1h"\`) when the user asks to tune cache duration; OpenAI has no
+  \`"1h"\`) when the user asks to tune cache duration. OpenAI has no
   sub-config.
 - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
 - Fresh agents need real \`instructions\` before config is written. \`model\`

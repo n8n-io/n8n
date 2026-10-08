@@ -510,6 +510,24 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
 	});
 
+	it('shows the Anthropic ttl dropdown for Claude routed through OpenRouter', () => {
+		const config = makeConfig({ model: 'openrouter/anthropic/claude-opus-5.5' });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(true);
+	});
+
+	it('hides the prompt-caching row for a non-Anthropic OpenRouter model', () => {
+		const config = makeConfig({ model: 'openrouter/openai/gpt-4o' });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
+	});
+
 	it('hides the prompt-caching row entirely for providers that do not support it', () => {
 		const config = makeConfig({ model: 'google/gemini-pro' });
 		const wrapper = mount(AgentAdvancedPanel, {

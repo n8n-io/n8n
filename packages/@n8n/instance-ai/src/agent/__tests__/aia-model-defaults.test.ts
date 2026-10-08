@@ -8,6 +8,17 @@ describe('resolveAIAPromptCaching', () => {
 		});
 	});
 
+	it('returns a 5m Anthropic TTL for Claude routed through OpenRouter', () => {
+		expect(resolveAIAPromptCaching('openrouter/anthropic/claude-opus-5.5')).toEqual({
+			enabled: true,
+			anthropic: { ttl: '5m' },
+		});
+	});
+
+	it('returns undefined for a non-Anthropic OpenRouter model', () => {
+		expect(resolveAIAPromptCaching('openrouter/openai/gpt-4o')).toBeUndefined();
+	});
+
 	it('returns a 5m Anthropic TTL for Vertex Anthropic models', () => {
 		expect(resolveAIAPromptCaching('google-vertex-anthropic/claude-opus-4-8')).toEqual({
 			enabled: true,

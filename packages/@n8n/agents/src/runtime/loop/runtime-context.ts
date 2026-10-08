@@ -379,6 +379,18 @@ export class RuntimeContextBuilder {
 	}
 
 	/**
+	 * OpenRouter reads `reasoning` from the request body, not from the AI SDK
+	 * `reasoning` call option. Forward `config.reasoning` as
+	 * `providerOptions.openrouter.reasoning.effort`.
+	 */
+	private buildOpenRouterReasoningOptions(): ProviderOptions | undefined {
+		if (getProviderPrefix(this.modelId) !== 'openrouter' || !this.config.reasoning) {
+			return undefined;
+		}
+		return { openrouter: { reasoning: { effort: this.config.reasoning } } };
+	}
+
+	/**
 	 * Merge thinking providerOptions, generated OpenAI cache options, and
 	 * caller-supplied providerOptions. Per-provider keys are merged shallowly
 	 * (later wins) so `.thinking()` + prompt caching + caller overrides coexist.
@@ -387,10 +399,11 @@ export class RuntimeContextBuilder {
 		runProviderOptions?: ProviderOptions,
 	): Record<string, Record<string, unknown>> | undefined {
 		const thinkingOpts = this.buildThinkingProviderOptions() as ProviderOptions | undefined;
+		const openRouterReasoning = this.buildOpenRouterReasoningOptions();
 		const cacheOpts = buildCallPromptCacheOptions(this.config.promptCaching, this.modelId, {
 			agentName: this.config.name,
 			instructions: this.config.instructions,
 		});
-		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions);
+		return mergeProviderOptions(thinkingOpts, openRouterReasoning, cacheOpts, runProviderOptions);
 	}
 }

@@ -149,6 +149,12 @@ export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
 }
 
+/** Absent base URL uses the provider default, which is the official OpenRouter API. */
+function isOfficialOpenRouterBaseUrl(baseURL: string | undefined): boolean {
+	if (!baseURL) return true;
+	return baseURL.replace(/\/+$/, '') === 'https://openrouter.ai/api/v1';
+}
+
 /** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
 export function supportsSplitSystemMessages(model: ModelConfig): boolean {
 	switch (getModelIdString(model).split('/')[0]) {
@@ -316,7 +322,16 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		build: (creds, model, fetch) => {
 			const { createOpenRouter } =
 				require('@openrouter/ai-sdk-provider') as typeof import('@openrouter/ai-sdk-provider');
-			return createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model);
+			// `createOpenRouter()` defaults to `compatible`, which omits
+			// `stream_options`. The official API needs `strict` so streamed
+			// responses include cache read and cache write usage.
+			const compatibility = isOfficialOpenRouterBaseUrl(creds.baseURL) ? 'strict' : 'compatible';
+			return createOpenRouter({
+				apiKey: creds.apiKey,
+				baseURL: creds.baseURL,
+				fetch,
+				compatibility,
+			})(model);
 		},
 	},
 	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {}),

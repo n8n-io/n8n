@@ -13,7 +13,6 @@ import {
 } from '@n8n/agents/tool';
 import {
 	applyNativeWebSearchDefaultOn,
-	getProviderPrefix,
 	rejectIfDynamicSelectorUsesFromAi,
 	rejectIfEmptyInstructions,
 	rejectIfUnsupportedNativeWebSearch,
@@ -23,7 +22,7 @@ import {
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
-	PROVIDER_CAPABILITIES,
+	promptCachingCapabilityForModel,
 	resolvePromptCaching,
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
@@ -246,16 +245,14 @@ function parseBuilderWriteConfig(incoming: unknown, currentConfig: AgentJsonConf
 }
 
 /**
- * Prompt caching is mandatory for OpenAI/Anthropic: this write-path
- * normalizer guarantees `config.promptCaching` is force-enabled for those
- * providers (the user cannot disable it, even if the LLM wrote
- * `{ enabled: false }`), preserves an explicit Anthropic TTL, and strips the
- * field entirely for every other provider — regardless of what the builder
- * LLM wrote.
+ * Prompt caching is mandatory for OpenAI, Anthropic, and Anthropic models
+ * routed through OpenRouter. This write-path normalizer force-enables
+ * `config.promptCaching` for those models (the user cannot disable it, even
+ * if the LLM wrote `{ enabled: false }`), preserves an explicit Anthropic
+ * TTL, and strips the field for every other model.
  */
 function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
-	const providerPrefix = getProviderPrefix(config.model);
-	const capability = PROVIDER_CAPABILITIES[providerPrefix]?.promptCaching ?? false;
+	const capability = promptCachingCapabilityForModel(config.model);
 	const resolved = resolvePromptCaching(config.config?.promptCaching, capability);
 
 	if (!resolved) {

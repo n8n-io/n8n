@@ -1,19 +1,19 @@
 import type { ModelConfig, PromptCachingConfig, ReasoningLevel } from '@n8n/agents';
-import { PROVIDER_CAPABILITIES, resolvePromptCaching } from '@n8n/api-types';
+import { promptCachingCapabilityForModel, resolvePromptCaching } from '@n8n/api-types';
 
-import { resolveModelIdString, resolveModelProvider } from './model-config-identity';
+import { resolveModelIdString } from './model-config-identity';
 import { resolveCustomModelExperimentDefaults } from '../utils/custom-model-defaults';
 
 const DEFAULT_AIA_REASONING: ReasoningLevel = 'medium';
 const AIA_ANTHROPIC_PROMPT_CACHING = { enabled: true, anthropic: { ttl: '5m' as const } };
 
 export function resolveAIAPromptCaching(model: ModelConfig): PromptCachingConfig | undefined {
-	const provider = resolveModelProvider(model);
-	if (!provider) return undefined;
+	const modelId = resolveModelIdString(model);
+	if (!modelId) return undefined;
 
 	return resolvePromptCaching(
 		AIA_ANTHROPIC_PROMPT_CACHING,
-		PROVIDER_CAPABILITIES[provider]?.promptCaching ?? false,
+		promptCachingCapabilityForModel(modelId),
 	);
 }
 

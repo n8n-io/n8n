@@ -110,6 +110,20 @@ describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 		expect(buildInstructionPromptCacheOptions({ enabled: true }, 'openai/gpt-5.1')).toBeUndefined();
 	});
 
+	it('applies the Anthropic breakpoint to Claude routed through OpenRouter', () => {
+		expect(
+			buildInstructionPromptCacheOptions({ enabled: true }, 'openrouter/anthropic/claude-opus-5.5'),
+		).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	it('returns undefined for a non-Anthropic OpenRouter model', () => {
+		expect(
+			buildInstructionPromptCacheOptions({ enabled: true }, 'openrouter/openai/gpt-4o'),
+		).toBeUndefined();
+	});
+
 	it('returns undefined when config is disabled', () => {
 		expect(
 			buildInstructionPromptCacheOptions({ enabled: false }, 'anthropic/claude-sonnet-4-5'),
@@ -236,6 +250,12 @@ describe('getEffectiveAnthropicCacheTtl', () => {
 
 	it('returns undefined for a non-Anthropic model even when enabled', () => {
 		expect(getEffectiveAnthropicCacheTtl({ enabled: true }, 'openai/gpt-5.1')).toBeUndefined();
+	});
+
+	it('returns the Anthropic TTL for Claude routed through OpenRouter', () => {
+		expect(
+			getEffectiveAnthropicCacheTtl({ enabled: true }, 'openrouter/anthropic/claude-opus-5.5'),
+		).toBe('1h');
 	});
 });
 

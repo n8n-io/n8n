@@ -1333,6 +1333,89 @@ describe('AgentsBuilderToolsService', () => {
 				);
 			});
 
+			it('write_config keeps prompt caching for Claude routed through OpenRouter', async () => {
+				const { service, agentsService } = makeService();
+				const currentConfig = { ...baseConfig, integrations: [] };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					model: 'openrouter/anthropic/claude-opus-5.5',
+					credential: 'OpenRouter Key',
+					config: { webSearch: { enabled: false } },
+				};
+				const normalizedConfig = {
+					...updatedConfig,
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: true } },
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					configHash: 'config-hash',
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+					user,
+					expect.objectContaining({
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						modifiedBy: 'builder',
+					}),
+				);
+			});
+
+			it('write_config strips prompt caching for a non-Anthropic OpenRouter model', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					integrations: [],
+					config: { promptCaching: { enabled: true } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					model: 'openrouter/openai/gpt-4o',
+					credential: 'OpenRouter Key',
+				};
+				const { config: _droppedConfig, ...normalizedConfig } = updatedConfig;
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					configHash: 'config-hash',
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+					user,
+					expect.objectContaining({
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						modifiedBy: 'builder',
+					}),
+				);
+			});
+
 			it('write_config strips prompt caching when switching to an unsupported provider', async () => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {

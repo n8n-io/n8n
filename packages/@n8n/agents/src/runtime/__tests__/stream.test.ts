@@ -26,6 +26,25 @@ describe('toTokenUsage — input token details', () => {
 		});
 	});
 
+	it('removes cache-write tokens that OpenRouter also left inside noCache', () => {
+		const result = toTokenUsage({
+			inputTokens: 100,
+			outputTokens: 10,
+			totalTokens: 110,
+			inputTokenDetails: {
+				noCacheTokens: 80,
+				cacheReadTokens: 20,
+				cacheWriteTokens: 30,
+			},
+		});
+
+		expect(result?.inputTokenDetails).toEqual({
+			noCache: 50,
+			cacheRead: 20,
+			cacheWrite: 30,
+		});
+	});
+
 	it('includes noCache even when cache tokens are absent', () => {
 		const result = toTokenUsage({
 			inputTokens: 100,

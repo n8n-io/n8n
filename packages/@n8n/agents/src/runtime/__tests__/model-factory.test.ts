@@ -6,6 +6,7 @@ import { forgetEndpointApiStyles } from '../model/openai-api-style';
 type ProviderOpts = {
 	apiKey?: string;
 	baseURL?: string;
+	compatibility?: 'strict' | 'compatible';
 	fetch?: typeof globalThis.fetch;
 	headers?: Record<string, string>;
 	includeUsage?: boolean;
@@ -179,6 +180,7 @@ vi.mock('@openrouter/ai-sdk-provider', () => ({
 		modelId: model,
 		apiKey: opts?.apiKey,
 		baseURL: opts?.baseURL,
+		compatibility: opts?.compatibility,
 		fetch: opts?.fetch,
 		specificationVersion: 'v3',
 	}),
@@ -553,6 +555,17 @@ describe('createModel', () => {
 			expect(model.provider).toBe('openrouter');
 			expect(model.modelId).toBe('openai/gpt-4o');
 			expect(model.apiKey).toBe('or-test');
+			expect(model.compatibility).toBe('strict');
+		});
+
+		it('should use compatible mode for a custom OpenRouter base URL', () => {
+			const model = createModel({
+				id: 'openrouter/openai/gpt-4o',
+				apiKey: 'or-test',
+				baseURL: 'https://proxy.example/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.compatibility).toBe('compatible');
+			expect(model.baseURL).toBe('https://proxy.example/v1');
 		});
 
 		it('should create model for nvidia with SDK defaults for usage and structured outputs', () => {

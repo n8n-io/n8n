@@ -13,6 +13,7 @@ import type { AgentJsonConfig } from '../types';
 import {
 	PROVIDER_CAPABILITIES,
 	ANTHROPIC_CACHE_TTL_OPTIONS,
+	promptCachingCapabilityForModel,
 	type AnthropicCacheTtl,
 } from '../provider-capabilities';
 import { modelToString, parseModelString, parseProvider } from '../utils/model-string';
@@ -58,7 +59,13 @@ const reasoningHintKey = computed(() => {
 	}
 	return 'agents.builder.advanced.reasoning.hint';
 });
-const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
+const capabilities = computed(() => {
+	const base = PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES;
+	return {
+		...base,
+		promptCaching: promptCachingCapabilityForModel(modelToString(props.config?.model)),
+	};
+});
 
 watch(
 	() => props.projectId,

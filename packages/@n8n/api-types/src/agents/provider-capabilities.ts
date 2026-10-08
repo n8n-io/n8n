@@ -206,6 +206,34 @@ export type ReasoningEffort = (typeof REASONING_EFFORT_OPTIONS)[number];
 export const ANTHROPIC_CACHE_TTL_OPTIONS = ['5m', '1h'] as const;
 export type AnthropicCacheTtl = (typeof ANTHROPIC_CACHE_TTL_OPTIONS)[number];
 
+function providerPrefix(modelId: string): string {
+	const slashIdx = modelId.indexOf('/');
+	return slashIdx === -1 ? '' : modelId.slice(0, slashIdx);
+}
+
+/**
+ * Claude on Anthropic, Vertex, or OpenRouter (`openrouter/anthropic/…`).
+ * OpenRouter keeps the upstream provider as the next path segment.
+ */
+export function isAnthropicMessagesModel(modelId: string): boolean {
+	const provider = providerPrefix(modelId);
+	if (provider === 'anthropic' || provider === 'google-vertex-anthropic') return true;
+	if (provider !== 'openrouter') return false;
+	return providerPrefix(modelId.slice(provider.length + 1)) === 'anthropic';
+}
+
+/**
+ * Prompt-caching capability for one model id. The static map is per provider.
+ * OpenRouter only caches when the routed model is Anthropic.
+ */
+export function promptCachingCapabilityForModel(
+	modelId: string,
+): ProviderCapabilities['promptCaching'] {
+	const provider = providerPrefix(modelId);
+	if (provider === 'openrouter' && isAnthropicMessagesModel(modelId)) return 'ttl';
+	return PROVIDER_CAPABILITIES[provider]?.promptCaching ?? false;
+}
+
 export function getValidProviderToolNames(): string[] {
 	return [
 		...new Set(
