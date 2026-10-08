@@ -2,8 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { NodesConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
-import omit from 'lodash/omit';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import { NodeHelpers, normalizeNodeShape } from 'n8n-workflow';
 
 import {
 	DeprecatedNodesError,
@@ -12,11 +12,9 @@ import {
 import { NodeTypes } from '@/node-types';
 
 /**
- * A deprecated node can only be removed or migrated off the deprecated
- * version — adding a new deprecated node, or modifying one in place, is
- * refused. Edits to other nodes in the workflow are unaffected.
- *
- * Gated by `N8N_DEPRECATED_NODES_BLOCK` (default on); a no-op when off.
+ * Refuses adding a deprecated node or changing one in place. Removing a
+ * deprecated node, or moving it to a non-deprecated type or version, is allowed.
+ * Does nothing when `N8N_DEPRECATED_NODES_BLOCK` is off.
  */
 @Service()
 export class DeprecatedNodesValidationService {
@@ -26,16 +24,13 @@ export class DeprecatedNodesValidationService {
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
-	/**
-	 * Throws if the incoming workflow contains any deprecated node. Use on
-	 * create and import paths where there is no prior workflow state.
-	 */
+	/** Throws if any node is deprecated. Use where there is no stored version to compare with. */
 	validateOnCreate(nodes: INode[], workflowId?: string): void {
 		if (!this.nodesConfig.blockDeprecated) return;
 
 		const violations: DeprecatedNodeViolation[] = [];
 		for (const node of nodes) {
-			if (this.isDeprecated(node)) {
+			if (this.deprecatedDescription(node)) {
 				violations.push({ kind: 'added', nodeName: node.name, nodeType: node.type });
 			}
 		}
@@ -44,20 +39,8 @@ export class DeprecatedNodesValidationService {
 	}
 
 	/**
-	 * Throws if the incoming workflow adds a new deprecated node, or changes
-	 * an existing one in any way. Identity is matched by node `id`.
-	 *
-	 * Allowed:
-	 *  - keeping a deprecated node untouched, apart from its position on the canvas
-	 *  - replacing a deprecated node with a non-deprecated one at the same id
-	 *    (the migration path for version-level deprecation)
-	 *  - deleting a deprecated node entirely
-	 *
-	 * Blocked:
-	 *  - adding a deprecated node
-	 *  - any in-place change to a deprecated node other than its position. The
-	 *    only way to "change" a deprecated node is to remove it or upgrade it off
-	 *    the deprecated version.
+	 * Throws if a deprecated node is new, or differs from the stored node with the
+	 * same id other than in position.
 	 */
 	validateOnUpdate(incomingNodes: INode[], existingNodes: INode[], workflowId?: string): void {
 		if (!this.nodesConfig.blockDeprecated) return;
@@ -66,17 +49,19 @@ export class DeprecatedNodesValidationService {
 		const violations: DeprecatedNodeViolation[] = [];
 
 		for (const incoming of incomingNodes) {
-			if (!this.isDeprecated(incoming)) continue;
+			const description = this.deprecatedDescription(incoming);
+			if (!description) continue;
 
 			const before = existingById.get(incoming.id);
-			if (!before || !this.isDeprecated(before)) {
-				// Node is new in this update, or its (type, typeVersion) tuple just
-				// crossed into deprecated territory — either way, treated as adding.
+			// A stored node that was not deprecated counts as adding one, so a node cannot be moved back onto a deprecated version.
+			if (!before || !this.deprecatedDescription(before)) {
 				violations.push({ kind: 'added', nodeName: incoming.name, nodeType: incoming.type });
 				continue;
 			}
 
-			if (!isEqual(this.frozenFields(before), this.frozenFields(incoming))) {
+			if (
+				!isEqual(this.frozenFields(before, description), this.frozenFields(incoming, description))
+			) {
 				violations.push({ kind: 'edited', nodeName: incoming.name, nodeType: incoming.type });
 			}
 		}
@@ -84,11 +69,35 @@ export class DeprecatedNodesValidationService {
 		this.throwIfViolations(violations, workflowId);
 	}
 
-	private frozenFields(node: INode) {
+	/** Puts a node in the shape the editor saves, so a re-save of an untouched node compares equal. */
+	private frozenFields(node: INode, description: INodeTypeDescription) {
+		const {
+			position: _position,
+			notes,
+			onError,
+			continueOnFail,
+			disabled,
+			credentials,
+			parameters,
+			...rest
+		} = normalizeNodeShape(node);
+
 		return {
-			...omit(node, 'position'),
-			credentials: node.credentials ?? {},
-			disabled: node.disabled ?? false,
+			...rest,
+			parameters:
+				NodeHelpers.getNodeParameters(
+					description.properties,
+					parameters,
+					false,
+					false,
+					node,
+					description,
+				) ?? {},
+			credentials: credentials ?? {},
+			disabled: disabled === true,
+			continueOnFail: continueOnFail === true,
+			onError: onError ?? 'stopWorkflow',
+			notes: notes ?? '',
 		};
 	}
 
@@ -103,13 +112,13 @@ export class DeprecatedNodesValidationService {
 		throw new DeprecatedNodesError(this.formatMessage(violations), { violations });
 	}
 
-	private isDeprecated(node: INode): boolean {
+	private deprecatedDescription(node: INode): INodeTypeDescription | undefined {
 		try {
-			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			return nodeType?.description?.deprecated === true;
+			const { description } = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			return description.deprecated === true ? description : undefined;
 		} catch {
-			// Unknown node types can't be deprecated by us — they're handled elsewhere.
-			return false;
+			// Unknown node types can't be deprecated by us; they're handled elsewhere.
+			return undefined;
 		}
 	}
 
@@ -119,8 +128,7 @@ export class DeprecatedNodesValidationService {
 			return `Cannot ${verb} "${v.nodeType}" node ("${v.nodeName}"): this node type is deprecated.`;
 		});
 
-		const suffix =
-			' Replace the node with a supported alternative (e.g. the "Code" node) or remove it from the workflow.';
+		const suffix = ' Replace the node with a supported alternative or remove it from the workflow.';
 
 		return lines.join(' ') + suffix;
 	}

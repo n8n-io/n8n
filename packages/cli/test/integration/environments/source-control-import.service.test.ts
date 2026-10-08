@@ -122,8 +122,11 @@ describe('SourceControlImportService', () => {
 		);
 		const nodeTypes = mock<NodeTypes>();
 		nodeTypes.getByNameAndVersion.mockImplementation((type) =>
-			mock<INodeType>({
-				description: { deprecated: type === 'n8n-nodes-base.function' ? true : undefined },
+			Object.assign(mock<INodeType>(), {
+				description: {
+					deprecated: type === 'n8n-nodes-base.function' ? true : undefined,
+					properties: [{ displayName: 'Code', name: 'functionCode', type: 'string', default: '' }],
+				},
 			}),
 		);
 		service = new SourceControlImportService(
@@ -1894,6 +1897,61 @@ describe('SourceControlImportService', () => {
 				).rejects.toThrow(DeprecatedNodesError);
 
 				await expect(workflowRepository.findOneBy({ id: workflow.id })).resolves.toBeNull();
+			});
+
+			const functionNode = {
+				id: 'node-1',
+				name: 'Function',
+				type: 'n8n-nodes-base.function',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: { functionCode: 'return items;' },
+			};
+
+			it('allows pulling an existing workflow whose deprecated node is unchanged', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				await createWorkflowWithHistory(
+					{ id: workflowId, name: 'Old name', nodes: [functionNode], connections: {} },
+					importingUser,
+				);
+				const workflow = makeWorkflowImport({
+					id: workflowId,
+					name: 'New name',
+					nodes: [functionNode] as IWorkflowToImport['nodes'],
+				});
+				const file = putWorkflowFile(workflowId, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file })],
+					importingUser.id,
+				);
+
+				const stored = await workflowRepository.findOneBy({ id: workflowId });
+				expect(stored?.name).toBe('New name');
+			});
+
+			it('rejects pulling an existing workflow whose deprecated node was edited', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				await createWorkflowWithHistory(
+					{ id: workflowId, name: 'Test Workflow', nodes: [functionNode], connections: {} },
+					importingUser,
+				);
+				const workflow = makeWorkflowImport({
+					id: workflowId,
+					nodes: [
+						{ ...functionNode, parameters: { functionCode: 'return [];' } },
+					] as IWorkflowToImport['nodes'],
+				});
+				const file = putWorkflowFile(workflowId, workflow);
+
+				await expect(
+					service.importWorkflowFromWorkFolder(
+						[mock<SourceControlledFile>({ id: workflowId, file })],
+						importingUser.id,
+					),
+				).rejects.toThrow(DeprecatedNodesError);
 			});
 		});
 

@@ -17,11 +17,14 @@ describe('DeprecatedNodesValidationService', () => {
 	let logger: ReturnType<typeof mock<Logger>>;
 
 	const nodeTypeFor = (type: string, deprecated?: boolean): INodeType =>
-		mock<INodeType>({
-			description: mock<INodeTypeDescription>({
+		Object.assign(mock<INodeType>(), {
+			description: {
 				name: type,
 				deprecated: deprecated ? true : undefined,
-			}),
+				properties: [
+					{ displayName: 'Code', name: 'functionCode', type: 'string', default: '// default' },
+				],
+			},
 		});
 
 	beforeEach(() => {
@@ -29,7 +32,6 @@ describe('DeprecatedNodesValidationService', () => {
 		nodeTypes = mock<NodeTypes>();
 		logger = mock<Logger>();
 
-		// By default: function + functionItem are deprecated, everything else isn't.
 		nodeTypes.getByNameAndVersion.mockImplementation((type) => {
 			if (type === 'n8n-nodes-base.function' || type === 'n8n-nodes-base.functionItem') {
 				return nodeTypeFor(type, true);
@@ -93,6 +95,14 @@ describe('DeprecatedNodesValidationService', () => {
 			}
 		});
 
+		it('does not treat an unknown node type as deprecated', () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw new Error('Unrecognized node type');
+			});
+			const nodes = [makeNode({ id: 'a', type: 'community.unknown' })];
+			expect(() => validator.validateOnCreate(nodes)).not.toThrow();
+		});
+
 		it('is a no-op when the config flag is off', () => {
 			nodesConfig.blockDeprecated = false;
 			const nodes = [makeNode({ id: 'a', type: 'n8n-nodes-base.function' })];
@@ -135,6 +145,24 @@ describe('DeprecatedNodesValidationService', () => {
 			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.function' });
 			const after = { ...before, disabled: false, credentials: {} };
 			expect(() => validator.validateOnUpdate([after], [before])).not.toThrow();
+		});
+
+		it('allows the editor-saved shape of a deprecated node stored with explicit defaults', () => {
+			const before: INode = {
+				...makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Func' }),
+				parameters: { functionCode: '// default' },
+				notes: '',
+				onError: 'stopWorkflow',
+				continueOnFail: false,
+			};
+			const after = makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Func' });
+			expect(() => validator.validateOnUpdate([after], [before])).not.toThrow();
+		});
+
+		it('blocks adding notes to an existing deprecated node', () => {
+			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Func' });
+			const after = { ...before, notes: 'changed' };
+			expect(() => validator.validateOnUpdate([after], [before])).toThrow(/Cannot modify.*Func/);
 		});
 
 		it('blocks disabling an existing deprecated node', () => {
@@ -225,7 +253,6 @@ describe('DeprecatedNodesValidationService', () => {
 		});
 
 		it('blocks bumping the typeVersion of a non-deprecated node down to a deprecated version', () => {
-			// Pretend v2 of "myNode" is fine, v1 is deprecated.
 			nodeTypes.getByNameAndVersion.mockImplementation((type, version) => {
 				if (type === 'n8n-nodes-base.myNode' && version === 1) {
 					return nodeTypeFor(type, true);
@@ -239,7 +266,6 @@ describe('DeprecatedNodesValidationService', () => {
 		});
 
 		it('allows migrating a deprecated typeVersion forward, including parameter changes', () => {
-			// v1 is deprecated, v2 is the safe replacement.
 			nodeTypes.getByNameAndVersion.mockImplementation((type, version) => {
 				if (type === 'n8n-nodes-base.myNode' && version === 1) {
 					return nodeTypeFor(type, true);

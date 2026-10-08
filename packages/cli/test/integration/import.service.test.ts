@@ -89,7 +89,7 @@ describe('ImportService', () => {
 			mockPolicyEnforcementService,
 			sharedWorkflowRepository,
 			Container.get(WorkflowRepository),
-			mock(), // deprecatedNodesValidationService
+			mock(),
 		);
 	});
 
@@ -674,8 +674,13 @@ describe('ImportService', () => {
 		beforeAll(() => {
 			const nodeTypes = mock<NodeTypes>();
 			nodeTypes.getByNameAndVersion.mockImplementation((type) =>
-				mock<INodeType>({
-					description: { deprecated: type === deprecatedNode.type ? true : undefined },
+				Object.assign(mock<INodeType>(), {
+					description: {
+						deprecated: type === deprecatedNode.type ? true : undefined,
+						properties: [
+							{ displayName: 'Code', name: 'functionCode', type: 'string', default: '' },
+						],
+					},
 				}),
 			);
 
@@ -736,13 +741,14 @@ describe('ImportService', () => {
 			const existing = await createWorkflow({ nodes: [deprecatedNode] });
 
 			await blockingImportService.importWorkflows(
-				[existing],
+				[{ ...existing, name: 'Re-imported' }],
 				ownerPersonalProject.id,
 				owner.id,
 				{},
 			);
 
 			const dbWorkflow = await getWorkflowById(existing.id);
+			expect(dbWorkflow?.name).toBe('Re-imported');
 			expect(dbWorkflow?.nodes).toEqual([deprecatedNode]);
 		});
 	});

@@ -4104,12 +4104,37 @@ describe('PATCH /workflows/:workflowId', () => {
 			});
 
 			expect(response.statusCode).toBe(400);
+			expect(response.body.meta?.violations).toEqual([
+				{ kind: 'edited', nodeName: 'Function', nodeType: 'n8n-nodes-base.function' },
+			]);
 		});
 
 		test('allows editing other nodes while a deprecated node stays unchanged', async () => {
 			const deprecated = buildDeprecatedNode();
 			const cleanNode = buildCleanNode();
 			const workflow = await createWorkflow({ nodes: [deprecated, cleanNode] }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [deprecated, { ...cleanNode, notes: 'edited' }],
+				connections: workflow.connections,
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('allows the editor-saved shape of a deprecated node stored with explicit defaults', async () => {
+			const deprecated = buildDeprecatedNode();
+			const cleanNode = buildCleanNode();
+			const workflow = await createWorkflow(
+				{
+					nodes: [
+						{ ...deprecated, notes: '', onError: 'stopWorkflow', continueOnFail: false },
+						cleanNode,
+					],
+				},
+				owner,
+			);
 
 			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
 				versionId: workflow.versionId,
