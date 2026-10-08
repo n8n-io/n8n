@@ -1,0 +1,303 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { effectScope, nextTick, ref, type EffectScope, type Ref } from 'vue';
+import fc from 'fast-check';
+import type { PushMessage } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { ASSISTANT_AGENT_ID } from '../../agentsChatMode';
+import { isAssistantThreadEvent, useLiveThreadList } from '../useLiveThreadList';
+
+const { pushHandlers, pushStore, loadThreads } = vi.hoisted(() => {
+	const handlers = new Set<(event: PushMessage) => void>();
+	return {
+		pushHandlers: handlers,
+		loadThreads: vi.fn(async () => true),
+		pushStore: {
+			pushConnect: vi.fn(),
+			pushDisconnect: vi.fn(),
+			addEventListener: vi.fn((handler: (event: PushMessage) => void) => {
+				handlers.add(handler);
+				return () => handlers.delete(handler);
+			}),
+		},
+	};
+});
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => pushStore,
+}));
+
+vi.mock('../../instanceAi.store', () => ({
+	useInstanceAiStore: () => ({ loadThreads }),
+}));
+
+const executionUpdated = (agentId = ASSISTANT_AGENT_ID): PushMessage => ({
+	type: 'agentExecutionUpdated',
+	data: { projectId: 'p1', agentId, threadId: 't1', executionId: 'e1' },
+});
+
+const backgroundTasksUpdated = (agentId = ASSISTANT_AGENT_ID): PushMessage => ({
+	type: 'agentBackgroundTasksUpdated',
+	data: { projectId: 'p1', agentId, threadId: 't1' },
+});
+
+function emit(event: PushMessage) {
+	for (const handler of [...pushHandlers]) handler(event);
+}
+
+let scopes: EffectScope[] = [];
+
+function mount(enabled: Ref<boolean> | boolean = true) {
+	const scope = effectScope();
+	scopes.push(scope);
+	scope.run(() => useLiveThreadList(enabled));
+	return scope;
+}
+
+describe('useLiveThreadList', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.clearAllMocks();
+		pushHandlers.clear();
+	});
+
+	afterEach(() => {
+		for (const scope of scopes) scope.stop();
+		scopes = [];
+		vi.useRealTimers();
+	});
+
+	it('reloads the chat list once, one second after an event', () => {
+		mount();
+
+		emit(executionUpdated());
+		vi.advanceTimersByTime(999);
+		expect(loadThreads).not.toHaveBeenCalled();
+
+		vi.advanceTimersByTime(1);
+		expect(loadThreads).toHaveBeenCalledTimes(1);
+
+		vi.advanceTimersByTime(5000);
+		expect(loadThreads).toHaveBeenCalledTimes(1);
+	});
+
+	it('reloads for a change to the background tasks of an Assistant chat', () => {
+		mount();
+
+		emit(backgroundTasksUpdated());
+		vi.advanceTimersByTime(1000);
+
+		expect(loadThreads).toHaveBeenCalledTimes(1);
+	});
+
+	it('reloads once for ten events within one second', () => {
+		mount();
+
+		for (let index = 0; index < 10; index++) {
+			emit(index % 2 === 0 ? executionUpdated() : backgroundTasksUpdated());
+			vi.advanceTimersByTime(90);
+		}
+		vi.advanceTimersByTime(5000);
+
+		expect(loadThreads).toHaveBeenCalledTimes(1);
+	});
+
+	it('reloads every three seconds while events keep coming, and one second after the last', async () => {
+		mount();
+		const reloadTimes: number[] = [];
+		loadThreads.mockImplementation(async () => {
+			reloadTimes.push(Date.now());
+			return true;
+		});
+		const start = Date.now();
+
+		// A turn that writes a step every 200 ms for 7 seconds. The last step is at 6800 ms.
+		for (let index = 0; index < 35; index++) {
+			emit(executionUpdated());
+			await vi.advanceTimersByTimeAsync(200);
+		}
+		await vi.advanceTimersByTimeAsync(5000);
+
+		expect(reloadTimes.map((time) => time - start)).toEqual([3000, 6000, 7800]);
+	});
+
+	it('keeps one reload running and queues one more while the list loads slowly', async () => {
+		mount();
+		const slow = createDeferredPromise<boolean>();
+		const next = createDeferredPromise<boolean>();
+		loadThreads.mockReturnValueOnce(slow.promise).mockReturnValueOnce(next.promise);
+
+		emit(executionUpdated());
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(loadThreads).toHaveBeenCalledTimes(1);
+
+		// Three more seconds of events while the first list request runs.
+		for (let second = 0; second < 3; second++) {
+			emit(executionUpdated());
+			await vi.advanceTimersByTimeAsync(1000);
+		}
+		expect(loadThreads).toHaveBeenCalledTimes(1);
+
+		slow.resolve(true);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(loadThreads).toHaveBeenCalledTimes(2);
+
+		next.resolve(true);
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(loadThreads).toHaveBeenCalledTimes(2);
+	});
+
+	it('drops the queued reload when the section unmounts', async () => {
+		const scope = mount();
+		const slow = createDeferredPromise<boolean>();
+		loadThreads.mockReturnValueOnce(slow.promise);
+
+		emit(executionUpdated());
+		await vi.advanceTimersByTimeAsync(1000);
+		emit(executionUpdated());
+		await vi.advanceTimersByTimeAsync(1000);
+		scope.stop();
+		slow.resolve(true);
+		await vi.advanceTimersByTimeAsync(5000);
+
+		expect(loadThreads).toHaveBeenCalledTimes(1);
+	});
+
+	it('reloads again after a reload fails', async () => {
+		mount();
+		loadThreads.mockRejectedValueOnce(new Error('offline'));
+
+		emit(executionUpdated());
+		await vi.advanceTimersByTimeAsync(1000);
+		emit(executionUpdated());
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(loadThreads).toHaveBeenCalledTimes(2);
+	});
+
+	it.each<[string, PushMessage]>([
+		['an execution of another agent', executionUpdated('other-agent')],
+		['background tasks of another agent', backgroundTasksUpdated('other-agent')],
+		[
+			'an agent update',
+			{ type: 'agentUpdated', data: { projectId: 'p1', agentId: ASSISTANT_AGENT_ID } },
+		],
+		[
+			'a message queue update',
+			{
+				type: 'agentMessageQueueUpdated',
+				data: { projectId: 'p1', agentId: ASSISTANT_AGENT_ID, threadId: 't1' },
+			},
+		],
+		['a workflow execution', { type: 'executionRecovered', data: { executionId: 'e1' } }],
+	])('does not reload for %s', (_, event) => {
+		mount();
+
+		emit(event);
+		vi.advanceTimersByTime(5000);
+
+		expect(loadThreads).not.toHaveBeenCalled();
+	});
+
+	it('opens the push connection while it listens, and closes its share on unmount', () => {
+		const scope = mount();
+
+		expect(pushStore.pushConnect).toHaveBeenCalledTimes(1);
+		expect(pushHandlers.size).toBe(1);
+
+		scope.stop();
+
+		expect(pushStore.pushDisconnect).toHaveBeenCalledTimes(1);
+		expect(pushHandlers.size).toBe(0);
+	});
+
+	it('does not reload after unmount, even for an event that came before', () => {
+		const scope = mount();
+
+		emit(executionUpdated());
+		scope.stop();
+		vi.advanceTimersByTime(5000);
+
+		expect(loadThreads).not.toHaveBeenCalled();
+	});
+
+	it('does not subscribe or connect while the flag is off', () => {
+		mount(false);
+
+		emit(executionUpdated());
+		vi.advanceTimersByTime(5000);
+
+		expect(pushStore.addEventListener).not.toHaveBeenCalled();
+		expect(pushStore.pushConnect).not.toHaveBeenCalled();
+		expect(loadThreads).not.toHaveBeenCalled();
+	});
+
+	it('subscribes when the flag turns on, and stops when it turns off', async () => {
+		const enabled = ref(false);
+		const scope = mount(enabled);
+
+		enabled.value = true;
+		await nextTick();
+		emit(executionUpdated());
+		vi.advanceTimersByTime(1000);
+		expect(loadThreads).toHaveBeenCalledTimes(1);
+
+		emit(executionUpdated());
+		enabled.value = false;
+		await nextTick();
+		vi.advanceTimersByTime(5000);
+		expect(loadThreads).toHaveBeenCalledTimes(1);
+		expect(pushHandlers.size).toBe(0);
+
+		scope.stop();
+		expect(pushStore.pushConnect).toHaveBeenCalledTimes(1);
+		expect(pushStore.pushDisconnect).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps one subscription when the flag turns on again', async () => {
+		const enabled = ref(true);
+		const scope = mount(enabled);
+
+		enabled.value = false;
+		await nextTick();
+		enabled.value = true;
+		await nextTick();
+		scope.stop();
+
+		expect(pushStore.pushConnect).toHaveBeenCalledTimes(2);
+		expect(pushStore.pushDisconnect).toHaveBeenCalledTimes(2);
+		expect(pushHandlers.size).toBe(0);
+	});
+});
+
+describe('isAssistantThreadEvent', () => {
+	const AGENT_UPDATE_TYPES = ['agentExecutionUpdated', 'agentBackgroundTasksUpdated'];
+
+	it('accepts execution and background task updates of the Assistant only', () => {
+		expect(isAssistantThreadEvent(executionUpdated())).toBe(true);
+		expect(isAssistantThreadEvent(backgroundTasksUpdated())).toBe(true);
+		expect(isAssistantThreadEvent(executionUpdated('agent-2'))).toBe(false);
+		expect(isAssistantThreadEvent(backgroundTasksUpdated('agent-2'))).toBe(false);
+	});
+
+	it('accepts a message exactly when it is an agent update of the Assistant', () => {
+		const messageArb = fc.record({
+			type: fc.oneof(
+				fc.constantFrom(...AGENT_UPDATE_TYPES, 'workflowUpdated', 'executionStarted'),
+				fc.string(),
+			),
+			data: fc.record({
+				agentId: fc.oneof(fc.constant(ASSISTANT_AGENT_ID), fc.string()),
+				threadId: fc.string(),
+			}),
+		});
+
+		fc.assert(
+			fc.property(messageArb, (message) => {
+				const expected =
+					AGENT_UPDATE_TYPES.includes(message.type) && message.data.agentId === ASSISTANT_AGENT_ID;
+
+				expect(isAssistantThreadEvent(message as PushMessage)).toBe(expected);
+			}),
+		);
+	});
+});

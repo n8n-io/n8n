@@ -19,6 +19,7 @@ import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import AssistantChatsSection from '@/features/ai/instanceAi/navigation/AssistantChatsSection.vue';
+import AssistantAutomationsSection from '@/features/ai/instanceAi/navigation/AssistantAutomationsSection.vue';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
@@ -267,6 +268,7 @@ onBeforeUnmount(() => {
 			</div>
 		</template>
 		<AssistantChatsSection :collapsed="props.collapsed" />
+		<AssistantAutomationsSection :collapsed="props.collapsed" />
 		<template v-if="projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0">
 			<button
 				v-if="!props.collapsed"

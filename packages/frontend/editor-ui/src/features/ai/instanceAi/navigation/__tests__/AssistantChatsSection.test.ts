@@ -1,82 +1,56 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRouter, createMemoryHistory, type Router } from 'vue-router';
+import { reactive } from 'vue';
+import type { Router } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import type { InstanceAiThreadSummary } from '@n8n/api-types';
-import { useSettingsStore } from '@n8n/stores/settings.store';
+import type { InstanceAiThreadSummary, PushMessage } from '@n8n/api-types';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
-import { useInstanceAiStore } from '../../instanceAi.store';
-import {
-	INSTANCE_AI_THREADS_VIEW,
-	INSTANCE_AI_THREAD_VIEW,
-	INSTANCE_AI_VIEW,
-} from '../../constants';
+import { ASSISTANT_AGENT_ID } from '../../agentsChatMode';
+import { useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
+import { INSTANCE_AI_THREAD_VIEW } from '../../constants';
+import { resetExperienceModeState } from '../../experience/useExperienceMode';
 import { resetThreadLastViewedState, useThreadLastViewed } from '../useThreadLastViewed';
 import AssistantChatsSection from '../AssistantChatsSection.vue';
+import { useAssistantSidebarStore } from '../assistantSidebar.store';
+import {
+	chat,
+	configureInstanceAi,
+	createTestRouter,
+	stubLocalStorage,
+	T0,
+	T1,
+} from './navigationFixtures';
+
+const { pushHandlers, pushStore } = vi.hoisted(() => {
+	const handlers = new Set<(event: PushMessage) => void>();
+	return {
+		pushHandlers: handlers,
+		pushStore: {
+			pushConnect: vi.fn(),
+			pushDisconnect: vi.fn(),
+			addEventListener: vi.fn((handler: (event: PushMessage) => void) => {
+				handlers.add(handler);
+				return () => handlers.delete(handler);
+			}),
+		},
+	};
+});
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => pushStore,
+}));
 
 const LAST_VIEWED_KEY = 'n8n:instance-ai:last-viewed:user-1';
 const COLLAPSED_KEY = 'n8n:sidebar:instance-ai-chats-collapsed';
-const T0 = '2026-03-01T10:00:00.000Z';
-const T1 = '2026-03-01T11:00:00.000Z';
 
 const storage = new Map<string, string>();
 const renderComponent = createComponentRenderer(AssistantChatsSection);
 
 let router: Router;
 let instanceAiStore: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
-
-function createTestRouter() {
-	return createRouter({
-		history: createMemoryHistory(),
-		routes: [
-			{ path: '/', name: 'home', component: { template: '<div />' } },
-			{ path: '/assistant', name: INSTANCE_AI_VIEW, component: { template: '<div />' } },
-			{
-				path: '/assistant/history',
-				name: INSTANCE_AI_THREADS_VIEW,
-				component: { template: '<div />' },
-			},
-			{
-				path: '/assistant/:threadId',
-				name: INSTANCE_AI_THREAD_VIEW,
-				component: { template: '<div />' },
-			},
-		],
-	});
-}
-
-function configureInstanceAi({
-	available = true,
-	experienceModes = false,
-}: { available?: boolean; experienceModes?: boolean } = {}) {
-	const settingsStore = mockedStore(useSettingsStore);
-	settingsStore.isModuleActive = vi.fn().mockReturnValue(available);
-	settingsStore.moduleSettings = {
-		'instance-ai': {
-			enabled: true,
-			mcpConnectionsAvailable: true,
-			localGatewayDisabled: false,
-			browserUseEnabled: true,
-			proxyEnabled: false,
-			cloudManaged: false,
-			setupCompleted: true,
-			sandboxEnabled: true,
-			workflowBuilderAvailable: true,
-			sandboxUnavailableReason: null,
-			runDebugEnabled: false,
-			experience: { enabled: experienceModes, defaultMode: 'simple' },
-		},
-	};
-	vi.mocked(useRBACStore().hasScope).mockImplementation((scope) => scope === 'instanceAi:message');
-}
-
-function chat(id: string, title: string, overview: Partial<InstanceAiThreadSummary> = {}) {
-	return { id, title, createdAt: T0, updatedAt: T0, ...overview } satisfies InstanceAiThreadSummary;
-}
 
 /** One chat for each state the sidebar can show, plus one the viewer already saw. */
 function chatsInEveryState(): InstanceAiThreadSummary[] {
@@ -116,14 +90,12 @@ function rowLabels(section: HTMLElement) {
 describe('AssistantChatsSection', () => {
 	beforeEach(() => {
 		storage.clear();
-		vi.stubGlobal('localStorage', {
-			getItem: vi.fn((key: string) => storage.get(key) ?? null),
-			setItem: vi.fn((key: string, value: string) => {
-				storage.set(key, value);
-			}),
-		});
+		stubLocalStorage(storage);
+		pushHandlers.clear();
+		vi.clearAllMocks();
 		createTestingPinia();
 		resetThreadLastViewedState();
+		resetExperienceModeState();
 		useUsersStore().currentUserId = 'user-1';
 		instanceAiStore = mockedStore(useInstanceAiStore);
 		router = createTestRouter();
@@ -168,6 +140,17 @@ describe('AssistantChatsSection', () => {
 
 			expect(getByRole('menuitem', { name: 'First chat' })).toHaveAttribute('href', '/assistant/a');
 			expect(getByRole('link', { name: 'View all' })).toHaveAttribute('href', '/assistant/history');
+		});
+
+		it('gives the section a heading, and names it in the description of "View all"', () => {
+			configureInstanceAi();
+			instanceAiStore.threads = [chat('a', 'First chat')];
+
+			const { getByRole } = render();
+
+			const heading = getByRole('heading', { level: 2, name: 'Chats' });
+			expect(within(heading).getByRole('button', { name: 'Chats' })).toBeInTheDocument();
+			expect(getByRole('link', { name: 'View all' })).toHaveAccessibleDescription('Chats');
 		});
 
 		it('shows the five most recent chats and keeps the open chat listed', async () => {
@@ -234,6 +217,17 @@ describe('AssistantChatsSection', () => {
 			expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(2);
 		});
 
+		it('lets the sidebar know when the first chat list ended, also when it failed', async () => {
+			configureInstanceAi();
+			instanceAiStore.loadThreads.mockResolvedValue(false);
+			const sidebarStore = useAssistantSidebarStore();
+
+			render();
+			expect(sidebarStore.chatListSettled).toBe(false);
+
+			await waitFor(() => expect(sidebarStore.chatListSettled).toBe(true));
+		});
+
 		it('does not load the chats when Instance AI is not available', () => {
 			configureInstanceAi({ available: false });
 
@@ -270,6 +264,44 @@ describe('AssistantChatsSection', () => {
 				'instance-ai-thread-unseen',
 				'instance-ai-thread-seen',
 			]);
+		});
+
+		it('keeps the flat list in Simple mode, without groups', () => {
+			instanceAiStore.threads = chatsInEveryState();
+
+			const { queryAllByRole, queryAllByTestId, getByTestId } = render();
+
+			expect(queryAllByRole('heading', { level: 3 })).toEqual([]);
+			expect(queryAllByTestId(/^assistant-chat-group-/)).toEqual([]);
+			expect(rowTestIds(getByTestId('instance-ai-sidebar-chats'))).toHaveLength(5);
+		});
+
+		it('keeps the keyboard focus in the flat list when a reload pushes the focused chat out', async () => {
+			const fiveChats = Array.from({ length: 5 }, (_, index) => chat(`c${index}`, `Chat ${index}`));
+			instanceAiStore.threads = fiveChats;
+			const { getByRole, queryByRole } = render();
+			getByRole('menuitem', { name: 'Chat 4' }).focus();
+
+			instanceAiStore.threads = [chat('new', 'New chat'), ...fiveChats];
+
+			await waitFor(() =>
+				expect(queryByRole('menuitem', { name: 'Chat 4' })).not.toBeInTheDocument(),
+			);
+			expect(getByRole('menuitem', { name: 'Chat 3' })).toHaveFocus();
+		});
+
+		it('leaves the focus on a chat that moves down the flat list', async () => {
+			const fiveChats = Array.from({ length: 5 }, (_, index) => chat(`c${index}`, `Chat ${index}`));
+			instanceAiStore.threads = fiveChats;
+			const { getByRole } = render();
+			const row = getByRole('menuitem', { name: 'Chat 0' });
+			row.focus();
+
+			instanceAiStore.threads = [chat('new', 'New chat'), ...fiveChats];
+
+			await waitFor(() => expect(getByRole('menuitem', { name: 'New chat' })).toBeInTheDocument());
+			expect(getByRole('menuitem', { name: 'Chat 0' })).toBe(row);
+			expect(row).toHaveFocus();
 		});
 
 		it('shows a state icon for each chat that needs a look, and none for a chat the user saw', () => {
@@ -359,6 +391,213 @@ describe('AssistantChatsSection', () => {
 
 			expect(getByRole('menuitem', { name: 'Old chat' })).toBeVisible();
 			expect(queryByTestId('instance-ai-thread-state-older')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('in Power mode', () => {
+		beforeEach(() => {
+			configureInstanceAi({ experienceModes: true, defaultMode: 'power' });
+			storage.set(LAST_VIEWED_KEY, JSON.stringify({ unseen: T0, seen: T1 }));
+		});
+
+		it('groups the chats by what they need instead of the flat list', () => {
+			instanceAiStore.threads = chatsInEveryState();
+
+			const { getAllByRole, getByRole, getByTestId } = render();
+
+			expect(
+				getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent?.trim()),
+			).toEqual(['Chats']);
+			expect(
+				getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent?.trim()),
+			).toEqual(['Needs you', 'Working', 'Ready to review', 'Done']);
+			const needsYou = getByRole('list', { name: 'Needs you' });
+			expect(rowLabels(needsYou)).toEqual([
+				'Approve invoice, Waiting for you',
+				'Fix Slack alert, Failed',
+			]);
+			expect(rowLabels(getByRole('list', { name: 'Done' }))).toEqual(['Team digest']);
+			expect(
+				within(getByTestId('assistant-chat-group-needs-you')).getByTestId(
+					'instance-ai-thread-state-broken',
+				),
+			).toBeInTheDocument();
+		});
+
+		it('keeps the section header, its toggle and the link to the chat history', async () => {
+			instanceAiStore.threads = chatsInEveryState();
+			const { getByRole, queryByTestId } = render();
+
+			expect(getByRole('link', { name: 'View all' })).toHaveAttribute('href', '/assistant/history');
+			await userEvent.click(getByRole('button', { name: 'Chats' }));
+
+			expect(queryByTestId('assistant-chat-group-needs-you')).not.toBeInTheDocument();
+		});
+
+		it('keeps the open chat in its group when it is older than the five shown', async () => {
+			instanceAiStore.threads = Array.from({ length: 7 }, (_, index) =>
+				chat(`thread-${index}`, `Chat ${index}`, {
+					updatedAt: `2026-03-0${7 - index}T10:00:00.000Z`,
+				}),
+			);
+			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: 'thread-6' } });
+
+			const { getByRole } = render();
+
+			expect(rowLabels(getByRole('list', { name: 'Done' }))).toEqual([
+				'Chat 0',
+				'Chat 1',
+				'Chat 2',
+				'Chat 3',
+				'Chat 6',
+			]);
+		});
+
+		it('keeps a group expanded after the user collapses and opens the section', async () => {
+			instanceAiStore.threads = Array.from({ length: 7 }, (_, index) =>
+				chat(`thread-${index}`, `Chat ${index}`),
+			);
+			const { getByRole } = render();
+			await userEvent.click(getByRole('button', { name: 'Show all (7)' }));
+
+			await userEvent.click(getByRole('button', { name: 'Chats' }));
+			await userEvent.click(getByRole('button', { name: 'Chats' }));
+
+			expect(within(getByRole('list', { name: 'Done' })).getAllByRole('listitem')).toHaveLength(7);
+			expect(getByRole('button', { name: 'Show fewer' })).toBeInTheDocument();
+		});
+
+		it('renders nothing when there is no chat', () => {
+			instanceAiStore.threads = [];
+
+			const { queryByTestId } = render();
+
+			expect(queryByTestId('instance-ai-sidebar-chats')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('a chat that runs a turn in this tab', () => {
+		function streamingRuntime() {
+			const runtime = reactive({ isStreaming: true, isSendingMessage: false });
+			vi.mocked(instanceAiStore.getRuntime).mockImplementation((threadId) =>
+				threadId === 'new' ? (runtime as unknown as ThreadRuntime) : undefined,
+			);
+			return runtime;
+		}
+
+		// A new chat has no state until the next list load.
+		const newChat = () => chat('new', 'New chat', { updatedAt: T1 });
+		const seenChat = () => chat('seen', 'Team digest', { state: 'idle', lastActivityAt: T0 });
+
+		beforeEach(async () => {
+			storage.set(LAST_VIEWED_KEY, JSON.stringify({ seen: T1 }));
+			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: 'new' } });
+		});
+
+		it('shows a new chat under "Working" while its first turn runs, and under "Done" after', async () => {
+			configureInstanceAi({ experienceModes: true, defaultMode: 'power' });
+			const runtime = streamingRuntime();
+			instanceAiStore.threads = [newChat(), seenChat()];
+
+			const { getByRole } = render();
+
+			expect(rowLabels(getByRole('list', { name: 'Working' }))).toEqual(['New chat, Working']);
+
+			runtime.isStreaming = false;
+
+			await waitFor(() =>
+				expect(rowLabels(getByRole('list', { name: 'Done' }))).toEqual(['New chat', 'Team digest']),
+			);
+		});
+
+		it('shows "Working" while the first message is on its way', () => {
+			configureInstanceAi({ experienceModes: true, defaultMode: 'power' });
+			const runtime = streamingRuntime();
+			runtime.isStreaming = false;
+			runtime.isSendingMessage = true;
+			instanceAiStore.threads = [newChat(), seenChat()];
+
+			const { getByRole } = render();
+
+			expect(rowLabels(getByRole('list', { name: 'Working' }))).toEqual(['New chat, Working']);
+		});
+
+		it('shows the new chat as working in the flat list of Simple mode', () => {
+			configureInstanceAi({ experienceModes: true });
+			streamingRuntime();
+			instanceAiStore.threads = [newChat(), seenChat()];
+
+			const { getByTestId } = render();
+
+			expect(rowLabels(getByTestId('instance-ai-sidebar-chats'))).toEqual([
+				'New chat, Working',
+				'Team digest',
+			]);
+		});
+
+		it('keeps the state that the server sent', () => {
+			configureInstanceAi({ experienceModes: true, defaultMode: 'power' });
+			streamingRuntime();
+			instanceAiStore.threads = [
+				chat('new', 'New chat', { state: 'needs-you', needsInput: true, lastActivityAt: T1 }),
+			];
+
+			const { getByRole, queryByRole } = render();
+
+			expect(rowLabels(getByRole('list', { name: 'Needs you' }))).toEqual([
+				'New chat, Waiting for you',
+			]);
+			expect(queryByRole('list', { name: 'Working' })).not.toBeInTheDocument();
+		});
+	});
+
+	describe('live chat states', () => {
+		function emitAssistantUpdate() {
+			const event: PushMessage = {
+				type: 'agentExecutionUpdated',
+				data: { projectId: 'p1', agentId: ASSISTANT_AGENT_ID, threadId: 'a', executionId: 'e1' },
+			};
+			for (const handler of [...pushHandlers]) handler(event);
+		}
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('reloads the chats one second after an Assistant chat changes', () => {
+			vi.useFakeTimers();
+			configureInstanceAi({ experienceModes: true });
+			instanceAiStore.threads = [chat('a', 'First chat')];
+			render();
+			expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(1);
+
+			emitAssistantUpdate();
+			vi.advanceTimersByTime(1000);
+
+			expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(2);
+		});
+
+		it('stops listening when the section unmounts', () => {
+			configureInstanceAi({ experienceModes: true });
+			const { unmount } = render();
+			expect(pushStore.pushConnect).toHaveBeenCalledTimes(1);
+
+			unmount();
+
+			expect(pushHandlers.size).toBe(0);
+			expect(pushStore.pushDisconnect).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			['experience modes are off', { experienceModes: false }],
+			['Instance AI is not available', { experienceModes: true, available: false }],
+		])('does not listen when %s', (_, config) => {
+			configureInstanceAi(config);
+
+			render();
+
+			expect(pushStore.addEventListener).not.toHaveBeenCalled();
+			expect(pushStore.pushConnect).not.toHaveBeenCalled();
 		});
 	});
 });

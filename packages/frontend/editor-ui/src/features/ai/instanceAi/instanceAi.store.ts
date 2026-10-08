@@ -214,12 +214,21 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return [...threads.value, ...threadHistory.value.threads].filter((t) => t.id === threadId);
 	}
 
+	// Numbers each list request. The sidebar reloads the list while chats run, so an answer can
+	// come after the answer to a newer request. Such an old answer must not replace the list.
+	let threadListRequest = 0;
+	let shownThreadListRequest = 0;
+
 	async function loadThreads(): Promise<boolean> {
+		const request = ++threadListRequest;
 		try {
 			const result = await fetchThreadsApi(rootStore.restApiContext);
 			for (const thread of result.threads) {
 				persistedThreadIds.add(thread.id);
 			}
+			// The list already shows a newer answer.
+			if (request < shownThreadListRequest) return true;
+			shownThreadListRequest = request;
 			// Merge server threads into local list, preserving any local-only threads
 			// (e.g. a freshly created thread that hasn't been persisted yet)
 			const serverIds = new Set(result.threads.map((t) => t.id));
