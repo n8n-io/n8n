@@ -132,7 +132,11 @@ export class PromotionChangeService {
 		);
 		const rows = buildPromotableResources({ ...diff, base, archiveState, metadata });
 
-		return { commitSha: branch.commitSha, changes: applyQuery(rows, query) };
+		return {
+			commitSha: branch.commitSha,
+			source: { configId: branch.configId, branchName: branch.branchName },
+			changes: applyQuery(rows, query),
+		};
 	}
 
 	/** One route serves both directions, so the per-direction scope is checked here, not on the decorator. */

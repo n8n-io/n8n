@@ -41,9 +41,10 @@ import type {
 	WorkflowDetectionReport,
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
-import { MigrationFindingQueryService } from '../migration-finding-query.service';
+import { MigrationFindingQueryService, type ReportScope } from '../migration-finding-query.service';
 
 const TARGET_VERSION: BreakingChangeVersion = 'v3';
+const INSTANCE: ReportScope = { kind: 'instance' };
 const UPDATED_AT = new Date('2026-05-01T10:00:00.000Z');
 
 function metadata(id: string): BreakingChangeRuleMetadata {
@@ -194,11 +195,12 @@ describe('MigrationFindingQueryService', () => {
 			findingRepository.countOpenByRule.mockResolvedValue([{ ruleId: 'rule-a', count: 3 }]);
 			workflowRepository.count.mockResolvedValue(10);
 
-			const result = await service.getLightReport(TARGET_VERSION);
+			const result = await service.getLightReport(TARGET_VERSION, INSTANCE);
 
 			expect(ruleRegistry.getRules).toHaveBeenCalledWith(TARGET_VERSION);
 			expect(findingRepository.countOpenByRule).toHaveBeenCalledWith(
 				TARGET_VERSION,
+				undefined,
 				expect.anything(),
 			);
 			expect(result.report.workflowResults).toEqual([
@@ -223,10 +225,11 @@ describe('MigrationFindingQueryService', () => {
 			findingRepository.countOpenByRule.mockResolvedValue([{ ruleId: 'rule-a', count: 3 }]);
 			findingRepository.listRuleIdsWithWontFix.mockResolvedValue(['rule-a', 'rule-b']);
 
-			const result = await service.getLightReport(TARGET_VERSION);
+			const result = await service.getLightReport(TARGET_VERSION, INSTANCE);
 
 			expect(findingRepository.listRuleIdsWithWontFix).toHaveBeenCalledWith(
 				TARGET_VERSION,
+				undefined,
 				expect.anything(),
 			);
 			expect(
@@ -247,10 +250,11 @@ describe('MigrationFindingQueryService', () => {
 			]);
 			findingRepository.countDistinctOpenWorkflows.mockResolvedValue(4);
 
-			const result = await service.getLightReport(TARGET_VERSION);
+			const result = await service.getLightReport(TARGET_VERSION, INSTANCE);
 
 			expect(findingRepository.countDistinctOpenWorkflows).toHaveBeenCalledWith(
 				TARGET_VERSION,
+				undefined,
 				expect.anything(),
 			);
 			expect(result.totalAffectedWorkflows).toBe(4);
@@ -260,7 +264,7 @@ describe('MigrationFindingQueryService', () => {
 			const instanceResult = mock<BreakingChangeInstanceRuleResult>({ ruleId: 'instance-rule' });
 			breakingChangeService.getAllInstanceRulesResults.mockResolvedValue([instanceResult]);
 
-			const result = await service.getLightReport(TARGET_VERSION);
+			const result = await service.getLightReport(TARGET_VERSION, INSTANCE);
 
 			expect(breakingChangeService.getAllInstanceRulesResults).toHaveBeenCalledWith([instance]);
 			expect(result.report.instanceResults).toEqual([instanceResult]);
@@ -275,17 +279,45 @@ describe('MigrationFindingQueryService', () => {
 				ruleSetFingerprint: 'fp',
 			} as MigrationFindingSync);
 
-			const result = await service.getLightReport(TARGET_VERSION);
+			const result = await service.getLightReport(TARGET_VERSION, INSTANCE);
 
 			expect(syncRepository.getForVersion).toHaveBeenCalledWith(TARGET_VERSION, expect.anything());
 			expect(result.report.generatedAt).toEqual(syncedAt);
+		});
+
+		it('limits counts and the total to the workflows in scope, and hides instance results', async () => {
+			const scope: ReportScope = { kind: 'workflows', workflowIds: ['wf-1', 'wf-2', 'wf-3'] };
+			findingRepository.countOpenByRule.mockResolvedValue([{ ruleId: 'rule-a', count: 2 }]);
+			findingRepository.countDistinctOpenWorkflows.mockResolvedValue(2);
+			breakingChangeService.getAllInstanceRulesResults.mockResolvedValue([
+				mock<BreakingChangeInstanceRuleResult>({ ruleId: 'instance-rule' }),
+			]);
+
+			const result = await service.getLightReport(TARGET_VERSION, scope);
+
+			expect(findingRepository.countOpenByRule).toHaveBeenCalledWith(
+				TARGET_VERSION,
+				scope.workflowIds,
+				expect.anything(),
+			);
+			expect(findingRepository.countDistinctOpenWorkflows).toHaveBeenCalledWith(
+				TARGET_VERSION,
+				scope.workflowIds,
+				expect.anything(),
+			);
+			expect(result.totalWorkflows).toBe(3);
+			expect(result.totalAffectedWorkflows).toBe(2);
+			expect(result.report.workflowResults.map((r) => r.nbAffectedWorkflows)).toEqual([2]);
+			expect(result.report.instanceResults).toEqual([]);
+			expect(breakingChangeService.getAllInstanceRulesResults).not.toHaveBeenCalled();
+			expect(workflowRepository.count).not.toHaveBeenCalled();
 		});
 
 		it('falls back to the current time as generatedAt when no sync ran yet', async () => {
 			const now = new Date('2026-06-01T12:00:00.000Z');
 			vi.useFakeTimers({ now });
 			try {
-				const result = await service.getLightReport(TARGET_VERSION);
+				const result = await service.getLightReport(TARGET_VERSION, INSTANCE);
 
 				expect(result.report.generatedAt).toEqual(now);
 			} finally {
@@ -324,11 +356,12 @@ describe('MigrationFindingQueryService', () => {
 				statistic('wf-1', 7, new Date('2026-04-01T00:00:00.000Z')),
 			]);
 
-			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a');
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
 
 			expect(findingRepository.listTriageableForRule).toHaveBeenCalledWith(
 				TARGET_VERSION,
 				'rule-a',
+				undefined,
 				expect.anything(),
 			);
 			expect(workflowRepository.findByIds).toHaveBeenCalledWith(
@@ -395,7 +428,7 @@ describe('MigrationFindingQueryService', () => {
 				{ id: 'user-1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com' } as User,
 			]);
 
-			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a');
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
 
 			expect(ownerRepository.findByWorkflowIds).toHaveBeenCalledWith(
 				['wf-1', 'wf-2'],
@@ -425,7 +458,7 @@ describe('MigrationFindingQueryService', () => {
 				new Map([['wf-1', { id: 'project-1' } as Project]]),
 			);
 
-			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a');
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
 
 			expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).toHaveBeenCalledWith([
 				'wf-1',
@@ -446,10 +479,32 @@ describe('MigrationFindingQueryService', () => {
 				{ workflowId: 'wf-1', userId: null, source: 'assigned' } as MigrationWorkflowOwner,
 			]);
 
-			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a');
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
 
 			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
 			expect(result.affectedWorkflows[0].owner).toBeUndefined();
+		});
+
+		it('lists only the findings of the workflows in scope', async () => {
+			const scope: ReportScope = { kind: 'workflows', workflowIds: ['wf-2'] };
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(2, 'rule-a', {
+					id: 'wf-2',
+					name: 'Second',
+					activeVersionId: null,
+					updatedAt: UPDATED_AT,
+				}),
+			]);
+
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', scope);
+
+			expect(findingRepository.listTriageableForRule).toHaveBeenCalledWith(
+				TARGET_VERSION,
+				'rule-a',
+				['wf-2'],
+				expect.anything(),
+			);
+			expect(result.affectedWorkflows.map((workflow) => workflow.id)).toEqual(['wf-2']);
 		});
 
 		it('lists a finding whose rule no longer fires on the current workflow with no issues', async () => {
@@ -465,7 +520,7 @@ describe('MigrationFindingQueryService', () => {
 				workflowWithNodes('wf-1', ['n8n-nodes-base.other']),
 			]);
 
-			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a');
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
 
 			expect(result.affectedWorkflows).toEqual([
 				expect.objectContaining({ id: 'wf-1', name: 'Already fixed', issues: [] }),
@@ -493,7 +548,7 @@ describe('MigrationFindingQueryService', () => {
 				workflowWithNodes('wf-1', ['n8n-nodes-base.a']),
 			]);
 
-			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a');
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
 
 			expect(result.affectedWorkflows).toEqual([
 				expect.objectContaining({ id: 'wf-1', issues: [] }),
@@ -532,7 +587,7 @@ describe('MigrationFindingQueryService', () => {
 				affectedWorkflows: [{ id: 'wf-1', issues: [issue] }],
 			} as BreakingChangeWorkflowRuleResult);
 
-			const result = await service.getRuleFindings(TARGET_VERSION, 'batch-rule');
+			const result = await service.getRuleFindings(TARGET_VERSION, 'batch-rule', INSTANCE);
 
 			expect(breakingChangeService.detectRule).toHaveBeenCalledTimes(1);
 			expect(breakingChangeService.detectRule).toHaveBeenCalledWith(TARGET_VERSION, rule);
@@ -555,7 +610,7 @@ describe('MigrationFindingQueryService', () => {
 			]);
 			breakingChangeService.detectRule.mockResolvedValue(undefined);
 
-			const result = await service.getRuleFindings(TARGET_VERSION, 'batch-rule');
+			const result = await service.getRuleFindings(TARGET_VERSION, 'batch-rule', INSTANCE);
 
 			expect(result.affectedWorkflows).toEqual([
 				expect.objectContaining({ id: 'wf-1', issues: [] }),
@@ -563,16 +618,16 @@ describe('MigrationFindingQueryService', () => {
 		});
 
 		it('rejects an unknown rule id with a not-found error', async () => {
-			await expect(service.getRuleFindings(TARGET_VERSION, 'missing-rule')).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				service.getRuleFindings(TARGET_VERSION, 'missing-rule', INSTANCE),
+			).rejects.toThrow(NotFoundError);
 			expect(findingRepository.listTriageableForRule).not.toHaveBeenCalled();
 		});
 
 		it('rejects an instance rule id with a not-found error', async () => {
-			await expect(service.getRuleFindings(TARGET_VERSION, 'instance-rule')).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				service.getRuleFindings(TARGET_VERSION, 'instance-rule', INSTANCE),
+			).rejects.toThrow(NotFoundError);
 		});
 	});
 });

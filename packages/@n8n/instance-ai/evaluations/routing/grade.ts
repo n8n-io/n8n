@@ -1,0 +1,178 @@
+// ---------------------------------------------------------------------------
+// Route resolution and scoring for the routing eval.
+//
+// A route watcher asks the judge before each orchestrator tool call runs (see
+// judge.ts). The first `stop` verdict ends the run and decides the route. When
+// the turn ends first, the judge picks the route from the full trace. Only
+// the read-only actions below skip the check, so a new or renamed tool still
+// gets a check and needs no grader change.
+// ---------------------------------------------------------------------------
+
+import type { InstanceAiEvent } from '@n8n/api-types';
+
+import type { AcceptToken, RoutingCase } from './cases';
+import type { JudgeInput, JudgeVerdict, Route, Steer, TraceStep } from './judge';
+import {
+	ORCHESTRATOR_AGENT_ID,
+	type DiscoveryStreamStatus,
+	type PendingToolCall,
+} from '../discovery/types';
+import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
+
+/**
+ * A check before a read almost never stops the run, and the next check sees
+ * the read, so the run skips it. A tool or action not listed here gets a check.
+ */
+const READ_ONLY_ACTIONS: Readonly<Record<string, ReadonlySet<unknown>>> = {
+	// `load_skill` has no action.
+	load_skill: new Set([undefined]),
+	[DOMAIN_TOOL_IDS.NODES]: new Set([
+		'list',
+		'search',
+		'describe',
+		'type-definition',
+		'suggested',
+		'explore-resources',
+	]),
+	[DOMAIN_TOOL_IDS.CREDENTIALS]: new Set(['list', 'get', 'search-types']),
+	[DOMAIN_TOOL_IDS.N8N_DOCS]: new Set(['lookup', 'search', 'read']),
+	[DOMAIN_TOOL_IDS.RESEARCH]: new Set(['web-search', 'fetch-url']),
+};
+
+const isReadOnly = ({ toolName, args }: PendingToolCall): boolean =>
+	READ_ONLY_ACTIONS[toolName]?.has(args.action) ?? false;
+
+export interface RouteResolution {
+	route: Route;
+	/** Unset only when the judge failed. */
+	steer?: Steer;
+	/** Where the route was decided: the tool call that the run stopped before, or the end of the turn. */
+	evidence: string;
+	judgeReason?: string;
+	/** Set when a judge call in the trial failed. */
+	judgeError?: string;
+}
+
+/**
+ * The orchestrator's text and calls in order. A pending call that has no
+ * event yet goes last, after the text that the run published before it.
+ */
+export function traceSteps(
+	events: readonly InstanceAiEvent[],
+	pending?: PendingToolCall,
+): TraceStep[] {
+	const steps: TraceStep[] = [];
+	let text = '';
+	let pendingSeen = false;
+	for (const event of events) {
+		if (event.agentId !== ORCHESTRATOR_AGENT_ID) continue;
+		if (event.type === 'text-delta') {
+			text += event.payload.text;
+			continue;
+		}
+		if (event.type !== 'tool-call') continue;
+		if (text.trim()) steps.push({ kind: 'text', text: text.trim() });
+		text = '';
+		const { toolCallId, toolName, args } = event.payload;
+		steps.push({ kind: 'call', toolName, args });
+		if (toolCallId === pending?.toolCallId) pendingSeen = true;
+	}
+	if (text.trim()) steps.push({ kind: 'text', text: text.trim() });
+	if (pending && !pendingSeen) {
+		steps.push({ kind: 'call', toolName: pending.toolName, args: pending.args });
+	}
+	return steps;
+}
+
+export interface RouteWatcher {
+	/** The runner's `stopBeforeTool` hook: `true` ends the run before the call runs. */
+	beforeToolCall: (call: PendingToolCall, events: readonly InstanceAiEvent[]) => Promise<boolean>;
+	/** The route of the finished turn. */
+	resolve: (turn: {
+		instanceEvents: readonly InstanceAiEvent[];
+		streamStatus: DiscoveryStreamStatus;
+	}) => Promise<RouteResolution>;
+}
+
+/** One watcher for each trial. */
+export function createRouteWatcher(
+	judge: (input: JudgeInput) => Promise<JudgeVerdict>,
+): RouteWatcher {
+	let stopped: RouteResolution | undefined;
+	let judgeError: string | undefined;
+	// Calls of one step can run in parallel, so the judge takes them one at a time.
+	let queue: Promise<unknown> = Promise.resolve();
+
+	const ask = async (input: JudgeInput): Promise<JudgeVerdict | undefined> => {
+		try {
+			return await judge(input);
+		} catch (error) {
+			// A failed check before a call lets the run go on; the next check decides.
+			judgeError ??= error instanceof Error ? error.message : String(error);
+			return undefined;
+		}
+	};
+	const withError = (resolution: RouteResolution): RouteResolution =>
+		judgeError ? { ...resolution, judgeError } : resolution;
+
+	return {
+		beforeToolCall: async (call, events) => {
+			const check = queue.then(async () => {
+				if (stopped) return true;
+				if (isReadOnly(call)) return false;
+				const verdict = await ask({ steps: traceSteps(events, call) });
+				// A stop without a route lets the run go on.
+				if (verdict?.decision !== 'stop' || verdict.route === 'none') return false;
+				stopped = {
+					route: verdict.route,
+					steer: verdict.steer,
+					evidence: `${call.toolName} call`,
+					judgeReason: verdict.reason,
+				};
+				return true;
+			});
+			queue = check;
+			return await check;
+		},
+
+		resolve: async ({ instanceEvents, streamStatus }) => {
+			// A check can still run after a timeout, and its verdict counts.
+			await queue;
+			if (stopped) return withError(stopped);
+			const evidence = `end of turn (${streamStatus})`;
+			const verdict = await ask({ steps: traceSteps(instanceEvents), endStatus: streamStatus });
+			if (!verdict) return withError({ route: 'none', evidence: `${evidence}, judge failed` });
+			return withError({
+				route: verdict.route,
+				steer: verdict.steer,
+				evidence,
+				judgeReason: verdict.reason,
+			});
+		},
+	};
+}
+
+/** Short label for output: the route, with the steer for `clarify` and `answer`. */
+export function routeLabel(resolution: RouteResolution): string {
+	return resolution.route === 'clarify' || resolution.route === 'answer'
+		? `${resolution.route}:${resolution.steer ?? 'none'}`
+		: resolution.route;
+}
+
+// `<route>:agent` passes a steer toward an Agent; `<route>:open` passes any steer except workflow only.
+function acceptTokenMatches(token: AcceptToken, { route, steer }: RouteResolution): boolean {
+	const [tokenRoute, tokenSteer] = token.split(':');
+	if (route !== tokenRoute) return false;
+	if (tokenSteer === 'agent') return steer === 'agent' || steer === 'both';
+	if (tokenSteer === 'open') return steer !== undefined && steer !== 'workflow';
+	return true;
+}
+
+export function trialPasses(routingCase: RoutingCase, resolution: RouteResolution): boolean {
+	return routingCase.accepts.some((token) => acceptTokenMatches(token, resolution));
+}
+
+/** A case passes when at least 2 of 3 trials pass; other trial counts keep the ratio. */
+export function casePasses(passedTrials: number, totalTrials: number): boolean {
+	return totalTrials > 0 && passedTrials * 3 >= totalTrials * 2;
+}

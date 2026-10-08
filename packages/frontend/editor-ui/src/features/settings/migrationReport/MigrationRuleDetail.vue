@@ -53,9 +53,9 @@ const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
 
-// The page needs only `breakingChanges:list`. Choosing an owner or a state needs
-// `breakingChanges:migrate`, like Migrate.
-const canAssignOwner = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
+// The page needs only `breakingChanges:list`. A migration, a state change or
+// an owner choice needs `breakingChanges:migrate`.
+const canMigrate = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
 
 const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 	async () => {
@@ -244,7 +244,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		},
 	];
 
-	if (state.value.migratable) {
+	if (state.value.migratable && canMigrate.value) {
 		headers.push({
 			title: '',
 			key: 'actions',
@@ -553,7 +553,7 @@ const sortedWorkflows = computed(() => {
 				</div>
 			</template>
 			<template #[`item.owner`]="{ item }">
-				<div v-if="canAssignOwner" @click.stop>
+				<div v-if="canMigrate" @click.stop>
 					<N8nUserSelect
 						size="small"
 						:users="ownerOptionsFor(item)"
@@ -581,7 +581,7 @@ const sortedWorkflows = computed(() => {
 				<FindingStateSelect
 					:model-value="item.status"
 					:disabled="
-						!canAssignOwner || savingWorkflowIds.has(item.id) || migratedWorkflowIds.has(item.id)
+						!canMigrate || savingWorkflowIds.has(item.id) || migratedWorkflowIds.has(item.id)
 					"
 					@update:model-value="onFindingStatusChange(item, $event)"
 					@click.stop
