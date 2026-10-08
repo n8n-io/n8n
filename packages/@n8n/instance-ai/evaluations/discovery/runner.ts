@@ -72,6 +72,7 @@ import type {
 	OrchestrationContext,
 	TaskStorage,
 } from '../../src/types';
+import { buildKnowledgeBaseWorkspaceBundle } from '../../src/knowledge-base/materialize-knowledge-base';
 import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { asResumable, type SuspensionInfo } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
@@ -201,12 +202,17 @@ export async function runOrchestratorTurn(
 			seed: options.scenario.seed,
 			credentials: options.scenario.credentials,
 		});
+		// The build skill sends the agent to the knowledge base, which prod writes into the sandbox.
+		const knowledgeBase = await buildKnowledgeBaseWorkspaceBundle({
+			root: stubWorkspaceRoot,
+			logger: silentLogger(),
+		});
 		const mcpState = options.scenario.instanceState?.mcp;
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
 		const context: InstanceAiContext = {
 			...applyInstanceState(services.context, options.scenario, mcpRegistry),
 			...(isAgentFeatureEnabled() ? { builderDelegate: createStubBuilderDelegate() } : {}),
-			workspace: createStubWorkspace(),
+			workspace: createStubWorkspace(knowledgeBase.files),
 			workspaceRoot: stubWorkspaceRoot,
 		};
 
