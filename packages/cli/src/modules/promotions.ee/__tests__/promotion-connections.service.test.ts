@@ -9,7 +9,7 @@ import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import type { PromotionConnection } from '../database/entities/promotion-connection.entity';
 import type { PromotionConfig } from '../database/entities/promotion-config.entity';
@@ -22,8 +22,8 @@ import type { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 
-vi.mock('@/permissions.ee/check-access');
-const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
+vi.mock('@/permissions.ee/scope-access');
+const hasScopesMock = hasScopes as MockedFunction<typeof hasScopes>;
 
 /**
  * Everything reachable over HTTP is covered against a real database in
@@ -88,7 +88,7 @@ describe('PromotionConnectionsService', () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
-		userHasScopesMock.mockResolvedValue(true);
+		hasScopesMock.mockResolvedValue(true);
 		providersService.getEntity.mockResolvedValue(provider());
 		connectionRepository.findByIdWithProvider.mockResolvedValue(connection());
 		configRepository.findByConnectionIds.mockResolvedValue([]);
@@ -246,7 +246,7 @@ describe('PromotionConnectionsService', () => {
 		const user = mock<User>({ id: 'u1' });
 
 		it('rejects linking a project the caller cannot edit', async () => {
-			userHasScopesMock.mockResolvedValue(false);
+			hasScopesMock.mockResolvedValue(false);
 
 			await expect(
 				service.addProject({ user, connectionId: 'conn1', projectId: 'p1' }),
@@ -256,7 +256,7 @@ describe('PromotionConnectionsService', () => {
 		});
 
 		it('rejects unlinking a project the caller cannot edit', async () => {
-			userHasScopesMock.mockResolvedValue(false);
+			hasScopesMock.mockResolvedValue(false);
 
 			await expect(
 				service.removeProject({ user, connectionId: 'conn1', projectId: 'p1' }),

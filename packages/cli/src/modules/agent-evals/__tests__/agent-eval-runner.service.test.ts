@@ -22,7 +22,7 @@ import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import { AgentEvalRunnerService } from '../agent-eval-runner.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
@@ -46,8 +46,8 @@ vi.mock('@/modules/data-table/data-table.service', () => ({
 vi.mock('@/modules/instance-ai/eval/agent-execution.service', () => ({
 	EvalAgentExecutionService: class EvalAgentExecutionService {},
 }));
-vi.mock('@/permissions.ee/check-access', () => ({
-	userHasScopes: vi.fn().mockResolvedValue(true),
+vi.mock('@/permissions.ee/scope-access', () => ({
+	hasScopes: vi.fn().mockResolvedValue(true),
 }));
 // The judging step's own collaborators — stubbed the same way
 // `agent-eval-case-generation.service.test.ts` stubs them for its (non-judge)
@@ -149,7 +149,7 @@ describe('AgentEvalRunnerService', () => {
 	});
 
 	beforeEach(() => {
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(hasScopes).mockResolvedValue(true);
 		vi.mocked(resolveEvaluationConcurrencyLimit).mockReturnValue(1); // serial by default
 
 		globalConfig = {
@@ -266,7 +266,7 @@ describe('AgentEvalRunnerService', () => {
 		});
 
 		it('rejects when the user cannot run agents in the project', async () => {
-			vi.mocked(userHasScopes).mockResolvedValueOnce(false); // agent:execute check
+			vi.mocked(hasScopes).mockResolvedValueOnce(false); // agent:execute check
 			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow(
 				'permission to run agents',
 			);
@@ -1116,7 +1116,7 @@ describe('AgentEvalRunnerService', () => {
 		});
 
 		it('rejects when the user cannot run agents in the project', async () => {
-			vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+			vi.mocked(hasScopes).mockResolvedValueOnce(false);
 			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
 				'permission to run agents',
 			);
@@ -1147,7 +1147,7 @@ describe('AgentEvalRunnerService', () => {
 
 		describe('editing the rule', () => {
 			it('needs agent:update on top of agent:execute, and changes nothing without it', async () => {
-				vi.mocked(userHasScopes).mockImplementation(
+				vi.mocked(hasScopes).mockImplementation(
 					async (_user, scopes) => !scopes.includes('agent:update'),
 				);
 
@@ -1161,7 +1161,7 @@ describe('AgentEvalRunnerService', () => {
 			});
 
 			it('lets an execute-only user rerun as-is, since nothing is written', async () => {
-				vi.mocked(userHasScopes).mockImplementation(
+				vi.mocked(hasScopes).mockImplementation(
 					async (_user, scopes) => !scopes.includes('agent:update'),
 				);
 				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);

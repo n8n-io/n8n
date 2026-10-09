@@ -4,13 +4,13 @@ import { Container } from '@n8n/di';
 import type { InstanceAiAgentContextReader, InstanceAiContext } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import { InstanceAiAgentContextAdapterService } from '../../agents/instance-ai-agent-context.adapter';
 import { InstanceAiService } from '../instance-ai.service';
 
-vi.mock('@/permissions.ee/check-access', () => ({
-	userHasScopes: vi.fn(),
+vi.mock('@/permissions.ee/scope-access', () => ({
+	hasScopes: vi.fn(),
 }));
 
 type ServiceInternals = {
@@ -25,7 +25,7 @@ describe('InstanceAiService Agent context binding', () => {
 	});
 
 	it('binds the reader to the current user and project', async () => {
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(hasScopes).mockResolvedValue(true);
 		const reader = mock<InstanceAiAgentContextReader>();
 		const adapter = mock<InstanceAiAgentContextAdapterService>();
 		adapter.createReader.mockReturnValue(reader);
@@ -37,7 +37,7 @@ describe('InstanceAiService Agent context binding', () => {
 
 		await service.bindAgentContextReader(context, user);
 
-		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+		expect(hasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
 			projectId: 'project-1',
 		});
 		expect(adapter.createReader).toHaveBeenCalledWith(user, 'project-1');
@@ -45,7 +45,7 @@ describe('InstanceAiService Agent context binding', () => {
 	});
 
 	it('does not expose Agent context without read scope', async () => {
-		vi.mocked(userHasScopes).mockResolvedValue(false);
+		vi.mocked(hasScopes).mockResolvedValue(false);
 		const containerGet = vi.spyOn(Container, 'get');
 		const service = Object.create(InstanceAiService.prototype) as ServiceInternals;
 		const context = { projectId: 'project-1' } as unknown as InstanceAiContext;

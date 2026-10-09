@@ -237,8 +237,8 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
-vi.mock('@/permissions.ee/check-access', () => ({
-	userHasScopes: vi.fn(),
+vi.mock('@/permissions.ee/scope-access', () => ({
+	hasScopes: vi.fn(),
 }));
 
 import type {
@@ -289,7 +289,7 @@ import type { Mock, MockedFunction } from 'vitest';
 
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { ForbiddenError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import {
 	AI_PREFERENCES_CLEARED_BLOCK,
 	renderAiPreferencesBlock,
@@ -5486,25 +5486,25 @@ describe('InstanceAiService — agent preview handoff scopes', () => {
 	}
 
 	beforeEach(() => {
-		vi.mocked(userHasScopes).mockReset();
+		vi.mocked(hasScopes).mockReset();
 	});
 
 	it('requires both agent read and update scopes for preview handoffs', async () => {
 		const service = createAgentPreviewPermissionService();
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(hasScopes).mockResolvedValue(true);
 
 		await expect(
 			service.assertAgentPreviewHandoffScopes(fakeUser, 'project-1'),
 		).resolves.toBeUndefined();
 
-		expect(userHasScopes).toHaveBeenCalledWith(fakeUser, ['agent:read', 'agent:update'], false, {
+		expect(hasScopes).toHaveBeenCalledWith(fakeUser, ['agent:read', 'agent:update'], false, {
 			projectId: 'project-1',
 		});
 	});
 
 	it('rejects preview handoffs when either required agent scope is missing', async () => {
 		const service = createAgentPreviewPermissionService();
-		vi.mocked(userHasScopes).mockResolvedValue(false);
+		vi.mocked(hasScopes).mockResolvedValue(false);
 
 		await expect(service.assertAgentPreviewHandoffScopes(fakeUser, 'project-1')).rejects.toThrow(
 			'You do not have permission to load or edit agent previews in this project.',

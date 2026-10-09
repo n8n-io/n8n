@@ -44,7 +44,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { listQueryMiddleware } from '@/middlewares';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
@@ -540,7 +540,7 @@ export class CredentialsController {
 		const toUnshare = utils.rightDiff([newProjectIds, (id) => id], [currentProjectIds, (id) => id]);
 
 		if (toShare.length > 0) {
-			const canShare = await userHasScopes(req.user, ['credential:share'], false, {
+			const canShare = await hasScopes(req.user, ['credential:share'], false, {
 				credentialId,
 			});
 			if (!canShare) {
@@ -549,7 +549,7 @@ export class CredentialsController {
 		}
 
 		if (toUnshare.length > 0) {
-			const canUnshare = await userHasScopes(req.user, ['credential:unshare'], false, {
+			const canUnshare = await hasScopes(req.user, ['credential:unshare'], false, {
 				credentialId,
 			});
 			if (!canUnshare) {

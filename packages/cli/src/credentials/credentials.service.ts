@@ -69,7 +69,7 @@ import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-se
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { DCR_MANAGED_CREDENTIAL_FIELDS } from '@/oauth/dcr-managed-fields';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { CredentialRequest, ListQuery } from '@/requests';
@@ -1996,9 +1996,7 @@ export class CredentialsService {
 		// works for now. The only time we wouldn't want to do this is if the user
 		// could actually be testing the credential before saving it, so this should cover
 		// the cases we need it for.
-		if (
-			!(await userHasScopes(user, ['credential:update'], false, { credentialId: credential.id }))
-		) {
+		if (!(await hasScopes(user, ['credential:update'], false, { credentialId: credential.id }))) {
 			mergedCredentials.data = decryptedData;
 		}
 	}
@@ -2182,7 +2180,7 @@ export class CredentialsService {
 	async ensureCanManageEndUserCredential(user: User, projectId?: string) {
 		const allowed =
 			projectId !== undefined &&
-			(await userHasScopes(user, ['credential:createEndUser'], false, { projectId }));
+			(await hasScopes(user, ['credential:createEndUser'], false, { projectId }));
 		if (!allowed) {
 			throw new ForbiddenError(
 				'You do not have permission to manage end-user credentials in this project',

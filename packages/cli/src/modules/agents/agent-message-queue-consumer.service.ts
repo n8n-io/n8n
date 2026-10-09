@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
@@ -184,7 +184,7 @@ export class AgentMessageQueueConsumer {
 		if (
 			!user ||
 			user.disabled ||
-			!(await userHasScopes(user, ['agent:execute'], false, { projectId: thread.projectId }))
+			!(await hasScopes(user, ['agent:execute'], false, { projectId: thread.projectId }))
 		) {
 			throw new UserError('You can no longer execute this agent');
 		}

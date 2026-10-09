@@ -47,7 +47,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -129,7 +129,7 @@ export class WorkflowsController {
 	async getAll(req: WorkflowRequest.GetMany, res: express.Response) {
 		try {
 			const userCanListProjectFolders = req.listQueryOptions?.filter?.projectId
-				? await userHasScopes(req.user, ['folder:list'], false, {
+				? await hasScopes(req.user, ['folder:list'], false, {
 						projectId: req.listQueryOptions?.filter?.projectId as string,
 					})
 				: true;
@@ -601,14 +601,14 @@ export class WorkflowsController {
 		);
 
 		if (toShare.length > 0) {
-			const canShare = await userHasScopes(req.user, ['workflow:share'], false, { workflowId });
+			const canShare = await hasScopes(req.user, ['workflow:share'], false, { workflowId });
 			if (!canShare) {
 				throw new ForbiddenError();
 			}
 		}
 
 		if (toUnshare.length > 0) {
-			const canUnshare = await userHasScopes(req.user, ['workflow:unshare'], false, {
+			const canUnshare = await hasScopes(req.user, ['workflow:unshare'], false, {
 				workflowId,
 			});
 			if (!canUnshare) {

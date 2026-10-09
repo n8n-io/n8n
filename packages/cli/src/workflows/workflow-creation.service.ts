@@ -2,7 +2,7 @@ import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { EntityManager, User, Project, Folder } from '@n8n/db';
+import type { EntityManager, Folder, OperationContext, Project, User } from '@n8n/db';
 import {
 	ProjectRepository,
 	SharedWorkflow,
@@ -24,7 +24,7 @@ import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-policy';
 import { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -332,7 +332,7 @@ export class WorkflowCreationService {
 					newWorkflow,
 					user,
 					effectiveProjectId,
-					transactionManager,
+					ctx,
 					floor,
 				);
 
@@ -447,7 +447,7 @@ export class WorkflowCreationService {
 		newWorkflow: WorkflowEntity,
 		user: User,
 		effectiveProjectId: string,
-		transactionManager: EntityManager,
+		context: OperationContext,
 		floor: RedactionFloor,
 	): Promise<void> {
 		// No license — the field is meaningless, drop any incoming value.
@@ -462,12 +462,12 @@ export class WorkflowCreationService {
 		// Nothing to validate, nothing to clamp — skip the scope check entirely.
 		if (!hasIncoming && floor === 'off') return;
 
-		const canUpdateRedaction = await userHasScopes(
+		const canUpdateRedaction = await hasScopes(
 			user,
 			['workflow:enableRedaction'],
 			false,
 			{ projectId: effectiveProjectId },
-			transactionManager,
+			context,
 		);
 
 		// User can't update the policy, drop any incoming value.

@@ -22,7 +22,7 @@ import type { CredentialsFinderService } from '@n8n/backend-services';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import type { AiService } from '@/services/ai.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -50,8 +50,8 @@ import type * as WorkflowToolFactory from '../tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from '../tools/workflow-tool-unavailable-error';
 import { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 
-vi.mock('@/permissions.ee/check-access', () => ({
-	userHasScopes: vi.fn(),
+vi.mock('@/permissions.ee/scope-access', () => ({
+	hasScopes: vi.fn(),
 }));
 
 const resolveWorkflowToolMock = vi.fn();
@@ -224,7 +224,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 
 		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
 
-		expect(userHasScopes).not.toHaveBeenCalled();
+		expect(hasScopes).not.toHaveBeenCalled();
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
 		);
@@ -279,7 +279,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	});
 
 	it('drops node and workflow tools for a user without workflow:execute, keeps custom tools', async () => {
-		vi.mocked(userHasScopes).mockResolvedValue(false);
+		vi.mocked(hasScopes).mockResolvedValue(false);
 		const { service } = makeService({});
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
 		const credentialProvider = mock<CredentialProvider>();
@@ -292,14 +292,14 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			testUser,
 		);
 
-		expect(userHasScopes).toHaveBeenCalledWith(testUser, ['workflow:execute'], false, {
+		expect(hasScopes).toHaveBeenCalledWith(testUser, ['workflow:execute'], false, {
 			projectId,
 		});
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['custom_tool']);
 	});
 
 	it('drops a node tool when the user lacks credential:read on a baked credential', async () => {
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(hasScopes).mockResolvedValue(true);
 		const credentialsFinderService = mock<CredentialsFinderService>();
 		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 		const { service } = makeService({ credentialsFinderService });
@@ -323,7 +323,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	});
 
 	it('skips disabled tools before looking up user access', async () => {
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(hasScopes).mockResolvedValue(true);
 		const { service, credentialsFinderService, workflowFinderService, workflowRepository } =
 			makeService({});
 		const entity = makeAgentEntity([
@@ -347,7 +347,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	});
 
 	it('drops a workflow tool the user cannot access, keeps one they can', async () => {
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(hasScopes).mockResolvedValue(true);
 		const workflowRepository = mock<WorkflowRepository>();
 		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
 			mock<WorkflowEntity>({ id: 'wf-1' }),
@@ -377,7 +377,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	});
 
 	it('keeps node and workflow tools for a fully-privileged user', async () => {
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(hasScopes).mockResolvedValue(true);
 		const credentialsFinderService = mock<CredentialsFinderService>();
 		credentialsFinderService.findCredentialForUser.mockResolvedValue(
 			mock<CredentialsEntity>({ id: 'cred-1' }),
@@ -412,7 +412,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	});
 
 	it('returns the granted credential and workflow ids so cached runtimes can re-check them', async () => {
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(hasScopes).mockResolvedValue(true);
 		const credentialsFinderService = mock<CredentialsFinderService>();
 		credentialsFinderService.findCredentialForUser.mockResolvedValue(
 			mock<CredentialsEntity>({ id: 'cred-1' }),
@@ -504,7 +504,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 	}
 
 	it('filters sub-agent tools by the delegating user access when a user is present', async () => {
-		vi.mocked(userHasScopes).mockResolvedValue(false);
+		vi.mocked(hasScopes).mockResolvedValue(false);
 		const { service } = makeService({});
 		const config = makeResolvedSourceConfig([nodeToolWithCredential, workflowTool, customTool]);
 
@@ -521,7 +521,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 			user: testUser,
 		});
 
-		expect(userHasScopes).toHaveBeenCalledWith(testUser, ['workflow:execute'], false, {
+		expect(hasScopes).toHaveBeenCalledWith(testUser, ['workflow:execute'], false, {
 			projectId,
 		});
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['custom_tool']);
@@ -543,7 +543,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 			runType: 'production',
 		});
 
-		expect(userHasScopes).not.toHaveBeenCalled();
+		expect(hasScopes).not.toHaveBeenCalled();
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
 		);

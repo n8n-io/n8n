@@ -2,7 +2,7 @@ import type { User } from '@n8n/db';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { ForbiddenError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 /**
  * The flag pair mirrors `shouldReturnData` in `DataTableRowsRepository`: a dry run
@@ -16,7 +16,7 @@ export async function assertRowReadAccessIfReturningRows(
 ): Promise<void> {
 	if (!dryRun && !returnData) return;
 
-	if (!(await userHasScopes(user, ['dataTable:readRow'], false, { dataTableId }))) {
+	if (!(await hasScopes(user, ['dataTable:readRow'], false, { dataTableId }))) {
 		throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.MISSING_SCOPE);
 	}
 }

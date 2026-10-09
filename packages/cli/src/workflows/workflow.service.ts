@@ -73,7 +73,7 @@ import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ListQuery } from '@/requests';
@@ -697,7 +697,7 @@ export class WorkflowService {
 				workflowUpdateData.settings.redactionPolicy,
 			);
 
-			const canUpdate = await userHasScopes(user, requiredScopes, false, {
+			const canUpdate = await hasScopes(user, requiredScopes, false, {
 				projectId: ownerProject.id,
 			});
 			if (!canUpdate) {
@@ -956,7 +956,7 @@ export class WorkflowService {
 
 		// Scoped to the workflow rather than its project, so a role granted by sharing the workflow
 		// counts the same way it does on the publish endpoint.
-		const canPublish = await userHasScopes(user, ['workflow:publish'], false, { workflowId });
+		const canPublish = await hasScopes(user, ['workflow:publish'], false, { workflowId });
 
 		if (!canPublish) {
 			this.logger.warn('User saved a draft but may not publish it', {

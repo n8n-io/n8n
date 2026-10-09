@@ -26,7 +26,7 @@ import {
 import { Service } from '@n8n/di';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { AgentEvalCaseGenerationService } from './agent-eval-case-generation.service';
@@ -155,7 +155,7 @@ export class AgentEvalService {
 		if (dataTableId !== null) {
 			try {
 				mayDeleteTable =
-					(await userHasScopes(user, ['dataTable:delete'], false, { dataTableId })) &&
+					(await hasScopes(user, ['dataTable:delete'], false, { dataTableId })) &&
 					!(await this.datasetRepository.isDataTableReadByOtherDataset(dataTableId, datasetId));
 			} catch (error) {
 				// The scope check reports a missing table as "not found". A table that

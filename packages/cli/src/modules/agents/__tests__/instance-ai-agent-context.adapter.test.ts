@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { AgentExecutionService, ThreadListItem } from '../agent-execution.service';
@@ -18,7 +18,7 @@ import type { AttachableWorkflowsService } from '../attachable-workflows.service
 import type { Agent } from '../entities/agent.entity';
 import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@/permissions.ee/scope-access', () => ({ hasScopes: vi.fn() }));
 
 function makeService() {
 	const agentsService = mock<AgentsService>();
@@ -68,8 +68,8 @@ const agent = {
 
 describe('InstanceAiAgentContextAdapterService', () => {
 	beforeEach(() => {
-		vi.mocked(userHasScopes).mockReset();
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(hasScopes).mockReset();
+		vi.mocked(hasScopes).mockResolvedValue(true);
 	});
 
 	it('labels config as the current draft and includes publication state', async () => {
@@ -303,7 +303,7 @@ describe('InstanceAiAgentContextAdapterService', () => {
 
 	it('does not read context when the user lacks Agent read access', async () => {
 		const { service, agentsService } = makeService();
-		vi.mocked(userHasScopes).mockResolvedValue(false);
+		vi.mocked(hasScopes).mockResolvedValue(false);
 
 		await expect(
 			service.createReader(user, 'project-1').lookup({ type: 'agents' }),

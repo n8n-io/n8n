@@ -29,7 +29,7 @@ import { AgentsSettingsService } from '@/modules/agents/agents-settings.service'
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import { judgeAgentAnswer } from './agent-eval-judge';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
@@ -124,7 +124,7 @@ export class AgentEvalRunnerService {
 		// it returns an error result rather than throwing — without this a caller
 		// lacking permission would get a created run with every case marked failed
 		// instead of a clean rejection.
-		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
+		if (!(await hasScopes(user, ['agent:execute'], false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to run agents in this project.');
 		}
 
@@ -222,14 +222,14 @@ export class AgentEvalRunnerService {
 		assertRequiredModulesActive(this.moduleRegistry);
 
 		// Backstop for direct callers; the REST path asserts before its own lookups.
-		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
+		if (!(await hasScopes(user, ['agent:execute'], false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to run agents in this project.');
 		}
 		// Editing the rule rewrites eval data, so it needs more than running does —
 		// a chat-only member holds `agent:execute` but not `agent:update`.
 		if (
 			options.whatToCheck !== undefined &&
-			!(await userHasScopes(user, ['agent:update'], false, { projectId }))
+			!(await hasScopes(user, ['agent:update'], false, { projectId }))
 		) {
 			throw new ForbiddenError('You do not have permission to edit checks in this project.');
 		}
@@ -715,7 +715,7 @@ export class AgentEvalRunnerService {
 		// Narrowed above (datasetSource === 'data_table'): the ref carries a table id.
 		const dataTableId = (dataset.datasetRef as { dataTableId: string }).dataTableId;
 
-		const allowed = await userHasScopes(user, ['dataTable:readRow'], false, { dataTableId });
+		const allowed = await hasScopes(user, ['dataTable:readRow'], false, { dataTableId });
 		if (!allowed) throw new ForbiddenError('You do not have access to this dataset.');
 
 		const tableProjectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);

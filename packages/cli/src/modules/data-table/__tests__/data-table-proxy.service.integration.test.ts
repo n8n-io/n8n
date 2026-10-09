@@ -16,7 +16,7 @@ import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceWriteAccessService } from '@n8n/backend-services';
-import * as checkAccess from '@/permissions.ee/check-access';
+import * as checkAccess from '@/permissions.ee/scope-access';
 import type { OwnershipService } from '@/services/ownership.service';
 
 import type { DataTableAggregateService } from '../data-table-aggregate.service';
@@ -340,7 +340,7 @@ describe('makeDataTableOperationsForUser', () => {
 	let loggerMock = mock<Logger>();
 	let instanceWriteAccessMock = mock<InstanceWriteAccessService>();
 	let dataTableProxyService: DataTableProxyService;
-	let userHasScopesSpy: MockInstance;
+	let hasScopesSpy: MockInstance;
 
 	const user = mock<User>({ id: 'user-1' });
 
@@ -359,7 +359,7 @@ describe('makeDataTableOperationsForUser', () => {
 			instanceWriteAccessMock,
 		);
 
-		userHasScopesSpy = vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+		hasScopesSpy = vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(true);
 	});
 
 	afterEach(() => {
@@ -383,7 +383,7 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.createDataTable(PROJECT_ID, { name: 'test', columns: [] });
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:create'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:create'], false, {
 				projectId: PROJECT_ID,
 			});
 			expect(dataTableServiceMock.createDataTable).toHaveBeenCalledWith(PROJECT_ID, {
@@ -393,7 +393,7 @@ describe('makeDataTableOperationsForUser', () => {
 		});
 
 		it('should reject createDataTable when user lacks scope', async () => {
-			userHasScopesSpy.mockResolvedValue(false);
+			hasScopesSpy.mockResolvedValue(false);
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 
 			await expect(ops.createDataTable(PROJECT_ID, { name: 'test', columns: [] })).rejects.toThrow(
@@ -410,14 +410,14 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.getColumns('dt-1', PROJECT_ID);
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:read'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:read'], false, {
 				projectId: PROJECT_ID,
 			});
 			expect(dataTableServiceMock.getColumns).toHaveBeenCalledWith('dt-1', PROJECT_ID);
 		});
 
 		it('should reject getColumns when user lacks scope', async () => {
-			userHasScopesSpy.mockResolvedValue(false);
+			hasScopesSpy.mockResolvedValue(false);
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 
 			await expect(ops.getColumns('dt-1', PROJECT_ID)).rejects.toThrow(
@@ -434,7 +434,7 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.updateDataTable('dt-1', PROJECT_ID, { name: 'renamed' });
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:update'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:update'], false, {
 				projectId: PROJECT_ID,
 			});
 			expect(dataTableServiceMock.updateDataTable).toHaveBeenCalledWith('dt-1', PROJECT_ID, {
@@ -447,7 +447,7 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.addColumn('dt-1', PROJECT_ID, { name: 'col', type: 'string' });
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:update'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:update'], false, {
 				projectId: PROJECT_ID,
 			});
 		});
@@ -457,7 +457,7 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.deleteColumn('dt-1', PROJECT_ID, 'col-1');
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:update'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:update'], false, {
 				projectId: PROJECT_ID,
 			});
 		});
@@ -467,13 +467,13 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.renameColumn('dt-1', PROJECT_ID, 'col-1', { name: 'new_name' });
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:update'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:update'], false, {
 				projectId: PROJECT_ID,
 			});
 		});
 
 		it('should reject updateDataTable when user lacks scope', async () => {
-			userHasScopesSpy.mockResolvedValue(false);
+			hasScopesSpy.mockResolvedValue(false);
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 
 			await expect(ops.updateDataTable('dt-1', PROJECT_ID, { name: 'renamed' })).rejects.toThrow(
@@ -490,14 +490,14 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.deleteDataTable('dt-1', PROJECT_ID);
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:delete'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:delete'], false, {
 				projectId: PROJECT_ID,
 			});
 			expect(dataTableServiceMock.deleteDataTable).toHaveBeenCalledWith('dt-1', PROJECT_ID);
 		});
 
 		it('should reject deleteDataTable when user lacks scope', async () => {
-			userHasScopesSpy.mockResolvedValue(false);
+			hasScopesSpy.mockResolvedValue(false);
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 
 			await expect(ops.deleteDataTable('dt-1', PROJECT_ID)).rejects.toThrow(
@@ -514,14 +514,14 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.getManyRowsAndCount('dt-1', PROJECT_ID, {});
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
 				projectId: PROJECT_ID,
 			});
 			expect(dataTableServiceMock.getManyRowsAndCount).toHaveBeenCalledWith('dt-1', PROJECT_ID, {});
 		});
 
 		it('should reject getManyRowsAndCount when user lacks scope', async () => {
-			userHasScopesSpy.mockResolvedValue(false);
+			hasScopesSpy.mockResolvedValue(false);
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 
 			await expect(ops.getManyRowsAndCount('dt-1', PROJECT_ID, {})).rejects.toThrow(
@@ -539,7 +539,7 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.insertRows('dt-1', PROJECT_ID, rows, 'count');
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:writeRow'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:writeRow'], false, {
 				projectId: PROJECT_ID,
 			});
 			expect(dataTableServiceMock.insertRows).toHaveBeenCalledWith(
@@ -562,7 +562,7 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.updateRows('dt-1', PROJECT_ID, options);
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:writeRow'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:writeRow'], false, {
 				projectId: PROJECT_ID,
 			});
 		});
@@ -578,13 +578,13 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.deleteRows('dt-1', PROJECT_ID, options);
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:writeRow'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:writeRow'], false, {
 				projectId: PROJECT_ID,
 			});
 		});
 
 		it('should reject insertRows when user lacks scope', async () => {
-			userHasScopesSpy.mockResolvedValue(false);
+			hasScopesSpy.mockResolvedValue(false);
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 
 			await expect(ops.insertRows('dt-1', PROJECT_ID, [{ name: 'test' }], 'count')).rejects.toThrow(
@@ -599,7 +599,7 @@ describe('makeDataTableOperationsForUser', () => {
 		// grants the `dataTable:writeRow` check and denies the `dataTable:readRow`
 		// one that follows it
 		const denyReadRow = () => {
-			userHasScopesSpy.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+			hasScopesSpy.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 		};
 
 		const updateOptions = {
@@ -615,7 +615,7 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.updateRows('dt-1', PROJECT_ID, updateOptions);
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
 				projectId: PROJECT_ID,
 			});
 		});
@@ -636,7 +636,7 @@ describe('makeDataTableOperationsForUser', () => {
 
 			await ops.deleteRows('dt-1', PROJECT_ID, { filter: updateOptions.filter });
 
-			expect(userHasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
+			expect(hasScopesSpy).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
 				projectId: PROJECT_ID,
 			});
 		});

@@ -10,7 +10,7 @@ import type {
 import { UserError } from 'n8n-workflow';
 
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import {
@@ -90,7 +90,7 @@ export class InstanceAiAgentContextAdapterService {
 		let canReadAgents: Promise<boolean> | undefined;
 		return {
 			lookup: async (input) => {
-				canReadAgents ??= userHasScopes(user, ['agent:read'], false, { projectId });
+				canReadAgents ??= hasScopes(user, ['agent:read'], false, { projectId });
 				if (!(await canReadAgents)) {
 					throw new UserError("You don't have permission to read Agents in this project.");
 				}

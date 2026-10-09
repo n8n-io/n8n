@@ -5,7 +5,7 @@ import { pickVariableForProject } from 'n8n-workflow';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ForbiddenError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import {
 	variableBlockingFailures,
@@ -226,7 +226,7 @@ export class VariableImporter {
 		}
 
 		for (const projectId of projectIds) {
-			const projectVariableCreationAllowed = await userHasScopes(
+			const projectVariableCreationAllowed = await hasScopes(
 				context.user,
 				['projectVariable:create'],
 				false,
@@ -248,7 +248,7 @@ export class VariableImporter {
 		}
 
 		for (const projectId of projectIds) {
-			const projectVariableUpdateAllowed = await userHasScopes(
+			const projectVariableUpdateAllowed = await hasScopes(
 				context.user,
 				['projectVariable:update'],
 				false,

@@ -8,7 +8,7 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import { AgentRunnableStateService } from '@/modules/agents/agent-runnable-state.service';
 import { AgentsService } from '@/modules/agents/agents.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 
@@ -143,7 +143,7 @@ export class InstanceAiPendingAgentService {
 		{ adopting }: { adopting: boolean },
 	): Promise<void> {
 		const scopes: Scope[] = adopting ? ['agent:create', 'agent:update'] : ['agent:create'];
-		if (!(await userHasScopes(user, scopes, false, { projectId }))) {
+		if (!(await hasScopes(user, scopes, false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to create agents in this project.');
 		}
 	}

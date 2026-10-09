@@ -157,7 +157,7 @@ import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { InstanceAiAgentContextAdapterService } from '@/modules/agents/instance-ai-agent-context.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -2924,7 +2924,7 @@ export class InstanceAiService {
 	): Promise<void> {
 		const projectId = context.projectId;
 		if (!projectId) return;
-		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) return;
+		if (!(await hasScopes(user, ['agent:read'], false, { projectId }))) return;
 
 		if (!Container.get(ModuleRegistry).isActive('agents')) return;
 		context.agentContextService = Container.get(InstanceAiAgentContextAdapterService).createReader(
@@ -5623,7 +5623,7 @@ export class InstanceAiService {
 
 	private async canAccessAgentPreviewHandoff(user: User, projectId: string): Promise<boolean> {
 		const requiredScopes: Scope[] = ['agent:read', 'agent:update'];
-		return await userHasScopes(user, requiredScopes, false, { projectId });
+		return await hasScopes(user, requiredScopes, false, { projectId });
 	}
 
 	private async assertAgentPreviewHandoffScopes(user: User, projectId: string): Promise<void> {

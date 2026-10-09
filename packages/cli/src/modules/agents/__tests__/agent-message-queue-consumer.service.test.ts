@@ -5,7 +5,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -23,7 +23,7 @@ import type { ChatIntegrationService } from '../integrations/chat-integration.se
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import type { AgentQueueDispatch, QueuedIntegrationMessage } from '../types/agent-queued-message';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@/permissions.ee/scope-access', () => ({ hasScopes: vi.fn() }));
 
 describe('AgentMessageQueueConsumer', () => {
 	const queue = mock<AgentMessageQueueService>();
@@ -89,7 +89,7 @@ describe('AgentMessageQueueConsumer', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(hasScopes).mockResolvedValue(true);
 		users.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user', disabled: false }));
 		repository.findThreadIds.mockResolvedValue([]);
 		executions.getAbortSignal.mockImplementation(() => new AbortController().signal);
@@ -301,7 +301,7 @@ describe('AgentMessageQueueConsumer', () => {
 				users.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user', disabled: true }));
 				break;
 			case 'revoked access':
-				vi.mocked(userHasScopes).mockResolvedValue(false);
+				vi.mocked(hasScopes).mockResolvedValue(false);
 				break;
 			case 'invalid draft':
 				testRuns.prepareDraftRun.mockResolvedValue({
