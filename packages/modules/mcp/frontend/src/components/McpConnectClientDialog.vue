@@ -7,6 +7,8 @@ import {
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogDescription,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nDropdownMenu,
 	N8nIcon,
 	N8nSettingsRow,
@@ -147,15 +149,17 @@ const serverUrlDescription = computed(() =>
 	<N8nDialog
 		:open="mcpStore.connectPopoverOpen"
 		size="large"
-		:header="i18n.baseText('settings.mcp.connectDialog.title')"
 		data-test-id="mcp-connect-dialog"
 		@update:open="onOpenChange"
 	>
-		<N8nDialogBody>
-			<N8nDialogDescription :class="$style.intro">
-				{{ i18n.baseText('settings.mcp.connectDialog.description') }}
-			</N8nDialogDescription>
-			<div :class="$style.body">
+		<N8nDialogHeader :class="$style.header">
+			<div :class="$style['header-main']">
+				<N8nDialogTitle>
+					{{ i18n.baseText('settings.mcp.connectDialog.title') }}
+				</N8nDialogTitle>
+				<N8nDialogDescription :class="$style.description">
+					{{ i18n.baseText('settings.mcp.connectDialog.description') }}
+				</N8nDialogDescription>
 				<N8nTabs
 					:model-value="activeMethod"
 					:options="methodTabs"
@@ -163,237 +167,251 @@ const serverUrlDescription = computed(() =>
 					data-test-id="mcp-connect-method-tabs"
 					@update:model-value="activeMethod = $event"
 				/>
-
-				<N8nSettingsRowGroup v-if="activeMethod === 'oauth'">
-					<N8nSettingsRow
-						:title="i18n.baseText('settings.mcp.connectDialog.yourClient.title')"
-						:description="i18n.baseText('settings.mcp.connectDialog.yourClient.description')"
-						:show-divider="!!activeClient"
-					>
-						<template #action>
-							<N8nDropdownMenu
-								:items="clientMenuItems"
-								placement="bottom-end"
-								max-height="min(var(--reka-dropdown-menu-content-available-height), 30rem)"
-								:extra-popper-class="$style['picker-menu']"
-								data-test-id="mcp-connect-client-picker"
-								@select="onSelectClient"
-							>
-								<template #trigger>
-									<N8nButton
-										variant="outline"
-										size="medium"
-										:aria-label="i18n.baseText('settings.mcp.connectDialog.yourClient.title')"
-										data-test-id="mcp-connect-client-picker-trigger"
-									>
-										<span :class="$style['picker-trigger']">
-											<component
-												:is="activeClient.icon"
-												v-if="activeClient?.icon"
-												:class="$style['brand-icon']"
-											/>
-											<N8nIcon v-else icon="mcp" size="small" color="text-light" />
-											{{ activeClient?.name }}
-											<N8nIcon icon="chevron-down" size="small" />
-										</span>
-									</N8nButton>
-								</template>
-								<template #item-leading="{ item }">
-									<template v-if="item.data?.kind === 'client'">
+			</div>
+		</N8nDialogHeader>
+		<N8nDialogBody :class="$style.body">
+			<N8nSettingsRowGroup v-if="activeMethod === 'oauth'">
+				<N8nSettingsRow
+					:title="i18n.baseText('settings.mcp.connectDialog.yourClient.title')"
+					:description="i18n.baseText('settings.mcp.connectDialog.yourClient.description')"
+					:show-divider="!!activeClient"
+				>
+					<template #action>
+						<N8nDropdownMenu
+							:items="clientMenuItems"
+							placement="bottom-end"
+							max-height="min(var(--reka-dropdown-menu-content-available-height), 30rem)"
+							:extra-popper-class="$style['picker-menu']"
+							data-test-id="mcp-connect-client-picker"
+							@select="onSelectClient"
+						>
+							<template #trigger>
+								<N8nButton
+									variant="outline"
+									size="medium"
+									:aria-label="i18n.baseText('settings.mcp.connectDialog.yourClient.title')"
+									data-test-id="mcp-connect-client-picker-trigger"
+								>
+									<span :class="$style['picker-trigger']">
 										<component
-											:is="item.data.client.icon"
-											v-if="item.data.client.icon"
+											:is="activeClient.icon"
+											v-if="activeClient?.icon"
 											:class="$style['brand-icon']"
 										/>
-										<N8nIcon v-else icon="mcp" size="large" color="text-light" />
-									</template>
-								</template>
-								<template #item-label="{ item }">
-									<span v-if="item.data?.kind === 'header'" :class="$style.category">
-										{{ item.label }}
+										<N8nIcon v-else icon="mcp" size="small" color="text-light" />
+										{{ activeClient?.name }}
+										<N8nIcon icon="chevron-down" size="small" />
 									</span>
-									<N8nText v-else size="medium" color="text-dark" :class="$style['client-label']">
-										{{ item.label }}
-									</N8nText>
+								</N8nButton>
+							</template>
+							<template #item-leading="{ item }">
+								<template v-if="item.data?.kind === 'client'">
+									<component
+										:is="item.data.client.icon"
+										v-if="item.data.client.icon"
+										:class="$style['brand-icon']"
+									/>
+									<N8nIcon v-else icon="mcp" size="large" color="text-light" />
 								</template>
-							</N8nDropdownMenu>
+							</template>
+							<template #item-label="{ item }">
+								<span v-if="item.data?.kind === 'header'" :class="$style.category">
+									{{ item.label }}
+								</span>
+								<N8nText v-else size="medium" color="text-dark" :class="$style['client-label']">
+									{{ item.label }}
+								</N8nText>
+							</template>
+						</N8nDropdownMenu>
+					</template>
+				</N8nSettingsRow>
+
+				<!-- CLI: one command adds the server (requires the client installed and
+				     writes its config), OR edit the config file manually → Authenticate. -->
+				<template v-if="activeClient?.category === 'cli'">
+					<N8nSettingsRow
+						layout="vertical"
+						:show-divider="false"
+						:title="installTitle"
+						:description="installDescription"
+					>
+						<template #action>
+							<ConnectionParameter
+								id="mcp-install-command"
+								:class="$style['copy-field']"
+								:label="''"
+								:value="activeClient.installCommand ?? ''"
+								@copy="trackCopy('install-command')"
+							/>
 						</template>
 					</N8nSettingsRow>
+					<N8nSettingsRow
+						layout="vertical"
+						:show-divider="false"
+						:title="i18n.baseText('settings.mcp.connectDialog.configure.titleAlt')"
+						:description="i18n.baseText('settings.mcp.connectDialog.configure.descriptionAlt')"
+					>
+						<template #action>
+							<McpConfigSnippet
+								:class="$style['copy-field']"
+								:value="activeClient.configSnippet ?? ''"
+								:language="activeClient.id === 'codex' ? 'toml' : 'json'"
+								@copy="trackCopy('config')"
+							/>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						layout="vertical"
+						:show-divider="false"
+						:title="i18n.baseText('settings.mcp.connectDialog.authenticate.title')"
+						:description="authenticateDescription"
+					>
+						<template #action>
+							<ConnectionParameter
+								id="mcp-auth-command"
+								:class="$style['copy-field']"
+								:label="''"
+								:value="activeClient.authCommand ?? '/mcp'"
+								@copy="trackCopy('auth-command')"
+							/>
+						</template>
+					</N8nSettingsRow>
+				</template>
 
-					<!-- CLI: one command adds the server (requires the client installed and
-				     writes its config), OR edit the config file manually → Authenticate. -->
-					<template v-if="activeClient?.category === 'cli'">
-						<N8nSettingsRow
-							layout="vertical"
-							:show-divider="false"
-							:title="installTitle"
-							:description="installDescription"
-						>
-							<template #action>
-								<ConnectionParameter
-									id="mcp-install-command"
-									:class="$style['copy-field']"
-									:label="''"
-									:value="activeClient.installCommand ?? ''"
-									@copy="trackCopy('install-command')"
+				<!-- Web: one-click connector (when supported) + the mandatory server URL to paste in. -->
+				<template v-else-if="activeClient?.category === 'web'">
+					<N8nSettingsRow
+						v-if="activeClient.addUrl"
+						:show-divider="false"
+						:title="i18n.baseText('settings.mcp.connectDialog.oneClick.title')"
+						:description="oneClickDescription"
+					>
+						<template #action>
+							<N8nButton
+								variant="outline"
+								size="medium"
+								:href="activeClient.addUrl"
+								target="_blank"
+								data-test-id="mcp-connect-one-click"
+							>
+								<component
+									:is="activeClient.icon"
+									v-if="activeClient.icon"
+									:class="$style['brand-icon']"
 								/>
-							</template>
-						</N8nSettingsRow>
-						<N8nSettingsRow
-							layout="vertical"
-							:show-divider="false"
-							:title="i18n.baseText('settings.mcp.connectDialog.configure.titleAlt')"
-							:description="i18n.baseText('settings.mcp.connectDialog.configure.descriptionAlt')"
-						>
-							<template #action>
-								<McpConfigSnippet
-									:class="$style['copy-field']"
-									:value="activeClient.configSnippet ?? ''"
-									:language="activeClient.id === 'codex' ? 'toml' : 'json'"
-									@copy="trackCopy('config')"
-								/>
-							</template>
-						</N8nSettingsRow>
-						<N8nSettingsRow
-							layout="vertical"
-							:show-divider="false"
-							:title="i18n.baseText('settings.mcp.connectDialog.authenticate.title')"
-							:description="authenticateDescription"
-						>
-							<template #action>
-								<ConnectionParameter
-									id="mcp-auth-command"
-									:class="$style['copy-field']"
-									:label="''"
-									:value="activeClient.authCommand ?? '/mcp'"
-									@copy="trackCopy('auth-command')"
-								/>
-							</template>
-						</N8nSettingsRow>
-					</template>
+								{{ addButtonLabel }}
+							</N8nButton>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						layout="vertical"
+						:show-divider="false"
+						:title="i18n.baseText('settings.mcp.connectDialog.serverUrl')"
+						:description="serverUrlDescription"
+					>
+						<template #action>
+							<ConnectionParameter
+								id="mcp-web-server-url"
+								:class="$style['copy-field']"
+								:label="''"
+								:value="serverUrl"
+								@copy="trackCopy('server-url')"
+							/>
+						</template>
+					</N8nSettingsRow>
+				</template>
 
-					<!-- Web: one-click connector (when supported) + the mandatory server URL to paste in. -->
-					<template v-else-if="activeClient?.category === 'web'">
-						<N8nSettingsRow
-							v-if="activeClient.addUrl"
-							:show-divider="false"
-							:title="i18n.baseText('settings.mcp.connectDialog.oneClick.title')"
-							:description="oneClickDescription"
-						>
-							<template #action>
-								<N8nButton
-									variant="outline"
-									size="medium"
-									:href="activeClient.addUrl"
-									target="_blank"
-									data-test-id="mcp-connect-one-click"
-								>
-									<component
-										:is="activeClient.icon"
-										v-if="activeClient.icon"
-										:class="$style['brand-icon']"
-									/>
-									{{ addButtonLabel }}
-								</N8nButton>
-							</template>
-						</N8nSettingsRow>
-						<N8nSettingsRow
-							layout="vertical"
-							:show-divider="false"
-							:title="i18n.baseText('settings.mcp.connectDialog.serverUrl')"
-							:description="serverUrlDescription"
-						>
-							<template #action>
-								<ConnectionParameter
-									id="mcp-web-server-url"
-									:class="$style['copy-field']"
-									:label="''"
-									:value="serverUrl"
-									@copy="trackCopy('server-url')"
+				<!-- IDE: one-click deep link (when supported) + manual config -->
+				<template v-else-if="activeClient">
+					<N8nSettingsRow
+						v-if="activeClient.deepLink"
+						:show-divider="false"
+						:title="i18n.baseText('settings.mcp.connectDialog.oneClick.title')"
+						:description="oneClickDescription"
+					>
+						<template #action>
+							<N8nButton
+								variant="outline"
+								size="medium"
+								:href="activeClient.deepLink"
+								data-test-id="mcp-connect-one-click"
+							>
+								<component
+									:is="activeClient.icon"
+									v-if="activeClient.icon"
+									:class="$style['brand-icon']"
 								/>
-							</template>
-						</N8nSettingsRow>
-					</template>
+								{{ addButtonLabel }}
+							</N8nButton>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						layout="vertical"
+						:show-divider="false"
+						:title="i18n.baseText('settings.mcp.connectDialog.serverUrl')"
+						:description="serverUrlDescription"
+					>
+						<template #action>
+							<ConnectionParameter
+								id="mcp-server-url"
+								:class="$style['copy-field']"
+								:label="''"
+								:value="serverUrl"
+								@copy="trackCopy('server-url')"
+							/>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						layout="vertical"
+						:show-divider="false"
+						:title="i18n.baseText('settings.mcp.connectDialog.configure.title')"
+						:description="i18n.baseText('settings.mcp.connectDialog.configure.description')"
+					>
+						<template #action>
+							<McpConfigSnippet
+								:class="$style['copy-field']"
+								:value="activeClient.configSnippet ?? ''"
+								@copy="trackCopy('config')"
+							/>
+						</template>
+					</N8nSettingsRow>
+				</template>
+			</N8nSettingsRowGroup>
 
-					<!-- IDE: one-click deep link (when supported) + manual config -->
-					<template v-else-if="activeClient">
-						<N8nSettingsRow
-							v-if="activeClient.deepLink"
-							:show-divider="false"
-							:title="i18n.baseText('settings.mcp.connectDialog.oneClick.title')"
-							:description="oneClickDescription"
-						>
-							<template #action>
-								<N8nButton
-									variant="outline"
-									size="medium"
-									:href="activeClient.deepLink"
-									data-test-id="mcp-connect-one-click"
-								>
-									<component
-										:is="activeClient.icon"
-										v-if="activeClient.icon"
-										:class="$style['brand-icon']"
-									/>
-									{{ addButtonLabel }}
-								</N8nButton>
-							</template>
-						</N8nSettingsRow>
-						<N8nSettingsRow
-							layout="vertical"
-							:show-divider="false"
-							:title="i18n.baseText('settings.mcp.connectDialog.serverUrl')"
-							:description="serverUrlDescription"
-						>
-							<template #action>
-								<ConnectionParameter
-									id="mcp-server-url"
-									:class="$style['copy-field']"
-									:label="''"
-									:value="serverUrl"
-									@copy="trackCopy('server-url')"
-								/>
-							</template>
-						</N8nSettingsRow>
-						<N8nSettingsRow
-							layout="vertical"
-							:show-divider="false"
-							:title="i18n.baseText('settings.mcp.connectDialog.configure.title')"
-							:description="i18n.baseText('settings.mcp.connectDialog.configure.description')"
-						>
-							<template #action>
-								<McpConfigSnippet
-									:class="$style['copy-field']"
-									:value="activeClient.configSnippet ?? ''"
-									@copy="trackCopy('config')"
-								/>
-							</template>
-						</N8nSettingsRow>
-					</template>
-				</N8nSettingsRowGroup>
-
-				<div v-else :class="$style['token-setup']" data-test-id="mcp-connect-token-setup">
-					<McpAccessTokenTab :server-url="serverUrl" @copied="handleTokenTabCopy" />
-				</div>
+			<div v-else data-test-id="mcp-connect-token-setup">
+				<McpAccessTokenTab :server-url="serverUrl" @copied="handleTokenTabCopy" />
 			</div>
 		</N8nDialogBody>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-/* Body-only scroll so the dialog header stays pinned and tall clients
-   (e.g. Claude Code's config block) never run off-screen. */
-.body {
-	max-height: calc(100dvh - 16rem);
-	overflow-y: auto;
+.header {
+	border-bottom: var(--border);
+	padding-block-end: 0;
 }
 
-.intro {
-	margin-block-end: var(--spacing--sm);
+/* One column so the title, description, and tabs stack. The header row
+   otherwise lays its children out beside the close button. */
+.header-main {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	width: 100%;
+}
+
+.description {
+	margin: 0;
 }
 
 .tabs {
-	margin-bottom: var(--spacing--sm);
+	margin-top: var(--spacing--2xs);
+}
+
+.body {
+	padding-block-start: var(--n8n-dialog-region--padding, var(--spacing--md));
 }
 
 .picker-trigger {
@@ -432,9 +450,5 @@ const serverUrlDescription = computed(() =>
    should span the full row width. */
 .copy-field {
 	width: 100%;
-}
-
-.token-setup {
-	margin-top: var(--spacing--2xs);
 }
 </style>
