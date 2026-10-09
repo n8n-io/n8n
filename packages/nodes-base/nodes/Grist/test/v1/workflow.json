@@ -1,0 +1,110 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000015",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"docId": "doc1",
+				"tableId": "People",
+				"returnAll": true,
+				"additionalOptions": {}
+			},
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "00000000-0000-4000-8000-000000000013",
+			"name": "Get Rows",
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Grist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "upsert",
+				"docId": "doc1",
+				"tableId": "People",
+				"upsertCriteria": {
+					"properties": [
+						{
+							"fieldId": "Email",
+							"fieldValue": "ada@example.com"
+						}
+					]
+				},
+				"dataToSend": "defineInNode",
+				"fieldsToSend": {
+					"properties": [
+						{
+							"fieldId": "First",
+							"fieldValue": "Countess"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "00000000-0000-4000-8000-000000000099",
+			"name": "Create or Update Row",
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Grist account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Rows",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Rows": {
+			"main": [
+				[
+					{
+						"node": "Create or Update Row",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Get Rows": [
+			{
+				"json": {
+					"id": 1,
+					"First": "Ada",
+					"Sizes": ["L", "L", "M", "XL"]
+				}
+			}
+		],
+		"Create or Update Row": [
+			{
+				"json": {
+					"id": 1,
+					"First": "Countess"
+				}
+			}
+		]
+	}
+}
