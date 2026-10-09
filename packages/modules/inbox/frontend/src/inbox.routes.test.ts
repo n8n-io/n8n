@@ -4,9 +4,12 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { InboxModule } from './inbox.module';
 import { inboxItemLocation, isInboxRoute, selectionFromRoute } from './inbox.routes';
 
-vi.mock('@n8n/stores/settings.store', () => ({
-	useSettingsStore: () => ({ settings: { inbox: { enabled: true } } }),
-}));
+const settingsStore = vi.hoisted(() => ({ settings: { inbox: { enabled: true } } }));
+vi.mock('@n8n/stores/settings.store', () => ({ useSettingsStore: () => settingsStore }));
+
+beforeEach(() => {
+	settingsStore.settings.inbox.enabled = true;
+});
 
 function createInboxRouter() {
 	const routes = (InboxModule.routes ?? []).map((route) =>
@@ -30,6 +33,14 @@ const review = {
 	createdAt: '',
 	updatedAt: '',
 } satisfies InboxWorkflowReviewItem;
+
+it('redirects to home when Inbox is disabled', async () => {
+	settingsStore.settings.inbox.enabled = false;
+	const router = createInboxRouter();
+	router.addRoute({ path: '/', name: 'home', component: { template: '<div />' } });
+	await router.push('/inbox');
+	expect(router.currentRoute.value).toMatchObject({ path: '/', name: 'home' });
+});
 
 it('redirects an old review link and preserves filters and the detail tab', async () => {
 	const router = createInboxRouter();

@@ -736,6 +736,9 @@ describe('GET /inbox', () => {
 			const closedTheirs = await openReviewBy(owner.id, 'Closed theirs', 'closed');
 			await assignMember(closedTheirs.id);
 
+			expect((await inbox(memberAgent, { state: 'closed', category: 'waiting' })).ids).toEqual([
+				closedTheirs.id,
+			]);
 			expect((await inbox(memberAgent, { state: 'closed', category: 'authored' })).ids).toEqual([
 				closedMine.id,
 			]);

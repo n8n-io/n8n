@@ -217,7 +217,9 @@ export class InboxService {
 		sourceTypes: InboxSourceType[],
 	): InboxCursor {
 		try {
-			if (value.length > 2048 || !/^[\w-]+$/.test(value)) throw new Error();
+			if (value.length > 2048 || !/^[\w-]+$/.test(value)) {
+				throw new BadRequestError('Invalid Inbox pagination cursor');
+			}
 			const cursor = cursorSchema.parse(
 				JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
 			);
@@ -229,7 +231,7 @@ export class InboxService {
 				new Set(sources).size !== sources.length ||
 				!cursor.activeSources.includes(cursor.after.type)
 			) {
-				throw new Error();
+				throw new BadRequestError('Invalid Inbox pagination cursor');
 			}
 			return cursor;
 		} catch {
