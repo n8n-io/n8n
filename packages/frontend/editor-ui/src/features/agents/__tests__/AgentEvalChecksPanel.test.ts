@@ -15,8 +15,8 @@ import {
 	type AgentEvalResultStatus,
 } from '../agentEvals.types';
 import {
-	AGENT_CONFIG_FLUSH_KEY,
-	type AgentConfigFlush,
+	AGENT_CONFIG_WRITE_KEY,
+	type AgentConfigWrite,
 } from '../components/agentBuilderInjectionKeys';
 import AgentEvalChecksPanel from '../components/AgentEvalChecksPanel.vue';
 
@@ -138,7 +138,7 @@ const render = (
 		focusedResultId?: string;
 	} = {},
 	inFlight = false,
-	flushConfig?: AgentConfigFlush,
+	runConfigWrite?: AgentConfigWrite,
 ) => {
 	const pinia = createTestingPinia({ stubActions: true });
 	const store = useAgentEvalsStore();
@@ -162,7 +162,9 @@ const render = (
 		...renderComponent({
 			pinia,
 			props: { disabled: review.disabled },
-			global: flushConfig ? { provide: { [AGENT_CONFIG_FLUSH_KEY as symbol]: flushConfig } } : {},
+			global: runConfigWrite
+				? { provide: { [AGENT_CONFIG_WRITE_KEY as symbol]: runConfigWrite } }
+				: {},
 		}),
 		store,
 	};
@@ -199,6 +201,18 @@ const renderWithGrowablePage = (allResults: AgentEvalResultRecord[], pageSize: n
 
 	return { ...renderComponent({ pinia }), store };
 };
+
+// Stands in for the builder's hook: it saves pending edits and locks editing before the write,
+// and reloads the config after it, whether or not the write threw.
+const builderWrite = (order: string[]): AgentConfigWrite =>
+	async function <T>(write: () => Promise<T>) {
+		order.push('lock');
+		try {
+			return await write();
+		} finally {
+			order.push('unlock');
+		}
+	};
 
 describe('AgentEvalChecksPanel', () => {
 	beforeEach(() => {
@@ -553,14 +567,15 @@ describe('AgentEvalChecksPanel', () => {
 			const applyButton = (getByTestId: (id: string) => HTMLElement) =>
 				within(getByTestId('agent-eval-check-c1')).getByText('apply suggestion');
 
-			it('saves pending edits, then applies the result, then tells the builder to refetch', async () => {
+			it('applies the result inside the builder’s locked write', async () => {
 				const user = userEvent.setup();
 				const order: string[] = [];
-				const flush = vi.fn(async () => {
-					order.push('flush');
-				});
 				const emit = vi.spyOn(agentsEventBus, 'emit');
-				const { getByTestId, store } = render({ results: [failedWithSuggestion] }, false, flush);
+				const { getByTestId, store } = render(
+					{ results: [failedWithSuggestion] },
+					false,
+					builderWrite(order),
+				);
 				vi.mocked(store.applySuggestions).mockImplementation(async () => {
 					order.push('apply');
 					return { configHash: 'hash-2', results: [] };
@@ -568,42 +583,37 @@ describe('AgentEvalChecksPanel', () => {
 
 				await user.click(applyButton(getByTestId));
 
-				await vi.waitFor(() => expect(emit).toHaveBeenCalled());
-				expect(order).toEqual(['flush', 'apply']);
+				await vi.waitFor(() => expect(order).toEqual(['lock', 'apply', 'unlock']));
 				expect(store.applySuggestions).toHaveBeenCalledWith('project-1', 'agent-1', ['c1']);
-				expect(emit).toHaveBeenCalledWith('agentUpdated', {
-					agentId: 'agent-1',
-					source: 'agent-evals',
-				});
+				// The builder reloads its own config, so no event is needed.
+				expect(emit).not.toHaveBeenCalled();
 				expect(showError).not.toHaveBeenCalled();
 			});
 
-			it('works without a builder to flush for', async () => {
+			it('tells other surfaces to refresh when there is no builder to lock', async () => {
 				const user = userEvent.setup();
+				const emit = vi.spyOn(agentsEventBus, 'emit');
 				const { getByTestId, store } = render({ results: [failedWithSuggestion] });
 				vi.mocked(store.applySuggestions).mockResolvedValue({ configHash: 'h', results: [] });
 
 				await user.click(applyButton(getByTestId));
 
-				await vi.waitFor(() => expect(store.applySuggestions).toHaveBeenCalled());
+				await vi.waitFor(() =>
+					expect(emit).toHaveBeenCalledWith('agentUpdated', {
+						agentId: 'agent-1',
+						source: 'agent-evals',
+					}),
+				);
 			});
 
-			it('does not tell the builder to refetch when nothing was sent', async () => {
+			it('toasts when applying fails, and still lets the builder reload its config', async () => {
 				const user = userEvent.setup();
-				const emit = vi.spyOn(agentsEventBus, 'emit');
-				const { getByTestId, store } = render({ results: [failedWithSuggestion] });
-				vi.mocked(store.applySuggestions).mockResolvedValue(null);
-
-				await user.click(applyButton(getByTestId));
-
-				await vi.waitFor(() => expect(store.applySuggestions).toHaveBeenCalled());
-				expect(emit).not.toHaveBeenCalled();
-			});
-
-			it('toasts and does not tell the builder to refetch when applying fails', async () => {
-				const user = userEvent.setup();
-				const emit = vi.spyOn(agentsEventBus, 'emit');
-				const { getByTestId, store } = render({ results: [failedWithSuggestion] });
+				const order: string[] = [];
+				const { getByTestId, store } = render(
+					{ results: [failedWithSuggestion] },
+					false,
+					builderWrite(order),
+				);
 				vi.mocked(store.applySuggestions).mockRejectedValue(new Error('boom'));
 
 				await user.click(applyButton(getByTestId));
@@ -614,7 +624,7 @@ describe('AgentEvalChecksPanel', () => {
 						"Couldn't apply the suggestion",
 					),
 				);
-				expect(emit).not.toHaveBeenCalled();
+				expect(order).toEqual(['lock', 'unlock']);
 			});
 
 			it('says the agent changed elsewhere on a conflict', async () => {
@@ -634,10 +644,16 @@ describe('AgentEvalChecksPanel', () => {
 				);
 			});
 
-			it('does not call the API when saving the pending edits fails', async () => {
+			it('does not call the API when the builder fails to save its pending edits', async () => {
 				const user = userEvent.setup();
-				const flush = vi.fn().mockRejectedValue(new Error('save failed'));
-				const { getByTestId, store } = render({ results: [failedWithSuggestion] }, false, flush);
+				const failingWrite: AgentConfigWrite = async () => {
+					throw new Error('save failed');
+				};
+				const { getByTestId, store } = render(
+					{ results: [failedWithSuggestion] },
+					false,
+					failingWrite,
+				);
 
 				await user.click(applyButton(getByTestId));
 
@@ -677,13 +693,9 @@ describe('AgentEvalChecksPanel', () => {
 			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
 		});
 
-		it('applies every suggestion in one request, saving pending edits first', async () => {
+		it('applies every suggestion in one request, inside the builder’s locked write', async () => {
 			const user = userEvent.setup();
 			const order: string[] = [];
-			const flush = vi.fn(async () => {
-				order.push('flush');
-			});
-			const emit = vi.spyOn(agentsEventBus, 'emit');
 			const { getByTestId, store } = render(
 				{
 					results: [
@@ -693,7 +705,7 @@ describe('AgentEvalChecksPanel', () => {
 					],
 				},
 				false,
-				flush,
+				builderWrite(order),
 			);
 			vi.mocked(store.applySuggestions).mockImplementation(async () => {
 				order.push('apply');
@@ -702,14 +714,9 @@ describe('AgentEvalChecksPanel', () => {
 
 			await user.click(getByTestId(BUTTON));
 
-			await vi.waitFor(() => expect(emit).toHaveBeenCalled());
-			expect(order).toEqual(['flush', 'apply']);
+			await vi.waitFor(() => expect(order).toEqual(['lock', 'apply', 'unlock']));
 			expect(store.applySuggestions).toHaveBeenCalledTimes(1);
 			expect(store.applySuggestions).toHaveBeenCalledWith('project-1', 'agent-1', ['c1', 'c3']);
-			expect(emit).toHaveBeenCalledWith('agentUpdated', {
-				agentId: 'agent-1',
-				source: 'agent-evals',
-			});
 		});
 
 		it('sends a long list as successive requests of at most one request’s worth', async () => {
@@ -764,9 +771,8 @@ describe('AgentEvalChecksPanel', () => {
 			finish({ configHash: 'h', results: [] });
 		});
 
-		it('toasts and does not tell the builder to refetch when applying fails', async () => {
+		it('toasts when applying fails', async () => {
 			const user = userEvent.setup();
-			const emit = vi.spyOn(agentsEventBus, 'emit');
 			const { getByTestId, store } = render({ results: [failedWith('c1', 'Fix.')] });
 			vi.mocked(store.applySuggestions).mockRejectedValue(new Error('boom'));
 
@@ -775,7 +781,6 @@ describe('AgentEvalChecksPanel', () => {
 			await vi.waitFor(() =>
 				expect(showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't apply the suggestion"),
 			);
-			expect(emit).not.toHaveBeenCalled();
 		});
 	});
 

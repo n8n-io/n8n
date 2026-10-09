@@ -16,6 +16,10 @@ import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
 import { agentsEventBus, type AgentCredentialHelpRequest } from '../agents.eventBus';
 import { AGENT_TEMPLATES, AGENT_TEMPLATE_SUGGESTIONS_VERSION } from '../agentTemplates';
 import {
+	AGENT_CONFIG_WRITE_KEY,
+	type AgentConfigWrite,
+} from '../components/agentBuilderInjectionKeys';
+import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
@@ -1055,21 +1059,56 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
 	});
 
-	it('refetches the config when the evals tab changes the agent on the server', async () => {
-		await renderView();
-		fetchConfigMock.mockClear();
-
-		// The server's own-tab push is excluded, so this event is the only signal.
-		vi.useFakeTimers();
-		try {
-			agentsEventBus.emit('agentUpdated', { agentId: 'a1', source: 'agent-evals' });
-			await vi.advanceTimersByTimeAsync(400);
-		} finally {
-			vi.useRealTimers();
+	describe('applying an eval suggestion', () => {
+		// The evals tab reaches the builder through this injected hook.
+		async function renderWithConfigWrite() {
+			const wrapper = await renderView();
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			const { provides } = editor.vm.$ as unknown as { provides: Record<symbol, unknown> };
+			const runConfigWrite = provides[AGENT_CONFIG_WRITE_KEY as symbol] as AgentConfigWrite;
+			fetchConfigMock.mockClear();
+			return { editor, runConfigWrite };
 		}
-		await flushPromises();
 
-		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		it('locks editing while the write runs, then reloads the config', async () => {
+			const { editor, runConfigWrite } = await renderWithConfigWrite();
+			expect(editor.props('canEditAgent')).toBe(true);
+			const gate = Promise.withResolvers<string>();
+
+			const run = runConfigWrite(async () => await gate.promise);
+			await flushPromises();
+
+			expect(editor.props('canEditAgent')).toBe(false);
+			expect(fetchConfigMock).not.toHaveBeenCalled();
+
+			gate.resolve('done');
+			await expect(run).resolves.toBe('done');
+
+			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+			expect(editor.props('canEditAgent')).toBe(true);
+		});
+
+		it('still reloads the config and unlocks when the write throws after the server saved', async () => {
+			const { editor, runConfigWrite } = await renderWithConfigWrite();
+
+			await expect(
+				runConfigWrite(async () => {
+					throw new Error('rerun failed');
+				}),
+			).rejects.toThrow('rerun failed');
+
+			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+			expect(editor.props('canEditAgent')).toBe(true);
+		});
+
+		it('unlocks even when reloading the config fails', async () => {
+			const { editor, runConfigWrite } = await renderWithConfigWrite();
+			fetchConfigMock.mockRejectedValueOnce(new Error('offline'));
+
+			await expect(runConfigWrite(async () => 'ok')).resolves.toBe('ok');
+
+			expect(editor.props('canEditAgent')).toBe(true);
+		});
 	});
 
 	it('marks a route-pending agent persisted once the embedded assistant builds it externally', async () => {

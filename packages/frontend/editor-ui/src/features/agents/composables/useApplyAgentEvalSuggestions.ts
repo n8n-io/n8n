@@ -7,42 +7,34 @@ import type { ApplyPreviewSuggestionOptions, ApplyPreviewSuggestionResult } from
 import { agentsEventBus } from '../agents.eventBus';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { MAX_APPLY_SUGGESTIONS } from '../agentEvals.types';
-import { AGENT_CONFIG_FLUSH_KEY } from '../components/agentBuilderInjectionKeys';
+import { AGENT_CONFIG_WRITE_KEY } from '../components/agentBuilderInjectionKeys';
 
 /**
  * Applies the stored fix suggestions of failed eval results: the backend rewrites the
- * agent's instructions from the *saved* config, so pending builder edits are flushed
- * first. It then reruns just those results. The builder does not hear about its own
- * tab's write over push, so it is told to refetch the config.
+ * agent's instructions from the *saved* config, then reruns just those results. The builder
+ * saves its pending edits first, locks editing while this runs and reloads the config
+ * afterwards (see `AgentConfigWrite`). Without a builder there is nothing to lock, so other
+ * surfaces are told to refresh instead.
  */
 export function useApplyAgentEvalSuggestions(target: () => { projectId: string; agentId: string }) {
 	const i18n = useI18n();
 	const toast = useToast();
 	const store = useAgentEvalsStore();
-	const flushAgentConfig = inject(AGENT_CONFIG_FLUSH_KEY, null);
+	const runConfigWrite = inject(AGENT_CONFIG_WRITE_KEY, null);
 
 	const applyingIds = ref<string[]>([]);
 	const applyingPreview = ref(false);
 
-	type Target = { projectId: string; agentId: string };
-	// `ok: false` is a failure that was toasted. `ok: true` with a null `value` means the write had
-	// nothing to send, which is not a failure.
-	type Outcome<T> = { ok: true; value: T | null } | { ok: false };
-
-	// Optionally saves pending builder edits, runs the write, and tells the builder to refetch.
-	// The target is fixed by the caller, so a navigation in the middle of a multi-request apply
-	// cannot move the rest of it to another agent. The flush saves the agent the builder shows
-	// now, so it only runs for the first request, while that is still the pinned agent.
-	async function applyAndRefresh<T>(
-		{ projectId, agentId }: Target,
-		write: (projectId: string, agentId: string) => Promise<T | null>,
-		{ flush }: { flush: boolean },
-	): Promise<Outcome<T>> {
+	// Runs `work` as one write to the agent's config. A failure, including the builder failing
+	// to save its pending edits first, is toasted and reads as `null`.
+	async function writeConfig<T>(agentId: string, work: () => Promise<T>): Promise<T | null> {
 		try {
-			if (flush) await flushAgentConfig?.();
-			const applied = await write(projectId, agentId);
-			if (applied) agentsEventBus.emit('agentUpdated', { agentId, source: 'agent-evals' });
-			return { ok: true, value: applied };
+			if (runConfigWrite) return await runConfigWrite(work);
+			try {
+				return await work();
+			} finally {
+				agentsEventBus.emit('agentUpdated', { agentId, source: 'agent-evals' });
+			}
 		} catch (error) {
 			const conflict = error instanceof ResponseError && error.httpStatusCode === 409;
 			toast.showError(
@@ -53,7 +45,7 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 						: 'agents.builder.agentEvals.suggestion.applyError',
 				),
 			);
-			return { ok: false };
+			return null;
 		}
 	}
 
@@ -63,26 +55,25 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 
 	/**
 	 * Applies the suggestions of these results. One request takes at most
-	 * MAX_APPLY_SUGGESTIONS results, so a longer list goes out as successive requests; the
-	 * first failure stops the rest. A batch with nothing left to send is skipped, not a failure.
-	 * Resolves to whether no request failed.
+	 * MAX_APPLY_SUGGESTIONS results, so a longer list goes out as successive requests, all
+	 * inside one locked write on the agent the call started on. The first failure stops the
+	 * rest. A batch with nothing left to send is skipped, not a failure. Resolves to whether
+	 * no request failed.
 	 */
 	async function applySuggestions(resultIds: string[]): Promise<boolean> {
 		const ids = [...new Set(resultIds)];
 		if (ids.length === 0 || busy()) return false;
-		const writeTarget = target();
+		const { projectId, agentId } = target();
 		applyingIds.value = ids;
 		try {
-			for (let start = 0; start < ids.length; start += MAX_APPLY_SUGGESTIONS) {
-				const batch = ids.slice(start, start + MAX_APPLY_SUGGESTIONS);
-				const outcome = await applyAndRefresh(
-					writeTarget,
-					async (projectId, agentId) => await store.applySuggestions(projectId, agentId, batch),
-					{ flush: start === 0 },
-				);
-				if (!outcome.ok) return false;
-			}
-			return true;
+			const done = await writeConfig(agentId, async () => {
+				for (let start = 0; start < ids.length; start += MAX_APPLY_SUGGESTIONS) {
+					const batch = ids.slice(start, start + MAX_APPLY_SUGGESTIONS);
+					await store.applySuggestions(projectId, agentId, batch);
+				}
+				return true;
+			});
+			return done === true;
 		} finally {
 			applyingIds.value = [];
 		}
@@ -93,15 +84,13 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 		options: ApplyPreviewSuggestionOptions,
 	): Promise<ApplyPreviewSuggestionResult | null> {
 		if (busy()) return null;
+		const { projectId, agentId } = target();
 		applyingPreview.value = true;
 		try {
-			const outcome = await applyAndRefresh(
-				target(),
-				async (projectId, agentId) =>
-					await store.applyPreviewSuggestion(projectId, agentId, options),
-				{ flush: true },
+			return await writeConfig(
+				agentId,
+				async () => await store.applyPreviewSuggestion(projectId, agentId, options),
 			);
-			return outcome.ok ? outcome.value : null;
 		} finally {
 			applyingPreview.value = false;
 		}

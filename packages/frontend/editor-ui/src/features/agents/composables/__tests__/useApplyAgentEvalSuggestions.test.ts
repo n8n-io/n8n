@@ -5,7 +5,10 @@ import { ResponseError } from '@n8n/rest-api-client';
 
 import { agentsEventBus } from '../../agents.eventBus';
 import { MAX_APPLY_SUGGESTIONS } from '../../agentEvals.types';
-import { AGENT_CONFIG_FLUSH_KEY } from '../../components/agentBuilderInjectionKeys';
+import {
+	AGENT_CONFIG_WRITE_KEY,
+	type AgentConfigWrite,
+} from '../../components/agentBuilderInjectionKeys';
 import { useApplyAgentEvalSuggestions } from '../useApplyAgentEvalSuggestions';
 
 const showError = vi.hoisted(() => vi.fn());
@@ -20,7 +23,7 @@ vi.mock('../../agentEvals.store', () => ({ useAgentEvalsStore: () => store }));
 
 const ids = (count: number) => Array.from({ length: count }, (_, i) => `r${i}`);
 
-function setup(flush?: () => Promise<void>) {
+function setup(runWrite?: AgentConfigWrite) {
 	const target = ref({ projectId: 'project-1', agentId: 'agent-1' });
 	let api!: ReturnType<typeof useApplyAgentEvalSuggestions>;
 	mount(
@@ -30,7 +33,7 @@ function setup(flush?: () => Promise<void>) {
 				return () => null;
 			},
 		}),
-		{ global: { provide: flush ? { [AGENT_CONFIG_FLUSH_KEY as symbol]: flush } : {} } },
+		{ global: { provide: runWrite ? { [AGENT_CONFIG_WRITE_KEY as symbol]: runWrite } : {} } },
 	);
 	return { api, target };
 }
@@ -69,58 +72,6 @@ describe('useApplyAgentEvalSuggestions', () => {
 		]);
 	});
 
-	it('saves pending builder edits once, before the first batch only', async () => {
-		const order: string[] = [];
-		const flush = vi.fn(async () => {
-			order.push('flush');
-		});
-		store.applySuggestions.mockImplementation(async () => {
-			order.push('apply');
-			return { configHash: 'h', results: [] };
-		});
-		const { api } = setup(flush);
-
-		await api.applySuggestions(ids(MAX_APPLY_SUGGESTIONS + 1));
-
-		expect(order).toEqual(['flush', 'apply', 'apply']);
-	});
-
-	it('does not let a builder that moved to another agent block the later batches', async () => {
-		const flush = vi
-			.fn()
-			.mockResolvedValueOnce(undefined)
-			.mockRejectedValue(new Error('save failed'));
-		store.applySuggestions.mockResolvedValue({ configHash: 'h', results: [] });
-		const { api } = setup(flush);
-
-		await expect(api.applySuggestions(ids(MAX_APPLY_SUGGESTIONS + 1))).resolves.toBe(true);
-
-		expect(store.applySuggestions).toHaveBeenCalledTimes(2);
-		expect(showError).not.toHaveBeenCalled();
-	});
-
-	it('sends nothing when saving the pending edits fails', async () => {
-		const { api } = setup(vi.fn().mockRejectedValue(new Error('save failed')));
-
-		await expect(api.applySuggestions(['r0'])).resolves.toBe(false);
-
-		expect(store.applySuggestions).not.toHaveBeenCalled();
-		expect(showError).toHaveBeenCalled();
-	});
-
-	it('saves pending builder edits before a preview suggestion too', async () => {
-		const flush = vi.fn().mockResolvedValue(undefined);
-		store.applyPreviewSuggestion.mockResolvedValue({
-			configHash: 'h',
-			preview: { status: 'failed' },
-		});
-		const { api } = setup(flush);
-
-		await api.applyPreviewSuggestion({ input: 'a', whatToCheck: 'b', suggestion: 'c' });
-
-		expect(flush).toHaveBeenCalledTimes(1);
-	});
-
 	it('goes on to the next batch when one has nothing left to send', async () => {
 		store.applySuggestions.mockResolvedValueOnce(null);
 		store.applySuggestions.mockResolvedValueOnce({ configHash: 'h', results: [] });
@@ -132,14 +83,109 @@ describe('useApplyAgentEvalSuggestions', () => {
 		expect(showError).not.toHaveBeenCalled();
 	});
 
-	it('only tells the builder to refetch for a batch that was sent', async () => {
-		const emit = vi.spyOn(agentsEventBus, 'emit');
-		store.applySuggestions.mockResolvedValueOnce(null);
-		const { api } = setup();
+	describe('with the builder’s locked write', () => {
+		const lockingWrite = () => {
+			const order: string[] = [];
+			const write: AgentConfigWrite = async (work) => {
+				order.push('lock');
+				try {
+					return await work();
+				} finally {
+					order.push('unlock');
+				}
+			};
+			return { order, write };
+		};
 
-		await api.applySuggestions(['r0']);
+		it('sends every batch inside one locked write', async () => {
+			const { order, write } = lockingWrite();
+			store.applySuggestions.mockImplementation(async () => {
+				order.push('apply');
+				return { configHash: 'h', results: [] };
+			});
+			const { api } = setup(write);
 
-		expect(emit).not.toHaveBeenCalled();
+			await api.applySuggestions(ids(MAX_APPLY_SUGGESTIONS + 1));
+
+			expect(order).toEqual(['lock', 'apply', 'apply', 'unlock']);
+		});
+
+		it('leaves the reload to the builder instead of announcing the change itself', async () => {
+			const emit = vi.spyOn(agentsEventBus, 'emit');
+			store.applySuggestions.mockResolvedValue({ configHash: 'h', results: [] });
+			const { api } = setup(lockingWrite().write);
+
+			await api.applySuggestions(['r0']);
+
+			expect(emit).not.toHaveBeenCalled();
+		});
+
+		it('still lets the builder finish, and reload, when a request fails', async () => {
+			const { order, write } = lockingWrite();
+			store.applySuggestions.mockRejectedValue(new Error('rerun failed'));
+			const { api } = setup(write);
+
+			await expect(api.applySuggestions(['r0'])).resolves.toBe(false);
+
+			expect(order).toEqual(['lock', 'unlock']);
+			expect(showError).toHaveBeenCalledWith(
+				expect.any(Error),
+				'agents.builder.agentEvals.suggestion.applyError',
+			);
+		});
+
+		it('sends nothing and toasts when the builder cannot save its pending edits', async () => {
+			const { api } = setup(async () => {
+				throw new Error('save failed');
+			});
+
+			await expect(api.applySuggestions(['r0'])).resolves.toBe(false);
+			await expect(
+				api.applyPreviewSuggestion({ input: 'a', whatToCheck: 'b', suggestion: 'c' }),
+			).resolves.toBeNull();
+
+			expect(store.applySuggestions).not.toHaveBeenCalled();
+			expect(store.applyPreviewSuggestion).not.toHaveBeenCalled();
+			expect(showError).toHaveBeenCalledTimes(2);
+		});
+
+		it('runs a preview suggestion inside the locked write too', async () => {
+			const { order, write } = lockingWrite();
+			store.applyPreviewSuggestion.mockImplementation(async () => {
+				order.push('apply');
+				return { configHash: 'h', preview: { status: 'failed' as const } };
+			});
+			const { api } = setup(write);
+
+			await api.applyPreviewSuggestion({ input: 'a', whatToCheck: 'b', suggestion: 'c' });
+
+			expect(order).toEqual(['lock', 'apply', 'unlock']);
+		});
+	});
+
+	describe('without a builder', () => {
+		it('tells other surfaces to refresh after a write', async () => {
+			const emit = vi.spyOn(agentsEventBus, 'emit');
+			store.applySuggestions.mockResolvedValue({ configHash: 'h', results: [] });
+			const { api } = setup();
+
+			await api.applySuggestions(['r0']);
+
+			expect(emit).toHaveBeenCalledWith('agentUpdated', {
+				agentId: 'agent-1',
+				source: 'agent-evals',
+			});
+		});
+
+		it('tells them to refresh when the write failed too, since the server may have saved', async () => {
+			const emit = vi.spyOn(agentsEventBus, 'emit');
+			store.applySuggestions.mockRejectedValue(new Error('rerun failed'));
+			const { api } = setup();
+
+			await api.applySuggestions(['r0']);
+
+			expect(emit).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	it('stops after the first failed batch and toasts it', async () => {
