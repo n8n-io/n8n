@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import { importPackageRequestFieldDocs } from './import-package-request.openapi';
+import {
+	importPackageRequestFieldDocs,
+	importPackageSelectionRequestFieldDocs,
+} from './import-package-request.openapi';
 import { publicApiUploadedFileSchema } from '../../schemas/public-api-uploaded-file.schema';
 import { Z } from '../../zod-class';
 
@@ -199,21 +202,15 @@ function parseIdArray(value: string, ctx: z.RefinementCtx, errorMessage: string)
 	return result.data;
 }
 
-/**
- * Multipart fields carry arrays as JSON text.
- * Reject blank or omitted fields, but accept `[]`.
- */
+/** Multipart fields carry arrays as JSON text. Reject a blank value, but accept `[]`. */
 const requiredJsonStringIdArray = (errorMessage: string) =>
-	z
-		.string()
-		.optional()
-		.transform((value, ctx): string[] => {
-			if (value === undefined || value.trim().length === 0) {
-				ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
-				return z.NEVER;
-			}
-			return parseIdArray(value, ctx, errorMessage);
-		});
+	z.string().transform((value, ctx): string[] => {
+		if (value.trim().length === 0) {
+			ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
+			return z.NEVER;
+		}
+		return parseIdArray(value, ctx, errorMessage);
+	});
 
 /** Treat blank or omitted fields as `undefined`. */
 const optionalJsonStringIdArray = (errorMessage: string) =>
@@ -225,11 +222,29 @@ const optionalJsonStringIdArray = (errorMessage: string) =>
 			return parseIdArray(value, ctx, errorMessage);
 		});
 
-export class ImportPackageSelectionRequestDto extends Z.class({
-	selectedProjectId: z.string().trim().min(1),
-	selectedWorkflowIds: requiredJsonStringIdArray(SELECTED_WORKFLOW_IDS_ERROR_MESSAGE),
-	deletedWorkflowIds: optionalJsonStringIdArray(DELETED_WORKFLOW_IDS_ERROR_MESSAGE),
-	workflowConflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version'),
-	workflowIdPolicy: optionalEnum(['new', 'source'], 'source'),
-	overwriteDeletionPolicy: optionalEnum(['archive', 'hard-delete'], 'archive'),
-}) {}
+export class ImportPackageSelectionRequestDto extends Z.class(
+	{
+		package: packageFileSchema,
+		selectedProjectId: z
+			.string()
+			.trim()
+			.min(1)
+			.openapi(importPackageSelectionRequestFieldDocs.selectedProjectId),
+		selectedWorkflowIds: requiredJsonStringIdArray(SELECTED_WORKFLOW_IDS_ERROR_MESSAGE).openapi(
+			importPackageSelectionRequestFieldDocs.selectedWorkflowIds,
+		),
+		deletedWorkflowIds: optionalJsonStringIdArray(DELETED_WORKFLOW_IDS_ERROR_MESSAGE).openapi(
+			importPackageSelectionRequestFieldDocs.deletedWorkflowIds,
+		),
+		workflowConflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version').openapi(
+			importPackageSelectionRequestFieldDocs.workflowConflictPolicy,
+		),
+		workflowIdPolicy: optionalEnum(['new', 'source'], 'source').openapi(
+			importPackageSelectionRequestFieldDocs.workflowIdPolicy,
+		),
+		overwriteDeletionPolicy: optionalEnum(['archive', 'hard-delete'], 'archive').openapi(
+			importPackageSelectionRequestFieldDocs.overwriteDeletionPolicy,
+		),
+	},
+	{ strict: true },
+) {}

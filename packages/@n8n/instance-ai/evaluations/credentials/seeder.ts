@@ -165,6 +165,8 @@ export async function createOneCredential(
 		description?: string | null;
 		/** Seed with no field values, modelling a credential the user saved empty. */
 		blank?: boolean;
+		/** The build's project. Absent: the caller's personal project. */
+		projectId?: string;
 	},
 ): Promise<CreatedCredential> {
 	if (credentialType === 'httpTemplatedCustomAuth') {
@@ -194,6 +196,7 @@ export async function createOneCredential(
 		credentialType,
 		options?.blank ? {} : template.buildData(token),
 		options?.description,
+		options?.projectId,
 	);
 	return { id, name: resolvedName, type: credentialType };
 }
@@ -213,6 +216,7 @@ async function createTemplatedCustomAuthCredential(
 		logger?: EvalLogger;
 		setupHint?: InstanceAiCredentialSetupHint;
 		description?: string | null;
+		projectId?: string;
 	},
 ): Promise<CreatedCredential> {
 	const hint = options?.setupHint;
@@ -259,6 +263,7 @@ async function createTemplatedCustomAuthCredential(
 			acceptedStatusCodes: hint.acceptedStatusCodes ? JSON.stringify(hint.acceptedStatusCodes) : '',
 		},
 		options?.description,
+		options?.projectId,
 	);
 	return { id, name: resolvedName, type: 'httpTemplatedCustomAuth' };
 }
@@ -286,6 +291,8 @@ export async function createDeclaredCredentials(
 		onCreated?: (id: string) => void;
 		logger?: EvalLogger;
 		nameCounts?: Map<string, number>;
+		/** The build's project. Absent: the caller's personal project. */
+		projectId?: string;
 	},
 ): Promise<CreatedCredential[]> {
 	const logger = options?.logger;
@@ -297,6 +304,7 @@ export async function createDeclaredCredentials(
 			logger,
 			...(decl.description !== undefined ? { description: decl.description } : {}),
 			...(decl.blank ? { blank: true } : {}),
+			...(options?.projectId !== undefined ? { projectId: options.projectId } : {}),
 		});
 		options?.onCreated?.(cred.id);
 		created.push(cred);

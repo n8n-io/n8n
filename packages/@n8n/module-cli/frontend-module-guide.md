@@ -192,6 +192,14 @@ you use a surface.
 | `settingsPages`         | `registerModuleSettingsPages`  | `SettingsSidebar`                        |
 | `pushHandlers`          | `registerModulePushHandlers`   | `useModulePushDispatcher`, in `App.vue`  |
 
+### Position of a settings link
+
+Each item in `settingsPages` accepts an optional integer `order`. The sidebar sorts the shell links
+and the module links together, from low to high. The shell links use 10, 20, 30, and so on. Pick a
+number between two shell links to put your link between them. A link without `order` goes last. Two
+links with the same `order` keep their registration order. The `order` field is not part of
+`IMenuItem`.
+
 All the register functions are in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`.
 `main.ts` registers `routes` before the mount. `app/init/index.ts` registers the other surfaces
 after the login.

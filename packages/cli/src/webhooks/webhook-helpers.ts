@@ -121,6 +121,13 @@ const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
 	'hostedChat',
 ]);
 
+/** Modes where the caller is answered as soon as the run is enqueued, so the run itself owes no response. */
+const IMMEDIATE_RESPONSE_MODES = new Set<WebhookResponseMode>([
+	'onReceived',
+	'formPage',
+	'hostedChat',
+]);
+
 interface WebhookInvocationResult {
 	webhookResultData: IWebhookResponseData;
 	runExecutionDataChanges: WebhookExecutionDataChanges;
@@ -222,6 +229,8 @@ async function prepareMcpQueueExecution(
 
 	runData.isMcpExecution = true;
 	runData.mcpType = 'trigger';
+	// The worker relays the MCP response when the run ends, so a paused segment would be taken for the result.
+	runData.callerAwaitsOutcome = 'completion';
 	runData.mcpSessionId = mcpSessionId;
 	runData.mcpMessageId = mcpMessageId;
 
@@ -1187,6 +1196,7 @@ export async function executeWebhook(
 			projectName: project?.name,
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
+			callerAwaitsOutcome: IMMEDIATE_RESPONSE_MODES.has(responseMode) ? 'none' : 'response',
 			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
 			// sets, so carrying it here changes nothing for v1. Engine v2 has no way to
 			// stop at a node, and its dispatcher refuses the run on this field.
