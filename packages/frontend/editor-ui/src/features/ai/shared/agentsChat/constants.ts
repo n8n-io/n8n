@@ -23,3 +23,9 @@ export const TOOL_CALL_STATE = {
 	ERROR: 'error',
 } as const;
 export type ToolCallState = (typeof TOOL_CALL_STATE)[keyof typeof TOOL_CALL_STATE];
+
+/**
+ * Tool name of an interactive card that a host-provided extension parsed. The
+ * payload's `extensionKey` names the extension that renders it.
+ */
+export const INTERACTION_EXTENSION_TOOL_NAME = 'interaction_extension';
