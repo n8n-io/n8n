@@ -1,102 +1,35 @@
 import { Logger } from '@n8n/backend-common';
-import { ExecutionsConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
-import { ExecutionRepository, DbConnection } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { strict } from 'node:assert';
+import { sleep } from '@n8n/utils/sleep';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+
+type SoftDeletedRef = Awaited<ReturnType<ExecutionRepository['findSoftDeletedExecutions']>>[number];
+
+type BatchResult = { deleted: number; failedIds: string[] };
+
+/** Pause between full batches, i.e. while backlog remains. */
+const BATCH_DELAY_MS = 1000;
 
 /**
  * Responsible for deleting old executions from the database and deleting their
  * associated binary data from the filesystem, on a rolling basis.
  *
- * By default:
- *
- * - Soft deletion (every 60m, on the `execution-pruning-soft-delete` system
- *   task) identifies all prunable executions based on max age and/or max
- *   count, exempting annotated executions.
- * - Hard deletion (every 15m) processes prunable executions in batches of 100,
- *   switching to 1s intervals until the total to prune is back down low enough,
- *   or in case the hard deletion fails.
- * - Once mostly caught up, hard deletion goes back to the 15m schedule.
- *
- * Hard deletion keeps its legacy leader-gated timer: its adaptive cadence is
- * not expressible as a `SystemTask` schedule yet.
+ * - Soft deletion (`execution-pruning-soft-delete` system task) identifies all
+ *   prunable executions based on max age and/or max count, exempting annotated
+ *   executions.
+ * - Hard deletion (`execution-pruning-hard-delete` system task) removes the
+ *   soft-deleted executions in batches of 100 until the backlog is drained.
  */
 @Service()
 export class ExecutionsPruningService {
-	/** Timeout for next hard-deletion of soft-deleted executions. */
-	private hardDeletionTimeout: NodeJS.Timeout | undefined;
-
-	private readonly rates = {
-		hardDeletion: this.executionsConfig.pruneDataIntervals.hardDelete * Time.minutes.toMilliseconds,
-	};
-
-	/** Max number of executions to hard-delete in a cycle. */
-	private readonly batchSize = 100;
-
-	private isShuttingDown = false;
-
 	constructor(
 		private readonly logger: Logger,
-		private readonly instanceSettings: InstanceSettings,
-		private readonly dbConnection: DbConnection,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionPersistence: ExecutionPersistence,
-		private readonly executionsConfig: ExecutionsConfig,
 	) {
 		this.logger = this.logger.scoped('pruning');
-	}
-
-	init() {
-		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
-
-		if (this.instanceSettings.isLeader) this.startPruning();
-	}
-
-	get isEnabled() {
-		return (
-			this.executionsConfig.pruneData &&
-			this.instanceSettings.instanceType === 'main' &&
-			this.instanceSettings.isLeader
-		);
-	}
-
-	@OnLeaderTakeover()
-	startPruning() {
-		const { connectionState } = this.dbConnection;
-		if (!this.isEnabled || !connectionState.migrated || this.isShuttingDown) return;
-
-		this.scheduleNextHardDeletion();
-
-		this.logger.debug('Started hard-deletion timer');
-	}
-
-	@OnLeaderStepdown()
-	stopPruning() {
-		if (!this.hardDeletionTimeout) return;
-
-		clearTimeout(this.hardDeletionTimeout);
-		this.hardDeletionTimeout = undefined;
-
-		this.logger.debug('Stopped hard-deletion timer');
-	}
-
-	private scheduleNextHardDeletion(rateMs = this.rates.hardDeletion) {
-		this.hardDeletionTimeout = setTimeout(() => {
-			this.hardDelete()
-				.then((rate) => this.scheduleNextHardDeletion(rate))
-				.catch((error) => {
-					this.scheduleNextHardDeletion(1_000);
-					this.logger.error('Failed to hard-delete executions', { error: ensureError(error) });
-				});
-		}, rateMs);
-
-		this.logger.debug(`Hard-deletion in next ${rateMs * Time.milliseconds.toMinutes} minutes`);
 	}
 
 	/** Soft-delete executions based on max age and/or max count. */
@@ -111,42 +44,69 @@ export class ExecutionsPruningService {
 		this.logger.debug('Soft-deleted executions', { count: result.affected });
 	}
 
-	@OnShutdown()
-	shutdown(): void {
-		this.isShuttingDown = true;
-		this.stopPruning();
+	/**
+	 * Delete soft-deleted executions in batches until one comes back short or the signal aborts.
+	 * Rows that fail are left out of the later selects, up to one batch of them.
+	 */
+	async hardDelete(signal: AbortSignal): Promise<void> {
+		const { hardDeletionBatchSize } = this.executionRepository;
+		const failedIds: string[] = [];
+		let deletedCount = 0;
+		let hasMore = true;
+
+		while (hasMore && !signal.aborted) {
+			const refs = await this.executionRepository.findSoftDeletedExecutions(failedIds);
+			if (!signal.aborted) {
+				const batch = await this.hardDeleteBatch(refs, signal);
+				deletedCount += batch.deleted;
+				failedIds.push(...batch.failedIds);
+			}
+			hasMore = refs.length === hardDeletionBatchSize && failedIds.length < hardDeletionBatchSize;
+			if (hasMore) await this.waitBetweenBatches(signal);
+		}
+
+		this.logger.debug('Hard-deleted executions', { count: deletedCount });
 	}
 
-	/**
-	 * Delete all soft-deleted executions and their binary data.
-	 *
-	 * @returns Delay in milliseconds until next hard-deletion
-	 */
-	private async hardDelete(): Promise<number> {
-		const refs = await this.executionRepository.findSoftDeletedExecutions();
-
-		if (refs.length === 0) {
-			this.logger.debug('Found no executions to hard-delete');
-
-			return this.rates.hardDeletion;
-		}
-
-		const executionIds = refs.map((r) => r.executionId);
-
+	/** Falls back to single deletes when the batch fails, and rethrows when none of them succeeds. */
+	private async hardDeleteBatch(refs: SoftDeletedRef[], signal: AbortSignal): Promise<BatchResult> {
 		try {
 			await this.executionPersistence.hardDelete(refs);
-
-			this.logger.debug('Hard-deleted executions', { executionIds });
-		} catch (error) {
-			this.logger.error('Failed to hard-delete executions', {
-				executionIds,
-				error: ensureError(error),
-			});
+			return { deleted: refs.length, failedIds: [] };
+		} catch (batchError) {
+			const result = await this.hardDeleteOneByOne(refs, signal);
+			if (result.deleted === 0) throw batchError;
+			return result;
 		}
+	}
 
-		// if high volume, speed up next hard-deletion
-		if (refs.length >= this.batchSize) return 1 * Time.seconds.toMilliseconds;
+	/** Logs the ids that failed once per batch. Stops when the signal aborts. */
+	private async hardDeleteOneByOne(
+		refs: SoftDeletedRef[],
+		signal: AbortSignal,
+	): Promise<BatchResult> {
+		const failedInBatch: string[] = [];
+		let deleted = 0;
+		for (const ref of refs) {
+			if (signal.aborted) break;
+			try {
+				await this.executionPersistence.hardDelete(ref);
+				deleted++;
+			} catch {
+				failedInBatch.push(ref.executionId);
+			}
+		}
+		if (failedInBatch.length > 0) {
+			this.logger.error('Failed to hard-delete executions', { executionIds: failedInBatch });
+		}
+		return { deleted, failedIds: failedInBatch };
+	}
 
-		return this.rates.hardDeletion;
+	private async waitBetweenBatches(signal: AbortSignal): Promise<void> {
+		try {
+			await sleep(BATCH_DELAY_MS, signal);
+		} catch {
+			// `sleep` rejects only on abort, which the loop checks for on its own.
+		}
 	}
 }

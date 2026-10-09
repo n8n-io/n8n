@@ -1,188 +1,237 @@
-import { mockLogger } from '@n8n/backend-test-utils';
-import type { ExecutionsConfig } from '@n8n/config';
-import type { DbConnection } from '@n8n/db';
-import type { InstanceSettings } from 'n8n-core';
+import type { Logger } from '@n8n/backend-common';
+import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
+
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { ExecutionsPruningService } from '../executions-pruning.service';
 
-describe('PruningService', () => {
-	const dbConnection = mock<DbConnection>({
-		connectionState: { migrated: true },
-	});
+type SoftDeletedRef = Awaited<ReturnType<ExecutionRepository['findSoftDeletedExecutions']>>[number];
 
-	describe('init', () => {
-		it('should start pruning on main instance that is the leader', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock(),
-			);
-			const startPruningSpy = vi.spyOn(pruningService, 'startPruning');
+const BATCH_SIZE = 100;
 
-			pruningService.init();
+describe('ExecutionsPruningService', () => {
+	const makeService = () => {
+		const logger = mock<Logger>();
+		logger.scoped.mockReturnValue(logger);
+		const executionRepository = mock<ExecutionRepository>({ hardDeletionBatchSize: BATCH_SIZE });
+		const executionPersistence = mock<ExecutionPersistence>();
+		const service = new ExecutionsPruningService(logger, executionRepository, executionPersistence);
+		return { service, logger, executionRepository, executionPersistence };
+	};
 
-			expect(startPruningSpy).toHaveBeenCalled();
-		});
+	const batchOf = (size: number, offset = 0): SoftDeletedRef[] =>
+		Array.from({ length: size }, (_, i) => ({
+			executionId: `exec-${offset + i}`,
+			workflowId: 'wf-1',
+			storedAt: 'db' as const,
+		}));
 
-		it('should not start pruning on main instance that is a follower', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: false, isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock(),
-			);
-			const startPruningSpy = vi.spyOn(pruningService, 'startPruning');
+	/** Serves the batches in order and records a copy of each select's excluded ids. */
+	const selectsOf = (executionRepository: ExecutionRepository, batches: SoftDeletedRef[][]) => {
+		const selects: string[][] = [];
+		vi.mocked(executionRepository.findSoftDeletedExecutions).mockImplementation(
+			async (excludedIds = []) => {
+				selects.push([...excludedIds]);
+				return batches[selects.length - 1] ?? [];
+			},
+		);
+		return selects;
+	};
 
-			pruningService.init();
+	const singleCalls = (executionPersistence: ExecutionPersistence) =>
+		vi
+			.mocked(executionPersistence.hardDelete)
+			.mock.calls.filter(([target]) => !Array.isArray(target));
 
-			expect(startPruningSpy).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('isEnabled', () => {
-		it('should return `true` based on config if leader main', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({ pruneData: true }),
-			);
-
-			expect(pruningService.isEnabled).toBe(true);
-		});
-
-		it('should return `false` based on config if leader main', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({ pruneData: false }),
-			);
-
-			expect(pruningService.isEnabled).toBe(false);
-		});
-
-		it('should return `false` if non-main even if config is enabled', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: false, instanceType: 'worker', isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({ pruneData: true }),
-			);
-
-			expect(pruningService.isEnabled).toBe(false);
-		});
-
-		it('should return `false` if follower main even if config is enabled', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({
-					isLeader: false,
-					isFollower: true,
-					instanceType: 'main',
-					isMultiMain: true,
-				}),
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({ pruneData: true }),
-			);
-
-			expect(pruningService.isEnabled).toBe(false);
-		});
-	});
-
-	describe('startPruning', () => {
-		it('should not start pruning if service is disabled', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({ pruneData: false }),
-			);
-
-			const scheduleNextHardDeletionSpy = vi.spyOn(pruningService, 'scheduleNextHardDeletion');
-
-			pruningService.startPruning();
-
-			expect(scheduleNextHardDeletionSpy).not.toHaveBeenCalled();
-		});
-
-		it('should start pruning if service is enabled and DB is migrated', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({ pruneData: true }),
-			);
-
-			const scheduleNextHardDeletionSpy = vi
-				.spyOn(pruningService, 'scheduleNextHardDeletion')
-				.mockImplementation((() => {}) as never);
-
-			pruningService.startPruning();
-
-			expect(scheduleNextHardDeletionSpy).toHaveBeenCalled();
-		});
-	});
-
-	describe('stopPruning', () => {
-		afterEach(() => vi.restoreAllMocks());
-
-		it('should stop pruning when instance loses leadership', () => {
-			// arrange
-
-			const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
-
-			let isLeader = true;
-			const instanceSettings = mock<InstanceSettings>({
-				instanceType: 'main',
-				isMultiMain: true,
-			});
-			Object.defineProperty(instanceSettings, 'isLeader', { get: () => isLeader });
-			instanceSettings.markAsFollower.mockImplementation(() => {
-				isLeader = false;
+	describe('softDelete', () => {
+		it('should soft-delete prunable executions', async () => {
+			const { service, executionRepository } = makeService();
+			executionRepository.softDeletePrunableExecutions.mockResolvedValue({
+				affected: 3,
+				raw: {},
+				generatedMaps: [],
 			});
 
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				instanceSettings,
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({
-					pruneData: true,
-					pruneDataIntervals: { softDelete: 60, hardDelete: 15 },
-				}),
-			);
+			await service.softDelete();
 
-			pruningService.startPruning();
+			expect(executionRepository.softDeletePrunableExecutions).toHaveBeenCalledTimes(1);
+		});
+	});
 
-			// act
+	describe('hardDelete', () => {
+		beforeEach(() => vi.useFakeTimers());
+		afterEach(() => vi.useRealTimers());
 
-			instanceSettings.markAsFollower();
-			pruningService.stopPruning();
+		it('should delete batches until one comes back short', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			const batches = [batchOf(BATCH_SIZE), batchOf(BATCH_SIZE), batchOf(30)];
+			for (const batch of batches) {
+				executionRepository.findSoftDeletedExecutions.mockResolvedValueOnce(batch);
+			}
 
-			// assert
+			const run = service.hardDelete(new AbortController().signal);
+			await vi.runAllTimersAsync();
+			await run;
 
-			expect(isLeader).toBe(false);
-			expect(clearTimeoutSpy).toHaveBeenCalled();
+			expect(executionPersistence.hardDelete.mock.calls).toEqual(batches.map((batch) => [batch]));
+		});
+
+		it('should stop after an empty batch', async () => {
+			const { service, executionRepository } = makeService();
+			executionRepository.findSoftDeletedExecutions.mockResolvedValue([]);
+
+			await service.hardDelete(new AbortController().signal);
+
+			expect(executionRepository.findSoftDeletedExecutions).toHaveBeenCalledTimes(1);
+		});
+
+		it('should pause one second between full batches', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			executionRepository.findSoftDeletedExecutions
+				.mockResolvedValueOnce(batchOf(BATCH_SIZE))
+				.mockResolvedValueOnce(batchOf(BATCH_SIZE))
+				.mockResolvedValueOnce([]);
+
+			const run = service.hardDelete(new AbortController().signal);
+			await vi.advanceTimersByTimeAsync(999);
+			expect(executionPersistence.hardDelete).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(executionPersistence.hardDelete).toHaveBeenCalledTimes(2);
+
+			await vi.advanceTimersByTimeAsync(1000);
+			await run;
+		});
+
+		it('should stop at the pause when the signal aborts', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			executionRepository.findSoftDeletedExecutions.mockResolvedValue(batchOf(BATCH_SIZE));
+			const controller = new AbortController();
+
+			const run = service.hardDelete(controller.signal);
+			await vi.advanceTimersByTimeAsync(0);
+			controller.abort();
+
+			await expect(run).resolves.toBeUndefined();
+			expect(executionPersistence.hardDelete).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not delete a batch when the signal aborts during the select', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			const controller = new AbortController();
+			executionRepository.findSoftDeletedExecutions.mockImplementation(async () => {
+				controller.abort();
+				return batchOf(BATCH_SIZE);
+			});
+
+			await service.hardDelete(controller.signal);
+
+			expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
+		});
+
+		it('should delete one by one when a batch fails', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			const batch = batchOf(BATCH_SIZE);
+			const badRef = batch[42];
+			executionRepository.findSoftDeletedExecutions
+				.mockResolvedValueOnce(batch)
+				.mockResolvedValueOnce([]);
+			executionPersistence.hardDelete.mockImplementation(async (target) => {
+				const targets = Array.isArray(target) ? target : [target];
+				if (targets.includes(badRef)) throw new Error('object locked');
+			});
+
+			const run = service.hardDelete(new AbortController().signal);
+			await vi.runAllTimersAsync();
+			await run;
+
+			expect(singleCalls(executionPersistence)).toEqual(batch.map((ref) => [ref]));
+		});
+
+		it('should log the ids that failed once per batch', async () => {
+			const { service, logger, executionRepository, executionPersistence } = makeService();
+			const batches = [batchOf(BATCH_SIZE), batchOf(30, BATCH_SIZE)];
+			const badRefs = [batches[0][42], batches[1][7]];
+			selectsOf(executionRepository, batches);
+			executionPersistence.hardDelete.mockImplementation(async (target) => {
+				const targets = Array.isArray(target) ? target : [target];
+				if (targets.some((ref) => badRefs.includes(ref))) throw new Error('object locked');
+			});
+
+			const run = service.hardDelete(new AbortController().signal);
+			await vi.runAllTimersAsync();
+			await run;
+
+			expect(logger.error.mock.calls).toEqual([
+				[expect.any(String), { executionIds: [badRefs[0].executionId] }],
+				[expect.any(String), { executionIds: [badRefs[1].executionId] }],
+			]);
+		});
+
+		it('should leave the rows that failed out of the next select', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			const batch = batchOf(BATCH_SIZE);
+			const badRef = batch[42];
+			const selects = selectsOf(executionRepository, [batch, []]);
+			executionPersistence.hardDelete.mockImplementation(async (target) => {
+				const targets = Array.isArray(target) ? target : [target];
+				if (targets.includes(badRef)) throw new Error('object locked');
+			});
+
+			const run = service.hardDelete(new AbortController().signal);
+			await vi.runAllTimersAsync();
+			await run;
+
+			expect(selects).toEqual([[], [badRef.executionId]]);
+		});
+
+		it('should give up after a batch size of failed rows', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			const batches = [
+				batchOf(BATCH_SIZE),
+				batchOf(BATCH_SIZE, BATCH_SIZE),
+				batchOf(BATCH_SIZE, 2 * BATCH_SIZE),
+			];
+			const isBad = (ref: SoftDeletedRef) => Number(ref.executionId.slice(5)) % 2 === 0;
+			const selects = selectsOf(executionRepository, batches);
+			executionPersistence.hardDelete.mockImplementation(async (target) => {
+				const targets = Array.isArray(target) ? target : [target];
+				if (targets.some(isBad)) throw new Error('object locked');
+			});
+
+			const run = service.hardDelete(new AbortController().signal);
+			await vi.runAllTimersAsync();
+			await run;
+
+			expect(selects).toEqual([[], batches[0].filter(isBad).map((ref) => ref.executionId)]);
+		});
+
+		it('should stop the single deletes when the signal aborts', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			const batch = batchOf(BATCH_SIZE);
+			const controller = new AbortController();
+			executionRepository.findSoftDeletedExecutions.mockResolvedValue(batch);
+			executionPersistence.hardDelete
+				.mockRejectedValueOnce(new Error('blob store down'))
+				.mockImplementation(async () => controller.abort());
+
+			await service.hardDelete(controller.signal);
+
+			expect(singleCalls(executionPersistence)).toEqual([[batch[0]]]);
+		});
+
+		it('should reject when a batch fails and no single delete succeeds', async () => {
+			const { service, logger, executionRepository, executionPersistence } = makeService();
+			const batchError = new Error('blob store down');
+			executionRepository.findSoftDeletedExecutions.mockResolvedValue(batchOf(BATCH_SIZE));
+			executionPersistence.hardDelete.mockRejectedValue(batchError);
+
+			await expect(service.hardDelete(new AbortController().signal)).rejects.toBe(batchError);
+
+			expect(executionRepository.findSoftDeletedExecutions).toHaveBeenCalledTimes(1);
+			expect(executionPersistence.hardDelete).toHaveBeenCalledTimes(1 + BATCH_SIZE);
+			expect(logger.error).toHaveBeenCalledTimes(1);
 		});
 	});
 });

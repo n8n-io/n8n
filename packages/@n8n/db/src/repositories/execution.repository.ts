@@ -183,7 +183,7 @@ const MAX_UPDATE_BATCH_SIZE = 900;
 
 @Service()
 export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
-	private hardDeletionBatchSize = 100;
+	readonly hardDeletionBatchSize = 100;
 
 	constructor(
 		dataSource: DataSource,
@@ -733,7 +733,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.execute();
 	}
 
-	async findSoftDeletedExecutions() {
+	async findSoftDeletedExecutions(excludedIds: string[] = []) {
 		const isPostgres = this.globalConfig.database.type === 'postgresdb';
 		const bufferMs =
 			this.globalConfig.executions.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
@@ -742,6 +742,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			select: ['workflowId', 'id', 'storedAt'],
 			where: {
 				deletedAt: Raw((column) => `${column} <= ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
+				...(excludedIds.length > 0 ? { id: Not(In(excludedIds)) } : {}),
 			},
 			take: this.hardDeletionBatchSize,
 

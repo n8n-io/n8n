@@ -2009,6 +2009,35 @@ describe('ExecutionPersistence', () => {
 			]);
 			expect(jsonStore.delete).toHaveBeenCalledWith([targets[0], targets[1], targets[2]]);
 		});
+
+		it('should not delete the rows when the blob delete rejects', async () => {
+			const target = { ...baseTarget, storedAt: 'fs' as const };
+			jsonStore.delete.mockRejectedValueOnce(new Error('blob store down'));
+
+			await expect(executionPersistence.hardDelete(target)).rejects.toThrow('blob store down');
+
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+		});
+
+		it('should not delete the rows when the binary data delete rejects', async () => {
+			const target = { ...baseTarget, storedAt: 'fs' as const };
+			binaryDataService.deleteMany.mockRejectedValueOnce(new Error('binary store down'));
+
+			await expect(executionPersistence.hardDelete(target)).rejects.toThrow('binary store down');
+
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+		});
+
+		it('should delete the rows after both file deletes', async () => {
+			const target = { ...baseTarget, storedAt: 'fs' as const };
+
+			await executionPersistence.hardDelete(target);
+
+			const [rows] = executionRepository.deleteByIds.mock.invocationCallOrder;
+			const [binary] = binaryDataService.deleteMany.mock.invocationCallOrder;
+			const [blobs] = jsonStore.delete.mock.invocationCallOrder;
+			expect(rows).toBeGreaterThan(Math.max(binary, blobs));
+		});
 	});
 
 	describe('hardDeleteBy', () => {

@@ -1,10 +1,9 @@
 import { mockLogger, createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { ExecutionEntity, ExecutionRepository, DbConnection } from '@n8n/db';
+import { ExecutionEntity, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
-import { InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -21,8 +20,6 @@ const AGED_EXECUTIONS = 20;
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: ExecutionsPruningService;
-	const instanceSettings = Container.get(InstanceSettings);
-	instanceSettings.markAsLeader();
 
 	const now = new Date();
 	const yesterday = new Date(Date.now() - 1 * Time.days.toMilliseconds);
@@ -35,11 +32,8 @@ describe('softDeleteOnPruningCycle()', () => {
 		executionsConfig = Container.get(ExecutionsConfig);
 		pruningService = new ExecutionsPruningService(
 			mockLogger(),
-			instanceSettings,
-			Container.get(DbConnection),
 			Container.get(ExecutionRepository),
 			mockInstance(ExecutionPersistence),
-			executionsConfig,
 		);
 
 		workflow = await createWorkflow();
@@ -502,6 +496,25 @@ describe('softDeleteOnPruningCycle()', () => {
 			moveInstanceClockAhead();
 
 			const refs = await Container.get(ExecutionRepository).findSoftDeletedExecutions();
+
+			expect(refs.map(({ executionId }) => executionId)).toEqual([expired.id]);
+		});
+
+		test('leaves out the excluded executions', async () => {
+			const twoHoursAgo = new Date(realNow - 2 * Time.hours.toMilliseconds);
+			const excluded = await createExecution(
+				{ status: 'success', finished: true, stoppedAt: yesterday, deletedAt: twoHoursAgo },
+				workflow,
+			);
+			const expired = await createExecution(
+				{ status: 'success', finished: true, stoppedAt: yesterday, deletedAt: twoHoursAgo },
+				workflow,
+			);
+			moveInstanceClockAhead();
+
+			const refs = await Container.get(ExecutionRepository).findSoftDeletedExecutions([
+				excluded.id,
+			]);
 
 			expect(refs.map(({ executionId }) => executionId)).toEqual([expired.id]);
 		});
