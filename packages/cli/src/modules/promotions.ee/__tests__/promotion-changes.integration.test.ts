@@ -11,7 +11,9 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
+	CredentialsRepository,
 	FolderRepository,
+	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	VariablesRepository,
 	WorkflowRepository,
@@ -32,11 +34,13 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
+	buildWorkflowReferencingCredential,
 	buildWorkflowReferencingDataTables,
 	buildWorkflowReferencingVariables,
 } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { createMember, createOwner } from '@test-integration/db/users';
+import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
@@ -72,6 +76,8 @@ beforeEach(async () => {
 	await testDb.truncate([
 		'WorkflowEntity',
 		'SharedWorkflow',
+		'CredentialsEntity',
+		'SharedCredentials',
 		'Folder',
 		'ProjectRelation',
 		'Project',
@@ -637,6 +643,142 @@ it('counts a variable on apply only when this instance lacks it in the scope of 
 	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([
 		expect.objectContaining({ id: dependent.id, status: 'modified', dependencyCount: 1 }),
 	]);
+}, 30_000);
+
+it('counts a credential on apply only when this instance lacks it by id', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Destination', owner);
+	const credential = await saveCredential(
+		{ name: 'Source name', type: 'githubApi', data: { accessToken: 'token' } },
+		{ project, role: 'credential:owner' },
+	);
+	const dependent = await buildWorkflowReferencingCredential({
+		name: 'Dependent',
+		project,
+		credential,
+	});
+	const connection = await createConnection(['promote', 'apply']);
+	const service = Container.get(PromotionsService);
+	const credentials = Container.get(CredentialsRepository);
+	const agent = server.authAgentFor(owner);
+	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
+
+	// Baseline: the branch and this instance agree on the credential.
+	await service.promote(connection.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
+
+	// The source renames the credential and promotes it, so the branch holds the
+	// new name while this instance keeps its own credential under the old name.
+	await credentials.update(credential.id, { name: 'Renamed on source' });
+	await service.promote(connection.id, owner, {
+		commitMessage: 'Rename credential',
+		canExportVariableValues: true,
+	});
+	await credentials.update(credential.id, { name: 'Source name' });
+
+	// Apply binds by id, so the rename is a no-op here and must not loop.
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
+
+	// The credential this instance would bind to is gone, so the dependency counts.
+	await credentials.delete(credential.id);
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([
+		expect.objectContaining({ id: dependent.id, status: 'modified', dependencyCount: 1 }),
+	]);
+}, 30_000);
+
+it('ignores a renamed credential name embedded in a workflow node on apply', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Destination', owner);
+	const credential = await saveCredential(
+		{ name: 'Slack account', type: 'slackApi', data: { accessToken: 'token' } },
+		{ project, role: 'credential:owner' },
+	);
+	const workflow = await buildWorkflowReferencingCredential({
+		name: 'Dependent',
+		project,
+		credential,
+	});
+	const connection = await createConnection(['promote', 'apply']);
+	await Container.get(PromotionsService).promote(connection.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	const agent = server.authAgentFor(owner);
+	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
+
+	// The credential is renamed, so this instance's node now embeds the new name
+	// while the branch copy keeps the old one. The binding is by id, so the
+	// workflow has not really changed and must not keep showing as incoming.
+	await Container.get(WorkflowRepository).update(workflow.id, {
+		nodes: [
+			{
+				id: 'n1',
+				name: 'HTTP',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: { slackApi: { id: credential.id, name: 'Slack account renamed' } },
+			},
+		],
+	});
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
+
+	// A real node edit still shows, so the normalization does not hide content changes.
+	await Container.get(WorkflowRepository).update(workflow.id, {
+		nodes: [
+			{
+				id: 'n1',
+				name: 'HTTP',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { url: 'https://example.test' },
+				credentials: { slackApi: { id: credential.id, name: 'Slack account renamed' } },
+			},
+		],
+	});
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([
+		expect.objectContaining({ id: workflow.id, status: 'modified' }),
+	]);
+}, 30_000);
+
+it('counts a credential on apply when the matching id belongs to another project', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Destination', owner);
+	const other = await createTeamProject('Other', owner);
+	// The credential exists on the instance, but only another project can use it,
+	// so this project cannot bind it on apply.
+	const credential = await saveCredential(
+		{ name: 'Owned elsewhere', type: 'githubApi', data: { accessToken: 'token' } },
+		{ project: other, role: 'credential:owner' },
+	);
+	const dependent = await buildWorkflowReferencingCredential({
+		name: 'Dependent',
+		project,
+		credential,
+	});
+	const connection = await createConnection(['promote', 'apply']);
+	await Container.get(PromotionsService).promote(connection.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	const agent = server.authAgentFor(owner);
+	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
+
+	// The id exists, but not for this project, so the dependency still counts.
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([
+		expect.objectContaining({ id: dependent.id, status: 'modified', dependencyCount: 1 }),
+	]);
+
+	// Sharing the credential with the project makes it bindable, so it converges.
+	const shared = Container.get(SharedCredentialsRepository);
+	await shared.save(shared.create({ project, credentials: credential, role: 'credential:user' }));
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
 }, 30_000);
 
 it('answers for a destination that has only an apply configuration', async () => {

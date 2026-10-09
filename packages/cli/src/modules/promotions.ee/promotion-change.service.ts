@@ -7,6 +7,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
+	CredentialsRepository,
 	VariablesRepository,
 	WorkflowRepository,
 	type User,
@@ -46,9 +47,10 @@ import type { SerializedWorkflow } from '@/modules/n8n-packages/spec/serialized/
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
-import { diffPackageFiles } from './diff-package-files';
+import { diffPackageFiles, type PackageFileChange } from './diff-package-files';
 import { PromotionsService } from './promotions.service';
 import type { BranchPackage } from './promotions.types';
+import { workflowChangeIsCredentialNameOnly } from './workflow-diff-normalize';
 
 const DEPENDENCY_COLLECTIONS = {
 	credentials: 'credentials',
@@ -72,7 +74,10 @@ type DesiredPackage = {
 	manifest: PackageManifest;
 };
 
-type InstancePackage = DesiredPackage & { archiveState: ReadonlyMap<string, boolean> };
+type InstancePackage = DesiredPackage & {
+	archiveState: ReadonlyMap<string, boolean>;
+	workflowContent: ReadonlyMap<string, string>;
+};
 
 type PackageDiff = {
 	changedIds: Set<string>;
@@ -91,6 +96,7 @@ export class PromotionChangeService {
 		private readonly packagesService: N8nPackagesService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly variablesRepository: VariablesRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -113,7 +119,7 @@ export class PromotionChangeService {
 		// Apply reads the branch manifest before the export, so an empty branch fails without one.
 		const branchDesired =
 			direction === 'apply' ? await this.readBranchDesired(branch, projectId) : null;
-		const [instance, destinationVariables] = await Promise.all([
+		const [instance, destinationVariables, destinationCredentials] = await Promise.all([
 			this.exportInstancePackage(user, projectId),
 			branchDesired === null
 				? null
@@ -121,12 +127,46 @@ export class PromotionChangeService {
 						branchDesired.manifest.requirements?.variables?.map(({ name }) => name) ?? [],
 						[projectId],
 					),
+			branchDesired === null
+				? null
+				: this.credentialsRepository.findPromotionBindingAccess(
+						branchDesired.manifest.requirements?.credentials?.map(({ id }) => id) ?? [],
+						[projectId],
+					),
 		]);
+		// Apply binds a credential only when this project can use it: a global
+		// credential, or one shared with the project. An id that exists but belongs
+		// to another project is not reachable, so it stays a change, not a match.
+		const destinationCredentialIds =
+			destinationCredentials === null
+				? null
+				: destinationCredentials
+						.filter(
+							({ usageScope, isGlobal, projectIds }) =>
+								usageScope === 'project' && (isGlobal || projectIds.includes(projectId)),
+						)
+						.map(({ id }) => id);
 		const { base, desired } =
 			branchDesired === null
 				? { base: branch.files, desired: instance }
 				: { base: instance.files, desired: branchDesired };
-		const diff = this.diffPackages({ projectId, direction, base, desired, destinationVariables });
+		// A workflow node stores a credential name next to its id. The name is a
+		// display cache that drifts after a rename, so drop workflow changes that are
+		// only that drift. Branch content is read for the few workflows that differ,
+		// not every workflow on every preview.
+		const changes = await this.ignoreCredentialNameOnlyChanges(
+			diffPackageFiles(base, desired.files),
+			{ direction, branch, instanceContent: instance.workflowContent },
+		);
+		const diff = this.diffPackages({
+			projectId,
+			direction,
+			base,
+			desired,
+			destinationVariables,
+			destinationCredentialIds,
+			changes,
+		});
 		// Archive state separates "archived" from "modified", so the branch is read only for those rows.
 		const archiveState =
 			direction === 'promote'
@@ -156,22 +196,89 @@ export class PromotionChangeService {
 		}
 	}
 
+	/**
+	 * Drops workflow changes whose only difference is the credential name embedded
+	 * in a node, which drifts after a rename and would otherwise never converge. It
+	 * reads file content only for the workflows the hash diff already flagged, and
+	 * only from the branch (the instance content is in memory from the export). A
+	 * rename keeps its row; a pure content drift disappears.
+	 */
+	private async ignoreCredentialNameOnlyChanges(
+		changes: PackageFileChange[],
+		{
+			direction,
+			branch,
+			instanceContent,
+		}: {
+			direction: PromotionDirection;
+			branch: BranchPackage;
+			instanceContent: ReadonlyMap<string, string>;
+		},
+	): Promise<PackageFileChange[]> {
+		const branchIsBase = direction === 'promote';
+		const candidates: Array<{
+			change: PackageFileChange;
+			base: PackageFile;
+			desired: PackageFile;
+		}> = [];
+		for (const change of changes) {
+			if (
+				(change.change === 'modified' || change.change === 'renamed-and-modified') &&
+				change.base.type === 'workflow'
+			) {
+				candidates.push({ change, base: change.base, desired: change.desired });
+			}
+		}
+		if (candidates.length === 0) return changes;
+
+		const branchContent = await branch.readFiles(
+			candidates.map(({ base, desired }) => (branchIsBase ? base.path : desired.path)),
+		);
+		const nameOnly = new Set<PackageFileChange>();
+		for (const { change, base, desired } of candidates) {
+			const baseContent = branchIsBase
+				? branchContent.get(base.path)
+				: instanceContent.get(base.path);
+			const desiredContent = branchIsBase
+				? instanceContent.get(desired.path)
+				: branchContent.get(desired.path);
+			if (
+				baseContent !== undefined &&
+				desiredContent !== undefined &&
+				workflowChangeIsCredentialNameOnly(baseContent, desiredContent)
+			) {
+				nameOnly.add(change);
+			}
+		}
+		if (nameOnly.size === 0) return changes;
+
+		return changes.flatMap((change) => {
+			if (!nameOnly.has(change)) return [change];
+			return change.change === 'renamed-and-modified'
+				? [{ change: 'renamed' as const, base: change.base, desired: change.desired }]
+				: [];
+		});
+	}
+
 	private diffPackages({
 		projectId,
 		direction,
 		base,
 		desired,
 		destinationVariables,
+		destinationCredentialIds,
+		changes,
 	}: {
 		projectId: string;
 		direction: PromotionDirection;
 		base: readonly PackageFile[];
 		desired: DesiredPackage;
 		destinationVariables: readonly VariableKeyScope[] | null;
+		destinationCredentialIds: readonly string[] | null;
+		changes: readonly PackageFileChange[];
 	}): PackageDiff {
 		const previewId = randomUUID();
 		const { manifest } = desired;
-		const changes = diffPackageFiles(base, desired.files);
 		const changedIds = new Set<string>();
 		const renamedIds = new Set<string>();
 		const modifiedIds = new Set<string>();
@@ -200,6 +307,7 @@ export class PromotionChangeService {
 			changedPaths,
 			projectId,
 			destinationVariables,
+			destinationCredentialIds,
 		});
 		for (const workflowId of affectedWorkflowIds) {
 			changedIds.add(workflowId);
@@ -243,6 +351,7 @@ export class PromotionChangeService {
 	private async exportInstancePackage(user: User, projectId: string): Promise<InstancePackage> {
 		const writer = new HashingPackageWriter();
 		const archiveState = new Map<string, boolean>();
+		const workflowContent = new Map<string, string>();
 		const { manifest } = await this.packagesService.exportPackageToWriter(
 			{
 				user,
@@ -259,8 +368,10 @@ export class PromotionChangeService {
 				writeFile(path, content) {
 					writer.writeFile(path, content);
 					if (path.endsWith(`/${PACKAGE_ENTITY_LAYOUT.workflows.fileName}`)) {
-						const workflow = jsonParse<SerializedWorkflow>(String(content));
-						archiveState.set(`${PACKAGE_SUBFOLDER}/${path}`, workflow.isArchived);
+						const packagePath = `${PACKAGE_SUBFOLDER}/${path}`;
+						const serialized = String(content);
+						workflowContent.set(packagePath, serialized);
+						archiveState.set(packagePath, jsonParse<SerializedWorkflow>(serialized).isArchived);
 					}
 				},
 			},
@@ -272,7 +383,7 @@ export class PromotionChangeService {
 			})),
 			{ exportRoot: PACKAGE_SUBFOLDER, projectId },
 		);
-		return { files, manifest, archiveState };
+		return { files, manifest, archiveState, workflowContent };
 	}
 
 	private async readBranchDesired(
@@ -377,12 +488,14 @@ function calculateDependencyImpact({
 	changedPaths,
 	projectId,
 	destinationVariables,
+	destinationCredentialIds,
 }: {
 	base: readonly PackageFile[];
 	manifest: PackageManifest;
 	changedPaths: ReadonlySet<string>;
 	projectId: string;
 	destinationVariables: readonly VariableKeyScope[] | null;
+	destinationCredentialIds: readonly string[] | null;
 }) {
 	const destinationVariableKeys =
 		destinationVariables &&
@@ -391,6 +504,7 @@ function calculateDependencyImpact({
 				variableKey(key, owner === null ? 'global' : 'project'),
 			),
 		);
+	const destinationCredentialKeys = destinationCredentialIds && new Set(destinationCredentialIds);
 	const baseDependencies = new Map<string, PackageFile[]>();
 	for (const file of base) {
 		const key = JSON.stringify([
@@ -435,6 +549,14 @@ function calculateDependencyImpact({
 					projectId,
 					destinationVariableKeys,
 				});
+			} else if (collection === 'credentials' && destinationCredentialKeys !== null) {
+				// Apply binds credentials by id (`id-only`, `must-preexist`) and never
+				// renames or rewrites an existing target credential, so a branch-side
+				// rename never converges with a file-path check and the dependent
+				// workflows would be flagged on every preview. The dependency is
+				// satisfied when this project can bind a credential with this id, so
+				// only an unreachable credential counts as a change.
+				dependencyChanged = !destinationCredentialKeys.has(key);
 			} else if (collection !== 'workflows') {
 				dependencyChanged =
 					previous.some(({ path }) => changedPaths.has(path)) ||
