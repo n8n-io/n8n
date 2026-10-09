@@ -140,34 +140,21 @@ export type NodeExecuteAfterData = {
 };
 
 /**
- * Sent once when a sub-workflow execution begins. Lets the editor display a
- * live progress overlay on the parent's "Execute Sub-workflow" node.
+ * Throttled snapshots of child-node progress during a sub-workflow execution,
+ * for the parent's "Execute Sub-workflow" node. Only the latest state in each
+ * window is sent, and a child that ends within the first window sends nothing.
+ * The parent's own node events end the overlay, so there is no "finished" message.
  */
-export type SubworkflowExecutionStarted = {
-	type: 'subworkflowExecutionStarted';
+export type SubworkflowNodeProgress = {
+	type: 'subworkflowNodeProgress';
 	data: {
-		/** Root execution id whose UI session should display the overlay. */
+		/** Execution whose editor session displays the overlay. */
 		parentExecutionId: string;
 		/** Name of the "Execute Sub-workflow" node in the parent workflow. */
 		parentNodeName: string;
 		/** Child sub-execution id. */
 		executionId: string;
-		/** Upper bound on the child nodes that can run. Branches make it an over-estimate. */
-		totalNodes: number;
-	};
-};
-
-/**
- * Throttled snapshots of child-node progress during a sub-workflow execution.
- * Not one message per node event: only the latest state in each window is sent.
- */
-export type SubworkflowNodeProgress = {
-	type: 'subworkflowNodeProgress';
-	data: {
-		parentExecutionId: string;
-		parentNodeName: string;
-		executionId: string;
-		/** Currently-running node name in the child workflow. */
+		/** Child node that most recently started. */
 		currentNodeName: string;
 		/**
 		 * Count of distinct child nodes reached so far, not an execution-order index.
@@ -176,22 +163,6 @@ export type SubworkflowNodeProgress = {
 		currentNodeIndex: number;
 		/** Upper bound on the child nodes that can run. Branches make it an over-estimate. */
 		totalNodes: number;
-		/** 'running' on nodeExecuteBefore; 'success' | 'error' on nodeExecuteAfter. */
-		phase: 'running' | 'success' | 'error';
-	};
-};
-
-/**
- * Sent when a sub-workflow execution reaches a terminal state. The editor uses
- * this to clear the per-node progress overlay.
- */
-export type SubworkflowExecutionFinished = {
-	type: 'subworkflowExecutionFinished';
-	data: {
-		parentExecutionId: string;
-		parentNodeName: string;
-		executionId: string;
-		status: ExecutionStatus;
 	};
 };
 
@@ -204,6 +175,4 @@ export type ExecutionPushMessage =
 	| NodeExecuteBefore
 	| NodeExecuteAfter
 	| NodeExecuteAfterData
-	| SubworkflowExecutionStarted
-	| SubworkflowNodeProgress
-	| SubworkflowExecutionFinished;
+	| SubworkflowNodeProgress;

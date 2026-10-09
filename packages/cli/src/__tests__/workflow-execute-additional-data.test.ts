@@ -25,7 +25,7 @@ import type {
 	ExecuteAgentWorkflowContext,
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
-	Workflow,
+	ITaskStartedData,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -613,7 +613,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					parameters: {},
 				};
 
-				const runChild = async () =>
+				const runChild = async (options: { doNotWaitToFinish?: boolean } = {}) =>
 					await executeWorkflow(
 						mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
 						mock<IWorkflowExecuteAdditionalData>({
@@ -626,38 +626,55 @@ describe('WorkflowExecuteAdditionalData', () => {
 							executionMode: 'manual',
 							parentExecution: { executionId: 'parent-exec-1', workflowId: 'parent-1' },
 							node: parentNode,
+							...options,
 						},
 					);
 
+				/** Starts a child node, then waits out the first throttle window. */
+				const reportChildNode = async () => {
+					// A child the parent does not wait for starts in the background.
+					await vi.waitFor(() => expect(WorkflowExecute).toHaveBeenCalled());
+					const [integratedAdditionalData] = vi.mocked(WorkflowExecute).mock.calls[0];
+					await integratedAdditionalData.hooks!.runHook('nodeExecuteBefore', [
+						'Child Node',
+						mock<ITaskStartedData>(),
+					]);
+					vi.advanceTimersByTime(100);
+				};
+
 				beforeEach(() => {
+					vi.useFakeTimers();
 					vi.stubEnv('N8N_ENV_FEAT_SUBWORKFLOW_PROGRESS', 'true');
 					push.send.mockClear();
 				});
 
 				afterEach(() => {
+					vi.useRealTimers();
 					vi.unstubAllEnvs();
 				});
 
 				it("sends progress to the parent's editor session", async () => {
 					await runChild();
-					const [integratedAdditionalData, , runExecutionData] =
-						vi.mocked(WorkflowExecute).mock.calls[0];
-
-					await integratedAdditionalData.hooks!.runHook('workflowExecuteBefore', [
-						mock<Workflow>(),
-						runExecutionData,
-					]);
+					await reportChildNode();
 
 					expect(push.send).toHaveBeenCalledWith(
 						expect.objectContaining({
-							type: 'subworkflowExecutionStarted',
+							type: 'subworkflowNodeProgress',
 							data: expect.objectContaining({
 								parentExecutionId: 'parent-exec-1',
 								parentNodeName: parentNode.name,
+								currentNodeName: 'Child Node',
 							}),
 						}),
 						'push-ref-1',
 					);
+				});
+
+				it('sends nothing for a child the parent does not wait for', async () => {
+					await runChild({ doNotWaitToFinish: true });
+					await reportChildNode();
+
+					expect(push.send).not.toHaveBeenCalled();
 				});
 
 				it('does not pass the editor session on to a nested sub-workflow', async () => {

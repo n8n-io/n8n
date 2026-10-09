@@ -509,9 +509,9 @@ function countReachableNodes(workflowData: IWorkflowBase): number {
 }
 
 /**
- * Push hooks for a sub-workflow execution. Forwards a lightweight progress
- * stream to the editor session that started the parent, so the canvas can show
- * live progress on the parent's "Execute Sub-workflow" node.
+ * Push hooks for a sub-workflow execution. Forwards throttled progress to the
+ * editor session that started the parent, so the canvas can show live progress
+ * on the parent's "Execute Sub-workflow" node.
  */
 function hookFunctionsPushSubExecution(
 	hooks: ExecutionLifecycleHooks,
@@ -529,48 +529,34 @@ function hookFunctionsPushSubExecution(
 	// counting each run would push the indicator past its total.
 	const reachedNodeNames = new Set<string>();
 
-	// Each node emits a before/after pair, and each push is a pubsub broadcast in
-	// scaling mode. Only the latest state renders, so coalesce to one per window.
+	// Each push is a pubsub broadcast in scaling mode, and only the latest state
+	// renders, so coalesce to one per window.
 	const getThrottleMs = () => (getTotalNodes() >= 50 ? 250 : 100);
-	let lastEmitAt = 0;
+	// Starting the window now keeps a child that ends within it silent.
+	let lastEmitAt = Date.now();
 	let pending: PushPayload<'subworkflowNodeProgress'> | undefined;
 	let timer: NodeJS.Timeout | undefined;
 
-	function cancelPending() {
-		if (timer) {
-			clearTimeout(timer);
-			timer = undefined;
-		}
-		pending = undefined;
-	}
-
 	function flush() {
-		if (timer) {
-			clearTimeout(timer);
-			timer = undefined;
-		}
+		clearTimeout(timer);
+		timer = undefined;
 		if (!pending) return;
 		pushInstance.send({ type: 'subworkflowNodeProgress', data: pending }, pushRef);
 		lastEmitAt = Date.now();
 		pending = undefined;
 	}
 
-	function queueProgress(
-		nodeName: string,
-		phase: 'running' | 'success' | 'error',
-		childId: string,
-	) {
+	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
 		reachedNodeNames.add(nodeName);
 
 		pending = {
 			parentExecutionId: parentExecution.executionId,
 			parentNodeName: parentNode.name,
-			executionId: childId,
+			executionId: this.executionId,
 			currentNodeName: nodeName,
 			// Not clamped to `totalNodes`: that is only an estimate, this is exact.
 			currentNodeIndex: reachedNodeNames.size,
 			totalNodes: getTotalNodes(),
-			phase,
 		};
 		const throttleMs = getThrottleMs();
 		const elapsed = Date.now() - lastEmitAt;
@@ -582,46 +568,13 @@ function hookFunctionsPushSubExecution(
 		timer = setTimeout(flush, throttleMs - elapsed);
 		// Never hold the process open for a progress overlay.
 		timer.unref?.();
-	}
-
-	hooks.addHandler('workflowExecuteBefore', function () {
-		pushInstance.send(
-			{
-				type: 'subworkflowExecutionStarted',
-				data: {
-					parentExecutionId: parentExecution.executionId,
-					parentNodeName: parentNode.name,
-					executionId: this.executionId,
-					totalNodes: getTotalNodes(),
-				},
-			},
-			pushRef,
-		);
 	});
 
-	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
-		queueProgress(nodeName, 'running', this.executionId);
-	});
-
-	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
-		queueProgress(nodeName, data?.error ? 'error' : 'success', this.executionId);
-	});
-
-	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
-		// `finished` clears the overlay, so a queued snapshot would be wasted.
-		cancelPending();
-		pushInstance.send(
-			{
-				type: 'subworkflowExecutionFinished',
-				data: {
-					parentExecutionId: parentExecution.executionId,
-					parentNodeName: parentNode.name,
-					executionId: this.executionId,
-					status: fullRunData.status,
-				},
-			},
-			pushRef,
-		);
+	hooks.addHandler('workflowExecuteAfter', function () {
+		// A snapshot flushed after the child ends would arrive after the parent node's own events.
+		clearTimeout(timer);
+		timer = undefined;
+		pending = undefined;
 	});
 }
 
