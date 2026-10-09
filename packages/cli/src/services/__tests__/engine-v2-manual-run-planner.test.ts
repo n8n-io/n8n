@@ -1,3 +1,4 @@
+import { NotImplementedError } from '@n8n/errors';
 import type {
 	IConnections,
 	IDataObject,
@@ -201,6 +202,27 @@ describe('EngineV2ManualRunPlanner', () => {
 			expect(plan.seeded).toEqual([{ nodeId: A.id, outputs: [[item({ pinned: true })]] }]);
 		});
 
+		it('seeds outputs that contain binary data as they are', () => {
+			// The reference points at the file of the run that wrote it, as in v1.
+			const file = {
+				data: '',
+				mimeType: 'text/plain',
+				id: 'filesystem-v2:workflows/wf-1/executions/old/binary_data/f',
+			};
+			const withBinary = {
+				...fullRunData(TRIGGER, A, B),
+				[A.name]: [taskData([{ json: {}, binary: { data: file } }])],
+			};
+
+			const plan = planner.plan(
+				runData({ destinationNode: { nodeName: B.name, mode: 'inclusive' }, runData: withBinary }),
+			);
+
+			expect(plan.seeded).toEqual([
+				{ nodeId: A.id, outputs: [[{ json: {}, binary: { data: file } }]] },
+			]);
+		});
+
 		it('drops the destination for an exclusive run and runs its parent', () => {
 			// B has no run data, so it runs; C is what the caller does not want run.
 			const plan = planner.plan(
@@ -288,15 +310,17 @@ describe('EngineV2ManualRunPlanner', () => {
 			{ name: 'a loop member', pinned: A },
 			{ name: 'the node that heads a loop', pinned: LOOP },
 		])('refuses to seed $name', ({ pinned }) => {
-			expect(() =>
+			const plan = () =>
 				planner.plan(
 					runData({
 						workflowData: loopWorkflow,
 						triggerToStartFrom: { name: TRIGGER.name },
 						pinData: { [pinned.name]: [item({ pinned: true })] },
 					}),
-				),
-			).toThrow(`"${pinned.name}" is inside a loop`);
+				);
+
+			expect(plan).toThrow(NotImplementedError);
+			expect(plan).toThrow(`"${pinned.name}" is inside a loop`);
 		});
 
 		it('seeds a pinned parent when the run to its child drops the cycle through that child', () => {
@@ -325,48 +349,24 @@ describe('EngineV2ManualRunPlanner', () => {
 				[A.name]: [taskData([item({})]), taskData([item({})])],
 			};
 
-			expect(() =>
+			const plan = () =>
 				planner.plan(
 					runData({ destinationNode: { nodeName: B.name, mode: 'inclusive' }, runData: twice }),
-				),
-			).toThrow(/"A" ran more than once/);
+				);
+
+			expect(plan).toThrow(NotImplementedError);
+			expect(plan).toThrow(/"A" ran more than once/);
 		});
 
-		it('refuses to seed outputs that contain binary data', () => {
-			const withBinary = {
-				...fullRunData(TRIGGER, A, B),
-				[A.name]: [
-					taskData([{ json: {}, binary: { data: { data: '', mimeType: 'text/plain' } } }]),
-				],
-			};
-
-			expect(() =>
-				planner.plan(
-					runData({
-						destinationNode: { nodeName: B.name, mode: 'inclusive' },
-						runData: withBinary,
-					}),
-				),
-			).toThrow(/"A" .*binary/);
-		});
-
-		it('refuses a root whose reused run data contains binary data', () => {
-			const withBinary = {
-				...fullRunData(A, B, C),
-				[A.name]: [
-					taskData([{ json: {}, binary: { data: { data: '', mimeType: 'text/plain' } } }]),
-				],
-			};
-
+		it('refuses a disabled named trigger', () => {
 			expect(() =>
 				planner.plan(
 					runData({
 						workflowData: workflow({ nodes: [{ ...TRIGGER, disabled: true }, A, B, C] }),
-						destinationNode: { nodeName: C.name, mode: 'inclusive' },
-						runData: withBinary,
+						triggerToStartFrom: { name: TRIGGER.name },
 					}),
 				),
-			).toThrow(/"A" .*binary/);
+			).toThrow(/Cannot start from a disabled trigger/);
 		});
 	});
 });

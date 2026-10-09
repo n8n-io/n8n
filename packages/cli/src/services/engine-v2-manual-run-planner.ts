@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import { NotImplementedError } from '@n8n/errors';
 import {
 	cleanRunData,
 	DirectedGraph,
@@ -100,7 +101,7 @@ export class EngineV2ManualRunPlanner {
 			// A seeded step holds one pass, and a loop member runs once per pass.
 			// TODO(CAT-4875): seed every iteration.
 			if (onCycle.has(node)) {
-				throw new UserError(
+				throw new NotImplementedError(
 					`Node "${node.name}" is inside a loop, and engine v2 cannot reuse the results of a loop yet. Run the workflow from the trigger instead.`,
 				);
 			}
@@ -161,6 +162,7 @@ export class EngineV2ManualRunPlanner {
 		if (data.triggerToStartFrom) {
 			const named = workflow.getNode(data.triggerToStartFrom.name);
 			if (!named) throw new UserError(`Unknown trigger ${data.triggerToStartFrom.name}`);
+			if (named.disabled) throw new UserError('Cannot start from a disabled trigger');
 			return named;
 		}
 
@@ -213,11 +215,7 @@ export class EngineV2ManualRunPlanner {
 		pinData: IPinData,
 	): INodeExecutionData[][] | undefined {
 		const pinned = pinData[node.name];
-		const outputs = pinned ? [pinned] : this.lastRunOutputs(node, runData[node.name]);
-		if (!outputs) return undefined;
-
-		assertNoBinaryData(node, outputs);
-		return outputs;
+		return pinned ? [pinned] : this.lastRunOutputs(node, runData[node.name]);
 	}
 
 	private lastRunOutputs(
@@ -228,7 +226,7 @@ export class EngineV2ManualRunPlanner {
 
 		// One seeded step carries one pass. TODO(CAT-4875): seed every iteration.
 		if (runs.length > 1) {
-			throw new UserError(
+			throw new NotImplementedError(
 				`Node "${node.name}" ran more than once, and engine v2 cannot reuse the results of a loop yet. Run the workflow from the trigger instead.`,
 			);
 		}
@@ -237,11 +235,7 @@ export class EngineV2ManualRunPlanner {
 		return main ? withoutNullSlots(main) : undefined;
 	}
 
-	/**
-	 * A payload the trigger just produced wins; else its pin, its run data, or
-	 * v1's default. The fired payload's files are moved under the new run; the
-	 * other two are reused like a seeded node's outputs, with the same limit.
-	 */
+	/** A payload the trigger just produced wins; else its pin, its run data, or v1's default. */
 	private triggerOutputs(
 		root: INode,
 		data: IWorkflowExecutionDataProcess,
@@ -252,23 +246,10 @@ export class EngineV2ManualRunPlanner {
 		if (fired) return withoutNullSlots(fired);
 
 		const pinned = pinData[root.name];
+		if (pinned) return [pinned];
+
 		const main = runData[root.name]?.at(-1)?.data?.main;
-		const outputs = pinned ? [pinned] : main ? withoutNullSlots(main) : DEFAULT_MAIN_OUTPUT;
-
-		assertNoBinaryData(root, outputs);
-		return outputs;
-	}
-}
-
-/**
- * The files belong to the execution that wrote them, which the data plane
- * deletes with that execution. TODO(CAT-4876): move them under the new run.
- */
-function assertNoBinaryData(node: INode, outputs: INodeExecutionData[][]): void {
-	if (outputs.some((slot) => slot.some((item) => item.binary !== undefined))) {
-		throw new UserError(
-			`The results of "${node.name}" contain binary data, which engine v2 cannot reuse yet. Run the workflow from the trigger instead.`,
-		);
+		return main ? withoutNullSlots(main) : DEFAULT_MAIN_OUTPUT;
 	}
 }
 
