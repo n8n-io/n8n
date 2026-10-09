@@ -259,6 +259,7 @@ export const InstanceAiModule = defineFrontendModule({
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',
+			order: 230,
 			icon: 'sparkles',
 			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',

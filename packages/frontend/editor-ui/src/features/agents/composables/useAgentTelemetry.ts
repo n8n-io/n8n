@@ -13,7 +13,8 @@ export type AgentCreateSource =
 	| 'card'
 	| 'empty_state_blank'
 	| 'empty_state_prompt'
-	| 'empty_state_template';
+	| 'empty_state_template'
+	| 'command_bar';
 export type N8nChatAgentSource = 'card' | 'library' | 'dropdown';
 
 export function useAgentTelemetry() {
