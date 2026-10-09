@@ -67,10 +67,10 @@ export class Databricks implements INodeType {
 							'Manage files in Unity Catalog volumes. <a href="https://docs.databricks.com/api/workspace/files" target="_blank">Learn more</a>.',
 					},
 					{
-						name: 'Genie',
+						name: 'Genie Agent',
 						value: 'genie',
 						description:
-							'AI-powered data assistant. <a href="https://docs.databricks.com/genie/index.html" target="_blank">Learn more</a>.',
+							'Ask a Genie agent questions about your data. <a href="https://docs.databricks.com/genie/index.html" target="_blank">Learn more</a>.',
 					},
 					{
 						name: 'Job',
