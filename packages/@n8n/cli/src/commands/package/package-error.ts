@@ -33,6 +33,14 @@ type BlockingIssue =
 	  }
 	| { type: 'folder-removal-forbidden'; folderId: string; name: string; projectId: string }
 	| { type: 'credential-unresolved'; kind: string; sourceId: string; usedBy: RequirementConsumer[] }
+	| {
+			type: 'credential-policy-violation';
+			sourceId: string;
+			name?: string;
+			credentialType: string;
+			usedBy: RequirementConsumer[];
+			violations: Array<{ message: string }>;
+	  }
 	| { type: 'variable-unresolved'; name: string; usedBy: RequirementConsumer[] }
 	| { type: 'variable-conflict'; name: string; projectId?: string; usedBy: RequirementConsumer[] }
 	| {
@@ -138,6 +146,13 @@ function formatIssue(issue: unknown): string {
 	if (it.type === 'credential-unresolved') {
 		const usedBy = formatConsumers(it.usedBy);
 		return `credential ${it.sourceId} unresolved (${it.kind}), used by ${usedBy}`;
+	}
+	if (it.type === 'credential-policy-violation') {
+		const usedBy = formatConsumers(it.usedBy);
+		const reasons = Array.isArray(it.violations)
+			? it.violations.map(({ message }) => message).join('; ')
+			: '';
+		return `credential "${it.name ?? it.sourceId}" (${it.sourceId}, ${it.credentialType}) refused by policy: ${reasons}, used by ${usedBy}`;
 	}
 	if (it.type === 'variable-unresolved') {
 		const usedBy = formatConsumers(it.usedBy);

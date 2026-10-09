@@ -662,4 +662,52 @@ oneOf:
       - name
       - violations
     description: 'A workflow the content-import policy refused. Takes down the whole package rather than skipping the workflow: the import rewrites cross-workflow references to the ids each workflow would get, so dropping one leaves the workflows that call it pointing at a row nothing ever wrote.'
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - credential-policy-violation
+      sourceId:
+        type: string
+        description: Credential id as it appears in the package.
+      name:
+        type: string
+      credentialType:
+        type: string
+      usedBy:
+        type: array
+        items:
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that use this credential.
+      violations:
+        type: array
+        items:
+          type: object
+          properties:
+            kind:
+              type: string
+            checkId:
+              type: string
+            message:
+              type: string
+            subject:
+              type: string
+            subjectType:
+              type: string
+            scope:
+              type: string
+            matchedRuleId:
+              type: string
+          required:
+            - kind
+            - checkId
+            - message
+    required:
+      - type
+      - sourceId
+      - credentialType
+      - usedBy
+      - violations
+    description: A credential the import would write that the credential-save policy refused, for example a stub of a credential type this instance does not allow. The import stops before any writes.
 type: object

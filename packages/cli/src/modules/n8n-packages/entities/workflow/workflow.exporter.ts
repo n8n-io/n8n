@@ -13,9 +13,9 @@ import { CredentialRequirementsExtractor } from '../credential/credential-requir
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
-import type { WorkflowNodeTypeSource } from './node-type-usage';
+import type { NodeTypeSource } from './node-type-usage';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
-import type { WorkflowExportRequirements } from '../requirements.types';
+import type { ExportRequirements } from '../requirements.types';
 import { TagRequirementsExtractor } from '../tag/tag-requirements.extractor';
 import type { WorkflowTagUsage } from '../tag/tag.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
@@ -37,7 +37,7 @@ export interface WorkflowExportRequest {
 
 export interface WorkflowExportResult {
 	entries: ManifestEntry[];
-	requirements: WorkflowExportRequirements;
+	requirements: ExportRequirements;
 }
 
 @Service()
@@ -79,7 +79,7 @@ export class WorkflowExporter {
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
 		const tags: WorkflowTagUsage[] = [];
-		const nodeTypes: WorkflowNodeTypeSource[] = [];
+		const nodeTypes: NodeTypeSource[] = [];
 		const workflowsDir = packageDirectory('workflows', request.basePrefix);
 
 		for (const workflow of workflowsForExport) {

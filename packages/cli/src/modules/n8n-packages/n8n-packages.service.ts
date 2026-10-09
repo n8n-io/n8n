@@ -24,7 +24,10 @@ import { TagExporter } from './entities/tag/tag.exporter';
 import { VariableExporter } from './entities/variable/variable.exporter';
 import { collectNodeTypeUsage } from './entities/workflow/node-type-usage';
 import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
-import { AutoIncludedWorkflowResolver } from './entities/workflow/auto-included-workflow-resolver';
+import {
+	AutoIncludedWorkflowResolver,
+	type WorkflowExportSeed,
+} from './entities/workflow/auto-included-workflow-resolver';
 import {
 	AutoIncludedWorkflowExporter,
 	type AutoIncludedWorkflowExportResult,
@@ -269,9 +272,21 @@ export class N8nPackagesService {
 			const autoIncludedWorkflowResolution = await this.autoIncludedWorkflowResolver.resolve({
 				user: request.user,
 				requirements: workflowRequirements,
-				topLevelWorkflowIds: workflowExportResult?.entries.map(({ id }) => id) ?? [],
-				folderWorkflowIds: folderExportResult?.workflowEntries.map(({ id }) => id) ?? [],
-				projectWorkflowIds: projectExportResult?.workflowEntries.map(({ id }) => id) ?? [],
+				exportedWorkflowIds: allWorkflowsBeforeAutoInclude.map(({ id }) => id),
+				workflowSeeds: [
+					...(workflowExportResult?.entries ?? []).map<WorkflowExportSeed>(({ id }) => ({
+						workflowId: id,
+						origin: 'top-level',
+					})),
+					...(folderExportResult?.workflowEntries ?? []).map<WorkflowExportSeed>(({ id }) => ({
+						workflowId: id,
+						origin: 'folder',
+					})),
+					...(projectExportResult?.workflowEntries ?? []).map<WorkflowExportSeed>(({ id }) => ({
+						workflowId: id,
+						origin: 'project',
+					})),
+				],
 				includeTags,
 				workflowVersionPolicy,
 			});

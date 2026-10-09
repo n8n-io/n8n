@@ -21,12 +21,6 @@ class UnregisteredIdentityService extends IdentityService {
 	}
 }
 
-class UnregisteredTrustedSourceGate extends TrustedSourceGate {
-	async authorizeSealed() {
-		return false;
-	}
-}
-
 // Discovery of the local source must fail, not succeed with made-up documents.
 class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {
 	async getMetadata(): Promise<AuthorizationServerMetadata> {
@@ -50,9 +44,6 @@ export class InboundAuthCoreModule implements ModuleInterface {
 		if (!Container.has(IdentityService)) {
 			Container.set(IdentityService, new UnregisteredIdentityService());
 		}
-		if (!Container.has(TrustedSourceGate)) {
-			Container.set(TrustedSourceGate, new UnregisteredTrustedSourceGate());
-		}
 		if (!Container.has(LocalAuthorizationServer)) {
 			Container.set(LocalAuthorizationServer, new UnregisteredLocalAuthorizationServer());
 		}
@@ -60,6 +51,11 @@ export class InboundAuthCoreModule implements ModuleInterface {
 		const { TrustedSourceDbStore } = await import('./trusted-source.store.js');
 		if (!Container.has(TrustedSourceStore)) {
 			Container.set(TrustedSourceStore, Container.get(TrustedSourceDbStore));
+		}
+
+		const { TrustedSourceDbGate } = await import('./trusted-source.gate.js');
+		if (!Container.has(TrustedSourceGate)) {
+			Container.set(TrustedSourceGate, Container.get(TrustedSourceDbGate));
 		}
 
 		const { OAuth2AuthenticationService } = await import('./authentication.service.js');

@@ -329,6 +329,8 @@ export type {
 	BreakingChangeRuleImpact,
 	BreakingChangeRecommendation,
 	BreakingChangeAffectedWorkflow,
+	BreakingChangeWorkflowOwner,
+	MigrationOwnerSource,
 	BreakingChangeInstanceIssue,
 	BreakingChangeWorkflowIssue,
 	BreakingChangeInstanceRuleResult,
@@ -349,6 +351,7 @@ export {
 	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
 	migrationFindingTriageStatusSchema,
+	migrationOwnerSourceSchema,
 } from './schemas/breaking-changes.schema';
 
 export type {
@@ -861,6 +864,11 @@ export {
 	PreviewRunOptionsDto,
 	rerunResultOptionsSchema,
 	RerunResultOptionsDto,
+	ApplyAgentEvalSuggestionsDto,
+	ApplyPreviewSuggestionDto,
+	applyPreviewSuggestionSchema,
+	applyAgentEvalSuggestionsSchema,
+	MAX_APPLY_SUGGESTIONS,
 } from './schemas/agent-evals.schema';
 export type {
 	AgentEvalColumnMapping,
@@ -891,6 +899,10 @@ export type {
 	PreviewRunOptions,
 	PreviewRunResult,
 	RerunResultOptions,
+	ApplyAgentEvalSuggestionsOptions,
+	ApplyAgentEvalSuggestionsResult,
+	ApplyPreviewSuggestionOptions,
+	ApplyPreviewSuggestionResult,
 } from './schemas/agent-evals.schema';
 
 export {

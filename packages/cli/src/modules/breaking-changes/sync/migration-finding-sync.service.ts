@@ -13,6 +13,8 @@ import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { MigrationFindingSyncRepository } from '../database/repositories/migration-finding-sync.repository';
 import { MigrationFindingRepository } from '../database/repositories/migration-finding.repository';
+import { MigrationWorkflowOwnerRepository } from '../database/repositories/migration-workflow-owner.repository';
+import { MigrationOwnerSuggestionService } from '../owners/migration-owner-suggestion.service';
 import { diffMigrationFindings, type MigrationFindingHit } from './migration-finding-diff';
 
 /** Stable hash of a rule set. The order of `ruleIds` does not change the result. */
@@ -43,6 +45,8 @@ export class MigrationFindingSyncService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly findingRepository: MigrationFindingRepository,
 		private readonly syncRepository: MigrationFindingSyncRepository,
+		private readonly ownerSuggestionService: MigrationOwnerSuggestionService,
+		private readonly ownerRepository: MigrationWorkflowOwnerRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -122,6 +126,7 @@ export class MigrationFindingSyncService {
 			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
 			try {
 				await this.syncBatch(targetVersion, workflowIds, hitsByWorkflow, unknownByWorkflow);
+				await this.refreshSuggestedOwners(targetVersion, workflowIds);
 			} catch (error) {
 				// One bad batch must not lose the rest. The sync record stays cleared
 				// below, so the next read syncs and visits this batch again.
@@ -201,12 +206,40 @@ export class MigrationFindingSyncService {
 				groupByWorkflow(hits),
 				groupByWorkflow([...failedChecks, ...batchRulePairs]),
 			);
+			await this.refreshSuggestedOwners(targetVersion, [workflowId]);
 		} catch (error) {
 			this.logger.warn('Migration finding sync for one workflow failed', {
 				targetVersion,
 				workflowId,
 			});
 			this.errorReporter.error(error, { extra: { targetVersion, workflowId } });
+		}
+	}
+
+	/**
+	 * Stores the heuristic's owner for each workflow in the batch that has an open
+	 * finding, and drops the suggestion of the others. An owner a person assigned
+	 * is kept. Owners are a hint, so a failure here does not fail the finding sync.
+	 */
+	private async refreshSuggestedOwners(
+		targetVersion: BreakingChangeVersion,
+		workflowIds: string[],
+	): Promise<void> {
+		try {
+			const affectedIds = await this.findingRepository.listWorkflowIdsWithOpenFindings(
+				targetVersion,
+				workflowIds,
+				{},
+			);
+			const suggestions =
+				affectedIds.length > 0 ? await this.ownerSuggestionService.suggestOwners(affectedIds) : [];
+			await this.ownerRepository.replaceSuggestions(workflowIds, suggestions, {});
+		} catch (error) {
+			this.logger.warn('Refreshing the suggested owners failed, the findings are unaffected', {
+				targetVersion,
+				batchStart: workflowIds[0],
+			});
+			this.errorReporter.error(error, { extra: { targetVersion, batchStart: workflowIds[0] } });
 		}
 	}
 
