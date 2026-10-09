@@ -2,13 +2,13 @@ import { UserError } from 'n8n-workflow';
 
 /**
  * True when `executionTimeout` is above the instance maximum (`EXECUTIONS_TIMEOUT_MAX`).
- * A non-positive `maxTimeout` means the instance sets no cap, and a non-positive
- * `executionTimeout` is the "unlimited" sentinel (-1), so neither is ever above it.
  */
 export function exceedsMaxExecutionTimeout(
 	executionTimeout: number | undefined,
 	maxTimeout: number,
 ): boolean {
+	// A `maxTimeout` of 0 or less means that the instance sets no cap.
+	// An `executionTimeout` of 0 or less means that the workflow has no timeout.
 	if (executionTimeout === undefined || executionTimeout <= 0 || maxTimeout <= 0) return false;
 	return executionTimeout > maxTimeout;
 }

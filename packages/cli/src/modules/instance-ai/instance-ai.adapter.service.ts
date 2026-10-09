@@ -1828,10 +1828,15 @@ export class InstanceAiAdapterService {
 				assertParameterValuesAvailable();
 				await assertNotLockedByEditor(workflowId);
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
+				// Loaded on first use only. The checks below share one query.
+				let storedWorkflow: Promise<WorkflowEntity | null> | undefined;
+				const getStoredWorkflow = async () =>
+					await (storedWorkflow ??= workflowRepository.findOne({ where: { id: workflowId } }));
+
 				// Only a changed value is checked, so a workflow saved before the
 				// maximum was lowered stays saveable.
 				if (exceedsMaxExecutionTimeout(settings.executionTimeout, maxExecutionTimeout)) {
-					const existingWorkflow = await workflowRepository.findOne({ where: { id: workflowId } });
+					const existingWorkflow = await getStoredWorkflow();
 					if (existingWorkflow?.settings?.executionTimeout !== settings.executionTimeout) {
 						assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
 					}
@@ -1841,7 +1846,7 @@ export class InstanceAiAdapterService {
 				// mirrors the check in WorkflowService.update().
 				if (settings.redactionPolicy !== undefined) {
 					const [existingWorkflow, ownerProject] = await Promise.all([
-						workflowRepository.findOne({ where: { id: workflowId } }),
+						getStoredWorkflow(),
 						sharedWorkflowRepository.getWorkflowOwningProject(workflowId),
 					]);
 

@@ -4209,6 +4209,25 @@ describe('createWorkflowAdapter', () => {
 			expect(mockWorkflowService.update).toHaveBeenCalled();
 		});
 
+		it('reads the stored workflow once when both executionTimeout and redactionPolicy need it', async () => {
+			const { adapter, mockWorkflowRepository, mockSharedWorkflowRepository, savedWorkflow } =
+				createWorkflowAdapterForTests({ maxExecutionTimeout: 2400 });
+			mockWorkflowRepository.findOne.mockResolvedValue({
+				...savedWorkflow,
+				settings: { executionTimeout: 3000, redactionPolicy: 'none' },
+			});
+			Object.assign(mockSharedWorkflowRepository, {
+				getWorkflowOwningProject: vi.fn().mockResolvedValue({ id: 'team-project-id' }),
+			});
+
+			await adapter.updateFromWorkflowJSON('wf-existing', {
+				...minimalWorkflowJSON,
+				settings: { executionTimeout: 3000, redactionPolicy: 'none' },
+			} as unknown as WorkflowJSON);
+
+			expect(mockWorkflowRepository.findOne).toHaveBeenCalledTimes(1);
+		});
+
 		it('accepts an update with executionTimeout within the maximum without reading the stored workflow', async () => {
 			const { adapter, mockWorkflowRepository, mockWorkflowService } =
 				createWorkflowAdapterForTests({ maxExecutionTimeout: 2400 });
