@@ -9,6 +9,10 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { Response } from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
+import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
+import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
+import type { AgentExecutionStreamChunk } from './types/agent-steering';
+
 export type FlushableResponse = Response & { flush?: () => void };
 
 const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
@@ -56,7 +60,7 @@ export function initSseStream(res: FlushableResponse) {
 		write(`data: ${JSON.stringify(event)}\n\n`);
 	};
 
-	const onChunk = (chunk: StreamChunk) => {
+	const onChunk = (chunk: AgentExecutionStreamChunk) => {
 		if (abortController.signal.aborted) return;
 		try {
 			emitChunkEvents(chunk, send);
@@ -67,6 +71,18 @@ export function initSseStream(res: FlushableResponse) {
 	};
 
 	return { send, onChunk, abortSignal: abortController.signal, close };
+}
+
+/** Build the `error` SSE event for a caught error, mapping known error classes to a stable `errorCode`. */
+export function toChatErrorEvent(error: unknown, fallbackMessage: string): AgentSseEvent {
+	let errorCode: string | undefined;
+	if (error instanceof AgentTurnAlreadyRunningError) errorCode = 'turn_already_running';
+	if (error instanceof AgentN8nChatUnavailableError) errorCode = 'agent_unavailable';
+	return {
+		type: 'error',
+		message: scrubSecretsInText(error instanceof Error ? error.message : fallbackMessage),
+		...(errorCode && { errorCode }),
+	};
 }
 
 function toAgentSseMessage(message: AgentMessage): AgentSseMessage | undefined {
@@ -212,8 +228,14 @@ function emitToolChunk(
 /**
  * Translate a single chunk into one or more SSE events.
  */
-export function emitChunkEvents(chunk: StreamChunk, send: (event: AgentSseEvent) => void): void {
+export function emitChunkEvents(
+	chunk: AgentExecutionStreamChunk,
+	send: (event: AgentSseEvent) => void,
+): void {
 	switch (chunk.type) {
+		case 'message-steered':
+			send(chunk);
+			return;
 		case 'start-step':
 			send({ type: 'start-step' });
 			return;
@@ -252,6 +274,13 @@ export function emitChunkEvents(chunk: StreamChunk, send: (event: AgentSseEvent)
 			});
 			return;
 		}
+		case 'finish':
+			send({
+				type: 'finish',
+				finishReason: chunk.finishReason,
+				...(chunk.guardrail !== undefined && { guardrail: { code: chunk.guardrail.code } }),
+			});
+			return;
 		case 'error': {
 			const errMsg = stringifyError(chunk.error);
 			send({ type: 'error', message: errMsg });

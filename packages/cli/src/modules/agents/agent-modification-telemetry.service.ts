@@ -79,7 +79,7 @@ export function diffAgentConfigParts(
 	});
 }
 
-interface AgentModificationEvent {
+export interface AgentModificationEvent {
 	/** Post-save entity, so the reported profile is the one that landed. */
 	agent: Agent;
 	projectId: string;

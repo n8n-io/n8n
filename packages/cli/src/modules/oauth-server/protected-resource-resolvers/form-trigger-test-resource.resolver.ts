@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -85,6 +85,7 @@ export class FormTriggerTestResourceResolver implements ProtectedResourceResolve
 			return {
 				id: 'workflow-form:' + workflowEntity.id,
 				isFirstParty: true,
+				surface: 'trigger' as const,
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => audiences,
 				getAllowedRedirectUris: async () => [resourceUrl],

@@ -1,10 +1,15 @@
-import { AgentIntegrationConfig, type AgentIntegrationSettings } from '@n8n/api-types';
+import {
+	AgentIntegrationConfig,
+	isCredentialAgentIntegration,
+	type AgentIntegrationSettings,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
@@ -12,7 +17,7 @@ import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { AgentChatBridge } from './agent-chat-bridge';
 import {
@@ -71,6 +76,8 @@ export interface ChatInstance {
 interface ChatAgentConnection {
 	chat: ChatInstance;
 	bridge?: AgentChatBridge;
+	disconnecting?: boolean;
+	queueConsumers?: Set<Promise<void>>;
 	/**
 	 * Which channel this connection is. The map key encodes the same thing, but
 	 * as one string — this keeps callers that need the parts from parsing it back.
@@ -118,6 +125,26 @@ async function getAgentExecutionOrchestratorService() {
 		'../agent-execution-orchestrator.service.js'
 	);
 	return Container.get(AgentExecutionOrchestratorService);
+}
+
+/**
+ * Teams renders a reply progressively by editing a posted message, not through
+ * the platform's own streaming protocol.
+ *
+ * That protocol needs a handle the adapter holds only for the life of the
+ * inbound request, and a turn runs later, from the queue. Giving the SDK a
+ * placeholder makes the Teams adapter decline to stream and hand back to the
+ * SDK's post-and-edit path, which uses ordinary proactive calls.
+ *
+ * The interval trades smoothness against Teams' edit throttling. The SDK waits
+ * for each edit to land before scheduling the next, so a throttled tenant paces
+ * itself, and a skipped interval edit is invisible — but the SDK's final edit is
+ * not guarded, so a rejection there would surface instead of the last chunk.
+ * Hence a little above the SDK's 500ms default rather than at it.
+ */
+function streamingOptionsFor(type: AgentIntegrationConfig['type']) {
+	if (type !== 'teams') return {};
+	return { fallbackStreamingPlaceholderText: '…', streamingUpdateIntervalMs: 750 };
 }
 
 /**
@@ -178,6 +205,8 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		action: 'connect' | 'disconnect',
 	): Promise<void> {
+		// n8n Chat has no runtime connection for peers to reconcile.
+		if (!isCredentialAgentIntegration(integration)) return;
 		await this.changePublisher.publish({
 			command: 'agent-chat-integration-changed',
 			payload: { agentId, integration, action },
@@ -203,6 +232,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		projectId: string,
 	): Promise<void> {
+		if (!isCredentialAgentIntegration(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
 		// Deliberately not `validateConfig`: publishing already validates the whole
 		// configuration, and running it again here would newly reject an agent whose
@@ -220,6 +250,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		projectId: string,
 	): Promise<void> {
+		if (!isCredentialAgentIntegration(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
 		implementation.validateConfig?.(integration);
 		if (!implementation.onBeforeConnect) return;
@@ -255,6 +286,7 @@ export class ChatIntegrationService {
 		projectId: string,
 		options: ConnectOptions = {},
 	): Promise<void> {
+		if (!isCredentialAgentIntegration(integration)) return;
 		const ingress = options.ingressEnabled ?? true;
 		if (!this.shouldRouteToLeader(integration.type, ingress)) {
 			return await this.connectLocal(agentId, integration, projectId, options);
@@ -452,6 +484,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		options: DisconnectChannelOptions = {},
 	): Promise<void> {
+		if (!isCredentialAgentIntegration(integration)) return;
 		const { deleteSubscriptions = true } = options;
 
 		try {
@@ -565,16 +598,20 @@ export class ChatIntegrationService {
 		previous: AgentIntegrationConfig[],
 		next: AgentIntegrationConfig[],
 	): Promise<void> {
-		const previousKeys = new Set(previous.map(buildIntegrationConnectionId));
-		const nextKeys = new Set(next.map(buildIntegrationConnectionId));
+		const previousExternal = previous.filter(isCredentialAgentIntegration);
+		const nextExternal = next.filter(isCredentialAgentIntegration);
+		const previousKeys = new Set(previousExternal.map(buildIntegrationConnectionId));
+		const nextKeys = new Set(nextExternal.map(buildIntegrationConnectionId));
 
-		for (const integration of previous) {
+		for (const integration of previousExternal) {
 			if (!nextKeys.has(buildIntegrationConnectionId(integration))) {
 				await this.disconnectChannel(agent.id, integration);
 			}
 		}
 
-		const additions = next.filter((i) => !previousKeys.has(buildIntegrationConnectionId(i)));
+		const additions = nextExternal.filter(
+			(integration) => !previousKeys.has(buildIntegrationConnectionId(integration)),
+		);
 
 		if (additions.length > 0 && !agent.activeVersionId) {
 			this.logger.debug(
@@ -629,6 +666,24 @@ export class ChatIntegrationService {
 				?.bridge;
 		}
 		return this.findConnection(agentId, integrationType, (c) => c.bridge !== undefined)?.bridge;
+	}
+
+	/** Keep the bridge alive from queue admission through response delivery. */
+	acquireQueueBridge(agentId: string, integrationType: string, credentialId: string) {
+		const connection = this.connections.get(
+			agentChannelKey({ agentId, integrationType, credentialId }),
+		);
+		if (!connection?.bridge || connection.disconnecting) return undefined;
+		const done = createDeferredPromise();
+		connection.queueConsumers ??= new Set();
+		connection.queueConsumers.add(done.promise);
+		return {
+			bridge: connection.bridge,
+			release: () => {
+				connection.queueConsumers?.delete(done.promise);
+				done.resolve();
+			},
+		};
 	}
 
 	/** First live connection for an agent, optionally pinned to one platform. */
@@ -1008,6 +1063,8 @@ export class ChatIntegrationService {
 	private async disconnectOne(key: string, options: DisconnectOptions = {}): Promise<void> {
 		const conn = this.connections.get(key);
 		if (!conn) return;
+		conn.disconnecting = true;
+		if (conn.queueConsumers) await Promise.all(conn.queueConsumers);
 
 		// External teardown runs while the chat is still live — symmetric with
 		// `onAfterConnect`, which runs after `chat.initialize()`. Errors are
@@ -1151,11 +1208,13 @@ export class ChatIntegrationService {
 				: memoryState;
 
 			chat = new Chat({
+				concurrency: 'concurrent',
 				userName: `n8n-agent-${agentId}`,
 				// Use the platform type as the adapter key (e.g. 'slack') so that
 				// bot.webhooks.slack maps correctly to the handler.
 				adapters: { [integration.type]: adapter } as Record<string, never>,
 				state,
+				...streamingOptionsFor(integration.type),
 			});
 
 			if (ingressEnabled) bridge = await this.createChatBridge(chat, ctx);

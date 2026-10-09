@@ -4,8 +4,7 @@ import type { User } from '@n8n/db';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import { AgentRunnableStateService } from '@/modules/agents/agent-runnable-state.service';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -84,6 +83,7 @@ describe('InstanceAiPendingAgentService', () => {
 		const result = await service.persistAndBind(user, THREAD_ID, payload);
 
 		expect(agentsService.create).toHaveBeenCalledWith(PROJECT_ID, 'New Agent', {
+			actor: { kind: 'user', user },
 			id: AGENT_ID,
 			adoptOnCollision: true,
 		});

@@ -117,6 +117,49 @@ describe('ParameterInputFull.vue', () => {
 		expect(getByTestId('from-ai-override-button')).toBeInTheDocument();
 	});
 
+	it('keeps explicit input modes separate from the parameter value', async () => {
+		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
+			codex: {
+				categories: ['AI'],
+				subcategories: { AI: ['Tools'] },
+			},
+		});
+		const {
+			findByDisplayValue,
+			getByRole,
+			getByText,
+			getByTestId,
+			queryByTestId,
+			emitted,
+			rerender,
+		} = renderComponent({
+			props: { inputMode: 'fixed', value: '=literal', displayOptions: true },
+		});
+
+		expect(await findByDisplayValue('=literal')).toBeInTheDocument();
+
+		await fireEvent.click(getByText('Expression'));
+		expect(emitted()['update:inputMode']).toEqual([['expression']]);
+
+		await fireEvent.click(getByTestId('from-ai-override-button'));
+		expect(emitted()['update:inputMode']).toEqual([['expression'], ['ai']]);
+		expect(emitted().update).toBeUndefined();
+
+		await rerender({ inputMode: 'ai' });
+		expect(getByTestId('fromAI-override-field')).toBeInTheDocument();
+		expect(queryByTestId('selectable-list-selectable-description')).not.toBeInTheDocument();
+
+		await fireEvent.click(getByRole('button', { name: 'Edit value' }));
+		expect(emitted()['update:inputMode']).toEqual([['expression'], ['ai'], ['fixed']]);
+		expect(emitted().update).toBeUndefined();
+
+		await rerender({
+			inputMode: undefined,
+			value: `={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI('myParam') }}`,
+		});
+		expect(getByTestId('selectable-list-selectable-description')).toBeInTheDocument();
+	});
+
 	it('does not offer a model override when disabled', () => {
 		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
 			codex: {
@@ -156,7 +199,7 @@ describe('ParameterInputFull.vue', () => {
 				subcategories: { AI: ['Tools'] },
 			},
 		});
-		const { queryByTestId, getByTestId } = renderComponent({
+		const { queryByTestId, getByTestId, getByRole, emitted } = renderComponent({
 			props: {
 				value: `={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI('myParam') }}`,
 				disableFromAi: true,
@@ -164,25 +207,30 @@ describe('ParameterInputFull.vue', () => {
 		});
 		expect(getByTestId('fromAI-override-field')).toBeInTheDocument();
 		expect(queryByTestId('override-button')).not.toBeInTheDocument();
+
+		await fireEvent.click(getByRole('button', { name: 'Edit value' }));
+		expect(emitted().update).toEqual([[{ node: 'myParam', name: 'myParam', value: '' }]]);
 	});
 
-	it('shows external validation issues in the parameter row', () => {
+	it('keeps validation issues visible in read-only parameters', () => {
 		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
 			codex: {
 				categories: ['AI'],
 				subcategories: { AI: ['Tools'] },
 			},
 		});
-		const { getByTestId } = renderComponent({
+		const { getByTestId, queryByRole } = renderComponent({
 			props: {
 				value: `={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI('myParam') }}`,
 				disableFromAi: true,
+				isReadOnly: true,
 				externalIssues: ["The model can't set the URL. Enter a fixed URL."],
 			},
 		});
 
 		expect(getByTestId('fromAI-override-field')).toBeInTheDocument();
 		expect(getByTestId('parameter-issues')).toBeInTheDocument();
+		expect(queryByRole('button', { name: 'Edit value' })).not.toBeInTheDocument();
 	});
 
 	it('should render an existing fromAI override for static options parameters', async () => {

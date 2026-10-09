@@ -8,7 +8,8 @@ import { SYSTEM_RESOLVER_ID, type FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
-import { EnterpriseEditionFeature } from '@/app/constants';
+import { EnterpriseEditionFeature, EXECUTE_WORKFLOW_NODE_TYPE } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import WorkflowSettingsVue from '@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -169,6 +170,7 @@ describe('WorkflowSettingsVue', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		settingsStore = mockedStore(useSettingsStore);
+		vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 		sourceControlStore = mockedStore(useSourceControlStore);
 		projectsStore = mockedStore(useProjectsStore);
 
@@ -236,9 +238,35 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy')).toBeVisible();
 	});
 
+	it('spaces selected-workflow IDs like the other settings (LIGO-866)', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		workflowDocumentStore.setSettings({ callerPolicy: 'workflowsFromAList' });
+		const { getByTestId } = createComponent({ pinia });
+
+		await flushPromises();
+
+		const settings = getByTestId('workflow-settings-dialog');
+		const timezoneRow = getByTestId('workflow-settings-timezone').closest('.el-row');
+		const callerPolicyRow = getByTestId('workflow-caller-policy-select').closest('.el-row');
+		const callerIdsRow = getByTestId('workflow-caller-policy-workflow-ids').closest('.el-row');
+
+		// LIGO-866: The dialog's vertical gap only applies to direct children.
+		expect(timezoneRow?.parentElement).toBe(settings);
+		expect(
+			callerIdsRow?.parentElement === settings,
+			'workflow IDs must receive the dialog gap',
+		).toBe(true);
+		expect(
+			callerPolicyRow?.parentElement === settings,
+			'caller policy must receive the dialog gap',
+		).toBe(true);
+	});
+
 	it('should lock caller policy to none when executeWorkflow is excluded', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		vi.spyOn(settingsStore, 'isExecuteWorkflowNodeExcluded', 'get').mockReturnValue(true);
+		vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockImplementation(
+			(type) => type === EXECUTE_WORKFLOW_NODE_TYPE,
+		);
 		workflowDocumentStore.setSettings({
 			callerPolicy: 'workflowsFromAList',
 			callerIds: 'abc',
@@ -1815,12 +1843,10 @@ describe('WorkflowSettingsVue', () => {
 				// implies production (IAM-697), so the genuine, intended save is "all".
 				const manualSelect = getByTestId('workflow-settings-redact-manual-select');
 				await userEvent.click(within(manualSelect).getByRole('combobox'));
-				await waitFor(async () => {
-					const options = within(document.body as HTMLElement).getAllByRole('option');
-					const redactOption = options.find((o) => o.textContent?.trim() === 'Redact');
-					expect(redactOption).toBeTruthy();
-					await userEvent.click(redactOption!);
+				const redactOption = await within(document.body as HTMLElement).findByRole('option', {
+					name: 'Redact',
 				});
+				await userEvent.click(redactOption);
 				await flushPromises();
 
 				toast.showError.mockClear();

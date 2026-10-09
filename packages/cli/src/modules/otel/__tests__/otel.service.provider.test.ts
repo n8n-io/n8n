@@ -1,15 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { Context } from '@opentelemetry/api';
-import {
-	context,
-	createContextKey,
-	propagation,
-	ProxyTracerProvider,
-	ROOT_CONTEXT,
-	trace,
-} from '@opentelemetry/api';
-import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
+import { context, createContextKey, propagation, ROOT_CONTEXT, trace } from '@opentelemetry/api';
+import { AlwaysOffSampler, type ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import {
 	InMemorySpanExporter,
 	NodeTracerProvider,
@@ -18,6 +11,7 @@ import {
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import { withExecutionIdentity } from '../execution-identity';
 import type { OtelSettingsService } from '../otel-settings.service';
 import type { OtelConfig } from '../otel.config';
 import { ATTR } from '../otel.constants';
@@ -71,13 +65,6 @@ const markedContext = ROOT_CONTEXT.setValue(createContextKey('marker'), 'marked'
 
 function activeContextInside(ctx: Context): Context {
 	return context.with(ctx, () => context.active());
-}
-
-function globalTracerProviderDelegate() {
-	const globalProvider = trace.getTracerProvider();
-	return globalProvider instanceof ProxyTracerProvider
-		? globalProvider.getDelegate()
-		: globalProvider;
 }
 
 function registerForeignProvider() {
@@ -155,8 +142,29 @@ describe('OtelService tracer provider', () => {
 			expect(foreign?.exporter.getFinishedSpans().map((span) => span.name)).toEqual([
 				'GET /webhook',
 			]);
-			expect(globalTracerProviderDelegate()).toBe(foreign?.provider);
 			expect(activeContextInside(markedContext)).toBe(markedContext);
+
+			await service.shutdown();
+			expect(service.getTracer('n8n-workflow').startSpan('workflow.execute').isRecording()).toBe(
+				false,
+			);
+			expect(trace.getTracer('foreign').startSpan('another request').isRecording()).toBe(true);
+		});
+
+		it('does not replace a foreign provider that samples no spans', async () => {
+			await foreign?.provider.shutdown();
+			trace.disable();
+			const provider = new NodeTracerProvider({ sampler: new AlwaysOffSampler() });
+			provider.register();
+			foreign = { provider, exporter: new InMemorySpanExporter() };
+
+			await service.init();
+			await service.restart();
+
+			expect(trace.getTracer('foreign').startSpan('test').isRecording()).toBe(false);
+			service.getTracer('n8n-workflow').startSpan('workflow.execute').end();
+			expect(exportedSpanNames()).toEqual(['workflow.execute']);
+			expect(logger.info).toHaveBeenCalledTimes(1);
 		});
 
 		it('logs the foreign owner once for the lifetime of the service', async () => {
@@ -184,6 +192,18 @@ describe('OtelService tracer provider', () => {
 			expect(headers.traceparent).toMatch(traceparentPattern);
 			expect(activeContextInside(markedContext)).toBe(markedContext);
 			expect(logger.info).not.toHaveBeenCalled();
+		});
+
+		it('adds the execution identity of an n8n context to exported spans', async () => {
+			await service.init();
+
+			const identity = { [ATTR.EXECUTION_ID]: 'exec-1', [ATTR.WORKFLOW_ID]: 'wf-1' };
+			service
+				.getTracer('n8n-workflow')
+				.startSpan('node.execute', {}, withExecutionIdentity(ROOT_CONTEXT, identity))
+				.end();
+
+			expect(exportedSpans[0].attributes).toMatchObject(identity);
 		});
 
 		it('swaps the registered provider on restart and keeps the context manager', async () => {

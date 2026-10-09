@@ -529,7 +529,7 @@ try {
 		// `--dir` rather than `--filter`: a filter that matches nothing exits 0, so a renamed or moved
 		// package would report a passing check having run no verifier at all.
 		const verifyProcess =
-			$`cd ${config.rootDir} && pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-closure ${dir}`.nothrow();
+			$`cd ${config.rootDir} && pnpm --dir packages/quality/policy/code-health exec tsx src/cli.ts verify-closure ${dir}`.nothrow();
 		verifyProcess.pipe(process.stdout);
 		const { exitCode } = await verifyProcess;
 		// 0 and 3 are the only codes the verifier itself produces; everything else (tsx failing to load,

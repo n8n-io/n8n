@@ -252,6 +252,8 @@ describe('emit-instance-ai', () => {
 			'hasProperty',
 			'isPlainObject',
 			// Validation
+			'connectRequiredSubnodeInputs',
+			'describeAddedSubnodeConnection',
 			'containsExpression',
 			'isSensitiveHeader',
 			'isCredentialFieldName',
@@ -287,7 +289,9 @@ describe('emit-instance-ai', () => {
 			'findEnvelopeKey',
 			'findOutputParserTargets',
 			'isAiRootNodeType',
+			'literalParameter',
 			'parsePinDataResponse',
+			'readDataTableReadParameters',
 			'repairStructuredOutput',
 			'workflowToMermaid',
 			// Display-options matching
@@ -296,6 +300,9 @@ describe('emit-instance-ai', () => {
 			'dropInvalidWorkflowJsonGroups',
 			'toEngineConnections',
 			'toGroupValidationNodes',
+			// Canvas geometry for host-side node placement
+			'getWorkflowNodeDimensions',
+			'resolveNodePorts',
 			// Plugin registration
 			'registerDefaultPlugins',
 			// Generate-types module (build-time type generation, never appears in workflows)

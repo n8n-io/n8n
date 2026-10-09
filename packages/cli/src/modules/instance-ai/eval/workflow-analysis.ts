@@ -11,6 +11,7 @@ import {
 	type IPinData,
 	type IWorkflowBase,
 	jsonParse,
+	MANUAL_TRIGGER_NODE_TYPE,
 	mapConnectionsByDestination,
 	UserError,
 } from 'n8n-workflow';
@@ -103,7 +104,8 @@ const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
 
 /** Data Table row-read operations. Their output is the scenario's "stored state" — left
  * unpinned they read the REAL eval-instance table, polluted by the builder's own
- * verification runs, so scenario outcomes become a coin flip on build-phase leftovers. */
+ * verification runs, so scenario outcomes become a coin flip on build-phase leftovers.
+ * A table the harness reseeded for the scenario holds only its rows, so reads of it run live. */
 const DATA_TABLE_READ_OPERATIONS = new Set(['get', 'rowExists', 'rowNotExists']);
 
 /** Of the read operations, only `get` emits stored rows — `rowExists`/`rowNotExists`
@@ -130,10 +132,11 @@ export function emitsDataTableRows(node: INode): boolean {
 	return DATA_TABLE_ROW_EMITTING_OPERATIONS.has(params?.operation ?? 'insert');
 }
 
-/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`), bypass-protocol nodes, and Data Table reads. */
+/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`), bypass-protocol nodes, and Data Table reads (unless in `liveReads`). */
 export function identifyNodesForPinData(
 	workflow: IWorkflowBase,
 	exclusionSet?: Set<string>,
+	liveReads?: Set<string>,
 ): INode[] {
 	const aiRootNodes = findAiRootNodeNames(workflow.connections);
 
@@ -141,7 +144,7 @@ export function identifyNodesForPinData(
 		if (node.disabled) return false;
 		if (aiRootNodes.has(node.name) && !exclusionSet?.has(node.name)) return true;
 		if (BYPASS_NODE_TYPES.has(node.type)) return true;
-		if (isDataTableRead(node)) return true;
+		if (isDataTableRead(node)) return !liveReads?.has(node.name);
 		return false;
 	});
 }
@@ -590,7 +593,12 @@ export interface GenerateMockHintsOptions {
 	workflow: IWorkflowBase;
 	nodeNames: string[];
 	scenarioHints?: string;
+	/** The node the run starts at when the hints name no start node. */
+	defaultStartNodeName?: string;
 }
+
+export const TRIGGER_CONTENT_CORRECTION =
+	'The previous answer left "triggerContent" empty. The Test Scenario describes the event that fires the workflow\'s trigger or start node, so "triggerContent" must carry that event as the node\'s output object and must not be {}. Set "triggerEmitsNoItems": true only when the scenario says the trigger has nothing to emit.';
 
 const SYSTEM_PROMPT = `You are a test data planner for n8n workflow automation. Your job is to create a consistent data context, trigger output data, and per-node hints that will guide an API mock server to generate realistic, coherent responses across all nodes in a workflow.
 
@@ -601,8 +609,8 @@ RULES:
    - For webhook triggers: include { headers: {}, query: {}, body: { ...fields } } since downstream nodes reference $json.body.fieldName
    - For service-specific triggers (Gmail Trigger, Slack Trigger, etc.): match the service's real event/message output format
    - For schedule triggers: include timestamp fields
-   - For manual triggers: include the fields that downstream nodes reference
-   - CRITICAL: triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output. The one exception is a polling or event trigger that the scenario says has NOTHING to emit ("no new emails", "no new rows", "no results"): then set "triggerEmitsNoItems": true and omit triggerContent — the harness pins the trigger to zero items so downstream nodes do not run.
+   - For a Manual Trigger: it emits one empty item, so return {} and never invent fields for it, even when downstream nodes reference trigger fields
+   - CRITICAL: apart from a Manual Trigger, triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output. The one exception is a polling or event trigger that the scenario says has NOTHING to emit ("no new emails", "no new rows", "no results"): then set "triggerEmitsNoItems": true and omit triggerContent — the harness pins the trigger to zero items so downstream nodes do not run.
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
    - CRITICAL: when the workflow has MULTIPLE trigger nodes, pick the ONE the Test Scenario targets (the trigger whose firing the scenario describes, e.g. "The weekly Schedule Trigger fires") and return its exact node name in a "startNodeName" field. triggerContent must be THAT trigger's output.
    - CRITICAL: triggerContent must NEVER contain binary file CONTENT — no base64 blobs, no fake file-bytes placeholders. When the trigger carries a file (form upload, email attachment, incoming media), declare it with a METADATA-ONLY binary map instead: "binary": { "<propertyKey>": { "mimeType": "<real MIME>", "fileName": "<name.ext>" } } — the harness synthesizes real file bytes from that metadata and attaches them at the item level. The MIME type and file name MUST match the scenario: an image/png upload scenario needs mimeType "image/png" and a .png fileName, never a generic application/octet-stream. Use "data" as the propertyKey unless downstream nodes reference a different binary property name.
@@ -690,6 +698,12 @@ const MAX_HINT_ATTEMPTS = 2;
  */
 const HINT_LLM_TIMEOUT_MS = 300_000;
 
+/** A Manual Trigger emits one empty item, so `{}` is its faithful trigger content. */
+function isManualTriggerNode(workflow: IWorkflowBase, nodeName?: string): boolean {
+	const node = workflow.nodes.find((n) => n.name === nodeName);
+	return node?.type === MANUAL_TRIGGER_NODE_TYPE && !node.disabled;
+}
+
 /** One LLM call → globalContext + triggerContent + per-node hints. Retried once on structural issues. */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
 	const { workflow, nodeNames, scenarioHints } = options;
@@ -703,11 +717,15 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 
 	if (nodeNames.length === 0) return emptyResult;
 
-	const userPrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
+	const basePrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
 	const warnings: string[] = [];
+	let lastReason = '';
 
 	for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt++) {
 		let reason = '';
+		const userPrompt = lastReason
+			? `${basePrompt}\n\n## Correction required\n\n${correctionFor(lastReason)}`
+			: basePrompt;
 		try {
 			const agent = createEvalAgent('eval-hint-generator', {
 				instructions: SYSTEM_PROMPT,
@@ -750,7 +768,15 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 				// The model answers a bool as a word often enough to read both spellings.
 				const triggerEmitsNoItems =
 					parsed.triggerEmitsNoItems === true || parsed.triggerEmitsNoItems === 'true';
-				if (Object.keys(triggerContent).length === 0 && !triggerEmitsNoItems) {
+				const startNodeName =
+					typeof parsed.startNodeName === 'string' && parsed.startNodeName.length > 0
+						? parsed.startNodeName
+						: undefined;
+				if (
+					Object.keys(triggerContent).length === 0 &&
+					!triggerEmitsNoItems &&
+					!isManualTriggerNode(workflow, startNodeName ?? options.defaultStartNodeName)
+				) {
 					reason = 'empty triggerContent';
 				} else {
 					// Coerce nodeHints values to strings — LLM may return objects instead of strings
@@ -762,9 +788,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 						globalContext,
 						nodeHints,
 						triggerContent: triggerContent as Record<string, unknown>,
-						...(typeof parsed.startNodeName === 'string' && parsed.startNodeName.length > 0
-							? { startNodeName: parsed.startNodeName }
-							: {}),
+						...(startNodeName ? { startNodeName } : {}),
 						...(triggerEmitsNoItems ? { triggerEmitsNoItems: true } : {}),
 						warnings,
 						bypassPinData: {},
@@ -776,6 +800,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		}
 
 		warnings.push(`Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS}: ${reason}`);
+		lastReason = reason;
 		if (attempt < MAX_HINT_ATTEMPTS) {
 			Container.get(Logger).warn(
 				`[EvalMock] Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS} unusable (${reason}) — retrying`,
@@ -787,4 +812,9 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		`[EvalMock] Phase 1 exhausted ${MAX_HINT_ATTEMPTS} attempts — ${warnings.join('; ')}`,
 	);
 	return { ...emptyResult, warnings };
+}
+
+function correctionFor(reason: string): string {
+	if (reason === 'empty triggerContent') return TRIGGER_CONTENT_CORRECTION;
+	return `The previous answer was unusable: ${reason}. Return only the JSON object described under "Expected Output".`;
 }

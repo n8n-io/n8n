@@ -1,5 +1,6 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { EventService, RoleService } from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
@@ -7,6 +8,7 @@ import {
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
+	RoleRepository,
 	ProjectIdConflictError,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -32,15 +34,10 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';
-import { RoleService } from './role.service';
 
 const INSTANCE_ACCESS_ROLE_ERROR =
 	"This user has access through their instance role. Project roles can't change their access in this project.";
@@ -103,6 +100,7 @@ export class ProjectService {
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly userRepository: UserRepository,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	private get workflowService() {
@@ -114,6 +112,12 @@ export class ProjectService {
 	private get credentialsService() {
 		return import('@/credentials/credentials.service.js').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
+		);
+	}
+
+	private get ownershipTransferService() {
+		return import('@/services/ownership-transfer/ownership-transfer.service.js').then(
+			({ OwnershipTransferService }) => Container.get(OwnershipTransferService),
 		);
 	}
 
@@ -214,6 +218,14 @@ export class ProjectService {
 					`Can't migrate end-user credentials (${names}) to a personal project. Switch them back to fixed credentials, move them to another team project, or delete this project without migrating.`,
 				);
 			}
+		}
+
+		if (targetProject) {
+			const ownershipTransferService = await this.ownershipTransferService;
+			await ownershipTransferService.enforceTransferPolicy(project.id, targetProject.id, {
+				kind: 'user',
+				user,
+			});
 		}
 
 		// 1. delete or migrate workflows owned by this project
@@ -342,6 +354,10 @@ export class ProjectService {
 	 */
 	async findProjectsWorkflowIsIn(workflowId: string) {
 		return await this.sharedWorkflowRepository.findProjectIds(workflowId);
+	}
+
+	async findTeamProjectsWorkflowIsIn(workflowId: string) {
+		return await this.sharedWorkflowRepository.findTeamProjectIds(workflowId);
 	}
 
 	/**
@@ -561,11 +577,13 @@ export class ProjectService {
 		return await this.projectRepository.getPersonalProjectForUser(user.id);
 	}
 
+	/**
+	 * The user's project relations with project, role and role scopes. This runs on
+	 * most editor requests (scope resolution for lists and single resources), so the
+	 * repository keeps the row count proportional to the number of relations.
+	 */
 	async getProjectRelationsForUser(user: User): Promise<ProjectRelation[]> {
-		return await this.projectRelationRepository.find({
-			where: { userId: user.id },
-			relations: ['project', 'role'],
-		});
+		return await this.projectRelationRepository.findAllByUser(user.id, { withProject: true });
 	}
 
 	async syncProjectRelations(
@@ -912,10 +930,11 @@ export class ProjectService {
 		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			// Use the same EntityManager as the project lookup (including when callers pass a
-			// transaction manager). Otherwise role resolution can open a second pooled connection
-			// while a transaction already holds a connection
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes, em);
+			const projectRoles = await this.roleService.rolesWithScope(
+				'project',
+				scopes,
+				async () => await this.roleRepository.findAll(em),
+			);
 
 			where = {
 				...where,

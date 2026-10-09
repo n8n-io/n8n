@@ -1,9 +1,15 @@
-export { BaseError, type BaseErrorOptions } from './base/base.error';
-export { OperationalError, type OperationalErrorOptions } from './base/operational.error';
-export { UnexpectedError, type UnexpectedErrorOptions } from './base/unexpected.error';
-export { UserError, type UserErrorOptions } from './base/user.error';
+export {
+	ApplicationError,
+	BaseError,
+	type BaseErrorOptions,
+	OperationalError,
+	type OperationalErrorOptions,
+	UnexpectedError,
+	type UnexpectedErrorOptions,
+	UserError,
+	type UserErrorOptions,
+} from '@n8n/errors';
 export { NodeVersionNotFoundError } from './node-version-not-found.error';
-export { ApplicationError } from '@n8n/errors';
 export { ExpressionError } from './expression.error';
 export {
 	ExecutionCancelledError,
@@ -40,4 +46,5 @@ export { ExpressionClassExtensionError } from './expression-class-extension.erro
 export { ExpressionReservedVariableError } from './expression-reserved-variable.error';
 export { ExpressionWithStatementError } from './expression-with-statement.error';
 export { DbConnectionTimeoutError } from './db-connection-timeout-error';
+export { hasPolicyRefusalMarker } from './policy-refusal';
 export { IsolateError } from '@n8n/errors';

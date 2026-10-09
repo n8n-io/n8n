@@ -10,8 +10,7 @@ import type { Project } from '@n8n/db';
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { DateTime } from 'luxon';
 
-import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
-import type { InsightsByPeriod } from '@/modules/insights/database/entities/insights-by-period';
+import { createCompactedInsightsEvent } from '@n8n/backend-module-insights/testing';
 import { Telemetry } from '@/telemetry';
 
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
@@ -22,6 +21,7 @@ import * as utils from '../shared/utils';
 mockInstance(Telemetry);
 
 const agents: Record<string, SuperAgentTest> = {};
+type CompactedInsightsEvent = Awaited<ReturnType<typeof createCompactedInsightsEvent>>;
 const testServer = utils.setupTestServer({
 	endpointGroups: ['insights', 'license', 'auth'],
 	enabledFeatures: ['feat:insights:viewSummary', 'feat:insights:viewDashboard'],
@@ -139,7 +139,7 @@ describe('GET /insights/summary', () => {
 		let accessibleProject: Project;
 		let inaccessibleProject: Project;
 
-		let accessibleWorkflowInsights: InsightsByPeriod;
+		let accessibleWorkflowInsights: CompactedInsightsEvent;
 
 		beforeAll(async () => {
 			testServer.license.setDefaults({
@@ -464,7 +464,7 @@ describe('GET /insights/by-workflow', () => {
 		let inaccessibleProject: Project;
 		let inaccessibleWorkflowName: string;
 
-		let accessibleWorkflowInsights: InsightsByPeriod;
+		let accessibleWorkflowInsights: CompactedInsightsEvent;
 
 		beforeAll(async () => {
 			testServer.license.setDefaults({
@@ -550,7 +550,7 @@ describe('GET /insights/by-time', () => {
 		let accessibleProject: Project;
 		let inaccessibleProject: Project;
 
-		let accessibleWorkflowInsights: InsightsByPeriod;
+		let accessibleWorkflowInsights: CompactedInsightsEvent;
 
 		beforeAll(async () => {
 			testServer.license.setDefaults({
@@ -613,7 +613,7 @@ describe('GET /insights/by-time/time-saved', () => {
 		let accessibleProject: Project;
 		let inaccessibleProject: Project;
 
-		let accessibleWorkflowInsights: InsightsByPeriod;
+		let accessibleWorkflowInsights: CompactedInsightsEvent;
 
 		beforeAll(async () => {
 			testServer.license.setDefaults({

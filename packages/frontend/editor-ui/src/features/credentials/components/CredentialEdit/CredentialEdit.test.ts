@@ -28,6 +28,14 @@ import { reactive } from 'vue';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '../../templatedAuth.utils';
 
+const { isAgentUi, getAgentCredentialHelp } = vi.hoisted(() => ({
+	isAgentUi: { value: false },
+	getAgentCredentialHelp: vi.fn(),
+}));
+vi.mock('@/features/agents/composables/useAgentAssistantCredentialHelp', () => ({
+	useAgentAssistantCredentialHelp: () => ({ isAgentUi, getCredentialHelp: getAgentCredentialHelp }),
+}));
+
 const { confirmMock, routerCurrentRouteMock, routerReplaceMock } = vi.hoisted(() => ({
 	confirmMock: vi.fn(),
 	routerCurrentRouteMock: { value: { query: {} } },
@@ -359,6 +367,8 @@ const createCredentialResponse = (
 describe('CredentialEdit', () => {
 	beforeEach(() => {
 		broadcastMessageListener = undefined;
+		isAgentUi.value = false;
+		getAgentCredentialHelp.mockReset();
 		routerCurrentRouteMock.value = { query: {} };
 		aiGatewayBalance.value = 1;
 		aiGatewayEnabled.value = false;
@@ -1308,6 +1318,46 @@ describe('CredentialEdit', () => {
 			return { credentialsStore, pinia, uiStore };
 		};
 
+		it.each([
+			{ agentUi: true, accepted: true },
+			{ agentUi: true, accepted: false },
+			{ agentUi: false, accepted: true },
+		])(
+			'uses the credential help for its surface (Agent UI: $agentUi, accepted: $accepted)',
+			async ({ agentUi, accepted }) => {
+				isAgentUi.value = agentUi;
+				const panelHelp = vi.fn().mockResolvedValue(accepted);
+				getAgentCredentialHelp.mockReturnValue(panelHelp);
+				const chatHelp = vi.fn().mockResolvedValue(true);
+				const credentialType: ICredentialType = {
+					name: 'testApi',
+					displayName: 'Test API',
+					properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+				};
+				const { pinia, uiStore } = setupNewCredential(credentialType, {
+					instanceAiCredentialHelp: chatHelp,
+				});
+				const view = renderComponent({
+					props: { activeId: 'testApi', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+					pinia,
+				});
+				const helpButton = await view.findByTestId('credential-edit-instance-ai-help-button');
+				await userEvent.click(within(helpButton).getByRole('button'));
+
+				await waitFor(() => {
+					expect(agentUi ? panelHelp : chatHelp).toHaveBeenCalledWith(
+						expect.objectContaining({ credentialType: 'testApi', displayName: 'Test API' }),
+					);
+				});
+				expect(agentUi ? chatHelp : panelHelp).not.toHaveBeenCalled();
+				if (accepted || !agentUi) {
+					expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
+				} else {
+					expect(uiStore.closeModal).not.toHaveBeenCalled();
+				}
+			},
+		);
+
 		const setupGatewayCredentialError = async ({
 			contextNode = {
 				id: 'node-1',
@@ -1472,6 +1522,65 @@ describe('CredentialEdit', () => {
 
 			return { credentialsStore, uiStore, ...renderResult };
 		};
+
+		test('retries loading a saved credential without creating it again', async () => {
+			const credentialType: ICredentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			};
+			const createCredential = vi.fn().mockResolvedValue('source-id');
+			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType, {
+				initialName: 'Source name',
+				createCredential,
+				notice: () => 'Saving creates Source project.',
+				destination: {
+					kind: 'pending',
+					id: 'source-project',
+					name: 'Source project',
+					permissions: { create: true },
+				},
+			});
+			credentialsStore.getCredentialData.mockRejectedValueOnce(new Error('Load failed'));
+			const saved = createCredentialResponse({
+				id: 'source-id',
+				name: 'Source name',
+				type: 'testApi',
+				scopes: ['credential:update'],
+			});
+			credentialsStore.getCredentialData.mockResolvedValue(saved);
+			credentialsStore.updateCredential.mockResolvedValue(saved);
+			const { getByTestId, findByRole, queryByText } = renderComponent({
+				props: { activeId: 'testApi', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+				pinia,
+			});
+			const save = await findByRole('button', { name: 'Save' });
+			expect(queryByText('Saving creates Source project.')).toBeInTheDocument();
+			await userEvent.click(save);
+			const retryLoad = await findByRole('button', { name: 'Retry' });
+			expect(createCredential).toHaveBeenCalledTimes(1);
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
+			expect(save).toBeDisabled();
+			await userEvent.click(retryLoad);
+			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalledTimes(2));
+			expect(credentialsStore.getCredentialData).toHaveBeenLastCalledWith({ id: 'source-id' });
+			expect(createCredential).toHaveBeenCalledTimes(1);
+			expect(credentialsStore.createNewCredential).not.toHaveBeenCalled();
+			expect(queryByText('Sharing')).not.toBeInTheDocument();
+			const name = getByTestId('credential-name');
+			await userEvent.click(name);
+			const input = name.querySelector('input');
+			if (!input) throw new Error('Name input not found');
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Updated name{Enter}');
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+			await waitFor(() =>
+				expect(credentialsStore.updateCredential).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'source-id' }),
+				),
+			);
+			expect(createCredential).toHaveBeenCalledTimes(1);
+		});
 
 		describe('descriptions', () => {
 			const credentialType: ICredentialType = {

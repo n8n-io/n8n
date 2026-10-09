@@ -13,7 +13,8 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { FocusScope } from 'reka-ui';
-import { computed, nextTick, useSlots, useTemplateRef } from 'vue';
+import { computed, nextTick, provide, ref, useSlots, useTemplateRef } from 'vue';
+import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 
 const props = withDefaults(
 	defineProps<{
@@ -62,12 +63,15 @@ const emit = defineEmits<{
 const slots = useSlots();
 const i18n = useI18n();
 const body = useTemplateRef<HTMLElement>('body');
+const parameterDialogs = ref(new Set<string>());
+provide(ParameterInputModalContextKey, { openDialogs: parameterDialogs, appendTo: 'body' });
+const trapFocus = computed(() => props.trapFocus && parameterDialogs.value.size === 0);
 const hasFooter = computed(
 	() =>
 		props.showFooter ??
 		Boolean(slots.footer || slots.footerLeft || slots.footerBeforeCancel || slots.footerActions),
 );
-const dismissalBlocked = computed(() => props.busy || !props.trapFocus);
+const dismissalBlocked = computed(() => props.busy || !trapFocus.value);
 
 function onOpenChange(open: boolean) {
 	if (!open && dismissalBlocked.value) return;
@@ -83,7 +87,9 @@ function onBack() {
 }
 
 function onEscapeKeyDown(event: KeyboardEvent) {
-	if (dismissalBlocked.value) event.preventDefault();
+	const isOutsideDialog =
+		event.target instanceof Node && !body.value?.closest('[role="dialog"]')?.contains(event.target);
+	if (dismissalBlocked.value || isOutsideDialog) event.preventDefault();
 }
 
 function onInteractOutside(event: Event) {
@@ -108,8 +114,10 @@ function onOpenAutoFocus(event: Event) {
 		:open="props.open"
 		:size="props.size"
 		:stacked="props.stacked"
-		:trap-focus="props.trapFocus"
-		:disable-outside-pointer-events="props.disableOutsidePointerEvents"
+		:trap-focus="trapFocus"
+		:disable-outside-pointer-events="
+			props.disableOutsidePointerEvents && parameterDialogs.size === 0
+		"
 		:show-close-button="false"
 		@escape-key-down="onEscapeKeyDown"
 		@interact-outside="onInteractOutside"
@@ -178,12 +186,7 @@ function onOpenAutoFocus(event: Event) {
 			</N8nText>
 		</N8nDialogHeader>
 
-		<FocusScope
-			v-if="!props.trapFocus"
-			as-child
-			@mount-auto-focus.prevent
-			@unmount-auto-focus.prevent
-		>
+		<FocusScope v-if="!trapFocus" as-child @mount-auto-focus.prevent @unmount-auto-focus.prevent>
 			<span hidden aria-hidden="true" />
 		</FocusScope>
 

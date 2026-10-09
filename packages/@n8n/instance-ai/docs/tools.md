@@ -60,7 +60,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `research` | 2 |
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
-| `agents` | 1 |
+| `agent-context` | 13 lookup types |
 | `build-workflow`, `ask-user`, `parse-file`, `searchModels` | single-purpose |
 
 ## Orchestration Tools
@@ -264,6 +264,19 @@ Omitted checks also leave dynamic fields unverified.
 The reasons are `parameter-values-disabled`, `replay-failed`, and
 `execution-unavailable`. Skipped checks expose no parameter values or replay
 error details. Their dynamic fields remain unverified.
+
+**Empty-output check**: when a real node returns only `{}` items,
+`emptyOutputNote` names that node. The run still counts as a success. The note
+tells the agent to compare the node's parameters with its typeVersion before it
+replies. If they do not match, the agent repairs the node, also when the agent
+did not change it. If they match, the agent does not change a node that it did
+not build, and tells the user that the node outputs no fields. Only the first
+empty node of a chain is named, because the nodes after it only pass the
+emptiness on. Triggers are skipped because a Manual Trigger emits `{}`.
+Simulated nodes are skipped because their output is a fixture. Nodes that
+output a file are skipped because their data is in the binary, which the
+preview omits. Truncated outputs are skipped because the hidden items can hold
+data.
 
 ### `report-verification-verdict` *(conditional)*
 
@@ -1469,15 +1482,22 @@ cannot clobber the existing binding), and `agentId` wins when both are
 given. Prefer switching by the `agentId` returned from earlier calls; the
 name lookup is the fallback when the id is unknown.
 
-### `agents` *(domain tool — requires the `agents` backend module)*
+### `agent-context` *(domain tool — requires the `agents` backend module)*
 
-Read-only listing of the project's n8n Agent artifacts. One action, `list`:
-returns `{ count, agents: [{ agentId, name, published, updatedAt }] }`, most
-recently updated first. Registered alongside `build-agent` (agents module
-active + project-bound conversation, `agent:read` scope enforced in the
-adapter). Use it to answer questions about existing agents and to find the
-`agentId` for `build-agent` when editing an agent not built in this
-conversation. Creation and editing stay on `build-agent`.
+Read-only access to Agent context in the conversation's bound project. The host
+registers the tool only when the user has `agent:read` scope. Both the Assistant
+and Agent Builder use this tool.
+
+The `type` field selects one lookup. Supported values are `agents`, `config-schema`, `config`,
+`skills`, `skill`, `tasks`, `custom-tools`, `custom-tool`, `sessions`, `session`,
+`capabilities`, `integrations`, and `attachable-workflows`. Detailed lookups
+return one body at a time. Session lookup supports status, origin, date, and
+cursor filters.
+
+The Agent id is optional when the conversation has a bound Agent target. Use
+`type: "agents"` to resolve the id in other conversations. The tool labels the
+returned config as the current draft. It wraps all returned context as untrusted
+data before it returns it to the model.
 
 ## MCP Registry Tool
 

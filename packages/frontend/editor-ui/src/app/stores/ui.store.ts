@@ -28,13 +28,12 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { SHELL_MODAL_INITIAL_STATE } from './defaults/modals';
 import { computed, ref, watch } from 'vue';
-import type { IMenuItem } from '@n8n/design-system';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import identity from 'lodash/identity';
-import { modalRegistry } from '@n8n/frontend-module-sdk';
+import { modalRegistry, type IMenuSettingItem } from '@n8n/frontend-module-sdk';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
@@ -173,7 +172,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * Modules can register items and SettingsSidebar will render them
 	 * when the corresponding module is active.
 	 */
-	const registeredSettingsPages = ref<Record<string, IMenuItem[]>>({});
+	const registeredSettingsPages = ref<Record<string, IMenuSettingItem[]>>({});
 
 	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 
@@ -283,8 +282,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
 
-	const settingsSidebarItems = computed<IMenuItem[]>(() => {
-		const items: IMenuItem[] = [];
+	const settingsSidebarItems = computed<IMenuSettingItem[]>(() => {
+		const items: IMenuSettingItem[] = [];
 		Object.entries(registeredSettingsPages.value).forEach(([moduleName, moduleItems]) => {
 			if (settingsStore.isModuleActive(moduleName)) {
 				items.push(...moduleItems.map((item) => ({ available: true, ...item })));
@@ -450,6 +449,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
 		patchModalState(CREDENTIAL_EDIT_MODAL_KEY, {
+			notice: undefined,
+			initialName: undefined,
+			initialData: undefined,
+			destination: undefined,
+			createCredential: undefined,
+			onInitializeError: undefined,
 			projectId: undefined,
 			contextNode: options.contextNode,
 			closeOnSave: false,
@@ -478,6 +483,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
 			usageScope?: NewCredentialsModal['usageScope'];
 			credentialSetupHint?: NewCredentialsModal['credentialSetupHint'];
+			notice?: () => string;
+			initialName?: NewCredentialsModal['initialName'];
+			initialData?: NewCredentialsModal['initialData'];
+			destination?: NewCredentialsModal['destination'];
+			createCredential?: NewCredentialsModal['createCredential'];
+			onInitializeError?: NewCredentialsModal['onInitializeError'];
 			workflowId?: string;
 		} = {},
 	) => {
@@ -497,6 +508,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 			usageScope: options.usageScope,
 			credentialSetupHint: options.credentialSetupHint,
+			notice: options.notice,
+			initialName: options.initialName,
+			initialData: options.initialData,
+			destination: options.destination,
+			createCredential: options.createCredential,
+			onInitializeError: options.onInitializeError,
 		} as Partial<NewCredentialsModal>);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -582,7 +599,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		moduleTabs.value[page][moduleName] = tabs;
 	};
 
-	const registerSettingsPages = (moduleName: string, items: IMenuItem[]) => {
+	const registerSettingsPages = (moduleName: string, items: IMenuSettingItem[]) => {
 		registeredSettingsPages.value[moduleName] = items;
 	};
 

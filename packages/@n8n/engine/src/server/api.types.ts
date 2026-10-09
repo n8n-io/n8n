@@ -7,10 +7,21 @@ import type {
 	WorkflowDocument,
 } from '../execution';
 import type { ExecutionListQuery } from '../execution/execution-view-store';
-import type { WorkflowGraph } from '../graph';
+import type { StoredWorkflowGraph } from '../graph';
 
 /** A read-only search. The control plane supplies the visibility decision. */
 export type SearchExecutionsRequest = ExecutionListQuery;
+
+/**
+ * `POST /:id/cancel` response. Only ever `cancelled`: any other status answers
+ * with a `not_cancellable` error instead.
+ */
+export interface CancelExecutionResponse {
+	executionId: string;
+	status: 'cancelled';
+	/** When the execution ended, ISO-8601. The same time on a repeated cancel. */
+	finishedAt: string;
+}
 
 /** `T` without its `K` fields. */
 type Without<T, K extends keyof T> = Omit<T, K>;
@@ -39,7 +50,7 @@ export interface ExecutionSnapshot {
 	/** The host's finer execution mode. */
 	hostMode: string;
 	/** The graph captured at start, immutable for the execution's lifetime. */
-	graph: WorkflowGraph;
+	graph: StoredWorkflowGraph;
 	/**
 	 * The workflow the run came from, captured at start. Reported so a caller can
 	 * render the execution against the workflow that ran, not the current one.

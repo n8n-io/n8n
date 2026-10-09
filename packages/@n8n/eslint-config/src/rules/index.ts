@@ -6,7 +6,6 @@ import { NoUselessCatchThrowRule } from './no-useless-catch-throw.js';
 import { NoSkippedTestsRule } from './no-skipped-tests.js';
 import { NoInterpolationInRegularStringRule } from './no-interpolation-in-regular-string.js';
 import { NoDynamicImportTemplateRule } from './no-dynamic-import-template.js';
-import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
 import { NoGuardrailDisableRule } from './no-guardrail-disable.js';
 import { NoTypeUnsafeEventEmitterRule } from './no-type-unsafe-event-emitter.js';
 import { NoUntypedConfigClassFieldRule } from './no-untyped-config-class-field.js';
@@ -33,6 +32,7 @@ import { RequireEscapedQueryValuesRule } from './require-escaped-query-values.js
 import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
 import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
 import { NoRawEnumRule } from './no-raw-enum.js';
+import { NoStaticRuntimeImportRule } from './no-static-runtime-import.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -43,7 +43,6 @@ export const rules = {
 	'no-skipped-tests': NoSkippedTestsRule,
 	'no-interpolation-in-regular-string': NoInterpolationInRegularStringRule,
 	'no-dynamic-import-template': NoDynamicImportTemplateRule,
-	'misplaced-n8n-typeorm-import': MisplacedN8nTypeormImportRule,
 	'no-guardrail-disable': NoGuardrailDisableRule,
 	'no-type-unsafe-event-emitter': NoTypeUnsafeEventEmitterRule,
 	'no-untyped-config-class-field': NoUntypedConfigClassFieldRule,
@@ -69,4 +68,5 @@ export const rules = {
 	'no-on-leader-takeover': NoOnLeaderTakeoverRule,
 	'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
 	'no-raw-enum': NoRawEnumRule,
+	'no-static-runtime-import': NoStaticRuntimeImportRule,
 } satisfies Record<string, AnyRuleModule>;

@@ -58,6 +58,15 @@ describe('matchGlob', () => {
 		);
 	});
 
+	it('backend module pattern matches packaged module files', () => {
+		assert.ok(
+			matchGlob(
+				'packages/modules/insights/backend/src/insights.service.ts',
+				'packages/modules/*/backend/**',
+			),
+		);
+	});
+
 	it('* matches single-level only', () => {
 		assert.ok(matchGlob('README.md', '*.md'));
 		assert.ok(!matchGlob('docs/README.md', '*.md'));
@@ -242,7 +251,7 @@ describe('runtime filter', () => {
 		'!**/CHANGELOG.md',
 		'!**/*.test.ts',
 		'!**/*.spec.ts',
-		'!packages/testing/playwright/**',
+		'!packages/quality/testing/playwright/**',
 		'!packages/frontend/@n8n/storybook/**',
 		'!scripts/agent-setup.mjs',
 		'!scripts/backend-module/**',
@@ -265,7 +274,7 @@ describe('runtime filter', () => {
 
 	it('does not trigger on playwright tests', () => {
 		assert.equal(
-			evaluateFilter(['packages/testing/playwright/tests/x.spec.ts'], runtimePatterns),
+			evaluateFilter(['packages/quality/testing/playwright/tests/x.spec.ts'], runtimePatterns),
 			false,
 		);
 	});

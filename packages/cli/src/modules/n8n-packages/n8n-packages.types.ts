@@ -23,6 +23,7 @@ import type {
 	WorkflowPublishingPolicy,
 } from './entities/workflow/workflow-publishing-policy.types';
 import type { PackageManifest } from './spec/manifest.schema';
+import type { PackageRequirementConsumer } from './spec/requirements.schema';
 
 export type { CredentialResolution } from './entities/credential/credential.types';
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
@@ -93,23 +94,23 @@ export const MissingNodeTypeMode = {
 	ImportAnyway: 'import-anyway',
 } as const;
 
-export const MissingWorkflowDependencyPolicy = {
-	/** Fails the export when a workflow dependency is not included. */
+export const ExportDependencyPolicy = {
+	/** Fails the export when a required workflow or agent is not included. */
 	Fail: 'fail',
-	/** Keeps missing workflow dependencies out of the package, listing them as requirements only. */
+	/** Leaves external dependencies out of the package and lists them as requirements. */
 	ReferenceOnly: 'reference-only',
-	/** Automatically adds missing workflow dependencies to the package. */
+	/** Adds accessible workflow and agent dependencies to the package. */
 	IncludeInPackage: 'include-in-package',
 } as const;
 
-export const WorkflowVersionPolicy = {
-	/** Exports the latest published version, failing if any workflow has none. */
+export const ExportVersionPolicy = {
+	/** Exports published definitions. Fails if a selected workflow or agent has none. */
 	PublishedStrict: 'published-strict',
-	/** Exports the latest published version where there is one, the latest version otherwise. */
+	/** Exports published definitions when available. Exports drafts otherwise. */
 	PreferPublished: 'prefer-published',
-	/** Exports only published workflows, leaving unpublished ones out of the package. */
+	/** Exports only published definitions and skips unpublished selections. */
 	IgnoreUnpublished: 'ignore-unpublished',
-	/** Exports the latest version of every workflow, published or not. */
+	/** Exports the current draft of each workflow and agent. */
 	Latest: 'latest',
 } as const;
 
@@ -135,10 +136,14 @@ export const DataTableMissingMode = {
 } as const;
 
 export const DataTableSchemaConflictPolicy = {
-	/** Accepts a matched target able that has every package column, ignoring additional columns the target table has of its own. Never alters the target table. */
+	/** Accepts a matched target table that has every package column, ignoring additional columns the target table has of its own. Never alters the target table. */
 	KeepExisting: 'keep-existing',
 	/** Strict drift detection: fails the import on any schema difference, including target-only columns. */
 	Fail: 'fail',
+	/** Changes a matched target table to match the package schema: renames the table, adds, removes, and retypes columns, and sets the column order. Data in removed or retyped columns is lost. */
+	Overwrite: 'overwrite',
+	/** Like `overwrite`, but fails the import when a change deletes data: a removed (target-only or renamed) or retyped column. */
+	OverwriteNonDestructive: 'overwrite-non-destructive',
 } as const;
 
 export const VariableMissingMode = {
@@ -198,11 +203,10 @@ export type OverwriteDeletionPolicy =
 
 export type MissingNodeTypeMode = (typeof MissingNodeTypeMode)[keyof typeof MissingNodeTypeMode];
 
-export type MissingWorkflowDependencyPolicy =
-	(typeof MissingWorkflowDependencyPolicy)[keyof typeof MissingWorkflowDependencyPolicy];
+export type ExportDependencyPolicy =
+	(typeof ExportDependencyPolicy)[keyof typeof ExportDependencyPolicy];
 
-export type WorkflowVersionPolicy =
-	(typeof WorkflowVersionPolicy)[keyof typeof WorkflowVersionPolicy];
+export type ExportVersionPolicy = (typeof ExportVersionPolicy)[keyof typeof ExportVersionPolicy];
 
 export type CredentialExportPolicy =
 	(typeof CredentialExportPolicy)[keyof typeof CredentialExportPolicy];
@@ -228,6 +232,7 @@ export type TagConflictPolicy = (typeof TagConflictPolicy)[keyof typeof TagConfl
 
 export interface ExportPackageRequest {
 	user: User;
+	agentIds?: string[];
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
@@ -237,13 +242,15 @@ export interface ExportPackageRequest {
 	 * project shells only. Every id must belong to one of `projectIds`.
 	 */
 	projectWorkflowIds?: string[];
+	/** Internal opt-out for callers that cannot import Agents yet. */
+	includeAgents?: boolean;
 	includeVariableValues?: boolean;
 	canExportVariableValues?: boolean;
 	includeTags?: boolean;
 	/** Whether folder and project exports include archived workflows. Explicit ids always export. */
 	includeArchivedWorkflows?: boolean;
-	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
-	workflowVersionPolicy?: WorkflowVersionPolicy;
+	dependencyPolicy?: ExportDependencyPolicy;
+	versionPolicy?: ExportVersionPolicy;
 	credentialExportPolicy?: CredentialExportPolicy;
 }
 
@@ -255,6 +262,8 @@ export type ImportRequest = {
 	folderId?: string;
 	bindings?: Partial<PackageImportBindings>;
 	apiKeyScopes?: string[];
+	/** Omit to import the whole package. */
+	selection?: ImportSelection;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
 	ImportProjectProperties &
@@ -264,6 +273,41 @@ export type ImportRequest = {
 	ImportTagProperties;
 
 export type ImportPackageRequest = ImportRequest & {
+	packageBuffer: Buffer;
+};
+
+/**
+ * Import only the selected workflows. Do not add referenced sub-workflows to the selection.
+ *
+ * Delete only within the destination project, even under `merge`. Ignore absent or archived IDs.
+ * References to deleted workflows remain unchanged.
+ */
+export interface ImportSelection {
+	/** Source project ID from the package. */
+	selectedProjectId: string;
+	/** Source workflow IDs from the selected project. */
+	selectedWorkflowIds: string[];
+	/** Destination workflow IDs to remove. */
+	deletedWorkflowIds?: string[];
+}
+
+/**
+ * Match or create the destination project from the package. Callers cannot override its location.
+ * The service fixes all policies except `workflowConflictPolicy`, `workflowIdPolicy`,
+ * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`), and
+ * `dataTableSchemaConflictPolicy` (defaults to `fail`).
+ */
+export type ImportSelectionRequest = {
+	user: User;
+	apiKeyScopes?: string[];
+	bindings?: Partial<PackageImportBindings>;
+	workflowConflictPolicy?: WorkflowConflictPolicy;
+	workflowIdPolicy?: WorkflowIdPolicy;
+	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
+	dataTableSchemaConflictPolicy?: DataTableSchemaConflictPolicy;
+};
+
+export type ImportPackageSelectionRequest = ImportSelectionRequest & {
 	packageBuffer: Buffer;
 };
 
@@ -375,6 +419,7 @@ export type ImportPackageEventCounts = {
 	dataTables: {
 		matched: number;
 		created: number;
+		updated: number;
 		requirements: number;
 	};
 	variables: {
@@ -397,6 +442,7 @@ export type ImportPackageEventCounts = {
 
 /** Per-entity counts for an export, carried on `n8n-package-exported` for telemetry. */
 export type ExportPackageEventCounts = {
+	agents: number;
 	workflows: number;
 	folders: number;
 	credentials: number;
@@ -515,28 +561,47 @@ export type BlockingIssue =
 			expectedType?: string;
 			/** For `type_mismatch`: the actual type of the resolved target credential. */
 			actualType?: string;
-			usedByWorkflows: string[];
+			usedBy: PackageRequirementConsumer[];
 	  }
 	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
+	| ({ type: 'workflow-removal-conflict' } & WorkflowRemovalConflict)
 	| ({ type: 'folder-removal-forbidden' } & FolderRemovalFailure)
-	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
-	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
-	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
-	| ({ type: 'variable-conflict' } & VariableConflict)
-	| ({ type: 'variable-limit-exceeded' } & VariableLimitFailure)
+	| ({
+			type: 'data-table-unresolved';
+			usedBy: PackageRequirementConsumer[];
+	  } & DataTableResolutionFailure)
+	| ({ type: 'tag-unresolved'; usedBy: PackageRequirementConsumer[] } & TagResolutionFailure)
+	| ({
+			type: 'variable-unresolved';
+			usedBy: PackageRequirementConsumer[];
+	  } & VariableResolutionFailure)
+	| ({ type: 'variable-conflict'; usedBy: PackageRequirementConsumer[] } & VariableConflict)
+	| ({
+			type: 'variable-limit-exceeded';
+			usedBy: PackageRequirementConsumer[];
+	  } & VariableLimitFailure)
 	| {
 			type: 'missing-node-type';
 			/** Node type this instance cannot resolve (at least not at `typeVersion`). */
 			nodeType: string;
 			typeVersion: number;
-			usedByWorkflows: string[];
+			usedBy: PackageRequirementConsumer[];
 	  }
 	| {
 			type: 'policy-violation';
 			sourceWorkflowId: string;
 			name: string;
+			violations: PolicyViolation[];
+	  }
+	| {
+			/** A credential write the import would make that the `credentialSave` policy refused. */
+			type: 'credential-policy-violation';
+			sourceId: string;
+			name?: string;
+			credentialType: string;
+			usedBy: PackageRequirementConsumer[];
 			violations: PolicyViolation[];
 	  };
 
@@ -548,6 +613,13 @@ export type BlockingIssue =
 export interface WorkflowRemovalFailure {
 	workflowId: string;
 	name: string;
+	projectId: string;
+}
+
+/** A selected workflow also named for explicit removal. */
+export interface WorkflowRemovalConflict {
+	sourceWorkflowId: string;
+	workflowId: string;
 	projectId: string;
 }
 
@@ -638,6 +710,7 @@ export interface ImportVariableSummary {
 export interface ImportDataTableSummary {
 	matched: number;
 	created: number;
+	updated: number;
 }
 
 /** Tag names (not ids), grouped by how the import resolved them. */

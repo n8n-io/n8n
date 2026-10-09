@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	isAbortError,
 	type BuiltTool,
@@ -20,7 +21,6 @@ import {
 	type AgentConfigValidationMessages,
 } from '@n8n/ai-utilities/agent-config';
 import {
-	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
@@ -29,23 +29,23 @@ import {
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
 	isDraftIntegration,
+	isCredentialAgentIntegration,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
-	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import { createAgentContextTool, type InstanceAiCredentialService } from '@n8n/instance-ai';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
+import { ConflictError, LockedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -60,6 +60,7 @@ import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 import { AgentConfigService } from '../agent-config.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
@@ -71,7 +72,6 @@ import {
 } from '../agent-test-run.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
-import { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { BuilderTrackFn } from './builder-config-telemetry';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { describeCallAgentFailure } from './call-agent-failure';
@@ -87,21 +87,86 @@ import {
 	buildResolveLlmTool,
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
-import { buildResolveIntegrationTool } from './resolve-integration.tool';
-import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
-import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
+import { buildVerifyMcpServerTool, type McpCredentialApplyResult } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { getAgentConfigHash, getAgentSkillHash } from '../utils/agent-config-hash';
+import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
 	message:
-		'Agent config changed since you last read it. Call read_config, then retry using the config and configHash it returns.',
+		'Agent config changed elsewhere. This result carries the current config and configHash: ' +
+		're-apply your change to that config and retry once with that configHash.',
 };
+
+const BASE_CONFIG_HASH_RULE =
+	'Requires baseConfigHash: the configHash from the latest agent-context with type "config" result, ' +
+	'or from the latest builder result that returned one (write_config, patch_config, create_skills, ' +
+	'create_tasks, finish_setup, configure_channel, verify_mcp_server with credentialApplied: true, ' +
+	'or a stale failure), whichever came last. ';
+
+const BASE_CONFIG_HASH_FIELD_DESCRIPTION =
+	'Latest configHash from agent-context with type "config" or from the latest builder result that ' +
+	'returned one; null only if no config exists';
+
+const CONFIG_WRITE_RESULT_RULE =
+	'Returns { ok: true, configMutated: true, agentId, configHash } on success. The result also carries ' +
+	'`config` when the saved config differs from what you sent (for example applied defaults or kept ' +
+	'omitted fields); treat that `config` as the current state. On failure returns { ok: false, stage, ' +
+	'errors } and nothing is saved, so on a parse, patch, or schema error fix the payload and retry with ' +
+	'the same baseConfigHash. On stage: "stale", the result carries the current config and configHash: ' +
+	're-apply your change to it and retry once. ';
+
+/**
+ * Models sometimes still send a structured argument as a JSON string. Parse it
+ * so the schema sees the value, and keep it unchanged when it is not valid JSON.
+ */
+function parseJsonStringInput(value: unknown): unknown {
+	if (typeof value !== 'string') return value;
+	const parsed = tryParseConfigJson(value);
+	return parsed.ok ? parsed.data : value;
+}
+
+/**
+ * `write_config` arguments are objects so the model does not have to escape
+ * every quote. A JSON string is still accepted, as older tool calls sent one.
+ */
+function readStructuredToolInput(
+	value: unknown,
+): { ok: true; data: unknown } | { ok: false; errors: ConfigValidationError[] } {
+	return typeof value === 'string' ? tryParseConfigJson(value) : { ok: true, data: value };
+}
+
+/**
+ * `write_config` keeps every top-level field the model omits. Merge the stored
+ * value before validation, so builder defaults (web search, prompt caching)
+ * see the real stored state instead of an empty field.
+ */
+function mergeOmittedTopLevelFields(submitted: unknown, stored: AgentJsonConfig | null): unknown {
+	if (!stored || !isRecord(submitted)) return submitted;
+	return { ...stored, ...submitted };
+}
+
+/**
+ * Before `config`, `write_config` took the config as a `json` string. Map that
+ * key so a checkpoint resumed after a deploy can still run a pending call.
+ * The model only sees the `config` key in the tool schema.
+ */
+function renameLegacyWriteConfigKey(value: unknown): unknown {
+	if (!isRecord(value) || value.config !== undefined || value.json === undefined) return value;
+	const { json, ...rest } = value;
+	return { ...rest, config: json };
+}
+
+const jsonPatchOperationSchema = z.object({
+	op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
+	path: z.string().describe('JSON Pointer, e.g. "/instructions" or "/tools/-"'),
+	from: z.string().optional().describe('Source JSON Pointer for move and copy'),
+	value: z.unknown().optional().describe('New value for add, replace, and test'),
+});
 
 const AGENT_LOCKED_BY_EDITOR_ERROR: ConfigValidationError = {
 	path: '(root)',
@@ -113,7 +178,7 @@ const AGENT_LOCKED_BY_EDITOR_ERROR: ConfigValidationError = {
 type EditorLockFailure = { ok: false; errors: ConfigValidationError[] };
 
 const STALE_SKILL_ERROR_MESSAGE =
-	'Skill changed since you last read it. Call read_skill, then retry using the skill and skillHash it returns.';
+	'Skill changed. Call agent-context with type "skill", then retry with its skill and skillHash.';
 
 /** LLM-facing follow-up guidance for this builder surface (CLI skill-based tools). */
 const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
@@ -141,26 +206,34 @@ const createSkillInputSchema = z
 
 type CreateSkillInput = z.infer<typeof createSkillInputSchema>;
 
-const readSkillInputSchema = z
-	.object({
-		skillId: z.string().min(1).describe('Persisted target-agent skill id to read.'),
-		referencePaths: z
-			.array(z.string().min(1))
-			.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
-			.optional()
-			.describe(
-				'Optional reference paths whose content is needed. Omit to receive paths and character counts only.',
-			),
-	})
-	.strict();
-
-type ReadSkillInput = z.infer<typeof readSkillInputSchema>;
-
 const updateSkillFieldsSchema = z
 	.object({
 		name: agentSkillSchema.shape.name.optional(),
 		description: agentSkillSchema.shape.description.optional(),
-		instructions: agentSkillSchema.shape.instructions.optional(),
+		instructions: agentSkillSchema.shape.instructions
+			.optional()
+			.describe('Complete replacement body. Use only for a rewrite of most of the body.'),
+		instructionEdits: z
+			.array(
+				z
+					.object({
+						oldText: z
+							.string()
+							.min(1)
+							.describe(
+								'Exact text from the current instructions. It must match exactly one place.',
+							),
+						newText: z.string().describe('Replacement text. Use an empty string to delete.'),
+					})
+					.strict(),
+			)
+			.min(1)
+			.max(20)
+			.optional()
+			.describe(
+				'Targeted replacements in the current instructions, applied in order. Prefer this to ' +
+					'`instructions` for a partial change. Do not pass both.',
+			),
 		allowedTools: agentSkillSchema.shape.allowedTools.unwrap().min(1).nullable().optional(),
 		references: agentSkillSchema.shape.references
 			.unwrap()
@@ -171,6 +244,9 @@ const updateSkillFieldsSchema = z
 	.strict()
 	.refine((updates) => Object.keys(updates).length > 0, {
 		message: 'At least one skill field must be supplied.',
+	})
+	.refine((updates) => !(updates.instructions && updates.instructionEdits), {
+		message: 'Pass either instructions or instructionEdits, not both.',
 	});
 
 const updateSkillInputSchema = z
@@ -179,7 +255,9 @@ const updateSkillInputSchema = z
 		baseSkillHash: z
 			.string()
 			.min(1)
-			.describe('skillHash from the immediately preceding read_skill result for this skill.'),
+			.describe(
+				'skillHash from the immediately preceding agent-context with type "skill" result for this skill.',
+			),
 		updates: updateSkillFieldsSchema.describe(
 			'Only the fields to change. Pass null for allowedTools or references to remove that field; empty arrays are invalid.',
 		),
@@ -211,10 +289,22 @@ const updateTaskInputSchema = z
 
 type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 
+/** A call_agent continuation that carries a sessionNote across an approval. */
+const notedContinuationSchema = z.object({ run: z.unknown(), sessionNote: z.string() }).strict();
+
 type BuilderConfigFailure = {
 	ok: false;
 	stage?: 'parse' | 'stale' | 'patch' | 'schema';
 	errors: ConfigValidationError[];
+	config?: AgentJsonConfig | null;
+	configHash?: string | null;
+};
+
+/** `config` is set only when the saved config differs from what the model sent. */
+type BuilderConfigSuccess = {
+	ok: true;
+	configHash: string;
+	config?: AgentJsonConfig;
 };
 
 interface AgentConfigSnapshot {
@@ -300,13 +390,13 @@ export interface BuilderTools {
 @Service()
 export class AgentsBuilderToolsService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly agentsService: AgentsService,
 		private readonly agentConfigService: AgentConfigService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly secureRuntime: AgentSecureRuntime,
-		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
 		private readonly mcpRegistryService: McpRegistryService,
@@ -322,6 +412,7 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
+		private readonly agentContextAdapter: InstanceAiAgentContextAdapterService,
 		private readonly collaborationService: CollaborationService,
 	) {}
 
@@ -342,11 +433,38 @@ export class AgentsBuilderToolsService {
 					result !== null &&
 					(('ok' in result && result.ok === true) ||
 						('configured' in result && result.configured === true) ||
-						('completed' in result && result.completed === true))
+						('completed' in result && result.completed === true)) &&
+					(!('changed' in result) || result.changed !== false)
 				) {
 					return { ...result, configMutated: true, agentId };
 				}
 				return result;
+			},
+		};
+	}
+
+	/**
+	 * The user can change the config while an interactive tool waits, so a
+	 * resumed final result carries a fresh snapshot. `isFinal` must reject
+	 * suspend results.
+	 */
+	private withConfigSnapshotOnResume(
+		tool: BuiltTool,
+		agentId: string,
+		projectId: string,
+		isFinal: (result: Record<string, unknown>) => boolean,
+	): BuiltTool {
+		const handler = tool.handler;
+		if (!handler) return tool;
+		return {
+			...tool,
+			handler: async (input, ctx) => {
+				const result = await handler(input, ctx);
+				const resumed =
+					'resumeData' in ctx && ctx.resumeData !== undefined && ctx.resumeData !== null;
+				if (!resumed || !isRecord(result) || !isFinal(result)) return result;
+				const snapshot = await this.getConfigSnapshot(agentId, projectId).catch(() => null);
+				return snapshot ? { ...result, ...snapshot } : result;
 			},
 		};
 	}
@@ -406,21 +524,15 @@ export class AgentsBuilderToolsService {
 				...(options?.runId ? { run_id: options.runId } : {}),
 				...properties,
 			});
-		const readConfigTool = this.buildReadConfigTool(agentId, projectId);
 		const writeConfigTool = this.buildWriteConfigTool(agentId, projectId, user);
 		const patchConfigTool = this.buildPatchConfigTool(agentId, projectId, user);
-		const listIntegrationTypesTool = this.buildListIntegrationTypesTool();
-		const listSubAgentsTool = this.buildListSubAgentsTool(projectId, agentId);
 		const publishAgentTool = this.buildPublishAgentTool(user, projectId, agentId);
 		const unpublishAgentTool = this.buildUnpublishAgentTool(user, projectId, agentId);
 		const callAgentTool = this.buildCallAgentTool(user, projectId, agentId, credentialProvider);
 		const modelLookup = this.createModelLookup(user, projectId, options);
 		const tools: BuiltTool[] = [
-			readConfigTool,
 			this.withConfigMutationMarker(writeConfigTool, agentId),
 			this.withConfigMutationMarker(patchConfigTool, agentId),
-			listIntegrationTypesTool,
-			listSubAgentsTool,
 			this.withConfigMutationMarker(publishAgentTool, agentId),
 			this.withConfigMutationMarker(unpublishAgentTool, agentId),
 			callAgentTool,
@@ -429,19 +541,24 @@ export class AgentsBuilderToolsService {
 			this.createEmbeddingCredentialTool(credentialService, projectId, track),
 			buildAskQuestionsTool({ track }),
 			this.withConfigMutationMarker(
-				this.createConfigureChannelTool(agentId, projectId, track),
+				this.withConfigSnapshotOnResume(
+					this.createConfigureChannelTool(agentId, projectId, track),
+					agentId,
+					projectId,
+					(result) => typeof result.configured === 'boolean',
+				),
 				agentId,
 			),
 			this.withConfigMutationMarker(
-				this.createFinishSetupTool(credentialService, agentId, projectId, track),
+				this.withConfigSnapshotOnResume(
+					this.createFinishSetupTool(credentialService, agentId, projectId, track),
+					agentId,
+					projectId,
+					(result) => result.completed === true,
+				),
 				agentId,
 			),
 			this.createVerifyMcpServerTool(agentId, credentialProvider, projectId, user),
-			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
-			buildResolveIntegrationTool({
-				mcpRegistryService: this.mcpRegistryService,
-				agentsToolsService: this.agentsToolsService,
-			}),
 		];
 
 		return tools;
@@ -481,7 +598,10 @@ export class AgentsBuilderToolsService {
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
 				return (agent?.integrations ?? [])
-					.filter((integration) => !isDraftIntegration(integration))
+					.filter(
+						(integration) =>
+							isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+					)
 					.map((integration) => integration.credentialId);
 			},
 			listChatIntegrationTypes: () =>
@@ -538,7 +658,10 @@ export class AgentsBuilderToolsService {
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
 				return (agent?.integrations ?? [])
-					.filter((integration) => !isDraftIntegration(integration))
+					.filter(
+						(integration) =>
+							isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+					)
 					.map((integration) => integration.credentialId);
 			},
 			track,
@@ -584,7 +707,8 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.CALL_AGENT)
 			.description(
 				'Tests the draft agent through built-in Preview chat. It does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. ' +
-					'Pass the returned sessionId on later calls to continue the same conversation; omit it to start a new one. ' +
+					'Omit sessionId to start a new conversation. To continue one, pass the exact sessionId from an earlier call_agent result; never make one up. ' +
+					'If the sessionId is not found, the test starts a new conversation and the result has a sessionNote. ' +
 					'The draft uses its real configured tools and credentials, so external side effects are possible. ' +
 					'Standard tool approvals pause this test until the user approves or rejects them in chat. ' +
 					'Unsupported interactive requests return approval_required with a Preview path.',
@@ -595,9 +719,10 @@ export class AgentsBuilderToolsService {
 					sessionId: z
 						.string()
 						.trim()
-						.min(1)
 						.optional()
-						.describe('Session ID from a previous call_agent result'),
+						.describe(
+							'Exact sessionId from an earlier call_agent result. Omit it to start a new conversation.',
+						),
 				}),
 			)
 			.suspend(APPROVAL_SUSPEND_SCHEMA)
@@ -617,17 +742,24 @@ export class AgentsBuilderToolsService {
 
 					const previewPath = buildAgentPreviewPath(projectId, agentId);
 					try {
-						const result = await this.runDraftTest(
+						const { result, sessionNote } = await this.runDraftTest(
 							ctx,
 							agentId,
 							projectId,
 							message,
-							sessionId,
+							sessionId || undefined,
 							credentialProvider,
 							user,
 						);
 
-						return await this.formatDraftTestResult(result, ctx, agentId, user, previewPath);
+						return await this.formatDraftTestResult(
+							result,
+							ctx,
+							agentId,
+							user,
+							previewPath,
+							sessionNote,
+						);
 					} catch (error) {
 						if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(error)) throw error;
 						if (error instanceof InvalidAgentTestRunCheckpointError) {
@@ -655,31 +787,43 @@ export class AgentsBuilderToolsService {
 		sessionId: string | undefined,
 		credentialProvider: CredentialProvider,
 		user: User,
-	): Promise<AgentTestRunResult> {
-		let result: AgentTestRunResult;
+	): Promise<{ result: AgentTestRunResult; sessionNote?: string }> {
 		if (ctx.resumeData === undefined) {
-			result = await this.agentTestRunService.executeDraftRun({
+			const execute = async (id: string | undefined) =>
+				await this.agentTestRunService.executeDraftRun({
+					agentId,
+					projectId,
+					message,
+					sessionId: id,
+					credentialProvider,
+					user,
+					source: 'instance-ai',
+					...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
+				});
+			const result = await execute(sessionId);
+			// The session check runs before the agent, so a retry has no side effects.
+			if (result.status !== 'session_not_found' || sessionId === undefined) return { result };
+			return {
+				result: await execute(undefined),
+				sessionNote:
+					'The sessionId you passed was not found, so this test started a new conversation. ' +
+					'To continue this conversation, pass the sessionId from this result.',
+			};
+		}
+		// A continuation without a note is the raw test-run continuation.
+		const noted = notedContinuationSchema.safeParse(ctx.continuation);
+		return {
+			result: await this.agentTestRunService.resumeDraftApproval({
 				agentId,
 				projectId,
-				message,
-				sessionId,
-				credentialProvider,
-				user,
-				source: 'instance-ai',
-				...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
-			});
-		} else {
-			result = await this.agentTestRunService.resumeDraftApproval({
-				agentId,
-				projectId,
-				continuation: ctx.continuation,
+				continuation: noted.success ? noted.data.run : ctx.continuation,
 				approved: ctx.resumeData.approved,
 				user,
 				source: 'instance-ai',
 				...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
-			});
-		}
-		return result;
+			}),
+			...(noted.success ? { sessionNote: noted.data.sessionNote } : {}),
+		};
 	}
 
 	private buildUnpublishAgentTool(user: User, projectId: string, agentId: string) {
@@ -744,6 +888,9 @@ export class AgentsBuilderToolsService {
 				const editorLock = await this.getEditorLockFailure(agentId);
 				if (editorLock) return editorLock;
 				try {
+					const before = await this.agentsService.findById(agentId, projectId);
+					const beforeActiveVersionId = before?.activeVersionId;
+					const beforeVersionId = before?.versionId;
 					const { agent } = await this.agentPublishService.publishAgent(
 						agentId,
 						projectId,
@@ -756,6 +903,10 @@ export class AgentsBuilderToolsService {
 						agentId,
 						activeVersionId: agent.activeVersionId,
 						versionId: agent.versionId,
+						...(beforeActiveVersionId === agent.activeVersionId &&
+						beforeVersionId === agent.versionId
+							? { changed: false }
+							: {}),
 					};
 				} catch (e) {
 					return {
@@ -767,76 +918,30 @@ export class AgentsBuilderToolsService {
 			.build();
 	}
 
-	private buildListSubAgentsTool(projectId: string, agentId: string) {
-		return new Tool(BUILDER_TOOLS.LIST_SUB_AGENTS)
-			.description(
-				'List agents in the same project that can be added to the target agent as subagents. ' +
-					'Excludes the target agent itself. Use before asking the user which subagents to add. ' +
-					'Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
-					'write parent-owned routing guidance into `subAgents.agents[].useWhen`; ask a follow-up first when it is unclear when that parent should use the subagent.',
-			)
-			.input(z.object({}))
-			.handler(async () => {
-				const agents = await this.agentsService.findByProjectId(projectId);
-				return {
-					agents: agents
-						.filter((agent) => agent.id !== agentId)
-						.map((agent) => ({
-							agentId: agent.id,
-							name: agent.name,
-						})),
-				};
-			})
-			.build();
-	}
-
-	private buildListIntegrationTypesTool() {
-		return new Tool(BUILDER_TOOLS.LIST_INTEGRATION_TYPES)
-			.description(
-				"List integration types that can be added to the agent's `integrations` array. " +
-					'Returns every available chat platform with the list of ' +
-					'credential types it supports (`credentialTypes: string[]`) and builder guidance ' +
-					'(`capabilities`, `useIntegrationWhen`, `useNodeToolWhen`). ' +
-					'Use that guidance to decide whether the user needs a chat integration or a node tool. ' +
-					'For a chat integration, pass the selected integration `type` to `configure_channel`; ' +
-					'never use `ask_credential` for chat-channel credentials.',
-			)
-			.input(z.object({}))
-			.handler(async () => this.agentIntegrationPersistenceService.listChatIntegrations())
-			.build();
-	}
-
 	private buildPatchConfigTool(agentId: string, projectId: string, user: User) {
 		return new Tool(BUILDER_TOOLS.PATCH_CONFIG)
 			.description(
 				'Apply RFC 6902 JSON Patch operations to the current agent configuration. ' +
-					'Pass an array of patch operations as a JSON string. ' +
-					'Requires baseConfigHash from the immediately preceding read_config result — never from a prior ' +
-					'write_config/patch_config success or from a stale response. ' +
+					'Pass the patch operations as an array of objects, not as a JSON string. ' +
+					BASE_CONFIG_HASH_RULE +
 					'Supported ops: add, remove, replace, move, copy, test. ' +
-					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
-					'read_config again before any later inspection or mutation — or ' +
-					'{ ok: false, stage, errors } on failure. ' +
-					'stage is "locked", "parse", "stale", "patch", or "schema". On stage: "stale", call read_config and retry ' +
-					'once using its fresh config and configHash. On stage: "locked", stop and tell the user to close ' +
+					CONFIG_WRITE_RESULT_RULE +
+					'stage is "locked", "parse", "stale", "patch", or "schema". On stage: "locked", stop and tell the user to close ' +
 					'their editing session in the n8n builder.',
 			)
 			.input(
 				z.object({
-					operations: z.string().describe('RFC 6902 JSON Patch operations array as a JSON string'),
-					baseConfigHash: z
-						.string()
-						.nullable()
-						.describe(
-							'configHash from the immediately preceding read_config result; null only if no config exists',
-						),
+					operations: z
+						.preprocess(parseJsonStringInput, z.array(jsonPatchOperationSchema))
+						.describe('RFC 6902 JSON Patch operations'),
+					baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
 				}),
 			)
 			.handler(
 				async ({
 					operations,
 					baseConfigHash,
-				}: { operations: string; baseConfigHash: string | null }) =>
+				}: { operations: unknown; baseConfigHash: string | null }) =>
 					await this.patchBuilderConfig(agentId, projectId, user, operations, baseConfigHash),
 			)
 			.build();
@@ -845,52 +950,29 @@ export class AgentsBuilderToolsService {
 	private buildWriteConfigTool(agentId: string, projectId: string, user: User) {
 		return new Tool(BUILDER_TOOLS.WRITE_CONFIG)
 			.description(
-				'Create or replace the agent configuration by writing a complete JSON string. ' +
-					'Requires baseConfigHash from the immediately preceding read_config result — never from a prior ' +
-					'write_config/patch_config success or from a stale response. ' +
-					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
-					'read_config again before any later inspection or mutation — or ' +
-					'{ ok: false, stage, errors } with path, message, expected, received fields on failure. ' +
-					'On stage: "stale", call read_config and retry once using its fresh config and configHash.',
+				'Create or update the agent configuration. Pass the config as an object, not as a JSON string. ' +
+					'Send only the top-level fields you set or change: every top-level field you omit ' +
+					'(including model and credential) keeps its stored value, and a field you send replaces ' +
+					'the stored field whole. A fresh agent with no stored config needs name, model, and instructions. ' +
+					BASE_CONFIG_HASH_RULE +
+					CONFIG_WRITE_RESULT_RULE +
+					'Failure errors carry path, message, expected, and received fields.',
 			)
 			.input(
-				z.object({
-					json: z.string().describe('Complete agent configuration as a JSON string'),
-					baseConfigHash: z
-						.string()
-						.nullable()
-						.describe(
-							'configHash from the immediately preceding read_config result; null only if no config exists',
-						),
-				}),
+				z.preprocess(
+					renameLegacyWriteConfigKey,
+					z.object({
+						config: z
+							.preprocess(parseJsonStringInput, z.record(z.unknown()))
+							.describe('Agent configuration object with the top-level fields to set'),
+						baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
+					}),
+				),
 			)
 			.handler(
-				async ({ json, baseConfigHash }: { json: string; baseConfigHash: string | null }) =>
-					await this.writeBuilderConfig(agentId, projectId, user, json, baseConfigHash),
+				async ({ config, baseConfigHash }: { config: unknown; baseConfigHash: string | null }) =>
+					await this.writeBuilderConfig(agentId, projectId, user, config, baseConfigHash),
 			)
-			.build();
-	}
-
-	private buildReadConfigTool(agentId: string, projectId: string) {
-		return new Tool(BUILDER_TOOLS.READ_CONFIG)
-			.description(
-				'Read the latest persisted agent configuration and its freshness token. ' +
-					'Returns { ok: true, config, configHash }. This is the only tool that returns the full config — ' +
-					'write_config, patch_config, and stale responses never echo it back. ' +
-					'Call this before every write_config or patch_config and use configHash as baseConfigHash.',
-			)
-			.input(z.object({}))
-			.handler(async () => {
-				try {
-					const snapshot = await this.getConfigSnapshot(agentId, projectId);
-					return { ok: true, ...snapshot };
-				} catch (e) {
-					return {
-						ok: false,
-						errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
-					};
-				}
-			})
 			.build();
 	}
 
@@ -902,24 +984,21 @@ export class AgentsBuilderToolsService {
 	): BuiltTool[] {
 		const buildCustomToolTool = this.buildCustomToolTool(agentId, projectId, user);
 		const createSkillsTool = this.buildCreateSkillsTool(agentId, projectId, user);
-		const readSkillTool = this.buildReadSkillTool(agentId, projectId);
-		const listSkillsTool = this.buildListSkillsTool(agentId, projectId);
 		const updateSkillTool = this.buildUpdateSkillTool(agentId, projectId, user);
-		const listTasksTool = this.buildListTasksTool(agentId, projectId);
 		const updateTaskTool = this.buildUpdateTaskTool(agentId, projectId, user);
 		const createTasksTool = this.buildCreateTasksTool(agentId, projectId, user);
-		const listWorkflowsTool = this.buildListWorkflowsTool(user, projectId);
 
 		return [
-			buildCustomToolTool,
-			createSkillsTool,
-			listSkillsTool,
-			readSkillTool,
+			createAgentContextTool({
+				reader: this.agentContextAdapter.createReader(user, projectId),
+				resolveDefaultAgentId: async () => agentId,
+				logger: this.logger,
+			}),
+			this.withConfigMutationMarker(buildCustomToolTool, agentId),
+			this.withConfigMutationMarker(createSkillsTool, agentId),
 			this.withConfigMutationMarker(updateSkillTool, agentId),
 			this.withConfigMutationMarker(createTasksTool, agentId),
-			listTasksTool,
 			this.withConfigMutationMarker(updateTaskTool, agentId),
-			listWorkflowsTool,
 			buildGetResourceLocatorOptionsTool({
 				dynamicNodeParametersService: this.dynamicNodeParametersService,
 				nodeTypes: this.nodeTypes,
@@ -935,31 +1014,6 @@ export class AgentsBuilderToolsService {
 		];
 	}
 
-	private buildListWorkflowsTool(user: User, projectId: string) {
-		return new Tool(BUILDER_TOOLS.LIST_WORKFLOWS)
-			.description(
-				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
-					`Only returns workflows that start with a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger. ` +
-					'The published agent cannot call a workflow with `published: false` until the user publishes it. ' +
-					'Pass `searchTerm` to narrow by workflow name; ' +
-					'omitting it returns the 10 most recently updated attachable workflows.',
-			)
-			.input(
-				z.object({
-					searchTerm: z
-						.string()
-						.optional()
-						.describe('Optional workflow-name search term. Omit to return the first 10 results.'),
-				}),
-			)
-			.handler(async ({ searchTerm }: { searchTerm?: string }) => {
-				return {
-					workflows: await this.attachableWorkflowsService.list(user, projectId, searchTerm),
-				};
-			})
-			.build();
-	}
-
 	private buildCreateTasksTool(agentId: string, projectId: string, user: User) {
 		return new Tool(BUILDER_TOOLS.CREATE_TASKS)
 			.description(
@@ -969,8 +1023,10 @@ export class AgentsBuilderToolsService {
 					'objective field carries its own structured template. The whole batch is all-or-nothing: an ' +
 					'invalid cron or objective rejects every task in the call. This adds a `{ type: "task", id, ' +
 					'enabled }` ref per task to the agent config (config.tasks) and each task starts running once ' +
-					'the agent is (re)published via `publish_agent`. Returns { ok: true, configMutated: true, agentId, tasks: [{ id, name, enabled }, ...] } (same ' +
-					'order as input, objectives and crons are not echoed back) or { ok: false, errors }.',
+					'the agent is (re)published via `publish_agent`. Returns { ok: true, configMutated: true, agentId, ' +
+					'configHash, tasks: [{ id, name, enabled }, ...] } (same order as input, objectives and crons are ' +
+					'not echoed back) or { ok: false, errors }. Use the returned configHash as baseConfigHash for your ' +
+					'next config write.',
 			)
 			.systemInstruction(
 				'Never create a task with a vague, broad, or placeholder objective, an objective missing any ' +
@@ -1041,7 +1097,8 @@ export class AgentsBuilderToolsService {
 
 					return {
 						ok: true,
-						tasks: created.map(({ id, name }) => ({ id, name, enabled: true as const })),
+						configHash: created.configHash,
+						tasks: created.tasks.map(({ id, name }) => ({ id, name, enabled: true as const })),
 					};
 				},
 			)
@@ -1060,51 +1117,17 @@ export class AgentsBuilderToolsService {
 				const editorLock = await this.getEditorLockFailure(agentId);
 				if (editorLock) return editorLock;
 				try {
-					const updated = await this.agentTaskService.update(agentId, projectId, taskId, updates, {
-						user,
-						modifiedBy: 'builder',
-					});
-					return { ok: true, id: updated.id, name: updated.name };
-				} catch (e) {
-					return {
-						ok: false,
-						errors: [{ message: e instanceof Error ? e.message : String(e) }],
-					};
-				}
-			})
-			.build();
-	}
-
-	private buildListTasksTool(agentId: string, projectId: string) {
-		return new Tool(BUILDER_TOOLS.LIST_TASKS)
-			.description(
-				'List the target agent scheduled tasks, including each persisted body and whether its ' +
-					'current config reference is enabled. Use this to identify a task before updating it. Returns ' +
-					'{ ok: true, tasks: [{ id, name, objective, cronExpression, timezone, enabled }] } or ' +
-					'{ ok: false, errors }.',
-			)
-			.input(z.object({}).strict())
-			.handler(async () => {
-				try {
-					const agent = await this.agentsService.findById(agentId, projectId);
-					if (!agent) throw new Error('Agent not found');
-
-					const tasks = await this.agentTaskService.list(agentId);
-					const enabledByTaskId = new Map(
-						(composeJsonConfig(agent)?.tasks ?? []).map((task) => [task.id, task.enabled]),
+					const { task, changed } = await this.agentTaskService.updateWithChange(
+						agentId,
+						projectId,
+						taskId,
+						updates,
+						{
+							user,
+							modifiedBy: 'builder',
+						},
 					);
-					return {
-						ok: true,
-						tasks: tasks.map(({ id, name, objective, cronExpression, timezone }) => ({
-							id,
-							name,
-							objective,
-							cronExpression,
-							// Null means the task runs on the instance timezone.
-							timezone,
-							enabled: enabledByTaskId.get(id) ?? false,
-						})),
-					};
+					return { ok: true, id: task.id, name: task.name, ...(changed ? {} : { changed }) };
 				} catch (e) {
 					return {
 						ok: false,
@@ -1119,17 +1142,20 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.UPDATE_SKILL)
 			.description(
 				'Update selected fields of an existing target-agent skill in place, preserving its id and ' +
-					'agent config reference. Requires baseSkillHash from the immediately preceding read_skill ' +
-					'result. Pass null for allowedTools to remove the tool restriction, or null ' +
-					'for references to remove all references; empty arrays are invalid. Returns ' +
-					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. On a stale ' +
-					'skill error, call read_skill and retry once with its fresh skillHash.',
+					'agent config reference. Requires baseSkillHash from the immediately preceding agent-context with type "skill" ' +
+					'result. To change part of the body, pass instructionEdits with oldText/newText pairs ' +
+					'instead of rewriting instructions. Pass null for allowedTools to remove the tool restriction, ' +
+					'or null for references to remove all references; empty arrays are invalid. Returns ' +
+					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. A failed edit ' +
+					'saves nothing: fix oldText so it matches exactly one place and retry with the same ' +
+					'baseSkillHash. On a stale skill error, ' +
+					'call agent-context with type "skill" and retry once with its fresh skillHash.',
 			)
 			.input(updateSkillInputSchema)
 			.handler(async ({ skillId, baseSkillHash, updates }: UpdateSkillInput) => {
 				const editorLock = await this.getEditorLockFailure(agentId);
 				if (editorLock) return editorLock;
-				const { allowedTools, references, ...requiredUpdates } = updates;
+				const { allowedTools, references, instructionEdits, ...requiredUpdates } = updates;
 				const normalizedUpdates = {
 					...requiredUpdates,
 					...(allowedTools !== undefined ? { allowedTools: allowedTools ?? undefined } : {}),
@@ -1144,91 +1170,19 @@ export class AgentsBuilderToolsService {
 						normalizedUpdates,
 						{ user, modifiedBy: 'builder' },
 						baseSkillHash,
+						instructionEdits,
 					);
-					return { ok: true, id: updated.id, name: updated.skill.name };
+					return {
+						ok: true,
+						id: updated.id,
+						name: updated.skill.name,
+						...(updated.skillHash === baseSkillHash ? { changed: false } : {}),
+					};
 				} catch (e) {
 					const message = e instanceof Error ? e.message : String(e);
 					return {
 						ok: false,
 						errors: [{ message: e instanceof ConflictError ? STALE_SKILL_ERROR_MESSAGE : message }],
-					};
-				}
-			})
-			.build();
-	}
-
-	private buildListSkillsTool(agentId: string, projectId: string) {
-		return new Tool(BUILDER_TOOLS.LIST_SKILLS)
-			.description(
-				'List lightweight metadata for persisted target-agent skills. Use this to identify which ' +
-					'existing skill owns a capability before reading or creating a skill. Returns ' +
-					'{ ok: true, skills: [{ id, name, description }] } or { ok: false, errors }.',
-			)
-			.input(z.object({}).strict())
-			.handler(async () => {
-				try {
-					const skills = await this.agentSkillsService.listSkills(agentId, projectId);
-					return {
-						ok: true,
-						skills: Object.entries(skills).map(([id, skill]) => ({
-							id,
-							name: skill.name,
-							description: skill.description,
-						})),
-					};
-				} catch (e) {
-					return {
-						ok: false,
-						errors: [{ message: e instanceof Error ? e.message : String(e) }],
-					};
-				}
-			})
-			.build();
-	}
-
-	private buildReadSkillTool(agentId: string, projectId: string) {
-		return new Tool(BUILDER_TOOLS.READ_SKILL)
-			.description(
-				'Read an existing target-agent skill by id. The response includes its instructions, but ' +
-					'references are returned as { path, characterCount } metadata by default to keep context small. ' +
-					'Pass only the referencePaths whose content you need. Returns { ok: true, id, skill, skillHash } or ' +
-					'{ ok: false, errors }. Call this before every update_skill and use skillHash as baseSkillHash.',
-			)
-			.input(readSkillInputSchema)
-			.handler(async ({ skillId, referencePaths = [] }: ReadSkillInput) => {
-				try {
-					const skill = await this.agentSkillsService.getSkill(agentId, projectId, skillId);
-					const skillHash = getAgentSkillHash(skill);
-					const { references, ...body } = skill;
-					const requestedPaths = new Set(referencePaths);
-					const knownPaths = new Set(references?.map((reference) => reference.path) ?? []);
-					const missingPaths = referencePaths.filter((path) => !knownPaths.has(path));
-					if (missingPaths.length > 0) {
-						return {
-							ok: false,
-							errors: [
-								{
-									message: `Reference path${missingPaths.length === 1 ? '' : 's'} not found: ${missingPaths.join(', ')}`,
-								},
-							],
-						};
-					}
-
-					const visibleReferences = references?.map((reference) => ({
-						path: reference.path,
-						characterCount: reference.content.length,
-						...(requestedPaths.has(reference.path) ? { content: reference.content } : {}),
-					}));
-					return {
-						ok: true,
-						id: skillId,
-						skillHash,
-						skill: { ...body, ...(visibleReferences ? { references: visibleReferences } : {}) },
-					};
-				} catch (e) {
-					return {
-						ok: false,
-						errors: [{ message: e instanceof Error ? e.message : String(e) }],
 					};
 				}
 			})
@@ -1242,10 +1196,11 @@ export class AgentsBuilderToolsService {
 					'single call. Pass every skill you currently know how to write in one `skills` array — do ' +
 					"not spread multiple fully-specified skills across separate calls; each skill's instructions " +
 					'field carries its own structured template. The whole batch is all-or-nothing: an invalid or ' +
-					'duplicate-named skill rejects every skill in the call. This does NOT attach the skills to the ' +
-					'agent config; follow up with read_config and patch_config (or write_config) to add a ' +
-					'`{ type: "skill", id }` entry per skill to `skills`. Returns { ok: true, skills: [{ id, name }, ' +
-					'...] } (same order as input, bodies are not echoed back) or { ok: false, errors }.',
+					'duplicate-named skill rejects every skill in the call. It also attaches a `{ type: "skill", id }` ' +
+					'ref per skill to the agent config (config.skills), so do not patch them in yourself; the agent ' +
+					'config must already exist. Returns { ok: true, configMutated: true, agentId, configHash, skills: ' +
+					'[{ id, name }, ...] } (same order as input, bodies are not echoed back) or { ok: false, errors }. ' +
+					'Use the returned configHash as baseConfigHash for your next config write.',
 			)
 			.systemInstruction(
 				'Never create a vague or placeholder skill. The description field is the routing contract the ' +
@@ -1275,13 +1230,16 @@ export class AgentsBuilderToolsService {
 				const editorLock = await this.getEditorLockFailure(agentId);
 				if (editorLock) return editorLock;
 				try {
-					const created = await this.agentSkillsService.createSkills(agentId, projectId, skills, {
-						user,
-						modifiedBy: 'builder',
-					});
+					const created = await this.agentSkillsService.createAndAttachSkills(
+						agentId,
+						projectId,
+						skills,
+						{ user, modifiedBy: 'builder' },
+					);
 					return {
 						ok: true,
-						skills: created.map(({ id, skill }) => ({ id, name: skill.name })),
+						configHash: created.configHash,
+						skills: created.skills.map(({ id, skill }) => ({ id, name: skill.name })),
 					};
 				} catch (e) {
 					return {
@@ -1324,7 +1282,7 @@ export class AgentsBuilderToolsService {
 						descriptor,
 						{ user, modifiedBy: 'builder' },
 					);
-					return { ok: true, id: built.id, name: descriptor.name };
+					return { ok: true, id: built.id, name: descriptor.name, changed: built.changed };
 				} catch (e) {
 					// Unlike its sibling handlers, this one runs long isolate work, so an
 					// abort can land mid-call and must not be reported as a build error.
@@ -1358,7 +1316,7 @@ export class AgentsBuilderToolsService {
 		serverName: string,
 		credentialId: string,
 		user: User,
-	): Promise<{ applied: boolean }> {
+	): Promise<McpCredentialApplyResult> {
 		// verify_mcp_server still reports a successful verification; the
 		// credential just is not written while a user is editing the agent.
 		if (await this.getEditorLockFailure(agentId)) {
@@ -1397,11 +1355,15 @@ export class AgentsBuilderToolsService {
 			applyNativeWebSearchDefaultOn(zodResult.data),
 		);
 
-		await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults, user, {
-			baseConfigHash: snapshot.configHash,
-			modifiedBy: 'builder',
-		});
-		return { applied: true };
+		const saved = await this.agentConfigService.updateConfig(
+			agentId,
+			projectId,
+			configWithDefaults,
+			user,
+			{ baseConfigHash: snapshot.configHash, modifiedBy: 'builder' },
+		);
+		// Based on a fresh read, so the saved config can hold edits the model has not seen.
+		return { applied: true, config: saved.config, configHash: saved.configHash };
 	}
 
 	private async getFreshConfigSnapshot(
@@ -1412,7 +1374,7 @@ export class AgentsBuilderToolsService {
 		try {
 			const snapshot = await this.getConfigSnapshot(agentId, projectId);
 			if (baseConfigHash !== snapshot.configHash) {
-				return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR] };
+				return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR], ...snapshot };
 			}
 			return { ok: true, snapshot };
 		} catch (e) {
@@ -1452,18 +1414,29 @@ export class AgentsBuilderToolsService {
 		user: User,
 		config: AgentJsonConfig,
 		baseConfigHash: string | null,
-	): Promise<{ ok: true } | BuilderConfigFailure> {
+		submitted: unknown,
+		clearOmittedOptionalFields = false,
+	): Promise<BuilderConfigSuccess | BuilderConfigFailure> {
 		try {
-			await this.agentConfigService.updateConfig(agentId, projectId, config, user, {
+			const saved = await this.agentConfigService.updateConfig(agentId, projectId, config, user, {
 				baseConfigHash,
+				clearOmittedOptionalFields,
 				modifiedBy: 'builder',
 			});
-			return { ok: true };
+			return {
+				ok: true,
+				configHash: saved.configHash,
+				...(isSameAgentConfig(saved.config, submitted) ? {} : { config: saved.config }),
+			};
 		} catch (e) {
+			const errors = [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }];
+			if (!(e instanceof ConflictError)) return { ok: false, stage: 'schema', errors };
+			const current = await this.getConfigSnapshot(agentId, projectId).catch(() => null);
 			return {
 				ok: false,
-				stage: e instanceof ConflictError ? 'stale' : 'schema',
-				errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+				stage: 'stale',
+				errors: current ? [STALE_CONFIG_ERROR] : errors,
+				...(current ?? {}),
 			};
 		}
 	}
@@ -1472,23 +1445,26 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		user: User,
-		json: string,
+		input: unknown,
 		baseConfigHash: string | null,
 	) {
 		const editorLock = await this.getEditorLockFailure(agentId);
 		if (editorLock) return editorLock;
-		const parsed = tryParseConfigJson(json);
+		const parsed = readStructuredToolInput(input);
 		if (!parsed.ok) return { ok: false, errors: parsed.errors };
 		const fresh = await this.getFreshConfigSnapshot(agentId, projectId, baseConfigHash);
 		if (!fresh.ok) return fresh;
-		const validated = this.validateBuilderConfig(parsed.data, fresh.snapshot.config);
+		const merged = mergeOmittedTopLevelFields(parsed.data, fresh.snapshot.config);
+		const validated = this.validateBuilderConfig(merged, fresh.snapshot.config);
 		if (!validated.ok) return validated;
+		// Compare with the merged config, so kept fields alone do not echo the full config back.
 		return await this.saveBuilderConfig(
 			agentId,
 			projectId,
 			user,
 			validated.config,
 			fresh.snapshot.configHash,
+			merged,
 		);
 	}
 
@@ -1496,12 +1472,12 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		user: User,
-		operations: string,
+		operations: unknown,
 		baseConfigHash: string | null,
 	) {
 		const editorLock = await this.getEditorLockFailure(agentId);
 		if (editorLock) return { ...editorLock, stage: 'locked' };
-		const parsed = tryParseConfigJson(operations);
+		const parsed = readStructuredToolInput(operations);
 		if (!parsed.ok) return { ok: false, stage: 'parse', errors: parsed.errors };
 		const fresh = await this.getFreshConfigSnapshot(agentId, projectId, baseConfigHash);
 		if (!fresh.ok) return fresh;
@@ -1516,12 +1492,15 @@ export class AgentsBuilderToolsService {
 		if (!patched.ok) return patched;
 		const validated = this.validateBuilderConfig(patched.config, fresh.snapshot.config);
 		if (!validated.ok) return { ...validated, stage: 'schema' };
+		// The patch starts from the full stored config, so a missing field was removed by an op.
 		return await this.saveBuilderConfig(
 			agentId,
 			projectId,
 			user,
 			validated.config,
 			fresh.snapshot.configHash,
+			patched.config,
+			true,
 		);
 	}
 
@@ -1549,14 +1528,17 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		user: User,
 		previewPath: string,
+		sessionNote?: string,
 	) {
 		if (result.status === 'session_not_found') {
 			return {
 				status: 'error',
 				code: 'session_not_found',
-				message: 'Session not found.',
+				message:
+					'This test session is no longer available. Call call_agent again without sessionId to start a new test.',
 			};
 		}
+		const note = sessionNote ? { sessionNote } : {};
 		if (result.status === 'agent_misconfigured') {
 			return {
 				status: 'error',
@@ -1565,16 +1547,39 @@ export class AgentsBuilderToolsService {
 				missing: result.missing,
 			};
 		}
-		if (result.status === 'completed') return result;
+		// A run that stopped on the iteration cap did not finish its work. Without
+		// this the builder reads `completed` plus apologetic prose and retries.
+		if (result.status === 'completed' && result.maxIterations) {
+			return {
+				status: 'error',
+				code: 'max_iterations',
+				message:
+					'The agent stopped on its iteration cap before it answered. It did not complete the task. ' +
+					'A repeat of the same test gives the same result. Common causes: a tool that returns too much data, ' +
+					'so the agent re-queries it; instructions that loop; or a task that needs more steps than the cap allows. ' +
+					'Report this to the user and ask before you change the agent.',
+				sessionId: result.sessionId,
+				response: result.response,
+				...(result.executionId ? { executionId: result.executionId } : {}),
+				...note,
+			};
+		}
+		if (result.status === 'completed') return { ...result, ...note };
 
 		const approvals = collectStandardApprovals(result);
 		const firstApproval = approvals?.[0];
 		if (firstApproval) {
 			const { continuation, ...approval } = firstApproval;
-			return await ctx.suspend(approval, { continuation });
+			// Keep the note across the approval, so the resumed result still has it.
+			return await ctx.suspend(approval, {
+				continuation: sessionNote ? { run: continuation, sessionNote } : continuation,
+			});
 		}
 
-		return await this.cancelUnsupportedDraftTest(result, agentId, user, previewPath);
+		return {
+			...(await this.cancelUnsupportedDraftTest(result, agentId, user, previewPath)),
+			...note,
+		};
 	}
 
 	private async cancelUnsupportedDraftTest(

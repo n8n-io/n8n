@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error';
+import { ResponseError } from '@n8n/errors';
 
 /**
  * A community package requires a node-authoring API version this runtime does
@@ -9,9 +9,9 @@ export class IncompatibleNodesApiVersionError extends ResponseError {
 		message: string,
 		readonly meta: {
 			/** API version the package requires, or `null` if the declared value is malformed. */
-			requiredNodesApiVersion: number | null;
+			requiredNodesApiVersion: string | null;
 			/** Node API version this runtime supports. */
-			supportedNodesApiVersion: number;
+			supportedNodesApiVersion: string;
 		},
 		cause?: unknown,
 	) {

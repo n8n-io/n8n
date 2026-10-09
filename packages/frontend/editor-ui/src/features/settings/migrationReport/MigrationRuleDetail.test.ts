@@ -1,24 +1,56 @@
 import { createTestingPinia } from '@pinia/testing';
-import { screen, waitFor } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
+import * as usersApi from '@n8n/rest-api-client/api/users';
 import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import MigrationRuleDetail from './MigrationRuleDetail.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
-import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import type { BreakingChangeRuleDetailResult } from '@n8n/api-types';
 
 vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	getReportForRule: vi.fn(),
 	migrateWorkflowForRule: vi.fn(),
+	updateFindingStatus: vi.fn(),
+	assignWorkflowOwner: vi.fn(),
+	unassignWorkflowOwner: vi.fn(),
+}));
+vi.mock('@n8n/rest-api-client/api/users', () => ({
+	getUsers: vi.fn(),
+}));
+
+const grace = {
+	id: 'user-2',
+	firstName: 'Grace',
+	lastName: 'Hopper',
+	email: 'grace@example.com',
+};
+
+const { showError, resolveRoute } = vi.hoisted(() => ({
+	showError: vi.fn(),
+	resolveRoute: vi.fn(() => ({ href: '/workflow/workflow-1' })),
+}));
+
+vi.mock('@n8n/composables/useToast', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useToast: () => ({ showError }),
+}));
+
+// The test renderer has no router. The open link needs `resolve` to build the workflow URL.
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useRouter: () => ({ push: vi.fn(), resolve: resolveRoute }),
 }));
 
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+let rbacStore: ReturnType<typeof mockedStore<typeof useRBACStore>>;
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 const mockWorkflowWithIssue = {
@@ -28,6 +60,14 @@ const mockWorkflowWithIssue = {
 	numberOfExecutions: 100,
 	lastUpdatedAt: new Date('2024-01-15'),
 	lastExecutedAt: new Date('2024-01-14'),
+	status: 'open' as const,
+	owner: {
+		id: 'user-1',
+		firstName: 'Ada',
+		lastName: 'Lovelace',
+		email: 'ada@example.com',
+		source: 'suggested' as const,
+	},
 	issues: [
 		{
 			nodeId: 'node-1',
@@ -45,6 +85,7 @@ const mockWorkflowWithMultipleNodes = {
 	active: false,
 	numberOfExecutions: 50,
 	lastUpdatedAt: new Date('2024-01-10'),
+	status: 'open' as const,
 	issues: [
 		{
 			nodeId: 'node-2',
@@ -63,11 +104,11 @@ const mockWorkflowWithMultipleNodes = {
 	],
 };
 
-const mockRuleResult: BreakingChangeWorkflowRuleResult = {
+const mockRuleResult: BreakingChangeRuleDetailResult = {
 	ruleId: 'rule-1',
 	ruleTitle: 'Test Rule',
 	ruleDescription: 'This is a test rule description',
-	ruleSeverity: 'critical',
+	ruleImpact: 'executionsFail',
 	ruleDocumentationUrl: 'https://docs.example.com/rule-1',
 	recommendations: [
 		{
@@ -80,13 +121,13 @@ const mockRuleResult: BreakingChangeWorkflowRuleResult = {
 };
 
 const createMockRuleResult = (
-	overrides: Partial<BreakingChangeWorkflowRuleResult> = {},
-): BreakingChangeWorkflowRuleResult => {
+	overrides: Partial<BreakingChangeRuleDetailResult> = {},
+): BreakingChangeRuleDetailResult => {
 	return {
 		ruleId: 'rule-1',
 		ruleTitle: 'Test Rule',
 		ruleDescription: 'This is a test rule description',
-		ruleSeverity: 'critical',
+		ruleImpact: 'executionsFail',
 		ruleDocumentationUrl: 'https://docs.example.com/rule-1',
 		recommendations: [],
 		migratable: false,
@@ -107,6 +148,9 @@ describe('MigrationRuleDetail', () => {
 			pushRef: 'test-push-ref',
 		};
 		uiStore = mockedStore(useUIStore);
+		rbacStore = mockedStore(useRBACStore);
+		rbacStore.hasScope.mockImplementation((scope) => scope === 'breakingChanges:migrate');
+		vi.mocked(usersApi.getUsers).mockResolvedValue({ count: 1, items: [grace] });
 
 		vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(mockRuleResult);
 	});
@@ -135,9 +179,9 @@ describe('MigrationRuleDetail', () => {
 			});
 
 			await waitFor(() => {
-				// Title, severity tag, and affected count
+				// Title, impact tag, and affected count
 				expect(screen.getByText('Test Rule')).toBeInTheDocument();
-				expect(screen.getByText('Critical')).toBeInTheDocument();
+				expect(screen.getByText('Executions fail')).toBeInTheDocument();
 				expect(screen.getByText('2 affected')).toBeInTheDocument();
 
 				// Description
@@ -162,13 +206,149 @@ describe('MigrationRuleDetail', () => {
 			});
 
 			await waitFor(() => {
-				expect(screen.getByText('Name')).toBeInTheDocument();
-				expect(screen.getByText('Status', { selector: 'th' })).toBeInTheDocument();
-				expect(screen.getByText('Nodes affected')).toBeInTheDocument();
-				expect(screen.getByText(/Number of executions/)).toBeInTheDocument();
-				expect(screen.getByText(/Last executed/)).toBeInTheDocument();
-				expect(screen.getByText(/Last updated/)).toBeInTheDocument();
+				// The sorted column shows a direction arrow after its title.
+				const titles = screen
+					.getAllByRole('columnheader')
+					.map((th) => th.textContent?.replace(/[↑↓]/g, '').trim());
+				expect(titles).toEqual(['Name', 'Nodes affected', 'Usage', 'Owner', 'State', '']);
 			});
+		});
+	});
+
+	describe('finding state', () => {
+		const getStateSelect = (workflowName: string) => {
+			const row = screen.getByText(workflowName).closest('tr');
+			if (!row) throw new Error('Row not found');
+			return within(row).getByTestId('migration-finding-state-select');
+		};
+
+		// The select trigger marks its disabled state with `data-disabled`.
+		const isStateDisabled = (workflowName: string) =>
+			getStateSelect(workflowName).hasAttribute('data-disabled');
+
+		const selectState = async (workflowName: string, label: string) => {
+			await userEvent.click(getStateSelect(workflowName));
+			const listbox = await screen.findByRole('listbox');
+			await userEvent.click(within(listbox).getByText(label));
+		};
+
+		it('should show the state of each finding', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						mockWorkflowWithIssue,
+						{ ...mockWorkflowWithMultipleNodes, status: 'wont_fix' },
+					],
+				}),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => {
+				expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Open');
+				expect(getStateSelect('Test Workflow 2')).toHaveTextContent("Won't fix");
+			});
+		});
+
+		it('should count only the open findings in the affected badge', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						mockWorkflowWithIssue,
+						{ ...mockWorkflowWithMultipleNodes, status: 'wont_fix' },
+					],
+				}),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			expect(await screen.findByText('1 affected')).toBeInTheDocument();
+		});
+
+		it('should save the new state and update the row and the badge', async () => {
+			vi.mocked(breakingChangesApi.updateFindingStatus).mockResolvedValue();
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await selectState('Test Workflow 1', "Won't fix");
+
+			await waitFor(() => {
+				expect(getStateSelect('Test Workflow 1')).toHaveTextContent("Won't fix");
+				expect(screen.getByText('1 affected')).toBeInTheDocument();
+			});
+			expect(breakingChangesApi.updateFindingStatus).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'rule-1',
+				'workflow-1',
+				'wont_fix',
+			);
+			expect(breakingChangesApi.getReportForRule).toHaveBeenCalledTimes(1);
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('should revert the state and show an error when the save fails', async () => {
+			const error = new Error('Request failed');
+			vi.mocked(breakingChangesApi.updateFindingStatus).mockRejectedValue(error);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await selectState('Test Workflow 1', "Won't fix");
+
+			await waitFor(() => {
+				expect(showError).toHaveBeenCalledWith(error, 'Could not change the state');
+			});
+			expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Open');
+			expect(screen.getByText('2 affected')).toBeInTheDocument();
+		});
+
+		it('should disable the state of a row while its change is saving', async () => {
+			let finishSave = () => {};
+			vi.mocked(breakingChangesApi.updateFindingStatus).mockImplementation(
+				async () => await new Promise<void>((resolve) => (finishSave = resolve)),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await selectState('Test Workflow 1', "Won't fix");
+
+			await waitFor(() => expect(isStateDisabled('Test Workflow 1')).toBe(true));
+			expect(isStateDisabled('Test Workflow 2')).toBe(false);
+
+			finishSave();
+
+			await waitFor(() => expect(isStateDisabled('Test Workflow 1')).toBe(false));
+			expect(breakingChangesApi.updateFindingStatus).toHaveBeenCalledTimes(1);
+		});
+
+		it('should disable every state when the user cannot change states', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			expect(rbacStore.hasScope).toHaveBeenCalledWith('breakingChanges:migrate');
+			expect(isStateDisabled('Test Workflow 1')).toBe(true);
+			expect(isStateDisabled('Test Workflow 2')).toBe(true);
+			expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Open');
+		});
+
+		it('should disable the state of a migrated row and leave it out of the badge', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					migratable: true,
+					affectedWorkflows: [mockWorkflowWithIssue, mockWorkflowWithMultipleNodes],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			const [migrateButton] = screen.getAllByTestId('migrate-workflow-button');
+			await userEvent.click(migrateButton);
+			const { data } = vi.mocked(uiStore.openModalWithData).mock.calls[0][0];
+			(data.eventBus as EventBus).emit('migrated', { workflowId: mockWorkflowWithIssue.id });
+
+			await waitFor(() => expect(isStateDisabled('Test Workflow 1')).toBe(true));
+			expect(isStateDisabled('Test Workflow 2')).toBe(false);
+			expect(screen.getByText('1 affected')).toBeInTheDocument();
 		});
 	});
 
@@ -178,6 +358,18 @@ describe('MigrationRuleDetail', () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
 			await waitFor(() => expect(screen.getByText('Test Rule')).toBeInTheDocument());
+			expect(screen.queryByTestId('migrate-workflow-button')).not.toBeInTheDocument();
+		});
+
+		it('does not render a Migrate button for a user without the migrate scope', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => expect(screen.getByText('Test Workflow 1')).toBeInTheDocument());
 			expect(screen.queryByTestId('migrate-workflow-button')).not.toBeInTheDocument();
 		});
 
@@ -237,7 +429,8 @@ describe('MigrationRuleDetail', () => {
 			});
 		});
 
-		it('should display workflow execution counts', async () => {
+		it('should show the owner name, or Unassigned when the workflow has none', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
 			renderComponent({
 				props: {
 					migrationRuleId: 'rule-1',
@@ -245,12 +438,154 @@ describe('MigrationRuleDetail', () => {
 			});
 
 			await waitFor(() => {
-				expect(screen.getByText('100')).toBeInTheDocument();
-				expect(screen.getByText('50')).toBeInTheDocument();
+				expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+				expect(screen.getByText('Unassigned')).toBeInTheDocument();
 			});
 		});
 
-		it('should show "Never" for workflows never executed', async () => {
+		it('should offer an owner picker per row to a user with the migrate scope, showing the current owner', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => {
+				expect(screen.getAllByTestId('migration-owner-select')).toHaveLength(2);
+			});
+			// No picker was opened yet, so no member search ran.
+			expect(usersApi.getUsers).not.toHaveBeenCalled();
+			expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument();
+		});
+
+		it('should show a plain label for a user without the migrate scope', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+			expect(screen.queryByTestId('migration-owner-select')).not.toBeInTheDocument();
+		});
+
+		it("searches the members of the row's project, assigns the picked user and shows the returned owner", async () => {
+			vi.mocked(breakingChangesApi.assignWorkflowOwner).mockResolvedValue({
+				owner: { ...grace, source: 'assigned' },
+			});
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [{ ...mockWorkflowWithMultipleNodes, homeProjectId: 'project-1' }],
+				}),
+			);
+			const { baseElement } = renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(screen.getByTestId('migration-owner-select')).toBeInTheDocument());
+
+			await userEvent.click(
+				within(screen.getByTestId('migration-owner-select')).getByRole('combobox'),
+			);
+			await waitFor(() => {
+				expect(usersApi.getUsers).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.objectContaining({ filter: { projectId: 'project-1' } }),
+				);
+			});
+			await waitFor(() => expect(screen.getByRole('listbox')).toBeInTheDocument());
+			const option = await waitFor(() => {
+				const found = baseElement.querySelector('#user-select-option-id-user-2');
+				expect(found).not.toBeNull();
+				return found as HTMLElement;
+			});
+			await userEvent.click(option);
+
+			await waitFor(() => {
+				expect(breakingChangesApi.assignWorkflowOwner).toHaveBeenCalledWith(
+					expect.anything(),
+					'workflow-2',
+					'user-2',
+				);
+			});
+			await waitFor(() => {
+				expect(screen.getByDisplayValue('Grace Hopper')).toBeInTheDocument();
+			});
+		});
+
+		it('ignores a member search that answers after a newer one', async () => {
+			const slowSearch = Promise.withResolvers<{ count: number; items: Array<typeof grace> }>();
+			vi.mocked(usersApi.getUsers)
+				.mockReturnValueOnce(slowSearch.promise)
+				.mockResolvedValueOnce({ count: 1, items: [grace] });
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{ ...mockWorkflowWithIssue, owner: undefined, homeProjectId: 'project-1' },
+						{ ...mockWorkflowWithMultipleNodes, homeProjectId: 'project-2' },
+					],
+				}),
+			);
+			const { baseElement } = renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(screen.getAllByTestId('migration-owner-select')).toHaveLength(2));
+			const pickers = screen
+				.getAllByTestId('migration-owner-select')
+				.map((picker) => within(picker).getByRole('combobox'));
+
+			// The first row's search hangs; the second row's answers at once.
+			await userEvent.click(pickers[0]);
+			await userEvent.click(pickers[1]);
+			await waitFor(() => expect(usersApi.getUsers).toHaveBeenCalledTimes(2));
+			await waitFor(() => {
+				expect(baseElement.querySelector('#user-select-option-id-user-2')).not.toBeNull();
+			});
+
+			slowSearch.resolve({
+				count: 1,
+				items: [{ id: 'user-9', firstName: 'Late', lastName: 'Answer', email: 'late@example.com' }],
+			});
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(baseElement.querySelector('#user-select-option-id-user-9')).toBeNull();
+			expect(baseElement.querySelector('#user-select-option-id-user-2')).not.toBeNull();
+		});
+
+		it('clears the assignment and shows the suggestion that comes back', async () => {
+			vi.mocked(breakingChangesApi.unassignWorkflowOwner).mockResolvedValue({
+				owner: { ...grace, source: 'suggested' },
+			});
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => {
+				expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument();
+			});
+
+			// The clear icon replaces the caret while the trigger is hovered and has a value.
+			const picker = screen.getByTestId('migration-owner-select');
+			await userEvent.hover(picker.querySelector('.select-trigger') as HTMLElement);
+			const clearButton = await waitFor(() => {
+				const found = picker.querySelector('.el-select__caret');
+				expect(found).not.toBeNull();
+				return found as HTMLElement;
+			});
+			await userEvent.click(clearButton);
+
+			await waitFor(() => {
+				expect(breakingChangesApi.unassignWorkflowOwner).toHaveBeenCalledWith(
+					expect.anything(),
+					'workflow-1',
+				);
+			});
+			await waitFor(() => {
+				expect(screen.getByDisplayValue('Grace Hopper')).toBeInTheDocument();
+			});
+		});
+
+		it('should fall back to the email when the owner has no name', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							owner: { ...mockWorkflowWithIssue.owner, firstName: null, lastName: null },
+						},
+					],
+				}),
+			);
+
 			renderComponent({
 				props: {
 					migrationRuleId: 'rule-1',
@@ -258,8 +593,77 @@ describe('MigrationRuleDetail', () => {
 			});
 
 			await waitFor(() => {
-				expect(screen.getByText('Never')).toBeInTheDocument();
+				expect(screen.getByText('ada@example.com')).toBeInTheDocument();
 			});
+		});
+
+		it('should show the publish state of each workflow', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => {
+				expect(screen.getByText(/^Published/)).toBeInTheDocument();
+				expect(screen.getByText(/^Not published/)).toBeInTheDocument();
+			});
+		});
+
+		it('should display workflow run counts', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						mockWorkflowWithIssue,
+						{ ...mockWorkflowWithMultipleNodes, numberOfExecutions: 1 },
+					],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => {
+				expect(screen.getByText('100 runs')).toBeInTheDocument();
+				expect(screen.getByText('1 run')).toBeInTheDocument();
+			});
+		});
+
+		it('should show "never run" for workflows never executed', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => {
+				expect(screen.getByText('never run')).toBeInTheDocument();
+			});
+		});
+
+		it('should mark the last run of a workflow without a run in the last 60 days', async () => {
+			const day = 24 * 60 * 60 * 1000;
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{ ...mockWorkflowWithIssue, lastExecutedAt: new Date(Date.now() - 61 * day) },
+						{
+							...mockWorkflowWithMultipleNodes,
+							lastExecutedAt: new Date(Date.now() - 59 * day),
+						},
+					],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const getLastRun = (workflowName: string) => {
+				const row = screen.getByText(workflowName).closest('tr');
+				if (!row) throw new Error('Row not found');
+				return within(row).getByTestId('migration-workflow-last-run');
+			};
+			await waitFor(() => {
+				expect(getLastRun('Test Workflow 1')).toHaveClass('danger');
+				expect(getLastRun('Test Workflow 2')).not.toHaveClass('danger');
+			});
+		});
+
+		it('should not mark a workflow that never ran', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const lastRun = await screen.findByText('never run');
+			expect(lastRun.closest('[data-test-id="migration-workflow-last-run"]')).not.toHaveClass(
+				'danger',
+			);
 		});
 
 		it('should display multiple nodes with comma separation', async () => {
@@ -276,20 +680,17 @@ describe('MigrationRuleDetail', () => {
 		});
 	});
 
-	describe('row interaction', () => {
-		it('should have clickable rows with proper styling', async () => {
-			renderComponent({
-				props: {
-					migrationRuleId: 'rule-1',
-				},
-			});
+	describe('open link', () => {
+		it('should link each row to its workflow in a new tab', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
-			await waitFor(() => {
-				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
-			});
+			const [link] = await screen.findAllByTestId('migration-workflow-open-link');
 
-			const row = screen.getByText('Test Workflow 1').closest('tr');
-			expect(row).toHaveClass('clickableRow');
+			expect(link).toHaveAttribute('href', '/workflow/workflow-1');
+			expect(link).toHaveAttribute('target', '_blank');
+			expect(resolveRoute).toHaveBeenCalledWith(
+				expect.objectContaining({ params: { workflowId: 'workflow-1' } }),
+			);
 		});
 	});
 
@@ -308,15 +709,16 @@ describe('MigrationRuleDetail', () => {
 		});
 	});
 
-	describe('severity display', () => {
+	describe('impact display', () => {
 		it.each([
-			{ severity: 'critical', label: 'Critical' },
-			{ severity: 'medium', label: 'Medium' },
-			{ severity: 'low', label: 'Low' },
-		] as const)('should display $severity severity correctly', async ({ severity, label }) => {
+			{ impact: 'upgradeBlocked', label: 'Upgrade blocked' },
+			{ impact: 'executionsFail', label: 'Executions fail' },
+			{ impact: 'behaviorChanges', label: 'Behavior changes' },
+			{ impact: 'capabilityRemoved', label: 'Capability removed' },
+		] as const)('should display $impact impact correctly', async ({ impact, label }) => {
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({
-					ruleSeverity: severity,
+					ruleImpact: impact,
 					affectedWorkflows: [mockWorkflowWithIssue],
 				}),
 			);
@@ -345,7 +747,41 @@ describe('MigrationRuleDetail', () => {
 				const rows = screen.getAllByRole('row');
 				const firstDataRow = rows[1]; // Skip header row
 				expect(firstDataRow.textContent).toContain('Test Workflow 1');
-				expect(firstDataRow.textContent).toContain('100');
+				expect(firstDataRow.textContent).toContain('100 runs');
+			});
+		});
+
+		it('should sort by the shown owner label in both directions', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							owner: { ...mockWorkflowWithIssue.owner, firstName: 'Zed', lastName: 'Zulu' },
+						},
+						{ ...mockWorkflowWithMultipleNodes, owner: mockWorkflowWithIssue.owner },
+					],
+				}),
+			);
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+			// Default order is by executions, so the Zed Zulu workflow comes first.
+			await waitFor(() => {
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
+			});
+
+			await userEvent.click(screen.getByRole('columnheader', { name: /Owner/ }));
+			await waitFor(() => {
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Ada Lovelace');
+			});
+
+			await userEvent.click(screen.getByRole('columnheader', { name: /Owner/ }));
+			await waitFor(() => {
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Zed Zulu');
 			});
 		});
 	});

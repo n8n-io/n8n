@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import ChatInputBase from './ChatInputBase.vue';
 import {
@@ -84,13 +85,32 @@ describe('ChatInputBase', () => {
 		expect(queryByTestId('instance-ai-stop-button')).not.toBeInTheDocument();
 	});
 
-	it('should show stop button when streaming', () => {
-		const { getByTestId, queryByTestId } = renderComponent({
-			props: makeProps({ isStreaming: true }),
+	it('switches Stop independently of composer tools when requested', async () => {
+		const { getByTestId, queryByTestId, rerender, emitted } = renderComponent({
+			props: makeProps({
+				isStreaming: true,
+				canSubmit: false,
+				showAttach: true,
+				acceptedMimeTypes: 'image/*',
+				showVoice: true,
+			}),
 		});
 
 		expect(getByTestId('instance-ai-stop-button')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-send-button')).not.toBeInTheDocument();
+		expect(getByTestId('chat-input-attach-button')).toBeDisabled();
+		expect(getByTestId('chat-input-voice-button')).toBeDisabled();
+
+		await rerender({ isStreaming: false, showStopButton: true });
+		expect(getByTestId('instance-ai-stop-button')).toBeEnabled();
+		expect(queryByTestId('instance-ai-send-button')).not.toBeInTheDocument();
+		expect(getByTestId('chat-input-attach-button')).toBeEnabled();
+		expect(getByTestId('chat-input-voice-button')).toBeEnabled();
+
+		await rerender({ showStopButton: false, canSubmit: true, modelValue: 'Follow-up' });
+		expect(queryByTestId('instance-ai-stop-button')).not.toBeInTheDocument();
+		getByTestId('instance-ai-send-button').click();
+		expect(emitted().submit).toEqual([[]]);
 	});
 
 	it('should emit submit on Enter keydown', () => {
@@ -154,12 +174,20 @@ describe('ChatInputBase', () => {
 		expect(sendButton.closest('button')?.disabled).toBe(true);
 	});
 
-	it('should show attach button only when showAttach is true', () => {
+	it('shows the attach button when accepted types are set', () => {
 		const { getByTestId } = renderComponent({
-			props: makeProps({ showAttach: true }),
+			props: makeProps({ showAttach: true, acceptedMimeTypes: 'image/*' }),
 		});
 
 		expect(getByTestId('chat-input-attach-button')).toBeInTheDocument();
+	});
+
+	it('hides the attach button when no accepted types are set', () => {
+		const { queryByTestId } = renderComponent({
+			props: makeProps({ showAttach: true }),
+		});
+
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 	});
 
 	it('shows the drop overlay and emits dropped files', async () => {
@@ -192,6 +220,7 @@ describe('ChatInputBase', () => {
 		getByRole('textbox').dispatchEvent(createFileDragEvent('drop', [file]));
 
 		expect(emitted()['files-selected']).toBeFalsy();
+		expect(emitted()['files-rejected']).toEqual([[[file]]]);
 		expect(mockShowError).not.toHaveBeenCalled();
 	});
 
@@ -210,6 +239,22 @@ describe('ChatInputBase', () => {
 		});
 
 		expect(getByTestId('chat-input-voice-button')).toBeInTheDocument();
+	});
+
+	it('explains why dictation is disabled while streaming', async () => {
+		const { getByTestId, getByText, rerender } = renderComponent({
+			props: makeProps({ showVoice: true, isStreaming: true }),
+		});
+		const voiceButton = getByTestId('chat-input-voice-button');
+		expect(voiceButton).toBeDisabled();
+		await fireEvent.pointerMove(voiceButton.parentElement!, { pointerType: 'mouse' });
+		await waitFor(() => expect(getByText('Stop the response to dictate')).toBeVisible());
+
+		await fireEvent.pointerLeave(voiceButton.parentElement!);
+		await rerender({ isStreaming: false });
+		expect(voiceButton).toBeEnabled();
+		await fireEvent.pointerMove(voiceButton.parentElement!, { pointerType: 'mouse' });
+		await waitFor(() => expect(getByText('Dictate')).toBeVisible());
 	});
 
 	it('should expose the native textarea', () => {
@@ -234,7 +279,7 @@ describe('ChatInputBase', () => {
 
 	it('should render custom right actions with built-in controls', () => {
 		const { getByTestId } = renderComponent({
-			props: makeProps({ showAttach: true, showVoice: true }),
+			props: makeProps({ showAttach: true, acceptedMimeTypes: 'image/*', showVoice: true }),
 			slots: {
 				'right-actions': '<button data-test-id="custom-right-action">Mention</button>',
 			},

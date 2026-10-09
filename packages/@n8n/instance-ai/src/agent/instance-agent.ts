@@ -14,7 +14,7 @@ import {
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
-import { hasRuntimeSkills } from '../skills/runtime-skills';
+import { hasRuntimeSkills, warmRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
@@ -115,9 +115,8 @@ export async function createInstanceAgent(
 	// returns per-server connection failures alongside the tools so they travel
 	// with this call (not shared mutable state) — concurrent runs with different
 	// configs can't read each other's failures.
-	const requireMcpToolApproval = context.permissions?.executeMcpTool !== 'always_allow';
 	const { tools: mcpTools, connectionFailures: managerMcpFailures } =
-		await mcpManager.getRegularTools(mcpServers, context.logger, requireMcpToolApproval);
+		await mcpManager.getRegularTools(mcpServers, context.logger, context.permissions);
 	// Map manager-reported connection failures to the generic SDK event type so
 	// the runtime can inject a model-facing note into the orchestrator's system
 	// message. The adapter owns the n8n-specific server config → plain SDK event
@@ -204,13 +203,12 @@ export async function createInstanceAgent(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
 		{
-			webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
-			formBaseUrl: orchestrationContext?.formBaseUrl,
 			computerUseState: context.computerUseState,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 			licenseHints: context.licenseHints,
 			branchReadOnly: context.branchReadOnly,
+			parameterValuesHidden: context.allowSendingParameterValues === false,
 			projectId: context.projectId,
 			// Presence of the service IS the experiment gate — the host only wires it
 			// for flagged-in users on project-bound runs.
@@ -256,6 +254,10 @@ export async function createInstanceAgent(
 	const runtimeSkills = orchestrationContext?.runtimeSkills;
 	if (hasRuntimeSkills(runtimeSkills)) {
 		agent.skills(runtimeSkills);
+		warmRuntimeSkills(runtimeSkills, {
+			logger: orchestrationContext?.logger,
+			tracing: orchestrationContext?.tracing,
+		});
 	}
 	if (telemetry) {
 		agent.telemetry(telemetry);

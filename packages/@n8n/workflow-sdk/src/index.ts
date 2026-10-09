@@ -5,6 +5,7 @@ export type {
 	WorkflowBuilderStatic,
 	WorkflowBuilderOptions,
 	ToJSONOptions,
+	NodePorts,
 	WorkflowSettings,
 	WorkflowJSON,
 	NodeJSON,
@@ -176,6 +177,11 @@ export {
 	type ValidateWorkflowBuilderOptions,
 	type ValidateWorkflowBuilderResult,
 	type CollectedValidationIssue,
+	connectRequiredSubnodeInputs,
+	describeAddedSubnodeConnection,
+	type AddedSubnodeConnection,
+	type ClearedSubnodeInput,
+	type WorkflowForSubnodeWiring,
 } from './validation';
 
 // Code-node source lint — the host re-runs the Python rules with the executing
@@ -262,4 +268,9 @@ export {
 	DEFAULT_NODE_SIZE,
 	NODE_X_SPACING,
 	NODE_Y_SPACING,
+	GROUP_PADDING_X,
+	GROUP_PADDING_Y_TOP,
+	GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED,
 } from './workflow-builder/constants';
+export { getWorkflowNodeDimensions, resolveNodePorts } from './workflow-builder/layout-utils';

@@ -1,4 +1,6 @@
+import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
@@ -16,6 +18,7 @@ import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type {
 	ExecutionStatus,
+	FeatureFlags,
 	INode,
 	INodesGraphResult,
 	ITelemetryTrackProperties,
@@ -23,6 +26,7 @@ import type {
 	JsonValue,
 } from 'n8n-workflow';
 import {
+	getEmptyGroupAnchor,
 	hasCredentialChanges,
 	hasNonPositionalChanges,
 	TelemetryHelpers,
@@ -34,7 +38,6 @@ import semver from 'semver';
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
@@ -55,6 +58,8 @@ import type {
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
+import { OwnershipService } from '@/services/ownership.service';
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
@@ -72,6 +77,16 @@ function countNodesWithCustomTelemetryTags(nodes: INode[]): number {
 
 function countNodeCustomTelemetryTags(nodes: INode[]): number {
 	return nodes.reduce((total, node) => total + (node.customTelemetryTags?.tag?.length ?? 0), 0);
+}
+
+// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+function countPublishedEmptyGroups(workflow: IWorkflowDb): number {
+	const publishedVersion = workflow.activeVersion;
+	if (!publishedVersion?.nodeGroups || !publishedVersion.nodes) return 0;
+
+	return publishedVersion.nodeGroups.filter(
+		(group) => getEmptyGroupAnchor(group, publishedVersion.nodes) !== undefined,
+	).length;
 }
 
 /**
@@ -188,6 +203,9 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly dbConnection: DbConnection,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		private readonly postHogClient: PostHogClient,
+		private readonly ownershipService: OwnershipService,
 	) {
 		super(eventService);
 	}
@@ -303,6 +321,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 			'history-compacted': (event) => this.historyCompacted(event),
+			'migration-report-viewed': (event) => this.migrationReportViewed(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 			'execution-data-revealed': (event) => this.executionDataRevealed(event),
 			'workflow-review-requested': (event) => this.workflowReviewRequested(event),
@@ -1273,14 +1292,28 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['workflow-activated']) {
 		const { privateCredentialsCount, privateCredentialTypes } =
 			await this.getPrivateCredentialUsage(workflow);
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		const featureFlagUser =
+			'createdAt' in user && user.createdAt instanceof Date
+				? { id: user.id, createdAt: user.createdAt }
+				: undefined;
+		const featureFlags = featureFlagUser
+			? await this.postHogClient.getFeatureFlags(featureFlagUser).catch((): FeatureFlags => ({}))
+			: {};
+		const emptyGroupCount =
+			featureFlags[EMPTY_CANVAS_GROUPS_FLAG] === true
+				? countPublishedEmptyGroups(workflow)
+				: undefined;
 
-		this.telemetry.track('User activated workflow', {
+		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_ACTIVATED_WORKFLOW, {
 			user_id: user.id,
 			workflow_id: workflowId,
 			public_api: publicApi,
 			source,
 			private_credentials_count: privateCredentialsCount,
 			private_credential_types: privateCredentialTypes,
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			...(emptyGroupCount !== undefined ? { empty_group_count: emptyGroupCount } : {}),
 		});
 	}
 
@@ -1343,6 +1376,7 @@ export class TelemetryEventRelay extends EventRelay {
 			credentials_required: counts.credentials.requirements,
 			data_tables_matched: counts.dataTables.matched,
 			data_tables_created: counts.dataTables.created,
+			data_tables_updated: counts.dataTables.updated,
 			data_tables_required: counts.dataTables.requirements,
 			variables_matched: counts.variables.matched,
 			variables_missing: counts.variables.missing,
@@ -1367,6 +1401,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
+			agent_count: counts.agents,
 			workflow_count: counts.workflows,
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
@@ -1381,6 +1416,7 @@ export class TelemetryEventRelay extends EventRelay {
 	private packageExportFailed({
 		user,
 		reason,
+		agentIds,
 		workflowIds,
 		folderIds,
 		projectIds,
@@ -1388,6 +1424,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User package export failed', {
 			user_id: user.id,
 			reason,
+			agent_count: agentIds?.length ?? 0,
 			workflow_count: workflowIds?.length ?? 0,
 			folder_count: folderIds?.length ?? 0,
 			project_count: projectIds?.length ?? 0,
@@ -1559,6 +1596,7 @@ export class TelemetryEventRelay extends EventRelay {
 			runData.status = 'canceled';
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		telemetryProperties.success = !!runData?.finished;
 
 		// const executionStatus: ExecutionStatus = runData?.status ?? 'unknown';
@@ -1735,6 +1773,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
 		const dbVersion = await this.dbConnection.getDbVersion();
@@ -1779,6 +1818,7 @@ export class TelemetryEventRelay extends EventRelay {
 					this.globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
 			},
 			n8n_deployment_type: this.globalConfig.deployment.type,
+			n8n_deployment_artifact: this.globalConfig.deployment.artifact || undefined,
 			n8n_binary_data_mode: this.binaryDataConfig.mode,
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
@@ -1815,10 +1855,37 @@ export class TelemetryEventRelay extends EventRelay {
 			},
 		};
 
-		const versionParts = getSemanticVersioning(N8N_VERSION);
+		const firstWorkflow = await this.workflowRepository.findOne({
+			select: ['createdAt'],
+			order: { createdAt: 'ASC' },
+			where: {},
+		});
 
-		// Instance information available at group level on PostHog & Rudderstack
-		const telemetryInstanceInfo = {
+		const instanceGroupFacts = await this.getInstanceGroupFacts();
+
+		// Inject instance info on telemetry instance group. PostHog refuses a group
+		// update with no real person behind it, so it gets the owner once setup is done.
+		this.telemetry.groupIdentify({
+			traits: instanceGroupFacts,
+			postHog: { userId: await this.getInstanceOwnerId(), traits: instanceGroupFacts },
+		});
+
+		this.telemetry.identify(info);
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED, {
+			...info,
+			earliest_workflow_created: firstWorkflow?.createdAt,
+			otel,
+			settings_managed_by_env_vars: settingsManagedByEnvVars,
+		});
+	}
+
+	// Instance information available at group level on PostHog & Rudderstack
+	private async getInstanceGroupFacts() {
+		const versionParts = getSemanticVersioning(N8N_VERSION);
+		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
+		const dbVersion = await this.dbConnection.getDbVersion();
+
+		return this.telemetry.sanitizeTelemetryProperties({
 			// Main instance settings
 			n8n_host: this.globalConfig.host,
 			version_cli: N8N_VERSION,
@@ -1828,6 +1895,7 @@ export class TelemetryEventRelay extends EventRelay {
 			release_channel: this.globalConfig.generic.releaseChannel,
 			executions_mode: this.globalConfig.executions.mode,
 			n8n_deployment_type: this.globalConfig.deployment.type,
+			n8n_deployment_artifact: this.globalConfig.deployment.artifact || undefined,
 			db_type: this.globalConfig.database.type,
 			db_version: dbVersion,
 
@@ -1859,26 +1927,14 @@ export class TelemetryEventRelay extends EventRelay {
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
 			saml_enabled: authenticationMethod === 'saml',
-		};
-
-		const firstWorkflow = await this.workflowRepository.findOne({
-			select: ['createdAt'],
-			order: { createdAt: 'ASC' },
-			where: {},
 		});
+	}
 
-		// Inject instance info on telemetry instance group
-		this.telemetry.groupIdentify({
-			traits: this.telemetry.sanitizeTelemetryProperties(telemetryInstanceInfo),
-		});
+	/** Owner user ID once setup is complete, `undefined` while only the placeholder owner row exists. */
+	private async getInstanceOwnerId() {
+		if (!(await this.ownershipService.hasInstanceOwner())) return undefined;
 
-		this.telemetry.identify(info);
-		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED, {
-			...info,
-			earliest_workflow_created: firstWorkflow?.createdAt,
-			otel,
-			settings_managed_by_env_vars: settingsManagedByEnvVars,
-		});
+		return (await this.ownershipService.getInstanceOwner()).id;
 	}
 
 	private async getOtelTelemetryInfo() {
@@ -1968,9 +2024,11 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {
-		// Attach owner to instance group on telemetry
+		// Attach owner to instance group on telemetry. PostHog also gets the instance
+		// facts now: the startup update skipped them while no owner existed.
 		this.telemetry.groupIdentify({
 			userId,
+			postHog: { userId, traits: await this.getInstanceGroupFacts() },
 		});
 
 		this.telemetry.track('Owner finished instance setup', { user_id: userId });
@@ -2330,6 +2388,29 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #endregion
 	// #region workflow history compaction
+	private migrationReportViewed({
+		user,
+		targetVersion,
+		refreshed,
+		report,
+	}: RelayEventMap['migration-report-viewed']) {
+		this.telemetry.track(TELEMETRY_EVENT.MIGRATION_REPORT.USER_VIEWED_MIGRATION_REPORT, {
+			user_id: user.id,
+			target_version: targetVersion,
+			refreshed,
+			total_workflows: report.totalWorkflows,
+			affected_workflows: report.totalAffectedWorkflows,
+			// The overview lists only the instance rules that fired.
+			affected_instance_rules: report.report.instanceResults.length,
+			rules: report.report.workflowResults.map((rule) => ({
+				rule_id: rule.ruleId,
+				impact: rule.ruleImpact,
+				affected_workflows: rule.nbAffectedWorkflows,
+			})),
+			synced_at: new Date(report.report.generatedAt).toISOString(),
+		});
+	}
+
 	private historyCompacted({
 		workflowsProcessed,
 		totalVersionsSeen,

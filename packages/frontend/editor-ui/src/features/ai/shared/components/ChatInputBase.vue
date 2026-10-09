@@ -19,11 +19,13 @@ const props = withDefaults(
 		modelValue: string;
 		placeholder?: string;
 		isStreaming: boolean;
+		/** Override the action button separately from the composer busy state. */
+		showStopButton?: boolean;
 		canSubmit: boolean;
 		disabled?: boolean;
 		showVoice?: boolean;
 		showAttach?: boolean;
-		showAttachButton?: boolean;
+		/** Also shows the attach button. Without it, files can still be dropped or pasted. */
 		acceptedMimeTypes?: string;
 		/**
 		 * Base64-encoded size of the files already staged in the composer. Needed
@@ -43,13 +45,13 @@ const props = withDefaults(
 	}>(),
 	{
 		placeholder: undefined,
+		showStopButton: undefined,
 		acceptedMimeTypes: undefined,
 		attachedEncodedBytes: 0,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
 		buttonLabel: undefined,
 		activeRequiresFocus: false,
 		maxLength: undefined,
-		showAttachButton: true,
 	},
 );
 
@@ -59,6 +61,8 @@ const emit = defineEmits<{
 	stop: [];
 	tab: [];
 	'files-selected': [files: File[]];
+	/** Files dropped, pasted or picked whose type `acceptedMimeTypes` does not allow. */
+	'files-rejected': [files: File[]];
 }>();
 
 const i18n = useI18n();
@@ -188,6 +192,8 @@ function handleFiles(files: File[]) {
 	const acceptedByType = files.filter((file) =>
 		isFileAcceptedByAccept(file.name, file.type, props.acceptedMimeTypes ?? ''),
 	);
+	const rejected = files.filter((file) => !acceptedByType.includes(file));
+	if (rejected.length > 0) emit('files-rejected', rejected);
 	const accepted = withinSizeLimit(acceptedByType);
 	if (accepted.length > 0) emit('files-selected', accepted);
 }
@@ -240,6 +246,7 @@ defineExpose({
 		@paste="fileDrop.handlePaste"
 		@keydown.capture="handleKeydown"
 	>
+		<slot name="above" />
 		<div
 			v-if="fileDrop.isDragging.value"
 			:class="$style.dropOverlay"
@@ -262,7 +269,7 @@ defineExpose({
 			ref="inputRef"
 			:model-value="modelValue"
 			:placeholder="placeholder"
-			:streaming="isStreaming"
+			:streaming="showStopButton ?? isStreaming"
 			:disabled="disabled"
 			:submit-disabled="!canSubmit"
 			:button-label="props.buttonLabel"
@@ -287,7 +294,7 @@ defineExpose({
 			<template #right-actions>
 				<slot name="right-actions" />
 				<N8nTooltip
-					v-if="showAttach && showAttachButton"
+					v-if="showAttach && acceptedMimeTypes !== undefined"
 					:content="i18n.baseText('chatInputBase.button.attach')"
 					placement="top"
 				>
@@ -296,13 +303,20 @@ defineExpose({
 						:disabled="disabled || isStreaming"
 						icon="paperclip"
 						icon-size="large"
+						:aria-label="i18n.baseText('chatInputBase.button.attach')"
 						data-test-id="chat-input-attach-button"
 						@click.stop="handleAttach"
 					/>
 				</N8nTooltip>
 				<N8nTooltip
 					v-if="showVoice && speechInput.isSupported"
-					:content="i18n.baseText('chatInputBase.button.dictate')"
+					:content="
+						i18n.baseText(
+							isStreaming
+								? 'chatInputBase.button.dictate.stopResponse'
+								: 'chatInputBase.button.dictate',
+						)
+					"
 					placement="top"
 				>
 					<N8nIconButton
@@ -311,6 +325,7 @@ defineExpose({
 						:icon="speechInput.isListening.value ? 'square' : 'mic'"
 						:class="{ [$style.recording]: speechInput.isListening.value }"
 						icon-size="large"
+						:aria-label="i18n.baseText('chatInputBase.button.dictate')"
 						data-test-id="chat-input-voice-button"
 						@click.stop="handleMic"
 					/>

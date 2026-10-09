@@ -115,7 +115,6 @@ describe('PruningService', () => {
 				mock<ExecutionsConfig>({ pruneData: false }),
 			);
 
-			// @ts-expect-error Private method
 			const scheduleNextHardDeletionSpy = vi.spyOn(pruningService, 'scheduleNextHardDeletion');
 
 			pruningService.startPruning();
@@ -134,7 +133,6 @@ describe('PruningService', () => {
 			);
 
 			const scheduleNextHardDeletionSpy = vi
-				// @ts-expect-error Private method
 				.spyOn(pruningService, 'scheduleNextHardDeletion')
 				.mockImplementation((() => {}) as never);
 

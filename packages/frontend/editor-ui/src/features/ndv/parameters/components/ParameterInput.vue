@@ -1,10 +1,23 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
+import {
+	computed,
+	inject,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	onUpdated,
+	ref,
+	useId,
+	watch,
+} from 'vue';
 import { computedAsync, useDebounceFn, useElementSize } from '@vueuse/core';
 
 import get from 'lodash/get';
 import truncate from 'lodash/truncate';
-import { CompactParameterHintsKey } from '@/app/constants/injectionKeys';
+import {
+	CompactParameterHintsKey,
+	ParameterInputModalContextKey,
+} from '@/app/constants/injectionKeys';
 
 import type { INodeUpdatePropertiesInformation, IUpdateInformation, InputSize } from '@/Interface';
 import type {
@@ -199,6 +212,8 @@ const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 const onToolConfigCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
+const parameterModalContext = inject(ParameterInputModalContextKey, undefined);
+const parameterEditorId = useId();
 
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
@@ -210,6 +225,14 @@ const remoteParameterOptions = ref<INodePropertyOptions[]>([]);
 const remoteParameterOptionsLoading = ref(false);
 const remoteParameterOptionsLoadingIssues = ref<string | null>(null);
 const textEditDialogVisible = ref(false);
+watch(
+	() =>
+		codeEditDialogVisible.value || expressionEditDialogVisible.value || textEditDialogVisible.value,
+	(open) => {
+		if (open) parameterModalContext?.openDialogs.value.add(parameterEditorId);
+		else parameterModalContext?.openDialogs.value.delete(parameterEditorId);
+	},
+);
 const editDialogClosing = ref(false);
 const tempValue = ref('');
 const jsonValidationError = ref<string | null>(null);
@@ -1421,6 +1444,7 @@ defineExpose({
 });
 
 onBeforeUnmount(() => {
+	parameterModalContext?.openDialogs.value.delete(parameterEditorId);
 	valueChangedDebounced.flush();
 	onUpdateTextInputDebounced.flush();
 	props.eventBus.off('optionSelected', optionSelected);
@@ -1682,7 +1706,8 @@ onUpdated(async () => {
 					width="calc(100% - var(--spacing--3xl))"
 					:class="$style.modal"
 					:model-value="codeEditDialogVisible"
-					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+					:append-to="parameterModalContext?.appendTo ?? `#${APP_MODALS_ELEMENT_ID}`"
+					:append-to-body="parameterModalContext?.appendTo === 'body'"
 					:title="`${i18n.baseText('codeEdit.edit')} ${i18n
 						.nodeText(ndvStore?.activeNode?.type)
 						.inputLabelDisplayName(parameter, path)}`"
@@ -2301,10 +2326,6 @@ onUpdated(async () => {
 	}
 }
 
-.el-dropdown {
-	color: var(--color--text--tint-1);
-}
-
 .list-option {
 	margin: 6px 0;
 	white-space: normal;
@@ -2349,10 +2370,6 @@ onUpdated(async () => {
 
 .input-with-opener .el-input__suffix {
 	right: 0;
-}
-
-.el-input--suffix .el-input__inner {
-	padding-right: 0;
 }
 
 .textarea-modal-opener {

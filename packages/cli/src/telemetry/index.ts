@@ -10,7 +10,7 @@ import {
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -28,6 +28,7 @@ import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
 
 type ExecutionTrackDataKey =
 	| 'manual_error'
@@ -70,14 +71,18 @@ interface IApiInvocationsBuffer {
 	[userId: string]: IApiInvocationsBufferEntry;
 }
 
+interface IAgentExecutionCounts {
+	message_count: number;
+	token_count: number;
+	tool_call_count: number;
+}
+
 interface IAgentExecutionCountsBuffer {
-	[bufferKey: string]: {
+	[bufferKey: string]: IAgentExecutionCounts & {
 		agent_id: string;
 		user_id?: string;
 		run_type: AgentRunTelemetryType;
-		message_count: number;
-		token_count: number;
-		tool_call_count: number;
+		counts_by_source: Record<string, IAgentExecutionCounts>;
 	};
 }
 
@@ -99,6 +104,7 @@ interface IAgentSessionMetricsBuffer {
 		turn_status: IAgentTurnFinishedTrackProperties['turn_status'];
 		configuration: IAgentConfigurationTelemetryProperties;
 		sessions: Record<string, IAgentSessionMetrics>;
+		sessions_by_source: Record<string, Record<string, IAgentSessionMetrics>>;
 	};
 }
 
@@ -115,6 +121,9 @@ export class Telemetry {
 	private agentExecutionCountsBuffer: IAgentExecutionCountsBuffer = {};
 
 	private agentSessionMetricsBuffer: IAgentSessionMetricsBuffer = {};
+
+	/** Event names already reported by `warnAboutMissingUserId`, so each one is said once. */
+	private readonly eventsMissingUserId = new Set<string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -339,18 +348,7 @@ export class Telemetry {
 
 	private flushAgentSessionMetrics() {
 		for (const bucket of Object.values(this.agentSessionMetricsBuffer)) {
-			const sessions = Object.values(bucket.sessions);
-			if (sessions.length === 0) continue;
-
-			const latencyMsSum = sessions.reduce((total, session) => total + session.latency_ms, 0);
-			const costSum = sessions.reduce((total, session) => total + session.cost, 0);
-			const tokenCountSum = sessions.reduce((total, session) => total + session.token_count, 0);
-			const toolCallCountSum = sessions.reduce(
-				(total, session) => total + session.tool_call_count,
-				0,
-			);
-			const numSkillsSum = sessions.reduce((total, session) => total + session.num_skills, 0);
-			const turnCount = sessions.reduce((total, session) => total + session.turn_count, 0);
+			if (Object.keys(bucket.sessions).length === 0) continue;
 
 			this.track(TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS, {
 				event_version: '1',
@@ -360,17 +358,30 @@ export class Telemetry {
 				...bucket.configuration,
 				run_type: bucket.run_type,
 				turn_status: bucket.turn_status,
-				session_count: sessions.length,
-				turn_count: turnCount,
-				latency_ms_sum: latencyMsSum,
-				cost_sum: costSum,
-				token_count_sum: tokenCountSum,
-				tool_call_count_sum: toolCallCountSum,
-				num_skills_sum: numSkillsSum,
+				...this.sumAgentSessionMetrics(bucket.sessions),
+				counts_by_source: Object.fromEntries(
+					Object.entries(bucket.sessions_by_source).map(([source, sessions]) => [
+						source,
+						this.sumAgentSessionMetrics(sessions),
+					]),
+				),
 			});
 		}
 
 		this.agentSessionMetricsBuffer = {};
+	}
+
+	private sumAgentSessionMetrics(sessionsById: Record<string, IAgentSessionMetrics>) {
+		const sessions = Object.values(sessionsById);
+		return {
+			session_count: sessions.length,
+			turn_count: sessions.reduce((total, session) => total + session.turn_count, 0),
+			latency_ms_sum: sessions.reduce((total, session) => total + session.latency_ms, 0),
+			cost_sum: sessions.reduce((total, session) => total + session.cost, 0),
+			token_count_sum: sessions.reduce((total, session) => total + session.token_count, 0),
+			tool_call_count_sum: sessions.reduce((total, session) => total + session.tool_call_count, 0),
+			num_skills_sum: sessions.reduce((total, session) => total + session.num_skills, 0),
+		};
 	}
 
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
@@ -453,12 +464,23 @@ export class Telemetry {
 			message_count: 0,
 			token_count: 0,
 			tool_call_count: 0,
+			counts_by_source: {},
 		};
 
 		const agentExecutionCounts = this.agentExecutionCountsBuffer[bufferKey];
 		agentExecutionCounts.message_count += message_count;
 		agentExecutionCounts.token_count += token_count;
 		agentExecutionCounts.tool_call_count += tool_call_count;
+
+		const source = properties.source || 'unknown';
+		const sourceCounts = (agentExecutionCounts.counts_by_source[source] ??= {
+			message_count: 0,
+			token_count: 0,
+			tool_call_count: 0,
+		});
+		sourceCounts.message_count += message_count;
+		sourceCounts.token_count += token_count;
+		sourceCounts.tool_call_count += tool_call_count;
 	}
 
 	trackAgentTurnFinished(properties: IAgentTurnFinishedTrackProperties) {
@@ -473,24 +495,30 @@ export class Telemetry {
 			turn_status: properties.turn_status,
 			configuration: properties.configuration,
 			sessions: {},
+			sessions_by_source: {},
 		};
 
 		const bucket = this.agentSessionMetricsBuffer[bufferKey];
-		const session = bucket.sessions[properties.thread_id] ?? {
-			latency_ms: 0,
-			cost: 0,
-			token_count: 0,
-			tool_call_count: 0,
-			num_skills: properties.configuration.num_skills,
-			turn_count: 0,
-		};
+		const source = properties.source || 'unknown';
+		const sourceSessions = (bucket.sessions_by_source[source] ??= {});
+		// A session can contain turns from several sources. Keep the total deduplicated.
+		for (const sessions of [bucket.sessions, sourceSessions]) {
+			const session = sessions[properties.thread_id] ?? {
+				latency_ms: 0,
+				cost: 0,
+				token_count: 0,
+				tool_call_count: 0,
+				num_skills: properties.configuration.num_skills,
+				turn_count: 0,
+			};
 
-		session.latency_ms += properties.latency_ms;
-		session.cost += properties.cost;
-		session.token_count += properties.token_count;
-		session.tool_call_count += properties.tool_call_count;
-		session.turn_count++;
-		bucket.sessions[properties.thread_id] = session;
+			session.latency_ms += properties.latency_ms;
+			session.cost += properties.cost;
+			session.token_count += properties.token_count;
+			session.tool_call_count += properties.tool_call_count;
+			session.turn_count++;
+			sessions[properties.thread_id] = session;
+		}
 	}
 
 	trackApiInvocation(properties: IApiInvocationProperties) {
@@ -525,18 +553,25 @@ export class Telemetry {
 	groupIdentify({
 		userId,
 		traits,
+		postHog = { userId, traits },
 	}: {
 		userId?: string;
 		traits?: Record<string, string | number>;
+		/**
+		 * PostHog-only override. PostHog refuses a group update with no real person
+		 * behind it, while RudderStack accepts the bare instance ID. Use it when the
+		 * two destinations must diverge, e.g. to attribute startup facts to the owner.
+		 */
+		postHog?: { userId?: string; traits?: Record<string, string | number> };
 	}): void {
 		const { instanceId } = this.instanceSettings;
 		if (!instanceId) return;
 
-		if (this.postHog) {
+		if (this.postHog && postHog.userId) {
 			this.postHog.groupIdentify({
-				...(userId && { distinctId: `${instanceId}#${userId}` }),
+				distinctId: `${instanceId}#${postHog.userId}`,
 				instanceId,
-				properties: traits,
+				properties: postHog.traits,
 			});
 		}
 
@@ -598,7 +633,9 @@ export class Telemetry {
 		const { instanceId } = this.instanceSettings;
 		const { user_id } = properties;
 		const updatedProperties = {
-			...properties,
+			...(eventName === USER_CALLED_MCP_TOOL_EVENT
+				? redactTelemetryProperties(properties)
+				: properties),
 			instance_id: instanceId,
 			user_id: user_id ?? undefined,
 			version_cli: N8N_VERSION,
@@ -626,9 +663,31 @@ export class Telemetry {
 			return;
 		}
 
+		if (typeof event !== 'string' && !user_id) {
+			this.warnAboutMissingUserId(eventName);
+		}
+
 		this.postHog?.track(payload);
 
 		return this.rudderStack.track(rudderStackPayload);
+	}
+
+	/**
+	 * A registered event whose properties carry no `user_id` composes a distinct id of the bare
+	 * instance id, which `PostHogClient.track` drops to keep a phantom person profile out of
+	 * PostHog (#32344). The event still reaches RudderStack, so the loss is silent and only a
+	 * warehouse comparison finds it. This says so once for each event name, which is enough to
+	 * name the emit site and few enough to leave the logs readable.
+	 *
+	 * Only registered events are checked. A plain string event has no schema stating that it
+	 * describes a user action, and some of them are instance-level on purpose.
+	 */
+	private warnAboutMissingUserId(eventName: string): void {
+		if (this.eventsMissingUserId.has(eventName)) return;
+		this.eventsMissingUserId.add(eventName);
+		this.logger.warn(
+			`Telemetry event "${eventName}" carries no user_id, so PostHog drops it. Pass user_id in the event properties at the emit site.`,
+		);
 	}
 
 	// test helpers

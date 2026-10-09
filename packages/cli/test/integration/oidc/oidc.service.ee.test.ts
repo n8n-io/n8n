@@ -23,8 +23,7 @@ beforeAll(async () => {
 	real_odic_client = await vi.importActual<typeof import('openid-client')>('openid-client');
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { License } from '@/license';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';
@@ -1391,12 +1390,14 @@ describe('OIDC service', () => {
 		});
 
 		it('should throw an error for an invalid formatted state', () => {
-			const invalid = Container.get(JwtService).sign({ state: 'invalid_state' });
+			const invalid = Container.get(JwtService).sign('oidcState', { state: 'invalid_state' });
 			expect(() => oidcService.verifyState(invalid)).toThrow(BadRequestError);
 		});
 
 		it('should throw an error for an invalid random part of the state', () => {
-			const invalid = Container.get(JwtService).sign({ state: 'n8n_state:invalid-state' });
+			const invalid = Container.get(JwtService).sign('oidcState', {
+				state: 'n8n_state:invalid-state',
+			});
 			expect(() => oidcService.verifyState(invalid)).toThrow(BadRequestError);
 		});
 
@@ -1405,12 +1406,14 @@ describe('OIDC service', () => {
 		});
 
 		it('should throw an error for an invalid formatted nonce', () => {
-			const invalid = Container.get(JwtService).sign({ nonce: 'invalid_nonce' });
+			const invalid = Container.get(JwtService).sign('oidcNonce', { nonce: 'invalid_nonce' });
 			expect(() => oidcService.verifyNonce(invalid)).toThrow(BadRequestError);
 		});
 
 		it('should throw an error for an invalid random part of the nonce', () => {
-			const invalid = Container.get(JwtService).sign({ nonce: 'n8n_nonce:invalid-nonce' });
+			const invalid = Container.get(JwtService).sign('oidcNonce', {
+				nonce: 'n8n_nonce:invalid-nonce',
+			});
 			expect(() => oidcService.verifyNonce(invalid)).toThrow(BadRequestError);
 		});
 	});

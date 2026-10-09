@@ -1,3 +1,5 @@
+import type { CreateCredentialPublicDto, CredentialPublicDto } from '@n8n/api-types';
+import { request, type PublicApiContext } from '@n8n/rest-api-client';
 import type {
 	CredentialFetchScope,
 	CredentialPayload,
@@ -74,6 +76,20 @@ export async function getAllCredentials(
 		...(onlySharedWithMe ? { onlySharedWithMe } : {}),
 		...(typeof includeGlobal === 'boolean' ? { includeGlobal } : {}),
 		...(externalSecretsStore ? { externalSecretsStore } : {}),
+	});
+}
+
+export async function searchCredentials(
+	context: IRestApiContext,
+	options: { name: string; skip: number; take: number },
+): Promise<ICredentialsResponse[]> {
+	const { name, skip, take } = options;
+
+	return await makeRestApiRequest(context, 'GET', '/credentials', {
+		...(name ? { filter: { name } } : {}),
+		skip,
+		take,
+		includeGlobal: true,
 	});
 }
 
@@ -171,4 +187,16 @@ export async function probeCredential(
 	credentialId: string,
 ): Promise<INodeCredentialTestResult> {
 	return await makeRestApiRequest(context, 'POST', `/credentials/${credentialId}/probe`);
+}
+
+export async function createPublicCredential(
+	context: PublicApiContext,
+	data: CreateCredentialPublicDto,
+): Promise<CredentialPublicDto> {
+	return await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: '/credentials',
+		data,
+	});
 }

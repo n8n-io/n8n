@@ -16,6 +16,7 @@ import {
 	detectBinaryDependencies,
 	emitsDataTableRows,
 	generateMockHints,
+	TRIGGER_CONTENT_CORRECTION,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	isDataTableRead,
@@ -234,6 +235,28 @@ describe('identifyNodesForPinData', () => {
 			);
 			expect(result.map((n) => n.name)).toEqual(['Cache']);
 		});
+	});
+
+	it('leaves only the Data Table reads in the live set unpinned', () => {
+		const read = (name: string, operation: string) =>
+			makeNode({
+				name,
+				type: 'n8n-nodes-base.dataTable',
+				parameters: { resource: 'row', operation },
+			});
+		const nodes = [
+			read('Read Seeded', 'get'),
+			read('Read Other', 'rowExists'),
+			makeNode({ name: 'Cache', type: 'n8n-nodes-base.redis' }),
+		];
+
+		const result = identifyNodesForPinData(
+			makeWorkflow(nodes),
+			undefined,
+			new Set(['Read Seeded', 'Cache']),
+		);
+
+		expect(result.map((n) => n.name)).toEqual(['Read Other', 'Cache']);
 	});
 });
 
@@ -1135,6 +1158,40 @@ describe('generateMockHints', () => {
 		]);
 	});
 
+	it('names the empty trigger content in the retry prompt', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate.mock.calls[0][0]).not.toContain('## Correction required');
+		expect(generate.mock.calls[1][0]).toContain('## Correction required');
+		expect(generate.mock.calls[1][0]).toContain(TRIGGER_CONTENT_CORRECTION);
+	});
+
+	it('names the failure reason in the retry prompt when the first attempt threw', async () => {
+		const generate = mockAgentResponses(
+			new Error('Unexpected end of JSON input'),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate.mock.calls[1][0]).toContain(
+			'The previous answer was unusable: Unexpected end of JSON input',
+		);
+	});
+
 	it('should return emptyResult with both warnings when every attempt fails', async () => {
 		const generate = mockAgentResponses(
 			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
@@ -1203,6 +1260,56 @@ describe('generateMockHints', () => {
 			expect(result.warnings).toEqual([]);
 		},
 	);
+
+	describe('Manual Trigger start', () => {
+		const manualWorkflow = makeWorkflow([
+			makeNode({ name: 'Run', type: 'n8n-nodes-base.manualTrigger' }),
+			makeNode({ name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger' }),
+			makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' }),
+		]);
+
+		it('accepts empty triggerContent without a retry, and keeps the hints', async () => {
+			const generate = mockAgentResponses(
+				JSON.stringify({ globalContext: 'ctx', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+			);
+
+			const result = await generateMockHints({
+				workflow: manualWorkflow,
+				nodeNames: ['Run', 'Slack'],
+				defaultStartNodeName: 'Run',
+			});
+
+			expect(generate).toHaveBeenCalledTimes(1);
+			expect(result.triggerContent).toEqual({});
+			expect(result.globalContext).toBe('ctx');
+			expect(result.warnings).toEqual([]);
+		});
+
+		it('still retries empty triggerContent when the hints name another trigger', async () => {
+			const generate = mockAgentResponses(
+				JSON.stringify({
+					triggerContent: {},
+					startNodeName: 'Schedule',
+					nodeHints: { Slack: 'foo' },
+				}),
+				JSON.stringify({
+					triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+					startNodeName: 'Schedule',
+					nodeHints: { Slack: 'foo' },
+				}),
+			);
+
+			const result = await generateMockHints({
+				workflow: manualWorkflow,
+				nodeNames: ['Schedule', 'Slack'],
+				defaultStartNodeName: 'Run',
+			});
+
+			expect(generate).toHaveBeenCalledTimes(2);
+			expect(result.startNodeName).toBe('Schedule');
+			expect(result.triggerContent).toEqual({ timestamp: '2024-01-01T00:00:00Z' });
+		});
+	});
 
 	it('should not call the agent when there are no hint-eligible nodes', async () => {
 		const generate = mockAgentResponses('should never be called');

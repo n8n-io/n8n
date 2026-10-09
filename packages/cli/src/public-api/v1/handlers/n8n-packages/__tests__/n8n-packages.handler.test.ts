@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -6,11 +7,7 @@ import { UserError } from 'n8n-workflow';
 import { PassThrough } from 'node:stream';
 import type { Mocked } from 'vitest';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
 	PackageEntityAccessDeniedError,
@@ -29,17 +26,16 @@ vi.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 // Loaded after the middleware spies above are installed (the handler captures
 // middleware at module-evaluation time). Typed loosely to invoke route entries.
 let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
-// exportPackage/importPackage = [middleware(...), businessLogic]; index 1 is the handler under test.
+// exportPackage = [middleware(...), businessLogic]; index 1 is the handler under test.
 let exportPackage: (...args: unknown[]) => unknown;
-let importPackage: (...args: unknown[]) => unknown;
 
 beforeAll(async () => {
 	handler = (await import('../n8n-packages.handler.js')) as unknown as typeof handler;
 	exportPackage = handler.exportPackage[1];
-	importPackage = handler.importPackage[1];
 });
 
 const EXPORT_COUNTS = {
+	agents: 0,
 	workflows: 2,
 	folders: 1,
 	credentials: 0,
@@ -59,8 +55,8 @@ describe('n8n-packages handler', () => {
 			projectIds?: string[];
 			includeVariableValues?: boolean;
 			includeTags?: boolean;
-			missingWorkflowDependencyPolicy?: string;
-			workflowVersionPolicy?: string;
+			dependencyPolicy?: string;
+			versionPolicy?: string;
 			credentialExportPolicy?: string;
 			includeArchivedWorkflows?: boolean;
 		},
@@ -69,21 +65,6 @@ describe('n8n-packages handler', () => {
 		return {
 			user: { id: 'user-1' },
 			body,
-			tokenGrant: apiKeyScopes ? { apiKeyScopes } : undefined,
-		} as unknown as AuthenticatedRequest;
-	}
-
-	function makeImportRequest(
-		body: Record<string, unknown>,
-		apiKeyScopes?: string[],
-		files: Express.Multer.File[] = [
-			{ fieldname: 'package', buffer: Buffer.from('tar-bytes') } as Express.Multer.File,
-		],
-	) {
-		return {
-			user: { id: 'user-1' },
-			body: { workflowConflictPolicy: 'fail', ...body },
-			files,
 			tokenGrant: apiKeyScopes ? { apiKeyScopes } : undefined,
 		} as unknown as AuthenticatedRequest;
 	}
@@ -98,16 +79,6 @@ describe('n8n-packages handler', () => {
 		let caught: unknown;
 		try {
 			await exportPackage(req, res);
-		} catch (error) {
-			caught = error;
-		}
-		return caught;
-	}
-
-	async function runImport(req: AuthenticatedRequest, res: Response) {
-		let caught: unknown;
-		try {
-			await importPackage(req, res);
 		} catch (error) {
 			caught = error;
 		}
@@ -164,7 +135,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeInstanceOf(BadRequestError);
 			expect(caught).toMatchObject({
-				message: 'Provide either workflowIds/folderIds or projectIds, not both',
+				message: 'Provide either agentIds/workflowIds/folderIds or projectIds, not both',
 			});
 			expect(mockService.exportPackage).not.toHaveBeenCalled();
 		});
@@ -180,7 +151,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeInstanceOf(BadRequestError);
 			expect(caught).toMatchObject({
-				message: 'Provide either workflowIds/folderIds or projectIds, not both',
+				message: 'Provide either agentIds/workflowIds/folderIds or projectIds, not both',
 			});
 			expect(mockService.exportPackage).not.toHaveBeenCalled();
 		});
@@ -190,7 +161,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeInstanceOf(BadRequestError);
 			expect(caught).toMatchObject({
-				message: 'At least one workflowId, folderId, or projectId is required',
+				message: 'At least one agentId, workflowId, folderId, or projectId is required',
 			});
 			expect(mockService.exportPackage).not.toHaveBeenCalled();
 		});
@@ -247,6 +218,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				agentIds: [],
 				user: { id: 'user-1' },
 				workflowIds: ['wf-1'],
 				folderIds: [],
@@ -254,8 +226,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: true,
 				canExportVariableValues: false,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -275,6 +247,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				agentIds: [],
 				user: { id: 'user-1' },
 				workflowIds: ['wf-1'],
 				folderIds: [],
@@ -282,8 +255,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: false,
 				canExportVariableValues: false,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -377,6 +350,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				agentIds: [],
 				user: { id: 'user-1' },
 				workflowIds: ['wf-1', 'wf-2'],
 				folderIds: [],
@@ -384,8 +358,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: true,
 				canExportVariableValues: true,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -414,7 +388,7 @@ describe('n8n-packages handler', () => {
 				makeRequest(
 					{
 						workflowIds: ['wf-1'],
-						missingWorkflowDependencyPolicy: 'reference-only',
+						dependencyPolicy: 'reference-only',
 					},
 					['workflow:export'],
 				),
@@ -425,6 +399,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				agentIds: [],
 				user: { id: 'user-1' },
 				workflowIds: ['wf-1'],
 				folderIds: [],
@@ -432,8 +407,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: true,
 				canExportVariableValues: false,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'reference-only',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'reference-only',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -445,7 +420,7 @@ describe('n8n-packages handler', () => {
 			const res = makeResponse();
 
 			const resultPromise = run(
-				makeRequest({ workflowIds: ['wf-1'], workflowVersionPolicy: 'published-strict' }, [
+				makeRequest({ workflowIds: ['wf-1'], versionPolicy: 'published-strict' }, [
 					'workflow:export',
 				]),
 				res,
@@ -455,7 +430,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ workflowVersionPolicy: 'published-strict' }),
+				expect.objectContaining({ versionPolicy: 'published-strict' }),
 			);
 		});
 
@@ -511,6 +486,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				agentIds: [],
 				user: { id: 'user-1' },
 				workflowIds: [],
 				folderIds: [],
@@ -518,8 +494,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: true,
 				canExportVariableValues: true,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -539,6 +515,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				agentIds: [],
 				user: { id: 'user-1' },
 				workflowIds: [],
 				folderIds: ['fld-1'],
@@ -546,8 +523,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: true,
 				canExportVariableValues: true,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -567,6 +544,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				agentIds: [],
 				user: { id: 'user-1' },
 				workflowIds: ['wf-1'],
 				folderIds: [],
@@ -574,8 +552,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: false,
 				canExportVariableValues: false,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -595,6 +573,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				agentIds: [],
 				user: { id: 'user-1' },
 				workflowIds: ['wf-1'],
 				folderIds: [],
@@ -602,192 +581,11 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: true,
 				canExportVariableValues: false,
 				includeTags: false,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
-		});
-	});
-
-	describe('importPackage', () => {
-		it('throws ForbiddenError and emits access-denied with the requested projectId when the API key lacks workflow:import scope', async () => {
-			const caught = await runImport(
-				makeImportRequest({ projectId: 'proj-brie' }, ['project:export']),
-				makeResponse(),
-			);
-
-			expect(caught).toBeInstanceOf(ForbiddenError);
-			expect(mockService.importPackage).not.toHaveBeenCalled();
-			expect(emittedEvent('n8n-package-import-failed')).toEqual({
-				user: { id: 'user-1' },
-				reason: 'access-denied',
-				projectId: 'proj-brie',
-			});
-		});
-
-		it('throws BadRequestError and emits validation with the requested projectId when the multipart package file is missing', async () => {
-			const caught = await runImport(
-				makeImportRequest({ projectId: 'proj-brie' }, ['workflow:import'], []),
-				makeResponse(),
-			);
-
-			expect(caught).toBeInstanceOf(BadRequestError);
-			expect(emittedEvent('n8n-package-import-failed')).toEqual({
-				user: { id: 'user-1' },
-				reason: 'validation',
-				projectId: 'proj-brie',
-			});
-		});
-
-		it('defaults workflowConflictPolicy to new-version when the caller omits it', async () => {
-			const result = { package: {}, workflows: [], bindings: {}, credentials: {} };
-			mockService.importPackage.mockResolvedValue(result as never);
-			const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
-
-			const caught = await runImport(
-				makeImportRequest({ workflowConflictPolicy: undefined }, ['workflow:import']),
-				res,
-			);
-
-			expect(caught).toBeUndefined();
-			expect(mockService.importPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ workflowConflictPolicy: 'new-version' }),
-			);
-			expect(mockEventService.emit).not.toHaveBeenCalled();
-		});
-
-		it('emits access-denied with projectId when the service rejects the target project as forbidden', async () => {
-			mockService.importPackage.mockRejectedValue(
-				new ForbiddenError('You do not have permission to import workflows into this project.'),
-			);
-
-			await runImport(
-				makeImportRequest({ projectId: 'proj-brie' }, ['workflow:import']),
-				makeResponse(),
-			);
-
-			expect(emittedEvent('n8n-package-import-failed')).toEqual({
-				user: { id: 'user-1' },
-				reason: 'access-denied',
-				projectId: 'proj-brie',
-			});
-		});
-
-		it('emits entity-not-found with projectId when the target project does not exist', async () => {
-			mockService.importPackage.mockRejectedValue(new NotFoundError('Project not found: proj-x'));
-
-			await runImport(
-				makeImportRequest({ projectId: 'proj-x' }, ['workflow:import']),
-				makeResponse(),
-			);
-
-			expect(emittedEvent('n8n-package-import-failed')).toEqual({
-				user: { id: 'user-1' },
-				reason: 'entity-not-found',
-				projectId: 'proj-x',
-			});
-		});
-
-		it('emits blocked when the import is rejected as blocked by a conflict', async () => {
-			mockService.importPackage.mockRejectedValue(new ConflictError('Import blocked'));
-
-			await runImport(
-				makeImportRequest({ projectId: 'proj-brie' }, ['workflow:import']),
-				makeResponse(),
-			);
-
-			expect(emittedEvent('n8n-package-import-failed')).toMatchObject({ reason: 'blocked' });
-		});
-
-		it('omits projectId/folderId from the audit event when the caller never sent them', async () => {
-			const caught = await runImport(
-				makeImportRequest({ workflowConflictPolicy: 'not-a-real-policy' }, ['workflow:import']),
-				makeResponse(),
-			);
-
-			expect(caught).toBeInstanceOf(BadRequestError);
-			expect(emittedEvent('n8n-package-import-failed')).toEqual({
-				user: { id: 'user-1' },
-				reason: 'validation',
-			});
-		});
-
-		it('imports successfully for a caller with workflow:import scope and no emitted failure event', async () => {
-			const result = { package: {}, workflows: [], bindings: {}, credentials: {} };
-			mockService.importPackage.mockResolvedValue(result as never);
-			const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
-
-			const caught = await runImport(
-				makeImportRequest({ projectId: 'proj-brie' }, ['workflow:import']),
-				res,
-			);
-
-			expect(caught).toBeUndefined();
-			expect(mockService.importPackage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					projectId: 'proj-brie',
-					workflowConflictPolicy: 'fail',
-					variableMissingMode: 'create-with-value',
-					variableConflictPolicy: 'keep-existing',
-					variableParentPolicy: undefined,
-				}),
-			);
-			expect(mockEventService.emit).not.toHaveBeenCalled();
-		});
-
-		it('forwards variableMissingMode when provided', async () => {
-			const result = { package: {}, workflows: [], bindings: {}, credentials: {} };
-			mockService.importPackage.mockResolvedValue(result as never);
-			const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
-
-			const caught = await runImport(
-				makeImportRequest({ projectId: 'proj-brie', variableMissingMode: 'create-with-value' }, [
-					'workflow:import',
-				]),
-				res,
-			);
-
-			expect(caught).toBeUndefined();
-			expect(mockService.importPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ variableMissingMode: 'create-with-value' }),
-			);
-		});
-
-		it('forwards variableConflictPolicy when provided', async () => {
-			const result = { package: {}, workflows: [], bindings: {}, credentials: {} };
-			mockService.importPackage.mockResolvedValue(result as never);
-			const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
-
-			const caught = await runImport(
-				makeImportRequest({ projectId: 'proj-brie', variableConflictPolicy: 'overwrite' }, [
-					'workflow:import',
-				]),
-				res,
-			);
-
-			expect(caught).toBeUndefined();
-			expect(mockService.importPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ variableConflictPolicy: 'overwrite' }),
-			);
-		});
-
-		it('forwards variableParentPolicy when provided', async () => {
-			const result = { package: {}, workflows: [], bindings: {}, credentials: {} };
-			mockService.importPackage.mockResolvedValue(result as never);
-			const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
-
-			const caught = await runImport(
-				makeImportRequest({ projectId: 'proj-brie', variableParentPolicy: 'global' }, [
-					'workflow:import',
-				]),
-				res,
-			);
-
-			expect(caught).toBeUndefined();
-			expect(mockService.importPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ variableParentPolicy: 'global' }),
-			);
 		});
 	});
 });

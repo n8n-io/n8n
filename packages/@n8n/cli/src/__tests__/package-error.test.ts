@@ -4,6 +4,97 @@ import { ApiError } from '../client';
 import { toPackagesError } from '../commands/package/package-error';
 
 describe('toPackagesError', () => {
+	it('explains a conflict between import and deletion', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'workflow-removal-conflict',
+						sourceWorkflowId: 'source',
+						workflowId: 'target',
+						projectId: 'P1',
+					},
+				],
+			}),
+		);
+
+		expect(result).toBeInstanceOf(ApiError);
+		expect((result as ApiError).hint).toContain(
+			'Workflow target (source source) in project P1 is selected for both import and deletion. Remove it from one selection.',
+		);
+	});
+
+	it('explains a forbidden workflow removal', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'workflow-removal-forbidden',
+						workflowId: 'w1',
+						name: 'Flow',
+						projectId: 'P1',
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint ?? '').toContain(
+			'workflow "Flow" (w1) in project P1 could not be removed — not in the package or selected for deletion, and you lack permission',
+		);
+	});
+
+	it('explains a data table schema mismatch and what overwrite would change', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'data-table-unresolved',
+						kind: 'schema-incompatible',
+						sourceId: 'dt1',
+						name: 'First',
+						missingColumns: ['BaaId'],
+						typeMismatches: [],
+						overwriteChanges: [
+							{ kind: 'remove-column', column: 'note', type: 'string', destructive: true },
+							{ kind: 'add-column', column: 'BaaId', type: 'string', destructive: false },
+						],
+						usedBy: [{ kind: 'workflow', id: 'wf1' }],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain(
+			'data table "First" (dt1) does not match the package schema (missing columns: BaaId), used by workflow wf1',
+		);
+		expect(hint).toContain(
+			'--data-table-schema-conflict-policy=overwrite would: remove column note (data lost), add column BaaId',
+		);
+	});
+
+	it('explains a data table rename to a name another table has', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'data-table-unresolved',
+						kind: 'name-conflict',
+						sourceId: 'orders1',
+						name: 'Sales',
+						currentName: 'Orders',
+						conflictingTableId: 'sales1',
+						usedBy: [{ kind: 'workflow', id: 'wf1' }],
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint ?? '').toContain(
+			'data table "Orders" (orders1) cannot be renamed to "Sales": the name is also used by table sales1, used by workflow wf1',
+		);
+	});
+
 	it('returns non-ApiError values unchanged', () => {
 		const error = new Error('boom');
 		expect(toPackagesError(error)).toBe(error);
@@ -50,7 +141,10 @@ describe('toPackagesError', () => {
 						type: 'credential-unresolved',
 						kind: 'not_found',
 						sourceId: 'c1',
-						usedByWorkflows: ['w1', 'w2'],
+						usedBy: [
+							{ kind: 'workflow', id: 'w1' },
+							{ kind: 'workflow', id: 'w2' },
+						],
 					},
 				],
 			}),
@@ -58,17 +152,81 @@ describe('toPackagesError', () => {
 
 		const hint = (result as ApiError).hint ?? '';
 		expect(hint).toContain('credential c1 unresolved (not_found)');
-		expect(hint).toContain('w1, w2');
+		expect(hint).toContain('workflow w1, workflow w2');
 	});
 
-	it('lists variable-unresolved issues for a 422', () => {
+	it('lists credential-policy-violation issues with every violation', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'credential-policy-violation',
+						sourceId: 'c1',
+						name: 'Prod GitHub',
+						credentialType: 'githubApi',
+						usedBy: [
+							{ kind: 'workflow', id: 'w1' },
+							{ kind: 'agent', id: 'a1' },
+						],
+						violations: [
+							{ kind: 'k', checkId: 'a', message: 'GitHub API is not allowed' },
+							{ kind: 'k', checkId: 'b', message: 'Second reason' },
+						],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain(
+			'credential "Prod GitHub" (c1, githubApi) refused by policy: GitHub API is not allowed; Second reason, used by workflow w1, agent a1',
+		);
+	});
+
+	it('names a refused credential by its source id when it has no name', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'credential-policy-violation',
+						sourceId: 'c1',
+						credentialType: 'githubApi',
+						usedBy: [{ kind: 'workflow', id: 'w1' }],
+						violations: [{ kind: 'k', checkId: 'a', message: 'Not allowed' }],
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint ?? '').toContain(
+			'credential "c1" (c1, githubApi) refused by policy: Not allowed',
+		);
+	});
+
+	it.each([
+		{
+			usedBy: [{ kind: 'workflow', id: 'w1' }],
+			expected: 'workflow w1',
+		},
+		{
+			usedBy: [{ kind: 'agent', id: 'a1' }],
+			expected: 'agent a1',
+		},
+		{
+			usedBy: [
+				{ kind: 'workflow', id: 'shared' },
+				{ kind: 'agent', id: 'shared' },
+			],
+			expected: 'workflow shared, agent shared',
+		},
+	])('lists variable-unresolved issues for $expected', ({ usedBy, expected }) => {
 		const result = toPackagesError(
 			new ApiError(422, 'Import blocked', undefined, {
 				issues: [
 					{
 						type: 'variable-unresolved',
 						name: 'var1',
-						usedByWorkflows: ['w1', 'w2'],
+						usedBy,
 					},
 				],
 			}),
@@ -76,7 +234,7 @@ describe('toPackagesError', () => {
 
 		const hint = (result as ApiError).hint ?? '';
 		expect(hint).toContain('variable "var1" unresolved');
-		expect(hint).toContain('w1, w2');
+		expect(hint).toContain(`used by ${expected}`);
 	});
 
 	it('lists variable-conflict issues for a 409, naming the scope', () => {
@@ -87,9 +245,9 @@ describe('toPackagesError', () => {
 						type: 'variable-conflict',
 						name: 'API_URL',
 						projectId: 'p1',
-						usedByWorkflows: ['w1'],
+						usedBy: [{ kind: 'workflow', id: 'w1' }],
 					},
-					{ type: 'variable-conflict', name: 'DB_URL', usedByWorkflows: ['w2'] },
+					{ type: 'variable-conflict', name: 'DB_URL', usedBy: [{ kind: 'workflow', id: 'w2' }] },
 				],
 			}),
 		);
@@ -111,7 +269,10 @@ describe('toPackagesError', () => {
 						remaining: 1,
 						requested: 3,
 						names: ['API_URL', 'DB_URL', 'TOKEN'],
-						usedByWorkflows: ['w1', 'w2'],
+						usedBy: [
+							{ kind: 'workflow', id: 'w1' },
+							{ kind: 'workflow', id: 'w2' },
+						],
 					},
 				],
 			}),
@@ -121,7 +282,7 @@ describe('toPackagesError', () => {
 		expect(hint).toContain('variable limit reached: 3 new variable(s)');
 		expect(hint).toContain('API_URL, DB_URL, TOKEN');
 		expect(hint).toContain('1 of 5 remaining');
-		expect(hint).toContain('w1, w2');
+		expect(hint).toContain('workflow w1, workflow w2');
 	});
 
 	it('lists tag-unresolved issues for a 409', () => {
@@ -134,13 +295,13 @@ describe('toPackagesError', () => {
 						sourceId: 't1',
 						name: 'prod',
 						existingName: 'production',
-						usedByWorkflows: ['w1'],
+						usedBy: [{ kind: 'workflow', id: 'w1' }],
 					},
 					{
 						type: 'tag-unresolved',
 						kind: 'permission-denied',
 						missingScope: 'tag:create',
-						usedByWorkflows: ['w2'],
+						usedBy: [{ kind: 'workflow', id: 'w2' }],
 					},
 				],
 			}),

@@ -27,7 +27,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
+	useI18n: () => ({
+		baseText: (key: string) => (key === 'agents.new.defaultName' ? 'Untitled' : key),
+	}),
 }));
 
 const favoritesStoreMock = {
@@ -61,13 +63,11 @@ const mcpStoreMock = {
 	toggleAgentMcpAccess: vi.fn().mockResolvedValue({ updatedCount: 1 }),
 };
 
-vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
-	useMCPStore: () => mcpStoreMock,
-}));
-
 const trackMcpAccessEnabledForAgentMock = vi.fn();
 
-vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
+vi.mock('@n8n/frontend-module-mcp', async (importOriginal) => ({
+	...(await importOriginal()),
+	useMCPStore: () => mcpStoreMock,
 	useMcp: () => ({ trackMcpAccessEnabledForAgent: trackMcpAccessEnabledForAgentMock }),
 }));
 
@@ -101,6 +101,10 @@ const STUBS = {
 	N8nBadge: {
 		template: '<span :data-test-id="$attrs[\'data-test-id\']"><slot /></span>',
 		props: ['theme', 'bold'],
+	},
+	PublicationIndicator: {
+		template: '<span :data-variant="variant">{{ label }}</span>',
+		props: ['label', 'variant'],
 	},
 	N8nActionToggle: {
 		name: 'N8nActionToggle',
@@ -160,6 +164,21 @@ describe('AgentCard', () => {
 		settingsStoreMock.moduleSettings.mcp.mcpAccessEnabled = false;
 		mcpStoreMock.toggleAgentMcpAccess.mockClear();
 		trackMcpAccessEnabledForAgentMock.mockClear();
+	});
+
+	it('styles the default Untitled name as a placeholder', async () => {
+		const wrapper = await renderComponent(createAgent({ name: 'Untitled' }));
+		const name = wrapper.find('[data-test-id="agent-card-name"]');
+
+		expect(name.text()).toContain('Untitled');
+		expect(name.classes().some((className) => className.includes('untitledName'))).toBe(true);
+	});
+
+	it('keeps a named agent title in the normal heading style', async () => {
+		const wrapper = await renderComponent(createAgent({ name: 'My Agent' }));
+		const name = wrapper.find('[data-test-id="agent-card-name"]');
+
+		expect(name.classes().some((className) => className.includes('untitledName'))).toBe(false);
 	});
 
 	it('hides the read-only badge when canUpdate is true', async () => {
@@ -286,7 +305,7 @@ describe('AgentCard', () => {
 		expect(action.text()).toBe('agents.list.actions.enableMCPAccess');
 	});
 
-	it('offers to remove MCP access on an exposed agent', async () => {
+	it('offers to disable MCP access on an available agent', async () => {
 		enableMcp();
 		const wrapper = await renderComponent(createAgent({ availableInMCP: true }));
 
@@ -327,5 +346,52 @@ describe('AgentCard', () => {
 		expect(wrapper.find('[data-action="toggleMCPAccess"]').text()).toBe(
 			'agents.list.actions.disableMCPAccess',
 		);
+	});
+
+	describe('publication indicator', () => {
+		const findIndicator = (wrapper: Awaited<ReturnType<typeof renderComponent>>) =>
+			wrapper.find('[data-test-id="agent-card-publish-indicator"]');
+
+		it('is hidden on an unpublished agent', async () => {
+			const wrapper = await renderComponent(createAgent({ activeVersionId: null }));
+
+			expect(findIndicator(wrapper).exists()).toBe(false);
+		});
+
+		it('shows Published with a success dot when the draft matches the published version', async () => {
+			const wrapper = await renderComponent(
+				createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion }),
+			);
+
+			const indicator = findIndicator(wrapper);
+			expect(indicator.text()).toBe('agents.list.published');
+			expect(indicator.attributes('data-state')).toBe('published');
+			expect(indicator.attributes('data-variant')).toBe('success');
+		});
+
+		it('shows Changes to publish with a warning dot when the draft differs from the published version', async () => {
+			const wrapper = await renderComponent(
+				createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion }),
+			);
+
+			const indicator = findIndicator(wrapper);
+			expect(indicator.text()).toBe('agents.list.changesToPublish');
+			expect(indicator.attributes('data-state')).toBe('changes-to-publish');
+			expect(indicator.attributes('data-variant')).toBe('warning');
+		});
+
+		it('returns to Published after the agent is republished', async () => {
+			const wrapper = await renderComponent(
+				createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion }),
+			);
+
+			await wrapper.setProps({
+				agent: createAgent({ versionId: 'v2', activeVersionId: 'v2', activeVersion }),
+			});
+
+			const indicator = findIndicator(wrapper);
+			expect(indicator.text()).toBe('agents.list.published');
+			expect(indicator.attributes('data-variant')).toBe('success');
+		});
 	});
 });

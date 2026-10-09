@@ -29,6 +29,7 @@ export const ATTR = {
 	IS_TEST_TRACE: 'n8n.test',
 
 	PROJECT_ID: 'n8n.project.id',
+	PROJECT_NAME: 'n8n.project.name',
 
 	WORKFLOW_ID: 'n8n.workflow.id',
 	WORKFLOW_VERSION_ID: 'n8n.workflow.version_id',

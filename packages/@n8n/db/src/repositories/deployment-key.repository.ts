@@ -4,7 +4,11 @@ import { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
-import { DeploymentKey, OAUTH_JWE_PRIVATE_KEY_TYPE } from '../entities/deployment-key';
+import {
+	DeploymentKey,
+	OAUTH_JWE_PRIVATE_KEY_TYPE,
+	OAUTH_SIGNING_KEY_TYPE,
+} from '../entities/deployment-key';
 import { DbLock, DbLockService } from '../services/db-lock.service';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
@@ -292,6 +296,31 @@ export class DeploymentKeyRepository {
 		await this.store.insert({
 			id,
 			type: OAUTH_JWE_PRIVATE_KEY_TYPE,
+			value,
+			algorithm,
+			status: 'active',
+		});
+	}
+
+	async findActiveOAuthSigningKey(algorithm: string): Promise<DeploymentKey | null> {
+		return await this.store.findOne({
+			where: { type: OAUTH_SIGNING_KEY_TYPE, algorithm, status: 'active' },
+		});
+	}
+
+	/** Every OAuth signing key, active and inactive, so retired keys stay verifiable. */
+	async findOAuthSigningKeys(): Promise<DeploymentKey[]> {
+		return await this.store.find({ where: { type: OAUTH_SIGNING_KEY_TYPE } });
+	}
+
+	/**
+	 * Throws a unique-constraint error when another process inserted the
+	 * active key for this algorithm first. The caller re-reads the winner.
+	 */
+	async insertActiveOAuthSigningKey(id: string, value: string, algorithm: string): Promise<void> {
+		await this.store.insert({
+			id,
+			type: OAUTH_SIGNING_KEY_TYPE,
 			value,
 			algorithm,
 			status: 'active',

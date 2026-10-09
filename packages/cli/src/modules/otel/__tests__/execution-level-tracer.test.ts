@@ -2,9 +2,12 @@ import type { Logger } from '@n8n/backend-common';
 import type { TextMapPropagator } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
 import { hrTimeToMilliseconds } from '@opentelemetry/core';
+import type { ExecutionStatus } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { toExecutionIdentity } from '../execution-identity';
 import { ExecutionLevelTracer } from '../execution-level-tracer';
+import type { StartWorkflowParams } from '../execution-level-tracer.types';
 import type { OtelSettingsService } from '../otel-settings.service';
 import type { OtelConfig } from '../otel.config';
 import { OtelTestProvider } from './support/otel-test-provider';
@@ -1065,6 +1068,259 @@ describe('ExecutionLevelTracer', () => {
 		it('returns undefined when no spans are tracked for the execution', () => {
 			expect(tracer.getActiveContext('non-existent')).toBeUndefined();
 			expect(tracer.getActiveContext('non-existent', 'SomeNode')).toBeUndefined();
+		});
+	});
+	describe('execution identity', () => {
+		const identityKeys = [
+			'n8n.execution.id',
+			'n8n.workflow.id',
+			'n8n.workflow.name',
+			'n8n.project.id',
+			'n8n.project.name',
+		];
+		const identityOf = (attributes: Record<string, unknown>) =>
+			Object.fromEntries(
+				identityKeys.filter((k) => k in attributes).map((k) => [k, attributes[k]]),
+			);
+
+		const node = { id: 'n1', name: 'MyNode', type: 'test', typeVersion: 1 };
+
+		const runSegment = (params: StartWorkflowParams, status: ExecutionStatus = 'success') => {
+			const saved = tracer.startWorkflow(params);
+			tracer.startNode({ executionId: params.executionId, node });
+			tracer.endNode({
+				executionId: params.executionId,
+				node,
+				inputItemCount: 1,
+				outputItemCount: 1,
+			});
+			tracer.endWorkflow({
+				executionId: params.executionId,
+				status,
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const spans = otel
+				.getFinishedSpans()
+				.filter((s) => s.attributes['n8n.execution.id'] === params.executionId);
+			return {
+				saved,
+				workflowSpan: spans.find((s) => s.name === 'workflow.execute')!,
+				nodeSpan: spans.find((s) => s.name === 'node.execute')!,
+			};
+		};
+
+		it('should add the same five identity attributes to workflow and node spans', () => {
+			const { workflowSpan, nodeSpan } = runSegment({
+				executionId: 'exec-id',
+				workflow: defaultWorkflow,
+				project: { id: 'proj-1', name: 'Finance' },
+			});
+
+			const expected = {
+				'n8n.execution.id': 'exec-id',
+				'n8n.workflow.id': 'wf-1',
+				'n8n.workflow.name': 'Test',
+				'n8n.project.id': 'proj-1',
+				'n8n.project.name': 'Finance',
+			};
+			expect(identityOf(workflowSpan.attributes)).toEqual(expected);
+			expect(identityOf(nodeSpan.attributes)).toEqual(expected);
+		});
+
+		it('should not add a project name when the project has none', () => {
+			const { nodeSpan } = runSegment({
+				executionId: 'exec-no-name',
+				workflow: defaultWorkflow,
+				project: { id: 'proj-1' },
+			});
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('proj-1');
+			expect(nodeSpan.attributes).not.toHaveProperty('n8n.project.name');
+		});
+
+		it('should give a sub-workflow its own identity, not the identity of its parent', () => {
+			const parent = runSegment({
+				executionId: 'exec-parent',
+				workflow: defaultWorkflow,
+				project: { id: 'proj-1', name: 'Finance' },
+			});
+
+			const child = runSegment({
+				executionId: 'exec-child',
+				tracingContext: parent.saved,
+				workflow: { id: 'wf-child', name: 'Child', nodeCount: 1 },
+				project: { id: 'proj-2', name: 'Operations' },
+			});
+
+			const expected = {
+				'n8n.execution.id': 'exec-child',
+				'n8n.workflow.id': 'wf-child',
+				'n8n.workflow.name': 'Child',
+				'n8n.project.id': 'proj-2',
+				'n8n.project.name': 'Operations',
+			};
+			expect(identityOf(child.workflowSpan.attributes)).toEqual(expected);
+			expect(identityOf(child.nodeSpan.attributes)).toEqual(expected);
+			expect(child.workflowSpan.parentSpanContext?.spanId).toBe(
+				parent.workflowSpan.spanContext().spanId,
+			);
+		});
+
+		it('should take the current workflow name and project on a resume', () => {
+			const parked = runSegment(
+				{
+					executionId: 'exec-resume',
+					workflow: { ...defaultWorkflow, name: 'Before' },
+					project: { id: 'proj-1', name: 'Finance' },
+				},
+				'waiting',
+			);
+			otel.reset();
+
+			const resumed = runSegment({
+				executionId: 'exec-resume',
+				tracingContext: parked.saved,
+				linkTo: parked.saved,
+				savedIdentity: toExecutionIdentity(parked.saved.identity),
+				workflow: { ...defaultWorkflow, name: 'After' },
+				project: { id: 'proj-2', name: 'Operations' },
+			});
+
+			const expected = {
+				'n8n.execution.id': 'exec-resume',
+				'n8n.workflow.id': 'wf-1',
+				'n8n.workflow.name': 'After',
+				'n8n.project.id': 'proj-2',
+				'n8n.project.name': 'Operations',
+			};
+			expect(identityOf(resumed.workflowSpan.attributes)).toEqual(expected);
+			expect(identityOf(resumed.nodeSpan.attributes)).toEqual(expected);
+			expect(resumed.saved.identity).toEqual(expected);
+		});
+
+		it('should keep the saved project on a resume when the project lookup fails', () => {
+			const parked = runSegment(
+				{
+					executionId: 'exec-resume-lookup',
+					workflow: defaultWorkflow,
+					project: { id: 'proj-1', name: 'Finance' },
+				},
+				'waiting',
+			);
+			otel.reset();
+
+			const { nodeSpan } = runSegment({
+				executionId: 'exec-resume-lookup',
+				tracingContext: parked.saved,
+				linkTo: parked.saved,
+				savedIdentity: toExecutionIdentity(parked.saved.identity),
+				workflow: defaultWorkflow,
+			});
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('proj-1');
+			expect(nodeSpan.attributes['n8n.project.name']).toBe('Finance');
+		});
+
+		it('should take the project from the resume when the saved identity has no project', () => {
+			const parked = runSegment(
+				{ executionId: 'exec-resume-project', workflow: { ...defaultWorkflow, name: 'Before' } },
+				'waiting',
+			);
+			otel.reset();
+
+			const { nodeSpan } = runSegment({
+				executionId: 'exec-resume-project',
+				tracingContext: parked.saved,
+				linkTo: parked.saved,
+				savedIdentity: toExecutionIdentity(parked.saved.identity),
+				workflow: { ...defaultWorkflow, name: 'After' },
+				project: { id: 'proj-1', name: 'Finance' },
+			});
+
+			expect(identityOf(nodeSpan.attributes)).toEqual({
+				'n8n.execution.id': 'exec-resume-project',
+				'n8n.workflow.id': 'wf-1',
+				'n8n.workflow.name': 'After',
+				'n8n.project.id': 'proj-1',
+				'n8n.project.name': 'Finance',
+			});
+		});
+
+		it('should build the identity again on a resume without a saved identity', () => {
+			const { workflowSpan, nodeSpan } = runSegment({
+				executionId: 'exec-resume-legacy',
+				tracingContext: inboundTracingContext,
+				linkTo: inboundTracingContext,
+				workflow: { ...defaultWorkflow, name: 'After' },
+				project: { id: 'proj-1', name: 'Finance' },
+			});
+
+			expect(workflowSpan.attributes['n8n.workflow.name']).toBe('After');
+			expect(nodeSpan.attributes['n8n.workflow.name']).toBe('After');
+			expect(nodeSpan.attributes['n8n.project.name']).toBe('Finance');
+		});
+
+		const crashParams = {
+			executionId: 'exec-crash',
+			workflowId: 'wf-1',
+			workflowName: 'Renamed',
+			mode: 'trigger',
+			detector: 'queue-recovery',
+			stoppedAt: new Date(),
+			project: { id: 'proj-1' },
+		} as const;
+
+		it('should take the identity of a reconstructed crash span from the saved identity', () => {
+			const otherProcess = new ExecutionLevelTracer(
+				otel.asOtelService(),
+				makeOtelSettingsService(),
+				logger,
+			);
+			const saved = otherProcess.startWorkflow({
+				executionId: 'exec-crash',
+				workflow: { ...defaultWorkflow, name: 'Before' },
+				project: { id: 'proj-1', name: 'Finance' },
+			});
+
+			tracer.endCrashedWorkflow({ ...crashParams, tracingContext: saved });
+
+			const span = otel.getFinishedSpans()[0];
+			expect(span.attributes['n8n.execution.reconstructed']).toBe(true);
+			expect(identityOf(span.attributes)).toEqual({
+				'n8n.execution.id': 'exec-crash',
+				'n8n.workflow.id': 'wf-1',
+				'n8n.workflow.name': 'Before',
+				'n8n.project.id': 'proj-1',
+				'n8n.project.name': 'Finance',
+			});
+		});
+
+		it('should build a crash span identity from the event without a project name when no identity is saved', () => {
+			tracer.endCrashedWorkflow({ ...crashParams, tracingContext: inboundTracingContext });
+
+			expect(identityOf(otel.getFinishedSpans()[0].attributes)).toEqual({
+				'n8n.execution.id': 'exec-crash',
+				'n8n.workflow.id': 'wf-1',
+				'n8n.workflow.name': 'Renamed',
+				'n8n.project.id': 'proj-1',
+			});
+		});
+
+		it('should not send the execution identity on outbound requests', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-outbound',
+				workflow: defaultWorkflow,
+				project: { id: 'proj-1', name: 'Finance' },
+			});
+			tracer.startNode({ executionId: 'exec-outbound', node });
+
+			const headers: Record<string, string> = {};
+			tracer.injectTraceHeaders('exec-outbound', node.name, headers);
+
+			expect(headers.traceparent).toBeDefined();
+			expect(headers).not.toHaveProperty('baggage');
 		});
 	});
 });

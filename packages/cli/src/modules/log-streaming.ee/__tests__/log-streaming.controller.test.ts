@@ -8,9 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import type { MessageEventBusDestination } from '../destinations/message-event-bus-destination.ee';

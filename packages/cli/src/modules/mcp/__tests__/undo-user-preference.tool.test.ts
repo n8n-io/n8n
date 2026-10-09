@@ -3,8 +3,7 @@ import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { AiPreferenceService } from '@/services/ai-preference.service';
 import { Telemetry } from '@/telemetry';
 
@@ -76,6 +75,7 @@ describe('undo_user_preference MCP tool', () => {
 		await tool.handler({ id: 'pref-1' });
 
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+			user_id: 'user-1',
 			count: 1,
 			source: 'rejected',
 			scope_types: ['user'],
@@ -88,6 +88,23 @@ describe('undo_user_preference MCP tool', () => {
 			parameters: {},
 			results: { success: true, data: { removed: true } },
 		});
+	});
+
+	test('closes the confirmation the write opened, as a refusal', async () => {
+		const { telemetry, tool } = createMocks();
+
+		await tool.handler({ id: 'pref-1' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
+			{
+				user_id: 'user-1',
+				surface: 'mcp',
+				outcome: 'rejected',
+				scope_type: 'user',
+				text_length: 'Keep replies short.'.length,
+			},
+		);
 	});
 
 	test.each([

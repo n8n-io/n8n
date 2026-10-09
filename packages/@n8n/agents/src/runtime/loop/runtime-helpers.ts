@@ -2,7 +2,7 @@
  * Pure utility functions used by AgentRuntime that require no class context.
  * These are extracted here to keep agent-runtime.ts focused on orchestration logic.
  */
-import type { ModelTurnError } from './run-output-sink';
+import type { ModelTurnError } from '../../types/runtime/agent-loop';
 import { stripInvisibleUnicode, wrapUntrustedData } from '../../sdk/untrusted-content';
 import type { StreamChunk, TokenUsage, McpConnectionFailedEvent } from '../../types';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';

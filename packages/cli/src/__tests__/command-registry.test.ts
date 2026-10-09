@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { CommandRegistry } from '../command-registry';
+import { packagedModules } from '../modules/modules.manifest';
 
 vi.mock('fast-glob');
 vi.mock('node:fs/promises', () => ({ access: vi.fn() }));
@@ -67,6 +68,12 @@ describe('CommandRegistry', () => {
 		process.argv = originalProcessArgv;
 		mockProcessExit.mockRestore();
 		vi.resetAllMocks();
+	});
+
+	it('should register packaged modules', () => {
+		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
+
+		expect(moduleRegistry.registerPackagedModules).toHaveBeenCalledWith(packagedModules);
 	});
 
 	it('should execute the specified command', async () => {

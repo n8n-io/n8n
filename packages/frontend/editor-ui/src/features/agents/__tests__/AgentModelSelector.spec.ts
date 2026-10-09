@@ -2,6 +2,8 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import type * as typeAvailabilityPolicies from '@n8n/frontend-module-type-availability-policies';
+import type * as permissions from '@n8n/permissions';
 
 import type {
 	AgentCredentialsByProvider,
@@ -28,6 +30,7 @@ type TestMenuItem = {
 		credentialType?: string;
 		provider?: string;
 		connectedLabel?: string;
+		restrictedLabel?: string;
 	};
 };
 
@@ -44,6 +47,9 @@ const freeAiCreditsState = vi.hoisted(() => ({
 	claimCreditsAndGetCredential: vi.fn(),
 }));
 const canCreateCredentials = vi.hoisted(() => ({ value: true }));
+const restrictedCredentialTypes = vi.hoisted(() => ({
+	value: {} as Record<string, 'instance' | 'project'>,
+}));
 const openNewCredential = vi.hoisted(() => vi.fn());
 const openModalWithData = vi.hoisted(() => vi.fn());
 const aiGatewayState = vi.hoisted(() => ({
@@ -78,6 +84,9 @@ const baseText = vi.hoisted(() =>
 				'agents.modelSelector.freeCredits.description':
 					'Get {credits} free OpenAI API credits. Try it with gpt-5-mini.',
 				'generic.loadingEllipsis': 'Loading...',
+				'agents.modelSelector.restricted': 'Restricted',
+				'typeAvailabilityPolicies.restrictedNode.scope.instance': 'Restricted on this instance',
+				'typeAvailabilityPolicies.restrictedNode.scope.project': 'Restricted in this project',
 			}[key] ?? key;
 
 		return Object.entries(options?.interpolate ?? {}).reduce(
@@ -93,7 +102,18 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
+	...(await importOriginal<typeof typeAvailabilityPolicies>()),
+	useTypeAvailabilityPoliciesStore: () => ({
+		getCredentialTypeAvailability: (name: string) => {
+			const scope = restrictedCredentialTypes.value[name];
+			return scope ? { name, available: false, scope } : { name, available: true };
+		},
+	}),
+}));
+
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof permissions>()),
 	getResourcePermissions: () => ({ credential: { create: canCreateCredentials.value } }),
 }));
 
@@ -108,6 +128,7 @@ vi.mock('@n8n/design-system', async () => {
 				'selectedLabel',
 				'selectedCredentialName',
 				'credentialsMissing',
+				'restrictedLabel',
 				'noMatchLabel',
 				'disabled',
 				'dataTestId',
@@ -263,6 +284,7 @@ describe('AgentModelSelector', () => {
 		freeAiCreditsState.claimingCredits.value = false;
 		freeAiCreditsState.claimCreditsAndGetCredential.mockReset();
 		canCreateCredentials.value = true;
+		restrictedCredentialTypes.value = {};
 		aiGatewayState.isEnabled.value = false;
 		aiGatewayState.supportedTypes = new Set<string>();
 		aiGatewayState.balance.value = undefined;
@@ -333,6 +355,65 @@ describe('AgentModelSelector', () => {
 		expect(items[0].id).toBe('anthropic');
 		expect(items[0].data?.connectedLabel).toBe('Connected');
 		expect(items.filter((item) => item.data?.connectedLabel).length).toBe(1);
+	});
+
+	it('disables a provider whose credential type is restricted on the instance', async () => {
+		restrictedCredentialTypes.value = { openAiApi: 'instance' };
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'openai')).toMatchObject({
+			disabled: true,
+			data: { restrictedLabel: 'Restricted on this instance' },
+		});
+		expect(getProviderItem(wrapper, 'openai')?.children).toBeUndefined();
+		expect(getProviderItem(wrapper, 'anthropic')?.children?.length).toBeGreaterThan(0);
+	});
+
+	it('shows the project scope line for a project-level restriction', async () => {
+		restrictedCredentialTypes.value = { openAiApi: 'project' };
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'openai')?.data?.restrictedLabel).toBe(
+			'Restricted in this project',
+		);
+	});
+
+	it('keeps a multi-credential-type provider usable while one type is still allowed', async () => {
+		restrictedCredentialTypes.value = { azureOpenAiApi: 'instance' };
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'azure-openai')?.disabled).toBeFalsy();
+	});
+
+	it('disables a multi-credential-type provider once every type is restricted', async () => {
+		restrictedCredentialTypes.value = {
+			azureOpenAiApi: 'instance',
+			azureEntraCognitiveServicesOAuth2Api: 'instance',
+		};
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'azure-openai')?.disabled).toBe(true);
+	});
+
+	it('shows the restricted badge for a selected restricted provider and pins it without the connected marker', async () => {
+		restrictedCredentialTypes.value = { anthropicApi: 'instance' };
+
+		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(getDropdown(wrapper).props('restrictedLabel')).toBe('Restricted');
+		expect(items[0]).toMatchObject({ id: 'anthropic', disabled: true });
+		expect(items[0].data?.connectedLabel).toBeUndefined();
+	});
+
+	it('shows no restricted badge for an unrestricted selection', async () => {
+		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
+
+		expect(getDropdown(wrapper).props('restrictedLabel')).toBeUndefined();
 	});
 
 	it('does not mark anything as connected when there is no selected model', async () => {

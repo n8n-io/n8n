@@ -12,7 +12,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 
 import { AgentRunnableStateService } from './agent-runnable-state.service';
@@ -43,6 +43,7 @@ export class AgentsController {
 			: await this.agentDefaultModelResolverService.resolve(req.user, projectId);
 
 		const agent = await this.agentsService.create(projectId, payload.name, {
+			actor: { kind: 'user', user: req.user },
 			id: payload.id,
 			...(defaultModel ? { defaultModel } : {}),
 			// Keep the config name in sync with the entity name so the list and

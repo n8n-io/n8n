@@ -1,7 +1,27 @@
 import type { JsonObject, JsonValue } from '../common';
 
-/** Lifecycle status of an execution. */
-export type ExecutionStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+/**
+ * Lifecycle status of an execution. A resume does not update it, so it can
+ * read `waiting` while the resumed step runs. See
+ * `ExecutionStore.refreshLiveStatus`.
+ */
+export type ExecutionStatus =
+	| 'queued'
+	| 'running'
+	| 'waiting'
+	| 'completed'
+	| 'failed'
+	| 'cancelled';
+
+/**
+ * Started and not ended. `queued` is not live: it has no step rows yet. The SQL
+ * in `TypeOrmExecutionStore.refreshLiveStatus` repeats this list.
+ */
+export const LIVE_EXECUTION_STATUSES = ['running', 'waiting'] as const;
+
+export function isLiveExecutionStatus(status: ExecutionStatus): boolean {
+	return (LIVE_EXECUTION_STATUSES as readonly ExecutionStatus[]).includes(status);
+}
 
 /** How an execution was initiated. */
 export type ExecutionMode = 'production' | 'manual';
@@ -88,6 +108,18 @@ export type WorkflowDocument = JsonObject;
 
 /** Slots recorded for a trigger that fired without a payload: no slots at all. */
 export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
+
+/**
+ * Steps the caller already holds the outputs of, by node id: a partial manual
+ * run that reuses earlier results, or a node with pinned data. The engine does
+ * not run such a node. When the run reaches it, the engine records it as
+ * completed with these outputs instead, so everything before it has settled
+ * first, as it would have had the node run. Same opacity as `TriggerOutputs`.
+ *
+ * Each node maps to its outputs per pass, iteration 0 first. A node outside a
+ * loop has one entry. TODO(CAT-4875): accept a loop's passes.
+ */
+export type SeededSteps = Record<string, StepSlots[]>;
 
 /**
  * A step's declaration that it is not done: instead of outputs, it says when

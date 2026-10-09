@@ -34,10 +34,13 @@ import { useInstallNode } from '@/features/settings/communityNodes/composables/u
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
+	getNodeItemRestriction,
 	isAiGatewayEligibleNode,
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
@@ -122,6 +125,7 @@ const toast = useToast();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const {
 	availableToolTypes,
@@ -131,6 +135,7 @@ const {
 	resolveToolNodeType,
 } = useAgentToolCatalog();
 const { installNode: installCommunityNode } = useInstallNode();
+const { warnIfRestricted } = useRestrictedNodeWarning();
 const usersStore = useUsersStore();
 
 const searchQuery = ref('');
@@ -208,6 +213,7 @@ const configForm = ref<InstanceType<typeof AgentToolConfigForm> | null>(null);
 const configTitle = ref('');
 const configSession = ref(0);
 const isCredentialModalOpen = ref(false);
+const configIsRestricted = ref(false);
 
 const isOpen = computed({
 	get: () => uiStore.modalsById[props.modalName]?.open === true,
@@ -292,6 +298,14 @@ onMounted(() => {
 	}
 });
 
+watch(
+	() => props.data.projectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
+
 function makeUniqueName(
 	baseName: string,
 	existingNames: string[],
@@ -330,6 +344,9 @@ function commit() {
 }
 
 function addToolRef(savedRef: AgentJsonToolRef) {
+	// The policy can finish loading while the config form is open.
+	if (savedRef.type === 'node' && warnIfRestricted(savedRef.node.nodeType)) return;
+
 	workingToolEntries.value = [...workingToolEntries.value, { localId: uuidv4(), ref: savedRef }];
 	commit();
 }
@@ -424,6 +441,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			);
 			return;
 		}
+		if (warnIfRestricted(installed.name)) return;
 		addNodeTool(installed);
 	} finally {
 		installingToolName.value = null;
@@ -431,6 +449,8 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 }
 
 async function handleAddTool(nodeType: INodeTypeDescription) {
+	if (getNodeItemRestriction(nodeType.name)) return;
+
 	if (isMcpRelatedNodeType(nodeType.name)) {
 		handleAddMcpServer(nodeType);
 		return;
@@ -468,6 +488,8 @@ function addNodeTool(nodeType: INodeTypeDescription) {
  * the n8n Connect managed credential is pre-selected, so no credential setup.
  */
 function addManagedNodeTool(nodeType: INodeTypeDescription) {
+	if (getNodeItemRestriction(nodeType.name)) return;
+
 	toolTelemetry.trackAddStarted('node');
 	const newRef = nodeTypeToNewToolRef(nodeType);
 
@@ -646,6 +668,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 		verified: isVerifiedCommunityTool(nodeType),
+		restriction: getNodeItemRestriction(nodeType.name),
 	};
 	return item;
 }
@@ -665,6 +688,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
+		restriction: getNodeItemRestriction(nodeType.name),
 	};
 	return item;
 }
@@ -686,6 +710,7 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 		communityPreview,
 		installing: installingToolName.value === nodeType.name,
 		installDisabled: communityPreview && !usersStore.isAdminOrOwner,
+		restriction: getNodeItemRestriction(nodeType.name),
 	};
 }
 
@@ -841,6 +866,8 @@ function handleRowActivate(item: ToolConnectionItem) {
 	// the row's own tooltip already explains why, so activating does nothing.
 	if (item.disabled) return;
 	if (item.status === 'connecting') return;
+	const isRestricted = item.kind === 'node' && Boolean(item.restriction);
+	if (isRestricted && !hasToolConnection(item.status)) return;
 	if (hasToolConnection(item.status)) {
 		if (item.id.startsWith('mcp:')) {
 			const localId = item.id.slice('mcp:'.length);
@@ -858,7 +885,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 			// n8n Connect managed tool must keep its managed-credential
 			// preselection, so route it through the same managed add path.
 			const { ref } = entry;
-			if (ref.type === 'node') {
+			if (ref.type === 'node' && !isRestricted) {
 				const nodeType =
 					[...availableToolTypes.value, ...communitySearchToolTypes.value].find(
 						(nt) => nt.name === ref.node.nodeType,
@@ -909,7 +936,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 		:open="isOpen"
 		:step="currentStep"
 		:title="modalTitle"
-		:editable-title="Boolean(configData) && !configIsCustom"
+		:editable-title="Boolean(configData) && !configIsCustom && !configIsRestricted"
 		:show-back="Boolean(configData)"
 		:show-footer="Boolean(configData)"
 		:busy="isCredentialModalOpen || isCreatingWorkflow"
@@ -970,6 +997,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 			:data="configData"
 			@update:title="configTitle = $event"
 			@update:credential-modal-open="isCredentialModalOpen = $event"
+			@update:restricted="configIsRestricted = $event"
 		/>
 
 		<template v-if="configData?.onRemove" #footerLeft>
@@ -981,7 +1009,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 		<template v-if="configData" #footerActions>
 			<N8nButton
 				variant="solid"
-				:disabled="isCredentialModalOpen"
+				:disabled="isCredentialModalOpen || configIsRestricted"
 				data-testid="agent-tool-config-save"
 				@click="saveConfig"
 			>

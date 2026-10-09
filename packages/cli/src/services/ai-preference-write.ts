@@ -3,10 +3,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { ResponseError, ConflictError, ForbiddenError } from '@n8n/errors';
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { AiPreferenceService } from '@/services/ai-preference.service';
 import type { Telemetry } from '@/telemetry';
 
@@ -51,6 +49,11 @@ export function isExpectedAiPreferenceRefusal(error: unknown): error is Response
 	return error instanceof ResponseError && error.httpStatusCode < 500;
 }
 
+/** Whole seconds between the write and now, for the undo-rate reading. */
+export function secondsSinceSaved(preference: AiPreferenceDto, now = Date.now()): number {
+	return Math.max(0, Math.round((now - new Date(preference.createdAt).getTime()) / 1000));
+}
+
 export type AssistantPreferenceWrite = {
 	aiPreferenceService: AiPreferenceService;
 	telemetry: Telemetry;
@@ -91,6 +94,7 @@ export async function writeAssistantPreference({
 			logger.error('Saving an AI preference from the assistant failed', { error });
 		}
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+			user_id: user.id,
 			surface,
 			reason: rejection.reason,
 			scope_type: scope,
@@ -101,23 +105,27 @@ export async function writeAssistantPreference({
 
 	try {
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN, {
+			user_id: user.id,
 			surface,
 			scope_type: scope,
 			text_length: textLength,
 		});
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+			user_id: user.id,
 			surface,
 			outcome: 'accepted',
 			scope_type: scope,
 			text_length: textLength,
 		});
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED, {
+			user_id: user.id,
 			surface,
 			offered_scope: scope,
 			accepted_scope: scope,
 			scope_changed: false,
 		});
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE, {
+			user_id: user.id,
 			surface,
 			scope_type: scope,
 			text_length: textLength,

@@ -3,30 +3,70 @@ import { AI_GATEWAY_MANAGED_TAG, MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types
 import { extractAgentCredentialIds } from '../extract-agent-credential-ids';
 
 describe('extractAgentCredentialIds', () => {
-	it('recursively extracts credential, credentialId, and credentials.*.id references', () => {
+	it('extracts local credential references and leaves tool inputs opaque', () => {
 		const result = extractAgentCredentialIds({
 			credential: 'main-model-credential',
 			memory: {
-				worker: { credential: 'memory-worker-credential' },
+				observationalMemory: {
+					observerModel: { credential: 'observer-credential' },
+					reflectorModel: { credential: 'reflector-credential' },
+				},
+				episodicMemory: {
+					credential: 'memory-embedding-credential',
+					reflectorModel: { credential: 'episodic-reflector-credential' },
+				},
 			},
+			subAgents: {
+				modelsByDifficulty: {
+					low: { credential: 'low-credential' },
+					medium: { credential: 'medium-credential' },
+					high: { credential: 'high-credential' },
+				},
+			},
+			config: { webSearch: { credential: 'search-credential' } },
 			integrations: [{ credentialId: 'integration-credential' }],
+			mcpServers: [{ credential: 'mcp-credential' }],
+			vectorStores: [
+				{
+					credential: 'vector-store-credential',
+					embedding: { credential: 'vector-embedding-credential' },
+				},
+			],
 			tools: [
 				{
+					enabled: false,
 					node: {
 						credentials: {
 							openAiApi: { id: 'node-tool-credential', name: 'OpenAI account' },
 						},
+						nodeParameters: {
+							credentialId: 'remote-credential',
+							credential: 'authored-value',
+							credentials: { remote: { id: 'remote-value' } },
+						},
 					},
 				},
+				{ type: 'workflow', inputs: { data: { value: { credentialId: 'input-value' } } } },
 			],
+			providerTools: { custom: { credential: 'provider-argument' } },
 			unrelated: { id: 'not-a-credential-reference' },
 		});
 
 		expect(result).toEqual(
 			new Set([
 				'main-model-credential',
-				'memory-worker-credential',
+				'observer-credential',
+				'reflector-credential',
+				'memory-embedding-credential',
+				'episodic-reflector-credential',
+				'low-credential',
+				'medium-credential',
+				'high-credential',
+				'search-credential',
 				'integration-credential',
+				'mcp-credential',
+				'vector-store-credential',
+				'vector-embedding-credential',
 				'node-tool-credential',
 			]),
 		);
@@ -55,7 +95,7 @@ describe('extractAgentCredentialIds', () => {
 			credential: '',
 			memory: {
 				episodicMemory: { credential: MANAGED_CREDENTIAL_TOKEN },
-				worker: { credential: AI_GATEWAY_MANAGED_TAG },
+				observationalMemory: { observerModel: { credential: AI_GATEWAY_MANAGED_TAG } },
 			},
 			integrations: [
 				{ credentialId: '' },

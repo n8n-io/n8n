@@ -2,27 +2,30 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { unrefElement, useElementHover, type MaybeElement } from '@vueuse/core';
-import { computed, ref } from 'vue';
+import { unrefElement, useActiveElement, useElementHover, type MaybeElement } from '@vueuse/core';
+import { computed, ref, watch } from 'vue';
 
+import { useExclusiveOpen } from '../composables/useExclusiveOpen';
+import { SCOPE_LABEL_KEY } from '../type-availability-policies.constants';
 import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
 
-const props = defineProps<{
-	nodeTypeName: string;
-	scope?: NodeTypeAvailabilityScope;
-	/** The list row the popover explains. It opens beside this element, not beside the lock. */
-	anchor?: MaybeElement;
-	/** The row is the keyboard-active item, which opens the popover like a hover does. */
-	active?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		nodeTypeName: string;
+		scope?: NodeTypeAvailabilityScope;
+		/** The list row the popover explains. It opens beside this element, not beside the lock. */
+		anchor?: MaybeElement;
+		/** Keyboard-active without DOM focus, such as a virtual list selection. */
+		active?: boolean;
+		side?: 'top' | 'right' | 'bottom' | 'left';
+		align?: 'start' | 'center' | 'end';
+		sideOffset?: number;
+	}>(),
+	{ scope: undefined, anchor: undefined, side: 'left', align: 'center', sideOffset: 24 },
+);
 
 /** Leaving waits this long before closing, so the pointer can cross the gap to the popover. */
 const HOVER_GRACE_MS = 200;
-
-const SCOPE_TITLE_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
-	instance: 'typeAvailabilityPolicies.restrictedNode.scope.instance',
-	project: 'typeAvailabilityPolicies.restrictedNode.scope.project',
-};
 
 const i18n = useI18n();
 
@@ -30,36 +33,58 @@ const anchorElement = computed(() => unrefElement(props.anchor) ?? undefined);
 const contentRef = ref<HTMLElement | null>(null);
 const anchorHovered = useElementHover(anchorElement, { delayLeave: HOVER_GRACE_MS });
 const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS });
-const open = computed(() => anchorHovered.value || contentHovered.value || props.active);
-
+watch(contentRef, (content) => {
+	if (!content) contentHovered.value = false;
+});
 const isContactAdminOpen = ref(false);
+const activeElement = useActiveElement();
+const anchorFocused = computed(() =>
+	Boolean(anchorElement.value?.contains(activeElement.value ?? null)),
+);
+const contentFocused = computed(() =>
+	Boolean(contentRef.value?.contains(activeElement.value ?? null)),
+);
+const wantsOpen = computed(
+	() =>
+		!isContactAdminOpen.value &&
+		(anchorHovered.value ||
+			contentHovered.value ||
+			anchorFocused.value ||
+			contentFocused.value ||
+			props.active),
+);
+const open = useExclusiveOpen(wantsOpen);
 
 const scopeKey = computed<BaseTextKey>(
 	() =>
-		(props.scope && SCOPE_TITLE_KEY[props.scope]) ??
+		(props.scope && SCOPE_LABEL_KEY[props.scope]) ??
 		'typeAvailabilityPolicies.restrictedNode.title',
 );
 </script>
 
 <template>
 	<span :class="$style.root">
+		<!-- The tool pickers render this inside a modal. -->
 		<N8nPopover
 			:open="open"
-			side="left"
-			align="center"
-			:side-offset="24"
+			:side="props.side"
+			:align="props.align"
+			:side-offset="props.sideOffset"
 			:reference="anchorElement"
 			:suppress-auto-focus="true"
 			:content-class="$style.card"
 			width="254px"
+			z-index="var(--floating-ui--z)"
 		>
 			<template #trigger>
-				<N8nIcon
-					icon="lock"
-					size="small"
-					:title="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
-					data-test-id="node-restricted-icon"
-				/>
+				<span
+					:class="$style.marker"
+					tabindex="0"
+					role="img"
+					:aria-label="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
+				>
+					<N8nIcon icon="lock" size="small" data-test-id="node-restricted-icon" />
+				</span>
 			</template>
 			<template #content>
 				<div ref="contentRef" :class="$style.popover" data-test-id="node-restricted-popover">
@@ -90,6 +115,19 @@ const scopeKey = computed<BaseTextKey>(
 // Two teleported children and one visible trigger: the wrapper must not affect the slot's layout.
 .root {
 	display: contents;
+}
+
+.marker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--3xs);
+	color: var(--color--text--tint-1);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		outline-offset: 2px;
+	}
 }
 
 // The design system defaults popovers to --radius--xs (8px); the design uses the editor's 4px.
