@@ -94,12 +94,12 @@ describe('transferDialogState', () => {
 	});
 
 	it('tells whether the linked instance listed its node types', () => {
-		expect(transferDialogState(transferPreflight({ nodeTypeCheck: 'checked' })).nodeTypesChecked).toBe(
-			true,
-		);
-		expect(transferDialogState(transferPreflight({ nodeTypeCheck: 'unknown' })).nodeTypesChecked).toBe(
-			false,
-		);
+		expect(
+			transferDialogState(transferPreflight({ nodeTypeCheck: 'checked' })).nodeTypesChecked,
+		).toBe(true);
+		expect(
+			transferDialogState(transferPreflight({ nodeTypeCheck: 'unknown' })).nodeTypesChecked,
+		).toBe(false);
 	});
 
 	describe('warnings', () => {
@@ -214,7 +214,9 @@ describe('transferHints', () => {
 	it('names the empty credentials before the unchecked node types', () => {
 		const emptyAndUnchecked = { ...needsSetUp, nodeTypesChecked: false };
 
-		expect(transferHints(emptyAndUnchecked, both, choice(false, true))).toEqual(['notLiveUntilSetUp']);
+		expect(transferHints(emptyAndUnchecked, both, choice(false, true))).toEqual([
+			'notLiveUntilSetUp',
+		]);
 	});
 
 	it('treats a credential that was not checked as no reason to stay off', () => {
