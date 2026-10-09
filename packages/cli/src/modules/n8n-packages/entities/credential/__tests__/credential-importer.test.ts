@@ -112,7 +112,10 @@ describe('CredentialImporter', () => {
 				id: 'cred-missing',
 				name: 'Missing',
 				type: 'githubApi',
-				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'agent', id: 'wf-1' },
+				],
 			},
 		]);
 		const credentialResolution = await importer.plan(context, request);

@@ -12,6 +12,8 @@ import type {
 	PackageRequirements,
 } from '@/modules/n8n-packages/spec/requirements.schema';
 
+import { remapPath, type ContainerMove } from './branch-placement';
+
 /**
  * TEMPORARY bridge: import still inventories a directory package from
  * `manifest.json`. Apply writes that file after overlay.
@@ -78,7 +80,9 @@ function dropSelectedUsers<T extends { usedBy: PackageRequirementConsumer[] }>(
 	const kept = rows
 		.map((row) => ({
 			...row,
-			usedBy: row.usedBy.filter(({ id }) => !selectedWorkflowIds.has(id)),
+			usedBy: row.usedBy.filter(
+				({ kind, id }) => kind === 'workflow' && !selectedWorkflowIds.has(id),
+			),
 		}))
 		.filter((row) => row.usedBy.length > 0);
 	return kept.length > 0 ? kept : undefined;
@@ -89,14 +93,22 @@ export async function writeImportManifest(options: {
 	staging: PackageManifest;
 	sourceId: string;
 	selectedWorkflowIds?: readonly string[];
+	/** Container renames already applied to the export, so leftover targets resolve. */
+	containerMoves?: readonly ContainerMove[];
 }): Promise<void> {
-	const { exportFolder, staging, sourceId, selectedWorkflowIds = [] } = options;
+	const {
+		exportFolder,
+		staging,
+		sourceId,
+		selectedWorkflowIds = [],
+		containerMoves = [],
+	} = options;
 	const selected = [...selectedWorkflowIds, ...(staging.workflows ?? []).map((entry) => entry.id)];
 	const leftover = dropSelectedRequirementUsers(await readLeftoverManifest(exportFolder), selected);
 	const collections = await walkSnapshotCollections(exportFolder);
 	const remainingWorkflowIds = new Set((collections.workflows ?? []).map((entry) => entry.id));
 	const selectedSet = new Set(selected);
-	const variables = await collectVariables(exportFolder, leftover, staging);
+	const variables = await collectVariables(exportFolder, leftover, staging, containerMoves);
 
 	const manifest = packageManifestSchema.parse({
 		packageFormatVersion: '1',
@@ -174,10 +186,11 @@ async function collectVariables(
 	exportFolder: string,
 	leftover: PackageManifest | undefined,
 	staging: PackageManifest,
+	containerMoves: readonly ContainerMove[],
 ): Promise<ManifestEntry[]> {
 	const byId = new Map<string, ManifestEntry>();
 	for (const entry of leftover?.variables ?? []) {
-		byId.set(entry.id, entry);
+		byId.set(entry.id, { ...entry, target: remapPath(entry.target, containerMoves) });
 	}
 	for (const entry of staging.variables ?? []) {
 		byId.set(entry.id, entry);
@@ -280,7 +293,7 @@ function mergeRequirementRows<T extends { usedBy: PackageRequirementConsumer[] }
 	const byKey = new Map<string, T>();
 	for (const row of leftover ?? []) {
 		const usedBy = remainingUsers(
-			row.usedBy.filter(({ id }) => !selectedWorkflowIds.has(id)),
+			row.usedBy.filter(({ kind, id }) => kind === 'workflow' && !selectedWorkflowIds.has(id)),
 			remainingWorkflowIds,
 		);
 		if (usedBy.length === 0) continue;

@@ -4,7 +4,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { CredentialMatcherFactory } from './credential-matcher-factory';
-import { credentialBlockingFailures, canStubNotFoundFailure } from './credential-missing-mode';
+import { credentialBlockingFailures, credentialsToStub } from './credential-missing-mode';
 import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
@@ -54,7 +54,7 @@ export class CredentialImporter {
 	 * Creates stub credentials for unresolved `not_found` references under
 	 * `create-stub`, then returns the full source→target binding map.
 	 * {@link CredentialsService.createStubCredential} enforces `credential:create`
-	 * on the target project.
+	 * on the target project, and the `credentialSave` policy again after the plan checked it.
 	 */
 	async apply(
 		context: ImportContext,
@@ -65,13 +65,7 @@ export class CredentialImporter {
 		const matched = [...resolution.successes.keys()];
 		const stubbed: string[] = [];
 
-		if (request.missingMode !== 'create-stub') {
-			return { bindings, matched, stubbed };
-		}
-
-		const credentialsToStub = stubbableCredentialFailures(resolution.failures);
-
-		for (const credential of credentialsToStub) {
+		for (const credential of credentialsToStub(request.missingMode, resolution)) {
 			const { sourceId, type, name } = credential;
 			if (type === undefined) {
 				throw new UnexpectedError(
@@ -96,17 +90,4 @@ export class CredentialImporter {
 
 		return { bindings, matched, stubbed };
 	}
-}
-
-/** First stubbable `not_found` failure per source id. */
-function stubbableCredentialFailures(
-	failures: CredentialResolutionFailure[],
-): CredentialResolutionFailure[] {
-	return [
-		...new Map(
-			failures
-				.filter((failure) => canStubNotFoundFailure(failure))
-				.map((failure) => [failure.sourceId, failure] as const),
-		).values(),
-	];
 }

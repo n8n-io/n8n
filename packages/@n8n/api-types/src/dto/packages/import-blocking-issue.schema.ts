@@ -3,6 +3,8 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import {
+	credentialPolicyViolationFieldDocs,
+	credentialPolicyViolationIssueOpenApi,
 	credentialUnresolvedFieldDocs,
 	credentialUnresolvedIssueOpenApi,
 	dataTableSchemaOperationOpenApi,
@@ -44,7 +46,7 @@ import { policyViolationSchema } from '../../schemas/policy-violation.schema';
 
 export const packageRequirementConsumerSchema = z
 	.object({
-		kind: z.literal('workflow'),
+		kind: z.enum(['workflow', 'agent']),
 		id: z.string().min(1),
 	})
 	.openapi('PackageRequirementConsumer');
@@ -347,6 +349,19 @@ const policyViolationIssueSchema = z
 	})
 	.openapi(policyViolationIssueOpenApi);
 
+const credentialPolicyViolationIssueSchema = z
+	.object({
+		type: z.literal('credential-policy-violation'),
+		sourceId: z.string().openapi(credentialPolicyViolationFieldDocs.sourceId),
+		name: z.string().optional(),
+		credentialType: z.string(),
+		usedBy: z
+			.array(packageRequirementConsumerSchema)
+			.openapi(credentialPolicyViolationFieldDocs.usedBy),
+		violations: z.array(policyViolationSchema),
+	})
+	.openapi(credentialPolicyViolationIssueOpenApi);
+
 export const importBlockingIssueSchema = z
 	.discriminatedUnion('type', [
 		workflowConflictIssueSchema,
@@ -367,6 +382,7 @@ export const importBlockingIssueSchema = z
 		variableLimitExceededIssueSchema,
 		missingNodeTypeIssueSchema,
 		policyViolationIssueSchema,
+		credentialPolicyViolationIssueSchema,
 	])
 	.openapi('ImportBlockingIssue');
 

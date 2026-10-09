@@ -24,6 +24,7 @@ import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { usePracticeRunBannerDismissal } from '../composables/usePracticeRunBannerDismissal';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
+import AgentEvalSuggestionCard from './AgentEvalSuggestionCard.vue';
 import EvalInitialSample from './EvalInitialSample.vue';
 
 const props = defineProps<{
@@ -58,6 +59,10 @@ const props = defineProps<{
 	hideRevise?: boolean;
 	/** The complete view was opened on this case: expand it and scroll it into view. */
 	focused?: boolean;
+	/** The judge's proposed instruction for a failed check. Not `suggestion`: that is the correction note below. */
+	fixSuggestion?: string | null;
+	/** True from "Apply suggestion" until the rewrite and rerun settle. */
+	applyingSuggestion?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -70,6 +75,8 @@ const emit = defineEmits<{
 	'save-what-to-check': [text: string];
 	/** The trash icon's confirmed delete — this case and its example. */
 	'delete-check': [];
+	/** "Apply suggestion": rewrite the agent's instructions with the fix, then rerun. */
+	'apply-suggestion': [];
 	/** Small view only: the chevron or row was clicked. */
 	open: [];
 }>();
@@ -87,11 +94,28 @@ const root = ref<HTMLElement | null>(null);
 // say what should have happened instead — a passed or not-yet-run case has
 // nothing to correct.
 const needsCorrection = computed(() => props.status === 'work' || props.status === 'fail');
+
+// "Keep as is" hides the card only until a different suggestion arrives (a rerun failed
+// again), so a new proposal is never swallowed by an old dismissal.
+const suggestionDismissed = ref(false);
+watch(
+	() => props.fixSuggestion,
+	() => {
+		suggestionDismissed.value = false;
+	},
+);
+const showFixSuggestion = computed(
+	() =>
+		props.view === 'complete' &&
+		needsCorrection.value &&
+		Boolean(props.fixSuggestion?.trim()) &&
+		!suggestionDismissed.value,
+);
 // A "couldn't finish" case often has no output at all — it must still expand
 // to reach the correction form, so this isn't gated on output alone.
 const canExpand = computed(() => props.output !== null || needsCorrection.value);
 
-type StatusText = { labelKey: BaseTextKey; color: TextColor };
+type StatusText = { labelKey: BaseTextKey; color?: TextColor; warning?: boolean };
 
 // Only `view="complete"` reads this — the plain row's header already says its
 // own thing in place of a status line (the scenario `label`, or the identical
@@ -101,12 +125,13 @@ const STATUS_TEXT: Record<AgentAvatarKind, StatusText> = {
 	strong: { labelKey: 'agents.builder.agentEvals.checks.status.passes', color: 'success' },
 	waiting: { labelKey: 'agents.builder.agentEvals.checks.status.running', color: 'text-light' },
 	idle: { labelKey: 'agents.builder.agentEvals.checks.status.neverRan', color: 'text-light' },
-	work: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', color: 'warning' },
+	work: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', warning: true },
 	fail: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', color: 'danger' },
 };
 
 const statusText = computed(() => i18n.baseText(STATUS_TEXT[props.status].labelKey));
 const statusColor = computed(() => STATUS_TEXT[props.status].color);
+const statusIsWarning = computed(() => STATUS_TEXT[props.status].warning === true);
 
 function toggleExpanded() {
 	if (!canExpand.value) return;
@@ -197,7 +222,12 @@ watch(
 				<N8nText color="text-dark" size="medium" bold :class="$style.headerTitleText">{{
 					input
 				}}</N8nText>
-				<N8nText :color="statusColor" size="small">{{ statusText }}</N8nText>
+				<N8nText
+					:color="statusColor"
+					:class="{ [$style.statusWarning]: statusIsWarning }"
+					size="small"
+					>{{ statusText }}</N8nText
+				>
 			</div>
 
 			<N8nText color="text-light" size="small">
@@ -339,6 +369,16 @@ watch(
 			</div>
 
 			<template v-if="needsCorrection">
+				<AgentEvalSuggestionCard
+					v-if="showFixSuggestion && fixSuggestion"
+					:class="$style.fixSuggestion"
+					:suggestion="fixSuggestion"
+					:applying="applyingSuggestion"
+					:disabled="disabled"
+					:test-id="testId && `${testId}-suggestion-card`"
+					@apply="emit('apply-suggestion')"
+					@dismiss="suggestionDismissed = true"
+				/>
 				<template v-if="!hideRevise">
 					<N8nText bold color="text-dark" :class="$style.correctionHint">
 						{{ i18n.baseText('instanceAi.testAgentPreview.inputCorrectionHint') }}
@@ -411,6 +451,10 @@ watch(
 	min-width: 0;
 }
 
+.statusWarning {
+	color: var(--callout--color--text--secondary);
+}
+
 .headerTitleText {
 	display: block;
 	overflow: hidden;
@@ -477,6 +521,10 @@ watch(
 	display: block;
 	margin-top: var(--spacing--sm);
 	margin-bottom: var(--spacing--2xs);
+}
+
+.fixSuggestion {
+	margin-top: var(--spacing--sm);
 }
 
 .correctionActions {

@@ -69,6 +69,7 @@ export type {
 	GraphNode,
 	StepConfig,
 	StepType,
+	StoredWorkflowGraph,
 	WorkflowGraph,
 	WorkflowLoop,
 } from './graph';
@@ -122,6 +123,7 @@ export type {
 	StepStatus,
 	StepStore,
 	StepView,
+	SeededSteps,
 	TriggerOutputs,
 	WaitDeclaration,
 	WorkflowDocument,

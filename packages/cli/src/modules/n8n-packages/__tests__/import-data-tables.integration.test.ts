@@ -94,7 +94,7 @@ async function buildDataTablePackage(
 		tables.map((table) =>
 			dataTableRequirement(
 				table,
-				workflows.map(({ id }) => id),
+				workflows.map(({ id }) => ({ kind: 'workflow', id })),
 			),
 		);
 
@@ -618,7 +618,9 @@ describe('workflow package import — with data tables', () => {
 				workflows: [{ target: 'workflows/wf-0', workflow }],
 				manifestExtras: {
 					dataTables: [{ id: table.id, name: table.name, target: 'data-tables/dt-0' }],
-					requirements: { dataTables: [dataTableRequirement(table, ['wf-0'])] },
+					requirements: {
+						dataTables: [dataTableRequirement(table, [{ kind: 'workflow', id: 'wf-0' }])],
+					},
 				},
 			});
 
@@ -637,7 +639,9 @@ describe('workflow package import — with data tables', () => {
 			const packageBuffer = await buildEntityPackageBuffer({
 				workflows: [{ target: 'workflows/wf-0', workflow }],
 				manifestExtras: {
-					requirements: { dataTables: [dataTableRequirement(table, ['wf-0'])] },
+					requirements: {
+						dataTables: [dataTableRequirement(table, [{ kind: 'workflow', id: 'wf-0' }])],
+					},
 				},
 			});
 
@@ -722,7 +726,11 @@ describe('workflow package import — with data tables', () => {
 					},
 				],
 				dataTables: [{ target: 'data-tables/dt-0', dataTable: table }],
-				manifestExtras: { requirements: { dataTables: [dataTableRequirement(table, ['wf-0'])] } },
+				manifestExtras: {
+					requirements: {
+						dataTables: [dataTableRequirement(table, [{ kind: 'workflow', id: 'wf-0' }])],
+					},
+				},
 			});
 
 			const importWithKeyScopes = async (apiKeyScopes: string[]) =>
@@ -1249,7 +1257,9 @@ describe('workflow package import — with data tables', () => {
 					],
 					dataTables: [{ target: 'data-tables/dt-0', dataTable: table }],
 					manifestExtras: {
-						requirements: { dataTables: [dataTableRequirement(table, ['wf-0'])] },
+						requirements: {
+							dataTables: [dataTableRequirement(table, [{ kind: 'workflow', id: 'wf-0' }])],
+						},
 					},
 				});
 			};

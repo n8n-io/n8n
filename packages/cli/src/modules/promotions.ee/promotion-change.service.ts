@@ -57,7 +57,10 @@ const DEPENDENCY_COLLECTIONS = {
 	tags: 'tags',
 	workflows: 'workflows',
 	nodeTypes: null,
-} as const satisfies Record<keyof PackageRequirements, ManifestEntityCollection | null>;
+} as const satisfies Record<
+	Exclude<keyof PackageRequirements, 'agents'>,
+	ManifestEntityCollection | null
+>;
 
 const GIT_SCOPES = {
 	promote: 'gitConnection:push',
@@ -333,7 +336,7 @@ export function scopeManifestToProject(
 		const kept = rows
 			?.map((row) => ({
 				...row,
-				usedBy: row.usedBy.filter(({ id }) => workflowIds.has(id)),
+				usedBy: row.usedBy.filter(({ kind, id }) => kind === 'workflow' && workflowIds.has(id)),
 			}))
 			.filter((row) => row.usedBy.length > 0);
 		return kept?.length ? kept : undefined;
