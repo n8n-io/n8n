@@ -148,8 +148,7 @@ async function continueApply() {
 <template>
 	<N8nDialog
 		:open="open"
-		size="fit"
-		:container-class="$style.dialog"
+		size="xlarge"
 		:show-close-button="!isBusy"
 		:trap-focus="!isCreating"
 		:disable-outside-pointer-events="!isCreating"
@@ -184,7 +183,9 @@ async function continueApply() {
 			<form id="promotion-bindings-form" :class="$style.form" @submit.prevent="continueApply">
 				<div :class="$style.body" data-test-id="promotion-bindings-body">
 					<slot name="notices" />
-					<p :class="$style.description">{{ i18n.baseText('promotions.bindings.description') }}</p>
+					<N8nDialogDescription :class="$style.intro">
+						{{ i18n.baseText('promotions.bindings.description') }}
+					</N8nDialogDescription>
 					<N8nCallout v-if="sourceChanged" theme="warning">
 						{{ i18n.baseText('promotions.bindings.sourceChanged') }}
 					</N8nCallout>
@@ -352,18 +353,14 @@ async function continueApply() {
 </template>
 
 <style lang="scss" module>
-.dialog {
-	// The design uses a 704 × 640 dialog. There are no matching size tokens.
-	width: min(44rem, calc(100dvw - var(--spacing--lg)));
-	height: min(40rem, calc(100dvh - var(--spacing--xl)));
-}
-
 .form {
 	display: flex;
 	flex-direction: column;
-	min-height: 0;
-	height: 100%;
 	color: var(--text-color);
+}
+
+.intro {
+	margin-bottom: 0;
 }
 
 .header {
@@ -386,18 +383,10 @@ async function continueApply() {
 .body {
 	display: flex;
 	flex-direction: column;
-	flex: 1;
 	gap: var(--spacing--md);
-	min-height: 0;
-	overflow: auto;
 	overflow-wrap: anywhere;
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--xl);
-}
-
-.description {
-	line-height: var(--line-height--xl);
-	color: var(--text-color--subtle);
 }
 
 .project,
@@ -537,7 +526,6 @@ async function continueApply() {
 
 .actions {
 	margin-top: 0;
-	border-top: var(--border);
 }
 
 .count {
