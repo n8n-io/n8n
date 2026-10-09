@@ -1,12 +1,21 @@
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { createIpRateLimit, Delete, Get, Patch, Post, RootLevelController } from '@n8n/decorators';
+import {
+	createIpRateLimit,
+	Delete,
+	Get,
+	Middleware,
+	Patch,
+	Post,
+	RootLevelController,
+} from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
-import { UrlService } from '@/services/url.service';
-
+import { AppAuthService } from '../app-auth.service';
+import { AppHostConfig } from '../app-host.config';
+import { APP_SERVING_PATH } from '../app-host.constants';
 import { AppRuntimeError } from './app-runtime.error';
 import { AppTableRuntimeService } from './app-table-runtime.service';
 import { applyCors } from './cors';
@@ -22,16 +31,26 @@ type TableRequest = Request<{ namespace: string; key: string }>;
 
 /**
  * Rows of the data tables bound to a served app: `/apps/<namespace>/api/tables/<key>/rows`.
- * Same envelope as the workflow route: `skipAuth` because the caller is the served page,
- * which has no session; the CORS check; the IP rate limit; one stable code per failure.
+ * App OAuth cookies replace the default n8n session check.
  */
-@RootLevelController('/apps')
+@RootLevelController(APP_SERVING_PATH)
 export class AppTableRuntimeController {
 	constructor(
 		private readonly appTableRuntimeService: AppTableRuntimeService,
 		private readonly errorReporter: ErrorReporter,
-		private readonly urlService: UrlService,
+		private readonly config: AppHostConfig,
+		private readonly appAuthService: AppAuthService,
 	) {}
+
+	@Middleware()
+	checkHost(req: Request, res: Response, next: NextFunction) {
+		this.appAuthService.checkHost(req, res, next);
+	}
+
+	@Middleware()
+	async authenticate(req: Request, res: Response, next: NextFunction) {
+		await this.appAuthService.authenticate(req, res, next);
+	}
 
 	@Get('/:namespace/api/tables/:key/rows', { skipAuth: true, ipRateLimit: rateLimit })
 	async listRows(req: TableRequest, res: Response) {
@@ -71,7 +90,7 @@ export class AppTableRuntimeController {
 		successStatus: number,
 		call: () => Promise<unknown>,
 	) {
-		if (!applyCors(req, res, this.urlService.getInstanceBaseUrl())) return;
+		if (!applyCors(req, res, this.config.baseUrl)) return;
 
 		// `rawBody` is unset when the body parser skipped the request (multipart, no body).
 		if ((req.rawBody?.length ?? 0) > MAX_BODY_BYTES) {

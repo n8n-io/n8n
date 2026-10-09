@@ -5509,6 +5509,7 @@
 	"apps.page.addChild": "Add sub page",
 	"apps.page.edit": "Edit page",
 	"apps.page.index": "Home",
+	"apps.preview.signIn": "Sign in to preview",
 	"apps.page.notFound": "Page not found",
 	"apps.page.getDetails.error": "Error loading page",
 	"apps.page.content.placeholder": "Ask the n8n Assistant to add content to this page",

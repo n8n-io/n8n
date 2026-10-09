@@ -19,6 +19,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
@@ -108,6 +109,7 @@ const { requestPageChange } = useAppPageAssistant();
 const { selectElement } = useAppElementSelection();
 
 const appsStore = useAppsStore();
+const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 
 const app = ref<App | null>(null);
@@ -158,7 +160,9 @@ const childCounts = computed(() => getChildCounts(appsStore.pages));
 const pageRows = computed(() => buildPageRows(appsStore.pages, null));
 
 const appUrl = computed(() =>
-	app.value ? `${window.location.origin}/apps/${app.value.namespace}/` : '',
+	app.value
+		? `${settingsStore.moduleSettings.apps?.baseUrl ?? ''}/apps/${app.value.namespace}/`
+		: '',
 );
 
 // The newest build is the draft's last built state; it shows until the live

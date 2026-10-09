@@ -10,7 +10,6 @@ import type { AppSourceSnapshotService } from '@/modules/instance-ai/app-preview
 import type { InstanceAiSandboxService } from '@/modules/instance-ai/sandbox';
 import type { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
 import type { AiService } from '@/services/ai.service';
-import type { UrlService } from '@/services/url.service';
 
 import { AppPublishService, buildResetAppDirScript } from '../app-publish.service';
 import type { AppVersion } from '../app-version.entity';
@@ -31,11 +30,8 @@ class TestableAppPublishService extends AppPublishService {
 		snapshotService: AppSourceSnapshotService,
 		private readonly sandboxServiceMock: ReturnType<typeof mock<InstanceAiSandboxService>>,
 	) {
-		const urlService = mock<UrlService>();
-		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
 		super(
 			appsService,
-			urlService,
 			snapshotService,
 			mock<InstanceAiSettingsService>(),
 			mock<AiService>(),
@@ -71,6 +67,7 @@ const fail = (stdout = '', stderr = '') => ({ exitCode: 1, stdout, stderr });
 
 function createService() {
 	const appsService = mock<AppsService>();
+	appsService.appUrl.mockReturnValue('http://localhost:5678/apps/greeter/');
 	appsService.getApp.mockResolvedValue(APP);
 	appsService.getNewestVersion.mockResolvedValue(UNBUILT);
 	appsService.getVersion.mockResolvedValue(UNBUILT);

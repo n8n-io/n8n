@@ -1,4 +1,6 @@
-const SCRIPT_TAG = '<script src="/apps-inspector.js" defer></script>';
+import { APP_INSPECTOR_PATH } from '../app-host.constants';
+
+const SCRIPT_TAG = `<script src="${APP_INSPECTOR_PATH}" defer></script>`;
 
 /**
  * Adds the element-picker script tag to a served App document. Inserted before

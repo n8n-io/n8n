@@ -84,6 +84,9 @@ export interface ProtectedResource {
 
 	isFirstParty?: boolean;
 
+	/** Approve the resource's own first-party client without a prompt. Defaults to false. */
+	skipConsent?: boolean;
+
 	/**
 	 * Whether the resource currently serves requests. An unavailable resource is
 	 * hidden from RFC 9728 discovery, so clients see no authorization server to

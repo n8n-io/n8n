@@ -1,10 +1,11 @@
 /**
- * Runs inside a served App document (opaque-origin, sandboxed) to let the parent
+ * Runs inside a served App document to let the parent
  * editor-ui pick an element for the Instance AI chat. The parent cannot reach into
  * this document's DOM directly, so all of the hover-highlight/click-catch logic
  * lives here and reports back over `postMessage`.
  */
 export const INSPECTOR_SCRIPT_SOURCE = `(function () {
+	window.parent.postMessage({ source: 'n8nable', type: 'auth:ready' }, '*');
 	var ACTIVE = false;
 	var overlay;
 	var lastHovered = null;

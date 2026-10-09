@@ -172,6 +172,7 @@ export class AppPreviewProxyController {
 	/** Proxies the Vite HMR WebSocket; the sandbox never sees the editor's cookie. A built preview has none. */
 	setupUpgrade(server: HttpServer): void {
 		server.on('upgrade', (req: AppPreviewRequest, socket: Socket, head: Buffer) => {
+			if (socket.destroyed) return;
 			const pathname = URL.parse(req.url ?? '', 'http://localhost')?.pathname;
 			if (!pathname?.startsWith(`${APP_PREVIEW_PATH_PREFIX}/`)) return;
 			const [, , token, ...rest] = pathname.split('/');

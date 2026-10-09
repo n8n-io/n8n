@@ -19,7 +19,6 @@ import { buildRestoreScript } from '@/modules/instance-ai/app-preview/app-previe
 import { InstanceAiSandboxService } from '@/modules/instance-ai/sandbox';
 import { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
 import { AiService } from '@/services/ai.service';
-import { UrlService } from '@/services/url.service';
 
 import { APP_SDK_TARBALL_FILENAME, getAppSdkTarball } from './app-sdk-tarball';
 import { AppsService } from './apps.service';
@@ -66,7 +65,6 @@ export class AppPublishService {
 
 	constructor(
 		private readonly appsService: AppsService,
-		private readonly urlService: UrlService,
 		private readonly snapshotService: AppSourceSnapshotService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly aiService: AiService,
@@ -97,7 +95,7 @@ export class AppPublishService {
 	 * the project.
 	 */
 	createAppServiceAdapter(): InstanceAiAppService {
-		const { appsService, urlService } = this;
+		const { appsService } = this;
 		const unsupported = (action: string) => () => {
 			throw new UnexpectedError(`${action} is not supported by the publish pipeline`);
 		};
@@ -128,7 +126,7 @@ export class AppPublishService {
 				]);
 				return {
 					versionId: version.id,
-					url: `${urlService.getInstanceBaseUrl()}/apps/${app.namespace}/`,
+					url: appsService.appUrl(app.namespace),
 				};
 			},
 		};
@@ -321,7 +319,7 @@ export class AppPublishService {
 	}
 
 	private appUrl(namespace: string): string {
-		return `${this.urlService.getInstanceBaseUrl()}/apps/${namespace}/`;
+		return this.appsService.appUrl(namespace);
 	}
 }
 

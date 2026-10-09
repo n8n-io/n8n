@@ -333,6 +333,15 @@ async function request(
 		);
 	});
 	if (!response.ok) {
+		if (response.status === 401 && typeof window !== 'undefined') {
+			const apiUrl = new URL(resolveBaseUrl(baseUrl), window.location.href);
+			const namespace = /^\/apps\/([^/]+)\/api\/?$/.exec(apiUrl.pathname)?.[1];
+			if (namespace && apiUrl.origin === window.location.origin) {
+				const loginUrl = `${apiUrl.origin}/apps-auth/login/${namespace}`;
+				if (window.top === window) window.location.assign(loginUrl);
+				else window.parent.postMessage({ source: 'n8nable', type: 'auth:required' }, '*');
+			}
+		}
 		const body = await readJson(response);
 		const error = isRecord(body) ? body : {};
 		throw new N8nAppError(

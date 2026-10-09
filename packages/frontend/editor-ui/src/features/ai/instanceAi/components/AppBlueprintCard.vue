@@ -12,6 +12,7 @@ import {
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, ref, watch } from 'vue';
 
 import { useThread } from '../instanceAi.store';
@@ -30,6 +31,7 @@ const thread = useThread();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 
 // Same slug rule as `appNamespaceSchema` in @n8n/api-types.
 const NAMESPACE_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -212,7 +214,7 @@ async function requestChanges() {
 					>
 						{{
 							namespaceValid
-								? `/apps/${namespace}/`
+								? `${settingsStore.moduleSettings.apps?.baseUrl ?? ''}/apps/${namespace}/`
 								: i18n.baseText('apps.add.input.namespace.error.regex')
 						}}
 					</N8nText>

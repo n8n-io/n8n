@@ -1,4 +1,4 @@
-import { inDevelopment, inTest, Logger } from '@n8n/backend-common';
+import { inDevelopment, inTest, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
@@ -26,6 +26,7 @@ import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 
 import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util';
+import { mayReachDirectory, normalize } from './utils/request-path';
 
 @Service()
 export abstract class AbstractServer {
@@ -76,6 +77,8 @@ export abstract class AbstractServer {
 	protected testWebhooksEnabled = false;
 
 	private fullyReady = false;
+
+	protected isAppHost?: (host: string | undefined) => boolean;
 
 	constructor() {
 		this.app = express();
@@ -174,6 +177,7 @@ export abstract class AbstractServer {
 	async init(): Promise<void> {
 		const { app, sslKey, sslCert } = this;
 		const { protocol } = this.globalConfig;
+		await this.setupAppHostGuard();
 
 		if (protocol === 'https' && sslKey && sslCert) {
 			const https = await import('https');
@@ -188,6 +192,10 @@ export abstract class AbstractServer {
 			const http = await import('http');
 			this.server = http.createServer(app);
 		}
+
+		this.server.on('upgrade', (req, socket) => {
+			if (this.isAppHost?.(req.headers.host)) socket.destroy();
+		});
 
 		const { port, listen_address: address } = Container.get(GlobalConfig);
 
@@ -228,6 +236,48 @@ export abstract class AbstractServer {
 		this.setupHealthCheck();
 
 		this.logger.info(`n8n ready on ${address}, port ${port}`);
+	}
+
+	private async setupAppHostGuard() {
+		const moduleRegistry = Container.get(ModuleRegistry);
+		if (
+			!moduleRegistry.eligibleModules.includes('apps') &&
+			!process.env.N8N_APPS_BASE_URL &&
+			!process.env.N8N_APPS_BASE_URL_FILE
+		)
+			return;
+		const { AppHostConfig } = await import('./modules/apps/app-host.config.js');
+		const { APP_AUTH_PATH, APP_SERVING_PATH, APP_INSPECTOR_PATH, isAppRequestAllowed } =
+			await import('./modules/apps/app-host.constants.js');
+		const { UrlService } = await import('./services/url.service.js');
+		const config = Container.get(AppHostConfig);
+		this.isAppHost = (host) => config.isAppHost(host);
+		if (config.isAppHost(new URL(Container.get(UrlService).getInstanceBaseUrl()).host)) {
+			const { UserError } = await import('n8n-workflow');
+			throw new UserError('Use a separate hostname for N8N_APPS_BASE_URL.');
+		}
+		// Register before health checks, webhooks, and the editor fallback.
+		this.app.use((req, res, next) => {
+			if (config.isAppHost(req.headers.host)) {
+				res.setHeader('Cache-Control', 'private, no-store');
+				if (!isAppRequestAllowed(req.path, req.method)) {
+					res.status(404).end();
+					return;
+				}
+				if (!moduleRegistry.isActive('apps')) {
+					res.status(503).end();
+					return;
+				}
+			} else if (
+				mayReachDirectory(req.path, APP_SERVING_PATH.slice(1)) ||
+				mayReachDirectory(req.path, APP_AUTH_PATH.slice(1)) ||
+				normalize(req.path) === APP_INSPECTOR_PATH
+			) {
+				res.status(404).end();
+				return;
+			}
+			next();
+		});
 	}
 
 	async start(): Promise<void> {

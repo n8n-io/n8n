@@ -22,6 +22,7 @@ export class ChatServer {
 
 	setup(server: HttpServer, app: Application) {
 		server.on('upgrade', (req: ChatRequest, socket, head) => {
+			if (socket.destroyed) return;
 			const parsedUrl = parseUrl(req.url ?? '');
 
 			if (parsedUrl.pathname?.startsWith('/chat')) {

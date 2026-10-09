@@ -2,9 +2,9 @@ import type { User } from '@n8n/db';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { AuthService } from '@/auth/auth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import type { AppAuthService } from '../../app-auth.service';
 import type { AppVersion } from '../../app-version.entity';
 import type { App } from '../../app.entity';
 import { AppServingController } from '../app-serving.controller';
@@ -24,16 +24,16 @@ const resolved = (versionId: string): ResolvedAppFile => ({
 
 describe('AppServingController', () => {
 	const appServingService = mock<AppServingService>();
-	const authService = mock<AuthService>();
+	const authService = mock<AppAuthService>();
 	const controller = new AppServingController(appServingService, authService);
 	let res: ReturnType<typeof mock<Response>>;
 
-	const request = (query: Record<string, string> = {}, cookie?: string) =>
-		mock<Request>({
+	const request = (query: Record<string, string> = {}, user?: User) =>
+		mock<Request & { user?: User }>({
 			params: { namespace: 'acme', path: undefined },
 			query,
 			originalUrl: '/apps/acme/',
-			cookies: cookie ? { 'n8n-auth': cookie } : {},
+			user,
 		});
 
 	beforeEach(() => {
@@ -41,16 +41,14 @@ describe('AppServingController', () => {
 		res = mock<Response>();
 		res.status.mockReturnValue(res);
 		res.type.mockReturnValue(res);
-		authService.getCookieToken.mockImplementation((req) => req.cookies?.['n8n-auth']);
 	});
 
-	it('serves the active version to anyone', async () => {
+	it('serves the active version after route authentication', async () => {
 		appServingService.resolve.mockResolvedValue(resolved('v1'));
 
 		await controller.serve(request(), res);
 
 		expect(appServingService.resolve).toHaveBeenCalledWith('acme', [], undefined);
-		expect(authService.authenticateUserByCookie).not.toHaveBeenCalled();
 		expect(res.send).toHaveBeenCalledWith(expect.stringContaining('apps-inspector.js'));
 		expect(res.setHeader).not.toHaveBeenCalledWith(
 			'Access-Control-Allow-Origin',
@@ -58,7 +56,7 @@ describe('AppServingController', () => {
 		);
 	});
 
-	it('lets the sandboxed document load an asset as a module', async () => {
+	it('serves an asset from its build directory', async () => {
 		appServingService.resolve.mockResolvedValue({
 			...resolved('v1'),
 			filePath: '/cache/apps/v1/assets/index-abc.js',
@@ -66,7 +64,7 @@ describe('AppServingController', () => {
 
 		await controller.serve(request(), res);
 
-		expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'null');
+		expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
 		expect(res.sendFile).toHaveBeenCalled();
 	});
 
@@ -82,10 +80,9 @@ describe('AppServingController', () => {
 
 	it('answers 404 for an unpublished build when the session may not read the app', async () => {
 		appServingService.resolve.mockResolvedValue(resolved('v2'));
-		authService.authenticateUserByCookie.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		vi.mocked(userHasScopes).mockResolvedValue(false);
 
-		await controller.serve(request({ v: 'v2' }, 'jwt'), res);
+		await controller.serve(request({ v: 'v2' }, mock<User>({ id: 'user-1' })), res);
 
 		expect(userHasScopes).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
@@ -98,21 +95,19 @@ describe('AppServingController', () => {
 		expect(res.status).toHaveBeenCalledWith(404);
 	});
 
-	it('answers 404 when the cookie does not validate', async () => {
+	it('answers 404 when no authenticated user is available', async () => {
 		appServingService.resolve.mockResolvedValue(resolved('v2'));
-		authService.authenticateUserByCookie.mockRejectedValue(new Error('Unauthorized'));
 
-		await controller.serve(request({ v: 'v2' }, 'jwt'), res);
+		await controller.serve(request({ v: 'v2' }), res);
 
 		expect(res.status).toHaveBeenCalledWith(404);
 	});
 
 	it('serves an unpublished build to a session that may read the app', async () => {
 		appServingService.resolve.mockResolvedValue(resolved('v2'));
-		authService.authenticateUserByCookie.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 
-		await controller.serve(request({ v: 'v2' }, 'jwt'), res);
+		await controller.serve(request({ v: 'v2' }, mock<User>({ id: 'user-1' })), res);
 
 		expect(res.status).not.toHaveBeenCalledWith(404);
 		expect(res.send).toHaveBeenCalledWith(expect.stringContaining('apps-inspector.js'));

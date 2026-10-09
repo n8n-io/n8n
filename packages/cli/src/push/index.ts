@@ -72,6 +72,7 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (this.useWebSockets) {
 			const wsServer = new WSServer({ noServer: true });
 			server.on('upgrade', (request: WebSocketPushRequest, socket, upgradeHead) => {
+				if (socket.destroyed) return;
 				if (parseUrl(request.url).pathname === `/${restEndpoint}/push`) {
 					wsServer.handleUpgrade(request, socket, upgradeHead, (ws) => {
 						request.ws = ws;

@@ -1,37 +1,47 @@
-import { Get, RootLevelController } from '@n8n/decorators';
-import type { Request, Response } from 'express';
+import { isAuthenticatedRequest } from '@n8n/db';
+import { Get, Middleware, RootLevelController } from '@n8n/decorators';
+import type { NextFunction, Request, Response } from 'express';
 import { getHtmlSandboxCSP } from 'n8n-core';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { AuthService } from '@/auth/auth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { AppAuthService } from '../app-auth.service';
+import { APP_SERVING_PATH } from '../app-host.constants';
 import { AppServingService, type ResolvedAppFile } from './app-serving.service';
 import { injectInspectorScript } from './inject-inspector-script';
 import { pathSegments } from './path-segments';
 
-@RootLevelController('/apps')
+// App OAuth cookies replace the default n8n session check.
+@RootLevelController(APP_SERVING_PATH)
 export class AppServingController {
 	constructor(
 		private readonly appServingService: AppServingService,
-		private readonly authService: AuthService,
+		private readonly appAuthService: AppAuthService,
 	) {}
 
-	/**
-	 * Serves a published App to anyone with the URL: a file of its active
-	 * version's dist, or `index.html` for client-side routes.
-	 *
-	 * `skipAuth` because no App is protected, and because the auth middleware
-	 * would clear the visitor's editor session cookie: a top-level navigation
-	 * cannot send the `browser-id` header the middleware expects.
-	 */
+	@Middleware()
+	checkHost(req: Request, res: Response, next: NextFunction) {
+		this.appAuthService.checkHost(req, res, next);
+	}
+
+	@Middleware()
+	async authenticate(req: Request, res: Response, next: NextFunction) {
+		await this.appAuthService.authenticate(req, res, next);
+	}
+
+	/** Serve the active build or its entry document for client-side routes. */
 	@Get('/:namespace{/*path}', { skipAuth: true, usesTemplates: true })
 	async serve(req: Request, res: Response) {
 		const segments = pathSegments(req.params.path);
 		// Reserved for the runtime API; a built app must not get its index.html here.
 		if (segments[0] === 'api') {
 			res.status(404).json({ code: 'not_found', message: 'Not found' });
+			return;
+		}
+		if (segments.some((segment) => segment.startsWith('.'))) {
+			res.status(404).end();
 			return;
 		}
 		const requestedVersionId = typeof req.query.v === 'string' ? req.query.v : undefined;
@@ -59,33 +69,22 @@ export class AppServingController {
 		await this.sendStaticFile(res, filePath);
 	}
 
-	/**
-	 * The active version is public. Any other build needs the session cookie of
-	 * a user who may read the app; the document and its assets load in an
-	 * iframe, which cannot send the browser-id header, so the cookie alone is
-	 * checked, as for other embedded resources.
-	 */
+	/** Unpublished builds still require the builder's app access. */
 	private async mayServe(req: Request, { app, version }: ResolvedAppFile): Promise<boolean> {
 		if (version.id === app.activeVersionId) return true;
-		const cookie = this.authService.getCookieToken(req);
-		if (!cookie) return false;
-		try {
-			const user = await this.authService.authenticateUserByCookie(cookie);
-			return await userHasScopes(user, ['app:read'], false, { projectId: app.projectId });
-		} catch {
-			return false;
-		}
+		return (
+			isAuthenticatedRequest(req) &&
+			(await userHasScopes(req.user, ['app:read'], false, { projectId: app.projectId }))
+		);
 	}
 
 	private async sendStaticFile(res: Response, filePath: string) {
 		// Every file gets the sandbox policy: a browser renders `.htm`, `.svg` and
 		// friends as documents too, and the policy is harmless on the rest.
-		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-		// HTML is the entry point and must revalidate so a new version shows up on
-		// reload. Assets revalidate too (ETag makes that a 304), because a build
-		// may reference them by an unhashed name that changes content across versions.
+		// The separate host isolates the editor. Keep the app origin for cookie-backed requests.
+		res.setHeader('Content-Security-Policy', `${getHtmlSandboxCSP()} allow-same-origin`);
 		const isHtml = path.extname(filePath) === '.html';
-		res.setHeader('Cache-Control', isHtml ? 'no-cache' : 'public, max-age=0, must-revalidate');
+		res.setHeader('Cache-Control', 'private, no-store');
 
 		if (isHtml) {
 			// Read rather than stream so the element-picker script can be spliced in;
@@ -99,14 +98,16 @@ export class AppServingController {
 			return;
 		}
 
-		// The opaque-origin document fetches module scripts and `crossorigin` styles with
-		// CORS and `Origin: null`. Sent unconditionally so a CDN copy fits every visitor.
-		res.setHeader('Access-Control-Allow-Origin', 'null');
-
-		// `dotfiles: 'allow'` because the cache lives under `.n8n`, which `send`
-		// would otherwise treat as a hidden path and refuse.
-		res.sendFile(filePath, { cacheControl: false, dotfiles: 'allow' }, (error) => {
-			if (error && !res.headersSent) res.status(404).type('text').send('Not found');
-		});
+		res.sendFile(
+			path.basename(filePath),
+			{
+				root: path.dirname(filePath),
+				cacheControl: false,
+				dotfiles: 'deny',
+			},
+			(error) => {
+				if (error && !res.headersSent) res.status(404).type('text').send('Not found');
+			},
+		);
 	}
 }

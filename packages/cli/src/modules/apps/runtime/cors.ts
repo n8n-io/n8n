@@ -1,19 +1,14 @@
 import type { Request, Response } from 'express';
 
-/**
- * The served page runs on an opaque origin (`sandbox` CSP), so `null` is the only
- * `Origin` the app itself can send. The instance origin is allowed too, and a request
- * without `Origin` (same-origin, curl) has nothing to check. Every other origin is
- * another site: it gets a 403 and no CORS headers, so a browser never reads the answer.
- */
-export function applyCors(req: Request, res: Response, instanceBaseUrl: string): boolean {
-	// The dev-only global cors middleware sets this before the controller runs. This
-	// public route never allows credentials, so drop it.
+/** Only the app origin may send browser requests to its cookie-backed API. */
+export function applyCors(req: Request, res: Response, appBaseUrl: string): boolean {
+	// Remove headers from the development server's global CORS middleware.
 	res.removeHeader('Access-Control-Allow-Credentials');
+	res.removeHeader('Access-Control-Allow-Origin');
 
 	const origin = req.headers.origin;
-	const instanceOrigin = new URL(instanceBaseUrl).origin;
-	if (origin !== undefined && origin !== 'null' && origin !== instanceOrigin) {
+	const appOrigin = new URL(appBaseUrl).origin;
+	if (origin !== undefined && origin !== appOrigin) {
 		res.status(403).json({
 			code: 'forbidden_origin',
 			message: 'The app runtime API answers only its own page.',

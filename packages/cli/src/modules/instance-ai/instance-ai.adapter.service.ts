@@ -4053,7 +4053,7 @@ export class InstanceAiAdapterService {
 			onAppTouched?: (app: { id: string; projectId: string; name: string }) => Promise<void>;
 		},
 	): InstanceAiAppService {
-		const { appsService, urlService, appPublishService, appThemeService } = services;
+		const { appsService, appPublishService, appThemeService } = services;
 		// Best effort: a failed binding must not fail the tool call that did the real work.
 		const noteAppTouched = async (app: { id: string; projectId: string; name: string }) => {
 			try {
@@ -4122,7 +4122,7 @@ export class InstanceAiAdapterService {
 				// Same URL the apps UI shows; the trailing slash keeps relative asset URLs working.
 				return {
 					versionId: version.id,
-					url: `${urlService.getInstanceBaseUrl()}/apps/${app.namespace}/`,
+					url: appsService.appUrl(app.namespace),
 				};
 			},
 

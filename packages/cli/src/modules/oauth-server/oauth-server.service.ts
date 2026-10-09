@@ -263,15 +263,16 @@ export class OAuthServerService implements OAuthServerProvider {
 	private async resolveVirtualClient(
 		clientId: string,
 	): Promise<OAuthClientInformationFull | undefined> {
-		// First-party resources are form and chat triggers served under the (test) webhook
-		// base URL, so a client_id that isn't can never resolve to one. Skip the resolver
-		// sweep + lazy upsert for anything else, so the unauthenticated /authorize path
-		// can't be used to fan out DB lookups on arbitrary client_ids.
-		if (!this.isTriggerResourceClientId(clientId)) {
+		if (clientId.length > MAX_REDIRECT_URI_LENGTH) return undefined;
+		const registeredResource = this.resourceRegistry
+			.getAll()
+			.find((resource) => resource.isFirstParty && resource.getResourceUrl() === clientId);
+		// Only registered resources and trigger URLs need a first-party client lookup.
+		if (!registeredResource && !this.isTriggerResourceClientId(clientId)) {
 			return undefined;
 		}
 
-		const resource = await this.resourceRegistry.getByResourceUrl(clientId);
+		const resource = registeredResource ?? (await this.resourceRegistry.getByResourceUrl(clientId));
 		if (!resource?.isFirstParty) {
 			return undefined;
 		}

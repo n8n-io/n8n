@@ -324,6 +324,8 @@ export interface FrontendSettings {
 }
 
 export type FrontendModuleSettings = {
+	/** Public origin for authenticated apps and stored build previews. */
+	apps?: { baseUrl: string };
 	/**
 	 * Client settings for [insights](https://docs.n8n.io/insights/) module.
 	 *

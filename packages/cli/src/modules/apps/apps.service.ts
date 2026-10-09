@@ -13,7 +13,7 @@ import {
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ProjectRelationRepository, type User, type WorkflowEntity } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import type { JSONSchema7 } from 'json-schema';
@@ -35,6 +35,7 @@ import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-n
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AppVersionService } from './app-version.service';
+import { AppHostConfig } from './app-host.config';
 import type { AppVersion } from './app-version.entity';
 import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
@@ -114,6 +115,10 @@ export class AppsService {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
+
+	appUrl(namespace: string) {
+		return Container.get(AppHostConfig).appUrl(namespace);
+	}
 
 	async createApp(projectId: string, dto: CreateAppDto) {
 		const count = await this.appRepository.countByProjectId(projectId);

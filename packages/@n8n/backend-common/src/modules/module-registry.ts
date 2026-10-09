@@ -49,7 +49,6 @@ export class ModuleRegistry {
 		'external-secrets',
 		'community-packages',
 		'data-table',
-		'apps',
 		// oauth-server precedes mcp: the mcp module registers its protected
 		// resource with the oauth-server module's registry on init.
 		'oauth-server',
@@ -91,6 +90,12 @@ export class ModuleRegistry {
 		if (doubleListed.length > 0) throw new ModuleConfusionError(doubleListed);
 
 		const defaultPlusEnabled = [...new Set([...this.defaultModules, ...enabledModules])];
+		const appsIndex = defaultPlusEnabled.indexOf('apps');
+		if (appsIndex !== -1) {
+			// Apps need OAuth first. Instance AI needs apps before it registers preview routes.
+			defaultPlusEnabled.splice(appsIndex, 1);
+			defaultPlusEnabled.splice(defaultPlusEnabled.indexOf('oauth-server') + 1, 0, 'apps');
+		}
 
 		return defaultPlusEnabled.filter((m) => !disabledModules.includes(m));
 	}

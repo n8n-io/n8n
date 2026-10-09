@@ -267,6 +267,11 @@ export class Server extends AbstractServer {
 		// register all known controllers
 		Container.get(ControllerRegistry).activate(app);
 
+		app.use((req, res, next) => {
+			if (this.isAppHost?.(req.headers.host)) res.status(404).end();
+			else next();
+		});
+
 		// ----------------------------------------
 		// Options
 		// ----------------------------------------

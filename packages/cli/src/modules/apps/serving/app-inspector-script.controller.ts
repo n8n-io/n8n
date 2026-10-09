@@ -1,5 +1,8 @@
-import { Get, RootLevelController } from '@n8n/decorators';
-import type { Request, Response } from 'express';
+import { Get, Middleware, RootLevelController } from '@n8n/decorators';
+import type { NextFunction, Request, Response } from 'express';
+
+import { AppAuthService } from '../app-auth.service';
+import { APP_INSPECTOR_PATH } from '../app-host.constants';
 
 import { INSPECTOR_SCRIPT_SOURCE } from './inspector-script';
 
@@ -9,7 +12,20 @@ import { INSPECTOR_SCRIPT_SOURCE } from './inspector-script';
  */
 @RootLevelController('/')
 export class AppInspectorScriptController {
-	@Get('/apps-inspector.js', { skipAuth: true })
+	constructor(private readonly appAuthService: AppAuthService) {}
+
+	@Middleware()
+	checkHost(req: Request, res: Response, next: NextFunction) {
+		this.appAuthService.checkHost(req, res, next);
+	}
+
+	@Middleware()
+	async authenticate(req: Request, res: Response, next: NextFunction) {
+		await this.appAuthService.authenticate(req, res, next);
+	}
+
+	// App OAuth cookies replace the default n8n session check.
+	@Get(APP_INSPECTOR_PATH, { skipAuth: true, usesTemplates: true })
 	serve(_req: Request, res: Response) {
 		res.type('application/javascript').send(INSPECTOR_SCRIPT_SOURCE);
 	}

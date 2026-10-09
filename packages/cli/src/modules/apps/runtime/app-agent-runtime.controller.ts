@@ -2,9 +2,9 @@ import type { StreamChunk } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { createIpRateLimit, Get, Post, RootLevelController } from '@n8n/decorators';
+import { createIpRateLimit, Get, Middleware, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
@@ -13,15 +13,16 @@ import {
 	initSseStream,
 	emitChunkEvents,
 } from '@/modules/agents/agent-sse-stream';
-import { UrlService } from '@/services/url.service';
-
+import { AppAuthService } from '../app-auth.service';
+import { AppHostConfig } from '../app-host.config';
+import { APP_SERVING_PATH } from '../app-host.constants';
 import { AppAgentRuntimeService, type AppAgentTurn } from './app-agent-runtime.service';
 import { AppRuntimeError } from './app-runtime.error';
 import { applyCors } from './cors';
 
 const MAX_BODY_BYTES = 1024 * 1024;
 
-// Visitors are anonymous, so only messages written for users leave the instance.
+// Only messages written for users leave the instance.
 const VISITOR_ERROR_MESSAGE = 'The agent could not answer.';
 
 const rateLimit = createIpRateLimit(
@@ -38,13 +39,25 @@ type AgentRequest = Request<{ namespace: string; key: string }>;
  * `data: <AgentSseEvent>` lines the editor reads, once every refusal has had its chance
  * to answer as JSON.
  */
-@RootLevelController('/apps')
+// App OAuth cookies replace the default n8n session check.
+@RootLevelController(APP_SERVING_PATH)
 export class AppAgentRuntimeController {
 	constructor(
 		private readonly appAgentRuntimeService: AppAgentRuntimeService,
 		private readonly errorReporter: ErrorReporter,
-		private readonly urlService: UrlService,
+		private readonly config: AppHostConfig,
+		private readonly appAuthService: AppAuthService,
 	) {}
+
+	@Middleware()
+	checkHost(req: Request, res: Response, next: NextFunction) {
+		this.appAuthService.checkHost(req, res, next);
+	}
+
+	@Middleware()
+	async authenticate(req: Request, res: Response, next: NextFunction) {
+		await this.appAuthService.authenticate(req, res, next);
+	}
 
 	@Post('/:namespace/api/agents/:key/chat', {
 		skipAuth: true,
@@ -130,7 +143,7 @@ export class AppAgentRuntimeController {
 
 	/** Runs `call` behind the CORS check and body cap. Returns null once a refusal has been written. */
 	private async guarded<T>(req: Request, res: Response, call: () => Promise<T>): Promise<T | null> {
-		if (!applyCors(req, res, this.urlService.getInstanceBaseUrl())) return null;
+		if (!applyCors(req, res, this.config.baseUrl)) return null;
 
 		// `rawBody` is unset when the body parser skipped the request (no body).
 		if ((req.rawBody?.length ?? 0) > MAX_BODY_BYTES) {

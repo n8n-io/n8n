@@ -23,6 +23,7 @@ export class BrowserUseServer {
 
 	setup(server: HttpServer, app: Application): void {
 		server.on('upgrade', (req: BrowserUseUpgradeRequest, socket, head) => {
+			if (socket.destroyed) return;
 			const pathname = URL.parse(req.url ?? '', 'http://localhost')?.pathname;
 			if (!pathname?.startsWith(`${BROWSER_USE_WS_NAMESPACE}/`)) return;
 			this.wsServer.handleUpgrade(req, socket, head, (ws) => {

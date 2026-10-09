@@ -3,6 +3,8 @@ import type { InstanceAiAppPreviewDiagnostic } from '@n8n/api-types';
 import { instanceAiAppPreviewDiagnosticSchema } from '@n8n/api-types';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nButton } from '@n8n/design-system';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 /** Picked-element description the inspector script posts back from inside the iframe. */
 export interface InspectedElement {
@@ -35,10 +37,14 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 
 const iframe = useTemplateRef<HTMLIFrameElement>('iframe');
 const refreshCount = ref(0);
 const inspecting = ref(false);
+const signingIn = ref(false);
+const needsSignIn = ref(true);
+const appOrigin = computed(() => settingsStore.moduleSettings.apps?.baseUrl ?? '');
 
 // One live document survives every publish; only the built preview remounts per version.
 const iframeKey = computed(() => (props.liveUrl ? 'live' : (props.versionId ?? '')));
@@ -57,7 +63,7 @@ const iframeSrc = computed(() => {
 	const live = props.liveUrl ? new URL(props.liveUrl, window.location.origin) : undefined;
 	const base = live
 		? `${live.pathname}${pathSegments}${live.search}`
-		: `/apps/${props.namespace}/${pathSegments}?v=${props.versionId}`;
+		: `${appOrigin.value}/apps/${props.namespace}/${pathSegments}?v=${props.versionId}`;
 	if (refreshCount.value === 0) return base;
 	return `${base}${base.includes('?') ? '&' : '?'}r=${refreshCount.value}`;
 });
@@ -66,12 +72,35 @@ function refresh() {
 	refreshCount.value++;
 }
 
-// The served document is opaque-origin, so `targetOrigin` can only ever be '*'.
+watch(iframeSrc, () => {
+	needsSignIn.value = true;
+});
+
+function signIn() {
+	signingIn.value = true;
+	const version = props.versionId ? `?v=${encodeURIComponent(props.versionId)}` : '';
+	window.open(
+		`${appOrigin.value}/apps-auth/login/${encodeURIComponent(props.namespace)}${version}`,
+		'_blank',
+		'noopener',
+	);
+}
+
+function onFocus() {
+	if (!signingIn.value) return;
+	signingIn.value = false;
+	refresh();
+}
+
+// Live sandbox previews have an opaque origin. Stored builds use the app origin.
 function postCommand(message: {
 	type: 'inspect:enable' | 'inspect:disable' | 'theme:set';
 	mode?: string;
 }) {
-	iframe.value?.contentWindow?.postMessage({ source: 'n8nable', ...message }, '*');
+	iframe.value?.contentWindow?.postMessage(
+		{ source: 'n8nable', ...message },
+		props.liveUrl ? '*' : appOrigin.value || '*',
+	);
 }
 
 function postInspectCommand(type: 'inspect:enable' | 'inspect:disable') {
@@ -102,15 +131,20 @@ function onIframeLoad() {
 	postTheme();
 }
 
-// The document has an opaque origin (CSP `sandbox` without `allow-same-origin`),
-// so `event.origin` is 'null' and the sender is identified by its window instead.
-// Two scripts post from it: the app template's dev bridge (`n8n-app-preview`)
-// and the served inspector (`n8nable`).
+// Live previews have an opaque origin. Identify each sender by its iframe window.
 function onMessage(event: MessageEvent<unknown>) {
 	if (!iframe.value?.contentWindow || event.source !== iframe.value.contentWindow) return;
 	const data = event.data;
 	if (typeof data !== 'object' || data === null || !('source' in data)) return;
 	if (data.source === 'n8nable') {
+		if ('type' in data && data.type === 'auth:required') {
+			needsSignIn.value = true;
+			return;
+		}
+		if ('type' in data && data.type === 'auth:ready') {
+			needsSignIn.value = false;
+			return;
+		}
 		if ('type' in data && data.type === 'inspect:selected' && 'element' in data) {
 			emit('element-selected', data.element as InspectedElement);
 		}
@@ -121,8 +155,14 @@ function onMessage(event: MessageEvent<unknown>) {
 	if (parsed.success) emit('diagnostic', parsed.data);
 }
 
-onMounted(() => window.addEventListener('message', onMessage));
-onBeforeUnmount(() => window.removeEventListener('message', onMessage));
+onMounted(() => {
+	window.addEventListener('message', onMessage);
+	window.addEventListener('focus', onFocus);
+});
+onBeforeUnmount(() => {
+	window.removeEventListener('message', onMessage);
+	window.removeEventListener('focus', onFocus);
+});
 
 defineExpose({ refresh, enableInspect, disableInspect, src: iframeSrc });
 </script>
@@ -132,7 +172,16 @@ defineExpose({ refresh, enableInspect, disableInspect, src: iframeSrc });
 		:class="[$style.frame, { [$style.mobile]: props.device === 'mobile' }]"
 		data-test-id="app-preview-frame"
 	>
-		<!-- The served document is CSP-sandboxed by the backend, so the iframe needs no sandbox attribute. -->
+		<N8nButton
+			v-if="!props.liveUrl && appOrigin && needsSignIn"
+			:class="$style.signIn"
+			variant="subtle"
+			size="small"
+			@click="signIn"
+		>
+			{{ i18n.baseText('apps.preview.signIn') }}
+		</N8nButton>
+		<!-- The backend sets the document's sandbox policy. -->
 		<iframe
 			:key="iframeKey"
 			ref="iframe"
@@ -148,12 +197,20 @@ defineExpose({ refresh, enableInspect, disableInspect, src: iframeSrc });
 <style lang="scss" module>
 // Desktop fills the pane; the pane's own rounded border frames the document.
 .frame {
+	position: relative;
 	display: flex;
 	justify-content: center;
 	align-items: center;
 	height: 100%;
 	min-height: 0;
 	background: var(--background--subtle);
+}
+
+.signIn {
+	position: absolute;
+	top: var(--spacing--sm);
+	right: var(--spacing--sm);
+	z-index: 1;
 }
 
 .iframe {
