@@ -160,9 +160,11 @@ an `application/gzip` stream. `mediaType` accepts only the types in
   await the response's `finish` event. A method that returns before the
   response starts fails with a `500`.
 - If the method throws, or returns, before the response starts, the registry
-  removes every header added after it called the method. The JSON error
-  then has no binary `Content-Type` and no `Content-Disposition`. Headers
-  from earlier middleware (for example `Deprecation`) stay.
+  restores the headers to their values from before the method ran. It removes
+  headers the method added, and puts back any value the method overwrote. The
+  JSON error then has no binary `Content-Type`, and no `Content-Disposition`
+  unless an earlier middleware set one. Headers from earlier middleware (for
+  example `Deprecation`) stay.
 - After the response starts, an error goes to `next(error)`, as for a JSON
   route.
 - `headers` documents response headers in the spec only. The method sets

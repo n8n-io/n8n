@@ -865,6 +865,30 @@ describe('PublicApiControllerRegistry', () => {
 			expect(response.headers.deprecation).toBe(`@${Math.floor(since.getTime() / 1000)}`);
 		});
 
+		it('restores a Content-Type set by earlier middleware on an early failure', async () => {
+			@Service()
+			class WidgetsBinaryMiddlewarePublicController {
+				@Middleware()
+				label(_req: express.Request, res: express.Response, next: express.NextFunction) {
+					res.setHeader('Content-Type', 'text/plain');
+					next();
+				}
+
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				async method(_req: unknown, res: express.Response) {
+					res.setHeader('Content-Disposition', 'attachment; filename="x.gz"');
+					throw new NotFoundError('missing');
+				}
+			}
+			markPublicApiController(WidgetsBinaryMiddlewarePublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(404);
+
+			expect(response.headers['content-type']).toMatch(/text\/plain/);
+			expect(response.headers['content-disposition']).toBeUndefined();
+		});
+
 		it('runs the auth gate before the method', async () => {
 			authStrategyRegistry.authenticate.mockResolvedValue(false);
 			const handler = vi.fn();
