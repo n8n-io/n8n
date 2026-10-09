@@ -36,8 +36,11 @@ describe('LogStreamingModule', () => {
 		});
 	});
 
-	it('should show a placeholder page, so unlicensed users still reach the paywall', () => {
-		expect(typeof LogStreamingModule.placeholderPage).toBe('function');
+	it('should show the paywall only while log streaming is unlicensed', () => {
+		expect(LogStreamingModule.placeholderPage).toEqual({
+			licenseFlag: 'logStreaming',
+			component: expect.any(Function),
+		});
 	});
 
 	describe('routes', () => {
@@ -53,7 +56,7 @@ describe('LogStreamingModule', () => {
 			expect(route()?.meta?.middlewareOptions?.rbac).toEqual({ scope: 'logStreaming:manage' });
 		});
 
-		it('should not use the module state as a route guard, because the placeholder page handles it', () => {
+		it('should not list the module guard, because the shell adds it for a placeholder page', () => {
 			expect(route()?.meta?.middleware).toEqual(['authenticated', 'rbac']);
 		});
 
