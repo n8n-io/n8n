@@ -25,7 +25,13 @@ import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel, supportsSplitSystemMessages } from '../model/model-factory';
 import {
+	applyNativeToolDeferral,
+	resolveNativeToolDeferralProvider,
+	type NativeToolDeferralProvider,
+} from '../model/native-tool-deferral';
+import {
 	applyRuntimeCacheBreakpoints,
+	isAnthropicToolDeferred,
 	buildCallPromptCacheOptions,
 	buildInstructionPromptCacheOptions,
 	buildSkillInstructionCacheOptions,
@@ -69,6 +75,8 @@ export interface StaticLoopContext {
  * mapped to AI SDK shapes). Keeps tool/model assembly out of the loop body.
  */
 export class RuntimeContextBuilder {
+	private nativeToolDeferralProvider?: NativeToolDeferralProvider;
+
 	constructor(
 		private readonly config: AgentRuntimeConfig,
 		private readonly deferredToolManager: DeferredToolManager | undefined,
@@ -85,6 +93,9 @@ export class RuntimeContextBuilder {
 		const ai = loadAi();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(this.config.model, this.config.modelFetch);
+		this.nativeToolDeferralProvider = this.config.nativeToolDeferral
+			? resolveNativeToolDeferralProvider(this.config.model)
+			: undefined;
 		const outputSchema = this.config.structuredOutput;
 		const isRawJsonSchemaOutput = outputSchema !== undefined && !isZodSchema(outputSchema);
 		const providerOptions = this.relaxStrictJsonSchemaIfNeeded(
@@ -125,7 +136,7 @@ export class RuntimeContextBuilder {
 	}
 
 	/** Build the current local tool view; deferred loads can change this between iterations. */
-	buildToolLoopContext(
+	async buildToolLoopContext(
 		aiProviderTools: ReturnType<typeof toAiSdkProviderTools>,
 		persistence?: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
@@ -133,7 +144,14 @@ export class RuntimeContextBuilder {
 	) {
 		const allUserTools = this.getCurrentTools(persistence, executionCounter, list);
 		const aiTools = toAiSdkTools(allUserTools);
-		const allTools = { ...aiTools, ...aiProviderTools };
+		const catalog = { ...aiTools, ...aiProviderTools };
+		const allTools = this.config.nativeToolDeferral
+			? await applyNativeToolDeferral(
+					catalog,
+					this.nativeToolDeferralProvider,
+					this.config.nativeToolDeferral,
+				)
+			: catalog;
 		const aiToolCount = Object.keys(allTools).length;
 		const toolMap = buildToolMap(allUserTools);
 		const { instructions: effectiveInstructions, volatileInstructions } =
@@ -145,7 +163,7 @@ export class RuntimeContextBuilder {
 			hasTools: aiToolCount > 0,
 			effectiveInstructions,
 			volatileInstructions,
-			staticToolCacheName: this.getStaticToolCacheName(allUserTools),
+			staticToolCacheName: this.getStaticToolCacheName(allTools),
 		};
 	}
 
@@ -157,7 +175,7 @@ export class RuntimeContextBuilder {
 		activeSkills,
 	}: {
 		list: AgentMessageList;
-		tools: ReturnType<RuntimeContextBuilder['buildToolLoopContext']>;
+		tools: Awaited<ReturnType<RuntimeContextBuilder['buildToolLoopContext']>>;
 		instructionProviderOptions: ProviderOptions | undefined;
 		hostVolatileInstructions: string | undefined;
 		activeSkills: ActiveSkills | undefined;
@@ -196,16 +214,12 @@ export class RuntimeContextBuilder {
 		return { system, ...cached };
 	}
 
-	/**
-	 * Name of the tool eligible for an Anthropic tool-definitions cache
-	 * breakpoint, or `undefined` if the tool set isn't fully static. Deferred
-	 * (controller/loaded) tools can appear mid-conversation via `load_tool`, so
-	 * they disqualify caching — marking a tool block that later changes would
-	 * invalidate the cache.
-	 */
-	private getStaticToolCacheName(allUserTools: BuiltTool[]): string | undefined {
+	/** Legacy loading changes the tool prefix. Native search keeps this prefix fixed. */
+	private getStaticToolCacheName(aiTools: ReturnType<typeof toAiSdkTools>): string | undefined {
 		if (this.deferredToolManager?.hasTools) return undefined;
-		return allUserTools.at(-1)?.name;
+		return Object.entries(aiTools)
+			.filter(([, tool]) => tool.type !== 'provider' && !isAnthropicToolDeferred(tool))
+			.at(-1)?.[0];
 	}
 
 	getCurrentTools(
@@ -216,6 +230,7 @@ export class RuntimeContextBuilder {
 		const baseTools = this.config.tools ?? [];
 		const tools = [
 			...baseTools,
+			...(this.config.nativeToolDeferral ? (this.config.deferredTools ?? []) : []),
 			...(this.deferredToolManager?.hasTools
 				? [
 						...this.deferredToolManager.getControllerTools(),

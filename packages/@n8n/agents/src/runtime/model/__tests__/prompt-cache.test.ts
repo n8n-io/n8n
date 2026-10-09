@@ -287,6 +287,19 @@ describe('applyRuntimeCacheBreakpoints', () => {
 		});
 	});
 
+	it('does not generate a cache marker on a deferred tool', () => {
+		const aiTools = { lookup: makeTool({ anthropic: { deferLoading: true } }) };
+		const result = applyRuntimeCacheBreakpoints({
+			system: anthropicSystem,
+			messages: [],
+			aiTools,
+			promptCaching: { enabled: true },
+			modelId: 'anthropic/claude-sonnet-4-6',
+			staticToolCacheName: 'lookup',
+		});
+		expect(result.aiTools.lookup.providerOptions?.anthropic?.cacheControl).toBeUndefined();
+	});
+
 	it('marks the static tool with a cache breakpoint when staticToolCacheName is provided', () => {
 		const aiTools = { tool_a: makeTool(), tool_b: makeTool() };
 

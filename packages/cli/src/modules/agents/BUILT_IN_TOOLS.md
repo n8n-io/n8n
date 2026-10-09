@@ -6,11 +6,45 @@ The runtime attaches these tools in [`agent-runtime-reconstruction.service.ts`](
 
 ## Before you add a built-in tool
 
-Keep the number of built-in tools low. Each built-in tool goes into the context of every agent run. A long tool list costs tokens and makes tool selection harder for the model.
+Keep the number of built-in tools low. A long tool list costs tokens and makes tool selection harder for the model. Native tool search can defer definitions. Unsupported routes load the full catalog into the model context.
 
 - Check the list in this document first.
 - Extend an existing tool when it covers the use case. Do not add a similar tool.
 - Update this document when you add, remove, or change a built-in tool.
+
+## Tool visibility
+
+The runtime enables native tool deferral during agent reconstruction. Direct
+OpenAI Responses routes use native tool search from GPT-5.4, except GPT-5.4 Nano.
+Direct Anthropic Messages routes use it from Claude 4.5. Numeric version rules
+include later versions and dated snapshots. See the
+[native deferral policy](../../../../@n8n/agents/docs/prompt-caching.md#native-tool-deferral).
+The runtime checks the selected model and effective endpoint before each run.
+Other providers, older versions, unknown model ID formats, Chat Completions,
+custom endpoints, and Gateway credits use the complete eager catalog.
+
+These local tools stay eager when they are attached:
+
+- `workspace_read_file`
+- `workspace_read_tool_result`
+- `workspace_write_file`
+- `workspace_str_replace_file`
+- `workspace_execute_command`
+- `load_skill`
+- `mark_session_failed`
+
+Other eligible local tools are deferred. This includes built-in, custom,
+workflow, node, integration, knowledge, memory, and MCP tools. Provider-native
+tools stay eager. A local tool also stays eager when it has an explicit cache
+marker or `deferLoading: false`.
+
+Deferral changes model visibility only. All authorized handlers stay in the
+execution registry. Validation, approval, and cancellation use the same paths.
+The catalog, tool order, and instructions stay stable during discovery. Search
+results stay in conversation history through memory and approval resume.
+
+The same policy applies to inline and delegated children. The runtime checks
+each child's selected model. There is no feature flag or Agent Builder setting.
 
 ## Tools attached to every agent
 

@@ -46,6 +46,58 @@ differences from the general SDK usage worth knowing:
   TTL is preserved across a switch between Anthropic and another supported
   provider and back.
 
+## Native tool deferral
+
+`Agent.nativeToolDeferral({ eagerToolNames })` uses native tool search for
+eligible model versions on direct OpenAI and Anthropic endpoints. n8n enables
+this policy during agent reconstruction. It has no Agent Builder setting.
+
+```typescript
+new Agent('assistant')
+  .model('openai/gpt-5.4')
+  .nativeToolDeferral({ eagerToolNames: ['workspace_read_file', 'load_skill'] })
+  .promptCaching();
+```
+
+The runtime sends the complete authorized catalog on each request. Native tool
+search controls which local definitions enter the model context. Discovery does
+not change the catalog, tool order, instructions, or execution handlers.
+Provider-native tools stay eager. Local tools with explicit cache markers or
+`deferLoading: false` also stay eager.
+
+The runtime uses numeric version rules instead of a model allowlist:
+
+- OpenAI Responses uses hosted `tool_search` for GPT-5.4 and later versions.
+  GPT-5.4 Nano stays eager, including its dated snapshots. See the
+  [tool search guide](https://developers.openai.com/api/docs/guides/tools-tool-search)
+  and the [Nano model page](https://developers.openai.com/api/docs/models/gpt-5.4-nano).
+- Anthropic Messages uses native BM25 tool search for Claude 4.5 and later
+  versions. The rule accepts model families that use the
+  `claude-<family>-<major>[-<minor>]` format, including dated snapshots. See the
+  [model compatibility table](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool#model-compatibility).
+
+Later versions in these formats qualify without a catalog update. For Claude,
+this is a forward compatibility policy based on the current table. The provider
+does not guarantee support for every future model.
+
+The runtime checks the model version, API route, and effective endpoint before
+the request. Older versions, excluded variants, unknown model ID formats, other
+providers, Chat Completions, and custom endpoints use the complete eager catalog.
+Gateway credits also stays eager. Direct SDK callers keep the existing
+`search_tools` and `load_tool` behavior unless they enable this policy.
+
+Discovered definitions stay at their original history positions. OpenAI appends
+search results to the conversation. Anthropic expands tool references in the
+conversation. The runtime does not move discovered tools into the eager prefix.
+Call and result provider options are stored separately. This preserves the
+separate OpenAI search-result item ID through memory and approval checkpoints.
+
+Native deferral does not reduce the number of definitions sent over HTTP.
+OpenAI also exposes each deferred function name and description before search.
+Measure input tokens, cache reads, and search latency for the selected workload.
+Search adds tokens and latency. With compact schemas, this cost can exceed the
+context saved by deferral.
+
 ## Prefix stability (always on, both providers)
 
 Unlike everything else in this doc, this part is not gated by
@@ -55,7 +107,9 @@ prefix byte-stable, which both OpenAI's automatic caching and Anthropic's
 enabled.
 
 Tools can attach a `systemInstruction` fragment (`Tool.systemInstruction(...)`)
-that gets merged into the system prompt. Deferred tools loaded mid-conversation
+that gets merged into the system prompt. Native deferral includes all catalog
+fragments from the first request and keeps them stable after discovery. Legacy
+deferred tools loaded mid-conversation
 via `load_tool` are a special case: if a newly loaded tool has a
 `systemInstruction`, merging it into the same cached instructions string the
 moment it loads would change that string's bytes — a full-prefix cache miss
@@ -148,17 +202,14 @@ back to memory, checkpoints, or `AgentMessageList`):
   new messages, this lets multi-step tool loops and multi-turn conversations
   read the cached prefix instead of reprocessing the whole transcript on
   every call.
-- **Tool-definitions breakpoint.** A `cacheControl` marker on the last tool
-  definition, added only when the tool set is **static** for the run — i.e. no
-  deferred/loaded tools are configured. A large, stable tool block then stays
-  cached independently of the conversation prefix, so it survives even if the
-  history breakpoint above gets invalidated (e.g. by a burst of unrelated
-  system-message churn). Deferred / MCP-loaded tool sets are skipped — the
-  tool list can change mid-conversation via `load_tool`, and caching a block
-  that gets invalidated would just pay the write premium for no read. The
-  episodic-memory tools do **not** disqualify this breakpoint. Their definitions
-  are static. Calling them only appends tool output to the conversation and
-  never changes the tool set.
+- **Tool-definitions breakpoint.** The runtime puts a `cacheControl` marker on
+  the last eligible local tool when the catalog is static. This includes the
+  complete eager catalog and native tool search. In native mode, the selected
+  tool must be non-deferred. The runtime never puts a generated cache marker on
+  a deferred tool. A caller-supplied marker makes that tool eager and stays
+  unchanged. Legacy `load_tool` catalogs have no automatic tool breakpoint
+  because their definitions can change during the conversation. Runtime memory
+  tools do not change this rule. Their definitions stay stable within a run.
 
 Both markers reuse the configured Anthropic TTL (`getAnthropicCacheTtl`).
 
@@ -217,12 +268,9 @@ are billed at the catalog's 5-minute rate.
 
 ## What this does not do
 
-- The tool-definitions breakpoint only ever covers a **single, static**
-  snapshot of the tool set (see above) — deferred/loaded tool sets get no
-  automatic tool caching in v1 (the episodic-memory tools are static within a
-  run). Mark deferred tools explicitly with
-  `Tool.providerOptions({ anthropic: { cacheControl: { type: 'ephemeral' } } })`
-  if needed.
+- The tool-definitions breakpoint covers one static catalog. Legacy
+  `search_tools` / `load_tool` catalogs have no automatic tool caching. In native
+  mode, a caller cache marker keeps the marked tool eager.
 - Only one moving conversation-history breakpoint is added per call — there
   is no second/dual breakpoint for splitting "older, stable" history from
   "recent, volatile" history.

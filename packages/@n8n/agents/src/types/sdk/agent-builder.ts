@@ -1,4 +1,4 @@
-import type { ExecutionOptions, ModelConfig } from './agent';
+import type { ExecutionOptions, ModelConfig, NativeToolDeferralConfig } from './agent';
 import type { BuiltEval } from './eval';
 import type { BuiltGuardrail } from './guardrail';
 import type { CheckpointStore } from './memory';
@@ -22,6 +22,7 @@ export interface AgentBuilder {
 	instructions(text: string): this;
 	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this;
 	tool(t: BuiltTool | BuiltTool[]): this;
+	nativeToolDeferral(config: NativeToolDeferralConfig): this;
 	deferredTool(t: BuiltTool | BuiltTool[], options?: { search?: { topK?: number } }): this;
 	skills(sourceOrSkills: RuntimeSkillSource | RuntimeSkill[]): this;
 	providerTool(t: BuiltProviderTool): this;

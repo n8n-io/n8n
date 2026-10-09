@@ -15,10 +15,57 @@
 import type { ModelMessage } from 'ai';
 import { describe, it, expect } from 'vitest';
 
-import type { Message } from '../../types/sdk/message';
+import type { ContentToolCall, Message } from '../../types/sdk/message';
 import { toAiMessages, fromAiMessages } from '../model/messages';
 
 describe('toAiMessages + fromAiMessages — round-trip', () => {
+	it.each(['resolved', 'rejected'] as const)(
+		'preserves separate provider result options for a %s search',
+		(state) => {
+			const aiMessages: ModelMessage[] = [
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'ts_call_1',
+							toolName: 'openai.tool_search',
+							input: {},
+							providerExecuted: true,
+							providerOptions: { openai: { itemId: 'ts_call_1' } },
+						},
+						{
+							type: 'tool-result',
+							toolCallId: 'ts_call_1',
+							toolName: 'openai.tool_search',
+							output:
+								state === 'resolved'
+									? { type: 'json', value: { tools: [] } }
+									: { type: 'error-json', value: 'search_error' },
+							providerOptions: { openai: { itemId: 'ts_result_1' } },
+						},
+					],
+				},
+			];
+			const serialized = JSON.stringify(fromAiMessages(aiMessages));
+			const stored = JSON.parse(serialized) as Message[];
+			const call = stored[0].content[0] as ContentToolCall;
+			expect(call.providerOptions).toEqual({ openai: { itemId: 'ts_call_1' } });
+			expect(call.resultProviderOptions).toEqual({ openai: { itemId: 'ts_result_1' } });
+			const replay = toAiMessages(stored)[0];
+			if (replay.role !== 'assistant' || typeof replay.content === 'string')
+				throw new Error('Expected provider search history');
+			expect(replay.content[1]).toMatchObject({
+				type: 'tool-result',
+				providerOptions: { openai: { itemId: 'ts_result_1' } },
+			});
+			expect(replay.content[0]).toMatchObject({
+				type: 'tool-call',
+				providerOptions: { openai: { itemId: 'ts_call_1' } },
+			});
+		},
+	);
+
 	it('splits a resolved tool-call into assistant + tool ModelMessages', () => {
 		const input: Message[] = [
 			{

@@ -1,0 +1,722 @@
+[
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-5.4",
+			"input": [
+				{
+					"role": "developer",
+					"content": "Use tools for invoices and inventory. Never calculate an invoice or guess stock without a tool result. Complete only the requested action. Call approval tools to request approval. The runtime asks the user after the call. Do not ask for approval in a text reply. Reply with the result in one short sentence.\n\nReference 1: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 2: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 3: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 4: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 5: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 6: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 7: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 8: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 9: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 10: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 11: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 12: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 13: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 14: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 15: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 16: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 17: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 18: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 19: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 20: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 21: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 22: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 23: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 24: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 25: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 26: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 27: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 28: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 29: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 30: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 31: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 32: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 33: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 34: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 35: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 36: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 37: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 38: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 39: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 40: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 41: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 42: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 43: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 44: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 45: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 46: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 47: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 48: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 49: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 50: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 51: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 52: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 53: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 54: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 55: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 56: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 57: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 58: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 59: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 60: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Issue an invoice for 7 items at a unit price of 6. Use the invoice tool."
+						}
+					]
+				}
+			],
+			"store": false,
+			"include": ["reasoning.encrypted_content"],
+			"prompt_cache_key": "agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c",
+			"prompt_cache_retention": "24h",
+			"tools": [
+				{
+					"type": "function",
+					"name": "workspace_read_file",
+					"description": "Read a file from the workspace.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": false
+				},
+				{
+					"type": "function",
+					"name": "issue_invoice",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"unitPrice": {
+								"type": "number"
+							},
+							"quantity": {
+								"type": "number"
+							}
+						},
+						"required": ["unitPrice", "quantity"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "function",
+					"name": "lookup_warehouse_stock",
+					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"sku": {
+								"type": "string"
+							},
+							"warehouse": {
+								"type": "string"
+							}
+						},
+						"required": ["sku", "warehouse"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "tool_search",
+					"execution": "server"
+				}
+			],
+			"tool_choice": "auto",
+			"stream": true
+		},
+		"status": 200,
+		"response": "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_02abbc8b5b5644b4016ac85ff0f13c87d18b912baa0fc8c333\",\"object\":\"response\",\"created_at\":1791516657,\"status\":\"in_progress\",\"access_programs\":null,\"background\":false,\"completed_at\":null,\"error\":null,\"frequency_penalty\":0.0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"model\":\"gpt-5.4-2026-03-05\",\"moderation\":null,\"output\":[],\"parallel_tool_calls\":true,\"presence_penalty\":0.0,\"previous_response_id\":null,\"prompt_cache_key\":\"agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c\",\"prompt_cache_retention\":\"24h\",\"reasoning\":{\"context\":\"current_turn\",\"effort\":\"none\",\"mode\":\"standard\",\"summary\":null},\"safety_identifier\":null,\"service_tier\":\"auto\",\"store\":false,\"temperature\":1.0,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Read a file from the workspace.\",\"name\":\"workspace_read_file\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"tool_search\",\"description\":null,\"parameters\":null}],\"top_logprobs\":0,\"top_p\":0.98,\"truncation\":\"disabled\",\"usage\":null,\"user\":null,\"metadata\":{}},\"sequence_number\":0}\n\nevent: response.in_progress\ndata: {\"type\":\"response.in_progress\",\"response\":{\"id\":\"resp_02abbc8b5b5644b4016ac85ff0f13c87d18b912baa0fc8c333\",\"object\":\"response\",\"created_at\":1791516657,\"status\":\"in_progress\",\"access_programs\":null,\"background\":false,\"completed_at\":null,\"error\":null,\"frequency_penalty\":0.0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"model\":\"gpt-5.4-2026-03-05\",\"moderation\":null,\"output\":[],\"parallel_tool_calls\":true,\"presence_penalty\":0.0,\"previous_response_id\":null,\"prompt_cache_key\":\"agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c\",\"prompt_cache_retention\":\"24h\",\"reasoning\":{\"context\":\"current_turn\",\"effort\":\"none\",\"mode\":\"standard\",\"summary\":null},\"safety_identifier\":null,\"service_tier\":\"auto\",\"store\":false,\"temperature\":1.0,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Read a file from the workspace.\",\"name\":\"workspace_read_file\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"tool_search\",\"description\":null,\"parameters\":null}],\"top_logprobs\":0,\"top_p\":0.98,\"truncation\":\"disabled\",\"usage\":null,\"user\":null,\"metadata\":{}},\"sequence_number\":1}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"item\":{\"id\":\"tsc_02abbc8b5b5644b4016ac85ff1945887d18adf13aa1c707e8f\",\"type\":\"tool_search_call\",\"status\":\"in_progress\",\"arguments\":{},\"call_id\":null,\"execution\":\"server\"},\"output_index\":0,\"sequence_number\":2}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"item\":{\"id\":\"tsc_02abbc8b5b5644b4016ac85ff1945887d18adf13aa1c707e8f\",\"type\":\"tool_search_call\",\"status\":\"completed\",\"arguments\":{\"paths\":[\"issue_invoice\"]},\"call_id\":null,\"execution\":\"server\"},\"output_index\":0,\"sequence_number\":3}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"item\":{\"id\":\"tso_02abbc8b5b5644b4016ac85ff1be2087d1a99533fadac8e514\",\"type\":\"tool_search_output\",\"status\":\"in_progress\",\"call_id\":null,\"execution\":\"server\",\"tools\":[{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]},\"output_index\":1,\"sequence_number\":4}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"item\":{\"id\":\"tso_02abbc8b5b5644b4016ac85ff1be2087d1a99533fadac8e514\",\"type\":\"tool_search_output\",\"status\":\"completed\",\"call_id\":null,\"execution\":\"server\",\"tools\":[{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]},\"output_index\":1,\"sequence_number\":5}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"item\":{\"id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"type\":\"function_call\",\"status\":\"in_progress\",\"arguments\":\"\",\"call_id\":\"call_AvrCVS64KsDtbNou5sVUeZ4b\",\"name\":\"issue_invoice\",\"namespace\":\"issue_invoice\"},\"output_index\":2,\"sequence_number\":6}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"{\\\"\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"obfuscation\":\"rr0Zj8myDAU6u1\",\"output_index\":2,\"sequence_number\":7}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"unit\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"obfuscation\":\"dn1vuqI9hp8m\",\"output_index\":2,\"sequence_number\":8}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"Price\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"obfuscation\":\"mpwBffssajX\",\"output_index\":2,\"sequence_number\":9}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"\\\":\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"obfuscation\":\"b2keokjVEkVMhx\",\"output_index\":2,\"sequence_number\":10}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"6\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"obfuscation\":\"Bo3UeSISXQ0hck5\",\"output_index\":2,\"sequence_number\":11}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\",\\\"\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"obfuscation\":\"OrRauR9bjqLWll\",\"output_index\":2,\"sequence_number\":12}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"quantity\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"obfuscation\":\"SlcvO6th\",\"output_index\":2,\"sequence_number\":13}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"\\\":\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"obfuscation\":\"A2D99qS0NMUWTj\",\"output_index\":2,\"sequence_number\":14}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"7\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"obfuscation\":\"GTSwMR4Qm9VYaex\",\"output_index\":2,\"sequence_number\":15}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"}\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"obfuscation\":\"WfXwIF00karASFT\",\"output_index\":2,\"sequence_number\":16}\n\nevent: response.function_call_arguments.done\ndata: {\"type\":\"response.function_call_arguments.done\",\"arguments\":\"{\\\"unitPrice\\\":6,\\\"quantity\\\":7}\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"output_index\":2,\"sequence_number\":17}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"item\":{\"id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"type\":\"function_call\",\"status\":\"completed\",\"arguments\":\"{\\\"unitPrice\\\":6,\\\"quantity\\\":7}\",\"call_id\":\"call_AvrCVS64KsDtbNou5sVUeZ4b\",\"name\":\"issue_invoice\",\"namespace\":\"issue_invoice\"},\"output_index\":2,\"sequence_number\":18}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_02abbc8b5b5644b4016ac85ff0f13c87d18b912baa0fc8c333\",\"object\":\"response\",\"created_at\":1791516657,\"status\":\"completed\",\"access_programs\":null,\"background\":false,\"completed_at\":1791516658,\"error\":null,\"frequency_penalty\":0.0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"model\":\"gpt-5.4-2026-03-05\",\"moderation\":null,\"output\":[{\"id\":\"tsc_02abbc8b5b5644b4016ac85ff1945887d18adf13aa1c707e8f\",\"type\":\"tool_search_call\",\"status\":\"completed\",\"arguments\":{\"paths\":[\"issue_invoice\"]},\"call_id\":null,\"execution\":\"server\"},{\"id\":\"tso_02abbc8b5b5644b4016ac85ff1be2087d1a99533fadac8e514\",\"type\":\"tool_search_output\",\"status\":\"completed\",\"call_id\":null,\"execution\":\"server\",\"tools\":[{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]},{\"id\":\"fc_02abbc8b5b5644b4016ac85ff2167487d1afa2c958ebd21bd8\",\"type\":\"function_call\",\"status\":\"completed\",\"arguments\":\"{\\\"unitPrice\\\":6,\\\"quantity\\\":7}\",\"call_id\":\"call_AvrCVS64KsDtbNou5sVUeZ4b\",\"name\":\"issue_invoice\",\"namespace\":\"issue_invoice\"}],\"parallel_tool_calls\":true,\"presence_penalty\":0.0,\"previous_response_id\":null,\"prompt_cache_key\":\"agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c\",\"prompt_cache_retention\":\"24h\",\"reasoning\":{\"context\":\"current_turn\",\"effort\":\"none\",\"mode\":\"standard\",\"summary\":null},\"safety_identifier\":null,\"service_tier\":\"default\",\"store\":false,\"temperature\":1.0,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Read a file from the workspace.\",\"name\":\"workspace_read_file\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"tool_search\",\"description\":null,\"parameters\":null}],\"top_logprobs\":0,\"top_p\":0.98,\"truncation\":\"disabled\",\"usage\":{\"input_tokens\":2642,\"input_tokens_details\":{\"cache_write_tokens\":0,\"cached_tokens\":1536},\"output_tokens\":44,\"output_tokens_details\":{\"reasoning_tokens\":20},\"total_tokens\":2686},\"user\":null,\"metadata\":{}},\"sequence_number\":19}\n\n",
+		"rawHeaders": {
+			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
+			"alt-svc": "h3=\":443\"; ma=86400",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a47a4f40aaa75af7-VIE",
+			"connection": "keep-alive",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Fri, 09 Oct 2026 03:30:57 GMT",
+			"openai-processing-ms": "380",
+			"openai-version": "2020-10-01",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"transfer-encoding": "chunked",
+			"x-content-type-options": "nosniff",
+			"x-ratelimit-limit-requests": "15000",
+			"x-ratelimit-limit-tokens": "40000000",
+			"x-ratelimit-remaining-requests": "14999",
+			"x-ratelimit-remaining-tokens": "39997078",
+			"x-ratelimit-reset-requests": "4ms",
+			"x-ratelimit-reset-tokens": "4ms",
+			"x-request-id": "req_0dcc927ee99b4518b99897099a785578"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-5.4",
+			"input": [
+				{
+					"role": "developer",
+					"content": "Use tools for invoices and inventory. Never calculate an invoice or guess stock without a tool result. Complete only the requested action. Call approval tools to request approval. The runtime asks the user after the call. Do not ask for approval in a text reply. Reply with the result in one short sentence.\n\nReference 1: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 2: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 3: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 4: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 5: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 6: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 7: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 8: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 9: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 10: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 11: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 12: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 13: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 14: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 15: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 16: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 17: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 18: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 19: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 20: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 21: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 22: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 23: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 24: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 25: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 26: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 27: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 28: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 29: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 30: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 31: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 32: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 33: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 34: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 35: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 36: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 37: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 38: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 39: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 40: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 41: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 42: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 43: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 44: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 45: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 46: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 47: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 48: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 49: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 50: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 51: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 52: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 53: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 54: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 55: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 56: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 57: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 58: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 59: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 60: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Issue an invoice for 7 items at a unit price of 6. Use the invoice tool."
+						}
+					]
+				},
+				{
+					"type": "tool_search_call",
+					"id": "tsc_02abbc8b5b5644b4016ac85ff1945887d18adf13aa1c707e8f",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"arguments": {
+						"paths": ["issue_invoice"]
+					}
+				},
+				{
+					"type": "tool_search_output",
+					"id": "tso_02abbc8b5b5644b4016ac85ff1be2087d1a99533fadac8e514",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"tools": [
+						{
+							"type": "function",
+							"defer_loading": true,
+							"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+							"name": "issue_invoice",
+							"output_schema": null,
+							"parameters": {
+								"type": "object",
+								"properties": {
+									"unitPrice": {
+										"type": "number"
+									},
+									"quantity": {
+										"type": "number"
+									}
+								},
+								"required": ["unitPrice", "quantity"],
+								"additionalProperties": false,
+								"$schema": "http://json-schema.org/draft-07/schema#"
+							},
+							"strict": true
+						}
+					]
+				},
+				{
+					"type": "function_call",
+					"call_id": "call_AvrCVS64KsDtbNou5sVUeZ4b",
+					"name": "issue_invoice",
+					"arguments": "{\"unitPrice\":6,\"quantity\":7}",
+					"namespace": "issue_invoice"
+				},
+				{
+					"type": "function_call_output",
+					"call_id": "call_AvrCVS64KsDtbNou5sVUeZ4b",
+					"output": "{\"total\":42}"
+				}
+			],
+			"store": false,
+			"include": ["reasoning.encrypted_content"],
+			"prompt_cache_key": "agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c",
+			"prompt_cache_retention": "24h",
+			"tools": [
+				{
+					"type": "function",
+					"name": "workspace_read_file",
+					"description": "Read a file from the workspace.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": false
+				},
+				{
+					"type": "function",
+					"name": "issue_invoice",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"unitPrice": {
+								"type": "number"
+							},
+							"quantity": {
+								"type": "number"
+							}
+						},
+						"required": ["unitPrice", "quantity"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "function",
+					"name": "lookup_warehouse_stock",
+					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"sku": {
+								"type": "string"
+							},
+							"warehouse": {
+								"type": "string"
+							}
+						},
+						"required": ["sku", "warehouse"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "tool_search",
+					"execution": "server"
+				}
+			],
+			"tool_choice": "auto",
+			"stream": true
+		},
+		"status": 200,
+		"response": "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_02abbc8b5b5644b4016ac85ff296f887d1a8b1febf8dbcf879\",\"object\":\"response\",\"created_at\":1791516658,\"status\":\"in_progress\",\"access_programs\":null,\"background\":false,\"completed_at\":null,\"error\":null,\"frequency_penalty\":0.0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"model\":\"gpt-5.4-2026-03-05\",\"moderation\":null,\"output\":[],\"parallel_tool_calls\":true,\"presence_penalty\":0.0,\"previous_response_id\":null,\"prompt_cache_key\":\"agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c\",\"prompt_cache_retention\":\"24h\",\"reasoning\":{\"context\":\"current_turn\",\"effort\":\"none\",\"mode\":\"standard\",\"summary\":null},\"safety_identifier\":null,\"service_tier\":\"auto\",\"store\":false,\"temperature\":1.0,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Read a file from the workspace.\",\"name\":\"workspace_read_file\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"tool_search\",\"description\":null,\"parameters\":null},{\"type\":\"namespace\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"tools\":[{\"type\":\"function\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]}],\"top_logprobs\":0,\"top_p\":0.98,\"truncation\":\"disabled\",\"usage\":null,\"user\":null,\"metadata\":{}},\"sequence_number\":0}\n\nevent: response.in_progress\ndata: {\"type\":\"response.in_progress\",\"response\":{\"id\":\"resp_02abbc8b5b5644b4016ac85ff296f887d1a8b1febf8dbcf879\",\"object\":\"response\",\"created_at\":1791516658,\"status\":\"in_progress\",\"access_programs\":null,\"background\":false,\"completed_at\":null,\"error\":null,\"frequency_penalty\":0.0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"model\":\"gpt-5.4-2026-03-05\",\"moderation\":null,\"output\":[],\"parallel_tool_calls\":true,\"presence_penalty\":0.0,\"previous_response_id\":null,\"prompt_cache_key\":\"agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c\",\"prompt_cache_retention\":\"24h\",\"reasoning\":{\"context\":\"current_turn\",\"effort\":\"none\",\"mode\":\"standard\",\"summary\":null},\"safety_identifier\":null,\"service_tier\":\"auto\",\"store\":false,\"temperature\":1.0,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Read a file from the workspace.\",\"name\":\"workspace_read_file\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"tool_search\",\"description\":null,\"parameters\":null},{\"type\":\"namespace\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"tools\":[{\"type\":\"function\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]}],\"top_logprobs\":0,\"top_p\":0.98,\"truncation\":\"disabled\",\"usage\":null,\"user\":null,\"metadata\":{}},\"sequence_number\":1}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"item\":{\"id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"type\":\"message\",\"status\":\"in_progress\",\"content\":[],\"phase\":\"final_answer\",\"role\":\"assistant\"},\"output_index\":0,\"sequence_number\":2}\n\nevent: response.content_part.added\ndata: {\"type\":\"response.content_part.added\",\"content_index\":0,\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"output_index\":0,\"part\":{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"\"},\"sequence_number\":3}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\"Invoice\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"logprobs\":[],\"obfuscation\":\"iiRVtVJIK\",\"output_index\":0,\"sequence_number\":4}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" issued\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"logprobs\":[],\"obfuscation\":\"LTHo0TDeX\",\"output_index\":0,\"sequence_number\":5}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" for\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"logprobs\":[],\"obfuscation\":\"MWD0607eQZRM\",\"output_index\":0,\"sequence_number\":6}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" a\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"logprobs\":[],\"obfuscation\":\"2OA9A8t8R9R4k6\",\"output_index\":0,\"sequence_number\":7}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" total\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"logprobs\":[],\"obfuscation\":\"BjrcDQGCf5\",\"output_index\":0,\"sequence_number\":8}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" of\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"logprobs\":[],\"obfuscation\":\"c97ce1YWNNWAv\",\"output_index\":0,\"sequence_number\":9}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" \",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"logprobs\":[],\"obfuscation\":\"E8T2TCAQuug2Xe4\",\"output_index\":0,\"sequence_number\":10}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\"42\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"logprobs\":[],\"obfuscation\":\"Om7r2I1dya4yk6\",\"output_index\":0,\"sequence_number\":11}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\".\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"logprobs\":[],\"obfuscation\":\"euYBFOECcar2DgO\",\"output_index\":0,\"sequence_number\":12}\n\nevent: response.output_text.done\ndata: {\"type\":\"response.output_text.done\",\"content_index\":0,\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"logprobs\":[],\"output_index\":0,\"sequence_number\":13,\"text\":\"Invoice issued for a total of 42.\"}\n\nevent: response.content_part.done\ndata: {\"type\":\"response.content_part.done\",\"content_index\":0,\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"output_index\":0,\"part\":{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"Invoice issued for a total of 42.\"},\"sequence_number\":14}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"item\":{\"id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"Invoice issued for a total of 42.\"}],\"phase\":\"final_answer\",\"role\":\"assistant\"},\"output_index\":0,\"sequence_number\":15}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_02abbc8b5b5644b4016ac85ff296f887d1a8b1febf8dbcf879\",\"object\":\"response\",\"created_at\":1791516658,\"status\":\"completed\",\"access_programs\":null,\"background\":false,\"completed_at\":1791516659,\"error\":null,\"frequency_penalty\":0.0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"model\":\"gpt-5.4-2026-03-05\",\"moderation\":null,\"output\":[{\"id\":\"msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"Invoice issued for a total of 42.\"}],\"phase\":\"final_answer\",\"role\":\"assistant\"}],\"parallel_tool_calls\":true,\"presence_penalty\":0.0,\"previous_response_id\":null,\"prompt_cache_key\":\"agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c\",\"prompt_cache_retention\":\"24h\",\"reasoning\":{\"context\":\"current_turn\",\"effort\":\"none\",\"mode\":\"standard\",\"summary\":null},\"safety_identifier\":null,\"service_tier\":\"default\",\"store\":false,\"temperature\":1.0,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Read a file from the workspace.\",\"name\":\"workspace_read_file\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"tool_search\",\"description\":null,\"parameters\":null},{\"type\":\"namespace\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"tools\":[{\"type\":\"function\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]}],\"top_logprobs\":0,\"top_p\":0.98,\"truncation\":\"disabled\",\"usage\":{\"input_tokens\":2683,\"input_tokens_details\":{\"cache_write_tokens\":0,\"cached_tokens\":2560},\"output_tokens\":13,\"output_tokens_details\":{\"reasoning_tokens\":0},\"total_tokens\":2696},\"user\":null,\"metadata\":{}},\"sequence_number\":16}\n\n",
+		"rawHeaders": {
+			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
+			"alt-svc": "h3=\":443\"; ma=86400",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a47a4f4b3c643249-VIE",
+			"connection": "keep-alive",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Fri, 09 Oct 2026 03:30:59 GMT",
+			"openai-processing-ms": "505",
+			"openai-version": "2020-10-01",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"transfer-encoding": "chunked",
+			"x-content-type-options": "nosniff",
+			"x-ratelimit-limit-requests": "15000",
+			"x-ratelimit-limit-tokens": "40000000",
+			"x-ratelimit-remaining-requests": "14997",
+			"x-ratelimit-remaining-tokens": "39990843",
+			"x-ratelimit-reset-requests": "12ms",
+			"x-ratelimit-reset-tokens": "13ms",
+			"x-request-id": "req_2572b5770ce943b595093c838d825af7"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-5.4",
+			"input": [
+				{
+					"role": "developer",
+					"content": "Use tools for invoices and inventory. Never calculate an invoice or guess stock without a tool result. Complete only the requested action. Call approval tools to request approval. The runtime asks the user after the call. Do not ask for approval in a text reply. Reply with the result in one short sentence.\n\nReference 1: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 2: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 3: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 4: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 5: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 6: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 7: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 8: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 9: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 10: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 11: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 12: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 13: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 14: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 15: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 16: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 17: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 18: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 19: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 20: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 21: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 22: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 23: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 24: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 25: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 26: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 27: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 28: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 29: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 30: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 31: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 32: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 33: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 34: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 35: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 36: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 37: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 38: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 39: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 40: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 41: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 42: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 43: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 44: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 45: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 46: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 47: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 48: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 49: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 50: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 51: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 52: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 53: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 54: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 55: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 56: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 57: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 58: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 59: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 60: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Issue an invoice for 7 items at a unit price of 6. Use the invoice tool."
+						}
+					]
+				},
+				{
+					"type": "tool_search_call",
+					"id": "tsc_02abbc8b5b5644b4016ac85ff1945887d18adf13aa1c707e8f",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"arguments": {
+						"paths": ["issue_invoice"]
+					}
+				},
+				{
+					"type": "tool_search_output",
+					"id": "tso_02abbc8b5b5644b4016ac85ff1be2087d1a99533fadac8e514",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"tools": [
+						{
+							"type": "function",
+							"defer_loading": true,
+							"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+							"name": "issue_invoice",
+							"output_schema": null,
+							"parameters": {
+								"type": "object",
+								"properties": {
+									"unitPrice": {
+										"type": "number"
+									},
+									"quantity": {
+										"type": "number"
+									}
+								},
+								"required": ["unitPrice", "quantity"],
+								"additionalProperties": false,
+								"$schema": "http://json-schema.org/draft-07/schema#"
+							},
+							"strict": true
+						}
+					]
+				},
+				{
+					"type": "function_call",
+					"call_id": "call_AvrCVS64KsDtbNou5sVUeZ4b",
+					"name": "issue_invoice",
+					"arguments": "{\"unitPrice\":6,\"quantity\":7}",
+					"namespace": "issue_invoice"
+				},
+				{
+					"type": "function_call_output",
+					"call_id": "call_AvrCVS64KsDtbNou5sVUeZ4b",
+					"output": "{\"total\":42}"
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "output_text",
+							"text": "Invoice issued for a total of 42."
+						}
+					],
+					"id": "msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219",
+					"phase": "final_answer"
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Now look up stock for SKU A-17 in warehouse west. Use the inventory tool."
+						}
+					]
+				}
+			],
+			"store": false,
+			"include": ["reasoning.encrypted_content"],
+			"prompt_cache_key": "agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c",
+			"prompt_cache_retention": "24h",
+			"tools": [
+				{
+					"type": "function",
+					"name": "workspace_read_file",
+					"description": "Read a file from the workspace.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": false
+				},
+				{
+					"type": "function",
+					"name": "issue_invoice",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"unitPrice": {
+								"type": "number"
+							},
+							"quantity": {
+								"type": "number"
+							}
+						},
+						"required": ["unitPrice", "quantity"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "function",
+					"name": "lookup_warehouse_stock",
+					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"sku": {
+								"type": "string"
+							},
+							"warehouse": {
+								"type": "string"
+							}
+						},
+						"required": ["sku", "warehouse"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "tool_search",
+					"execution": "server"
+				}
+			],
+			"tool_choice": "auto",
+			"stream": true
+		},
+		"status": 200,
+		"response": "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_02abbc8b5b5644b4016ac85ff3e30c87d1b4197552704b78ec\",\"object\":\"response\",\"created_at\":1791516659,\"status\":\"in_progress\",\"access_programs\":null,\"background\":false,\"completed_at\":null,\"error\":null,\"frequency_penalty\":0.0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"model\":\"gpt-5.4-2026-03-05\",\"moderation\":null,\"output\":[],\"parallel_tool_calls\":true,\"presence_penalty\":0.0,\"previous_response_id\":null,\"prompt_cache_key\":\"agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c\",\"prompt_cache_retention\":\"24h\",\"reasoning\":{\"context\":\"current_turn\",\"effort\":\"none\",\"mode\":\"standard\",\"summary\":null},\"safety_identifier\":null,\"service_tier\":\"auto\",\"store\":false,\"temperature\":1.0,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Read a file from the workspace.\",\"name\":\"workspace_read_file\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"tool_search\",\"description\":null,\"parameters\":null},{\"type\":\"namespace\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"tools\":[{\"type\":\"function\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]}],\"top_logprobs\":0,\"top_p\":0.98,\"truncation\":\"disabled\",\"usage\":null,\"user\":null,\"metadata\":{}},\"sequence_number\":0}\n\nevent: response.in_progress\ndata: {\"type\":\"response.in_progress\",\"response\":{\"id\":\"resp_02abbc8b5b5644b4016ac85ff3e30c87d1b4197552704b78ec\",\"object\":\"response\",\"created_at\":1791516659,\"status\":\"in_progress\",\"access_programs\":null,\"background\":false,\"completed_at\":null,\"error\":null,\"frequency_penalty\":0.0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"model\":\"gpt-5.4-2026-03-05\",\"moderation\":null,\"output\":[],\"parallel_tool_calls\":true,\"presence_penalty\":0.0,\"previous_response_id\":null,\"prompt_cache_key\":\"agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c\",\"prompt_cache_retention\":\"24h\",\"reasoning\":{\"context\":\"current_turn\",\"effort\":\"none\",\"mode\":\"standard\",\"summary\":null},\"safety_identifier\":null,\"service_tier\":\"auto\",\"store\":false,\"temperature\":1.0,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Read a file from the workspace.\",\"name\":\"workspace_read_file\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"tool_search\",\"description\":null,\"parameters\":null},{\"type\":\"namespace\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"tools\":[{\"type\":\"function\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]}],\"top_logprobs\":0,\"top_p\":0.98,\"truncation\":\"disabled\",\"usage\":null,\"user\":null,\"metadata\":{}},\"sequence_number\":1}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"item\":{\"id\":\"tsc_02abbc8b5b5644b4016ac85ff486fc87d194aa54cae4745f6d\",\"type\":\"tool_search_call\",\"status\":\"in_progress\",\"arguments\":{},\"call_id\":null,\"execution\":\"server\"},\"output_index\":0,\"sequence_number\":2}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"item\":{\"id\":\"tsc_02abbc8b5b5644b4016ac85ff486fc87d194aa54cae4745f6d\",\"type\":\"tool_search_call\",\"status\":\"completed\",\"arguments\":{\"paths\":[\"lookup_warehouse_stock\"]},\"call_id\":null,\"execution\":\"server\"},\"output_index\":0,\"sequence_number\":3}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"item\":{\"id\":\"tso_02abbc8b5b5644b4016ac85ff4b1ac87d187dd1c23bb7fe07d\",\"type\":\"tool_search_output\",\"status\":\"in_progress\",\"call_id\":null,\"execution\":\"server\",\"tools\":[{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]},\"output_index\":1,\"sequence_number\":4}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"item\":{\"id\":\"tso_02abbc8b5b5644b4016ac85ff4b1ac87d187dd1c23bb7fe07d\",\"type\":\"tool_search_output\",\"status\":\"completed\",\"call_id\":null,\"execution\":\"server\",\"tools\":[{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]},\"output_index\":1,\"sequence_number\":5}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"item\":{\"id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"type\":\"function_call\",\"status\":\"in_progress\",\"arguments\":\"\",\"call_id\":\"call_o8XDxCzywQgExckAU3XiLGhL\",\"name\":\"lookup_warehouse_stock\",\"namespace\":\"lookup_warehouse_stock\"},\"output_index\":2,\"sequence_number\":6}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"{\\\"\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"obfuscation\":\"YqT8z6sVK1OyJv\",\"output_index\":2,\"sequence_number\":7}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"sku\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"obfuscation\":\"cPrUs34YnqP2M\",\"output_index\":2,\"sequence_number\":8}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"\\\":\\\"\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"obfuscation\":\"ekVYhs5jOOhlt\",\"output_index\":2,\"sequence_number\":9}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"A\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"obfuscation\":\"OI1X26WldyV2G8L\",\"output_index\":2,\"sequence_number\":10}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"-\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"obfuscation\":\"bxr8JXT3QUCJejS\",\"output_index\":2,\"sequence_number\":11}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"17\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"obfuscation\":\"A0ETPoBr00zSN0\",\"output_index\":2,\"sequence_number\":12}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"\\\",\\\"\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"obfuscation\":\"OJ5iMoLpFMPzg\",\"output_index\":2,\"sequence_number\":13}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"warehouse\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"obfuscation\":\"eEgeztj\",\"output_index\":2,\"sequence_number\":14}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"\\\":\\\"\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"obfuscation\":\"sgmEBKklrTl6s\",\"output_index\":2,\"sequence_number\":15}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"west\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"obfuscation\":\"RLP6YDHWtTxf\",\"output_index\":2,\"sequence_number\":16}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"\\\"}\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"obfuscation\":\"C4jnJAe2JNLJrQ\",\"output_index\":2,\"sequence_number\":17}\n\nevent: response.function_call_arguments.done\ndata: {\"type\":\"response.function_call_arguments.done\",\"arguments\":\"{\\\"sku\\\":\\\"A-17\\\",\\\"warehouse\\\":\\\"west\\\"}\",\"item_id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"output_index\":2,\"sequence_number\":18}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"item\":{\"id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"type\":\"function_call\",\"status\":\"completed\",\"arguments\":\"{\\\"sku\\\":\\\"A-17\\\",\\\"warehouse\\\":\\\"west\\\"}\",\"call_id\":\"call_o8XDxCzywQgExckAU3XiLGhL\",\"name\":\"lookup_warehouse_stock\",\"namespace\":\"lookup_warehouse_stock\"},\"output_index\":2,\"sequence_number\":19}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_02abbc8b5b5644b4016ac85ff3e30c87d1b4197552704b78ec\",\"object\":\"response\",\"created_at\":1791516659,\"status\":\"completed\",\"access_programs\":null,\"background\":false,\"completed_at\":1791516661,\"error\":null,\"frequency_penalty\":0.0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"model\":\"gpt-5.4-2026-03-05\",\"moderation\":null,\"output\":[{\"id\":\"tsc_02abbc8b5b5644b4016ac85ff486fc87d194aa54cae4745f6d\",\"type\":\"tool_search_call\",\"status\":\"completed\",\"arguments\":{\"paths\":[\"lookup_warehouse_stock\"]},\"call_id\":null,\"execution\":\"server\"},{\"id\":\"tso_02abbc8b5b5644b4016ac85ff4b1ac87d187dd1c23bb7fe07d\",\"type\":\"tool_search_output\",\"status\":\"completed\",\"call_id\":null,\"execution\":\"server\",\"tools\":[{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]},{\"id\":\"fc_02abbc8b5b5644b4016ac85ff5226c87d1a2eb2e5bd4687e1b\",\"type\":\"function_call\",\"status\":\"completed\",\"arguments\":\"{\\\"sku\\\":\\\"A-17\\\",\\\"warehouse\\\":\\\"west\\\"}\",\"call_id\":\"call_o8XDxCzywQgExckAU3XiLGhL\",\"name\":\"lookup_warehouse_stock\",\"namespace\":\"lookup_warehouse_stock\"}],\"parallel_tool_calls\":true,\"presence_penalty\":0.0,\"previous_response_id\":null,\"prompt_cache_key\":\"agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c\",\"prompt_cache_retention\":\"24h\",\"reasoning\":{\"context\":\"current_turn\",\"effort\":\"none\",\"mode\":\"standard\",\"summary\":null},\"safety_identifier\":null,\"service_tier\":\"default\",\"store\":false,\"temperature\":1.0,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Read a file from the workspace.\",\"name\":\"workspace_read_file\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"function\",\"defer_loading\":true,\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"tool_search\",\"description\":null,\"parameters\":null},{\"type\":\"namespace\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"tools\":[{\"type\":\"function\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]}],\"top_logprobs\":0,\"top_p\":0.98,\"truncation\":\"disabled\",\"usage\":{\"input_tokens\":2899,\"input_tokens_details\":{\"cache_write_tokens\":0,\"cached_tokens\":2560},\"output_tokens\":51,\"output_tokens_details\":{\"reasoning_tokens\":22},\"total_tokens\":2950},\"user\":null,\"metadata\":{}},\"sequence_number\":20}\n\n",
+		"rawHeaders": {
+			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
+			"alt-svc": "h3=\":443\"; ma=86400",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a47a4f534f9f5af7-VIE",
+			"connection": "keep-alive",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Fri, 09 Oct 2026 03:31:00 GMT",
+			"openai-processing-ms": "361",
+			"openai-version": "2020-10-01",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"transfer-encoding": "chunked",
+			"x-content-type-options": "nosniff",
+			"x-ratelimit-limit-requests": "15000",
+			"x-ratelimit-limit-tokens": "40000000",
+			"x-ratelimit-remaining-requests": "14999",
+			"x-ratelimit-remaining-tokens": "39996825",
+			"x-ratelimit-reset-requests": "4ms",
+			"x-ratelimit-reset-tokens": "4ms",
+			"x-request-id": "req_6dec7140ad41426f9ffac1f5c606d01d"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-5.4",
+			"input": [
+				{
+					"role": "developer",
+					"content": "Use tools for invoices and inventory. Never calculate an invoice or guess stock without a tool result. Complete only the requested action. Call approval tools to request approval. The runtime asks the user after the call. Do not ask for approval in a text reply. Reply with the result in one short sentence.\n\nReference 1: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 2: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 3: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 4: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 5: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 6: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 7: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 8: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 9: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 10: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 11: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 12: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 13: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 14: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 15: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 16: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 17: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 18: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 19: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 20: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 21: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 22: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 23: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 24: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 25: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 26: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 27: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 28: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 29: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 30: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 31: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 32: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 33: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 34: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 35: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 36: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 37: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 38: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 39: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 40: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 41: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 42: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 43: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 44: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 45: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 46: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 47: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 48: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 49: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 50: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 51: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 52: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 53: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 54: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 55: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 56: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 57: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 58: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 59: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 60: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Issue an invoice for 7 items at a unit price of 6. Use the invoice tool."
+						}
+					]
+				},
+				{
+					"type": "tool_search_call",
+					"id": "tsc_02abbc8b5b5644b4016ac85ff1945887d18adf13aa1c707e8f",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"arguments": {
+						"paths": ["issue_invoice"]
+					}
+				},
+				{
+					"type": "tool_search_output",
+					"id": "tso_02abbc8b5b5644b4016ac85ff1be2087d1a99533fadac8e514",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"tools": [
+						{
+							"type": "function",
+							"defer_loading": true,
+							"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+							"name": "issue_invoice",
+							"output_schema": null,
+							"parameters": {
+								"type": "object",
+								"properties": {
+									"unitPrice": {
+										"type": "number"
+									},
+									"quantity": {
+										"type": "number"
+									}
+								},
+								"required": ["unitPrice", "quantity"],
+								"additionalProperties": false,
+								"$schema": "http://json-schema.org/draft-07/schema#"
+							},
+							"strict": true
+						}
+					]
+				},
+				{
+					"type": "function_call",
+					"call_id": "call_AvrCVS64KsDtbNou5sVUeZ4b",
+					"name": "issue_invoice",
+					"arguments": "{\"unitPrice\":6,\"quantity\":7}",
+					"namespace": "issue_invoice"
+				},
+				{
+					"type": "function_call_output",
+					"call_id": "call_AvrCVS64KsDtbNou5sVUeZ4b",
+					"output": "{\"total\":42}"
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "output_text",
+							"text": "Invoice issued for a total of 42."
+						}
+					],
+					"id": "msg_02abbc8b5b5644b4016ac85ff359b087d1a2149e00de0c7219",
+					"phase": "final_answer"
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Now look up stock for SKU A-17 in warehouse west. Use the inventory tool."
+						}
+					]
+				},
+				{
+					"type": "tool_search_call",
+					"id": "tsc_02abbc8b5b5644b4016ac85ff486fc87d194aa54cae4745f6d",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"arguments": {
+						"paths": ["lookup_warehouse_stock"]
+					}
+				},
+				{
+					"type": "tool_search_output",
+					"id": "tso_02abbc8b5b5644b4016ac85ff4b1ac87d187dd1c23bb7fe07d",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"tools": [
+						{
+							"type": "function",
+							"defer_loading": true,
+							"description": "Read the available stock quantity for a product SKU in a warehouse.",
+							"name": "lookup_warehouse_stock",
+							"output_schema": null,
+							"parameters": {
+								"type": "object",
+								"properties": {
+									"sku": {
+										"type": "string"
+									},
+									"warehouse": {
+										"type": "string"
+									}
+								},
+								"required": ["sku", "warehouse"],
+								"additionalProperties": false,
+								"$schema": "http://json-schema.org/draft-07/schema#"
+							},
+							"strict": true
+						}
+					]
+				},
+				{
+					"type": "function_call",
+					"call_id": "call_o8XDxCzywQgExckAU3XiLGhL",
+					"name": "lookup_warehouse_stock",
+					"arguments": "{\"sku\":\"A-17\",\"warehouse\":\"west\"}",
+					"namespace": "lookup_warehouse_stock"
+				},
+				{
+					"type": "function_call_output",
+					"call_id": "call_o8XDxCzywQgExckAU3XiLGhL",
+					"output": "{\"quantity\":13}"
+				}
+			],
+			"store": false,
+			"include": ["reasoning.encrypted_content"],
+			"prompt_cache_key": "agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c",
+			"prompt_cache_retention": "24h",
+			"tools": [
+				{
+					"type": "function",
+					"name": "workspace_read_file",
+					"description": "Read a file from the workspace.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": false
+				},
+				{
+					"type": "function",
+					"name": "issue_invoice",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"unitPrice": {
+								"type": "number"
+							},
+							"quantity": {
+								"type": "number"
+							}
+						},
+						"required": ["unitPrice", "quantity"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "function",
+					"name": "lookup_warehouse_stock",
+					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"sku": {
+								"type": "string"
+							},
+							"warehouse": {
+								"type": "string"
+							}
+						},
+						"required": ["sku", "warehouse"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "tool_search",
+					"execution": "server"
+				}
+			],
+			"tool_choice": "auto",
+			"stream": true
+		},
+		"status": 200,
+		"response": "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_02abbc8b5b5644b4016ac85ff59e3887d1862a0055d404f136\",\"object\":\"response\",\"created_at\":1791516661,\"status\":\"in_progress\",\"access_programs\":null,\"background\":false,\"completed_at\":null,\"error\":null,\"frequency_penalty\":0.0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"model\":\"gpt-5.4-2026-03-05\",\"moderation\":null,\"output\":[],\"parallel_tool_calls\":true,\"presence_penalty\":0.0,\"previous_response_id\":null,\"prompt_cache_key\":\"agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c\",\"prompt_cache_retention\":\"24h\",\"reasoning\":{\"context\":\"current_turn\",\"effort\":\"none\",\"mode\":\"standard\",\"summary\":null},\"safety_identifier\":null,\"service_tier\":\"auto\",\"store\":false,\"temperature\":1.0,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Read a file from the workspace.\",\"name\":\"workspace_read_file\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"tool_search\",\"description\":null,\"parameters\":null},{\"type\":\"namespace\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"tools\":[{\"type\":\"function\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]},{\"type\":\"namespace\",\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"tools\":[{\"type\":\"function\",\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]}],\"top_logprobs\":0,\"top_p\":0.98,\"truncation\":\"disabled\",\"usage\":null,\"user\":null,\"metadata\":{}},\"sequence_number\":0}\n\nevent: response.in_progress\ndata: {\"type\":\"response.in_progress\",\"response\":{\"id\":\"resp_02abbc8b5b5644b4016ac85ff59e3887d1862a0055d404f136\",\"object\":\"response\",\"created_at\":1791516661,\"status\":\"in_progress\",\"access_programs\":null,\"background\":false,\"completed_at\":null,\"error\":null,\"frequency_penalty\":0.0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"model\":\"gpt-5.4-2026-03-05\",\"moderation\":null,\"output\":[],\"parallel_tool_calls\":true,\"presence_penalty\":0.0,\"previous_response_id\":null,\"prompt_cache_key\":\"agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c\",\"prompt_cache_retention\":\"24h\",\"reasoning\":{\"context\":\"current_turn\",\"effort\":\"none\",\"mode\":\"standard\",\"summary\":null},\"safety_identifier\":null,\"service_tier\":\"auto\",\"store\":false,\"temperature\":1.0,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Read a file from the workspace.\",\"name\":\"workspace_read_file\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"tool_search\",\"description\":null,\"parameters\":null},{\"type\":\"namespace\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"tools\":[{\"type\":\"function\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]},{\"type\":\"namespace\",\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"tools\":[{\"type\":\"function\",\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]}],\"top_logprobs\":0,\"top_p\":0.98,\"truncation\":\"disabled\",\"usage\":null,\"user\":null,\"metadata\":{}},\"sequence_number\":1}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"item\":{\"id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"type\":\"message\",\"status\":\"in_progress\",\"content\":[],\"phase\":\"final_answer\",\"role\":\"assistant\"},\"output_index\":0,\"sequence_number\":2}\n\nevent: response.content_part.added\ndata: {\"type\":\"response.content_part.added\",\"content_index\":0,\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"output_index\":0,\"part\":{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"\"},\"sequence_number\":3}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\"Stock\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"MjwXesXX40U\",\"output_index\":0,\"sequence_number\":4}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" for\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"C4EwQINh8JDh\",\"output_index\":0,\"sequence_number\":5}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" SKU\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"3zDwLMcPG819\",\"output_index\":0,\"sequence_number\":6}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" A\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"WZcjo7LuzukB0f\",\"output_index\":0,\"sequence_number\":7}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\"-\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"GoAaQyHY4uKo2zf\",\"output_index\":0,\"sequence_number\":8}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\"17\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"Usf01QlZXfD0gr\",\"output_index\":0,\"sequence_number\":9}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" in\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"ihB9aaHx0sOoq\",\"output_index\":0,\"sequence_number\":10}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" warehouse\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"sOmZTd\",\"output_index\":0,\"sequence_number\":11}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" west\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"1PQyLzGqWj3\",\"output_index\":0,\"sequence_number\":12}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" is\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"CpqTVNeMub25u\",\"output_index\":0,\"sequence_number\":13}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\" \",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"e7rQGU40Ubc8krh\",\"output_index\":0,\"sequence_number\":14}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\"13\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"xQKrKBqTkOPDIP\",\"output_index\":0,\"sequence_number\":15}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\".\",\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"obfuscation\":\"cW1AvEEYg5iETz8\",\"output_index\":0,\"sequence_number\":16}\n\nevent: response.output_text.done\ndata: {\"type\":\"response.output_text.done\",\"content_index\":0,\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"logprobs\":[],\"output_index\":0,\"sequence_number\":17,\"text\":\"Stock for SKU A-17 in warehouse west is 13.\"}\n\nevent: response.content_part.done\ndata: {\"type\":\"response.content_part.done\",\"content_index\":0,\"item_id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"output_index\":0,\"part\":{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"Stock for SKU A-17 in warehouse west is 13.\"},\"sequence_number\":18}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"item\":{\"id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"Stock for SKU A-17 in warehouse west is 13.\"}],\"phase\":\"final_answer\",\"role\":\"assistant\"},\"output_index\":0,\"sequence_number\":19}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_02abbc8b5b5644b4016ac85ff59e3887d1862a0055d404f136\",\"object\":\"response\",\"created_at\":1791516661,\"status\":\"completed\",\"access_programs\":null,\"background\":false,\"completed_at\":1791516662,\"error\":null,\"frequency_penalty\":0.0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"model\":\"gpt-5.4-2026-03-05\",\"moderation\":null,\"output\":[{\"id\":\"msg_02abbc8b5b5644b4016ac85ff619e087d194ca529911e41873\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"Stock for SKU A-17 in warehouse west is 13.\"}],\"phase\":\"final_answer\",\"role\":\"assistant\"}],\"parallel_tool_calls\":true,\"presence_penalty\":0.0,\"previous_response_id\":null,\"prompt_cache_key\":\"agent:b77e47e5b680394fc63e1a7025d7bea2da986cc694bf60a5e0ef7b4b4c\",\"prompt_cache_retention\":\"24h\",\"reasoning\":{\"context\":\"current_turn\",\"effort\":\"none\",\"mode\":\"standard\",\"summary\":null},\"safety_identifier\":null,\"service_tier\":\"default\",\"store\":false,\"temperature\":1.0,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Read a file from the workspace.\",\"name\":\"workspace_read_file\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true},{\"type\":\"tool_search\",\"description\":null,\"parameters\":null},{\"type\":\"namespace\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"tools\":[{\"type\":\"function\",\"description\":\"Issue an invoice from a unit price and quantity. Requires user approval.\",\"name\":\"issue_invoice\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"unitPrice\":{\"type\":\"number\"},\"quantity\":{\"type\":\"number\"}},\"required\":[\"unitPrice\",\"quantity\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]},{\"type\":\"namespace\",\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"tools\":[{\"type\":\"function\",\"description\":\"Read the available stock quantity for a product SKU in a warehouse.\",\"name\":\"lookup_warehouse_stock\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"},\"warehouse\":{\"type\":\"string\"}},\"required\":[\"sku\",\"warehouse\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":true}]}],\"top_logprobs\":0,\"top_p\":0.98,\"truncation\":\"disabled\",\"usage\":{\"input_tokens\":2949,\"input_tokens_details\":{\"cache_write_tokens\":0,\"cached_tokens\":2560},\"output_tokens\":17,\"output_tokens_details\":{\"reasoning_tokens\":0},\"total_tokens\":2966},\"user\":null,\"metadata\":{}},\"sequence_number\":20}\n\n",
+		"rawHeaders": {
+			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
+			"alt-svc": "h3=\":443\"; ma=86400",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a47a4f5e596a3249-VIE",
+			"connection": "keep-alive",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Fri, 09 Oct 2026 03:31:01 GMT",
+			"openai-processing-ms": "255",
+			"openai-version": "2020-10-01",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"transfer-encoding": "chunked",
+			"x-content-type-options": "nosniff",
+			"x-ratelimit-limit-requests": "15000",
+			"x-ratelimit-limit-tokens": "40000000",
+			"x-ratelimit-remaining-requests": "14997",
+			"x-ratelimit-remaining-tokens": "39990067",
+			"x-ratelimit-reset-requests": "12ms",
+			"x-ratelimit-reset-tokens": "14ms",
+			"x-request-id": "req_75899112588248c6ac2bfaf8d64fbb3a"
+		},
+		"responseIsBinary": false
+	}
+]

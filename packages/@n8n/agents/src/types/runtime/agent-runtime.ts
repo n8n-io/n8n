@@ -24,7 +24,12 @@ import type {
 	ThinkingConfig,
 	TitleGenerationConfig,
 } from '../index';
-import type { AgentPersistenceOptions, ModelConfig, PromptCachingConfig } from '../sdk/agent';
+import type {
+	AgentPersistenceOptions,
+	ModelConfig,
+	NativeToolDeferralConfig,
+	PromptCachingConfig,
+} from '../sdk/agent';
 
 export interface VolatileInstructionsContext {
 	persistence?: AgentPersistenceOptions;
@@ -49,6 +54,7 @@ export interface AgentRuntimeConfig {
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
 	workspaceFilesystem?: WorkspaceFilesystem;
+	nativeToolDeferral?: NativeToolDeferralConfig;
 	toolSearch?: {
 		topK?: number;
 	};

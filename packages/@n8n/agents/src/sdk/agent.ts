@@ -73,6 +73,7 @@ import type {
 	ModelConfig,
 	Provider,
 	PromptCachingConfig,
+	NativeToolDeferralConfig,
 	ReasoningLevel,
 	RunOptions,
 	StreamResult,
@@ -148,6 +149,7 @@ export interface AgentSnapshot {
 	reasoning: ReasoningLevel | null;
 	/** The prompt caching config if set via `.promptCaching()`, otherwise null. */
 	promptCaching: PromptCachingConfig | null;
+	nativeToolDeferral: NativeToolDeferralConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
 	toolCallConcurrency: number | null;
 }
@@ -182,6 +184,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private deferredTools: BuiltTool[] = [];
 
 	private deferredToolSearchTopK: number | undefined;
+
+	private nativeToolDeferralConfig?: NativeToolDeferralConfig;
 
 	private providerTools: BuiltProviderTool[] = [];
 
@@ -316,6 +320,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options?: { name?: string; description?: string; filterableKeys?: Record<string, string> },
 	): this {
 		return this.tool(store.asTool(options));
+	}
+
+	/** Use provider tool search when the model and endpoint support it. */
+	nativeToolDeferral(config: NativeToolDeferralConfig): this {
+		this.nativeToolDeferralConfig = { eagerToolNames: [...config.eagerToolNames] };
+		return this;
 	}
 
 	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */
@@ -735,6 +745,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			thinking: this.thinkingConfig ?? null,
 			reasoning: this.reasoningLevel ?? null,
 			promptCaching: this.promptCachingConfig ?? null,
+			nativeToolDeferral: this.nativeToolDeferralConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 		};
 	}
@@ -1162,6 +1173,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			thinking: this.thinkingConfig,
 			reasoning: this.reasoningLevel,
 			promptCaching: this.promptCachingConfig,
+			nativeToolDeferral: this.nativeToolDeferralConfig,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
@@ -1309,6 +1321,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				providerTools: providerTools.length > 0 ? providerTools : undefined,
 				instructionProviderOptions: this.instructionProviderOpts,
 				promptCaching: this.promptCachingConfig,
+				nativeToolDeferral: this.nativeToolDeferralConfig,
 				runState: options.runState,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
 				...(this.reasoningLevel !== undefined ? { reasoning: this.reasoningLevel } : {}),

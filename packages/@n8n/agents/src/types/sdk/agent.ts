@@ -296,6 +296,11 @@ export interface PersistedExecutionOptions {
 	maxIterations?: number;
 }
 
+export interface NativeToolDeferralConfig {
+	/** Local tools that stay available without provider tool search. */
+	eagerToolNames: readonly string[];
+}
+
 export interface AnthropicPromptCachingConfig {
 	/**
 	 * Cache breakpoint residency. Default `'1h'`: agent workloads pause (HITL,
