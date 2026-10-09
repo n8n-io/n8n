@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddAgentTaskStopBoundary1791461354235 implements ReversibleMigration {
+export class AddTaskStopToAgentExecutionThreads1791548880239 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { addColumns, column },
 		isSqlite,
