@@ -61,6 +61,13 @@ describe('OidcService', () => {
 		loginLabel: 'Login with OIDC',
 		loginButtonColor: '#1f2937',
 	};
+	const configurationWithUserInfo = new client.Configuration(
+		{
+			issuer: 'https://example.com',
+			userinfo_endpoint: 'https://example.com/userinfo',
+		},
+		mockOidcConfig.clientId,
+	);
 
 	const mockConfigFromDB = {
 		key: OIDC_PREFERENCES_DB_KEY,
@@ -435,7 +442,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			vi.spyOn(client, 'authorizationCodeGrant').mockRejectedValue(
 				new Error('Authorization code grant failed'),
 			);
@@ -453,7 +460,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 
 			const tokenError = Object.assign(
 				new Error('expected expires_in to be a non-negative number'),
@@ -488,7 +495,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
@@ -509,7 +516,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
@@ -530,7 +537,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
@@ -552,7 +559,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
@@ -574,7 +581,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
@@ -599,7 +606,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
 			oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
 			authIdentityRepository.findOne = vi
@@ -639,7 +646,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
 			oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
 			userRepository.findOne = vi.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
@@ -677,7 +684,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
 			oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
 			userRepository.manager.transaction = vi
@@ -708,7 +715,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			provisioningService.assertSsoLoginAllowed = vi
 				.fn()
 				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
@@ -748,7 +755,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			provisioningService.assertSsoLoginAllowed = vi
 				.fn()
 				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
@@ -894,7 +901,7 @@ describe('OidcService', () => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private
-			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
 				token_type: 'bearer',
@@ -1127,7 +1134,7 @@ describe('OidcService', () => {
 		oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
 		oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 		// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-		oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+		oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 		// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
 		oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
 		vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
