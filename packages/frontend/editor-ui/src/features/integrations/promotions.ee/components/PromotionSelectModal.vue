@@ -20,7 +20,7 @@ import {
 } from '@n8n/api-types';
 import { usePromotionChanges } from '../composables/usePromotionChanges';
 import { promotionEventBus } from '../promotions.eventBus';
-import { applyPromotion } from '../promotionsSettings.api';
+import { applyProjectSelection } from '../promotionsSettings.api';
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
 import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
@@ -30,8 +30,6 @@ interface Props {
 	data: {
 		projectId: string;
 		direction: PromotionDirection;
-		/** The instance connection and its Apply config. Only the `apply` direction needs it. */
-		apply?: { connectionId: string; configId: string; branchName: string };
 	};
 }
 
@@ -50,10 +48,13 @@ const { direction } = props.data;
 const isIncoming = direction === 'apply';
 const isApplying = ref(false);
 const blockedResult = shallowRef<BlockedApplyResult>();
+// Continue must apply the selection that produced the preflight, not the live one.
+const blockedWorkflowIds = shallowRef<string[]>([]);
 
 const {
 	changes,
 	commitSha,
+	source,
 	filteredChanges,
 	isLoading,
 	isSubmitting,
@@ -69,6 +70,19 @@ const {
 	toggleSelected,
 	toggleSelectAll,
 } = usePromotionChanges(props.data.projectId, direction);
+
+// The selection is locked while a promote or an apply request runs.
+const isSelectionLocked = computed(() => isSubmitting.value || isApplying.value);
+
+function onToggleSelected(id: string) {
+	if (isSelectionLocked.value) return;
+	toggleSelected(id);
+}
+
+function onToggleSelectAll() {
+	if (isSelectionLocked.value) return;
+	toggleSelectAll();
+}
 
 const title = i18n.baseText(
 	isIncoming ? 'promotions.modal.incoming.title' : 'promotions.modal.title',
@@ -117,6 +131,15 @@ function getPromoteButtonLabel(): string {
 		return i18n.baseText('promotions.modal.promoteSingle');
 	}
 	return i18n.baseText('promotions.modal.promote', {
+		interpolate: { count: String(selectedCount.value) },
+	});
+}
+
+function getApplySelectedButtonLabel(): string {
+	if (selectedCount.value === 1) {
+		return i18n.baseText('promotions.modal.incoming.applySelectedSingle');
+	}
+	return i18n.baseText('promotions.modal.incoming.applySelected', {
 		interpolate: { count: String(selectedCount.value) },
 	});
 }
@@ -209,22 +232,22 @@ async function announceApplied() {
 async function onApplied(result: AppliedResult) {
 	const { workflows } = result.counts;
 	const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
-	const summary = i18n.baseText('promotions.modal.incoming.applied.message', {
-		interpolate: {
-			created: String(workflows.created),
-			updated: String(workflows.updated),
-			archived: String(workflows.archived),
-			deleted: String(workflows.deleted),
-		},
-	});
+	const interpolate = {
+		created: String(workflows.created),
+		updated: String(workflows.updated),
+		archived: String(workflows.archived),
+		deleted: String(workflows.deleted),
+		notPublished: String(notPublished),
+	};
 	// A workflow can be imported and still fail to publish, so success alone would mislead.
 	toast.showMessage({
 		title: i18n.baseText('promotions.modal.incoming.applied.title'),
-		message: notPublished
-			? `${summary} ${i18n.baseText('promotions.modal.incoming.applied.notPublished', {
-					interpolate: { count: String(notPublished) },
-				})}`
-			: summary,
+		message: i18n.baseText(
+			notPublished
+				? 'promotions.modal.incoming.applied.messageNotPublished'
+				: 'promotions.modal.incoming.applied.message',
+			{ interpolate },
+		),
 		type: notPublished ? 'warning' : 'success',
 	});
 	// Close before the project lookup, so the stale change list does not show again.
@@ -242,36 +265,37 @@ async function onSourceChanged() {
 	});
 }
 
-/** Applies the whole branch. The selection is kept for the selective apply that follows. */
-async function onApplyAll() {
-	const { apply } = props.data;
-	if (!apply) return;
+/** Applies only the selected workflows. Unselected content on the instance is left as is. */
+async function onApplySelected() {
 	const confirmed = await message.confirm(
-		i18n.baseText('promotions.modal.incoming.confirm.message'),
-		i18n.baseText('promotions.modal.incoming.confirm.title'),
+		i18n.baseText('promotions.modal.incoming.confirmSelected.message'),
+		i18n.baseText('promotions.modal.incoming.confirmSelected.title'),
 		{
 			type: 'warning',
-			confirmButtonText: i18n.baseText('promotions.modal.incoming.confirm.confirmButtonText'),
+			confirmButtonText: i18n.baseText(
+				'promotions.modal.incoming.confirmSelected.confirmButtonText',
+			),
 			cancelButtonText: i18n.baseText('promotions.modal.close'),
 		},
 	);
 	if (confirmed !== MODAL_CONFIRM) return;
 	isApplying.value = true;
+	const workflowIds = Array.from(selectedIds.value);
 	try {
-		// Pin the reviewed commit: a branch that moved since the preview is reported, not applied.
-		const expectedSource = commitSha.value
-			? { configId: apply.configId, branchName: apply.branchName, commitSha: commitSha.value }
-			: undefined;
-		const result = await applyPromotion(
-			rootStore.publicApiContext,
-			apply.connectionId,
-			expectedSource && { expectedSource },
-		);
+		// Pin the reviewed commit on the source the preview resolved: a branch that moved since
+		// the preview is reported, not applied.
+		const expectedSource =
+			commitSha.value && source.value ? { ...source.value, commitSha: commitSha.value } : undefined;
+		const result = await applyProjectSelection(rootStore.publicApiContext, props.data.projectId, {
+			workflowIds,
+			expectedSource,
+		});
 		if (result.status === 'applied') {
 			await onApplied(result);
 			return;
 		}
 		if (result.status === 'blocked') {
+			blockedWorkflowIds.value = workflowIds;
 			blockedResult.value = result;
 			return;
 		}
@@ -316,9 +340,9 @@ onMounted(async () => {
 					<N8nCheckbox
 						:model-value="allSelected"
 						:indeterminate="someSelected"
-						:disabled="isSubmitting"
+						:disabled="isSelectionLocked"
 						data-test-id="promotion-select-all"
-						@update:model-value="toggleSelectAll"
+						@update:model-value="onToggleSelectAll"
 					/>
 					<N8nInput
 						v-model="searchQuery"
@@ -403,17 +427,17 @@ onMounted(async () => {
 								:class="[
 									$style.row,
 									isSelected(change.id) && $style.rowSelected,
-									isSubmitting && $style.rowDisabled,
+									isSelectionLocked && $style.rowDisabled,
 									index === 0 && $style.rowFirst,
 									index === filteredChanges.length - 1 && $style.rowLast,
 								]"
 								data-test-id="promotion-change-row"
-								@click="toggleSelected(change.id)"
+								@click="onToggleSelected(change.id)"
 							>
 								<N8nCheckbox
 									:model-value="isSelected(change.id)"
-									:disabled="isSubmitting"
-									@update:model-value="toggleSelected(change.id)"
+									:disabled="isSelectionLocked"
+									@update:model-value="onToggleSelected(change.id)"
 									@click.stop
 								/>
 
@@ -481,11 +505,11 @@ onMounted(async () => {
 					<N8nButton
 						v-if="isIncoming"
 						:loading="isApplying"
-						:disabled="isLoading || !!error"
-						data-test-id="promotion-apply-all"
-						@click="onApplyAll"
+						:disabled="isLoading || !!error || selectedCount === 0"
+						data-test-id="promotion-apply-selected"
+						@click="onApplySelected"
 					>
-						{{ i18n.baseText('promotions.modal.incoming.applyAll') }}
+						{{ getApplySelectedButtonLabel() }}
 					</N8nButton>
 					<N8nButton
 						v-else
@@ -504,6 +528,11 @@ onMounted(async () => {
 		v-else
 		:open="true"
 		:blocked-result="blockedResult"
+		:continue-with="{
+			kind: 'selection',
+			projectId: props.data.projectId,
+			workflowIds: blockedWorkflowIds,
+		}"
 		@update:open="
 			(open) => {
 				if (!open) blockedResult = undefined;

@@ -3626,8 +3626,6 @@ describe('NodeCredentials', () => {
 	});
 
 	describe('a current credential the user cannot use', () => {
-		const UNUSABLE_HEADER = 'node-credentials-select-group-__credential-group-unusable';
-
 		// Fresh per test: the component writes back into the node it is given.
 		const nodeOnAlicesCredential = (): INodeUi => ({
 			...httpNode,
@@ -3682,22 +3680,47 @@ describe('NodeCredentials', () => {
 			return renderComponent({ props: { node } }, { merge: true });
 		}
 
-		it('shows it as the current value, not selectable, with its owner named', async () => {
+		it('shows it as the current value at the top, not selectable, with its owner named', async () => {
 			setUp();
 
 			const select = screen.getByTestId('node-credentials-select');
 			await waitFor(() =>
-				expect(within(select).getByRole('combobox')).toHaveValue("Alice's OpenAi"),
+				expect(within(select).getByRole('combobox')).toHaveValue("Alice Chen's OpenAi"),
 			);
 
 			await userEvent.click(select);
 
-			expect(await screen.findByTestId(UNUSABLE_HEADER)).toHaveTextContent('Not available to you');
-			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
+			const option = await screen.findByTestId('node-credentials-select-item-alice-cred');
 			expect(option).toHaveClass('is-disabled');
-			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
+			expect(option).toHaveTextContent("Alice Chen's OpenAi");
+			expect(option).toHaveTextContent('Not shared with Marketing');
+			expect(option).not.toHaveTextContent("Alice's OpenAi");
+			// No heading of its own, and it comes before the groups the user can pick from.
+			expect(screen.queryByText('Not available to you')).not.toBeInTheDocument();
+			const teamGroup = screen.getByTestId(
+				'node-credentials-select-group-__credential-group-shared',
+			);
+			expect(
+				option.compareDocumentPosition(teamGroup) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
 			// Only the current credential stays; others the user cannot use are not offered.
 			expect(screen.queryByTestId('node-credentials-select-item-bob-cred')).not.toBeInTheDocument();
+		});
+
+		it('explains the same thing when hovering over the row in the list', async () => {
+			setUp();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			const option = await screen.findByTestId('node-credentials-select-item-alice-cred');
+			await userEvent.hover(within(option).getByText("Alice Chen's OpenAi"));
+
+			expect(
+				(
+					await screen.findAllByText(
+						"You can't run or publish this workflow with Alice Chen's credential. Replace it with a credential available to you, or ask them to share it with you.",
+					)
+				).length,
+			).toBeGreaterThan(0);
 		});
 
 		it('explains who can use it next to the field', async () => {
@@ -3707,11 +3730,8 @@ describe('NodeCredentials', () => {
 			await userEvent.hover(warning.querySelector('svg') ?? warning);
 
 			expect(
-				await screen.findByText("Only Alice Chen can run or publish with Alice's OpenAi."),
-			).toBeInTheDocument();
-			expect(
-				screen.getByText(
-					'Switch to a credential you can use to run or publish, or ask Alice to share this one with Marketing.',
+				await screen.findByText(
+					"You can't run or publish this workflow with Alice Chen's credential. Replace it with a credential available to you, or ask them to share it with you.",
 				),
 			).toBeInTheDocument();
 		});
@@ -3724,7 +3744,7 @@ describe('NodeCredentials', () => {
 			await waitFor(() =>
 				expect(
 					within(screen.getByTestId('node-credentials-select')).getByRole('combobox'),
-				).toHaveValue("Alice's OpenAi"),
+				).toHaveValue("Alice Chen's OpenAi"),
 			);
 		});
 
@@ -3747,6 +3767,77 @@ describe('NodeCredentials', () => {
 			expect(replaceInvalid).not.toHaveBeenCalled();
 		});
 
+		it('keeps the credential in the list after switching away, so the user can go back', async () => {
+			const { emitted, rerender } = setUp();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(await screen.findByTestId('node-credentials-select-item-team-cred'));
+			// The parent applies the change to the node.
+			await rerender({
+				node: {
+					...nodeOnAlicesCredential(),
+					credentials: { openAiApi: { id: 'team-cred', name: 'Marketing OpenAi' } },
+				},
+			});
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			const option = await screen.findByTestId('node-credentials-select-item-alice-cred');
+			expect(option).not.toHaveClass('is-disabled');
+			// Only the credential that is selected now carries the check mark.
+			expect(option.querySelector('[data-icon="check"]')).not.toBeInTheDocument();
+			expect(
+				screen
+					.getByTestId('node-credentials-select-item-team-cred')
+					.querySelector('[data-icon="check"]'),
+			).toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-select-item-bob-cred')).not.toBeInTheDocument();
+
+			await userEvent.click(option);
+
+			const events = emitted('credentialSelected');
+			const payload = (events[events.length - 1] as unknown[])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials.openAiApi).toEqual({
+				id: 'alice-cred',
+				name: "Alice's OpenAi",
+			});
+		});
+
+		it('does not offer the credential again once the panel is closed', async () => {
+			const { rerender, unmount } = setUp();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(await screen.findByTestId('node-credentials-select-item-team-cred'));
+			await rerender({
+				node: {
+					...nodeOnAlicesCredential(),
+					credentials: { openAiApi: { id: 'team-cred', name: 'Marketing OpenAi' } },
+				},
+			});
+			unmount();
+
+			renderComponent(
+				{
+					props: {
+						node: {
+							...nodeOnAlicesCredential(),
+							credentials: { openAiApi: { id: 'team-cred', name: 'Marketing OpenAi' } },
+						},
+					},
+				},
+				{ merge: true },
+			);
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			expect(
+				await screen.findByTestId('node-credentials-select-item-team-cred'),
+			).toBeInTheDocument();
+			expect(
+				screen.queryByTestId('node-credentials-select-item-alice-cred'),
+			).not.toBeInTheDocument();
+		});
+
 		it('shows an owner or admin who can use it the current credential under "Available to you"', async () => {
 			// An instance-wide scope makes it usable, but the scoped options do not list it.
 			setUp({ canUse: true });
@@ -3765,7 +3856,6 @@ describe('NodeCredentials', () => {
 			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
 			expect(option).not.toHaveClass('is-disabled');
 			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
-			expect(screen.queryByTestId(UNUSABLE_HEADER)).not.toBeInTheDocument();
 		});
 
 		it('changes nothing while the feature flag is off', async () => {
@@ -3778,7 +3868,6 @@ describe('NodeCredentials', () => {
 			expect(
 				await screen.findByTestId('node-credentials-select-item-team-cred'),
 			).toBeInTheDocument();
-			expect(screen.queryByTestId(UNUSABLE_HEADER)).not.toBeInTheDocument();
 			expect(
 				screen.queryByTestId('node-credentials-select-item-alice-cred'),
 			).not.toBeInTheDocument();

@@ -16,6 +16,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
+	N8nIconButton,
 	N8nLink,
 	N8nText,
 	N8nTooltip,
@@ -25,12 +26,14 @@ import { useI18n } from '@n8n/i18n';
 import {
 	type AgentChatQueueItem,
 	type AgentBuilderOpenSuspension,
+	type ProviderAttachmentCapabilities,
 	APPROVAL_TOOL_NAME,
 	WAIT_TOOL_NAME,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
-	PROVIDER_CAPABILITIES,
+	getProviderAttachmentCapabilities,
+	acceptedMimeTypesFromCapabilities,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -49,11 +52,13 @@ import {
 	parseApprovalInput,
 } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
-import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+import type { ChatMessage, ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
 import { resolveFileMimeType } from '@/app/utils/fileUtils';
+import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
 import { selectLatestAgentPlan } from '../utils/agent-plan';
+import { isRetryableChatError } from '../utils/errors';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import type {
 	AgentContinueLoadedEvent,
@@ -83,6 +88,8 @@ const props = withDefaults(
 		continueSessionId?: string;
 		newSession?: boolean;
 		agentConfig: AgentJsonConfig | null;
+		/** Replaces the model-derived attachment support, for pages that get no model. */
+		attachmentCapabilities?: ProviderAttachmentCapabilities;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
 		canSendToAssistant?: boolean;
@@ -133,6 +140,8 @@ const emit = defineEmits<{
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	/** The chat's first user message, for a host to title a thread that has no title yet. */
 	'first-user-message': [text: string | undefined];
+	/** The agent became unavailable in this channel (unpublished before send, or mid-run/resume). */
+	'agent-unavailable': [];
 }>();
 
 const locale = useI18n();
@@ -181,6 +190,7 @@ const {
 		}
 	},
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
+	onAgentUnavailable: () => emit('agent-unavailable'),
 	budgetCards: props.budgetCards,
 });
 
@@ -237,6 +247,21 @@ function editQueuedMessage(id: string) {
 	if (item) void startQueueEdit(item);
 }
 
+async function loadChatAttachmentFile(attachment: ChatMessageAttachment): Promise<File> {
+	if (attachment.file) return attachment.file;
+	if (!attachment.fileId) throw new Error('Attachment is unavailable');
+	const url = getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		attachment.fileId,
+		props.channel,
+	);
+	const response = await fetch(url, { credentials: 'include' });
+	if (!response.ok) throw new Error(`Attachment download failed: ${response.status}`);
+	return new File([await response.blob()], attachment.fileName, { type: attachment.mimeType });
+}
+
 async function startQueueEdit(item: AgentChatQueueItem) {
 	if (hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) return;
 	queueExpanded.value = true;
@@ -257,20 +282,9 @@ async function startQueueEdit(item: AgentChatQueueItem) {
 	try {
 		/** Load attachments before removal so a failed download leaves the message queued. */
 		const files = await Promise.all(
-			(item.attachments ?? []).map(async (attachment) => {
-				const url = getChatAttachmentUrl(
-					rootStore.restApiContext,
-					target.projectId,
-					target.agentId,
-					attachment.id,
-					props.channel,
-				);
-				const response = await fetch(url, { credentials: 'include' });
-				if (!response.ok) throw new Error(`Attachment download failed: ${response.status}`);
-				return new File([await response.blob()], attachment.fileName, {
-					type: attachment.mimeType,
-				});
-			}),
+			(item.attachments ?? []).map((attachment) =>
+				loadChatAttachmentFile({ ...attachment, fileId: attachment.id }),
+			),
 		);
 		if (!isCurrentTarget() || hasDraft.value) return;
 		const result = await removeQueuedMessage(item.id);
@@ -657,8 +671,9 @@ watch(
 );
 
 const attachmentCapabilities = computed(() => {
+	if (props.attachmentCapabilities) return props.attachmentCapabilities;
 	const provider = props.agentConfig?.model?.split('/')[0];
-	return provider ? PROVIDER_CAPABILITIES[provider]?.attachments : undefined;
+	return provider ? getProviderAttachmentCapabilities(provider) : undefined;
 });
 const showAttach = computed(() => {
 	const capabilities = attachmentCapabilities.value;
@@ -666,14 +681,7 @@ const showAttach = computed(() => {
 });
 const acceptedMimeTypes = computed(() => {
 	const capabilities = attachmentCapabilities.value;
-	if (!capabilities) return undefined;
-	return [
-		capabilities.image ? 'image/*' : null,
-		capabilities.pdf ? 'application/pdf' : null,
-		capabilities.audio ? 'audio/*' : null,
-	]
-		.filter((entry): entry is string => entry !== null)
-		.join(',');
+	return capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : undefined;
 });
 
 function handleFilesSelected(files: File[]) {
@@ -686,6 +694,23 @@ function handleFilesSelected(files: File[]) {
 				}),
 			});
 			break;
+		}
+		// Handed-off files (n8n Assistant picker) skip the composer's `accept` filter.
+		if (
+			!showAttach.value ||
+			!isFileAcceptedByAccept(
+				file.name,
+				resolveFileMimeType(file.name, file.type),
+				acceptedMimeTypes.value ?? '',
+			)
+		) {
+			toast.showMessage({
+				type: 'error',
+				title: locale.baseText('agents.chat.attachments.unsupportedType', {
+					interpolate: { fileName: file.name },
+				}),
+			});
+			continue;
 		}
 		if (file.size > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
 			toast.showMessage({
@@ -792,14 +817,58 @@ const hasBudgetStop = computed(() =>
 );
 const canIncreaseBudget = computed(() => props.increaseBudget !== undefined);
 const budgetIncreasePending = ref(false);
+const isRetrying = ref(false);
 const isSubmissionBlocked = computed(
 	() =>
+		isRetrying.value ||
 		!!editingQueueId.value ||
 		isPreparingToSend.value ||
 		isSubmitting.value ||
 		isLoadingHistory.value ||
 		hasBudgetStop.value,
 );
+const retryMessageId = computed(() => {
+	if (!isRetryableChatError(messages.value.at(-1))) return undefined;
+	return messages.value.findLast((message) => message.role === 'user')?.id;
+});
+const retryDisabled = computed(
+	() =>
+		isSubmissionBlocked.value ||
+		hasDraft.value ||
+		showStop.value ||
+		queuedMessages.value.length > 0,
+);
+
+async function retryMessage(messageId: string) {
+	if (retryDisabled.value || retryMessageId.value !== messageId) return;
+	const message = messages.value.find((entry) => entry.id === messageId);
+	if (!message) return;
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	const isCurrentTarget = () =>
+		!disposed &&
+		target.projectId === props.projectId &&
+		target.agentId === props.agentId &&
+		target.continueSessionId === props.continueSessionId;
+	isRetrying.value = true;
+	try {
+		const files = await Promise.all((message.attachments ?? []).map(loadChatAttachmentFile));
+		if (!isCurrentTarget() || hasDraft.value || retryMessageId.value !== messageId) return;
+		isRetrying.value = false;
+		if (retryDisabled.value) return;
+		inputText.value = message.content;
+		attachedFiles.value = files;
+		await submitDraft(message.content.trim(), files);
+	} catch (error) {
+		if (isCurrentTarget()) toast.showError(error, locale.baseText('agents.chat.retry.error'));
+	} finally {
+		isRetrying.value = false;
+	}
+}
+
 // Tools still pending/running after the stream ended (desync): the backend
 // finished but their terminal events never arrived. Surfacing Stop here lets
 // the user clear the stale pulsing state without reloading the chat.
@@ -944,8 +1013,10 @@ function trackSentToN8nChat(hadNoMessagesBeforeSend: boolean) {
 }
 
 async function onSubmit(): Promise<SubmitResult> {
-	const text = inputText.value.trim();
-	const files = [...attachedFiles.value];
+	return await submitDraft(inputText.value.trim(), [...attachedFiles.value]);
+}
+
+async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
 	// Taken before any await, so a user send made while this hand-off runs cannot claim it.
@@ -1210,6 +1281,9 @@ onBeforeUnmount(() => {
 			:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 			:can-increase-budget="canIncreaseBudget"
 			:budget-increase-pending="budgetIncreasePending"
+			:retry-message-id="retryMessageId"
+			:retry-disabled="retryDisabled"
+			@retry="retryMessage"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
 			@increase-budget="onIncreaseBudget"
@@ -1349,6 +1423,7 @@ onBeforeUnmount(() => {
 					:show-stop-button="showStop"
 					show-voice
 					:show-attach="showAttach"
+					:show-attach-button="false"
 					:accepted-mime-types="acceptedMimeTypes"
 					:can-submit="!isSubmissionBlocked && hasDraft"
 					:disabled="isPreparingToSend || !!editingQueueId"
@@ -1400,6 +1475,21 @@ onBeforeUnmount(() => {
 						</div>
 					</template>
 					<template #footer-start>
+						<N8nTooltip
+							v-if="showAttach"
+							:content="locale.baseText('chatInputBase.button.attach')"
+							placement="top"
+						>
+							<N8nIconButton
+								variant="ghost"
+								icon="paperclip"
+								icon-size="large"
+								:disabled="isPreparingToSend || !!editingQueueId"
+								:aria-label="locale.baseText('chatInputBase.button.attach')"
+								data-test-id="chat-input-attach-button"
+								@click.stop="chatInput?.openFilePicker()"
+							/>
+						</N8nTooltip>
 						<slot name="footer-start" />
 					</template>
 				</ChatInputBase>

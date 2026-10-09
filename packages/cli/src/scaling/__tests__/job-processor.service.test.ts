@@ -10,7 +10,12 @@ import type {
 	BinaryDataService,
 	InstanceSettings,
 } from 'n8n-core';
-import { ENCODED_BUFFER_KEY, ExternalSecretsProxy, StructuredToolkit } from 'n8n-core';
+import {
+	ENCODED_BUFFER_KEY,
+	ExternalSecretsProxy,
+	StructuredToolkit,
+	SupplyDataContext,
+} from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
 import {
 	type IPinData,
@@ -1669,8 +1674,40 @@ describe('JobProcessor', () => {
 
 				await jobProcessor.processJob(job);
 
-				return { toolNodeInput, toolRun: run.data.resultData.runData[toolNode.name]?.[0] };
+				return { toolNodeInput, toolRun: run.data.resultData.runData[toolNode.name]?.[0], job };
 			};
+
+			it.each(['input', 'output'] as const)(
+				'should return the tool result when %s logging fails',
+				async (failedType) => {
+					const original = SupplyDataContext.prototype.addExecutionDataFunctions;
+					const record = vi
+						.spyOn(SupplyDataContext.prototype, 'addExecutionDataFunctions')
+						.mockImplementation(async function (
+							this: SupplyDataContext,
+							...args: Parameters<SupplyDataContext['addExecutionDataFunctions']>
+						) {
+							if (args[0] === failedType) throw new Error('hook failed');
+							return await original.apply(this, args);
+						});
+					try {
+						const { toolNodeInput, job } = await runToolCall({
+							triggerNames: ['MCP Server Trigger'],
+							triggerThatRan: 'MCP Server Trigger',
+						});
+
+						expect(toolNodeInput).toEqual([{ json: {} }]);
+						expect(job.progress).toHaveBeenCalledWith(
+							expect.objectContaining({ kind: 'mcp-response', response: [{ response: 42 }] }),
+						);
+						expect(logger.warn).toHaveBeenCalledWith(
+							`There was a problem logging ${failedType} data of node "Calculator": hook failed`,
+						);
+					} finally {
+						record.mockRestore();
+					}
+				},
+			);
 
 			it.each([
 				{ toolInput: mcpToolInput, expected: mcpToolInput },

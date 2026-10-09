@@ -43,8 +43,8 @@ describe('scheduler task timeout over the storage bindings', () => {
 			metrics,
 		});
 		scheduler.registerTaskHandler(TASK_TYPE, {
-			execute: async (_task, _report, s) => {
-				signal = s;
+			execute: async (_task, _report, run) => {
+				signal = run.signal;
 				return await new Promise<never>(() => {});
 			},
 		});

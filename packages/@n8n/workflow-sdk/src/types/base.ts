@@ -1056,9 +1056,25 @@ export interface GeneratePinDataOptions {
 	beforeWorkflow?: WorkflowJSON;
 }
 
+/** The ports that set a node's size on the canvas. */
+export interface NodePorts {
+	mainInputs: number;
+	mainOutputs: number;
+	nonMainInputs: number;
+	/** Has a non-main output, as a chat model or a tool does. */
+	configuration: boolean;
+	/** Has a non-main input, as an AI agent does. */
+	configurable: boolean;
+}
+
 export interface ToJSONOptions {
 	/** Use Dagre-based layout matching the FE's tidy-up algorithm. Defaults to false (BFS layout). */
 	tidyUp?: boolean;
+	/**
+	 * Node ports for the tidy-up layout, from `resolveNodePorts`. With them, each node gets
+	 * the size the canvas draws for it. Without them, the size comes from the wired ports only.
+	 */
+	nodePorts?: ReadonlyMap<string, NodePorts>;
 	/**
 	 * Reuse existing group IDs (keyed by group name) instead of deriving deterministic ones.
 	 * Lets an edit of an existing workflow keep its (UI-assigned, random) group IDs so the diff
