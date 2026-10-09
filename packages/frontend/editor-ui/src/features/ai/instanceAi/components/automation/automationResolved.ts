@@ -34,8 +34,11 @@ export type AutomationResolvedKind =
 	| 'making-live'
 	| 'not-on'
 	| 'not-live'
+	| 'still-on-here'
+	| 'copying'
 	| 'saved'
 	| 'saved-live'
+	| 'saved-copy'
 	| 'saved-manual'
 	| 'saved-locked'
 	| 'not-saved'
@@ -82,9 +85,24 @@ const RESOLVED_VIEWS: Record<AutomationResolvedKind, ResolvedView> = {
 		tone: 'warning',
 		showsLink: true,
 	},
+	'still-on-here': {
+		messageKey: 'instanceAi.automation.resolved.stillOnHere',
+		tone: 'warning',
+		showsLink: true,
+	},
+	copying: {
+		messageKey: 'instanceAi.automation.resolved.copyingTo',
+		tone: 'pending',
+		showsLink: false,
+	},
 	saved: { messageKey: 'instanceAi.automation.resolved.saved', tone: 'success', showsLink: true },
 	'saved-live': {
 		messageKey: 'instanceAi.automation.resolved.savedLive',
+		tone: 'success',
+		showsLink: true,
+	},
+	'saved-copy': {
+		messageKey: 'instanceAi.automation.resolved.savedCopyIn',
 		tone: 'success',
 		showsLink: true,
 	},
@@ -117,10 +135,22 @@ const NO_TRIGGER_KEYS: Partial<Record<AutomationResolvedKind, BaseTextKey>> = {
 	'changes-live': 'instanceAi.automation.resolved.changesLiveNoTrigger',
 };
 
-/** A saved workflow in a linked instance: the line says where it is. */
-const LINKED_KEYS: Partial<Record<AutomationResolvedKind, BaseTextKey>> = {
-	saved: 'instanceAi.automation.resolved.savedIn',
-	'saved-manual': 'instanceAi.automation.resolved.savedManualIn',
+/** The copy in a linked instance: the line says where it is, and what happened there. */
+const LINKED_VIEWS: Partial<Record<AutomationResolvedKind, Partial<ResolvedView>>> = {
+	'turning-on': { messageKey: 'instanceAi.automation.resolved.turningOnIn' },
+	'not-on': { messageKey: 'instanceAi.automation.resolved.notOnIn' },
+	'not-live': { messageKey: 'instanceAi.automation.resolved.notReadyIn' },
+	saved: { messageKey: 'instanceAi.automation.resolved.savedIn' },
+	'saved-live': { messageKey: 'instanceAi.automation.resolved.savedLiveIn' },
+	'saved-manual': { messageKey: 'instanceAi.automation.resolved.savedManualIn' },
+	'saved-locked': { messageKey: 'instanceAi.automation.resolved.savedLockedIn' },
+	// The server keeps nothing here when the copy fails, so there is nothing to open.
+	failed: { messageKey: 'instanceAi.automation.resolved.failedIn', showsLink: false },
+};
+
+/** A linked workflow without a trigger line has no clause for "runs …". */
+const LINKED_NO_TRIGGER_KEYS: Partial<Record<AutomationResolvedKind, BaseTextKey>> = {
+	on: 'instanceAi.automation.resolved.onNoTriggerIn',
 };
 
 /** What the link of an answered card opens: the copy in the linked instance, or the workflow here. */
@@ -184,19 +214,70 @@ function saveKind(
 ): AutomationResolvedKind {
 	const live = outcome?.kind === 'kept' ? outcome.active : proposal.active;
 	if (live) return 'saved-live';
+	return offKind(proposal);
+}
+
+/** A saved workflow that is off. */
+function offKind(proposal: AutomationProposalCard): AutomationResolvedKind {
 	if (proposal.trigger.kind === 'manual') return 'saved-manual';
 	return proposal.canActivate ? 'saved' : 'saved-locked';
+}
+
+/**
+ * "Turn it on" in a linked instance. The copy there is new to the user, so a success is "on",
+ * never "changes live". A live copy with a problem either still runs here too, or may not run
+ * as set up there (an earlier version, or credentials without a value).
+ */
+function linkedActivateKind(outcome: OpenOutcome | undefined): AutomationResolvedKind {
+	if (outcome === undefined) return 'on';
+	if (outcome.kind === 'waiting') return 'turning-on';
+	if (!outcome.active) return 'not-on';
+	if (!outcome.failed) return 'on';
+	return outcome.localStillOn ? 'still-on-here' : 'not-live';
+}
+
+/**
+ * "Save" in a linked instance. `active` of the card is about the workflow here, so the state
+ * waits for the result, which says if the copy there is on. A workflow that is live here keeps
+ * running here.
+ */
+function linkedSaveKind(
+	proposal: AutomationProposalCard,
+	outcome: OpenOutcome | undefined,
+): AutomationResolvedKind {
+	if (outcome?.kind === 'waiting') return 'copying';
+	if (outcome?.kind === 'kept' && outcome.active) return 'saved-live';
+	return proposal.active ? 'saved-copy' : offKind(proposal);
+}
+
+function answerKind(
+	action: Exclude<AutomationAction, 'decline'>,
+	proposal: AutomationProposalCard,
+	outcome: OpenOutcome | undefined,
+	linked: boolean,
+): AutomationResolvedKind {
+	if (linked) {
+		return action === 'save' ? linkedSaveKind(proposal, outcome) : linkedActivateKind(outcome);
+	}
+	return action === 'save' ? saveKind(proposal, outcome) : activateKind(proposal, outcome);
 }
 
 function resolvedKind(
 	action: AutomationAction,
 	proposal: AutomationProposalCard,
 	outcome: AutomationToolOutcome | undefined,
+	linked: boolean,
 ): AutomationResolvedKind {
 	if (action === 'decline') return 'declined';
 	if (outcome?.kind === 'refused') return 'not-saved';
 	if (outcome?.kind === 'failed') return 'failed';
-	return action === 'save' ? saveKind(proposal, outcome) : activateKind(proposal, outcome);
+	return answerKind(action, proposal, outcome, linked);
+}
+
+/** The view of a kind: the one of a linked place when the answer chose one. */
+function viewOf(kind: AutomationResolvedKind, linked: boolean): ResolvedView {
+	const view = RESOLVED_VIEWS[kind];
+	return linked ? { ...view, ...LINKED_VIEWS[kind] } : view;
 }
 
 /**
@@ -210,20 +291,19 @@ export function resolvedStatus(
 	outcome?: AutomationToolOutcome,
 	linked = false,
 ): AutomationResolvedStatus {
-	const kind = resolvedKind(action, proposal, outcome);
-	const view = RESOLVED_VIEWS[kind];
-	const noTriggerKey = NO_TRIGGER_KEYS[kind];
+	const kind = resolvedKind(action, proposal, outcome, linked);
+	const view = viewOf(kind, linked);
+	const noTriggerKey = (linked ? LINKED_NO_TRIGGER_KEYS : NO_TRIGGER_KEYS)[kind];
 	if (noTriggerKey !== undefined && triggerLineKey(proposal.trigger) === undefined) {
 		return { kind, ...view, messageKey: noTriggerKey };
 	}
-	const linkedKey = linked ? LINKED_KEYS[kind] : undefined;
-	return { kind, ...view, ...(linkedKey && { messageKey: linkedKey }) };
+	return { kind, ...view };
 }
 
 /**
  * The link of an answered card. A copy in a linked instance opens there, from the address in the
- * result. Until that result arrives, the card links nowhere. A failed call can leave the
- * workflow only here, so it opens here.
+ * result. Until that result arrives, the card links nowhere. A workflow that still runs here
+ * needs the user here, to turn it off.
  */
 export function resolvedLink(
 	status: AutomationResolvedStatus,
@@ -231,7 +311,7 @@ export function resolvedLink(
 	linked: boolean,
 ): AutomationResolvedLink | undefined {
 	if (!status.showsLink) return undefined;
-	if (!linked || outcome?.kind === 'failed') return { kind: 'local' };
+	if (!linked || status.kind === 'still-on-here') return { kind: 'local' };
 	const url = outcome?.kind === 'kept' ? safeHttpUrl(outcome.url) : undefined;
 	return url === undefined ? undefined : { kind: 'remote', url };
 }

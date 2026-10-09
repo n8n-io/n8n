@@ -49,16 +49,16 @@ const runTargetKindSchema = z.enum(['local', 'linked']);
 /**
  * A place where the automation can run. Mirrors `RunTargetOption` of `@n8n/instance-ai`, which
  * has no `mcp-disabled`: for the recommendation, that status counts as `offline`.
+ *
+ * The card holds no name and no address of a link. The chat stores the card, and the owner can
+ * share the chat later, so the frontend names a link from the viewer's own list of links.
  */
 export const automationRunTargetSchema = z.object({
+	/** `AUTOMATION_LOCAL_TARGET_ID`, or the id of a link of the user. */
 	id: z.string().min(1),
 	kind: runTargetKindSchema,
-	/** Display name of a linked instance. The frontend names the local target. */
-	label: z.string().optional(),
 	/** The status that the last check of the link stored. The local target is always `online`. */
 	status: z.enum(LINKED_INSTANCE_STATUSES),
-	/** Address of a linked instance, for links that open it in a new tab. */
-	baseUrl: z.string().optional(),
 });
 export type AutomationRunTarget = z.infer<typeof automationRunTargetSchema>;
 
@@ -103,6 +103,11 @@ export const automationProposalCardSchema = z.object({
 		 * default zone of the instance. Present together with `cron`.
 		 */
 		timezone: StrictTimeZoneSchema.optional(),
+		/**
+		 * True when `timezone` is the default zone of this instance, because the workflow settings
+		 * set no zone. A linked instance then runs the schedule in its own default zone.
+		 */
+		timezoneIsDefault: z.boolean().optional(),
 	}),
 	/**
 	 * The first running nodes of the workflow in their order, for the node icons. Sticky notes and
@@ -152,7 +157,10 @@ export const automationPlaceSchema = z.object({
 	/** `AUTOMATION_LOCAL_TARGET_ID`, or the id of the link. */
 	targetId: z.string().min(1),
 	kind: runTargetKindSchema,
-	/** Display name of a linked instance. The frontend names this computer. */
+	/**
+	 * Display name of a linked instance, for the model. The frontend names a link from the
+	 * viewer's own list of links, as for the card.
+	 */
 	name: z.string().optional(),
 });
 export type AutomationPlace = z.infer<typeof automationPlaceSchema>;
@@ -168,12 +176,21 @@ export const automationProposalResultSchema = z.object({
 	kept: z.literal(true),
 	/** Input that the tool ignored, for example a cron expression that is not valid. */
 	warnings: z.array(z.string()).optional(),
-	/** Set when the workflow was kept, but could not be turned on. */
+	/**
+	 * Set when the workflow was kept, but could not be turned on. For a linked instance, also when
+	 * the copy there needs set-up, or when the workflow here still runs although the move asked to
+	 * turn it off.
+	 */
 	error: z.string().optional(),
 	/**
 	 * Set when the workflow went to a linked instance. Absent: it is in this n8n instance. Optional,
 	 * so that MCP clients of this instance get the same result as before.
 	 */
 	place: automationPlaceSchema.optional(),
+	/**
+	 * True when a version of the copy is live in the linked instance and the workflow here is
+	 * still live too, although the move asked to turn it off here. The automation then runs twice.
+	 */
+	localStillOn: z.boolean().optional(),
 });
 export type AutomationProposalResult = z.infer<typeof automationProposalResultSchema>;

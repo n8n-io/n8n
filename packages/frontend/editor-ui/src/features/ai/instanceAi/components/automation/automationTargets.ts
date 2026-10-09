@@ -1,20 +1,17 @@
-import type {
-	AutomationProposalCard,
-	AutomationRecommendationReason,
-	AutomationRunTarget,
-} from '@n8n/api-types';
+import type { AutomationRecommendationReason } from '@n8n/api-types';
 
 import type { TransferDialogState } from '@/features/linkedInstances/transfer/transferDialogState';
 import { safeHttpUrl } from '@/features/linkedInstances/transfer/transferResult';
 import { UNAVAILABLE_LINK, type RunTargetTranslate } from '../../runTarget/runTargetOptions';
 import { answerTargetId } from './automationProposal';
+import type { CardTarget, ViewedProposal } from './automationViewerLinks';
 
 /**
  * Pure rules for the place that an automation card sends: the choice in Power mode, and the
  * check of a linked instance before the workflow goes there.
  */
 
-type Proposal = AutomationProposalCard;
+type Proposal = ViewedProposal;
 
 /** One row of the "Change" menu. */
 export interface AutomationTargetOption {
@@ -46,13 +43,13 @@ const NEEDS_THIS_COMPUTER: ReadonlySet<AutomationRecommendationReason> = new Set
 	'needs-local-trigger',
 ]);
 
-function linkName(target: AutomationRunTarget, translate: RunTargetTranslate): string {
+function linkName(target: CardTarget, translate: RunTargetTranslate): string {
 	const label = target.label?.trim();
 	return label ? label : translate('instanceAi.automation.place.otherInstance');
 }
 
 function targetOption(
-	target: AutomationRunTarget,
+	target: CardTarget,
 	offered: readonly string[],
 	translate: RunTargetTranslate,
 ): AutomationTargetOption {
@@ -116,26 +113,41 @@ export function initialTargetId(proposal: Proposal, chatTargetId?: string): stri
 export function linkedTargetOf(
 	proposal: Proposal,
 	targetId: string | undefined,
-): AutomationRunTarget | undefined {
+): CardTarget | undefined {
 	const target = proposal.targets.find(({ id }) => id === targetId);
 	return target?.kind === 'linked' ? target : undefined;
 }
 
 /**
  * Opens the credentials of the linked instance. The check names no credential ids, so the link
- * opens the list. `undefined` when the address is not http(s).
+ * opens the list. `undefined` when the address is not http(s), or when the viewer has no link
+ * with this id.
  */
-export function credentialsUrl(target: AutomationRunTarget): string | undefined {
+export function credentialsUrl(target: CardTarget): string | undefined {
 	const base = target.baseUrl === undefined ? undefined : safeHttpUrl(target.baseUrl);
 	return base === undefined ? undefined : `${base.replace(/\/+$/, '')}/home/credentials`;
 }
 
 const OPEN_GATE: AutomationGate = { needsSetUp: [], unchecked: [], canTurnOn: true, canSave: true };
 
+/** The project that the copy goes to: one with a name, or the personal project there. */
+export type LinkedProject = { kind: 'project'; name: string } | { kind: 'personal' };
+
 /**
- * A failed check lets the server decide, so the user can still save. While the check runs, the
- * buttons wait. A workflow that cannot move waits for nothing, and empty credentials stop only
- * "Turn it on", because the move does not put such a copy live.
+ * Where the check says the copy goes, or `undefined` until the check answers. The move can still
+ * put it in the personal project when the linked instance refuses the default project.
+ */
+export function linkedProjectOf(check: AutomationCheck): LinkedProject | undefined {
+	if (typeof check === 'string') return undefined;
+	const name = check.targetProjectName;
+	return name === null ? { kind: 'personal' } : { kind: 'project', name };
+}
+
+/**
+ * A failed check lets the server decide, so the user can still save or turn it on: the move
+ * checks the credentials again and does not put a copy live that needs set-up. While the check
+ * runs, the buttons wait. A workflow that cannot move waits for nothing, and empty credentials
+ * stop only "Turn it on", because the move does not put such a copy live.
  */
 export function automationGate(check: AutomationCheck): AutomationGate {
 	if (check === 'idle' || check === 'failed') return OPEN_GATE;

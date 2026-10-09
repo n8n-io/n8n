@@ -117,6 +117,8 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 
 			expect(parses('local')).toBe(true);
 			expect(parses(CLOUD_ID)).toBe(true);
+			expect(parses(CLOUD_ID.toUpperCase())).toBe(true);
+			expect(parses('LOCAL')).toBe(false);
 			expect(parses('cloud-1')).toBe(false);
 			expect(parses(`${CLOUD_ID} `)).toBe(false);
 		});
@@ -126,20 +128,8 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 
 			expect(card.targets).toEqual([
 				{ id: 'local', kind: 'local', status: 'online' },
-				{
-					id: CLOUD_ID,
-					kind: 'linked',
-					label: 'Team cloud',
-					status: 'online',
-					baseUrl: 'https://cloud.example.test',
-				},
-				{
-					id: OFFLINE_ID,
-					kind: 'linked',
-					label: 'Lab',
-					status: 'offline',
-					baseUrl: 'https://lab.example.test',
-				},
+				{ id: CLOUD_ID, kind: 'linked', status: 'online' },
+				{ id: OFFLINE_ID, kind: 'linked', status: 'offline' },
 			]);
 			expect(card.offered.target).toEqual(['local', CLOUD_ID]);
 			expect(card.recommended).toEqual({
@@ -150,6 +140,28 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 			expect(linked.store.listForUser).toHaveBeenCalledWith(user.id);
 			expect(linked.transfer.push).not.toHaveBeenCalled();
 			expect(world.nothingChanged()).toBe(true);
+		});
+
+		it('stores no name and no address of a link in the card, which the owner can share later', async () => {
+			const payload = JSON.stringify(await firstCall());
+
+			for (const text of ['Team cloud', 'Lab', 'cloud.example.test', 'lab.example.test']) {
+				expect(payload).not.toContain(text);
+			}
+		});
+
+		it('lists only this computer for a live workflow that the user cannot turn on', async () => {
+			// A save of a live workflow can put its copy live there, so it needs the publish rights.
+			world.grant(
+				storedWorkflow({ activeVersionId: 'v-1' }),
+				MOVE_SCOPES.filter((scope) => scope !== 'workflow:publish'),
+			);
+
+			const card = cardOf(await firstCall());
+
+			expect(card.targets).toEqual([{ id: 'local', kind: 'local', status: 'online' }]);
+			expect(card.offered.target).toEqual(['local']);
+			expect(linked.store.listForUser).not.toHaveBeenCalled();
 		});
 
 		it('recommends this computer when no link is online, and says that the cloud is offline', async () => {
@@ -268,6 +280,73 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 			await answerCard(answer({ target: CLOUD_ID, activate: false }));
 
 			expect(linked.transfer.push.mock.calls[0][2]).toMatchObject({ deactivateLocal: false });
+		});
+
+		it('reports a moved automation that still runs here, because the turn-off here failed', async () => {
+			world.grant(storedWorkflow({ activeVersionId: 'v-0' }), MOVE_SCOPES);
+			linked.transfer.push.mockResolvedValue(
+				pushResult({ published: true, localDeactivated: false, warnings: ['turn-off failed'] }),
+			);
+
+			const output = await answerCard(answer({ target: CLOUD_ID, activate: true }));
+
+			expect(output).toMatchObject({ active: true, kept: true, localStillOn: true });
+			expect(isRecord(output) && String(output.error)).toContain(
+				'still runs on this n8n instance too',
+			);
+		});
+
+		it('denies saving a copy of a live workflow when an admin blocked publishing while the card waited', async () => {
+			// The import there keeps a live copy live, so this save can turn on the new version there.
+			world.grant(storedWorkflow({ activeVersionId: 'v-0' }), MOVE_SCOPES);
+			const blocked = { ...DEFAULT_INSTANCE_AI_PERMISSIONS, publishWorkflow: 'blocked' as const };
+
+			const output = await answerCard(answer({ target: CLOUD_ID, activate: false }), {
+				after: { permissions: blocked },
+			});
+
+			expect(output).toMatchObject({ denied: true });
+			expect(isRecord(output) && String(output.message)).toContain(
+				'An admin has blocked turning on workflows for the n8n Assistant',
+			);
+			expect(linked.transfer.push).not.toHaveBeenCalled();
+			expect(world.nothingChanged()).toBe(true);
+		});
+
+		it('refuses to save a copy of a live workflow when the user lost the right to turn it on', async () => {
+			const live = storedWorkflow({ activeVersionId: 'v-0' });
+			world.grant(live, MOVE_SCOPES);
+
+			const result = answerCard(answer({ target: CLOUD_ID, activate: false }), {
+				beforeAnswer: () =>
+					world.grant(
+						live,
+						MOVE_SCOPES.filter((scope) => scope !== 'workflow:publish'),
+					),
+			});
+
+			await expect(result).rejects.toThrow(
+				'"Digest builder" is on here, and its copy in Team cloud can go live when it is saved, and you do not have permission to turn it on.',
+			);
+			expect(linked.transfer.push).not.toHaveBeenCalled();
+		});
+
+		it('keeps the copy in the result when the workflow here cannot be kept after the copy', async () => {
+			world.temporaryWorkflows.unmark.mockRejectedValue(new Error('database is down'));
+
+			const output = await answerCard(answer({ target: CLOUD_ID, activate: true }));
+
+			expect(output).toMatchObject({
+				workflowId: 'remote-9',
+				active: true,
+				kept: true,
+				error:
+					'The copy is in Team cloud, but n8n could not keep "Digest builder" on this n8n instance, so the clean-up at the end of this run can archive it here.',
+			});
+			expect(world.logger.error).toHaveBeenCalledWith(
+				'Failed to keep a workflow after its copy went to a linked instance',
+				{ workflowId: 'wf-1', linkId: CLOUD_ID, error: 'database is down' },
+			);
 		});
 
 		it('rejects an offline link that the card did not offer, before anything changes', async () => {

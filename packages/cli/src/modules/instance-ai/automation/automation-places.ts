@@ -31,21 +31,22 @@ export function isLinkedTarget(targetId: string | undefined): targetId is string
 	return targetId !== undefined && targetId !== AUTOMATION_LOCAL_TARGET_ID;
 }
 
-function linkedCardTarget(link: LinkedInstanceSummary): AutomationRunTarget {
-	return {
-		id: link.id,
-		kind: 'linked',
-		label: link.name,
-		status: link.status,
-		baseUrl: link.baseUrl,
-	};
+/**
+ * A link on the card: its id and stored status only. The chat stores the card and the owner can
+ * share the chat, so the card holds no name and no address of the owner's links. The frontend
+ * names each link from the viewer's own list.
+ */
+function linkedCardTarget(link: Pick<LinkedInstanceSummary, 'id' | 'status'>): AutomationRunTarget {
+	return { id: link.id, kind: 'linked', status: link.status };
 }
 
 /**
  * Lists this instance and every link. The status is the one that the last check stored, so
  * the card does not wait for a request to each instance. Only an online link is offered.
  */
-export function cardPlaces(links: readonly LinkedInstanceSummary[]): CardPlaces {
+export function cardPlaces(
+	links: ReadonlyArray<Pick<LinkedInstanceSummary, 'id' | 'status'>>,
+): CardPlaces {
 	const online = links.filter((link) => link.status === 'online').map((link) => link.id);
 	return {
 		targets: [{ ...LOCAL_CARD_TARGET }, ...links.map(linkedCardTarget)],
@@ -55,13 +56,14 @@ export function cardPlaces(links: readonly LinkedInstanceSummary[]): CardPlaces 
 
 /**
  * The targets as the recommendation reads them. A link with MCP turned off cannot take the
- * workflow either, so the recommendation counts it as offline.
+ * workflow either, so the recommendation counts it as offline. The recommendation does not read
+ * the label, so the id stands in for the name that the card does not hold.
  */
 export function recommendationTargets(targets: readonly AutomationRunTarget[]): RunTargetOption[] {
 	return targets.map((target) => ({
 		id: target.id,
 		kind: target.kind,
-		label: target.label ?? 'This computer',
+		label: target.id,
 		status: target.status === 'mcp-disabled' ? 'offline' : target.status,
 	}));
 }

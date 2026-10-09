@@ -1,5 +1,6 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import { fetchTransferPreflight } from '@/features/linkedInstances/transfer/transfer.api';
 import {
@@ -15,8 +16,12 @@ export interface AutomationPreflightRequest {
 	versionId: string;
 }
 
+/** The checks that the page keeps. A long chat can show many cards, so the oldest go first. */
+export const MAX_STORED_PREFLIGHTS = 50;
+
 // The server limits these checks per user, and a chat can show the same card again (after a
-// reload or a scroll). One answer per version and link is enough until the user asks again.
+// reload or a scroll). One answer per user, version and link is enough until the user asks
+// again. The user is part of the key, so that a sign-in as another user reads nothing of this.
 const checks = new Map<string, TransferDialogState>();
 
 /** Clears the stored checks. Tests call this between cases. */
@@ -24,8 +29,15 @@ export function clearAutomationPreflights() {
 	checks.clear();
 }
 
-const keyOf = (request: AutomationPreflightRequest | undefined) =>
-	request ? `${request.linkId}:${request.workflowId}:${request.versionId}` : '';
+function storeCheck(key: string, state: TransferDialogState) {
+	checks.delete(key);
+	checks.set(key, state);
+	// A Map keeps the order of insertion, so the first key is the oldest.
+	for (const oldest of checks.keys()) {
+		if (checks.size <= MAX_STORED_PREFLIGHTS) break;
+		checks.delete(oldest);
+	}
+}
 
 /**
  * Checks what the linked instance needs before the workflow goes there. It runs when `request`
@@ -33,8 +45,14 @@ const keyOf = (request: AutomationPreflightRequest | undefined) =>
  */
 export function useAutomationPreflight(request: Ref<AutomationPreflightRequest | undefined>) {
 	const rootStore = useRootStore();
+	const usersStore = useUsersStore();
 	const check = ref<AutomationCheck>('idle');
 	let latest = 0;
+
+	const keyOf = (wanted: AutomationPreflightRequest | undefined) =>
+		wanted
+			? `${usersStore.currentUserId ?? ''}:${wanted.linkId}:${wanted.workflowId}:${wanted.versionId}`
+			: '';
 
 	async function load(wanted: AutomationPreflightRequest, fresh: boolean) {
 		const run = ++latest;
@@ -50,7 +68,7 @@ export function useAutomationPreflight(request: Ref<AutomationPreflightRequest |
 				workflowId: wanted.workflowId,
 			});
 			const state = transferDialogState(preflight);
-			checks.set(key, state);
+			storeCheck(key, state);
 			if (run === latest) check.value = state;
 		} catch {
 			if (run === latest) check.value = 'failed';

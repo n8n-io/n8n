@@ -29,8 +29,9 @@ import type { AutomationProposal } from './automation-proposal.service';
 
 export { PROPOSE_AUTOMATION_CAPABILITY_NAME };
 
-/** A link is named by a UUID. */
-const LINK_ID_PATTERN = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+/** A link is named by a UUID, in either case. "local" names this instance and is exact. */
+const LINK_ID_PATTERN =
+	'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
 
 /**
  * Both surfaces use a string, so that the tool has one input type. MCP clients keep automations
@@ -41,7 +42,7 @@ const TARGET_OF_SURFACE: Record<CapabilitySurface, z.ZodOptional<z.ZodString>> =
 	assistant: z
 		.string()
 		.regex(
-			new RegExp(`^(${AUTOMATION_LOCAL_TARGET_ID}|${LINK_ID_PATTERN})$`, 'i'),
+			new RegExp(`^(?:${AUTOMATION_LOCAL_TARGET_ID}|${LINK_ID_PATTERN})$`),
 			'Use "local" or the id of a linked instance',
 		)
 		.optional()

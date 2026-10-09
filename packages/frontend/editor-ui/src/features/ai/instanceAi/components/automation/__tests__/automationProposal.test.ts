@@ -78,6 +78,44 @@ describe('triggerLineKey', () => {
 			fallbackKey: 'instanceAi.automation.trigger.schedule',
 		});
 	});
+
+	describe('in a linked place', () => {
+		const defaultZone = {
+			kind: 'schedule',
+			cron: '0 8 * * 1-5',
+			timezone: 'Europe/London',
+			timezoneIsDefault: true,
+		} as const;
+
+		it('names the zone of the place for a schedule without a zone of its own', () => {
+			expect(triggerLineKey(defaultZone, 'line', true)).toEqual({
+				key: 'instanceAi.automation.trigger.cronInPlaceZone',
+				cron: '0 8 * * 1-5',
+				inPlaceZone: true,
+				fallbackKey: 'instanceAi.automation.trigger.schedule',
+			});
+			expect(triggerLineKey(defaultZone, 'clause', true)).toMatchObject({
+				key: 'instanceAi.automation.resolved.trigger.cronInPlaceZone',
+				inPlaceZone: true,
+			});
+		});
+
+		it('keeps the zone of the workflow settings, which the place runs it in too', () => {
+			const ownZone = { ...defaultZone, timezoneIsDefault: undefined };
+
+			expect(triggerLineKey(ownZone, 'line', true)).toMatchObject({
+				key: 'instanceAi.automation.trigger.cronWithTimezone',
+				timezone: 'Europe/London',
+			});
+		});
+
+		it('keeps the zone of this instance for a schedule that runs here', () => {
+			expect(triggerLineKey(defaultZone, 'line', false)).toMatchObject({
+				key: 'instanceAi.automation.trigger.cronWithTimezone',
+				timezone: 'Europe/London',
+			});
+		});
+	});
 });
 
 describe('timezoneLabel', () => {
@@ -543,12 +581,16 @@ const proposalArb: fc.Arbitrary<Proposal> = fc
 
 const TYPE_ORDER = { primary: 0, secondary: 1, tertiary: 2 } as const;
 
-/** The title asks the question of the primary button, or only to keep the workflow. */
+/**
+ * The title asks the question of the primary button, or only to keep the workflow. A live
+ * workflow that goes to a linked place moves there.
+ */
 function expectedTitle(proposal: Proposal, offersTurnOn: boolean): string {
 	if (proposal.active) {
-		return offersTurnOn
-			? 'instanceAi.automation.proposal.titleUpdate'
-			: 'instanceAi.automation.proposal.titleKeepLive';
+		if (!offersTurnOn) return 'instanceAi.automation.proposal.titleKeepLive';
+		return placeOf(proposal).linked
+			? 'instanceAi.automation.proposal.titleMove'
+			: 'instanceAi.automation.proposal.titleUpdate';
 	}
 	return offersTurnOn
 		? 'instanceAi.automation.proposal.title'
@@ -579,13 +621,30 @@ describe('automation proposal properties', () => {
 		);
 	});
 
-	it('never offers to turn on when the card cannot activate or the saved version is live', () => {
+	it('never offers to turn on when the card cannot activate or the saved version is live here', () => {
 		fc.assert(
 			fc.property(proposalArb, (proposal) => {
 				const actions = cardActions(proposal).map(({ action }) => action);
 				const savedVersionLive = proposal.active && !proposal.hasUnpublishedChanges;
-				if (!proposal.canActivate || savedVersionLive) expect(actions).not.toContain('activate');
+				const liveHere = savedVersionLive && !placeOf(proposal).linked;
+				if (!proposal.canActivate || liveHere) expect(actions).not.toContain('activate');
 				expect(titleKey(proposal)).toBe(expectedTitle(proposal, actions.includes('activate')));
+			}),
+		);
+	});
+
+	it('offers to turn on the copy in a linked place whenever the card can turn it on', () => {
+		fc.assert(
+			fc.property(proposalArb, (proposal) => {
+				fc.pre(placeOf(proposal).linked);
+				const canTurnOn =
+					proposal.canActivate &&
+					proposal.offered.activate.includes(true) &&
+					answerTargetId(proposal) !== undefined;
+
+				const actions = cardActions(proposal).map(({ action }) => action);
+
+				expect(actions.includes('activate')).toBe(canTurnOn);
 			}),
 		);
 	});
@@ -594,7 +653,8 @@ describe('automation proposal properties', () => {
 		fc.assert(
 			fc.property(proposalArb, (proposal) => {
 				const offersTurnOn = cardActions(proposal).some(({ action }) => action === 'activate');
-				const savedVersionLive = proposal.active && !proposal.hasUnpublishedChanges;
+				const savedVersionLive =
+					proposal.active && !proposal.hasUnpublishedChanges && !placeOf(proposal).linked;
 				const needsNote = !offersTurnOn && proposal.trigger.kind !== 'manual' && !savedVersionLive;
 
 				expect(activationNoteKey(proposal) !== undefined).toBe(needsNote);

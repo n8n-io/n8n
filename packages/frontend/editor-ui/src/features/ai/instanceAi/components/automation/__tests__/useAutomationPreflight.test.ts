@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount } from '@vue/test-utils';
 import type { LinkedInstanceTransferPreflight } from '@n8n/api-types';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import { fetchTransferPreflight } from '@/features/linkedInstances/transfer/transfer.api';
 import {
 	clearAutomationPreflights,
+	MAX_STORED_PREFLIGHTS,
 	useAutomationPreflight,
 	type AutomationPreflightRequest,
 } from '../useAutomationPreflight';
@@ -60,6 +62,7 @@ function nodesOf(check: ReturnType<typeof useAutomationPreflight>['check']['valu
 describe('useAutomationPreflight', () => {
 	beforeEach(() => {
 		createTestingPinia();
+		useUsersStore().currentUserId = 'user-1';
 		clearAutomationPreflights();
 		preflightMock.mockReset();
 	});
@@ -129,5 +132,35 @@ describe('useAutomationPreflight', () => {
 		expect(nodesOf(second.result.check.value)).toBe(4);
 		expect(nodesOf(third.result.check.value)).toBe(4);
 		expect(preflightMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('checks again for another user, who must not read the check of the first one', async () => {
+		preflightMock.mockResolvedValueOnce(preflight(1)).mockResolvedValue(preflight(2));
+		const { result } = setup(on(CLOUD));
+		await flushPromises();
+		expect(nodesOf(result.check.value)).toBe(1);
+
+		useUsersStore().currentUserId = 'user-2';
+		await flushPromises();
+
+		expect(nodesOf(result.check.value)).toBe(2);
+		expect(preflightMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps only the latest checks, so that a long chat does not grow the store', async () => {
+		preflightMock.mockImplementation(async () => preflight(1));
+		for (let version = 0; version <= MAX_STORED_PREFLIGHTS; version++) {
+			setup(on(CLOUD, `v-${version}`));
+		}
+		await flushPromises();
+		expect(preflightMock).toHaveBeenCalledTimes(MAX_STORED_PREFLIGHTS + 1);
+
+		setup(on(CLOUD, `v-${MAX_STORED_PREFLIGHTS}`));
+		setup(on(CLOUD, 'v-0'));
+		await flushPromises();
+
+		// The newest check is still there; the oldest went to make room.
+		expect(preflightMock).toHaveBeenCalledTimes(MAX_STORED_PREFLIGHTS + 2);
+		expect(preflightMock.mock.lastCall?.[2]).toEqual({ workflowId: 'wf-1' });
 	});
 });

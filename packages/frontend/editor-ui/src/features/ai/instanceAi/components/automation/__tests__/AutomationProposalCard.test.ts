@@ -224,7 +224,8 @@ describe('AutomationProposalCard', () => {
 		);
 	});
 
-	it('names a linked instance by its label', () => {
+	it("names a linked place only from the viewer's own links, never from the stored card", () => {
+		// AutomationProposalCard.linked.test.ts covers the names from the viewer's own links.
 		const { getByTestId, queryByTestId } = renderCard(
 			makeProposal({
 				recommended: { targetId: 'cloud-1', kind: 'linked', reasons: ['always-on-trigger'] },
@@ -234,7 +235,7 @@ describe('AutomationProposalCard', () => {
 		);
 
 		expect(getByTestId('automation-proposal-place').textContent?.trim()).toBe(
-			'Runs on Team cloud · it keeps going when this computer is off',
+			'Runs on Another n8n instance · it keeps going when this computer is off',
 		);
 		expect(queryByTestId('automation-proposal-caveat')).not.toBeInTheDocument();
 	});
@@ -440,7 +441,7 @@ describe('AutomationProposalCard after the answer', () => {
 		expect(link).toHaveTextContent('Open workflow');
 	});
 
-	it('names the trigger of a workflow without a schedule, and a linked place by its label', () => {
+	it('names the trigger of a workflow without a schedule, and a linked place in words', () => {
 		const proposal = makeProposal({
 			trigger: { kind: 'webhook' },
 			recommended: { targetId: 'cloud-1', kind: 'linked', reasons: ['always-on-trigger'] },
@@ -450,7 +451,7 @@ describe('AutomationProposalCard after the answer', () => {
 		const { getByTestId } = renderAnswered(TURN_ON, { proposal });
 
 		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
-			`It's on. "Morning digest" runs when a request arrives on Cloud.`,
+			`It's on. "Morning digest" runs when a request arrives on Another n8n instance.`,
 		);
 	});
 

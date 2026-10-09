@@ -48,29 +48,20 @@ describe('cardPlaces', () => {
 
 		expect(places.targets).toEqual([
 			{ id: 'local', kind: 'local', status: 'online' },
-			{
-				id: LAB_ID,
-				kind: 'linked',
-				label: 'Lab',
-				status: 'offline',
-				baseUrl: 'https://lab.example.test',
-			},
-			{
-				id: CLOUD_ID,
-				kind: 'linked',
-				label: 'Team cloud',
-				status: 'online',
-				baseUrl: 'https://cloud.example.test',
-			},
-			{
-				id: SPARE_ID,
-				kind: 'linked',
-				label: 'Spare',
-				status: 'mcp-disabled',
-				baseUrl: 'https://cloud.example.test',
-			},
+			{ id: LAB_ID, kind: 'linked', status: 'offline' },
+			{ id: CLOUD_ID, kind: 'linked', status: 'online' },
+			{ id: SPARE_ID, kind: 'linked', status: 'mcp-disabled' },
 		]);
 		expect(places.offered).toEqual(['local', CLOUD_ID]);
+	});
+
+	it('keeps the name and the address of each link off the card', () => {
+		const places = cardPlaces([link(), link({ id: LAB_ID, name: 'Lab', status: 'offline' })]);
+
+		const stored = JSON.stringify(places);
+		expect(stored).not.toContain('Team cloud');
+		expect(stored).not.toContain('Lab');
+		expect(stored).not.toContain('example.test');
 	});
 
 	it.each(['offline', 'unauthorised', 'mcp-disabled', 'unknown'] as const)(
@@ -97,9 +88,9 @@ describe('recommendationTargets', () => {
 		]);
 
 		expect(recommendationTargets(targets)).toEqual([
-			{ id: 'local', kind: 'local', label: 'This computer', status: 'online' },
-			{ id: CLOUD_ID, kind: 'linked', label: 'Team cloud', status: 'offline' },
-			{ id: LAB_ID, kind: 'linked', label: 'Lab', status: 'unauthorised' },
+			{ id: 'local', kind: 'local', label: 'local', status: 'online' },
+			{ id: CLOUD_ID, kind: 'linked', label: CLOUD_ID, status: 'offline' },
+			{ id: LAB_ID, kind: 'linked', label: LAB_ID, status: 'unauthorised' },
 		]);
 	});
 
@@ -185,6 +176,9 @@ describe('places on the card (property)', () => {
 					const online = links.filter((entry) => entry.status === 'online').map(({ id }) => id);
 					expect(card.offered.target.slice(1)).toEqual(online);
 					expect(card.targets.map(({ id }) => id)).toEqual(['local', ...links.map(({ id }) => id)]);
+					for (const target of card.targets) {
+						expect(Object.keys(target).sort()).toEqual(['id', 'kind', 'status']);
+					}
 				},
 			),
 			{ numRuns: 300 },

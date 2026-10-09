@@ -8,6 +8,8 @@ import {
 	linkedAutomationResult,
 	linkedMoveError,
 	type LinkedMove,
+	moveStateOf,
+	withKeepFailure,
 } from '../automation-link-result';
 
 const LINK = { id: '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c', name: 'Team cloud' };
@@ -32,8 +34,18 @@ function pushed(overrides: Partial<LinkedInstancePushResult> = {}): LinkedInstan
 }
 
 function move(overrides: Partial<LinkedMove> = {}): LinkedMove {
-	return { link: LINK, workflowName: 'Digest builder', publish: true, warnings: [], ...overrides };
+	return {
+		link: LINK,
+		workflowName: 'Digest builder',
+		publish: true,
+		deactivateLocal: false,
+		warnings: [],
+		...overrides,
+	};
 }
+
+const STILL_ON_HERE =
+	'"Digest builder" still runs on this n8n instance too, because it was not turned off here. Turn it off here, so that it does not run twice.';
 
 /** The text between the fence tags of a warning, or undefined without a fence. */
 function fencedPart(text: string): string | undefined {
@@ -73,8 +85,68 @@ describe('linkedAutomationResult', () => {
 
 		expect(result.active).toBe(true);
 		expect(result.error).toBe(
-			'Copied "Digest builder" to Team cloud, but could not turn it on there. The notes in the warnings say why.',
+			'Copied "Digest builder" to Team cloud, but could not turn it on there. An earlier version stays live there. The notes in the warnings say why.',
 		);
+	});
+
+	it('reports a copy that did not go live, and keeps the workflow here on without calling it a problem', () => {
+		const result = linkedAutomationResult(
+			pushed({ published: false, publishFailed: true }),
+			move({ deactivateLocal: true }),
+		);
+
+		expect(result.active).toBe(false);
+		expect(result.error).toBe(
+			'Copied "Digest builder" to Team cloud, but could not turn it on there.',
+		);
+		expect(result).not.toHaveProperty('localStillOn');
+	});
+
+	it('reports a live copy that cannot run as set up there, and a workflow here that stays on', () => {
+		// The import there put the new version live by itself, with an empty credential that the
+		// earlier copy used. The move then keeps the workflow here on.
+		const result = linkedAutomationResult(
+			pushed({
+				credentialsNeedingSetup: [{ id: 'c-1', name: 'Slack account', type: 'slackApi' }],
+				warnings: ['The workflow stays turned on here'],
+			}),
+			move({ deactivateLocal: true }),
+		);
+
+		expect(result.active).toBe(true);
+		expect(result.localStillOn).toBe(true);
+		expect(result.error).toBe(
+			`"Digest builder" is live in Team cloud, but it cannot run as set up there: it uses credentials without a value or node types that Team cloud does not have. ${STILL_ON_HERE} The notes in the warnings say why.`,
+		);
+	});
+
+	it('reports a live copy when the workflow here could not be turned off', () => {
+		const result = linkedAutomationResult(pushed(), move({ deactivateLocal: true }));
+
+		expect(result.active).toBe(true);
+		expect(result.localStillOn).toBe(true);
+		expect(result.error).toBe(STILL_ON_HERE);
+		expect(automationProposalResultSchema.parse(result)).toEqual(result);
+	});
+
+	it('reports full success when the workflow here was turned off', () => {
+		const result = linkedAutomationResult(
+			pushed({ localDeactivated: true }),
+			move({ deactivateLocal: true }),
+		);
+
+		expect(result).not.toHaveProperty('error');
+		expect(result).not.toHaveProperty('localStillOn');
+	});
+
+	it('warns that a saved copy is on there, because a version of it was live there before', () => {
+		const result = linkedAutomationResult(pushed(), move({ publish: false }));
+
+		expect(result.active).toBe(true);
+		expect(result).not.toHaveProperty('error');
+		expect(result.warnings).toEqual([
+			'The copy in Team cloud is on, because a version of it was live there before. Saving did not turn it off there.',
+		]);
 	});
 
 	it('does not report an error for a failed publish that the move did not ask for', () => {
@@ -135,13 +207,68 @@ describe('linkedAutomationResult', () => {
 
 					expect(automationProposalResultSchema.safeParse(result).success).toBe(true);
 					const hasNotes = warnings.length + missingNodeTypes.length > 0;
-					expect(result.warnings?.length ?? 0).toBe(hasNotes ? 1 : 0);
-					if (hasNotes) expect(fencedPart(result.warnings?.[0] ?? '')).toBeDefined();
+					// A save finds the earlier live copy there, and says so in its own words.
+					const ownWarnings = publish ? 0 : 1;
+					expect(result.warnings?.length ?? 0).toBe(ownWarnings + (hasNotes ? 1 : 0));
+					if (hasNotes) expect(fencedPart(result.warnings?.at(-1) ?? '')).toBeDefined();
 					expect(result.error !== undefined).toBe(publish);
 				},
 			),
 			{ numRuns: 200 },
 		);
+	});
+
+	it('reports a problem exactly when the copy or the workflow here is not as asked (property)', () => {
+		const credential = { id: 'c-1', name: 'Slack account', type: 'slackApi' };
+		fc.assert(
+			fc.property(
+				fc.record({
+					published: fc.boolean(),
+					publishFailed: fc.boolean(),
+					localDeactivated: fc.boolean(),
+					needsSetUp: fc.boolean(),
+				}),
+				fc.record({ publish: fc.boolean(), deactivateLocal: fc.boolean() }),
+				(shape, asked) => {
+					const push = pushed({
+						published: shape.published,
+						publishFailed: shape.publishFailed,
+						localDeactivated: shape.localDeactivated,
+						credentialsNeedingSetup: shape.needsSetUp ? [credential] : [],
+					});
+
+					const result = linkedAutomationResult(push, move(asked));
+
+					const notOn = asked.publish && shape.publishFailed;
+					const notReady = shape.published && !shape.publishFailed && shape.needsSetUp;
+					const stillOn = asked.deactivateLocal && shape.published && !shape.localDeactivated;
+					expect(result.active).toBe(shape.published);
+					expect(result.error !== undefined).toBe(notOn || notReady || stillOn);
+					expect(result.localStillOn === true).toBe(stillOn);
+					expect(moveStateOf(push, move(asked))).toEqual({ notOn, notReady, stillOn });
+					expect(automationProposalResultSchema.safeParse(result).success).toBe(true);
+				},
+			),
+			{ numRuns: 300 },
+		);
+	});
+});
+
+describe('withKeepFailure', () => {
+	const KEEP_FAILED =
+		'The copy is in Team cloud, but n8n could not keep "Digest builder" on this n8n instance, so the clean-up at the end of this run can archive it here.';
+
+	it('keeps the copy in the result and says that the workflow here was not kept', () => {
+		const result = withKeepFailure(linkedAutomationResult(pushed(), move()), move());
+
+		expect(result).toMatchObject({ workflowId: 'remote-9', active: true, error: KEEP_FAILED });
+		expect(automationProposalResultSchema.parse(result)).toEqual(result);
+	});
+
+	it('adds the text after a problem of the move', () => {
+		const moved = linkedAutomationResult(pushed(), move({ deactivateLocal: true }));
+
+		expect(withKeepFailure(moved, move()).error).toBe(`${STILL_ON_HERE} ${KEEP_FAILED}`);
 	});
 });
 

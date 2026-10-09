@@ -19,6 +19,8 @@ export type AutomationResult =
 			url: string;
 			/** Set when the workflow went to a linked instance. */
 			place?: AutomationPlace;
+			/** The copy is live there and the workflow here still runs too. */
+			localStillOn?: true;
 	  }
 	/** Declined, or blocked by an admin before the first change: nothing was kept. */
 	| { kind: 'refused' };
@@ -33,8 +35,15 @@ export function automationResultOf(output: unknown): AutomationResult | undefine
 	if (isDenied(output)) return { kind: 'refused' };
 	const parsed = automationProposalResultSchema.safeParse(output);
 	if (!parsed.success) return undefined;
-	const { active, error, url, place } = parsed.data;
-	return { kind: 'kept', active, failed: error !== undefined, url, ...(place && { place }) };
+	const { active, error, url, place, localStillOn } = parsed.data;
+	return {
+		kind: 'kept',
+		active,
+		failed: error !== undefined,
+		url,
+		...(place && { place }),
+		...(localStillOn === true && { localStillOn: true }),
+	};
 }
 
 /**
@@ -46,6 +55,10 @@ export function summariseAutomationResult(output: unknown): BaseTextKey | undefi
 	if (result === undefined) return undefined;
 	if (result.kind === 'refused') return 'instanceAi.automation.summary.declined';
 	if (result.failed) {
+		// A live copy in a linked instance with a problem is new there, so no "changes" are late.
+		if (result.active && result.place?.kind === 'linked') {
+			return 'instanceAi.automation.summary.needsCheck';
+		}
 		return result.active
 			? 'instanceAi.automation.summary.notLive'
 			: 'instanceAi.automation.summary.notOn';

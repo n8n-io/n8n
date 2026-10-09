@@ -10,16 +10,21 @@ import {
 import { transferDialogState } from '@/features/linkedInstances/transfer/transferDialogState';
 import type { RunTargetTranslate } from '../../../runTarget/runTargetOptions';
 import {
+	activationNoteKey,
+	cardActions,
 	chosenTargetId,
 	decisionFor,
+	liveStatusKey,
 	LINKED_REASON_KEY,
 	placeOf,
 	showsLocalCaveat,
+	titleKey,
 } from '../automationProposal';
 import {
 	automationGate,
 	credentialsUrl,
 	initialTargetId,
+	linkedProjectOf,
 	linkedTargetOf,
 	offersTargetChoice,
 	targetOptions,
@@ -119,6 +124,84 @@ describe('decisionFor a chosen target', () => {
 			values: { target: CLOUD_LINK_ID, activate: true },
 		});
 	});
+});
+
+describe('card copy for the chosen place', () => {
+	const LIVE = { active: true, hasUnpublishedChanges: false };
+	const labels = (proposal: Proposal, targetId: string) =>
+		cardActions(proposal, targetId).map(({ action, labelKey, type }) => [action, labelKey, type]);
+
+	it('offers to move a live workflow to the cloud and turn it on there', () => {
+		const proposal = makeLinkedProposal(LIVE);
+
+		expect(labels(proposal, CLOUD_LINK_ID)).toEqual([
+			['activate', 'instanceAi.automation.action.moveAndTurnOn', 'primary'],
+			['save', 'instanceAi.automation.action.saveCopy', 'secondary'],
+			['decline', 'instanceAi.automation.action.notNow', 'tertiary'],
+		]);
+		expect(titleKey(proposal, CLOUD_LINK_ID)).toBe('instanceAi.automation.proposal.titleMove');
+		expect(liveStatusKey(proposal, CLOUD_LINK_ID)).toBe(
+			'instanceAi.automation.status.liveHereMove',
+		);
+		expect(activationNoteKey(proposal, CLOUD_LINK_ID)).toBeUndefined();
+	});
+
+	it('offers only to keep the same live workflow when it stays here', () => {
+		const proposal = makeLinkedProposal(LIVE);
+
+		expect(labels(proposal, 'local')).toEqual([
+			['save', 'instanceAi.automation.action.saveWorkflow', 'primary'],
+			['decline', 'instanceAi.automation.action.notNow', 'tertiary'],
+		]);
+		expect(titleKey(proposal, 'local')).toBe('instanceAi.automation.proposal.titleKeepLive');
+		expect(liveStatusKey(proposal, 'local')).toBe('instanceAi.automation.status.live');
+	});
+
+	it('follows the default answer target when no place is chosen, as in Simple mode', () => {
+		const proposal = makeLinkedProposal(LIVE);
+
+		expect(cardActions(proposal)).toEqual(cardActions(proposal, CLOUD_LINK_ID));
+		expect(titleKey(proposal)).toBe(titleKey(proposal, CLOUD_LINK_ID));
+	});
+
+	it('keeps the copy of a workflow that is off the same in the cloud', () => {
+		expect(labels(makeLinkedProposal(), CLOUD_LINK_ID)).toEqual([
+			['activate', 'instanceAi.automation.action.turnOn', 'primary'],
+			['save', 'instanceAi.automation.action.saveOff', 'secondary'],
+			['decline', 'instanceAi.automation.action.notNow', 'tertiary'],
+		]);
+		expect(liveStatusKey(makeLinkedProposal(), CLOUD_LINK_ID)).toBeUndefined();
+	});
+
+	it('says that a live workflow runs here when the card cannot turn on its copy', () => {
+		const proposal = makeLinkedProposal({
+			...LIVE,
+			canActivate: false,
+			offered: { target: ['local', CLOUD_LINK_ID], activate: [false] },
+		});
+
+		expect(labels(proposal, CLOUD_LINK_ID).map(([action]) => action)).toEqual(['save', 'decline']);
+		expect(liveStatusKey(proposal, CLOUD_LINK_ID)).toBe('instanceAi.automation.status.liveHere');
+		expect(activationNoteKey(proposal, CLOUD_LINK_ID)).toBe(
+			'instanceAi.automation.note.cannotTurnOn',
+		);
+	});
+});
+
+describe('linkedProjectOf', () => {
+	it('names the project of the check, or the personal project there', () => {
+		const state = transferDialogState(preflight({ targetProject: { id: 'rp-1', name: 'Sales' } }));
+
+		expect(linkedProjectOf(state)).toEqual({ kind: 'project', name: 'Sales' });
+		expect(linkedProjectOf(transferDialogState(preflight()))).toEqual({ kind: 'personal' });
+	});
+
+	it.each(['idle', 'checking', 'failed'] as const)(
+		'knows no project while the check is %s',
+		(check) => {
+			expect(linkedProjectOf(check)).toBeUndefined();
+		},
+	);
 });
 
 describe('targetOptions', () => {

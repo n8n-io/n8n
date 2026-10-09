@@ -98,18 +98,12 @@ describe('automationProposalCardSchema', () => {
 	);
 
 	it.each(['online', 'offline', 'unauthorised', 'mcp-disabled', 'unknown'] as const)(
-		'accepts a linked target with a label, an address and the stored status %s',
+		'accepts a linked target with the stored status %s',
 		(status) => {
 			const card = makeCard({
 				targets: [
 					{ id: 'local', kind: 'local', status: 'online' },
-					{
-						id: 'instance-7',
-						kind: 'linked',
-						label: 'Team cloud',
-						status,
-						baseUrl: 'https://cloud.example.test',
-					},
+					{ id: 'instance-7', kind: 'linked', status },
 				],
 				offered: { target: ['local', 'instance-7'], activate: [true, false] },
 			});
@@ -117,6 +111,26 @@ describe('automationProposalCardSchema', () => {
 			expect(automationProposalCardSchema.parse(card)).toEqual(card);
 		},
 	);
+
+	it('drops the name and the address of a link, so that a stored card does not keep them', () => {
+		const target = { id: 'instance-7', kind: 'linked', status: 'online' } as const;
+		const card = makeCard({
+			targets: [{ ...target, label: 'Team cloud', baseUrl: 'https://cloud.example.test' }],
+		} as Partial<AutomationProposalCard>);
+
+		expect(automationProposalCardSchema.parse(card).targets).toEqual([target]);
+	});
+
+	it('accepts the flag that a schedule runs in the default zone of the instance', () => {
+		const trigger = {
+			kind: 'schedule',
+			cron: '0 8 * * 1-5',
+			timezone: 'Europe/London',
+			timezoneIsDefault: true,
+		} as const;
+
+		expect(automationProposalCardSchema.parse(makeCard({ trigger })).trigger).toEqual(trigger);
+	});
 
 	it.each([
 		['an empty title', { title: '' }],
@@ -282,6 +296,20 @@ describe('automationProposalResultSchema', () => {
 			active: true,
 			kept: true,
 			place: { targetId: 'instance-7', kind: 'linked', name: 'Team cloud' },
+		};
+
+		expect(automationProposalResultSchema.parse(result)).toEqual(result);
+	});
+
+	it('accepts a copy that is live there while the workflow here still runs', () => {
+		const result = {
+			workflowId: 'remote-wf-9',
+			url: 'https://cloud.example.test/workflow/remote-wf-9',
+			active: true,
+			kept: true,
+			error: 'It still runs on this computer too.',
+			place: { targetId: 'instance-7', kind: 'linked' },
+			localStillOn: true,
 		};
 
 		expect(automationProposalResultSchema.parse(result)).toEqual(result);

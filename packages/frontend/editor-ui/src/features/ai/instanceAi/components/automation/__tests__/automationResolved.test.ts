@@ -366,13 +366,88 @@ describe('resolvedStatus and resolvedLink for a linked instance', () => {
 		});
 	});
 
-	it('links nowhere while the copy is on its way, and opens the workflow here after a failed call', () => {
+	it('links nowhere while the copy is on its way, nor after a failed copy, which kept nothing here', () => {
 		const waiting = resolvedStatus('activate', makeProposal(), WAITING, true);
 		const failed = resolvedStatus('activate', makeProposal(), FAILED, true);
 
+		expect(waiting).toMatchObject({
+			kind: 'turning-on',
+			messageKey: 'instanceAi.automation.resolved.turningOnIn',
+			tone: 'pending',
+		});
 		expect(resolvedLink(waiting, WAITING, true)).toBeUndefined();
 		expect(resolvedLink(waiting, undefined, true)).toBeUndefined();
-		expect(resolvedLink(failed, FAILED, true)).toEqual({ kind: 'local' });
+		expect(failed).toMatchObject({
+			kind: 'failed',
+			messageKey: 'instanceAi.automation.resolved.failedIn',
+			showsLink: false,
+		});
+		expect(resolvedLink(failed, FAILED, true)).toBeUndefined();
+	});
+
+	it('says that a live copy is on there, not that changes are live, for a workflow live here', () => {
+		const live = makeProposal({ active: true });
+
+		expect(resolvedStatus('activate', live, keptThere(true), true)).toMatchObject({
+			kind: 'on',
+			messageKey: 'instanceAi.automation.resolved.on',
+		});
+		expect(resolvedStatus('activate', live, WAITING, true).kind).toBe('turning-on');
+		expect(resolvedStatus('activate', live, undefined, true).kind).toBe('on');
+		expect(
+			resolvedStatus('activate', makeManualProposal({ active: true }), keptThere(true), true)
+				.messageKey,
+		).toBe('instanceAi.automation.resolved.onNoTriggerIn');
+	});
+
+	it('names each problem of a live copy: not on, not ready there, or still on here too', () => {
+		const failedThere = (active: boolean, localStillOn?: true): AutomationToolOutcome => ({
+			...keptThere(active),
+			failed: true,
+			...(localStillOn && { localStillOn }),
+		});
+		const stillOn = resolvedStatus('activate', makeProposal(), failedThere(true, true), true);
+
+		expect(resolvedStatus('activate', makeProposal(), failedThere(false), true)).toMatchObject({
+			kind: 'not-on',
+			messageKey: 'instanceAi.automation.resolved.notOnIn',
+			tone: 'warning',
+		});
+		expect(resolvedStatus('activate', makeProposal(), failedThere(true), true)).toMatchObject({
+			kind: 'not-live',
+			messageKey: 'instanceAi.automation.resolved.notReadyIn',
+			tone: 'warning',
+		});
+		expect(stillOn).toMatchObject({
+			kind: 'still-on-here',
+			messageKey: 'instanceAi.automation.resolved.stillOnHere',
+			tone: 'warning',
+		});
+		// The user must turn it off here, so the link opens the workflow here.
+		expect(resolvedLink(stillOn, failedThere(true, true), true)).toEqual({ kind: 'local' });
+	});
+
+	it('bases a linked save on the copy there, not on the workflow here', () => {
+		const live = makeProposal({ active: true });
+
+		expect(resolvedStatus('save', live, WAITING, true)).toMatchObject({
+			kind: 'copying',
+			messageKey: 'instanceAi.automation.resolved.copyingTo',
+			tone: 'pending',
+			showsLink: false,
+		});
+		expect(resolvedStatus('save', live, keptThere(false), true)).toMatchObject({
+			kind: 'saved-copy',
+			messageKey: 'instanceAi.automation.resolved.savedCopyIn',
+		});
+		expect(resolvedStatus('save', makeProposal(), keptThere(true), true)).toMatchObject({
+			kind: 'saved-live',
+			messageKey: 'instanceAi.automation.resolved.savedLiveIn',
+		});
+		expect(
+			resolvedStatus('save', makeProposal({ canActivate: false }), keptThere(false), true)
+				.messageKey,
+		).toBe('instanceAi.automation.resolved.savedLockedIn');
 	});
 
 	it('links nowhere for an address that is not http(s), and never for "Not now"', () => {

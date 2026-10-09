@@ -27,6 +27,7 @@ import { AutomationPlacement } from '../automation-placement';
 import { AutomationProposalService } from '../automation-proposal.service';
 import type { AutomationWorkflowKeeper } from '../automation-workflow-keeper';
 import type { AutomationWorkflowPublisher } from '../automation-workflow-publisher';
+import { AutomationWorkflowReader } from '../automation-workflow-reader';
 
 const SCHEDULE = 'n8n-nodes-base.scheduleTrigger';
 const MANUAL = 'n8n-nodes-base.manualTrigger';
@@ -114,10 +115,13 @@ describe('AutomationProposalService', () => {
 	const publisher = mock<AutomationWorkflowPublisher>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({ generic: { timezone: INSTANCE_ZONE } });
-	const instance = new AutomationInstanceInfo(urlService, globalConfig);
+	const reader = new AutomationWorkflowReader(
+		finder,
+		new AutomationInstanceInfo(urlService, globalConfig),
+	);
 	// The linked-instances module is off, so every card offers only this instance.
-	const placement = new AutomationPlacement(instance, mock<ModuleRegistry>(), mock<Logger>());
-	const service = new AutomationProposalService(finder, keeper, publisher, placement);
+	const placement = new AutomationPlacement(mock<ModuleRegistry>(), mock<Logger>());
+	const service = new AutomationProposalService(reader, keeper, publisher, placement);
 	const assistant: CapabilityContext = { user, surface: 'assistant' };
 
 	/** Access as stored: the workflow for the scopes that the user holds, null otherwise. */
@@ -192,6 +196,7 @@ describe('AutomationProposalService', () => {
 				kind: 'schedule',
 				cron: '0 7 * * *',
 				timezone: INSTANCE_ZONE,
+				timezoneIsDefault: true,
 			});
 		});
 
@@ -226,7 +231,12 @@ describe('AutomationProposalService', () => {
 
 				const { card } = await service.propose({ ...request, cron: given }, assistant);
 
-				expect(card.trigger).toEqual({ kind: 'schedule', cron: shown, timezone: INSTANCE_ZONE });
+				expect(card.trigger).toEqual({
+					kind: 'schedule',
+					cron: shown,
+					timezone: INSTANCE_ZONE,
+					timezoneIsDefault: true,
+				});
 			},
 		);
 

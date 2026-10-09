@@ -34,6 +34,18 @@ describe('automationResultOf', () => {
 			{ ...ON, url: REMOTE_URL, place: CLOUD_PLACE },
 			{ kind: 'kept', active: true, failed: false, url: REMOTE_URL, place: CLOUD_PLACE },
 		],
+		[
+			'a copy that is live there while the workflow here still runs',
+			{ ...ON, url: REMOTE_URL, place: CLOUD_PLACE, error: 'x', localStillOn: true },
+			{
+				kind: 'kept',
+				active: true,
+				failed: true,
+				url: REMOTE_URL,
+				place: CLOUD_PLACE,
+				localStillOn: true,
+			},
+		],
 		['a declined or blocked answer', DENIED, { kind: 'refused' }],
 		['"denied" without a message', { denied: true }, { kind: 'refused' }],
 	])('reads %s', (_name, output, expected) => {
@@ -54,6 +66,16 @@ describe('summariseAutomationResult', () => {
 			'a live workflow whose changes are not live',
 			{ ...ON, error: ERROR },
 			'instanceAi.automation.summary.notLive',
+		],
+		[
+			'a live copy in a linked instance that needs a check',
+			{ ...ON, error: ERROR, place: CLOUD_PLACE },
+			'instanceAi.automation.summary.needsCheck',
+		],
+		[
+			'a copy in a linked instance that could not be turned on',
+			{ ...OFF, error: ERROR, place: CLOUD_PLACE },
+			'instanceAi.automation.summary.notOn',
 		],
 		['a declined or blocked answer', DENIED, 'instanceAi.automation.summary.declined'],
 		[

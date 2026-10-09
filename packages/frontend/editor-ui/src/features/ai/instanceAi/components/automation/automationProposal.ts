@@ -8,14 +8,15 @@ import {
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { CapabilityDecision } from '@/features/ai/shared/agentsChat/resolvedCards';
+import type { ViewedProposal } from './automationViewerLinks';
 
 /**
  * Pure rules for the card of `propose_automation`. The component only renders what these
  * functions return, so the rules are tested without Vue.
  */
 
-type Proposal = AutomationProposalCard;
-type Trigger = Proposal['trigger'];
+type Proposal = ViewedProposal;
+type Trigger = AutomationProposalCard['trigger'];
 type Recommendation = Proposal['recommended'];
 type Step = Proposal['steps'][number];
 
@@ -27,10 +28,19 @@ export interface AutomationCardAction {
 	type: 'primary' | 'secondary' | 'tertiary';
 }
 
-/** A trigger line without a schedule, or a schedule with the key to use when cron is unreadable. */
+/**
+ * A trigger line without a schedule, or a schedule with the key to use when cron is unreadable.
+ * `inPlaceZone` says that the line names the time zone of the linked place, not a zone id.
+ */
 export type AutomationTriggerLine =
 	| { key: BaseTextKey }
-	| { key: BaseTextKey; cron: string; timezone?: string; fallbackKey: BaseTextKey };
+	| {
+			key: BaseTextKey;
+			cron: string;
+			timezone?: string;
+			inPlaceZone?: true;
+			fallbackKey: BaseTextKey;
+	  };
 
 /**
  * A full line for the open card ("Runs at 08:00"), or a clause that goes after "runs" in the
@@ -58,6 +68,7 @@ interface TriggerKeys {
 	kinds: Record<Exclude<AutomationTriggerKind, 'manual'>, BaseTextKey>;
 	cron: BaseTextKey;
 	cronWithTimezone: BaseTextKey;
+	cronInPlaceZone: BaseTextKey;
 }
 
 const TRIGGER_KEYS: Record<AutomationTriggerForm, TriggerKeys> = {
@@ -72,6 +83,7 @@ const TRIGGER_KEYS: Record<AutomationTriggerForm, TriggerKeys> = {
 		},
 		cron: 'instanceAi.automation.trigger.cron',
 		cronWithTimezone: 'instanceAi.automation.trigger.cronWithTimezone',
+		cronInPlaceZone: 'instanceAi.automation.trigger.cronInPlaceZone',
 	},
 	clause: {
 		kinds: {
@@ -84,6 +96,7 @@ const TRIGGER_KEYS: Record<AutomationTriggerForm, TriggerKeys> = {
 		},
 		cron: 'instanceAi.automation.resolved.trigger.cron',
 		cronWithTimezone: 'instanceAi.automation.resolved.trigger.cronWithTimezone',
+		cronInPlaceZone: 'instanceAi.automation.resolved.trigger.cronInPlaceZone',
 	},
 };
 
@@ -104,15 +117,28 @@ const ALWAYS_ON_KINDS: ReadonlySet<AutomationTriggerKind> = new Set([
 	'app-event',
 ]);
 
-/** The trigger line, or the trigger clause. A manual workflow has none. */
+/**
+ * The trigger line, or the trigger clause. A manual workflow has none. A linked instance runs a
+ * schedule without a zone of its own in its own default zone, so `linked` names that zone by
+ * the place: the default zone of this instance can differ from it.
+ */
 export function triggerLineKey(
 	trigger: Trigger,
 	form: AutomationTriggerForm = 'line',
+	linked = false,
 ): AutomationTriggerLine | undefined {
 	if (trigger.kind === 'manual') return undefined;
 	const keys = TRIGGER_KEYS[form];
 	const kindKey = keys.kinds[trigger.kind];
 	if (trigger.cron === undefined) return { key: kindKey };
+	if (linked && trigger.timezoneIsDefault === true) {
+		return {
+			key: keys.cronInPlaceZone,
+			cron: trigger.cron,
+			inPlaceZone: true,
+			fallbackKey: kindKey,
+		};
+	}
 	if (trigger.timezone === undefined) {
 		return { key: keys.cron, cron: trigger.cron, fallbackKey: kindKey };
 	}
@@ -225,8 +251,10 @@ export function placeOf(proposal: Proposal, targetId?: string): AutomationPlace 
 }
 
 /**
- * The copy of a workflow that is off, and of a workflow that is live with saved changes. For a
- * live workflow, "Save" keeps the live version: the server does not turn the workflow off.
+ * The copy of a workflow that is off, of a workflow that is live with saved changes, and of a
+ * live workflow that moves to a linked instance. For a live workflow, "Save" keeps the live
+ * version: the server does not turn the workflow off. A move turns it off here only when the
+ * copy goes live there.
  */
 const ACTIVATION_COPY = {
 	off: {
@@ -244,35 +272,64 @@ const ACTIVATION_COPY = {
 		save: 'instanceAi.automation.action.saveKeepLive',
 		note: 'instanceAi.automation.note.cannotMakeLive',
 	},
+	move: {
+		title: 'instanceAi.automation.proposal.titleMove',
+		keep: 'instanceAi.automation.proposal.titleKeepLive',
+		activate: 'instanceAi.automation.action.moveAndTurnOn',
+		save: 'instanceAi.automation.action.saveCopy',
+		note: 'instanceAi.automation.note.cannotTurnOn',
+	},
 } as const satisfies Record<string, Record<string, BaseTextKey>>;
 
-function activationCopy(proposal: Proposal) {
-	return ACTIVATION_COPY[proposal.active ? 'live' : 'off'];
+/** True when the answer for `targetId` puts the workflow on a linked instance. */
+export function isLinkedAnswer(proposal: Proposal, targetId?: string): boolean {
+	return !placeTarget(proposal, targetId).isLocal;
 }
 
-/** False when the saved version is live already, so "Turn it on" would change nothing. */
-function hasSomethingToTurnOn(proposal: Proposal): boolean {
-	return !proposal.active || proposal.hasUnpublishedChanges;
+/**
+ * The card describes the place that the answer sends. `active` and `hasUnpublishedChanges` say
+ * how the workflow is here, so a linked place gets its own copy.
+ */
+function activationCopy(proposal: Proposal, linked: boolean) {
+	if (!proposal.active) return ACTIVATION_COPY.off;
+	return linked ? ACTIVATION_COPY.move : ACTIVATION_COPY.live;
 }
 
-function offersActivation(proposal: Proposal): boolean {
+/**
+ * False when the saved version is live already here, so "Turn it on" would change nothing. The
+ * copy in a linked instance is a workflow of its own there, so the card can always turn it on.
+ */
+function hasSomethingToTurnOn(proposal: Proposal, linked: boolean): boolean {
+	return linked || !proposal.active || proposal.hasUnpublishedChanges;
+}
+
+function offersActivation(proposal: Proposal, linked: boolean): boolean {
 	return (
 		proposal.canActivate &&
-		hasSomethingToTurnOn(proposal) &&
+		hasSomethingToTurnOn(proposal, linked) &&
 		proposal.offered.activate.includes(true) &&
 		answerTargetId(proposal) !== undefined
 	);
 }
 
 /** The card asks to keep the workflow when it cannot turn it on or the saved version is live. */
-export function titleKey(proposal: Proposal): BaseTextKey {
-	const copy = activationCopy(proposal);
-	return offersActivation(proposal) ? copy.title : copy.keep;
+export function titleKey(proposal: Proposal, targetId?: string): BaseTextKey {
+	const linked = isLinkedAnswer(proposal, targetId);
+	const copy = activationCopy(proposal, linked);
+	return offersActivation(proposal, linked) ? copy.title : copy.keep;
 }
 
-/** The line that says that a version of the workflow is live now. */
-export function liveStatusKey(proposal: Proposal): BaseTextKey | undefined {
+/**
+ * The line that says that a version of the workflow is live now. For a linked place, it says
+ * that the workflow runs here, and that turning it on there turns it off here.
+ */
+export function liveStatusKey(proposal: Proposal, targetId?: string): BaseTextKey | undefined {
 	if (!proposal.active) return undefined;
+	if (isLinkedAnswer(proposal, targetId)) {
+		return offersActivation(proposal, true)
+			? 'instanceAi.automation.status.liveHereMove'
+			: 'instanceAi.automation.status.liveHere';
+	}
 	return proposal.hasUnpublishedChanges
 		? 'instanceAi.automation.status.liveWithChanges'
 		: 'instanceAi.automation.status.live';
@@ -282,16 +339,21 @@ export function liveStatusKey(proposal: Proposal): BaseTextKey | undefined {
  * The line that says why the card has no button to turn the workflow on. The title of a
  * manual workflow says it already, and a live workflow without changes needs no button.
  */
-export function activationNoteKey(proposal: Proposal): BaseTextKey | undefined {
-	if (offersActivation(proposal) || proposal.trigger.kind === 'manual') return undefined;
-	return hasSomethingToTurnOn(proposal) ? activationCopy(proposal).note : undefined;
+export function activationNoteKey(proposal: Proposal, targetId?: string): BaseTextKey | undefined {
+	const linked = isLinkedAnswer(proposal, targetId);
+	if (offersActivation(proposal, linked) || proposal.trigger.kind === 'manual') return undefined;
+	return hasSomethingToTurnOn(proposal, linked) ? activationCopy(proposal, linked).note : undefined;
 }
 
-/** The buttons in DOM order. A button shows only when the card offers the values it sends. */
-export function cardActions(proposal: Proposal): AutomationCardAction[] {
+/**
+ * The buttons in DOM order, for the place that the answer sends. A button shows only when the
+ * card offers the values it sends.
+ */
+export function cardActions(proposal: Proposal, targetId?: string): AutomationCardAction[] {
+	const linked = isLinkedAnswer(proposal, targetId);
 	const actions: AutomationCardAction[] = [];
-	const copy = activationCopy(proposal);
-	const canTurnOn = offersActivation(proposal);
+	const copy = activationCopy(proposal, linked);
+	const canTurnOn = offersActivation(proposal, linked);
 	if (canTurnOn) actions.push({ action: 'activate', labelKey: copy.activate, type: 'primary' });
 	const canSave =
 		proposal.offered.activate.includes(false) && answerTargetId(proposal) !== undefined;

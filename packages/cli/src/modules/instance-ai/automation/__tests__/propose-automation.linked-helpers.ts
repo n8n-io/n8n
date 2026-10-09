@@ -62,15 +62,22 @@ export function createLinkedWorld() {
 	Container.set(LinkedInstanceStore, store);
 	Container.set(TransferService, transfer);
 
-	/** Call after `vi.resetAllMocks`. The push puts the copy live when it is asked to. */
+	/**
+	 * Call after `vi.resetAllMocks`. The push puts the copy live when it is asked to, and then turns
+	 * off the workflow here when it is asked to.
+	 */
 	const reset = (links: LinkedInstanceSummary[] = USER_LINKS) => {
 		store.listForUser.mockResolvedValue(links);
 		store.getForUser.mockImplementation(
 			async (_userId, id) => links.find((link) => link.id === id) ?? null,
 		);
-		transfer.push.mockImplementation(async (_user, _linkId, input) =>
-			pushResult({ published: input.publish === true }),
-		);
+		transfer.push.mockImplementation(async (_user, _linkId, input) => {
+			const published = input.publish === true;
+			return pushResult({
+				published,
+				localDeactivated: published && input.deactivateLocal === true,
+			});
+		});
 	};
 
 	return { store, transfer, reset };

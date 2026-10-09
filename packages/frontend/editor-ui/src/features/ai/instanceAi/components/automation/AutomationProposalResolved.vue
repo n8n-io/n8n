@@ -7,7 +7,6 @@
  */
 import { computed, onMounted, useId, useTemplateRef } from 'vue';
 import { I18nT } from 'vue-i18n';
-import type { AutomationProposalCard } from '@n8n/api-types';
 import {
 	N8nBadge,
 	N8nCard,
@@ -29,9 +28,11 @@ import {
 	type AutomationResolvedTone,
 } from './automationResolved';
 import { placeName, triggerText } from './automationText';
+import type { ViewedProposal } from './automationViewerLinks';
 
 const props = defineProps<{
-	proposal: AutomationProposalCard;
+	/** The card, with the names of the viewer's own links. */
+	proposal: ViewedProposal;
 	action: AutomationAction;
 	/** The place that the answer chose. Without it, the default answer target. */
 	targetId?: string;
@@ -68,8 +69,14 @@ const status = computed(() =>
 	resolvedStatus(props.action, props.proposal, outcome.value, placeOfAnswer.value.linked),
 );
 const link = computed(() => resolvedLink(status.value, outcome.value, placeOfAnswer.value.linked));
-const trigger = computed(() => triggerText(props.proposal.trigger, 'clause'));
 const place = computed(() => placeName(placeOfAnswer.value));
+const trigger = computed(() =>
+	triggerText(
+		props.proposal.trigger,
+		'clause',
+		placeOfAnswer.value.linked ? place.value : undefined,
+	),
+);
 const workflowRoute = computed(() => ({
 	name: VIEWS.WORKFLOW,
 	params: { workflowId: props.proposal.workflowId },

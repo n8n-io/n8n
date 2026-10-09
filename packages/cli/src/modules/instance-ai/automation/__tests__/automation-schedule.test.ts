@@ -365,10 +365,23 @@ describe('readTriggerSchedule', () => {
 		expect(schedule).toStrictEqual({ cron: '0 8 * * 1-5', timezone: LONDON });
 	});
 
-	it('uses the default time zone of the instance when the workflow sets none', () => {
+	it('uses the default time zone of the instance when the workflow sets none, and says so', () => {
 		expect(read([scheduleNode(cronRule('0 8 * * 1-5'))])).toStrictEqual({
 			cron: '0 8 * * 1-5',
 			timezone: NEW_YORK,
+			timezoneIsDefault: true,
+		});
+	});
+
+	it.each([
+		['the default marker', { timezone: 'DEFAULT' }],
+		['an empty time zone', { timezone: '' }],
+		['settings without a time zone', { availableInMCP: true }],
+	])('flags the default time zone of the instance for %s', (_label, settings) => {
+		expect(read([scheduleNode(cronRule('0 8 * * 1-5'))], settings)).toStrictEqual({
+			cron: '0 8 * * 1-5',
+			timezone: NEW_YORK,
+			timezoneIsDefault: true,
 		});
 	});
 

@@ -9,16 +9,18 @@ import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import type { CapabilityContext } from '@/services/capabilities/capability';
 
 import { isExpectedFailure } from './automation-errors';
-import { AutomationInstanceInfo } from './automation-instance-info';
-import { linkedAutomationResult, linkedMoveError, type LinkedMove } from './automation-link-result';
+import {
+	linkedAutomationResult,
+	linkedMoveError,
+	type LinkedMove,
+	withKeepFailure,
+} from './automation-link-result';
 
 const LINKED_INSTANCES_MODULE = 'linked-instances';
 
 /** What `copyToLink` sends to the linked instance. */
 export type LinkCopy = LinkedMove & {
 	workflowId: string;
-	/** Turns off the workflow here when the copy there went live. */
-	deactivateLocal: boolean;
 	source: WorkflowActionSource;
 };
 
@@ -29,7 +31,6 @@ export type LinkCopy = LinkedMove & {
 @Service()
 export class AutomationPlacement {
 	constructor(
-		readonly instance: AutomationInstanceInfo,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly logger: Logger,
 	) {}
@@ -74,11 +75,17 @@ export class AutomationPlacement {
 
 	/**
 	 * Copies the workflow to the linked instance, turns the copy on when asked, and turns off the
-	 * workflow here when asked and the copy went live there.
+	 * workflow here when asked and the copy went live there. Then it keeps the workflow here with
+	 * `keepHere`. The copy is there by then, so a failed keep is in the result, not an error.
 	 * @throws UserError with fenced text of the linked instance when the copy is refused or fails
 	 */
-	async copyToLink(user: User, copy: LinkCopy): Promise<AutomationProposalResult> {
+	async copyToLink(
+		user: User,
+		copy: LinkCopy,
+		keepHere: () => Promise<unknown>,
+	): Promise<AutomationProposalResult> {
 		const { TransferService } = await import('../../linked-instances/transfer/transfer.service.js');
+		let result: AutomationProposalResult;
 		try {
 			const pushed = await Container.get(TransferService).push(
 				user,
@@ -90,10 +97,21 @@ export class AutomationPlacement {
 				},
 				{ source: copy.source },
 			);
-			return linkedAutomationResult(pushed, copy);
+			result = linkedAutomationResult(pushed, copy);
 		} catch (error) {
 			if (!isExpectedFailure(error)) throw error;
 			throw linkedMoveError(error, copy.workflowName, copy.link);
+		}
+		try {
+			await keepHere();
+			return result;
+		} catch (error) {
+			this.logger.error('Failed to keep a workflow after its copy went to a linked instance', {
+				workflowId: copy.workflowId,
+				linkId: copy.link.id,
+				error: getErrorMessage(error),
+			});
+			return withKeepFailure(result, copy);
 		}
 	}
 

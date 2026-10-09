@@ -17,6 +17,7 @@ import { AutomationProposalService } from '../automation-proposal.service';
 import { AutomationTemporaryMarker } from '../automation-temporary-marker';
 import { AutomationWorkflowKeeper } from '../automation-workflow-keeper';
 import { AutomationWorkflowPublisher } from '../automation-workflow-publisher';
+import { AutomationWorkflowReader } from '../automation-workflow-reader';
 
 export const SCHEDULE = 'n8n-nodes-base.scheduleTrigger';
 export const MANUAL = 'n8n-nodes-base.manualTrigger';
@@ -91,11 +92,14 @@ export function createAutomationWorld() {
 	const marker = new AutomationTemporaryMarker(temporaryWorkflows, provenance, logger);
 	const keeper = new AutomationWorkflowKeeper(workflowService, marker, writeAccess);
 	const publisher = new AutomationWorkflowPublisher(workflowService, collaborationService, logger);
-	const instance = new AutomationInstanceInfo(urlService, globalConfig);
-	const placement = new AutomationPlacement(instance, moduleRegistry, logger);
+	const reader = new AutomationWorkflowReader(
+		finder,
+		new AutomationInstanceInfo(urlService, globalConfig),
+	);
+	const placement = new AutomationPlacement(moduleRegistry, logger);
 	Container.set(
 		AutomationProposalService,
-		new AutomationProposalService(finder, keeper, publisher, placement),
+		new AutomationProposalService(reader, keeper, publisher, placement),
 	);
 
 	/** Access as stored: the workflow for the scopes that the user holds, null otherwise. */

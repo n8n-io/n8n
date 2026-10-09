@@ -39,6 +39,11 @@ const cannotMoveText = computed(() => {
 	});
 });
 
+// Shown next to the credentials that need set-up, so that the user sees every name at once.
+const showsUnchecked = computed(
+	() => state.value?.canMove === true && gate.value.unchecked.length > 0,
+);
+
 const names = (list: string[]) => list.join(', ');
 </script>
 
@@ -105,9 +110,7 @@ const names = (list: string[]) => list.join(', ');
 					:href="setUpUrl"
 					size="small"
 					:class="$style.link"
-					:aria-label="
-						i18n.baseText('instanceAi.automation.preflight.setUpLabel', { interpolate })
-					"
+					:aria-label="i18n.baseText('instanceAi.automation.preflight.setUpLabel', { interpolate })"
 					data-test-id="automation-proposal-preflight-set-up-link"
 				>
 					{{ i18n.baseText('instanceAi.automation.preflight.setUp', { interpolate }) }}
@@ -125,7 +128,7 @@ const names = (list: string[]) => list.join(', ');
 		</template>
 
 		<N8nText
-			v-else-if="gate.unchecked.length > 0"
+			v-if="showsUnchecked"
 			tag="p"
 			size="small"
 			color="text-base"
