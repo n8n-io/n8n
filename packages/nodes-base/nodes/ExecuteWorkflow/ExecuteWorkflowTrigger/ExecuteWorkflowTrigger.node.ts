@@ -40,7 +40,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		hints: [
 			{
 				message:
-					"This workflow isn't set to accept any input data. Fill out the workflow input schema or change the workflow to accept any data passed to it.",
+					'No input fields are defined, so this workflow accepts all data from the calling workflow. Add input fields to define an input schema.',
 				// This condition checks if we have no input fields, which gets a bit awkward:
 				// For WORKFLOW_INPUTS: keys() only contains `VALUES` if at least one value is provided
 				// For JSON_EXAMPLE: We remove all whitespace and check if we're left with an empty object. Note that we already error if the example is not valid JSON
@@ -154,7 +154,6 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 					sortable: true,
-					minRequiredFields: 1,
 				},
 				displayOptions: {
 					show: { '@version': [{ _cnd: { gte: 1.1 } }], inputSource: [WORKFLOW_INPUTS] },
@@ -245,6 +244,14 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			return [inputData];
 		} else {
 			const newParams = getFieldEntries(this);
+
+			// With no schema there are no fields to keep, so the node passes the caller's
+			// data through instead of stripping every field from each item. This is what
+			// the `Workflow Input Schema` parameter description documents.
+			if (newParams.fields.length === 0) {
+				return [inputData];
+			}
+
 			const newKeys = new Set(newParams.fields.map((x) => x.name));
 			const itemsInSchema: INodeExecutionData[] = inputData.map(({ json, binary }, index) => ({
 				json: {
