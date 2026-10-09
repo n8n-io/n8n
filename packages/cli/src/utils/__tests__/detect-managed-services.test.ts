@@ -13,6 +13,7 @@ describe('detectDbVendor', () => {
 			'cluster-x.cluster-y.eu-west-1.rds.amazonaws.com',
 			{ ...none, rds: true, aurora: true },
 		],
+		['azure', 'n8n.postgres.database.azure.com', { ...none, rds: true }],
 		['rds', 'rds-proxy.example.com', { ...none, rds: true }],
 		['azure', 'pg.example.com', { ...none, azure: true }],
 		['cloud-sql', '10.0.0.5', { ...none, cloudSql: true }],
