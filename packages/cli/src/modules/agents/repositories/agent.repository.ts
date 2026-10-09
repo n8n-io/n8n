@@ -186,6 +186,9 @@ export class AgentRepository extends BaseRepository<Agent> {
 		if (filter?.query) {
 			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${filter.query}%` });
 		}
+		if (filter?.ids) {
+			query.andWhere('agent.id IN (:...ids)', { ids: filter.ids });
+		}
 		if (filter?.availableInMCP !== undefined) {
 			query.andWhere('agent.availableInMCP = :availableInMCP', {
 				availableInMCP: filter.availableInMCP,
