@@ -54,7 +54,6 @@ const setup = (options?: Partial<ExecutorOptions>) => {
 		onLeaseLost: vi.fn(),
 		onLeaseRenewal: vi.fn(),
 		onLeaseRenewalError: vi.fn(),
-		onLongRunningTask: vi.fn(),
 		onTaskTimeout: vi.fn(),
 	} satisfies ExecutorHooks;
 	// A see-through tracing hook that records its calls and just runs the fire.
@@ -999,50 +998,6 @@ describe('Executor.fire lease renewal', () => {
 			expect(store.releaseClaim).not.toHaveBeenCalled();
 		},
 	);
-
-	it('reports a run still pending after sixty leases, and not one that settled earlier', async () => {
-		const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
-		const stuck = longRunning();
-		const quick = longRunning();
-		registry.resolve.mockReturnValueOnce(quick.handler).mockReturnValueOnce(stuck.handler);
-		store.beginDispatch.mockResolvedValue(1);
-		store.renewLease.mockResolvedValue(true);
-		store.completeTask.mockResolvedValue(1);
-		const timeoutSeconds = 61 * LEASE_SECONDS;
-		const quickTask = claimedTask({ id: 'quick', timeoutSeconds });
-		const stuckTask = claimedTask({ id: 'stuck', timeoutSeconds });
-
-		const quickFiring = executor.fire(HOST, quickTask);
-		await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
-		quick.finish();
-		await quickFiring;
-
-		const stuckFiring = executor.fire(HOST, stuckTask);
-		await vi.advanceTimersByTimeAsync(60 * LEASE_SECONDS * 1_000 - 1);
-		expect(hooks.onLongRunningTask).not.toHaveBeenCalled();
-		await vi.advanceTimersByTimeAsync(1);
-		expect(hooks.onLongRunningTask).toHaveBeenCalledExactlyOnceWith(stuckTask, 60 * LEASE_SECONDS);
-
-		stuck.finish();
-		await stuckFiring;
-	});
-
-	it('leaves a run whose timeout comes before sixty leases to the timeout warning', async () => {
-		const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
-		const { handler } = longRunning();
-		registry.resolve.mockReturnValue(handler);
-		store.beginDispatch.mockResolvedValue(1);
-		store.renewLease.mockResolvedValue(true);
-		store.rescheduleTask.mockResolvedValue(1);
-		const task = claimedTask({ maxAttempts: 3, timeoutSeconds: 60 * LEASE_SECONDS });
-
-		const firing = executor.fire(HOST, task);
-		await vi.advanceTimersByTimeAsync(60 * LEASE_SECONDS * 1_000);
-		await firing;
-
-		expect(hooks.onTaskTimeout).toHaveBeenCalledExactlyOnceWith(task);
-		expect(hooks.onLongRunningTask).not.toHaveBeenCalled();
-	});
 
 	describe('timeout', () => {
 		const TIMEOUT_SECONDS = 4 * LEASE_SECONDS;
