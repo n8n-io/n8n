@@ -483,6 +483,8 @@ overrides:
   proxy-addr: 2.0.8
   source-map-js: 1.2.2
   '@grpc/grpc-js@<1.14.5': 1.14.5
+  # The editor schema and DOM parser must use the same model classes.
+  prosemirror-model: 1.25.12
   'prosemirror-view@<1.42.3': 1.42.3
 
 patchedDependencies:
