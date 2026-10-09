@@ -61,6 +61,6 @@ export function describeRestrictedMatches(
 	return [
 		'Restricted node types that match your search. Do not use them:',
 		...lines,
-		'Name each one in your reply and say that it is restricted. Say which allowed node you used instead.',
+		'Name each one in your reply and say that it is restricted. Do not pick a replacement yourself. Build the parts of the request that do not need it. End your reply with a question that offers up to three allowed alternatives and asks which one to use.',
 	].join('\n');
 }

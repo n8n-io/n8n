@@ -40,6 +40,9 @@ describe('describeRestrictedMatches', () => {
 		);
 		expect(note).toContain('Do not use them');
 		expect(note).toContain('say that it is restricted');
+		expect(note).toContain('Do not pick a replacement yourself');
+		expect(note).toContain('up to three allowed alternatives');
+		expect(note).not.toContain('Say which allowed node you used instead');
 	});
 
 	it("names the project when the project's policy restricts the type", () => {
