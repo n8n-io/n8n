@@ -27,9 +27,8 @@ export function detectRuntime(env: NodeJS.ProcessEnv, isDocker: boolean): Runtim
 
 /**
  * Names the cloud the node runs on, from vendor tags in the kernel release string, for example
- * `6.8.0-1067-azure`. It does not say who runs the cluster: a self-managed cluster on a cloud VM gives
- * the same answer as the managed service. Only tags a cloud sets on purpose count. A trailing `+` does
- * not, because any kernel built from a modified source tree has one, Raspberry Pi kernels included.
+ * `6.8.0-1067-azure`. Only tags a cloud sets on purpose count. A trailing `+` does not, because any
+ * kernel built from a modified source tree has one, Raspberry Pi kernels included.
  * Container-Optimized OS, the default GKE image, has no cloud tag and gives `other`.
  */
 export function detectKubernetesProvider(osRelease: string): KubernetesProvider {

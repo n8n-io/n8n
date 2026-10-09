@@ -46,7 +46,7 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					.enum(['aws', 'azure', 'gcp', 'other'])
 					.optional()
 					.describe(
-						'Cloud the node runs on, read from vendor tags in the kernel release. It does not say who runs the cluster. `other` also covers node images that do not name their cloud. Only for `kubernetes`',
+						'Cloud the node runs on, read from vendor tags in the kernel release. `other` also covers node images that do not name their cloud. Only for `kubernetes`',
 					),
 			}),
 			execution_variables: z.object({
