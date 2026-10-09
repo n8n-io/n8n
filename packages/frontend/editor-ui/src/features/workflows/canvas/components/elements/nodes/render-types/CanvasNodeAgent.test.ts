@@ -7,6 +7,7 @@ import CanvasNodeAgent from './CanvasNodeAgent.vue';
 import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { inlineAgentToCapabilitySummary } from '@/features/agents/utils/inlineAgent';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const {
 	summaryHolder,
@@ -128,6 +129,7 @@ function renderWithInlineAgent(inlineAgent: InlineAgentConfig, agentIdValue = ''
 
 beforeEach(() => {
 	setActivePinia(createTestingPinia());
+	vi.spyOn(useSettingsStore(), 'isAgentsEnabled', 'get').mockReturnValue(true);
 	summaryHolder.value = null;
 	errorHolder.value = null;
 	summaryAgentIdHolder.value = null;
@@ -216,6 +218,20 @@ describe('CanvasNodeAgent', () => {
 		expect(queryByTestId('canvas-node-agent-model')).toBeNull();
 		expect(queryByTestId('canvas-node-agent-chip')).toBeNull();
 		expect(queryByTestId('agent-picker-stub')).toBeNull();
+	});
+
+	it('says agents are disabled, without fetching or offering the builder, while agents are off', () => {
+		vi.spyOn(useSettingsStore(), 'isAgentsEnabled', 'get').mockReturnValue(false);
+
+		const { getByTestId, queryByTestId, queryByText } = renderWithAgent('agent-1');
+
+		expect(getByTestId('canvas-node-agent-disabled')).toHaveTextContent(
+			'Agents are disabled on this instance. Ask an instance admin to enable them.',
+		);
+		expect(queryByText(/Couldn.t load agent details/)).toBeNull();
+		expect(queryByTestId('canvas-node-agent-open')).toBeNull();
+		expect(summaryAgentIdHolder.value?.value).toBe('');
+		expect(ensureLoadedSpy).not.toHaveBeenCalled();
 	});
 
 	it('opens the agent builder without an origin node when the open affordance is clicked', async () => {

@@ -41,6 +41,13 @@ export const migrationFindingStatusSchema = z.enum([
 ]);
 export type MigrationFindingStatus = z.infer<typeof migrationFindingStatusSchema>;
 
+/** The statuses a user can set on a finding. The scan sets the other statuses. */
+export const migrationFindingTriageStatusSchema = migrationFindingStatusSchema.extract([
+	'open',
+	'wont_fix',
+]);
+export type MigrationFindingTriageStatus = z.infer<typeof migrationFindingTriageStatusSchema>;
+
 /**
  * The target n8n major version for the migration/breaking-changes report.
  *
@@ -106,6 +113,17 @@ const workflowRuleResultsSchema = ruleResultBaseSchema.extend({
 });
 export type BreakingChangeWorkflowRuleResult = z.infer<typeof workflowRuleResultsSchema>;
 
+// The rule detail lists each workflow with the status of its finding.
+const ruleDetailWorkflowSchema = affectedWorkflowSchema.extend({
+	status: migrationFindingTriageStatusSchema,
+});
+export type BreakingChangeRuleDetailWorkflow = z.infer<typeof ruleDetailWorkflowSchema>;
+
+const ruleDetailResultSchema = workflowRuleResultsSchema.extend({
+	affectedWorkflows: z.array(ruleDetailWorkflowSchema),
+});
+export type BreakingChangeRuleDetailResult = z.infer<typeof ruleDetailResultSchema>;
+
 const breakingChangeReportDataSchema = {
 	generatedAt: z.date(),
 	targetVersion: z.string(),
@@ -123,7 +141,10 @@ const breakingChangeLightReportDataSchema = {
 	instanceResults: z.array(instanceRuleResultsSchema),
 	workflowResults: z.array(
 		workflowRuleResultsSchema.omit({ affectedWorkflows: true }).extend({
+			// Workflows with an open finding for the rule.
 			nbAffectedWorkflows: z.number(),
+			// Workflows with a won't fix finding for the rule.
+			nbWontFixWorkflows: z.number(),
 		}),
 	),
 } as const;

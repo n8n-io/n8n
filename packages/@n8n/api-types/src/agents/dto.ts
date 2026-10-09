@@ -15,6 +15,7 @@ import { agentTaskSchema } from './agent-task.schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
+import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
 import { Z } from '../zod-class';
 
 export class AgentsSettingsDto extends Z.class({
@@ -28,6 +29,10 @@ export const AGENTS_LIST_SORT_OPTIONS = [
 	'createdAt:desc',
 	'updatedAt:asc',
 	'updatedAt:desc',
+	// Ranks by the requesting user's n8n Chat thread count per agent. Only the
+	// chat-filtered list supplies usage counts; other consumers of this sort
+	// option fall back to createdAt desc.
+	'usage:desc',
 ] as const;
 
 export const AGENT_SESSION_STATUSES = [
@@ -50,6 +55,7 @@ export const AGENT_SESSION_ORIGINS = [
 	'telegram',
 	'linear',
 	'discord',
+	'whatsapp',
 	'teams',
 ] as const;
 
@@ -59,6 +65,7 @@ export type AgentSessionOrigin = (typeof AGENT_SESSION_ORIGINS)[number];
 const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
+		ids: z.array(z.string().min(1)).min(1).max(50).optional(),
 		availableInMCP: z.boolean().optional(),
 		availableInChat: z.boolean().optional(),
 	})
@@ -113,6 +120,16 @@ export type AgentSessionQueryFilters = Pick<
 	ListAgentSessionsQueryDto,
 	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
 >;
+
+/** Cross-agent n8n Chat thread list: cursor + limit only, no status/origin/scope filters. */
+export class ListN8nChatThreadsQueryDto extends Z.class({
+	// The cursor is a thread's `updatedAt` ISO string (see `paginateByUpdatedAt`).
+	cursor: z.string().datetime().optional(),
+	limit: z.string().optional(),
+	/** Filters threads to one agent. */
+	agentId: z.string().min(1).max(128).optional(),
+	search: threadTitleSearchSchema,
+}) {}
 
 export class AgentProviderModelsQueryDto extends Z.class({
 	credentialId: z.string().min(1).max(64).optional(),

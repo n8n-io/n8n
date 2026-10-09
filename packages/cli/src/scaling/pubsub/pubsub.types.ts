@@ -42,6 +42,7 @@ export namespace PubSub {
 		export type ReloadLicense = ToCommand<'reload-license'>;
 		export type ReloadOIDCConfiguration = ToCommand<'reload-oidc-config'>;
 		export type ReloadSamlConfiguration = ToCommand<'reload-saml-config'>;
+		export type ReloadOAuthSigningKeys = ToCommand<'reload-oauth-signing-keys'>;
 		export type ReloadCredentialsOverwrites = ToCommand<'reload-overwrite-credentials'>;
 		export type RestartEventBus = ToCommand<'restart-event-bus'>;
 		export type ReloadExternalSecretsProviders = ToCommand<'reload-external-secrets-providers'>;
@@ -128,6 +129,7 @@ export namespace PubSub {
 		| Commands.ClearTestWebhooks
 		| Commands.ReloadOIDCConfiguration
 		| Commands.ReloadSamlConfiguration
+		| Commands.ReloadOAuthSigningKeys
 		| Commands.ReloadCredentialsOverwrites
 		| Commands.ReloadSsoProvisioningConfiguration
 		| Commands.ReloadSourceControlConfiguration

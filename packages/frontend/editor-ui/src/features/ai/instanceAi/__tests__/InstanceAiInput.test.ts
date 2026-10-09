@@ -32,6 +32,7 @@ type InputTestProps = {
 	suggestionCatalogVersion?: string;
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
+	placeholder?: string;
 	contextChip?: ContextChip | null;
 };
 
@@ -312,6 +313,17 @@ describe('InstanceAiInput', () => {
 			'placeholder',
 			'Tell me what to build or ask a question',
 		);
+	});
+
+	it('prefers a caller-provided placeholder text over the placeholder key', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				placeholder: 'Ask Support Agent…',
+				placeholderKey: 'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute('placeholder', 'Ask Support Agent…');
 	});
 
 	it('uses the new agent placeholder when the caller passes its key', () => {

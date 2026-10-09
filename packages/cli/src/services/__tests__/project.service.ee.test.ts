@@ -2,6 +2,7 @@ import type { ProjectRelation } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { type EventService, type RoleService } from '@n8n/backend-services';
 import {
+	type FolderRepository,
 	type Project,
 	type ProjectRepository,
 	type RoleRepository,
@@ -29,6 +30,7 @@ import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-att
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import type { OwnershipTransferService } from '@/services/ownership-transfer/ownership-transfer.service';
 import type { UserManagementMailer } from '@/user-management/email';
 
 describe('ProjectService', () => {
@@ -38,6 +40,7 @@ describe('ProjectService', () => {
 	const projectRelationRepository = mock<ProjectRelationRepository>({ manager });
 	const roleService = mock<RoleService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+	const folderRepository = mock<FolderRepository>();
 	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
 	const agentRepository = mock<AgentRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
@@ -56,7 +59,7 @@ describe('ProjectService', () => {
 		projectRelationRepository,
 		roleService,
 		sharedCredentialsRepository,
-		mock(), // folderRepository
+		folderRepository,
 		mock(), // licenseState
 		moduleRegistry,
 		ownershipService,
@@ -963,11 +966,18 @@ describe('ProjectService', () => {
 				}),
 			});
 
+			const ownershipTransferService = mock<OwnershipTransferService>();
+
 			beforeEach(() => {
 				Object.defineProperty(projectService, 'connectionStatusProxy', {
 					configurable: true,
 					get: async () => mock<ICredentialConnectionStatusProvider>(),
 				});
+				Object.defineProperty(projectService, 'ownershipTransferService', {
+					configurable: true,
+					get: async () => ownershipTransferService,
+				});
+				ownershipTransferService.enforceTransferPolicy.mockResolvedValue(undefined);
 				// reset first: `vi.clearAllMocks()` leaves any unconsumed `...Once` queues behind
 				manager.findOne.mockReset();
 				sharedWorkflowRepository.find.mockReset();
@@ -1026,6 +1036,51 @@ describe('ProjectService', () => {
 					removalType: 'transfer',
 					targetProjectId: 'team-2',
 				});
+			});
+
+			it('checks the target project policy before anything is migrated', async () => {
+				manager.findOne
+					.mockResolvedValueOnce(project)
+					.mockResolvedValueOnce(mock<Project>({ id: 'team-2', type: 'team' }));
+
+				await projectService.deleteProject(migratingUser, project.id, {
+					migrateToProject: 'team-2',
+				});
+
+				expect(ownershipTransferService.enforceTransferPolicy).toHaveBeenCalledExactlyOnceWith(
+					project.id,
+					'team-2',
+					{ kind: 'user', user: migratingUser },
+				);
+				expect(
+					ownershipTransferService.enforceTransferPolicy.mock.invocationCallOrder[0],
+				).toBeLessThan(sharedCredentialsRepository.makeOwner.mock.invocationCallOrder[0]);
+			});
+
+			it('rejects the migration and moves nothing when the policy check throws', async () => {
+				manager.findOne
+					.mockResolvedValueOnce(project)
+					.mockResolvedValueOnce(mock<Project>({ id: 'team-2', type: 'team' }));
+				const violation = new Error('blocked by policy');
+				ownershipTransferService.enforceTransferPolicy.mockRejectedValue(violation);
+
+				await expect(
+					projectService.deleteProject(migratingUser, project.id, { migrateToProject: 'team-2' }),
+				).rejects.toThrow(violation);
+
+				expect(sharedWorkflowRepository.makeOwner).not.toHaveBeenCalled();
+				expect(sharedCredentialsRepository.makeOwner).not.toHaveBeenCalled();
+				expect(folderRepository.transferAllFoldersToProject).not.toHaveBeenCalled();
+				expect(projectRepository.remove).not.toHaveBeenCalled();
+			});
+
+			it('skips the policy check when the project is deleted without a target', async () => {
+				manager.findOne.mockResolvedValueOnce(project);
+				sharedCredentialsRepository.find.mockResolvedValue([]);
+
+				await projectService.deleteProject(migratingUser, project.id);
+
+				expect(ownershipTransferService.enforceTransferPolicy).not.toHaveBeenCalled();
 			});
 		});
 

@@ -396,6 +396,19 @@ describe('ExecutionService', () => {
 		const erroredRun = (error: boolean) =>
 			[{ error: error ? new Error('boom') : undefined }] as unknown as ITaskData[];
 
+		it('should mark the retry as awaited to completion', async () => {
+			const { service, workflowRunner } = buildRetryService();
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(
+				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
+			);
+
+			await service.retry(retryArgs());
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ callerAwaitsOutcome: 'completion' }),
+			);
+		});
+
 		it('should not throw when retrying a crashed execution whose runData is undefined', async () => {
 			const { service, workflowRunner } = buildRetryService();
 			executionPersistence.findWithUnflattenedData.mockResolvedValue(
@@ -572,6 +585,75 @@ describe('ExecutionService', () => {
 			await expect(stop).rejects.toThrowError(WorkflowOperationError);
 		});
 
+		describe.each(['regular', 'queue'] as const)('stop races in %s mode', (mode) => {
+			it.each(['success', 'error', 'canceled'] as const)(
+				'keeps a %s outcome that wins after the initial read',
+				async (status) => {
+					globalConfig.executions.mode = mode;
+					const execution = mock<IExecutionResponse>({
+						id: '123',
+						workflowId: 'workflow-1',
+						status: 'running',
+						data: { resultData: {} },
+					});
+					executionPersistence.findWithUnflattenedData
+						.mockResolvedValueOnce(execution)
+						.mockResolvedValue({ ...execution, status });
+					executionPersistence.updateExistingExecution.mockResolvedValueOnce(false);
+					concurrencyControl.has.mockReturnValue(false);
+					activeExecutions.has.mockReturnValue(false);
+					waitTracker.has.mockReturnValue(false);
+
+					const stop = executionService.stop(execution.id, ['workflow-1']);
+					if (status === 'canceled') {
+						await expect(stop).resolves.toMatchObject({ status });
+					} else {
+						await expect(stop).rejects.toThrow(`currently ${status}`);
+					}
+					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledExactlyOnceWith(
+						execution.id,
+						execution,
+						{ requireStatus: 'running' },
+					);
+				},
+			);
+
+			it('cancels an execution that resumes during the stop', async () => {
+				globalConfig.executions.mode = mode;
+				const execution = mock<IExecutionResponse>({
+					id: '123',
+					workflowId: 'workflow-1',
+					status: 'waiting',
+					data: { resultData: {} },
+				});
+				executionPersistence.findWithUnflattenedData
+					.mockResolvedValueOnce(execution)
+					.mockResolvedValue({ ...execution, status: 'running' });
+				executionPersistence.updateExistingExecution
+					.mockResolvedValueOnce(false)
+					.mockResolvedValue(true);
+				concurrencyControl.has.mockReturnValue(false);
+				activeExecutions.has.mockReturnValue(false);
+				waitTracker.has.mockReturnValue(false);
+
+				await expect(executionService.stop(execution.id, ['workflow-1'])).resolves.toMatchObject({
+					status: 'canceled',
+				});
+				expect(executionPersistence.updateExistingExecution).toHaveBeenNthCalledWith(
+					1,
+					execution.id,
+					expect.objectContaining({ status: 'canceled' }),
+					{ requireStatus: 'waiting' },
+				);
+				expect(executionPersistence.updateExistingExecution).toHaveBeenNthCalledWith(
+					2,
+					execution.id,
+					expect.objectContaining({ status: 'canceled' }),
+					{ requireStatus: 'running' },
+				);
+			});
+		});
+
 		describe('engine v2', () => {
 			const executionId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 			const startedAt = new Date('2026-09-28T10:00:00.000Z');
@@ -679,6 +761,7 @@ describe('ExecutionService', () => {
 				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 					execution.id,
 					execution,
+					{ requireStatus: 'running' },
 				);
 			});
 
@@ -716,6 +799,7 @@ describe('ExecutionService', () => {
 				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 					execution.id,
 					execution,
+					{ requireStatus: 'waiting' },
 				);
 			});
 
@@ -790,6 +874,7 @@ describe('ExecutionService', () => {
 					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 						execution.id,
 						execution,
+						{ requireStatus: 'running' },
 					);
 
 					expect(concurrencyControl.remove).not.toHaveBeenCalled();
@@ -892,6 +977,7 @@ describe('ExecutionService', () => {
 					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 						execution.id,
 						execution,
+						{ requireStatus: 'running' },
 					);
 				});
 			});

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
@@ -8,13 +8,24 @@ import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadList from '../InstanceAiThreadList.vue';
+import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
 import { useInstanceAiStore } from '../../instanceAi.store';
 
+const routerPush = vi.fn();
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => ({ params: {} }),
-	useRouter: () => ({ push: vi.fn() }),
+	useRouter: () => ({ push: routerPush }),
 }));
+
+const listN8nChatThreadsMock = vi.fn();
+vi.mock('@/features/agents/composables/useAgentApi', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/agents/composables/useAgentApi')>();
+	return {
+		...actual,
+		listN8nChatThreads: (...args: unknown[]) => listN8nChatThreadsMock(...args),
+	};
+});
 
 const { showMessage } = vi.hoisted(() => ({ showMessage: vi.fn() }));
 
@@ -29,6 +40,21 @@ vi.mock('@/app/composables/useIntersectionObserver', () => ({
 	useIntersectionObserver: () => ({ observe }),
 }));
 
+// Flag off by default, matching production until the n8n Chat experiment is on.
+const n8nChatFlag = { value: false };
+vi.mock('@/features/agents/composables/useAgentsN8nChatFlag', () => ({
+	useAgentsN8nChatFlag: () => n8nChatFlag,
+}));
+
+function agentThread(id: string, updatedAt: string, title: string | null = `Agent ${id}`) {
+	return {
+		id,
+		title,
+		updatedAt,
+		agent: { id: `agent-${id}`, name: 'Support', projectId: 'project-1' },
+	};
+}
+
 function thread(id: string, metadata?: Record<string, unknown>): InstanceAiThreadSummary {
 	return {
 		id,
@@ -42,7 +68,7 @@ function thread(id: string, metadata?: Record<string, unknown>): InstanceAiThrea
 const actionDropdownStub = {
 	name: 'ActionDropdown',
 	template:
-		'<div @click="$emit(\'select\', \'rename\')"><slot name="activator" /><button data-test-id="thread-actions" :disabled="disabled" @click.stop="$emit(\'select\', \'delete\')">Delete</button></div>',
+		'<div @click="$emit(\'select\', \'rename\')"><slot name="activator" /><button data-test-id="thread-actions" :data-action-ids="(items ?? []).map((item) => item.id).join(\',\')" :disabled="disabled" @click.stop="$emit(\'select\', \'delete\')">Delete</button></div>',
 	props: ['items', 'disabled', 'placement'],
 	emits: ['select'],
 };
@@ -67,6 +93,9 @@ describe('InstanceAiThreadList', () => {
 	beforeEach(() => {
 		observe.mockClear();
 		showMessage.mockClear();
+		routerPush.mockClear();
+		listN8nChatThreadsMock.mockReset().mockResolvedValue({ data: [], nextCursor: null });
+		n8nChatFlag.value = false;
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 		const store = mockedStore(useInstanceAiStore);
@@ -279,5 +308,278 @@ describe('InstanceAiThreadList', () => {
 		await userEvent.click(getAllByTestId('thread-actions')[0]);
 
 		expect(store.deleteThread).not.toHaveBeenCalled();
+	});
+
+	describe('with the n8n Chat flag on', () => {
+		beforeEach(() => {
+			n8nChatFlag.value = true;
+			const store = mockedStore(useInstanceAiStore);
+			store.threadHistory = {
+				search: '',
+				threads: [thread('a', { agentId: 'agent-1' })],
+				hasMore: false,
+				loading: false,
+				error: false,
+			};
+			store.threadHistory.threads[0].updatedAt = '2026-01-01T00:00:00.000Z';
+		});
+
+		it('shows only the 5 most recent chats, like the sidebar, with "View all" and no paging', async () => {
+			const store = mockedStore(useInstanceAiStore);
+			store.threadHistory.threads = ['a', 'b', 'c', 'd'].map((id, index) => ({
+				...thread(id),
+				updatedAt: `2026-01-0${index + 1}T00:00:00.000Z`,
+			}));
+			store.threadHistory.hasMore = true;
+			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [
+				agentThread('g1', '2026-01-05T00:00:00.000Z'),
+				agentThread('g2', '2026-01-06T00:00:00.000Z'),
+				agentThread('g3', '2026-01-07T00:00:00.000Z'),
+			];
+
+			const { findAllByTestId, queryAllByTestId, queryByTestId, getByText } = await renderList();
+
+			await findAllByTestId('instance-ai-agent-thread-item');
+			const rows = [
+				...queryAllByTestId('instance-ai-agent-thread-item'),
+				...queryAllByTestId('instance-ai-thread-item'),
+			];
+			expect(rows).toHaveLength(5);
+			expect(queryByTestId('instance-ai-thread-sentinel')).toBeNull();
+			expect(getByText('View all')).toBeInTheDocument();
+		});
+
+		it('keeps an older active assistant thread visible past the top-5 cutoff', async () => {
+			const store = mockedStore(useInstanceAiStore);
+			const threads = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, index) => ({
+				...thread(id),
+				updatedAt: `2026-01-0${index + 1}T00:00:00.000Z`,
+			}));
+			store.threadHistory.threads = threads;
+			store.threadHistory.hasMore = true;
+
+			const { findAllByTestId } = await renderList({ props: { activeThreadId: 'a' } });
+
+			const rows = await findAllByTestId('instance-ai-thread-item');
+			expect(rows.map((row) => row.textContent)).toContainEqual(
+				expect.stringContaining('Thread a'),
+			);
+		});
+
+		it('pages through every Assistant match while searching, without the recent-chats limit', async () => {
+			const store = mockedStore(useInstanceAiStore);
+			store.threadHistory.search = 'invoice';
+			store.threadHistory.threads = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((id) => thread(id));
+			store.threadHistory.hasMore = true;
+
+			const { getAllByTestId, queryAllByTestId, getByTestId } = await renderList();
+
+			expect(getAllByTestId('instance-ai-thread-item')).toHaveLength(7);
+			expect(queryAllByTestId('instance-ai-agent-thread-item')).toHaveLength(0);
+			expect(getByTestId('instance-ai-thread-sentinel')).toBeInTheDocument();
+		});
+
+		it('merges agent threads found by the server with exactly one request carrying the search term', async () => {
+			const store = mockedStore(useInstanceAiStore);
+			store.threadHistory = {
+				search: 'invoice',
+				threads: [thread('a')],
+				hasMore: false,
+				loading: false,
+				error: false,
+			};
+			listN8nChatThreadsMock.mockResolvedValueOnce({
+				data: [agentThread('g1', '2026-02-01T00:00:00.000Z')],
+				nextCursor: null,
+			});
+
+			const { findAllByTestId, getAllByTestId } = await renderList();
+
+			await findAllByTestId('instance-ai-agent-thread-item');
+			expect(listN8nChatThreadsMock).toHaveBeenCalledTimes(1);
+			expect(listN8nChatThreadsMock).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ search: 'invoice' }),
+			);
+			expect(getAllByTestId('instance-ai-agent-thread-item')).toHaveLength(1);
+			expect(getAllByTestId('instance-ai-thread-item')).toHaveLength(1);
+		});
+
+		it('does not request agent threads again after the search is cleared on the entry page', async () => {
+			const store = mockedStore(useInstanceAiStore);
+			store.threadHistory = {
+				search: 'invoice',
+				threads: [thread('a')],
+				hasMore: false,
+				loading: false,
+				error: false,
+			};
+			listN8nChatThreadsMock.mockResolvedValueOnce({
+				data: [agentThread('g1', '2026-02-01T00:00:00.000Z')],
+				nextCursor: null,
+			});
+
+			await renderList();
+			await vi.waitFor(() => expect(listN8nChatThreadsMock).toHaveBeenCalledTimes(1));
+			listN8nChatThreadsMock.mockClear();
+
+			store.threadHistory = { ...store.threadHistory, search: '' };
+			await nextTick();
+			await nextTick();
+
+			expect(listN8nChatThreadsMock).not.toHaveBeenCalled();
+		});
+
+		it('does not request agent threads while searching inside an open Assistant thread', async () => {
+			const store = mockedStore(useInstanceAiStore);
+			store.threadHistory = {
+				search: 'invoice',
+				threads: [thread('a'), thread('b')],
+				hasMore: false,
+				loading: false,
+				error: false,
+			};
+
+			const { getAllByTestId, queryAllByTestId } = await renderList({
+				props: { activeThreadId: 'a' },
+			});
+
+			expect(getAllByTestId('instance-ai-thread-item')).toHaveLength(2);
+			expect(queryAllByTestId('instance-ai-agent-thread-item')).toHaveLength(0);
+			expect(listN8nChatThreadsMock).not.toHaveBeenCalled();
+		});
+
+		it('refreshes the shared recent agent threads when the menu opens', async () => {
+			await renderList();
+
+			expect(mockedStore(useAgentN8nChatThreadsStore).fetchRecent).toHaveBeenCalledWith(10);
+		});
+
+		it('merges agent threads in by updatedAt, with icons and a delete-only action', async () => {
+			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [
+				agentThread('g1', '2026-01-02T00:00:00.000Z'),
+			];
+
+			const { findAllByTestId, queryAllByTestId } = await renderList();
+
+			const agentRows = await findAllByTestId('instance-ai-agent-thread-item');
+			expect(agentRows).toHaveLength(1);
+			expect(agentRows[0]).toHaveTextContent('Agent g1');
+			expect(
+				agentRows[0].querySelector('[data-test-id="agent-personalisation-icon-tile"]'),
+			).not.toBeNull();
+			expect(
+				agentRows[0]
+					.querySelector('[data-test-id="thread-actions"]')
+					?.getAttribute('data-action-ids'),
+			).toBe('delete');
+
+			const assistantRows = queryAllByTestId('instance-ai-thread-item');
+			expect(assistantRows).toHaveLength(1);
+
+			// Newer agent thread sorts above the older assistant one.
+			const rowTestIds = [
+				...document.body.querySelectorAll(
+					'[data-test-id="instance-ai-agent-thread-item"], [data-test-id="instance-ai-thread-item"]',
+				),
+			].map((el) => el.getAttribute('data-test-id'));
+			expect(rowTestIds).toEqual(['instance-ai-agent-thread-item', 'instance-ai-thread-item']);
+		});
+
+		it('deletes an agent thread through the agent threads store, not the Assistant store', async () => {
+			const g1 = agentThread('g1', '2026-01-02T00:00:00.000Z');
+			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [g1];
+			const agentStore = mockedStore(useAgentN8nChatThreadsStore);
+			agentStore.deleteThread.mockResolvedValue(true);
+			const instanceAiStore = mockedStore(useInstanceAiStore);
+
+			const { findAllByTestId } = await renderList();
+
+			const [agentRow] = await findAllByTestId('instance-ai-agent-thread-item');
+			await userEvent.click(within(agentRow).getByTestId('thread-actions'));
+
+			expect(agentStore.deleteThread).toHaveBeenCalledWith(g1);
+			expect(instanceAiStore.deleteThread).not.toHaveBeenCalled();
+		});
+
+		it('falls back to the sidebar untitled label for an agent thread with no title', async () => {
+			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [
+				agentThread('g1', '2026-01-02T00:00:00.000Z', null),
+			];
+
+			const { findByText } = await renderList();
+
+			expect(await findByText('New conversation')).toBeInTheDocument();
+		});
+
+		it('navigates to the agent chat route when an agent item is selected', async () => {
+			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [
+				agentThread('g1', '2026-01-02T00:00:00.000Z'),
+			];
+
+			const { findByText } = await renderList();
+			const row = await findByText('Agent g1');
+
+			await userEvent.click(row);
+
+			await vi.waitFor(() => {
+				expect(routerPush).toHaveBeenCalledWith({
+					name: 'AgentN8nChatView',
+					params: { agentId: 'agent-g1', agentThreadId: 'g1' },
+				});
+			});
+		});
+
+		it('shows only Assistant threads when the list is scoped by a filter', async () => {
+			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [
+				agentThread('g1', '2026-01-02T00:00:00.000Z'),
+			];
+
+			const { findAllByTestId, queryAllByTestId } = await renderList({
+				props: { filter: () => true },
+			});
+
+			await findAllByTestId('instance-ai-thread-item');
+			expect(queryAllByTestId('instance-ai-agent-thread-item')).toHaveLength(0);
+		});
+
+		it('shows only Assistant threads when navigation is disabled', async () => {
+			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [
+				agentThread('g1', '2026-01-02T00:00:00.000Z'),
+			];
+
+			const { findAllByTestId, queryAllByTestId } = await renderList({
+				props: { navigate: false },
+			});
+
+			await findAllByTestId('instance-ai-thread-item');
+			expect(queryAllByTestId('instance-ai-agent-thread-item')).toHaveLength(0);
+		});
+	});
+
+	it('shows no icons and no agent threads while the flag is off, even with recent agent threads loaded', async () => {
+		mockedStore(useAgentN8nChatThreadsStore).recentThreads = [
+			agentThread('g1', '2026-01-02T00:00:00.000Z'),
+		];
+
+		const { getAllByTestId, queryAllByTestId } = await renderList();
+
+		expect(getAllByTestId('instance-ai-thread-item')).toHaveLength(2);
+		expect(queryAllByTestId('instance-ai-agent-thread-item')).toHaveLength(0);
+	});
+
+	it('does not request agent threads while searching when the flag is off', async () => {
+		const store = mockedStore(useInstanceAiStore);
+		store.threadHistory = {
+			search: 'invoice',
+			threads: [thread('a')],
+			hasMore: false,
+			loading: false,
+			error: false,
+		};
+
+		await renderList();
+
+		expect(listN8nChatThreadsMock).not.toHaveBeenCalled();
 	});
 });

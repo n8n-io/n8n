@@ -39,7 +39,7 @@ import {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { EventService, UrlService } from '@n8n/backend-services';
+import { EventService, InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
 import {
 	GlobalConfig,
 	SsrfProtectionConfig,
@@ -169,7 +169,6 @@ import {
 } from '@/services/ai-preference.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
@@ -205,6 +204,7 @@ import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
 import { InstanceAiTerminalOutcomeService } from './instance-ai-terminal-outcome.service';
+import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
@@ -837,6 +837,7 @@ export class InstanceAiService {
 		private readonly instanceContext: InstanceContextService,
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly aiUsageService: AiUsageService,
+		private readonly threadTabsService: InstanceAiThreadTabsService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -2646,6 +2647,19 @@ export class InstanceAiService {
 		}
 
 		context.browserCredentialSetup = this.createBrowserCredentialSetupTracker(runId, user.id);
+
+		// The frontend shows the tab of a changed artifact only while a browser shows the
+		// run. Storing it here also covers a closed browser tab and background tasks.
+		context.onArtifactChanged = async (artifact) => {
+			try {
+				await this.threadTabsService.showArtifactTab(threadId, user.id, artifact);
+			} catch (error) {
+				this.logger.warn('Failed to show an Instance AI artifact tab', {
+					threadId,
+					error: getErrorMessage(error),
+				});
+			}
+		};
 
 		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
 		// reload/navigation and are visible across mains. Load once per run; a tool resuming

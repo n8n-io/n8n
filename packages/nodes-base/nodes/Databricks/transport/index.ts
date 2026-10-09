@@ -4,6 +4,7 @@ export {
 	listJobRuns,
 	type ListJobRunsParams,
 } from './jobRuns';
+export { lakebaseApiRequest } from './lakebase';
 export { DEFAULT_MAX_PAGES, type Page, type PageLimits } from './pagination';
 export {
 	isPipelineEventLevel,

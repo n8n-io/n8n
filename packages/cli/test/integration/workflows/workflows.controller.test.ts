@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -31,6 +31,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
+import { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
@@ -46,7 +47,6 @@ import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createFolder } from '@test-integration/db/folders';
@@ -63,6 +63,7 @@ import {
 	createUser,
 } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
+import { createWorkflowPublishHistoryItem } from '../shared/db/workflow-publish-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
@@ -880,6 +881,43 @@ describe('POST /workflows', () => {
 		expect(workflowsInDb).toHaveLength(0);
 	});
 
+	describe('deprecated nodes', () => {
+		const nodesConfig = Container.get(NodesConfig);
+		let previousBlockDeprecated: boolean;
+		beforeAll(() => {
+			previousBlockDeprecated = nodesConfig.blockDeprecated;
+			nodesConfig.blockDeprecated = true;
+		});
+		afterAll(() => {
+			nodesConfig.blockDeprecated = previousBlockDeprecated;
+		});
+
+		const deprecatedNode: INode = {
+			id: uuid(),
+			name: 'Function',
+			type: 'n8n-nodes-base.function',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { functionCode: 'return items;' },
+		};
+
+		test('blocks creating a workflow that contains a deprecated node', async () => {
+			const response = await authOwnerAgent.post('/workflows').send({
+				name: 'has deprecated',
+				nodes: [deprecatedNode],
+				connections: {},
+				settings: {},
+				active: false,
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toMatch(/deprecated/i);
+			expect(response.body.meta?.violations).toEqual([
+				{ kind: 'added', nodeName: 'Function', nodeType: 'n8n-nodes-base.function' },
+			]);
+		});
+	});
+
 	describe('Security: Mass Assignment Protection', () => {
 		test.each([
 			{
@@ -1085,6 +1123,20 @@ describe('GET /workflows/:workflowId', () => {
 			event: 'activated',
 			versionId: workflow.activeVersionId,
 		});
+	});
+
+	test('should return only the latest activation of the active version', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		const activeVersion = { workflowId: workflow.id, versionId: workflow.activeVersionId! };
+		await createWorkflowPublishHistoryItem(activeVersion, { event: 'deactivated' });
+		const latest = await createWorkflowPublishHistoryItem(activeVersion);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+
+		const { data } = response.body as { data: { activeVersion: WorkflowHistory } };
+		expect(data.activeVersion.workflowPublishHistory).toEqual([
+			expect.objectContaining({ id: latest.id, event: 'activated' }),
+		]);
 	});
 
 	test('should return parent folder', async () => {
@@ -3993,6 +4045,132 @@ describe('PATCH /workflows/:workflowId', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.name).toBe('Updated name');
+	});
+
+	describe('deprecated nodes', () => {
+		const nodesConfig = Container.get(NodesConfig);
+		let previousBlockDeprecated: boolean;
+		beforeAll(() => {
+			previousBlockDeprecated = nodesConfig.blockDeprecated;
+			nodesConfig.blockDeprecated = true;
+		});
+		afterAll(() => {
+			nodesConfig.blockDeprecated = previousBlockDeprecated;
+		});
+
+		const buildDeprecatedNode = (overrides: Partial<INode> = {}): INode => ({
+			id: 'deprecated-node-id',
+			name: 'Function',
+			type: 'n8n-nodes-base.function',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { functionCode: 'return items;' },
+			...overrides,
+		});
+
+		const buildCleanNode = (overrides: Partial<INode> = {}): INode => ({
+			id: 'clean-node-id',
+			name: 'Manual Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: {},
+			...overrides,
+		});
+
+		test('blocks adding a deprecated node to an existing workflow', async () => {
+			const workflow = await createWorkflow({ nodes: [buildCleanNode()] }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [buildCleanNode(), buildDeprecatedNode()],
+				connections: {},
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.meta?.violations).toEqual([
+				{ kind: 'added', nodeName: 'Function', nodeType: 'n8n-nodes-base.function' },
+			]);
+		});
+
+		test('blocks editing a deprecated node that already exists in the workflow', async () => {
+			const deprecated = buildDeprecatedNode();
+			const workflow = await createWorkflow({ nodes: [deprecated] }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [{ ...deprecated, parameters: { functionCode: 'return [];' } }],
+				connections: {},
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.meta?.violations).toEqual([
+				{ kind: 'edited', nodeName: 'Function', nodeType: 'n8n-nodes-base.function' },
+			]);
+		});
+
+		test('allows editing other nodes while a deprecated node stays unchanged', async () => {
+			const deprecated = buildDeprecatedNode();
+			const cleanNode = buildCleanNode();
+			const workflow = await createWorkflow({ nodes: [deprecated, cleanNode] }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [deprecated, { ...cleanNode, notes: 'edited' }],
+				connections: workflow.connections,
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('allows the editor-saved shape of a deprecated node stored with explicit defaults', async () => {
+			const deprecated = buildDeprecatedNode();
+			const cleanNode = buildCleanNode();
+			const workflow = await createWorkflow(
+				{
+					nodes: [
+						{ ...deprecated, notes: '', onError: 'stopWorkflow', continueOnFail: false },
+						cleanNode,
+					],
+				},
+				owner,
+			);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [deprecated, { ...cleanNode, notes: 'edited' }],
+				connections: workflow.connections,
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('allows moving a deprecated node on the canvas', async () => {
+			const deprecated = buildDeprecatedNode();
+			const workflow = await createWorkflow({ nodes: [deprecated] }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [{ ...deprecated, position: [400, 200] }],
+				connections: workflow.connections,
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('allows removing a deprecated node from an existing workflow', async () => {
+			const deprecated = buildDeprecatedNode();
+			const cleanNode = buildCleanNode();
+			const workflow = await createWorkflow({ nodes: [deprecated, cleanNode] }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [cleanNode],
+				connections: {},
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
 	});
 
 	describe('Security: Mass Assignment Protection on Update', () => {

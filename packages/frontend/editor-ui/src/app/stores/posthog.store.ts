@@ -349,3 +349,23 @@ export const usePostHog = defineStore('posthog', () => {
 		overrides,
 	};
 });
+
+/**
+ * Waits for a pending client-side flag evaluation, capped at `timeoutMs` so a
+ * route guard that depends on it never hangs a deep link. Takes the store
+ * instance (rather than calling `usePostHog()` itself) so callers that pass
+ * the same instance they hold elsewhere keep a single source of truth.
+ */
+export async function waitForFeatureFlagsWithTimeout(
+	posthogStore: ReturnType<typeof usePostHog>,
+	timeoutMs: number,
+): Promise<void> {
+	let timeoutId: number | undefined;
+	await Promise.race([
+		posthogStore.waitForFeatureFlags(),
+		new Promise<void>((resolve) => {
+			timeoutId = window.setTimeout(resolve, timeoutMs);
+		}),
+	]);
+	if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+}

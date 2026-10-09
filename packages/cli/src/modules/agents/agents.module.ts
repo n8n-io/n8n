@@ -1,14 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule, OnShutdown } from '@n8n/decorators';
+import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
-	private interruptedExecutionSweepTimer?: NodeJS.Timeout;
-
 	async init() {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
@@ -73,6 +71,11 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository.js');
 		Container.get(AgentHistoryRepository);
 
+		const { AgentBudgetSpendRepository } = await import(
+			'./repositories/agent-budget-spend.repository.js'
+		);
+		Container.get(AgentBudgetSpendRepository);
+
 		// Register the sandboxed runtime service (lazy — the V8 isolate is only
 		// created on first use, so this import has negligible startup cost).
 		const { AgentSecureRuntime } = await import('./runtime/agent-secure-runtime.js');
@@ -89,6 +92,9 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
 		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
+		const { WhatsAppIntegration } = await import(
+			'./integrations/platforms/whatsapp-integration.js'
+		);
 		const { TeamsIntegration } = await import(
 			'./integrations/platforms/teams/teams-integration.js'
 		);
@@ -98,6 +104,7 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
 		registry.register(Container.get(DiscordIntegration));
+		registry.register(Container.get(WhatsAppIntegration));
 		registry.register(Container.get(TeamsIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 
@@ -134,19 +141,11 @@ export class AgentsModule implements ModuleInterface {
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
 			);
-			const sweep = () => {
-				void Container.get(AgentInterruptedExecutionSweeper)
-					.sweep()
-					.catch((error: unknown) => {
-						logger.error('[Agents] Interrupted execution sweep failed', { error });
-					});
-			};
-			sweep();
-			this.interruptedExecutionSweepTimer = setInterval(
-				sweep,
-				AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS,
-			);
-			this.interruptedExecutionSweepTimer.unref();
+			void Container.get(AgentInterruptedExecutionSweeper)
+				.sweep()
+				.catch((error: unknown) => {
+					logger.error('[Agents] Interrupted execution sweep failed', { error });
+				});
 		}
 
 		// Workers never receive inbound platform events: no webhook route, no polling
@@ -203,14 +202,10 @@ export class AgentsModule implements ModuleInterface {
 
 	async systemTasks() {
 		const { AgentCheckpointPruningTask } = await import('./agent-checkpoint-pruning.task.js');
-		return [AgentCheckpointPruningTask];
-	}
-
-	@OnShutdown()
-	async shutdown() {
-		if (this.interruptedExecutionSweepTimer) {
-			clearInterval(this.interruptedExecutionSweepTimer);
-		}
+		const { AgentInterruptedExecutionSweepTask } = await import(
+			'./agent-interrupted-execution-sweep.task.js'
+		);
+		return [AgentCheckpointPruningTask, AgentInterruptedExecutionSweepTask];
 	}
 
 	async settings() {
@@ -257,6 +252,10 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
+		const { AgentBudgetSpend } = await import('./entities/agent-budget-spend.entity.js');
+		const { AgentBudgetAppliedCall } = await import(
+			'./entities/agent-budget-applied-call.entity.js'
+		);
 		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity.js');
 		const { AgentObservationEntity } = await import('./entities/agent-observation.entity.js');
 		const { AgentObservationCursorEntity } = await import(
@@ -299,6 +298,8 @@ export class AgentsModule implements ModuleInterface {
 			AgentWorkflowDependency,
 			AgentTask,
 			AgentTaskRunLock,
+			AgentBudgetSpend,
+			AgentBudgetAppliedCall,
 			AgentTaskSnapshot,
 			AgentObservationEntity,
 			AgentObservationCursorEntity,

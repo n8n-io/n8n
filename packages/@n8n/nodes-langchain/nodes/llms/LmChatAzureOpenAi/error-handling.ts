@@ -49,9 +49,10 @@ function isDeploymentRejected(error: unknown): boolean {
 }
 
 /**
- * A Foundry deployment serves the Responses API or Chat Completions, and Azure gives no way to
- * ask which. Picking the wrong one fails in terms of the deployment, which reads as a bad name,
- * so name the deployment and the API the node asked for and point at the setting.
+ * A Foundry deployment serves the Responses API, Chat Completions or the Anthropic Messages API,
+ * and Azure gives no way to ask which. Picking the wrong one fails in terms of the deployment,
+ * which reads as a bad name, so name the deployment and the API the node asked for and point at
+ * the setting that selects the route.
  *
  * `useResponsesApi` is what the node asked for, not a guarantee. LangChain can still choose the
  * Responses API on its own for some model names, so the message says which one was requested.
@@ -59,17 +60,24 @@ function isDeploymentRejected(error: unknown): boolean {
 export function makeAzureFoundryFailedAttemptHandler(
 	modelName: string,
 	useResponsesApi: boolean,
-	endpointType: 'foundry' | 'classic' = 'foundry',
+	route: 'foundry' | 'classic' | 'anthropic' = 'foundry',
 ): (error: unknown) => void {
-	const apiRequested = useResponsesApi ? 'the Responses API' : 'Chat Completions';
+	const apiRequested =
+		route === 'anthropic'
+			? 'the Anthropic Messages API'
+			: useResponsesApi
+				? 'the Responses API'
+				: 'Chat Completions';
 	// A classic credential cannot reach the Responses API at all, so telling someone to turn the
 	// toggle on would send them to an error. The move there is to change the credential.
 	const remedy =
-		endpointType === 'classic'
-			? 'Switch the credential to the Azure AI Foundry endpoint type if the deployment serves only the Responses API.'
-			: useResponsesApi
-				? "Turn off 'Use Responses API' if the deployment serves Chat Completions."
-				: "Turn on 'Use Responses API' if the deployment serves only the Responses API.";
+		route === 'anthropic'
+			? 'Set Model Family to OpenAI if the deployment is not a Claude model.'
+			: route === 'classic'
+				? 'Switch the credential to the Microsoft Foundry endpoint type if the deployment serves only the Responses API.'
+				: useResponsesApi
+					? "Turn off 'Use Responses API' if the deployment serves Chat Completions."
+					: "Turn on 'Use Responses API' if the deployment serves only the Responses API.";
 
 	return (error: unknown) => {
 		if (!isDeploymentRejected(error)) return;

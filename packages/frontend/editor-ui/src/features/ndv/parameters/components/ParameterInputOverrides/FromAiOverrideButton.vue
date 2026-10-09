@@ -1,8 +1,7 @@
 <script setup lang="ts">
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import AiStarsIcon from '@/app/components/AiStarsIcon.vue';
 
-import { N8nTooltip } from '@n8n/design-system';
 const i18n = useI18n();
 
 withDefaults(
@@ -24,13 +23,16 @@ const emit = defineEmits<{
 			<div>{{ i18n.baseText('parameterOverride.applyOverrideButtonTooltip') }}</div>
 		</template>
 
-		<div
+		<N8nIconButton
+			icon="sparkles"
+			variant="ghost"
+			:size="size"
+			icon-size="small"
 			:class="[$style.overrideButton, $style[position], $style[size]]"
+			:aria-label="i18n.baseText('parameterOverride.applyOverrideButtonTooltip')"
 			data-test-id="from-ai-override-button"
 			@click="emit('click')"
-		>
-			<AiStarsIcon size="large" />
-		</div>
+		/>
 	</N8nTooltip>
 </template>
 

@@ -23,7 +23,7 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError, setUnauthorizedHandler } from '@n8n/rest-api-client';
 import { handleSessionExpired } from '@/app/utils/handleSessionExpired';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
@@ -140,21 +140,6 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: stri
 }
 
 const RESOURCE_CENTER_FLAG_WAIT_TIMEOUT = 2000;
-
-const waitForPendingFeatureFlags = async (posthogStore: ReturnType<typeof usePostHog>) => {
-	let timeoutId: number | undefined;
-
-	await Promise.race([
-		posthogStore.waitForFeatureFlags(),
-		new Promise<void>((resolve) => {
-			timeoutId = window.setTimeout(resolve, RESOURCE_CENTER_FLAG_WAIT_TIMEOUT);
-		}),
-	]);
-
-	if (timeoutId !== undefined) {
-		window.clearTimeout(timeoutId);
-	}
-};
 
 const allowResourceCenterRoute = (
 	posthogStore: ReturnType<typeof usePostHog>,
@@ -323,14 +308,14 @@ export const routes: RouteRecordRaw[] = [
 				return;
 			}
 
-			if (!posthogStore.hasPendingFeatureFlags()) {
-				next({ name: VIEWS.HOMEPAGE });
-				return;
-			}
-
-			void waitForPendingFeatureFlags(posthogStore).then(() => {
-				allowResourceCenterRoute(posthogStore, next);
-			});
+			// `waitForFeatureFlagsWithTimeout` resolves immediately when nothing is
+			// pending, so re-checking the variant below still redirects right away
+			// for a user whose flags were already resolved as "off".
+			void waitForFeatureFlagsWithTimeout(posthogStore, RESOURCE_CENTER_FLAG_WAIT_TIMEOUT).then(
+				() => {
+					allowResourceCenterRoute(posthogStore, next);
+				},
+			);
 		},
 	},
 

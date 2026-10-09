@@ -180,6 +180,7 @@ describe('credential descriptions', () => {
 			'httpTemplatedCustomAuth',
 			expect.any(Object),
 			'Production reports',
+			undefined,
 		);
 	});
 });

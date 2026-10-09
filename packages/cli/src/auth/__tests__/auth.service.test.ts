@@ -944,6 +944,20 @@ describe('AuthService', () => {
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
+		it('should skip browserId check for n8n Chat attachment GET requests', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/projects/9xbqXk3hZVlVlPsN/agents/v2',
+				route: { path: '/:agentId/n8n-chat/attachments/:attachmentId' },
+			});
+
+			const result = await authService.resolveJwt(validToken, req, res);
+			expect(result).toEqual([user, { usedMfa: false }]);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
 		it('should not skip browserId check for other project-scoped agent routes', async () => {
 			userRepository.findOne.mockResolvedValue(user);
 			const req = mock<AuthenticatedRequest>({

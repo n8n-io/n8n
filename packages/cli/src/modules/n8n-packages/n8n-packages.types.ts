@@ -23,6 +23,7 @@ import type {
 	WorkflowPublishingPolicy,
 } from './entities/workflow/workflow-publishing-policy.types';
 import type { PackageManifest } from './spec/manifest.schema';
+import type { PackageRequirementConsumer } from './spec/requirements.schema';
 
 export type { CredentialResolution } from './entities/credential/credential.types';
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
@@ -135,10 +136,14 @@ export const DataTableMissingMode = {
 } as const;
 
 export const DataTableSchemaConflictPolicy = {
-	/** Accepts a matched target able that has every package column, ignoring additional columns the target table has of its own. Never alters the target table. */
+	/** Accepts a matched target table that has every package column, ignoring additional columns the target table has of its own. Never alters the target table. */
 	KeepExisting: 'keep-existing',
 	/** Strict drift detection: fails the import on any schema difference, including target-only columns. */
 	Fail: 'fail',
+	/** Changes a matched target table to match the package schema: renames the table, adds, removes, and retypes columns, and sets the column order. Data in removed or retyped columns is lost. */
+	Overwrite: 'overwrite',
+	/** Like `overwrite`, but fails the import when a change deletes data: a removed (target-only or renamed) or retyped column. */
+	OverwriteNonDestructive: 'overwrite-non-destructive',
 } as const;
 
 export const VariableMissingMode = {
@@ -286,8 +291,9 @@ export interface ImportSelection {
 
 /**
  * Match or create the destination project from the package. Callers cannot override its location.
- * The service fixes all policies except `workflowConflictPolicy`, `workflowIdPolicy`, and
- * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`).
+ * The service fixes all policies except `workflowConflictPolicy`, `workflowIdPolicy`,
+ * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`), and
+ * `dataTableSchemaConflictPolicy` (defaults to `fail`).
  */
 export type ImportSelectionRequest = {
 	user: User;
@@ -296,6 +302,7 @@ export type ImportSelectionRequest = {
 	workflowConflictPolicy?: WorkflowConflictPolicy;
 	workflowIdPolicy?: WorkflowIdPolicy;
 	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
+	dataTableSchemaConflictPolicy?: DataTableSchemaConflictPolicy;
 };
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {
@@ -410,6 +417,7 @@ export type ImportPackageEventCounts = {
 	dataTables: {
 		matched: number;
 		created: number;
+		updated: number;
 		requirements: number;
 	};
 	variables: {
@@ -550,24 +558,33 @@ export type BlockingIssue =
 			expectedType?: string;
 			/** For `type_mismatch`: the actual type of the resolved target credential. */
 			actualType?: string;
-			usedByWorkflows: string[];
+			usedBy: PackageRequirementConsumer[];
 	  }
 	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
 	| ({ type: 'workflow-removal-conflict' } & WorkflowRemovalConflict)
 	| ({ type: 'folder-removal-forbidden' } & FolderRemovalFailure)
-	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
-	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
-	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
-	| ({ type: 'variable-conflict' } & VariableConflict)
-	| ({ type: 'variable-limit-exceeded' } & VariableLimitFailure)
+	| ({
+			type: 'data-table-unresolved';
+			usedBy: PackageRequirementConsumer[];
+	  } & DataTableResolutionFailure)
+	| ({ type: 'tag-unresolved'; usedBy: PackageRequirementConsumer[] } & TagResolutionFailure)
+	| ({
+			type: 'variable-unresolved';
+			usedBy: PackageRequirementConsumer[];
+	  } & VariableResolutionFailure)
+	| ({ type: 'variable-conflict'; usedBy: PackageRequirementConsumer[] } & VariableConflict)
+	| ({
+			type: 'variable-limit-exceeded';
+			usedBy: PackageRequirementConsumer[];
+	  } & VariableLimitFailure)
 	| {
 			type: 'missing-node-type';
 			/** Node type this instance cannot resolve (at least not at `typeVersion`). */
 			nodeType: string;
 			typeVersion: number;
-			usedByWorkflows: string[];
+			usedBy: PackageRequirementConsumer[];
 	  }
 	| {
 			type: 'policy-violation';
@@ -681,6 +698,7 @@ export interface ImportVariableSummary {
 export interface ImportDataTableSummary {
 	matched: number;
 	created: number;
+	updated: number;
 }
 
 /** Tag names (not ids), grouped by how the import resolved them. */

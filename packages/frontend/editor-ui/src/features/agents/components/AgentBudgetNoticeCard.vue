@@ -90,7 +90,9 @@ function increase() {
 						:disabled="pending"
 						data-testid="agent-budget-notice-amount"
 						@update:model-value="onAmount"
-					/>
+					>
+						<template #prefix>{{ i18n.baseText('agents.builder.budget.currencyPrefix') }}</template>
+					</N8nInputNumber>
 				</label>
 				<div :class="$style.actions">
 					<N8nButton

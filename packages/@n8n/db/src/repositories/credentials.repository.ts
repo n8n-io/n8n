@@ -2,7 +2,7 @@ import { assertClearedFor, credentialContentSubject, credentialSubject } from '@
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import { DataSource, ILike, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
@@ -318,6 +318,24 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 	}
 
+	/**
+	 * Finds a project credential that has no `shared_credentials` row at all. Such a credential has
+	 * no owner, so the project-scoped lookups cannot find it. Returns `null` if the credential does
+	 * not exist or still has any `shared_credentials` row — even a non-owner share keeps the
+	 * credential reachable through the regular, access-checked delete path, so it is not orphaned.
+	 */
+	async findProjectCredentialWithoutOwner(
+		credentialId: string,
+		ctx: OperationContext = {},
+	): Promise<CredentialsEntity | null> {
+		const credential = await this.managerFor(ctx).findOne(CredentialsEntity, {
+			where: { id: credentialId, usageScope: 'project' },
+			relations: { shared: true },
+		});
+		if (!credential || credential.shared.length > 0) return null;
+		return credential;
+	}
+
 	async deleteInstanceCredentialIfUnassigned(
 		credentialId: string,
 		ctx: OperationContext = {},
@@ -442,7 +460,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		const { filter, select, take, skip, sortBy } = listQueryOptions;
 
 		if (typeof filter?.name === 'string' && filter?.name !== '') {
-			filter.name = Like(`%${filter.name}%`);
+			filter.name = ILike(`%${filter.name}%`);
 		}
 
 		if (typeof filter?.type === 'string' && filter?.type !== '') {

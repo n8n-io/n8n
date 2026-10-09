@@ -438,6 +438,39 @@ describe('createBuildWorkflowTool', () => {
 			expect(result).toMatchObject({ success: true, workflowId: 'wf-1', folder });
 		});
 
+		it('reports a saved workflow as changed', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const { context, filePath } = makeContext({ overrides: { onArtifactChanged } });
+			vi.mocked(context.workflowService.createFromWorkflowJSON).mockResolvedValue({
+				id: 'wf-1',
+				versionId: 'v-1',
+				checksum: 'checksum',
+			} as never);
+
+			await executeTool(createBuildWorkflowTool(context), { filePath, name: 'Reported workflow' });
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'Reported workflow',
+			});
+		});
+
+		it('reports nothing when the save fails', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const { context, filePath } = makeContext({ overrides: { onArtifactChanged } });
+			vi.mocked(context.workflowService.createFromWorkflowJSON).mockRejectedValue(
+				new Error('Save failed'),
+			);
+
+			await executeTool(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Reported workflow',
+			}).catch(() => {});
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
 		it('fails the build before saving when the folder does not resolve', async () => {
 			const { context, filePath } = makeContext({ overrides: { folderExplorationEnabled: true } });
 			vi.mocked(context.workflowService.createFromWorkflowJSON).mockRejectedValue(
@@ -474,6 +507,40 @@ describe('createBuildWorkflowTool', () => {
 			expect(result.success).toBe(false);
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 			expect(result.errors?.join(' ')).toContain('move-workflow-to-folder');
+		});
+
+		it.each(['', ' ', '/'])(
+			'creates at the project root when folderPath is %j',
+			async (folderPath) => {
+				const { context, filePath } = makeContext({
+					overrides: { folderExplorationEnabled: true },
+				});
+
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					name: 'Root workflow',
+					folderPath,
+				});
+
+				expect(result.success).toBe(true);
+				expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+					expect.objectContaining({ name: 'Root workflow' }),
+					{ markAsAiTemporary: true },
+				);
+			},
+		);
+
+		it('updates an existing workflow when folderPath is blank', async () => {
+			const { context, filePath } = makeContext({ overrides: { folderExplorationEnabled: true } });
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-1',
+				folderPath: '',
+			});
+
+			expect(result.success).toBe(true);
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalled();
 		});
 	});
 

@@ -83,6 +83,7 @@ export class ModuleRegistry {
 		'workflow-reviews',
 		'instance-ai',
 		'agents',
+		'scim',
 	];
 
 	private readonly activeModules: string[] = [];

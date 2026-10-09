@@ -35,6 +35,10 @@ frontend, and extensible node-based workflow engine.
   suggested by Linear, **unless it is a security fix** (see Security Fix
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
+- Write an ADR only when asked. When a change makes a decision that an
+  engineer could challenge in 12 months, say so in one line and let the
+  human decide. Read [docs/adr/README.md](docs/adr/README.md) before you
+  write one. CI enforces its conventions
 - **Developing v3 features:** land normal feature work on `master` behind an
   opt-in flag; introduce breaking changes only on the `3.x` branch. See
   [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
@@ -215,12 +219,16 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 
 ### Persistence layer & the TypeORM boundary
 
-TypeORM (`@n8n/typeorm`) must stay in the **persistence layer** — the `@n8n/db`
-package or a backend module's own `database/` folder (entity/repository files).
+TypeORM (`@n8n/typeorm`) must stay in the **persistence layer**. The shared
+`@n8n/db` package and backend persistence adapters can import it. A module can
+colocate or group its entities and repositories according to its domain.
 Business logic — services, controllers, handlers, commands, factories — must not
-import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). In
-`packages/cli` this is enforced by the `misplaced-n8n-typeorm-import` lint rule;
-a new import (or an inline `eslint-disable` of the rule) fails CI.
+import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). The
+`typeorm-persistence-boundary` Code Health rule recognizes entity and repository
+declarations. It scans backend packages that depend on `@n8n/db` or
+`@n8n/typeorm`. Tests, migrations, and explicit helper-only adapters are
+exceptions. Existing business-logic imports stay in the shrink-only Code Health
+baseline. A new business-logic import fails CI.
 
 - **Pattern:** when a query needs operators (`In`, `IsNull`, `LessThan`,
   `FindOptionsWhere`, …), put it behind a **use-case-named repository method**

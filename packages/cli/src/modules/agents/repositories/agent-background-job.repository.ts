@@ -238,6 +238,14 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		});
 	}
 
+	async hasRequestedStop(parentThreadId: string, parentResourceId: string): Promise<boolean> {
+		const scope = { parentThreadId, parentResourceId, pauseRequestId: Not(IsNull()) };
+		return await this.existsBy([
+			{ ...scope, kind: 'subagent', status: In(['running', 'suspended', 'paused']) },
+			{ ...scope, kind: 'workflow', notifiedAt: IsNull() },
+		]);
+	}
+
 	async findSettledSubAgentsWithCheckpoints(): Promise<AgentBackgroundJob[]> {
 		return await this.createQueryBuilder('job')
 			.innerJoin(
@@ -315,7 +323,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				.createQueryBuilder()
 				.update(AgentBackgroundJob)
 				.set({ pauseRequestId, notifiedAt: null })
-				.where({ parentAgentId, parentThreadId, parentResourceId, kind: 'subagent' })
+				.where({ parentAgentId, parentThreadId, parentResourceId })
 				.andWhere("status IN ('running', 'suspended')")
 				.andWhere('(pauseRequestId IS NULL OR notifiedAt IS NOT NULL)')
 				.execute();
@@ -382,10 +390,13 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		return await this.runInTransaction({}, async (manager, ctx) => {
 			if (!(await this.threadRepository.lockById(parentThreadId, ctx))) return 'changed';
 			const requested = await manager.find(AgentBackgroundJob, {
-				where: { parentThreadId, kind: 'subagent', pauseRequestId: Not(IsNull()) },
+				where: { parentThreadId, pauseRequestId: Not(IsNull()) },
 			});
 			const jobs = requested.filter(
-				(job) => job.pauseRequestId === pauseRequestId && job.status === 'paused',
+				(job) =>
+					job.kind === 'subagent' &&
+					job.pauseRequestId === pauseRequestId &&
+					job.status === 'paused',
 			);
 			const first = jobs[0];
 			if (
@@ -422,7 +433,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		return result.affected === 1;
 	}
 
-	async retainLatestPausedGroup(
+	async retainLatestStopGroup(
 		parentAgentId: string,
 		parentThreadId: string,
 		parentResourceId: string,
@@ -430,10 +441,10 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	): Promise<AgentBackgroundJob[]> {
 		return await this.runInTransaction({}, async (manager, ctx) => {
 			await this.threadRepository.lockById(parentThreadId, ctx);
-			const scope = { parentAgentId, parentThreadId, parentResourceId, kind: 'subagent' as const };
+			const scope = { parentAgentId, parentThreadId, parentResourceId };
 			const latest = await manager
 				.createQueryBuilder(AgentBackgroundJob, 'job')
-				.where({ ...scope, status: 'paused', pauseRequestId: Not(IsNull()) })
+				.where({ ...scope, pauseRequestId: Not(IsNull()) })
 				.andWhere(`NOT EXISTS ${this.activePauseGroup()}`)
 				.orderBy(
 					"CASE WHEN SUBSTR(CAST(job.pauseRequestId AS text), 15, 1) = '7' THEN 1 ELSE 0 END",
@@ -445,7 +456,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			const latestId = latest.pauseRequestId;
 			const older = (
 				await manager.find(AgentBackgroundJob, {
-					where: { ...scope, status: 'paused', pauseRequestId: Not(IsNull()) },
+					where: { ...scope, kind: 'subagent', status: 'paused', pauseRequestId: Not(IsNull()) },
 				})
 			).filter((job) => {
 				if (!job.pauseRequestId || job.pauseRequestId === latestId) return false;
@@ -467,7 +478,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			if (!latest.result?.includes(replacementNotice)) {
 				await manager.update(
 					AgentBackgroundJob,
-					{ id: latest.id, status: 'paused', pauseRequestId: latestId },
+					{ id: latest.id, status: latest.status, pauseRequestId: latestId },
 					{ result: `${latest.result ?? ''}\n${replacementNotice}` },
 				);
 			}

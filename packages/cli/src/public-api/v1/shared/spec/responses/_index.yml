@@ -12,6 +12,8 @@ PaymentRequired:
   $ref: './paymentRequired.yml'
 UnsupportedMediaType:
   $ref: './unsupportedMediaType.yml'
+ContentTooLarge:
+  $ref: './contentTooLarge.yml'
 UnprocessableEntity:
   $ref: './unprocessableEntity.yml'
 InternalServerError:

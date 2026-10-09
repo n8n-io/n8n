@@ -769,7 +769,9 @@ describe('PromotionsService', () => {
 					commitMessage: 'm',
 					canExportVariableValues: true,
 				}),
-			).rejects.toThrow('These workflows moved to another project: w1');
+			).rejects.toMatchObject({
+				meta: { workflowIds: ['w1'] },
+			});
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 			expect(await readExported('projects/beta/workflows/w1/workflow.json')).toBe(
@@ -1118,7 +1120,7 @@ describe('PromotionsService', () => {
 					],
 				}),
 			);
-			expect(branch.commitSha).toBe(commitSha);
+			expect(branch).toMatchObject({ configId: CONFIG_ID, branchName: 'dev', commitSha });
 			expect(branch.files.map(({ entityId, type }) => ({ entityId, type }))).toEqual([
 				{ entityId: 'p1', type: 'project' },
 				{ entityId: 'w1', type: 'workflow' },
@@ -1141,7 +1143,12 @@ describe('PromotionsService', () => {
 
 			const branch = await service.readBranchPackage('p1', 'apply');
 
-			expect(branch).toMatchObject({ commitSha: null, files: [] });
+			expect(branch).toMatchObject({
+				configId: CONFIG_ID,
+				branchName: 'dev',
+				commitSha: null,
+				files: [],
+			});
 			await expect(branch.readFiles(['n8n-export/manifest.json'])).rejects.toThrow(
 				'no exported package',
 			);
@@ -1180,7 +1187,7 @@ describe('PromotionsService', () => {
 				removedFolders: [{}, {}],
 				bindings: { workflows: {}, credentials: {} },
 				credentials: { matched: ['c1'], stubbed: ['c2', 'c3'] },
-				dataTables: { matched: 1, created: 2 },
+				dataTables: { matched: 1, created: 2, updated: 3 },
 				variables: { matched: ['v1'], created: ['v2'], updated: ['v3'], stubbed: [], missing: [] },
 				tags: { matched: [], created: ['t1'], renamed: ['t2'], reconciled: [], skipped: [] },
 			}) as unknown as Awaited<ReturnType<N8nPackagesService['importPackageFromDirectory']>>;
@@ -1223,7 +1230,7 @@ describe('PromotionsService', () => {
 					overwriteDeletionPolicy: 'hard-delete',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
-					dataTableSchemaConflictPolicy: 'fail',
+					dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 					variableMissingMode: 'must-preexist',
 					variableConflictPolicy: 'keep-existing',
 					tagMissingMode: 'create',
@@ -1254,7 +1261,7 @@ describe('PromotionsService', () => {
 						publishing: { published: 1, unpublished: 0, unchanged: 1, blocked: 1, failed: 0 },
 					},
 					credentials: { matched: 1, stubbed: 2 },
-					dataTables: { matched: 1, created: 2 },
+					dataTables: { matched: 1, created: 2, updated: 3 },
 					variables: { matched: 1, created: 1, updated: 1, stubbed: 0, missing: 0 },
 					tags: { matched: 0, created: 1, renamed: 1, reconciled: 0, skipped: 0 },
 				},
@@ -1462,6 +1469,7 @@ describe('PromotionsService', () => {
 				workflows: [branchWorkflow, foreignWorkflow, movedWorkflow],
 				credentials: [],
 				variables: [],
+				dataTables: [],
 			};
 
 			beforeEach(async () => {
@@ -1507,7 +1515,11 @@ describe('PromotionsService', () => {
 					},
 				});
 				expect(n8nPackagesService.importPackageSelectionFromDirectory).toHaveBeenCalledWith(
-					{ user: actor, overwriteDeletionPolicy: 'hard-delete' },
+					{
+						user: actor,
+						overwriteDeletionPolicy: 'hard-delete',
+						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
+					},
 					{ sourceDir: packageFolder },
 					{
 						selectedProjectId: 'p1',
@@ -1625,7 +1637,11 @@ describe('PromotionsService', () => {
 						expect(
 							n8nPackagesService.importPackageSelectionFromDirectory,
 						).toHaveBeenCalledExactlyOnceWith(
-							{ user: actor, overwriteDeletionPolicy: 'hard-delete' },
+							{
+								user: actor,
+								overwriteDeletionPolicy: 'hard-delete',
+								dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
+							},
 							{ sourceDir: packageFolder },
 							{
 								selectedProjectId: 'p1',

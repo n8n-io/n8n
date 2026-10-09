@@ -494,6 +494,22 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
+	 * Extend the lease of a running claim, so the reaper leaves a handler that is
+	 * still working alone. Only the claiming host, at the current epoch, can renew.
+	 *
+	 * @param {HostedClaimedRef} claim the claim to renew
+	 * @param {number} expiresInMs the new lease expiry, in milliseconds from the database's now
+	 * @returns {Promise<boolean>} `true` when the lease was extended, `false` when the
+	 *   claim is gone (reclaimed, finished or deleted)
+	 */
+	async renewLease(claim: HostedClaimedRef, expiresInMs: number): Promise<boolean> {
+		const rowsAffected = await this.runGuardedUpdate(claim, {
+			leaseExpiresAt: () => dbNowPlusMsLiteral(this.isPostgres, expiresInMs),
+		});
+		return rowsAffected > 0;
+	}
+
+	/**
 	 * Stamp `dispatchedAt`, the effect-boundary marker, once the handler reports its
 	 * effect was handed off. Guarded so it only affects the row this `claim` still
 	 * owns; 0 rows is a benign no-op (the row was reclaimed meanwhile — the new owner

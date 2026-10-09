@@ -188,7 +188,10 @@ describe('Expression - fast native evaluation fuzz parity', () => {
 		}
 	};
 
-	test('native and engine agree on value or error', () => {
+	// 300 runs through two engine evaluations each take a few seconds on an
+	// isolate engine, and longer when the three engine projects share a
+	// machine; the default 5 s test timeout is not a budget for that.
+	test('native and engine agree on value or error', { timeout: 30_000 }, () => {
 		fc.assert(
 			fc.property(expression, data, (expr, json) => {
 				const viaEngine = outcome(expr, json, false);

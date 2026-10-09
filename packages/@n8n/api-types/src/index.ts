@@ -24,6 +24,7 @@ export * from './workflow-review-activity';
 export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
 export * from './workflow-publish-blocked-details';
+export * from './workflow-execution-block-cause';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -165,6 +166,7 @@ export {
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,
 	folderIdParamSchema,
+	logStreamingDestinationIdParamSchema,
 	projectIdParamSchema,
 	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
@@ -231,6 +233,7 @@ export {
 } from './schemas/source-controlled-file.schema';
 
 export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
+export { publicApiUploadedFileSchema } from './schemas/public-api-uploaded-file.schema';
 
 export {
 	policyCheckFailureSchema,
@@ -330,16 +333,22 @@ export type {
 	BreakingChangeWorkflowIssue,
 	BreakingChangeInstanceRuleResult,
 	BreakingChangeWorkflowRuleResult,
+	BreakingChangeRuleDetailWorkflow,
+	BreakingChangeRuleDetailResult,
 	BreakingChangeReportResult,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
 	MigrationFindingStatus,
+	MigrationFindingTriageStatus,
 	WorkflowMigrationResult,
 } from './schemas/breaking-changes.schema';
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
+	breakingChangeRuleImpactSchema,
+	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
+	migrationFindingTriageStatusSchema,
 } from './schemas/breaking-changes.schema';
 
 export type {
@@ -701,6 +710,7 @@ export type {
 	InstanceAiEvalMockHints,
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
+	InstanceAiEvalLlmUsage,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalAgentToolCallRecord,
 	InstanceAiEvalAgentModelTurnRecord,
@@ -826,6 +836,9 @@ export {
 	agentEvalColumnMappingSchema,
 	agentEvalRunStatusSchema,
 	agentEvalResultStatusSchema,
+	agentEvalVerdictStatusSchema,
+	agentEvalVerdictOutcomeSchema,
+	agentEvalVerdictSchema,
 	agentEvalVoteSchema,
 	createAgentEvalDatasetSchema,
 	updateAgentEvalDatasetSchema,
@@ -842,11 +855,25 @@ export {
 	agentEvalDraftCaseSchema,
 	generateDraftCasesOptionsSchema,
 	GenerateDraftCasesOptionsDto,
+	createDraftDatasetOptionsSchema,
+	CreateDraftDatasetOptionsDto,
+	previewRunOptionsSchema,
+	PreviewRunOptionsDto,
+	rerunResultOptionsSchema,
+	RerunResultOptionsDto,
+	ApplyAgentEvalSuggestionsDto,
+	ApplyPreviewSuggestionDto,
+	applyPreviewSuggestionSchema,
+	applyAgentEvalSuggestionsSchema,
+	MAX_APPLY_SUGGESTIONS,
 } from './schemas/agent-evals.schema';
 export type {
 	AgentEvalColumnMapping,
 	AgentEvalRunStatus,
 	AgentEvalResultStatus,
+	AgentEvalVerdictStatus,
+	AgentEvalVerdictOutcome,
+	AgentEvalVerdict,
 	AgentEvalVote,
 	AgentEvalCorrection,
 	CreateAgentEvalDatasetDto,
@@ -864,6 +891,15 @@ export type {
 	AgentEvalDraftCase,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
+	CreateDraftDatasetOptions,
+	CreateDraftDatasetResult,
+	PreviewRunOptions,
+	PreviewRunResult,
+	RerunResultOptions,
+	ApplyAgentEvalSuggestionsOptions,
+	ApplyAgentEvalSuggestionsResult,
+	ApplyPreviewSuggestionOptions,
+	ApplyPreviewSuggestionResult,
 } from './schemas/agent-evals.schema';
 
 export {
@@ -925,3 +961,4 @@ export type {
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
 
 export type * from './workflow-suggestions';
+export * from './self-healing-results';
