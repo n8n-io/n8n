@@ -1,0 +1,39 @@
+{
+	"name": "QuickBooks filtered customer listing",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "manual-trigger",
+			"name": "Manual Trigger"
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": { "query": "WHERE Active = true ORDERBY Id" }
+			},
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "quickbooks",
+			"name": "QuickBooks",
+			"credentials": {
+				"quickBooksOAuth2Api": { "id": "test-credentials", "name": "Test Credentials" }
+			}
+		}
+	],
+	"pinData": {
+		"QuickBooks": [{ "json": { "Id": "1" } }, { "json": { "Id": "2" } }]
+	},
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "QuickBooks", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" }
+}
