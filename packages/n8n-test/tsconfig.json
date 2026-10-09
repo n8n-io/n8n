@@ -1,0 +1,20 @@
+{
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.go.json",
+		"@n8n/typescript-config/tsconfig.backend.go.json"
+	],
+	"compilerOptions": {
+		"types": ["node", "vitest/globals"],
+		"resolveJsonModule": true,
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+		"paths": {
+			"@nodes-testing/*": ["../core/nodes-testing/*"],
+			"n8n-test": ["./src/index.ts"]
+		}
+	},
+	"include": ["src/**/*.ts", "demo/**/*.ts", "../core/nodes-testing/**/*.ts"],
+	// The PoC consumes the loader components, not the harness class — whose mock-extended
+	// typings only line up inside nodes-base's own program.
+	"exclude": ["../core/nodes-testing/node-test-harness.ts"]
+}
