@@ -9,6 +9,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
+import { canStubNotFoundFailure } from '../entities/credential/credential-missing-mode';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
@@ -32,7 +33,12 @@ import {
 } from './import-result';
 import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
-import { needsBundledVariableValues, placeByPolicy } from './package-layout';
+import {
+	needsBundledCredentialData,
+	needsBundledVariableValues,
+	placeByPolicy,
+	placeCredentialData,
+} from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
 
 /**
@@ -69,8 +75,12 @@ export class WorkflowPackageImporter {
 		);
 
 		const workflows = await this.packageParser.getWorkflows(reader);
+		const credentialRequirements = identifyRequirements(
+			manifest.requirements?.credentials,
+			workflows,
+		);
 		const credentialRequest: CredentialBindingRequest = {
-			requirements: identifyRequirements(manifest.requirements?.credentials, workflows),
+			requirements: credentialRequirements,
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
 			credentialBindings: request.bindings?.credentials,
@@ -127,6 +137,17 @@ export class WorkflowPackageImporter {
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
 		});
 
+		const missingCredentialIds = new Set(
+			plan.credentialPlan.failures.filter(canStubNotFoundFailure).map(({ sourceId }) => sourceId),
+		);
+		if (needsBundledCredentialData(request, missingCredentialIds.size > 0)) {
+			credentialRequest.requirements = placeCredentialData({
+				requirements: credentialRequirements,
+				manifestCredentials: manifest.credentials,
+				bundledCredentials: await this.packageParser.getCredentials(reader, missingCredentialIds),
+			});
+		}
+
 		assertTagWritesAllowed(request.apiKeyScopes, [plan.tagPlan]);
 		assertArchiveTransitionsAllowed(request.apiKeyScopes, [plan.workflowPlan]);
 		await this.importOrchestrator.assertNotBlocked([plan], { apiKeyScopes: request.apiKeyScopes });
@@ -169,6 +190,7 @@ export class WorkflowPackageImporter {
 			credentials: {
 				matched: content.credentialResult.matched,
 				stubbed: content.credentialResult.stubbed,
+				seeded: content.credentialResult.seeded,
 			},
 			dataTables: {
 				matched: content.dataTablePlan.matchedCount,

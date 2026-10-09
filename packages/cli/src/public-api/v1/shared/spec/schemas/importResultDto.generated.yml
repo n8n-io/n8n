@@ -50,7 +50,7 @@ properties:
                 - unchanged
                 - blocked
                 - failed
-              description: '`blocked` means the imported version could not be published and no version is active (for example because the workflow uses a stubbed credential, or uses a node type this instance does not have). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
+              description: '`blocked` means the imported version could not be published and no version is active (for example because the workflow uses an empty or partially seeded credential, or uses a node type this instance does not have). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
             error:
               type: string
               description: Present when `state` is `failed`. Explains why publish or unpublish could not be applied.
@@ -65,7 +65,7 @@ properties:
               enum:
                 - stub-credential
                 - missing-node-type
-              description: 'Present when `state` is `unchanged` but the policy wanted to publish the imported version: a prior published version is still active (for example after an update with stubbed credentials).'
+              description: 'Present when `state` is `unchanged` but the policy wanted to publish the imported version: a prior published version is still active (for example after an update with incomplete credentials).'
           required:
             - state
           description: Outcome of applying the selected publishing policy to this workflow.
@@ -223,10 +223,16 @@ properties:
         items:
           type: string
         description: Source credential ids for which empty placeholder credentials were created in the target project.
+      seeded:
+        type: array
+        items:
+          type: string
+        description: Source credential ids for which credentials were created with bundled expression values in the target project. Partial or unverified bundled data still blocks workflow publishing.
     required:
       - matched
       - stubbed
-    description: Source credential ids grouped by whether they matched an existing credential or were created as stubs. Full source→target id mapping is in `bindings.credentials`.
+      - seeded
+    description: Source credential ids grouped by whether they matched an existing credential or were created as empty stubs or seeded credentials. Full source→target id mapping is in `bindings.credentials`.
   dataTables:
     type: object
     properties:

@@ -159,7 +159,10 @@ export function setMicrosoftObservabilityDefaults(): void {
 }
 
 export function containsExpression(testString: string): boolean {
-	return /^=.*\{\{.+\}\}/.test(testString);
+	if (!testString.startsWith('=')) return false;
+	const firstLine = testString.split(/[\r\n\u2028\u2029]/, 1)[0];
+	const opening = firstLine.indexOf('{{', 1);
+	return opening !== -1 && firstLine.lastIndexOf('}}') > opening + 2;
 }
 
 export function isObject(value: unknown): value is Record<string, unknown> {
