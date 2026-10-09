@@ -1,11 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
 import { CacheService, UrlService } from '@n8n/backend-services';
 import { testDb, testModules } from '@n8n/backend-test-utils';
-import type { InstanceType } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { TrustedSourceConfigInput } from '@n8n/inbound-auth';
 import { DataSource, type Repository } from '@n8n/typeorm';
-import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { TrustedSourceEntity } from '@/modules/inbound-auth-core/database/entities/trusted-source.entity';
@@ -25,14 +23,9 @@ let baseUrl: string;
 
 const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 
-/** A seeder on an `instanceType` process whose instance base URL is `url`. */
-const seederFor = (url = baseUrl, instanceType: InstanceType = 'main') =>
-	new SystemTrustedSourceSeeder(
-		store,
-		mock<UrlService>({ getInstanceBaseUrl: () => url }),
-		mock<InstanceSettings>({ instanceType }),
-		logger,
-	);
+/** A seeder on a process whose instance base URL is `url`. */
+const seederFor = (url = baseUrl) =>
+	new SystemTrustedSourceSeeder(store, mock<UrlService>({ getInstanceBaseUrl: () => url }), logger);
 
 const systemRow = async () => await rows.findOneByOrFail({ id: ID });
 
@@ -136,30 +129,6 @@ describe('SystemTrustedSourceSeeder (integration)', () => {
 		expect(await store.getByIssuer(baseUrl)).toBeUndefined();
 		expect(await store.getByIssuer(MOVED_URL)).toMatchObject({ id: ID, issuer: MOVED_URL });
 		expect(await store.getById(ID)).toMatchObject({ issuer: MOVED_URL });
-	});
-
-	it.each<InstanceType>(['webhook', 'worker'])(
-		'leaves the issuer to main when a %s instance resolves another base URL',
-		async (instanceType) => {
-			await seederFor().seed();
-			const before = await systemRow();
-
-			await seederFor(MOVED_URL, instanceType).seed();
-
-			expect(await systemRow()).toEqual(before);
-			expect(await rows.count()).toBe(1);
-			expect(logger.error).not.toHaveBeenCalled();
-		},
-	);
-
-	it('lets main move the issuer that a webhook instance seeded first', async () => {
-		await seederFor(MOVED_URL, 'webhook').seed();
-		expect(await systemRow()).toMatchObject({ issuer: MOVED_URL });
-
-		await seederFor(baseUrl, 'main').seed();
-
-		expect(await systemRow()).toMatchObject({ issuer: baseUrl });
-		expect(await rows.count()).toBe(1);
 	});
 
 	it.each<[string, (store: TrustedSourceDbStore) => Promise<void>]>([
