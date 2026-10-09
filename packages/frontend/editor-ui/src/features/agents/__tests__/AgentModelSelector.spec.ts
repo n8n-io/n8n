@@ -2,6 +2,7 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import type * as typeAvailabilityPolicies from '@n8n/frontend-module-type-availability-policies';
 import type * as permissions from '@n8n/permissions';
 
 import type {
@@ -102,7 +103,7 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/frontend-module-type-availability-policies')>()),
+	...(await importOriginal<typeof typeAvailabilityPolicies>()),
 	useTypeAvailabilityPoliciesStore: () => ({
 		getCredentialTypeAvailability: (name: string) => {
 			const scope = restrictedCredentialTypes.value[name];
