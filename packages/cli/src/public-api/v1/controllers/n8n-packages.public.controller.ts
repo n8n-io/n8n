@@ -1,4 +1,5 @@
 import {
+	ExportPackageRequestDto,
 	ImportBlockedErrorDto,
 	ImportPackageRequestDto,
 	ImportPackageSelectionRequestDto,
@@ -18,11 +19,18 @@ import {
 	Body,
 	Post,
 	PublicApiController,
+	type BinaryResult,
 } from '@n8n/decorators';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { Response } from 'express';
+import { UserError } from 'n8n-workflow';
 
+import {
+	PackageEntityAccessDeniedError,
+	PackageEntityNotFoundError,
+} from '@/modules/n8n-packages/entities/package-export.errors';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
-import type { ImportResult } from '@/modules/n8n-packages/n8n-packages.types';
+import type { ExportPackageResult, ImportResult } from '@/modules/n8n-packages/n8n-packages.types';
 import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-classifier';
 import {
 	IMPORT_PACKAGE_FIELD_SIZE_BYTES,
@@ -31,6 +39,10 @@ import {
 } from '@/modules/n8n-packages/utils/import-package-upload';
 
 import {
+	EXPORT_200_DESCRIPTION,
+	EXPORT_COUNTS_HEADER_DESCRIPTION,
+	EXPORT_DESCRIPTION,
+	EXPORT_SUMMARY,
 	IMPORT_409_DESCRIPTION,
 	IMPORT_422_DESCRIPTION,
 	IMPORT_DESCRIPTION,
@@ -39,8 +51,11 @@ import {
 	IMPORT_SELECTION_DESCRIPTION,
 	IMPORT_SELECTION_SUMMARY,
 	IMPORT_SUMMARY,
-	IMPORT_TAGS,
+	PACKAGE_TAGS,
 } from './openapi/n8n-packages.openapi';
+
+/** Header carrying the JSON-serialized true per-entity counts of the exported package. */
+const EXPORT_COUNTS_HEADER = 'X-N8n-Export-Counts';
 
 function uploadLimits(maxParts: number) {
 	const maxFileSizeBytes = Container.get(GlobalConfig).endpoints.payloadSizeMax * 1024 * 1024;
@@ -50,6 +65,38 @@ function uploadLimits(maxParts: number) {
 		parts: maxParts,
 		fieldSize: IMPORT_PACKAGE_FIELD_SIZE_BYTES,
 	};
+}
+
+function assertPackageExportApiKeyScopes(
+	apiKeyScopes: string[] | undefined,
+	agentIds: string[],
+	workflowIds: string[],
+	folderIds: string[],
+	projectIds: string[],
+): string[] {
+	if (!apiKeyScopes) {
+		throw new ForbiddenError('Forbidden');
+	}
+
+	const requiredScopes: string[] = [];
+	if (agentIds.length > 0) {
+		requiredScopes.push('agent:export');
+	}
+	// Folders are exported as a workflow-organization concern, so they share the workflow:export scope.
+	if (workflowIds.length > 0 || folderIds.length > 0) {
+		requiredScopes.push('workflow:export');
+	}
+	if (projectIds.length > 0) {
+		requiredScopes.push('project:export');
+	}
+
+	for (const scope of requiredScopes) {
+		if (!apiKeyScopes.includes(scope)) {
+			throw new ForbiddenError('Forbidden');
+		}
+	}
+
+	return apiKeyScopes;
 }
 
 @PublicApiController('/n8n-packages')
@@ -63,7 +110,7 @@ export class N8nPackagesPublicController {
 	@ApiKeyScope('workflow:import')
 	@ApiSummary(IMPORT_SUMMARY)
 	@ApiDescription(IMPORT_DESCRIPTION)
-	@ApiTags(IMPORT_TAGS)
+	@ApiTags(PACKAGE_TAGS)
 	@ApiResponse(200, ImportResultDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409, { dto: ImportBlockedErrorDto, description: IMPORT_409_DESCRIPTION })
@@ -106,7 +153,7 @@ export class N8nPackagesPublicController {
 	@ApiKeyScope('workflow:import')
 	@ApiSummary(IMPORT_SELECTION_SUMMARY)
 	@ApiDescription(IMPORT_SELECTION_DESCRIPTION)
-	@ApiTags(IMPORT_TAGS)
+	@ApiTags(PACKAGE_TAGS)
 	@ApiResponse(200, ImportResultDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409, {
@@ -155,5 +202,92 @@ export class N8nPackagesPublicController {
 			});
 			throw error;
 		}
+	}
+
+	@Post('/export')
+	@ApiKeyScope({ anyOf: ['project:export', 'workflow:export', 'agent:export'] })
+	@ApiSummary(EXPORT_SUMMARY)
+	@ApiDescription(EXPORT_DESCRIPTION)
+	@ApiTags(PACKAGE_TAGS)
+	@ApiResponse(200, {
+		mediaType: 'application/gzip',
+		description: EXPORT_200_DESCRIPTION,
+		headers: { [EXPORT_COUNTS_HEADER]: { description: EXPORT_COUNTS_HEADER_DESCRIPTION } },
+	})
+	@ApiErrorResponse(404)
+	async exportPackage(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body({ required: true }) body: ExportPackageRequestDto,
+	): Promise<BinaryResult> {
+		const { agentIds = [], workflowIds = [], folderIds = [], projectIds = [] } = body;
+
+		let exportResult: ExportPackageResult;
+
+		try {
+			// A package is either a set of loose selections or a set of whole projects, not both.
+			const hasLooseSelection = [agentIds, workflowIds, folderIds].some((ids) => ids.length > 0);
+			if (projectIds.length > 0 && hasLooseSelection) {
+				throw new BadRequestError(
+					'Provide either agentIds/workflowIds/folderIds or projectIds, not both',
+				);
+			}
+
+			if (!hasLooseSelection && projectIds.length === 0) {
+				throw new BadRequestError(
+					'At least one agentId, workflowId, folderId, or projectId is required',
+				);
+			}
+
+			const apiKeyScopes = assertPackageExportApiKeyScopes(
+				req.tokenGrant?.apiKeyScopes,
+				agentIds,
+				workflowIds,
+				folderIds,
+				projectIds,
+			);
+
+			exportResult = await this.n8nPackagesService.exportPackage({
+				user: req.user,
+				agentIds,
+				workflowIds,
+				folderIds,
+				projectIds,
+				includeVariableValues: body.includeVariableValues,
+				canExportVariableValues: apiKeyScopes.includes('variable:list'),
+				includeTags: body.includeTags,
+				dependencyPolicy: body.dependencyPolicy,
+				versionPolicy: body.versionPolicy,
+				credentialExportPolicy: body.credentialExportPolicy,
+				includeArchivedWorkflows: body.includeArchivedWorkflows,
+			});
+		} catch (error) {
+			this.eventService.emit('n8n-package-export-failed', {
+				user: req.user,
+				reason: classifyPackageFailure(error),
+				...(agentIds.length ? { agentIds } : {}),
+				...(workflowIds.length ? { workflowIds } : {}),
+				...(folderIds.length ? { folderIds } : {}),
+				...(projectIds.length ? { projectIds } : {}),
+			});
+
+			if (
+				error instanceof PackageEntityAccessDeniedError ||
+				error instanceof PackageEntityNotFoundError
+			) {
+				throw new UserError(error.message, { description: error.description });
+			}
+			throw error;
+		}
+
+		return {
+			body: exportResult.stream,
+			headers: {
+				'Content-Disposition': 'attachment; filename="export.n8np"',
+				[EXPORT_COUNTS_HEADER]: JSON.stringify(exportResult.counts),
+				// Cross-origin browser clients can only read the counts header if it is exposed.
+				'Access-Control-Expose-Headers': EXPORT_COUNTS_HEADER,
+			},
+		};
 	}
 }

@@ -1,4 +1,38 @@
-export const IMPORT_TAGS = ['N8nPackage'];
+export const PACKAGE_TAGS = ['N8nPackage'];
+
+export const EXPORT_SUMMARY =
+	'Beta: Export agents, workflows, folders, or projects as an n8n package';
+// Line breaks match the legacy YAML literal block, so the generated text is identical.
+export const EXPORT_DESCRIPTION =
+	'**Beta** — breaking changes may still occur without major version bump.\n\n' +
+	'Export agents, workflows, and folders, or whole projects, as a gzipped tar\n' +
+	'archive (.n8np). Provide `agentIds`/`workflowIds`/`folderIds`, or `projectIds`.\n' +
+	'Do not combine these two groups. Each exported folder includes its nested\n' +
+	'folders. Whole projects include their agents when the agents module is enabled.\n' +
+	'Explicit agent selections require the agents module. Empty projects export\n' +
+	'project metadata only. `versionPolicy` selects the version for both agents and\n' +
+	'workflows and defaults to `latest`. `dependencyPolicy` applies to both entity\n' +
+	'types and defaults to `fail` when a required definition is absent from the\n' +
+	'package. The response is streamed as `application/gzip` with a `Content-Disposition`\n' +
+	'attachment header. Requires the n8n Packages feature to be licensed.\n\n' +
+	'API key scopes: `agent:export` is required for explicitly selected agents.\n' +
+	'`workflow:export` is required for explicitly selected workflows or folders.\n' +
+	'`project:export` is sufficient for whole-project exports, including their\n' +
+	'agents and workflows. Included dependencies need no additional API key scope.\n' +
+	"The caller's project permissions apply to all included entities. When\n" +
+	'`includeVariableValues` is true (the default) and exported entities reference\n' +
+	'variables, `variable:list` is also required. Exports that reference no variables\n' +
+	'do not need it.\n\n' +
+	'Agent definitions include referenced skills, custom tools, and schedules.\n' +
+	'Knowledge base files and runtime data are excluded. Agent package imports\n' +
+	'remain unavailable.\n';
+
+export const EXPORT_200_DESCRIPTION =
+	'A gzipped tar archive containing the exported package contents.';
+export const EXPORT_COUNTS_HEADER_DESCRIPTION =
+	'JSON-serialized per-entity counts of what actually ended up in the\n' +
+	'package (after folder bundling and auto-inclusion), e.g.\n' +
+	'`{"agents":1,"workflows":2,"folders":1,"credentials":0,"dataTables":0,"variables":0,"tags":0}`.\n';
 
 export const IMPORT_SUMMARY = 'Beta: Import an n8n package into a project';
 export const IMPORT_DESCRIPTION =
