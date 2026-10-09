@@ -244,6 +244,26 @@ it('restricts destination matching to projects the user can read', async () => {
 	expect(matches.matches.get('support_source')?.id).toBe('support_source');
 });
 
+it('keeps global ID checks for an authorized pending project', async () => {
+	await seedAgent('support_source');
+	const member = await createMember();
+	const read = vi.spyOn(agents, 'findImportCandidates');
+	const matches = await service.findBySourceAgentIds(
+		{ user: member, projectId: 'pending-project', projectPendingCreation: true },
+		['support_source'],
+	);
+	const result = await service.allocateAgentIds(matches);
+	expect(result.identities.size).toBe(0);
+	expect(result.idConflicts).toEqual([
+		{
+			sourceAgentId: 'support_source',
+			existingAgentId: 'support_source',
+			existingProjectId: project.id,
+		},
+	]);
+	expect(read).not.toHaveBeenCalled();
+});
+
 it('bounds candidate and ownership queries for large ID lists', async () => {
 	await seedAgent('id-0');
 	await seedAgent('copied-agent', 'id-32999');

@@ -87,22 +87,6 @@ describe('AgentImportMatchService', () => {
 		expect(agents.findImportCandidates).not.toHaveBeenCalled();
 	});
 
-	it('keeps global ID checks for an authorized pending project', async () => {
-		const { service, projects, agents, context } = setup();
-		agents.findImportIdOwners.mockResolvedValue([{ id: 'source', projectId: 'other-project' }]);
-		const matches = await service.findBySourceAgentIds(
-			{ ...context, projectPendingCreation: true },
-			['source'],
-		);
-		const result = await service.allocateAgentIds(matches);
-		expect(result.identities.size).toBe(0);
-		expect(result.idConflicts).toEqual([
-			{ sourceAgentId: 'source', existingAgentId: 'source', existingProjectId: 'other-project' },
-		]);
-		expect(projects.getProjectIds).not.toHaveBeenCalled();
-		expect(agents.findImportCandidates).not.toHaveBeenCalled();
-	});
-
 	it('omits both task mappings when two proposed owners use one ID', async () => {
 		const { service, context } = setup();
 		const content = serializedAgentSchema.parse(
