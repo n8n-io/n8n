@@ -196,9 +196,14 @@ packages/frontend/@n8n/storybook/                       @n8n-io/design-engineeri
 packages/frontend/@n8n/i18n/                            @n8n-io/frontend
 packages/@n8n/stylelint-config/                         @n8n-io/qa-dx
 
-# AI usage settings
+# Assistant API types and AI usage settings
 
-packages/@n8n/api-types/src/dto/ai/ai-usage-settings-request.dto.ts @n8n-io/ai-assistant
+packages/@n8n/api-types/src/dto/ai/                     @n8n-io/ai-assistant
+packages/@n8n/api-types/src/dto/instance-ai/            @n8n-io/ai-assistant
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts @n8n-io/ai-assistant
+packages/@n8n/api-types/src/schemas/instance-ai-approval.schema.ts @n8n-io/ai-assistant
+packages/@n8n/api-types/src/schemas/instance-ai-setup-credential-selection.ts @n8n-io/ai-assistant
+packages/@n8n/api-types/src/push/instance-ai.ts         @n8n-io/ai-assistant
 packages/frontend/@n8n/rest-api-client/src/api/ai-usage.ts @n8n-io/ai-assistant
 
 # AI
