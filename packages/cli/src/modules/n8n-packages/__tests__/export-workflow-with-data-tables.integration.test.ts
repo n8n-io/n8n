@@ -80,7 +80,7 @@ describe('workflow package export — with data tables', () => {
 					{
 						id: dataTable.id,
 						name: 'Customers',
-						usedByWorkflows: [workflow.id],
+						usedBy: [{ kind: 'workflow', id: workflow.id }],
 					},
 				],
 			});
@@ -186,7 +186,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 			expect(entries.map((e) => e.name)).toContain(
@@ -222,7 +222,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [child.id],
+					usedBy: [{ kind: 'workflow', id: child.id }],
 				},
 			]);
 			expect(entries.map((e) => e.name)).toContain(
@@ -253,8 +253,12 @@ describe('workflow package export — with data tables', () => {
 			const { manifest, entries } = await readExport(stream);
 
 			expect(manifest.requirements?.dataTables).toHaveLength(1);
-			expect(manifest.requirements!.dataTables![0].usedByWorkflows.sort()).toEqual(
-				[wfA.id, wfB.id].sort(),
+			expect(manifest.requirements!.dataTables![0].usedBy).toHaveLength(2);
+			expect(manifest.requirements!.dataTables![0].usedBy).toEqual(
+				expect.arrayContaining([
+					{ kind: 'workflow', id: wfA.id },
+					{ kind: 'workflow', id: wfB.id },
+				]),
 			);
 			expect(entries.filter((e) => e.name.endsWith('/data-table.json'))).toHaveLength(1);
 		});
@@ -348,7 +352,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 			expect(entries.map((e) => e.name)).toContain(
@@ -380,7 +384,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 			// Folder packages keep data tables top-level, unlike project packages.
@@ -413,7 +417,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 		});
@@ -439,7 +443,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 		});
@@ -464,7 +468,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 		});

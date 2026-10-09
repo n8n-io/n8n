@@ -65,6 +65,7 @@ export type AgentSessionOrigin = (typeof AGENT_SESSION_ORIGINS)[number];
 const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
+		ids: z.array(z.string().min(1)).min(1).max(50).optional(),
 		availableInMCP: z.boolean().optional(),
 		availableInChat: z.boolean().optional(),
 	})

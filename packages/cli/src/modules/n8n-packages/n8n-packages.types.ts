@@ -23,6 +23,7 @@ import type {
 	WorkflowPublishingPolicy,
 } from './entities/workflow/workflow-publishing-policy.types';
 import type { PackageManifest } from './spec/manifest.schema';
+import type { PackageRequirementConsumer } from './spec/requirements.schema';
 
 export type { CredentialResolution } from './entities/credential/credential.types';
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
@@ -557,24 +558,33 @@ export type BlockingIssue =
 			expectedType?: string;
 			/** For `type_mismatch`: the actual type of the resolved target credential. */
 			actualType?: string;
-			usedByWorkflows: string[];
+			usedBy: PackageRequirementConsumer[];
 	  }
 	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
 	| ({ type: 'workflow-removal-conflict' } & WorkflowRemovalConflict)
 	| ({ type: 'folder-removal-forbidden' } & FolderRemovalFailure)
-	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
-	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
-	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
-	| ({ type: 'variable-conflict' } & VariableConflict)
-	| ({ type: 'variable-limit-exceeded' } & VariableLimitFailure)
+	| ({
+			type: 'data-table-unresolved';
+			usedBy: PackageRequirementConsumer[];
+	  } & DataTableResolutionFailure)
+	| ({ type: 'tag-unresolved'; usedBy: PackageRequirementConsumer[] } & TagResolutionFailure)
+	| ({
+			type: 'variable-unresolved';
+			usedBy: PackageRequirementConsumer[];
+	  } & VariableResolutionFailure)
+	| ({ type: 'variable-conflict'; usedBy: PackageRequirementConsumer[] } & VariableConflict)
+	| ({
+			type: 'variable-limit-exceeded';
+			usedBy: PackageRequirementConsumer[];
+	  } & VariableLimitFailure)
 	| {
 			type: 'missing-node-type';
 			/** Node type this instance cannot resolve (at least not at `typeVersion`). */
 			nodeType: string;
 			typeVersion: number;
-			usedByWorkflows: string[];
+			usedBy: PackageRequirementConsumer[];
 	  }
 	| {
 			type: 'policy-violation';

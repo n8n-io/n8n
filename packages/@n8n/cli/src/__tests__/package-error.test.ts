@@ -59,7 +59,7 @@ describe('toPackagesError', () => {
 							{ kind: 'rename-column', from: 'mail', to: 'email', destructive: false },
 							{ kind: 'add-column', column: 'BaaId', type: 'string', destructive: false },
 						],
-						usedByWorkflows: ['wf1'],
+						usedBy: [{ kind: 'workflow', id: 'wf1' }],
 					},
 				],
 			}),
@@ -67,7 +67,7 @@ describe('toPackagesError', () => {
 
 		const hint = (result as ApiError).hint ?? '';
 		expect(hint).toContain(
-			'data table "First" (dt1) does not match the package schema (missing columns: BaaId), used by workflow(s) wf1',
+			'data table "First" (dt1) does not match the package schema (missing columns: BaaId), used by workflow wf1',
 		);
 		expect(hint).toContain(
 			'--data-table-schema-conflict-policy=overwrite would: remove column note (values removed), rename column mail to email, add column BaaId',
@@ -85,14 +85,14 @@ describe('toPackagesError', () => {
 						name: 'Sales',
 						currentName: 'Orders',
 						conflictingTableId: 'sales1',
-						usedByWorkflows: ['wf1'],
+						usedBy: [{ kind: 'workflow', id: 'wf1' }],
 					},
 				],
 			}),
 		);
 
 		expect((result as ApiError).hint ?? '').toContain(
-			'data table "Orders" (orders1) cannot be renamed to "Sales": the name is also used by table sales1, used by workflow(s) wf1',
+			'data table "Orders" (orders1) cannot be renamed to "Sales": the name is also used by table sales1, used by workflow wf1',
 		);
 	});
 
@@ -142,7 +142,10 @@ describe('toPackagesError', () => {
 						type: 'credential-unresolved',
 						kind: 'not_found',
 						sourceId: 'c1',
-						usedByWorkflows: ['w1', 'w2'],
+						usedBy: [
+							{ kind: 'workflow', id: 'w1' },
+							{ kind: 'workflow', id: 'w2' },
+						],
 					},
 				],
 			}),
@@ -150,17 +153,33 @@ describe('toPackagesError', () => {
 
 		const hint = (result as ApiError).hint ?? '';
 		expect(hint).toContain('credential c1 unresolved (not_found)');
-		expect(hint).toContain('w1, w2');
+		expect(hint).toContain('workflow w1, workflow w2');
 	});
 
-	it('lists variable-unresolved issues for a 422', () => {
+	it.each([
+		{
+			usedBy: [{ kind: 'workflow', id: 'w1' }],
+			expected: 'workflow w1',
+		},
+		{
+			usedBy: [{ kind: 'agent', id: 'a1' }],
+			expected: 'agent a1',
+		},
+		{
+			usedBy: [
+				{ kind: 'workflow', id: 'shared' },
+				{ kind: 'agent', id: 'shared' },
+			],
+			expected: 'workflow shared, agent shared',
+		},
+	])('lists variable-unresolved issues for $expected', ({ usedBy, expected }) => {
 		const result = toPackagesError(
 			new ApiError(422, 'Import blocked', undefined, {
 				issues: [
 					{
 						type: 'variable-unresolved',
 						name: 'var1',
-						usedByWorkflows: ['w1', 'w2'],
+						usedBy,
 					},
 				],
 			}),
@@ -168,7 +187,7 @@ describe('toPackagesError', () => {
 
 		const hint = (result as ApiError).hint ?? '';
 		expect(hint).toContain('variable "var1" unresolved');
-		expect(hint).toContain('w1, w2');
+		expect(hint).toContain(`used by ${expected}`);
 	});
 
 	it('lists variable-conflict issues for a 409, naming the scope', () => {
@@ -179,9 +198,9 @@ describe('toPackagesError', () => {
 						type: 'variable-conflict',
 						name: 'API_URL',
 						projectId: 'p1',
-						usedByWorkflows: ['w1'],
+						usedBy: [{ kind: 'workflow', id: 'w1' }],
 					},
-					{ type: 'variable-conflict', name: 'DB_URL', usedByWorkflows: ['w2'] },
+					{ type: 'variable-conflict', name: 'DB_URL', usedBy: [{ kind: 'workflow', id: 'w2' }] },
 				],
 			}),
 		);
@@ -203,7 +222,10 @@ describe('toPackagesError', () => {
 						remaining: 1,
 						requested: 3,
 						names: ['API_URL', 'DB_URL', 'TOKEN'],
-						usedByWorkflows: ['w1', 'w2'],
+						usedBy: [
+							{ kind: 'workflow', id: 'w1' },
+							{ kind: 'workflow', id: 'w2' },
+						],
 					},
 				],
 			}),
@@ -213,7 +235,7 @@ describe('toPackagesError', () => {
 		expect(hint).toContain('variable limit reached: 3 new variable(s)');
 		expect(hint).toContain('API_URL, DB_URL, TOKEN');
 		expect(hint).toContain('1 of 5 remaining');
-		expect(hint).toContain('w1, w2');
+		expect(hint).toContain('workflow w1, workflow w2');
 	});
 
 	it('lists tag-unresolved issues for a 409', () => {
@@ -226,13 +248,13 @@ describe('toPackagesError', () => {
 						sourceId: 't1',
 						name: 'prod',
 						existingName: 'production',
-						usedByWorkflows: ['w1'],
+						usedBy: [{ kind: 'workflow', id: 'w1' }],
 					},
 					{
 						type: 'tag-unresolved',
 						kind: 'permission-denied',
 						missingScope: 'tag:create',
-						usedByWorkflows: ['w2'],
+						usedBy: [{ kind: 'workflow', id: 'w2' }],
 					},
 				],
 			}),

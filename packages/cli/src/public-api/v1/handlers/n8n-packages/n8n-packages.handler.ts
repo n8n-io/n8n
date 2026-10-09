@@ -1,4 +1,4 @@
-import { ExportPackageRequestDto, ImportPackageSelectionRequestDto } from '@n8n/api-types';
+import { ExportPackageRequestDto } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -14,12 +14,7 @@ import {
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import type { ExportPackageResult } from '@/modules/n8n-packages/n8n-packages.types';
 import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-classifier';
-import {
-	IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
-	resolveImportPackageUpload,
-} from '@/modules/n8n-packages/utils/import-package-upload';
 
-import type { PackageRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiCompositeScope } from '../../shared/middlewares/global.middleware';
 
@@ -48,13 +43,8 @@ type ExportPackageRequest = AuthenticatedRequest<
 	}
 >;
 
-type ImportPackageSelectionRequest = PackageRequest.ImportSelection & {
-	files?: Express.Multer.File[];
-};
-
 type N8nPackagesHandlers = {
 	exportPackage: PublicAPIEndpoint<ExportPackageRequest>;
-	importPackageSelection: PublicAPIEndpoint<ImportPackageSelectionRequest>;
 };
 
 function assertPackageExportApiKeyScopes(
@@ -84,13 +74,6 @@ function assertPackageExportApiKeyScopes(
 	}
 
 	return apiKeyScopes;
-}
-
-function assertPackageImportApiKeyScopes(req: AuthenticatedRequest) {
-	const apiKeyScopes = req.tokenGrant?.apiKeyScopes;
-	if (!apiKeyScopes?.includes('workflow:import')) {
-		throw new ForbiddenError('Forbidden');
-	}
 }
 
 async function streamPackageExport(
@@ -180,49 +163,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				) {
 					throw new UserError(error.message, { description: error.description });
 				}
-				throw error;
-			}
-		},
-	],
-	importPackageSelection: [
-		publicApiCompositeScope('workflow:import'),
-		async (req, res) => {
-			try {
-				const payload = ImportPackageSelectionRequestDto.safeParse(req.body ?? {});
-				if (!payload.success) {
-					throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
-				}
-
-				assertPackageImportApiKeyScopes(req);
-
-				const packageFile = resolveImportPackageUpload(
-					req,
-					IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
-				);
-
-				const result = await Container.get(N8nPackagesService).importPackageSelection(
-					{
-						user: req.user,
-						apiKeyScopes: req.tokenGrant?.apiKeyScopes,
-						workflowConflictPolicy: payload.data.workflowConflictPolicy,
-						workflowIdPolicy: payload.data.workflowIdPolicy,
-						overwriteDeletionPolicy: payload.data.overwriteDeletionPolicy,
-						packageBuffer: packageFile.buffer,
-					},
-					{
-						selectedProjectId: payload.data.selectedProjectId,
-						selectedWorkflowIds: payload.data.selectedWorkflowIds,
-						...(payload.data.deletedWorkflowIds !== undefined
-							? { deletedWorkflowIds: payload.data.deletedWorkflowIds }
-							: {}),
-					},
-				);
-				return res.status(200).json(result);
-			} catch (error) {
-				Container.get(EventService).emit('n8n-package-import-failed', {
-					user: req.user,
-					reason: classifyPackageFailure(error),
-				});
 				throw error;
 			}
 		},
