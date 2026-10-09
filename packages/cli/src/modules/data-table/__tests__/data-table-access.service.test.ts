@@ -80,6 +80,7 @@ describe('DataTableAccessService', () => {
 		});
 
 		it('throws when the project does not exist', async () => {
+			projectScopeService.getProjectIds.mockResolvedValue(null);
 			projectRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.resolveOwningProjectId(user, projectId)).rejects.toThrow(
@@ -88,12 +89,12 @@ describe('DataTableAccessService', () => {
 		});
 
 		it('throws when the project does not grant create access', async () => {
-			projectRepository.findOne.mockResolvedValue({ id: projectId } as never);
 			projectScopeService.getProjectIds.mockResolvedValue([]);
 
 			await expect(service.resolveOwningProjectId(user, projectId)).rejects.toThrow(
 				DataTableAccessDeniedError,
 			);
+			expect(projectRepository.findOne).not.toHaveBeenCalled();
 		});
 	});
 

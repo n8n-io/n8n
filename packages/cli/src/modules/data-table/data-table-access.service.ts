@@ -30,13 +30,13 @@ export class DataTableAccessService {
 			return personalProject.id;
 		}
 
+		if (!(await this.hasProjectAccess(user, projectId, ['dataTable:create']))) {
+			throw new DataTableAccessDeniedError('create');
+		}
+
 		const existingProject = await this.projectRepository.findOne({ where: { id: projectId } });
 		if (!existingProject) {
 			throw new DataTableProjectNotFoundError(projectId);
-		}
-
-		if (!(await this.hasProjectAccess(user, projectId, ['dataTable:create']))) {
-			throw new DataTableAccessDeniedError('create');
 		}
 
 		return existingProject.id;
