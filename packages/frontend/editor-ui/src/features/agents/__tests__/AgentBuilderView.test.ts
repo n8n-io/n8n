@@ -3260,6 +3260,16 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
 	});
 
+	it('does not float the assistant toggle over the standalone preview, where the coding view lives', async () => {
+		// The preview route has no AI panel, so the toggle could only cover its content.
+		routeState.name = AGENT_PREVIEW_VIEW;
+
+		const wrapper = await renderView();
+
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+	});
+
 	it('keeps the embedded AI panel closed by default for a pending agent when Instance AI is not ready, and writes nothing to storage', async () => {
 		instanceAiReadyRef.value = false;
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');

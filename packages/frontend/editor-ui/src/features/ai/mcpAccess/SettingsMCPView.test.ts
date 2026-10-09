@@ -171,6 +171,14 @@ describe('SettingsMCPView', () => {
 			expect(getByTestId('mcp-empty-state')).toBeVisible();
 			expect(queryByTestId('mcp-enabled-section')).not.toBeInTheDocument();
 		});
+
+		it('should use the settings navigation name as the page title', async () => {
+			const { getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			// The same i18n key as the navigation label (module.descriptor.ts), so they cannot drift.
+			expect(getByRole('heading', { name: 'Instance-level MCP' })).toBeVisible();
+		});
 	});
 
 	describe('MCP enabled state', () => {

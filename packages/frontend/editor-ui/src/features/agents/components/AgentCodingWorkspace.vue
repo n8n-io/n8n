@@ -36,6 +36,12 @@ import {
 	formatCodingReview,
 	type CodingReviewComment,
 } from '../utils/coding-review';
+import {
+	CODING_PREVIEW_COPY,
+	codingPreviewState,
+	type CodingPreviewRequest,
+} from '../utils/coding-preview-state';
+import { useFollowScroll } from '../composables/useFollowScroll';
 
 interface FileTab {
 	id: string;
@@ -153,13 +159,15 @@ const tabList = ref<HTMLElement>();
 const logsOpen = ref(saved.value.logsOpen);
 const logStream = ref(saved.value.logStream);
 const logs = ref('');
+const logOutput = ref<HTMLElement>();
+const { followEnd: followLogEnd } = useFollowScroll(logOutput, logs);
 const directory = ref(saved.value.directory);
 const search = ref('');
 const files = ref<AgentCodingFile[]>([]);
 const commitMessage = ref('');
 const previewUrl = ref('');
+const previewFetch = ref<CodingPreviewRequest>('idle');
 let previewRequest = 0;
-let previewLoading = false;
 const narrow = useMediaQuery('(max-width: 48rem)');
 const mobileFiles = ref(false);
 const fileListVisible = useStorage('n8n-coding-file-list-visible', true);
@@ -197,6 +205,21 @@ const preparing = computed(
 const appActive = computed(
 	() => status.value?.app === 'starting' || status.value?.app === 'running',
 );
+const previewState = computed(() =>
+	codingPreviewState({ app: status.value?.app, url: previewUrl.value, request: previewFetch.value }),
+);
+const previewCopy = computed(() => {
+	if (previewState.value === 'ready') return undefined;
+	const copy = CODING_PREVIEW_COPY[previewState.value];
+	const offersRun = previewState.value === 'stopped' || previewState.value === 'error';
+	const hint =
+		offersRun && props.otherPreview
+			? i18n.baseText('agents.coding.app.otherPreview', {
+					interpolate: { name: props.otherPreview },
+				})
+			: copy.hint && i18n.baseText(copy.hint);
+	return { title: i18n.baseText(copy.title), hint, offersRun };
+});
 const runLabel = computed(() => {
 	if (appActive.value) return i18n.baseText('agents.coding.app.restart');
 	if (props.otherPreview) return i18n.baseText('agents.coding.app.replace');
@@ -419,9 +442,17 @@ function showChanges() {
 }
 
 async function openApp() {
+	// Open the window before the request, so that the browser does not block it.
 	const popup = window.open('', '_blank');
 	try {
 		const preview = await api.value.preview();
+		if (!preview.available) {
+			// The preview panel explains this expected state. It is not an error.
+			popup?.close();
+			previewFetch.value = 'unavailable';
+			openPreview();
+			return;
+		}
 		if (popup) {
 			popup.opener = null;
 			popup.location.href = preview.url;
@@ -434,30 +465,31 @@ async function openApp() {
 
 function clearPreview() {
 	previewRequest++;
-	previewLoading = false;
+	previewFetch.value = 'idle';
 	previewUrl.value = '';
 }
 
 async function loadPreview() {
-	if (
-		!previewOpen.value ||
-		!appActive.value ||
-		previewUrl.value ||
-		previewLoading ||
-		!props.canExecute
-	)
+	const settled = previewFetch.value === 'loading' || previewFetch.value === 'unavailable';
+	if (!previewOpen.value || !appActive.value || previewUrl.value || settled || !props.canExecute)
 		return;
 	const request = ++previewRequest;
-	previewLoading = true;
+	previewFetch.value = 'loading';
 	try {
 		const preview = await api.value.preview();
-		if (active && request === previewRequest) previewUrl.value = preview.url;
+		if (!active || request !== previewRequest) return;
+		previewUrl.value = preview.available ? preview.url : '';
+		previewFetch.value = preview.available ? 'idle' : 'unavailable';
 	} catch (cause) {
-		if (active && request === previewRequest)
-			showError(cause, i18n.baseText('agents.coding.previewFailed'));
-	} finally {
-		if (request === previewRequest) previewLoading = false;
+		if (!active || request !== previewRequest) return;
+		previewFetch.value = 'failed';
+		showError(cause, i18n.baseText('agents.coding.previewFailed'));
 	}
+}
+
+function showAppLogs() {
+	logStream.value = 'app';
+	logsOpen.value = true;
 }
 
 function markViewed(file: FileTab, value: boolean) {
@@ -541,6 +573,8 @@ watch(search, () => {
 	void searchFiles();
 });
 watch([logStream, logsOpen], () => {
+	// Another stream, or the panel that opens again, starts at the end of its output.
+	void followLogEnd();
 	void refresh();
 });
 useIntervalFn(() => {
@@ -757,32 +791,42 @@ onBeforeUnmount(() => {
 					:class="$style.appPanel"
 				>
 					<iframe
-						v-if="previewUrl && status?.app === 'running'"
+						v-if="previewState === 'ready'"
 						:src="previewUrl"
 						:title="i18n.baseText('agents.coding.app.title')"
 						:class="$style.frame"
 					/>
-					<div v-else :class="$style.empty">
+					<div
+						v-else-if="previewCopy"
+						:class="$style.empty"
+						role="status"
+						data-testid="agent-coding-preview-state"
+						:data-state="previewState"
+					>
 						<N8nIcon icon="globe" size="xlarge" />
-						<N8nText tag="h3" bold>{{ appLabels[status?.app ?? 'stopped'] }}</N8nText>
-						<N8nText color="text-light">{{
-							otherPreview
-								? i18n.baseText('agents.coding.app.otherPreview', {
-										interpolate: { name: otherPreview },
-									})
-								: i18n.baseText('agents.coding.app.hint')
-						}}</N8nText>
+						<N8nText tag="h3" bold>{{ previewCopy.title }}</N8nText>
+						<N8nText v-if="previewCopy.hint" color="text-light">{{ previewCopy.hint }}</N8nText>
 						<N8nButton
-							v-if="!appActive"
+							v-if="previewCopy.offersRun"
 							:disabled="
 								!canExecute || busy || Boolean(session?.archivedAt) || status?.phase !== 'ready'
 							"
 							@click="act({ action: 'start' })"
 							>{{ runLabel }}</N8nButton
 						>
-						<N8nButton v-else variant="outline" :disabled="!canExecute" @click="loadPreview">{{
-							i18n.baseText('agents.coding.app.show')
-						}}</N8nButton>
+						<N8nButton
+							v-else-if="previewState === 'unavailable'"
+							variant="outline"
+							@click="showAppLogs"
+							>{{ i18n.baseText('agents.coding.app.showLogs') }}</N8nButton
+						>
+						<N8nButton
+							v-else-if="previewState === 'failed'"
+							variant="outline"
+							:disabled="!canExecute"
+							@click="loadPreview"
+							>{{ i18n.baseText('agents.coding.app.show') }}</N8nButton
+						>
 					</div>
 				</TabsContent>
 				<div :class="$style.logHeader">
@@ -902,7 +946,7 @@ onBeforeUnmount(() => {
 								icon="external-link"
 								variant="ghost"
 								size="xsmall"
-								:disabled="!canExecute || !appActive"
+								:disabled="!canExecute || !appActive || previewState === 'unavailable'"
 								:aria-label="i18n.baseText('agents.coding.app.openExternal')"
 								data-testid="agent-coding-open-app"
 								@click="openApp"
@@ -921,7 +965,9 @@ onBeforeUnmount(() => {
 					:supported-directions="['top']"
 					@resize="logsHeight = $event.height"
 				>
-					<pre :class="$style.logs">{{ logs || i18n.baseText('agents.coding.noLogs') }}</pre>
+					<pre ref="logOutput" :class="$style.logs" data-testid="agent-coding-logs">{{
+						logs || i18n.baseText('agents.coding.noLogs')
+					}}</pre>
 				</N8nResizeWrapper>
 			</TabsRoot>
 			<N8nResizeWrapper

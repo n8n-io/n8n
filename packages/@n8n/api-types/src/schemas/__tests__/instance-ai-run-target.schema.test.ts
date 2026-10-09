@@ -9,7 +9,11 @@ const LINK_ID = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
 describe('instanceAiThreadRunTargetSchema', () => {
 	it('keeps the name of a stored linked target', () => {
 		expect(
-			instanceAiThreadRunTargetSchema.parse({ kind: 'linked', instanceId: LINK_ID, name: 'Office' }),
+			instanceAiThreadRunTargetSchema.parse({
+				kind: 'linked',
+				instanceId: LINK_ID,
+				name: 'Office',
+			}),
 		).toEqual({ kind: 'linked', instanceId: LINK_ID, name: 'Office' });
 	});
 

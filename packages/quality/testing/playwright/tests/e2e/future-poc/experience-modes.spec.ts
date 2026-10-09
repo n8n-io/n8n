@@ -13,7 +13,13 @@ import {
 	describeNode,
 	isDesignSystemMenuItem,
 } from '../../../utils/a11y-blocking-nodes';
-import { expect, requireLinkedInstances, test } from './fixtures';
+import {
+	ASSISTANT_AGENT_ID,
+	expect,
+	requireLinkedInstances,
+	test,
+	type AssistantRun,
+} from './fixtures';
 
 type Mode = 'simple' | 'power';
 
@@ -21,8 +27,6 @@ const MODE_LABELS = { simple: 'Simple', power: 'Power' } as const;
 // The system prompt of the Assistant agent starts with this text. The scripted rules use it
 // to skip title and memory calls.
 const AGENT_PROMPT = 'n8n Instance Agent';
-// The agent id of the Assistant in the editor (agentsChatMode.ts).
-const ASSISTANT_AGENT_ID = 'n8n-assistant';
 const TEAM_PROJECT_NAME = 'Simple mode team';
 const AUTOMATION_WORKFLOW_NAME = 'Simple mode daily digest';
 const LIVE_CHAT_TITLE = 'Live digest chat';
@@ -44,8 +48,6 @@ const KNOWN_SIDEBAR_VIOLATIONS = [
 const CHAT_TIMEOUT_MS = 60_000;
 const PLAIN_REPLY = 'Plain answer.';
 const PROPOSAL_REPLY = 'I can keep the digest and turn it on.';
-// The proposal card is missing after its turn and in a live chat (BACKLOG Q03).
-const CARD_DEFECT = 'The proposal card is missing from the chat (BACKLOG Q03)';
 
 /** A chat with a known title. The rename comes before the first run, so the title stays. */
 async function createNamedChat(api: ApiHelpers, title: string): Promise<InstanceAiThreadInfo> {
@@ -57,18 +59,6 @@ async function createNamedChat(api: ApiHelpers, title: string): Promise<Instance
 async function openInMode(n8n: n8nPage, mode: Mode): Promise<void> {
 	await n8n.api.users.setExperienceMode(mode);
 	await n8n.navigate.toInstanceAi();
-}
-
-/**
- * Opens the event stream of an Assistant run in a chat. The run goes on after the stream
- * closes, so call `disconnect()` on the result when the test has what it needs.
- */
-async function startAssistantRun(n8n: n8nPage, baseUrl: string, threadId: string, message: string) {
-	const project = await n8n.api.projects.getMyPersonalProject();
-	return await n8n.api.agents.openChat(baseUrl, project.id, ASSISTANT_AGENT_ID, {
-		message,
-		sessionId: threadId,
-	});
 }
 
 function manualTriggerWorkflow(): Partial<IWorkflowBase> {
@@ -216,9 +206,8 @@ function proposeDigestScript(workflowId: string): ScriptInput {
 	};
 }
 
-/** One Assistant run, as the chat client opens it. */
-type AssistantRun = Awaited<ReturnType<ApiHelpers['agents']['openChat']>>;
 type StartLlm = (script: ScriptInput) => Promise<ScriptedLlm>;
+type StartRun = (threadId: string, message: string) => Promise<AssistantRun>;
 
 /** The tool calls that the run suspended for an answer, read from its stream. */
 function suspensionsOf(run: AssistantRun) {
@@ -229,7 +218,9 @@ function suspensionsOf(run: AssistantRun) {
 
 /** Waits until the run suspends for an answer, then returns its first suspended tool call. */
 async function awaitSuspension(run: AssistantRun) {
-	await expect.poll(() => suspensionsOf(run).length).toBeGreaterThan(0);
+	await expect
+		.poll(() => suspensionsOf(run).length, { timeout: CHAT_TIMEOUT_MS })
+		.toBeGreaterThan(0);
 	const [suspension] = suspensionsOf(run);
 	if (!suspension) throw new TestError('The run did not suspend for an answer');
 	return suspension;
@@ -242,12 +233,14 @@ async function awaitSuspension(run: AssistantRun) {
 async function buildDigestInChat(
 	n8n: n8nPage,
 	startLlm: StartLlm,
-	baseUrl: string,
+	startRun: StartRun,
 	chatId: string,
 ): Promise<string> {
 	const buildLlm = await startLlm(buildDigestScript());
-	const build = await startAssistantRun(n8n, baseUrl, chatId, 'Build the digest');
-	await expect.poll(() => build.events.map((event) => event.type)).toContain('done');
+	const build = await startRun(chatId, 'Build the digest');
+	await expect
+		.poll(() => build.events.map((event) => event.type), { timeout: CHAT_TIMEOUT_MS })
+		.toContain('done');
 	build.disconnect();
 	expect(buildLlm.requests().map((request) => request.ruleId)).toContain('build-digest');
 	const digestId = await getWorkflowIdByName(n8n.api, AUTOMATION_WORKFLOW_NAME);
@@ -259,21 +252,18 @@ async function buildDigestInChat(
  * Builds the digest in a new chat, then asks for the automation proposal. The proposal
  * waits for the user, so the run stays suspended until the answer.
  */
-async function buildDigestAndPropose(n8n: n8nPage, startLlm: StartLlm, baseUrl: string) {
+async function buildDigestAndPropose(n8n: n8nPage, startLlm: StartLlm, startRun: StartRun) {
 	const chat = await createNamedChat(n8n.api, 'Digest chat');
-	const digestId = await buildDigestInChat(n8n, startLlm, baseUrl, chat.id);
+	const digestId = await buildDigestInChat(n8n, startLlm, startRun, chat.id);
 	const proposeLlm = await startLlm(proposeDigestScript(digestId));
-	const proposal = await startAssistantRun(n8n, baseUrl, chat.id, 'Turn it into an automation');
+	const proposal = await startRun(chat.id, 'Turn it into an automation');
 	const suspension = await awaitSuspension(proposal);
 	proposal.disconnect();
 	expect(proposeLlm.requests().map((request) => request.ruleId)).toContain('propose-digest');
 	return { chat, digestId, suspension };
 }
 
-/**
- * Answers the proposal the way its "Turn it on" button does. The card is missing (BACKLOG Q03),
- * so the test does not click it.
- */
+/** Answers the proposal through the resume route, with the answer of its "Turn it on" button. */
 async function turnOnProposal(
 	n8n: n8nPage,
 	suspension: { runId: string; toolCallId: string },
@@ -288,21 +278,6 @@ async function turnOnProposal(
 			values: { target: AUTOMATION_TARGET, activate: true },
 		},
 	});
-}
-
-/**
- * Expects the proposal card in the open chat. While the card is missing, the test is an
- * expected failure (BACKLOG Q03). Once the card shows, the rest of the test must pass.
- */
-async function expectProposalCard(n8n: n8nPage): Promise<void> {
-	let shown = true;
-	try {
-		await expect(n8n.experienceModes.getProposalCard()).toBeVisible();
-	} catch {
-		shown = false;
-	}
-	test.fail(!shown, CARD_DEFECT);
-	expect(shown, CARD_DEFECT).toBe(true);
 }
 
 /** Clicks "Turn it on" on the card. The workflow must then be active and listed as On. */
@@ -438,7 +413,7 @@ test.describe(
 		test('chats show the state they need: Waiting for you, Ready to review and Done in Power, and the mark in Simple', async ({
 			n8n,
 			startLlm,
-			backendUrl,
+			startAssistantRun,
 		}) => {
 			const workflow: { id: string } = await n8n.api.workflows.createWorkflow(
 				manualTriggerWorkflow(),
@@ -446,29 +421,28 @@ test.describe(
 			const llm = await startLlm(chatStatesScript(workflow.id));
 			await n8n.api.setInstanceAiPermissions({ runWorkflow: 'require_approval' });
 
-			// Both runs start while no page shows their chat. A chat that the user views while
-			// it works counts as done, not as ready to review.
 			const readyChat = await createNamedChat(n8n.api, 'Ready chat');
 			const waitingChat = await createNamedChat(n8n.api, 'Approval chat');
-			const readyRun = await startAssistantRun(
-				n8n,
-				backendUrl,
-				readyChat.id,
-				'Plain question about the weather',
-			);
+			// A chat that the user never opened is ready to review. Open it once, so that it is
+			// done, and the Ready state below comes from its run.
+			await n8n.start.fromInstanceAiThread(readyChat.id);
+			await openInMode(n8n, 'power');
+			await expect(n8n.experienceModes.getChatGroupItem('done', 'Ready chat')).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+
+			// Both runs start while no page shows their chat. A chat that the user views while
+			// it works counts as done, not as ready to review.
+			const readyRun = await startAssistantRun(readyChat.id, 'Plain question about the weather');
 			const waitingRun = await startAssistantRun(
-				n8n,
-				backendUrl,
 				waitingChat.id,
 				'Approval question: run the workflow',
 			);
-			await expect
-				.poll(() => readyRun.events.map((event) => event.type))
-				.toContain('message-queued');
-			await expect
-				.poll(() => waitingRun.events.map((event) => event.type))
-				.toContain('message-queued');
-			await expect.poll(() => readyRun.events.map((event) => event.type)).toContain('done');
+			const eventTypes = (run: AssistantRun) => run.events.map((event) => event.type);
+			const runTimeout = { timeout: CHAT_TIMEOUT_MS };
+			await expect.poll(() => eventTypes(readyRun), runTimeout).toContain('message-queued');
+			await expect.poll(() => eventTypes(waitingRun), runTimeout).toContain('message-queued');
+			await expect.poll(() => eventTypes(readyRun), runTimeout).toContain('done');
 			readyRun.disconnect();
 			waitingRun.disconnect();
 
@@ -553,9 +527,13 @@ test.describe(
 		test('a workflow that the user turns on from a proposal shows in Automations as On', async ({
 			n8n,
 			startLlm,
-			backendUrl,
+			startAssistantRun,
 		}) => {
-			const { digestId, suspension } = await buildDigestAndPropose(n8n, startLlm, backendUrl);
+			const { digestId, suspension } = await buildDigestAndPropose(
+				n8n,
+				startLlm,
+				startAssistantRun,
+			);
 
 			await turnOnProposal(n8n, suspension);
 			await expect
@@ -570,30 +548,32 @@ test.describe(
 		test('the proposal card is still in the chat until the user answers it', async ({
 			n8n,
 			startLlm,
-			backendUrl,
+			startAssistantRun,
 		}) => {
-			const { chat, digestId } = await buildDigestAndPropose(n8n, startLlm, backendUrl);
+			const { chat, digestId } = await buildDigestAndPropose(n8n, startLlm, startAssistantRun);
 
-			// After the turn, the thread history omits the suspended proposal call (BACKLOG Q03).
+			// The turn ended before the page opened, so the card comes from the thread history.
 			await n8n.start.fromInstanceAiThread(chat.id);
 			await expect(n8n.instanceAi.getPanelText(PROPOSAL_REPLY)).toBeVisible({
 				timeout: CHAT_TIMEOUT_MS,
 			});
-			await expectProposalCard(n8n);
+			await expect(n8n.experienceModes.getProposalCard()).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
 			await turnOnFromCard(n8n, digestId);
 		});
 
 		test('the proposal card shows for a request that the user sends in the open chat', async ({
 			n8n,
 			startLlm,
-			backendUrl,
+			startAssistantRun,
 		}) => {
 			const chat = await createNamedChat(n8n.api, LIVE_CHAT_TITLE);
-			const digestId = await buildDigestInChat(n8n, startLlm, backendUrl, chat.id);
+			const digestId = await buildDigestInChat(n8n, startLlm, startAssistantRun, chat.id);
 			const proposeLlm = await startLlm(proposeDigestScript(digestId));
 
-			// The card shows while the turn streams, but it is gone when the turn ends (BACKLOG Q03).
-			// Check it once the row says that the chat waits for the user.
+			// When the turn ends, the chat reads its history again. Check the card after that:
+			// the row then says that the chat waits for the user.
 			await n8n.start.fromInstanceAiThread(chat.id);
 			await n8n.instanceAi.sendMessage('Turn it into an automation');
 			await expect(n8n.instanceAi.getPanelText(PROPOSAL_REPLY)).toBeVisible({
@@ -603,7 +583,9 @@ test.describe(
 			await expect(
 				n8n.experienceModes.getSidebarMenuItem(`${LIVE_CHAT_TITLE}, Waiting for you`),
 			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
-			await expectProposalCard(n8n);
+			await expect(n8n.experienceModes.getProposalCard()).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
 			await turnOnFromCard(n8n, digestId);
 		});
 
@@ -617,6 +599,8 @@ test.describe(
 			await expect(n8n.experienceModes.getPersonalEntry()).toBeVisible();
 			await expect(n8n.experienceModes.getChatsSection()).toContainText('Accessibility chat');
 			// An empty part would pass the scan with no violations, so each part is checked on screen.
+			await expect(n8n.experienceModes.getModeOption(MODE_LABELS.power)).toBeVisible();
+			await expect(n8n.experienceModes.getAutomationsSection()).toBeVisible();
 			await expectKnownSidebarViolations(a11y);
 			await expectNoBlockingViolationsInNewParts(a11y);
 
@@ -624,6 +608,8 @@ test.describe(
 			await expect(
 				n8n.experienceModes.getChatGroupItem('ready', 'Accessibility chat, Ready to review'),
 			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
+			await expect(n8n.experienceModes.getModeOption(MODE_LABELS.simple)).toBeVisible();
+			await expect(n8n.experienceModes.getAutomationsSection()).toBeVisible();
 			await expectKnownSidebarViolations(a11y);
 			await expectNoBlockingViolationsInNewParts(a11y);
 			// A scan that did not run adds no scan, so the buckets show which scans ran.

@@ -8,7 +8,15 @@ import {
 	type AgentCodingConfig,
 	type AgentCodingStatus,
 } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nIcon,
+	N8nInput,
+	N8nInputLabel,
+	N8nText,
+	type BadgeVariant,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -23,12 +31,10 @@ const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	disabled?: boolean;
-	canExecute?: boolean;
 	beforePrepare?: () => Promise<unknown>;
 }>();
 const emit = defineEmits<{
 	'update:config': [config: AgentCodingConfig | null];
-	open: [];
 }>();
 
 const i18n = useI18n();
@@ -59,6 +65,16 @@ const labels = computed(() => ({
 	stopped: i18n.baseText('agents.coding.status.stopped'),
 	restarted: i18n.baseText('agents.coding.status.restarted'),
 }));
+const statusVariants: Record<AgentCodingStatus['phase'], BadgeVariant> = {
+	not_started: 'outline',
+	cloning: 'info',
+	installing: 'info',
+	ready: 'success',
+	error: 'danger',
+	stopped: 'warning',
+	restarted: 'warning',
+};
+const phase = computed(() => status.value?.phase ?? 'not_started');
 const repositoryName = computed(() =>
 	props.config?.repositoryUrl
 		.replace(/\.git$/, '')
@@ -173,9 +189,13 @@ async function save() {
 					<N8nText bold>{{ i18n.baseText('agents.coding.title') }}</N8nText>
 					<div v-if="config" :class="$style.detail">
 						<N8nText size="small">{{ repositoryName }}</N8nText>
-						<N8nText size="small" color="text-light">{{
-							labels[status?.phase ?? 'not_started']
-						}}</N8nText>
+						<N8nBadge
+							:variant="statusVariants[phase]"
+							size="xsmall"
+							data-testid="agent-coding-status"
+							:data-phase="phase"
+							>{{ labels[phase] }}</N8nBadge
+						>
 					</div>
 					<N8nText v-else tag="div" size="small" color="text-light">{{
 						i18n.baseText('agents.coding.description')
@@ -183,21 +203,14 @@ async function save() {
 				</div>
 			</div>
 			<div :class="$style.actions">
-				<N8nButton
-					v-if="config"
-					variant="ghost"
-					size="small"
-					:disabled="disabled"
-					@click="configure"
-					>{{ i18n.baseText('agents.coding.settings') }}</N8nButton
-				>
+				<!-- The page header holds the one "Open coding" action. -->
 				<N8nButton
 					v-if="config"
 					variant="outline"
 					size="small"
-					:disabled="canExecute === false || busy"
-					@click="emit('open')"
-					>{{ i18n.baseText('agents.coding.open') }}</N8nButton
+					:disabled="disabled"
+					@click="configure"
+					>{{ i18n.baseText('agents.coding.settings') }}</N8nButton
 				>
 				<N8nButton v-else variant="outline" size="small" :disabled="disabled" @click="configure">{{
 					i18n.baseText('agents.coding.setup')
@@ -205,7 +218,11 @@ async function save() {
 			</div>
 		</div>
 		<N8nText v-if="error && !open" tag="div" size="small" color="danger">{{ error }}</N8nText>
-		<AgentModal v-model:open="open" :title="i18n.baseText('agents.coding.setup')" :busy="busy">
+		<AgentModal
+			v-model:open="open"
+			:title="i18n.baseText(config ? 'agents.coding.settingsTitle' : 'agents.coding.setup')"
+			:busy="busy"
+		>
 			<div :class="$style.form">
 				<N8nInputLabel :label="i18n.baseText('agents.coding.repositoryUrl')" required>
 					<N8nInput
@@ -225,6 +242,7 @@ async function save() {
 						:project-id="projectId"
 						:show-delete="false"
 						:teleported="false"
+						create-button-variant="outline"
 						credential-modal-append-to-body
 						@credential-selected="credentialId = $event"
 						@credential-deselected="credentialId = ''"
@@ -262,8 +280,10 @@ async function save() {
 			<template #footerLeft>
 				<N8nButton
 					v-if="config"
-					variant="ghost"
+					variant="destructive"
+					icon="trash-2"
 					:disabled="busy"
+					data-testid="agent-coding-remove"
 					@click="
 						emit('update:config', null);
 						open = false;
@@ -277,7 +297,7 @@ async function save() {
 					:disabled="disabled"
 					data-testid="agent-coding-connect"
 					@click="save"
-					>{{ i18n.baseText('agents.coding.connect') }}</N8nButton
+					>{{ i18n.baseText(config ? 'generic.save' : 'agents.coding.connect') }}</N8nButton
 				>
 			</template>
 		</AgentModal>

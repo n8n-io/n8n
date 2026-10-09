@@ -50,12 +50,21 @@ export class RunTargetService {
 		const stored = storedRunTargetOf(defaults);
 		// Defaults without a target come from a chat that started before run targets existed.
 		if (stored === undefined && isRecord(defaults)) return LOCAL_RUN_TARGET;
+		return await this.resolveMessageTarget(thread, ownerId, stored, request);
+	}
+
+	/** Resolves a message's target. A failed lookup or write keeps the stored target. */
+	private async resolveMessageTarget(
+		thread: AgentExecutionThread,
+		ownerId: string,
+		stored: InstanceAiThreadRunTarget | undefined,
+		request: ChatRequest | undefined,
+	): Promise<InstanceAiThreadRunTarget> {
 		let target = stored;
 		try {
 			target = stored ?? (await this.storeFirstTarget(thread, ownerId, request?.runTarget));
 			return await this.resolveTarget(thread, ownerId, target);
 		} catch (error) {
-			// A failed lookup must not fail the message or drop the link. The stored target stays.
 			this.logger.warn('Failed to resolve the run target of a chat message', {
 				threadId: thread.id,
 				error: error instanceof Error ? error.message : String(error),
@@ -104,7 +113,7 @@ export class RunTargetService {
 		return link ? { kind: 'linked', instanceId: link.id, name: link.name } : LOCAL_RUN_TARGET;
 	}
 
-	/** The target a message runs on. A shared chat and a local target run here. A lost link is dropped. */
+	/** A shared chat and a local target run here. A link that the owner lost is dropped. */
 	private async resolveTarget(
 		thread: AgentExecutionThread,
 		ownerId: string,
@@ -155,9 +164,7 @@ export class RunTargetService {
 	): Promise<LinkedInstanceSummary | null> {
 		if (!this.linkedInstancesOn()) return null;
 		// Loaded on use: the linked-instances tables are needed only while the module is on.
-		const { LinkedInstanceStore } = await import(
-			'../../linked-instances/linked-instance.store.js'
-		);
+		const { LinkedInstanceStore } = await import('../../linked-instances/linked-instance.store.js');
 		return await Container.get(LinkedInstanceStore).getForUser(ownerId, instanceId);
 	}
 }

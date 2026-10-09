@@ -36,6 +36,7 @@ import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import { optionalRunTarget } from '../runTarget/runTargetOptions';
+import { useOpenThreadSummary } from '../runTarget/useOpenThreadSummary';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
@@ -108,6 +109,7 @@ const slots = defineSlots<{
 const TITLE_REFINE_DELAY_MS = 5_000;
 
 const store = useInstanceAiStore();
+const openThreadSummary = useOpenThreadSummary();
 const settingsStore = useInstanceAiSettingsStore();
 const thread = useThread();
 const rootStore = useRootStore();
@@ -452,11 +454,17 @@ function readHostAttachments(hostContext: Record<string, unknown>): InstanceAiAt
 }
 
 /** A message the user typed was accepted: settle the hand-off state it carried. */
+/** A message can drop the link of a linked chat. Its notice is read now, not at the turn's end. */
+function refreshLinkedChatOnAccept() {
+	if (openThreadSummary.value?.runTarget?.kind === 'linked') void refreshThreadInfo();
+}
+
 function onMessageAccepted(payload: {
 	text: string;
 	files: File[];
 	hostContext?: Record<string, unknown>;
 }) {
+	refreshLinkedChatOnAccept();
 	const hostContext = payload.hostContext ?? {};
 	const attachments = readHostAttachments(hostContext);
 	thread.recordSentAttachments(attachments);

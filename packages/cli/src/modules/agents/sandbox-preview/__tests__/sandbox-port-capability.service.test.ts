@@ -4,7 +4,10 @@ import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing
 import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { SandboxPortCapability } from '../sandbox-port-capability.service';
+import {
+	SandboxPortCapability,
+	SandboxPreviewUnavailableError,
+} from '../sandbox-port-capability.service';
 
 const SERVICE_URL = 'http://sandbox-service.internal:8080';
 const NOT_SUPPORTED = 'This sandbox service cannot show app previews yet.';
@@ -74,6 +77,7 @@ describe('SandboxPortCapability', () => {
 
 		const error = await capability.assertSupported(SERVICE_URL).catch((e: unknown) => e);
 
+		expect(error).toBeInstanceOf(SandboxPreviewUnavailableError);
 		expect(error).toBeInstanceOf(BadRequestError);
 		expect(error).toHaveProperty('message', NOT_SUPPORTED);
 		expect(logger.warn).not.toHaveBeenCalled();
@@ -208,6 +212,7 @@ describe('SandboxPortCapability', () => {
 				.resolveRoute(sandboxWith(undefined), 5173)
 				.catch((e: unknown) => e);
 
+			expect(error).toBeInstanceOf(SandboxPreviewUnavailableError);
 			expect(error).toBeInstanceOf(BadRequestError);
 			expect(error).toHaveProperty('message', 'This sandbox cannot show app previews');
 			expect(httpRequest).not.toHaveBeenCalled();

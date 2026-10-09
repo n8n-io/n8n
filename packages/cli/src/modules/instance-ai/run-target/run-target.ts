@@ -33,7 +33,10 @@ export function keepFirstRunTarget(
 	return storedRunTargetOf(currentDefaults) ?? first ?? LOCAL_RUN_TARGET;
 }
 
-/** The turn defaults to save. A stored run target stays, so the first turn decides it. */
+/**
+ * The turn defaults to save. Every turn replaces them, so a stored run target must survive
+ * the replacement. The first turn decides the target.
+ */
 export function turnDefaultsKeepingRunTarget(
 	currentDefaults: unknown,
 	defaults: AssistantTurnDefaults,
@@ -50,9 +53,7 @@ export function lostRunTargetOf(
 }
 
 /** The thread metadata without the lost link marker. */
-export function withoutLostRunTarget(
-	metadata: Record<string, unknown>,
-): Record<string, unknown> {
+export function withoutLostRunTarget(metadata: Record<string, unknown>): Record<string, unknown> {
 	return Object.fromEntries(
 		Object.entries(metadata).filter(([key]) => key !== ASSISTANT_RUN_TARGET_LOST_KEY),
 	);

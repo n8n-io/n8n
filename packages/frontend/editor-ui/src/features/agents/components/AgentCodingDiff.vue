@@ -231,6 +231,8 @@ watch(
 	min-height: 0;
 	flex: 1;
 	overflow: auto;
+	/* Comments use the visible width (cqi), not the width of the longest line. */
+	container-type: inline-size;
 }
 .toolbar {
 	display: flex;
@@ -241,6 +243,7 @@ watch(
 	border-bottom: var(--border);
 	position: sticky;
 	top: 0;
+	left: 0;
 	z-index: 1;
 	background: var(--background--surface);
 }
@@ -248,7 +251,10 @@ watch(
 	margin-left: auto;
 }
 .lines {
-	min-width: fit-content;
+	/* Long lines widen the list, so the diff scrolls on x and does not clip them. */
+	min-width: max-content;
+	/* The same tab size as the file viewer. */
+	tab-size: 4;
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--xl);
@@ -343,6 +349,10 @@ watch(
 }
 .comment,
 .draft {
+	position: sticky;
+	left: 0;
+	box-sizing: border-box;
+	max-width: calc(100cqi - 2 * var(--spacing--xs));
 	margin: var(--spacing--xs);
 	padding: var(--spacing--xs);
 	border: var(--border);

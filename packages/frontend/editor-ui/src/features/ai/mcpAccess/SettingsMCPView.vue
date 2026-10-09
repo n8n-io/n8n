@@ -291,7 +291,7 @@ onBeforeUnmount(() => {
 <template>
 	<N8nSettingsLayout :class="$style.layout">
 		<N8nSettingsPageHeader
-			:title="i18n.baseText('settings.mcp.page.title')"
+			:title="i18n.baseText('settings.mcp')"
 			:description="i18n.baseText('settings.mcp.page.description')"
 			:docs-url="MCP_DOCS_PAGE_URL"
 			data-test-id="mcp-settings-header"

@@ -2762,7 +2762,6 @@ export class InstanceAiService {
 			update: ({ metadata }) => ({
 				metadata: {
 					...metadata,
-					// The stored run target outlives the turn defaults, which each turn replaces.
 					[ASSISTANT_TURN_DEFAULTS_KEY]: turnDefaultsKeepingRunTarget(
 						metadata?.[ASSISTANT_TURN_DEFAULTS_KEY],
 						defaults,

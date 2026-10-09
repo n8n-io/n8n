@@ -26,6 +26,12 @@ const TEST_TIMEOUT_MS = 120_000;
 // An unpublish runs in the background. It must finish before the next reset.
 const UNPUBLISH_TIMEOUT_MS = 30_000;
 
+// The agent id of the Assistant in the editor (agentsChatMode.ts).
+export const ASSISTANT_AGENT_ID = 'n8n-assistant';
+
+/** One Assistant run, as the chat client opens it: its events, its end and `disconnect()`. */
+export type AssistantRun = Awaited<ReturnType<ApiHelpers['agents']['openChat']>>;
+
 export const LINKED_INSTANCES_SKIP_REASON =
 	'Needs the two n8n instances of `pnpm test:future-poc` (CLOUD_BASE_URL is not set)';
 
@@ -140,6 +146,12 @@ type LinkedInstancesFixtures = {
 	 * created. Do not use it together with `llm`: both bind SCRIPTED_LLM_PORT.
 	 */
 	startLlm: (script: ScriptInput) => Promise<ScriptedLlm>;
+	/**
+	 * Start an Assistant run in a chat as the user of `n8n`, and read its event stream. The run
+	 * goes on after the stream closes. At teardown, the fixture closes every stream that the test
+	 * opened, also when the test fails before it closes the stream itself.
+	 */
+	startAssistantRun: (threadId: string, message: string) => Promise<AssistantRun>;
 	/** Origin of "Cloud", for example `http://127.0.0.1:5680`. */
 	cloudUrl: string;
 	/** API helpers for "Cloud", signed in as its owner after the reset. */
@@ -219,6 +231,20 @@ export const test = base.extend<LinkedInstancesFixtures, LinkedInstancesWorkerFi
 			return llm;
 		});
 		await Promise.all(started.map(async (llm) => await llm.stop()));
+	},
+
+	startAssistantRun: async ({ n8n, backendUrl }, use) => {
+		const runs: AssistantRun[] = [];
+		await use(async (threadId, message) => {
+			const project = await n8n.api.projects.getMyPersonalProject();
+			const run = await n8n.api.agents.openChat(backendUrl, project.id, ASSISTANT_AGENT_ID, {
+				message,
+				sessionId: threadId,
+			});
+			runs.push(run);
+			return run;
+		});
+		for (const run of runs) run.disconnect();
 	},
 
 	llm: async ({ script, startLlm }, use) => {

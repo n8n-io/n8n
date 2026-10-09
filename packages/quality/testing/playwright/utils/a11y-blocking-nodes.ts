@@ -35,7 +35,8 @@ function openingTag(html: string): string {
  * links still fail.
  */
 export function isDesignSystemMenuItem(node: BlockingNode): boolean {
-	return node.rule === 'aria-required-parent' && /^<a\s[^>]*\brole="menuitem"/.test(node.html);
+	// The role must be an attribute of the link itself: not of a child, not `data-role`.
+	return node.rule === 'aria-required-parent' && /^<a\s[^>]*\srole="menuitem"/.test(node.html);
 }
 
 // N8nMenuItem sets this test id on every item, so it does not name one element.

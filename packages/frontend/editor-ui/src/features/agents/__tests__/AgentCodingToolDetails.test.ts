@@ -1,0 +1,141 @@
+import { cleanup, render, screen, waitFor, within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
+import AgentCodingToolDetails from '../components/AgentCodingToolDetails.vue';
+import { TOOL_CALL_STATE } from '../constants';
+import { CODING_OPEN_FILE } from '../utils/coding-review';
+
+// CodeMirror is slow to mount in jsdom and is not under test here.
+// `__esModule` lets the async component loader read the default export.
+vi.mock('../components/AgentCustomToolViewer.vue', () => ({
+	__esModule: true,
+	default: { props: ['code'], template: '<pre data-testid="code-viewer">{{ code }}</pre>' },
+}));
+
+afterEach(() => {
+	cleanup();
+});
+
+function toolCall(tool: string, input: unknown, output?: unknown): ToolCall {
+	return { toolCallId: 'call-1', tool, input, output, state: TOOL_CALL_STATE.DONE };
+}
+
+function renderDetails(call: ToolCall) {
+	const openFile = vi.fn();
+	const result = render(AgentCodingToolDetails, {
+		props: { toolCall: call },
+		global: { provide: { [CODING_OPEN_FILE]: openFile } },
+	});
+	return { ...result, openFile };
+}
+
+function byTestId(container: Element, id: string): HTMLElement | null {
+	return container.querySelector<HTMLElement>(`[data-testid="${id}"]`);
+}
+
+describe('AgentCodingToolDetails', () => {
+	it('starts the details with the path, which opens the file', async () => {
+		const { openFile } = renderDetails(
+			toolCall('workspace_read_file', { path: 'src/lib/dates.ts' }, { content: 'export {}' }),
+		);
+
+		const path = screen.getByRole('button', { name: 'Open src/lib/dates.ts' });
+		expect(path).toHaveTextContent('src/lib/dates.ts');
+		expect(path).toHaveAttribute('title', 'src/lib/dates.ts');
+		await userEvent.click(path);
+
+		expect(openFile).toHaveBeenCalledWith('src/lib/dates.ts');
+		expect(screen.getByText('File content')).toBeVisible();
+		expect(await screen.findByText('export {}')).toBeVisible();
+	});
+
+	it('says that long written content is shortened', async () => {
+		const { container } = renderDetails(
+			toolCall('workspace_write_file', { path: 'big.ts', content: 'x'.repeat(12001) }, {}),
+		);
+
+		expect(screen.getByText('Written content')).toBeVisible();
+		expect(screen.getByText('Showing the first 12,000 characters')).toBeVisible();
+		await waitFor(() =>
+			expect(byTestId(container, 'code-viewer')?.textContent?.length).toBe(12000),
+		);
+	});
+
+	it('shows the changed lines and line stats of an edit', () => {
+		const { container } = renderDetails(
+			toolCall(
+				'workspace_str_replace_file',
+				{
+					path: 'src/a.ts',
+					replacements: [{ old_str: 'keep\nold', new_str: 'keep\nnew\nmore' }],
+				},
+				{ success: true },
+			),
+		);
+
+		expect(screen.getByText('Changes')).toBeVisible();
+		const stats = byTestId(container, 'agent-coding-tool-stats');
+		expect(stats?.children[0]).toHaveTextContent('+2');
+		expect(stats?.children[1]).toHaveTextContent('−1');
+		const lines = [...container.querySelectorAll('[data-kind]')].map((line) => [
+			line.getAttribute('data-kind'),
+			line.textContent,
+		]);
+		expect(lines).toEqual([
+			['context', ' keep'],
+			['removed', '−old'],
+			['added', '+new'],
+			['added', '+more'],
+		]);
+	});
+
+	it.each([
+		[0, 'success'],
+		[2, 'danger'],
+	])('shows exit code %i as a %s badge', (exitCode, variant) => {
+		const { container } = renderDetails(
+			toolCall(
+				'workspace_execute_command',
+				{ command: 'pnpm test' },
+				{ success: exitCode === 0, exitCode, stdout: 'done', stderr: '' },
+			),
+		);
+
+		const badge = byTestId(container, 'agent-coding-tool-exit-code');
+		expect(badge).toHaveTextContent(`Exit code: ${exitCode}`);
+		expect(badge).toHaveClass(variant);
+		expect(screen.getByText('$ pnpm test')).toBeVisible();
+	});
+
+	it('opens long command output at its end', async () => {
+		const scrollHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight');
+		Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+			configurable: true,
+			get: () => 700,
+		});
+		try {
+			const { container } = renderDetails(
+				toolCall(
+					'workspace_execute_command',
+					{ command: 'pnpm test' },
+					{ exitCode: 1, stdout: 'line\n'.repeat(200), stderr: 'failed' },
+				),
+			);
+
+			const output = byTestId(container, 'agent-coding-tool-output');
+			expect(output).toHaveTextContent(/failed$/);
+			await waitFor(() => expect(output?.scrollTop).toBe(700));
+		} finally {
+			if (scrollHeight) Object.defineProperty(HTMLElement.prototype, 'scrollHeight', scrollHeight);
+		}
+	});
+
+	it('shows nothing for a step without a path or a command yet', () => {
+		const { container } = renderDetails(toolCall('workspace_execute_command', {}));
+
+		expect(within(container).queryByText('Command')).toBeNull();
+		expect(container.querySelector('pre')).toBeNull();
+	});
+});

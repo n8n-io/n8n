@@ -132,10 +132,14 @@ off web search and the local gateway there. The local gateway setting goes back
 to the value of the runner, so a test that turns it on does not change the
 tests after it.
 
-Every browser context uses reduced motion, so animations keep still. A new
-context also starts with the sidebar expanded: the sidebar experiment has no
-PostHog variant in e2e, and its control group starts collapsed. A test that
-stores a choice in `sidebar.collapsed` keeps it.
+The browser context of the `n8n` and `page` fixtures uses reduced motion, so
+animations keep still. It also starts with the sidebar expanded: the sidebar
+experiment has no PostHog variant in e2e, and its control group starts
+collapsed. A test that stores a choice in `sidebar.collapsed` keeps it.
+A page from `n8n.start.withUser()` gets neither, because that helper opens a new
+context with `browser.newContext()`. For such a page, call
+`page.emulateMedia({ reducedMotion: 'reduce' })`, and add the sidebar init
+script of `fixtures.ts` to its context before the first load.
 
 A published workflow cannot be deleted by a database reset. Before each reset, the
 fixtures deactivate the active workflows and wait until they are unpublished. A
@@ -149,7 +153,12 @@ test that stops early therefore cannot make the next reset fail.
 | `script` | The script of `llm`. Set it with `test.use({ script })`. |
 | `llm` | The scripted LLM, started from `script` for each test and stopped after it. |
 | `startLlm(script)` | Starts the scripted LLM in the test, for a script that holds ids that the test created. Do not use it together with `llm`: both use the same port. |
+| `startAssistantRun(threadId, message)` | Starts an Assistant run in a chat as the user of `n8n` and reads its event stream. At teardown, it closes every stream that the test opened, also after a failure. |
 | `sandbox` | The fake sandbox service (one for each worker). It keeps files in memory and answers every command with exit code 0. |
+
+Each scripted LLM counts its tool call ids from 1 (`toolu_scripted_1`, ...).
+Two `startLlm` servers in one chat therefore give two calls the same id. Keep
+this: real models can do the same, and the chat must keep both calls.
 
 Guard each rule for the agent turn with `systemIncludes: 'n8n Instance Agent'`,
 so that title and memory calls get the fallback text. See the

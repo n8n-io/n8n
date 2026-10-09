@@ -30,6 +30,7 @@ import {
 } from '../utils/write-todos-tool';
 import { TOOL_CALL_STATE } from '../constants';
 import { CODING_OPEN_FILE } from '../utils/coding-review';
+import { codingToolStepLabel, isCodingToolName } from '../utils/coding-tool-step';
 import { AGENT_CHAT_TOOL_STEP_NOTE } from '../utils/tool-step-note';
 import AgentCodingToolDetails from './AgentCodingToolDetails.vue';
 
@@ -50,10 +51,13 @@ const openCodingFile = inject(CODING_OPEN_FILE, undefined);
 const toolStepNote = inject(AGENT_CHAT_TOOL_STEP_NOTE, undefined);
 
 function isCodingTool(tc: ToolCall): boolean {
-	return (
-		Boolean(openCodingFile) &&
-		['workspace_read_file', 'workspace_write_file', 'workspace_execute_command'].includes(tc.tool)
-	);
+	return Boolean(openCodingFile) && isCodingToolName(tc.tool);
+}
+
+/** The label of a coding step, which names its file or command. */
+function codingStepLabel(tc: ToolCall) {
+	if (!openCodingFile || !isCodingToolName(tc.tool)) return undefined;
+	return codingToolStepLabel(i18n, tc.tool, tc.input, isToolStepLoading(tc));
 }
 
 const showFix = computed(() => Boolean(props.canFixWithAssistant && props.executionId));
@@ -106,6 +110,8 @@ const { subAgentNameById } = useSubAgentNames(projectIdRef, () =>
 
 interface ToolStepDisplay {
 	label: string;
+	/** The full label, shown as a tooltip when the label is shortened. */
+	title?: string;
 	details: string;
 	hasRawData: boolean;
 	expandable: boolean;
@@ -116,11 +122,8 @@ function getToolDisplayName(toolName: string, output?: unknown): string {
 }
 
 function toolStepLabel(tc: ToolCall, isCompact = false): string {
-	if (isCodingTool(tc)) {
-		if (tc.tool === 'workspace_read_file') return i18n.baseText('agents.chat.toolNames.readFile');
-		if (tc.tool === 'workspace_write_file') return i18n.baseText('agents.coding.tools.writeFile');
-		return i18n.baseText('agents.coding.tools.runCommand');
-	}
+	const codingLabel = codingStepLabel(tc);
+	if (codingLabel) return codingLabel.label;
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return i18n.baseText('agents.chat.delegate.labelFallback');
 	}
@@ -189,8 +192,10 @@ function toolStepView(tc: ToolCall): ToolStepDisplay {
 	const details = isCompact ? '' : (getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '');
 	const metadata = toolStepRowMetadata(tc);
 	const hasChildProgress = Boolean(tc.childProgress);
+	const fullCodingLabel = codingStepLabel(tc)?.fullLabel;
 	return {
 		label: [toolStepLabel(tc, isCompact), ...metadata].join(' · '),
+		title: fullCodingLabel && [fullCodingLabel, ...metadata].join(' · '),
 		details,
 		hasRawData: !isCompact && details.length === 0 && hasToolData(tc) && !hasChildProgress,
 		expandable: !isCompact && (details.length > 0 || hasToolData(tc) || hasChildProgress),
@@ -244,8 +249,9 @@ function hasActiveToolCall(): boolean {
 				<template v-for="tc in toolCalls" :key="tc.toolCallId">
 					<N8nAiActivityStep
 						v-for="view in [toolStepView(tc)]"
-						:key="`${tc.toolCallId}-${view.label}`"
+						:key="tc.toolCallId"
 						:label="view.label"
+						:title="view.title"
 						:loading="isToolStepLoading(tc)"
 						:error="toolStepError(tc)"
 						:hide-error-callout="hideToolErrorCallout(tc)"
@@ -310,6 +316,7 @@ function hasActiveToolCall(): boolean {
 			<template v-for="tc in toolCalls" :key="tc.toolCallId">
 				<N8nAiActivityStep
 					:label="toolStepView(tc).label"
+					:title="toolStepView(tc).title"
 					:loading="isToolStepLoading(tc)"
 					:error="toolStepError(tc)"
 					:hide-error-callout="hideToolErrorCallout(tc)"

@@ -1,9 +1,9 @@
 import type { AgentCodingFileContent, AgentCodingStatus } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
-import { cleanup, render, screen, within } from '@testing-library/vue';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AgentCodingWorkspace from '../components/AgentCodingWorkspace.vue';
 
@@ -16,9 +16,14 @@ const api = vi.hoisted(() => ({
 	logs: vi.fn(),
 	action: vi.fn(),
 }));
+const showError = vi.hoisted(() => vi.fn());
 
 vi.mock('../agentCoding.api', () => ({ createAgentCodingApi: () => api }));
-vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError: vi.fn() }) }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
+// CodeMirror is slow to mount in jsdom and is not under test here.
+vi.mock('../components/AgentCustomToolViewer.vue', () => ({
+	default: { props: ['code'], template: '<pre data-testid="code-viewer">{{ code }}</pre>' },
+}));
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -55,7 +60,9 @@ beforeEach(() => {
 		content: '@@ -1 +1 @@\n-old\n+new',
 		revision: 'revision-1',
 	});
-	api.preview.mockResolvedValue({ url: 'https://preview.example.test' });
+	api.preview.mockResolvedValue({ available: true, url: 'https://preview.example.test' });
+	api.logs.mockResolvedValue({ content: '' });
+	api.action.mockResolvedValue({ accepted: true });
 });
 
 afterEach(() => {
@@ -63,6 +70,11 @@ afterEach(() => {
 	vi.restoreAllMocks();
 	localStorage.clear();
 });
+
+async function setStatus(overrides: Partial<AgentCodingStatus>) {
+	const ready: AgentCodingStatus = await api.status();
+	api.status.mockResolvedValue({ ...ready, ...overrides });
+}
 
 function renderWorkspace() {
 	return render(AgentCodingWorkspace, {
@@ -86,10 +98,9 @@ function renderWorkspace() {
 }
 
 it('keeps drafts and the preview mounted while opening, switching, and closing tabs', async () => {
-	const user = userEvent.setup();
+	const user = userEvent.setup({ delay: null });
 	const { container } = renderWorkspace();
-	await flushPromises();
-	const chatDraft = screen.getByRole('textbox', { name: 'Chat draft' });
+	const chatDraft = await screen.findByRole('textbox', { name: 'Chat draft' });
 	await user.type(chatDraft, 'Keep this draft');
 	const files = within(screen.getByRole('complementary', { name: 'Repository panel' }));
 	await user.click(files.getByRole('button', { name: 'All files' }));
@@ -97,7 +108,10 @@ it('keeps drafts and the preview mounted while opening, switching, and closing t
 	await user.click(files.getByRole('button', { name: 'second.ts' }));
 	await user.click(files.getByRole('button', { name: 'first.ts' }));
 	expect(screen.getAllByRole('tab')).toHaveLength(3);
-	expect(screen.getByRole('tabpanel', { name: 'first.ts' })).toHaveTextContent('// first.ts');
+	// Wait for the file content, not for a fixed time.
+	await waitFor(() =>
+		expect(screen.getByRole('tabpanel', { name: 'first.ts' })).toHaveTextContent('// first.ts'),
+	);
 	expect(chatDraft).not.toBeVisible();
 
 	await user.click(files.getByRole('button', { name: /^Changes/ }));
@@ -106,7 +120,7 @@ it('keeps drafts and the preview mounted while opening, switching, and closing t
 	const comment = screen.getByRole('textbox', { name: 'Review comment' });
 	await user.type(comment, 'Keep this review draft');
 	await user.click(screen.getByRole('button', { name: 'Preview' }));
-	const frame = within(await screen.findByRole('tabpanel', { name: 'Preview' })).getByTitle(
+	const frame = await within(await screen.findByRole('tabpanel', { name: 'Preview' })).findByTitle(
 		'Preview',
 	);
 	expect(frame).toHaveAttribute('src', 'https://preview.example.test');
@@ -160,9 +174,7 @@ it.each([
 	['restarted', 'The sandbox restarted during setup'],
 	['stopped', 'Setup stopped before it finished'],
 ] as const)('explains a %s setup and prepares the repository again', async (phase, label) => {
-	const ready: AgentCodingStatus = await api.status();
-	api.status.mockResolvedValue({ ...ready, phase, setupExitCode: null, app: 'stopped' });
-	api.action.mockResolvedValue({ accepted: true });
+	await setStatus({ phase, setupExitCode: null, app: 'stopped' });
 	const user = userEvent.setup();
 	renderWorkspace();
 	await flushPromises();
@@ -174,8 +186,7 @@ it.each([
 });
 
 it('shows a check that stopped before it finished', async () => {
-	const ready: AgentCodingStatus = await api.status();
-	api.status.mockResolvedValue({ ...ready, check: 'stopped' });
+	await setStatus({ check: 'stopped' });
 	const user = userEvent.setup();
 	renderWorkspace();
 	await flushPromises();
@@ -183,4 +194,104 @@ it('shows a check that stopped before it finished', async () => {
 	await user.click(screen.getByRole('button', { name: 'Logs' }));
 
 	expect(screen.getByRole('button', { name: 'Check stopped before it finished' })).toBeVisible();
+});
+
+async function openPreviewTab() {
+	const user = userEvent.setup({ delay: null });
+	renderWorkspace();
+	await user.click(await screen.findByRole('button', { name: 'Preview' }));
+	const panel = await screen.findByRole('tabpanel', { name: 'Preview' });
+	return { user, panel };
+}
+
+it('explains in the panel that this sandbox cannot show a preview, without an error toast', async () => {
+	api.preview.mockResolvedValue({ available: false });
+	const { user, panel } = await openPreviewTab();
+
+	const state = await within(panel).findByRole('status');
+	await waitFor(() => expect(state).toHaveAttribute('data-state', 'unavailable'));
+	expect(state).toHaveTextContent('Preview is not available for this sandbox yet.');
+	expect(state).not.toHaveTextContent('App running');
+	expect(state).not.toHaveTextContent('Run the app');
+	expect(panel.querySelector('iframe')).toBeNull();
+	expect(showError).not.toHaveBeenCalled();
+	expect(screen.getByRole('button', { name: 'Open in browser' })).toBeDisabled();
+
+	await user.click(within(state).getByRole('button', { name: 'Show app logs' }));
+	expect(await screen.findByRole('button', { name: 'App running', pressed: true })).toBeVisible();
+	expect(api.preview).toHaveBeenCalledOnce();
+});
+
+it('shows a failed preview request in the panel and lets the user try again', async () => {
+	api.preview.mockRejectedValueOnce(new Error('The sandbox did not answer'));
+	const { user, panel } = await openPreviewTab();
+
+	const state = await within(panel).findByRole('status');
+	await waitFor(() => expect(state).toHaveTextContent('Could not open the preview'));
+	expect(showError).toHaveBeenCalledOnce();
+
+	await user.click(within(state).getByRole('button', { name: 'Show preview' }));
+
+	expect(await within(panel).findByTitle('Preview')).toHaveAttribute(
+		'src',
+		'https://preview.example.test',
+	);
+});
+
+it('does not offer to run the app while it opens the preview of a running app', async () => {
+	api.preview.mockReturnValue(new Promise(() => {}));
+	const { panel } = await openPreviewTab();
+
+	const state = await within(panel).findByRole('status');
+	await waitFor(() => expect(state).toHaveAttribute('data-state', 'loading'));
+	expect(state).toHaveTextContent('Opening the preview…');
+	expect(state).not.toHaveTextContent('Run the app');
+	expect(within(state).queryByRole('button')).toBeNull();
+});
+
+it.each([
+	['stopped', 'App stopped', 'Run the app to test your changes here.'],
+	['error', 'App stopped with an error', 'Check the app logs, then run the app again.'],
+	['starting', 'App starting…', 'The preview opens here when the app is ready.'],
+] as const)('gives a %s app one matching heading and hint', async (app, title, hint) => {
+	await setStatus({ app });
+	const { panel } = await openPreviewTab();
+
+	const state = await within(panel).findByRole('status');
+	await waitFor(() => expect(state).toHaveAttribute('data-state', app));
+	expect(within(state).getByRole('heading')).toHaveTextContent(title);
+	expect(state).toHaveTextContent(hint);
+	const run = within(state).queryByRole('button', { name: 'Run app' });
+	expect(Boolean(run)).toBe(app !== 'starting');
+});
+
+describe('logs', () => {
+	const scrollHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight');
+
+	beforeEach(() => {
+		// jsdom has no layout, so give every element a fixed content height.
+		Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+			configurable: true,
+			get: () => 900,
+		});
+	});
+
+	afterEach(() => {
+		if (scrollHeight) Object.defineProperty(HTMLElement.prototype, 'scrollHeight', scrollHeight);
+	});
+
+	it('open at the end of the output', async () => {
+		api.logs.mockResolvedValue({ content: 'line 1\nline 2\nready' });
+		const user = userEvent.setup({ delay: null });
+		const { container } = renderWorkspace();
+
+		await user.click(await screen.findByRole('button', { name: 'Logs' }));
+		const output = await waitFor(() => {
+			const element = container.querySelector<HTMLElement>('[data-testid="agent-coding-logs"]');
+			expect(element).toHaveTextContent('ready');
+			return element;
+		});
+
+		expect(output?.scrollTop).toBe(900);
+	});
 });

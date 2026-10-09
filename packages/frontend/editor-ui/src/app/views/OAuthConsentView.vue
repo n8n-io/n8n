@@ -211,8 +211,13 @@ onMounted(async () => {
 						<N8nIcon :class="$style['badge-spinner']" icon="loader-circle" size="large" />
 					</span>
 				</span>
-				<div :class="$style.logo">
-					<N8nLogo size="small" :collapsed="true" release-channel="stable" />
+				<div :class="[$style.logo, $style['brand-tile']]" data-test-id="consent-n8n-tile">
+					<N8nLogo
+						size="small"
+						:collapsed="true"
+						release-channel="stable"
+						:class="$style['brand-logo']"
+					/>
 				</div>
 			</header>
 			<!-- Success screen, show while waiting to be redirected back to client -->
@@ -441,6 +446,20 @@ onMounted(async () => {
 	background: var(--background--surface);
 	box-shadow: var(--shadow--xs);
 	color: var(--text-color--subtle);
+}
+
+/* The n8n mark is wide (5:2), so it gets an inset and the tile width, which keeps it off the border. */
+.brand-tile {
+	padding: var(--spacing--3xs);
+}
+
+.brand-logo {
+	width: 100%;
+
+	svg {
+		width: 100%;
+		height: auto;
+	}
 }
 
 .connector {

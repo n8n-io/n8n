@@ -69,6 +69,16 @@ describe('isDesignSystemMenuItem', () => {
 			false,
 		);
 	});
+
+	test('does not match a link whose child has the menu item role', () => {
+		const html = '<a href="/x"><span role="menuitem"></span></a>';
+		expect(isDesignSystemMenuItem(menuItem('aria-required-parent', html))).toBe(false);
+	});
+
+	test('does not match a link with a data-role attribute of menu item', () => {
+		const html = '<a data-role="menuitem" href="/x">';
+		expect(isDesignSystemMenuItem(menuItem('aria-required-parent', html))).toBe(false);
+	});
 });
 
 describe('elementName', () => {
@@ -94,6 +104,10 @@ describe('elementName', () => {
 		expect(elementName('<a data-id="7" data-class="x" href="/x">')).toBe(
 			'<a data-id="7" data-class="x" href="/x">',
 		);
+	});
+
+	test('returns text that does not start with a tag as it is', () => {
+		expect(elementName('text without tag')).toBe('text without tag');
 	});
 
 	test('reads only the opening tag, not the content of the element', () => {

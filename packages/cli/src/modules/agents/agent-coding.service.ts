@@ -15,6 +15,7 @@ import {
 	type AgentCodingFile,
 	type AgentCodingFileContent,
 	type AgentCodingDiffContent,
+	type AgentCodingPreview,
 	type AgentCodingStatus,
 } from '@n8n/api-types';
 import { shellEscape, type ExecuteCommandOptions } from '@n8n/agents/sandbox';
@@ -53,6 +54,7 @@ import {
 	codingCheckTimeLimitSeconds,
 } from './agent-coding-scripts';
 import { parseCodingSessionsOutput, parseCodingStatusOutput } from './agent-coding-status';
+import { SandboxPreviewUnavailableError } from './sandbox-preview/sandbox-port-capability.service';
 import { SandboxPreviewService } from './sandbox-preview/sandbox-preview.service';
 
 interface CodingContext {
@@ -515,7 +517,16 @@ export class AgentCodingService {
 		return { content: redactText(result.stdout).text };
 	}
 
-	async preview(projectId: string, agentId: string, user: User, sessionId?: string) {
+	/**
+	 * A sandbox that cannot show previews gives `available: false`, so the editor
+	 * can explain it in place. Other failures still throw.
+	 */
+	async preview(
+		projectId: string,
+		agentId: string,
+		user: User,
+		sessionId?: string,
+	): Promise<AgentCodingPreview> {
 		const context = await this.context(projectId, agentId, user, sessionId);
 		const state = parseCodingStatusOutput(await this.inspect(context, 'status'));
 		if (!['starting', 'running'].includes(state.app)) {
@@ -523,16 +534,20 @@ export class AgentCodingService {
 		}
 		const sandbox = context.handle.sandbox;
 		if (context.handle.provider === 'n8n-sandbox') {
-			return await this.sandboxPreviewService.open(sandbox, {
-				userId: user.id,
-				projectId,
-				port: context.config.port,
-			});
+			try {
+				const { url } = await this.sandboxPreviewService.open(sandbox, {
+					userId: user.id,
+					projectId,
+					port: context.config.port,
+				});
+				return { available: true, url };
+			} catch (error) {
+				if (error instanceof SandboxPreviewUnavailableError) return { available: false };
+				throw error;
+			}
 		}
-		if (!sandbox.getPreviewUrl) {
-			throw new BadRequestError('App preview requires the Daytona sandbox provider for this demo');
-		}
-		return { url: await sandbox.getPreviewUrl(context.config.port) };
+		if (!sandbox.getPreviewUrl) return { available: false };
+		return { available: true, url: await sandbox.getPreviewUrl(context.config.port) };
 	}
 
 	async action(projectId: string, agentId: string, user: User, request: AgentCodingAction) {

@@ -375,6 +375,40 @@ describe('InstanceAiAgentsConversation', () => {
 		expect(chatState.hostContext?.()).not.toHaveProperty('context');
 	});
 
+	it('should read the thread when a message is accepted in a chat on a linked instance', async () => {
+		vi.mocked(fetchThread).mockResolvedValue({
+			thread: {
+				...threadInfo('First title').thread,
+				runTarget: { kind: 'linked', instanceId: OFFICE_ID, name: 'Office' },
+			},
+		});
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+		const refresh = vi.spyOn(useInstanceAiStore(), 'refreshThread');
+		const readsBefore = refresh.mock.calls.length;
+
+		chatState.emitAccepted?.({ text: 'Build the report', files: [] });
+		await flushPromises();
+
+		// The message can drop the link, so the notice is read when the message is accepted.
+		expect(refresh.mock.calls.length).toBe(readsBefore + 1);
+		expect(refresh).toHaveBeenLastCalledWith('thread-1');
+	});
+
+	it('should not read the thread again when a message is accepted in a chat that runs here', async () => {
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+		const refresh = vi.spyOn(useInstanceAiStore(), 'refreshThread');
+		const readsBefore = refresh.mock.calls.length;
+
+		chatState.emitAccepted?.({ text: 'Build the report', files: [] });
+		await flushPromises();
+
+		expect(refresh.mock.calls.length).toBe(readsBefore);
+	});
+
 	it('should report a missing thread', async () => {
 		const { ResponseError } = await import('@n8n/rest-api-client');
 		const error = new ResponseError('Not found', { httpStatusCode: 404 });

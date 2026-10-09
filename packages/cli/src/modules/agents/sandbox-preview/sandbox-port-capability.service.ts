@@ -21,6 +21,12 @@ const healthzSchema = z.object({ capabilities: z.array(z.string()).optional() })
 const healthzResponseSchema = z.object({ statusCode: z.number(), body: z.unknown() });
 
 /**
+ * The sandbox, or its sandbox service, cannot serve app ports. This is an
+ * expected state, so a caller can show it in place of a failure.
+ */
+export class SandboxPreviewUnavailableError extends BadRequestError {}
+
+/**
  * Finds the route to a sandbox port and checks that its sandbox service can
  * serve it over HTTP. The service lists `ports` in the `capabilities` of its
  * `/healthz` answer.
@@ -41,7 +47,7 @@ export class SandboxPortCapability {
 	/** The route to `port` of `sandbox`, on a service that can serve it. */
 	async resolveRoute(sandbox: WorkspaceSandbox, port: number): Promise<SandboxPortRoute> {
 		if (!sandbox.getPortRoute) {
-			throw new BadRequestError('This sandbox cannot show app previews');
+			throw new SandboxPreviewUnavailableError('This sandbox cannot show app previews');
 		}
 		// The route call may start the sandbox, so a service fault can show here first.
 		const route = await sandbox.getPortRoute(port).catch((error: unknown) => {
@@ -53,7 +59,7 @@ export class SandboxPortCapability {
 
 	async assertSupported(serviceUrl: string): Promise<void> {
 		if (!(await this.supportsPorts(serviceUrl))) {
-			throw new BadRequestError('This sandbox service cannot show app previews yet.');
+			throw new SandboxPreviewUnavailableError('This sandbox service cannot show app previews yet.');
 		}
 	}
 

@@ -2917,9 +2917,12 @@ useKeybindings({
 			@switch-agent="onSwitchAgent"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
+		<!-- The preview route (and the coding view on it) has no AI panel, and the
+		     floating button would cover its content. -->
 		<div
 			v-if="
 				!isArtifactMode &&
+				!isStandalonePreview &&
 				instanceAiAvailable &&
 				!isAiPanelOpen &&
 				!agentCollaborationStore.shouldBeReadOnly

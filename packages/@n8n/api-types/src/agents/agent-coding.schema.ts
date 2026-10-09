@@ -146,9 +146,11 @@ export interface AgentCodingDiffContent extends AgentCodingFileContent {
 	revision: string;
 }
 
-export interface AgentCodingPreview {
-	url: string;
-}
+/**
+ * The app preview of a coding session. `available: false` means that the
+ * sandbox cannot show previews, which is an expected state and not an error.
+ */
+export type AgentCodingPreview = { available: true; url: string } | { available: false };
 
 export const N8N_CODING_DEFAULTS = {
 	setupCommand:
