@@ -560,6 +560,7 @@ describe('InstanceAiSandboxService', () => {
 				const setupOptions = (setupSandboxWorkspace as Mock).mock.calls[0]?.[2] as {
 					bundleState: unknown;
 				};
+				expect((setupSandboxWorkspace as Mock).mock.calls[0]?.[0]).toBe(workspace);
 				expect(setupOptions.bundleState).toBe(entry?.bundleState);
 			},
 		);
