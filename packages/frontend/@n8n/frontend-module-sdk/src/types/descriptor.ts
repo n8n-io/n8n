@@ -1,4 +1,6 @@
+import type { FrontendSettings } from '@n8n/api-types';
 import type { IMenuItem } from '@n8n/design-system';
+import type { Component } from 'vue';
 import type { RouteRecordRaw } from 'vue-router';
 
 import type { ModuleBanner } from './banner';
@@ -11,6 +13,16 @@ import type { ResourceMetadata } from './resource';
 import type { ModuleSetupContext } from './setup';
 import type { ModuleShortcut } from './shortcut';
 import type { DynamicTabOptions } from './tabs';
+
+/** A key of `settings.enterprise`, e.g. `'logStreaming'`. */
+export type ModuleLicenseFlag = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
+
+/** A page, e.g. a paywall, shown instead of the module's routes when it isn't licensed. */
+export type ModulePlaceholderPage = {
+	/** Show the page only when this feature is off. */
+	licenseFlag: ModuleLicenseFlag;
+	component: () => Promise<Component>;
+};
 
 /** A link in the settings sidebar. Shell and modules both use it. */
 export type IMenuSettingItem = IMenuItem & {
@@ -48,6 +60,11 @@ export type FrontendModuleDescription = {
 	 */
 	adHocModalKeyPrefixes?: string[];
 	settingsPages?: IMenuSettingItem[];
+	/**
+	 * Shown when the module is inactive and not licensed. Its settings links stay visible.
+	 * A licensed module that is inactive (e.g. disabled) stays hidden.
+	 */
+	placeholderPage?: ModulePlaceholderPage;
 
 	// --- descriptor v2 (all optional, additive) ---
 
