@@ -37,6 +37,7 @@ import {
 	CREDENTIAL_ONLY_NODE_PREFIX,
 	GATEWAY_CREDITS_DOCS_URL,
 } from '@/app/constants';
+import { MCP_REGISTRY_NODE_PREFIX } from '@/app/constants/nodeTypes';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -258,7 +259,7 @@ const isGatewayCreditsOnlyMcpServer = computed(() => {
 
 // The AI Gateway version list does not include generated registry MCP nodes.
 const isMixedRegistryMcpServer = computed(() => {
-	if (!node.value.type.startsWith('@n8n/mcp-registry.')) return false;
+	if (!node.value.type.startsWith(MCP_REGISTRY_NODE_PREFIX)) return false;
 	const declared = nodeType.value?.credentials ?? [];
 	return (
 		declared.some(({ name }) => isMcpGatewayAuthentication(name)) &&

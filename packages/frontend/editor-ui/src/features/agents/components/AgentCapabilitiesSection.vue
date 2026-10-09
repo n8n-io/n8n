@@ -22,6 +22,7 @@ import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useCreateAgent } from '../composables/useCreateAgent';
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
+import { loadMissingMcpNodeTypes } from '../utils/loadMcpNodeTypes';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { isWarningIssue } from '../utils/validationIssues';
@@ -178,15 +179,7 @@ watch([() => props.projectId, selectedSubAgentIds], () => {
 watch(
 	[() => showSection('tools'), mcpServers],
 	([showTools, servers]) => {
-		if (
-			showTools &&
-			servers.some(
-				(server) =>
-					!nodeTypesStore.getNodeType(server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE),
-			)
-		) {
-			void nodeTypesStore.getNodeTypes().catch(() => {});
-		}
+		if (showTools) void loadMissingMcpNodeTypes(servers, nodeTypesStore)?.catch(() => {});
 	},
 	{ immediate: true },
 );

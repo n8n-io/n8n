@@ -143,8 +143,9 @@ export class InstanceAiAgentContextAdapterService {
 			if (!input.queries) {
 				return { channels: this.agentIntegrationService.listChatIntegrations() };
 			}
+			// A gateway variant has a usable URL even when the own-credential URL is templated.
 			const mcpResults = (await this.mcpRegistryService.search(input.queries)).filter(
-				(result) => !result.isTemplated,
+				(result) => !result.isTemplated || result.aiGateway !== undefined,
 			);
 			if (mcpResults.length > 0) return { kind: 'mcp', results: mcpResults };
 			const nodeResults = await this.agentsToolsService.searchAgentToolNodes(input.queries);

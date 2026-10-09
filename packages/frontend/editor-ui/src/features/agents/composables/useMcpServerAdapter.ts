@@ -2,11 +2,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { NodeHelpers, isMcpGatewayAuthentication } from 'n8n-workflow';
 import type { INode, INodeCredentials, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 
-import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { AI_MCP_TOOL_NODE_TYPE, MCP_REGISTRY_NODE_PREFIX } from '@/app/constants/nodeTypes';
 import type { AgentJsonMcpServerConfig } from '../types';
 import { AI_GATEWAY_MCP_CONNECTION_MODE, type McpAuthenticationSchemaType } from '@n8n/api-types';
 
-const MCP_REGISTRY_NODE_PREFIX = '@n8n/mcp-registry.';
 const HTTP_STREAMABLE_TRANSPORT = 'httpStreamable';
 
 function pickLatestVersion(version: number | number[]): number {

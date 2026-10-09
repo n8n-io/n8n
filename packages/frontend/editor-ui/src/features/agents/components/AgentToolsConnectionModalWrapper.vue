@@ -71,6 +71,7 @@ import {
 	useAgentToolCatalog,
 } from '../composables/useAgentToolCatalog';
 import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
+import { loadMissingMcpNodeTypes } from '../utils/loadMcpNodeTypes';
 import {
 	isMcpRelatedNodeType,
 	mcpServerToNode,
@@ -214,6 +215,7 @@ watch(
 
 const workingTools = computed(() => workingToolEntries.value.map(({ ref }) => ref));
 const workingMcpServers = computed(() => workingMcpServerEntries.value.map(({ server }) => server));
+const isAddingMcpServer = ref(false);
 const configData = shallowRef<AgentToolConfigModalData | null>(null);
 const configForm = ref<InstanceType<typeof AgentToolConfigForm> | null>(null);
 const configTitle = ref('');
@@ -291,12 +293,10 @@ function handleInteractOutside(event: Event) {
 
 onMounted(() => {
 	if (isWorkflow.value) void loadWorkflows(props.data.projectId);
-	const hasMissingMcpNodeType = workingMcpServers.value.some(
-		(server) => !nodeTypesStore.getNodeType(server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE),
-	);
-	void (hasMissingMcpNodeType
-		? nodeTypesStore.getNodeTypes()
-		: nodeTypesStore.loadNodeTypesIfNotLoaded());
+	void (
+		loadMissingMcpNodeTypes(workingMcpServers.value, nodeTypesStore, { retryFailed: true }) ??
+		nodeTypesStore.loadNodeTypesIfNotLoaded()
+	).catch(() => {});
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
 	// Config gates which tools are eligible for the n8n Connect section; the
@@ -428,21 +428,28 @@ async function shouldDefaultToAiGateway(nodeType: INodeTypeDescription): Promise
 }
 
 async function handleAddMcpServer(nodeType: INodeTypeDescription) {
-	const newServer = nodeTypeToNewMcpServer(nodeType);
-	if (await shouldDefaultToAiGateway(nodeType)) {
-		newServer.authentication = 'none';
-		newServer.metadata = {
-			...newServer.metadata,
-			nodeTypeName: nodeType.name,
-			connectionMode: AI_GATEWAY_MCP_CONNECTION_MODE,
-		};
+	if (isAddingMcpServer.value || configData.value) return;
+	isAddingMcpServer.value = true;
+	try {
+		const newServer = nodeTypeToNewMcpServer(nodeType);
+		if (await shouldDefaultToAiGateway(nodeType)) {
+			newServer.authentication = 'none';
+			newServer.metadata = {
+				...newServer.metadata,
+				nodeTypeName: nodeType.name,
+				connectionMode: AI_GATEWAY_MCP_CONNECTION_MODE,
+			};
+		}
+		if (!isOpen.value || configData.value) return;
+		newServer.name = makeUniqueName(
+			newServer.name,
+			getExistingMcpServerNames(workingMcpServers.value),
+			(name, counter) => `${name}-${counter}`,
+		);
+		openConfigForNewMcpServer(newServer, nodeType);
+	} finally {
+		isAddingMcpServer.value = false;
 	}
-	newServer.name = makeUniqueName(
-		newServer.name,
-		getExistingMcpServerNames(workingMcpServers.value),
-		(name, counter) => `${name}-${counter}`,
-	);
-	openConfigForNewMcpServer(newServer, nodeType);
 }
 
 function isCommunityPreviewTool(nodeType: INodeTypeDescription): boolean {

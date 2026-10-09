@@ -5,6 +5,7 @@
  * mapping live in one place.
  */
 import { camelCase } from 'change-case';
+import { AI_GATEWAY_MCP_CONNECTION_MODE } from '@n8n/api-types';
 
 import type { McpRegistryServer } from './mcp-registry.types';
 import { AI_GATEWAY_MANAGED_AUTH_TYPE, N8N_CONNECT_MCP_SLUG_PREFIX } from './mcp-registry.types';
@@ -25,9 +26,21 @@ export interface McpRegistrySearchResult {
 	credentialType: string;
 	tools: Array<{ name: string; title?: string }>;
 	metadata: { nodeTypeName: string };
+	/** Use this connection with Gateway credits instead of a stored credential. */
+	aiGateway?: {
+		url: string;
+		transport: 'streamableHttp' | 'sse';
+		authentication: 'none';
+		metadata: { nodeTypeName: string; connectionMode: typeof AI_GATEWAY_MCP_CONNECTION_MODE };
+	};
 	/** `url` is an unresolved `$self`-expression, not a literal endpoint. Consumers
 	 *  that cannot resolve it against a credential have to skip the row. */
 	isTemplated: boolean;
+}
+
+export interface McpRegistrySearchOptions {
+	loadedSlugs?: ReadonlySet<string>;
+	pairedSlugs?: ReadonlySet<string>;
 }
 
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
@@ -58,22 +71,43 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 }
 
 /** Map registry servers to the config-ready shape, skipping entries without a usable remote. */
-export function listMcpRegistryServers(servers: McpRegistryServer[]): McpRegistrySearchResult[] {
+export function listMcpRegistryServers(
+	servers: McpRegistryServer[],
+	options: McpRegistrySearchOptions = {},
+): McpRegistrySearchResult[] {
 	const activeServersBySlug = new Map(
 		servers.filter(({ status }) => status === 'active').map((server) => [server.slug, server]),
 	);
 	return servers.flatMap((server) => {
+		if (options.loadedSlugs && !options.loadedSlugs.has(server.slug)) return [];
 		const primary = activeServersBySlug.get(server.slug.slice(N8N_CONNECT_MCP_SLUG_PREFIX.length));
 		if (
 			server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE &&
 			server.slug.startsWith(N8N_CONNECT_MCP_SLUG_PREFIX) &&
 			primary &&
-			toSearchResult(primary) !== null
+			(options.pairedSlugs?.has(primary.slug) ?? toSearchResult(primary) !== null)
 		) {
 			return [];
 		}
 		const result = toSearchResult(server);
-		return result ? [result] : [];
+		if (!result) return [];
+		const aiGatewayServer = activeServersBySlug.get(`${N8N_CONNECT_MCP_SLUG_PREFIX}${server.slug}`);
+		const aiGatewayResult =
+			aiGatewayServer?.authType === AI_GATEWAY_MANAGED_AUTH_TYPE
+				? toSearchResult(aiGatewayServer)
+				: null;
+		if (aiGatewayResult && (!options.pairedSlugs || options.pairedSlugs.has(server.slug))) {
+			result.aiGateway = {
+				url: aiGatewayResult.url,
+				transport: aiGatewayResult.transport,
+				authentication: 'none',
+				metadata: {
+					nodeTypeName: result.metadata.nodeTypeName,
+					connectionMode: AI_GATEWAY_MCP_CONNECTION_MODE,
+				},
+			};
+		}
+		return [result];
 	});
 }
 
@@ -130,11 +164,12 @@ function scoreSearchResult(
 export function searchMcpRegistryServers(
 	servers: McpRegistryServer[],
 	queries: string[],
+	options: McpRegistrySearchOptions = {},
 ): McpRegistrySearchResult[] {
 	const normalized = normalizeQueries(queries);
 	if (normalized.length === 0) return [];
 	const serversBySlug = new Map(servers.map((server) => [server.slug, server]));
-	return listMcpRegistryServers(servers)
+	return listMcpRegistryServers(servers, options)
 		.flatMap((result) => {
 			const score = scoreSearchResult(result, serversBySlug, normalized);
 			return score === undefined ? [] : [{ result, score }];

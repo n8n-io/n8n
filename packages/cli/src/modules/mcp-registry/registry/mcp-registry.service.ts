@@ -21,6 +21,7 @@ import {
 	listMcpRegistryServers,
 	searchMcpRegistryServers,
 	type McpRegistrySearchResult,
+	type McpRegistrySearchOptions,
 } from './mcp-registry-search';
 import type { McpRegistryServer } from './mcp-registry.types';
 import {
@@ -111,16 +112,27 @@ export class McpRegistryService {
 	 * matching + mapping that used to be re-implemented per call site.
 	 */
 	async search(queries: string[]): Promise<McpRegistrySearchResult[]> {
-		return searchMcpRegistryServers(await this.getAll(), queries);
+		return searchMcpRegistryServers(await this.getAll(), queries, this.getSearchOptions());
 	}
 
 	async list(limit: number): Promise<McpRegistrySearchResult[]> {
-		return listMcpRegistryServers(await this.getAll()).slice(0, limit);
+		return listMcpRegistryServers(await this.getAll(), this.getSearchOptions()).slice(0, limit);
 	}
 
 	async resolveBySlugs(slugs: string[]): Promise<McpRegistrySearchResult[]> {
 		const servers = await this.getBySlugs(slugs);
-		return listMcpRegistryServers(servers.filter((server) => server.status === 'active'));
+		return listMcpRegistryServers(
+			servers.filter((server) => server.status === 'active'),
+			this.getSearchOptions(),
+		);
+	}
+
+	/** Use the loader's merge decision so discovery only offers routable servers. */
+	private getSearchOptions(): McpRegistrySearchOptions {
+		const loader = this.loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME];
+		return loader instanceof McpRegistryNodeLoader
+			? { loadedSlugs: loader.getLoadedSlugs(), pairedSlugs: loader.getPairedSlugs() }
+			: {};
 	}
 
 	async getConnection(

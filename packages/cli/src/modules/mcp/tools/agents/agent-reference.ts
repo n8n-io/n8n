@@ -198,13 +198,17 @@ slackApp.requestUrl to the user instead of reporting the channel as ready.
 
 The top-level \`mcpServers\` config array connects external MCP tool catalogs to the Agent. Discover
 registry-backed servers with discover_agent_assets kind=mcpServers, or use a URL the user provides.
+If a result includes aiGateway, Gateway credits are available. Use its url, transport,
+authentication, and metadata with the result's name when the user selects that choice. Do not
+request a stored credential for it. Keep metadata.connectionMode in the config entry so the Agent
+uses the gateway.
 When the server requires authentication, resolve an accessible credential ID with list_credentials
 first; the same ID is passed to verification and stored in the config entry. Credentials cannot be
 created through these tools — when none exists, ask the user to create one in n8n.
 
 Before writing an entry into mcpServers, call verify_agent_mcp_server with the same name, url,
-transport, authentication, and credential. The server does not need to be attached to the Agent
-first: verification opens a temporary connection and returns the server's live tools. validate_agent
+transport, authentication, metadata, and optional credential. The server does not need to be
+attached to the Agent first: verification opens a temporary connection and returns its live tools. validate_agent
 never performs this handshake, so an unverified entry can pass validation and still fail at runtime.
 Confirm the returned tools cover the requested capability and use the list to populate toolFilter
 instead of guessing tool names. If verification fails, report the error and resolve it with the user
