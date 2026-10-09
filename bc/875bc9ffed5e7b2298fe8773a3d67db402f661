@@ -1,0 +1,52 @@
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_8631ec10eb1199::t_2f5bac864c6ede 2,23,25-26,28-31,42-45,54,57-59,70-79,81-100
+  s_8631ec10eb1199::t_a760cf1e1bc092 113,156
+  s_8631ec10eb1199::t_dc5c4356d64cf2 80
+  s_8631ec10eb1199::t_039b723567d51e 206-262,264-282
+  s_8631ec10eb1199::t_27d19e5b8355f6 263
+  s_8631ec10eb1199::t_ba6c3ce6ed3aa1 101
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_8631ec10eb1199::t_dc76f826423041 72-76
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_8631ec10eb1199::t_fff3109db1257e 4,7-53
+  s_8631ec10eb1199::t_3f39f509f46915 3
+packages/@n8n/api-types/src/dto/packages/export-package-request.openapi.ts
+  s_8631ec10eb1199::t_94fba0c6bc2381 28
+  s_8631ec10eb1199::t_20c61d460ad667 1-27,29-31,34-37,39-44
+  s_8631ec10eb1199::t_1d93c33666eade 45
+  s_8631ec10eb1199::t_02ed641c802086 33
+  s_8631ec10eb1199::t_89313d65365642 38
+  s_8631ec10eb1199::t_b0c63faaffc327 32
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_8631ec10eb1199::t_bc51cb25fdb3b2 240-246
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_8631ec10eb1199::t_cc3db2a9738d60 1-21
+packages/cli/src/public-api/v1/openapi.yml
+  s_8631ec10eb1199::t_7243d8ef6f4a93 81
+packages/cli/src/public-api/v1/controllers/__tests__/n8n-packages.public.controller.test.ts
+  s_8631ec10eb1199::t_4db1e1f8d1be60 4,31,34-35,66-70,73-77,79-83,171,183,185-187,283,286-290,311-431
+  s_8631ec10eb1199::t_9592400c40c1a3 1-3,5-30,32-33,36-65,71-72,78,84-170,172-182,184,188-282,284-285,291-310,432
+packages/cli/test/integration/public-api/n8n-packages-export.test.ts
+  s_8631ec10eb1199::t_dc5c4356d64cf2 210,222
+  s_8631ec10eb1199::t_1e76d44e2bc60b 8,16-25,191-192,198-206,209,221,243-282
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  s_8631ec10eb1199::t_a4ed324fa0af5c 1-6,8,10-69,71-79,81-116
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_8631ec10eb1199::t_df6ff3e0e722a1 192-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc875bc9ffed5e7b2298fe8773a3d67db402f661",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
