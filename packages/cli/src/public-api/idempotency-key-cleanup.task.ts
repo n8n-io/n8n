@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { idempotencyKeyTtlMs } from '@n8n/db';
+import { IDEMPOTENCY_KEY_TTL_MS } from '@n8n/db';
 import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
@@ -28,7 +28,7 @@ export class IdempotencyKeyCleanupTask implements SystemTask {
 	}
 
 	async run(signal: AbortSignal): Promise<void> {
-		const cutoff = new Date(Date.now() - idempotencyKeyTtlMs);
+		const cutoff = new Date(Date.now() - IDEMPOTENCY_KEY_TTL_MS);
 		const deleted = await this.idempotencyKeyService.deleteOlderThan(cutoff, signal);
 
 		if (deleted > 0) {

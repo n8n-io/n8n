@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
-import { idempotencyKeyTtlMs, IdempotencyKeyRepository, type User } from '@n8n/db';
+import { IDEMPOTENCY_KEY_TTL_MS, IdempotencyKeyRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
@@ -95,8 +95,11 @@ describe('IdempotencyKey cleanup', () => {
 	describe('IdempotencyKeyCleanupTask', () => {
 		it('should delete keys older than 12 hours and keep newer keys', async () => {
 			const now = Date.now();
-			await insertKey('expired', new Date(now - idempotencyKeyTtlMs - Time.minutes.toMilliseconds));
-			await insertKey('kept', new Date(now - idempotencyKeyTtlMs + Time.hours.toMilliseconds));
+			await insertKey(
+				'expired',
+				new Date(now - IDEMPOTENCY_KEY_TTL_MS - Time.minutes.toMilliseconds),
+			);
+			await insertKey('kept', new Date(now - IDEMPOTENCY_KEY_TTL_MS + Time.hours.toMilliseconds));
 
 			await task.run(signal);
 

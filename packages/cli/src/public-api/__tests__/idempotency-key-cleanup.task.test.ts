@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { idempotencyKeyTtlMs } from '@n8n/db';
+import { IDEMPOTENCY_KEY_TTL_MS } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { IdempotencyKeyCleanupTask } from '@/public-api/idempotency-key-cleanup.task';
@@ -28,8 +28,8 @@ describe('IdempotencyKeyCleanupTask', () => {
 			const [cutoff, passedSignal] = idempotencyKeyService.deleteOlderThan.mock.calls[0];
 			expect(passedSignal).toBe(signal);
 			const ageMs = Date.now() - cutoff.getTime();
-			expect(ageMs).toBeGreaterThanOrEqual(idempotencyKeyTtlMs);
-			expect(ageMs).toBeLessThan(idempotencyKeyTtlMs + 1_000);
+			expect(ageMs).toBeGreaterThanOrEqual(IDEMPOTENCY_KEY_TTL_MS);
+			expect(ageMs).toBeLessThan(IDEMPOTENCY_KEY_TTL_MS + 1_000);
 			expect(logger.debug).toHaveBeenCalledWith('Cleaned up expired idempotency keys', {
 				count: 10,
 			});
