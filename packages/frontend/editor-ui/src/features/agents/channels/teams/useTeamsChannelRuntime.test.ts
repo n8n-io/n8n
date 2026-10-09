@@ -17,7 +17,6 @@ vi.mock('./api', () => ({
 	createTeamsManagerCredential: vi.fn(),
 	getTeamsSetupState: vi.fn(),
 	getTeamsAzureSubscriptions: vi.fn(),
-	checkTeamsAppInstalled: vi.fn(),
 	provisionTeamsApp: vi.fn(),
 	provisionTeamsBot: vi.fn(),
 }));
@@ -176,7 +175,9 @@ describe('useTeamsChannelRuntime', () => {
 		 */
 		it('keeps the original error when the tidy-up fails too', async () => {
 			vi.mocked(createTeamsManagerCredential).mockResolvedValue({ id: 'missing' } as never);
-			deleteCredential.mockRejectedValue(new Error('Could not delete the credential'));
+			// Once: the stub is module-scope and `clearAllMocks` resets calls, not
+			// implementations, so a standing rejection would reach later tests.
+			deleteCredential.mockRejectedValueOnce(new Error('Could not delete the credential'));
 
 			await expect(buildRuntime().connectManagerCredential()).rejects.toThrow(
 				/could not be loaded/,

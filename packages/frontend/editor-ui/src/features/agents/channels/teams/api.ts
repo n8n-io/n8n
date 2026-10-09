@@ -130,20 +130,3 @@ export const provisionTeamsBot = async (
 		`${integrationPath(projectId, agentId)}/provision-bot`,
 		payload,
 	);
-
-/**
- * Asks Microsoft whether the user has the app, for an upload n8n did not
- * perform and so cannot otherwise see.
- */
-export const checkTeamsAppInstalled = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	payload: { managerCredentialId: string },
-): Promise<{ installed: boolean }> =>
-	await makeRestApiRequest(
-		context,
-		'POST',
-		`${integrationPath(projectId, agentId)}/installed-check`,
-		payload,
-	);

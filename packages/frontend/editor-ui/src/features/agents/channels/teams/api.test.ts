@@ -3,7 +3,6 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-	checkTeamsAppInstalled,
 	checkTeamsCredential,
 	createTeamsManagerCredential,
 	fetchTeamsAppPackage,
@@ -104,19 +103,6 @@ describe('teams channel api', () => {
 		await provisionTeamsBot(context, 'project-1', 'agent-1', payload);
 
 		expect(sent()).toEqual([context, 'POST', `${BASE}/provision-bot`, payload]);
-	});
-
-	it('asks Microsoft whether the app was installed', async () => {
-		await checkTeamsAppInstalled(context, 'project-1', 'agent-1', {
-			managerCredentialId: 'manager-1',
-		});
-
-		expect(sent()).toEqual([
-			context,
-			'POST',
-			`${BASE}/installed-check`,
-			{ managerCredentialId: 'manager-1' },
-		]);
 	});
 
 	describe('fetchTeamsAppPackage', () => {

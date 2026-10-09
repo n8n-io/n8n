@@ -35,7 +35,6 @@ describe('MicrosoftTeamsManagerOAuth2Api Credential', () => {
 			expect.arrayContaining([
 				'offline_access',
 				'https://graph.microsoft.com/Application.ReadWrite.All',
-				'https://graph.microsoft.com/TeamsAppInstallation.ReadForUser',
 			]),
 		);
 	});
@@ -57,15 +56,14 @@ describe('MicrosoftTeamsManagerOAuth2Api Credential', () => {
 	});
 
 	/**
-	 * n8n reads what the user has so the setup can close on an upload it never
-	 * performed. It installs nothing for anyone, so no write over their apps is
-	 * asked for, and no catalogue write either.
+	 * The package is uploaded in the Teams client and n8n never looks for it
+	 * afterwards, so it asks for nothing over anyone's installed apps -- and no
+	 * catalogue write either.
 	 */
-	it("asks to read the user's apps, not to change them", () => {
+	it("asks for nothing over the user's apps", () => {
 		const scope = String(defaultOf('scope'));
 
-		expect(scope).toContain('TeamsAppInstallation.ReadForUser');
-		expect(scope).not.toContain('TeamsAppInstallation.ReadWrite');
+		expect(scope).not.toContain('TeamsAppInstallation');
 		expect(scope).not.toContain('AppCatalog');
 	});
 

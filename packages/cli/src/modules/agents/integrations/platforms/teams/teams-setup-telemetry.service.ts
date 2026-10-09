@@ -4,7 +4,7 @@ import { UserError } from 'n8n-workflow';
 
 import { Telemetry } from '@/telemetry';
 
-type Step = 'create_app' | 'create_bot' | 'install';
+type Step = 'create_app' | 'create_bot';
 
 export interface TeamsSetupStepReport {
 	agentId: string;
@@ -13,7 +13,6 @@ export interface TeamsSetupStepReport {
 	step: Step;
 	/** `manual` is the rung taken when the account reaches no subscription. */
 	botRoute?: 'provisioned' | 'manual';
-	installRoute?: 'upload';
 }
 
 /**
@@ -80,7 +79,6 @@ export class TeamsSetupTelemetryService {
 				step: report.step,
 				outcome,
 				...(report.botRoute ? { bot_route: report.botRoute } : {}),
-				...(report.installRoute ? { install_route: report.installRoute } : {}),
 				...(reason ? { reason } : {}),
 			});
 		} catch {

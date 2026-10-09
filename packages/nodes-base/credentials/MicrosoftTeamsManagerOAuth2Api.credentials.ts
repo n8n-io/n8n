@@ -7,10 +7,8 @@ const GRAPH = 'https://graph.microsoft.com';
  * admin-consent-only, so one tenant admin approves n8n once and every later
  * sign-in is prompt-free.
  *
- * `TeamsAppInstallation.ReadForUser` is a read: the app package is uploaded in
- * the Teams client, so nothing reaches n8n when it happens and Microsoft has
- * to be asked whether it did. n8n installs nothing on anyone's behalf, so no
- * write over someone's installed apps is asked for.
+ * Nothing here reads or writes anyone's installed apps: the package is
+ * uploaded in the Teams client and n8n never looks for it afterwards.
  *
  * **Graph only, deliberately.** Entra accepts several resources in the
  * `/authorize` scope, but a code is redeemed for one resource at a time and n8n
@@ -29,7 +27,6 @@ const scopes = [
 	'offline_access',
 	`${GRAPH}/User.Read`,
 	`${GRAPH}/Application.ReadWrite.All`,
-	`${GRAPH}/TeamsAppInstallation.ReadForUser`,
 ];
 
 export class MicrosoftTeamsManagerOAuth2Api implements ICredentialType {

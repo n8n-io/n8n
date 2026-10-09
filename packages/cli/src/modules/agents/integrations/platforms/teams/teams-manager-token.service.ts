@@ -34,7 +34,6 @@ export const RESOURCE_SCOPES: Record<ManagerResource, string> = {
 	[GRAPH_RESOURCE]: [
 		'offline_access',
 		`${GRAPH_RESOURCE}/Application.ReadWrite.All`,
-		`${GRAPH_RESOURCE}/TeamsAppInstallation.ReadForUser`,
 		`${GRAPH_RESOURCE}/User.Read`,
 	].join(' '),
 	[AZURE_RESOURCE]: ['offline_access', `${AZURE_RESOURCE}/user_impersonation`].join(' '),

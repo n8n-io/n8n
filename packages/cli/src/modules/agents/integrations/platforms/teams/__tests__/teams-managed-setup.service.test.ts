@@ -147,29 +147,13 @@ describe('TeamsManagedSetupService', () => {
 			});
 		});
 
-		/** Catches a sign-in made before the install scope was corrected. */
-		it('asks for a reconnect when a grant carries only the narrow install scope', async () => {
-			withManagerCredential({
-				oauthTokenData: {
-					access_token: 'token',
-					refresh_token: 'refresh-1',
-					scope: [
-						'https://graph.microsoft.com/Application.ReadWrite.All',
-						'https://graph.microsoft.com/TeamsAppInstallation.ReadWriteSelfForUser',
-					].join(' '),
-				},
-			});
-
-			const [summary] = (await service.getSetupState(scope)).managerCredentials;
-			expect(summary.reconnectRequired).toBe(true);
-		});
-
 		it('asks for a reconnect when a required scope is missing from the grant', async () => {
 			withManagerCredential({
 				oauthTokenData: {
 					access_token: 'token',
 					refresh_token: 'refresh-1',
-					scope: 'openid https://graph.microsoft.com/Application.ReadWrite.All',
+					// Everything but the one scope that registers the app.
+					scope: 'openid offline_access https://graph.microsoft.com/User.Read',
 				},
 			});
 

@@ -40,8 +40,8 @@ export interface GraphResponse {
  * The smallest Microsoft Graph client the setup needs.
  *
  * Callers read the status code themselves rather than being handed an
- * exception, because the flow branches on what Graph refuses: a 403 on the
- * publish call is how a user without the Teams admin role is recognised.
+ * exception, because the flow branches on what Graph refuses: a 404 on the app
+ * registration is how a deleted app is told from a failed read.
  */
 @Service()
 export class TeamsGraphService {
@@ -85,56 +85,6 @@ export class TeamsGraphService {
 			});
 		}
 		return { statusCode: response.statusCode, body: response.body, ok };
-	}
-
-	/**
-	 * The app catalog takes the package as a raw zip rather than JSON, so the
-	 * body is sent unencoded with the zip content type.
-	 */
-	async postZip(accessToken: string, path: string, archive: Buffer): Promise<GraphResponse> {
-		const response = await this.outboundHttp
-			// Fixed public vendor host, not user-controllable.
-			.requests({ useDefaultSsrfPolicy: 'unsafe' })
-			.request({
-				method: 'POST',
-				url: graphUrl(path),
-				headers: {
-					authorization: `Bearer ${accessToken}`,
-					'content-type': 'application/zip',
-				},
-				body: archive,
-				returnFullResponse: true,
-				ignoreHttpStatusErrors: true,
-				timeout: GRAPH_TIMEOUT_MS,
-			});
-
-		const ok = response.statusCode >= 200 && response.statusCode < 300;
-		if (!ok) {
-			// The outer code is generic for a rejected package; the reason is in the
-			// inner code and the message, which name the manifest field at fault.
-			this.logger.warn('[TeamsGraph] Graph refused the app package', {
-				path,
-				statusCode: response.statusCode,
-				error: describeGraphError(response.body) ?? graphErrorCode(response.body),
-			});
-		}
-		return { statusCode: response.statusCode, body: response.body, ok };
-	}
-}
-
-/**
- * Graph returns `@odata.nextLink` as an absolute URL, but this client pins the
- * host and takes a path. A link pointing anywhere else is dropped rather than
- * followed.
- */
-export function graphNextLinkPath(nextLink: string | undefined): string | undefined {
-	if (!nextLink) return undefined;
-	try {
-		const url = new URL(nextLink);
-		if (!url.href.startsWith(`${GRAPH_BASE_URL}/`)) return undefined;
-		return `${url.pathname}${url.search}`.slice('/v1.0'.length);
-	} catch {
-		return undefined;
 	}
 }
 
