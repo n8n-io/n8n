@@ -24,6 +24,8 @@ export function resolveMcpAuthDomainPolicy(
 	credentialData: ICredentialDataDecryptedObject,
 	mcpHostname: string | undefined,
 ): AuthFetchDomainPolicy | undefined {
+	// synthetic mcp registry credentials are handled with default logic,
+	// other types of credentials are handled separately
 	if (!isNativeOAuth2Credential(authentication) || !mcpHostname) {
 		return resolveAllowedDomains(credentialData);
 	}
