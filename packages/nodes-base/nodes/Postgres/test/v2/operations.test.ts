@@ -586,6 +586,92 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			);
 		},
 	);
+
+	describe('query parameters with commas in evaluated values', () => {
+		const query = 'SELECT * FROM users WHERE name = $1 AND id = $2';
+
+		it.each([
+			{
+				description: 'keep a value that contains a comma as one bind value',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.name }}, {{ $json.id }}',
+				evaluated: { '{{ $json.name }}': 'Doe, John', '{{ $json.id }}': 'abc' },
+				expectedValues: ['Doe, John', 'abc'],
+			},
+			{
+				description: 'pass a numeric value as one bind value',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.name }}, {{ $json.id }}',
+				evaluated: { '{{ $json.name }}': 'Doe, John', '{{ $json.id }}': 42 },
+				expectedValues: ['Doe, John', '42'],
+			},
+			{
+				description: 'pass a JSON string as one bind value',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.payload }}',
+				evaluated: { '{{ $json.payload }}': '{"id": "7", "name": "x"}' },
+				expectedValues: ['{"id": "7", "name": "x"}'],
+			},
+			{
+				description: 'pass an object as one JSON bind value',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.payload }}',
+				evaluated: { '{{ $json.payload }}': { id: '7', tags: ['a', 'b'] } },
+				expectedValues: ['{"id":"7","tags":["a","b"]}'],
+			},
+			{
+				description: 'keep an empty value as one bind value',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.name }}, {{ $json.id }}',
+				evaluated: { '{{ $json.name }}': '', '{{ $json.id }}': 'abc' },
+				expectedValues: ['', 'abc'],
+			},
+			{
+				description: 'spread an array across bind values',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.list }}',
+				evaluated: { '{{ $json.list }}': ['x', 'y'] },
+				expectedValues: ['x', 'y'],
+			},
+			{
+				description: 'split a literal comma-separated list without expressions',
+				nodeVersion: 2.8,
+				queryReplacement: 'a, b, c',
+				evaluated: {},
+				expectedValues: ['a', 'b', 'c'],
+			},
+			{
+				description: 'split a value that contains a comma before v2.8',
+				nodeVersion: 2.7,
+				queryReplacement: '={{ $json.name }}, {{ $json.id }}',
+				evaluated: { '{{ $json.name }}': 'Doe, John', '{{ $json.id }}': 'abc' },
+				expectedValues: ['Doe', 'John', 'abc'],
+			},
+		])(
+			'should $description',
+			async ({ nodeVersion, queryReplacement, evaluated, expectedValues }) => {
+				const nodeParameters: IDataObject = {
+					operation: 'executeQuery',
+					query,
+					options: { queryReplacement, nodeVersion },
+				};
+				const nodeOptions = nodeParameters.options as IDataObject;
+				const evaluatedByExpression = new Map<string, unknown>(Object.entries(evaluated));
+
+				const mockExecute = {
+					...createMockExecuteFunction(nodeParameters),
+					evaluateExpression: (str: string) => evaluatedByExpression.get(str.trim()),
+				} as unknown as IExecuteFunctions;
+
+				await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
+
+				expect(runQueries).toHaveBeenCalledWith(
+					[{ query, values: expectedValues, options: { partial: true } }],
+					nodeOptions,
+				);
+			},
+		);
+	});
 });
 
 describe('Test PostgresV2, insert operation', () => {

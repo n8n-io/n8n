@@ -103,6 +103,13 @@ export async function execute(
 							}
 
 							const evaluatedExpression = evaluateExpression(rawEvaluated);
+
+							// From v2.8 an expression gives one bind value, so commas in data do not split it
+							if (nodeVersion >= 2.8) {
+								values.push(evaluatedExpression);
+								continue;
+							}
+
 							const evaluatedValues = isJSON(evaluatedExpression)
 								? [evaluatedExpression]
 								: stringToArray(evaluatedExpression);
