@@ -76,13 +76,13 @@ The matching regex below is a cached extraction of those rules. If the conventio
 For all types except `revert`:
 
 ```
-^(feat|fix|perf|test|docs|refactor|build|ci|chore)(\([a-zA-Z0-9 ]+( Node)?\))?!?: [A-Z].+[^.]$
+^(feat|fix|perf|test|docs|refactor|build|ci|chore)(\((API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node)(, (API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node))*\))?!?: [A-Z].+[^.]$
 ```
 
 For `revert` titles, the summary is the original commit header (which starts with a lowercase type), so capitalization is not enforced:
 
 ```
-^revert(\([a-zA-Z0-9 ]+( Node)?\))?!?: .+[^.]$
+^revert(\((API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node)(, (API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node))*\))?!?: .+[^.]$
 ```
 
 Quick recap of what the regex enforces (full detail in the conventions file):
