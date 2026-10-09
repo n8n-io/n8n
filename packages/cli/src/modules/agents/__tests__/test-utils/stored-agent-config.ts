@@ -72,7 +72,9 @@ export function createAgentSkillRefsService(
 	service.unpinDraftRef.mockImplementation(async (agent, skillId) =>
 		writeRefs(
 			agent,
-			readDraftRefs(agent)?.map((ref) => (ref.id === skillId ? { type: ref.type, id: ref.id } : ref)),
+			readDraftRefs(agent)?.map((ref) =>
+				ref.id === skillId ? { type: ref.type, id: ref.id } : ref,
+			),
 		),
 	);
 	service.pinDraftForPublish.mockResolvedValue(undefined);
@@ -91,7 +93,7 @@ export type AgentHistoryFixtureOverrides = WithDocumentSchema<AgentHistory>;
 /** The skill refs that a `storedAgentConfig` fixture holds. */
 export function storedSkillRefs(source: object): AgentSkillRefs {
 	if (!('schema' in source)) return undefined;
-	const document = source.schema as unknown as AgentJsonConfig | null;
+	const document = source.schema as AgentJsonConfig | null;
 	return document?.skills;
 }
 

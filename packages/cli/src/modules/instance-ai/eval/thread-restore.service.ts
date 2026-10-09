@@ -279,8 +279,9 @@ export class EvalThreadRestoreService {
 		}
 	}
 
-	/** Recreate each seed agent, config and skill bodies in one insert — an agent is
-	 *  a single row, so there are no skill files to write. Rolls back on failure.
+	/** Recreate each seed agent from its config. A seed skill body becomes a new
+	 *  skill in the thread project, and the agent ref points to the new id. Rolls
+	 *  back on failure.
 	 *  Names are not uniquified as seed data tables' are; see `remapSeedArtifactIds`. */
 	async restoreAgents(
 		agents: InstanceAiEvalSeedAgent[],

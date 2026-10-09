@@ -1184,6 +1184,33 @@ describe('McpAgentToolsService', () => {
 			});
 		});
 
+		it('reports skill names that are hard to tell apart as a warning, not an error', async () => {
+			agentConfigService.validateConfig.mockResolvedValue({ valid: true, config: baseConfig });
+			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+				status: 'valid',
+				issues: [],
+				warnings: [
+					{
+						code: 'similar_skill_names',
+						capability: { kind: 'skill' },
+						names: ['Brand voice', 'brand-voice'],
+					},
+				],
+			});
+
+			const result = await callTool('validate_agent', { agentId: 'agent-1' });
+
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				valid: true,
+				errors: [],
+				missing: [],
+				warnings: [
+					'Skills "Brand voice", "brand-voice" have names that are hard to tell apart. Rename one of them.',
+				],
+			});
+		});
+
 		it('aggregates the schema error and deduplicated missing capability paths', async () => {
 			agentConfigService.validateConfig.mockResolvedValue({
 				valid: false,
