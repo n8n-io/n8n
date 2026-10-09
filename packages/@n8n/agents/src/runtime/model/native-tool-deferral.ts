@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { Tool, ToolSet } from 'ai';
 
 import type { ModelConfig, NativeToolDeferralConfig } from '../../types/sdk/agent';
@@ -9,6 +10,32 @@ type NativeToolDeferralProvider = 'openai' | 'anthropic';
 export interface NativeToolDeferral {
 	supports: (model: string, config: ModelConfig) => boolean;
 	prepareTools: (tools: ToolSet, config: NativeToolDeferralConfig) => Promise<ToolSet>;
+}
+
+export function getEffectiveBaseUrl(config: ModelConfig, fallbackUrl: string): unknown {
+	const credentials: Record<string, unknown> = isRecord(config) ? config : {};
+	return credentials.baseURL ?? (credentials.url || fallbackUrl);
+}
+
+export function supportsEndpoint(
+	effectiveUrl: unknown,
+	origin: string,
+	allowedPaths: readonly string[],
+): boolean {
+	if (typeof effectiveUrl !== 'string') return false;
+	try {
+		const url = new URL(effectiveUrl);
+		return (
+			url.origin === origin &&
+			allowedPaths.includes(url.pathname.replace(/\/$/, '')) &&
+			!url.username &&
+			!url.password &&
+			!url.search &&
+			!url.hash
+		);
+	} catch {
+		return false;
+	}
 }
 
 /** Change model visibility. The local execution registry remains complete. */
@@ -66,6 +93,13 @@ export function deferLocalTools(
 }
 
 export type ProviderTool = Extract<Tool, { type: 'provider' }>;
+
+export function findProviderTool(tools: ToolSet, ids: readonly string[]) {
+	return Object.entries(tools).find(
+		(entry): entry is [string, ProviderTool] =>
+			entry[1].type === 'provider' && ids.includes(entry[1].id),
+	);
+}
 
 type NativeSearchTool =
 	| ReturnType<typeof import('@ai-sdk/openai')['openai']['tools']['toolSearch']>
