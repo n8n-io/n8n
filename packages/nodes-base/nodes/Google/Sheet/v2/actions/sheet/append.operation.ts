@@ -215,17 +215,21 @@ export async function execute(
 	sheet: GoogleSheet,
 	range: string,
 	sheetId: string,
+	selectedItemIndexes?: number[],
 ): Promise<INodeExecutionData[]> {
-	const items = this.getInputData();
+	const allItems = this.getInputData();
+	const itemIndexes = selectedItemIndexes ?? allItems.map((_, index) => index);
+	const firstItemIndex = itemIndexes[0] ?? 0;
+	const items = itemIndexes.map((index) => allItems[index]);
 	const nodeVersion = this.getNode().typeVersion;
 	let dataMode =
 		nodeVersion < 4
-			? (this.getNodeParameter('dataMode', 0) as string)
-			: (this.getNodeParameter('columns.mappingMode', 0) as string);
+			? (this.getNodeParameter('dataMode', firstItemIndex) as string)
+			: (this.getNodeParameter('columns.mappingMode', firstItemIndex) as string);
 
 	if (!items.length || dataMode === 'nothing') return [];
 
-	const options = this.getNodeParameter('options', 0, {});
+	const options = this.getNodeParameter('options', firstItemIndex, {});
 	const locationDefine = (options.locationDefine as IDataObject)?.values as IDataObject;
 
 	let keyRowIndex = 1;
@@ -254,7 +258,7 @@ export async function execute(
 		// Use a fallback so the missing schema gets an operation-specific error.
 		const schema = this.getNodeParameter(
 			'columns.schema',
-			0,
+			firstItemIndex,
 			[] as ResourceMapperField[],
 		) as ResourceMapperField[];
 		if (!Array.isArray(schema) || schema.length === 0) {
@@ -275,13 +279,36 @@ export async function execute(
 	if (dataMode === 'autoMapInputData') {
 		// Pass pre-fetched column names to skip a duplicate API call inside autoMapInputData.
 		// Only pass when truthy so that callers without a pre-fetch behave identically.
-		if (headerRow) {
+		if (headerRow && selectedItemIndexes !== undefined) {
+			inputData = await autoMapInputData.call(
+				this,
+				range,
+				sheet,
+				items,
+				options,
+				headerRow,
+				itemIndexes,
+			);
+		} else if (headerRow) {
 			inputData = await autoMapInputData.call(this, range, sheet, items, options, headerRow);
+		} else if (selectedItemIndexes !== undefined) {
+			inputData = await autoMapInputData.call(
+				this,
+				range,
+				sheet,
+				items,
+				options,
+				undefined,
+				itemIndexes,
+			);
 		} else {
 			inputData = await autoMapInputData.call(this, range, sheet, items, options);
 		}
 	} else {
-		inputData = mapFields.call(this, items.length);
+		inputData =
+			selectedItemIndexes === undefined
+				? mapFields.call(this, items.length)
+				: mapFields.call(this, items.length, itemIndexes);
 		// For non-autoMap modes autoMapInputData won't set the hint, so set it here
 		// so that convertObjectArrayToSheetDataArray can skip its own API call.
 		if (headerRow) {
@@ -324,7 +351,7 @@ export async function execute(
 
 	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
 		return items.map((item, index) => {
-			item.pairedItem = { item: index };
+			item.pairedItem = { item: itemIndexes[index] };
 			return item;
 		});
 	} else {
@@ -332,7 +359,7 @@ export async function execute(
 		for (const [index, entry] of inputData.entries()) {
 			returnData.push({
 				json: entry,
-				pairedItem: { item: index },
+				pairedItem: { item: itemIndexes[index] },
 			});
 		}
 		return returnData;
