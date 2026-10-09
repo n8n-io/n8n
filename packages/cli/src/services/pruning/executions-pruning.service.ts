@@ -8,6 +8,8 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 type SoftDeletedRef = Awaited<ReturnType<ExecutionRepository['findSoftDeletedExecutions']>>[number];
 
+type BatchResult = { deleted: number; failedIds: string[] };
+
 /** Pause between full batches, i.e. while backlog remains. */
 const BATCH_DELAY_MS = 1000;
 
@@ -44,16 +46,24 @@ export class ExecutionsPruningService {
 		this.logger.debug('Soft-deleted executions', { count: result.affected });
 	}
 
-	/** Delete soft-deleted executions in batches until one comes back short or the signal aborts. */
+	/**
+	 * Delete soft-deleted executions in batches until one comes back short or the signal aborts.
+	 * Rows that fail are left out of the later selects, up to one batch of them.
+	 */
 	async hardDelete(signal: AbortSignal): Promise<void> {
 		const { hardDeletionBatchSize } = this.executionRepository;
+		const failedIds: string[] = [];
 		let deletedCount = 0;
 		let hasMore = true;
 
 		while (hasMore && !signal.aborted) {
-			const refs = await this.executionRepository.findSoftDeletedExecutions();
-			hasMore = refs.length === hardDeletionBatchSize;
-			if (!signal.aborted) deletedCount += await this.hardDeleteBatch(refs, signal);
+			const refs = await this.executionRepository.findSoftDeletedExecutions(failedIds);
+			if (!signal.aborted) {
+				const batch = await this.hardDeleteBatch(refs, signal);
+				deletedCount += batch.deleted;
+				failedIds.push(...batch.failedIds);
+			}
+			hasMore = refs.length === hardDeletionBatchSize && failedIds.length < hardDeletionBatchSize;
 			if (hasMore) await this.waitBetweenBatches(signal);
 		}
 
@@ -61,19 +71,22 @@ export class ExecutionsPruningService {
 	}
 
 	/** Falls back to single deletes when the batch fails, and rethrows when none of them succeeds. */
-	private async hardDeleteBatch(refs: SoftDeletedRef[], signal: AbortSignal): Promise<number> {
+	private async hardDeleteBatch(refs: SoftDeletedRef[], signal: AbortSignal): Promise<BatchResult> {
 		try {
 			await this.executionPersistence.hardDelete(refs);
-			return refs.length;
+			return { deleted: refs.length, failedIds: [] };
 		} catch (batchError) {
-			const deleted = await this.hardDeleteOneByOne(refs, signal);
-			if (deleted === 0) throw batchError;
-			return deleted;
+			const result = await this.hardDeleteOneByOne(refs, signal);
+			if (result.deleted === 0) throw batchError;
+			return result;
 		}
 	}
 
 	/** Reports each failed row to Sentry and logs their ids once. Stops when the signal aborts. */
-	private async hardDeleteOneByOne(refs: SoftDeletedRef[], signal: AbortSignal): Promise<number> {
+	private async hardDeleteOneByOne(
+		refs: SoftDeletedRef[],
+		signal: AbortSignal,
+	): Promise<BatchResult> {
 		const failedIds: string[] = [];
 		let deleted = 0;
 		for (const ref of refs) {
@@ -93,7 +106,7 @@ export class ExecutionsPruningService {
 		if (failedIds.length > 0) {
 			this.logger.error('Failed to hard-delete executions', { executionIds: failedIds });
 		}
-		return deleted;
+		return { deleted, failedIds };
 	}
 
 	private async waitBetweenBatches(signal: AbortSignal): Promise<void> {

@@ -27,12 +27,24 @@ describe('ExecutionsPruningService', () => {
 		return { service, logger, errorReporter, executionRepository, executionPersistence };
 	};
 
-	const batchOf = (size: number): SoftDeletedRef[] =>
+	const batchOf = (size: number, offset = 0): SoftDeletedRef[] =>
 		Array.from({ length: size }, (_, i) => ({
-			executionId: `exec-${i}`,
+			executionId: `exec-${offset + i}`,
 			workflowId: 'wf-1',
 			storedAt: 'db' as const,
 		}));
+
+	/** Serves the batches in order and records a copy of each select's excluded ids. */
+	const selectsOf = (executionRepository: ExecutionRepository, batches: SoftDeletedRef[][]) => {
+		const selects: string[][] = [];
+		vi.mocked(executionRepository.findSoftDeletedExecutions).mockImplementation(
+			async (excludedIds = []) => {
+				selects.push([...excludedIds]);
+				return batches[selects.length - 1] ?? [];
+			},
+		);
+		return selects;
+	};
 
 	const singleCalls = (executionPersistence: ExecutionPersistence) =>
 		vi
@@ -154,6 +166,44 @@ describe('ExecutionsPruningService', () => {
 			expect(logger.error).toHaveBeenCalledWith(expect.any(String), {
 				executionIds: [badRef.executionId],
 			});
+		});
+
+		it('should leave the rows that failed out of the next select', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			const batch = batchOf(BATCH_SIZE);
+			const badRef = batch[42];
+			const selects = selectsOf(executionRepository, [batch, []]);
+			executionPersistence.hardDelete.mockImplementation(async (target) => {
+				const targets = Array.isArray(target) ? target : [target];
+				if (targets.includes(badRef)) throw new Error('object locked');
+			});
+
+			const run = service.hardDelete(new AbortController().signal);
+			await vi.runAllTimersAsync();
+			await run;
+
+			expect(selects).toEqual([[], [badRef.executionId]]);
+		});
+
+		it('should give up after a batch size of failed rows', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			const batches = [
+				batchOf(BATCH_SIZE),
+				batchOf(BATCH_SIZE, BATCH_SIZE),
+				batchOf(BATCH_SIZE, 2 * BATCH_SIZE),
+			];
+			const isBad = (ref: SoftDeletedRef) => Number(ref.executionId.slice(5)) % 2 === 0;
+			const selects = selectsOf(executionRepository, batches);
+			executionPersistence.hardDelete.mockImplementation(async (target) => {
+				const targets = Array.isArray(target) ? target : [target];
+				if (targets.some(isBad)) throw new Error('object locked');
+			});
+
+			const run = service.hardDelete(new AbortController().signal);
+			await vi.runAllTimersAsync();
+			await run;
+
+			expect(selects).toEqual([[], batches[0].filter(isBad).map((ref) => ref.executionId)]);
 		});
 
 		it('should stop the single deletes when the signal aborts', async () => {
