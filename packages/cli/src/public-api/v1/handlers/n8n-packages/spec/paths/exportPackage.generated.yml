@@ -1,0 +1,116 @@
+operationId: exportPackage
+tags:
+  - N8nPackage
+summary: 'Beta: Export workflows, folders, or projects as an n8n package'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Export workflows and/or folders, or projects, as a gzipped tar archive (.n8np). Provide `workflowIds`/`folderIds`, or `projectIds`, but not both groups. Each exported folder includes its nested folders. Empty projects export project metadata only. Statically referenced sub-workflows must also be included in the resulting package, otherwise the export is rejected. The response is streamed as `application/gzip` with a `Content-Disposition` attachment header. Requires the n8n Packages feature to be licensed.
+
+  API key scopes: `workflow:export` is required when exporting workflows or folders, and `project:export` is required when exporting projects. When `includeVariableValues` is true (the default) and the exported workflows reference variables, `variable:list` is also required; exports that reference no variables never need it.
+x-required-scope: project:export,workflow:export
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          workflowIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+            minItems: 1
+            maxItems: 300
+            description: IDs of the workflows to include in the exported package.
+            example:
+              - 2tUt1wbLX592XDdX
+          folderIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+            minItems: 1
+            maxItems: 300
+            description: IDs of the folders to include in the exported package. Each folder is exported with its nested folders.
+            example:
+              - 9xKp2mNqRzAbCdEf
+          projectIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+            minItems: 1
+            maxItems: 300
+            description: IDs of the projects to include in the exported package.
+            example:
+              - Ox8O54VQrmBrb4qL
+          includeVariableValues:
+            type: boolean
+            default: true
+            description: Whether values of variables referenced by the exported workflows are bundled into the package. When `false`, variables still travel as name/type files and are listed in the package requirements, but no values travel with the package.
+          includeTags:
+            type: boolean
+            default: true
+            description: Whether tags assigned to the exported workflows are bundled into the package. When `false`, no tag files, tag references, or tag requirements travel with the package.
+          missingWorkflowDependencyPolicy:
+            type: string
+            enum:
+              - fail
+              - reference-only
+              - include-in-package
+            default: fail
+            description: Policy for missing static sub-workflow dependencies. `fail` aborts the export when any static sub-workflow is missing from the package; `include-in-package` automatically adds missing static sub-workflows. `reference-only` keeps missing static sub-workflows out of the package and lists them in the package requirements as workflows expected to already exist on the target.
+            example: fail
+          workflowVersionPolicy:
+            type: string
+            enum:
+              - published-strict
+              - prefer-published
+              - ignore-unpublished
+              - latest
+            default: latest
+            description: Which version of each workflow travels in the package. `latest` exports the latest version, published or not. `published-strict` exports the published version and aborts the export if any workflow has none. `prefer-published` falls back to the latest version where there is no published one. `ignore-unpublished` leaves unpublished workflows out of the package entirely. The chosen version decides which credentials, data tables, variables and sub-workflows are bundled alongside it; the workflow's name, settings and tags are not versioned and always come from the latest version.
+            example: latest
+          credentialExportPolicy:
+            type: string
+            enum:
+              - expression-values-only
+              - no-values
+            default: expression-values-only
+            description: Whether expression values from credential data are bundled into the package. `expression-values-only` includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`); literal values never travel either way. `no-values` keeps credential data out of the package entirely, so each credential file carries only its id, name and type.
+            example: expression-values-only
+          includeArchivedWorkflows:
+            type: boolean
+            default: false
+            description: 'Whether folder and project exports include their archived workflows. When `false` (default) they are left out. When `true` they travel with `isArchived: true` and are archived on import. Workflows listed in `workflowIds` always export, also when archived.'
+            example: false
+        additionalProperties: false
+responses:
+  '200':
+    description: A gzipped tar archive containing the exported package contents.
+    headers:
+      X-N8n-Export-Counts:
+        description: JSON-serialized per-entity counts of what actually ended up in the package (after folder bundling and auto-inclusion), e.g. `{"workflows":2,"folders":1,"credentials":0,"dataTables":0,"variables":0}`.
+        required: true
+        schema:
+          type: string
+    content:
+      application/gzip:
+        schema:
+          type: string
+          format: binary
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

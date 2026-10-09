@@ -69,11 +69,11 @@ flowchart LR
    `n8n-packages.service.ts` `exportPackage` (+ `io/` writer or
    `entities/*/` exporter as needed).
 2. **DTO** — `@n8n/api-types/src/dto/packages/export-package-request.dto.ts`
-   (`ExportPackageRequestDto`, zod).
-3. **Public API** — `n8n-packages.handler.ts` `exportPackage` reads from
-   `payload.data`; update the **separate** schema file
-   `spec/schemas/exportPackageRequest.yml` (export's request schema is a
-   `$ref`, unlike import's inline schema).
+   (`ExportPackageRequestDto`, zod). Add the field's OpenAPI wording to
+   `export-package-request.openapi.ts`.
+3. **Public API** — `packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts`
+   `exportPackage` reads from `body`. The request schema comes from
+   `ExportPackageRequestDto`, so do not edit a YAML file.
 4. **CLI** — `src/client.ts` `exportPackage(...)`,
    `src/commands/package/export.ts` flag, and the docs/README.
 
