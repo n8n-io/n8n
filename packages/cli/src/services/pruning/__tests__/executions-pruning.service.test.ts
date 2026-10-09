@@ -149,7 +149,7 @@ describe('ExecutionsPruningService', () => {
 			expect(singleCalls(executionPersistence)).toEqual(batch.map((ref) => [ref]));
 		});
 
-		it('should log the ids of every row that failed once per run', async () => {
+		it('should log the ids that failed once per batch', async () => {
 			const { service, logger, executionRepository, executionPersistence } = makeService();
 			const batches = [batchOf(BATCH_SIZE), batchOf(30, BATCH_SIZE)];
 			const badRefs = [batches[0][42], batches[1][7]];
@@ -163,10 +163,10 @@ describe('ExecutionsPruningService', () => {
 			await vi.runAllTimersAsync();
 			await run;
 
-			expect(logger.error).toHaveBeenCalledTimes(1);
-			expect(logger.error).toHaveBeenCalledWith(expect.any(String), {
-				executionIds: badRefs.map((ref) => ref.executionId),
-			});
+			expect(logger.error.mock.calls).toEqual([
+				[expect.any(String), { executionIds: [badRefs[0].executionId] }],
+				[expect.any(String), { executionIds: [badRefs[1].executionId] }],
+			]);
 		});
 
 		it('should leave the rows that failed out of the next select', async () => {
@@ -231,7 +231,7 @@ describe('ExecutionsPruningService', () => {
 
 			expect(executionRepository.findSoftDeletedExecutions).toHaveBeenCalledTimes(1);
 			expect(executionPersistence.hardDelete).toHaveBeenCalledTimes(1 + BATCH_SIZE);
-			expect(logger.error).not.toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledTimes(1);
 		});
 	});
 });
