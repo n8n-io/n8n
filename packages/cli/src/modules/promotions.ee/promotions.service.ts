@@ -30,9 +30,10 @@ import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
+	ExportDependencyPolicy,
+	ExportVersionPolicy,
 	FolderConflictPolicy,
 	MissingNodeTypeMode,
-	MissingWorkflowDependencyPolicy,
 	OverwriteDeletionPolicy,
 	ProjectConflictPolicy,
 	TagConflictPolicy,
@@ -42,7 +43,6 @@ import {
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
-	WorkflowVersionPolicy,
 	type ImportRequest,
 	type ImportResult,
 	type ImportSelection,
@@ -197,6 +197,7 @@ export class PromotionsService {
 				{
 					user: actor,
 					projectIds,
+					includeAgents: false,
 					includeVariableValues: true,
 					canExportVariableValues: request.canExportVariableValues,
 					includeTags: true,
@@ -204,8 +205,8 @@ export class PromotionsService {
 					includeArchivedWorkflows: true,
 					// personal projects are excluded, so a team workflow calling a personal
 					// sub-workflow blocks the whole promotion; intended for now, see LIGO-1089
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.Fail,
+					versionPolicy: ExportVersionPolicy.Latest,
 				},
 				{ targetDir: stagingFolder },
 			);
@@ -305,8 +306,8 @@ export class PromotionsService {
 					includeArchivedWorkflows: true,
 					// A sub-workflow nobody selected stays a reference. Failing here would
 					// block a promote whose sub-workflow the branch already holds.
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
+					versionPolicy: ExportVersionPolicy.Latest,
 				},
 				{ targetDir: stagingFolder },
 			);

@@ -15,7 +15,7 @@ import * as Helpers from './helpers';
 import type { IDataObject } from '../src';
 import { createRunExecutionData } from '../src';
 import { Expression } from '../src/expression';
-import { CALLABLE_METHODS } from '../src/expressions/native-evaluation';
+import { CALLABLE_METHODS, ITERATOR_METHODS } from '../src/expressions/native-evaluation';
 import { Workflow } from '../src/workflow';
 
 // Three pre-existing, flag-independent quickjs bridge behaviours are kept out
@@ -84,11 +84,54 @@ const path = fc
 	)
 	.map(([key, rest]) => `$json.${key}${rest}`);
 
+const arrayLiteral = fc.array(literal, { maxLength: 3 }).map((items) => `[${items.join(', ')}]`);
+
+// Callback bodies read the parameter (`p`), a root path or a literal; one
+// level only, since a callback inside a callback is declined anyway.
+const paramPath = fc
+	.oneof(
+		fc.constant(''),
+		fc.tuple(hop, fc.constantFrom(...INNER_KEYS, 'length')).map(([h, k]) => `${h}${k}`),
+		fc
+			.tuple(hop, fc.integer({ min: 0, max: 2 }))
+			.map(([h, i]) => (h === '.' ? `[${i}]` : `?.[${i}]`)),
+	)
+	.map((rest) => `p${rest}`);
+const body = fc.oneof(
+	{ weight: 3, arbitrary: paramPath },
+	literal,
+	path,
+	fc
+		.tuple(
+			paramPath,
+			fc.constantFrom('===', '!==', '<', '>', '+', '&&', '??'),
+			fc.oneof(literal, path, paramPath),
+		)
+		.map(([l, op, r]) => `(${l} ${op} ${r})`),
+	fc
+		.tuple(
+			paramPath,
+			hop,
+			fc.constantFrom(...CALLABLE_METHODS),
+			fc.array(literal, { maxLength: 1 }),
+		)
+		.map(([recv, h, method, args]) => `(${recv})${h}${method}(${args.join(', ')})`),
+);
+
 const { expr } = fc.letrec<{ expr: string }>((tie) => ({
 	expr: fc.oneof(
 		{ depthSize: 'small', withCrossShrink: true },
 		{ weight: 4, arbitrary: path },
 		{ weight: 2, arbitrary: literal },
+		arrayLiteral,
+		fc
+			.tuple(
+				fc.oneof({ weight: 3, arbitrary: path }, arrayLiteral, tie('expr')),
+				hop,
+				fc.constantFrom(...ITERATOR_METHODS),
+				body,
+			)
+			.map(([recv, h, method, b]) => `(${recv})${h}${method}(p => ${b})`),
 		fc.tuple(fc.constantFrom('!', '-', '+'), tie('expr')).map(([op, e]) => `${op}(${e})`),
 		fc
 			.tuple(
