@@ -25,9 +25,7 @@ const stopped: AgentTaskCancellationState = {
 	status: 'stopped',
 	requestedAt: '2026-10-01T10:00:00.000Z',
 	failures: [],
-	summary: { completed: 1, canceled: 2 },
 	plan: null,
-	heldQueueIds: ['1'],
 };
 const event: PushMessage = {
 	type: 'agentBackgroundTasksUpdated',
@@ -93,11 +91,11 @@ it('restores cancellation from server state and refreshes on push', async () => 
 	vi.mocked(getAgentTaskCancellation).mockResolvedValue(stopped);
 	const state = create();
 	await flushPromises();
-	expect(state.state.value?.heldQueueIds).toEqual(['1']);
-	vi.mocked(getAgentTaskCancellation).mockResolvedValue({ ...stopped, heldQueueIds: [] });
+	expect(state.state.value?.status).toBe('stopped');
+	vi.mocked(getAgentTaskCancellation).mockResolvedValue({ ...stopped, status: 'resumed' });
 	onEvent(event);
 	await flushPromises();
-	expect(state.state.value?.heldQueueIds).toEqual([]);
+	expect(state.state.value?.status).toBe('resumed');
 });
 
 it('does not apply an old cancellation response to another conversation', async () => {
