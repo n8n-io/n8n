@@ -1,0 +1,207 @@
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_c71d8d6a27245a::t_99ddd69148ed78 66
+packages/cli/src/errors/__tests__/rest-error-response.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 85,107
+  s_c71d8d6a27245a::t_708d8a46be4756 6,80,96
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 69,79
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 836,1007,1013,1925-1926
+  s_c71d8d6a27245a::t_fd9060d19281a9 1214-1223,1254-1258,1663-1666,1892-1901
+packages/cli/src/modules/n8n-packages/entities/tag/tag.types.ts
+  s_c71d8d6a27245a::t_fd9060d19281a9 95
+  s_c71d8d6a27245a::t_99ddd69148ed78 97,106
+packages/cli/src/modules/n8n-packages/spec/requirement-consumers.ts
+  s_c71d8d6a27245a::t_28054a36e24f53 3,11-14
+  s_c71d8d6a27245a::t_fd9060d19281a9 15-18
+  s_c71d8d6a27245a::t_708d8a46be4756 1-2
+  s_9dde2d3ceb6629::t_2ae15fa961501c 19
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 825,1454,1567
+  s_c71d8d6a27245a::t_fd9060d19281a9 1478-1482
+  s_c71d8d6a27245a::t_66d1d3dfbd4103 24,26
+  s_c71d8d6a27245a::t_bdd1f6b3cdc5db 93,98-200
+  s_c71d8d6a27245a::t_739125d9e1b76e 94-97
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_c71d8d6a27245a::t_fd9060d19281a9 31-35,74-77,196-198,201-203,208-214,483-487,492-493,497-500,504-505,584-589
+  s_c71d8d6a27245a::t_28054a36e24f53 18,73,188-192,204-207,215,218-233,235,310,431,445,491,494-496,501-503,511,526-530,538-564,567-583,590-602
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_c71d8d6a27245a::t_6f2d9600ed2ade 61,69,87,94,155,200,202,237,250,256
+  s_c71d8d6a27245a::t_83dcdc856b3318 144-147,224-227
+  s_c71d8d6a27245a::t_9694804d82075e 158-174,181,189
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 109,111,113
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 26,32,52
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_c71d8d6a27245a::t_28054a36e24f53 26,561,572,577,587
+  s_c71d8d6a27245a::t_fd9060d19281a9 568-571,573-576,578-581
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-importer.test.ts
+  s_c71d8d6a27245a::t_fd9060d19281a9 43,57,71
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 254,436,443
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_c71d8d6a27245a::t_99ddd69148ed78 80,89
+  s_2397c9db9d923f::t_3689c74d86e973 7-9,18
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 470
+packages/cli/BREAKING-CHANGES.md
+  s_c71d8d6a27245a::t_246188d831056f 13-14
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_c71d8d6a27245a::t_99ddd69148ed78 87,92,98
+  s_c71d8d6a27245a::t_28054a36e24f53 94-97
+  s_c71d8d6a27245a::t_fd9060d19281a9 11
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_c71d8d6a27245a::t_99ddd69148ed78 10
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_c71d8d6a27245a::t_6f2d9600ed2ade 35-37,44,50,58,72,98-105,136-137,140-141,144,146,149,151,154-155,158,160,162,165,167,180,186,188
+  s_c71d8d6a27245a::t_708d8a46be4756 3-4
+packages/cli/src/modules/n8n-packages/entities/variable/variable-importer.ts
+  s_c71d8d6a27245a::t_708d8a46be4756 3
+  s_c71d8d6a27245a::t_99ddd69148ed78 16,75,86,105
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable-importer.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 50-51
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 386,536
+  s_c71d8d6a27245a::t_20d6b40ccca50e 554,894
+  s_47d9c24d147bdc::t_42522f239a1418 97,621-623,642-644,729-733,1260-1262
+packages/cli/src/public-api/v1/shared/spec/schemas/packageRequirementConsumer.generated.yml
+  s_c71d8d6a27245a::t_246188d831056f 1,2-6,8-10
+  s_c71d8d6a27245a::t_66d1d3dfbd4103 7
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 2841
+  s_c71d8d6a27245a::t_fd9060d19281a9 2832-2835
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
+  s_47d9c24d147bdc::t_4bfd57bad6c916 14,47-48,74
+  s_2397c9db9d923f::t_3689c74d86e973 9,18,43
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_47d9c24d147bdc::t_4bfd57bad6c916 22,76,94
+  s_2397c9db9d923f::t_3689c74d86e973 13,20,49-51,123-124,127,139-147,149-156,160
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_47d9c24d147bdc::t_4bfd57bad6c916 176
+  s_2397c9db9d923f::t_3689c74d86e973 11,62-105
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirement.exporter.ts
+  s_47d9c24d147bdc::t_42522f239a1418 48
+  s_47d9c24d147bdc::t_4bfd57bad6c916 9,29-32,36,39-40
+  s_2397c9db9d923f::t_3689c74d86e973 6,13
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_47d9c24d147bdc::t_4bfd57bad6c916 15,17,47,92,110,112-113,120-121
+  s_2397c9db9d923f::t_3689c74d86e973 9,18-19,24,56,82,107,111,114-119
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.exporter.test.ts
+  s_47d9c24d147bdc::t_4bfd57bad6c916 151
+  s_2397c9db9d923f::t_3689c74d86e973 51-72
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_47d9c24d147bdc::t_42522f239a1418 14,325,330
+packages/cli/src/modules/n8n-packages/entities/requirement-source.ts
+  s_47d9c24d147bdc::t_4bfd57bad6c916 1-33
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirement-source.test.ts
+  s_47d9c24d147bdc::t_4bfd57bad6c916 1-31
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_47d9c24d147bdc::t_42522f239a1418 3-6,13-16,20,32-42,46,58-60,66-68,80-81
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_2397c9db9d923f::t_61fb7f6499b5aa 212
+packages/@n8n/permissions/src/scope-information.ts
+  s_2397c9db9d923f::t_3689c74d86e973 38-41
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow-resolver.ts
+  s_2397c9db9d923f::t_3689c74d86e973 14-17,44,57-65,120,125
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-dependency-resolver.ts
+  s_2397c9db9d923f::t_3689c74d86e973 8,14,30,33-37,39
+packages/cli/src/modules/n8n-packages/entities/agent/agent-export.types.ts
+  s_2397c9db9d923f::t_3689c74d86e973 1,3-9,11-12,20-22,25-45,47
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirements.types.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 6,29
+packages/cli/src/modules/n8n-packages/__tests__/import-agent-package.integration.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 29-30,161-188
+packages/@n8n/permissions/src/constants.ee.ts
+  s_2397c9db9d923f::t_3689c74d86e973 4
+packages/cli/src/modules/n8n-packages/entities/workflow/references/sub-workflow-node.reference.ts
+  s_2397c9db9d923f::t_3689c74d86e973 37-40
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable.exporter.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 71-136
+packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 31-51
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_2397c9db9d923f::t_3689c74d86e973 10-12
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 20,43
+packages/cli/src/modules/n8n-packages/entities/requirements.types.ts
+  s_2397c9db9d923f::t_3689c74d86e973 1-2,4-5,7-10,12-13,17-18
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.types.ts
+  s_2397c9db9d923f::t_3689c74d86e973 1-2,7-15
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_2397c9db9d923f::t_3689c74d86e973 7,9,11-12,15-21
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 5,21,41,99
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 16,18,40,82
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-requirements.extractor.ts
+  s_2397c9db9d923f::t_3689c74d86e973 12-16,18-20,34,39,42
+packages/workflow/src/node-helpers.ts
+  s_2397c9db9d923f::t_3689c74d86e973 1911,2172-2175
+packages/cli/src/modules/n8n-packages/entities/workflow/static-sub-workflow-requirements.ts
+  s_2397c9db9d923f::t_3689c74d86e973 2,7
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_2397c9db9d923f::t_3689c74d86e973 59-83
+packages/cli/src/modules/n8n-packages/entities/agent/agent-requirements.extractor.ts
+  s_2397c9db9d923f::t_3689c74d86e973 7-13,17-25,27,29-47,49-65,73-74
+packages/cli/src/modules/n8n-packages/entities/variable/variable-requirements.extractor.ts
+  s_2397c9db9d923f::t_3689c74d86e973 34-40,43,46,48
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_2397c9db9d923f::t_3689c74d86e973 26-36
+packages/cli/src/modules/n8n-packages/entities/workflow/node-type-usage.ts
+  s_2397c9db9d923f::t_3689c74d86e973 4,6-8,10,14-15,17-18,20-21,23,26-29,33
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 1-620
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_2397c9db9d923f::t_3689c74d86e973 6
+packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 1-228
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_2397c9db9d923f::t_3689c74d86e973 12,86,147,205
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 14,45
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-requirements.extractor.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 13-15,17-21,44,67-74,83-107,113-114,116,118,123-141,145-172,209-221,225-229
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-dependency-resolver.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 61-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "20deb5fcc5d88d86e87f5288efe5df9a1250bd05",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_47d9c24d147bdc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11bc9-65a1-7110-9789-34497cba967e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_9dde2d3ceb6629": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11ac2-6b8c-78c0-8c5b-f0f0c2840b03",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c71d8d6a27245a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a118f9-89a0-7922-9bda-d308ff402c58",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
