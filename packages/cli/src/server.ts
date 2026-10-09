@@ -268,6 +268,18 @@ export class Server extends AbstractServer {
 		// register all known controllers
 		Container.get(ControllerRegistry).activate(app);
 
+		if (Container.get(ModuleRegistry).isActive('workflow-portal')) {
+			const { WorkflowPortalConfig } = await import(
+				'./modules/workflow-portal/workflow-portal.config.js'
+			);
+			const portalConfig = Container.get(WorkflowPortalConfig);
+			// Portal requests must stop before the editor fallback.
+			app.use((req, res, next) => {
+				if (portalConfig.isPortalHost(req.headers.host)) res.status(404).end();
+				else next();
+			});
+		}
+
 		// ----------------------------------------
 		// Options
 		// ----------------------------------------

@@ -8,12 +8,6 @@ export class WorkflowPortalConfig {
 	@Env('N8N_WORKFLOW_PORTAL_BASE_URL')
 	baseUrl: string = '';
 
-	@Env('N8N_WORKFLOW_PORTAL_PORT')
-	port: number = 5681;
-
-	@Env('N8N_WORKFLOW_PORTAL_LISTEN_ADDRESS')
-	listenAddress: string = '127.0.0.1';
-
 	sanitize() {
 		const url = URL.parse(this.baseUrl);
 		if (
@@ -28,10 +22,6 @@ export class WorkflowPortalConfig {
 			throw new UserError('Set N8N_WORKFLOW_PORTAL_BASE_URL to the public app origin.');
 		}
 		this.baseUrl = url.origin;
-
-		if (!Number.isInteger(this.port) || this.port < 1 || this.port > 65535) {
-			throw new UserError('Set N8N_WORKFLOW_PORTAL_PORT to a port from 1 to 65535.');
-		}
 	}
 
 	get callbackUrl() {

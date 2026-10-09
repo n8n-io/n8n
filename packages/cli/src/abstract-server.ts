@@ -176,12 +176,17 @@ export abstract class AbstractServer {
 		const { app, sslKey, sslCert } = this;
 		const { protocol } = this.globalConfig;
 		let isPortalHost: ((host: string | undefined) => boolean) | undefined;
-		if (Container.get(ModuleRegistry).eligibleModules.includes('workflow-portal')) {
+		const moduleRegistry = Container.get(ModuleRegistry);
+		if (moduleRegistry.eligibleModules.includes('workflow-portal')) {
 			const { UrlService } = await import('@n8n/backend-services');
 			const { WorkflowPortalConfig } = await import(
 				'./modules/workflow-portal/workflow-portal.config.js'
 			);
 			const config = Container.get(WorkflowPortalConfig);
+			const { WORKFLOW_PORTAL_ROUTES, WORKFLOW_PORTAL_ASSETS_PATH } = await import(
+				'./modules/workflow-portal/workflow-portal.constants.js'
+			);
+			const portalPaths = new Set<string>(Object.values(WORKFLOW_PORTAL_ROUTES));
 			isPortalHost = (host) => config.isPortalHost(host);
 			if (isPortalHost(new URL(Container.get(UrlService).getInstanceBaseUrl()).host)) {
 				const { UserError } = await import('n8n-workflow');
@@ -189,10 +194,17 @@ export abstract class AbstractServer {
 			}
 			// Install before health checks, webhooks, and the editor fallback.
 			app.use((req, res, next) => {
-				if (
-					config.isPortalHost(req.headers.host) ||
-					mayReachDirectory(req.path, 'workflow-portal')
-				) {
+				if (config.isPortalHost(req.headers.host)) {
+					const isAsset = req.path.startsWith(`${WORKFLOW_PORTAL_ASSETS_PATH}/`);
+					if (!['GET', 'HEAD'].includes(req.method) || (!portalPaths.has(req.path) && !isAsset)) {
+						res.status(404).end();
+						return;
+					}
+					if (!moduleRegistry.isActive('workflow-portal')) {
+						res.status(503).end();
+						return;
+					}
+				} else if (mayReachDirectory(req.path, 'workflow-portal')) {
 					res.status(404).end();
 					return;
 				}

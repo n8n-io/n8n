@@ -1,5 +1,5 @@
 import { ModuleRegistry } from '@n8n/backend-common';
-import { BackendModule, OnShutdown, type ModuleInterface } from '@n8n/decorators';
+import { BackendModule, type ModuleInterface } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -13,16 +13,16 @@ export class WorkflowPortalModule implements ModuleInterface {
 		const { UserRepository } = await import('@n8n/db');
 		const { ProtectedResourceRegistry } = await import('@/services/protected-resource.registry.js');
 		const { WorkflowPortalConfig } = await import('./workflow-portal.config.js');
-		const { WorkflowPortalServer } = await import('./workflow-portal.server.js');
+		const { WorkflowPortalService } = await import('./workflow-portal.service.js');
 		const config = Container.get(WorkflowPortalConfig);
-		const server = Container.get(WorkflowPortalServer);
+		const portalService = Container.get(WorkflowPortalService);
 		const userRepository = Container.get(UserRepository);
 
 		Container.get(ProtectedResourceRegistry).register({
 			id: 'workflow-portal',
 			surface: 'public-api',
 			isFirstParty: true,
-			displayName: await server.getDisplayName(),
+			displayName: await portalService.getDisplayName(),
 			uiHints: { icon: 'workflow', consentType: 'app' },
 			getResourceUrl: () => config.callbackUrl,
 			getAudiences: () => [config.callbackUrl],
@@ -34,12 +34,6 @@ export class WorkflowPortalModule implements ModuleInterface {
 			},
 		});
 
-		await server.start();
-	}
-
-	@OnShutdown()
-	async shutdown() {
-		const { WorkflowPortalServer } = await import('./workflow-portal.server.js');
-		await Container.get(WorkflowPortalServer).stop();
+		await import('./workflow-portal.controller.js');
 	}
 }
