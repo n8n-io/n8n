@@ -14,7 +14,11 @@ import type {
 import { getBatchingOptionFields } from '@n8n/ai-utilities';
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 
-import { buildClassificationSchema, type Category } from './classification';
+import {
+	buildClassificationSchema,
+	type Category,
+	type ClassificationResult,
+} from './classification';
 import { processItem } from './processItem';
 
 const SYSTEM_PROMPT_TEMPLATE =
@@ -31,13 +35,33 @@ const configuredOutputs = (parameters: INodeParameters) => {
 };
 
 /**
- * A branch gets its own copy. In multi-class mode one item routes to several
- * branches, and a shared object would carry one branch's changes onto the rest.
+ * Sends one classified item to the branches it matched.
+ *
+ * Every branch gets its own copy. In multi-class mode one item routes to
+ * several branches, and a shared object would carry one branch's changes onto
+ * the rest.
  */
-const copyOf = (item: INodeExecutionData): INodeExecutionData => ({
-	...item,
-	json: { ...item.json },
-});
+function routeItem(options: {
+	result: ClassificationResult;
+	item: INodeExecutionData;
+	itemIndex: number;
+	categories: Category[];
+	hasOtherBranch: boolean;
+	returnData: INodeExecutionData[][];
+}): void {
+	const { result, item, itemIndex, categories, hasOtherBranch, returnData } = options;
+	const copy = (): INodeExecutionData => ({
+		...item,
+		json: { ...item.json },
+		pairedItem: { item: itemIndex },
+	});
+
+	categories.forEach((category, index) => {
+		if (result.matched.includes(category.category)) returnData[index].push(copy());
+	});
+
+	if (hasOtherBranch && result.fallback) returnData[returnData.length - 1].push(copy());
+}
 
 export class TextClassifier implements INodeType {
 	description: INodeTypeDescription = {
@@ -272,15 +296,14 @@ export class TextClassifier implements INodeType {
 							throw new NodeOperationError(this.getNode(), error);
 						}
 					} else {
-						const output = response.value;
-						const item = items[index];
-
-						categories.forEach((cat, idx) => {
-							if (output.matched.includes(cat.category)) returnData[idx].push(copyOf(item));
+						routeItem({
+							result: response.value,
+							item: items[index],
+							itemIndex: index,
+							categories,
+							hasOtherBranch: fallback === 'other',
+							returnData,
 						});
-
-						if (fallback === 'other' && output.fallback)
-							returnData[returnData.length - 1].push(copyOf(item));
 					}
 				});
 
@@ -305,11 +328,14 @@ export class TextClassifier implements INodeType {
 						fallbackPrompt,
 					);
 
-					categories.forEach((cat, idx) => {
-						if (output.matched.includes(cat.category)) returnData[idx].push(copyOf(item));
+					routeItem({
+						result: output,
+						item,
+						itemIndex,
+						categories,
+						hasOtherBranch: fallback === 'other',
+						returnData,
 					});
-					if (fallback === 'other' && output.fallback)
-						returnData[returnData.length - 1].push(copyOf(item));
 				} catch (error) {
 					const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex);
 					if (this.continueOnFail()) {

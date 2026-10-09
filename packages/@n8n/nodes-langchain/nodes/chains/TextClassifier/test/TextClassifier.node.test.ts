@@ -66,7 +66,7 @@ describe('TextClassifier Node', () => {
 				'If there is not a very fitting category, select none of the categories.',
 			);
 
-			expect(result).toEqual([[{ json: { testValue: 'none' } }]]);
+			expect(result).toEqual([[{ json: { testValue: 'none' }, pairedItem: { item: 0 } }]]);
 		});
 
 		it('gives each branch its own copy of a multi-class item', async () => {
@@ -173,10 +173,34 @@ describe('TextClassifier Node', () => {
 			expect(processItem).toHaveBeenCalledTimes(4);
 			expect(result[0]).toHaveLength(4);
 			expect(result[0]).toEqual([
+				{ json: { item: 1 }, pairedItem: { item: 0 } },
+				{ json: { item: 2 }, pairedItem: { item: 1 } },
+				{ json: { item: 3 }, pairedItem: { item: 2 } },
+				{ json: { item: 4 }, pairedItem: { item: 3 } },
+			]);
+		});
+
+		// Every other test here leaves `options.batching.batchSize` at its default of 5,
+		// so they all take the batch path. This is the only cover for the other one.
+		it('routes the same way with batching off', async () => {
+			mockExecuteFunction.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
+				if (param === 'inputText') return 'Test input';
+				if (param === 'categories.categories')
+					return [{ category: 'test', description: 'test category' }];
+				if (param === 'options.batching.batchSize') return 1;
+				return defaultValue;
+			});
+			mockExecuteFunction.getInputData.mockReturnValue([
 				{ json: { item: 1 } },
 				{ json: { item: 2 } },
-				{ json: { item: 3 } },
-				{ json: { item: 4 } },
+			]);
+			(processItem as Mock).mockResolvedValue({ matched: ['test'], fallback: false });
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			expect(result[0]).toEqual([
+				{ json: { item: 1 }, pairedItem: { item: 0 } },
+				{ json: { item: 2 }, pairedItem: { item: 1 } },
 			]);
 		});
 

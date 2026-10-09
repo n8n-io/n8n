@@ -30,8 +30,6 @@ export async function processItem(
 		);
 	}
 
-	item.pairedItem = { item: itemIndex };
-
 	const inputPrompt = new HumanMessage(input);
 
 	const systemPromptTemplateOpt = ctx.getNodeParameter(
