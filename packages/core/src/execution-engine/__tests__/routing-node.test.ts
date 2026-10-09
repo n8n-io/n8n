@@ -2939,11 +2939,29 @@ describe('RoutingNode', () => {
 			test("does not block a declarative node when mode is 'none' and the node declares no base URL", async () => {
 				const result = await runWithCredential(
 					{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
-					{ baseURL: null, routedUrl: 'https://reader.example.com/{{$parameter["endpoint"]}}' },
+					{ baseURL: null, routedUrl: '=https://reader.example.com/{{$parameter["endpoint"]}}' },
 				);
 
 				const requestOptions = getRequestOptions(result);
 				expect(requestOptions.allowedDomains).toBeUndefined();
+			});
+
+			test("does not widen the 'domains' allowlist with a caller-supplied base URL override", async () => {
+				const result = await runWithCredential(
+					{
+						apiKey: 'testApiKey',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'other.example.com',
+					},
+					{
+						baseURL: '={{ $parameter.options?.baseURL || "https://api.example.com" }}',
+						routedUrl: 'https://api.example.com/path',
+						nodeParameters: { options: { baseURL: 'http://override.example.com' } },
+					},
+				);
+
+				const requestOptions = getRequestOptions(result);
+				expect(requestOptions.allowedDomains).toBe('api.example.com, other.example.com');
 			});
 
 			test("does not block a declarative node when mode is 'none' and the host matches the base URL", async () => {

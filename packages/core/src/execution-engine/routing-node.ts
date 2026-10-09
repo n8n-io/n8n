@@ -254,14 +254,14 @@ export class RoutingNode {
 						$rawParameter: {},
 					}),
 				);
-				const baseUrlIsNodeOwned =
-					toHostname(ownHost ? buildTargetUrl(url, baseURL) : baseURL) === ownHost;
+				const targetUrl = ownHost ? buildTargetUrl(url, baseURL) : baseURL;
+				const baseUrlIsNodeOwned = toHostname(targetUrl) === ownHost;
 				const allowedDomains = credentials
 					? getCredentialAllowedDomains({
 							node,
 							credentialData: credentials,
 							credentialOwnedSurface: baseUrlIsNodeOwned,
-							nodeEndpointUrl: baseURL,
+							nodeEndpointUrl: targetUrl,
 						})
 					: undefined;
 				if (allowedDomains) {
