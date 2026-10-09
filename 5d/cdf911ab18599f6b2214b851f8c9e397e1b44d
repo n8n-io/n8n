@@ -1,0 +1,83 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_4ccb04e185c8c5 379-381,388-389
+  s_2e1fa95fc44f8f::t_61b89c54124329 503,505,544-545,694,702,733,758,869,875,965,996
+  s_2e1fa95fc44f8f::t_b691ebd34eac2b 10,69,75,91,97,112,118,134,140,156,162,178,184,200,206,222,228-230,249,260,275,289,323-325,351-353,390-400,498,504,510,532-534,540,546,688,701,703,719,731-732,734,745,757,759,768,774,781-783,786,794,800,806-809,818,824,830-832,841,847,866,890,896,902-904,921,927,963-964,966,1011
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.copy.sp.test.ts
+  s_2e1fa95fc44f8f::t_61b89c54124329 10,24,30
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/search.test.ts
+  s_64bdca350513e1::t_961e5479230379 124,133,142
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.download.test.ts
+  s_715e72d26dd7c6::t_3272d82b6a015d 13,22
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.perItem.test.ts
+  s_2e1fa95fc44f8f::t_61b89c54124329 15,20
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.test.ts
+  s_2e1fa95fc44f8f::t_61b89c54124329 15
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.sp.test.ts
+  s_2e1fa95fc44f8f::t_61b89c54124329 14,21
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.sp.perItem.test.ts
+  s_2e1fa95fc44f8f::t_61b89c54124329 17,23,30,41,52
+packages/nodes-base/nodes/Microsoft/OneDrive/test/MicrosoftOneDriveTrigger.transport.test.ts
+  s_2e1fa95fc44f8f::t_61b89c54124329 67,103
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.ts
+  s_899dce43cb59a6::t_f8da714db858e9 9,11,144,159,164,184,229,241,245,257,262,289,345,349,371,376,382,392,437,453,477,479,500,504,516,521,540,545,551,561,573,579,638
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/copy.test.ts
+  s_715e72d26dd7c6::t_15475d445e07b1 62,84
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_3fbc3a6a442865 135
+  s_2e1fa95fc44f8f::t_2aa6d8ee2d0b17 5-6,14,16,144,149,162-163,183,201-204,214,220,231,233,240,271,275,311,315,359-366,408
+  s_2e1fa95fc44f8f::t_61b89c54124329 152,219
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.upload.test.ts
+  s_2e1fa95fc44f8f::t_ed1627418698f6 129
+  s_715e72d26dd7c6::t_23e41f899d0486 4,75,102,162,189,393,421
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/move.test.ts
+  s_2e1fa95fc44f8f::t_61b89c54124329 133
+  s_64bdca350513e1::t_1239505d963507 79,100,105,119,127,155,179,211,231,238,282
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/app-only-ops.test.ts
+  s_2e1fa95fc44f8f::t_61b89c54124329 23
+  s_715e72d26dd7c6::t_b4f66f94a9e94f 2,81,109,130,149,174,193,213,231,243,254,298
+packages/nodes-base/nodes/Microsoft/OneDrive/test/MicrosoftOneDriveTrigger.node.test.ts
+  s_64bdca350513e1::t_f0001d2f95b4ca 2,110
+  s_2e1fa95fc44f8f::t_61b89c54124329 113,145,153
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.ts
+  s_2e1fa95fc44f8f::t_4b25576ef67f85 9,116,144-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5dcdf911ab18599f6b2214b851f8c9e397e1b44d",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_64bdca350513e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4df3e61c6cc290fc",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_715e72d26dd7c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a62cd39faddbb3da7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_899dce43cb59a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2ead17849041ef22",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
