@@ -70,20 +70,18 @@ watch(
 				</N8nDialogTitle>
 			</div>
 		</N8nDialogHeader>
-		<N8nDialogBody>
-			<div :class="$style.content">
-				<N8nText color="text-base" size="small" :class="$style.description">
-					{{ i18n.baseText('workflowSettings.redactionMembersModal.description') }}
-				</N8nText>
-				<N8nLoading v-if="isLoading" :rows="3" />
-				<div v-else :class="$style.memberList">
-					<div v-for="member in membersData.members" :key="member.userId" :class="$style.memberRow">
-						<N8nUserInfo
-							:first-name="member.firstName"
-							:last-name="member.lastName"
-							:email="member.email"
-						/>
-					</div>
+		<N8nDialogBody :class="$style.body">
+			<N8nText color="text-base" size="small" :class="$style.description">
+				{{ i18n.baseText('workflowSettings.redactionMembersModal.description') }}
+			</N8nText>
+			<N8nLoading v-if="isLoading" :rows="3" />
+			<div v-else :class="$style.memberList">
+				<div v-for="member in membersData.members" :key="member.userId" :class="$style.memberRow">
+					<N8nUserInfo
+						:first-name="member.firstName"
+						:last-name="member.lastName"
+						:email="member.email"
+					/>
 				</div>
 			</div>
 		</N8nDialogBody>
@@ -91,15 +89,14 @@ watch(
 </template>
 
 <style lang="css" module>
+.body {
+	max-height: 400px;
+}
+
 .header {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-}
-
-.content {
-	max-height: 400px;
-	overflow-y: auto;
 }
 
 .description {
