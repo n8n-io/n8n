@@ -1,9 +1,9 @@
 {
-	"inbox.title": "Inbox",
+	"inbox.title": "Reviews",
 	"inbox.tabs.open": "Open",
 	"inbox.tabs.closed": "Closed",
-	"inbox.partial": "Some items couldn’t load. Retry to refresh the inbox.",
-	"inbox.loadError": "Couldn't load inbox",
+	"inbox.partial": "Some items couldn’t load. Retry to refresh the list.",
+	"inbox.loadError": "Couldn't load reviews",
 	"inbox.loadMore": "Load more",
 	"inbox.empty.open": "No open items",
 	"inbox.empty.closed": "No closed items",
