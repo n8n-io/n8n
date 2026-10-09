@@ -88,6 +88,9 @@
 				}
 			}
 		},
+		"html": {
+			"type": ["string", "boolean"]
+		},
 		"id": {
 			"type": "string"
 		},

@@ -118,10 +118,24 @@ function parseParameterVariant(variant: string): { param: string; value: string 
 	return { param: variant.slice(0, separator), value: variant.slice(separator + 1) };
 }
 
+/**
+ * The value a node parameter has: its own value, even when null, else its default.
+ * Own-property checks keep names such as `constructor` from reading the prototype.
+ */
+function effectiveParameterValue(ref: OutputSchemaRef, param: string): unknown {
+	const { parameters, parameterDefaults } = ref;
+	if (parameters && Object.hasOwn(parameters, param) && parameters[param] !== undefined) {
+		return parameters[param];
+	}
+	return parameterDefaults && Object.hasOwn(parameterDefaults, param)
+		? parameterDefaults[param]
+		: undefined;
+}
+
 function variantMatchesParameters(variant: string, ref: OutputSchemaRef): boolean {
 	const parsed = parseParameterVariant(variant);
 	if (!parsed) return false;
-	const effective = ref.parameters?.[parsed.param] ?? ref.parameterDefaults?.[parsed.param];
+	const effective = effectiveParameterValue(ref, parsed.param);
 	const isPrimitive = ['string', 'number', 'boolean'].includes(typeof effective);
 	return isPrimitive && String(effective) === parsed.value;
 }

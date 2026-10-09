@@ -26,12 +26,13 @@ export function getParameterDefaults(
 	properties: INodeProperties[] | undefined,
 	context: SchemaContext,
 ): Record<string, NodeParameterValueType> {
-	const defaults: Record<string, NodeParameterValueType> = {};
+	// A Map keeps names such as `constructor` and `__proto__` as plain keys.
+	const defaults = new Map<string, NodeParameterValueType>();
 
 	for (const property of properties ?? []) {
-		if (property.name in defaults || !isShownFor(property, context)) continue;
-		defaults[property.name] = property.default;
+		if (defaults.has(property.name) || !isShownFor(property, context)) continue;
+		defaults.set(property.name, property.default);
 	}
 
-	return defaults;
+	return Object.fromEntries(defaults);
 }

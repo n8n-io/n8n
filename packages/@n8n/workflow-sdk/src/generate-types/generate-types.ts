@@ -3028,9 +3028,12 @@ export function generateSharedFile(
  * The parameter that selects between several output shapes of one operation,
  * with the shape for each of its values.
  */
+type ParameterValueType = 'boolean' | 'number' | 'string';
+
 interface ParameterVariants {
 	param: string;
-	isBoolean: boolean;
+	/** Primitive type of the parameter values: it decides the literal and expression types. */
+	valueType: ParameterValueType;
 	/** The value used when the parameter is absent. The plain schema describes it. */
 	defaultValue: string;
 	others: Array<{ value: string; schema: JsonSchema }>;
@@ -3062,27 +3065,46 @@ function resolveParameterVariants(
 	}
 
 	const property = props.find((p) => p.name === param);
-	const isBoolean = property?.type === 'boolean';
-	const defaultIsPrimitive = ['string', 'number', 'boolean'].includes(typeof property?.default);
-	if (!property || !defaultIsPrimitive || (!isBoolean && property.type !== 'options')) {
-		return undefined;
-	}
+	const valueType = property ? getParameterValueType(property) : undefined;
+	if (!property || !valueType) return undefined;
 
 	const defaultValue = String(property.default);
 	const others = parsed.map((entry) => ({ value: entry.value!, schema: entry.schema }));
-	if (others.some((entry) => entry.value === defaultValue)) return undefined;
+	if (
+		others.some((entry) => entry.value === defaultValue || !isTypeSafeValue(valueType, entry.value))
+	) {
+		return undefined;
+	}
 
 	return {
 		param,
-		isBoolean,
+		valueType,
 		defaultValue,
 		others: others.sort((a, b) => a.value.localeCompare(b.value)),
 	};
 }
 
+/** The value type of a boolean parameter, or of an options parameter whose default is a string or number. */
+function getParameterValueType(property: NodeProperty): ParameterValueType | undefined {
+	if (property.type === 'boolean') {
+		return typeof property.default === 'boolean' ? 'boolean' : undefined;
+	}
+	if (property.type !== 'options') return undefined;
+	if (typeof property.default === 'number') return 'number';
+	return typeof property.default === 'string' ? 'string' : undefined;
+}
+
+/** A value comes from a file name, so it must be a valid literal of its type and safe to emit. */
+function isTypeSafeValue(valueType: ParameterValueType, value: string): boolean {
+	if (valueType === 'boolean') return value === 'true' || value === 'false';
+	if (valueType === 'number')
+		return Number.isFinite(Number(value)) && String(Number(value)) === value;
+	return /^[\w-]+$/.test(value);
+}
+
 /** `true` / `'raw'` — the TypeScript literal for a parameter value. */
 function parameterValueLiteral(variants: ParameterVariants, value: string): string {
-	return variants.isBoolean ? value : `'${value}'`;
+	return variants.valueType === 'string' ? `'${value}'` : value;
 }
 
 /**
@@ -3120,7 +3142,7 @@ function generateParameterVariantTypes(
 	const allOutputs = members.map((member) => member.output).join(' | ');
 	members.push({
 		node: `${names.base}${toPascalCase(param)}ExpressionNode`,
-		constraint: `${param}: Expression<${variants.isBoolean ? 'boolean' : 'string'}>`,
+		constraint: `${param}: Expression<${variants.valueType}>`,
 		output: allOutputs,
 	});
 

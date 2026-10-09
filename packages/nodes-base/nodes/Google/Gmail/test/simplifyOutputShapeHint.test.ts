@@ -17,6 +17,15 @@ describe('Gmail simplify output hint', () => {
 		expect(simplifyOutputShapeHint).toContain('$json.from.value[0].address');
 	});
 
+	it('tells the builder that `headers.from` is the full header line', () => {
+		expect(simplifyOutputShapeHint).toContain('full header line');
+	});
+
+	it('names attachments as a reason to turn Simplify off', () => {
+		expect(simplifyOutputShapeHint).toContain('attachments');
+		expect(simplifyOutputShapeHint).toContain('downloadAttachments');
+	});
+
 	it.each(['get', 'getAll'])('is the Simplify hint of the message %s operation', (operation) => {
 		expect(getSimpleHint(messageFields, operation)).toBe(simplifyOutputShapeHint);
 	});

@@ -4557,6 +4557,57 @@ describe('generate-types', () => {
 					expect(content).toContain('export type FreshserviceV1TicketGetNode = {');
 					expect(content).not.toContain('SimpleFalse');
 				});
+
+				describe('options parameters', () => {
+					const nodeWithOptions = (values: Array<number | string>): NodeTypeDescription => ({
+						...mockFreshserviceNode,
+						properties: [
+							...mockFreshserviceNode.properties,
+							{
+								displayName: 'Format',
+								name: 'format',
+								type: 'options',
+								default: values[0],
+								options: values.map((value) => ({ name: String(value), value })),
+								displayOptions: { show: { resource: ['ticket'], operation: ['get'] } },
+							},
+						],
+					});
+					const modeVariant = (value: string) => ({
+						...rawVariant,
+						variant: `format-${value}`,
+					});
+
+					it('keeps the numeric type of numeric option values', () => {
+						const content = generate([modeVariant('1')], nodeWithOptions([0, 1]));
+
+						expect(content).toContain('{ format?: 0 }');
+						expect(content).toContain('{ format: 1 }');
+						expect(content).toContain('{ format: Expression<number> }');
+						expect(content).not.toContain("'1'");
+					});
+
+					it('keeps string option values as string literals', () => {
+						const content = generate([modeVariant('slow')], nodeWithOptions(['fast', 'slow']));
+
+						expect(content).toContain("{ format?: 'fast' }");
+						expect(content).toContain("{ format: 'slow' }");
+						expect(content).toContain('{ format: Expression<string> }');
+					});
+
+					it('ignores a variant whose value is not a number for numeric options', () => {
+						const content = generate([modeVariant('slow')], nodeWithOptions([0, 1]));
+
+						expect(content).toContain('export type FreshserviceV1TicketGetNode = {');
+						expect(content).not.toContain('FormatSlow');
+					});
+
+					it('ignores a variant whose value would not be a safe type literal', () => {
+						const content = generate([modeVariant("x'y")], nodeWithOptions(['fast', "x'y"]));
+
+						expect(content).toContain('export type FreshserviceV1TicketGetNode = {');
+					});
+				});
 			});
 
 			it('should inline credentials interface when node has credentials', () => {

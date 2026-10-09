@@ -246,6 +246,41 @@ describe('output-schema-resolver', () => {
 				).toBe(raw);
 			});
 
+			it('does not apply the default when the parameter is set to null', () => {
+				const plain = writeSchema('v2.0.0/message/get.json');
+				writeSchema('v2.0.0/message/get.simple-false.json');
+
+				expect(
+					resolveOutputSchemaPath({
+						nodeDir,
+						...ref,
+						parameters: { simple: null },
+						parameterDefaults: { simple: false },
+					}),
+				).toBe(plain);
+			});
+
+			it('applies the default when the parameter is set to undefined', () => {
+				writeSchema('v2.0.0/message/get.json');
+				const raw = writeSchema('v2.0.0/message/get.simple-false.json');
+
+				expect(
+					resolveOutputSchemaPath({
+						nodeDir,
+						...ref,
+						parameters: { simple: undefined },
+						parameterDefaults: { simple: false },
+					}),
+				).toBe(raw);
+			});
+
+			it('ignores a parameter that only exists on the object prototype', () => {
+				const plain = writeSchema('v2.0.0/message/get.json');
+				writeSchema('v2.0.0/message/get.constructor-true.json');
+
+				expect(resolveOutputSchemaPath({ nodeDir, ...ref, parameters: {} })).toBe(plain);
+			});
+
 			it('prefers an explicit variant over the parameters', () => {
 				writeSchema('v2.0.0/message/get.json');
 				writeSchema('v2.0.0/message/get.simple-false.json');
