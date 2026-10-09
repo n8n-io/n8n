@@ -61,6 +61,7 @@ erDiagram
   TEXT metadata
   varchar_36_ projectId FK
   varchar_255_ resourceId
+  varchar_36_ selfHealingResultId FK
   TEXT title
   datetime_3_ updatedAt
 }

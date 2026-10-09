@@ -34,16 +34,11 @@ export interface McpExposeAllOffer {
 }
 
 export interface SelfHealingChatInput {
-	resultId: string;
-	outcome: 'needs_you' | 'could_not_fix';
-	report: string;
-	workflowId: string;
-	workflowName: string;
-	executionId?: string;
+	threadId: string;
 }
 
 export interface SelfHealingChatHandoff {
 	available: ComputedRef<boolean>;
-	/** Returns true after the opening message is accepted and the chat opens. */
+	/** Returns true after the existing chat opens. */
 	start(input: SelfHealingChatInput): Promise<boolean>;
 }

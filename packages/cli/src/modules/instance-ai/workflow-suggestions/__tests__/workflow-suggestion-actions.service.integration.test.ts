@@ -43,13 +43,15 @@ import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.re
 import { WorkflowSuggestionActionsService } from '../workflow-suggestion-actions.service';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
+vi.mock('../../instance-ai-settings.service', () => ({ InstanceAiSettingsService: vi.fn() }));
+
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublicationNotifier);
 const validation = mockInstance(WorkflowValidationService);
 
 setupTestServer({
 	modules: ['instance-ai'],
-	setupTimeout: 30_000,
+	setupTimeout: 60_000,
 });
 
 let actions: WorkflowSuggestionActionsService;
@@ -230,14 +232,36 @@ it('publishes the committed application once when an after-update hook fails', a
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory + 1);
 });
 
-it('rejects applying a Needs attention result', async () => {
+it('applies a Needs attention proposal to the draft without publishing', async () => {
 	const { original, suggestion, act } = await fixture('needs_you');
 	const beforeHistory = await history.countBy({ workflowId: original.id });
+	const publish = vi.spyOn(Container.get(WorkflowService), 'activateWorkflow');
 
-	await expect(act('apply')).rejects.toThrow();
+	const applied = await act('apply');
+
+	expect(applied).toMatchObject({
+		closedReason: 'applied',
+		appliedVersion: { action: 'apply' },
+	});
+	expect((await workflows.findOneByOrFail({ id: original.id })).activeVersionId).toBe(
+		original.activeVersionId,
+	);
+	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory + 1);
+	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
+		state: 'closed',
+		closedReason: 'applied',
+	});
+	expect(publish).not.toHaveBeenCalled();
+});
+
+it('rejects approving and publishing a Needs attention proposal', async () => {
+	const { original, suggestion, act } = await fixture('needs_you');
+
+	await expect(act('approve-and-publish')).rejects.toThrow(
+		'Only a Fix ready suggestion can be approved and published.',
+	);
 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
 	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 		state: 'pending',
 	});

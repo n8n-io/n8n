@@ -1,4 +1,7 @@
-import { selfHealingResultContentSchema } from '../self-healing-results';
+import {
+	selfHealingContinueRequestSchema,
+	selfHealingResultContentSchema,
+} from '../self-healing-results';
 
 const content = {
 	outcome: 'could_not_fix',
@@ -42,5 +45,19 @@ describe('selfHealingResultContentSchema', () => {
 				usage: { credits: 0, turns: 1, durationSeconds: 30 },
 			}),
 		).toThrow();
+	});
+});
+
+describe('selfHealingContinueRequestSchema', () => {
+	it.each(['editor', 'chat'])('accepts the %s destination', (destination) => {
+		expect(selfHealingContinueRequestSchema.parse({ destination })).toEqual({ destination });
+	});
+
+	it.each([
+		{},
+		{ destination: 'publish' },
+		{ destination: 'chat', threadId: 'client-selected-thread' },
+	])('rejects unsupported continuation input: %j', (input) => {
+		expect(selfHealingContinueRequestSchema.safeParse(input).success).toBe(false);
 	});
 });

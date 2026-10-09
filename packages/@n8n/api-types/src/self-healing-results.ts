@@ -32,7 +32,22 @@ export type SelfHealingExecutionReference =
 	| { status: 'available'; id: string }
 	| { status: 'unavailable' };
 
-export type SelfHealingReviewState = 'open' | 'applied' | 'discarded' | 'outdated' | 'dismissed';
+export const selfHealingContinuationDestinationSchema = z.enum(['editor', 'chat']);
+export type SelfHealingContinuationDestination = z.infer<
+	typeof selfHealingContinuationDestinationSchema
+>;
+
+export const selfHealingContinueRequestSchema = z
+	.object({ destination: selfHealingContinuationDestinationSchema })
+	.strict();
+
+export type SelfHealingReviewState =
+	| 'open'
+	| 'applied'
+	| 'discarded'
+	| 'outdated'
+	| 'dismissed'
+	| 'continued';
 
 export type SelfHealingResultDetail = SelfHealingResultContent & {
 	resultId: string;
@@ -44,6 +59,11 @@ export type SelfHealingResultDetail = SelfHealingResultContent & {
 	updatedAt: string;
 	dismissedAt: string | null;
 	dismissedById: string | null;
+	continuedAt: string | null;
+	continuedById: string | null;
+	continuationDestination: SelfHealingContinuationDestination | null;
+	/** The first continuation's private chat, when the caller can access it. */
+	continuationThreadId: string | null;
 	reviewState: SelfHealingReviewState;
 	suggestion: WorkflowSuggestionProposalDetail | null;
 	execution: SelfHealingExecutionReference;
@@ -52,6 +72,13 @@ export type SelfHealingResultDetail = SelfHealingResultContent & {
 export type SelfHealingResultActionResponse = SelfHealingResultDetail & {
 	/** This request error does not establish whether the saved version is live. */
 	publishError?: string;
+};
+
+export type SelfHealingResultContinuationResponse = SelfHealingResultDetail & {
+	/** The caller's private chat. It can differ from the first continuation's chat. */
+	chatThreadId: string | null;
+	/** The chat was saved, but its initial Assistant run could not start. */
+	chatStartError?: string;
 };
 
 /** Fields the result view reads from the normal workflow endpoint. */

@@ -16,7 +16,7 @@
 | id | varchar(36) |  | false | [public.self_healing_result](public.self_healing_result.md) [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) |  |  |
 | payload | json |  | false |  |  | Original workflow snapshot, candidate nodes and connections, explanation, and error context |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Original owner project |
-| resultKind | varchar(16) |  | false |  |  | Investigation outcome; only fix_ready permits Apply |
+| resultKind | varchar(16) |  | false |  |  | Investigation outcome; fix_ready and needs_you permit draft application |
 | state | varchar(16) |  | false |  |  | Suggestion lifecycle state |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) | Target workflow |
@@ -103,6 +103,10 @@ erDiagram
 "public.self_healing_result" {
   uuid backgroundUserId FK
   timestamp_3__with_time_zone completedAt
+  varchar_16_ continuationDestination
+  uuid continuationThreadId FK
+  timestamp_3__with_time_zone continuedAt
+  uuid continuedById FK
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone dismissedAt
   uuid dismissedById FK

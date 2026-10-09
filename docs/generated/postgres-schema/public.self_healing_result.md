@@ -6,11 +6,15 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | backgroundUserId | uuid |  | false |  | [public.user](public.user.md) | User who enabled the investigation |
 | completedAt | timestamp(3) with time zone |  | false |  |  |  |
+| continuationDestination | varchar(16) |  | true |  |  | Destination of the first continuation |
+| continuationThreadId | uuid |  | true |  | [public.instance_ai_threads](public.instance_ai_threads.md) | Private chat for the first continuation |
+| continuedAt | timestamp(3) with time zone |  | true |  |  | First continuation of the result |
+| continuedById | uuid |  | true |  | [public.user](public.user.md) | Reviewer who first continued the result |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | dismissedAt | timestamp(3) with time zone |  | true |  |  |  |
 | dismissedById | uuid |  | true |  | [public.user](public.user.md) | Reviewer who dismissed the result |
 | executionId | varchar(36) |  | false |  |  | Execution reference retained after pruning; also supports the external v2 data plane |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar(36) |  | false | [public.instance_ai_threads](public.instance_ai_threads.md) |  |  |
 | outcome | varchar(16) |  | false |  |  | Accepted investigation outcome, separate from review closure |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Original workflow owner project |
 | report | text |  | false |  |  | Saved report, independent of execution and chat data |
@@ -24,12 +28,15 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_self_healing_result_continuationDestination | CHECK | CHECK ((("continuationDestination")::text = ANY ((ARRAY['editor'::character varying, 'chat'::character varying])::text[]))) |
 | CHK_self_healing_result_outcome | CHECK | CHECK (((outcome)::text = ANY ((ARRAY['fix_ready'::character varying, 'needs_you'::character varying, 'could_not_fix'::character varying])::text[]))) |
 | FK_3cb48b62bf261b7a6da666fee2d | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | FK_738c3c0198c5ad104645a14fdc1 | FOREIGN KEY | FOREIGN KEY ("suggestionId") REFERENCES workflow_suggestion(id) ON DELETE CASCADE |
 | FK_8366669b58b0f63a07cf2bbffcc | FOREIGN KEY | FOREIGN KEY ("backgroundUserId") REFERENCES "user"(id) ON DELETE CASCADE |
 | FK_98095dea3ff814d4ee37a1380e6 | FOREIGN KEY | FOREIGN KEY ("dismissedById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_9a3fe8a8f872917949d8de1bb4a | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| FK_self_healing_result_continuation_thread | FOREIGN KEY | FOREIGN KEY ("continuationThreadId") REFERENCES instance_ai_threads(id) ON DELETE SET NULL |
+| FK_self_healing_result_continued_by | FOREIGN KEY | FOREIGN KEY ("continuedById") REFERENCES "user"(id) ON DELETE SET NULL |
 | PK_0a772d117fddff1eaf6a759e1b6 | PRIMARY KEY | PRIMARY KEY (id) |
 | self_healing_result_backgroundUserId_not_null | n | NOT NULL "backgroundUserId" |
 | self_healing_result_completedAt_not_null | n | NOT NULL "completedAt" |
@@ -52,6 +59,8 @@
 | IDX_8366669b58b0f63a07cf2bbffc | CREATE INDEX "IDX_8366669b58b0f63a07cf2bbffc" ON public.self_healing_result USING btree ("backgroundUserId") |
 | IDX_98095dea3ff814d4ee37a1380e | CREATE INDEX "IDX_98095dea3ff814d4ee37a1380e" ON public.self_healing_result USING btree ("dismissedById") |
 | IDX_9a3fe8a8f872917949d8de1bb4 | CREATE INDEX "IDX_9a3fe8a8f872917949d8de1bb4" ON public.self_healing_result USING btree ("workflowId") |
+| IDX_self_healing_result_continuationThreadId | CREATE INDEX "IDX_self_healing_result_continuationThreadId" ON public.self_healing_result USING btree ("continuationThreadId") |
+| IDX_self_healing_result_continuedById | CREATE INDEX "IDX_self_healing_result_continuedById" ON public.self_healing_result USING btree ("continuedById") |
 | IDX_self_healing_result_suggestionId | CREATE UNIQUE INDEX "IDX_self_healing_result_suggestionId" ON public.self_healing_result USING btree ("suggestionId") WHERE ("suggestionId" IS NOT NULL) |
 | PK_0a772d117fddff1eaf6a759e1b6 | CREATE UNIQUE INDEX "PK_0a772d117fddff1eaf6a759e1b6" ON public.self_healing_result USING btree (id) |
 
@@ -61,7 +70,10 @@
 erDiagram
 
 "public.self_healing_result" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.self_healing_result" }o--o| "public.instance_ai_threads" : "FOREIGN KEY (#quot;continuationThreadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE SET NULL"
+"public.self_healing_result" }o--o| "public.user" : "FOREIGN KEY (#quot;continuedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.self_healing_result" }o--o| "public.user" : "FOREIGN KEY (#quot;dismissedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.instance_ai_threads" }o--o| "public.self_healing_result" : "FOREIGN KEY (#quot;selfHealingResultId#quot;) REFERENCES self_healing_result(id) ON DELETE SET NULL"
 "public.self_healing_result" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--o| "public.workflow_suggestion" : "FOREIGN KEY (#quot;suggestionId#quot;) REFERENCES workflow_suggestion(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -69,6 +81,10 @@ erDiagram
 "public.self_healing_result" {
   uuid backgroundUserId FK
   timestamp_3__with_time_zone completedAt
+  varchar_16_ continuationDestination
+  uuid continuationThreadId FK
+  timestamp_3__with_time_zone continuedAt
+  uuid continuedById FK
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone dismissedAt
   uuid dismissedById FK
@@ -98,6 +114,16 @@ erDiagram
   json personalizationAnswers
   varchar_128_ roleSlug FK
   json settings
+  timestamp_3__with_time_zone updatedAt
+}
+"public.instance_ai_threads" {
+  timestamp_3__with_time_zone createdAt
+  uuid id
+  json metadata
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  varchar_36_ selfHealingResultId FK
+  text title
   timestamp_3__with_time_zone updatedAt
 }
 "public.project" {
