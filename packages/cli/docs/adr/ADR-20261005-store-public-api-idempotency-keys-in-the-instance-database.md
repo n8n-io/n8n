@@ -28,14 +28,16 @@ Postgres and SQLite both receive the table.
 2. The row stores the fingerprint and the status (`processing` or
    `completed`). It also stores the response status and the response body.
    Those two columns stay empty while the handler runs. The stored response
-   includes a 4xx or a 5xx. The replay rules are in
+   includes a 4xx or a 5xx. We redact sensitive values in the response body
+   before we store it. We then encrypt that body. The column holds
+   ciphertext. Replay decrypts the stored body and returns it. The first
+   response and the replay are that same body. The replay rules are in
    ADR-20261005-replay-the-first-public-api-response-for-an-idempotency-key.
 3. `userId` references `user.id`. Deleting the user deletes that user's keys.
 4. A row expires 12 hours after `createdAt`. The read path treats an older row
    as a miss. A changed TTL applies to rows that already exist, because expiry
    is `createdAt` plus the TTL.
-5. A system task deletes expired rows. It runs on an interval, on the leader
-   only, and it deletes in batches. It follows the JTI cleanup task.
+5. A system task deletes expired rows on an interval.
 
 ## Alternatives Considered
 
@@ -46,8 +48,9 @@ Postgres and SQLite both receive the table.
    seconds to minutes. 12 hours covers same-day recovery.
 3. **A 6 hour window.** A late-day retry of a morning write misses the stored
    response.
-4. **Crontab for cleanup.** The instance already runs leader-only system tasks.
-   A crontab adds a second scheduler for the same job.
+4. **Store the response body as plaintext JSON.** A workflow response can
+   contain values the user put in node parameters. The row would keep a
+   second plaintext copy of those values until it expires.
 
 ## Consequences
 
@@ -59,6 +62,8 @@ Postgres and SQLite both receive the table.
    creates hold that response until cleanup.
 4. The request contract is recorded in
    ADR-20261005-replay-the-first-public-api-response-for-an-idempotency-key.
+5. A database reader sees ciphertext for the response body. Replay decrypts
+   that body before it sends the response.
 
 ## Links
 

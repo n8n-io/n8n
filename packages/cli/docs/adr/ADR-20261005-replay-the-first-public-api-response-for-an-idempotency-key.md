@@ -48,9 +48,7 @@ after a real failure.
    is 1 to 128 characters, and the characters are visible ASCII. A longer value
    or a disallowed character returns 400. An empty value, or a value that is
    only whitespace, is the same as no header.
-4. The middleware registers once on the public API controller registry. Every
-   public handler uses that registry before the middleware is added.
-5. The internal `/rest` API stays out of this version. The store has no HTTP
+4. The internal `/rest` API stays out of this version. The store has no HTTP
    types, so `/rest` can mount later.
 
 ## Alternatives Considered
