@@ -23,6 +23,8 @@ export type OutputSchemaLookup = (node: {
 	operation?: string;
 	/** Node has an `ai_outputParser` attached — resolves the `with-parser` layout variant. */
 	hasOutputParser?: boolean;
+	/** The node's parameters — pick a shape variant such as `simple: false`. */
+	parameters?: Record<string, unknown>;
 }) => Record<string, unknown> | undefined;
 
 /** Structured-output-parser info for an AI root node (Agent/Chain). */

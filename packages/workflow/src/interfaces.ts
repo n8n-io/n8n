@@ -2577,6 +2577,14 @@ export interface INodeType {
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
+	/**
+	 * Names the output-schema variant for a node's parameters, for output
+	 * previews and mock data. Return `undefined` for the default schema.
+	 * The variant `x` maps to `__schema__/v<version>/<resource>/<operation>.x.json`.
+	 * Without this hook, files named `<operation>.<param>-<value>.json` are
+	 * matched against the node parameters and the parameter defaults.
+	 */
+	getOutputSchemaVariant?(parameters: Record<string, unknown>): string | undefined;
 	methods?: {
 		loadOptions?: {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;

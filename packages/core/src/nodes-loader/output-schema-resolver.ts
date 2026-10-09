@@ -26,8 +26,20 @@ export interface OutputSchemaRef {
 	 * (e.g. an attached output parser): probes `v<X>/output.<variant>.json`
 	 * before the plain `v<X>/output.json`. Only meaningful for refs without
 	 * resource/operation, and only with `versionFallback`.
+	 *
+	 * For refs with an operation it names `<operation>.<variant>.json` instead,
+	 * and wins over `parameters`. A name with anything but word characters and
+	 * dashes is ignored.
 	 */
 	variant?: string;
+	/**
+	 * Node parameters that pick a shape variant. A file `<operation>.<param>-<value>.json`
+	 * is used when the parameter (or, if absent, its default) equals `<value>`.
+	 * Only meaningful for refs with an operation, and only with `versionFallback`.
+	 */
+	parameters?: Record<string, unknown>;
+	/** Defaults for parameters missing from `parameters`, read from the node description. */
+	parameterDefaults?: Record<string, unknown>;
 }
 
 /**
@@ -47,6 +59,8 @@ export type OutputSchemaLookup = (node: {
 	operation?: string;
 	/** Node has an `ai_outputParser` attached — resolves the `with-parser` layout variant. */
 	hasOutputParser?: boolean;
+	/** The node's parameters — pick a shape variant such as `simple: false`. */
+	parameters?: Record<string, unknown>;
 }) => Record<string, unknown> | undefined;
 
 /** Pad "1" / "1.2" to the on-disk "1.0.0" / "1.2.0" directory format. */
@@ -94,6 +108,67 @@ function orderFallbackCandidates(dirNames: string[], target: number[]): string[]
 	].map((d) => d.name);
 }
 
+/** Variant names are file-name fragments: word characters and dashes only. */
+const VARIANT_NAME_PATTERN = /^[\w-]+$/;
+
+/** `simple-false` → parameter `simple`, value `false`. */
+function parseParameterVariant(variant: string): { param: string; value: string } | undefined {
+	const separator = variant.indexOf('-');
+	if (separator <= 0) return undefined;
+	return { param: variant.slice(0, separator), value: variant.slice(separator + 1) };
+}
+
+/**
+ * The value a node parameter has: its own value, even when null, else its default.
+ * Own-property checks keep names such as `constructor` from reading the prototype.
+ */
+function effectiveParameterValue(ref: OutputSchemaRef, param: string): unknown {
+	const { parameters, parameterDefaults } = ref;
+	if (parameters && Object.hasOwn(parameters, param) && parameters[param] !== undefined) {
+		return parameters[param];
+	}
+	return parameterDefaults && Object.hasOwn(parameterDefaults, param)
+		? parameterDefaults[param]
+		: undefined;
+}
+
+function variantMatchesParameters(variant: string, ref: OutputSchemaRef): boolean {
+	const parsed = parseParameterVariant(variant);
+	if (!parsed) return false;
+	const effective = effectiveParameterValue(ref, parsed.param);
+	const isPrimitive = ['string', 'number', 'boolean'].includes(typeof effective);
+	return isPrimitive && String(effective) === parsed.value;
+}
+
+/** Variant names that have a `<operation>.<variant>.json` file in `dir`, sorted. */
+function listOperationVariants(dir: string, operation: string): string[] {
+	try {
+		return readdirSync(dir)
+			.filter((file) => file.startsWith(`${operation}.`) && file.endsWith('.json'))
+			.map((file) => file.slice(operation.length + 1, -'.json'.length))
+			.filter((variant) => VARIANT_NAME_PATTERN.test(variant))
+			.sort();
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * The `<operation>.<variant>.json` file for this ref in one version dir: the
+ * explicit `variant` first, then the first file whose `<param>-<value>` name
+ * matches the node parameters.
+ */
+function findOperationVariantFile(ref: OutputSchemaRef, versionPath: string): string | undefined {
+	const { operation, resource, variant } = ref;
+	if (!operation) return undefined;
+	const dir = path.resolve(versionPath, resource ?? '');
+	const variants = listOperationVariants(dir, operation);
+	const match =
+		variants.find((name) => name === variant) ??
+		variants.find((name) => variantMatchesParameters(name, ref));
+	return match ? path.join(dir, `${operation}.${match}.json`) : undefined;
+}
+
 /**
  * Resolve an output schema reference to a `.json` file path, or undefined
  * when the resolved path would escape the node's `__schema__` directory.
@@ -136,6 +211,8 @@ export function resolveOutputSchemaPath(ref: OutputSchemaRef): string | undefine
 	const hasDiscriminators = Boolean(resource) || Boolean(operation);
 
 	for (const versionDir of [...new Set([exactVersionDir, ...available])]) {
+		const variantFile = findOperationVariantFile(ref, path.join(schemaBaseDir, versionDir));
+		if (variantFile && isContainedWithin(schemaBaseDir, variantFile)) return variantFile;
 		const filePath = buildPath(versionDir);
 		if (filePath && existsSync(filePath)) return filePath;
 		if (!hasDiscriminators) {

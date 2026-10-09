@@ -11,5 +11,41 @@
 			"type": "string"
 		}
 	},
+	"additionalProperties": {
+		"anyOf": [
+			{
+				"type": "string"
+			},
+			{
+				"type": "number"
+			},
+			{
+				"type": "boolean"
+			},
+			{
+				"type": "null"
+			},
+			{
+				"type": "array",
+				"items": {
+					"type": ["string", "object"]
+				}
+			},
+			{
+				"type": "object",
+				"properties": {
+					"start": {
+						"type": "string"
+					},
+					"end": {
+						"type": ["string", "null"]
+					},
+					"time_zone": {
+						"type": ["string", "null"]
+					}
+				}
+			}
+		]
+	},
 	"version": 1
 }

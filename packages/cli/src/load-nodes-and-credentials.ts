@@ -40,11 +40,17 @@ import type {
 	NodeLoader,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { injectDomainRestrictionFields, UnexpectedError, UserError } from 'n8n-workflow';
+import {
+	injectDomainRestrictionFields,
+	NodeHelpers,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
+import { getParameterDefaults } from '@/output-schema-parameter-defaults';
 import { createAiTools, createHitlTools } from '@/tool-generation';
 
 @Service()
@@ -310,9 +316,12 @@ export class LoadNodesAndCredentials {
 	 * community nodes and production installs alike.
 	 */
 	createOutputSchemaLookup(): OutputSchemaLookup {
-		return ({ type, typeVersion, resource, operation, hasOutputParser }) => {
+		return ({ type, typeVersion, resource, operation, hasOutputParser, parameters }) => {
 			const nodePath = this.known.nodes[type]?.sourcePath;
 			if (!nodePath) return undefined;
+
+			const nodeType = this.tryGetVersionedNodeType(type, typeVersion);
+			const hookVariant = this.tryGetOutputSchemaVariant(nodeType, parameters ?? {});
 
 			return loadOutputSchema({
 				nodeDir: path.dirname(nodePath),
@@ -320,9 +329,34 @@ export class LoadNodesAndCredentials {
 				resource,
 				operation,
 				versionFallback: true,
-				variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
+				variant: hookVariant ?? (hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined),
+				parameters,
+				parameterDefaults: getParameterDefaults(nodeType?.description.properties, {
+					resource,
+					operation,
+				}),
 			});
 		};
+	}
+
+	/** Schema previews are best-effort, so a node that cannot load just has no variants. */
+	private tryGetVersionedNodeType(type: string, version: number): INodeType | undefined {
+		try {
+			return NodeHelpers.getVersionedNodeType(this.getNode(type).type, version);
+		} catch {
+			return undefined;
+		}
+	}
+
+	private tryGetOutputSchemaVariant(
+		nodeType: INodeType | undefined,
+		parameters: Record<string, unknown>,
+	): string | undefined {
+		try {
+			return nodeType?.getOutputSchemaVariant?.(parameters);
+		} catch {
+			return undefined;
+		}
 	}
 
 	getCustomDirectories(): string[] {
