@@ -1,0 +1,45 @@
+packages/nodes-base/nodes/KoBoToolbox/test/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_8c7f1ab60064d7 67
+  s_2e1fa95fc44f8f::t_9071979761d986 1-24,26,28-31,33,35-36,39,41-42,44-47,49-50,52,54-55,57-58,60-61,63-64,68,70-81
+  s_2e1fa95fc44f8f::t_7510bf3b8eaa39 25
+  s_2e1fa95fc44f8f::t_bfd7db1b815fc9 27
+  s_2e1fa95fc44f8f::t_72392a9fd6cd04 32
+  s_2e1fa95fc44f8f::t_d92d5b3dbc1200 34
+  s_2e1fa95fc44f8f::t_47755a99c0a63f 37-38
+  s_2e1fa95fc44f8f::t_14ec65b296eba8 40
+  s_2e1fa95fc44f8f::t_bbb7672149894b 43
+  s_2e1fa95fc44f8f::t_f8c2930fa95e02 48
+  s_2e1fa95fc44f8f::t_6bb34840ff7de1 51
+  s_2e1fa95fc44f8f::t_550ab79f73f1bf 53
+  s_2e1fa95fc44f8f::t_2c106488f6c3c3 56
+  s_2e1fa95fc44f8f::t_727ef06a96ca3a 59
+  s_2e1fa95fc44f8f::t_c2323d385d5c3a 62
+  s_2e1fa95fc44f8f::t_28b20abbef0a44 65-66
+  s_2e1fa95fc44f8f::t_df7052501a690f 69
+packages/nodes-base/nodes/KoBoToolbox/test/workflow/workflow.json
+  s_6de0f016f4713f::t_be1f677378cd42 1-574
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "874c3c1dd44320efb02283f15d066672ee1ef4c4",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_6de0f016f4713f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-adc90e9a2e5491762",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
