@@ -192,4 +192,77 @@ describe('AgentEvalTryRow', () => {
 
 		expect(getByTestId('row-1-suggestion')).toHaveValue('');
 	});
+
+	describe('fix suggestion', () => {
+		const suggestionProps = {
+			status: 'work',
+			input: 'x',
+			output: 'y',
+			testId: 'row-1',
+			fixSuggestion: 'Politely decline requests outside invoice support.',
+		} as const;
+
+		it('shows the suggestion card once a failed case is expanded', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByText } = renderComponent({ props: suggestionProps });
+			await user.click(getByTestId('row-1-toggle'));
+
+			expect(getByTestId('row-1-suggestion-card')).toBeInTheDocument();
+			expect(getByText('Politely decline requests outside invoice support.')).toBeInTheDocument();
+		});
+
+		it.each([
+			['no suggestion', { fixSuggestion: null }],
+			['a blank suggestion', { fixSuggestion: '   ' }],
+			['a passed case', { status: 'pass' }],
+		] as const)('does not show the card for %s', async (_label, override) => {
+			const user = userEvent.setup();
+			const { queryByTestId, getByTestId } = renderComponent({
+				props: { ...suggestionProps, ...override },
+			});
+			await user.click(getByTestId('row-1-toggle'));
+
+			expect(queryByTestId('row-1-suggestion-card')).not.toBeInTheDocument();
+		});
+
+		it('does not show the card in the small view', () => {
+			const { queryByTestId } = renderComponent({
+				props: { ...suggestionProps, view: 'small' },
+			});
+
+			expect(queryByTestId('row-1-suggestion-card')).not.toBeInTheDocument();
+		});
+
+		it('emits "apply-suggestion" from the card', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderComponent({ props: suggestionProps });
+			await user.click(getByTestId('row-1-toggle'));
+
+			await user.click(getByTestId('row-1-suggestion-card-apply'));
+
+			expect(emitted()['apply-suggestion']).toHaveLength(1);
+		});
+
+		it('hides the card on "Keep as is" and brings back a new suggestion', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId, rerender } = renderComponent({
+				props: suggestionProps,
+			});
+			await user.click(getByTestId('row-1-toggle'));
+
+			await user.click(getByTestId('row-1-suggestion-card-dismiss'));
+			expect(queryByTestId('row-1-suggestion-card')).not.toBeInTheDocument();
+
+			await rerender({ ...suggestionProps, fixSuggestion: 'Always cite the invoice number.' });
+			expect(getByTestId('row-1-suggestion-card')).toBeInTheDocument();
+		});
+
+		it('disables the card actions while the row is disabled', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent({ props: { ...suggestionProps, disabled: true } });
+			await user.click(getByTestId('row-1-toggle'));
+
+			expect(getByTestId('row-1-suggestion-card-apply')).toBeDisabled();
+		});
+	});
 });
