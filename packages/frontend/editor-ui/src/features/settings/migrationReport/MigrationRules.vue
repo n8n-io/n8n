@@ -27,6 +27,7 @@ import { useI18n } from '@n8n/i18n';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { BreakingChangeLightReportResult, BreakingChangeRuleImpact } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { BREAKING_CHANGES_DOCUMENTATION_URL } from './constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const $style = useCssModule();
@@ -47,7 +48,6 @@ const versionQuery = MIGRATION_REPORT_TARGET_VERSION
 
 const targetVersionMajor = MIGRATION_REPORT_TARGET_VERSION?.slice(1) ?? '2';
 const targetVersionDisplay = `${targetVersionMajor}.0.0`;
-const documentationUrl = `https://docs.n8n.io/${targetVersionMajor}-0-breaking-changes/`;
 
 type WorkflowRuleResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
 
@@ -180,7 +180,7 @@ const sortedInstanceResults = computed(() => {
 					},
 				})
 			"
-			:docs-url="documentationUrl"
+			:docs-url="BREAKING_CHANGES_DOCUMENTATION_URL"
 			:docs-label="i18n.baseText('settings.migrationReport.documentationLink')"
 			docs-leading-text=""
 		/>
