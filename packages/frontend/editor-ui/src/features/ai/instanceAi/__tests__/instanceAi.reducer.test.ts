@@ -261,6 +261,22 @@ describe('instanceAi.reducer', () => {
 			expect(JSON.stringify(state.messages)).toBe(before);
 		});
 
+		test('uses the known group when a delayed start omits its group ID', () => {
+			const state = makeState();
+			const start = makeRunStartEvent('run-1', 'agent-root');
+			state.activeRunId = handleEvent(state, {
+				...start,
+				payload: { ...start.payload, messageGroupId: 'group-1' },
+			});
+			state.activeRunId = handleEvent(
+				state,
+				makeRunFinishEvent('run-1', 'agent-root', 'cancelled'),
+			);
+			const before = JSON.stringify(state.messages);
+			expect(handleEvent(state, start)).toBeNull();
+			expect(JSON.stringify(state.messages)).toBe(before);
+		});
+
 		test('run-finish(error) sets agentTree status to error', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'error'));

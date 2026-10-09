@@ -117,11 +117,8 @@ function createRunState(rootAgentId?: string): AgentRunState {
  * The tree's nodes are adopted, not copied — live events keep mutating the
  * exact objects the message already renders.
  */
-export function createRunStateFromTree(
-	tree: InstanceAiAgentNode,
-	runIds: string[] = [],
-): AgentRunState | undefined {
-	const runState = stateFromAgentTree(tree, runIds);
+export function createRunStateFromTree(tree: InstanceAiAgentNode): AgentRunState | undefined {
+	const runState = stateFromAgentTree(tree);
 	return runState ? reactive(runState) : undefined;
 }
 
@@ -201,7 +198,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 	if (!hasSafeEventKeys(event)) return state.activeRunId;
 	const groupId =
 		event.type === 'run-start'
-			? (event.payload.messageGroupId ?? event.runId)
+			? (event.payload.messageGroupId ?? resolveGroupId(state, event.runId))
 			: resolveGroupId(state, event.runId);
 	const existingState = state.runStateByGroupId.get(groupId);
 	if (existingState && !canAcceptInstanceAiEvent(existingState.lifecycle, event)) {

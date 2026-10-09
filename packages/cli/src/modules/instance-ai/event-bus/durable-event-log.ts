@@ -66,11 +66,6 @@ interface PersistedBatch {
 	entries: PlannedEvent[];
 }
 
-interface ActivityCache {
-	state: InstanceAiEventLifecycle;
-	loadedRunIds: Set<string>;
-}
-
 interface PendingEvent {
 	event: InstanceAiEvent;
 	enqueuedAt: number;
@@ -144,7 +139,7 @@ export class DurableEventLog {
 	private readonly emitters = new Map<string, EmitFn>();
 
 	/** Token deltas use this cache. Durable batches re-read terminal facts on each attempt. */
-	private readonly activityByThread = new Map<string, ActivityCache>();
+	private readonly activityByThread = new Map<string, InstanceAiEventLifecycle>();
 
 	/**
 	 * Lifecycle token per thread, compared by identity. A drain captures it at
@@ -463,23 +458,7 @@ export class DurableEventLog {
 		// an append conflict can re-assign them from a re-seeded counter.
 		const toPersist: InstanceAiEvent[] = [];
 		const toEmit: PlannedEvent[] = [];
-		const activity = this.activityByThread.get(threadId) ?? {
-			state: createInstanceAiEventLifecycle(),
-			loadedRunIds: new Set<string>(),
-		};
-		const unseededRuns = [
-			...new Set(batch.flatMap((entry) => (isFlushMarker(entry) ? [] : [entry.event.runId]))),
-		].filter((runId) => !activity.loadedRunIds.has(runId));
-		if (unseededRuns.length > 0) {
-			for (const event of await this.repo.getActivityTerminalEvents(threadId, unseededRuns)) {
-				acceptInstanceAiEvent(activity.state, event);
-			}
-			if (this.lifecycles.get(threadId) !== lifecycle) {
-				for (const entry of batch) if (isFlushMarker(entry)) entry.flushSignal.resolve();
-				return;
-			}
-			for (const runId of unseededRuns) activity.loadedRunIds.add(runId);
-		}
+		const activity = this.activityByThread.get(threadId) ?? createInstanceAiEventLifecycle();
 		this.activityByThread.set(threadId, activity);
 
 		for (const entry of batch) {
@@ -494,7 +473,7 @@ export class DurableEventLog {
 				continue;
 			}
 			const { event } = entry;
-			if (!acceptInstanceAiEvent(activity.state, event)) continue;
+			if (!acceptInstanceAiEvent(activity, event)) continue;
 			if (EPHEMERAL_TYPES.has(event.type)) {
 				// A delta with a new responseId starts a new segment: close the old
 				// one as a block first, so blocks stay exactly 1:1 with segments and
@@ -627,12 +606,9 @@ export class DurableEventLog {
 				if (this.lifecycles.get(threadId) !== lifecycle) return { entries: [] };
 				const cached = this.activityByThread.get(threadId);
 				if (cached) {
-					for (const runId of runIds) {
-						delete cached.state.closedRuns[runId];
-						delete cached.state.closedAgents[runId];
-						if (activity.closedRuns[runId]) cached.state.closedRuns[runId] = true;
-						if (activity.closedAgents[runId])
-							cached.state.closedAgents[runId] = activity.closedAgents[runId];
+					Object.assign(cached.closedRuns, activity.closedRuns);
+					for (const [runId, agents] of Object.entries(activity.closedAgents)) {
+						Object.assign((cached.closedAgents[runId] ??= {}), agents);
 					}
 				}
 				if (events.length === 0) return { entries: admitted };

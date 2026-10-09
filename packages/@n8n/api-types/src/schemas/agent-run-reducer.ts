@@ -701,10 +701,7 @@ function isClosed(value: unknown): value is true {
  * normalized to empty arrays, in place — adoption never throws, and adopted
  * nodes are always safe to reduce into and render.
  */
-export function stateFromAgentTree(
-	tree: InstanceAiAgentNode,
-	runIds: string[] = [],
-): AgentRunState | undefined {
+export function stateFromAgentTree(tree: InstanceAiAgentNode): AgentRunState | undefined {
 	if (!isAdoptableId(tree.agentId)) return undefined;
 
 	const state: AgentRunState = {
@@ -716,7 +713,7 @@ export function stateFromAgentTree(
 		status: tree.status === 'active' ? 'active' : tree.status,
 	};
 	adoptNode(state, tree, undefined);
-	const currentRunId = isAdoptableId(tree.runId) ? tree.runId : runIds.at(-1);
+	const currentRunId = isAdoptableId(tree.runId) ? tree.runId : undefined;
 	const saved = tree.eventLifecycle;
 	for (const [runId, closed] of Object.entries(saved?.closedRuns ?? {})) {
 		if (isSafeObjectKey(runId) && isClosed(closed)) state.lifecycle.closedRuns[runId] = true;
@@ -729,30 +726,11 @@ export function stateFromAgentTree(
 			}
 		}
 	}
-	if (currentRunId && isSafeObjectKey(currentRunId)) {
-		state.currentRunId = currentRunId;
-		for (const node of Object.values(state.agentsById)) {
-			if (!isAdoptableId(node.runId)) node.runId = currentRunId;
-			for (const tc of node.toolCalls) {
-				if (!isAdoptableId(tc.runId)) tc.runId = node.runId;
-			}
-		}
-	}
-	for (const runId of currentRunId ? [...runIds, currentRunId] : runIds) {
-		if (!isSafeObjectKey(runId)) continue;
-		if (tree.status === 'cancelled' || tree.status === 'error') {
-			state.lifecycle.closedRuns[runId] = true;
-		}
-		for (const node of Object.values(state.agentsById)) {
-			if (node !== tree && node.status !== 'active') {
-				const nodeRunId = isAdoptableId(node.runId) ? node.runId : runId;
-				(state.lifecycle.closedAgents[nodeRunId] ??= {})[node.agentId] = true;
-			}
-		}
-	}
+	state.currentRunId = currentRunId;
 	if (tree.status === 'cancelled' || tree.status === 'error') {
 		for (const node of Object.values(state.agentsById)) {
 			if (node.status === 'active') node.status = tree.status;
+			if (isAdoptableId(node.runId)) state.lifecycle.closedRuns[node.runId] = true;
 			for (const tc of node.toolCalls) tc.isLoading = false;
 		}
 	}

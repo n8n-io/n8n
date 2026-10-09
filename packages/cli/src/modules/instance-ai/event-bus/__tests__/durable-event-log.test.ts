@@ -30,6 +30,7 @@ class FakeRepo {
 
 	/** Fail the next N maxSeq reads (seq seeding hits a transient DB error). */
 	failNextMaxSeq = 0;
+	failNextTerminalReads = 0;
 
 	/** Hold the next append until released — models an in-flight DB round trip. */
 	gateNextAppend: Promise<void> | undefined;
@@ -117,6 +118,10 @@ class FakeRepo {
 	}
 
 	async getActivityTerminalEvents(_threadId: string, runIds: string[]) {
+		if (this.failNextTerminalReads > 0) {
+			this.failNextTerminalReads--;
+			throw new Error('connect ETIMEDOUT');
+		}
 		return this.rows
 			.filter(
 				(row) =>
@@ -271,6 +276,19 @@ describe('DurableEventLog', () => {
 		log.clear();
 	});
 
+	it('retries a terminal-state read without losing the first activity batch', async () => {
+		const repo = new FakeRepo();
+		repo.failNextTerminalReads = 1;
+		const { log } = buildLog(repo);
+		const emitted = await publishAll(log, [textDelta('before'), toolCall('first')]);
+		expect(repo.rows.map((row) => row.event.type)).toEqual(['text-block', 'tool-call']);
+		expect(emitted.filter((row) => row.live).map((row) => row.event.type)).toEqual([
+			'text-delta',
+			'tool-call',
+		]);
+		log.clear();
+	});
+
 	it('rechecks cancellation when a sibling main wins the append range', async () => {
 		const repo = new FakeRepo();
 		const { log } = buildLog(repo);
@@ -322,7 +340,7 @@ describe('DurableEventLog', () => {
 		log.clear();
 	});
 
-	it('seeds an older run before it sends only deltas to an active thread', async () => {
+	it('keeps late deltas from an older cancelled run out of storage', async () => {
 		const repo = new FakeRepo();
 		repo.rows.push({
 			seq: 1,
@@ -330,7 +348,7 @@ describe('DurableEventLog', () => {
 		});
 		const { log } = buildLog(repo);
 		await publishAll(log, [{ ...toolCall('new'), runId: 'new-run' }]);
-		expect(await publishAll(log, [textDelta('late')])).toEqual([]);
+		await publishAll(log, [textDelta('late')]);
 		expect(log.getOpenSegments(THREAD)).toEqual([]);
 		expect(repo.rows).toHaveLength(2);
 		log.clear();

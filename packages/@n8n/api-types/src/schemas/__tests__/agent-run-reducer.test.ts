@@ -526,7 +526,7 @@ describe('agent-run-reducer', () => {
 			reduceEvent(original, makeAgentSpawned('run-1', 'child', 'root'));
 			reduceEvent(original, makeRunFinish('run-1', 'root', 'cancelled'));
 			reduceEvent(original, makeRunStart('run-2', 'root'));
-			const state = stateFromAgentTree(deepCopy(toAgentTree(original)), ['run-1', 'run-2'])!;
+			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
 			reduceEvent(state, makeToolCall('run-1', 'root', 'late', 'read-agent'));
 			reduceEvent(state, makeToolCall('run-2', 'root', 'live', 'read-agent'));
 			expect(state.toolCallsById.late).toBeUndefined();
@@ -567,7 +567,7 @@ describe('agent-run-reducer', () => {
 			reduceEvent(original, makeToolCall('run-1', 'child', 'old', 'read-agent'));
 			const tree = toAgentTree(original);
 			tree.status = 'cancelled';
-			const state = stateFromAgentTree(tree, ['run-1'])!;
+			const state = stateFromAgentTree(tree)!;
 			expect(state.agentsById.child.status).toBe('cancelled');
 			expect(state.toolCallsById.old.isLoading).toBe(false);
 			reduceEvent(state, makeRunStart('run-2', 'root-2'));
