@@ -185,6 +185,8 @@ describe('EngineV2ManualRunPlanner', () => {
 			);
 
 			expect(plan.seeded.map((seed) => seed.nodeId)).toEqual([A.id]);
+			// B and C stay in the run: they are what reruns.
+			expect(nodeNames(plan)).toEqual([TRIGGER.name, A.name, B.name, C.name]);
 		});
 
 		it('lets pinned data win over run data', () => {
