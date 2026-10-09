@@ -68,7 +68,7 @@ function mailtoHref(email: string): string {
 		size="medium"
 		data-test-id="contact-instance-admin-modal"
 	>
-		<N8nDialogBody>
+		<N8nDialogBody :class="$style.body">
 			<N8nDialogDescription :class="$style.intro">{{ description }}</N8nDialogDescription>
 			<N8nLoading v-if="isLoading" :rows="2" variant="p" />
 			<ul v-else-if="owners.length" :class="$style.list" data-test-id="contact-instance-admin-list">
@@ -96,6 +96,10 @@ function mailtoHref(email: string): string {
 </template>
 
 <style lang="scss" module>
+.body {
+	max-height: 400px;
+}
+
 .intro {
 	margin-block-end: var(--spacing--sm);
 }
@@ -106,13 +110,18 @@ function mailtoHref(email: string): string {
 	padding: 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
 }
 
 .owner {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+	padding: var(--spacing--xs) 0;
+	border-bottom: var(--border);
+
+	&:last-child {
+		border-bottom: none;
+	}
 }
 
 .identity {
