@@ -36,37 +36,27 @@ export type SkillSaveResult = {
 	skill: AgentSkill;
 };
 
-const ALLOWED_TOOLS_KEY = 'allowed-tools';
-
+/**
+ * The content of one version. Skills ignore `allowedTools`: the frontmatter, the
+ * `allowed-tools` key included, stays as given.
+ */
 export function toSkillContent(skill: AgentSkill, frontmatter: SkillFrontmatter | null = null) {
-	const { [ALLOWED_TOOLS_KEY]: _replaced, ...rest } = frontmatter ?? {};
-	const merged: SkillFrontmatter = skill.allowedTools?.length
-		? { ...rest, [ALLOWED_TOOLS_KEY]: skill.allowedTools.join(' ') }
-		: rest;
 	const content: SkillContent = {
 		name: skill.name,
 		description: skill.description,
 		instructions: skill.instructions,
-		frontmatter: Object.keys(merged).length > 0 ? merged : null,
+		frontmatter: frontmatter && Object.keys(frontmatter).length > 0 ? { ...frontmatter } : null,
 		files: (skill.references ?? []).map(({ path, content: text }) => ({ path, content: text })),
 	};
 	return content;
 }
 
-// TODO(CONTEXT-225): read the list with `splitTokenList` from `@n8n/utils` once #40465 is in.
-function allowedToolsOf(frontmatter: SkillFrontmatter | null): string[] {
-	const value = frontmatter?.[ALLOWED_TOOLS_KEY];
-	return typeof value === 'string' ? value.split(/\s+/).filter(Boolean) : [];
-}
-
 /** The `AgentSkill` shape the runtime and the API use, from one version row. */
 export function toAgentSkill(row: ResolvedSkillRow): AgentSkill {
-	const allowedTools = allowedToolsOf(row.version.frontmatter);
 	return {
 		name: row.version.name,
 		description: row.version.description,
 		instructions: row.version.instructions,
-		...(allowedTools.length ? { allowedTools } : {}),
 		...(row.files.length
 			? { references: row.files.map(({ path, content }) => ({ path, content })) }
 			: {}),
@@ -178,14 +168,13 @@ export class SkillService {
 			const latest = (await this.skillRepository.findLatestSaved([skillId], txCtx)).get(skillId);
 			if (!latest) throw new NotFoundError('Skill not found');
 			const current = toAgentSkill(latest);
-			const { baseSkillHash, ...changes } = update;
+			const { baseSkillHash, allowedTools: _ignored, ...changes } = update;
 			if (baseSkillHash !== undefined && baseSkillHash !== getAgentSkillHash(current)) {
 				throw new ConflictError(
 					'The skill was changed somewhere else. Reload to get the latest version.',
 				);
 			}
 			const skill: AgentSkill = { ...current, ...changes };
-			if (!skill.allowedTools?.length) delete skill.allowedTools;
 			if (!skill.references?.length) delete skill.references;
 			assertHasInstructions(skill);
 			const content = toSkillContent(skill, latest.version.frontmatter);
