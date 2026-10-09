@@ -8,7 +8,10 @@ import {
 	CreatePromotionProviderDto,
 	ListPromotionConnectionsQueryDto,
 	ListPromotionProvidersQueryDto,
+	ListPromotionRepositoriesQueryDto,
+	ListPromotionBranchesQueryDto,
 	MAX_ITEMS_PER_PAGE,
+	MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromoteSelectionRequestDto,
@@ -24,6 +27,8 @@ import {
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
 	PromotionPromoteConfigPublicDto,
+	PromotionRepositoryListPublicDto,
+	PromotionBranchListPublicDto,
 	UpdatePromotionConnectionDto,
 	UpdatePromotionProviderDto,
 	UpsertPromotionApplyConfigDto,
@@ -33,6 +38,7 @@ import {
 	promotionDirectionParamSchema,
 	promotionDirectionSchema,
 	promotionProviderIdParamSchema,
+	promotionRepositoryIdParamSchema,
 	type PromotionDirection,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -186,6 +192,70 @@ export class PromotionsPublicController {
 		promotionProviderId: string,
 	): Promise<void> {
 		await (await this.providersService()).delete(promotionProviderId);
+	}
+
+	@Get('/providers/:promotionProviderId/repositories')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:read')
+	@GlobalScope('gitConnection:read')
+	@ApiSummary('List repositories of a promotion provider')
+	@ApiDescription(
+		'Lists repositories accessible to the GitLab token, including repositories where its identity is not a member. Use remoteUrl as a connection target. Supports repository and namespace search and cursor pagination, with at most 50 items per page. A saved connection is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionRepositoryListPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionProviderRepositories(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionProviderId', promotionProviderIdParamSchema) promotionProviderId: string,
+		@Query query: ListPromotionRepositoriesQueryDto,
+	): Promise<PromotionRepositoryListPublicDto> {
+		const { offset, limit } = this.resolveDiscoveryPage(query);
+		const { data, hasNextPage } = await (await this.providersService()).listRepositories(
+			promotionProviderId,
+			{ offset, limit, search: query.search },
+		);
+		return {
+			data,
+			nextCursor: hasNextPage
+				? encodeNextCursor({ offset, limit, numberOfTotalRecords: offset + limit + 1 })
+				: null,
+		};
+	}
+
+	@Get('/providers/:promotionProviderId/repositories/:repositoryId/branches')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:read')
+	@GlobalScope('gitConnection:read')
+	@ApiSummary('List branches of a promotion repository')
+	@ApiDescription(
+		'Lists branches of the selected GitLab repository and identifies its default branch. Use the repository ID from repository discovery. Supports branch search and cursor pagination, with at most 50 items per page. A saved connection is not required. Invalid credentials and inaccessible repositories return errors, not empty lists. If a response is too large, restart the list with a smaller limit and no cursor.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionBranchListPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionProviderRepositoryBranches(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionProviderId', promotionProviderIdParamSchema) promotionProviderId: string,
+		@Param('repositoryId', promotionRepositoryIdParamSchema) repositoryId: string,
+		@Query query: ListPromotionBranchesQueryDto,
+	): Promise<PromotionBranchListPublicDto> {
+		const { offset, limit } = this.resolveDiscoveryPage(query);
+		const { data, hasNextPage } = await (await this.providersService()).listBranches(
+			promotionProviderId,
+			repositoryId,
+			{ offset, limit, search: query.search },
+		);
+		return {
+			data,
+			nextCursor: hasNextPage
+				? encodeNextCursor({ offset, limit, numberOfTotalRecords: offset + limit + 1 })
+				: null,
+		};
 	}
 
 	// -- Connections ---------------------------------------------------------
@@ -760,6 +830,19 @@ export class PromotionsPublicController {
 			throw new BadRequestError('An invalid cursor was provided');
 		}
 		return { offset: page.offset, limit: Math.min(page.limit, MAX_ITEMS_PER_PAGE) };
+	}
+
+	private resolveDiscoveryPage(query: { cursor?: string; limit: number }) {
+		const page = this.resolvePage(query);
+		// GitLab uses page numbers, so the offset must start a complete page.
+		if (
+			!Number.isSafeInteger(page.offset) ||
+			page.limit > MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE ||
+			page.offset % page.limit !== 0
+		) {
+			throw new BadRequestError('An invalid cursor was provided');
+		}
+		return page;
 	}
 }
 
