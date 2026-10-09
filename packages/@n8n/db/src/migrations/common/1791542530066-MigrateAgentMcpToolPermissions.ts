@@ -142,7 +142,7 @@ function migrateConfig(value: unknown): MigrationResult {
  *
  * The migration prefilters rows by the presence of the `mcpServers` key in the schema.
  */
-export class MigrateAgentMcpToolPermissions1790759733730 implements IrreversibleMigration {
+export class MigrateAgentMcpToolPermissions1791542530066 implements IrreversibleMigration {
 	async up(context: MigrationContext) {
 		for (const table of tables) {
 			await this.migrateTable(context, table.name, table.idColumn);

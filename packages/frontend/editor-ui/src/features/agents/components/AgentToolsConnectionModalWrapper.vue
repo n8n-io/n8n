@@ -288,6 +288,8 @@ function initialConfigTitle(data: AgentToolConfigData): string {
 }
 
 function openConfigModal(data: AgentToolConfigData) {
+	// Only some forms report a restriction, so clear the previous tool's state.
+	configIsRestricted.value = false;
 	configData.value = data;
 	configTitle.value = initialConfigTitle(data);
 	configSession.value += 1;
@@ -296,10 +298,12 @@ function openConfigModal(data: AgentToolConfigData) {
 function closeModal() {
 	uiStore.closeModal(props.modalName);
 	configData.value = null;
+	configIsRestricted.value = false;
 }
 
 function backToPicker() {
 	configData.value = null;
+	configIsRestricted.value = false;
 	configTitle.value = '';
 }
 
