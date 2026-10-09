@@ -375,6 +375,15 @@ export function resolvedStatus(
 	return { ...status, tone: 'warning', noteKey: NOT_KEPT_HERE_KEY };
 }
 
+/**
+ * The name in the line of an answered card. A copy in a linked instance has the stored name of
+ * the workflow, so the line about it uses that name. The model wrote the title, so it can name
+ * another workflow. A card that was stored before the server sent the name uses the title.
+ */
+export function resolvedName(proposal: AutomationProposalCard, linked: boolean): string {
+	return linked ? (proposal.workflowName ?? proposal.title) : proposal.title;
+}
+
 /** Where the answer put the workflow, as the viewer of the card sees it. */
 export interface AnsweredPlace {
 	/** True when the answer put the workflow on a linked instance. */

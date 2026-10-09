@@ -31,6 +31,7 @@ const teamProject = { id: 'project-ops', name: 'Ops', type: 'team' as const };
 
 const workflow = (overrides: Partial<ProposalWorkflow> = {}): ProposalWorkflow => ({
 	id: 'wf-1',
+	name: 'Digest builder',
 	nodes: [
 		{ name: 'Every weekday', type: SCHEDULE },
 		{ name: 'Note', type: STICKY },
@@ -248,6 +249,7 @@ describe('buildAutomationCard', () => {
 			workflowId: 'wf-1',
 			versionId: 'v-2',
 			title: 'Morning digest',
+			workflowName: 'Digest builder',
 			why: ['You asked for it every weekday'],
 			trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: 'Europe/London' },
 			steps: [
@@ -325,6 +327,18 @@ describe('buildAutomationCard', () => {
 		expect(places.offered).toEqual(['local', 'link-1']);
 	});
 
+	it('names the stored workflow next to a title of the model that differs from it', () => {
+		const card = buildAutomationCard(
+			cardInput({
+				workflow: workflow({ name: 'Payroll export' }),
+				request: { title: 'Morning digest', why: [] },
+			}),
+		);
+
+		expect(card.title).toBe('Morning digest');
+		expect(card.workflowName).toBe('Payroll export');
+	});
+
 	it('says that keeping an archived workflow restores it', () => {
 		const card = buildAutomationCard(cardInput({ workflow: workflow({ isArchived: true }) }));
 
@@ -399,12 +413,13 @@ describe('buildAutomationCard', () => {
 					),
 					reasons: fc.array(reasonArb, { minLength: 1, maxLength: 3 }),
 					sharings: fc.array(sharingArb, { maxLength: 15 }),
+					name: fc.string({ maxLength: 128 }),
 				}),
-				({ nodes, canActivate, schedule, reasons, sharings }) => {
+				({ nodes, canActivate, schedule, reasons, sharings, name }) => {
 					const shared = [{ role: 'workflow:owner', project: teamProject }, ...sharings];
 					const card = buildAutomationCard(
 						cardInput({
-							workflow: workflow({ nodes, shared }),
+							workflow: workflow({ nodes, shared, name }),
 							schedule,
 							canActivate,
 							recommendation: { targetId: 'local', kind: 'local', reasons },
@@ -416,6 +431,7 @@ describe('buildAutomationCard', () => {
 					expect(card.offered.activate).toContain(false);
 					expect(card.stepCount).toBeGreaterThanOrEqual(card.steps.length);
 					expect(card.sharedWith.total).toBe(sharings.length);
+					expect(card.workflowName).toBe(name);
 				},
 			),
 			{ numRuns: 300 },

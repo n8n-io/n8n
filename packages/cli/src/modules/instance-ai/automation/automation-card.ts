@@ -29,6 +29,7 @@ const OWNER_ROLE = 'workflow:owner';
 /** The fields of a stored workflow that the card reads. */
 export type ProposalWorkflow = {
 	id: string;
+	name: string;
 	nodes: readonly AutomationNode[];
 	versionId: string;
 	activeVersionId: string | null;
@@ -130,6 +131,8 @@ export function buildAutomationCard(input: AutomationCardInput): AutomationPropo
 		workflowId: workflow.id,
 		versionId: workflow.versionId,
 		title: request.title,
+		// The model writes the title. The stored name tells which workflow the answer acts on.
+		workflowName: workflow.name,
 		why: request.why,
 		trigger: { kind: trigger.kind, ...schedule },
 		steps: automationSteps(workflow.nodes),

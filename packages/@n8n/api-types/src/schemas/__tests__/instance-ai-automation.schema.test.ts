@@ -16,6 +16,7 @@ function makeCard(overrides: Partial<AutomationProposalCard> = {}): AutomationPr
 		workflowId: 'wf-1',
 		versionId: 'v-1',
 		title: 'Morning digest',
+		workflowName: 'Digest builder',
 		why: ['You asked for this every weekday'],
 		trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: 'Europe/London' },
 		steps: [
@@ -130,6 +131,19 @@ describe('automationProposalCardSchema', () => {
 		} as const;
 
 		expect(automationProposalCardSchema.parse(makeCard({ trigger })).trigger).toEqual(trigger);
+	});
+
+	it('keeps the stored name of the workflow next to the title of the model', () => {
+		const card = makeCard({ title: 'Morning digest', workflowName: 'Sales export (old)' });
+
+		expect(automationProposalCardSchema.parse(card).workflowName).toBe('Sales export (old)');
+	});
+
+	it('accepts a card that an earlier version stored without the name of the workflow', () => {
+		const card = makeCard();
+		delete card.workflowName;
+
+		expect(automationProposalCardSchema.parse(card)).not.toHaveProperty('workflowName');
 	});
 
 	it.each([

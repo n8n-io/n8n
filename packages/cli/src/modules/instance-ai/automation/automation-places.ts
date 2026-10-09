@@ -1,5 +1,6 @@
 import {
 	AUTOMATION_LOCAL_TARGET_ID,
+	type AutomationRecommendationReason,
 	type AutomationRunTarget,
 	type LinkedInstanceSummary,
 } from '@n8n/api-types';
@@ -18,12 +19,21 @@ export type CardPlaces = {
 	targets: AutomationRunTarget[];
 	/** This instance, then each link that was online at its last check. */
 	offered: string[];
+	/**
+	 * True when the lookup found that the user has no link. False when the card lists links, and
+	 * when it lists none for another cause, for example in a shared chat.
+	 */
+	noLinks: boolean;
 };
 
-/** A card that offers only this instance, for example on MCP or in a shared chat. */
+/**
+ * A card that offers only this instance, for example on MCP, in a shared chat, or for a workflow
+ * that cannot move. The user can have links that it does not list.
+ */
 export const LOCAL_PLACES: Readonly<CardPlaces> = Object.freeze({
 	targets: [LOCAL_CARD_TARGET],
 	offered: [AUTOMATION_LOCAL_TARGET_ID],
+	noLinks: false,
 });
 
 /** True for every target id but this instance's. An absent target is this instance. */
@@ -51,7 +61,25 @@ export function cardPlaces(
 	return {
 		targets: [{ ...LOCAL_CARD_TARGET }, ...links.map(linkedCardTarget)],
 		offered: [AUTOMATION_LOCAL_TARGET_ID, ...online],
+		noLinks: links.length === 0,
 	};
+}
+
+const NO_CLOUD_LINKED: AutomationRecommendationReason = 'no-cloud-linked';
+
+/**
+ * The reasons that the card gives for its recommendation. The recommendation reads only the
+ * targets of the card, so it says "no cloud linked" also when the card lists no link for another
+ * cause. That reason stays only when the user has no link. The list is never empty, as the card
+ * schema requires.
+ */
+export function cardReasons(
+	reasons: readonly AutomationRecommendationReason[],
+	places: Pick<CardPlaces, 'noLinks'>,
+): AutomationRecommendationReason[] {
+	if (places.noLinks) return [...reasons];
+	const known = reasons.filter((reason) => reason !== NO_CLOUD_LINKED);
+	return known.length > 0 ? known : [...reasons];
 }
 
 /**

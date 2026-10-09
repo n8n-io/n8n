@@ -156,6 +156,8 @@ describe('propose_automation on the n8n Assistant', () => {
 			expect(tool.description).toContain('Do not call it for a one-off job');
 			expect(tool.description).toContain('The user answers on a card');
 			expect(tool.description).not.toContain('Set activate to true');
+			// The card links to a copy in a linked instance, so the reply needs no address.
+			expect(tool.description).toContain('do not repeat its address');
 		});
 	});
 
@@ -170,6 +172,7 @@ describe('propose_automation on the n8n Assistant', () => {
 				workflowId: 'wf-1',
 				versionId: 'v-1',
 				title: 'Morning digest',
+				workflowName: 'Digest builder',
 				why: ['You asked for it every weekday'],
 				trigger: {
 					kind: 'schedule',
@@ -182,11 +185,9 @@ describe('propose_automation on the n8n Assistant', () => {
 					{ name: 'Send digest', type: 'n8n-nodes-base.slack' },
 				],
 				stepCount: 2,
-				recommended: {
-					targetId: 'local',
-					kind: 'local',
-					reasons: ['always-on-trigger', 'no-cloud-linked'],
-				},
+				// A run that does not say whether the chat is shared lists no links, so the card
+				// cannot say whether the user has a linked cloud.
+				recommended: { targetId: 'local', kind: 'local', reasons: ['always-on-trigger'] },
 				targets: [{ id: 'local', kind: 'local', status: 'online' }],
 				visibleTo: { projectId: 'p-1', projectName: 'Ops', projectType: 'team' },
 				sharedWith: { projects: [], total: 0 },

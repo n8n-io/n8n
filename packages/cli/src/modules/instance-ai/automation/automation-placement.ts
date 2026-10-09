@@ -37,12 +37,13 @@ export class AutomationPlacement {
 	) {}
 
 	/**
-	 * The links that a card can offer, with the status of their last check. None on MCP, in a
-	 * shared chat, or while the linked-instances module is off: then nothing leaves this instance.
-	 * A failed lookup offers none either, so that the user can still keep the workflow here.
+	 * The links that a card can offer, with the status of their last check. `undefined` when the
+	 * card cannot list them: on MCP, in a shared chat, or while the linked-instances module is off,
+	 * nothing leaves this instance. A failed lookup gives `undefined` too, so that the user can
+	 * still keep the workflow here. An empty list means that the user has no link.
 	 */
-	async linksFor(context: CapabilityContext): Promise<LinkedInstanceSummary[]> {
-		if (this.refusalFor(context) !== undefined) return [];
+	async linksFor(context: CapabilityContext): Promise<LinkedInstanceSummary[] | undefined> {
+		if (this.refusalFor(context) !== undefined) return undefined;
 		try {
 			const { LinkedInstanceStore } = await import(
 				'../../linked-instances/linked-instance.store.js'
@@ -53,7 +54,7 @@ export class AutomationPlacement {
 				userId: context.user.id,
 				error: getErrorMessage(error),
 			});
-			return [];
+			return undefined;
 		}
 	}
 
@@ -78,7 +79,9 @@ export class AutomationPlacement {
 	 * True when the move would take the workflow: the user can read and export it, it is not
 	 * archived, and it calls no other workflow by a fixed ID. "Turn it on" of a live workflow also
 	 * turns it off here, so a live workflow needs that right too. These are the checks of the move
-	 * itself, so the card offers no link that the move then refuses. Reads only.
+	 * itself, so the card offers no link that the move then refuses. Reads only. A check that
+	 * fails for another cause offers no link either, as a failed lookup of the links does, so that
+	 * the user can still keep the workflow here.
 	 */
 	async canMove(
 		user: User,
@@ -95,8 +98,13 @@ export class AutomationPlacement {
 			if (liveHere) await local.assertCanTurnOff(user, workflowId);
 			return true;
 		} catch (error) {
-			if (isExpectedFailure(error)) return false;
-			throw error;
+			if (!isExpectedFailure(error)) {
+				this.logger.error('Failed to check if a workflow can move to a linked instance', {
+					workflowId,
+					error: getErrorMessage(error),
+				});
+			}
+			return false;
 		}
 	}
 

@@ -87,6 +87,12 @@ export const automationProposalCardSchema = z.object({
 	 */
 	versionId: z.string().min(1),
 	title: z.string().min(1).max(AUTOMATION_PROPOSAL_LIMITS.titleLength),
+	/**
+	 * The stored name of the workflow that the answer acts on. The server reads it, so the card
+	 * names the workflow when the `title` of the model differs. Absent on cards stored before this
+	 * field.
+	 */
+	workflowName: z.string().optional(),
 	why: z
 		.array(z.string().min(1).max(AUTOMATION_PROPOSAL_LIMITS.whyLength))
 		.max(AUTOMATION_PROPOSAL_LIMITS.whyItems),

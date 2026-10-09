@@ -399,6 +399,17 @@ export function actionOf(decision: CapabilityDecision): AutomationAction {
 	return decision.values?.activate === true ? 'activate' : 'save';
 }
 
+/**
+ * The stored name of the workflow, when the card shows it next to the title. The model writes the
+ * title and chooses the workflow, so the card names the workflow that the answer acts on when the
+ * two differ. When they are the same, the title already shows the name. A card that was stored
+ * before the server sent the name has none.
+ */
+export function shownWorkflowName(proposal: Proposal): string | undefined {
+	const name = proposal.workflowName?.trim();
+	return name && name !== proposal.title.trim() ? name : undefined;
+}
+
 /** The steps that get an icon. The schema already limits them; the cap keeps the row short. */
 export function visibleSteps(proposal: Proposal): Step[] {
 	return proposal.steps.slice(0, AUTOMATION_PROPOSAL_LIMITS.steps);

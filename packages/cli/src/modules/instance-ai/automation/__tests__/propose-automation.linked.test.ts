@@ -159,6 +159,29 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 			expect(world.nothingChanged()).toBe(true);
 		});
 
+		it('names the stored workflow on the card, not only the title that the model gave', async () => {
+			// The model chooses the title and the workflow id. The name tells the user which one moves.
+			world.grant(storedWorkflow({ name: 'Payroll export' }), MOVE_SCOPES);
+
+			const card = cardOf(await firstCall());
+
+			expect(card.title).toBe('Morning digest');
+			expect(card.workflowName).toBe('Payroll export');
+		});
+
+		it('says that no cloud is linked only when the user has no link', async () => {
+			linked.reset([]);
+
+			const card = cardOf(await firstCall());
+
+			expect(card.targets).toEqual([{ id: 'local', kind: 'local', status: 'online' }]);
+			expect(card.recommended).toEqual({
+				targetId: 'local',
+				kind: 'local',
+				reasons: ['always-on-trigger', 'no-cloud-linked'],
+			});
+		});
+
 		it('stores no name and no address of a link in the card, which the owner can share later', async () => {
 			const payload = JSON.stringify(await firstCall());
 
@@ -178,6 +201,7 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 
 			expect(card.targets).toEqual([{ id: 'local', kind: 'local', status: 'online' }]);
 			expect(card.offered.target).toEqual(['local']);
+			expect(card.recommended.reasons).toEqual(['always-on-trigger']);
 			expect(linked.store.listForUser).not.toHaveBeenCalled();
 		});
 
@@ -189,7 +213,12 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 
 			expect(card.targets).toEqual([{ id: 'local', kind: 'local', status: 'online' }]);
 			expect(card.offered.target).toEqual(['local']);
-			expect(card.recommended.targetId).toBe('local');
+			// The user has an online cloud, so the card does not say that no cloud is linked.
+			expect(card.recommended).toEqual({
+				targetId: 'local',
+				kind: 'local',
+				reasons: ['always-on-trigger'],
+			});
 		});
 
 		it('lists the links for a live workflow that the user can turn on there and off here', async () => {
@@ -208,15 +237,36 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 
 			expect(card.targets).toEqual([{ id: 'local', kind: 'local', status: 'online' }]);
 			expect(card.offered.target).toEqual(['local']);
-			expect(card.recommended.targetId).toBe('local');
+			expect(card.recommended).toEqual({
+				targetId: 'local',
+				kind: 'local',
+				reasons: ['always-on-trigger'],
+			});
 		});
 
-		it('lets an unexpected failure of the move checks fail the card, so that it reaches error reporting', async () => {
+		it('offers only this computer when a move check fails for another cause, and logs why', async () => {
+			// The user can still keep the workflow here, as after a failed lookup of the links.
 			world.grant(storedWorkflow({ nodes: [...storedWorkflow().nodes, CALLS_WF_2] }), MOVE_SCOPES);
 			world.finder.findWorkflowsByIdsForUser.mockRejectedValue(new Error('database is down'));
 
-			await expect(firstCall()).rejects.toThrow('database is down');
+			const card = cardOf(await firstCall());
+
+			expect(card.targets).toEqual([{ id: 'local', kind: 'local', status: 'online' }]);
+			expect(card.offered.target).toEqual(['local']);
+			expect(card.recommended.reasons).toEqual(['always-on-trigger']);
+			expect(world.logger.error).toHaveBeenCalledWith(
+				'Failed to check if a workflow can move to a linked instance',
+				{ workflowId: 'wf-1', error: 'database is down' },
+			);
 			expect(world.nothingChanged()).toBe(true);
+		});
+
+		it('does not log a move check that refuses the workflow as expected', async () => {
+			world.grant(storedWorkflow(LIVE_WORKFLOW), MOVE_SCOPES);
+
+			await firstCall();
+
+			expect(world.logger.error).not.toHaveBeenCalled();
 		});
 
 		it('recommends this computer when no link is online, and says that the cloud is offline', async () => {
@@ -240,6 +290,7 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 
 			expect(card.targets).toEqual([{ id: 'local', kind: 'local', status: 'online' }]);
 			expect(card.offered.target).toEqual(['local']);
+			expect(card.recommended.reasons).toEqual(['always-on-trigger']);
 			expect(world.logger.warn).toHaveBeenCalledWith(
 				'Failed to list the linked instances for an automation card',
 				{ userId: user.id, error: 'database is down' },
@@ -278,7 +329,12 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 
 			expect(card.targets).toEqual([{ id: 'local', kind: 'local', status: 'online' }]);
 			expect(card.offered.target).toEqual(['local']);
-			expect(card.recommended.targetId).toBe('local');
+			// The card cannot tell whether the user has a linked cloud, so it does not say so.
+			expect(card.recommended).toEqual({
+				targetId: 'local',
+				kind: 'local',
+				reasons: ['always-on-trigger'],
+			});
 		});
 	});
 

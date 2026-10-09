@@ -17,6 +17,7 @@ import {
 import {
 	proposalOutcome,
 	resolvedLink,
+	resolvedName,
 	resolvedStatus,
 	toolOutcome,
 	type AnsweredPlace,
@@ -636,6 +637,24 @@ describe('resolvedStatus and resolvedLink for a linked instance', () => {
 		expect(resolvedStatus('save', makeProposal(), kept(false)).messageKey).toBe(
 			'instanceAi.automation.resolved.saved',
 		);
+	});
+});
+
+describe('resolvedName', () => {
+	const renamed = makeProposal({ title: 'Morning digest', workflowName: 'Payroll export' });
+
+	it('names a copy in a linked instance by the stored name of the workflow', () => {
+		expect(resolvedName(renamed, true)).toBe('Payroll export');
+	});
+
+	it('keeps the title for a workflow on this computer', () => {
+		expect(resolvedName(renamed, false)).toBe('Morning digest');
+	});
+
+	it('uses the title for a linked copy on a card that was stored without the name', () => {
+		const { workflowName: _dropped, ...stored } = renamed;
+
+		expect(resolvedName(stored, true)).toBe('Morning digest');
 	});
 });
 

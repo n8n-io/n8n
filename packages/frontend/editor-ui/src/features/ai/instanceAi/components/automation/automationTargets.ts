@@ -162,6 +162,18 @@ export function linkedProjectOf(check: AutomationCheck): LinkedProject | undefin
 }
 
 /**
+ * True when the check has something to show: it runs, it failed, the workflow cannot move, or
+ * credentials need or may need set-up there. A check that found nothing to report shows nothing,
+ * so the card adds no empty block.
+ */
+export function preflightHasNotice(check: AutomationCheck): boolean {
+	if (check === 'idle') return false;
+	if (typeof check === 'string') return true;
+	const gate = automationGate(check);
+	return !check.canMove || gate.needsSetUp.length > 0 || gate.unchecked.length > 0;
+}
+
+/**
  * A failed check lets the server decide, so the user can still save or turn it on: the move
  * checks the credentials again and does not put a copy live that needs set-up. While the check
  * runs, the buttons wait. A workflow that cannot move waits for nothing, and empty credentials

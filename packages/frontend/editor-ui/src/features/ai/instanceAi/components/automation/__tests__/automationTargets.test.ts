@@ -28,6 +28,7 @@ import {
 	linkedProjectOf,
 	linkedTargetOf,
 	offersTargetChoice,
+	preflightHasNotice,
 	targetOptions,
 } from '../automationTargets';
 import {
@@ -409,6 +410,38 @@ describe('automationGate', () => {
 	});
 });
 
+describe('preflightHasNotice', () => {
+	const checked = (overrides: Partial<LinkedInstanceTransferPreflight> = {}) =>
+		preflightHasNotice(transferDialogState(preflight(overrides)));
+
+	it('shows nothing before a check, and nothing after a check that found nothing to report', () => {
+		expect(preflightHasNotice('idle')).toBe(false);
+		expect(checked()).toBe(false);
+		expect(
+			checked({ credentials: [{ name: 'Sheets', type: 'googleApi', status: 'matched' }] }),
+		).toBe(false);
+	});
+
+	it.each(['checking', 'failed'] as const)('shows the notice while the check is %s', (check) => {
+		expect(preflightHasNotice(check)).toBe(true);
+	});
+
+	it.each([
+		['calls other workflows by ID', { subWorkflowCalls: [{ id: 'wf-2', name: 'Send' }] }],
+		['uses node types that the instance lacks', { missingNodeTypes: ['acme.widget@1'] }],
+		[
+			'uses a credential that arrives empty',
+			{ credentials: [{ name: 'Slack', type: 'slackApi', status: 'needs-set-up' as const }] },
+		],
+		[
+			'uses a credential that the instance did not list',
+			{ credentials: [{ name: 'Mail', type: 'smtp', status: 'unknown' as const }] },
+		],
+	])('shows the notice when the workflow %s', (_label, overrides) => {
+		expect(checked(overrides)).toBe(true);
+	});
+});
+
 describe('automation targets (property)', () => {
 	const credentialArb = fc.record({
 		name: fc.string({ minLength: 1, maxLength: 10 }),
@@ -481,6 +514,17 @@ describe('automation targets (property)', () => {
 				expect(gate.needsSetUp.length + gate.unchecked.length).toBe(
 					overrides.credentials.filter(({ status }) => status !== 'matched').length,
 				);
+			}),
+		);
+	});
+
+	it('shows the notice of a check exactly when it has a line to show', () => {
+		fc.assert(
+			fc.property(preflightArb, (overrides) => {
+				const state = transferDialogState(preflight(overrides));
+				const unmatched = overrides.credentials.some(({ status }) => status !== 'matched');
+
+				expect(preflightHasNotice(state)).toBe(!state.canMove || unmatched);
 			}),
 		);
 	});

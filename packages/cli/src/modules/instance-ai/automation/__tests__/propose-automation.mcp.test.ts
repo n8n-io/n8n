@@ -46,8 +46,11 @@ const call = async (args: Record<string, unknown>) =>
 
 const inputSchema = () => z.object(registeredTool().config.inputSchema ?? {});
 
-/** Calls the tool through the MCP protocol and the instrumented registrar of the MCP server. */
-const callOverMcp = async (args: Record<string, unknown>): Promise<CallToolResult> => {
+/** Sends one request through the MCP protocol and the instrumented registrar of the MCP server. */
+const requestOverMcp = async (
+	method: string,
+	params: Record<string, unknown>,
+): Promise<unknown> => {
 	// Only the registrar runs here, and it reads nothing but the event service.
 	const mcpService = Object.create(McpService.prototype) as McpService;
 	Object.assign(mcpService, { eventService: mock<EventService>() });
@@ -66,16 +69,15 @@ const callOverMcp = async (args: Record<string, unknown>): Promise<CallToolResul
 			headers: {
 				'content-type': 'application/json',
 				accept: 'application/json, text/event-stream',
-				'mcp-method': 'tools/call',
-				'mcp-name': PROPOSE_AUTOMATION_CAPABILITY_NAME,
+				'mcp-method': method,
+				...(typeof params.name === 'string' && { 'mcp-name': params.name }),
 			},
 			body: JSON.stringify({
 				jsonrpc: '2.0',
 				id: 1,
-				method: 'tools/call',
+				method,
 				params: {
-					name: PROPOSE_AUTOMATION_CAPABILITY_NAME,
-					arguments: args,
+					...params,
 					_meta: {
 						'io.modelcontextprotocol/protocolVersion': '2026-07-28',
 						'io.modelcontextprotocol/clientCapabilities': {},
@@ -85,7 +87,21 @@ const callOverMcp = async (args: Record<string, unknown>): Promise<CallToolResul
 			}),
 		}),
 	);
-	return ((await response.json()) as { result: CallToolResult }).result;
+	return ((await response.json()) as { result: unknown }).result;
+};
+
+const callOverMcp = async (args: Record<string, unknown>) =>
+	(await requestOverMcp('tools/call', {
+		name: PROPOSE_AUTOMATION_CAPABILITY_NAME,
+		arguments: args,
+	})) as CallToolResult;
+
+/** The input schema of the tool as an MCP client reads it from the tool list. */
+const listedInputSchema = async () => {
+	const { tools } = (await requestOverMcp('tools/list', {})) as {
+		tools: Array<{ name: string; inputSchema: { properties: Record<string, unknown> } }>;
+	};
+	return tools.find((tool) => tool.name === PROPOSE_AUTOMATION_CAPABILITY_NAME)?.inputSchema;
 };
 
 const textOf = (result: CallToolResult) =>
@@ -118,6 +134,13 @@ describe('propose_automation over MCP', () => {
 				openWorldHint: false,
 			});
 			expect(world.finder.findWorkflowForUser).not.toHaveBeenCalled();
+		});
+
+		it('tells MCP clients that the only target is the exact value "local"', async () => {
+			const schema = await listedInputSchema();
+
+			expect(schema?.properties.target).toMatchObject({ const: 'local' });
+			expect(schema?.properties.target).not.toHaveProperty('pattern');
 		});
 
 		it('fills in an empty list of reasons and trims the text', () => {

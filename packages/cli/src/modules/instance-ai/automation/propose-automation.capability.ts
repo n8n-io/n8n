@@ -37,9 +37,9 @@ const isTargetId = (value: string) =>
 	value === AUTOMATION_LOCAL_TARGET_ID || linkIdSchema.safeParse(value).success;
 
 /**
- * Both surfaces use a string, so that the tool has one input type. MCP clients keep automations
- * on this instance. The Assistant takes the target from the card answer, which the server checks
- * against the targets that the card offered.
+ * Both surfaces give a string, so that the tool has one input type. MCP clients keep automations
+ * on this instance, so their schema stays the literal "local". The Assistant takes the target
+ * from the card answer, which the server checks against the targets that the card offered.
  */
 const TARGET_OF_SURFACE: Record<CapabilitySurface, z.ZodOptional<z.ZodType<string>>> = {
 	assistant: z
@@ -48,8 +48,7 @@ const TARGET_OF_SURFACE: Record<CapabilitySurface, z.ZodOptional<z.ZodType<strin
 		.optional()
 		.describe('Leave it out. The user chooses on the card where the automation runs.'),
 	mcp: z
-		.string()
-		.regex(new RegExp(`^${AUTOMATION_LOCAL_TARGET_ID}$`), 'Only "local" is available')
+		.literal(AUTOMATION_LOCAL_TARGET_ID)
 		.optional()
 		.describe('Where the automation runs. Only "local" (this n8n instance) is available.'),
 };
@@ -105,7 +104,7 @@ const SHARED_DESCRIPTION = [
 
 const DESCRIPTION_OF_SURFACE: Record<CapabilitySurface, string> = {
 	assistant:
-		'The user answers on a card: where it runs (this n8n instance or one of their linked n8n instances), then turn it on, save it but leave it off, or not now. Keeping an archived workflow restores it. The result says if the workflow is kept and active. When it went to a linked instance, the result has "place", and "workflowId" and "url" name the copy there.',
+		'The user answers on a card: where it runs (this n8n instance or one of their linked n8n instances), then turn it on, save it but leave it off, or not now. Keeping an archived workflow restores it. The result says if the workflow is kept and active. When it went to a linked instance, the result has "place", and "workflowId" names the copy there. The card links to the copy, so do not repeat its address.',
 	// The built-in MCP tools do not act on archived workflows, so this tool does not restore them.
 	mcp: 'It runs on this n8n instance. The workflow must be available in MCP and must not be archived. Set activate to true to turn it on after it is saved. The result says if the workflow is kept and active.',
 };

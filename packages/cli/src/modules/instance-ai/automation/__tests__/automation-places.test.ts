@@ -1,5 +1,7 @@
 import {
 	automationProposalCardSchema,
+	type AutomationRecommendationReason,
+	automationRecommendationReasonSchema,
 	LINKED_INSTANCE_STATUSES,
 	type LinkedInstanceSummary,
 } from '@n8n/api-types';
@@ -9,6 +11,7 @@ import fc from 'fast-check';
 import { buildAutomationCard, type ProposalWorkflow } from '../automation-card';
 import {
 	cardPlaces,
+	cardReasons,
 	isLinkedTarget,
 	LOCAL_PLACES,
 	recommendationTargets,
@@ -32,11 +35,21 @@ function link(overrides: Partial<LinkedInstanceSummary> = {}): LinkedInstanceSum
 }
 
 describe('cardPlaces', () => {
-	it('lists only this instance when the user has no links', () => {
+	it('lists only this instance when the user has no links, and says that there are none', () => {
 		expect(cardPlaces([])).toEqual({
 			targets: [{ id: 'local', kind: 'local', status: 'online' }],
 			offered: ['local'],
+			noLinks: true,
 		});
+	});
+
+	it('does not say that there are no links when it lists one, also an offline one', () => {
+		expect(cardPlaces([link({ status: 'offline' })]).noLinks).toBe(false);
+	});
+
+	it('does not say that there are no links for a card that lists only this instance', () => {
+		// The user can have links that the card does not list, for example in a shared chat.
+		expect(LOCAL_PLACES.noLinks).toBe(false);
 	});
 
 	it('lists every link after this instance, in order, and offers only the online ones', () => {
@@ -112,6 +125,66 @@ describe('recommendationTargets', () => {
 	});
 });
 
+describe('cardReasons', () => {
+	const NO_LINKS = { noLinks: true };
+
+	it('keeps "no cloud linked" when the user has no link', () => {
+		expect(cardReasons(['always-on-trigger', 'no-cloud-linked'], NO_LINKS)).toEqual([
+			'always-on-trigger',
+			'no-cloud-linked',
+		]);
+	});
+
+	it('drops "no cloud linked" when the card lists no link for another cause', () => {
+		expect(cardReasons(['always-on-trigger', 'no-cloud-linked'], LOCAL_PLACES)).toEqual([
+			'always-on-trigger',
+		]);
+	});
+
+	it('keeps every other reason in its order', () => {
+		const reasons: AutomationRecommendationReason[] = [
+			'needs-local-commands',
+			'always-on-trigger',
+			'cloud-offline',
+		];
+
+		expect(cardReasons(reasons, LOCAL_PLACES)).toEqual(reasons);
+	});
+
+	it('keeps the only reason, because the card needs one', () => {
+		expect(cardReasons(['no-cloud-linked'], LOCAL_PLACES)).toEqual(['no-cloud-linked']);
+	});
+
+	it('returns a new list', () => {
+		const reasons: AutomationRecommendationReason[] = ['manual-only'];
+
+		expect(cardReasons(reasons, NO_LINKS)).not.toBe(reasons);
+	});
+
+	it('says "no cloud linked" only when the user has no link, and never gives an empty list (property)', () => {
+		const reasonArb = fc.constantFrom(...automationRecommendationReasonSchema.options);
+		fc.assert(
+			fc.property(
+				fc.array(reasonArb, { minLength: 1, maxLength: 4 }),
+				fc.boolean(),
+				(reasons, noLinks) => {
+					const shown = cardReasons(reasons, { noLinks });
+
+					expect(shown.length).toBeGreaterThan(0);
+					expect(shown.every((reason) => reasons.includes(reason))).toBe(true);
+					if (noLinks) {
+						expect(shown).toEqual(reasons);
+						return;
+					}
+					const others = reasons.filter((reason) => reason !== 'no-cloud-linked');
+					expect(shown).toEqual(others.length > 0 ? others : reasons);
+				},
+			),
+			{ numRuns: 300 },
+		);
+	});
+});
+
 describe('isLinkedTarget', () => {
 	it.each([
 		[undefined, false],
@@ -143,6 +216,7 @@ describe('places on the card (property)', () => {
 
 	const workflow: ProposalWorkflow = {
 		id: 'wf-1',
+		name: 'Digest builder',
 		nodes: [{ name: 'Every day', type: 'n8n-nodes-base.scheduleTrigger' }],
 		versionId: 'v-1',
 		activeVersionId: null,
@@ -165,7 +239,10 @@ describe('places on the card (property)', () => {
 						workflow,
 						request: { title: 'Digest', why: [] },
 						trigger: { kind: 'schedule', canActivate: true },
-						recommendation,
+						recommendation: {
+							...recommendation,
+							reasons: cardReasons(recommendation.reasons, places),
+						},
 						places,
 						canActivate: true,
 					});
@@ -178,6 +255,9 @@ describe('places on the card (property)', () => {
 					expect(card.targets.map(({ id }) => id)).toEqual(['local', ...links.map(({ id }) => id)]);
 					for (const target of card.targets) {
 						expect(Object.keys(target).sort()).toEqual(['id', 'kind', 'status']);
+					}
+					if (card.recommended.reasons.includes('no-cloud-linked')) {
+						expect(links).toHaveLength(0);
 					}
 				},
 			),

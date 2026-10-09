@@ -24,11 +24,13 @@ import {
 	hiddenStepCount,
 	liveStatusKey,
 	placeOf,
+	shownWorkflowName,
 	titleKey,
 	visibleSteps,
 	type AutomationAction,
 	type AutomationCardAction,
 } from './automationProposal';
+import { preflightHasNotice } from './automationTargets';
 import { placeName, triggerText as describeTrigger } from './automationText';
 import { hasLinkedTargets, withViewerLinks } from './automationViewerLinks';
 import { useAutomationTarget } from './useAutomationTarget';
@@ -68,6 +70,7 @@ const links = useViewerLinks(() => hasLinkedTargets(props.proposal));
 const viewed = computed(() => withViewerLinks(props.proposal, links.value));
 
 const isInactive = computed(() => props.disabled || submitted.value);
+const workflowName = computed(() => shownWorkflowName(viewed.value));
 const steps = computed(() => visibleSteps(viewed.value));
 const hiddenSteps = computed(() => hiddenStepCount(viewed.value));
 
@@ -131,22 +134,32 @@ function isFocusLost(): boolean {
 	return active === null || active === document.body || !active.isConnected;
 }
 
+function focusCard() {
+	const element: unknown = openCard.value?.$el;
+	if (element instanceof HTMLElement) element.focus({ preventScroll: true });
+}
+
 // A failed answer opens the same card again, so its buttons must work again. The outcome had
 // focus and goes away, so focus moves to the card. Focus that the user moved elsewhere stays.
 watch(answeredAction, async (now, before) => {
 	if (before === undefined || now !== undefined) return;
 	submitted.value = false;
 	await nextTick();
-	const element: unknown = openCard.value?.$el;
-	if (element instanceof HTMLElement && isFocusLost()) element.focus({ preventScroll: true });
+	if (isFocusLost()) focusCard();
 });
 
 /** The notice and its button go away, so focus moves to the card. */
 async function keepOnThisComputer() {
 	keepHere();
 	await nextTick();
-	const element: unknown = openCard.value?.$el;
-	if (element instanceof HTMLElement) element.focus({ preventScroll: true });
+	focusCard();
+}
+
+/** The notice shows only its "Checking" line while the check runs, so focus moves to the card. */
+async function checkAgain() {
+	recheck();
+	await nextTick();
+	if (isFocusLost()) focusCard();
 }
 
 function answer(action: AutomationAction) {
@@ -190,6 +203,20 @@ function answer(action: AutomationAction) {
 					{{ proposal.title }}
 				</N8nText>
 				<N8nText
+					v-if="workflowName"
+					tag="div"
+					size="small"
+					color="text-base"
+					:class="$style.wrap"
+					data-test-id="automation-proposal-workflow-name"
+				>
+					{{
+						i18n.baseText('instanceAi.automation.workflowName', {
+							interpolate: { name: workflowName },
+						})
+					}}
+				</N8nText>
+				<N8nText
 					v-if="statusKey"
 					tag="div"
 					size="small"
@@ -227,12 +254,13 @@ function answer(action: AutomationAction) {
 			</AutomationProposalPlace>
 
 			<AutomationPreflightNotice
-				v-if="linkedPlace && check !== 'idle'"
+				v-if="linkedPlace && preflightHasNotice(check)"
 				:check="check"
 				:place="linkedPlace"
 				:set-up-url="setUpUrl"
 				:disabled="isInactive"
-				@recheck="recheck"
+				:offers-keep-here="!canChange"
+				@recheck="checkAgain"
 				@keep-here="keepOnThisComputer"
 			/>
 

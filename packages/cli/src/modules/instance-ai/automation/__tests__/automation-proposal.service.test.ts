@@ -169,13 +169,11 @@ describe('AutomationProposalService', () => {
 				workflowId: 'wf 1',
 				versionId: 'v-2',
 				title: 'Morning digest',
+				workflowName: 'Digest builder',
 				why: ['Every weekday'],
 				trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: INSTANCE_ZONE },
-				recommended: {
-					targetId: 'local',
-					kind: 'local',
-					reasons: ['always-on-trigger', 'no-cloud-linked'],
-				},
+				// The module is off, so the card cannot say whether the user has a linked cloud.
+				recommended: { targetId: 'local', kind: 'local', reasons: ['always-on-trigger'] },
 				visibleTo: { projectId: 'p-1', projectName: 'Ops', projectType: 'team' },
 				archived: false,
 				active: false,
@@ -346,7 +344,7 @@ describe('AutomationProposalService', () => {
 
 			const { card } = await service.propose(request, assistant);
 
-			expect(card.recommended.reasons).toEqual(['always-on-trigger', 'no-cloud-linked']);
+			expect(card.recommended.reasons).toEqual(['always-on-trigger']);
 		});
 
 		it('refuses a workflow that the user cannot update', async () => {

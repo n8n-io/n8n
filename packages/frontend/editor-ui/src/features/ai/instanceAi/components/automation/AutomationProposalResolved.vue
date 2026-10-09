@@ -24,6 +24,7 @@ import { placeOf, type AutomationAction } from './automationProposal';
 import {
 	proposalOutcome,
 	resolvedLink,
+	resolvedName,
 	resolvedStatus,
 	type AutomationResolvedTone,
 } from './automationResolved';
@@ -79,6 +80,7 @@ const note = computed(() =>
 	status.value.noteKey === undefined ? undefined : i18n.baseText(status.value.noteKey),
 );
 const place = computed(() => placeName(placeOfAnswer.value));
+const name = computed(() => resolvedName(props.proposal, placeOfAnswer.value.linked));
 const trigger = computed(() =>
 	triggerText(
 		props.proposal.trigger,
@@ -128,7 +130,7 @@ onMounted(() => {
 				data-test-id="automation-proposal-resolved-status"
 			>
 				<I18nT :keypath="status.messageKey" scope="global">
-					<template #title>{{ proposal.title }}</template>
+					<template #title>{{ name }}</template>
 					<template #trigger>{{ trigger }}</template>
 					<template #place>
 						<N8nBadge variant="outline" :class="$style.chip" :title="place">{{ place }}</N8nBadge>
@@ -144,7 +146,7 @@ onMounted(() => {
 				:class="$style.link"
 				:aria-label="
 					i18n.baseText('instanceAi.automation.resolved.openInLabel', {
-						interpolate: { title: proposal.title, place },
+						interpolate: { title: name, place },
 					})
 				"
 				data-test-id="automation-proposal-open-remote"

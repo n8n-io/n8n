@@ -23,6 +23,7 @@ import {
 	placeReasonKey,
 	sharedProjectCount,
 	showsLocalCaveat,
+	shownWorkflowName,
 	timezoneLabel,
 	titleKey,
 	triggerLineKey,
@@ -492,6 +493,52 @@ describe('decisionFor', () => {
 			kind: 'capabilityDecision',
 			approved: false,
 		});
+	});
+});
+
+describe('shownWorkflowName', () => {
+	it('names the stored workflow when the title of the model differs from it', () => {
+		const proposal = makeProposal({ title: 'Morning digest', workflowName: 'Payroll export' });
+
+		expect(shownWorkflowName(proposal)).toBe('Payroll export');
+	});
+
+	it.each([
+		['the title is the name', 'Morning digest'],
+		['they differ only in spaces around them', '  Morning digest '],
+		['the name is blank', '   '],
+		['the name is empty', ''],
+	])('names nothing when %s', (_label, workflowName) => {
+		expect(shownWorkflowName(makeProposal({ title: 'Morning digest', workflowName }))).toBe(
+			undefined,
+		);
+	});
+
+	it('names nothing on a card that was stored without the name', () => {
+		const { workflowName: _dropped, ...card } = makeProposal();
+
+		expect(shownWorkflowName(card)).toBeUndefined();
+	});
+
+	it('keeps the case of the name, because a name that differs only in case is another name', () => {
+		const proposal = makeProposal({ title: 'Morning digest', workflowName: 'Morning Digest' });
+
+		expect(shownWorkflowName(proposal)).toBe('Morning Digest');
+	});
+
+	it('shows the trimmed name exactly when it differs from the trimmed title (property)', () => {
+		fc.assert(
+			fc.property(
+				fc.string({ minLength: 1, maxLength: 20 }),
+				fc.option(fc.string({ maxLength: 20 }), { nil: undefined }),
+				(title, workflowName) => {
+					const shown = shownWorkflowName({ ...makeProposal(), title, workflowName });
+					const name = workflowName?.trim() ?? '';
+
+					expect(shown).toBe(name !== '' && name !== title.trim() ? name : undefined);
+				},
+			),
+		);
 	});
 });
 

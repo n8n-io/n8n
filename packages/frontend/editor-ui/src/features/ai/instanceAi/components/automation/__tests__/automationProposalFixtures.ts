@@ -16,6 +16,8 @@ export function makeProposal(overrides: Partial<ViewedProposal> = {}): ViewedPro
 		workflowId: 'wf-1',
 		versionId: 'v-1',
 		title: 'Morning digest',
+		// The server sends the stored name. Here it is the title, so the card shows no second name.
+		workflowName: 'Morning digest',
 		why: ['You asked for this every weekday'],
 		trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: 'Europe/London' },
 		steps: [

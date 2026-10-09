@@ -16,6 +16,11 @@ const props = defineProps<{
 	/** Opens the credentials of the linked instance. */
 	setUpUrl?: string;
 	disabled?: boolean;
+	/**
+	 * Offers "Keep it on this computer" also while credentials there need set-up. The card sets it
+	 * when it has no "Change" menu, so that the user can still turn the automation on now.
+	 */
+	offersKeepHere?: boolean;
 }>();
 
 const emit = defineEmits<{ recheck: []; keepHere: [] }>();
@@ -123,6 +128,16 @@ const names = (list: string[]) => list.join(', ');
 					@click="emit('recheck')"
 				>
 					{{ i18n.baseText('instanceAi.automation.preflight.checkAgain') }}
+				</N8nButton>
+				<N8nButton
+					v-if="offersKeepHere"
+					variant="ghost"
+					size="small"
+					:disabled="disabled"
+					data-test-id="automation-proposal-preflight-set-up-keep-here"
+					@click="emit('keepHere')"
+				>
+					{{ i18n.baseText('instanceAi.automation.preflight.keepHere') }}
 				</N8nButton>
 			</div>
 		</template>

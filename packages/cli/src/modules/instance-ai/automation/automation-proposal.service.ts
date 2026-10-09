@@ -1,7 +1,6 @@
 import type {
 	AutomationProposalCard,
 	AutomationProposalResult,
-	AutomationRunTarget,
 	InstanceAiPermissions,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
@@ -26,6 +25,7 @@ import { AutomationBlockedError, isExpectedFailure } from './automation-errors';
 import {
 	type CardPlaces,
 	cardPlaces,
+	cardReasons,
 	isLinkedTarget,
 	LOCAL_PLACES,
 	recommendationTargets,
@@ -61,14 +61,18 @@ const ACTION_SOURCE: Record<CapabilitySurface, WorkflowActionSource> = {
 /** Recommends where the workflow runs: this instance or an online link of the card. */
 async function recommendPlace(
 	nodeTypes: string[],
-	targets: readonly AutomationRunTarget[],
+	places: Readonly<CardPlaces>,
 ): Promise<ProposalRecommendation> {
 	// Loaded at the first call, so that MCP requests do not load the Assistant package at boot.
 	// The first call still loads the whole package.
 	const { recommendRunTarget } = await lazyImport<typeof InstanceAi>(
 		async () => await import('@n8n/instance-ai'),
 	);
-	return recommendRunTarget({ nodeTypes, targets: recommendationTargets(targets) });
+	const recommendation = recommendRunTarget({
+		nodeTypes,
+		targets: recommendationTargets(places.targets),
+	});
+	return { ...recommendation, reasons: cardReasons(recommendation.reasons, places) };
 }
 
 /** Admin permission modes apply to the n8n Assistant only. MCP clients own consent. */
@@ -142,7 +146,7 @@ export class AutomationProposalService {
 				request.cron,
 				readTriggerSchedule(workflow, trigger, this.reader.defaultTimezone),
 			).shown,
-			recommendation: await recommendPlace(recommendationNodeTypes(workflow.nodes), places.targets),
+			recommendation: await recommendPlace(recommendationNodeTypes(workflow.nodes), places),
 			places,
 			canActivate,
 		});
@@ -263,7 +267,9 @@ export class AutomationProposalService {
 		const liveHere = workflow.activeVersionId !== null;
 		if (liveHere && !canActivate) return LOCAL_PLACES;
 		const links = await this.placement.linksFor(context);
-		if (links.length === 0) return LOCAL_PLACES;
+		if (links === undefined) return LOCAL_PLACES;
+		// The user has no link, so the card can say that no cloud is linked.
+		if (links.length === 0) return cardPlaces(links);
 		const canMove = await this.placement.canMove(context.user, workflow.id, { liveHere });
 		return canMove ? cardPlaces(links) : LOCAL_PLACES;
 	}
