@@ -546,6 +546,87 @@ describe('OAuthConsentView', () => {
 			expect(within(executionsPopover).getAllByText('enabled')).toHaveLength(1);
 		});
 
+		it('should list a capability tool in the group of its scope and enable it with that scope', async () => {
+			const detailsWithTools = {
+				...scopedDetails,
+				scopeTools: {
+					'workflow:read': ['search_workflows', 'parse_schedule'],
+					'workflow:write': ['update_workflow'],
+					'execution:read': ['get_workflow_execution'],
+				},
+			};
+			consentStore.consentDetails = detailsWithTools;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = detailsWithTools;
+				return detailsWithTools;
+			});
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+			await userEvent.click(getByTestId('scopes-mode-custom'));
+			await userEvent.click(getByTestId('scope-group-toggle-workflows'));
+			await userEvent.click(getByTestId('scope-checkbox-workflow:read'));
+
+			getByTestId('scope-group-tools-workflows').focus();
+			await waitAllPromises();
+
+			expect(getByTestId('scope-tool-parse_schedule')).toHaveAttribute('data-enabled', 'true');
+			expect(getByTestId('scope-tool-update_workflow')).toHaveAttribute('data-enabled', 'false');
+			expect(getByTestId('scope-group-tools-popover-workflows')).toHaveTextContent(
+				'2 of 3 tools enabled',
+			);
+
+			getByTestId('scope-group-tools-workflows').blur();
+			await waitAllPromises();
+			getByTestId('scope-group-tools-executions').focus();
+			await waitAllPromises();
+
+			expect(getByTestId('scope-group-tools-popover-executions')).toBeInTheDocument();
+			expect(queryByTestId('scope-tool-parse_schedule')).not.toBeInTheDocument();
+		});
+
+		it('should show the tools beside the pill, on a surface where the enabled ticks keep their contrast', async () => {
+			const detailsWithTools = {
+				...scopedDetails,
+				scopeTools: {
+					'workflow:read': ['search_workflows'],
+					'workflow:write': ['update_workflow'],
+				},
+			};
+			consentStore.consentDetails = detailsWithTools;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = detailsWithTools;
+				return detailsWithTools;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+			await userEvent.click(getByTestId('scopes-tree-toggle'));
+			getByTestId('scope-group-tools-workflows').focus();
+			await waitAllPromises();
+
+			const popover = getByTestId('scope-group-tools-popover-workflows');
+			const content = popover.closest('.n8n-tooltip');
+			// The surface style of the list, not the black tooltip, and opened from the top of the pill.
+			expect(content).toHaveClass('tools-tooltip');
+			expect(content).toHaveAttribute('data-align', 'start');
+			const tick = getByTestId('scope-tool-search_workflows').querySelector('[data-icon]');
+			expect(tick).toHaveAttribute('data-icon', 'check');
+			expect(tick).toHaveClass('tool-icon');
+			// A long list scrolls inside its own area, below the fixed header.
+			expect(popover.querySelector('[data-reka-scroll-area-viewport]')).not.toBeNull();
+		});
+
+		it('should fit the n8n logo inside its tile', async () => {
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			const tile = getByTestId('consent-n8n-tile');
+			const logo = within(tile).getByTestId('n8n-logo');
+			expect(tile).toHaveClass('brand-tile');
+			expect(logo).toHaveClass('brand-logo');
+		});
+
 		it('should disable Allow when no scopes are selected', async () => {
 			const { getByTestId, getByLabelText } = renderComponent();
 			await waitAllPromises();

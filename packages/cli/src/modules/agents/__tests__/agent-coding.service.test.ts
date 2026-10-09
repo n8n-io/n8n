@@ -10,7 +10,7 @@ import type { LockService, Logger } from '@n8n/backend-common';
 import { createFakeOutboundHttp } from '@n8n/backend-network/testing';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -27,7 +27,10 @@ import type { AgentExecutionThread } from '../entities/agent-execution-thread.en
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
-import { SandboxPortCapability } from '../sandbox-preview/sandbox-port-capability.service';
+import {
+	SandboxPortCapability,
+	SandboxPreviewUnavailableError,
+} from '../sandbox-preview/sandbox-port-capability.service';
 import { SandboxPreviewService } from '../sandbox-preview/sandbox-preview.service';
 import { createShallowClone } from './test-utils/coding-sandbox';
 
@@ -239,7 +242,7 @@ describe('AgentCodingService.preview', () => {
 
 				const preview = await service.preview('project', 'agent', user);
 
-				expect(preview).toEqual({ url: '/sandbox-preview/token/' });
+				expect(preview).toEqual({ available: true, url: '/sandbox-preview/token/' });
 				expect(sandboxPreviewService.open).toHaveBeenCalledWith(sandbox, {
 					userId: 'test-user',
 					projectId: 'project',
@@ -249,18 +252,31 @@ describe('AgentCodingService.preview', () => {
 			},
 		);
 
-		it('passes on the error of a service without the ports capability', async () => {
+		it('reports no preview, without an error, for a service without the ports capability', async () => {
 			const { service, sandboxPreviewService } = previewService(
 				'n8n-sandbox',
 				mock<WorkspaceSandbox>(),
 			);
 			sandboxPreviewService.open.mockRejectedValue(
-				new BadRequestError('This sandbox service cannot show app previews yet.'),
+				new SandboxPreviewUnavailableError('This sandbox service cannot show app previews yet.'),
 			);
 
-			await expect(service.preview('project', 'agent', user)).rejects.toThrow(
-				'This sandbox service cannot show app previews yet.',
+			await expect(service.preview('project', 'agent', user)).resolves.toEqual({
+				available: false,
+			});
+		});
+
+		it.each([
+			['a service that cannot be reached', new ServiceUnavailableError('Try again in a moment.')],
+			['another bad request', new BadRequestError('The preview port is not valid')],
+		])('passes on the error of %s', async (_case, error) => {
+			const { service, sandboxPreviewService } = previewService(
+				'n8n-sandbox',
+				mock<WorkspaceSandbox>(),
 			);
+			sandboxPreviewService.open.mockRejectedValue(error);
+
+			await expect(service.preview('project', 'agent', user)).rejects.toBe(error);
 		});
 
 		it.each(['stopped', 'error'] as const)(
@@ -295,16 +311,20 @@ describe('AgentCodingService.preview', () => {
 				previews,
 			);
 
-			const { url } = await service.preview('project', 'agent', user);
+			const preview = await service.preview('project', 'agent', user);
 
-			expect(url).toMatch(/^\/sandbox-preview\/[^/]+\/$/);
+			expect(preview).toEqual({
+				available: true,
+				url: expect.stringMatching(/^\/sandbox-preview\/[^/]+\/$/),
+			});
+			const { url } = preview as { url: string };
 			expect(previews.resolveToken(url.split('/')[2])).toEqual(
 				expect.objectContaining({ userId: 'test-user', projectId: 'project', ...route }),
 			);
 			expect(getPortRoute).toHaveBeenCalledWith(5173);
 		});
 
-		it('shows the capability message when the service cannot serve ports', async () => {
+		it('reports no preview when the service cannot serve ports', async () => {
 			const getPortRoute = vi.fn().mockResolvedValue(route);
 			const { service } = codingService(
 				'n8n-sandbox',
@@ -312,10 +332,21 @@ describe('AgentCodingService.preview', () => {
 				realPreviewService(['exec']),
 			);
 
-			const error = await service.preview('project', 'agent', user).catch((e: unknown) => e);
+			await expect(service.preview('project', 'agent', user)).resolves.toEqual({
+				available: false,
+			});
+		});
 
-			expect(error).toBeInstanceOf(BadRequestError);
-			expect(error).toHaveProperty('message', 'This sandbox service cannot show app previews yet.');
+		it('reports no preview when the sandbox has no port route', async () => {
+			const { service } = codingService(
+				'n8n-sandbox',
+				mock<WorkspaceSandbox>({ getPortRoute: undefined }),
+				realPreviewService(['exec', 'ports']),
+			);
+
+			await expect(service.preview('project', 'agent', user)).resolves.toEqual({
+				available: false,
+			});
 		});
 	});
 
@@ -331,20 +362,23 @@ describe('AgentCodingService.preview', () => {
 
 			const preview = await service.preview('project', 'agent', user);
 
-			expect(preview).toEqual({ url: 'https://5173-sandbox.proxy.daytona.test/?t=1' });
+			expect(preview).toEqual({
+				available: true,
+				url: 'https://5173-sandbox.proxy.daytona.test/?t=1',
+			});
 			expect(getPreviewUrl).toHaveBeenCalledWith(5173);
 			expect(sandboxPreviewService.open).not.toHaveBeenCalled();
 		});
 
-		it('keeps the error for a sandbox without a preview URL', async () => {
+		it('reports no preview for a sandbox without a preview URL', async () => {
 			const { service, sandboxPreviewService } = previewService(
 				'daytona',
 				mock<WorkspaceSandbox>({ getPreviewUrl: undefined }),
 			);
 
-			await expect(service.preview('project', 'agent', user)).rejects.toThrow(
-				'App preview requires the Daytona sandbox provider for this demo',
-			);
+			await expect(service.preview('project', 'agent', user)).resolves.toEqual({
+				available: false,
+			});
 			expect(sandboxPreviewService.open).not.toHaveBeenCalled();
 		});
 	});

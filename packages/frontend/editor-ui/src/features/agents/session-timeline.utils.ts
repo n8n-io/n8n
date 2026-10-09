@@ -19,6 +19,7 @@ import type {
 import type { AgentExecution } from './composables/useAgentThreadsApi';
 import { backgroundJobResultLabel } from './utils/background-job-labels';
 import { isDelegateSubAgentTool } from './utils/delegate-tool';
+import { isFailedToolOutput, toolOutputErrorMessage } from './utils/tool-output-failure';
 import {
 	formatToolNameForDisplay,
 	getToolNameTranslationKey,
@@ -38,36 +39,31 @@ export function isSubAgentTimelineItem(item: TimelineItem): boolean {
 	return item.kind === 'tool' && isDelegateSubAgentTool(item.toolName);
 }
 
-function errorTextFromValue(value: unknown): string {
-	if (typeof value === 'string' && value.length > 0) return value;
-	if (isRecord(value) && typeof value.message === 'string' && value.message.length > 0) {
-		return value.message;
+/**
+ * The error text of one MCP content block: a JSON string, the `error` of a JSON
+ * object, or plain text. An empty result means that the block has no error text.
+ */
+function mcpTextBlockErrorMessage(block: unknown): string {
+	if (!isRecord(block) || block.type !== 'text' || typeof block.text !== 'string') return '';
+	const text = block.text.trim();
+	if (!text) return '';
+	try {
+		const parsed: unknown = JSON.parse(text);
+		if (typeof parsed === 'string') return parsed;
+		return toolOutputErrorMessage(parsed) ?? '';
+	} catch {
+		return text;
 	}
-	return '';
 }
 
 /** MCP CallToolResult stores the message in structuredContent.error or text content. */
 function mcpErrorMessage(output: Record<string, unknown>): string {
-	if (isRecord(output.structuredContent)) {
-		const fromStructured = errorTextFromValue(output.structuredContent.error);
-		if (fromStructured) return fromStructured;
-	}
-
+	const fromStructured = toolOutputErrorMessage(output.structuredContent);
+	if (fromStructured) return fromStructured;
 	if (!Array.isArray(output.content)) return '';
 	for (const block of output.content) {
-		if (!isRecord(block) || block.type !== 'text' || typeof block.text !== 'string') continue;
-		const text = block.text.trim();
-		if (!text) continue;
-		try {
-			const parsed: unknown = JSON.parse(text);
-			if (typeof parsed === 'string' && parsed.length > 0) return parsed;
-			if (isRecord(parsed)) {
-				const fromJson = errorTextFromValue(parsed.error);
-				if (fromJson) return fromJson;
-			}
-		} catch {
-			return text;
-		}
+		const message = mcpTextBlockErrorMessage(block);
+		if (message) return message;
 	}
 	return '';
 }
@@ -88,21 +84,7 @@ export function isErroredToolCallTimelineItem(item: TimelineItem): boolean {
 	}
 	if (item.toolOutcome === 'error') return true;
 	if (item.toolOutcome === undefined && item.toolSuccess === false) return true;
-	if (!isRecord(item.toolOutput)) return false;
-
-	const { error, status, success, ok, isError } = item.toolOutput;
-	const hasErrorMessage =
-		(typeof error === 'string' && error.length > 0) ||
-		(isRecord(error) && typeof error.message === 'string' && error.message.length > 0);
-
-	return (
-		hasErrorMessage ||
-		status === 'error' ||
-		status === 'failed' ||
-		success === false ||
-		ok === false ||
-		isError === true
-	);
+	return isFailedToolOutput(item.toolOutput);
 }
 
 export function isErroredTimelineItem(item: TimelineItem): boolean {
@@ -114,7 +96,7 @@ export function timelineItemErrorMessage(item: TimelineItem): string {
 	if (!isErroredToolCallTimelineItem(item)) return '';
 	const output = item.toolOutput;
 	if (!isRecord(output)) return '';
-	return errorTextFromValue(output.error) || mcpErrorMessage(output);
+	return toolOutputErrorMessage(output) ?? mcpErrorMessage(output);
 }
 
 const HITL_REQUEST_LABEL_KEYS: Record<HitlRequestType, BaseTextKey> = {

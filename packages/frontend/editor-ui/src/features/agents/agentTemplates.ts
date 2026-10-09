@@ -56,7 +56,7 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 		labelKey: 'agents.coding.template.label',
 		descriptionKey: 'agents.coding.template.description',
 		icon: 'code',
-		gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+		gradient: { from: '#4F46E5', to: '#DB2777', angle: 140, fromStop: 0, toStop: 100 },
 		config: {
 			name: 'Coding assistant',
 			instructions:

@@ -184,6 +184,7 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Dangerous confirmation    | Keep its explicit Cancel and primary actions. Examples are Agent, file, and session deletion; unpublish; revert; eval regeneration; LangSmith export; and managed Slack app removal. |
 | Managed Slack app removal | Keep the stacked confirmation because it can delete an external resource.                                                                                                            |
 | Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                     |
+| Coding settings           | Use the destructive variant with `trash-2` for `Remove coding`. See [Coding capability](#coding-capability).                                                                       |
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                             |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                              |
 
@@ -204,7 +205,7 @@ skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
 - Confirm Back appears only when a previous step exists.
 - Confirm Close is top-right and disabled during a request.
 - Confirm Cancel appears before the primary action.
-- Confirm Remove is explicit, uses ghost styling, has `trash-2`, and appears only for existing items.
+- Confirm Remove is explicit, uses ghost styling, has `trash-2`, and appears only for existing items. Coding settings are the exception: Remove uses the destructive variant.
 - Confirm Save is bottom-right and reveals inline errors.
 - Confirm picker state survives Back.
 - Confirm search stays visible and empty copy names the asset.
@@ -212,6 +213,39 @@ skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
 - Confirm success closes silently.
 - Confirm UI text uses i18n.
 - Confirm the layout works at 375 by 667 pixels in light and dark themes.
+
+## Coding capability
+
+The Coding row in Capabilities shows the repository and the setup phase. Show
+the phase in an `N8nBadge`: `success` for Ready, `danger` for a failed setup,
+`warning` for a setup that stopped or restarted, `info` while the repository
+prepares, and `outline` before setup starts. The row has one action. Before
+setup, use `Set up coding`. After setup, use `Edit coding settings`. The page
+header holds the only `Open coding` action. Do not add a second one to the row.
+
+The settings dialog uses the title `Set up coding` and the primary action
+`Connect repository` before setup. After setup, use `Coding settings` and `Save`.
+The credential picker's create action uses the outline variant, so the dialog
+has one solid action. `Remove coding` uses the destructive variant with
+`trash-2`, because it removes the repository setup of the agent.
+
+Coding tool steps say what they did and how they ended: `Read {path}`,
+`Wrote {path} (N lines)`, `Edited {path} +N −M` and `Ran {command}`. A write
+shows its line count and no `−` count, because the tool does not know how many
+lines it replaced. A step that failed says `Could not …` and shows the warning
+icon. A step that its run stopped says `Stopped …`. A command that ran and
+ended with an exit code other than 0 keeps `Ran {command}` and shows the
+warning icon, and its details show the exit code. The details of an edit that
+did not apply show the error and the result of each replacement, with no line
+stats. Shorten a long path in the middle and a long command at its end, and
+give the whole label to `N8nAiActivityStep` as `fullLabel`.
+
+The preview panel says `Opening the preview…` only while a request for the
+preview URL is open. A user who cannot run the agent sees
+`You cannot open the preview` and the reason, not a loading state. A sandbox
+that cannot show a preview is a state of the panel, not an error toast. The
+panel offers `Show app logs` (outline) and `Check again` (ghost), because the
+sandbox can get preview support later.
 
 ## Recoverable plan errors
 

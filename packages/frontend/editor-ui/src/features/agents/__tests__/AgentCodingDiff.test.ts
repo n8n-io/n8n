@@ -45,3 +45,26 @@ it('captures a selected range and retains its snapshot after the diff changes', 
 		wrapper.unmount();
 	}
 });
+
+it('keeps tabs and the whole text of a long line, so the view scrolls instead of clipping', () => {
+	const longLine = `const value = ${'"segment", '.repeat(40)};`;
+	const wrapper = mount(AgentCodingDiff, {
+		props: {
+			path: 'app.ts',
+			content: `@@ -1,2 +1,2 @@\n-\told()\n+\tnew()\n ${longLine}`,
+			revision: 'one',
+			comments: [],
+			viewed: false,
+		},
+	});
+	try {
+		const code = wrapper.findAll('[data-testid="coding-diff-review"] button code');
+		expect(code.map((item) => item.element.textContent)).toEqual(['\told()', '\tnew()', longLine]);
+		// The rows share one list, which takes the width of its longest row.
+		const list = wrapper.get('.lines');
+		expect(list.findAll('button')).toHaveLength(3);
+		expect(wrapper.get('.toolbar').element.nextElementSibling).toBe(list.element);
+	} finally {
+		wrapper.unmount();
+	}
+});

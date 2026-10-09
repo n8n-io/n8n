@@ -76,7 +76,7 @@ beforeEach(() => {
 	});
 	api.files.mockResolvedValue([{ path: 'app.ts', name: 'app.ts', type: 'file' }]);
 	api.file.mockResolvedValue({ path: 'app.ts', content: '// Keep these changes' });
-	api.preview.mockResolvedValue({ url: 'https://preview.example.test' });
+	api.preview.mockResolvedValue({ available: true, url: 'https://preview.example.test' });
 });
 
 afterEach(() => {

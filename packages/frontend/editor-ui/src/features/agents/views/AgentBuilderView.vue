@@ -2864,8 +2864,10 @@ function onSwitchAgent(nextAgentId: string) {
 
 useKeybindings({
 	ctrl_j: {
+		// The shortcut toggles the docked panel. Where the dock never shows, a toggle
+		// would only change the saved state that the builder reads later.
 		disabled: function isAiPanelShortcutDisabled() {
-			return !instanceAiAvailable.value;
+			return !instanceAiAvailable.value || isArtifactMode.value || isStandalonePreview.value;
 		},
 		run: toggleAiPanel,
 		/** Enables closing with command whilst panel input is focused */
@@ -2917,9 +2919,12 @@ useKeybindings({
 			@switch-agent="onSwitchAgent"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
+		<!-- The preview route (and the coding view on it) has no AI panel, and the
+		     floating button would cover its content. -->
 		<div
 			v-if="
 				!isArtifactMode &&
+				!isStandalonePreview &&
 				instanceAiAvailable &&
 				!isAiPanelOpen &&
 				!agentCollaborationStore.shouldBeReadOnly

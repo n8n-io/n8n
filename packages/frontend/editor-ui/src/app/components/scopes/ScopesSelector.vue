@@ -16,6 +16,7 @@ import {
 	N8nInputLabel,
 	N8nRadioGroup,
 	N8nRadioGroupItem,
+	N8nScrollArea,
 	N8nTooltip,
 } from '@n8n/design-system';
 
@@ -61,6 +62,9 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:modelValue': [scopes: S[]];
 }>();
+
+/** The height of the tools list before it scrolls (320px). */
+const TOOLS_LIST_MAX_HEIGHT = 'calc(var(--spacing--5xl) + var(--spacing--3xl))';
 
 const i18n = useI18n();
 
@@ -347,11 +351,12 @@ function toggleScope(scope: S, checked: boolean) {
 								/>
 								<!-- `as-child` makes the pill itself the tooltip trigger, so keyboard
 									focus opens the popover and `aria-describedby` lands on the focused
-									element for screen readers. -->
+									element for screen readers. `right-start` opens it beside the pill
+									and below the radio cards, so it does not cover the scope labels. -->
 								<N8nTooltip
 									v-if="groupTools(group).length > 0"
 									as-child
-									placement="right"
+									placement="right-start"
 									:show-after="150"
 									:content-class="$style['tools-tooltip']"
 								>
@@ -368,29 +373,38 @@ function toggleScope(scope: S, checked: boolean) {
 													})
 												}}
 											</div>
-											<div
-												v-for="tool in groupTools(group)"
-												:key="tool"
-												:class="[
-													$style['tool-row'],
-													{ [$style['tool-row-disabled']]: !groupEnabledTools(group).has(tool) },
-												]"
-											>
-												<N8nIcon
-													:icon="groupEnabledTools(group).has(tool) ? 'check' : 'circle'"
-													size="xsmall"
-													:class="$style['tool-icon']"
-												/>
-												<span :class="$style['tool-name']">{{ tool }}</span>
-												<!-- State icons are aria-hidden; expose enabled state as text. -->
-												<VisuallyHidden>
-													{{
-														groupEnabledTools(group).has(tool)
-															? baseText('tools.enabled')
-															: baseText('tools.notEnabled')
-													}}
-												</VisuallyHidden>
-											</div>
+											<!-- A long list keeps a visible scroll bar, so it is clear that more tools follow. -->
+											<N8nScrollArea type="auto" :max-height="TOOLS_LIST_MAX_HEIGHT">
+												<div :class="$style['tools-list']">
+													<div
+														v-for="tool in groupTools(group)"
+														:key="tool"
+														:class="[
+															$style['tool-row'],
+															{
+																[$style['tool-row-disabled']]: !groupEnabledTools(group).has(tool),
+															},
+														]"
+														:data-test-id="`scope-tool-${tool}`"
+														:data-enabled="groupEnabledTools(group).has(tool)"
+													>
+														<N8nIcon
+															:icon="groupEnabledTools(group).has(tool) ? 'check' : 'circle'"
+															size="xsmall"
+															:class="$style['tool-icon']"
+														/>
+														<span :class="$style['tool-name']">{{ tool }}</span>
+														<!-- State icons are aria-hidden; expose enabled state as text. -->
+														<VisuallyHidden>
+															{{
+																groupEnabledTools(group).has(tool)
+																	? baseText('tools.enabled')
+																	: baseText('tools.notEnabled')
+															}}
+														</VisuallyHidden>
+													</div>
+												</div>
+											</N8nScrollArea>
 										</div>
 									</template>
 									<span
@@ -548,10 +562,17 @@ function toggleScope(scope: S, checked: boolean) {
 	@include focus.focus-visible-ring-offset;
 }
 
-/* the shared tooltip caps content at 180px and centers it; tool identifiers need more room */
+/* The shared tooltip caps content at 180px and centers it; tool identifiers need more room.
+   The list uses the surface colours of a popover, not the always-black tooltip, so the
+   theme icon tokens keep their contrast in light and dark mode. */
 :global(.n8n-tooltip).tools-tooltip {
 	max-width: 320px;
-	align-items: flex-start;
+	align-items: stretch;
+	padding: var(--spacing--2xs);
+	border: var(--border);
+	background: var(--background--surface);
+	color: var(--text-color);
+	box-shadow: var(--shadow--sm);
 }
 
 .tools-popover {
@@ -560,18 +581,22 @@ function toggleScope(scope: S, checked: boolean) {
 	gap: var(--spacing--2xs);
 	width: max-content;
 	max-width: 100%;
-	max-height: 320px;
-	overflow-y: auto;
-	padding: var(--spacing--4xs);
+}
+
+.tools-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	/* Room for the scroll bar, so it does not cover the tool names. */
+	padding-inline-end: var(--spacing--xs);
 }
 
 .tools-popover-header {
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--medium);
-	letter-spacing: 0.06em;
+	letter-spacing: var(--letter-spacing--wider);
 	text-transform: uppercase;
-	color: var(--color--text--tint-1);
-	margin-bottom: var(--spacing--4xs);
+	color: var(--text-color--subtle);
 }
 
 .tool-row {
@@ -579,15 +604,20 @@ function toggleScope(scope: S, checked: boolean) {
 	align-items: center;
 	gap: var(--spacing--3xs);
 
+	/* Overrides the faded icons of the shared tooltip: an enabled tick needs full contrast. */
 	.tool-icon {
-		color: var(--color--primary);
+		opacity: 1;
+		color: var(--icon-color--success);
 	}
 }
 
 .tool-row-disabled {
-	.tool-icon,
+	.tool-icon {
+		color: var(--icon-color);
+	}
+
 	.tool-name {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--subtler);
 	}
 }
 

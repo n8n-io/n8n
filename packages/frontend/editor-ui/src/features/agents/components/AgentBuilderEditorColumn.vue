@@ -227,10 +227,8 @@ const i18n = useI18n();
 							:project-id="projectId"
 							:agent-id="agentId"
 							:disabled="childrenDisabled"
-							:can-execute="canExecuteAgent"
 							:before-prepare="beforeCodingPrepare"
 							@update:config="emit('update:config', { coding: $event })"
-							@open="emit('open-preview')"
 						/>
 					</AgentPanel>
 

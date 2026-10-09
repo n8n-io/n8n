@@ -199,8 +199,9 @@ describe('applyAgentTemplate', () => {
 });
 
 describe('AGENT_TEMPLATES', () => {
-	it('has the four expected ids in order', () => {
+	it('has the five expected ids in order', () => {
 		expect(AGENT_TEMPLATES.map((t) => t.id)).toEqual([
+			'coding-assistant',
 			'morning-news-brief',
 			'process-incoming-emails',
 			'qualify-new-leads',

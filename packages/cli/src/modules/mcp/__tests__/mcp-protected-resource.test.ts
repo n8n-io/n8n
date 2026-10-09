@@ -3,6 +3,7 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	MCP_INSTANCE_SCOPES,
 } from '@n8n/api-types';
 import type { PostHogClient } from '@/posthog';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
@@ -559,6 +560,22 @@ describe('McpProtectedResource', () => {
 			it('still advertises the preference scopes in discovery, which is unauthenticated', () => {
 				expect(resource.scopes).toContain('aiPreference:read');
 				expect(resource.scopes).toContain('aiPreference:write');
+			});
+
+			it('lists every scope in discovery and drops only the preference scopes on consent outside the experiment', async () => {
+				// Discovery (`scopes_supported`) reads `scopes`. The consent screen
+				// reads the grantable scopes, so the two lists differ on purpose.
+				postHogClient.getFeatureFlags.mockResolvedValue({
+					[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
+				});
+
+				const grantable = await resource.getGrantableScopes(user);
+
+				expect(resource.scopes).toEqual([...MCP_INSTANCE_SCOPES]);
+				expect(resource.scopes.filter((scope) => !grantable.includes(scope))).toEqual([
+					'aiPreference:read',
+					'aiPreference:write',
+				]);
 			});
 		});
 	});

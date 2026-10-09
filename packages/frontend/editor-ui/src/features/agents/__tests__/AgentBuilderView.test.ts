@@ -3260,6 +3260,16 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
 	});
 
+	it('does not float the assistant toggle over the standalone preview, where the coding view lives', async () => {
+		// The preview route has no AI panel, so the toggle could only cover its content.
+		routeState.name = AGENT_PREVIEW_VIEW;
+
+		const wrapper = await renderView();
+
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+	});
+
 	it('keeps the embedded AI panel closed by default for a pending agent when Instance AI is not ready, and writes nothing to storage', async () => {
 		instanceAiReadyRef.value = false;
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
@@ -3338,6 +3348,32 @@ describe('AgentBuilderView — three-column shell', () => {
 				trackMock.mockClear();
 
 				expect(pressToggle(modifier).defaultPrevented).toBe(false);
+				await nextTick();
+
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+				expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBeNull();
+				expect(routerPush).not.toHaveBeenCalled();
+				expect(trackMock).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each([
+			{ where: 'the standalone preview route', route: AGENT_PREVIEW_VIEW, props: undefined },
+			{
+				where: 'artifact mode',
+				route: undefined,
+				props: { artifactMode: true, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+			},
+		])(
+			'leaves the shortcut to the browser on $where, which has no AI dock',
+			async function ({ route, props }) {
+				// Windows uses Ctrl, so the same key press toggles the panel on the builder route.
+				vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Windows');
+				if (route) routeState.name = route;
+				const wrapper = await renderView({ props });
+				trackMock.mockClear();
+
+				expect(pressToggle('ctrlKey').defaultPrevented).toBe(false);
 				await nextTick();
 
 				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);

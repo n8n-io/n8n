@@ -30,6 +30,11 @@ import {
 } from '../utils/write-todos-tool';
 import { TOOL_CALL_STATE } from '../constants';
 import { CODING_OPEN_FILE } from '../utils/coding-review';
+import {
+	codingStepFailureText,
+	codingToolStepLabel,
+	isCodingToolName,
+} from '../utils/coding-tool-step';
 import { AGENT_CHAT_TOOL_STEP_NOTE } from '../utils/tool-step-note';
 import AgentCodingToolDetails from './AgentCodingToolDetails.vue';
 
@@ -50,10 +55,13 @@ const openCodingFile = inject(CODING_OPEN_FILE, undefined);
 const toolStepNote = inject(AGENT_CHAT_TOOL_STEP_NOTE, undefined);
 
 function isCodingTool(tc: ToolCall): boolean {
-	return (
-		Boolean(openCodingFile) &&
-		['workspace_read_file', 'workspace_write_file', 'workspace_execute_command'].includes(tc.tool)
-	);
+	return Boolean(openCodingFile) && isCodingToolName(tc.tool);
+}
+
+/** The label of a coding step, which names its file or command and says how the step ended. */
+function codingStepLabel(tc: ToolCall) {
+	if (!openCodingFile || !isCodingToolName(tc.tool)) return undefined;
+	return codingToolStepLabel(i18n, tc.tool, tc);
 }
 
 const showFix = computed(() => Boolean(props.canFixWithAssistant && props.executionId));
@@ -106,9 +114,16 @@ const { subAgentNameById } = useSubAgentNames(projectIdRef, () =>
 
 interface ToolStepDisplay {
 	label: string;
+	/** The full label, shown as a tooltip when the label is shortened. */
+	fullLabel?: string;
+	loading: boolean;
+	error?: string;
+	hideErrorCallout: boolean;
 	details: string;
 	hasRawData: boolean;
 	expandable: boolean;
+	/** The coding view shows the details of this step in its own way. */
+	coding: boolean;
 }
 
 function getToolDisplayName(toolName: string, output?: unknown): string {
@@ -116,11 +131,10 @@ function getToolDisplayName(toolName: string, output?: unknown): string {
 }
 
 function toolStepLabel(tc: ToolCall, isCompact = false): string {
-	if (isCodingTool(tc)) {
-		if (tc.tool === 'workspace_read_file') return i18n.baseText('agents.chat.toolNames.readFile');
-		if (tc.tool === 'workspace_write_file') return i18n.baseText('agents.coding.tools.writeFile');
-		return i18n.baseText('agents.coding.tools.runCommand');
-	}
+	return codingStepLabel(tc)?.label ?? genericToolStepLabel(tc, isCompact);
+}
+
+function genericToolStepLabel(tc: ToolCall, isCompact: boolean): string {
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return i18n.baseText('agents.chat.delegate.labelFallback');
 	}
@@ -186,20 +200,46 @@ function isEmptyToolErrorPayload(value: unknown): boolean {
 
 function toolStepView(tc: ToolCall): ToolStepDisplay {
 	const isCompact = tc.state === TOOL_CALL_STATE.DONE && isCompactToolName(tc.tool, tc.output);
-	const details = isCompact ? '' : (getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '');
 	const metadata = toolStepRowMetadata(tc);
+	const withMetadata = (label: string) => [label, ...metadata].join(' · ');
+	const coding = codingStepLabel(tc);
+	return {
+		label: withMetadata(coding?.label ?? genericToolStepLabel(tc, isCompact)),
+		fullLabel: coding?.fullLabel ? withMetadata(coding.fullLabel) : undefined,
+		loading: isToolStepLoading(tc),
+		error: toolStepError(tc),
+		hideErrorCallout: hideToolErrorCallout(tc),
+		coding: Boolean(coding),
+		...toolStepContent(tc, isCompact),
+	};
+}
+
+/** What a step shows when the user opens it. A compact step has nothing to open. */
+function toolStepContent(
+	tc: ToolCall,
+	isCompact: boolean,
+): Pick<ToolStepDisplay, 'details' | 'hasRawData' | 'expandable'> {
+	if (isCompact) return { details: '', hasRawData: false, expandable: false };
+	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
 	const hasChildProgress = Boolean(tc.childProgress);
 	return {
-		label: [toolStepLabel(tc, isCompact), ...metadata].join(' · '),
 		details,
-		hasRawData: !isCompact && details.length === 0 && hasToolData(tc) && !hasChildProgress,
-		expandable: !isCompact && (details.length > 0 || hasToolData(tc) || hasChildProgress),
+		hasRawData: details.length === 0 && hasToolData(tc) && !hasChildProgress,
+		expandable: details.length > 0 || hasToolData(tc) || hasChildProgress,
 	};
+}
+
+/** Each step with its view, built once for each render because labels parse the tool input. */
+const toolSteps = computed(() => props.toolCalls.map((tc) => ({ tc, view: toolStepView(tc) })));
+
+/** A coding step can finish with a failed result, for example an edit that did not match. */
+function codingStepFailure(tc: ToolCall): string | undefined {
+	return isCodingTool(tc) ? codingStepFailureText(i18n, tc) : undefined;
 }
 
 function toolStepError(tc: ToolCall): string | undefined {
 	if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
-	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
+	if (tc.state !== TOOL_CALL_STATE.ERROR) return codingStepFailure(tc);
 	if (isEmptyToolErrorPayload(tc.output)) {
 		return i18n.baseText('agents.chat.toolError.generic');
 	}
@@ -207,7 +247,12 @@ function toolStepError(tc: ToolCall): string | undefined {
 }
 
 function hideToolErrorCallout(tc: ToolCall): boolean {
-	return isRecoverablePlanError(tc) || (showFix.value && tc.state === TOOL_CALL_STATE.ERROR);
+	// The coding details show a failed result themselves, next to the change or the output.
+	return (
+		isRecoverablePlanError(tc) ||
+		(showFix.value && tc.state === TOOL_CALL_STATE.ERROR) ||
+		codingStepFailure(tc) !== undefined
+	);
 }
 
 function emitFixWithAssistant() {
@@ -241,14 +286,13 @@ function hasActiveToolCall(): boolean {
 	<div :class="$style.toolSteps">
 		<template v-if="toolCalls.length > 1">
 			<N8nAiActivityStepGroup :label="groupLabel()" size="small" :loading="hasActiveToolCall()">
-				<template v-for="tc in toolCalls" :key="tc.toolCallId">
+				<template v-for="{ tc, view } in toolSteps" :key="tc.toolCallId">
 					<N8nAiActivityStep
-						v-for="view in [toolStepView(tc)]"
-						:key="`${tc.toolCallId}-${view.label}`"
 						:label="view.label"
-						:loading="isToolStepLoading(tc)"
-						:error="toolStepError(tc)"
-						:hide-error-callout="hideToolErrorCallout(tc)"
+						:full-label="view.fullLabel"
+						:loading="view.loading"
+						:error="view.error"
+						:hide-error-callout="view.hideErrorCallout"
 						:has-content="view.expandable"
 					>
 						<div
@@ -286,7 +330,7 @@ function hasActiveToolCall(): boolean {
 							max-height="240px"
 							:class="$style.answer"
 						/>
-						<AgentCodingToolDetails v-if="isCodingTool(tc)" :tool-call="tc" />
+						<AgentCodingToolDetails v-if="view.coding" :tool-call="tc" />
 						<div v-else-if="view.hasRawData" :class="$style.toolDataList">
 							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
@@ -307,66 +351,65 @@ function hasActiveToolCall(): boolean {
 		</template>
 
 		<template v-else>
-			<template v-for="tc in toolCalls" :key="tc.toolCallId">
+			<template v-for="{ tc, view } in toolSteps" :key="tc.toolCallId">
 				<N8nAiActivityStep
-					:label="toolStepView(tc).label"
-					:loading="isToolStepLoading(tc)"
-					:error="toolStepError(tc)"
-					:hide-error-callout="hideToolErrorCallout(tc)"
-					:has-content="toolStepView(tc).expandable"
+					:label="view.label"
+					:full-label="view.fullLabel"
+					:loading="view.loading"
+					:error="view.error"
+					:hide-error-callout="view.hideErrorCallout"
+					:has-content="view.expandable"
 				>
-					<template v-for="view in [toolStepView(tc)]" :key="view.label">
-						<div
-							v-if="tc.childProgress"
-							:class="$style.childProgress"
-							data-test-id="agent-chat-delegate-child-progress"
-						>
-							<AgentChatToolSteps
-								v-if="tc.childProgress.steps.length > 0"
-								:tool-calls="childToolCalls(tc.childProgress.steps)"
-								:project-id="projectId"
-							/>
-							<AiReasoningBlock
-								v-for="segment in childReasoningSegments(tc.childProgress)"
-								:key="segment.id"
-								:entry="segment"
-								:streaming="segment.endTime === undefined"
-							/>
-							<N8nMarkdownEditor
-								v-if="tc.childProgress.text && !view.details"
-								:model-value="tc.childProgress.text"
-								readonly
-								variant="ghost"
-								show-toolbar="never"
-								max-height="240px"
-								:class="$style.answer"
-							/>
-						</div>
+					<div
+						v-if="tc.childProgress"
+						:class="$style.childProgress"
+						data-test-id="agent-chat-delegate-child-progress"
+					>
+						<AgentChatToolSteps
+							v-if="tc.childProgress.steps.length > 0"
+							:tool-calls="childToolCalls(tc.childProgress.steps)"
+							:project-id="projectId"
+						/>
+						<AiReasoningBlock
+							v-for="segment in childReasoningSegments(tc.childProgress)"
+							:key="segment.id"
+							:entry="segment"
+							:streaming="segment.endTime === undefined"
+						/>
 						<N8nMarkdownEditor
-							v-if="view.details"
-							:model-value="view.details"
+							v-if="tc.childProgress.text && !view.details"
+							:model-value="tc.childProgress.text"
 							readonly
 							variant="ghost"
 							show-toolbar="never"
 							max-height="240px"
 							:class="$style.answer"
 						/>
-						<AgentCodingToolDetails v-if="isCodingTool(tc)" :tool-call="tc" />
-						<div v-else-if="view.hasRawData" :class="$style.toolDataList">
-							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
-								<span :class="$style.toolDataLabel">
-									{{ i18n.baseText('agentSessions.timeline.input') }}
-								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
-							</div>
-							<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
-								<span :class="$style.toolDataLabel">
-									{{ i18n.baseText('agentSessions.timeline.output') }}
-								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
-							</div>
+					</div>
+					<N8nMarkdownEditor
+						v-if="view.details"
+						:model-value="view.details"
+						readonly
+						variant="ghost"
+						show-toolbar="never"
+						max-height="240px"
+						:class="$style.answer"
+					/>
+					<AgentCodingToolDetails v-if="view.coding" :tool-call="tc" />
+					<div v-else-if="view.hasRawData" :class="$style.toolDataList">
+						<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
+							<span :class="$style.toolDataLabel">
+								{{ i18n.baseText('agentSessions.timeline.input') }}
+							</span>
+							<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
 						</div>
-					</template>
+						<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
+							<span :class="$style.toolDataLabel">
+								{{ i18n.baseText('agentSessions.timeline.output') }}
+							</span>
+							<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
+						</div>
+					</div>
 				</N8nAiActivityStep>
 			</template>
 		</template>

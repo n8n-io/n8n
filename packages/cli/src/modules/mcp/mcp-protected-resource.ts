@@ -75,6 +75,17 @@ export class McpProtectedResource implements ProtectedResource {
 		private readonly postHogClient: PostHogClient,
 	) {}
 
+	/**
+	 * Every scope this resource supports. The RFC 9728 and RFC 8414 discovery
+	 * documents (`scopes_supported`) use this list. Discovery is unauthenticated,
+	 * so it cannot narrow the list to a user.
+	 *
+	 * The consent screen uses `getGrantableScopes`, which removes the scopes that
+	 * the signed-in user cannot use. So the consent screen can offer fewer scopes
+	 * than discovery advertises: it drops the `aiPreference:*` scopes for a user
+	 * outside the preferences experiment, and `communityPackage:install` when
+	 * that user cannot install community packages.
+	 */
 	get scopes(): string[] {
 		if (areAgentToolsAvailable(this.globalConfig, this.moduleRegistry)) return SUPPORTED_SCOPES;
 		return SUPPORTED_SCOPES.filter((scope) => !AGENT_SCOPES.has(scope));
