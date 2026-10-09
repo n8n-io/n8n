@@ -17,6 +17,7 @@ import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
 import type { ToolCallState } from './constants';
 import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import { summariseToolCall } from './interactiveSummary';
+import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
 import type {
 	ApprovalInput,
 	ChatMessage,
@@ -267,7 +268,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					output = part.output;
 					if (canceled) {
 						state = TOOL_CALL_STATE.CANCELLED;
-					} else if (isFailedDelegateOutput(part.toolName, part.output)) {
+					} else if (
+						isFailedDelegateOutput(part.toolName, part.output) ||
+						isPolicyRefusedToolOutput(part.output)
+					) {
 						state = TOOL_CALL_STATE.ERROR;
 					} else {
 						state = TOOL_CALL_STATE.DONE;

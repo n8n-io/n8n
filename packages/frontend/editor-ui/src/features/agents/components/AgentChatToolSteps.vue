@@ -29,6 +29,8 @@ import {
 	writeTodosSummaryLabel,
 } from '../utils/write-todos-tool';
 import { TOOL_CALL_STATE } from '../constants';
+import { parseToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
+import AgentChatToolPolicyRefusal from './AgentChatToolPolicyRefusal.vue';
 
 const props = defineProps<{
 	toolCalls: ToolCall[];
@@ -57,6 +59,8 @@ const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 		if (dismissed.has(toolCall.toolCallId)) continue;
 		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
 		if (isRecoverablePlanError(toolCall)) continue;
+		// The assistant cannot lift a policy.
+		if (toolStepRefusal(toolCall)) continue;
 
 		const error = toolStepError(toolCall)?.trim();
 		if (!error) continue;
@@ -174,9 +178,17 @@ function toolStepView(tc: ToolCall): ToolStepDisplay {
 	};
 }
 
+function toolStepRefusal(tc: ToolCall) {
+	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
+	return parseToolPolicyRefusal(tc.output);
+}
+
 function toolStepError(tc: ToolCall): string | undefined {
 	if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
 	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
+	if (toolStepRefusal(tc)) {
+		return i18n.baseText('typeAvailabilityPolicies.restrictedNode.scope.instance');
+	}
 	if (isEmptyToolErrorPayload(tc.output)) {
 		return i18n.baseText('agents.chat.toolError.generic');
 	}
@@ -184,7 +196,13 @@ function toolStepError(tc: ToolCall): string | undefined {
 }
 
 function hideToolErrorCallout(tc: ToolCall): boolean {
+	if (toolStepRefusal(tc)) return false;
 	return isRecoverablePlanError(tc) || (showFix.value && tc.state === TOOL_CALL_STATE.ERROR);
+}
+
+/** The refusal payload is for the model; the callout explains it to the user. */
+function showToolOutput(tc: ToolCall): boolean {
+	return tc.output !== undefined && !toolStepRefusal(tc);
 }
 
 function emitFixWithAssistant() {
@@ -225,9 +243,16 @@ function hasActiveToolCall(): boolean {
 						:label="view.label"
 						:loading="isToolStepLoading(tc)"
 						:error="toolStepError(tc)"
+						:error-icon="toolStepRefusal(tc) ? 'lock' : undefined"
 						:hide-error-callout="hideToolErrorCallout(tc)"
 						:has-content="view.expandable"
 					>
+						<template v-if="toolStepRefusal(tc)" #errorCallout>
+							<AgentChatToolPolicyRefusal
+								:refusal="toolStepRefusal(tc)!"
+								:fallback-name="toolStepLabel(tc)"
+							/>
+						</template>
 						<div
 							v-if="tc.childProgress"
 							:class="$style.childProgress"
@@ -270,7 +295,7 @@ function hasActiveToolCall(): boolean {
 								</span>
 								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
 							</div>
-							<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
+							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>
@@ -288,9 +313,16 @@ function hasActiveToolCall(): boolean {
 					:label="toolStepView(tc).label"
 					:loading="isToolStepLoading(tc)"
 					:error="toolStepError(tc)"
+					:error-icon="toolStepRefusal(tc) ? 'lock' : undefined"
 					:hide-error-callout="hideToolErrorCallout(tc)"
 					:has-content="toolStepView(tc).expandable"
 				>
+					<template v-if="toolStepRefusal(tc)" #errorCallout>
+						<AgentChatToolPolicyRefusal
+							:refusal="toolStepRefusal(tc)!"
+							:fallback-name="toolStepLabel(tc)"
+						/>
+					</template>
 					<template v-for="view in [toolStepView(tc)]" :key="view.label">
 						<div
 							v-if="tc.childProgress"
@@ -334,7 +366,7 @@ function hasActiveToolCall(): boolean {
 								</span>
 								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
 							</div>
-							<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
+							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>

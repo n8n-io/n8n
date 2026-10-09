@@ -8302,6 +8302,7 @@
 	"agents.chat.plan.status.canceled": "Canceled",
 	"agents.chat.streamInterrupted": "The connection was interrupted. Refresh the page to see the latest response.",
 	"agents.chat.toolError.generic": "Something went wrong while running this tool",
+	"agents.chat.toolPolicyRefusal.reason": "{name} is restricted on this instance.",
 	"agents.chat.clearHistory": "Clear chat history",
 	"agents.chat.input.placeholder": "Type a message...",
 	"agents.chat.input.placeholder.withAgent": "Message {agentName}…",
