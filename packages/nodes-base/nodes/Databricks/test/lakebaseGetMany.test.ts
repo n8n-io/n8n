@@ -3,6 +3,7 @@ import { mockDeep } from 'vitest-mock-extended';
 
 import { execute as getAll } from '../actions/lakebase/getAll.operation';
 import { fetchLakebaseColumns } from '../actions/lakebase/schema';
+import { LAKEBASE_MAX_PAGES, LAKEBASE_PAGE_SIZE } from '../constants';
 
 const TABLE_URL = 'https://host.example/api/2.0/workspace/7/rest/app/public/orders';
 
@@ -127,10 +128,10 @@ describe('Lakebase -> Get Many', () => {
 	});
 
 	it('stops at the page cap rather than looping forever', async () => {
-		const { context, result } = feedPages([rows(1, 1000)], { returnAll: true });
+		const { context, result } = feedPages([rows(1, LAKEBASE_PAGE_SIZE)], { returnAll: true });
 
-		expect(await result).toHaveLength(100_000);
-		expect(apiMock(context)).toHaveBeenCalledTimes(100);
+		expect(await result).toHaveLength(LAKEBASE_PAGE_SIZE * LAKEBASE_MAX_PAGES);
+		expect(apiMock(context)).toHaveBeenCalledTimes(LAKEBASE_MAX_PAGES);
 	});
 
 	it('orders by the primary key when it has to page without a sort rule', async () => {

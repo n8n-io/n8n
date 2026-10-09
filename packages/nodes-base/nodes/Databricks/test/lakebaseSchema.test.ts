@@ -52,6 +52,21 @@ describe('Lakebase -> schema', () => {
 		]);
 	});
 
+	it('reads only the table it was given', async () => {
+		const context = setup({
+			components: {
+				schemas: {
+					orders: { properties: { sku: { type: 'string' } } },
+					customers: { properties: { email: { type: 'string' } } },
+				},
+			},
+		});
+
+		const columns = await fetchLakebaseColumns(context, SCHEMA_URL, 'customers');
+
+		expect(columns).toEqual([expect.objectContaining({ name: 'email' })]);
+	});
+
 	it.each([
 		['a plain column', { type: 'string' }, [], { hasDefault: false, isRequired: false }],
 		['a NOT NULL column', { type: 'text' }, ['sku'], { isRequired: true, hasDefault: false }],
