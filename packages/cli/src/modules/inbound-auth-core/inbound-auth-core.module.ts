@@ -35,7 +35,7 @@ class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {
 /**
  * Owns the `trusted_source` and `trusted_source_identity` tables and binds the inbound-auth
  * contracts. Main, webhook and worker instances load it, because workers and webhook processes
- * resolve the same entities and contracts as main.
+ * resolve the same entities and contracts as main. Every instance seeds the system trusted source.
  */
 @BackendModule({ name: 'inbound-auth-core', instanceTypes: ['main', 'webhook', 'worker'] })
 export class InboundAuthCoreModule implements ModuleInterface {
@@ -57,6 +57,9 @@ export class InboundAuthCoreModule implements ModuleInterface {
 		if (!Container.has(TrustedSourceGate)) {
 			Container.set(TrustedSourceGate, Container.get(TrustedSourceDbGate));
 		}
+
+		const { SystemTrustedSourceSeeder } = await import('./system-trusted-source.seeder.js');
+		await Container.get(SystemTrustedSourceSeeder).seed();
 
 		const { OAuth2AuthenticationService } = await import('./authentication.service.js');
 		Container.set(AuthenticationService, Container.get(OAuth2AuthenticationService));
