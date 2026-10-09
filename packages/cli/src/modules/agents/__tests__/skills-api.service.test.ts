@@ -85,7 +85,14 @@ describe('SkillsApiService', () => {
 		);
 		repository.findLatestSummaries.mockImplementation(
 			async (ids) =>
-				new Map(ids.map((id) => [id, { name: NAMES[id], description: `${NAMES[id]} desc` }])),
+				new Map(
+					visible
+						.filter((s) => ids.includes(s.id))
+						.map(({ id }) => {
+							const { name, description } = row(skill(id), 2).version;
+							return [id, { name, description, version: 2 }] as const;
+						}),
+				),
 		);
 		repository.findLatestSaved.mockImplementation(
 			async (ids) =>
@@ -93,7 +100,7 @@ describe('SkillsApiService', () => {
 		);
 		repository.countUsingAgents.mockResolvedValue(new Map());
 		repository.findProjectNames.mockResolvedValue(new Map());
-		repository.findUsage.mockResolvedValue({ drafts: [], pins: [] });
+		repository.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 0 });
 		skillService.canAccess.mockResolvedValue(true);
 	});
 
@@ -110,8 +117,9 @@ describe('SkillsApiService', () => {
 
 			expect(result.count).toBe(3);
 			expect(result.data.map(({ id }) => id)).toEqual(['skill_b']);
-			// Only the page is shaped into list items.
-			expect(repository.findLatestSaved).toHaveBeenCalledWith(['skill_b']);
+			// Only the page is shaped into list items, from summaries without instructions or files.
+			expect(repository.findLatestSummaries).toHaveBeenCalledWith(['skill_b']);
+			expect(repository.findLatestSaved).not.toHaveBeenCalled();
 		});
 
 		it('searches the latest version names and descriptions before paging', async () => {
@@ -203,10 +211,13 @@ describe('SkillsApiService', () => {
 			const usage = {
 				drafts: [{ agentId: 'agent-1', agentName: 'Support', projectId: 'project-1' }],
 				pins: [],
+				hiddenAgents: 1,
 			};
 			repository.findUsage.mockResolvedValue(usage);
-			repository.findLatestSaved.mockResolvedValue(
-				new Map([['skill_a', row(visible[0], 3, { instructions: 'saved' })]]),
+			const latest = row(visible[0], 3, { instructions: 'saved' });
+			repository.findLatestSaved.mockResolvedValue(new Map([['skill_a', latest]]));
+			repository.findLatestSummaries.mockResolvedValue(
+				new Map([['skill_a', { name: latest.version.name, description: '', version: 3 }]]),
 			);
 
 			const detail = await service.get(user, 'skill_a');
@@ -215,6 +226,21 @@ describe('SkillsApiService', () => {
 			expect(detail.latestVersion).toBe(3);
 			expect(detail.skillHash).toBe(getAgentSkillHash(detail.skill));
 			expect(detail.usedBy).toEqual(usage);
+		});
+
+		it('limits the usage to the agents the user may read', async () => {
+			await service.get(user, 'skill_a');
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
+			expect(repository.findUsage).toHaveBeenCalledWith('skill_a', ['project-1']);
+		});
+
+		it('shows the agents of every project to a user with the global agent scope', async () => {
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+
+			await service.get(user, 'skill_a');
+
+			expect(repository.findUsage).toHaveBeenCalledWith('skill_a', 'all');
 		});
 
 		it('answers a skill the user cannot see like a missing one', async () => {

@@ -57,6 +57,23 @@ describe('SkillsController', () => {
 		await Container.get(SkillRepository).delete({});
 	});
 
+	async function attachToNewAgent(skillId: string, name: string, projectId: string) {
+		const agents = Container.get(AgentRepository);
+		const agent = await agents.save(
+			agents.create({
+				id: randomUUID(),
+				name,
+				projectId,
+				integrations: [],
+				tools: {},
+				skills: {},
+				versionId: randomUUID(),
+			}),
+		);
+		await Container.get(SkillRepository).replaceDependencies(agent.id, [{ skillId }]);
+		return agent;
+	}
+
 	async function create(agent: SuperAgentTest, payload: object, status = 200) {
 		const response = await agent.post('/skills').send(payload).expect(status);
 		return response.body.data as { id: string; skillHash: string };
@@ -88,7 +105,7 @@ describe('SkillsController', () => {
 				latestVersion: 1,
 				canEdit: true,
 				canDelete: true,
-				usedBy: { drafts: [], pins: [] },
+				usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
 			});
 			await outsider.get(`/skills/${id}`).expect(404);
 			await outsider.patch(`/skills/${id}`).send({ instructions: 'x' }).expect(404);
@@ -105,6 +122,21 @@ describe('SkillsController', () => {
 			expect(read.body.data).toMatchObject({ scope: 'instance', canEdit: false, canDelete: false });
 			await member.patch(`/skills/${id}`).send({ instructions: 'x' }).expect(403);
 			await member.delete(`/skills/${id}`).expect(403);
+		});
+
+		it('names only the agents the reader may see, and counts the others', async () => {
+			const { id } = await create(owner, { scope: 'instance', skill: body });
+			const agent = await attachToNewAgent(id, 'Support bot', project.id);
+
+			const asOutsider = await outsider.get(`/skills/${id}`).expect(200);
+			const asEditor = await editor.get(`/skills/${id}`).expect(200);
+
+			expect(asOutsider.body.data.usedBy).toEqual({ drafts: [], pins: [], hiddenAgents: 1 });
+			expect(asEditor.body.data.usedBy).toEqual({
+				drafts: [{ agentId: agent.id, agentName: 'Support bot', projectId: project.id }],
+				pins: [],
+				hiddenAgents: 0,
+			});
 		});
 	});
 
@@ -200,19 +232,7 @@ describe('SkillsController', () => {
 
 		it('answers 409 and names the agents that use the skill', async () => {
 			const { id } = await create(editor, { scope: 'project', projectId: project.id, skill: body });
-			const agents = Container.get(AgentRepository);
-			const agent = await agents.save(
-				agents.create({
-					id: randomUUID(),
-					name: 'Support bot',
-					projectId: project.id,
-					integrations: [],
-					tools: {},
-					skills: {},
-					versionId: randomUUID(),
-				}),
-			);
-			await Container.get(SkillRepository).replaceDependencies(agent.id, [{ skillId: id }]);
+			await attachToNewAgent(id, 'Support bot', project.id);
 
 			const response = await editor.delete(`/skills/${id}`).expect(409);
 

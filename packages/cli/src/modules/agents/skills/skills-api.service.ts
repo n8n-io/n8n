@@ -111,11 +111,13 @@ export class SkillsApiService {
 		const latest = (await this.skillRepository.findLatestSaved([skill.id])).get(skill.id);
 		if (!item || !latest) throw new NotFoundError('Skill not found');
 		const content = toAgentSkill(latest);
+		// Any user can read an instance skill, so "used by" only names the agents they can read.
+		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 		return {
 			...item,
 			skill: content,
 			skillHash: getAgentSkillHash(content),
-			usedBy: await this.skillRepository.findUsage(skill.id),
+			usedBy: await this.skillRepository.findUsage(skill.id, agentProjectIds ?? 'all'),
 		};
 	}
 
@@ -165,7 +167,7 @@ export class SkillsApiService {
 	private async toListItems(user: User, skills: Skill[]): Promise<SkillListItem[]> {
 		const ids = skills.map((skill) => skill.id);
 		const [latest, usage, projects] = await Promise.all([
-			this.skillRepository.findLatestSaved(ids),
+			this.skillRepository.findLatestSummaries(ids),
 			this.skillRepository.countUsingAgents(ids),
 			this.skillRepository.findProjectNames(
 				skills.flatMap((skill) => (skill.projectId ? [skill.projectId] : [])),
@@ -173,18 +175,18 @@ export class SkillsApiService {
 		]);
 		const items: SkillListItem[] = [];
 		for (const skill of skills) {
-			const row = latest.get(skill.id);
-			if (!row) continue;
+			const summary = latest.get(skill.id);
+			if (!summary) continue;
 			items.push({
 				id: skill.id,
-				name: row.version.name,
-				description: row.version.description,
+				name: summary.name,
+				description: summary.description,
 				scope: scopeOf(skill),
 				projectId: skill.projectId,
 				projectName: skill.projectId ? (projects.get(skill.projectId) ?? null) : null,
 				userId: skill.userId,
 				source: skill.source,
-				latestVersion: row.version.version,
+				latestVersion: summary.version,
 				usedByAgents: usage.get(skill.id) ?? 0,
 				canEdit: await this.skillService.canAccess(user, skill, 'update'),
 				canDelete: await this.skillService.canAccess(user, skill, 'delete'),
