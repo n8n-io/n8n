@@ -71,7 +71,7 @@ export class TeamsArmTemplateService {
 			parameters: {
 				botName: {
 					type: 'string',
-					defaultValue: this.buildBotName(options.agentName, options.agentId),
+					defaultValue: this.botNameFor(options.agentName, options.agentId),
 					metadata: { description: 'Name of the Azure Bot resource. Must be globally unique.' },
 				},
 				// An empty default looks filled in and fails validation only at the end
@@ -185,10 +185,14 @@ export class TeamsArmTemplateService {
 	}
 
 	/**
+	 * Public so the provisioned path names the bot exactly as the Deploy to
+	 * Azure template does. Two rungs of the same ladder must not create two
+	 * differently named bots for one agent.
+	 *
 	 * A digest is appended because an Azure Bot resource name is globally unique,
 	 * so the bare agent name would collide across tenants.
 	 */
-	private buildBotName(agentName: string, agentId: string): string {
+	botNameFor(agentName: string, agentId: string): string {
 		const suffix = createHmac('sha256', 'teams-bot-name').update(agentId).digest('hex').slice(0, 8);
 		const slug = agentName
 			.toLowerCase()

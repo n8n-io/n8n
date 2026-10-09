@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
+import type { TeamsAzureSubscription } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { Request, Response } from 'express';
+
+import type { AuthenticatedRequest } from '@n8n/db';
 
 import { AgentTeamsIntegrationsController } from '../agent-teams-integrations.controller';
 import {
@@ -8,6 +12,10 @@ import {
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
 import type { TeamsCredentialCheckService } from '../integrations/platforms/teams/teams-credential-check.service';
+import type { TeamsBotProvisioningService } from '../integrations/platforms/teams/teams-bot-provisioning.service';
+import type { TeamsEntraProvisioningService } from '../integrations/platforms/teams/teams-entra-provisioning.service';
+import type { TeamsSetupTelemetryService } from '../integrations/platforms/teams/teams-setup-telemetry.service';
+import type { TeamsManagedSetupService } from '../integrations/platforms/teams/teams-managed-setup.service';
 import type { TeamsSetupService } from '../integrations/platforms/teams/teams-setup.service';
 
 /** Reached by the Azure portal and the browser's save dialog, not by the app. */
@@ -26,6 +34,11 @@ describe('AgentTeamsIntegrationsController', () => {
 		['getSetupState', 'agent:update'],
 		['downloadPackage', 'agent:update'],
 		['checkCredential', 'agent:update'],
+		['listAzureSubscriptions', 'agent:update'],
+		['provisionBot', 'agent:update'],
+		['provisionApp', 'agent:update'],
+		['getManagedSetupState', 'agent:update'],
+		['createManagerCredential', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -39,6 +52,10 @@ describe('AgentTeamsIntegrationsController', () => {
 				controller: new AgentTeamsIntegrationsController(
 					setupService,
 					mock<TeamsCredentialCheckService>(),
+					mock<TeamsManagedSetupService>(),
+					mock<TeamsEntraProvisioningService>(),
+					mock<TeamsBotProvisioningService>(),
+					mock<TeamsSetupTelemetryService>(),
 				),
 			};
 		};
@@ -105,6 +122,61 @@ describe('AgentTeamsIntegrationsController', () => {
 				token: 'a-token',
 				credentialId: 'cred-1',
 			});
+		});
+	});
+
+	/**
+	 * Which rung of the bot ladder people land on is the question the ladder
+	 * exists to answer, and the no-subscription rung is chosen here: the browser
+	 * switches to the manual flow without reporting a step.
+	 */
+	describe('the Azure subscription lookup', () => {
+		const buildController = (subscriptions: TeamsAzureSubscription[]) => {
+			const botProvisioningService = mock<TeamsBotProvisioningService>();
+			botProvisioningService.listSubscriptions.mockResolvedValue(subscriptions);
+			const setupTelemetry = mock<TeamsSetupTelemetryService>();
+			return {
+				setupTelemetry,
+				controller: new AgentTeamsIntegrationsController(
+					mock<TeamsSetupService>(),
+					mock<TeamsCredentialCheckService>(),
+					mock<TeamsManagedSetupService>(),
+					mock<TeamsEntraProvisioningService>(),
+					botProvisioningService,
+					setupTelemetry,
+				),
+			};
+		};
+
+		const request = () =>
+			mock<AuthenticatedRequest<{ projectId: string }, {}, {}, { managerCredentialId?: string }>>({
+				params: { projectId: 'project-1' },
+				query: { managerCredentialId: 'manager-1' },
+				user: mock<User>({ id: 'user-1' }),
+			});
+
+		it('records the manual rung when the account reaches no subscription', async () => {
+			const { controller, setupTelemetry } = buildController([]);
+
+			await expect(
+				controller.listAzureSubscriptions(request(), mock<Response>(), 'agent-1'),
+			).resolves.toEqual([]);
+
+			expect(setupTelemetry.succeeded).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				userId: 'user-1',
+				step: 'create_bot',
+				botRoute: 'manual',
+			});
+		});
+
+		it('records nothing while the bot step can still run here', async () => {
+			const { controller, setupTelemetry } = buildController([{ id: 'sub-1', name: 'Production' }]);
+
+			await controller.listAzureSubscriptions(request(), mock<Response>(), 'agent-1');
+
+			expect(setupTelemetry.succeeded).not.toHaveBeenCalled();
 		});
 	});
 });

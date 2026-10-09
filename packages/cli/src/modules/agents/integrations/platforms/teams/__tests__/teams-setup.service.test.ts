@@ -235,6 +235,52 @@ describe('TeamsSetupService', () => {
 		});
 	});
 
+	describe('botIdentityFor', () => {
+		/**
+		 * An Azure bot carries one messaging endpoint, so provisioning against a
+		 * credential another agent holds re-points that agent's bot here.
+		 */
+		it("refuses the identity another agent's bot is built on", async () => {
+			connectTeamsCredential();
+			agentRepository.findByIntegrationCredentialAnyProject.mockResolvedValue([
+				mock<Agent>({ name: 'Sales Bot' }),
+			]);
+
+			await expect(
+				service.botIdentityFor(user, { projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
+			).rejects.toThrow(/already backs the Teams channel/);
+		});
+
+		it('reads the bot identity from the credential the channel runs on', async () => {
+			connectTeamsCredential();
+
+			await expect(
+				service.botIdentityFor(user, { projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
+			).resolves.toEqual({
+				clientId: CLIENT_ID,
+				tenantId: TENANT_ID,
+				messagingEndpoint: expect.stringContaining('/webhooks/teams'),
+				agentName: 'Support Bot',
+			});
+		});
+
+		it('refuses before a credential supplies the client ID', async () => {
+			await expect(
+				service.botIdentityFor(user, { projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
+			).rejects.toThrow(/Create the Teams app/);
+		});
+
+		/** The credential is read as the signed-in user, not as the project. */
+		it('refuses a credential this user may not use', async () => {
+			connectTeamsCredential();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+
+			await expect(
+				service.botIdentityFor(user, { projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
+			).rejects.toThrow(/Create the Teams app/);
+		});
+	});
+
 	describe('buildPackage', () => {
 		it('refuses to build a package before a credential supplies the client ID', async () => {
 			await expect(

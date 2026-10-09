@@ -367,6 +367,28 @@ export class AgentTeamsPackageDto extends Z.class({
 	settings: AgentTeamsSettingsSchema.optional(),
 }) {}
 
+/**
+ * Reaches Microsoft inside a URL path, so the shape is checked here rather than
+ * escaped at each use: Microsoft issues these as GUIDs, and nothing else is a
+ * legitimate value.
+ */
+const microsoftId = z.string().uuid();
+
+/** Names the Microsoft sign-in the Entra app is registered with. */
+export class AgentTeamsProvisionAppDto extends Z.class({
+	managerCredentialId: z.string().min(1),
+}) {}
+
+/**
+ * The Entra app the bot signs for is named explicitly because the bot is
+ * created before the channel is connected, so the agent holds no credential yet.
+ */
+export class AgentTeamsProvisionBotDto extends Z.class({
+	managerCredentialId: z.string().min(1),
+	credentialId: z.string().min(1),
+	subscriptionId: microsoftId,
+}) {}
+
 export class AgentDisconnectIntegrationDto extends Z.class({
 	type: z.string().min(1),
 	// Empty string targets a draft integration entry (`credentialId: ''`).
