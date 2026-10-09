@@ -11,9 +11,11 @@ const choicesSchema = z.array(z.string());
 
 export function pickedClaudeInOnboarding(information: unknown): boolean | undefined {
 	const parsed = informationSchema.safeParse(information);
-	if (!parsed.success || typeof parsed.data.surveyId !== 'string') return undefined;
+	if (!parsed.success) return undefined;
+	// Retry unavailable data, but do not wait for a different answer to a saved survey.
+	if (typeof parsed.data.surveyId !== 'string') return false;
 	const field = AI_TOOLS_FIELD_BY_SURVEY.get(parsed.data.surveyId);
-	if (!field) return undefined;
+	if (!field) return false;
 	const answer = choicesSchema.safeParse(parsed.data[field]);
-	return answer.success ? answer.data.includes('Claude (incl. Claude Code)') : undefined;
+	return answer.success && answer.data.includes('Claude (incl. Claude Code)');
 }

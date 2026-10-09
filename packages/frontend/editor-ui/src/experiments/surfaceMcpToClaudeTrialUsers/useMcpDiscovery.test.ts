@@ -112,6 +112,28 @@ describe('MCP discovery enrollment polling', () => {
 		expect(mocks.request).toHaveBeenCalledTimes(2);
 	});
 
+	it.each([
+		{},
+		{ surveyId: 'unsupported-survey' },
+		{ surveyId: 'x0RS6StY' },
+		{ surveyId: 'x0RS6StY', do_you_use_agents: ['ChatGPT'] },
+	])('stops polling after a saved survey excludes the user: %j', async (information) => {
+		mocks.cloud.currentUserCloudInfo = null;
+		mocks.cloud.fetchUserCloudAccount.mockImplementation(async () => {
+			mocks.cloud.currentUserCloudInfo = { information };
+		});
+		mocks.request.mockImplementation(async ({ data }) => ({
+			status: data.pickedClaude === false ? 'excluded' : 'unknown',
+			coachmarkDismissed: false,
+		}));
+		await start();
+		expect(mocks.request.mock.calls[0]?.[0].data.pickedClaude).toBe(false);
+		expect(useMcpDiscoveryStore().state.status).toBe('excluded');
+		await vi.advanceTimersByTimeAsync(180_000);
+		expect(mocks.request).toHaveBeenCalledTimes(1);
+		expect(mocks.cloud.fetchUserCloudAccount).toHaveBeenCalledTimes(1);
+	});
+
 	it('keeps treatment current through connection, then stops after successful Claude use', async () => {
 		mocks.request
 			.mockResolvedValueOnce(waiting)

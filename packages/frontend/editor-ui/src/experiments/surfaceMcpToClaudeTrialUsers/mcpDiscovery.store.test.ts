@@ -270,8 +270,8 @@ describe('MCP discovery store', () => {
 		expect(store.state.status).toBe('excluded');
 	});
 
-	it('retries a missing survey answer on a later visit', async () => {
-		mocks.cloud.currentUserCloudInfo = { information: {} };
+	it('retries survey data that has not arrived on a later visit', async () => {
+		mocks.cloud.currentUserCloudInfo = {};
 		mocks.request.mockResolvedValue({ status: 'unknown', coachmarkDismissed: false });
 		const store = useMcpDiscoveryStore();
 		await store.refresh();

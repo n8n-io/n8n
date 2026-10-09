@@ -15,24 +15,29 @@ describe.each([
 	});
 
 	it.each([undefined, null, 'Claude (incl. Claude Code)', ['Claude (incl. Claude Code)', null]])(
-		'leaves a missing or malformed answer unknown: %s',
+		'excludes a saved survey with a missing or malformed answer: %s',
 		(answer) => {
-			expect(pickedClaudeInOnboarding({ surveyId, [field]: answer })).toBeUndefined();
+			expect(pickedClaudeInOnboarding({ surveyId, [field]: answer })).toBe(false);
 		},
 	);
 
 	it('does not match Claude in another question', () => {
-		expect(
-			pickedClaudeInOnboarding({ surveyId, referral: ['Claude (incl. Claude Code)'] }),
-		).toBeUndefined();
+		expect(pickedClaudeInOnboarding({ surveyId, referral: ['Claude (incl. Claude Code)'] })).toBe(
+			false,
+		);
 	});
 });
 
+it.each([undefined, null, 'unavailable', []])(
+	'leaves unavailable survey data unknown: %s',
+	(information) => expect(pickedClaudeInOnboarding(information)).toBeUndefined(),
+);
+
 it.each([
-	undefined,
-	null,
 	{},
+	{ surveyId: null },
+	{ surveyId: 123 },
 	{ surveyId: 'ED6JPvTCMGCCYJud', do_you_use_agents: ['Claude (incl. Claude Code)'] },
-])('leaves unsupported surveys unknown: %s', (information) =>
-	expect(pickedClaudeInOnboarding(information)).toBeUndefined(),
+])('excludes unsupported saved surveys: %s', (information) =>
+	expect(pickedClaudeInOnboarding(information)).toBe(false),
 );
