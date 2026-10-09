@@ -68,6 +68,29 @@ describe('NodeIssueItem', () => {
 		expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Linear', 'other');
 	});
 
+	it.each([
+		['Enter', 'Enter'],
+		['Space', ' '],
+	])('opens NDV and emits click when %s is pressed on the item', async (_label, key) => {
+		const nodeType = {
+			name: 'n8n-nodes-base.linear',
+			displayName: 'Linear',
+		} as INodeTypeDescription;
+		const { getByLabelText, emitted } = renderComponent({
+			pinia,
+			props: {
+				issue: { node: 'Linear', type: 'parameters', value: 'Missing API key' },
+				getNodeType: vi.fn(() => nodeType),
+				formatNodeIssueMessage,
+			},
+		});
+
+		await fireEvent.keyDown(getByLabelText('Edit Linear node'), { key });
+
+		expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Linear', 'other');
+		expect(emitted().click).toHaveLength(1);
+	});
+
 	it('emits click event when item is clicked', async () => {
 		const nodeType = {
 			name: 'n8n-nodes-base.linear',
