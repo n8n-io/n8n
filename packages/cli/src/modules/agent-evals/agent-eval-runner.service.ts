@@ -222,14 +222,14 @@ export class AgentEvalRunnerService {
 		assertRequiredModulesActive(this.moduleRegistry);
 
 		// Backstop for direct callers; the REST path asserts before its own lookups.
-		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
+		if (!(await hasScopes(user, ['agent:execute'], false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to run agents in this project.');
 		}
 		// Editing the rule rewrites eval data, so it needs more than running does —
 		// a chat-only member holds `agent:execute` but not `agent:update`.
 		if (
 			options.whatToCheck !== undefined &&
-			!(await userHasScopes(user, ['agent:update'], false, { projectId }))
+			!(await hasScopes(user, ['agent:update'], false, { projectId }))
 		) {
 			throw new ForbiddenError('You do not have permission to edit checks in this project.');
 		}

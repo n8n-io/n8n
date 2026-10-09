@@ -11,7 +11,7 @@ import type {
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
@@ -24,8 +24,8 @@ import { AgentEvalService } from '../agent-eval.service';
 vi.mock('@/modules/agents/repositories/agent.repository', () => ({
 	AgentRepository: class AgentRepository {},
 }));
-vi.mock('@/permissions.ee/check-access', () => ({
-	userHasScopes: vi.fn().mockResolvedValue(true),
+vi.mock('@/permissions.ee/scope-access', () => ({
+	hasScopes: vi.fn().mockResolvedValue(true),
 }));
 vi.mock('../agent-eval-runner.service', () => ({
 	AgentEvalRunnerService: class AgentEvalRunnerService {},
@@ -451,14 +451,14 @@ describe('AgentEvalService', () => {
 			datasetRepository.isDataTableReadByOtherDataset.mockResolvedValue(false);
 			datasetRepository.deleteDataset.mockResolvedValue(true);
 			runRepository.findByDatasetId.mockResolvedValue([]);
-			vi.mocked(userHasScopes).mockClear();
-			vi.mocked(userHasScopes).mockResolvedValue(true);
+			vi.mocked(hasScopes).mockClear();
+			vi.mocked(hasScopes).mockResolvedValue(true);
 		});
 
 		it('removes the table first, then the dataset, when the caller may delete it and nothing else reads it', async () => {
 			await service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1');
 
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['dataTable:delete'], false, {
+			expect(hasScopes).toHaveBeenCalledWith(user, ['dataTable:delete'], false, {
 				dataTableId: 'dt-1',
 			});
 			expect(datasetRepository.isDataTableReadByOtherDataset).toHaveBeenCalledWith('dt-1', 'ds-1');
@@ -481,7 +481,7 @@ describe('AgentEvalService', () => {
 		});
 
 		it('keeps the table, but removes the dataset, when the caller may not delete tables', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			vi.mocked(hasScopes).mockResolvedValue(false);
 
 			await service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1');
 
@@ -503,7 +503,7 @@ describe('AgentEvalService', () => {
 		// permission check then throws "not found" for a project member, and the
 		// delete itself does for an instance admin — neither may strand the draft.
 		it('still removes the dataset when the permission check finds the table already gone', async () => {
-			vi.mocked(userHasScopes).mockRejectedValue(new NotFoundError('Data table not found'));
+			vi.mocked(hasScopes).mockRejectedValue(new NotFoundError('Data table not found'));
 
 			await service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1');
 
@@ -522,7 +522,7 @@ describe('AgentEvalService', () => {
 		});
 
 		it('does not swallow other permission-check failures', async () => {
-			vi.mocked(userHasScopes).mockRejectedValue(new Error('db down'));
+			vi.mocked(hasScopes).mockRejectedValue(new Error('db down'));
 
 			await expect(service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1')).rejects.toThrow(
 				'db down',
@@ -560,7 +560,7 @@ describe('AgentEvalService', () => {
 			await service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1');
 
 			expect(datasetRepository.deleteDataset).toHaveBeenCalled();
-			expect(userHasScopes).not.toHaveBeenCalled();
+			expect(hasScopes).not.toHaveBeenCalled();
 			expect(caseGenerationService.deleteDraftTable).not.toHaveBeenCalled();
 		});
 	});

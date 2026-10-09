@@ -11,7 +11,7 @@ import isEqual from 'lodash/isEqual';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -58,7 +58,7 @@ export class WorkflowSuggestionActionsService {
 		clientId?: string,
 	): Promise<WorkflowSuggestionActionResult> {
 		const user = await this.service.requireEditor(actor.id, workflowId);
-		if (!(await userHasScopes(user, ['workflow:publish'], false, { workflowId }))) {
+		if (!(await hasScopes(user, ['workflow:publish'], false, { workflowId }))) {
 			throw new ForbiddenError('Workflow publish access is required.');
 		}
 		const newlyAppliedVersion = await this.applySuggestion(

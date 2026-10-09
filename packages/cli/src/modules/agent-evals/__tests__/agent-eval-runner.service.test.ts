@@ -1116,7 +1116,7 @@ describe('AgentEvalRunnerService', () => {
 		});
 
 		it('rejects when the user cannot run agents in the project', async () => {
-			vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+			vi.mocked(hasScopes).mockResolvedValueOnce(false);
 			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
 				'permission to run agents',
 			);
@@ -1147,7 +1147,7 @@ describe('AgentEvalRunnerService', () => {
 
 		describe('editing the rule', () => {
 			it('needs agent:update on top of agent:execute, and changes nothing without it', async () => {
-				vi.mocked(userHasScopes).mockImplementation(
+				vi.mocked(hasScopes).mockImplementation(
 					async (_user, scopes) => !scopes.includes('agent:update'),
 				);
 
@@ -1161,7 +1161,7 @@ describe('AgentEvalRunnerService', () => {
 			});
 
 			it('lets an execute-only user rerun as-is, since nothing is written', async () => {
-				vi.mocked(userHasScopes).mockImplementation(
+				vi.mocked(hasScopes).mockImplementation(
 					async (_user, scopes) => !scopes.includes('agent:update'),
 				);
 				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);

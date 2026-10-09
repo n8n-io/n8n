@@ -2519,7 +2519,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('starts a new session when the sessionId is not found', async () => {
 			const { service, agentTestRunService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(true);
 			agentTestRunService.executeDraftRun
 				.mockResolvedValueOnce({ status: 'session_not_found' })
 				.mockResolvedValueOnce({
@@ -2549,7 +2549,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('keeps the sessionNote across a standard approval', async () => {
 			const { service, agentTestRunService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(true);
 			const approval = {
 				type: 'approval' as const,
 				toolName: 'delete_record',
@@ -2620,7 +2620,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('continues a known session without a note', async () => {
 			const { service, agentTestRunService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(true);
 			agentTestRunService.executeDraftRun.mockResolvedValue({
 				status: 'completed',
 				response: 'Welcome back.',
@@ -2647,7 +2647,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('treats a blank sessionId as a new session', async () => {
 			const { service, agentTestRunService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(true);
 			agentTestRunService.executeDraftRun.mockResolvedValue({
 				status: 'completed',
 				response: 'Hello!',

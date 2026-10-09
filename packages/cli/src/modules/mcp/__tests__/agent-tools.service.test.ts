@@ -1202,9 +1202,7 @@ describe('McpAgentToolsService', () => {
 
 	describe('call_agent', () => {
 		it('starts a new session when the sessionId is not found', async () => {
-			userHasScopesMock.mockImplementation(async (_user, scopes) =>
-				scopes.includes('agent:execute'),
-			);
+			hasScopesMock.mockImplementation(async (_user, scopes) => scopes.includes('agent:execute'));
 			agentTestRunService.executeDraftRun
 				.mockResolvedValueOnce({ status: 'session_not_found' })
 				.mockResolvedValueOnce({
@@ -1239,9 +1237,7 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('treats a blank sessionId as a new session', async () => {
-			userHasScopesMock.mockImplementation(async (_user, scopes) =>
-				scopes.includes('agent:execute'),
-			);
+			hasScopesMock.mockImplementation(async (_user, scopes) => scopes.includes('agent:execute'));
 			agentTestRunService.executeDraftRun.mockResolvedValueOnce({
 				status: 'completed',
 				response: 'Hello',

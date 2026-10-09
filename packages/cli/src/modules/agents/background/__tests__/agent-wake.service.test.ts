@@ -799,11 +799,11 @@ describe('AgentWakeService', () => {
 					parentPrincipalHash: principalHash,
 				}),
 			]);
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			vi.mocked(hasScopes).mockResolvedValue(false);
 
 			await service.attemptWake('thread-1');
 
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:execute'], false, {
+			expect(hasScopes).toHaveBeenCalledWith(user, ['agent:execute'], false, {
 				projectId: 'project-1',
 			});
 			expect(orchestrator.executeForWake).not.toHaveBeenCalled();

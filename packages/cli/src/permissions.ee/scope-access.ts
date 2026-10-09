@@ -18,7 +18,10 @@ export async function hasScopes(
 	parameters: ScopeAccessRouteParameters,
 	context: OperationContext = {},
 ): Promise<boolean> {
-	return await Container.get(ScopeAccessService).hasScopes({
+	const scopeAccessService = Container.get(ScopeAccessService);
+	if (globalOnly) return scopeAccessService.hasGlobalScopes(user, scopes);
+
+	return await scopeAccessService.hasScopes({
 		user,
 		scopes,
 		globalOnly,
