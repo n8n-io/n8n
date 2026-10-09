@@ -18,9 +18,12 @@ describe('AgentCheckpointPruningTask', () => {
 	it('should declare an hourly prune cadence', () => {
 		expect(task.name).toBe('agent-checkpoint-pruning');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true, runOnTakeover: true });
-		expect(task.retryDelaySeconds).toBe(30);
+		expect(task.target).toMatchObject({
+			scope: 'cluster',
+			scheduler: { maxAttempts: 3 },
+			leaderTimer: { runOnTakeover: true },
+		});
+		expect(task.target.leaderTimer?.retryDelaySeconds).toBe(30);
 	});
 
 	it.each([
@@ -34,7 +37,8 @@ describe('AgentCheckpointPruningTask', () => {
 			const database = mock<DatabaseConfig>({ type, postgresdb: { statementTimeoutMs } });
 
 			expect(
-				new AgentCheckpointPruningTask(database, checkpointStorage, backgroundJobs).timeoutSeconds,
+				new AgentCheckpointPruningTask(database, checkpointStorage, backgroundJobs).target.scheduler
+					.timeoutSeconds,
 			).toBe(timeoutSeconds);
 		},
 	);

@@ -1,5 +1,5 @@
 import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
 
 import { ExternalSecretsManager } from './external-secrets-manager.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
@@ -13,13 +13,11 @@ export class ExternalSecretsRefreshTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule;
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
 	/** The secrets cache belongs to this process, so every instance refreshes its own. */
-	readonly placement: SystemTaskPlacement = {
+	readonly target = {
 		scope: 'instance',
 		instanceTypes: ['main', 'worker', 'webhook'],
-	};
+	} satisfies SystemTaskTarget;
 
 	constructor(
 		config: ExternalSecretsConfig,
