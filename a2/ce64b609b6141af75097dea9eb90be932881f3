@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Google/Drive/v2/transport/index.ts
+  s_2e1fa95fc44f8f::t_20fce52ceb393e 24-27
+packages/nodes-base/nodes/Google/Drive/v1/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_aef387e5e00f21 24-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2ce64b609b6141af75097dea9eb90be932881f3",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
