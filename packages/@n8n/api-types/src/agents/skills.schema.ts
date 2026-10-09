@@ -5,6 +5,12 @@ import type { AgentSkill } from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
 
+/**
+ * PostHog flag for the controlled rollout of skills. A user without it gets 404 from
+ * `/rest/skills`. Not an experiment: the flag is on or off.
+ */
+export const SKILLS_FLAG = '125_context_skills';
+
 export const SKILLS_MAX_PAGE_SIZE = 100;
 
 /** Optional on purpose: without `take` the caller gets every visible skill. */
