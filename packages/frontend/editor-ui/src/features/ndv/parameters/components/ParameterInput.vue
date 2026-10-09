@@ -659,9 +659,7 @@ const getIssues = computed<string[]>(() => {
 
 	if (isObjectInPlainParameter(props.parameter, props.modelValue)) {
 		issues.parameters = issues.parameters ?? {};
-		issues.parameters[props.parameter.name] = [
-			i18n.baseText('parameterInput.valueFromAnotherField'),
-		];
+		issues.parameters[props.parameter.name] = [i18n.baseText('parameterInput.valueTypeMismatch')];
 	} else if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
 		issues.parameters = issues.parameters ?? {};
 
