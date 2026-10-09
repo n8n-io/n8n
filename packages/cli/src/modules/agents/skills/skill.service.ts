@@ -1,5 +1,6 @@
 import type { AgentSkill } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
@@ -84,6 +85,7 @@ export class SkillService {
 		private readonly agentRepository: AgentRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
 	// ---------------------------------------------------------------- reads
@@ -387,6 +389,29 @@ export class SkillService {
 				projectId: skill.projectId,
 			});
 		}
+		return this.canAccessOutsideProjects(user, skill, operation);
+	}
+
+	/** `canAccess` for a whole list: one query for the user's projects, not one per skill. */
+	async accessCheck(
+		user: User,
+		operation: 'read' | 'update' | 'delete',
+	): Promise<(skill: Pick<Skill, 'userId' | 'projectId'>) => boolean> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, [
+			`projectSkill:${operation}`,
+		]);
+		const allowed = projectIds === null ? null : new Set(projectIds);
+		return (skill) =>
+			skill.projectId
+				? allowed === null || allowed.has(skill.projectId)
+				: this.canAccessOutsideProjects(user, skill, operation);
+	}
+
+	private canAccessOutsideProjects(
+		user: User,
+		skill: Pick<Skill, 'userId'>,
+		operation: 'read' | 'update' | 'delete',
+	): boolean {
 		if (skill.userId === user.id) return true;
 		if (skill.userId === null && operation === 'read') return true;
 		return hasGlobalScope(user, `skill:${operation}`);

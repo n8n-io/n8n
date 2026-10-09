@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
+import type { ProjectScopeService } from '@n8n/backend-services';
 import type { OperationContext, TransactionRunner, User } from '@n8n/db';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -91,7 +92,8 @@ describe('SkillService', () => {
 	const agents = mock<AgentRepository>();
 	const txRunner = mock<TransactionRunner>();
 	const broadcaster = mock<AgentUpdateBroadcaster>();
-	const service = new SkillService(mock(), skills, agents, txRunner, broadcaster);
+	const projectScope = mock<ProjectScopeService>();
+	const service = new SkillService(mock(), skills, agents, txRunner, broadcaster, projectScope);
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(() => {
@@ -693,6 +695,42 @@ describe('SkillService', () => {
 
 			expect(await service.canAccess(user, skillRow('skill_a'), 'delete')).toBe(true);
 			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:delete');
+		});
+	});
+
+	describe('accessCheck', () => {
+		it('reads the projects of the operation once and checks project skills against them', async () => {
+			projectScope.getProjectIds.mockResolvedValue([PROJECT]);
+			vi.mocked(hasGlobalScope).mockReturnValue(false);
+
+			const canUpdate = await service.accessCheck(user, 'update');
+
+			expect(canUpdate(skillRow('skill_a', { projectId: PROJECT }))).toBe(true);
+			expect(canUpdate(skillRow('skill_b', { projectId: 'other-project' }))).toBe(false);
+			expect(projectScope.getProjectIds).toHaveBeenCalledTimes(1);
+			expect(projectScope.getProjectIds).toHaveBeenCalledWith(user, ['projectSkill:update']);
+			expect(userHasScopes).not.toHaveBeenCalled();
+		});
+
+		it('allows every project skill when the global role grants the scope', async () => {
+			projectScope.getProjectIds.mockResolvedValue(null);
+
+			const canDelete = await service.accessCheck(user, 'delete');
+
+			expect(canDelete(skillRow('skill_a', { projectId: 'any-project' }))).toBe(true);
+		});
+
+		it('applies the canAccess rules to "Just you" and instance skills', async () => {
+			projectScope.getProjectIds.mockResolvedValue([]);
+			vi.mocked(hasGlobalScope).mockReturnValue(false);
+
+			const canUpdate = await service.accessCheck(user, 'update');
+			const canRead = await service.accessCheck(user, 'read');
+
+			expect(canUpdate(skillRow('skill_a', { userId: user.id }))).toBe(true);
+			expect(canUpdate(skillRow('skill_b', { userId: 'other' }))).toBe(false);
+			expect(canUpdate(skillRow('skill_c'))).toBe(false);
+			expect(canRead(skillRow('skill_c'))).toBe(true);
 		});
 	});
 
