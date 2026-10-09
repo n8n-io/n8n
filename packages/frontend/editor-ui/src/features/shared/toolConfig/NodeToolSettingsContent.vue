@@ -448,7 +448,10 @@ onMounted(async () => {
 	if (projectId) {
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
-			credentialsStore.fetchUsableCredentials({ projectId, forAgent: props.forAgent }),
+			credentialsStore.fetchUsableCredentials({
+				projectId,
+				...(props.forAgent ? { forAgent: true } : {}),
+			}),
 		]);
 	}
 });
@@ -497,6 +500,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 						:readonly="props.readOnly"
 						:show-all="true"
 						:project-id="credentialProjectId"
+						:for-agent="props.forAgent"
 						:hide-issues="false"
 						:hide-ask-assistant="props.hideAskAssistant"
 						:skip-credentials-fetch="true"

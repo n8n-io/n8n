@@ -12,6 +12,8 @@ type StoreCredential = { id: string; name: string; type: string; createdAt: stri
 
 const credentialsByType = vi.hoisted(() => ({ value: {} as Record<string, StoreCredential[]> }));
 
+const agentScope = vi.hoisted(() => ({ isFetched: true, requested: [] as unknown[] }));
+
 const aiGatewayState = vi.hoisted(() => ({
 	isEnabled: { value: false },
 	supportedTypes: new Set<string>(),
@@ -20,6 +22,10 @@ const aiGatewayState = vi.hoisted(() => ({
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		allCredentials: [{ id: 'any' }],
+		hasUsableCredentialsForScope: (scope: unknown) => {
+			agentScope.requested.push(scope);
+			return agentScope.isFetched;
+		},
 		getCredentialsByType: (type: string) => credentialsByType.value[type] ?? [],
 		getCredentialById: (id: string) =>
 			Object.values(credentialsByType.value)
@@ -54,6 +60,8 @@ describe('useAgentModelCredentials — credentialsByProvider', () => {
 	beforeEach(() => {
 		localStorage.clear();
 		credentialsByType.value = {};
+		agentScope.isFetched = true;
+		agentScope.requested = [];
 		aiGatewayState.isEnabled.value = false;
 		aiGatewayState.supportedTypes = new Set<string>();
 	});
@@ -156,5 +164,41 @@ describe('useAgentModelCredentials — credentialsByProvider', () => {
 		const { credentialsByProvider } = useAgentModelCredentials('user-1', 'project-1');
 
 		expect(credentialsByProvider.value?.anthropic).toBe('cred-1');
+	});
+});
+
+describe('useAgentModelCredentials — agent scope', () => {
+	beforeEach(() => {
+		localStorage.clear();
+		credentialsByType.value = {
+			anthropicApi: [
+				{ id: 'cred-1', name: 'Preloaded', type: 'anthropicApi', createdAt: '2026-01-01' },
+			],
+		};
+		agentScope.isFetched = false;
+		agentScope.requested = [];
+		aiGatewayState.isEnabled.value = false;
+		aiGatewayState.supportedTypes = new Set<string>();
+	});
+
+	it('hides credentials another surface preloaded until the agent scope is fetched', () => {
+		const { credentialsByProvider, getCredentialsForProvider } = useAgentModelCredentials(
+			'user-1',
+			'project-1',
+		);
+
+		expect(credentialsByProvider.value).toBeNull();
+		expect(getCredentialsForProvider('anthropic')).toEqual([]);
+		expect(agentScope.requested).toContainEqual({ projectId: 'project-1', forAgent: true });
+	});
+
+	it('offers the credentials once the agent scope is fetched', () => {
+		agentScope.isFetched = true;
+
+		const { getCredentialsForProvider } = useAgentModelCredentials('user-1', 'project-1');
+
+		expect(getCredentialsForProvider('anthropic').map((credential) => credential.id)).toEqual([
+			'cred-1',
+		]);
 	});
 });

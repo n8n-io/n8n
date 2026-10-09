@@ -144,6 +144,11 @@ describe('useSlackChannelRuntime', () => {
 
 			await expect(runtime.connectManagerCredential(credentialId)).resolves.toBe(true);
 
+			expect(mocks.fetchCredentials).toHaveBeenCalledWith({
+				projectId: 'project-1',
+				forAgent: true,
+			});
+
 			const expectedCredential = expect.objectContaining({ id: 'manager' });
 			if (credentialId) {
 				expect(authorize).toHaveBeenCalledWith(expectedCredential, undefined, {

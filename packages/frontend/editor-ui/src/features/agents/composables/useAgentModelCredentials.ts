@@ -4,7 +4,7 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
-import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import {
 	AGENT_MODEL_PROVIDERS,
 	getProviderCredentialTypes,
@@ -32,7 +32,6 @@ function parseStoredCredentials(value: string): AgentCredentialsByProvider {
 }
 
 export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGetter<string>) {
-	const isInitialized = ref(false);
 	const credentialsStore = useCredentialsStore();
 	const aiGatewayStore = useAiGatewayStore();
 	const settingsStore = useSettingsStore();
@@ -59,11 +58,16 @@ export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGe
 		},
 	);
 
-	const isCredentialsReady = computed(
-		() => isInitialized.value || credentialsStore.allCredentials.length > 0,
+	const isCredentialsReady = computed(() =>
+		credentialsStore.hasUsableCredentialsForScope({
+			projectId: toValue(projectId),
+			forAgent: true,
+		}),
 	);
 
 	function getCredentialsForProvider(provider: AgentModelProvider) {
+		if (!isCredentialsReady.value) return [];
+
 		const credentialsById = new Map<
 			string,
 			ReturnType<typeof credentialsStore.getCredentialsByType>[number]
@@ -122,8 +126,6 @@ export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGe
 				credentialsStore.fetchCredentialTypes(false),
 				credentialsStore.fetchUsableCredentials({ projectId: id, forAgent: true }),
 			]);
-
-			isInitialized.value = true;
 		},
 		{ immediate: true },
 	);
