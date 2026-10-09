@@ -369,7 +369,7 @@ describe('AgentRepository', () => {
 				// Setup validation reads pending edits against their stored base revision.
 				agent.schema = { name: 'Pending edit', model: '', instructions: 'Pending instructions' };
 				await expect(definitionService.readDraft(agent)).resolves.toEqual({
-					schema: agent.schema,
+					schema: { ...agent.schema, skills: [] },
 					tools: {},
 					skills: {},
 					tasks: new Map([['task-1', taskBody]]),

@@ -836,7 +836,8 @@ describe('AgentPublishService', () => {
 			agent,
 		);
 
-		const { skills: publishedSkillRefs, ...publishedConfig } = activeVersion.schema as AgentJsonConfig;
+		const { skills: publishedSkillRefs, ...publishedConfig } =
+			activeVersion.schema as AgentJsonConfig;
 		expect(agent.schema).toEqual(publishedConfig);
 		expect(agent.name).toBe(schema.name);
 		expect(agent.versionId).toBe('published-v1');
@@ -1006,7 +1007,7 @@ describe('AgentPublishService', () => {
 			description: 'Older description',
 			instructions: 'Older body',
 		};
-		skillRefs.readVersion.mockResolvedValue({ skillRefs: undefined, skills: { skill: olderSkill } });
+		skillRefs.readVersion.mockResolvedValue({ skillRefs: [], skills: { skill: olderSkill } });
 		const agent = makeAgent({
 			schema: { ...schema, name: 'Draft agent' },
 			tools: {
@@ -1032,7 +1033,7 @@ describe('AgentPublishService', () => {
 		);
 		expect(result.version).toBe(version);
 		expect(result.definition).toEqual({
-			schema: version.schema,
+			schema: { ...version.schema, skills: [] },
 			tools: {},
 			skills: { skill: olderSkill },
 			tasks: new Map([

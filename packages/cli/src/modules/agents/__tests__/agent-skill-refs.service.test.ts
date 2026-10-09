@@ -65,8 +65,8 @@ describe('AgentSkillRefsService', () => {
 			expect(skillRepository.findDependencies).toHaveBeenCalledWith(['agent-1'], ctx);
 		});
 
-		it('returns undefined when the draft has no skills', async () => {
-			await expect(service.refsForDraft(agent, ctx)).resolves.toBeUndefined();
+		it('returns an empty list when the draft has no skills', async () => {
+			await expect(service.refsForDraft(agent, ctx)).resolves.toEqual([]);
 		});
 	});
 
@@ -125,13 +125,11 @@ describe('AgentSkillRefsService', () => {
 				agent,
 				[
 					{ type: 'skill', id: 'zeta' },
-					{ type: 'skill', id: 'off', enabled: false },
 					{ type: 'skill', id: 'alpha', versionId: pinId },
 				],
 				ctx,
 			);
 
-			// A ref with `enabled: false` is not attached.
 			expect(skillService.checkRefs).toHaveBeenCalledWith(
 				{ id: 'agent-1', projectId: 'project-1' },
 				[{ id: 'zeta' }, { id: 'alpha', versionId: pinId }],
@@ -271,7 +269,7 @@ describe('AgentSkillRefsService', () => {
 					null,
 					ctx,
 				),
-			).resolves.toBeUndefined();
+			).resolves.toEqual([]);
 			expect(skillService.create).not.toHaveBeenCalled();
 		});
 	});

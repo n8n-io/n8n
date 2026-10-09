@@ -188,15 +188,12 @@ export const NodeConfigSchema = z.object({
 });
 
 /**
- * A ref to a skill. For a saved agent the skill is in the skills hub, and the
- * ref is attached or it is not: a ref with `enabled: false` is dropped on save.
- * Only inline agents, which embed their skills, still read `enabled`.
- * `versionId` pins the ref of a saved agent to one saved version of the skill.
- * Without it, the agent draft runs the latest saved version.
+ * A ref to a skill. A skill has no on/off state: a ref is attached or it is
+ * not. `versionId` pins the ref of a saved agent to one saved version of the
+ * skill. Without it, the agent draft runs the latest saved version.
  */
 const AgentJsonSkillConfigSchema = z.object({
 	type: z.literal('skill'),
-	enabled: z.boolean().optional(),
 	versionId: z.string().uuid().optional(),
 	id: z
 		.string()

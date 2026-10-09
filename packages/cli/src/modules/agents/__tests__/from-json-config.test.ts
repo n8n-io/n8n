@@ -329,11 +329,7 @@ describe('buildFromJson()', () => {
 
 	it('wires load_skill for attached skills and returns the selected skill body on demand', async () => {
 		const config = makeConfig({
-			skills: [
-				{ type: 'skill', id: 'summarize_notes' },
-				{ type: 'skill', id: 'unused_skill', enabled: false },
-				{ type: 'skill', id: 'missing_skill', enabled: false },
-			],
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
 		});
 
 		const agent = await buildFromJson(

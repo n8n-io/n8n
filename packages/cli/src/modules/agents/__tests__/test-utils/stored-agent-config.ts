@@ -1,4 +1,9 @@
-import type { AgentJsonConfig, AgentSkill, StoredAgentConfig } from '@n8n/api-types';
+import type {
+	AgentJsonConfig,
+	AgentJsonSkillConfig,
+	AgentSkill,
+	StoredAgentConfig,
+} from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
@@ -22,7 +27,7 @@ export type FakeAgentSkillRefsService = ReturnType<typeof mock<AgentSkillRefsSer
 	/** Skill bodies of the fake skills hub, keyed by skill id. */
 	bodies: Record<string, AgentSkill>;
 	/** Draft refs written through the fake seam, keyed by agent id. */
-	draftRefs: Map<string, AgentSkillRefs>;
+	draftRefs: Map<string, AgentJsonSkillConfig[]>;
 };
 
 /**
@@ -33,10 +38,10 @@ export type FakeAgentSkillRefsService = ReturnType<typeof mock<AgentSkillRefsSer
 export function createAgentSkillRefsService(
 	bodies: Record<string, AgentSkill> = {},
 ): FakeAgentSkillRefsService {
-	const draftRefs = new Map<string, AgentSkillRefs>();
+	const draftRefs = new Map<string, AgentJsonSkillConfig[]>();
 	const service = Object.assign(mock<AgentSkillRefsService>(), { bodies, draftRefs });
-	const readDraftRefs = (agent: Pick<Agent, 'id'>): AgentSkillRefs =>
-		draftRefs.has(agent.id) ? draftRefs.get(agent.id) : storedSkillRefs(agent);
+	const readDraftRefs = (agent: Pick<Agent, 'id'>): AgentJsonSkillConfig[] =>
+		draftRefs.get(agent.id) ?? storedSkillRefs(agent);
 	const pickBodies = (refs: AgentSkillRefs) =>
 		Object.fromEntries(
 			(refs ?? []).flatMap((ref) =>
@@ -44,10 +49,7 @@ export function createAgentSkillRefsService(
 			),
 		);
 	const writeRefs = (agent: Pick<Agent, 'id'>, refs: AgentSkillRefs) => {
-		const kept = refs
-			?.filter((ref) => ref.enabled !== false)
-			.map(({ enabled: _enabled, ...ref }) => ref);
-		draftRefs.set(agent.id, kept?.length ? kept : undefined);
+		draftRefs.set(agent.id, refs ?? []);
 	};
 
 	service.refsForDraft.mockImplementation(async (agent) => readDraftRefs(agent));
@@ -72,7 +74,7 @@ export function createAgentSkillRefsService(
 	service.unpinDraftRef.mockImplementation(async (agent, skillId) =>
 		writeRefs(
 			agent,
-			readDraftRefs(agent)?.map((ref) =>
+			readDraftRefs(agent).map((ref) =>
 				ref.id === skillId ? { type: ref.type, id: ref.id } : ref,
 			),
 		),
@@ -90,14 +92,17 @@ export type AgentFixtureOverrides = WithDocumentSchema<Agent>;
 
 export type AgentHistoryFixtureOverrides = WithDocumentSchema<AgentHistory>;
 
-/** The skill refs that a `storedAgentConfig` fixture holds. */
-export function storedSkillRefs(source: object): AgentSkillRefs {
-	if (!('schema' in source)) return undefined;
+/** The skill refs that a `storedAgentConfig` fixture holds, as the seam reads them: a list. */
+export function storedSkillRefs(source: object): AgentJsonSkillConfig[] {
+	if (!('schema' in source)) return [];
 	const document = source.schema as AgentJsonConfig | null;
-	return document?.skills;
+	return document?.skills ?? [];
 }
 
-/** `composeJsonConfig` with the skill refs that a `storedAgentConfig` fixture holds. */
+/**
+ * `composeJsonConfig` with the skill refs that a `storedAgentConfig` fixture
+ * holds. Like the skill refs seam, a fixture without refs gives an empty list.
+ */
 export function composeStoredJsonConfig(
 	agent: Pick<Agent, 'schema' | 'integrations'>,
 ): AgentJsonConfig | null {

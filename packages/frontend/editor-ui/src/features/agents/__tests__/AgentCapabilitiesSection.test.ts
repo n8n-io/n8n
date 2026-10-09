@@ -356,7 +356,6 @@ describe('AgentCapabilitiesSection', () => {
 				skills: [
 					{
 						id: 'skill-1',
-						enabled: false,
 						skill: { name: 'Triage', description: '', instructions: '' },
 					},
 				],
@@ -365,7 +364,7 @@ describe('AgentCapabilitiesSection', () => {
 		);
 		await flushPromises();
 		const skill = wrapper.get('[data-testid="agent-capabilities-skill-row"]');
-		expect(skill.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
+		expect(skill.attributes('aria-description')).toBeUndefined();
 		await skill.trigger('click');
 		expect(wrapper.emitted('open-skill')).toEqual([['skill-1']]);
 		// A skill has no on/off toggle: its menu only removes it.

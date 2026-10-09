@@ -261,7 +261,7 @@ describe('Agent skills in the skills hub', () => {
 		).rejects.toThrow('Skill was changed elsewhere');
 
 		await agentSkillsService.deleteSkill(agent.id, project.id, created.id, context);
-		expect(await skillRefs.refsForDraft(agent, {})).toBeUndefined();
+		expect(await skillRefs.refsForDraft(agent, {})).toEqual([]);
 		expect(await Container.get(SkillRepository).findByIds([created.id])).toHaveLength(1);
 	});
 

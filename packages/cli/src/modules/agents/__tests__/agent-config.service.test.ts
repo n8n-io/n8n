@@ -325,7 +325,7 @@ describe('AgentConfigService', () => {
 				projectId,
 				agentId,
 				expect.objectContaining({ tools: [expect.objectContaining(dateTimeTool)] }),
-				baseConfig,
+				{ ...baseConfig, skills: [] },
 				{ kind: 'user', user },
 			);
 		});
@@ -812,13 +812,8 @@ describe('AgentConfigService', () => {
 		});
 
 		it('removes config refs and stored bodies that no longer have matching definitions', async () => {
-			const {
-				service,
-				agentRepository,
-				agentTaskRepository,
-				skillRefs,
-				runtimeCacheService,
-			} = makeService();
+			const { service, agentRepository, agentTaskRepository, skillRefs, runtimeCacheService } =
+				makeService();
 			const agent = makeAgent({
 				tools: {
 					tool_1: {
@@ -849,10 +844,9 @@ describe('AgentConfigService', () => {
 						{ type: 'custom', id: 'disabled_missing_tool', enabled: false },
 					],
 					skills: [
-						{ type: 'skill', id: 'skill-1', enabled: false },
+						{ type: 'skill', id: 'skill-1' },
 						{ type: 'skill', id: 'missing-skill' },
 						{ type: 'skill', id: 'toString' },
-						{ type: 'skill', id: 'disabled-missing-skill', enabled: false },
 					],
 					tasks: [
 						{ type: 'task', id: 'task-1', enabled: true },
@@ -873,10 +867,9 @@ describe('AgentConfigService', () => {
 			expect(skillRefs.replaceDraftRefs).toHaveBeenCalledWith(
 				saved,
 				[
-					{ type: 'skill', id: 'skill-1', enabled: false },
+					{ type: 'skill', id: 'skill-1' },
 					{ type: 'skill', id: 'missing-skill' },
 					{ type: 'skill', id: 'toString' },
-					{ type: 'skill', id: 'disabled-missing-skill', enabled: false },
 				],
 				{},
 			);

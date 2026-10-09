@@ -300,8 +300,8 @@ describe('AgentsService', () => {
 		mockCreateReturning(agentRepository, saved);
 		const skillRefs = [
 			{ type: 'skill' as const, id: 'zeta' },
-			{ type: 'skill' as const, id: 'alpha', enabled: false },
-			{ type: 'skill' as const, id: 'mid', enabled: true },
+			{ type: 'skill' as const, id: 'alpha' },
+			{ type: 'skill' as const, id: 'mid' },
 		];
 
 		await service.create(projectId, 'Support Agent', {
@@ -316,11 +316,7 @@ describe('AgentsService', () => {
 
 		const [entity] = agentRepository.create.mock.calls[0];
 		expect(entity.schema).not.toHaveProperty('skills');
-		// A ref with `enabled: false` is not attached.
-		await expect(refsService.refsForDraft(saved, {})).resolves.toEqual([
-			{ type: 'skill', id: 'zeta' },
-			{ type: 'skill', id: 'mid' },
-		]);
+		await expect(refsService.refsForDraft(saved, {})).resolves.toEqual(skillRefs);
 		// The insert and the skill refs write share one transaction.
 		const [[, insertCtx]] = agentRepository.insertNew.mock.calls;
 		const [[, , , , refsCtx]] = refsService.createDraftRefs.mock.calls;

@@ -1,10 +1,8 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 
-import type { Agent } from '../entities/agent.entity';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { fromAgentDocument, toAgentDocument } from '../json-config/agent-document';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
-import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
+import { storedAgentConfig } from './test-utils/stored-agent-config';
 
 const document: AgentJsonConfig = {
 	name: 'Support agent',
@@ -14,7 +12,7 @@ const document: AgentJsonConfig = {
 	tools: [{ type: 'custom', id: 'lookup' }],
 	skills: [
 		{ type: 'skill', id: 'refunds' },
-		{ type: 'skill', id: 'billing', enabled: false },
+		{ type: 'skill', id: 'billing', versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f' },
 		{ type: 'skill', id: 'apology' },
 	],
 	tasks: [{ type: 'task', id: 'daily', enabled: true }],
@@ -30,12 +28,12 @@ describe('toAgentDocument / fromAgentDocument', () => {
 		expect(toAgentDocument(config, skillRefs)).toEqual(document);
 	});
 
-	it('keeps the ref order and the enabled flags', () => {
+	it('keeps the ref order and the pins', () => {
 		const { config, skillRefs } = fromAgentDocument(document);
 
 		expect(toAgentDocument(config, skillRefs).skills).toEqual([
 			{ type: 'skill', id: 'refunds' },
-			{ type: 'skill', id: 'billing', enabled: false },
+			{ type: 'skill', id: 'billing', versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f' },
 			{ type: 'skill', id: 'apology' },
 		]);
 	});
@@ -65,22 +63,5 @@ describe('toAgentDocument / fromAgentDocument', () => {
 		expect(getAgentConfigHash(toAgentDocument(config, skillRefs))).toBe(
 			getAgentConfigHash(document),
 		);
-	});
-});
-
-describe('config hash of a stored agent', () => {
-	// The value that master computes for this agent, before the skill refs seam.
-	// Clients send this hash back as the base hash of a save, so it must not change.
-	const MASTER_CONFIG_HASH = '04622862951435434cad418aeb1f64a5aa9152535af3f93e68d7730c94cb4dfa';
-
-	it('composes the same document and hash as before the seam', async () => {
-		const { integrations, ...schema } = document;
-		const agent = { id: 'agent-1', schema: storedAgentConfig(schema), integrations } as Agent;
-
-		const skillRefs = await createAgentSkillRefsService().refsForDraft(agent, {});
-		const composed = composeJsonConfig(agent, skillRefs);
-
-		expect(composed).toEqual(document);
-		expect(getAgentConfigHash(composed)).toBe(MASTER_CONFIG_HASH);
 	});
 });

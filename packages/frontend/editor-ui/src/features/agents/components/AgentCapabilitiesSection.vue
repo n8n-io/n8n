@@ -48,7 +48,7 @@ const props = withDefaults(
 		config: AgentJsonConfig | null;
 		tools: AgentJsonToolRef[];
 		customTools?: Record<string, CustomToolEntry>;
-		skills: Array<{ id: string; skill: AgentSkill; enabled?: boolean }>;
+		skills: Array<{ id: string; skill: AgentSkill }>;
 		supportsActivation?: boolean;
 		disabled?: boolean;
 		projectId: string;

@@ -11,7 +11,7 @@ import { SkillService, toAgentSkill, type SkillRef } from './skills/skill.servic
 
 /** Skill refs and the skill bodies they resolve to, keyed by skill id. */
 export interface AgentSkillsSnapshot {
-	skillRefs: AgentSkillRefs;
+	skillRefs: AgentJsonSkillConfig[];
 	skills: Record<string, AgentSkill>;
 }
 
@@ -32,13 +32,12 @@ export class AgentSkillRefsService {
 		private readonly skillService: SkillService,
 	) {}
 
-	/**
-	 * Skill refs of the agent draft, in attach order. A pinned ref has
-	 * `versionId`. `undefined` when the draft has no skills.
-	 */
-	async refsForDraft(agent: Pick<Agent, 'id'>, ctx: OperationContext): Promise<AgentSkillRefs> {
-		const rows =
-			(await this.skillRepository.findDependencies([agent.id], ctx)).get(agent.id) ?? [];
+	/** Skill refs of the agent draft, in attach order. A pinned ref has `versionId`. */
+	async refsForDraft(
+		agent: Pick<Agent, 'id'>,
+		ctx: OperationContext,
+	): Promise<AgentJsonSkillConfig[]> {
+		const rows = (await this.skillRepository.findDependencies([agent.id], ctx)).get(agent.id) ?? [];
 		return toSkillRefs(
 			rows.map(({ skillId, versionId }) => ({ id: skillId, ...(versionId ? { versionId } : {}) })),
 		);
@@ -51,7 +50,7 @@ export class AgentSkillRefsService {
 	async refsForVersion(
 		version: Pick<AgentHistory, 'versionId'>,
 		ctx: OperationContext,
-	): Promise<AgentSkillRefs> {
+	): Promise<AgentJsonSkillConfig[]> {
 		return (await this.readVersion(version, ctx)).skillRefs;
 	}
 
@@ -136,7 +135,7 @@ export class AgentSkillRefsService {
 		skillId: string,
 		ctx: OperationContext,
 	): Promise<void> {
-		const refs = (await this.refsForDraft(agent, ctx)) ?? [];
+		const refs = await this.refsForDraft(agent, ctx);
 		await this.writeDependencies(
 			agent.id,
 			refs.map(({ id, versionId }) => (id === skillId || !versionId ? { id } : { id, versionId })),
@@ -157,15 +156,18 @@ export class AgentSkillRefsService {
 		bodies: Record<string, AgentSkill>,
 		createdById: string | null,
 		ctx: OperationContext,
-	): Promise<AgentSkillRefs> {
-		if (!refs?.length) return refs;
+	): Promise<AgentJsonSkillConfig[]> {
+		if (!refs?.length) return [];
 		const known = new Set(
-			(await this.skillRepository.findByIds(refs.map((ref) => ref.id), ctx)).map(
-				(skill) => skill.id,
-			),
+			(
+				await this.skillRepository.findByIds(
+					refs.map((ref) => ref.id),
+					ctx,
+				)
+			).map((skill) => skill.id),
 		);
 		const next: AgentJsonSkillConfig[] = [];
-		for (const ref of refs.filter(({ enabled }) => enabled !== false)) {
+		for (const ref of refs) {
 			if (known.has(ref.id)) {
 				next.push({ type: 'skill', id: ref.id });
 				continue;
@@ -197,7 +199,7 @@ export class AgentSkillRefsService {
 		ctx: OperationContext,
 	): Promise<void> {
 		const refs = await this.refsForDraft(agent, ctx);
-		if (!refs?.length) return;
+		if (refs.length === 0) return;
 		const { versionByRef } = await this.skillService.snapshotForPublish(toServiceRefs(refs), ctx);
 		const missing = refs.filter((ref) => !versionByRef.has(ref.id)).map((ref) => ref.id);
 		if (missing.length > 0) {
@@ -219,16 +221,11 @@ export class AgentSkillRefsService {
 	}
 }
 
-/** A saved agent has no disabled skill refs: a ref with `enabled: false` is not attached. */
 function toServiceRefs(refs: AgentJsonSkillConfig[]): SkillRef[] {
-	return refs
-		.filter((ref) => ref.enabled !== false)
-		.map(({ id, versionId }) => (versionId ? { id, versionId } : { id }));
+	return refs.map(({ id, versionId }) => (versionId ? { id, versionId } : { id }));
 }
 
-/** Rows give no "no skill list" state: a draft without skills has no list. */
-function toSkillRefs(refs: Array<{ id: string; versionId?: string }>): AgentSkillRefs {
-	if (refs.length === 0) return undefined;
+function toSkillRefs(refs: Array<{ id: string; versionId?: string }>): AgentJsonSkillConfig[] {
 	return refs.map(({ id, versionId }) => ({
 		type: 'skill' as const,
 		id,

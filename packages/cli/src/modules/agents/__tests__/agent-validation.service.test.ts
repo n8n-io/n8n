@@ -169,7 +169,6 @@ describe('AgentValidationService — structured issues', () => {
 					},
 					{ type: 'custom', id: 'active_missing' },
 				],
-				skills: [{ type: 'skill', id: 'missing_skill', enabled: false }],
 				subAgents: { agents: [{ agentId: 'missing_subagent', enabled: false }] },
 			};
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(config));
@@ -204,7 +203,8 @@ describe('AgentValidationService — structured issues', () => {
 			});
 
 			for (const ref of config.tools!) ref.enabled = true;
-			config.skills![0].enabled = true;
+			// A skill has no on/off state: an attached ref to a missing skill is an issue.
+			config.skills = [{ type: 'skill', id: 'missing_skill' }];
 			config.subAgents!.agents![0].enabled = true;
 			const reactivated = await service.validateAgentConfiguration(
 				agentId,

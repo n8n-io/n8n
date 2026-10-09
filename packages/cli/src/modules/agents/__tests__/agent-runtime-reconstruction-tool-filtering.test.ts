@@ -230,10 +230,10 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			const { service } = makeService({});
 			const draftRefs: AgentJsonSkillConfig[] = [
 				{ type: 'skill', id: 'zeta' },
-				{ type: 'skill', id: 'alpha', enabled: false },
+				{ type: 'skill', id: 'alpha', versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f' },
 			];
 			const publishedRefs: AgentJsonSkillConfig[] = [
-				{ type: 'skill', id: 'mid', enabled: true },
+				{ type: 'skill', id: 'mid' },
 				{ type: 'skill', id: 'zeta' },
 			];
 			const baseConfig = {

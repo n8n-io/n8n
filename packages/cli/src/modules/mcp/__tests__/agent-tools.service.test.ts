@@ -783,10 +783,8 @@ describe('McpAgentToolsService', () => {
 			const storedAgent = agentEntity({ tools: {}, skills: {} });
 			const lifecycleTelemetry = useRealCustomToolPersistence(storedAgent);
 			agentSecureRuntime.describeToolSecurely.mockResolvedValue(descriptor as never);
-			// The write leaves the draft with no skill rows, so the document has no skill list.
-			const { skills: _noSkills, ...withoutSkills } = composedConfig;
 			const stored = {
-				...withoutSkills,
+				...composedConfig,
 				tools: [{ type: 'custom' as const, id: 'my_tool' }],
 			};
 
