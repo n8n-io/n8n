@@ -1,20 +1,34 @@
 operationId: exportPackage
 tags:
   - N8nPackage
-summary: 'Beta: Export workflows, folders, or projects as an n8n package'
+summary: 'Beta: Export agents, workflows, folders, or projects as an n8n package'
 description: |
   **Beta** — breaking changes may still occur without major version bump.
 
-  Export workflows and/or folders, or projects, as a gzipped tar archive
-  (.n8np). Provide `workflowIds`/`folderIds`, or `projectIds`, but not both
-  groups. Each exported folder includes its nested folders. Empty projects
-  export project metadata only. Statically referenced sub-workflows must also
-  be included in the resulting package, otherwise the export is rejected. The
-  response is streamed as `application/gzip` with a `Content-Disposition`
+  Export agents, workflows, and folders, or whole projects, as a gzipped tar
+  archive (.n8np). Provide `agentIds`/`workflowIds`/`folderIds`, or `projectIds`.
+  Do not combine these two groups. Each exported folder includes its nested
+  folders. Whole projects include their agents when the agents module is enabled.
+  Explicit agent selections require the agents module. Empty projects export
+  project metadata only. `versionPolicy` selects the version for both agents and
+  workflows and defaults to `latest`. `dependencyPolicy` applies to both entity
+  types and defaults to `fail` when a required definition is absent from the
+  package. The response is streamed as `application/gzip` with a `Content-Disposition`
   attachment header. Requires the n8n Packages feature to be licensed.
 
-  API key scopes: `workflow:export` is required when exporting workflows or folders, and `project:export` is required when exporting projects. When `includeVariableValues` is true (the default) and the exported workflows reference variables, `variable:list` is also required; exports that reference no variables never need it.
-x-required-scope: project:export,workflow:export
+  API key scopes: `agent:export` is required for explicitly selected agents.
+  `workflow:export` is required for explicitly selected workflows or folders.
+  `project:export` is sufficient for whole-project exports, including their
+  agents and workflows. Included dependencies need no additional API key scope.
+  The caller's project permissions apply to all included entities. When
+  `includeVariableValues` is true (the default) and exported entities reference
+  variables, `variable:list` is also required. Exports that reference no variables
+  do not need it.
+
+  Agent definitions include referenced skills, custom tools, and schedules.
+  Knowledge base files and runtime data are excluded. Agent package imports
+  remain unavailable.
+x-required-scope: project:export,workflow:export,agent:export
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
@@ -25,6 +39,16 @@ requestBody:
       schema:
         type: object
         properties:
+          agentIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+            minItems: 1
+            maxItems: 300
+            description: IDs of the agents to include. Requires the agents module.
+            example:
+              - uT9LdQx7rK2MvB4f
           workflowIds:
             type: array
             items:
@@ -52,27 +76,27 @@ requestBody:
               minLength: 1
             minItems: 1
             maxItems: 300
-            description: IDs of the projects to include in the exported package.
+            description: IDs of the projects to include in the exported package. Includes their agents when the agents module is enabled.
             example:
               - Ox8O54VQrmBrb4qL
           includeVariableValues:
             type: boolean
             default: true
-            description: Whether values of variables referenced by the exported workflows are bundled into the package. When `false`, variables still travel as name/type files and are listed in the package requirements, but no values travel with the package.
+            description: Whether values of variables referenced by the exported entities are bundled into the package. When `false`, variables still travel as name/type files and are listed in the package requirements, but no values travel with the package.
           includeTags:
             type: boolean
             default: true
             description: Whether tags assigned to the exported workflows are bundled into the package. When `false`, no tag files, tag references, or tag requirements travel with the package.
-          missingWorkflowDependencyPolicy:
+          dependencyPolicy:
             type: string
             enum:
               - fail
               - reference-only
               - include-in-package
             default: fail
-            description: Policy for missing static sub-workflow dependencies. `fail` aborts the export when any static sub-workflow is missing from the package; `include-in-package` automatically adds missing static sub-workflows. `reference-only` keeps missing static sub-workflows out of the package and lists them in the package requirements as workflows expected to already exist on the target.
+            description: Policy for workflow and agent dependencies outside the selected package contents. Includes static workflow references and disabled agent references. `fail` aborts when a required workflow or agent is absent from the package. `include-in-package` adds accessible dependencies recursively. `reference-only` records external requirements without including those definitions. The same policy applies to workflows and agents.
             example: fail
-          workflowVersionPolicy:
+          versionPolicy:
             type: string
             enum:
               - published-strict
@@ -80,7 +104,7 @@ requestBody:
               - ignore-unpublished
               - latest
             default: latest
-            description: Which version of each workflow travels in the package. `latest` exports the latest version, published or not. `published-strict` exports the published version and aborts the export if any workflow has none. `prefer-published` falls back to the latest version where there is no published one. `ignore-unpublished` leaves unpublished workflows out of the package entirely. The chosen version decides which credentials, data tables, variables and sub-workflows are bundled alongside it; the workflow's name, settings and tags are not versioned and always come from the latest version.
+            description: Which version of each workflow and agent travels in the package. `latest` exports the current draft. `published-strict` requires a published version. `prefer-published` uses the published version when available and the draft otherwise. `ignore-unpublished` skips unpublished selections. Dependencies that cannot be included cause the export to fail only when `dependencyPolicy` is `fail` or `include-in-package`. With `reference-only`, the export records them as external requirements. The selected version supplies the definition and its references. Workflow names, settings, and tags always use their current values. Agent IDs, names, and MCP availability always use their current values.
             example: latest
           credentialExportPolicy:
             type: string
@@ -104,7 +128,7 @@ responses:
         description: |
           JSON-serialized per-entity counts of what actually ended up in the
           package (after folder bundling and auto-inclusion), e.g.
-          `{"workflows":2,"folders":1,"credentials":0,"dataTables":0,"variables":0}`.
+          `{"agents":1,"workflows":2,"folders":1,"credentials":0,"dataTables":0,"variables":0,"tags":0}`.
         required: true
         schema:
           type: string
