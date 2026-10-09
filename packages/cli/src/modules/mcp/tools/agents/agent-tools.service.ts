@@ -1540,7 +1540,7 @@ export class McpAgentToolsService {
 		});
 		if (fields.length === 0) return;
 		throw new UserError(
-			`Config contains entries the schema does not support (in: ${fields.join(', ')}); saving would silently drop them. Compare against the config schema from get_agent_builder_reference вЂ” e.g. sub-agents belong under subAgents.agents, not tools.`,
+			`Config contains entries the schema does not support (in: ${fields.join(', ')}); saving would silently drop them. Compare against the config schema from get_agent_builder_reference — e.g. sub-agents belong under subAgents.agents, not tools.`,
 		);
 	}
 
