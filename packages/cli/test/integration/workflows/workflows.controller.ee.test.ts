@@ -26,6 +26,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	WorkflowPublishedVersionRepository,
+	CredentialsRepository,
 	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -1374,7 +1375,11 @@ describe('PATCH /workflows/:workflowId', () => {
 			 * current version no longer has that node, and the member cannot use it.
 			 */
 			const setUp = async () => {
-				const credential = await saveCredential(randomCredentialPayload(), { user: owner });
+				// The type must match the node's credential key, so the server resolves it by id.
+				const credential = await saveCredential(
+					{ ...randomCredentialPayload(), type: 'httpHeaderAuth' },
+					{ user: owner },
+				);
 				const workflow = await createWorkflow({}, member);
 				const oldVersionId = uuid();
 				await createWorkflowHistory(workflow, member, undefined, {
@@ -1395,6 +1400,24 @@ describe('PATCH /workflows/:workflowId', () => {
 
 				expect(response.statusCode).toBe(200);
 				expect(response.body.data.nodes).toEqual([nodeWith(credential)]);
+			});
+
+			test('restores a version after its credential was renamed', async () => {
+				const { credential, workflow, oldVersionId } = await setUp();
+				await Container.get(CredentialsRepository).update(credential.id, { name: 'Renamed' });
+
+				// The editor sends the nodes as the version stored them, with the old name.
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [nodeWith(credential)],
+					restoredFromVersionId: oldVersionId,
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes[0].credentials.httpHeaderAuth).toEqual({
+					id: credential.id,
+					name: 'Renamed',
+				});
 			});
 
 			test('blocks the same nodes in an ordinary save', async () => {

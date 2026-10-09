@@ -617,7 +617,13 @@ export class WorkflowService {
 				if (!restoredVersion) {
 					throw new BadRequestError("The version to restore is not in this workflow's history.");
 				}
-				restoredNodes = restoredVersion.nodes;
+				// Normalize the stored nodes the way the submitted ones were above, so a
+				// credential renamed since that version still matches.
+				const normalizedVersion = await WorkflowHelpers.replaceInvalidCredentials(
+					{ ...workflowUpdateData, nodes: structuredClone(restoredVersion.nodes) },
+					ownerProject.id,
+				);
+				restoredNodes = normalizedVersion.nodes;
 			}
 
 			const { EnterpriseWorkflowService } = await import('./workflow.service.ee.js');

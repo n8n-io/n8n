@@ -150,9 +150,11 @@ describe('WorkflowHistory', () => {
 			[['workflow:read'], 'true'],
 			[['workflow:read', 'workflow:update'], 'false'],
 		])('with scopes %j, is disabled: %s', async (scopes, disabled) => {
-			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
-				scopes,
-			} as unknown as IWorkflowDb);
+			route.params.workflowId = workflowId;
+			// Only this workflow carries the scopes, so the view must ask for it by id.
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockImplementation((id) =>
+				id === workflowId ? ({ scopes } as unknown as IWorkflowDb) : undefined,
+			);
 
 			const { findByTestId } = renderComponent({ pinia });
 
