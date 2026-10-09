@@ -659,6 +659,12 @@ nodes get LLM-generated pin data). So:
   otherwise
   accept the static-data red as a harness limit and carry the logic in
   `outcomeExpectations`. Note the agent may *choose* static-data dedup on its own.
+- **Message an Agent runs the called Agent with its real model.** The harness
+  mocks the Agent's tools, MCP servers and web search, and records those calls
+  under the calling node. It turns off the Agent's memory, vector stores and chat
+  integrations. Only OpenAI models are supported today, and only when
+  `EVAL_OPENAI_API_KEY` is set (CI sets it): put the Agent on an `openai/*` model
+  and declare an `openAiApi` credential.
 - Don't assert exact counts that depend on mock generation ("exactly 7 posts").
   Say "fewer than the original 10".
 
