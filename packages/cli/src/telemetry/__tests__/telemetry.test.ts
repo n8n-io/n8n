@@ -483,6 +483,7 @@ describe('Telemetry', () => {
 					message_count: 1,
 					token_count: 15,
 					tool_call_count: 2,
+					counts_by_source: { unknown: { message_count: 1, token_count: 15, tool_call_count: 2 } },
 				},
 				'agent-2:test': {
 					agent_id: 'agent-2',
@@ -490,47 +491,87 @@ describe('Telemetry', () => {
 					message_count: 1,
 					token_count: 0,
 					tool_call_count: 0,
+					counts_by_source: { unknown: { message_count: 1, token_count: 0, tool_call_count: 0 } },
 				},
 			});
 		});
 
-		test('should flush agent execution counters and reset the buffer', () => {
-			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', message_count: 1 });
-			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', token_count: 15 });
-			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', tool_call_count: 2 });
+		test('should flush source counters in one event and reset the buffer', () => {
+			const chatRun = { agent_id: 'agent-1', run_type: 'test' as const, source: 'chat' };
+			telemetry.trackAgentExecution({ ...chatRun, message_count: 2 });
+			telemetry.trackAgentExecution({ ...chatRun, token_count: 10 });
+			telemetry.trackAgentExecution({ ...chatRun, tool_call_count: 1 });
+			telemetry.trackAgentExecution({
+				...chatRun,
+				source: 'instance-ai',
+				message_count: 1,
+				token_count: 5,
+				tool_call_count: 1,
+			});
 
 			// @ts-expect-error Calling private method
 			telemetry.flushAgentExecutionCounts();
 
-			expect(spyTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT, {
-				event_version: '2',
-				agent_id: 'agent-1',
-				run_type: 'test',
-				message_count: 1,
-				token_count: 15,
-				tool_call_count: 2,
-			});
+			expect(spyTrack).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT,
+				{
+					event_version: '2',
+					agent_id: 'agent-1',
+					run_type: 'test',
+					message_count: 3,
+					token_count: 15,
+					tool_call_count: 2,
+					counts_by_source: {
+						chat: { message_count: 2, token_count: 10, tool_call_count: 1 },
+						'instance-ai': { message_count: 1, token_count: 5, tool_call_count: 1 },
+					},
+				},
+			);
+			expect(
+				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT.getValidationError(spyTrack.mock.calls[0][1]),
+			).toBeNull();
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
 		});
 
 		test('should bucket test and production runs of the same agent into separate events', () => {
-			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', message_count: 1 });
+			telemetry.trackAgentExecution({
+				agent_id: 'agent-1',
+				run_type: 'test',
+				source: 'n8n_chat',
+				message_count: 1,
+			});
 			telemetry.trackAgentExecution({
 				agent_id: 'agent-1',
 				run_type: 'production',
-				message_count: 2,
+				source: 'n8n_chat_production',
+				message_count: 1,
+			});
+			telemetry.trackAgentExecution({
+				agent_id: 'agent-1',
+				run_type: 'production',
+				source: 'n8n_chat',
+				message_count: 1,
 			});
 
 			// @ts-expect-error Calling private method
 			telemetry.flushAgentExecutionCounts();
 
+			expect(spyTrack).toHaveBeenCalledTimes(2);
 			expect(spyTrack).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT,
-				expect.objectContaining({ run_type: 'test', message_count: 1 }),
+				expect.objectContaining({
+					run_type: 'test',
+					message_count: 1,
+					counts_by_source: { n8n_chat: { message_count: 1, token_count: 0, tool_call_count: 0 } },
+				}),
 			);
 			expect(spyTrack).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT,
-				expect.objectContaining({ run_type: 'production', message_count: 2 }),
+				expect.objectContaining({
+					run_type: 'production',
+					message_count: 2,
+					counts_by_source: { n8n_chat: { message_count: 2, token_count: 0, tool_call_count: 0 } },
+				}),
 			);
 		});
 
@@ -553,6 +594,7 @@ describe('Telemetry', () => {
 				message_count: 0,
 				token_count: 20,
 				tool_call_count: 0,
+				counts_by_source: { unknown: { message_count: 0, token_count: 20, tool_call_count: 0 } },
 			});
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
 		});
@@ -562,9 +604,15 @@ describe('Telemetry', () => {
 				agent_id: 'agent-1',
 				user_id: 'user-1',
 				run_type: 'test',
+				source: 'chat',
 				message_count: 1,
 			});
-			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', token_count: 20 });
+			telemetry.trackAgentExecution({
+				agent_id: 'agent-1',
+				run_type: 'test',
+				source: 'slack',
+				token_count: 20,
+			});
 
 			// @ts-expect-error Calling private method
 			telemetry.flushAgentExecutionCounts();
@@ -577,6 +625,7 @@ describe('Telemetry', () => {
 				message_count: 1,
 				token_count: 0,
 				tool_call_count: 0,
+				counts_by_source: { chat: { message_count: 1, token_count: 0, tool_call_count: 0 } },
 			});
 			expect(spyTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT, {
 				event_version: '2',
@@ -585,7 +634,18 @@ describe('Telemetry', () => {
 				message_count: 0,
 				token_count: 20,
 				tool_call_count: 0,
+				counts_by_source: { slack: { message_count: 0, token_count: 20, tool_call_count: 0 } },
 			});
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT.name,
+					userId: instanceId,
+					properties: expect.objectContaining({
+						user_id: undefined,
+						counts_by_source: { slack: { message_count: 0, token_count: 20, tool_call_count: 0 } },
+					}),
+				}),
+			);
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
 		});
 
@@ -643,17 +703,19 @@ describe('Telemetry', () => {
 			]);
 		});
 
-		test('should flush session metrics with additive sums', () => {
-			for (const [thread_id, latency_ms, cost, token_count, tool_call_count] of [
-				['thread-1', 100, 10, 1000, 1],
-				['thread-1', 200, 20, 2000, 3],
-				['thread-2', 400, 40, 4000, 5],
-				['thread-3', 800, 80, 8000, 7],
+		test('should split turn metrics by source and count distinct sessions', () => {
+			for (const [thread_id, source, latency_ms, cost, token_count, tool_call_count] of [
+				['thread-1', 'chat', 100, 10, 1000, 1],
+				['thread-1', 'instance-ai', 200, 20, 2000, 3],
+				['thread-2', 'chat', 400, 40, 4000, 5],
+				['thread-3', 'instance-ai', 800, 80, 8000, 7],
+				['thread-1', 'chat', 50, 5, 500, 2],
 			] as const) {
 				telemetry.trackAgentTurnFinished({
 					agent_id: 'agent-1',
 					user_id: 'user-1',
 					thread_id,
+					source,
 					run_type: 'test',
 					turn_status: 'succeeded',
 					configuration,
@@ -670,6 +732,7 @@ describe('Telemetry', () => {
 			const payload = spyTrack.mock.calls.find(
 				([eventName]) => eventName === TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS,
 			)?.[1];
+			expect(spyTrack).toHaveBeenCalledTimes(1);
 			expect(payload).toEqual({
 				event_version: '1',
 				agent_id: 'agent-1',
@@ -678,13 +741,34 @@ describe('Telemetry', () => {
 				run_type: 'test',
 				turn_status: 'succeeded',
 				session_count: 3,
-				turn_count: 4,
-				latency_ms_sum: 1500,
-				cost_sum: 150,
-				token_count_sum: 15000,
-				tool_call_count_sum: 16,
+				turn_count: 5,
+				latency_ms_sum: 1550,
+				cost_sum: 155,
+				token_count_sum: 15500,
+				tool_call_count_sum: 18,
 				num_skills_sum: 6,
+				counts_by_source: {
+					chat: {
+						session_count: 2,
+						turn_count: 3,
+						latency_ms_sum: 550,
+						cost_sum: 55,
+						token_count_sum: 5500,
+						tool_call_count_sum: 8,
+						num_skills_sum: 4,
+					},
+					'instance-ai': {
+						session_count: 2,
+						turn_count: 2,
+						latency_ms_sum: 1000,
+						cost_sum: 100,
+						token_count_sum: 10000,
+						tool_call_count_sum: 10,
+						num_skills_sum: 4,
+					},
+				},
 			});
+			expect(TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS.getValidationError(payload)).toBeNull();
 			expect(payload).not.toHaveProperty('latency_ms_avg');
 			expect(payload).not.toHaveProperty('latency_ms_p25');
 			expect(payload).not.toHaveProperty('cost_avg');

@@ -221,6 +221,7 @@ export interface IAgentExecutionTrackProperties extends ITelemetryTrackPropertie
 	 */
 	user_id?: string;
 	run_type: AgentRunTelemetryType;
+	source?: string;
 	/**
 	 * Fresh user turns only. Resume continuations and delegated child runs do not
 	 * increment this count.
@@ -258,6 +259,7 @@ export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProper
 	/** Internal aggregation key only. This must never be emitted to telemetry. */
 	thread_id: string;
 	run_type: AgentRunTelemetryType;
+	source?: string;
 	/** Absent for saved agents; 'inline' for node-embedded agent definitions. */
 	agent_type?: 'inline';
 	turn_status: AgentTurnTelemetryStatus;

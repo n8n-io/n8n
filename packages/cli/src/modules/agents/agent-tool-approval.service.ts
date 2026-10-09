@@ -4,6 +4,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError } from 'n8n-workflow';
 
 import { Telemetry } from '@/telemetry';
+import { normalizeAgentTelemetrySource } from '@/telemetry/agent-source';
 
 import type { StartExecutionParams } from './agent-execution.service';
 import { buildApprovalArgs } from './execution-recorder';
@@ -22,7 +23,8 @@ export class AgentToolApprovalService {
 			threadId,
 			agentId,
 			telemetry,
-		}: Pick<StartExecutionParams, 'threadId' | 'agentId' | 'telemetry'>,
+			source,
+		}: Pick<StartExecutionParams, 'threadId' | 'agentId' | 'telemetry' | 'source'>,
 		toolRegistry?: ToolRegistry,
 	): Promise<ToolApprovalContext> {
 		const approvedKeys = await this.grants.findKeys(threadId);
@@ -37,6 +39,7 @@ export class AgentToolApprovalService {
 						run_type: telemetry.runType,
 						approved: decision.approved,
 						scope: decision.scope ?? 'once',
+						counts_by_source: { [normalizeAgentTelemetrySource(source)]: { count: 1 } },
 					});
 				}
 				if (!decision.approved || decision.scope !== 'session') return;

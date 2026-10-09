@@ -15,6 +15,34 @@ const agentRunType = z
 	.enum(['test', 'production'])
 	.describe('production means the run executed the published snapshot; test means it ran a draft');
 
+const agentRunSource = z
+	.string()
+	.describe(
+		'Run source: instance-ai, mcp, chat, n8n_chat, workflow, task, subagent, or a chat integration (slack, telegram, linear, discord, whatsapp, teams). n8n_chat includes n8n_chat_production. unknown means the source was unavailable.',
+	);
+
+const agentExecutionCounts = {
+	message_count: z.number().describe('Fresh top-level user turns; delegated child runs excluded'),
+	token_count: z
+		.number()
+		.describe(
+			'Includes LLM calls belonging to no turn (title generation, memory, embeddings), so runs higher than "Agent session metrics".token_count_sum',
+		),
+	tool_call_count: z.number(),
+};
+
+const agentSessionMetrics = {
+	session_count: z.number(),
+	turn_count: z.number(),
+	latency_ms_sum: z.number(),
+	cost_sum: z.number(),
+	token_count_sum: z
+		.number()
+		.describe('Recorded-turn tokens only; reconciles with cost_sum, unlike token_count'),
+	tool_call_count_sum: z.number(),
+	num_skills_sum: z.number(),
+};
+
 // Spread into the session-metrics payload, matching `IAgentConfigurationTelemetryProperties`.
 const agentConfigurationTelemetry = {
 	model: z.string().nullable(),
@@ -175,6 +203,10 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			run_type: agentRunType,
 			approved: z.boolean(),
 			scope: z.enum(['once', 'session']),
+			counts_by_source: z
+				.record(agentRunSource, z.object({ count: z.literal(1) }))
+				.optional()
+				.describe('One entry for the run source, with count 1 for this approval response'),
 		}),
 	},
 	AGENT_SETUP_COMPLETED: {
@@ -214,15 +246,13 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.optional()
 				.describe('Present only for runs with an n8n user — absent for chat integrations and cron'),
 			run_type: agentRunType,
-			message_count: z
-				.number()
-				.describe('Fresh top-level user turns; delegated child runs excluded'),
-			token_count: z
-				.number()
+			...agentExecutionCounts,
+			counts_by_source: z
+				.record(agentRunSource, z.object(agentExecutionCounts))
+				.optional()
 				.describe(
-					'Includes LLM calls belonging to no turn (title generation, memory, embeddings), so runs higher than "Agent session metrics".token_count_sum',
+					'Counters by run source. Each counter sums to its top-level total. Delegated token and tool usage stays with the parent run source.',
 				),
-			tool_call_count: z.number(),
 		}),
 	},
 	AGENT_SESSION_METRICS: {
@@ -236,15 +266,13 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_type: z.literal('inline').optional(),
 			run_type: agentRunType,
 			turn_status: z.enum(['succeeded', 'failed']),
-			session_count: z.number(),
-			turn_count: z.number(),
-			latency_ms_sum: z.number(),
-			cost_sum: z.number(),
-			token_count_sum: z
-				.number()
-				.describe('Recorded-turn tokens only; reconciles with cost_sum, unlike token_count'),
-			tool_call_count_sum: z.number(),
-			num_skills_sum: z.number(),
+			...agentSessionMetrics,
+			counts_by_source: z
+				.record(agentRunSource, z.object(agentSessionMetrics))
+				.optional()
+				.describe(
+					'Metrics by run source. Turn metrics sum to the top-level totals. session_count and num_skills_sum count each session once per source, so they can overlap across sources.',
+				),
 			...agentConfigurationTelemetry,
 		}),
 	},

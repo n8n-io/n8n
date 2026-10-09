@@ -447,6 +447,7 @@ export class AgentWorkflowExecutionService {
 					agentId: telemetryAgentId,
 					userId: telemetryUserId,
 					runType,
+					source: AGENT_WORKFLOW_TRIGGER_TYPE,
 				}),
 				...modelStreamStallOptions(this.aiConfig),
 				...(telemetry ? { telemetry } : {}),
@@ -902,6 +903,7 @@ export class AgentWorkflowExecutionService {
 				user_id: telemetryUserId,
 				thread_id: threadId,
 				run_type: runType,
+				source: AGENT_WORKFLOW_TRIGGER_TYPE,
 				agent_type: 'inline',
 				turn_status:
 					run.messageRecord.error !== null || run.messageRecord.finishReason === 'error'

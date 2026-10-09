@@ -27,6 +27,7 @@ import type {
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
+import { normalizeAgentTelemetrySource } from './agent-source';
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
 
@@ -71,14 +72,18 @@ interface IApiInvocationsBuffer {
 	[userId: string]: IApiInvocationsBufferEntry;
 }
 
+interface IAgentExecutionCounts {
+	message_count: number;
+	token_count: number;
+	tool_call_count: number;
+}
+
 interface IAgentExecutionCountsBuffer {
-	[bufferKey: string]: {
+	[bufferKey: string]: IAgentExecutionCounts & {
 		agent_id: string;
 		user_id?: string;
 		run_type: AgentRunTelemetryType;
-		message_count: number;
-		token_count: number;
-		tool_call_count: number;
+		counts_by_source: Record<string, IAgentExecutionCounts>;
 	};
 }
 
@@ -100,6 +105,7 @@ interface IAgentSessionMetricsBuffer {
 		turn_status: IAgentTurnFinishedTrackProperties['turn_status'];
 		configuration: IAgentConfigurationTelemetryProperties;
 		sessions: Record<string, IAgentSessionMetrics>;
+		sessions_by_source: Record<string, Record<string, IAgentSessionMetrics>>;
 	};
 }
 
@@ -343,18 +349,7 @@ export class Telemetry {
 
 	private flushAgentSessionMetrics() {
 		for (const bucket of Object.values(this.agentSessionMetricsBuffer)) {
-			const sessions = Object.values(bucket.sessions);
-			if (sessions.length === 0) continue;
-
-			const latencyMsSum = sessions.reduce((total, session) => total + session.latency_ms, 0);
-			const costSum = sessions.reduce((total, session) => total + session.cost, 0);
-			const tokenCountSum = sessions.reduce((total, session) => total + session.token_count, 0);
-			const toolCallCountSum = sessions.reduce(
-				(total, session) => total + session.tool_call_count,
-				0,
-			);
-			const numSkillsSum = sessions.reduce((total, session) => total + session.num_skills, 0);
-			const turnCount = sessions.reduce((total, session) => total + session.turn_count, 0);
+			if (Object.keys(bucket.sessions).length === 0) continue;
 
 			this.track(TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS, {
 				event_version: '1',
@@ -364,17 +359,30 @@ export class Telemetry {
 				...bucket.configuration,
 				run_type: bucket.run_type,
 				turn_status: bucket.turn_status,
-				session_count: sessions.length,
-				turn_count: turnCount,
-				latency_ms_sum: latencyMsSum,
-				cost_sum: costSum,
-				token_count_sum: tokenCountSum,
-				tool_call_count_sum: toolCallCountSum,
-				num_skills_sum: numSkillsSum,
+				...this.sumAgentSessionMetrics(bucket.sessions),
+				counts_by_source: Object.fromEntries(
+					Object.entries(bucket.sessions_by_source).map(([source, sessions]) => [
+						source,
+						this.sumAgentSessionMetrics(sessions),
+					]),
+				),
 			});
 		}
 
 		this.agentSessionMetricsBuffer = {};
+	}
+
+	private sumAgentSessionMetrics(sessionsById: Record<string, IAgentSessionMetrics>) {
+		const sessions = Object.values(sessionsById);
+		return {
+			session_count: sessions.length,
+			turn_count: sessions.reduce((total, session) => total + session.turn_count, 0),
+			latency_ms_sum: sessions.reduce((total, session) => total + session.latency_ms, 0),
+			cost_sum: sessions.reduce((total, session) => total + session.cost, 0),
+			token_count_sum: sessions.reduce((total, session) => total + session.token_count, 0),
+			tool_call_count_sum: sessions.reduce((total, session) => total + session.tool_call_count, 0),
+			num_skills_sum: sessions.reduce((total, session) => total + session.num_skills, 0),
+		};
 	}
 
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
@@ -457,12 +465,23 @@ export class Telemetry {
 			message_count: 0,
 			token_count: 0,
 			tool_call_count: 0,
+			counts_by_source: {},
 		};
 
 		const agentExecutionCounts = this.agentExecutionCountsBuffer[bufferKey];
 		agentExecutionCounts.message_count += message_count;
 		agentExecutionCounts.token_count += token_count;
 		agentExecutionCounts.tool_call_count += tool_call_count;
+
+		const source = normalizeAgentTelemetrySource(properties.source);
+		const sourceCounts = (agentExecutionCounts.counts_by_source[source] ??= {
+			message_count: 0,
+			token_count: 0,
+			tool_call_count: 0,
+		});
+		sourceCounts.message_count += message_count;
+		sourceCounts.token_count += token_count;
+		sourceCounts.tool_call_count += tool_call_count;
 	}
 
 	trackAgentTurnFinished(properties: IAgentTurnFinishedTrackProperties) {
@@ -477,24 +496,30 @@ export class Telemetry {
 			turn_status: properties.turn_status,
 			configuration: properties.configuration,
 			sessions: {},
+			sessions_by_source: {},
 		};
 
 		const bucket = this.agentSessionMetricsBuffer[bufferKey];
-		const session = bucket.sessions[properties.thread_id] ?? {
-			latency_ms: 0,
-			cost: 0,
-			token_count: 0,
-			tool_call_count: 0,
-			num_skills: properties.configuration.num_skills,
-			turn_count: 0,
-		};
+		const source = normalizeAgentTelemetrySource(properties.source);
+		const sourceSessions = (bucket.sessions_by_source[source] ??= {});
+		// A session can contain turns from several sources. Keep the total deduplicated.
+		for (const sessions of [bucket.sessions, sourceSessions]) {
+			const session = sessions[properties.thread_id] ?? {
+				latency_ms: 0,
+				cost: 0,
+				token_count: 0,
+				tool_call_count: 0,
+				num_skills: properties.configuration.num_skills,
+				turn_count: 0,
+			};
 
-		session.latency_ms += properties.latency_ms;
-		session.cost += properties.cost;
-		session.token_count += properties.token_count;
-		session.tool_call_count += properties.tool_call_count;
-		session.turn_count++;
-		bucket.sessions[properties.thread_id] = session;
+			session.latency_ms += properties.latency_ms;
+			session.cost += properties.cost;
+			session.token_count += properties.token_count;
+			session.tool_call_count += properties.tool_call_count;
+			session.turn_count++;
+			sessions[properties.thread_id] = session;
+		}
 	}
 
 	trackApiInvocation(properties: IApiInvocationProperties) {
