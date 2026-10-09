@@ -28,19 +28,15 @@ export class SkillsController {
 		return await this.skillsApi.create(req.user, payload);
 	}
 
+	/** Saves the changes as the next version. There is no draft: the editor keeps them until here. */
 	@Patch('/:skillId')
-	async updateDraft(
+	async update(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('skillId') skillId: string,
 		@Body payload: UpdateAgentSkillDto,
 	) {
-		return await this.skillsApi.updateDraft(req.user, skillId, payload);
-	}
-
-	@Post('/:skillId/save')
-	async save(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
-		return await this.skillsApi.save(req.user, skillId);
+		return await this.skillsApi.update(req.user, skillId, payload);
 	}
 
 	@Delete('/:skillId')

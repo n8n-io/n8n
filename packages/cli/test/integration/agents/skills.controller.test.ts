@@ -63,7 +63,6 @@ describe('SkillsController', () => {
 				userId: memberUser.id,
 				name: 'Brand voice',
 				latestVersion: 1,
-				hasUnsavedChanges: false,
 				canEdit: true,
 				canDelete: true,
 				usedBy: { drafts: [], pins: [] },
@@ -82,7 +81,6 @@ describe('SkillsController', () => {
 			const read = await member.get(`/skills/${id}`).expect(200);
 			expect(read.body.data).toMatchObject({ scope: 'instance', canEdit: false, canDelete: false });
 			await member.patch(`/skills/${id}`).send({ instructions: 'x' }).expect(403);
-			await member.post(`/skills/${id}/save`).expect(403);
 			await member.delete(`/skills/${id}`).expect(403);
 		});
 	});
@@ -129,31 +127,43 @@ describe('SkillsController', () => {
 		});
 	});
 
-	describe('draft and save', () => {
-		it('saves a changed draft as the next version and an unchanged one as nothing', async () => {
+	describe('save', () => {
+		it('saves changed content as the next version and unchanged content as nothing', async () => {
 			const { id, skillHash } = await create(member, { scope: 'user', skill: body });
 
-			const patched = await member
+			const saved = await member
 				.patch(`/skills/${id}`)
 				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
 				.expect(200);
-			const pending = await member.get(`/skills/${id}`).expect(200);
-			const saved = await member.post(`/skills/${id}/save`).expect(200);
-			const again = await member.post(`/skills/${id}/save`).expect(200);
+			const again = await member
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.' })
+				.expect(200);
+			const read = await member.get(`/skills/${id}`).expect(200);
 
-			expect(patched.body.data.skill.instructions).toBe('Be very brief.');
-			expect(pending.body.data).toMatchObject({ hasUnsavedChanges: true, latestVersion: 1 });
 			expect(saved.body.data).toMatchObject({ id, version: 2, created: true });
+			expect(saved.body.data.skill.instructions).toBe('Be very brief.');
 			expect(again.body.data).toMatchObject({ id, version: 2, created: false });
+			expect(read.body.data).toMatchObject({
+				latestVersion: 2,
+				skillHash: saved.body.data.skillHash,
+			});
 		});
 
-		it('refuses a draft update based on a stale hash', async () => {
-			const { id } = await create(member, { scope: 'user', skill: body });
+		it('refuses a save based on a stale hash', async () => {
+			const { id, skillHash } = await create(member, { scope: 'user', skill: body });
+			await member
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'First.', baseSkillHash: skillHash });
 
 			await member
 				.patch(`/skills/${id}`)
-				.send({ instructions: 'x', baseSkillHash: 'stale' })
+				.send({ instructions: 'Second.', baseSkillHash: skillHash })
 				.expect(409);
+		});
+
+		it('refuses blank instructions', async () => {
+			await create(member, { scope: 'user', skill: { ...body, instructions: '   ' } }, 400);
 		});
 	});
 

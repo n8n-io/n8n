@@ -24,7 +24,7 @@ export type SkillScope = z.infer<typeof skillScopeSchema>;
 
 export type SkillSource = 'ui' | 'upload' | 'agent';
 
-/** One row of the skills list. Name and description come from the latest saved version. */
+/** One row of the skills list. Name and description come from the latest version. */
 export type SkillListItem = {
 	id: string;
 	name: string;
@@ -36,10 +36,8 @@ export type SkillListItem = {
 	/** Set for a "Just you" skill. */
 	userId: string | null;
 	source: SkillSource;
-	/** Number of the latest saved version, the one following agents run. */
+	/** Number of the latest version, the one following agents run. */
 	latestVersion: number;
-	/** The draft row differs from the latest saved version. */
-	hasUnsavedChanges: boolean;
 	/** Distinct agents that use the skill: draft refs plus published pins. */
 	usedByAgents: number;
 	canEdit: boolean;
@@ -64,26 +62,23 @@ export type SkillUsage = {
 	}>;
 };
 
-/** One skill with its editable draft. */
+/** One skill with the content of its latest version. */
 export type SkillDetail = SkillListItem & {
-	/** The draft row: what the editor shows and autosave writes. */
 	skill: AgentSkill;
-	/** Hash of `skill`, for the concurrency check of a draft update (`baseSkillHash`). */
+	/** Hash of `skill`. Send it back as `baseSkillHash` so a save cannot overwrite a newer version. */
 	skillHash: string;
 	usedBy: SkillUsage;
-};
-
-export type SkillDraftResponse = {
-	skill: AgentSkill;
-	skillHash: string;
 };
 
 export type SkillSaveResponse = {
 	id: string;
 	versionId: string;
 	version: number;
-	/** False when the draft matched the latest version and nothing was saved. */
+	/** False when the content matched the latest version and nothing was saved. */
 	created: boolean;
+	/** The content of the latest version after the save. */
+	skill: AgentSkill;
+	skillHash: string;
 };
 
 export class ListSkillsQueryDto extends Z.class({

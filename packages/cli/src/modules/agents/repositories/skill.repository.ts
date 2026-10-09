@@ -77,32 +77,20 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return await this.managerFor(ctx).find(Skill, { where: { id: In(unique(ids)) } });
 	}
 
-	/** The draft row (version NULL) of each skill, keyed by skill id. */
-	async findDrafts(
-		skillIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, ResolvedSkillRow>> {
-		if (skillIds.length === 0) return new Map();
-		const versions = await this.managerFor(ctx).find(SkillVersion, {
-			where: { skillId: In(unique(skillIds)), version: IsNull() },
-		});
-		return await this.resolveBySkill(versions, ctx);
-	}
-
-	/** The highest saved version of each skill, keyed by skill id. A following ref reads it. */
+	/** The highest version of each skill, keyed by skill id. A following ref reads it. */
 	async findLatestSaved(
 		skillIds: string[],
 		ctx: OperationContext = {},
 	): Promise<Map<string, ResolvedSkillRow>> {
 		if (skillIds.length === 0) return new Map();
 		const versions = await this.managerFor(ctx).find(SkillVersion, {
-			where: { skillId: In(unique(skillIds)), version: Not(IsNull()) },
+			where: { skillId: In(unique(skillIds)) },
 			order: { version: 'DESC' },
 		});
 		return await this.resolveBySkill(latestPerSkill(versions), ctx);
 	}
 
-	/** Name and description of the latest saved version, without files. */
+	/** Name and description of the latest version, without files. */
 	async findLatestSummaries(
 		skillIds: string[],
 		ctx: OperationContext = {},
@@ -110,7 +98,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 		if (skillIds.length === 0) return new Map();
 		const versions = await this.managerFor(ctx).find(SkillVersion, {
 			select: ['skillId', 'version', 'name', 'description'],
-			where: { skillId: In(unique(skillIds)), version: Not(IsNull()) },
+			where: { skillId: In(unique(skillIds)) },
 			order: { version: 'DESC' },
 		});
 		return new Map(
@@ -134,7 +122,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return new Map(rows.map((row) => [row.version.id, row]));
 	}
 
-	/** The pinned version of each skill ref of one published agent version, keyed by ref id. */
+	/** The pinned version of each skill of one published agent version, keyed by skill id. */
 	async findPinned(
 		agentVersionId: string,
 		ctx: OperationContext = {},
@@ -147,22 +135,22 @@ export class SkillRepository extends BaseRepository<Skill> {
 		const result = new Map<string, ResolvedSkillRow>();
 		for (const pin of pins) {
 			const row = versions.get(pin.skillVersionId);
-			if (row) result.set(pin.skillRefId, row);
+			if (row) result.set(pin.skillId, row);
 		}
 		return result;
 	}
 
-	/** The next version number of a skill: the highest saved version plus one, or 1. */
+	/** The next version number of a skill: the highest version plus one, or 1. */
 	async nextVersionNumber(skillId: string, ctx: OperationContext = {}): Promise<number> {
 		const latest = await this.managerFor(ctx).findOne(SkillVersion, {
 			select: ['version'],
-			where: { skillId, version: Not(IsNull()) },
+			where: { skillId },
 			order: { version: 'DESC' },
 		});
 		return (latest?.version ?? 0) + 1;
 	}
 
-	/** Inserts the skill, its draft row and v1, both with the same content. */
+	/** Inserts the skill with its v1. */
 	async createSkill(
 		skill: { id: string; target: SkillTarget; source: SkillSource; createdById: string | null },
 		content: SkillContent,
@@ -176,33 +164,11 @@ export class SkillRepository extends BaseRepository<Skill> {
 				source: skill.source,
 				createdById: skill.createdById,
 			});
-			// Agents read saved versions only, so every skill starts with v1.
-			await insertVersion(manager, skill.id, null, content, skill.createdById);
 			await insertVersion(manager, skill.id, 1, content, skill.createdById);
 		});
 	}
 
-	/** Overwrites the draft row and its files. No agent reads the draft row. */
-	async writeDraft(skillId: string, content: SkillContent, ctx: OperationContext = {}) {
-		await this.runInTransaction(ctx, async (manager) => {
-			const draft = await manager.findOne(SkillVersion, { where: { skillId, version: IsNull() } });
-			if (!draft) throw new UnexpectedError('Skill has no draft row', { extra: { skillId } });
-			// `save`, not `update`: the partial-entity type of `update` rejects free-form JSON.
-			await manager.save(SkillVersion, {
-				...draft,
-				name: content.name,
-				description: content.description,
-				instructions: content.instructions,
-				frontmatter: content.frontmatter,
-				contentHash: skillContentHash(content),
-			});
-			await manager.delete(SkillFile, { skillVersionId: draft.id });
-			await insertFiles(manager, draft.id, content.files);
-			await manager.update(Skill, { id: skillId }, { updatedAt: new Date() });
-		});
-	}
-
-	/** Inserts one numbered version with its files and returns its id. */
+	/** Inserts the next version with its files and returns its id. The skill moves up the list. */
 	async insertSavedVersion(
 		skillId: string,
 		version: number,
@@ -210,14 +176,15 @@ export class SkillRepository extends BaseRepository<Skill> {
 		createdById: string | null,
 		ctx: OperationContext = {},
 	): Promise<string> {
-		return await this.runInTransaction(
-			ctx,
-			async (manager) => await insertVersion(manager, skillId, version, content, createdById),
-		);
+		return await this.runInTransaction(ctx, async (manager) => {
+			const id = await insertVersion(manager, skillId, version, content, createdById);
+			await manager.update(Skill, { id: skillId }, { updatedAt: new Date() });
+			return id;
+		});
 	}
 
 	async insertPins(
-		pins: Array<{ agentVersionId: string; skillRefId: string; skillVersionId: string }>,
+		pins: Array<{ agentVersionId: string; skillId: string; skillVersionId: string }>,
 		ctx: OperationContext = {},
 	): Promise<void> {
 		if (pins.length === 0) return;
@@ -225,9 +192,10 @@ export class SkillRepository extends BaseRepository<Skill> {
 	}
 
 	/**
-	 * Replaces the dependency rows of one agent. Refs to unknown skills are skipped. When
-	 * one skill has a following ref and a pinned ref, the following ref wins, because the
-	 * draft then runs the latest saved version.
+	 * Sets the dependency rows of one agent to these refs. Refs to unknown skills are
+	 * skipped. A row that stays keeps its `createdAt`, which orders an agent's skills, and
+	 * new rows sort after it in the given order. When one skill has a following ref and a
+	 * pinned ref, the following ref wins, because the draft then runs the latest version.
 	 */
 	async replaceDependencies(
 		agentId: string,
@@ -240,31 +208,72 @@ export class SkillRepository extends BaseRepository<Skill> {
 			pinBySkill.set(ref.skillId, ref.versionId ?? null);
 		}
 		await this.runInTransaction(ctx, async (manager, txCtx) => {
-			const existing = await this.findByIds([...pinBySkill.keys()], txCtx);
-			await manager.delete(AgentSkillDependency, { agentId });
-			if (existing.length === 0) return;
+			const known = new Set(
+				(await this.findByIds([...pinBySkill.keys()], txCtx)).map((skill) => skill.id),
+			);
+			const current = await manager.find(AgentSkillDependency, { where: { agentId } });
+			const removed = current.filter(
+				(row) => !known.has(row.skillId) || !pinBySkill.has(row.skillId),
+			);
+			if (removed.length > 0) {
+				await manager.delete(AgentSkillDependency, {
+					agentId,
+					skillId: In(removed.map((row) => row.skillId)),
+				});
+			}
+			const kept = new Map(current.map((row) => [row.skillId, row]));
+			for (const [skillId, skillVersionId] of pinBySkill) {
+				const row = kept.get(skillId);
+				if (row && row.skillVersionId !== skillVersionId) {
+					await manager.update(AgentSkillDependency, { agentId, skillId }, { skillVersionId });
+				}
+			}
+			const added = [...pinBySkill].filter(([skillId]) => known.has(skillId) && !kept.has(skillId));
+			if (added.length === 0) return;
+			// One insert gives every row the same timestamp, so each new row gets its own.
+			const newest = Math.max(Date.now(), ...current.map((row) => row.createdAt.getTime() + 1));
 			await manager.insert(
 				AgentSkillDependency,
-				existing.map((skill) => ({
+				added.map(([skillId, skillVersionId], index) => ({
 					agentId,
-					skillId: skill.id,
-					skillVersionId: pinBySkill.get(skill.id) ?? null,
+					skillId,
+					skillVersionId,
+					createdAt: new Date(newest + index),
 				})),
 			);
 		});
 	}
 
-	/** Agents whose draft follows the skill (no pin), with their skill refs. */
+	/** Agents whose draft follows the skill (no pin). */
 	async findFollowingAgents(
 		skillId: string,
 		ctx: OperationContext = {},
-	): Promise<Array<Pick<Agent, 'id' | 'name' | 'schema'>>> {
+	): Promise<Array<Pick<Agent, 'id' | 'name'>>> {
 		const agentIds = await this.findFollowingAgentIds([skillId], ctx);
 		if (agentIds.length === 0) return [];
 		return await this.managerFor(ctx).find(Agent, {
 			where: { id: In(agentIds) },
-			select: ['id', 'name', 'schema'],
+			select: ['id', 'name'],
 		});
+	}
+
+	/** The skill refs of each agent's draft, in the order they were attached. */
+	async findDependencies(
+		agentIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, Array<{ skillId: string; versionId: string | null }>>> {
+		if (agentIds.length === 0) return new Map();
+		const rows = await this.managerFor(ctx).find(AgentSkillDependency, {
+			where: { agentId: In(unique(agentIds)) },
+			order: { createdAt: 'ASC' },
+		});
+		const result = new Map<string, Array<{ skillId: string; versionId: string | null }>>();
+		for (const row of rows) {
+			const refs = result.get(row.agentId) ?? [];
+			refs.push({ skillId: row.skillId, versionId: row.skillVersionId });
+			result.set(row.agentId, refs);
+		}
+		return result;
 	}
 
 	/** Ids of the agents whose draft follows any of these skills (no pin). */
@@ -297,7 +306,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 				agentId: agent.id,
 				agentName: agent.name,
 				agentVersionId: pin.agentVersionId,
-				version: version.version ?? 0,
+				version: version.version,
 				isActive: agent.activeVersionId === pin.agentVersionId,
 			})),
 		};
@@ -336,7 +345,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 	}
 
 	/**
-	 * Deletes the skill. Its versions, files and draft dependency rows go by cascade. A pin
+	 * Deletes the skill. Its versions, files and dependency rows go by cascade. A pin
 	 * blocks the delete at the database, so callers check usage first.
 	 */
 	async deleteSkill(skillId: string, ctx: OperationContext = {}): Promise<void> {
@@ -374,7 +383,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 	private async findPinsWithAgents(skillIds: string[], manager: EntityManager) {
 		const versions = await manager.find(SkillVersion, {
 			select: ['id', 'skillId', 'version'],
-			where: { skillId: In(unique(skillIds)), version: Not(IsNull()) },
+			where: { skillId: In(unique(skillIds)) },
 		});
 		if (versions.length === 0) return [];
 		const pins = await manager.find(AgentHistorySkill, {
@@ -454,7 +463,7 @@ function latestPerSkill(versions: SkillVersion[]): SkillVersion[] {
 async function insertVersion(
 	manager: EntityManager,
 	skillId: string,
-	version: number | null,
+	version: number,
 	content: SkillContent,
 	createdById: string | null,
 ): Promise<string> {
@@ -489,7 +498,6 @@ async function insertFiles(
 			skillVersionId,
 			path: file.path,
 			content: file.content,
-			sizeBytes: Buffer.byteLength(file.content, 'utf8'),
 		})),
 	);
 }

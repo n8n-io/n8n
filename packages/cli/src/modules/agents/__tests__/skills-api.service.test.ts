@@ -2,7 +2,7 @@
 import type { CreateSkillDto, ListSkillsQueryDto, UpdateAgentSkillDto } from '@n8n/api-types';
 import type { ProjectScopeService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
-import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
@@ -38,21 +38,21 @@ function skill(id: string, target: Partial<Pick<Skill, 'userId' | 'projectId'>> 
 
 function row(
 	owner: Skill,
-	version: number | null,
-	fields: { name?: string; instructions?: string; contentHash?: string } = {},
+	version: number,
+	fields: { name?: string; instructions?: string } = {},
 ): ResolvedSkillRow {
 	const name = fields.name ?? NAMES[owner.id] ?? 'Skill';
 	return {
 		skill: owner,
 		version: mock<SkillVersion>({
-			id: `${owner.id}-v${version ?? 'draft'}`,
+			id: `${owner.id}-v${version}`,
 			skillId: owner.id,
 			version,
 			name,
 			description: `${name} desc`,
 			instructions: fields.instructions ?? 'Do it.',
 			frontmatter: null,
-			contentHash: fields.contentHash ?? 'hash',
+			contentHash: 'hash',
 		}),
 		files: [] as SkillFile[],
 	};
@@ -91,12 +91,6 @@ describe('SkillsApiService', () => {
 			async (ids) =>
 				new Map(visible.filter((s) => ids.includes(s.id)).map((s) => [s.id, row(s, 2)] as const)),
 		);
-		repository.findDrafts.mockImplementation(
-			async (ids) =>
-				new Map(
-					visible.filter((s) => ids.includes(s.id)).map((s) => [s.id, row(s, null)] as const),
-				),
-		);
 		repository.countUsingAgents.mockResolvedValue(new Map());
 		repository.findProjectNames.mockResolvedValue(new Map());
 		repository.findUsage.mockResolvedValue({ drafts: [], pins: [] });
@@ -121,7 +115,8 @@ describe('SkillsApiService', () => {
 		});
 
 		it('searches the latest version names and descriptions before paging', async () => {
-			const byName = await service.list(user, query({ search: 'RULES', take: 10 }));
+			// One per page: paging before the search would put skill_a on the page and find nothing.
+			const byName = await service.list(user, query({ search: 'RULES', take: 1 }));
 			const byDescription = await service.list(user, query({ search: 'sources desc' }));
 
 			expect(byName.count).toBe(1);
@@ -178,9 +173,6 @@ describe('SkillsApiService', () => {
 
 		it('describes each skill', async () => {
 			visible = [skill('skill_a', { projectId: 'project-1' })];
-			repository.findDrafts.mockResolvedValue(
-				new Map([['skill_a', row(visible[0], null, { contentHash: 'changed' })]]),
-			);
 			repository.countUsingAgents.mockResolvedValue(new Map([['skill_a', 2]]));
 			repository.findProjectNames.mockResolvedValue(new Map([['project-1', 'Team']]));
 			skillService.canAccess.mockImplementation(async (_user, _skill, op) => op === 'update');
@@ -197,7 +189,6 @@ describe('SkillsApiService', () => {
 				userId: null,
 				source: 'ui',
 				latestVersion: 2,
-				hasUnsavedChanges: true,
 				usedByAgents: 2,
 				canEdit: true,
 				canDelete: false,
@@ -208,19 +199,20 @@ describe('SkillsApiService', () => {
 	});
 
 	describe('get', () => {
-		it('returns the draft, its hash and the usage', async () => {
+		it('returns the latest version, its hash and the usage', async () => {
 			const usage = {
 				drafts: [{ agentId: 'agent-1', agentName: 'Support', projectId: 'project-1' }],
 				pins: [],
 			};
 			repository.findUsage.mockResolvedValue(usage);
-			repository.findDrafts.mockResolvedValue(
-				new Map([['skill_a', row(visible[0], null, { instructions: 'typing' })]]),
+			repository.findLatestSaved.mockResolvedValue(
+				new Map([['skill_a', row(visible[0], 3, { instructions: 'saved' })]]),
 			);
 
 			const detail = await service.get(user, 'skill_a');
 
-			expect(detail.skill.instructions).toBe('typing');
+			expect(detail.skill.instructions).toBe('saved');
+			expect(detail.latestVersion).toBe(3);
 			expect(detail.skillHash).toBe(getAgentSkillHash(detail.skill));
 			expect(detail.usedBy).toEqual(usage);
 		});
@@ -244,6 +236,19 @@ describe('SkillsApiService', () => {
 				visible.push(skill('skill_new'));
 				return 'skill_new';
 			});
+		});
+
+		// A custom role can hold projectSkill:create without projectSkill:read.
+		it('returns the new skill to a creator who may not read it afterwards', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			skillService.canAccess.mockResolvedValue(false);
+
+			const detail = await service.create(
+				user,
+				payload({ scope: 'project', projectId: 'project-1' }),
+			);
+
+			expect(detail).toMatchObject({ id: 'skill_new', name: 'Skill', canEdit: false });
 		});
 
 		it('creates a "Just you" skill for the caller', async () => {
@@ -296,83 +301,52 @@ describe('SkillsApiService', () => {
 		});
 	});
 
-	describe('updateDraft', () => {
+	describe('update', () => {
 		const update = (fields: Partial<UpdateAgentSkillDto>) => fields as UpdateAgentSkillDto;
+		const saved = {
+			versionId: 'v3',
+			version: 3,
+			created: true,
+			skill: { name: 'Brand voice', description: 'd', instructions: 'New.' },
+		};
 
-		it('writes the merged draft and returns its hash', async () => {
-			const result = await service.updateDraft(user, 'skill_a', update({ instructions: 'New.' }));
+		it('saves the update for a user who may edit the skill', async () => {
+			skillService.save.mockResolvedValue(saved);
 
-			expect(skillService.writeDraft).toHaveBeenCalledWith(
-				'skill_a',
-				expect.objectContaining({ name: 'Brand voice', instructions: 'New.' }),
-			);
-			expect(result.skillHash).toBe(getAgentSkillHash(result.skill));
-		});
-
-		it('removes allowed tools and references set to an empty list', async () => {
-			repository.findDrafts.mockResolvedValue(new Map([['skill_a', { ...row(visible[0], null) }]]));
-
-			const result = await service.updateDraft(
+			const result = await service.update(
 				user,
 				'skill_a',
-				update({ allowedTools: [], references: [], instructions: 'New.' }),
+				update({ instructions: 'New.', baseSkillHash: 'base' }),
 			);
 
-			expect(result.skill).not.toHaveProperty('allowedTools');
-			expect(result.skill).not.toHaveProperty('references');
-		});
-
-		it('writes nothing when nothing changed', async () => {
-			await service.updateDraft(user, 'skill_a', update({ instructions: 'Do it.' }));
-
-			expect(skillService.writeDraft).not.toHaveBeenCalled();
-		});
-
-		it('refuses a stale base hash', async () => {
-			await expect(
-				service.updateDraft(
-					user,
-					'skill_a',
-					update({ instructions: 'New.', baseSkillHash: 'old' }),
-				),
-			).rejects.toThrow(ConflictError);
-			expect(skillService.writeDraft).not.toHaveBeenCalled();
-		});
-
-		it('refuses blank instructions', async () => {
-			await expect(
-				service.updateDraft(user, 'skill_a', update({ instructions: '   ' })),
-			).rejects.toThrow(UserError);
-		});
-
-		it('refuses a user who may not edit the skill', async () => {
-			skillService.canAccess.mockImplementation(async (_user, _skill, op) => op === 'read');
-
-			await expect(
-				service.updateDraft(user, 'skill_a', update({ instructions: 'New.' })),
-			).rejects.toThrow(ForbiddenError);
-		});
-	});
-
-	describe('save', () => {
-		it('saves for a user who may edit the skill', async () => {
-			skillService.save.mockResolvedValue({ versionId: 'v3', version: 3, created: true });
-
-			expect(await service.save(user, 'skill_a')).toEqual({
-				id: 'skill_a',
-				versionId: 'v3',
-				version: 3,
-				created: true,
-			});
-			expect(skillService.save).toHaveBeenCalledWith('skill_a', user.id);
+			expect(skillService.save).toHaveBeenCalledWith(
+				'skill_a',
+				{ instructions: 'New.', baseSkillHash: 'base' },
+				user.id,
+			);
 			expect(skillService.canAccess).toHaveBeenCalledWith(user, visible[0], 'update');
+			expect(result).toEqual({
+				id: 'skill_a',
+				...saved,
+				skillHash: getAgentSkillHash(saved.skill),
+			});
 		});
 
 		it('refuses a user who may not edit the skill', async () => {
 			skillService.canAccess.mockImplementation(async (_user, _skill, op) => op === 'read');
 
-			await expect(service.save(user, 'skill_a')).rejects.toThrow(ForbiddenError);
+			await expect(
+				service.update(user, 'skill_a', update({ instructions: 'New.' })),
+			).rejects.toThrow(ForbiddenError);
 			expect(skillService.save).not.toHaveBeenCalled();
+		});
+
+		it('answers a skill the user cannot see like a missing one', async () => {
+			skillService.canAccess.mockResolvedValue(false);
+
+			await expect(
+				service.update(user, 'skill_a', update({ instructions: 'New.' })),
+			).rejects.toThrow(NotFoundError);
 		});
 	});
 

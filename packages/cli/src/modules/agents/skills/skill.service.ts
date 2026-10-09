@@ -17,11 +17,24 @@ import {
 	type ResolvedSkillRow,
 	type SkillTarget,
 } from '../repositories/skill.repository';
-import type { SkillContent } from './skill-content-hash';
+import { getAgentSkillHash } from '../utils/agent-config-hash';
+import { skillContentHash, type SkillContent } from './skill-content-hash';
 import { findIntroducedNameClashes, renameIntroducesClash } from './skill-names';
 
-/** A skill ref in an agent config. A ref with `versionId` runs that saved version. */
+/** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; enabled?: boolean; versionId?: string };
+
+/** Fields to change, plus the hash of the version the editor started from. */
+export type SkillUpdate = Partial<AgentSkill> & { baseSkillHash?: string };
+
+export type SkillSaveResult = {
+	versionId: string;
+	version: number;
+	/** False when the content matched the latest version and nothing was saved. */
+	created: boolean;
+	/** The content of the latest version after the save. */
+	skill: AgentSkill;
+};
 
 const ALLOWED_TOOLS_KEY = 'allowed-tools';
 
@@ -60,14 +73,8 @@ export function toAgentSkill(row: ResolvedSkillRow): AgentSkill {
 	};
 }
 
-function contentOf(row: ResolvedSkillRow): SkillContent {
-	return {
-		name: row.version.name,
-		description: row.version.description,
-		instructions: row.version.instructions,
-		frontmatter: row.version.frontmatter,
-		files: row.files.map(({ path, content }) => ({ path, content })),
-	};
+function assertHasInstructions(skill: AgentSkill): void {
+	if (!skill.instructions.trim()) throw new UserError('Skill instructions are required.');
 }
 
 function toRecord(rows: Map<string, ResolvedSkillRow>): Record<string, AgentSkill> {
@@ -92,9 +99,8 @@ export class SkillService {
 	// ---------------------------------------------------------------- reads
 
 	/**
-	 * What an agent draft runs, keyed by ref id: the latest saved version, or the pinned
-	 * version of a ref with `versionId`. A pin to a version of another skill falls back to
-	 * the latest. The draft row is never run.
+	 * What an agent draft runs, keyed by ref id: the latest version, or the pinned version
+	 * of a ref with `versionId`. A pin to a version of another skill falls back to the latest.
 	 */
 	async resolveForAgentDraft(
 		refs: SkillRef[],
@@ -103,24 +109,7 @@ export class SkillService {
 		return toRecord(await this.resolveRows(refs, ctx));
 	}
 
-	/** The editor's view of an agent's skills: the draft row of each skill. */
-	async resolveForEditor(
-		refs: SkillRef[],
-		ctx: OperationContext = {},
-	): Promise<Record<string, AgentSkill>> {
-		const drafts = await this.skillRepository.findDrafts(
-			refs.map((ref) => ref.id),
-			ctx,
-		);
-		const rows = new Map<string, ResolvedSkillRow>();
-		for (const ref of refs) {
-			const row = drafts.get(ref.id);
-			if (row) rows.set(ref.id, row);
-		}
-		return toRecord(rows);
-	}
-
-	/** The pinned versions of one published agent version, keyed by ref id. */
+	/** The pinned versions of one published agent version, keyed by skill id. */
 	async resolvePinned(
 		agentVersionId: string,
 		ctx: OperationContext = {},
@@ -147,7 +136,7 @@ export class SkillService {
 		return rows;
 	}
 
-	/** The names agents see: those of the latest saved versions. */
+	/** The names agents see: those of the latest versions. */
 	private async latestNames(skillIds: string[], ctx: OperationContext) {
 		const rows = await this.skillRepository.findLatestSaved(skillIds, ctx);
 		return new Map([...rows].map(([id, row]) => [id, row.version.name]));
@@ -155,11 +144,12 @@ export class SkillService {
 
 	// ---------------------------------------------------------------- writes
 
-	/** Creates a skill with its draft row and v1. Returns the new id. */
+	/** Creates a skill with its v1. Returns the new id. */
 	async create(
 		input: { target: SkillTarget; skill: AgentSkill; source: SkillSource; createdById: string },
 		ctx: OperationContext = {},
 	): Promise<string> {
+		assertHasInstructions(input.skill);
 		const id = `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
 			{ id, target: input.target, source: input.source, createdById: input.createdById },
@@ -171,67 +161,60 @@ export class SkillService {
 	}
 
 	/**
-	 * Autosave: overwrites the draft row. No agent reads it, so no agent is marked and no
-	 * name check runs. Both happen at save.
-	 */
-	async writeDraft(skillId: string, skill: AgentSkill, ctx: OperationContext = {}) {
-		await this.txRunner.run(ctx, async (txCtx) => {
-			await this.skillRepository.lockForEdit([skillId], txCtx);
-			const draft = (await this.skillRepository.findDrafts([skillId], txCtx)).get(skillId);
-			if (!draft) throw new NotFoundError('Skill not found');
-			await this.skillRepository.writeDraft(
-				skillId,
-				toSkillContent(skill, draft.version.frontmatter),
-				txCtx,
-			);
-		});
-	}
-
-	/**
-	 * Save: copies the draft row into the next version, unless it has the hash of the
-	 * latest version. Every agent that follows the skill then runs the new version, and
-	 * each one that was in sync with its published version shows unpublished changes.
+	 * Save: merges the update onto the latest version and stores the result as the next
+	 * version, unless the content did not change. Every agent that follows the skill then
+	 * runs the new version, and each one that was in sync with its published version
+	 * shows unpublished changes. `baseSkillHash` is checked under the edit lock, so two
+	 * saves from the same base cannot both pass.
 	 */
 	async save(
 		skillId: string,
+		update: SkillUpdate,
 		userId: string,
 		ctx: OperationContext = {},
-	): Promise<{ versionId: string; version: number; created: boolean }> {
+	): Promise<SkillSaveResult> {
 		const { saved, following } = await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
-			const draft = (await this.skillRepository.findDrafts([skillId], txCtx)).get(skillId);
-			if (!draft) throw new NotFoundError('Skill not found');
 			const latest = (await this.skillRepository.findLatestSaved([skillId], txCtx)).get(skillId);
-			if (latest && latest.version.contentHash === draft.version.contentHash) {
-				const unchanged = {
-					versionId: latest.version.id,
-					version: latest.version.version ?? 0,
-					created: false,
-				};
-				return { saved: unchanged, following: [] };
-			}
-			if (latest && latest.version.name !== draft.version.name) {
-				await this.assertRenameKeepsNamesApart(
-					skillId,
-					latest.version.name,
-					draft.version.name,
-					txCtx,
+			if (!latest) throw new NotFoundError('Skill not found');
+			const current = toAgentSkill(latest);
+			const { baseSkillHash, ...changes } = update;
+			if (baseSkillHash !== undefined && baseSkillHash !== getAgentSkillHash(current)) {
+				throw new ConflictError(
+					'The skill was changed somewhere else. Reload to get the latest version.',
 				);
+			}
+			const skill: AgentSkill = { ...current, ...changes };
+			if (!skill.allowedTools?.length) delete skill.allowedTools;
+			if (!skill.references?.length) delete skill.references;
+			assertHasInstructions(skill);
+			const content = toSkillContent(skill, latest.version.frontmatter);
+			if (skillContentHash(content) === latest.version.contentHash) {
+				const unchanged = { versionId: latest.version.id, version: latest.version.version };
+				return { saved: { ...unchanged, created: false, skill: current }, following: [] };
+			}
+			if (skill.name !== latest.version.name) {
+				await this.assertRenameKeepsNamesApart(skillId, latest.version.name, skill.name, txCtx);
 			}
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);
 			const versionId = await this.skillRepository.insertSavedVersion(
 				skillId,
 				version,
-				contentOf(draft),
+				content,
 				userId,
 				txCtx,
 			);
 			const followingIds = await this.skillRepository.findFollowingAgentIds([skillId], txCtx);
 			await this.agentRepository.markDraftChangedIfInSync(followingIds, txCtx);
-			return { saved: { versionId, version, created: true }, following: followingIds };
+			return { saved: { versionId, version, created: true, skill }, following: followingIds };
 		});
 		if (following.length > 0) await this.refreshAgents(following);
-		this.logger.debug('Saved skill', { skillId, ...saved, following });
+		this.logger.debug('Saved skill', {
+			skillId,
+			version: saved.version,
+			created: saved.created,
+			following,
+		});
 		return saved;
 	}
 
@@ -257,8 +240,12 @@ export class SkillService {
 		ctx: OperationContext,
 	): Promise<void> {
 		const agents = await this.skillRepository.findFollowingAgents(skillId, ctx);
+		const refs = await this.skillRepository.findDependencies(
+			agents.map((agent) => agent.id),
+			ctx,
+		);
 		const otherIds = (agent: (typeof agents)[number]) =>
-			(agent.schema?.skills ?? []).map((ref) => ref.id).filter((id) => id !== skillId);
+			(refs.get(agent.id) ?? []).map((ref) => ref.skillId).filter((id) => id !== skillId);
 		const names = await this.latestNames(agents.flatMap(otherIds), ctx);
 		const clashing = agents.filter((agent) =>
 			renameIntroducesClash(
@@ -300,9 +287,9 @@ export class SkillService {
 		ctx: OperationContext,
 	): Promise<void> {
 		await this.skillRepository.insertPins(
-			[...versionByRef].map(([skillRefId, skillVersionId]) => ({
+			[...versionByRef].map(([skillId, skillVersionId]) => ({
 				agentVersionId,
-				skillRefId,
+				skillId,
 				skillVersionId,
 			})),
 			ctx,
@@ -322,7 +309,7 @@ export class SkillService {
 		const pinned = await this.skillRepository.findPinned(agentVersionId, ctx);
 		return refs.map(({ versionId: _dropped, ...ref }) => {
 			const row = pinned.get(ref.id);
-			return row ? { ...ref, id: row.skill.id, versionId: row.version.id } : ref;
+			return row ? { ...ref, versionId: row.version.id } : ref;
 		});
 	}
 
@@ -335,17 +322,20 @@ export class SkillService {
 	}
 
 	/**
-	 * The check an agent config save runs on the skill refs it gets. Unknown ids are
-	 * dropped unless disabled or already attached. A ref keeps a pin only when the agent
-	 * already had it. A new ref must be attachable and must not clash by name.
+	 * The check an agent config save runs on the skill refs it gets. The agent's current
+	 * refs come from its dependency rows. Unknown ids are dropped unless disabled or
+	 * already attached. A ref keeps a pin only when the agent already had it. A new ref
+	 * must be attachable and must not clash by name.
 	 */
 	async checkRefs(
-		agent: { projectId: string; skills: SkillRef[] },
+		agent: { id: string; projectId: string },
 		refs: SkillRef[],
 		ctx: OperationContext = {},
 	): Promise<SkillRef[]> {
-		const existingIds = new Set(agent.skills.map((ref) => ref.id));
-		const existingPins = new Map(agent.skills.map((ref) => [ref.id, ref.versionId]));
+		const current =
+			(await this.skillRepository.findDependencies([agent.id], ctx)).get(agent.id) ?? [];
+		const existingIds = new Set(current.map((ref) => ref.skillId));
+		const existingPins = new Map(current.map((ref) => [ref.skillId, ref.versionId]));
 		const found = new Map(
 			(
 				await this.skillRepository.findByIds(
