@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/Excel/test/v1/requestUrls.test.ts
+  s_16204bc5c53227::t_c3264e4ec795e6 1-91
+packages/nodes-base/nodes/Microsoft/Excel/test/v1/requestUrls.workflow.json
+  s_16204bc5c53227::t_cdc1290c9fd775 1-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "edb9e22e105d0d7ad6694379d73f32d20ecd5042",
+  "prompts": {},
+  "sessions": {
+    "s_16204bc5c53227": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaf0bdea6f1d472d9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
