@@ -2,9 +2,9 @@ import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-type
 import type { SerializableAgentState } from '@n8n/agents';
 import {
 	BaseRepository,
-	TransactionRunner,
 	escapeLike,
 	LIKE_ESCAPE_CLAUSE,
+	TransactionRunner,
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -40,6 +40,21 @@ export interface AgentExecutionThreadPage {
 	threads: AgentExecutionThread[];
 	nextCursor: string | null;
 }
+
+/** Position of the last thread on a keyset page: `updatedAt`, then `id` breaks ties. */
+export interface AgentExecutionThreadKeyset {
+	updatedAt: Date;
+	id: string;
+}
+
+export interface AgentExecutionThreadKeysetPage {
+	threads: AgentExecutionThread[];
+	hasMore: boolean;
+}
+
+export type AgentExecutionThreadOwnedChanges = Partial<
+	Pick<AgentExecutionThread, 'title' | 'projectId'>
+>;
 
 interface AgentSessionDeletionRefs {
 	attachmentBinaryDataIds: string[];
@@ -402,6 +417,97 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				sessionOrigin: origin,
 			});
 		}
+	}
+
+	/** Top-level private sessions of one user with one agent, newest first. */
+	async findOwnedByAgent(
+		agentId: string,
+		ownerId: string,
+		options: { limit?: number } = {},
+	): Promise<AgentExecutionThread[]> {
+		return await this.find({
+			where: { agentId, ownerId, accessScope: 'user', parentThreadId: IsNull() },
+			order: { updatedAt: 'DESC', id: 'DESC' },
+			...(options.limit ? { take: options.limit } : {}),
+		});
+	}
+
+	/** One private session of a user with an agent. */
+	async findOwnedById(
+		agentId: string,
+		ownerId: string,
+		threadId: string,
+	): Promise<AgentExecutionThread | null> {
+		return await this.findOneBy({ id: threadId, agentId, ownerId, accessScope: 'user' });
+	}
+
+	/**
+	 * Update the editable fields of a session. The caller must check ownership
+	 * first, for example with {@link findOwnedById}.
+	 */
+	async updateOwned(threadId: string, changes: AgentExecutionThreadOwnedChanges): Promise<void> {
+		const set: AgentExecutionThreadOwnedChanges = {};
+		if (changes.title !== undefined) set.title = changes.title;
+		if (changes.projectId !== undefined) set.projectId = changes.projectId;
+		// TypeORM rejects an update without values.
+		if (Object.keys(set).length === 0) return;
+		await this.update({ id: threadId }, set);
+	}
+
+	/**
+	 * One page of the top-level private sessions of a user with an agent,
+	 * newest first. `before` is the last session of the previous page. The
+	 * `id` breaks ties between sessions with the same `updatedAt`, so no
+	 * session is skipped or repeated across pages.
+	 */
+	async findOwnedHistoryPage(
+		agentId: string,
+		ownerId: string,
+		limit: number,
+		search?: string,
+		before?: AgentExecutionThreadKeyset,
+	): Promise<AgentExecutionThreadKeysetPage> {
+		const updatedAt = this.updatedAtExpression();
+		const query = this.createQueryBuilder('thread')
+			.where('thread.agentId = :agentId', { agentId })
+			.andWhere('thread.ownerId = :ownerId', { ownerId })
+			.andWhere("thread.accessScope = 'user'")
+			.andWhere('thread.parentThreadId IS NULL');
+		const term = search?.trim().toLowerCase();
+		if (term) {
+			query.andWhere(`LOWER(thread.title) LIKE :search ${LIKE_ESCAPE_CLAUSE}`, {
+				search: `%${escapeLike(term)}%`,
+			});
+		}
+		if (before) {
+			query.andWhere(
+				`(${updatedAt} < :beforeAt OR (${updatedAt} = :beforeAt AND thread.id < :beforeId))`,
+				{ beforeAt: before.updatedAt, beforeId: before.id },
+			);
+		}
+		const threads = await query
+			.orderBy('thread.updatedAt', 'DESC')
+			.addOrderBy('thread.id', 'DESC')
+			.take(limit + 1)
+			.getMany();
+		const hasMore = threads.length > limit;
+		if (hasMore) threads.pop();
+		return { threads, hasMore };
+	}
+
+	/** Sessions of an agent last updated before `cutoff`, oldest first, for pruning. */
+	async findByAgentUpdatedBefore(
+		agentId: string,
+		cutoff: Date,
+		limit: number,
+	): Promise<AgentExecutionThread[]> {
+		return await this.createQueryBuilder('thread')
+			.where('thread.agentId = :agentId', { agentId })
+			.andWhere(`${this.updatedAtExpression()} < :cutoff`, { cutoff })
+			.orderBy('thread.updatedAt', 'ASC')
+			.addOrderBy('thread.id', 'ASC')
+			.take(limit)
+			.getMany();
 	}
 
 	async findByParentThreadId(
