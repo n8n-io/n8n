@@ -10,7 +10,6 @@ import { EventService, WorkflowSharingService } from '@n8n/backend-services';
 import { AuthenticatedRequest, type User } from '@n8n/db';
 import { Body, Get, RestController, GlobalScope, Query, Patch, Post, Param } from '@n8n/decorators';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
-import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { BreakingChangeMigrationService } from './breaking-changes.migration.service';
@@ -19,6 +18,7 @@ import {
 	MigrationFindingQueryService,
 	type ReportScope,
 } from './query/migration-finding-query.service';
+import { resolveReportScope } from './query/report-scope';
 import { MigrationFindingSyncService } from './sync/migration-finding-sync.service';
 import { MigrationFindingTriageService } from './triage/migration-finding-triage.service';
 import { isWorkflowLevelRule } from './types';
@@ -38,17 +38,8 @@ export class BreakingChangesController {
 		private readonly eventService: EventService,
 	) {}
 
-	/**
-	 * A user who can edit every workflow reads the whole instance. Everyone else
-	 * reads the workflows they can edit, since those are the ones they can fix.
-	 */
 	private async scopeFor(user: User): Promise<ReportScope> {
-		if (hasGlobalScope(user, 'workflow:update')) return { kind: 'instance' };
-		const workflowIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(user, [
-			'workflow:update',
-		]);
-		// A workflow shared into two of the user's projects comes back twice.
-		return { kind: 'workflows', workflowIds: [...new Set(workflowIds)] };
+		return await resolveReportScope(user, this.workflowSharingService);
 	}
 
 	/**

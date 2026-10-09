@@ -152,6 +152,23 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	}
 
 	/**
+	 * Findings of one workflow for the version in a status a user can set (open
+	 * and won't fix), oldest first.
+	 */
+	async listTriageableForWorkflow(
+		targetVersion: BreakingChangeVersion,
+		workflowId: string,
+		ctx: OperationContext,
+	): Promise<(MigrationFinding & { status: MigrationFindingTriageStatus })[]> {
+		const rows = await this.managerFor(ctx).find(MigrationFinding, {
+			where: { targetVersion, workflowId, status: In(TRIAGE_STATUSES) },
+			order: { id: 'ASC' },
+		});
+		// The query already filters by status. The guard only narrows the type.
+		return rows.filter(hasTriageStatus);
+	}
+
+	/**
 	 * Sets the status a user picked on one finding. Returns `false` when the finding
 	 * does not exist or is in a status only the scan sets, for example `fixed`.
 	 * `statusChangedAt` moves only when the status actually changes.

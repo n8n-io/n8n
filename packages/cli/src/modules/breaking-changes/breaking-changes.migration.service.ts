@@ -6,6 +6,7 @@ import { calculateWorkflowChecksum } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
+import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { NodeTypes } from '@/node-types';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -45,6 +46,7 @@ export class BreakingChangeMigrationService {
 		ruleId: string,
 		workflowId: string,
 		user: User,
+		options: { source?: WorkflowActionSource } = {},
 	): Promise<WorkflowMigrationResult> {
 		const migration = this.migrationRegistry.get(ruleId);
 		if (!migration) {
@@ -111,6 +113,7 @@ export class BreakingChangeMigrationService {
 		const updated = await this.workflowService.update(user, workflow, workflowId, {
 			versionName: 'Automated node migration',
 			expectedChecksum,
+			source: options.source,
 		});
 
 		this.logger.info('Applied automated node migration', {

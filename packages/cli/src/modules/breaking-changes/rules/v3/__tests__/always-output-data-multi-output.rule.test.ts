@@ -151,4 +151,10 @@ describe('AlwaysOutputDataMultiOutputRule', () => {
 			expect(recommendations[0].action).toContain('Always Output Data');
 		});
 	});
+
+	describe('getMetadata()', () => {
+		it('should need a user confirmation, since a review decides the finding', () => {
+			expect(rule.getMetadata().resolution).toBe('userConfirmation');
+		});
+	});
 });

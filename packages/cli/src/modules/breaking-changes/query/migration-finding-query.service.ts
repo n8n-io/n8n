@@ -6,6 +6,7 @@ import type {
 	BreakingChangeVersion,
 	BreakingChangeWorkflowIssue,
 	BreakingChangeWorkflowRuleResult,
+	MigrationFindingTriageStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -48,6 +49,12 @@ const workflowFilter = (scope: ReportScope) =>
 
 /** The rule fields both report types share. */
 type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
+
+/** One open or won't fix finding of a workflow, with its rule and the rule's current issues. */
+export type WorkflowFinding = RuleDescription & {
+	status: MigrationFindingTriageStatus;
+	issues: BreakingChangeWorkflowIssue[];
+};
 
 /** The same fields the scan loads, so a rule sees the same workflow data on both paths. */
 const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'nodes', 'updatedAt'];
@@ -187,6 +194,44 @@ export class MigrationFindingQueryService {
 		}
 
 		return { ...(await this.describeRule(rule, affectedWorkflows)), affectedWorkflows };
+	}
+
+	/**
+	 * The open and won't fix findings of one workflow, oldest first. It reads the
+	 * finding table, so a caller that needs a save it just made reflected runs the
+	 * sync service's single-workflow re-check first.
+	 */
+	async getWorkflowFindings(
+		targetVersion: BreakingChangeVersion,
+		workflowId: string,
+	): Promise<WorkflowFinding[]> {
+		const [findings, [workflow]] = await Promise.all([
+			this.findingRepository.listTriageableForWorkflow(targetVersion, workflowId, {}),
+			this.workflowRepository.findByIds([workflowId], { fields: WORKFLOW_FIELDS }),
+		]);
+		if (!workflow) return [];
+
+		const result: WorkflowFinding[] = [];
+		for (const finding of findings) {
+			const rule = this.ruleRegistry.getRule(finding.ruleId);
+			if (!rule || !isWorkflowLevelRule(rule)) continue;
+			// A batch rule decides from all workflows at once, so one workflow has no issue list of its own.
+			const issues =
+				'detectWorkflow' in rule
+					? ((await this.issuesFromRecheck(rule, [workflow])).get(workflow.id) ?? [])
+					: [];
+			result.push({ ...(await this.describeRule(rule)), status: finding.status, issues });
+		}
+		return result;
+	}
+
+	/** Whether the report has a finding for the workflow in any status, fixed included. */
+	async hasWorkflowFindings(
+		targetVersion: BreakingChangeVersion,
+		workflowId: string,
+	): Promise<boolean> {
+		const findings = await this.findingRepository.listForWorkflows(targetVersion, [workflowId], {});
+		return findings.length > 0;
 	}
 
 	private async describeRule(

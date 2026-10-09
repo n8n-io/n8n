@@ -5,6 +5,7 @@ import {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	MIGRATION_REPORT_TARGET_VERSION,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
@@ -55,6 +56,7 @@ import { McpConfig } from './mcp.config';
 import {
 	INSTALL_COMMUNITY_NODE_TOOL,
 	MCP_CREATE_AGENT_TOOL_NAME,
+	MCP_GET_MIGRATION_REPORT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
 	USER_CALLED_MCP_TOOL_EVENT,
@@ -63,6 +65,7 @@ import { getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
 	arePreferenceToolsEnabled,
+	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
 import type {
@@ -102,6 +105,7 @@ import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
 import { createGetWorkflowVersionsDiffTool } from './tools/get-workflow-versions-diff.tool';
+import type { ReadWorkflowMigrationFindings } from './tools/migration-report/migration-report.utils';
 import {
 	createExpandInstanceActivityTool,
 	createGetInstanceActivityTool,
@@ -469,6 +473,12 @@ export class McpService {
 		const userPreferencesInstructionsEnabled =
 			featureFlags.aiPreferencesEnabled &&
 			(allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
+		// The same rationale again: only a caller whose role and grant reach the report is
+		// pointed at it.
+		const migrationReportReadable = canReadMigrationReport(this.moduleRegistry, user);
+		const migrationReportInstructionsEnabled =
+			migrationReportReadable &&
+			(allowedToolNames?.has(MCP_GET_MIGRATION_REPORT_TOOL_NAME) ?? true);
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
@@ -484,6 +494,9 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					isAgentsEnabled: agentInstructionsEnabled,
 					isUserPreferencesEnabled: userPreferencesInstructionsEnabled,
+					migrationReportTargetVersion: migrationReportInstructionsEnabled
+						? (MIGRATION_REPORT_TARGET_VERSION ?? undefined)
+						: undefined,
 					credentialDescriptionsEnabled: featureFlags.credentialDescriptionsEnabled === true,
 				}),
 			},
@@ -797,6 +810,13 @@ export class McpService {
 			);
 		}
 
+		// Not builder-gated: reading the report and running its built-in fixes need no builder.
+		// The tools belong to the `breaking-changes` module, so they load only when it serves a report.
+		if (migrationReportReadable && MIGRATION_REPORT_TARGET_VERSION) {
+			const { registerMigrationReportTools } = await import('./tools/migration-report/index.js');
+			registerMigrationReportTools(registerIfAllowed, user, MIGRATION_REPORT_TARGET_VERSION);
+		}
+
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
 			await this.registerBuilderTools(
@@ -851,6 +871,26 @@ export class McpService {
 			this.mcpConfig,
 			user,
 		);
+	}
+
+	/**
+	 * The reader update_workflow reports migration findings with, for a caller whose role and
+	 * grant reach the migration report. Anyone else gets no findings in the update result.
+	 */
+	private async getMigrationFindingsReader(
+		user: User,
+		allowedToolNames: Set<string> | undefined,
+	): Promise<ReadWorkflowMigrationFindings | undefined> {
+		if (!MIGRATION_REPORT_TARGET_VERSION || !canReadMigrationReport(this.moduleRegistry, user)) {
+			return undefined;
+		}
+		if (allowedToolNames && !allowedToolNames.has(MCP_GET_MIGRATION_REPORT_TOOL_NAME)) {
+			return undefined;
+		}
+		const { createWorkflowMigrationFindingsReader } = await import(
+			'./tools/migration-report/index.js'
+		);
+		return createWorkflowMigrationFindingsReader(MIGRATION_REPORT_TARGET_VERSION);
 	}
 
 	/**
@@ -1059,7 +1099,10 @@ export class McpService {
 			this.globalConfig,
 			this.errorWorkflowValidationService,
 			this.aiGatewayService,
-			uninstalledNodeOptions,
+			{
+				...uninstalledNodeOptions,
+				readMigrationFindings: await this.getMigrationFindingsReader(user, allowedToolNames),
+			},
 			this.logger,
 			this.postSaveMetrics,
 		);

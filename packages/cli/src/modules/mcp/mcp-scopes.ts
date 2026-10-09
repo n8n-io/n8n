@@ -2,8 +2,12 @@ import type { McpScope } from '@n8n/api-types';
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 
 import {
+	MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
+	MCP_GET_MIGRATION_REPORT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_MIGRATE_WORKFLOW_TOOL_NAME,
 	MCP_SAVE_USER_PREFERENCE_TOOL_NAME,
+	MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME,
 	MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
 	MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
 } from './mcp.constants';
@@ -120,6 +124,20 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
 		MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
 	],
+	// The migration report scopes reuse the role permissions of the same name, so a token can
+	// only do what the role can. Registration still checks the role: a grant can outlive one.
+	'breakingChanges:list': [
+		MCP_GET_MIGRATION_REPORT_TOOL_NAME,
+		MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
+	],
+	// A fix or a status starts from the findings, so the read tools ride along. Neither scope
+	// grants update_workflow: fixing a workflow by hand needs `workflow:write`.
+	'breakingChanges:migrate': [
+		MCP_GET_MIGRATION_REPORT_TOOL_NAME,
+		MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
+		MCP_MIGRATE_WORKFLOW_TOOL_NAME,
+		MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME,
+	],
 };
 
 /**
@@ -181,6 +199,17 @@ export const INSTANCE_CONTEXT_TOOLS: ReadonlySet<string> = new Set([
 	'get_instance_activity',
 	'expand_instance_activity',
 	'get_node_usage',
+]);
+
+/**
+ * Tools that need a migration report target version, the `breaking-changes`
+ * module, and a caller with `breakingChanges:list`. Excluded from the "every
+ * mapped tool is registered" drift guard like {@link AGENT_TOOLS}; their own
+ * registration tests live in migration-report-tools.test.ts.
+ */
+export const MIGRATION_REPORT_TOOLS: ReadonlySet<string> = new Set([
+	...TOOLS_BY_SCOPE['breakingChanges:list'],
+	...TOOLS_BY_SCOPE['breakingChanges:migrate'],
 ]);
 
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([

@@ -69,6 +69,10 @@ import {
 } from './workflow-operations';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import {
+	workflowMigrationFindingsSchema,
+	type ReadWorkflowMigrationFindings,
+} from '../migration-report/migration-report.utils';
 import { getMcpWorkflow, validateMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
@@ -362,6 +366,7 @@ const outputSchema = {
 		.describe('Error message explaining why the update failed. Present only on failure.'),
 	errorCode: z.string().optional().describe('Machine-readable error code.'),
 	note: z.string().optional(),
+	migrationFindings: workflowMigrationFindingsSchema.optional(),
 } satisfies z.ZodRawShape;
 /**
  * The success payload, derived from `outputSchema` so the handler cannot build a
@@ -1094,6 +1099,11 @@ export const createUpdateWorkflowTool = (
 		findUninstalledNodeTypes?: FindUninstalledNodeTypes;
 		/** Whether this session can call the install tool; steers the warning text. */
 		installToolAvailable?: boolean;
+		/**
+		 * Reads the migration report findings of the saved workflow, so a fix needs no
+		 * extra check. Supplied only when the caller can read the migration report.
+		 */
+		readMigrationFindings?: ReadWorkflowMigrationFindings;
 	} = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
@@ -1398,6 +1408,19 @@ export const createUpdateWorkflowTool = (
 						? ((updatedWorkflow.settings ?? {}) as Record<string, unknown>)
 						: undefined,
 				};
+
+				if (options.readMigrationFindings) {
+					// The save already succeeded, so a failed read leaves the field out.
+					try {
+						const migrationFindings = await options.readMigrationFindings(updatedWorkflow.id);
+						if (migrationFindings) output.migrationFindings = migrationFindings;
+					} catch (error) {
+						logger.warn('Reading migration findings after update_workflow failed', {
+							workflowId: updatedWorkflow.id,
+							error,
+						});
+					}
+				}
 
 				try {
 					if (autoAssignOutcomes.length > 0) {

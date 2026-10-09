@@ -28,6 +28,9 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 				'On nodes with multiple outputs, "Always Output Data" currently adds an empty item to the first output even when another output produced data, which misroutes items. A future version fixes this so the empty item is only added when every output is empty. Workflows relying on the current behavior will produce different output.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'behaviorChanges',
+			// Detection reads only the node setting, so updating the downstream logic does not
+			// clear the finding. A review decides it.
+			resolution: 'userConfirmation',
 		};
 	}
 
@@ -38,7 +41,7 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 			{
 				action: 'Review nodes using "Always Output Data" with multiple outputs',
 				description:
-					'After the fix, these nodes will no longer add an empty item to the first output when another output has data. Update any downstream logic that relies on that empty first-output item (for example a branch off the first output that runs on the empty case).',
+					'After the fix, these nodes will no longer add an empty item to the first output when another output has data. Update any downstream logic that relies on that empty first-output item (for example a branch off the first output that runs on the empty case). The finding stays while the node keeps "Always Output Data" on: after your review, set it to Won\'t fix.',
 			},
 		];
 	}

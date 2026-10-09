@@ -33,6 +33,8 @@ export class ChatTriggerEmbeddedJsonRule implements IBreakingChangeWorkflowRule 
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
 			documentationUrl: 'https://www.npmjs.com/package/@n8n/chat',
+			// The fix is in the page that embeds the chat, so no workflow edit clears the finding.
+			resolution: 'userConfirmation',
 		};
 	}
 
@@ -44,7 +46,7 @@ export class ChatTriggerEmbeddedJsonRule implements IBreakingChangeWorkflowRule 
 			{
 				action: 'Update your embedded chat to support the JSON message format',
 				description:
-					'If you embed the @n8n/chat widget with a pinned version, update it to a version that supports the JSON WebSocket format. If you use a custom chat client, make sure it parses JSON frames. Embeds using the unpinned CDN script update automatically and need no action.',
+					"If you embed the @n8n/chat widget with a pinned version, update it to a version that supports the JSON WebSocket format. If you use a custom chat client, make sure it parses JSON frames. Embeds using the unpinned CDN script update automatically and need no action. No change in the workflow clears this finding: when your embed is ready, set the finding to Won't fix.",
 			},
 		];
 	}

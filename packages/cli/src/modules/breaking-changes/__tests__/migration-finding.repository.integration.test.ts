@@ -452,6 +452,42 @@ describe('MigrationFindingRepository', () => {
 		});
 	});
 
+	describe('listTriageableForWorkflow', () => {
+		test('returns the open and wont_fix findings of one workflow for the version, oldest first', async () => {
+			const [workflow, other] = await Promise.all([createWorkflow(), createWorkflow()]);
+			await findingRepository.insertMany(
+				[
+					finding(workflow.id, 'rule-a'),
+					finding(workflow.id, 'rule-b'),
+					finding(workflow.id, 'rule-c'),
+					finding(workflow.id, 'rule-d'),
+					finding(workflow.id, 'rule-a', 'v2'),
+					finding(other.id, 'rule-a'),
+				],
+				ctx,
+			);
+			await setStatus(workflow.id, 'rule-b', 'wont_fix');
+			await setStatus(workflow.id, 'rule-c', 'fixed');
+			await setStatus(workflow.id, 'rule-d', 'notified');
+
+			const listed = await findingRepository.listTriageableForWorkflow('v3', workflow.id, ctx);
+
+			expect(listed.map((f) => [f.ruleId, f.status])).toEqual([
+				['rule-a', 'open'],
+				['rule-b', 'wont_fix'],
+			]);
+			expect(listed.every((f) => f.workflowId === workflow.id && f.targetVersion === 'v3')).toBe(
+				true,
+			);
+		});
+
+		test('returns an empty list for a workflow without findings', async () => {
+			const workflow = await createWorkflow();
+
+			expect(await findingRepository.listTriageableForWorkflow('v3', workflow.id, ctx)).toEqual([]);
+		});
+	});
+
 	describe('workflow filter', () => {
 		test('limits the counts and the rule list to the given workflows', async () => {
 			const [first, second, third] = await Promise.all([

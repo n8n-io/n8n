@@ -14,6 +14,7 @@ export const MCP_SCOPE_GROUPS: Array<{ key: string; resources: readonly string[]
 	{ key: 'projectsAndFolders', resources: ['project'] },
 	{ key: 'communityNodes', resources: ['communityPackage'] },
 	{ key: 'preferences', resources: ['aiPreference'] },
+	{ key: 'migrationReport', resources: ['breakingChanges'] },
 ];
 
 /** Icons per scope resource prefix, shown in the client details modal. */
@@ -27,6 +28,7 @@ export const MCP_SCOPE_RESOURCE_ICONS: Record<string, IconName> = {
 	tag: 'tags',
 	communityPackage: 'package-open',
 	aiPreference: 'sliders-horizontal',
+	breakingChanges: 'list-checks',
 };
 export const MCP_SETTINGS_VIEW = 'McpSettings';
 export const MCP_WORKFLOWS_VIEW = 'McpSettingsWorkflows';

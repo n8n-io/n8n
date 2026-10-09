@@ -21,6 +21,15 @@ export const enum BreakingChangeCategory {
 	infrastructure = 'infrastructure',
 }
 
+/**
+ * How a finding of a workflow rule is resolved.
+ *
+ * - `workflowEdit`: a change to the workflow clears the finding on the next save.
+ * - `userConfirmation`: no workflow edit clears the finding, because the change is handled
+ *   outside n8n or only needs a review. The user resolves it by setting the finding to won't fix.
+ */
+export type BreakingChangeRuleResolution = 'workflowEdit' | 'userConfirmation';
+
 export interface BreakingChangeRuleMetadata {
 	version: BreakingChangeVersion;
 	title: string;
@@ -29,6 +38,8 @@ export interface BreakingChangeRuleMetadata {
 	/** What happens if the user does not fix this breaking change. */
 	impact: BreakingChangeRuleImpact;
 	documentationUrl?: string;
+	/** How a finding of this workflow rule is resolved. Defaults to `workflowEdit`. */
+	resolution?: BreakingChangeRuleResolution;
 }
 
 export interface IBreakingChangeInstanceRule {

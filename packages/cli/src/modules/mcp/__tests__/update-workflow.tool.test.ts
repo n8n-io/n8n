@@ -32,6 +32,7 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { shapeToStandardSchema } from '../tool-schema.util';
+import type { ReadWorkflowMigrationFindings } from '../tools/migration-report/migration-report.utils';
 
 const mockAutoPopulateNodeCredentials = vi.fn();
 const mockTrackAutoassignOutcomes = vi.fn();
@@ -398,6 +399,104 @@ describe('update-workflow MCP tool', () => {
 					versionDescription: 'Updated nodes: B',
 				}),
 			);
+		});
+	});
+
+	describe('migration findings', () => {
+		const operations = [
+			{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+		];
+		const findings = {
+			targetVersion: 'v3',
+			openFindings: [
+				{
+					ruleId: 'cron-removed-v3',
+					title: 'Cron node removed',
+					impact: 'executionsFail' as const,
+					resolution: 'workflowEdit' as const,
+					issues: [{ title: 'Removed', description: 'Gone', level: 'error' as const }],
+				},
+			],
+			wontFixFindings: 1,
+		};
+
+		const createToolWithReader = (readMigrationFindings: ReadWorkflowMigrationFindings) =>
+			createUpdateWorkflowTool(
+				user,
+				workflowFinderService,
+				workflowService,
+				urlService,
+				telemetry,
+				nodeTypes,
+				credentialsService,
+				sharedWorkflowRepository,
+				collaborationService,
+				dataTableOps as never,
+				tagService,
+				globalConfig,
+				buildErrorWorkflowValidationService(),
+				aiGatewayService,
+				{ readMigrationFindings },
+				logger,
+				postSaveMetrics,
+			);
+
+		test('reports what the migration report still flags on the saved workflow', async () => {
+			const reader = vi.fn<ReadWorkflowMigrationFindings>().mockResolvedValue(findings);
+			const tool = createToolWithReader(reader);
+
+			const result = (await callHandler({ workflowId: 'wf-1', operations }, tool)) as {
+				structuredContent: Record<string, unknown>;
+			};
+
+			expect(reader).toHaveBeenCalledWith('wf-1');
+			expect(reader).toHaveBeenCalledAfter(updateMock);
+			expect(result.structuredContent.migrationFindings).toEqual(findings);
+			// The field must stay inside the published schema, or strict clients reject the response.
+			expect(() =>
+				z
+					.object(tool.config.outputSchema as z.ZodRawShape)
+					.strict()
+					.parse(result.structuredContent),
+			).not.toThrow();
+		});
+
+		test('leaves the field out for a workflow the report never flagged', async () => {
+			const reader = vi.fn<ReadWorkflowMigrationFindings>().mockResolvedValue(undefined);
+
+			const result = (await callHandler(
+				{ workflowId: 'wf-1', operations },
+				createToolWithReader(reader),
+			)) as { structuredContent: Record<string, unknown> };
+
+			expect(result.structuredContent).not.toHaveProperty('migrationFindings');
+		});
+
+		test('still reports the saved update when the read fails', async () => {
+			const reader = vi
+				.fn<ReadWorkflowMigrationFindings>()
+				.mockRejectedValue(new Error('database gone'));
+
+			const result = (await callHandler(
+				{ workflowId: 'wf-1', operations },
+				createToolWithReader(reader),
+			)) as { isError?: boolean; structuredContent: Record<string, unknown> };
+
+			expect(result.isError).toBeUndefined();
+			expect(result.structuredContent).toMatchObject({ workflowId: 'wf-1' });
+			expect(result.structuredContent).not.toHaveProperty('migrationFindings');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Reading migration findings after update_workflow failed',
+				expect.objectContaining({ workflowId: 'wf-1' }),
+			);
+		});
+
+		test('reports nothing about migration for a caller without a reader', async () => {
+			const result = (await callHandler({ workflowId: 'wf-1', operations })) as {
+				structuredContent: Record<string, unknown>;
+			};
+
+			expect(result.structuredContent).not.toHaveProperty('migrationFindings');
 		});
 	});
 

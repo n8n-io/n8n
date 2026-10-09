@@ -98,5 +98,9 @@ describe('ChatTriggerEmbeddedJsonRule', () => {
 		it('should report an executionsFail impact for embedded chats that cannot read the new frames', () => {
 			expect(rule.getMetadata().impact).toBe('executionsFail');
 		});
+
+		it('should need a user confirmation, since the fix is outside the workflow', () => {
+			expect(rule.getMetadata().resolution).toBe('userConfirmation');
+		});
 	});
 });

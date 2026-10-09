@@ -77,6 +77,15 @@ export const MCP_CALL_AGENT_TOOL_NAME = 'call_agent';
 export const MCP_CREATE_AGENT_TOOL_NAME = 'create_agent';
 
 /**
+ * Migration report tools. Reading needs the `breakingChanges:list` scope; a fix or a status
+ * needs `breakingChanges:migrate`.
+ */
+export const MCP_GET_MIGRATION_REPORT_TOOL_NAME = 'get_migration_report';
+export const MCP_GET_MIGRATION_FINDINGS_TOOL_NAME = 'get_migration_findings';
+export const MCP_MIGRATE_WORKFLOW_TOOL_NAME = 'migrate_workflow';
+export const MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME = 'set_migration_finding_status';
+
+/**
  * Triggers supported in production mode for MCP execution
  */
 export const SUPPORTED_PRODUCTION_MCP_TRIGGERS = {
