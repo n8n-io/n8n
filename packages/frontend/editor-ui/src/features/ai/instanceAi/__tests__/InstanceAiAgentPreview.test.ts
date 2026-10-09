@@ -16,7 +16,6 @@ const threadState = reactive({
 	activeArtifactId: undefined as string | undefined,
 	isSendingMessage: false,
 	isStreaming: false,
-	isHydratingThread: false,
 	getAgentEventName: (_agentId: string): string | undefined => undefined,
 });
 const metadataState = ref<Record<string, unknown>>();
@@ -110,7 +109,6 @@ describe('InstanceAiAgentPreview', () => {
 		threadState.isSendingMessage = false;
 		threadState.isStreaming = false;
 		threadState.getAgentEventName = () => undefined;
-		threadState.isHydratingThread = false;
 		updateThreadMetadataMock.mockClear();
 		persistPendingAgentMock.mockReset();
 	});
@@ -280,30 +278,6 @@ describe('InstanceAiAgentPreview', () => {
 			expect(getAgentNameOverridesFromThreadMetadata(metadataState.value)).toEqual([
 				{ agentId: 'agent-2', name: 'Other Agent' },
 				{ agentId: 'agent-1', name: 'Support Agent', replaces: 'Support Bot' },
-			]);
-		});
-
-		it('records a name saved during thread hydration against the event name that hydration loads', async () => {
-			threadState.isHydratingThread = true;
-			metadataState.value = {
-				instanceAiAgentBuilderTarget: {
-					agentId: 'agent-1',
-					projectId: 'project-1',
-					name: 'Support Bot',
-				},
-			};
-			const builder = mountBoundPreview();
-
-			builder.vm.$emit('name-saved', 'Helpdesk Bot');
-			await flushPromises();
-			expect(updateThreadMetadataMock).not.toHaveBeenCalled();
-
-			threadState.getAgentEventName = () => 'Support Bot';
-			threadState.isHydratingThread = false;
-			await flushPromises();
-
-			expect(getAgentNameOverridesFromThreadMetadata(metadataState.value)).toEqual([
-				{ agentId: 'agent-1', name: 'Helpdesk Bot', replaces: 'Support Bot' },
 			]);
 		});
 
