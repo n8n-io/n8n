@@ -36,7 +36,7 @@ describe('IdempotencyKey cleanup', () => {
 		await testDb.terminate();
 	});
 
-	async function insertKey(idempotencyKey: string, createdAt: Date): Promise<void> {
+	async function insertKey(idempotencyKey: string, createdAt: Date) {
 		const row = repository.create({
 			userId: user.id,
 			idempotencyKey,
@@ -45,20 +45,25 @@ describe('IdempotencyKey cleanup', () => {
 		});
 		const saved = await repository.save(row);
 		await repository.update(saved.id, { createdAt });
+		return saved;
 	}
 
 	describe('deleteOlderThan', () => {
 		it('should delete keys older than the cutoff and keep the rest', async () => {
 			const cutoff = new Date('2026-10-08T12:00:00.000Z');
-			await insertKey('old', new Date(cutoff.getTime() - 1_000));
-			await insertKey('boundary', cutoff);
-			await insertKey('fresh', new Date(cutoff.getTime() + 1_000));
+
+			const old = await insertKey('old', new Date(cutoff.getTime() - 1_000));
+			const boundary = await insertKey('boundary', cutoff);
+			const fresh = await insertKey('fresh', new Date(cutoff.getTime() + 1_000));
 
 			const deleted = await repository.deleteOlderThan(cutoff, 10);
-
 			expect(deleted).toBe(1);
-			const remaining = await repository.find({ order: { idempotencyKey: 'ASC' } });
-			expect(remaining.map((row) => row.idempotencyKey)).toEqual(['boundary', 'fresh']);
+
+			const remaining = await repository.find({ order: { createdAt: 'ASC' } });
+			expect(remaining).toHaveLength(2);
+			expect(remaining).not.toContainEqual(expect.objectContaining({ id: old.id }));
+			expect(remaining).toContainEqual(expect.objectContaining({ id: boundary.id }));
+			expect(remaining).toContainEqual(expect.objectContaining({ id: fresh.id }));
 		});
 
 		it('should delete at most the limit', async () => {
