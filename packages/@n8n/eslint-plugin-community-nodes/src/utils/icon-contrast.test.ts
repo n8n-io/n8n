@@ -51,6 +51,12 @@ test('reads declarations in a CDATA-backed style block', () => {
 	expect(colors).toEqual([{ ...parseIconColor('#fff'), alpha: 1 }]);
 });
 
+test('reads fill from a leaf path', () => {
+	expect(getSvgPaintColors('<svg><path fill="white" /></svg>')).toEqual([
+		{ ...parseIconColor('#fff'), alpha: 1 },
+	]);
+});
+
 test.each([
 	['fill', 'fill-opacity', '#000', '50%', 0.5],
 	['stroke', 'stroke-opacity', '#0008', '0.5', (8 / 15) * 0.5],
