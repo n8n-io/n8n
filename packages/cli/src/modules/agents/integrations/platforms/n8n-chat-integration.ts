@@ -1,4 +1,4 @@
-import { N8N_CHAT_INTEGRATION_TYPE, resultCardSchema } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, lenientResultCardSchema } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -117,11 +117,12 @@ export class N8nChatIntegration extends AgentChatIntegration {
 
 	/**
 	 * A result card never posts anywhere and never suspends: like `respond`
-	 * cards, the chat UI renders it from the recorded tool-call input. The tool
-	 * boundary already validated the card; this parse guards direct calls.
+	 * cards, the chat UI renders it from the recorded tool-call input (which
+	 * the UI normalises the same way). The tool boundary already validated the
+	 * card; this parse guards direct calls.
 	 */
 	private showCard(params: PlatformActionParams): IntegrationActionResult {
-		const parsed = resultCardSchema.safeParse(params.input.card);
+		const parsed = lenientResultCardSchema.safeParse(params.input.card);
 		if (!parsed.success) {
 			return integrationError(INTEGRATION_ERROR_CODES.ACTION_FAILED, parsed.error.message);
 		}

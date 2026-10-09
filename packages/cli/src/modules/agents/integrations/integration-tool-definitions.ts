@@ -1,5 +1,5 @@
 import {
-	resultCardSchema,
+	lenientResultCardSchema,
 	richMessageSchema,
 	type AgentApproval,
 	type RichCardComponent,
@@ -159,12 +159,14 @@ const respondActionInputSchema = z.object({
  * A result card: the same finite catalog the Chat Hub renders for workflow
  * agents (`@n8n/api-types/chat-hub-result-card.ts`). Display-only — it never
  * suspends the run, and the chat UI renders it from the tool-call input.
+ * The lenient schema forgives the usual LLM drift (numbers as strings, a
+ * one-string delta, colour words for tones) instead of failing the call.
  */
 const showCardActionInputSchema = z.object({
 	action: z.literal('show_card'),
 	input: z
 		.object({
-			card: resultCardSchema,
+			card: lenientResultCardSchema,
 		})
 		.strict(),
 });
@@ -305,8 +307,18 @@ export const SHOW_CARD_ACTION_TOOL_DEFINITIONS = [
 	{
 		name: 'show_card',
 		inputSchema: showCardActionInputSchema,
-		description:
-			'show_card: input.card is required. Renders one result card below your reply — a designed, glanceable view of data you already have. input.card.type is one of metric (one number + label, optional delta, breakdown ≤5, trend ≤30), records (target, operation, columns ≤4, rows ≤5 of strings, total), list (items ≤5 with title/subtitle/meta/https href, total), keyValue (pairs ≤6), email (direction, to, subject, preview), message (channel, to, text). Every card needs a short title; eyebrow, status (success|error|pending|info), statusLabel, tone and actions (≤2 https links) are optional. Numbers go in as display strings ("12.4k", "€8,200").',
+		description: [
+			'show_card: input.card is required. Renders one result card below your reply — a designed, glanceable view of data you already have.',
+			'Common fields: title (required, ≤80 chars), eyebrow (≤40), status ("success" | "error" | "pending" | "info"), statusLabel (≤16), tone (exactly one of "terracotta" | "aubergine" | "forest" | "sky" | "lavender" | "mint" | "paper" | "graphite" — no other colour names), actions (≤2 of { label, href: https URL }).',
+			'card.type decides the rest:',
+			'- "metric": { value: string (display text, e.g. "99.3%", "€8,200"), label: string (what the number is), unit?: string, delta?: { value: string, direction: "up" | "down" | "flat", label?: string (e.g. "vs. yesterday") } — delta is an OBJECT, never a string; breakdown?: [{ label: string, value: number }] (≤5, value must be a JSON number, not a string); trend?: number[] (≤30) }.',
+			'- "records": { target: string (table/sheet name), operation: "append" | "update" | "upsert" | "read" | "delete", columns: string[] (≤4), rows: string[][] (≤5 rows, each ≤4 cells, every cell a string), total: number }.',
+			'- "list": { items: [{ title: string, subtitle?: string, meta?: string, href?: https URL }] (1–5), total?: number }.',
+			'- "keyValue": { pairs: [{ key: string, value: string }] (1–6) }.',
+			'- "email": { direction: "sent" | "received", to: string[], subject: string, preview?: string, from?: string }.',
+			'- "message": { channel: "slack" | "telegram" | "discord" | "whatsapp" | "teams" | "sms" | "chat" | "other", to: string, text: string }.',
+			'Example: {"action":"show_card","input":{"card":{"type":"metric","title":"Pipeline this month","tone":"forest","value":"$48.2k","label":"weighted pipeline","delta":{"value":"+12%","direction":"up","label":"vs. last month"},"breakdown":[{"label":"Qualified","value":5},{"label":"Proposal","value":3}]}}}',
+		].join('\n'),
 	},
 ] satisfies IntegrationActionDefinition[];
 

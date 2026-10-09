@@ -99,6 +99,11 @@ export {
 } from './chat-hub';
 
 export {
+	lenientResultCardSchema,
+	normalizeResultCardInput,
+} from './chat-hub-result-card-lenient';
+
+export {
 	resultCardSchema,
 	resultCardArchetypes,
 	resultCardStatusSchema,

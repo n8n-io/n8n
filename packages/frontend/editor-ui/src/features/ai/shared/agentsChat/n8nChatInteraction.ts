@@ -1,5 +1,5 @@
 import {
-	resultCardSchema,
+	lenientResultCardSchema,
 	richCardComponentSchema,
 	richMessageSchema,
 	WORKFLOW_WAIT_SUSPEND_TYPE,
@@ -85,14 +85,15 @@ export function parseN8nChatActionInput(input: unknown): N8nChatInteractionInput
 
 /**
  * `chat_action` → `show_card`: a result card (the Chat Hub catalog — metric,
- * records, list, keyValue, email, message) validated with the SAME
- * `resultCardSchema` the backend tool boundary uses. Display-only: it never
- * suspends and carries no resume value.
+ * records, list, keyValue, email, message) validated with the SAME lenient
+ * schema the backend tool boundary uses — the persisted tool-call input is the
+ * model's raw payload, so the normalisation has to run here too. Display-only:
+ * it never suspends and carries no resume value.
  */
 const showCardToolInputSchema = z
 	.object({
 		action: z.literal('show_card'),
-		input: z.object({ card: resultCardSchema }).passthrough(),
+		input: z.object({ card: lenientResultCardSchema }).passthrough(),
 	})
 	.passthrough();
 
