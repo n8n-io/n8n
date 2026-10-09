@@ -18,6 +18,7 @@ import {
 	displayParameter,
 	isResourceLocatorValue,
 	deepCopy,
+	NodeHelpers,
 } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/app/constants';
@@ -758,4 +759,101 @@ export function collectParametersByTab(parameters: INodeProperties[], isEmbedded
 	}
 
 	return ret;
+}
+
+const SCALAR_PARAMETER_TYPES = new Set<INodeProperties['type']>([
+	'string',
+	'number',
+	'boolean',
+	'options',
+	'dateTime',
+	'color',
+]);
+
+const PLAIN_PARAMETER_TYPES = new Set<INodeProperties['type']>([
+	...SCALAR_PARAMETER_TYPES,
+	'multiOptions',
+]);
+
+/**
+ * Declarations that share a name also share one stored value, which carries over when
+ * another of them becomes visible. A value only fits declarations of the same shape.
+ * Single scalar values share one shape, so a string still carries into a number field.
+ */
+function getParameterValueShape(parameter: INodeProperties): string {
+	const isList = parameter.typeOptions?.multipleValues === true;
+	if (SCALAR_PARAMETER_TYPES.has(parameter.type) && !isList) return 'scalar';
+	return isList ? `${parameter.type}[]` : parameter.type;
+}
+
+export function isObjectInPlainParameter(parameter: INodeProperties, value: unknown): boolean {
+	return (
+		PLAIN_PARAMETER_TYPES.has(parameter.type) &&
+		typeof value === 'object' &&
+		value !== null &&
+		!Array.isArray(value)
+	);
+}
+
+function getMixedShapeNames(properties: INodeProperties[]): Map<string, INodeProperties[]> {
+	const byName = new Map<string, INodeProperties[]>();
+	for (const property of properties) {
+		byName.set(property.name, [...(byName.get(property.name) ?? []), property]);
+	}
+	return new Map(
+		[...byName].filter(
+			([, declarations]) => new Set(declarations.map(getParameterValueShape)).size > 1,
+		),
+	);
+}
+
+// The same resolution getNodeParameters does internally for its display checks
+function getDisplayValues(nodeType: INodeTypeDescription, values: INodeParameters, node: INode) {
+	return (
+		NodeHelpers.getNodeParameters(nodeType.properties, values, true, true, node, nodeType, {
+			onlySimpleTypes: true,
+			dataIsResolved: true,
+		}) ?? {}
+	);
+}
+
+function getVisibleShape(
+	declarations: INodeProperties[],
+	displayValues: INodeParameters,
+	node: INode,
+	nodeType: INodeTypeDescription,
+): string | undefined {
+	const visible = declarations.find((declaration) =>
+		NodeHelpers.displayParameter(displayValues, declaration, node, nodeType),
+	);
+	return visible && getParameterValueShape(visible);
+}
+
+/**
+ * Drops the value of a same-named parameter when a change shows a declaration of another
+ * shape under its name, so the new declaration gets its default. Names the change sets
+ * directly are kept.
+ */
+export function resetValuesOfChangedShape(
+	nodeType: INodeTypeDescription,
+	node: INode,
+	parameters: INodeParameters,
+	changedPaths: string[],
+): INodeParameters {
+	const mixed = getMixedShapeNames(nodeType.properties);
+	if (mixed.size === 0) return parameters;
+
+	const changedNames = new Set(changedPaths.map((path) => path.split(/[.[]/)[0]));
+	const before = getDisplayValues(nodeType, node.parameters, node);
+	const after = getDisplayValues(nodeType, parameters, node);
+	const reset = [...mixed].filter(([name, declarations]) => {
+		if (changedNames.has(name)) return false;
+		const from = getVisibleShape(declarations, before, node, nodeType);
+		const to = getVisibleShape(declarations, after, node, nodeType);
+		return from !== undefined && to !== undefined && from !== to;
+	});
+
+	return Object.fromEntries(
+		Object.entries(parameters).filter(([name]) => !reset.some(([resetName]) => resetName === name)),
+	);
 }
