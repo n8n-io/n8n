@@ -193,6 +193,21 @@ describe('WorkflowReviewDetailMetadata', () => {
 		);
 	});
 
+	it('labels the workflows card in singular or plural to match the count', () => {
+		const single = renderComponent({ props: { review: makeDetail() } });
+		expect(single.getByText('Workflow')).toBeInTheDocument();
+		single.unmount();
+
+		const several = renderComponent({
+			props: {
+				review: makeDetail({
+					workflows: [makeWorkflowDetail(), makeWorkflowDetail({ workflowId: 'wf-2' })],
+				}),
+			},
+		});
+		expect(several.getByText('Workflows')).toBeInTheDocument();
+	});
+
 	it('hides the changes card when there are no workflows', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: { review: makeDetail({ reviewers: [], workflows: [] }) },
