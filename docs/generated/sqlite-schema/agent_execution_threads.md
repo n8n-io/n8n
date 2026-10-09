@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "agentName" varchar(255) NOT NULL, "projectId" varchar(255) NOT NULL, "sessionNumber" integer NOT NULL DEFAULT (0), "totalPromptTokens" integer NOT NULL DEFAULT (0), "totalCompletionTokens" integer NOT NULL DEFAULT (0), "totalCost" real NOT NULL DEFAULT (0), "totalDuration" integer NOT NULL DEFAULT (0), "title" varchar(255), "emoji" varchar(8), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "taskId" varchar(32), "taskVersionId" varchar(36), "parentThreadId" varchar(128), "parentAgentId" varchar(36), "ownerId" varchar, "accessScope" varchar(16) NOT NULL DEFAULT ('user'), CONSTRAINT "CHK_agent_execution_threads_accessScope" CHECK ("accessScope" IN ('user', 'project')), CONSTRAINT "FK_f00b52d74fe11838e1fe086deea" FOREIGN KEY ("taskVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_0468a9dc35597314e641d4722aa" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_0e2f8bf92a7a9c88b89670f701c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_agent_execution_threads_owner" FOREIGN KEY ("ownerId") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "agentName" varchar(255) NOT NULL, "projectId" varchar(255) NOT NULL, "sessionNumber" integer NOT NULL DEFAULT (0), "totalPromptTokens" integer NOT NULL DEFAULT (0), "totalCompletionTokens" integer NOT NULL DEFAULT (0), "totalCost" real NOT NULL DEFAULT (0), "totalDuration" integer NOT NULL DEFAULT (0), "title" varchar(255), "emoji" varchar(8), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "taskId" varchar(32), "taskVersionId" varchar(36), "parentThreadId" varchar(128), "parentAgentId" varchar(36), "ownerId" varchar, "accessScope" varchar(16) NOT NULL DEFAULT ('user'), "taskStop" TEXT, CONSTRAINT "CHK_agent_execution_threads_accessScope" CHECK ("accessScope" IN ('user', 'project')), CONSTRAINT "FK_f00b52d74fe11838e1fe086deea" FOREIGN KEY ("taskVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_0468a9dc35597314e641d4722aa" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_0e2f8bf92a7a9c88b89670f701c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_agent_execution_threads_owner" FOREIGN KEY ("ownerId") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -27,6 +27,7 @@ CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, 
 | projectId | varchar(255) |  | false |  | [project](project.md) |  |
 | sessionNumber | INTEGER | 0 | false |  |  |  |
 | taskId | varchar(32) |  | true |  |  |  |
+| taskStop | TEXT |  | true |  |  |  |
 | taskVersionId | varchar(36) |  | true |  | [agent_history](agent_history.md) |  |
 | title | varchar(255) |  | true |  |  |  |
 | totalCompletionTokens | INTEGER | 0 | false |  |  |  |
@@ -84,6 +85,7 @@ erDiagram
   varchar_255_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId
+  TEXT taskStop
   varchar_36_ taskVersionId FK
   varchar_255_ title
   INTEGER totalCompletionTokens
@@ -136,6 +138,7 @@ erDiagram
 "agent_message_queue" {
   datetime_3_ createdAt
   varchar_36_ executionId FK
+  boolean held
   INTEGER id
   varchar_36_ messageId FK
   TEXT payload

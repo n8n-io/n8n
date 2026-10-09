@@ -9,7 +9,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [activity_event](activity_event.md) | 11 |  | table |
-| [agent_background_job](agent_background_job.md) | 20 |  | table |
+| [agent_background_job](agent_background_job.md) | 22 |  | table |
 | [agent_budget_applied_call](agent_budget_applied_call.md) | 2 |  | table |
 | [agent_budget_spend](agent_budget_spend.md) | 4 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
@@ -23,10 +23,10 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
 | [agent_execution](agent_execution.md) | 23 |  | table |
 | [agent_execution_message_links](agent_execution_message_links.md) | 5 |  | table |
-| [agent_execution_threads](agent_execution_threads.md) | 19 |  | table |
+| [agent_execution_threads](agent_execution_threads.md) | 20 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
-| [agent_message_queue](agent_message_queue.md) | 10 |  | table |
+| [agent_message_queue](agent_message_queue.md) | 11 |  | table |
 | [agent_plan](agent_plan.md) | 8 |  | table |
 | [agent_plan_history](agent_plan_history.md) | 6 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 8 |  | table |
@@ -173,6 +173,7 @@ erDiagram
 
 "activity_event" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "activity_event" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_background_job" }o--o| "agent_execution" : "FOREIGN KEY (sourceExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_background_job" }o--|| "agents" : "FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_channel_status" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_attachments" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -424,6 +425,7 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   datetime_3_ createdAt
+  boolean detached
   TEXT error
   varchar_36_ id PK
   varchar_16_ kind
@@ -435,6 +437,7 @@ erDiagram
   varchar pauseRequestId
   TEXT result
   datetime_3_ settledAt
+  varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
   datetime_3_ timeoutAt
@@ -602,6 +605,7 @@ erDiagram
   varchar_255_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId
+  TEXT taskStop
   varchar_36_ taskVersionId FK
   varchar_255_ title
   INTEGER totalCompletionTokens
@@ -636,6 +640,7 @@ erDiagram
 "agent_message_queue" {
   datetime_3_ createdAt
   varchar_36_ executionId FK
+  boolean held
   INTEGER id
   varchar_36_ messageId FK
   TEXT payload

@@ -7,12 +7,16 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentExecutionUpdateBroadcaster } from '../../agent-execution-update-broadcaster';
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import { AgentConversationStateService } from '../../agent-conversation-state.service';
+import { AgentTurnAlreadyRunningError } from '../../agent-turn-already-running.error';
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
+import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import type { ChatIntegrationRegistry } from '../../integrations/agent-chat-integration';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
@@ -81,7 +85,10 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	const lockService = mock<LockService>();
 	const publisher = mock<Publisher>();
 	const instanceSettings = mock<InstanceSettings>({ isWorker: options.worker ?? false });
-	const agentsConfig = mock<AgentsConfig>({ backgroundTasksEnabled: options.enabled ?? true });
+	const agentsConfig = mock<AgentsConfig>({
+		backgroundTasksEnabled: options.enabled ?? true,
+		planToolsEnabled: false,
+	});
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -96,7 +103,10 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		return await callback(new AbortController().signal);
 	});
 
+	const cancellations = mock<AgentTaskCancellationRepository>();
+	cancellations.pendingPauseReports.mockResolvedValue([]);
 	const service = new AgentWakeService(
+		cancellations,
 		jobRepository,
 		new AgentConversationStateService(executionRepository, checkpointStorage),
 		agentRepository,
@@ -109,9 +119,11 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		agentsConfig,
 		logger,
 		backgroundJobService,
+		mock<AgentExecutionUpdateBroadcaster>(),
 	);
 
 	return {
+		cancellations,
 		service,
 		backgroundJobService,
 		jobRepository,
@@ -128,6 +140,120 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 }
 
 describe('AgentWakeService', () => {
+	it('retries a stop report after an admission conflict without consuming it', async () => {
+		vi.useFakeTimers();
+		try {
+			const { service, cancellations, orchestrator } = setup();
+			cancellations.latest.mockResolvedValue({
+				threadId: 'thread-1',
+				planId: null,
+				requestedAt: new Date().toISOString(),
+				generation: { executionIds: [], jobIds: [], threadIds: [] },
+				failures: [],
+				pause: { id: 'stop-1' },
+			});
+			cancellations.unfinishedWork.mockResolvedValue([]);
+			cancellations.targetedJobs.mockResolvedValue([]);
+			cancellations.pauseReportTarget.mockResolvedValue(
+				mock<AgentExecutionThread>({
+					id: 'thread-1',
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					ownerId: user.id,
+				}),
+			);
+			orchestrator.executeForWake.mockRejectedValueOnce(new AgentTurnAlreadyRunningError());
+			await service.attemptWake('thread-1');
+			expect(cancellations.finishPauseReport).toHaveBeenCalledWith('thread-1', 'stop-1', false);
+			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
+			expect(orchestrator.executeForWake).toHaveBeenCalledTimes(2);
+			expect(cancellations.finishPauseReport).not.toHaveBeenCalledWith('thread-1', 'stop-1', true);
+		} finally {
+			vi.clearAllTimers();
+			vi.useRealTimers();
+		}
+	});
+
+	it('reports a plan stop without child jobs and disables tools', async () => {
+		const { service, cancellations, orchestrator } = setup();
+		const stop = {
+			threadId: 'thread-1',
+			planId: 'plan',
+			requestedAt: new Date().toISOString(),
+			generation: { executionIds: [], jobIds: [], threadIds: [] },
+			failures: [],
+			pause: { id: 'stop-1' },
+		};
+		cancellations.latest.mockResolvedValue(stop);
+		cancellations.unfinishedWork.mockResolvedValue([]);
+		cancellations.targetedJobs.mockResolvedValue([]);
+		cancellations.pauseReportTarget.mockResolvedValue(
+			mock<AgentExecutionThread>({
+				id: 'thread-1',
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				ownerId: user.id,
+			}),
+		);
+		await service.attemptWake('thread-1');
+		expect(orchestrator.executeForWake).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({
+				planStopId: 'stop-1',
+				pauseReport: true,
+				wakeJobIds: [],
+				backgroundJobSignal: { tasks: [] },
+				message: expect.stringContaining('one or two sentences'),
+			}),
+		);
+		expect(cancellations.finishPauseReport).toHaveBeenCalledWith('thread-1', 'stop-1', false);
+	});
+
+	it('waits for plan work to stop before it sends the acknowledgement', async () => {
+		const { service, cancellations, orchestrator } = setup();
+		cancellations.latest.mockResolvedValue({
+			threadId: 'thread-1',
+			planId: 'plan',
+			requestedAt: new Date().toISOString(),
+			generation: { executionIds: [], jobIds: [], threadIds: [] },
+			failures: [],
+			pause: { id: 'stop-1' },
+		});
+		cancellations.unfinishedWork.mockResolvedValue([{ jobId: 'active', title: 'Research' }]);
+		await service.attemptWake('thread-1');
+		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+	});
+
+	it('does not repeat an admitted acknowledgement after a reload', async () => {
+		const { service, cancellations, orchestrator } = setup();
+		cancellations.latest.mockResolvedValue({
+			threadId: 'thread-1',
+			planId: 'plan',
+			requestedAt: new Date().toISOString(),
+			generation: { executionIds: [], jobIds: [], threadIds: [] },
+			failures: [],
+			pause: { id: 'stop-1', reportExecutionId: 'report' },
+		});
+		await service.attemptWake('thread-1');
+		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+		expect(cancellations.finishPauseReport).toHaveBeenCalledWith('thread-1', 'stop-1');
+	});
+
+	it('consumes old background notifications without an agent acknowledgement', async () => {
+		const { service, cancellations, jobRepository, orchestrator } = setup();
+		cancellations.latest.mockResolvedValue({
+			threadId: 'thread-1',
+			planId: null,
+			requestedAt: new Date().toISOString(),
+			generation: { executionIds: [], jobIds: ['job-1'], threadIds: [] },
+			failures: [],
+		});
+		cancellations.targetedJobs.mockResolvedValue([makeJob()]);
+		jobRepository.findWakeableUnconsumed.mockResolvedValue([]);
+		await service.attemptWake('thread-1');
+		expect(cancellations.consumeTargetedMail).toHaveBeenCalledWith(['job-1'], {});
+		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+	});
+
 	it('delivers a stopped group once and marks it only after the report finishes', async () => {
 		const { service, backgroundJobService, jobRepository, orchestrator } = setup();
 		const report = createDeferredPromise();

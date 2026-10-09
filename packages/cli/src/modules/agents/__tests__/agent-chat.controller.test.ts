@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { FileNotFoundError } from 'n8n-core';
 
+import { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -92,7 +93,9 @@ function makeController() {
 		mock<Subscriber>(),
 	);
 
+	const taskCancellation = mock<AgentTaskCancellationService>();
 	const controller = new AgentChatController(
+		taskCancellation,
 		agentExecutionOrchestratorService,
 		agentTestRunService,
 		mock<AgentTestChatService>(),
@@ -109,6 +112,7 @@ function makeController() {
 	);
 
 	return {
+		taskCancellation,
 		controller,
 		agentsConfig,
 		messageQueue,
@@ -198,6 +202,9 @@ describe('AgentChatController route access scopes', () => {
 		['getProductionBackgroundJobs', 'agent:execute'],
 		['stopProductionBackgroundJobs', 'agent:execute'],
 		['resumeProductionBackgroundJob', 'agent:execute'],
+		['cancelTasks', 'agent:execute'],
+		['getTaskCancellation', 'agent:execute'],
+		['sendHeldMessage', 'agent:execute'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
@@ -424,6 +431,7 @@ describe('AgentChatController background tasks', () => {
 		expect(backgroundJobService.listCurrentGroupForThread).toHaveBeenCalledWith(
 			'agent-1',
 			'thread-1',
+			{ includePaused: true, includeSettled: false },
 		);
 		expect(backgroundJobService.markMailConsumed).not.toHaveBeenCalled();
 	});
@@ -1626,6 +1634,52 @@ describe('AgentChatController n8n Chat read-route ownership', () => {
 
 			await expect(controller.getProductionChatAttachment(req, res)).rejects.toThrow(NotFoundError);
 			expect(agentChatAttachmentService.getStream).not.toHaveBeenCalled();
+		});
+	});
+});
+
+describe('AgentChatController task cancellation', () => {
+	const request = {
+		params: { projectId: 'project', agentId: 'agent', threadId: 'thread' },
+		user: { id: 'user' },
+	};
+
+	it('stops the displayed plan without an automatic wake', async () => {
+		const { controller, agentsService, taskCancellation } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
+		const payload = { planId: 'plan' };
+		await controller.cancelTasks(request as never, makeSseResponse([]), payload);
+		expect(taskCancellation.request).toHaveBeenCalledWith('thread', 'plan');
+	});
+
+	it('rejects cancellation and state reads for a session the user cannot access', async () => {
+		const { controller, agentsService, agentExecutionService, taskCancellation } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
+		agentExecutionService.canUseDraftThread.mockResolvedValue(false);
+		await expect(
+			controller.cancelTasks(request as never, makeSseResponse([]), {
+				planId: null,
+			}),
+		).rejects.toThrow('Session not found');
+		await expect(controller.getTaskCancellation(request as never)).rejects.toThrow(
+			'Session not found',
+		);
+		expect(taskCancellation.request).not.toHaveBeenCalled();
+		expect(taskCancellation.state).not.toHaveBeenCalled();
+	});
+
+	it('sends only the selected held entry in Preview', async () => {
+		const { controller, agentsService, messageQueue } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
+		await controller.sendHeldMessage({
+			...request,
+			params: { ...request.params, queueId: '1' },
+		} as never);
+		expect(messageQueue.sendHeld).toHaveBeenCalledWith({
+			...request.params,
+			queueId: '1',
+			userId: 'user',
+			kind: 'preview',
 		});
 	});
 });

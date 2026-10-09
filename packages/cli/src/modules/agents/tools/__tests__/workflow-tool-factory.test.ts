@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
-import { GlobalConfig } from '@n8n/config';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -949,7 +949,7 @@ describe('workflow tool → background job handoff', () => {
 		return tool;
 	}
 
-	function makeParentCtx() {
+	function makeParentCtx(resourceId = 'resource-1') {
 		const suspend = vi.fn().mockResolvedValue(undefined);
 		return {
 			ctx: {
@@ -958,7 +958,7 @@ describe('workflow tool → background job handoff', () => {
 				toolCallId: 'call-1',
 				persistence: {
 					threadId: 'thread-1',
-					resourceId: 'resource-1',
+					resourceId,
 					hostMetadata: encodeAgentSandboxHostMetadata({
 						projectId: 'p1',
 						principalHash: parentPrincipalHash,
@@ -972,6 +972,23 @@ describe('workflow tool → background job handoff', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		Container.reset();
+	});
+
+	it('registers a draft workflow only when it becomes a background task', async () => {
+		Container.set(AgentsConfig, mock<AgentsConfig>({ backgroundTasksEnabled: true }));
+		setPersistence({ status: 'waiting' });
+		const jobService = setJobService();
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx('draft-chat:user-1');
+		await tool.handler?.({}, ctx);
+		expect(jobService.registerWorkflowJob).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				executionId: 'exec-1',
+				parentThreadId: 'thread-1',
+			}),
+		);
+		expect(jobService.registerWorkflowJob).toHaveBeenCalledTimes(1);
 	});
 
 	it('returns a receipt for a waiting execution instead of polling or suspending', async () => {

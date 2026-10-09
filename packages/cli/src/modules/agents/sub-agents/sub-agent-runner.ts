@@ -11,6 +11,7 @@ import {
 	type DelegateSubAgentCancelRequest,
 	type DelegateSubAgentResumeRequest,
 	type GenerateResult,
+	type GuardrailDecision,
 	type JSONObject,
 	type JSONValue,
 	type SerializableAgentState,
@@ -33,6 +34,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { AgentTaskCancellationRepository } from '../repositories/agent-task-cancellation.repository';
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import type { StartExecutionParams } from '../agent-execution.service';
@@ -163,6 +165,7 @@ type ForegroundOperation = {
 @Service()
 export class SubAgentRunner {
 	constructor(
+		private readonly cancellations: AgentTaskCancellationRepository,
 		private readonly sourceResolver: SubAgentSourceResolver,
 		private readonly turnExecutionService: AgentTurnExecutionService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
@@ -345,6 +348,10 @@ export class SubAgentRunner {
 
 			agent = reconstructed.agent;
 			context.abortSignal?.throwIfAborted();
+			const checkCancellation = async (): Promise<GuardrailDecision | undefined> =>
+				(await this.cancellations.isCancelled(threadId, executionId))
+					? { action: 'stop', code: 'tasks-cancelled', canceled: true }
+					: undefined;
 			const executionOptions = withBudgetGuardrail(
 				{
 					approvalContext: await this.toolApprovalService.createContext(
@@ -355,7 +362,10 @@ export class SubAgentRunner {
 					...(telemetry !== undefined ? { telemetry } : {}),
 					...modelStreamStallOptions(this.aiConfig),
 					executionCounter: context.executionCounter,
-					shouldPause: context.shouldPause,
+					shouldPause: async () =>
+						(await context.shouldPause?.()) ||
+						(await this.cancellations.hasPausedAncestor(threadId, {})),
+					guardrails: { hooks: [{ before: checkCancellation, beforeTool: checkCancellation }] },
 				},
 				{
 					useRootSessionCap: true,

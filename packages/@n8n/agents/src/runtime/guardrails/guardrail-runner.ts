@@ -46,7 +46,9 @@ export class GuardrailRunner {
 	async before(ctx: GuardrailModelCallContext): Promise<GuardrailStop | undefined> {
 		for (const hook of this.hooks) {
 			const decision = await hook.before?.(ctx);
-			if (decision?.action === 'stop') return { code: decision.code };
+			if (decision?.action === 'stop') {
+				return { code: decision.code, ...(decision.canceled ? { canceled: true } : {}) };
+			}
 		}
 		return undefined;
 	}
@@ -60,7 +62,9 @@ export class GuardrailRunner {
 	async beforeTool(ctx: GuardrailToolCallContext): Promise<GuardrailStop | undefined> {
 		for (const hook of this.hooks) {
 			const decision = await hook.beforeTool?.(ctx);
-			if (decision?.action === 'stop') return { code: decision.code };
+			if (decision?.action === 'stop') {
+				return { code: decision.code, ...(decision.canceled ? { canceled: true } : {}) };
+			}
 		}
 		return undefined;
 	}

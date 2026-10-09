@@ -9,7 +9,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
-| [public.agent_background_job](public.agent_background_job.md) | 20 |  | BASE TABLE |
+| [public.agent_background_job](public.agent_background_job.md) | 22 |  | BASE TABLE |
 | [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
 | [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
@@ -23,10 +23,10 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
 | [public.agent_execution](public.agent_execution.md) | 23 |  | BASE TABLE |
 | [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
-| [public.agent_execution_threads](public.agent_execution_threads.md) | 19 |  | BASE TABLE |
+| [public.agent_execution_threads](public.agent_execution_threads.md) | 20 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
-| [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
+| [public.agent_message_queue](public.agent_message_queue.md) | 11 |  | BASE TABLE |
 | [public.agent_plan](public.agent_plan.md) | 8 |  | BASE TABLE |
 | [public.agent_plan_history](public.agent_plan_history.md) | 6 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
@@ -192,6 +192,7 @@ erDiagram
 "public.activity_event" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.activity_event" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_background_job" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;sourceExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
 "public.agent_channel_status" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_chat_attachments" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_chat_attachments" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -438,6 +439,7 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
+  boolean detached
   text error
   varchar_36_ id
   varchar_16_ kind
@@ -449,6 +451,7 @@ erDiagram
   uuid pauseRequestId
   text result
   timestamp_3__with_time_zone settledAt
+  varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
   timestamp_3__with_time_zone timeoutAt
@@ -616,6 +619,7 @@ erDiagram
   varchar_255_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
+  json taskStop
   varchar_36_ taskVersionId FK
   varchar_255_ title
   integer totalCompletionTokens
@@ -650,6 +654,7 @@ erDiagram
 "public.agent_message_queue" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId FK
+  boolean held
   bigint id
   varchar_36_ messageId FK
   json payload

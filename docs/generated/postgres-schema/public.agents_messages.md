@@ -75,6 +75,7 @@ erDiagram
 "public.agent_message_queue" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId FK
+  boolean held
   bigint id
   varchar_36_ messageId FK
   json payload
