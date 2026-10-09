@@ -24,7 +24,9 @@ import { Workflow } from '../src/workflow';
 // comes back as U+FFFD replacement characters, and undefined inside an array
 // result comes back as null (vm keeps undefined; native sides with vm). Data
 // strings stay NUL-free and inside the Basic Multilingual Plane; the array
-// case is skipped below.
+// case is skipped below. quickjs and V8 also use different shortest-digit
+// algorithms for Number.prototype.toString with a radix other than 10, which
+// the spec permits; expressions that pass a radix are skipped under quickjs.
 const noNul = (s: string) => !s.includes('\0');
 const bmpString = (maxLength: number) =>
 	fc
@@ -244,7 +246,9 @@ describe('Expression - fast native evaluation fuzz parity', () => {
 					Expression.getActiveImplementation() === 'quickjs' &&
 					Array.isArray(viaNative.value) &&
 					viaNative.value.some((element) => element === undefined);
-				if (holesAsNull) return;
+				const radixToString =
+					Expression.getActiveImplementation() === 'quickjs' && /\.toString\([^)]/.test(expr);
+				if (holesAsNull || radixToString) return;
 
 				if (viaEngine.error) {
 					expect(viaNative.error).toBeInstanceOf(viaEngine.error.constructor);
