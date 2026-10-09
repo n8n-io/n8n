@@ -54,6 +54,8 @@ import { useDependencies } from '@/app/composables/useDependencies';
 import { useDependencyMenu } from '@/app/composables/useDependencyMenu';
 import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import { removeEmptyCanvasGroupsFromWorkflowData } from '@/features/workflows/canvas/emptyGroup.utils';
+import TransferWorkflowDialog from '@/features/linkedInstances/transfer/TransferWorkflowDialog.vue';
+import { useMoveWorkflowMenu } from '@/features/linkedInstances/transfer/useMoveWorkflowMenu';
 
 // Dependency submenu ids (`<type>:<id>`) share the menu with the fixed actions.
 type WorkflowMenuItem = DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS | string>;
@@ -94,6 +96,7 @@ const { getDependencies, fetchDependencies, fetchDependencyCounts, hasDependenci
 	useDependencies();
 const { buildDependencyMenuItems, resolveDependencyMenuId, openDependency } = useDependencyMenu();
 const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
+const { dialog: moveDialog, ...moveMenu } = useMoveWorkflowMenu(props, 'workflowMenu');
 
 // Prefetch the lightweight counts so the menu knows whether to show the entry.
 watch(
@@ -292,6 +295,8 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 		});
 	}
 
+	importExport.push(...moveMenu.menuItems.value);
+
 	if (hasPermission(['rbac'], { rbac: { scope: 'sourceControl:push' } })) {
 		importExport.push({
 			id: WORKFLOW_MENU_ACTIONS.PUSH,
@@ -395,11 +400,13 @@ function openDescriptionAndTagsModal(): void {
 // Always refetch on open — cached entries may be stale (e.g. a credential
 // deleted since the last fetch)
 function onWorkflowMenuToggle(open: boolean): void {
+	moveMenu.onMenuToggle(open);
 	if (!open || !props.id || props.isNewWorkflow) return;
 	void fetchDependencies([props.id], 'workflow');
 }
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS | string): Promise<void> {
+	if (moveMenu.select(action)) return;
 	const dependency = resolveDependencyMenuId(
 		getDependencies(props.id, 'workflow')?.dependencies ?? [],
 		action,
@@ -617,6 +624,7 @@ defineExpose({
 		</span>
 		<!-- sub-menu-max-height: ~12 rows of 32px; a longer submenu (e.g. dependencies) scrolls -->
 		<N8nDropdownMenu
+			ref="workflowMenu"
 			:items="workflowMenuItems"
 			data-test-id="workflow-menu"
 			content-test-id="workflow-menu"
@@ -636,6 +644,7 @@ defineExpose({
 				/>
 			</template>
 		</N8nDropdownMenu>
+		<TransferWorkflowDialog v-if="moveDialog" v-bind="moveDialog" />
 	</div>
 </template>
 <style lang="scss" module>

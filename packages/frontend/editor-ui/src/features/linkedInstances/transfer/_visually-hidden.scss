@@ -1,0 +1,10 @@
+// Text for screen readers only. N8nVisuallyHidden is no replacement: it sets aria-hidden, so
+// screen readers skip its text too.
+@mixin visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
