@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/HaloPSA/test/workflow/HaloPSA.workflow.test.ts
+  s_2e1fa95fc44f8f::t_15702eec6168c0 34-36
+  s_2e1fa95fc44f8f::t_9b2c5e70ea0778 1-33,37-80
+packages/nodes-base/nodes/HaloPSA/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_38ccc0fc16c86b 1-675
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "42c09df53a9ffa0aac7d047f27fd27672d7303cb",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

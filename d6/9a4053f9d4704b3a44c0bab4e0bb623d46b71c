@@ -1,0 +1,101 @@
+packages/nodes-base/nodes/Netscaler/ADC/NetscalerAdc.node.ts
+  s_2e1fa95fc44f8f::t_d600f554f8b5eb 4
+  s_e343f172d634e5::t_77e36747da5e60 75,100-101,103,111-112,114,186,226
+packages/nodes-base/nodes/NextCloud/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_db4b14ff02c2f4 8
+  s_2e1fa95fc44f8f::t_4bd2bba13e65a7 222-242
+  s_0b340cbcd99bee::t_55ec9f2d697b0b 48-50,129,159,250
+packages/nodes-base/nodes/Nasa/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3c39bf107b6a42 1-24
+packages/nodes-base/nodes/Netlify/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_553b6f6d3e6703 1-24
+packages/nodes-base/nodes/Nasa/Nasa.node.ts
+  s_2e1fa95fc44f8f::t_16b5723aad4cd2 9
+  s_e343f172d634e5::t_f10264b5f69018 863,878,887,905,924,948,952,956,963,967,971,975,979,983,987,995,1011,1024
+packages/nodes-base/nodes/Nasa/GenericFunctions.ts
+  s_01cb885e0ad060::t_abc4301418db23 8-9,11,16,18,25,28,37,47
+packages/nodes-base/nodes/Netlify/GenericFunctions.ts
+  s_4de36876c2d7be::t_04c6dcf2c14d09 9-10,12,17,21,23,30,56,68
+packages/nodes-base/nodes/Netlify/Netlify.node.ts
+  s_e343f172d634e5::t_12e766c807dd35 10,67,97,117,129,142,149,159-163,168,177,186
+packages/nodes-base/nodes/Netlify/NetlifyTrigger.node.ts
+  s_e343f172d634e5::t_c7b14cddfc21dc 13,125,155,163-167,182,195-199
+packages/nodes-base/nodes/Netlify/test/NetlifyTrigger.node.test.ts
+  s_0b340cbcd99bee::t_5c4bb92bc68669 3,83,119,147
+packages/nodes-base/nodes/Netscaler/ADC/GenericFunctions.ts
+  s_5bf7980c253492::t_ac23cf7e29ce70 10-11,13,18,24,31
+packages/nodes-base/nodes/NextCloud/GenericFunctions.ts
+  s_e343f172d634e5::t_5c3c139894098a 3,9,19,45,59-64,69-73
+packages/nodes-base/nodes/NextCloud/NextCloud.node.ts
+  s_41adc0d6ba8be8::t_1548402739249a 10,16,892,1005,1036,1060,1073,1089,1102,1177
+packages/nodes-base/nodes/NextCloud/test/NextCloud.node.test.ts
+  s_0b340cbcd99bee::t_f5e60d7e637a14 162-164
+packages/nodes-base/nodes/OneSimpleApi/GenericFunctions.ts
+  s_4de36876c2d7be::t_9c55850601dca5 7-8,10,15,19,24,27-28,38
+packages/nodes-base/nodes/OneSimpleApi/OneSimpleApi.node.ts
+  s_e343f172d634e5::t_15b4c136cb0d2f 8,686,693,733-739,746,772-778,789,798-804,816-822,829-835,844,850-856,874-880,887
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d69a4053f9d4704b3a44c0bab4e0bb623d46b71c",
+  "prompts": {},
+  "sessions": {
+    "s_01cb885e0ad060": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7ddd85cc749261b8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_0b340cbcd99bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac6763e23459042a2",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_41adc0d6ba8be8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2283f46c77d5a9a1",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4de36876c2d7be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-acab3e3b4ca422544",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_5bf7980c253492": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2d9978c40da345a8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_e343f172d634e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a366a63f9005a09a7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

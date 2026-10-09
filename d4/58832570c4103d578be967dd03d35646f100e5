@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Wordpress/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_5d61a5a1896ebd 39,43
+  s_2e1fa95fc44f8f::t_73b634eab7a2ba 8-10,12,17,21,26
+  s_2e1fa95fc44f8f::t_574cbae7be97d1 65-67
+  s_2e1fa95fc44f8f::t_b91da634a80cc4 82,96
+  s_2e1fa95fc44f8f::t_0fb836be77cdc6 57,62
+packages/nodes-base/nodes/Wordpress/Wordpress.node.ts
+  s_2e1fa95fc44f8f::t_eb19321bea7316 10,109-114,130,149,229,284-289,301-307,356-362,365-371,384,435,484-489,501-507,550-556,559-565,578,614,653-658,667-673,695-701,704-710,718-724
+packages/nodes-base/nodes/Wordpress/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_a90bfabe9c76c5 1,30-36,43,49,55-74,77,89,98,113,123,128-130,140,145-147,164,169-171,177,200-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d458832570c4103d578be967dd03d35646f100e5",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
