@@ -1,11 +1,12 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentIntegrationConfig, AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import { DateTimeColumn, JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
+import { Column, Entity, Index, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
 import type { AgentHistory } from './agent-history.entity';
 
 @Entity({ name: 'agents' })
+@Index(['projectId', 'sourceAgentId'])
 export class Agent extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
@@ -16,6 +17,14 @@ export class Agent extends WithTimestampsAndStringId {
 
 	@Column()
 	projectId: string;
+
+	@Column({
+		type: 'varchar',
+		length: 36,
+		nullable: true,
+		comment: 'Source ID recorded by package import',
+	})
+	sourceAgentId: string | null;
 
 	@JsonColumn({ nullable: true, default: null })
 	schema: AgentJsonConfig | null;

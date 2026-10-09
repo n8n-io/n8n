@@ -37,7 +37,10 @@ import {
 	AgentTaskRunLockRepository,
 } from './repositories/agent-task-run-lock.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
-import { AgentTaskRepository } from './repositories/agent-task.repository';
+import {
+	AgentTaskRepository,
+	type AgentTaskImportIdentity,
+} from './repositories/agent-task.repository';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { taskRunMemoryResourceId } from './utils/agent-memory-scope';
 import { generateAgentResourceId } from './utils/agent-resource-id';
@@ -87,6 +90,17 @@ export class AgentTaskService {
 	async list(agentId: string): Promise<AgentTaskDto[]> {
 		const tasks = await this.taskRepository.findByAgentId(agentId);
 		return tasks.map((task) => this.toDto(task));
+	}
+
+	async findImportCandidates(
+		agentId: string,
+		sourceTaskIds: string[],
+	): Promise<AgentTaskImportIdentity[]> {
+		return await this.taskRepository.findImportCandidates(agentId, sourceTaskIds);
+	}
+
+	async findImportIdOwners(taskIds: string[]): Promise<Array<Pick<AgentTask, 'id' | 'agentId'>>> {
+		return await this.taskRepository.findImportIdOwners(taskIds);
 	}
 
 	/**

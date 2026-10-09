@@ -29,12 +29,12 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
 | [public.agent_plan](public.agent_plan.md) | 8 |  | BASE TABLE |
 | [public.agent_plan_history](public.agent_plan_history.md) | 6 |  | BASE TABLE |
-| [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
+| [public.agent_task_definition](public.agent_task_definition.md) | 9 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
 | [public.agent_thread_grants](public.agent_thread_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) | 3 |  | BASE TABLE |
-| [public.agents](public.agents.md) | 14 |  | BASE TABLE |
+| [public.agents](public.agents.md) | 15 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
 | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
@@ -684,6 +684,7 @@ erDiagram
   varchar_32_ id
   varchar_128_ name
   text objective
+  varchar_32_ sourceTaskId
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
 }
@@ -729,6 +730,7 @@ erDiagram
   json schema
   timestamp_3__with_time_zone setupCompletedAt
   json skills
+  varchar_36_ sourceAgentId
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId

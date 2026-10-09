@@ -64,6 +64,7 @@ erDiagram
   json schema
   timestamp_3__with_time_zone setupCompletedAt
   json skills
+  varchar_36_ sourceAgentId
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId

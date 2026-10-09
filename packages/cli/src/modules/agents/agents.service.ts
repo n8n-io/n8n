@@ -48,6 +48,7 @@ import { toAgentRef } from './utils/agent-ref';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import {
 	AgentRepository,
+	type AgentImportIdentity,
 	type AgentSummary,
 	type AgentListResult,
 	type AgentSummaryFilters,
@@ -238,6 +239,17 @@ export class AgentsService {
 
 	async findById(agentId: string, projectId: string): Promise<Agent | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+	}
+
+	async findImportCandidates(
+		projectId: string,
+		sourceAgentIds: string[],
+	): Promise<AgentImportIdentity[]> {
+		return await this.agentRepository.findImportCandidates(projectId, sourceAgentIds);
+	}
+
+	async findImportIdOwners(agentIds: string[]): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
+		return await this.agentRepository.findImportIdOwners(agentIds);
 	}
 
 	async isN8nChatPublished(agentId: string, projectId: string): Promise<boolean> {
