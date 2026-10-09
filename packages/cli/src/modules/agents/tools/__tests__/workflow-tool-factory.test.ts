@@ -3,7 +3,7 @@ import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import type {
 	IExecuteResponsePromiseData,
@@ -16,6 +16,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionService } from '@/executions/execution.service';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
@@ -97,6 +98,50 @@ describe('executeWorkflow → execution classification', () => {
 			).toEqual({ value: 1 });
 		},
 	);
+
+	it('passes a foreground abort to workflow stopping and releases the wait', async () => {
+		const controller = new AbortController();
+		const started = createDeferredPromise<undefined>();
+		const finished = createDeferredPromise<IRun>();
+		const stop = vi.fn().mockResolvedValue(undefined);
+		Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+		const pending = executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			{
+				...buildContext(vi.fn().mockResolvedValue('exec-1'), {
+					activeExecutions: mock<ActiveExecutions>({
+						has: () => true,
+						getPostExecutePromise: async () => {
+							started.resolve(undefined);
+							return await finished.promise;
+						},
+					}),
+				}),
+				abortSignal: controller.signal,
+			},
+		);
+		await started.promise;
+		controller.abort(new Error('Response stopped'));
+		await expect(pending).rejects.toThrow('Response stopped');
+		expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
+		finished.resolve(mock<IRun>({ status: 'canceled' }));
+	});
+
+	it('does not cancel a workflow after the foreground tool has returned', async () => {
+		const controller = new AbortController();
+		const stop = vi.fn();
+		Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+		await executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			{ ...buildContext(vi.fn().mockResolvedValue('exec-1')), abortSignal: controller.signal },
+		);
+		controller.abort();
+		expect(stop).not.toHaveBeenCalled();
+	});
 
 	it('checks the caller policy before starting the workflow', async () => {
 		const run = vi.fn().mockResolvedValue('exec-1');
