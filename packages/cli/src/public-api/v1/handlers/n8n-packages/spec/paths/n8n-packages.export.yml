@@ -4,24 +4,24 @@ post:
   x-eov-operation-handler: v1/handlers/n8n-packages/n8n-packages.handler
   tags:
     - N8nPackage
-  summary: 'Beta: Export Agents, workflows, folders, or projects as an n8n package'
+  summary: 'Beta: Export agents, workflows, folders, or projects as an n8n package'
   description: |
     **Beta** — breaking changes may still occur without major version bump.
 
-    Export Agents, workflows, and folders, or whole projects, as a gzipped tar
+    Export agents, workflows, and folders, or whole projects, as a gzipped tar
     archive (.n8np). Provide `agentIds`/`workflowIds`/`folderIds`, or `projectIds`.
     Do not combine these two groups. Each exported folder includes its nested
-    folders. Whole projects include their Agents when the Agents module is enabled.
-    Explicit Agent selections require the Agents module. Empty projects export
+    folders. Whole projects include their agents when the agents module is enabled.
+    Explicit agent selections require the agents module. Empty projects export
     project metadata only. Agent and workflow dependency policies are independent.
     Both default to `fail` when a required definition is absent from the package. The
     response is streamed as `application/gzip` with a `Content-Disposition`
     attachment header. Requires the n8n Packages feature to be licensed.
 
-    API key scopes: `agent:export` is required for explicitly selected Agents.
+    API key scopes: `agent:export` is required for explicitly selected agents.
     `workflow:export` is required for explicitly selected workflows or folders.
     `project:export` is sufficient for whole-project exports, including their
-    Agents and workflows. Included dependencies need no additional API key scope.
+    agents and workflows. Included dependencies need no additional API key scope.
     The caller's project permissions apply to all included entities. When
     `includeVariableValues` is true (the default) and exported entities reference
     variables, `variable:list` is also required. Exports that reference no variables

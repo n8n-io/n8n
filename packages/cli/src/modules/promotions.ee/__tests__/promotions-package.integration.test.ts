@@ -395,7 +395,11 @@ async function inspectBranch(
 
 async function readBranchEntities(
 	inspectionDir: string,
-	fileName: 'workflow.json' | 'folder.json' | 'project.json' | 'agent.json',
+	fileName: (typeof PACKAGE_ENTITY_LAYOUT)[
+		| 'workflows'
+		| 'folders'
+		| 'projects'
+		| 'agents']['fileName'],
 ): Promise<Array<{ id: string; name: string; target: string }>> {
 	const exportRoot = path.join(inspectionDir, 'n8n-export');
 	const found: Array<{ id: string; name: string; target: string }> = [];
@@ -655,7 +659,9 @@ describe('Promote and Apply', () => {
 		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
 		expect(result.counts.workflows).toBe(1);
 		expect(manifest.agents).toBeUndefined();
-		await expect(readBranchEntities(inspectionDir, 'agent.json')).resolves.toEqual([]);
+		await expect(
+			readBranchEntities(inspectionDir, PACKAGE_ENTITY_LAYOUT.agents.fileName),
+		).resolves.toEqual([]);
 	});
 
 	it('creates one timestamped branch for each promotion', async () => {
@@ -1903,7 +1909,9 @@ describe('Promote a project selection — branch effects', () => {
 			expect(workflowIds).toContain(w.id);
 		}
 		expect(result.counts.workflows).toBe(1);
-		await expect(readBranchEntities(dir, 'agent.json')).resolves.toEqual([]);
+		await expect(readBranchEntities(dir, PACKAGE_ENTITY_LAYOUT.agents.fileName)).resolves.toEqual(
+			[],
+		);
 	});
 
 	it('pushes a branched selection to a new branch and leaves the base untouched', async () => {
