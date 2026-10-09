@@ -49,6 +49,7 @@
 	"inbox.selfHealing.action.uncertainResolved": "The fix was saved. Check its publication status in the workflow.",
 	"inbox.selfHealing.action.publishError": "The fix was saved, but publication could not be confirmed. Check the workflow's publication status.",
 	"inbox.selfHealing.action.chatError": "Couldn't open chat",
+	"inbox.selfHealing.action.chatCloseError": "Chat opened, but we couldn't confirm that this result closed. Return to the Inbox and dismiss it if it's still open.",
 	"inbox.selfHealing.action.chatUnavailable": "Chat is unavailable. You can still review the report.",
 	"inbox.selfHealing.action.publishUnavailable": "Publish permission is required",
 	"inbox.selfHealing.changes.original": "Original",

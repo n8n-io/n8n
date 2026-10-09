@@ -54,7 +54,7 @@ beforeEach(() => {
 		return { startThread: mocks.startThread };
 	});
 	mocks.ensurePersonalProjectId.mockResolvedValue('personal-project');
-	mocks.startThread.mockResolvedValue(undefined);
+	mocks.startThread.mockResolvedValue(true);
 });
 
 it.each(['needs_you', 'could_not_fix'] as const)(
@@ -63,7 +63,7 @@ it.each(['needs_you', 'could_not_fix'] as const)(
 		const handoff = createHandoff();
 		expect(mocks.startThread).not.toHaveBeenCalled();
 
-		await handoff.start({ ...input, outcome });
+		await expect(handoff.start({ ...input, outcome })).resolves.toBe(true);
 
 		expect(mocks.createHandoff).toHaveBeenCalledOnce();
 		expect(mocks.startThread).toHaveBeenCalledWith(
@@ -110,7 +110,7 @@ it('tracks Assistant readiness and does not start when it becomes unavailable', 
 	expect(handoff.available.value).toBe(true);
 	ready.value = false;
 
-	await handoff.start(input);
+	await expect(handoff.start(input)).resolves.toBe(false);
 
 	expect(handoff.available.value).toBe(false);
 	expect(mocks.ensurePersonalProjectId).not.toHaveBeenCalled();
@@ -120,7 +120,7 @@ it('tracks Assistant readiness and does not start when it becomes unavailable', 
 it('shows an error when the personal project is unavailable', async () => {
 	mocks.ensurePersonalProjectId.mockResolvedValue(null);
 
-	await createHandoff().start(input);
+	await expect(createHandoff().start(input)).resolves.toBe(false);
 
 	expect(mocks.showError).toHaveBeenCalledOnce();
 	expect(mocks.startThread).not.toHaveBeenCalled();
@@ -143,4 +143,10 @@ it('passes navigation errors to the detail view', async () => {
 	mocks.startThread.mockRejectedValue(error);
 
 	await expect(createHandoff().start(input)).rejects.toBe(error);
+});
+
+it('returns false when the chat handoff fails', async () => {
+	mocks.startThread.mockResolvedValue(false);
+
+	await expect(createHandoff().start(input)).resolves.toBe(false);
 });
