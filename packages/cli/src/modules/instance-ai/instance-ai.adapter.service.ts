@@ -204,6 +204,10 @@ import { TagService } from '@/services/tag.service';
 import { Telemetry } from '@/telemetry';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
+import {
+	assertExecutionTimeoutWithinMax,
+	exceedsMaxExecutionTimeout,
+} from '@/workflows/execution-timeout-validation';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -1070,6 +1074,7 @@ export class InstanceAiAdapterService {
 			workflowDependencyQueryService,
 		} = this;
 		const logger = this.logger;
+		const maxExecutionTimeout = this.globalConfig.executions.maxTimeout;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		// Resolved once per context, upstream in `createContext`: the tool registers the action from
 		// the method's presence, so nothing downstream has to know a rollout flag exists.
@@ -1686,6 +1691,7 @@ export class InstanceAiAdapterService {
 					executionOrder: 'v1',
 					...(json.settings ?? {}),
 				} as IWorkflowSettings;
+				assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
 
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
@@ -1821,9 +1827,18 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				assertParameterValuesAvailable();
 				await assertNotLockedByEditor(workflowId);
+				const settings = (json.settings ?? {}) as IWorkflowSettings;
+				// Only a changed value is checked, so a workflow saved before the
+				// maximum was lowered stays saveable.
+				if (exceedsMaxExecutionTimeout(settings.executionTimeout, maxExecutionTimeout)) {
+					const existingWorkflow = await workflowRepository.findOne({ where: { id: workflowId } });
+					if (existingWorkflow?.settings?.executionTimeout !== settings.executionTimeout) {
+						assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
+					}
+				}
+
 				// Strip redactionPolicy if the user lacks the required directional scope —
 				// mirrors the check in WorkflowService.update().
-				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				if (settings.redactionPolicy !== undefined) {
 					const [existingWorkflow, ownerProject] = await Promise.all([
 						workflowRepository.findOne({ where: { id: workflowId } }),
