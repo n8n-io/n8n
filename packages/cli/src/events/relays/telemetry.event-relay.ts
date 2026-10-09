@@ -60,7 +60,7 @@ import type {
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
-import { detectKubernetesKind, detectRuntime } from '@/utils/detect-runtime';
+import { detectKubernetesProvider, detectRuntime } from '@/utils/detect-runtime';
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
@@ -1795,7 +1795,8 @@ export class TelemetryEventRelay extends EventRelay {
 				},
 				is_docker: this.instanceSettings.isDocker,
 				runtime,
-				kubernetes_kind: runtime === 'kubernetes' ? detectKubernetesKind(os.release()) : undefined,
+				kubernetes_provider:
+					runtime === 'kubernetes' ? detectKubernetesProvider(os.release()) : undefined,
 			},
 			execution_variables: {
 				executions_mode: this.globalConfig.executions.mode,

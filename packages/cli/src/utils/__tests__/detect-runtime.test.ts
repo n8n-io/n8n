@@ -1,4 +1,4 @@
-import { detectKubernetesKind, detectRuntime } from '../detect-runtime';
+import { detectKubernetesProvider, detectRuntime } from '../detect-runtime';
 
 describe('detectRuntime', () => {
 	it.each([
@@ -35,17 +35,32 @@ describe('detectRuntime', () => {
 	});
 });
 
-describe('detectKubernetesKind', () => {
+describe('detectKubernetesProvider', () => {
+	// Strings captured from real nodes or taken from the vendor's documented naming.
 	it.each([
-		['aks', '5.15.0-1057-azure'],
-		['gke', '6.1.58+-gke'],
-		['gke', '5.15.0-1030-gke'],
-		['gke', '6.1.75+'],
-		['eks', '5.10.205-195.807.amzn2.x86_64'],
-		['eks', '6.1.102-111.182.amzn2023.aarch64'],
-		['other', '6.8.0-45-generic'],
-		['other', ''],
+		['azure', '6.8.0-1067-azure'], // captured on AKS
+		['aws', '6.12.110-135.201.amzn2023.x86_64'], // captured on EKS
+		['aws', '5.10.205-195.807.amzn2.x86_64'],
+		['aws', '6.8.0-1012-aws'],
+		['gcp', '6.8.0-1015-gke'],
+		['gcp', '6.8.0-1015-gcp'],
 	])('returns %s for %s', (expected, release) => {
-		expect(detectKubernetesKind(release)).toBe(expected);
+		expect(detectKubernetesProvider(release)).toBe(expected);
+	});
+
+	// Anything that does not carry a cloud tag must stay `other`, so the field never reports a cloud wrongly.
+	it.each([
+		['minikube', '6.8.0-100-generic'], // captured on minikube
+		['Raspberry Pi, with suffix', '6.1.21-v8+'],
+		['Raspberry Pi, plain', '6.1.21+'],
+		['kernel built from a modified tree', '5.15.0+'],
+		['Container-Optimized OS', '6.6.56+'],
+		['Bottlerocket', '6.1.102'],
+		['Debian', '6.1.0-25-amd64'],
+		['Ubuntu generic', '6.8.0-45-generic'],
+		['Docker Desktop', '6.10.14-linuxkit'],
+		['empty', ''],
+	])('returns other for %s', (_name, release) => {
+		expect(detectKubernetesProvider(release)).toBe('other');
 	});
 });
