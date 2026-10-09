@@ -35,13 +35,20 @@ const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 
 // Held here, not in the list: the detail body remounts on every tab switch.
 const expandedWorkflowId = ref<string>();
-const firstWorkflowId = computed(() => detail.value?.workflows[0]?.workflowId);
+// The review that `expandedWorkflowId` belongs to.
+let expandedReviewId: string | undefined;
 
-// Open the first workflow for each new review. A refetch of the same review keeps the choice.
+// Open the first workflow for each new review. A refetch keeps the choice while the
+// open workflow is still listed. The detail lists only readable workflows, so it can drop one.
 watch(
-	() => `${props.review.id}:${firstWorkflowId.value ?? ''}`,
-	() => {
-		expandedWorkflowId.value = firstWorkflowId.value;
+	detail,
+	(value) => {
+		if (!value?.workflows.length) return;
+		const open = expandedWorkflowId.value;
+		const isListed = value.workflows.some(({ workflowId }) => workflowId === open);
+		if (value.id === expandedReviewId && (open === undefined || isListed)) return;
+		expandedReviewId = value.id;
+		expandedWorkflowId.value = value.workflows[0].workflowId;
 	},
 	{ immediate: true },
 );
