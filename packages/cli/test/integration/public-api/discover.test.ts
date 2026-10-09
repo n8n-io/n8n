@@ -151,7 +151,8 @@ describe('GET /discover', () => {
 		expect(withSchema.length).toBeGreaterThan(0);
 
 		for (const endpoint of withSchema) {
-			expect((endpoint as Record<string, unknown>).requestSchema).toHaveProperty('type');
+			const schema = (endpoint as { requestSchema: Record<string, unknown> }).requestSchema;
+			expect('type' in schema || 'oneOf' in schema).toBe(true);
 		}
 	});
 

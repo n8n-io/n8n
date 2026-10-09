@@ -8067,6 +8067,61 @@ describe('createContext: aiPreferenceService', () => {
 });
 
 describe('createCredentialAdapter', () => {
+	describe('test', () => {
+		const storedCredential = { id: 'cred-1', name: 'Slack account', type: 'slackApi' };
+
+		const adapterWith = (decryptForUse: ReturnType<typeof vi.fn>, test: ReturnType<typeof vi.fn>) =>
+			createNodeAdapterServiceForTests([], {
+				credentialsFinderService: {
+					findCredentialForUser: vi.fn().mockResolvedValue(storedCredential),
+				},
+				credentialsService: { decryptForUse, test },
+			});
+
+		it('decrypts through the policy-checked path as the user', async () => {
+			const decryptForUse = vi.fn().mockResolvedValue({ accessToken: 'secret' });
+			const test = vi.fn().mockResolvedValue({ status: 'OK', message: 'ok' });
+			const { credentialService, mockUser } = adapterWith(decryptForUse, test);
+
+			await expect(credentialService.test('cred-1')).resolves.toEqual({
+				success: true,
+				message: 'ok',
+			});
+			expect(decryptForUse).toHaveBeenCalledWith(
+				storedCredential,
+				{ kind: 'user', user: mockUser },
+				undefined,
+			);
+		});
+
+		it('judges the policy on the project the thread is bound to', async () => {
+			const decryptForUse = vi.fn().mockResolvedValue({});
+			const test = vi.fn().mockResolvedValue({ status: 'OK', message: 'ok' });
+			const { service, mockUser } = adapterWith(decryptForUse, test);
+			const { credentialService } = service.createContext(mockUser, {
+				projectId: 'team-project-1',
+			});
+
+			await credentialService.test('cred-1');
+
+			expect(decryptForUse).toHaveBeenCalledWith(
+				storedCredential,
+				{ kind: 'user', user: mockUser },
+				'team-project-1',
+			);
+		});
+
+		it('does not run the test when the policy refuses the decrypt', async () => {
+			const refusal = new Error('Credential type "slackApi" is blocked by an instance policy');
+			const decryptForUse = vi.fn().mockRejectedValue(refusal);
+			const test = vi.fn();
+			const { credentialService } = adapterWith(decryptForUse, test);
+
+			await expect(credentialService.test('cred-1')).rejects.toBe(refusal);
+			expect(test).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getCredentialFillState', () => {
 		/** An adapter over a credential type declaring `properties` and holding `data`. */
 		const adapterFor = (

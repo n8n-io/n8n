@@ -263,6 +263,17 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		return [...new Set(projectIds)];
 	}
 
+	/** Find the IDs of the team projects a workflow is in, as home or shared with. */
+	async findTeamProjectIds(workflowId: string) {
+		const rows = await this.find({
+			where: { workflowId, project: { type: 'team' } },
+			relations: { project: true },
+			select: { projectId: true, project: { id: true } },
+		});
+
+		return [...new Set(rows.map((row) => row.projectId))];
+	}
+
 	/**
 	 * Find the IDs of all the projects where a workflow is shared with one of
 	 * the given sharing roles.
@@ -338,15 +349,15 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
 			includeActiveVersion?: boolean;
-			em?: EntityManager;
-		} = {},
+		} & ({ em?: EntityManager; ctx?: never } | { ctx?: OperationContext; em?: never }) = {},
 	) {
 		const {
 			where = {},
 			includeTags = false,
 			includeParentFolder = false,
 			includeActiveVersion = false,
-			em = this.manager,
+			ctx = {},
+			em = this.managerFor(ctx),
 		} = options;
 
 		const sharedWorkflow = await em.findOne(SharedWorkflow, {

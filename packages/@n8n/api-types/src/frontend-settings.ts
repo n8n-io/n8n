@@ -93,6 +93,7 @@ export interface FrontendSettings {
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
 	endpointHealth: string;
+	healthCheckTimeoutMs: number;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;

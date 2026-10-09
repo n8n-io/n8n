@@ -171,9 +171,18 @@ paths:
   /settings/log-streaming/destinations:
     get:
       $ref: ./handlers/settings/spec/paths/getLogStreamingDestinations.generated.yml
+    post:
+      $ref: ./handlers/settings/spec/paths/createLogStreamingDestination.generated.yml
   /settings/log-streaming/destinations/{id}:
     get:
       $ref: ./handlers/settings/spec/paths/getLogStreamingDestination.generated.yml
+    put:
+      $ref: ./handlers/settings/spec/paths/updateLogStreamingDestination.generated.yml
+    delete:
+      $ref: ./handlers/settings/spec/paths/deleteLogStreamingDestination.generated.yml
+  /settings/log-streaming/destinations/{id}/test:
+    post:
+      $ref: ./handlers/settings/spec/paths/testLogStreamingDestination.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getNodeTypeInstancePolicy.generated.yml

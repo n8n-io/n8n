@@ -183,7 +183,7 @@ describe('ImportPackageRequestDto', () => {
 		).toBe(false);
 	});
 
-	it.each(['keep-existing', 'fail'] as const)(
+	it.each(['keep-existing', 'fail', 'overwrite', 'overwrite-non-destructive'] as const)(
 		'accepts %s as a dataTableSchemaConflictPolicy value',
 		(dataTableSchemaConflictPolicy) => {
 			const result = ImportPackageRequestDto.safeParse({

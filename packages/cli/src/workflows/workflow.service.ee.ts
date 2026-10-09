@@ -35,6 +35,7 @@ import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
@@ -64,6 +65,7 @@ export class EnterpriseWorkflowService {
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	async shareWithProjects(
@@ -160,9 +162,13 @@ export class EnterpriseWorkflowService {
 		if (credentialIds.length === 0) return new Set();
 
 		if (isCredSharingEnabled()) {
-			const unusable = await this.credentialsFinderService.findUnusableCredentialsForUser(
-				user,
+			// The rule a run acting as this user follows, so the editor blocks exactly
+			// what the server refuses: what the project carries, plus the user's own
+			// access without an Owner's or Admin's instance-wide grant.
+			const unusable = await this.credentialsPermissionChecker.findUnusableInWorkflow(
+				workflowId,
 				credentialIds,
+				user.id,
 			);
 			const unusableIds = new Set(unusable.map((c) => c.id));
 			return new Set(credentialIds.filter((id) => !unusableIds.has(id)));

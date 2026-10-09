@@ -28,8 +28,8 @@ export class OAuthServerModule implements ModuleInterface {
 		}
 
 		// Main and webhook processes mint access tokens (Form and Chat flows mint
-		// on webhook processes), so they load the private signing key. Workers never
-		// mint.
+		// on webhook processes), so they load the private signing key. Workers only
+		// verify, and load the public keys on first use.
 		if (instanceType === 'main' || instanceType === 'webhook') {
 			const { OAuthSigningKeyService } = await import('./oauth-signing-key.service.js');
 			await Container.get(OAuthSigningKeyService).initialize();

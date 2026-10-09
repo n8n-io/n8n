@@ -204,7 +204,8 @@ export class AgentTestRunService {
 
 		return {
 			status: 'ready',
-			sessionId: sessionId ?? randomUUID(),
+			// An empty id means a new session, like an omitted one.
+			sessionId: sessionId || randomUUID(),
 			sessionMode,
 		};
 	}

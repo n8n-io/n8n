@@ -3144,6 +3144,7 @@ describe('TelemetryEventRelay', () => {
 					dataTables: {
 						matched: 1,
 						created: 1,
+						updated: 1,
 						requirements: 2,
 					},
 					variables: {
@@ -3197,6 +3198,7 @@ describe('TelemetryEventRelay', () => {
 				credentials_required: 3,
 				data_tables_matched: 1,
 				data_tables_created: 1,
+				data_tables_updated: 1,
 				data_tables_required: 2,
 				variables_matched: 1,
 				variables_missing: 1,

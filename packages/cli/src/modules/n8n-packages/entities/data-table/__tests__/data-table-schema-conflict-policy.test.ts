@@ -6,11 +6,11 @@ const packageColumns = [
 ];
 
 const identicalTarget = [
-	{ name: 'email', type: 'string' },
-	{ name: 'age', type: 'number' },
+	{ name: 'email', type: 'string', index: 0 },
+	{ name: 'age', type: 'number', index: 1 },
 ];
 
-const supersetTarget = [...identicalTarget, { name: 'extra', type: 'boolean' }];
+const supersetTarget = [...identicalTarget, { name: 'extra', type: 'boolean', index: 2 }];
 
 describe('findSchemaConflict', () => {
 	describe('keep-existing', () => {
@@ -39,8 +39,8 @@ describe('findSchemaConflict', () => {
 		it('combines extra columns with missing and mismatched ones', () => {
 			expect(
 				findSchemaConflict('fail', packageColumns, [
-					{ name: 'age', type: 'date' },
-					{ name: 'extra', type: 'boolean' },
+					{ name: 'age', type: 'date', index: 0 },
+					{ name: 'extra', type: 'boolean', index: 1 },
 				]),
 			).toEqual({
 				missingColumns: ['email'],
@@ -49,9 +49,20 @@ describe('findSchemaConflict', () => {
 			});
 		});
 
+		it('lists extra columns in column order when the target columns arrive unsorted', () => {
+			expect(
+				findSchemaConflict('fail', packageColumns, [
+					{ name: 'second', type: 'string', index: 3 },
+					{ name: 'email', type: 'string', index: 0 },
+					{ name: 'first', type: 'string', index: 2 },
+					{ name: 'age', type: 'number', index: 1 },
+				]),
+			).toEqual({ missingColumns: [], typeMismatches: [], extraColumns: ['first', 'second'] });
+		});
+
 		it('still rejects a missing column even without extras', () => {
 			expect(
-				findSchemaConflict('fail', packageColumns, [{ name: 'email', type: 'string' }]),
+				findSchemaConflict('fail', packageColumns, [{ name: 'email', type: 'string', index: 0 }]),
 			).toEqual({
 				missingColumns: ['age'],
 				typeMismatches: [],

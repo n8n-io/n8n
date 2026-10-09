@@ -78,17 +78,10 @@ export class JwtService {
 	/**
 	 * Signs a token bound to a protected resource rather than to a fixed
 	 * purpose. Only OAuth access tokens need this: their audience is the
-	 * requested resource indicator (RFC 8707), known at runtime.
+	 * requested resource indicator (RFC 8707), known at runtime. The caller
+	 * owns the asymmetric key, such as the OAuth access-token signing key.
 	 */
-	signForResource(payload: object, audience: string, options: PurposedSignOptions = {}): string {
-		return jwt.sign(payload, this.jwtSecret, { ...options, audience });
-	}
-
-	/**
-	 * Like {@link signForResource}, but signs with an asymmetric key that the
-	 * caller owns, such as the OAuth access-token signing key.
-	 */
-	signForResourceWithKey(
+	signForResource(
 		payload: object,
 		audience: string,
 		privateKey: KeyObject,
@@ -103,6 +96,14 @@ export class JwtService {
 	 */
 	decodeUnverified<T = JwtPayload>(token: string) {
 		return jwt.decode(token) as T;
+	}
+
+	/**
+	 * Like {@link decodeUnverified}, but also returns the header, e.g. to route
+	 * a token by its `kid`. The same rule applies: never make a decision on it.
+	 */
+	decodeUnverifiedWithHeader(token: string) {
+		return jwt.decode(token, { complete: true });
 	}
 
 	/** Verifies a token and requires it to carry the audience of `purpose`. */
@@ -121,13 +122,32 @@ export class JwtService {
 		}
 	}
 
-	/** Verifies an OAuth access token against the resource(s) it may be used for. */
-	verifyForResource<T = JwtPayload>(
+	/**
+	 * Verifies an OAuth access token against the resource(s) it may be used
+	 * for, with the public key of the key that signed it. Returns the header
+	 * and the payload.
+	 */
+	verifyForResource(
 		token: string,
 		audience: string | [string, ...string[]],
+		publicKey: KeyObject,
 		options: PurposedVerifyOptions = {},
 	) {
-		return jwt.verify(token, this.jwtSecret, { ...options, audience }) as T;
+		return jwt.verify(token, publicKey, { ...options, audience, complete: true });
+	}
+
+	/**
+	 * Verifies an OAuth access token that n8n signed with the HMAC secret,
+	 * before it signed access tokens with ES256. Accepts HS256 only.
+	 *
+	 * DEPRECATED: remove with `OAuthTokenService.verifyLegacyHmacJwt`, after the
+	 * last HS256 access tokens have expired.
+	 */
+	verifyLegacyHmacAccessToken<T = JwtPayload>(
+		token: string,
+		audience: string | [string, ...string[]],
+	) {
+		return jwt.verify(token, this.jwtSecret, { audience, algorithms: ['HS256'] }) as T;
 	}
 
 	/**

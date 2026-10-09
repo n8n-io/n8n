@@ -18,6 +18,7 @@ import {
 	type AgentActor,
 } from './agent-modification-telemetry.service';
 import { AgentConfigPreparationService } from './agent-config-preparation.service';
+import { AgentPolicyService } from './agent-policy.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
@@ -61,6 +62,7 @@ export class AgentConfigService {
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly saveCompletion: AgentSaveCompletionService,
+		private readonly agentPolicyService: AgentPolicyService,
 	) {}
 
 	/**
@@ -124,6 +126,13 @@ export class AgentConfigService {
 			clearOmitted,
 		);
 		const replacement = this.buildConfigReplacement(entity, validatedConfig, config, clearOmitted);
+		await this.agentPolicyService.enforceSave(
+			projectId,
+			agentId,
+			replacement.nextSchema,
+			replacement.previousSchema,
+			{ kind: 'user', user },
+		);
 		entity.schema = replacement.nextSchema;
 		entity.name = validatedConfig.name;
 		entity.integrations = replacement.nextIntegrations;

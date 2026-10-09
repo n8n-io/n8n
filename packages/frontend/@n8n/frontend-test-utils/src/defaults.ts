@@ -26,6 +26,7 @@ export const defaultSettings: FrontendSettings = {
 	endpointWebhookTest: '',
 	endpointWebhookWaiting: '',
 	endpointHealth: '/healthz',
+	healthCheckTimeoutMs: 5000,
 	enterprise: {
 		sharing: false,
 		ldap: false,

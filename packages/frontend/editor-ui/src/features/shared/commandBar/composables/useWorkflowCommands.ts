@@ -25,7 +25,6 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import type { CommandGroup, CommandBarItem } from '../types';
 import uniqBy from 'lodash/uniqBy';
 import { nodeViewEventBus } from '@/app/event-bus';
-import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
 	OPEN_CREDENTIAL: 'open-credential',
@@ -145,15 +144,10 @@ export function useWorkflowCommands(): CommandGroup {
 					},
 					{
 						id: ITEM_ID.TEST_WORKFLOW,
-						title: {
-							component: CommandBarItemTitle,
-							props: {
-								title: i18n.baseText('commandBar.workflow.test'),
-								shortcut: {
-									metaKey: true,
-									keys: ['enter'],
-								},
-							},
+						title: i18n.baseText('commandBar.workflow.test'),
+						shortcut: {
+							metaKey: true,
+							keys: ['enter'],
 						},
 						section: i18n.baseText('commandBar.sections.workflow'),
 						keywords: [
@@ -175,16 +169,11 @@ export function useWorkflowCommands(): CommandGroup {
 					},
 					{
 						id: ITEM_ID.TIDY_UP_WORKFLOW,
-						title: {
-							component: CommandBarItemTitle,
-							props: {
-								title: i18n.baseText('commandBar.workflow.tidyUp'),
-								shortcut: {
-									shiftKey: true,
-									altKey: true,
-									keys: ['t'],
-								},
-							},
+						title: i18n.baseText('commandBar.workflow.tidyUp'),
+						shortcut: {
+							shiftKey: true,
+							altKey: true,
+							keys: ['t'],
 						},
 						keywords: [i18n.baseText('commandBar.workflow.tidyUp')],
 						section: i18n.baseText('commandBar.sections.workflow'),
@@ -232,15 +221,10 @@ export function useWorkflowCommands(): CommandGroup {
 			: []),
 		{
 			id: ITEM_ID.SELECT_ALL,
-			title: {
-				component: CommandBarItemTitle,
-				props: {
-					title: i18n.baseText('commandBar.workflow.selectAll'),
-					shortcut: {
-						metaKey: true,
-						keys: ['a'],
-					},
-				},
+			title: i18n.baseText('commandBar.workflow.selectAll'),
+			shortcut: {
+				metaKey: true,
+				keys: ['a'],
 			},
 			section: i18n.baseText('commandBar.sections.workflow'),
 			keywords: [i18n.baseText('commandBar.workflow.selectAll')],

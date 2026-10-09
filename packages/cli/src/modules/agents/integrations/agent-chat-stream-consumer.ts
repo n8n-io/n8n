@@ -1,5 +1,4 @@
 import type { StreamChunk } from '@n8n/agents';
-import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
 import { OperationalError, type Logger } from 'n8n-workflow';
 
@@ -8,6 +7,7 @@ import type { BridgeStatusHandle } from './agent-chat-integration';
 import { isIntegrationActionSuspendPayload } from './agent-chat-suspension-cards';
 import { type TextEndFn, type TextYieldFn } from './types';
 import { isRateLimitedToolOutput } from './channel-rate-limit';
+import { isSilentActionOutput } from './integration-tool-execution';
 
 type SuspendedChunk = Extract<StreamChunk, { type: 'tool-call-suspended' }>;
 type MessageChunk = Extract<StreamChunk, { type: 'message' }>;
@@ -53,6 +53,11 @@ interface ConsumeStreamOptions {
 	 * be addressed to them. Absent for a turn no user drove.
 	 */
 	actingUserId?: string;
+	/**
+	 * Log errors instead of posting them. For a turn whose reply was optional:
+	 * nobody asked the agent, so an error post would be noise.
+	 */
+	quietErrors?: boolean;
 }
 
 interface ResponseState {
@@ -74,6 +79,7 @@ interface ResponseState {
 	 */
 	fallbackSource: 'tool-error' | 'suspension' | 'rate-limit' | null;
 	fallbackError: unknown;
+	quietErrors: boolean;
 }
 
 interface ResponseLifecycle {
@@ -82,11 +88,12 @@ interface ResponseLifecycle {
 	finish: () => Promise<void>;
 }
 
-const createResponseState = (): ResponseState => ({
+const createResponseState = (options: ConsumeStreamOptions): ResponseState => ({
 	hasVisibleResponse: false,
 	suppressText: false,
 	fallbackSource: null,
 	fallbackError: null,
+	quietErrors: options.quietErrors === true,
 });
 
 export class AgentChatStreamConsumer {
@@ -195,12 +202,12 @@ export class AgentChatStreamConsumer {
 				if (!streamingPostRejected) {
 					pendingText = '';
 				} else if (!pendingText.trim()) {
-					await this.options.postErrorToThread(thread, streamingPostError);
+					await this.postError(thread, streamingPostError, responseState);
 				}
 			}
 			const text = pendingText;
 			pendingText = '';
-			if (text.trim()) await this.postBufferedText(thread, text);
+			if (text.trim()) await this.postBufferedText(thread, text, responseState);
 		};
 
 		// Don't start streaming post eagerly — wait for first text delta
@@ -213,7 +220,7 @@ export class AgentChatStreamConsumer {
 			ensureStreamingPost,
 			endStreamingPost,
 		});
-		const responseState = createResponseState();
+		const responseState = createResponseState(options);
 
 		try {
 			for await (const chunk of stream) {
@@ -247,7 +254,7 @@ export class AgentChatStreamConsumer {
 						break;
 					case 'error':
 						await responseLifecycle.startDiscreteResponse();
-						await this.options.postErrorToThread(thread, chunk.error);
+						await this.postError(thread, chunk.error, responseState);
 						responseState.hasVisibleResponse = true;
 						break;
 					case 'tool-result':
@@ -278,6 +285,7 @@ export class AgentChatStreamConsumer {
 	private async postBufferedText(
 		thread: Thread<unknown, unknown>,
 		text: string,
+		state: ResponseState,
 		throwOnDeliveryError = false,
 	): Promise<void> {
 		try {
@@ -287,8 +295,24 @@ export class AgentChatStreamConsumer {
 				error: postError instanceof Error ? postError.message : String(postError),
 			});
 			if (throwOnDeliveryError) throw postError;
-			await this.options.postErrorToThread(thread, postError);
+			await this.postError(thread, postError, state);
 		}
+	}
+
+	private async postError(
+		thread: Thread<unknown, unknown>,
+		error: unknown,
+		state: ResponseState,
+		throwOnDeliveryError?: boolean,
+	): Promise<void> {
+		if (state.quietErrors) {
+			this.options.logger.warn('[AgentChatBridge] Error in a turn whose reply was optional', {
+				threadId: thread.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return;
+		}
+		await this.options.postErrorToThread(thread, error, throwOnDeliveryError);
 	}
 
 	private noteToolResult(chunk: ToolResultChunk, state: ResponseState): void {
@@ -316,20 +340,7 @@ export class AgentChatStreamConsumer {
 		if (chunk.isError || !(this.options.isIntegrationActionTool?.(chunk.toolName) ?? false)) {
 			return false;
 		}
-		if (!isRecord(chunk.output)) return false;
-		if (chunk.output.silent === true) return true;
-		// Batched action calls nest per-operation results under `results`.
-		return (
-			Array.isArray(chunk.output.results) &&
-			chunk.output.results.some(
-				(entry) =>
-					isRecord(entry) &&
-					entry.action === 'do_not_respond' &&
-					isRecord(entry.result) &&
-					entry.result.ok === true &&
-					entry.result.silent === true,
-			)
-		);
+		return isSilentActionOutput(chunk.output);
 	}
 
 	private createResponseLifecycle(options: {
@@ -374,7 +385,7 @@ export class AgentChatStreamConsumer {
 		if (state.fallbackSource === 'tool-error' && state.hasVisibleResponse) return;
 		// 'rate-limit' and 'suspension' always post.
 		await lifecycle.startDiscreteResponse();
-		await this.options.postErrorToThread(thread, state.fallbackError, throwOnDeliveryError);
+		await this.postError(thread, state.fallbackError, state, throwOnDeliveryError);
 		state.hasVisibleResponse = true;
 	}
 
@@ -384,7 +395,7 @@ export class AgentChatStreamConsumer {
 		options: ConsumeStreamOptions = {},
 	): Promise<void> {
 		let buffer = '';
-		const responseState = createResponseState();
+		const responseState = createResponseState(options);
 		const responseLifecycle = this.createResponseLifecycle({
 			statusHandle: options.statusHandle,
 		});
@@ -394,7 +405,7 @@ export class AgentChatStreamConsumer {
 			buffer = '';
 			if (!text.trim()) return;
 			await responseLifecycle.startDiscreteResponse();
-			await this.postBufferedText(thread, text, options.throwOnDeliveryError);
+			await this.postBufferedText(thread, text, responseState, options.throwOnDeliveryError);
 			responseState.hasVisibleResponse = true;
 		};
 
@@ -437,7 +448,7 @@ export class AgentChatStreamConsumer {
 					case 'error':
 						await flushBuffer();
 						await responseLifecycle.startDiscreteResponse();
-						await this.options.postErrorToThread(thread, chunk.error, options.throwOnDeliveryError);
+						await this.postError(thread, chunk.error, responseState, options.throwOnDeliveryError);
 						responseState.hasVisibleResponse = true;
 						break;
 					case 'tool-result':

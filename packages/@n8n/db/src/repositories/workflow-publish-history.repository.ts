@@ -1,13 +1,23 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { WorkflowPublishHistory } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 @Service()
-export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublishHistory> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowPublishHistory, dataSource.manager);
+export class WorkflowPublishHistoryRepository extends BaseRepository<WorkflowPublishHistory> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowPublishHistory, dataSource.manager, transactionRunner);
+	}
+
+	async getLatestPublishHistoryEventId(workflowId: string, ctx: OperationContext = {}) {
+		const publication = await this.managerFor(ctx).findOne(WorkflowPublishHistory, {
+			where: { workflowId },
+			order: { id: 'DESC' },
+		});
+		return publication?.id ?? null;
 	}
 
 	async addRecord(

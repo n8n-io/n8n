@@ -2263,7 +2263,12 @@ export class WorkflowExecute {
 	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
 		Logger.debug('Workflow execution started', { workflowId: workflow.id });
 		const { startedAt, hooks } = this.setupExecution();
-		this.checkForWorkflowIssues(workflow);
+		assertExecutionDataExists(
+			this.runExecutionData.executionData,
+			workflow,
+			this.additionalData,
+			this.mode,
+		);
 		this.handleWaitingState(workflow);
 
 		// Variables which hold temporary data for each node-execution
@@ -2282,6 +2287,7 @@ export class WorkflowExecute {
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				await this.initializeExecution(workflow, hooks);
+				this.checkForWorkflowIssues(workflow);
 
 				executionLoop: while (this.isExecutionStackNotEmpty()) {
 					if (this.shouldStopExecuting()) {

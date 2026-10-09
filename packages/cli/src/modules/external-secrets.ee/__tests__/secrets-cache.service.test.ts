@@ -1,5 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { OperationalError } from 'n8n-workflow';
 
 import { AnotherDummyProvider, DummyProvider } from '@test/external-secrets/utils';
 
@@ -13,6 +14,7 @@ describe('SecretsCache', () => {
 	let dummyProvider: DummyProvider;
 	let anotherProvider: AnotherDummyProvider;
 	const config = Container.get(ExternalSecretsConfig);
+	const signal = new AbortController().signal;
 
 	const providerSettings = {
 		connected: true,
@@ -99,7 +101,28 @@ describe('SecretsCache', () => {
 				const refreshPromise = cache.refreshProvider('dummy', dummyProvider);
 				await vi.advanceTimersByTimeAsync(config.refreshTimeout * 1000);
 
-				await expect(refreshPromise).resolves.toBeUndefined();
+				await expect(refreshPromise).resolves.toBe('failed');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should join the pull a timed-out refresh left running', async () => {
+			vi.useFakeTimers();
+			try {
+				const updateSpy = vi
+					.spyOn(dummyProvider, 'update')
+					.mockImplementation(async () => await new Promise(() => {}));
+
+				const timedOutRefresh = cache.refreshProvider('dummy', dummyProvider);
+				await vi.advanceTimersByTimeAsync(config.refreshTimeout * 1000);
+				await timedOutRefresh;
+
+				const nextRefresh = cache.refreshProvider('dummy', dummyProvider);
+				await vi.advanceTimersByTimeAsync(config.refreshTimeout * 1000);
+				await nextRefresh;
+
+				expect(updateSpy).toHaveBeenCalledTimes(1);
 			} finally {
 				vi.useRealTimers();
 			}
@@ -114,7 +137,7 @@ describe('SecretsCache', () => {
 			const updateSpy1 = vi.spyOn(dummyProvider, 'update');
 			const updateSpy2 = vi.spyOn(anotherProvider, 'update');
 
-			await cache.refreshAll();
+			await cache.refreshAll(signal);
 
 			expect(updateSpy1).toHaveBeenCalledTimes(1);
 			expect(updateSpy2).toHaveBeenCalledTimes(1);
@@ -128,13 +151,70 @@ describe('SecretsCache', () => {
 
 			const updateSpy = vi.spyOn(anotherProvider, 'update');
 
-			await cache.refreshAll();
+			await cache.refreshAll(signal);
 
 			expect(updateSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle empty registry', async () => {
-			await expect(cache.refreshAll()).resolves.not.toThrow();
+			await expect(cache.refreshAll(signal)).resolves.not.toThrow();
+		});
+
+		it('should succeed when at least one connected provider refreshed', async () => {
+			vi.spyOn(dummyProvider, 'update').mockRejectedValue(new Error('Update failed'));
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
+
+			await expect(cache.refreshAll(signal)).resolves.toBeUndefined();
+		});
+
+		it('should succeed when no provider is connected', async () => {
+			dummyProvider.setState('error', new Error('Test error'));
+			registry.set('dummy', dummyProvider);
+
+			await expect(cache.refreshAll(signal)).resolves.toBeUndefined();
+		});
+
+		it('should fail when no connected provider refreshed', async () => {
+			vi.useFakeTimers();
+			try {
+				vi.spyOn(dummyProvider, 'update').mockRejectedValue(new Error('Update failed'));
+				vi.spyOn(anotherProvider, 'update').mockImplementation(
+					async () => await new Promise(() => {}),
+				);
+				registry.set('dummy', dummyProvider);
+				registry.set('another', anotherProvider);
+
+				const refresh = cache.refreshAll(signal).catch((error: unknown) => error);
+				await vi.advanceTimersByTimeAsync(config.refreshTimeout * 1000);
+				const error = await refresh;
+
+				expect(error).toBeInstanceOf(OperationalError);
+				expect(error).toMatchObject({ shouldReport: true });
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should stop waiting for the pulls when the signal aborts', async () => {
+			vi.useFakeTimers();
+			try {
+				vi.spyOn(dummyProvider, 'update').mockImplementation(
+					async () => await new Promise(() => {}),
+				);
+				registry.set('dummy', dummyProvider);
+				const controller = new AbortController();
+				let settled = false;
+
+				const refresh = cache.refreshAll(controller.signal).finally(() => (settled = true));
+				controller.abort();
+				await vi.advanceTimersByTimeAsync(0);
+
+				expect(settled).toBe(true);
+				await refresh;
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 
@@ -302,7 +382,7 @@ describe('SecretsCache', () => {
 		it('should refresh and retrieve secrets', async () => {
 			registry.set('dummy', dummyProvider);
 
-			await cache.refreshAll();
+			await cache.refreshAll(signal);
 
 			expect(cache.hasSecret('dummy', 'test1')).toBe(true);
 			expect(cache.getSecret('dummy', 'test1')).toBe('value1');
@@ -312,12 +392,12 @@ describe('SecretsCache', () => {
 		it('should update secrets after refresh', async () => {
 			registry.set('dummy', dummyProvider);
 
-			await cache.refreshAll();
+			await cache.refreshAll(signal);
 			expect(cache.getSecret('dummy', 'test1')).toBe('value1');
 
 			// Update provider secrets
 			dummyProvider._updateSecrets = { test1: 'updated-value', test3: 'new-value' };
-			await cache.refreshAll();
+			await cache.refreshAll(signal);
 
 			expect(cache.getSecret('dummy', 'test1')).toBe('updated-value');
 			expect(cache.getSecret('dummy', 'test3')).toBe('new-value');

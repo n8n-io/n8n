@@ -11,6 +11,7 @@ import {
 	AgentChatResumeDto,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
+	N8N_CHAT_INTEGRATION_TYPE,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import { AgentsConfig } from '@n8n/config';
@@ -317,7 +318,7 @@ export class AgentChatController {
 				resumeData: payload.resumeData,
 				user: req.user,
 				usePublishedVersion: true,
-				integrationType: 'n8n_chat',
+				integrationType: N8N_CHAT_INTEGRATION_TYPE,
 				source: N8N_CHAT_PRODUCTION_SOURCE,
 				expectedMemory: { resourceId: productionChatMemoryResourceId(req.user.id) },
 				onExecutionStarted,
@@ -664,6 +665,67 @@ export class AgentChatController {
 		return { removed: true };
 	}
 
+	@Get('/:agentId/n8n-chat/:threadId/background-tasks')
+	@ProjectScope('agent:execute')
+	async getProductionBackgroundJobs(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentBackgroundJobsResponse> {
+		const { projectId, agentId, threadId } = req.params;
+		await this.requireProductionChat(agentId, projectId);
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+
+		// A new n8n Chat session has no thread until its first execution starts.
+		if (!thread) return { tasks: [] };
+
+		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+
+		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
+		return this.mapBackgroundJobsToDto(jobs);
+	}
+
+	@Post('/:agentId/n8n-chat/:threadId/background-tasks/stop')
+	@ProjectScope('agent:execute')
+	async stopProductionBackgroundJobs(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentBackgroundJobsResponse> {
+		const { projectId, agentId, threadId } = req.params;
+		if (!this.agentsConfig.backgroundTasksEnabled)
+			throw new BadRequestError('Background tasks are not enabled');
+		await this.requireProductionChat(agentId, projectId);
+		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+		await this.backgroundJobService.requestPause(
+			agentId,
+			threadId,
+			productionChatMemoryResourceId(req.user.id),
+		);
+		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
+		return this.mapBackgroundJobsToDto(jobs);
+	}
+
+	@Post('/:agentId/n8n-chat/:threadId/background-tasks/resume')
+	@ProjectScope('agent:execute')
+	async resumeProductionBackgroundJob(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Body payload: AgentChatResumeDto,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		await this.requireProductionChat(agentId, projectId);
+		const resumed = await this.agentExecutionOrchestratorService.resumeBackgroundForChat({
+			...payload,
+			resumeData: payload.resumeData,
+			projectId,
+			agentId,
+			user: req.user,
+			usePublishedVersion: true,
+			source: N8N_CHAT_PRODUCTION_SOURCE,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			expectedMemory: { threadId, resourceId: productionChatMemoryResourceId(req.user.id) },
+		});
+		if (!resumed) throw new BadRequestError('This background approval is no longer available');
+		return { resumed };
+	}
+
 	@Get('/:agentId/chat/:threadId/queue')
 	@ProjectScope('agent:read')
 	async getQueuedMessages(
@@ -792,6 +854,12 @@ export class AgentChatController {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 
 		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
+		return this.mapBackgroundJobsToDto(jobs);
+	}
+
+	private mapBackgroundJobsToDto(
+		jobs: Awaited<ReturnType<AgentBackgroundJobService['listCurrentGroupForThread']>>,
+	): AgentBackgroundJobsResponse {
 		return {
 			pendingTaskIds: jobs
 				.filter(

@@ -41,6 +41,10 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// # region OAuth server
+	'reload-oauth-signing-keys': never;
+	// #endregion
+
 	'reload-source-control-config': never;
 
 	'reload-mcp-registry': never;

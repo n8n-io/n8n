@@ -58,6 +58,7 @@ export const LOG_SCOPES = [
 	'policy',
 	'activity-log',
 	'instance-reporting',
+	'inbound-auth',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

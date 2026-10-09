@@ -108,7 +108,10 @@ export class ImportPackageRequestDto extends Z.class({
 	overwriteDeletionPolicy: optionalEnum(['archive', 'hard-delete'], 'archive'),
 	dataTableMatchingMode: optionalEnum(['by-id'], 'by-id'),
 	dataTableMissingMode: optionalEnum(['create', 'must-preexist', 'do-nothing'], 'create'),
-	dataTableSchemaConflictPolicy: optionalEnum(['keep-existing', 'fail'], 'keep-existing'),
+	dataTableSchemaConflictPolicy: optionalEnum(
+		['keep-existing', 'fail', 'overwrite', 'overwrite-non-destructive'],
+		'keep-existing',
+	),
 	variableMissingMode: optionalEnum(
 		['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'],
 		'create-with-value',

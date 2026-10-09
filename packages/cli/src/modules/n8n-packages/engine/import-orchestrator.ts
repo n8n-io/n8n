@@ -68,7 +68,7 @@ import type {
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
 import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
 import { toImportBlockedError } from './import-blocked.error';
-import { assertVariableWritesAllowed } from './import-gates';
+import { assertDataTableWritesAllowed, assertVariableWritesAllowed } from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -158,6 +158,10 @@ export class ImportOrchestrator {
 			hasCreations: creations.length > 0,
 			hasOverwrites: overwrites.length > 0,
 		});
+		assertDataTableWritesAllowed(
+			options.apiKeyScopes,
+			plans.map((plan) => plan.dataTablePlan),
+		);
 
 		for (const { input, variablePlan } of plans) {
 			if (variablePlan.creations.length > 0) {

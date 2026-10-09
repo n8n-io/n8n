@@ -1363,6 +1363,7 @@ export class TelemetryEventRelay extends EventRelay {
 			credentials_required: counts.credentials.requirements,
 			data_tables_matched: counts.dataTables.matched,
 			data_tables_created: counts.dataTables.created,
+			data_tables_updated: counts.dataTables.updated,
 			data_tables_required: counts.dataTables.requirements,
 			variables_matched: counts.variables.matched,
 			variables_missing: counts.variables.missing,

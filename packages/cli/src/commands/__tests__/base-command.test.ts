@@ -42,7 +42,7 @@ mockInstance(ShutdownService);
 mockInstance(ModulesConfig);
 mockInstance(ModuleRegistry);
 mockInstance(ExecutionContextHookRegistry);
-mockInstance(BinaryDataService);
+const binaryDataService = mockInstance(BinaryDataService);
 mockInstance(DatabaseManager);
 mockInstance(LicenseState);
 mockInstance(StorageConfig, { mode: 'database' });
@@ -62,6 +62,10 @@ describe('BaseCommand', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+	});
+
+	afterEach(() => {
+		exitSpy.mockRestore();
 	});
 
 	describe('initBinaryDataService', () => {
@@ -117,6 +121,26 @@ describe('logError', () => {
 			'Something went wrong',
 			'the stack',
 		]);
+	});
+});
+
+describe('initBinaryDataService', () => {
+	it('should exit before the store starts when the write mode is not licensed', async () => {
+		binaryDataConfig.mode = 's3';
+		license.isLicensed.mockReturnValue(false);
+		const exit = vi.spyOn(process, 'exit').mockImplementation(() => {
+			throw new Error('process.exit');
+		});
+
+		try {
+			await expect(new TestCommand().initBinaryDataService()).rejects.toThrow('process.exit');
+
+			expect(exit).toHaveBeenCalledWith(1);
+			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('S3 binary data storage'));
+			expect(binaryDataService.init).not.toHaveBeenCalled();
+		} finally {
+			exit.mockRestore();
+		}
 	});
 });
 
