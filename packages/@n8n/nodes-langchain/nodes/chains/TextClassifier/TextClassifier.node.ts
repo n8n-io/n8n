@@ -10,11 +10,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { z } from 'zod';
 
 import { getBatchingOptionFields } from '@n8n/ai-utilities';
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 
+import { buildClassificationSchema, type Category } from './classification';
 import { processItem } from './processItem';
 
 const SYSTEM_PROMPT_TEMPLATE =
@@ -200,10 +200,7 @@ export class TextClassifier implements INodeType {
 			0,
 		)) as BaseLanguageModel;
 
-		const categories = this.getNodeParameter('categories.categories', 0, []) as Array<{
-			category: string;
-			description: string;
-		}>;
+		const categories = this.getNodeParameter('categories.categories', 0, []) as Category[];
 
 		if (categories.length === 0) {
 			throw new NodeOperationError(this.getNode(), 'At least one category must be defined');
@@ -218,20 +215,7 @@ export class TextClassifier implements INodeType {
 		const multiClass = options?.multiClass ?? false;
 		const fallback = options?.fallback ?? 'discard';
 
-		const schemaEntries = categories.map((cat) => [
-			cat.category,
-			z
-				.boolean()
-				.describe(
-					`Should be true if the input has category "${cat.category}" (description: ${cat.description})`,
-				),
-		]);
-		if (fallback === 'other')
-			schemaEntries.push([
-				'fallback',
-				z.boolean().describe('Should be true if none of the other categories apply'),
-			]);
-		const schema = z.object(Object.fromEntries(schemaEntries));
+		const schema = buildClassificationSchema(categories, fallback === 'other');
 
 		const structuredParser = StructuredOutputParser.fromZodSchema(schema);
 
@@ -292,7 +276,7 @@ export class TextClassifier implements INodeType {
 						const item = items[index];
 
 						categories.forEach((cat, idx) => {
-							if (output[cat.category]) returnData[idx].push(copyOf(item));
+							if (output.matched.includes(cat.category)) returnData[idx].push(copyOf(item));
 						});
 
 						if (fallback === 'other' && output.fallback)
@@ -322,7 +306,7 @@ export class TextClassifier implements INodeType {
 					);
 
 					categories.forEach((cat, idx) => {
-						if (output[cat.category]) returnData[idx].push(copyOf(item));
+						if (output.matched.includes(cat.category)) returnData[idx].push(copyOf(item));
 					});
 					if (fallback === 'other' && output.fallback)
 						returnData[returnData.length - 1].push(copyOf(item));

@@ -51,7 +51,7 @@ describe('TextClassifier Node', () => {
 
 	describe('execute', () => {
 		it('should process items with correct parameters', async () => {
-			(processItem as Mock).mockResolvedValue({ test: true });
+			(processItem as Mock).mockResolvedValue({ matched: ['test'], fallback: false });
 
 			const result = await node.execute.call(mockExecuteFunction);
 
@@ -79,7 +79,7 @@ describe('TextClassifier Node', () => {
 					];
 				return defaultValue;
 			});
-			(processItem as Mock).mockResolvedValue({ test1: true, test2: true });
+			(processItem as Mock).mockResolvedValue({ matched: ['test1', 'test2'], fallback: false });
 
 			const result = await node.execute.call(mockExecuteFunction);
 
@@ -88,10 +88,31 @@ describe('TextClassifier Node', () => {
 			expect(result[0][0].json).toEqual(result[1][0].json);
 		});
 
+		// The model answers with one key per category. Routing read that object
+		// directly until the result became a typed list, and a schema that made every
+		// value an object would have sent every item to every branch.
+		it('routes only the categories the model matched', async () => {
+			mockExecuteFunction.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
+				if (param === 'inputText') return 'Test input';
+				if (param === 'categories.categories')
+					return [
+						{ category: 'test1', description: 'first' },
+						{ category: 'test2', description: 'second' },
+					];
+				return defaultValue;
+			});
+			(processItem as Mock).mockResolvedValue({ matched: ['test2'], fallback: false });
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			expect(result[0]).toHaveLength(0);
+			expect(result[1]).toHaveLength(1);
+		});
+
 		it('leaves the input items alone', async () => {
 			const input = [{ json: { item: 1 } }];
 			mockExecuteFunction.getInputData.mockReturnValue(input);
-			(processItem as Mock).mockResolvedValue({ test: true });
+			(processItem as Mock).mockResolvedValue({ matched: ['test'], fallback: false });
 
 			await node.execute.call(mockExecuteFunction);
 
@@ -114,8 +135,8 @@ describe('TextClassifier Node', () => {
 			]);
 
 			(processItem as Mock)
-				.mockResolvedValueOnce({ test1: true, test2: false })
-				.mockResolvedValueOnce({ test1: false, test2: true });
+				.mockResolvedValueOnce({ matched: ['test1'], fallback: false })
+				.mockResolvedValueOnce({ matched: ['test2'], fallback: false });
 
 			const result = await node.execute.call(mockExecuteFunction);
 
@@ -142,10 +163,10 @@ describe('TextClassifier Node', () => {
 			]);
 
 			(processItem as Mock)
-				.mockResolvedValueOnce({ test: true })
-				.mockResolvedValueOnce({ test: true })
-				.mockResolvedValueOnce({ test: true })
-				.mockResolvedValueOnce({ test: true });
+				.mockResolvedValueOnce({ matched: ['test'], fallback: false })
+				.mockResolvedValueOnce({ matched: ['test'], fallback: false })
+				.mockResolvedValueOnce({ matched: ['test'], fallback: false })
+				.mockResolvedValueOnce({ matched: ['test'], fallback: false });
 
 			const result = await node.execute.call(mockExecuteFunction);
 
@@ -178,7 +199,7 @@ describe('TextClassifier Node', () => {
 				{ json: { item: 6 } },
 			]);
 
-			(processItem as Mock).mockResolvedValue({ test: true });
+			(processItem as Mock).mockResolvedValue({ matched: ['test'], fallback: false });
 
 			await node.execute.call(mockExecuteFunction);
 
@@ -203,9 +224,9 @@ describe('TextClassifier Node', () => {
 			]);
 
 			(processItem as Mock)
-				.mockResolvedValueOnce({ test: true })
+				.mockResolvedValueOnce({ matched: ['test'], fallback: false })
 				.mockRejectedValueOnce(new Error('Batch error'))
-				.mockResolvedValueOnce({ test: true });
+				.mockResolvedValueOnce({ matched: ['test'], fallback: false });
 
 			mockExecuteFunction.continueOnFail.mockReturnValue(true);
 

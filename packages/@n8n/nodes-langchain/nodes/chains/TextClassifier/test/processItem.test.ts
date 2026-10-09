@@ -95,7 +95,7 @@ describe('processItem', () => {
 			undefined,
 		);
 
-		expect(result).toEqual({ test: true });
+		expect(result).toEqual({ matched: ['test'], fallback: false });
 		expect(mockContext.getNodeParameter).toHaveBeenCalledWith('inputText', 0);
 		expect(mockContext.getNodeParameter).toHaveBeenCalledWith(
 			'options.systemPromptTemplate',

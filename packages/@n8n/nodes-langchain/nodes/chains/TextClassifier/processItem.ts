@@ -8,6 +8,7 @@ import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserE
 import { toParserInputText } from '@utils/output_parsers/parserInput';
 import { getTracingConfig } from '@utils/tracing';
 
+import { toClassificationResult, type Category, type ClassificationResult } from './classification';
 import { SYSTEM_PROMPT_TEMPLATE } from './constants';
 
 export async function processItem(
@@ -16,10 +17,10 @@ export async function processItem(
 	item: INodeExecutionData,
 	llm: BaseLanguageModel,
 	parser: StructuredOutputParser<any> | OutputFixingParser<any>,
-	categories: Array<{ category: string; description: string }>,
+	categories: Category[],
 	multiClassPrompt: string,
 	fallbackPrompt: string | undefined,
-): Promise<Record<string, unknown>> {
+): Promise<ClassificationResult> {
 	const input = ctx.getNodeParameter('inputText', itemIndex) as string;
 
 	if (!input) {
@@ -64,7 +65,7 @@ export async function processItem(
 		.withConfig(getTracingConfig(ctx));
 
 	try {
-		return await chain.invoke(messages);
+		return toClassificationResult(await chain.invoke(messages), categories);
 	} catch (error) {
 		throw wrapLangChainParserError(error, ctx.getNode(), itemIndex);
 	}
