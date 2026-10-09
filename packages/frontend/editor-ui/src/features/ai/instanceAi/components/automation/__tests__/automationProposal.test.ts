@@ -17,6 +17,7 @@ import {
 	decisionFor,
 	hiddenStepCount,
 	liveStatusKey,
+	LINKED_REASON_KEY,
 	LOCAL_CAVEAT_KEY,
 	placeOf,
 	placeReasonKey,
@@ -212,11 +213,13 @@ describe('placeOf', () => {
 		expect(placeOf(makeProposal({ ...linked, targets: [CLOUD_TARGET] }))).toEqual({
 			linked: true,
 			linkedLabel: 'Team cloud',
+			reasonKey: LINKED_REASON_KEY,
 			caveat: false,
 		});
 		for (const label of [undefined, '', '   ']) {
 			expect(placeOf(makeProposal({ ...linked, targets: [{ ...CLOUD_TARGET, label }] }))).toEqual({
 				linked: true,
+				reasonKey: LINKED_REASON_KEY,
 				caveat: false,
 			});
 		}
@@ -233,12 +236,17 @@ describe('placeOf', () => {
 		expect(placeOf(proposal)).toEqual({ linked: false, caveat: true });
 	});
 
-	it('shows no local reason when the targets list says the place is linked', () => {
+	it('shows the linked reason, not a local one, when the targets list says the place is linked', () => {
 		const proposal = makeProposal({
 			targets: [{ id: 'local', kind: 'linked', label: 'Team cloud', status: 'online' }],
 		});
 
-		expect(placeOf(proposal)).toEqual({ linked: true, linkedLabel: 'Team cloud', caveat: false });
+		expect(placeOf(proposal)).toEqual({
+			linked: true,
+			linkedLabel: 'Team cloud',
+			reasonKey: LINKED_REASON_KEY,
+			caveat: false,
+		});
 	});
 
 	it('reads the kind of a target that the targets list leaves out', () => {
@@ -250,7 +258,11 @@ describe('placeOf', () => {
 		});
 
 		expect(placeOf(missingLocal).linked).toBe(false);
-		expect(placeOf(missingLinked)).toEqual({ linked: true, caveat: false });
+		expect(placeOf(missingLinked)).toEqual({
+			linked: true,
+			reasonKey: LINKED_REASON_KEY,
+			caveat: false,
+		});
 	});
 });
 

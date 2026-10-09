@@ -92,7 +92,7 @@ export function createAutomationWorld() {
 	const keeper = new AutomationWorkflowKeeper(workflowService, marker, writeAccess);
 	const publisher = new AutomationWorkflowPublisher(workflowService, collaborationService, logger);
 	const instance = new AutomationInstanceInfo(urlService, globalConfig);
-	const placement = new AutomationPlacement(instance, moduleRegistry);
+	const placement = new AutomationPlacement(instance, moduleRegistry, logger);
 	Container.set(
 		AutomationProposalService,
 		new AutomationProposalService(finder, keeper, publisher, placement),

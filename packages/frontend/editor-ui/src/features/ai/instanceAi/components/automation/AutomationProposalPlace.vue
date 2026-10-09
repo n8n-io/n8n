@@ -1,5 +1,8 @@
 <script setup lang="ts">
-/** Where an automation proposal runs, and who can see the workflow. */
+/**
+ * Where an automation proposal runs, and who can see the workflow. The `change` slot holds the
+ * control that picks another place.
+ */
 import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
 import type { AutomationProposalCard } from '@n8n/api-types';
@@ -11,11 +14,13 @@ import { placeName as nameOfPlace } from './automationText';
 
 const props = defineProps<{
 	proposal: AutomationProposalCard;
+	/** The place that the answer sends. Without it, the default answer target. */
+	targetId?: string;
 }>();
 
 const i18n = useI18n();
 
-const place = computed(() => placeOf(props.proposal));
+const place = computed(() => placeOf(props.proposal, props.targetId));
 const sharedCount = computed(() => sharedProjectCount(props.proposal));
 
 const placeKey = computed(() =>
@@ -65,6 +70,7 @@ const othersText = computed(() =>
 				</template>
 				<template v-if="place.reasonKey" #reason>{{ i18n.baseText(place.reasonKey) }}</template>
 			</I18nT>
+			<slot name="change" />
 		</N8nText>
 
 		<N8nText

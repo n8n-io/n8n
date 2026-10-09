@@ -166,6 +166,19 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 			});
 		});
 
+		it('offers only this computer when the links cannot be read, and logs why', async () => {
+			linked.store.listForUser.mockRejectedValue(new Error('database is down'));
+
+			const card = cardOf(await firstCall());
+
+			expect(card.targets).toEqual([{ id: 'local', kind: 'local', status: 'online' }]);
+			expect(card.offered.target).toEqual(['local']);
+			expect(world.logger.warn).toHaveBeenCalledWith(
+				'Failed to list the linked instances for an automation card',
+				{ userId: user.id, error: 'database is down' },
+			);
+		});
+
 		it.each<[string, () => Request | undefined]>([
 			['the chat is shared', () => ({ sharedThread: true })],
 			[

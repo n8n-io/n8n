@@ -51,6 +51,9 @@ export interface AutomationPlace {
 
 export const LOCAL_CAVEAT_KEY: BaseTextKey = 'instanceAi.automation.place.localCaveat';
 
+/** Why a linked instance suits a workflow that waits for an event. */
+export const LINKED_REASON_KEY: BaseTextKey = 'instanceAi.automation.reason.keepsGoing';
+
 interface TriggerKeys {
 	kinds: Record<Exclude<AutomationTriggerKind, 'manual'>, BaseTextKey>;
 	cron: BaseTextKey;
@@ -158,6 +161,13 @@ export function answerTargetId(proposal: Proposal): string | undefined {
 		: offered.target.at(0);
 }
 
+/** The target that `decisionFor` sends: the chosen one when the card offers it. */
+export function chosenTargetId(proposal: Proposal, targetId?: string): string | undefined {
+	return targetId !== undefined && proposal.offered.target.includes(targetId)
+		? targetId
+		: answerTargetId(proposal);
+}
+
 /** The target that the place line names: the answer target, else the recommended one. */
 interface PlaceTarget {
 	id: string;
@@ -166,9 +176,9 @@ interface PlaceTarget {
 	isRecommended: boolean;
 }
 
-function placeTarget(proposal: Proposal): PlaceTarget {
+function placeTarget(proposal: Proposal, targetId?: string): PlaceTarget {
 	const { recommended, targets } = proposal;
-	const id = answerTargetId(proposal) ?? recommended.targetId;
+	const id = chosenTargetId(proposal, targetId) ?? recommended.targetId;
 	const target = targets.find((entry) => entry.id === id);
 	const isRecommended = id === recommended.targetId;
 	let isLocal = id === AUTOMATION_LOCAL_TARGET_ID;
@@ -179,11 +189,13 @@ function placeTarget(proposal: Proposal): PlaceTarget {
 }
 
 /**
- * The reason is about the recommended target, so it shows only for that target. Every reason
- * text describes this computer, so a linked place shows none.
+ * A linked place keeps a workflow that waits for an event running, so it says that. A local
+ * reason is about the recommended target, so it shows only for that target.
  */
 function shownReasonKey(proposal: Proposal, place: PlaceTarget): BaseTextKey | undefined {
-	if (!place.isRecommended || !place.isLocal) return undefined;
+	if (!place.isLocal)
+		return ALWAYS_ON_KINDS.has(proposal.trigger.kind) ? LINKED_REASON_KEY : undefined;
+	if (!place.isRecommended) return undefined;
 	return placeReasonKey(proposal.recommended, proposal.trigger);
 }
 
@@ -194,13 +206,14 @@ function hasLocalCaveat(proposal: Proposal, place: PlaceTarget, reasonKey?: Base
 }
 
 /** True when the card adds "Only runs while this computer is on." The text shows once. */
-export function showsLocalCaveat(proposal: Proposal): boolean {
-	const place = placeTarget(proposal);
+export function showsLocalCaveat(proposal: Proposal, targetId?: string): boolean {
+	const place = placeTarget(proposal, targetId);
 	return hasLocalCaveat(proposal, place, shownReasonKey(proposal, place));
 }
 
-export function placeOf(proposal: Proposal): AutomationPlace {
-	const place = placeTarget(proposal);
+/** Where the workflow runs for the target `targetId`, else for the default answer target. */
+export function placeOf(proposal: Proposal, targetId?: string): AutomationPlace {
+	const place = placeTarget(proposal, targetId);
 	const reasonKey = shownReasonKey(proposal, place);
 	return {
 		linked: !place.isLocal,
@@ -297,13 +310,17 @@ export function cardActions(proposal: Proposal): AutomationCardAction[] {
 	return actions;
 }
 
-/** The resume body for a button. The server accepts only values that the card offered. */
+/**
+ * The resume body for a button, for the chosen target. The server accepts only values that the
+ * card offered, so a target that the card did not offer becomes the default answer target.
+ */
 export function decisionFor(
 	action: AutomationAction,
 	proposal: Proposal,
+	targetId?: string,
 ): InstanceAiConfirmRequest {
 	if (action === 'decline') return { kind: 'capabilityDecision', approved: false };
-	const target = answerTargetId(proposal);
+	const target = chosenTargetId(proposal, targetId);
 	return {
 		kind: 'capabilityDecision',
 		approved: true,

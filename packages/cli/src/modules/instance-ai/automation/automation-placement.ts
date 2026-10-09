@@ -1,7 +1,8 @@
 import type { AutomationProposalResult, LinkedInstanceSummary } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { UserError } from 'n8n-workflow';
 
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
@@ -30,16 +31,28 @@ export class AutomationPlacement {
 	constructor(
 		readonly instance: AutomationInstanceInfo,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly logger: Logger,
 	) {}
 
 	/**
 	 * The links that a card can offer, with the status of their last check. None on MCP, in a
 	 * shared chat, or while the linked-instances module is off: then nothing leaves this instance.
+	 * A failed lookup offers none either, so that the user can still keep the workflow here.
 	 */
 	async linksFor(context: CapabilityContext): Promise<LinkedInstanceSummary[]> {
 		if (this.refusalFor(context) !== undefined) return [];
-		const { LinkedInstanceStore } = await import('../../linked-instances/linked-instance.store.js');
-		return await Container.get(LinkedInstanceStore).listForUser(context.user.id);
+		try {
+			const { LinkedInstanceStore } = await import(
+				'../../linked-instances/linked-instance.store.js'
+			);
+			return await Container.get(LinkedInstanceStore).listForUser(context.user.id);
+		} catch (error) {
+			this.logger.warn('Failed to list the linked instances for an automation card', {
+				userId: context.user.id,
+				error: getErrorMessage(error),
+			});
+			return [];
+		}
 	}
 
 	/**

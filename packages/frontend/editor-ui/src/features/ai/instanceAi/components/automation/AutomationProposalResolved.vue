@@ -2,23 +2,39 @@
 /**
  * An answered automation card: one line that says what happened, and a link to the workflow
  * unless nothing was kept ("Not now", or a refusal of the server). The answer gives the first
- * state. The result of the tool step, when it arrives, says if the workflow is really on.
+ * state. The result of the tool step, when it arrives, says if the workflow is really on. A copy
+ * in a linked instance opens there, in a new tab.
  */
 import { computed, onMounted, useId, useTemplateRef } from 'vue';
 import { I18nT } from 'vue-i18n';
 import type { AutomationProposalCard } from '@n8n/api-types';
-import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText, type IconName } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nCard,
+	N8nExternalLink,
+	N8nIcon,
+	N8nLink,
+	N8nText,
+	type IconName,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { PROPOSE_AUTOMATION_TOOL_NAME } from '@/features/ai/shared/agentsChat/automationResult';
 import { useOptionalThread } from '../../instanceAi.store';
 import { placeOf, type AutomationAction } from './automationProposal';
-import { proposalOutcome, resolvedStatus, type AutomationResolvedTone } from './automationResolved';
+import {
+	proposalOutcome,
+	resolvedLink,
+	resolvedStatus,
+	type AutomationResolvedTone,
+} from './automationResolved';
 import { placeName, triggerText } from './automationText';
 
 const props = defineProps<{
 	proposal: AutomationProposalCard;
 	action: AutomationAction;
+	/** The place that the answer chose. Without it, the default answer target. */
+	targetId?: string;
 	/** The tool call behind the card. Without it, the line shows what the answer asked for. */
 	toolCallId?: string;
 	/** True when the user answered in this card, so focus moves here from the removed buttons. */
@@ -47,9 +63,13 @@ const outcome = computed(() =>
 		: undefined,
 );
 
-const status = computed(() => resolvedStatus(props.action, props.proposal, outcome.value));
+const placeOfAnswer = computed(() => placeOf(props.proposal, props.targetId));
+const status = computed(() =>
+	resolvedStatus(props.action, props.proposal, outcome.value, placeOfAnswer.value.linked),
+);
+const link = computed(() => resolvedLink(status.value, outcome.value, placeOfAnswer.value.linked));
 const trigger = computed(() => triggerText(props.proposal.trigger, 'clause'));
-const place = computed(() => placeName(placeOf(props.proposal)));
+const place = computed(() => placeName(placeOfAnswer.value));
 const workflowRoute = computed(() => ({
 	name: VIEWS.WORKFLOW,
 	params: { workflowId: props.proposal.workflowId },
@@ -99,8 +119,22 @@ onMounted(() => {
 					</template>
 				</I18nT>
 			</N8nText>
+			<N8nExternalLink
+				v-if="link?.kind === 'remote'"
+				:href="link.url"
+				size="small"
+				:class="$style.link"
+				:aria-label="
+					i18n.baseText('instanceAi.automation.resolved.openInLabel', {
+						interpolate: { title: proposal.title, place },
+					})
+				"
+				data-test-id="automation-proposal-open-remote"
+			>
+				{{ i18n.baseText('instanceAi.automation.resolved.openIn', { interpolate: { place } }) }}
+			</N8nExternalLink>
 			<N8nLink
-				v-if="status.showsLink"
+				v-else-if="link?.kind === 'local'"
 				:to="workflowRoute"
 				size="small"
 				:class="$style.link"

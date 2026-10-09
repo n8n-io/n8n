@@ -48,3 +48,37 @@ export function makeManualProposal(
 		...overrides,
 	});
 }
+
+export const CLOUD_LINK_ID = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
+export const LAB_LINK_ID = '0b9a8c7d-6e5f-4a3b-8c2d-1e0f9a8b7c6d';
+
+/**
+ * A weekday schedule with this computer, an online cloud and an offline lab instance. The card
+ * offers this computer and the cloud, and recommends the cloud.
+ */
+export function makeLinkedProposal(
+	overrides: Partial<AutomationProposalCard> = {},
+): AutomationProposalCard {
+	return makeProposal({
+		recommended: { targetId: CLOUD_LINK_ID, kind: 'linked', reasons: ['always-on-trigger'] },
+		targets: [
+			{ id: AUTOMATION_LOCAL_TARGET_ID, kind: 'local', status: 'online' },
+			{
+				id: CLOUD_LINK_ID,
+				kind: 'linked',
+				label: 'Team cloud',
+				status: 'online',
+				baseUrl: 'https://cloud.example.test',
+			},
+			{
+				id: LAB_LINK_ID,
+				kind: 'linked',
+				label: 'Lab',
+				status: 'offline',
+				baseUrl: 'https://lab.example.test',
+			},
+		],
+		offered: { target: [AUTOMATION_LOCAL_TARGET_ID, CLOUD_LINK_ID], activate: [true, false] },
+		...overrides,
+	});
+}

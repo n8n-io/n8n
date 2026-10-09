@@ -14,6 +14,7 @@ import {
 } from '../automationProposal';
 import {
 	proposalOutcome,
+	resolvedLink,
 	resolvedStatus,
 	toolOutcome,
 	type AutomationToolOutcome,
@@ -35,6 +36,7 @@ const kept = (active: boolean, failed = false): AutomationToolOutcome => ({
 	kind: 'kept',
 	active,
 	failed,
+	url: RESULT.url,
 });
 
 const ACTIONS: AutomationAction[] = ['activate', 'save', 'decline'];
@@ -308,7 +310,12 @@ const outcomeArb: fc.Arbitrary<AutomationToolOutcome | undefined> = fc.oneof(
 	fc.constant(WAITING),
 	fc.constant(REFUSED),
 	fc.constant(FAILED),
-	fc.record({ kind: fc.constant('kept' as const), active: fc.boolean(), failed: fc.boolean() }),
+	fc.record({
+		kind: fc.constant('kept' as const),
+		active: fc.boolean(),
+		failed: fc.boolean(),
+		url: fc.constantFrom(RESULT.url, 'https://cloud.example.test/workflow/remote-9'),
+	}),
 );
 
 const decisionArb = fc
@@ -323,6 +330,71 @@ const decisionArb = fc
 		),
 	})
 	.map((fields) => ({ kind: 'capabilityDecision' as const, ...fields }));
+
+describe('resolvedStatus and resolvedLink for a linked instance', () => {
+	const REMOTE_URL = 'https://cloud.example.test/workflow/remote-9';
+	const keptThere = (active: boolean, url = REMOTE_URL): AutomationToolOutcome => ({
+		kind: 'kept',
+		active,
+		failed: false,
+		url,
+	});
+
+	it('says that a saved copy is in the linked instance, and links to it there', () => {
+		const status = resolvedStatus('save', makeProposal(), keptThere(false), true);
+
+		expect(status).toMatchObject({
+			kind: 'saved',
+			messageKey: 'instanceAi.automation.resolved.savedIn',
+		});
+		expect(resolvedLink(status, keptThere(false), true)).toEqual({
+			kind: 'remote',
+			url: REMOTE_URL,
+		});
+	});
+
+	it('says where a saved manual copy is', () => {
+		expect(resolvedStatus('save', makeManualProposal(), keptThere(false), true).messageKey).toBe(
+			'instanceAi.automation.resolved.savedManualIn',
+		);
+	});
+
+	it('keeps the "on" copy, which names the place already', () => {
+		expect(resolvedStatus('activate', makeProposal(), keptThere(true), true)).toMatchObject({
+			kind: 'on',
+			messageKey: 'instanceAi.automation.resolved.on',
+		});
+	});
+
+	it('links nowhere while the copy is on its way, and opens the workflow here after a failed call', () => {
+		const waiting = resolvedStatus('activate', makeProposal(), WAITING, true);
+		const failed = resolvedStatus('activate', makeProposal(), FAILED, true);
+
+		expect(resolvedLink(waiting, WAITING, true)).toBeUndefined();
+		expect(resolvedLink(waiting, undefined, true)).toBeUndefined();
+		expect(resolvedLink(failed, FAILED, true)).toEqual({ kind: 'local' });
+	});
+
+	it('links nowhere for an address that is not http(s), and never for "Not now"', () => {
+		const unsafe = keptThere(true, 'javascript:alert(1)');
+		const declined = resolvedStatus('decline', makeProposal(), undefined, true);
+
+		expect(
+			resolvedLink(resolvedStatus('activate', makeProposal(), unsafe, true), unsafe, true),
+		).toBe(undefined);
+		expect(resolvedLink(declined, undefined, true)).toBeUndefined();
+	});
+
+	it('opens a workflow here in the editor, as before', () => {
+		const status = resolvedStatus('activate', makeProposal(), kept(true));
+
+		expect(status.messageKey).toBe('instanceAi.automation.resolved.on');
+		expect(resolvedLink(status, kept(true), false)).toEqual({ kind: 'local' });
+		expect(resolvedStatus('save', makeProposal(), kept(false)).messageKey).toBe(
+			'instanceAi.automation.resolved.saved',
+		);
+	});
+});
 
 describe('answered card properties', () => {
 	it('reads every answer of the card back as its button', () => {
@@ -387,6 +459,30 @@ describe('answered card properties', () => {
 			fc.property(decisionArb, (decision) => {
 				expect(toolOutcome({ result: decision })).toEqual(WAITING);
 			}),
+		);
+	});
+
+	it('opens a linked copy only at the http(s) address of a kept result, and nothing it did not keep', () => {
+		fc.assert(
+			fc.property(
+				fc.constantFrom(...ACTIONS),
+				proposalArb,
+				outcomeArb,
+				fc.boolean(),
+				(action, p, outcome, linked) => {
+					const status = resolvedStatus(action, p, outcome, linked);
+					const link = resolvedLink(status, outcome, linked);
+
+					if (!status.showsLink) expect(link).toBeUndefined();
+					if (link?.kind === 'remote') {
+						expect(linked).toBe(true);
+						expect(outcome?.kind === 'kept' && outcome.url).toBe(link.url);
+						expect(link.url).toMatch(/^https?:\/\//);
+					}
+					if (link?.kind === 'local' && linked) expect(outcome?.kind).toBe('failed');
+					if (status.showsLink && !linked) expect(link).toEqual({ kind: 'local' });
+				},
+			),
 		);
 	});
 });

@@ -8,7 +8,7 @@ import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	type InstanceAiPermissions,
 } from '@n8n/api-types';
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { UrlService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { User, type WorkflowEntity } from '@n8n/db';
@@ -116,7 +116,7 @@ describe('AutomationProposalService', () => {
 	const globalConfig = mock<GlobalConfig>({ generic: { timezone: INSTANCE_ZONE } });
 	const instance = new AutomationInstanceInfo(urlService, globalConfig);
 	// The linked-instances module is off, so every card offers only this instance.
-	const placement = new AutomationPlacement(instance, mock<ModuleRegistry>());
+	const placement = new AutomationPlacement(instance, mock<ModuleRegistry>(), mock<Logger>());
 	const service = new AutomationProposalService(finder, keeper, publisher, placement);
 	const assistant: CapabilityContext = { user, surface: 'assistant' };
 

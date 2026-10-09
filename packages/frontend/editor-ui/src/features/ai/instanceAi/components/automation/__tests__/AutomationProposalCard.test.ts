@@ -233,7 +233,9 @@ describe('AutomationProposalCard', () => {
 			}),
 		);
 
-		expect(getByTestId('automation-proposal-place').textContent?.trim()).toBe('Runs on Team cloud');
+		expect(getByTestId('automation-proposal-place').textContent?.trim()).toBe(
+			'Runs on Team cloud · it keeps going when this computer is off',
+		);
 		expect(queryByTestId('automation-proposal-caveat')).not.toBeInTheDocument();
 	});
 
@@ -247,7 +249,7 @@ describe('AutomationProposalCard', () => {
 		);
 
 		expect(getByTestId('automation-proposal-place').textContent?.trim()).toBe(
-			'Runs on Another n8n instance',
+			'Runs on Another n8n instance · it keeps going when this computer is off',
 		);
 	});
 

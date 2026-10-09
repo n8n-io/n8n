@@ -9,12 +9,31 @@ const OFF = { ...RESULT, active: false };
 const ERROR = 'Saved "Morning digest", but could not turn it on: x';
 const DENIED = { denied: true, message: 'The user declined this action.' };
 const TURN_ON = { kind: 'capabilityDecision', approved: true, values: { activate: true } };
+const REMOTE_URL = 'https://cloud.example.test/workflow/remote-9';
+const CLOUD_PLACE = {
+	targetId: '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c',
+	kind: 'linked',
+	name: 'Cloud',
+};
 
 describe('automationResultOf', () => {
 	it.each([
-		['a workflow that is on', ON, { kind: 'kept', active: true, failed: false }],
-		['a saved workflow that is off', OFF, { kind: 'kept', active: false, failed: false }],
-		['a failed publish', { ...OFF, error: ERROR }, { kind: 'kept', active: false, failed: true }],
+		['a workflow that is on', ON, { kind: 'kept', active: true, failed: false, url: RESULT.url }],
+		[
+			'a saved workflow that is off',
+			OFF,
+			{ kind: 'kept', active: false, failed: false, url: RESULT.url },
+		],
+		[
+			'a failed publish',
+			{ ...OFF, error: ERROR },
+			{ kind: 'kept', active: false, failed: true, url: RESULT.url },
+		],
+		[
+			'a workflow in a linked instance',
+			{ ...ON, url: REMOTE_URL, place: CLOUD_PLACE },
+			{ kind: 'kept', active: true, failed: false, url: REMOTE_URL, place: CLOUD_PLACE },
+		],
 		['a declined or blocked answer', DENIED, { kind: 'refused' }],
 		['"denied" without a message', { denied: true }, { kind: 'refused' }],
 	])('reads %s', (_name, output, expected) => {
@@ -56,6 +75,7 @@ describe('summariseAutomationResult', () => {
 		['"active" as text', { ...RESULT, active: 'true' }],
 		['"denied" as text', { denied: 'true' }],
 		['the answer itself', TURN_ON],
+		['a place without a target', { ...ON, place: { kind: 'linked' } }],
 	])('has no summary for %s', (_name, output) => {
 		expect(automationResultOf(output)).toBeUndefined();
 		expect(summariseAutomationResult(output)).toBeUndefined();

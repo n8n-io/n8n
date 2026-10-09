@@ -6,6 +6,7 @@ import {
 	PROPOSE_AUTOMATION_TOOL_NAME,
 	type AutomationResult,
 } from '@/features/ai/shared/agentsChat/automationResult';
+import { safeHttpUrl } from '@/features/linkedInstances/transfer/transferResult';
 import { triggerLineKey, type AutomationAction } from './automationProposal';
 
 /**
@@ -116,6 +117,15 @@ const NO_TRIGGER_KEYS: Partial<Record<AutomationResolvedKind, BaseTextKey>> = {
 	'changes-live': 'instanceAi.automation.resolved.changesLiveNoTrigger',
 };
 
+/** A saved workflow in a linked instance: the line says where it is. */
+const LINKED_KEYS: Partial<Record<AutomationResolvedKind, BaseTextKey>> = {
+	saved: 'instanceAi.automation.resolved.savedIn',
+	'saved-manual': 'instanceAi.automation.resolved.savedManualIn',
+};
+
+/** What the link of an answered card opens: the copy in the linked instance, or the workflow here. */
+export type AutomationResolvedLink = { kind: 'remote'; url: string } | { kind: 'local' };
+
 /**
  * The outcome of the tool step. Right after the answer, the chat puts the answer in the place
  * of the result until the server sends it, so only a parsed result counts. A failed call can
@@ -191,12 +201,14 @@ function resolvedKind(
 
 /**
  * The state of an answered card. `outcome` is undefined when the card cannot read its tool
- * step; then the card shows what the answer asked for.
+ * step; then the card shows what the answer asked for. `linked` is true when the answer put the
+ * workflow on a linked instance.
  */
 export function resolvedStatus(
 	action: AutomationAction,
 	proposal: AutomationProposalCard,
 	outcome?: AutomationToolOutcome,
+	linked = false,
 ): AutomationResolvedStatus {
 	const kind = resolvedKind(action, proposal, outcome);
 	const view = RESOLVED_VIEWS[kind];
@@ -204,5 +216,22 @@ export function resolvedStatus(
 	if (noTriggerKey !== undefined && triggerLineKey(proposal.trigger) === undefined) {
 		return { kind, ...view, messageKey: noTriggerKey };
 	}
-	return { kind, ...view };
+	const linkedKey = linked ? LINKED_KEYS[kind] : undefined;
+	return { kind, ...view, ...(linkedKey && { messageKey: linkedKey }) };
+}
+
+/**
+ * The link of an answered card. A copy in a linked instance opens there, from the address in the
+ * result. Until that result arrives, the card links nowhere. A failed call can leave the
+ * workflow only here, so it opens here.
+ */
+export function resolvedLink(
+	status: AutomationResolvedStatus,
+	outcome: AutomationToolOutcome | undefined,
+	linked: boolean,
+): AutomationResolvedLink | undefined {
+	if (!status.showsLink) return undefined;
+	if (!linked || outcome?.kind === 'failed') return { kind: 'local' };
+	const url = outcome?.kind === 'kept' ? safeHttpUrl(outcome.url) : undefined;
+	return url === undefined ? undefined : { kind: 'remote', url };
 }

@@ -1,4 +1,4 @@
-import { automationProposalResultSchema } from '@n8n/api-types';
+import { automationProposalResultSchema, type AutomationPlace } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -11,7 +11,15 @@ export const PROPOSE_AUTOMATION_TOOL_NAME = 'propose_automation';
 
 /** What a `propose_automation` result says about the workflow. */
 export type AutomationResult =
-	| { kind: 'kept'; active: boolean; failed: boolean }
+	| {
+			kind: 'kept';
+			active: boolean;
+			failed: boolean;
+			/** Opens the workflow in the editor of the instance that runs it. Not checked yet. */
+			url: string;
+			/** Set when the workflow went to a linked instance. */
+			place?: AutomationPlace;
+	  }
 	/** Declined, or blocked by an admin before the first change: nothing was kept. */
 	| { kind: 'refused' };
 
@@ -25,7 +33,8 @@ export function automationResultOf(output: unknown): AutomationResult | undefine
 	if (isDenied(output)) return { kind: 'refused' };
 	const parsed = automationProposalResultSchema.safeParse(output);
 	if (!parsed.success) return undefined;
-	return { kind: 'kept', active: parsed.data.active, failed: parsed.data.error !== undefined };
+	const { active, error, url, place } = parsed.data;
+	return { kind: 'kept', active, failed: error !== undefined, url, ...(place && { place }) };
 }
 
 /**

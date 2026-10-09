@@ -2,6 +2,7 @@
 /**
  * The card of `propose_automation`: what starts the workflow, its steps, where it runs and
  * who can see it. Each button sends a `capabilityDecision` with values that the card offered.
+ * A linked place is checked first: "Turn it on" waits while credentials there need setting up.
  */
 import { computed, nextTick, ref, useId, useTemplateRef, watch } from 'vue';
 import type { AutomationProposalCard, InstanceAiConfirmRequest } from '@n8n/api-types';
@@ -9,9 +10,11 @@ import { N8nButton, N8nCard, N8nText, type ButtonVariant } from '@n8n/design-sys
 import { useI18n } from '@n8n/i18n';
 import { capabilityDecisionOf } from '@/features/ai/shared/agentsChat/resolvedCards';
 import ConfirmationFooter from '../ConfirmationFooter.vue';
+import AutomationPreflightNotice from './AutomationPreflightNotice.vue';
 import AutomationProposalPlace from './AutomationProposalPlace.vue';
 import AutomationProposalResolved from './AutomationProposalResolved.vue';
 import AutomationProposalSteps from './AutomationProposalSteps.vue';
+import AutomationTargetPicker from './AutomationTargetPicker.vue';
 import {
 	actionOf,
 	activationNoteKey,
@@ -19,12 +22,14 @@ import {
 	decisionFor,
 	hiddenStepCount,
 	liveStatusKey,
+	placeOf,
 	titleKey,
 	visibleSteps,
 	type AutomationAction,
 	type AutomationCardAction,
 } from './automationProposal';
-import { triggerText as describeTrigger } from './automationText';
+import { placeName, triggerText as describeTrigger } from './automationText';
+import { useAutomationTarget } from './useAutomationTarget';
 
 const props = defineProps<{
 	proposal: AutomationProposalCard;
@@ -66,10 +71,45 @@ const noteKey = computed(() => activationNoteKey(props.proposal));
 const triggerText = computed(() => describeTrigger(props.proposal.trigger));
 
 /** The button that the answer stands for. Only a capability answer resolves the card. */
-const answeredAction = computed(() => {
-	const decision = capabilityDecisionOf(props.resolvedValue);
-	return decision === undefined ? undefined : actionOf(decision);
+const answeredDecision = computed(() => capabilityDecisionOf(props.resolvedValue));
+const answeredAction = computed(() =>
+	answeredDecision.value === undefined ? undefined : actionOf(answeredDecision.value),
+);
+const answeredTarget = computed(() => {
+	const target = answeredDecision.value?.values?.target;
+	return typeof target === 'string' ? target : undefined;
 });
+
+const {
+	targetId,
+	canChange,
+	options,
+	linkedTarget,
+	setUpUrl,
+	check,
+	gate,
+	recheck,
+	choose,
+	keepHere,
+} = useAutomationTarget({
+	proposal: () => props.proposal,
+	isOpen: () => answeredAction.value === undefined && !isInactive.value,
+});
+const chosenTarget = computed({
+	get: () => targetId.value,
+	set: (id) => choose(id),
+});
+const linkedPlace = computed(() =>
+	linkedTarget.value ? placeName(placeOf(props.proposal, targetId.value)) : undefined,
+);
+
+/** "Turn it on" waits while the linked place needs set-up, and both wait for its check. */
+function isActionDisabled(action: AutomationAction): boolean {
+	if (isInactive.value) return true;
+	if (action === 'activate') return !gate.value.canTurnOn;
+	if (action === 'save') return !gate.value.canSave;
+	return false;
+}
 
 const openCard = useTemplateRef<InstanceType<typeof N8nCard>>('openCard');
 
@@ -89,10 +129,18 @@ watch(answeredAction, async (now, before) => {
 	if (element instanceof HTMLElement && isFocusLost()) element.focus({ preventScroll: true });
 });
 
-function choose(action: AutomationAction) {
-	if (isInactive.value) return;
+/** The notice and its button go away, so focus moves to the card. */
+async function keepOnThisComputer() {
+	keepHere();
+	await nextTick();
+	const element: unknown = openCard.value?.$el;
+	if (element instanceof HTMLElement) element.focus({ preventScroll: true });
+}
+
+function answer(action: AutomationAction) {
+	if (isActionDisabled(action)) return;
 	submitted.value = true;
-	emit('submit', decisionFor(action, props.proposal));
+	emit('submit', decisionFor(action, props.proposal, targetId.value));
 }
 </script>
 
@@ -102,6 +150,7 @@ function choose(action: AutomationAction) {
 		v-if="answeredAction"
 		:proposal="proposal"
 		:action="answeredAction"
+		:target-id="answeredTarget"
 		:tool-call-id="toolCallId"
 		:takes-focus="submitted"
 	/>
@@ -151,7 +200,21 @@ function choose(action: AutomationAction) {
 
 			<AutomationProposalSteps v-if="steps.length > 0" :steps="steps" :hidden-count="hiddenSteps" />
 
-			<AutomationProposalPlace :proposal="proposal" />
+			<AutomationProposalPlace :proposal="proposal" :target-id="chosenTarget">
+				<template v-if="canChange" #change>
+					<AutomationTargetPicker v-model="chosenTarget" :options="options" :disabled="isInactive" />
+				</template>
+			</AutomationProposalPlace>
+
+			<AutomationPreflightNotice
+				v-if="linkedPlace && check !== 'idle'"
+				:check="check"
+				:place="linkedPlace"
+				:set-up-url="setUpUrl"
+				:disabled="isInactive"
+				@recheck="recheck"
+				@keep-here="keepOnThisComputer"
+			/>
 
 			<N8nText
 				v-if="noteKey"
@@ -170,9 +233,9 @@ function choose(action: AutomationAction) {
 				:key="entry.action"
 				:variant="BUTTON_VARIANTS[entry.type]"
 				size="small"
-				:disabled="isInactive"
+				:disabled="isActionDisabled(entry.action)"
 				:data-test-id="BUTTON_TEST_IDS[entry.action]"
-				@click="choose(entry.action)"
+				@click="answer(entry.action)"
 			>
 				{{ i18n.baseText(entry.labelKey) }}
 			</N8nButton>
