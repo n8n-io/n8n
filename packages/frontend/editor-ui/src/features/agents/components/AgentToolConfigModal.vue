@@ -105,6 +105,7 @@ async function handleRemove() {
 		:title="formTitle"
 		:title-error="content?.titleError"
 		:editable-title="!isCustomTool && !isRestricted"
+		stable-height
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
 		data-testid="agent-tool-config-modal"

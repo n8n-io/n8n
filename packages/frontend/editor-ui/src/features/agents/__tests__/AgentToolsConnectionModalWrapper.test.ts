@@ -1414,7 +1414,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			await flushPromises();
 
 			const data = getConfigData();
-			expect(data.kind !== 'mcpServer' && data.toolRef).toEqual(ref);
+			expect(
+				data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer' && data.toolRef,
+			).toEqual(ref);
 			expect(data.onRemove).toBeDefined();
 		});
 

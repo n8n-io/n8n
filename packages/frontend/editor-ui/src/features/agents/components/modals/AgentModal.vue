@@ -29,6 +29,8 @@ const props = withDefaults(
 		showCancel?: boolean;
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
+		/** Pin the body height so the dialog does not resize between steps. Short modals leave it off. */
+		stableHeight?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -45,6 +47,7 @@ const props = withDefaults(
 		showCancel: true,
 		bodyScrollable: true,
 		bodyFlush: false,
+		stableHeight: false,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -204,6 +207,7 @@ function onOpenAutoFocus(event: Event) {
 				$style.body,
 				!props.bodyScrollable && $style.bodyNotScrollable,
 				props.bodyFlush && $style.bodyFlush,
+				props.stableHeight && $style.bodyStableHeight,
 			]"
 			data-testid="agent-modal-body"
 		>
@@ -322,7 +326,6 @@ function onOpenAutoFocus(event: Event) {
 
 .body {
 	box-sizing: border-box;
-	height: min(60dvh, calc(var(--height--5xl) * 5));
 	min-height: 0;
 	max-height: min(70dvh, calc(var(--height--5xl) * 6));
 	overflow-y: auto;
@@ -339,6 +342,10 @@ function onOpenAutoFocus(event: Event) {
 
 .bodyNotScrollable {
 	overflow-y: hidden;
+}
+
+.bodyStableHeight {
+	height: min(60dvh, calc(var(--height--5xl) * 5));
 }
 
 .bodyFlush {

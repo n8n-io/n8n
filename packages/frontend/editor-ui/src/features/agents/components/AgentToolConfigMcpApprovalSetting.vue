@@ -45,6 +45,10 @@ const exposedToolNames = computed(() => {
 	return names;
 });
 
+// The permissions model cannot express "Ask selected" with no tools picked yet.
+// Remember the choice so the round trip through v-model does not reset it to "Disabled".
+const askSelectedChosen = ref(false);
+
 const selectorValue = computed<AgentApproval | undefined>(() => {
 	// TODO: NODE-6045 - overhaul custom mcp client to support the new permission system fully
 	const { categories, tools } = props.modelValue;
@@ -55,7 +59,10 @@ const selectorValue = computed<AgentApproval | undefined>(() => {
 	const selectedTools = Object.entries(tools ?? {}).flatMap(([name, permission]) =>
 		permission === 'require_approval' ? [name] : [],
 	);
-	return selectedTools.length > 0 ? { mode: 'selected', tools: selectedTools } : undefined;
+	if (selectedTools.length > 0 || askSelectedChosen.value) {
+		return { mode: 'selected', tools: selectedTools };
+	}
+	return undefined;
 });
 
 const toolOptions = computed(() => {
@@ -104,6 +111,7 @@ async function refreshTools() {
 }
 
 function handleModeUpdate(mode: ApprovalMode) {
+	askSelectedChosen.value = mode === 'selected';
 	if (mode === 'selected' && tools.value.length === 0 && !isLoadingTools.value) {
 		void refreshTools();
 	}

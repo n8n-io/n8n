@@ -158,6 +158,26 @@ describe('AgentModal', () => {
 		expect(wrapper.getComponent(AgentModal).props('bodyScrollable')).toBe(true);
 	});
 
+	it('keeps the body height content-driven unless stable height is requested', () => {
+		const body = (wrapper: ReturnType<typeof mountModal>) =>
+			wrapper.get('[data-testid="agent-modal-body"]').classes().join(' ');
+
+		const compact = mountModal();
+		expect(body(compact)).not.toContain('bodyStableHeight');
+		compact.unmount();
+
+		const stable = mountModal({ stableHeight: true });
+		expect(body(stable)).toContain('bodyStableHeight');
+	});
+
+	it('forwards stable height through the multi-step shell', () => {
+		const wrapper = mount(AgentModalMultiStep, {
+			props: { open: true, step: 'configure', title: 'Configure asset', stableHeight: true },
+		});
+
+		expect(wrapper.getComponent(AgentModal).props('stableHeight')).toBe(true);
+	});
+
 	it('edits the title and focuses the first body field', async () => {
 		const wrapper = mountModal({ editableTitle: true });
 		await flushPromises();

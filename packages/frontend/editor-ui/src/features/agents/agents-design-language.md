@@ -115,9 +115,10 @@ Use `full` only when the user explicitly asks for the extra workspace.
 Keep the header and footer fixed. Let the body scroll. Keep scrollbars visible
 when the body or nested content can scroll. The Agent shell is the only scroll
 owner for normal configuration forms. Do not put fixed heights or nested
-scrollbars on MCP, node, or workflow configuration content. Keep the Agent modal
-body at a stable height so expanding content scrolls without shifting the
-dialog.
+scrollbars on MCP, node, or workflow configuration content. In tool modals, set
+`stable-height` on `AgentModal` or `AgentModalMultiStep` to keep the body at a
+stable height, so expanding content scrolls without shifting the dialog. Do not
+set it on short modals, such as confirmations, descriptions, and budgets.
 
 Do not add top padding or a top margin to a modal's first content wrapper. The
 shell supplies that space. Use the flush body only for a full-bleed workspace.
