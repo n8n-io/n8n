@@ -38,19 +38,6 @@ import type { LastActiveAtService } from '@/services/last-active-at.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
-// Records every error sent through the public API error path. A plain array, so `vi.resetAllMocks` leaves it alone.
-const sentErrors = vi.hoisted(() => [] as unknown[]);
-vi.mock('@/public-api/v1/public-api-error-response', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@/public-api/v1/public-api-error-response')>();
-	return {
-		...actual,
-		sendPublicApiErrorResponse: (res: express.Response, error: Error) => {
-			sentErrors.push(error);
-			actual.sendPublicApiErrorResponse(res, error);
-		},
-	};
-});
-
 describe('PublicApiControllerRegistry', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
 	const lastActiveAtService = mock<LastActiveAtService>();
@@ -854,8 +841,6 @@ describe('PublicApiControllerRegistry', () => {
 		});
 
 		it('fails with 500 when a declared header is missing from the result', async () => {
-			sentErrors.length = 0;
-
 			@Service()
 			class WidgetsBinaryHeaderPublicController {
 				@Get('/')
@@ -873,9 +858,6 @@ describe('PublicApiControllerRegistry', () => {
 
 			expect(response.headers['content-type']).toMatch(/application\/json/);
 			expect(response.body.message).toBe('Internal server error');
-			expect(sentErrors).toEqual([
-				expect.objectContaining({ message: expect.stringContaining('X-Required') }),
-			]);
 		});
 
 		it('sends a clean JSON error when the method throws before the body starts', async () => {

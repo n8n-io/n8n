@@ -25,11 +25,9 @@ export interface ResponseHeader {
 export interface BinaryResponse {
 	mediaType: BinaryResponseMediaType;
 	description?: string;
-	/** Headers the method must return in its result. The framework checks each one. */
 	headers?: Record<string, ResponseHeader>;
 }
 
-/** What a binary route's method returns: the body, and the headers it sets. */
 export interface BinaryResult {
 	body: Buffer | Readable;
 	headers?: Record<string, string | number | readonly string[]>;
