@@ -577,6 +577,75 @@ describe('compileWorkflowSource > node positions in JSON sources', () => {
 	});
 });
 
+describe('compileWorkflowSource > node positions in TypeScript sources', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	// The sandbox lays this row out as if Writer were a plain node, because no tool is wired.
+	const sandboxWorkflow = (): WorkflowJSON => ({
+		name: 'Briefing',
+		nodes: [
+			{
+				id: 's',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+			},
+			{ id: 'w', name: 'Writer', type: 'test.writer', typeVersion: 1, position: [224, 0] },
+			{ id: 'e', name: 'Email', type: 'n8n-nodes-base.noOp', typeVersion: 1, position: [448, 0] },
+			{
+				id: 'n',
+				name: 'Note',
+				type: 'n8n-nodes-base.stickyNote',
+				typeVersion: 1,
+				position: [0, -200],
+			},
+		],
+		connections: {
+			Start: { main: [[{ node: 'Writer', type: 'main', index: 0 }]] },
+			Writer: { main: [[{ node: 'Email', type: 'main', index: 0 }]] },
+		},
+	});
+	const compileWithWriterInputs = async (inputs: string[]) => {
+		vi.mocked(runInSandbox).mockResolvedValue({
+			exitCode: 0,
+			stdout: JSON.stringify({ success: true, workflow: sandboxWorkflow(), warnings: [] }),
+			stderr: '',
+		});
+		const nodeTypesProvider = {
+			getByNameAndVersion: (type: string) => {
+				if (type === 'test.writer')
+					return { description: { properties: [], inputs, outputs: ['main'] } };
+				throw new Error(`Unknown node type: ${type}`);
+			},
+		};
+		const result = await compileWorkflowSource(
+			makeContext({ nodeTypesProvider } as unknown as Partial<InstanceAiContext>),
+			'src/workflows/main.workflow.ts',
+			'workflow source',
+		);
+		if (!result.success) throw new Error('compile failed');
+		return new Map(result.workflow.nodes.map((node) => [node.name, node.position]));
+	};
+
+	it('lays the nodes out again when a node type declares an unwired port', async () => {
+		// The Tools port makes the canvas draw Writer 224 wide.
+		const positions = await compileWithWriterInputs(['main', 'ai_tool']);
+
+		expect(positions.get('Email')?.[0]).toBeGreaterThan((positions.get('Writer')?.[0] ?? 0) + 224);
+		expect(positions.get('Note')).toEqual([0, -200]);
+	});
+
+	it('keeps the sandbox layout when the node types give the same sizes', async () => {
+		const positions = await compileWithWriterInputs(['main']);
+
+		expect([...positions.values()]).toEqual(sandboxWorkflow().nodes.map((node) => node.position));
+	});
+});
+
 describe('compileWorkflowSource credential resolution', () => {
 	const hosts = [
 		{ type: 'stripeApi', hosts: ['api.stripe.com'] },

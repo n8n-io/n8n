@@ -5,6 +5,7 @@ export type {
 	WorkflowBuilderStatic,
 	WorkflowBuilderOptions,
 	ToJSONOptions,
+	NodePorts,
 	WorkflowSettings,
 	WorkflowJSON,
 	NodeJSON,
@@ -272,4 +273,4 @@ export {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 } from './workflow-builder/constants';
-export { getWorkflowNodeDimensions } from './workflow-builder/layout-utils';
+export { getWorkflowNodeDimensions, resolveNodePorts } from './workflow-builder/layout-utils';

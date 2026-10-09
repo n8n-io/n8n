@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeJSON, NodePorts, WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	DEFAULT_NODE_SIZE,
 	GRID_SIZE,
@@ -11,6 +11,7 @@ import {
 	NODE_Y_SPACING,
 	getWorkflowNodeDimensions,
 	isStickyNoteType,
+	resolveNodePorts,
 } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../types';
@@ -320,13 +321,17 @@ function shiftUntilClear(
  * Members of a collapsed group hide behind its chip, so they only collide with
  * each other. Sticky notes are ignored on both sides, because they sit behind nodes.
  */
-function separateAddedNodes(added: NodeJSON[], json: WorkflowJSON): void {
+function separateAddedNodes(
+	added: NodeJSON[],
+	json: WorkflowJSON,
+	nodePorts: ReadonlyMap<string, NodePorts> | undefined,
+): void {
 	const nodes = json.nodes ?? [];
 	const addedSet = new Set(added);
 	const addedByName = new Map(added.map((node) => [nameOf(node), node]));
 	const groups = groupMembers(json);
 	const { parentsOf, childrenOf } = linksOf(json);
-	const sizes = getWorkflowNodeDimensions(json);
+	const sizes = getWorkflowNodeDimensions(json, nodePorts);
 
 	const boxesOf = (members: NodeJSON[]): Box[] =>
 		members
@@ -465,5 +470,7 @@ export async function preserveExistingNodePositions(
 		node.position = saved;
 	}
 
-	if (added.length > 0) separateAddedNodes(added, json);
+	if (added.length === 0) return;
+	const nodeTypes = ctx.nodeTypesProvider;
+	separateAddedNodes(added, json, nodeTypes && (await resolveNodePorts(json, nodeTypes)));
 }

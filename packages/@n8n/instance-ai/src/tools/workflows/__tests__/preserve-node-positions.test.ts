@@ -205,6 +205,35 @@ describe('preserveExistingNodePositions', () => {
 			expect(positionsByName(built).C).toEqual([400, 656]);
 		});
 
+		it('sizes a node by the outputs its node type declares, also the unwired ones', async () => {
+			const saved = workflow([node('Route', [400, 400], 'n8n-nodes-base.switch')]);
+			const built = workflow(
+				[node('Route', [0, 0], 'n8n-nodes-base.switch'), node('C', [0, 128])],
+				wire('Route', 'C'),
+			);
+			const switchType = {
+				description: {
+					properties: [],
+					inputs: ['main'],
+					outputs: ['main', 'main', 'main', 'main'],
+				},
+			};
+			const ctx = {
+				...contextReturning(saved),
+				nodeTypesProvider: {
+					getByNameAndVersion: (type: string) => {
+						if (type === 'n8n-nodes-base.switch') return switchType;
+						throw new Error(`Unknown node type: ${type}`);
+					},
+				},
+			} as unknown as InstanceAiContext;
+
+			await preserveExistingNodePositions(built, 'wf-1', ctx);
+
+			// One wire, but the canvas draws all four outputs: 160px tall, so C moves below it.
+			expect(positionsByName(built).C).toEqual([400, 656]);
+		});
+
 		it('pushes an added node clear of a collapsed group header', async () => {
 			// The build laid everything out 400px higher. The group header hangs above
 			// its members, so C lands on the header without touching a node.
