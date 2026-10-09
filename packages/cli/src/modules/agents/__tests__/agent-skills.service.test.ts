@@ -2,6 +2,7 @@
 import type { Mocked } from 'vitest';
 import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,15 +13,20 @@ import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentRepository } from '../repositories/agent.repository';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { getAgentConfigHash, getAgentSkillHash } from '../utils/agent-config-hash';
+import {
+	type AgentFixtureOverrides,
+	composeStoredJsonConfig,
+	createAgentSkillRefsService,
+	storedSkillRefs,
+} from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
 const telemetryContext = { user: { id: 'user-1' } as never, modifiedBy: 'user' as const };
 const versionId = 'v1';
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 	return {
 		id: agentId,
 		versionId,
@@ -57,6 +63,8 @@ describe('AgentSkillsService', () => {
 		agentRepository.saveDraftFenced.mockResolvedValue(true);
 		modificationTelemetry = mock<AgentModificationTelemetryService>();
 		agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
+		const transactionRunner = mock<TransactionRunner>();
+		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		service = new AgentSkillsService(
 			mockLogger(),
 			agentRepository,
@@ -65,6 +73,8 @@ describe('AgentSkillsService', () => {
 				agentUpdateBroadcaster,
 				modificationTelemetry,
 			),
+			createAgentSkillRefsService(agentRepository),
+			transactionRunner,
 		);
 	});
 
@@ -90,7 +100,8 @@ describe('AgentSkillsService', () => {
 		expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({
 			[result.id]: skill,
 		});
-		expect(agent.schema?.skills).toEqual([]);
+		expect(storedSkillRefs(agent)).toEqual([]);
+		expect(agentRepository.updateDraftSchema).not.toHaveBeenCalled();
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
@@ -142,7 +153,7 @@ describe('AgentSkillsService', () => {
 			instructions: 'Summarize next steps and send a draft.',
 		};
 
-		const configuredAgent = (overrides: Partial<Agent> = {}) =>
+		const configuredAgent = (overrides: AgentFixtureOverrides = {}) =>
 			makeAgent({
 				schema: {
 					name: 'Test Agent',
@@ -183,11 +194,13 @@ describe('AgentSkillsService', () => {
 				[results[0].id]: skill,
 				[results[1].id]: skillTwo,
 			});
-			expect(agent.schema?.skills).toEqual([
+			expect(storedSkillRefs(agent)).toEqual([
 				{ type: 'skill', id: results[0].id },
 				{ type: 'skill', id: results[1].id },
 			]);
-			expect(configHash).toBe(getAgentConfigHash(composeJsonConfig(agent)));
+			expect(agentRepository.updateDraftSchema).toHaveBeenCalledTimes(1);
+			expect(agentRepository.updateDraftSchema).toHaveBeenCalledWith(agent, {});
+			expect(configHash).toBe(getAgentConfigHash(composeStoredJsonConfig(agent)));
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledTimes(1);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
@@ -279,7 +292,7 @@ describe('AgentSkillsService', () => {
 		expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({
 			[result.id]: skill,
 		});
-		expect(agent.schema?.skills).toEqual([{ type: 'skill', id: result.id }]);
+		expect(storedSkillRefs(agent)).toEqual([{ type: 'skill', id: result.id }]);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
@@ -550,8 +563,27 @@ describe('AgentSkillsService', () => {
 
 		expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({});
 		expect(agent.schema?.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
-		expect(agent.schema?.skills).toEqual([]);
+		expect(storedSkillRefs(agent)).toEqual([]);
+		expect(agentRepository.updateDraftSchema).toHaveBeenCalledTimes(1);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+	});
+
+	it('does not add a skills key when it deletes a skill from a config without one', async () => {
+		const agent = makeAgent({
+			skills: { summarize_notes: skill },
+			schema: {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			},
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		await service.deleteSkill(agentId, projectId, 'summarize_notes', telemetryContext);
+
+		expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({});
+		expect(agentRepository.updateDraftSchema).not.toHaveBeenCalled();
+		expect(agent.schema).not.toHaveProperty('skills');
 	});
 
 	it('reports skill body changes through lifecycle telemetry and stays silent on a no-op update', async () => {
@@ -575,6 +607,9 @@ describe('AgentSkillsService', () => {
 			telemetryContext,
 		);
 
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledTimes(1);
+		expect(agentRepository.updateDraftSchema).not.toHaveBeenCalled();
+		expect(storedSkillRefs(agent)).toEqual([{ type: 'skill', id: 'summarize_notes' }]);
 		expect(modificationTelemetry.record).toHaveBeenCalledWith(
 			expect.objectContaining({
 				by: 'user',

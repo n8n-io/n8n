@@ -38,10 +38,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * upsert, so an id minted by the client that already names a row would
 	 * update that row instead of colliding on the primary key.
 	 */
-	async insertNew(agent: Agent): Promise<void> {
+	async insertNew(agent: Agent, ctx: OperationContext = {}): Promise<void> {
 		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
 		// cannot express, so cast at this boundary.
-		await this.insert(agent as QueryDeepPartialEntity<Agent>);
+		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
 	}
 
 	async hasRevision(id: string, revision: number): Promise<boolean> {
@@ -603,5 +603,22 @@ export class AgentRepository extends BaseRepository<Agent> {
 			agent.updatedAt = updatedAt;
 		}
 		return won;
+	}
+
+	/**
+	 * Write only the `schema` column of a draft. Keep `updatedAt` and `revision`
+	 * as they are. This write does not check `revision`: call it only in the
+	 * same transaction as a won `saveDraftFenced`.
+	 */
+	async updateDraftSchema(
+		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ schema: agent.schema, updatedAt: agent.updatedAt })
+			.where('id = :id', { id: agent.id })
+			.execute();
 	}
 }

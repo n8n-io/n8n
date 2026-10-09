@@ -3,10 +3,10 @@
 import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
 import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { ProjectRelationRepository, User } from '@n8n/db';
+import type { ProjectRelationRepository, TransactionRunner, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
@@ -26,10 +26,17 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentPolicyService } from '../agent-policy.service';
+import { createAgentSkillRefsService, storedSkillRefs } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const actor = { kind: 'user', user: { id: 'user-1' } } as const;
 const projectId = 'project-1';
+
+/** Mirror `Repository.create`: the returned entity holds the fields that `create` got. */
+function mockCreateReturning(agentRepository: MockProxy<AgentRepository>, entity: Agent) {
+	agentRepository.create.mockImplementation(((fields: Partial<Agent>) =>
+		Object.assign(entity, fields)) as never);
+}
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -78,6 +85,9 @@ function makeService() {
 	Container.set(AgentTaskService, agentTaskService);
 	Container.set(ChatIntegrationService, chatIntegrationService);
 
+	const transactionRunner = mock<TransactionRunner>();
+	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+
 	const service = new AgentsService(
 		mockLogger(),
 		agentRepository,
@@ -94,6 +104,8 @@ function makeService() {
 		projectScopeService,
 		agentsSettingsService,
 		agentPolicyService,
+		createAgentSkillRefsService(agentRepository),
+		transactionRunner,
 	);
 
 	return {
@@ -130,7 +142,7 @@ describe('AgentsService', () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
 
-		agentRepository.create.mockReturnValue(saved);
+		mockCreateReturning(agentRepository, saved);
 
 		await expect(service.create(projectId, 'Support Agent', { actor })).resolves.toBe(saved);
 		expect(agentRepository.create).toHaveBeenCalledWith({
@@ -141,7 +153,6 @@ describe('AgentsService', () => {
 				model: '',
 				instructions: '',
 				tools: [],
-				skills: [],
 				// A renderable icon name, not an emoji: the builder copies the idiom
 				// it reads, and the icon tile can only render registered icon names.
 				personalisation: {
@@ -152,12 +163,15 @@ describe('AgentsService', () => {
 			versionId: expect.any(String),
 			availableInMCP: false,
 		});
+		// The skill refs of the new draft go through the skill refs seam.
+		expect(storedSkillRefs(saved)).toEqual([]);
+		expect(agentRepository.updateDraftSchema).toHaveBeenCalledWith(saved, expect.anything());
 	});
 
 	it('creates an agent with a resolved default model and credential', async () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
-		agentRepository.create.mockReturnValue(saved);
+		mockCreateReturning(agentRepository, saved);
 
 		await service.create(projectId, 'Support Agent', {
 			actor,
@@ -181,7 +195,7 @@ describe('AgentsService', () => {
 		// would restore an agent whose integrations silently vanished.
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
-		agentRepository.create.mockReturnValue(saved);
+		mockCreateReturning(agentRepository, saved);
 		const integrations = [{ type: 'slack' as const, credentialId: 'cred-slack-1' }];
 
 		await service.create(projectId, 'Support Agent', {
@@ -203,7 +217,7 @@ describe('AgentsService', () => {
 	it('omits the integrations column when the seeded config declares none', async () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
-		agentRepository.create.mockReturnValue(saved);
+		mockCreateReturning(agentRepository, saved);
 
 		await service.create(projectId, 'Support Agent', {
 			actor,
@@ -220,7 +234,7 @@ describe('AgentsService', () => {
 		// is runnable without a follow-up write.
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
-		agentRepository.create.mockReturnValue(saved);
+		mockCreateReturning(agentRepository, saved);
 		const tools = {
 			refund_tool: { code: 'return 1', descriptor: { name: 'refund_tool' } },
 		};
@@ -246,7 +260,7 @@ describe('AgentsService', () => {
 	it('seeds skill bodies onto the entity alongside their schema refs', async () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
-		agentRepository.create.mockReturnValue(saved);
+		mockCreateReturning(agentRepository, saved);
 		const skills = {
 			skill_abc: { name: 'Triage', description: '', instructions: 'Sort tickets.' },
 		};
@@ -266,6 +280,35 @@ describe('AgentsService', () => {
 		expect(entity.skills).toEqual(skills);
 	});
 
+	it('stores the skill refs of a seeded config in order, with the enabled flags', async () => {
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		mockCreateReturning(agentRepository, saved);
+		const skillRefs = [
+			{ type: 'skill' as const, id: 'zeta' },
+			{ type: 'skill' as const, id: 'alpha', enabled: false },
+			{ type: 'skill' as const, id: 'mid', enabled: true },
+		];
+
+		await service.create(projectId, 'Support Agent', {
+			actor,
+			schema: {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage tickets.',
+				skills: skillRefs,
+			},
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity.schema).not.toHaveProperty('skills');
+		expect(storedSkillRefs(saved)).toEqual(skillRefs);
+		// The insert and the skill refs write share one transaction.
+		const [[, insertCtx]] = agentRepository.insertNew.mock.calls;
+		const [[, refsCtx]] = agentRepository.updateDraftSchema.mock.calls;
+		expect(refsCtx).toBe(insertCtx);
+	});
+
 	describe('duplicate path (user-driven create-with-schema)', () => {
 		const user = { id: 'user-1' } as unknown as User;
 
@@ -275,7 +318,7 @@ describe('AgentsService', () => {
 			// Drafts (credentialId '') are skipped by that check and show needs-setup.
 			const { service, agentRepository } = makeService();
 			const saved = makeAgent();
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 
 			await service.create(projectId, 'Support Agent', {
 				actor,
@@ -301,7 +344,7 @@ describe('AgentsService', () => {
 		it('blanks inaccessible non-channel credentials and keeps accessible ones', async () => {
 			const { service, agentRepository, credentialsService } = makeService();
 			const saved = makeAgent();
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 			// The duplicating user can use cred-model-1 but not cred-model-2.
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 				{ id: 'cred-model-1', name: 'OpenAI', type: 'openaiApi' } as never,
@@ -345,7 +388,7 @@ describe('AgentsService', () => {
 		it('emits agent-saved for the duplicate (creation is tracked by the frontend "User duplicated agent" event)', async () => {
 			const { service, agentRepository, eventService } = makeService();
 			const saved = makeAgent();
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 
 			await service.create(projectId, 'Support Agent', {
 				actor,
@@ -363,7 +406,7 @@ describe('AgentsService', () => {
 		it('stays silent on an empty-draft create (no user) — no event', async () => {
 			const { service, agentRepository, eventService } = makeService();
 			const saved = makeAgent();
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 
 			await service.create(projectId, 'Support Agent', { actor });
 
@@ -373,7 +416,7 @@ describe('AgentsService', () => {
 		it('stays silent on eval seeding (schema but no user)', async () => {
 			const { service, agentRepository, eventService } = makeService();
 			const saved = makeAgent();
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 
 			await service.create(projectId, 'Support Agent', {
 				actor,
@@ -404,7 +447,7 @@ describe('AgentsService', () => {
 		it('polices the seeded node tools as a create, with no stored draft to grandfather', async () => {
 			const { service, agentRepository, agentPolicyService } = makeService();
 			const saved = makeAgent();
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 
 			await service.create(projectId, 'Support Agent', {
 				actor,
@@ -448,7 +491,7 @@ describe('AgentsService', () => {
 		it('persists the agent under the supplied id', async () => {
 			const { service, agentRepository } = makeService();
 			const saved = makeAgent({ id: mintedId });
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 
 			await service.create(projectId, 'Support Agent', { actor, id: mintedId });
 
@@ -464,7 +507,7 @@ describe('AgentsService', () => {
 				schema: { name: 'Support Agent', model: '', instructions: '' },
 				integrations: [],
 			});
-			agentRepository.create.mockReturnValue(raced);
+			mockCreateReturning(agentRepository, raced);
 			agentRepository.insertNew.mockRejectedValue(uniqueViolation());
 			agentRepository.findByIdAndProjectId.mockResolvedValue(raced);
 
@@ -484,7 +527,7 @@ describe('AgentsService', () => {
 				schema: { name: 'Support Agent', model: '', instructions: '' },
 				integrations: [],
 			});
-			agentRepository.create.mockReturnValue(raced);
+			mockCreateReturning(agentRepository, raced);
 			agentRepository.insertNew.mockRejectedValue(uniqueViolation());
 
 			await expect(

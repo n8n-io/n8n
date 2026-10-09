@@ -13,6 +13,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
+import type { AgentRunSource } from '@/modules/agents/utils/agent-published-snapshot';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -289,7 +290,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 
 		// The runtime was built with the eval instrumentation, uncached.
 		const call = reconstructFromAgentEntity.mock.calls[0] as [
-			AgentEntity,
+			AgentRunSource,
 			unknown,
 			string,
 			string | undefined,
@@ -298,7 +299,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			...unknown[],
 		];
 		const [entityArg, , runType, integrationType, userArg, instrumentation] = call;
-		expect(entityArg.id).toBe('agent-1');
+		expect(entityArg.agent.id).toBe('agent-1');
 		expect(runType).toBe('test');
 		expect(integrationType).toBeUndefined();
 		expect(userArg).toBe(user);
@@ -481,7 +482,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			'memory',
 			'vectorStores',
 		]);
-		const rebuiltEntity = reconstructFromAgentEntity.mock.calls[0][0] as AgentEntity;
+		const rebuiltEntity = (reconstructFromAgentEntity.mock.calls[0][0] as AgentRunSource).agent;
 		expect(rebuiltEntity.schema?.memory).toBeUndefined();
 		expect(rebuiltEntity.schema?.mcpServers).toBeUndefined();
 		// Configured sub-agents are kept — the delegated child inherits the

@@ -586,6 +586,29 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 });
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
+
+declare const storedSkillRefsBrand: unique symbol;
+
+/**
+ * Opaque type of the legacy `skills` key in a stored config. Only the skill
+ * refs seam reads or writes this key.
+ */
+export interface OpaqueStoredSkillRefs {
+	readonly [storedSkillRefsBrand]: true;
+}
+
+/**
+ * Agent config as the backend stores it on the agent draft and on each
+ * published version. Skill refs are not part of it: read and write them through
+ * the skill refs seam. `AgentJsonConfig` (with `skills`) stays the document
+ * format of REST, MCP and the agent builder.
+ *
+ * The `skills` key is opaque, so a stored config is not assignable to
+ * `AgentJsonConfig`. To get a document, compose one with the skill refs.
+ */
+export type StoredAgentConfig = Omit<AgentJsonConfig, 'skills'> & {
+	skills?: OpaqueStoredSkillRefs;
+};
 export type BudgetGuardrailConfig = z.infer<typeof BudgetGuardrailConfigSchema>;
 
 /** In-memory monthly spend for one agent. This process only. */

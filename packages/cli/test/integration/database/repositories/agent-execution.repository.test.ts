@@ -42,6 +42,7 @@ import type {
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
+import type { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import type { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import type { AgentRunTracingService } from '@/modules/agents/agent-run-tracing.service';
 import type { AgentSandboxRuntimeService } from '@/modules/agents/agent-sandbox-runtime.service';
@@ -1484,6 +1485,7 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentBackgroundJobRepository>(),
 				mock<AgentBackgroundJobService>(),
 				mock<AgentsSettingsService>(),
+				mock<AgentSkillRefsService>(),
 			);
 			const resume = async (
 				user: User,

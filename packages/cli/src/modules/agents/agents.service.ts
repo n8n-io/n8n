@@ -19,7 +19,13 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
-import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
+import {
+	In,
+	isUniqueConstraintError,
+	ProjectRelationRepository,
+	TransactionRunner,
+	type User,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
@@ -38,11 +44,13 @@ import { AgentExecutionService } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentPolicyService } from './agent-policy.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
+import { fromAgentDocument } from './json-config/agent-document';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { toAgentRef } from './utils/agent-ref';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
@@ -96,6 +104,8 @@ export class AgentsService {
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentPolicyService: AgentPolicyService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	/**
@@ -149,12 +159,13 @@ export class AgentsService {
 			defaultModel,
 		});
 		await this.agentPolicyService.enforceSave(projectId, null, schemaConfig, null, actor);
+		const { config: storedConfig, skillRefs } = fromAgentDocument(schemaConfig);
 
 		const agent = this.agentRepository.create({
 			...(id ? { id } : {}),
 			name,
 			projectId,
-			schema: schemaConfig,
+			schema: storedConfig,
 			...(integrations.length > 0 ? { integrations } : {}),
 			...(skills ? { skills } : {}),
 			...(tools ? { tools: tools as Agent['tools'] } : {}),
@@ -166,7 +177,10 @@ export class AgentsService {
 		try {
 			// `insertNew`, not `save`: `save` would update the row a reused
 			// client-minted id names instead of letting the primary key reject it.
-			await this.agentRepository.insertNew(agent);
+			await this.transactionRunner.run({}, async (ctx) => {
+				await this.agentRepository.insertNew(agent, ctx);
+				await this.agentSkillRefs.replaceDraftRefs(agent, skillRefs, ctx);
+			});
 			saved = agent;
 		} catch (error) {
 			return {
@@ -271,7 +285,8 @@ export class AgentsService {
 
 		const mcpServers = (schema?.mcpServers ?? []).map((server) => ({ name: server.name }));
 
-		const skills = (schema?.skills ?? []).map((skill) => ({
+		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
+		const skills = (skillRefs ?? []).map((skill) => ({
 			id: skill.id,
 			name: entity.skills[skill.id]?.name ?? skill.id,
 		}));

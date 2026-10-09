@@ -16,6 +16,7 @@ import type { AgentSetupCompletionService } from '../agent-setup-completion.serv
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -101,6 +102,7 @@ function setup(options: SetupOptions = {}) {
 			new AgentModificationTelemetryService(telemetry),
 			credentialsService,
 			setupCompletionService,
+			createAgentSkillRefsService(agentRepository),
 		),
 		agent,
 		row,
@@ -515,7 +517,10 @@ describe('AgentIntegrationPersistenceService', () => {
 			});
 			const discardedCompletion = vi.fn(async () => {});
 			const savedCompletion = vi.fn(async () => {});
-			const updatedSchema = { ...configuredConfig, instructions: 'Updated instructions' };
+			const updatedSchema = storedAgentConfig({
+				...configuredConfig,
+				instructions: 'Updated instructions',
+			});
 			setupCompletionService.recordIfSetupComplete
 				.mockImplementationOnce(async () => {
 					row.revision = 1;
@@ -650,7 +655,7 @@ describe('AgentIntegrationPersistenceService', () => {
 			const emitSetupCompleted = vi.fn(async () => {});
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 			setupCompletionService.recordIfSetupComplete.mockImplementation(
-				async (candidate, candidateProjectId, credentialProvider, actingUser) => {
+				async (candidate, _skillRefs, candidateProjectId, credentialProvider, actingUser) => {
 					expect(candidate.integrations).toEqual([{ type: 'slack', credentialId: 'slack-1' }]);
 					expect(candidateProjectId).toBe(projectId);
 					expect(actingUser).toBe(user);

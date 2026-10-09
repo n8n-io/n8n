@@ -79,6 +79,7 @@ import {
 } from '../integrations/integration-message-context';
 import type { ToolRegistry } from '../tool-registry';
 import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const aiConfigMock = mock<AiConfig>({
 	modelStreamIdleTimeoutMs: 90_000,
@@ -294,6 +295,7 @@ function makeService(sandboxEnabled = false) {
 		backgroundJobRepository,
 		backgroundJobs,
 		settingsService,
+		createAgentSkillRefsService(agentRepository),
 	);
 
 	return {

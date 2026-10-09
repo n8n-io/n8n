@@ -35,9 +35,15 @@ import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { AgentDefinitionService } from './agent-definition.service';
-import { getAgentDefinitionContent, type AgentDefinition } from './utils/agent-definition';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
+import {
+	getAgentDefinitionContent,
+	type AgentDefinition,
+	type PendingSkillRefs,
+} from './utils/agent-definition';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
+import type { AgentSkillRefs } from './json-config/agent-document';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
@@ -90,6 +96,7 @@ export class AgentValidationService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -153,22 +160,25 @@ export class AgentValidationService {
 		);
 	}
 
+	/** `pending`: skill refs that the caller is about to save, in place of the stored refs. */
 	async validateLoadedAgentConfiguration(
 		agent: Agent,
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
+		pending?: PendingSkillRefs,
 	): Promise<AgentConfigValidationResponse> {
 		if (scope === 'runtime') {
 			return await this.validateAgentEntityConfiguration(
 				agent,
+				pending ? pending.skillRefs : await this.agentSkillRefs.refsForDraft(agent, {}),
 				projectId,
 				new Map(),
 				credentialProvider,
 				scope,
 			);
 		}
-		const definition = await this.definitionService.readDraft(agent);
+		const definition = await this.definitionService.readDraft(agent, {}, pending);
 		return await this.validateDefinition(
 			agent.id,
 			projectId,
@@ -190,6 +200,7 @@ export class AgentValidationService {
 	 */
 	async validateAgentEntityConfiguration(
 		agent: Agent,
+		skillRefs: AgentSkillRefs,
 		projectId: string,
 		tasks: ReadonlyMap<string, TaskBody>,
 		credentialProvider: CredentialProvider,
@@ -198,7 +209,7 @@ export class AgentValidationService {
 		return await this.validateDefinition(
 			agent.id,
 			projectId,
-			{ ...getAgentDefinitionContent(agent), tasks },
+			{ ...getAgentDefinitionContent(agent, skillRefs), tasks },
 			agent.integrations ?? [],
 			credentialProvider,
 			scope,
@@ -444,7 +455,7 @@ export class AgentValidationService {
 		skills: Record<string, AgentSkill>,
 		issues: AgentConfigValidationIssue[],
 	) {
-		for (const skillId of getMissingSkillIds(config, skills)) {
+		for (const skillId of getMissingSkillIds(config.skills, skills)) {
 			issues.push(issue('missing_reference', `skill:${skillId}`, { kind: 'skill', id: skillId }));
 		}
 	}

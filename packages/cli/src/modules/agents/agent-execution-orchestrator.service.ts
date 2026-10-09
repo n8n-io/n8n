@@ -48,6 +48,7 @@ import {
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { AgentsSettingsService } from './agents-settings.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
 import { withBudgetGuardrail } from './budget-guardrail';
@@ -76,7 +77,7 @@ import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from './types/agent-queued-message';
 import type { AgentExecutionStreamChunk } from './types/agent-steering';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
-import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
+import { resolveAgentRunSource } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
@@ -347,6 +348,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly backgroundJobRepository: AgentBackgroundJobRepository,
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly settingsService: AgentsSettingsService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -1195,21 +1197,26 @@ export class AgentExecutionOrchestratorService {
 			abortSignal?.throwIfAborted();
 			const { agentId, projectId } = params;
 			let agent;
+			let selected;
 			try {
 				agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+				if (agent) {
+					selected = await resolveAgentRunSource(
+						agent,
+						params.usePublishedVersion === true && Boolean(agent.activeVersion?.schema),
+						this.agentSkillRefs,
+						{},
+					);
+				}
 			} catch (cause) {
 				throw new AgentExecutionRecordingError({ phase: 'create', cause, executionError: error });
 			}
 			abortSignal?.throwIfAborted();
-			if (agent) {
-				const selected =
-					params.usePublishedVersion && agent.activeVersion?.schema
-						? getPublishedAgentSnapshot(agent)
-						: agent;
+			if (agent && selected) {
 				const failed = {
 					...recording,
 					agentId,
-					agentName: selected.schema?.name ?? agent.name,
+					agentName: selected.agent.schema?.name ?? agent.name,
 					projectId,
 					telemetry: {
 						userId: params.attributionUserId ?? params.user?.id,
