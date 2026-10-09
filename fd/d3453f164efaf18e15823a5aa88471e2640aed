@@ -1,0 +1,117 @@
+packages/nodes-base/nodes/NocoDB/test/v2/actions/rows/get.test.ts
+  s_2e1fa95fc44f8f::t_3799da54add8d7 61-81
+  s_8a02bdb0fa4a48::t_4ac01b37c7341d 1,54,105
+packages/nodes-base/nodes/NocoDB/v2/transport/index.ts
+  s_2e1fa95fc44f8f::t_b7d965139cd509 126
+  s_2e1fa95fc44f8f::t_da6a90daad728b 123-125
+  s_2e1fa95fc44f8f::t_19c38b58fa8685 127-129
+  s_b880e9225b0c40::t_e1e2ca1c890459 12-13,15,32,47,51,71,102,121-122,130-131
+packages/nodes-base/nodes/NocoDB/test/v2/actions/base/get.test.ts
+  s_b880e9225b0c40::t_599b7c37978db8 1,64,71,78,85
+packages/nodes-base/nodes/NocoDB/test/v2/actions/base/getAll.test.ts
+  s_b880e9225b0c40::t_bdbd25697aefdd 2,47,66
+packages/nodes-base/nodes/NocoDB/test/v2/actions/linkrows/link.test.ts
+  s_b880e9225b0c40::t_34e508accc50ae 1,75,109,184,218
+packages/nodes-base/nodes/NocoDB/test/v2/actions/linkrows/list.test.ts
+  s_b880e9225b0c40::t_6886af7732a0e9 1,70,95,121,152,183,212
+packages/nodes-base/nodes/NocoDB/test/v2/actions/linkrows/unlink.test.ts
+  s_b880e9225b0c40::t_454d0b04dffa5d 1,75,109,184,218
+packages/nodes-base/nodes/NocoDB/test/v2/actions/rows/count.test.ts
+  s_b880e9225b0c40::t_4ba682cb955f33 1,59,88
+packages/nodes-base/nodes/NocoDB/test/v2/actions/rows/create.test.ts
+  s_b880e9225b0c40::t_52f6c6e0a59ac0 1,84,150
+packages/nodes-base/nodes/NocoDB/test/v2/actions/rows/delete.test.ts
+  s_b880e9225b0c40::t_b7f2e1093ead63 1,81
+packages/nodes-base/nodes/NocoDB/test/v2/actions/rows/search.test.ts
+  s_b880e9225b0c40::t_f8f800bc5b67a1 1,83,137,192
+packages/nodes-base/nodes/NocoDB/test/v2/actions/rows/update.test.ts
+  s_b880e9225b0c40::t_6b0df9e57471ee 1,91,165
+packages/nodes-base/nodes/NocoDB/test/v2/actions/rows/upload.test.ts
+  s_b880e9225b0c40::t_b3551fc11fcf3e 1,100,159,166,206,213,256,263
+packages/nodes-base/nodes/NocoDB/test/v2/actions/rows/upsert.test.ts
+  s_b880e9225b0c40::t_ec1c47428ff745 1,85,151,217,291
+packages/nodes-base/nodes/NocoDB/test/v2/transport/transport.test.ts
+  s_5d6ed0a3a903e0::t_456fd940517304 2,31,44,60,71,92
+packages/nodes-base/nodes/NocoDB/v2/actions/base/get.operation.ts
+  s_401904c7bcadc9::t_2eb40353d66161 8,10,92,104,113,119
+packages/nodes-base/nodes/NocoDB/v2/actions/base/getAll.operation.ts
+  s_401904c7bcadc9::t_c4ce9771b069ae 8,10,55,65,67
+packages/nodes-base/nodes/NocoDB/v2/actions/linkrows/link.operation.ts
+  s_5d6ed0a3a903e0::t_a5d127a3d043ef 8,10,78,129
+packages/nodes-base/nodes/NocoDB/v2/actions/linkrows/list.operation.ts
+  s_5d6ed0a3a903e0::t_a810eb589da21d 8,10,218,238
+packages/nodes-base/nodes/NocoDB/v2/actions/linkrows/unlink.operation.ts
+  s_5d6ed0a3a903e0::t_cdedd09c4fc65c 8,10,78,107
+packages/nodes-base/nodes/NocoDB/v2/actions/rows/count.operation.ts
+  s_5d6ed0a3a903e0::t_0136774eb31778 8,10,47,60
+packages/nodes-base/nodes/NocoDB/v2/actions/rows/create.operation.ts
+  s_5d6ed0a3a903e0::t_9ba3ef332c8741 8,10,65,79
+packages/nodes-base/nodes/NocoDB/v2/actions/rows/delete.operation.ts
+  s_5d6ed0a3a903e0::t_c242a93dc88378 8,10,37,51
+packages/nodes-base/nodes/NocoDB/v2/actions/rows/get.operation.ts
+  s_5d6ed0a3a903e0::t_80945c1315a631 8,10,62,76
+packages/nodes-base/nodes/NocoDB/v2/actions/rows/search.operation.ts
+  s_5d6ed0a3a903e0::t_d04f7fcdefb4d5 8,10,217,233
+packages/nodes-base/nodes/NocoDB/v2/actions/rows/update.operation.ts
+  s_5d6ed0a3a903e0::t_5db51fafa09da0 8,10,74,88
+packages/nodes-base/nodes/NocoDB/v2/actions/rows/upload.operation.ts
+  s_5d6ed0a3a903e0::t_fb18007e2688bc 8,10,180,204,226,255
+packages/nodes-base/nodes/NocoDB/v2/actions/rows/upsert.operation.ts
+  s_5d6ed0a3a903e0::t_c0f1683b32eb9c 8,10,73,87
+packages/nodes-base/nodes/NocoDB/v2/helpers/columns-fetcher.ts
+  s_b880e9225b0c40::t_4e54adbd785a6f 2,174
+packages/nodes-base/nodes/NocoDB/v2/methods/listSearch.ts
+  s_b880e9225b0c40::t_28a29abf094040 8,35,66,108,156,201,368,375
+packages/nodes-base/nodes/NocoDB/v2/methods/loadOptions.ts
+  s_b880e9225b0c40::t_bd1d606704141e 2,41
+packages/nodes-base/nodes/NocoDB/test/v2/methods/listSearch.test.ts
+  s_b880e9225b0c40::t_3128b1c6c79cf9 1,47-52,73-78,115,145,201,207,235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fdd3453f164efaf18e15823a5aa88471e2640aed",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_401904c7bcadc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa6dedfe825ee566c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_5d6ed0a3a903e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac4f3ba7f23434a1d",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_8a02bdb0fa4a48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac934d60f442c7f3d",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_b880e9225b0c40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a35105119832006dc",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
