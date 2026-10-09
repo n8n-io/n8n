@@ -83,7 +83,7 @@ it('offers one retry when the first load fails without rows', () => {
 	expect(emitted('retryActiveTab')).toEqual([[]]);
 	expect(queryByTestId('inbox-section-header')).not.toBeInTheDocument();
 });
-it('hides healthy empty groups without hiding a failed group or healthy rows', () => {
+it('keeps healthy rows visible beside a failed group', () => {
 	const { queryByRole, getByRole, emitted } = renderComponent({
 		props: {
 			sections: [
