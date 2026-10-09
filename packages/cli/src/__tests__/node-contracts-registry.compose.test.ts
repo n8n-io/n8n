@@ -2,6 +2,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { hostRuntime } from '@n8n/node-sdk/host';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription, IVersionedNodeType } from 'n8n-workflow';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
@@ -144,11 +145,23 @@ describe('composeContractNodes', () => {
 		);
 		expect(panel.get('n8n-nodes-base.discord')).toEqual([]);
 		expect(panel.get('@n8n/n8n-nodes-langchain.lmChatAnthropic')).toEqual([]);
-		expect([...panel.keys()].filter(isContractNodeType)).toEqual([]);
 		expect(instance.getNode('@n8n/nodes-integrations.slackMessageSend').type).toBeDefined();
 	});
 
-	it('hides the tool variants, the providers and the contract node types without a legacy node', async () => {
+	it('lists each first-party action without a legacy node as a nodes panel item of its own', async () => {
+		const instance = await postProcessed(true);
+		const panel = nodesPanelOf(instance);
+
+		expect([...panel.keys()].filter(isContractNodeType).sort()).toEqual([
+			'@n8n/nodes-core.aiClassify',
+			'@n8n/nodes-core.aiPrompt',
+			'@n8n/nodes-core.browserScreenshot',
+			'@n8n/nodes-core.imageResize',
+		]);
+		expect(panel.get('@n8n/nodes-core.imageResize')).toEqual([]);
+	});
+
+	it('hides the tool variants and the providers', async () => {
 		const instance = await postProcessed(true);
 		const typesOf = (name: string) => instance.types.nodes.filter((type) => type.name === name);
 
@@ -156,7 +169,7 @@ describe('composeContractNodes', () => {
 			'@n8n/nodes-core.httpRequestGetTool',
 			'@n8n/nodes-integrations.anthropicChatModel',
 			'@n8n/nodes-integrations.openAiChatModel',
-			'@n8n/nodes-core.aiPrompt',
+			'@n8n/nodes-integrations.xAiChatModel',
 		]) {
 			expect(typesOf(name).length).toBeGreaterThan(0);
 			expect(typesOf(name).every((type) => type.hidden && !type.nodeCreatorItem)).toBe(true);
@@ -244,6 +257,21 @@ describe('composeContractNodes', () => {
 		expect(typeOf('@n8n/nodes-core.aiPrompt')?.codex).toBeUndefined();
 		const xAi = typeOf('@n8n/nodes-integrations.xAiChatModel');
 		expect([xAi?.icon, xAi?.iconUrl, xAi?.codex]).toEqual([undefined, undefined, undefined]);
+	});
+
+	it('shows the icon file of its package for a node without a legacy node and without an icon', async () => {
+		const instance = await postProcessed(true);
+		const iconUrlOf = (name: string) =>
+			instance.types.nodes.find((type) => type.name === name)?.iconUrl;
+
+		// A component action has no JS bundle.
+		const image = iconUrlOf('@n8n/nodes-core.imageResize');
+		expect(image).toBe('icons/@n8n/nodes-core/icons/image.svg');
+		expect(iconUrlOf('@n8n/nodes-core.browserScreenshot')).toBe(
+			'icons/@n8n/nodes-core/icons/browser.svg',
+		);
+		const file = instance.resolveIcon('@n8n/nodes-core', `/${image}`);
+		expect(file && existsSync(file)).toBe(true);
 	});
 
 	it('keeps the legacy node types unchanged when node contracts are on', async () => {

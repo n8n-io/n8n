@@ -259,12 +259,15 @@ export class LoadNodesAndCredentials {
 	resolveIcon(packageName: string, url: string): string | undefined {
 		const isCustom = packageName === CUSTOM_NODES_PACKAGE_NAME;
 		const loader = this.loaders[packageName];
-		if (!loader || !(loader instanceof DirectoryLoader)) {
-			return undefined;
-		}
+		// A contract loader is not a directory loader, but it has the folder of its package.
+		const directory =
+			loader && 'directory' in loader && typeof loader.directory === 'string'
+				? loader.directory
+				: undefined;
+		if (directory === undefined) return undefined;
 
 		const resolvePath = (iconPath: string) => {
-			return path.resolve(loader.directory, iconPath);
+			return path.resolve(directory, iconPath);
 		};
 
 		const resolvePathCustom = (path: string) => {
@@ -276,13 +279,13 @@ export class LoadNodesAndCredentials {
 		const urlFilePath = url.substring(pathPrefix.length);
 		if (isCustom && !isWindowsFilePath(urlFilePath)) {
 			const relativeFilePath = resolvePath(urlFilePath);
-			if (isContainedWithin(loader.directory, relativeFilePath)) {
+			if (isContainedWithin(directory, relativeFilePath)) {
 				return relativeFilePath;
 			}
 		}
 
 		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
-		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
+		return isContainedWithin(directory, filePath) ? filePath : undefined;
 	}
 
 	resolveSchema({

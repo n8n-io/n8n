@@ -17,7 +17,8 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "icons/*.svg"
   ],
   "scripts": {
     "clean": "rimraf dist .turbo",

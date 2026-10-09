@@ -299,13 +299,24 @@ interface ContractNode extends LoadedClass<VersionedNodeType> {
 /** The packages of the legacy nodes that a contract node can stand for. */
 const LEGACY_PACKAGES = ['n8n-nodes-base', '@n8n/n8n-nodes-langchain'];
 
-/** The icon that a bundled node sets, from its embedded bundle. A node that n8n does not bundle has none. */
-const nodeIconOf = (id: string) => firstPartyCatalog().bundleOf(id)?.node.icon;
-
 /** What the editor shows of a node type besides its form: the icon, the panel categories, the color. */
 type Presentation = Pick<INodeTypeDescription, 'icon' | 'iconUrl' | 'iconColor' | 'codex'> & {
 	readonly color?: string;
 };
+
+/**
+ * The icon of a first-party node: the icon that its embedded bundle sets, else the file
+ * `icons/<node>.svg` of its package. A component action has no JS bundle, so it takes the file.
+ */
+function nodeIconOf({ id, contract }: PackedVersion['manifest']): Presentation | undefined {
+	const icon = firstPartyCatalog().bundleOf(id)?.node.icon;
+	if (icon) return { icon };
+	const pkg = firstPartyCatalog().packageOf(id);
+	const file = `icons/${contract.node}.svg`;
+	return pkg && existsSync(path.join(pkg.dir, file))
+		? { iconUrl: `icons/${pkg.name}/${file}` }
+		: undefined;
+}
 
 /**
  * The presentation of a description. The codex has no aliases: the AI builder search ranks node
@@ -433,8 +444,7 @@ function contractNodeTypeOf(
 	const type = new (typeOf(versions, runtime))();
 	const legacyNodeType = head && legacyNodeTypeOf(head.manifest.contract, legacy);
 	const twin = legacyNodeType && legacy.get(legacyNodeType);
-	const icon = head && !twin ? nodeIconOf(head.manifest.id) : undefined;
-	const presentation = twin ? presentationOf(twin) : icon && { icon };
+	const presentation = twin ? presentationOf(twin) : head && nodeIconOf(head.manifest);
 	const custom = versions.length > 0 && versions.every(isCustomAction);
 	// The nodes panel groups a custom action under its app (`codex.app`), so it has no item.
 	const nodeCreatorItem = head?.manifest.kind === 'provider' || custom ? undefined : legacyNodeType;
@@ -465,6 +475,9 @@ const credentialNamesOf = ({ nodeVersions }: VersionedNodeType) =>
  */
 export class ContractNodeLoader implements NodeLoader {
 	readonly packageName: string;
+
+	/** The package folder. n8n serves the icon files of the package from it, see `nodeIconOf`. */
+	readonly directory: string;
 
 	private readonly storeDir: string;
 
@@ -505,6 +518,7 @@ export class ContractNodeLoader implements NodeLoader {
 		source: SourcePackage = fallbackPackage(),
 	) {
 		this.packageName = source.name;
+		this.directory = source.dir;
 		this.storeDir = embeddedStoreDirOf(source);
 	}
 
@@ -1212,8 +1226,9 @@ function toolNodesOf(loaders: Readonly<Record<string, NodeLoader>>, runtime: Hos
 /**
  * Adds the composed versions of legacy nodes, for example Notion v4, and the agent tool node
  * types of actions to the node classes and to the types that the editor reads. The nodes panel
- * lists a contract node type only under its legacy node item. It does not list the other contract
- * node types, but the AI builder and saved workflows can use them.
+ * lists a contract node type under its legacy node item. A first-party action without a legacy
+ * node is an item of its own. The panel does not list the other contract node types, but the AI
+ * builder and saved workflows can use them.
  */
 export function composeContractNodes(
 	loaders: Readonly<Record<string, NodeLoader>>,
@@ -1242,6 +1257,11 @@ export function composeContractNodes(
 				]
 			: [],
 	);
+	const actionTypes = new Set(
+		firstPartyCatalog().entries.flatMap(({ manifest, nodeType }) =>
+			manifest.kind === 'action' ? [nodeType] : [],
+		),
+	);
 	// A copy, because later steps add options to the properties of the newest version.
 	const added = [...nodes].flatMap(([name, { type }]) =>
 		Object.keys(MIGRATED_NODES[name] ?? {})
@@ -1263,7 +1283,10 @@ export function composeContractNodes(
 		// The AI tools copy the item of the action to its tool variant, which the panel lists apart.
 		const { nodeCreatorItem, ...unlisted } = description;
 		// A custom action has its app instead of an item, see `customDescriptionOf`.
-		const listed = nodeCreatorItem !== undefined || description.codex?.app !== undefined;
+		const listed =
+			nodeCreatorItem !== undefined ||
+			description.codex?.app !== undefined ||
+			actionTypes.has(description.name);
 		return listed && !isToolType(description.name) ? description : { ...unlisted, hidden: true };
 	});
 	return { nodes, types: [...patched, ...added] };

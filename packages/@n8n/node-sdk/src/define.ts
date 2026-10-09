@@ -58,8 +58,9 @@ export interface NodeDefinition {
 	readonly baseUrl?: string;
 	/**
 	 * The icon in the n8n UI, e.g. `node:basic-llm-chain` or `fa:robot`, when n8n has no legacy node
-	 * that this node stands for. Else n8n shows the icon of the legacy node. A node contract ships no
-	 * icon files, so it has no `file:` icon.
+	 * that this node stands for. Else n8n shows the icon of the legacy node. A bundle ships no icon
+	 * files, so it has no `file:` icon. A node without `icon` shows the file `icons/<node id>.svg` of
+	 * its first-party package, if the package has it.
 	 */
 	readonly icon?: IconRef;
 	/**

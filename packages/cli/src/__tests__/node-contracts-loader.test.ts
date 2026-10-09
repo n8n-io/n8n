@@ -368,8 +368,8 @@ describe('ContractNodeLoader', () => {
 				.filter(({ name }) => name === '@n8n/nodes-core.noOpPass')
 				.map(({ version, hidden }) => [version, hidden]),
 		).toEqual([
-			[2, true],
-			[1, true],
+			[2, undefined],
+			[1, undefined],
 		]);
 		const context = {
 			getInputData: () => [{ json: { a: 1 } }],
