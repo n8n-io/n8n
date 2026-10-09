@@ -1,7 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -15,16 +14,10 @@ describe('ExecutionsPruningService', () => {
 	const makeService = () => {
 		const logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
-		const errorReporter = mock<ErrorReporter>();
 		const executionRepository = mock<ExecutionRepository>({ hardDeletionBatchSize: BATCH_SIZE });
 		const executionPersistence = mock<ExecutionPersistence>();
-		const service = new ExecutionsPruningService(
-			logger,
-			errorReporter,
-			executionRepository,
-			executionPersistence,
-		);
-		return { service, logger, errorReporter, executionRepository, executionPersistence };
+		const service = new ExecutionsPruningService(logger, executionRepository, executionPersistence);
+		return { service, logger, executionRepository, executionPersistence };
 	};
 
 	const batchOf = (size: number, offset = 0): SoftDeletedRef[] =>
@@ -137,18 +130,16 @@ describe('ExecutionsPruningService', () => {
 			expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 		});
 
-		it('should delete one by one and report the rows that fail when a batch fails', async () => {
-			const { service, logger, errorReporter, executionRepository, executionPersistence } =
-				makeService();
+		it('should delete one by one when a batch fails', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
 			const batch = batchOf(BATCH_SIZE);
 			const badRef = batch[42];
-			const badRowError = new Error('object locked');
 			executionRepository.findSoftDeletedExecutions
 				.mockResolvedValueOnce(batch)
 				.mockResolvedValueOnce([]);
 			executionPersistence.hardDelete.mockImplementation(async (target) => {
 				const targets = Array.isArray(target) ? target : [target];
-				if (targets.includes(badRef)) throw badRowError;
+				if (targets.includes(badRef)) throw new Error('object locked');
 			});
 
 			const run = service.hardDelete(new AbortController().signal);
@@ -156,15 +147,25 @@ describe('ExecutionsPruningService', () => {
 			await run;
 
 			expect(singleCalls(executionPersistence)).toEqual(batch.map((ref) => [ref]));
-			expect(errorReporter.error).toHaveBeenCalledTimes(1);
-			expect(errorReporter.error).toHaveBeenCalledWith(badRowError, {
-				extra: { executionId: badRef.executionId },
-				shouldBeLogged: false,
-				shouldIsolate: true,
+		});
+
+		it('should log the ids of every row that failed once per run', async () => {
+			const { service, logger, executionRepository, executionPersistence } = makeService();
+			const batches = [batchOf(BATCH_SIZE), batchOf(30, BATCH_SIZE)];
+			const badRefs = [batches[0][42], batches[1][7]];
+			selectsOf(executionRepository, batches);
+			executionPersistence.hardDelete.mockImplementation(async (target) => {
+				const targets = Array.isArray(target) ? target : [target];
+				if (targets.some((ref) => badRefs.includes(ref))) throw new Error('object locked');
 			});
+
+			const run = service.hardDelete(new AbortController().signal);
+			await vi.runAllTimersAsync();
+			await run;
+
 			expect(logger.error).toHaveBeenCalledTimes(1);
 			expect(logger.error).toHaveBeenCalledWith(expect.any(String), {
-				executionIds: [badRef.executionId],
+				executionIds: badRefs.map((ref) => ref.executionId),
 			});
 		});
 
@@ -221,8 +222,7 @@ describe('ExecutionsPruningService', () => {
 		});
 
 		it('should reject when a batch fails and no single delete succeeds', async () => {
-			const { service, logger, errorReporter, executionRepository, executionPersistence } =
-				makeService();
+			const { service, logger, executionRepository, executionPersistence } = makeService();
 			const batchError = new Error('blob store down');
 			executionRepository.findSoftDeletedExecutions.mockResolvedValue(batchOf(BATCH_SIZE));
 			executionPersistence.hardDelete.mockRejectedValue(batchError);
@@ -231,8 +231,7 @@ describe('ExecutionsPruningService', () => {
 
 			expect(executionRepository.findSoftDeletedExecutions).toHaveBeenCalledTimes(1);
 			expect(executionPersistence.hardDelete).toHaveBeenCalledTimes(1 + BATCH_SIZE);
-			expect(errorReporter.error).toHaveBeenCalledTimes(BATCH_SIZE);
-			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).not.toHaveBeenCalled();
 		});
 	});
 });
