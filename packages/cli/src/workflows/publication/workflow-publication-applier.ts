@@ -22,7 +22,10 @@ import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
-import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
+import {
+	formatFailedActivationError,
+	formatNodeFailures,
+} from '@/workflows/publication/format-node-failures';
 import { healNodeIds } from '@/workflows/publication/heal-node-ids';
 import type {
 	PublicationResult,
@@ -610,13 +613,14 @@ export class WorkflowPublicationApplier {
 	 * Combines multiple per trigger failures into a single error.
 	 */
 	private toActivationError(failures: TriggerActivationFailure[]): Error {
+		// The lone error keeps its class: the reporter checks it for a policy refusal.
 		if (failures.length === 1) return failures[0].error;
 
-		const detail = formatNodeFailures(
-			failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
+		return new Error(
+			formatFailedActivationError(
+				failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
+			),
 		);
-
-		return new Error(`Triggers failed to activate: ${detail}`);
 	}
 
 	/**
