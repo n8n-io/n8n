@@ -185,7 +185,7 @@ export class SlackManagedSetupService {
 		const integrations = agent?.integrations ?? [];
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			options.user,
-			{ projectId: options.projectId },
+			{ projectId: options.projectId, excludePersonalRoute: true },
 		);
 		const managerCredentials: SlackManagerCredentialSummary[] = [];
 
@@ -541,7 +541,7 @@ export class SlackManagedSetupService {
 	): Promise<ManagerCredentialContext> {
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
-			{ projectId },
+			{ projectId, excludePersonalRoute: true },
 		);
 		if (
 			!usableCredentials.some(

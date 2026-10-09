@@ -29,6 +29,7 @@ export class AgentCredentialLookupService {
 	async decryptForUser(user: User, projectId: string, credentialId: string, expectedType: string) {
 		const usable = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 			projectId,
+			excludePersonalRoute: true,
 		});
 		if (!usable.some((item) => item.id === credentialId)) return null;
 		return await this.decryptForProject(projectId, credentialId, expectedType);

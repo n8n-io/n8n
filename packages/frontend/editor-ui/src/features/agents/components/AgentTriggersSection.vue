@@ -195,6 +195,7 @@ async function loadChannelDetails() {
 	try {
 		const credentials = await credentialsStore.fetchUsableCredentials({
 			projectId: props.projectId,
+			forAgent: true,
 		});
 		credentialNamesById.value = Object.fromEntries(
 			credentials.map((credential) => [credential.id, credential.name]),

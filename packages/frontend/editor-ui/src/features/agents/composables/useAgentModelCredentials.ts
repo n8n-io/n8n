@@ -120,7 +120,7 @@ export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGe
 
 			await Promise.all([
 				credentialsStore.fetchCredentialTypes(false),
-				credentialsStore.fetchUsableCredentials({ projectId: id }),
+				credentialsStore.fetchUsableCredentials({ projectId: id, forAgent: true }),
 			]);
 
 			isInitialized.value = true;

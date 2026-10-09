@@ -628,10 +628,14 @@ export class CredentialsService {
 	 * @param options.workflowId The workflow that is being edited
 	 * @param options.projectId The project owning the workflow This is useful
 	 * for workflows that have not been saved yet.
+	 * @param options.excludePersonalRoute Skip the personal route. Agents set
+	 * this because they do not support it yet.
 	 */
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
-		options: { workflowId: string } | { projectId: string },
+		options: ({ workflowId: string } | { projectId: string }) & {
+			excludePersonalRoute?: boolean;
+		},
 	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
@@ -648,9 +652,10 @@ export class CredentialsService {
 				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id),
 		);
 
-		const personalRouteCredentialIds = isCredSharingEnabled()
-			? await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options)
-			: new Set<string>();
+		const personalRouteCredentialIds =
+			isCredSharingEnabled() && !options.excludePersonalRoute
+				? await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options)
+				: new Set<string>();
 
 		// the union of all three is every credential the user can use in this
 		// workflow or project

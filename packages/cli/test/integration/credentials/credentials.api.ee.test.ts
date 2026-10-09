@@ -377,6 +377,87 @@ describe('GET /credentials/for-workflow', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data).toEqual([]);
 		});
+
+		test('omits a credential shared directly with the user when forAgent is true', async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:editor');
+
+			const sharedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+			await shareCredentialWithUsers(sharedCredential, [member]);
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get('/credentials/for-workflow')
+				.query({ projectId: teamProject.id, forAgent: 'true' });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toEqual([]);
+		});
+
+		test('offers a credential shared directly with the user when forAgent is false', async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:editor');
+
+			const sharedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+			await shareCredentialWithUsers(sharedCredential, [member]);
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get('/credentials/for-workflow')
+				.query({ projectId: teamProject.id, forAgent: 'false' });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0]).toMatchObject({ id: sharedCredential.id });
+		});
+
+		test('keeps the credentials of the project when forAgent is true', async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:editor');
+			const projectCredential = await saveCredential(randomCredentialPayload(), {
+				project: teamProject,
+			});
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get('/credentials/for-workflow')
+				.query({ projectId: teamProject.id, forAgent: 'true' });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0]).toMatchObject({ id: projectCredential.id });
+		});
+
+		test('keeps the credentials of the personal project of the user when forAgent is true', async () => {
+			const ownCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get('/credentials/for-workflow')
+				.query({ projectId: memberPersonalProject.id, forAgent: 'true' });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toContainEqual(expect.objectContaining({ id: ownCredential.id }));
+		});
+	});
+
+	describe('forAgent with N8N_ENV_FEAT_CRED_SHARING disabled', () => {
+		test('returns the same credentials as without forAgent', async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:editor');
+			const projectCredential = await saveCredential(randomCredentialPayload(), {
+				project: teamProject,
+			});
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get('/credentials/for-workflow')
+				.query({ projectId: teamProject.id, forAgent: 'true' });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0]).toMatchObject({ id: projectCredential.id });
+		});
 	});
 
 	describe('for personal projects', () => {

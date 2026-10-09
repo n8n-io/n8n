@@ -58,6 +58,7 @@ const props = defineProps<{
 	existingToolNames?: string[];
 	hideAskAssistant?: boolean;
 	projectId?: string;
+	forAgent?: boolean;
 	/** Resource/operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
 	hiddenOperations?: readonly string[];
 	parameterIssues?: Record<string, string[]>;
@@ -447,7 +448,7 @@ onMounted(async () => {
 	if (projectId) {
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
-			credentialsStore.fetchUsableCredentials({ projectId }),
+			credentialsStore.fetchUsableCredentials({ projectId, forAgent: props.forAgent }),
 		]);
 	}
 });
