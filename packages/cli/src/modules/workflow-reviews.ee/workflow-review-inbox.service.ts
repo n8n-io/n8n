@@ -1,7 +1,6 @@
 import type {
-	GetWorkflowReviewInboxSummaryResponse,
-	ListWorkflowReviewInboxQueryDto,
-	ListWorkflowReviewInboxResponse,
+	InboxCounts,
+	InboxWorkflowReviewItem,
 	WorkflowReviewInboxItem,
 	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestWorkflowDetail,
@@ -10,7 +9,6 @@ import type {
 import {
 	WorkflowReviewInboxRepository,
 	WorkflowReviewRequestWorkflowRepository,
-	type InboxCursor,
 	type User,
 	type WorkflowHistory,
 	type WorkflowReviewRequest,
@@ -19,7 +17,8 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { BadRequestError } from '@n8n/errors';
+import type { InboxSourceQuery } from '../inbox/inbox-source.registry';
+
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
@@ -46,50 +45,40 @@ export class WorkflowReviewInboxService {
 		private readonly participantResolver: WorkflowReviewParticipantResolver,
 	) {}
 
-	async listForInbox(
-		user: User,
-		query: ListWorkflowReviewInboxQueryDto,
-	): Promise<ListWorkflowReviewInboxResponse> {
-		await this.featureGate.assertAvailable();
-
-		const visibility = await this.authorizationService.resolveInboxVisibility(user);
-		const { limit } = query;
-		const rows = await this.workflowReviewInboxRepository.findRequests({
-			visibility,
-			state: query.state ?? 'open',
-			category:
-				query.category === undefined ? undefined : { userId: user.id, category: query.category },
-			limit: limit + 1,
-			cursor: query.cursor ? this.decodeInboxCursor(query.cursor) : undefined,
-		});
-
-		const hasMore = rows.length > limit;
-		const data = rows.slice(0, limit);
-		const lastRow = data.at(-1);
-		const nextCursor = hasMore && lastRow ? this.encodeInboxCursor(lastRow) : null;
-		const [linkedWorkflowByRequestId, participants] = await Promise.all([
-			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(
-				data.map((row) => row.id),
-			),
-			this.participantResolver.resolve(data),
-		]);
-
-		return {
-			data: data.map((row) =>
-				this.toInboxItem(
-					row,
-					linkedWorkflowByRequestId.get(row.id) ?? null,
-					participants.for(row.id),
-				),
-			),
-			nextCursor,
-			hasMore,
-		};
+	async isInboxAvailable() {
+		return await this.featureGate.isAvailable();
 	}
 
-	async getInboxSummaryForUser(user: User): Promise<GetWorkflowReviewInboxSummaryResponse> {
+	async listForInbox(user: User, query: InboxSourceQuery): Promise<InboxWorkflowReviewItem[]> {
 		await this.featureGate.assertAvailable();
+		const visibility = await this.authorizationService.resolveInboxVisibility(user);
+		const rows = await this.workflowReviewInboxRepository.findRequests({
+			visibility,
+			state: query.state,
+			category:
+				query.category === undefined ? undefined : { userId: user.id, category: query.category },
+			limit: query.limit,
+			boundary: query.boundary,
+		});
+		const [linkedWorkflowByRequestId, participants] = await Promise.all([
+			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(
+				rows.map((row) => row.id),
+			),
+			this.participantResolver.resolve(rows),
+		]);
 
+		return rows.map((row) => ({
+			type: 'workflow_review',
+			...this.toInboxItem(
+				row,
+				linkedWorkflowByRequestId.get(row.id) ?? null,
+				participants.for(row.id),
+			),
+		}));
+	}
+
+	async getInboxSummaryForUser(user: User): Promise<InboxCounts> {
+		await this.featureGate.assertAvailable();
 		const visibility = await this.authorizationService.resolveInboxVisibility(user);
 		return await this.workflowReviewInboxRepository.countRequestsByState(visibility);
 	}
@@ -191,31 +180,6 @@ export class WorkflowReviewInboxService {
 			nodeGroups: version.nodeGroups,
 			createdAt: version.createdAt.toISOString(),
 		};
-	}
-
-	/**
-	 * Encode the keyset boundary (createdAt + id) into an opaque cursor so the
-	 * next page is resolved without re-reading the anchor row — a review deleted
-	 * between requests no longer truncates the rest of the inbox.
-	 */
-	private encodeInboxCursor(row: WorkflowReviewRequest): string {
-		return Buffer.from(`${row.createdAt.toISOString()}|${row.id}`, 'utf8').toString('base64url');
-	}
-
-	private decodeInboxCursor(cursor: string): InboxCursor {
-		const decoded = Buffer.from(cursor, 'base64url').toString('utf8');
-		const separatorIndex = decoded.indexOf('|');
-		if (separatorIndex === -1) {
-			throw new BadRequestError('Invalid pagination cursor');
-		}
-
-		const createdAt = new Date(decoded.slice(0, separatorIndex));
-		const id = decoded.slice(separatorIndex + 1);
-		if (id.length === 0 || Number.isNaN(createdAt.getTime())) {
-			throw new BadRequestError('Invalid pagination cursor');
-		}
-
-		return { createdAt, id };
 	}
 
 	/** The review fields shared by the inbox card and the detail response. */
