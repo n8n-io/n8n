@@ -1,0 +1,750 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-sonnet-4-6",
+			"max_tokens": 128000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Use tools for invoices and inventory. Never calculate an invoice or guess stock without a tool result. Complete only the requested action. Call approval tools to request approval. The runtime asks the user after the call. Do not ask for approval in a text reply. Reply with the result in one short sentence.\n\nReference 1: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 2: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 3: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 4: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 5: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 6: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 7: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 8: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 9: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 10: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 11: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 12: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 13: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 14: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 15: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 16: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 17: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 18: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 19: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 20: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 21: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 22: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 23: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 24: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 25: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 26: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 27: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 28: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 29: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 30: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 31: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 32: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 33: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 34: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 35: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 36: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 37: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 38: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 39: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 40: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 41: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 42: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 43: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 44: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 45: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 46: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 47: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 48: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 49: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 50: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 51: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 52: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 53: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 54: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 55: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 56: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 57: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 58: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 59: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 60: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.",
+					"cache_control": {
+						"type": "ephemeral",
+						"ttl": "1h"
+					}
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Issue an invoice for 7 items at a unit price of 6. Use the invoice tool.",
+							"cache_control": {
+								"type": "ephemeral",
+								"ttl": "1h"
+							}
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "workspace_read_file",
+					"description": "Read a file from the workspace.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"cache_control": {
+						"type": "ephemeral",
+						"ttl": "1h"
+					},
+					"defer_loading": false
+				},
+				{
+					"name": "issue_invoice",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"unitPrice": {
+								"type": "number"
+							},
+							"quantity": {
+								"type": "number"
+							}
+						},
+						"required": ["unitPrice", "quantity"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"name": "lookup_warehouse_stock",
+					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"sku": {
+								"type": "string"
+							},
+							"warehouse": {
+								"type": "string"
+							}
+						},
+						"required": ["sku", "warehouse"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "tool_search_tool_bm25_20251119",
+					"name": "tool_search_tool_bm25"
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CfqxSsbSjkwALnEZMUunM\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"server_tool_use\",\"id\":\"srvtoolu_01WGFhpgRCE6Xsv5wZyTbXCr\",\"name\":\"tool_search_tool_bm25\",\"input\":{\"query\":\"issue invoice\"}},{\"type\":\"tool_search_tool_result\",\"tool_use_id\":\"srvtoolu_01WGFhpgRCE6Xsv5wZyTbXCr\",\"content\":{\"type\":\"tool_search_tool_search_result\",\"tool_references\":[{\"type\":\"tool_reference\",\"tool_name\":\"issue_invoice\"}]}},{\"type\":\"tool_use\",\"id\":\"toolu_01RcvCkB7mNgdYcBRXcHoj4S\",\"name\":\"issue_invoice\",\"input\":{\"unitPrice\":6,\"quantity\":7},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":192,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":5790,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":132,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0}},\"diagnostics\":null}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "22500000",
+			"anthropic-ratelimit-input-tokens-remaining": "22500000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-10-09T03:31:04Z",
+			"anthropic-ratelimit-output-tokens-limit": "4500000",
+			"anthropic-ratelimit-output-tokens-remaining": "4500000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-10-09T03:31:05Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-10-09T03:31:02Z",
+			"anthropic-ratelimit-tokens-limit": "27000000",
+			"anthropic-ratelimit-tokens-remaining": "27000000",
+			"anthropic-ratelimit-tokens-reset": "2026-10-09T03:31:04Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a47a4f651f325b25-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Fri, 09 Oct 2026 03:31:05 GMT",
+			"request-id": "req_011CfqxSsPXu4xHqMjyAJeoC",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-f3ed5a2fa3f36de64da2a5d454c3223b-e58d7b25f1ff8345-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-sonnet-4-6",
+			"max_tokens": 128000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Use tools for invoices and inventory. Never calculate an invoice or guess stock without a tool result. Complete only the requested action. Call approval tools to request approval. The runtime asks the user after the call. Do not ask for approval in a text reply. Reply with the result in one short sentence.\n\nReference 1: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 2: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 3: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 4: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 5: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 6: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 7: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 8: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 9: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 10: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 11: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 12: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 13: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 14: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 15: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 16: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 17: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 18: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 19: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 20: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 21: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 22: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 23: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 24: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 25: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 26: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 27: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 28: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 29: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 30: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 31: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 32: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 33: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 34: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 35: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 36: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 37: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 38: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 39: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 40: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 41: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 42: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 43: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 44: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 45: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 46: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 47: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 48: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 49: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 50: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 51: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 52: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 53: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 54: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 55: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 56: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 57: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 58: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 59: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 60: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.",
+					"cache_control": {
+						"type": "ephemeral",
+						"ttl": "1h"
+					}
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Issue an invoice for 7 items at a unit price of 6. Use the invoice tool."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "server_tool_use",
+							"id": "srvtoolu_01WGFhpgRCE6Xsv5wZyTbXCr",
+							"name": "tool_search_tool_bm25",
+							"input": {
+								"query": "issue invoice"
+							}
+						},
+						{
+							"type": "tool_search_tool_result",
+							"tool_use_id": "srvtoolu_01WGFhpgRCE6Xsv5wZyTbXCr",
+							"content": {
+								"type": "tool_search_tool_search_result",
+								"tool_references": [
+									{
+										"type": "tool_reference",
+										"tool_name": "issue_invoice"
+									}
+								]
+							}
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01RcvCkB7mNgdYcBRXcHoj4S",
+							"name": "issue_invoice",
+							"input": {
+								"unitPrice": 6,
+								"quantity": 7
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01RcvCkB7mNgdYcBRXcHoj4S",
+							"content": "{\"total\":42}",
+							"cache_control": {
+								"type": "ephemeral",
+								"ttl": "1h"
+							}
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "workspace_read_file",
+					"description": "Read a file from the workspace.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"cache_control": {
+						"type": "ephemeral",
+						"ttl": "1h"
+					},
+					"defer_loading": false
+				},
+				{
+					"name": "issue_invoice",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"unitPrice": {
+								"type": "number"
+							},
+							"quantity": {
+								"type": "number"
+							}
+						},
+						"required": ["unitPrice", "quantity"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"name": "lookup_warehouse_stock",
+					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"sku": {
+								"type": "string"
+							},
+							"warehouse": {
+								"type": "string"
+							}
+						},
+						"required": ["sku", "warehouse"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "tool_search_tool_bm25_20251119",
+					"name": "tool_search_tool_bm25"
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CfqxT5w6z2kqTPtU2pgxA\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"The invoice was issued for 7 items at a unit price of 6, with a total of **42**.\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3170,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":27,\"service_tier\":\"standard\",\"inference_geo\":\"global\"},\"diagnostics\":null}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "22500000",
+			"anthropic-ratelimit-input-tokens-remaining": "22500000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-10-09T03:31:06Z",
+			"anthropic-ratelimit-output-tokens-limit": "4500000",
+			"anthropic-ratelimit-output-tokens-remaining": "4500000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-10-09T03:31:06Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-10-09T03:31:05Z",
+			"anthropic-ratelimit-tokens-limit": "27000000",
+			"anthropic-ratelimit-tokens-remaining": "27000000",
+			"anthropic-ratelimit-tokens-reset": "2026-10-09T03:31:06Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a47a4f771e6a5b25-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Fri, 09 Oct 2026 03:31:06 GMT",
+			"request-id": "req_011CfqxT5ihnmgd2Qu25Vhr3",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-14c23dc2a86cec14ebdf0262b2f8851b-f2361d174df51d1f-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-sonnet-4-6",
+			"max_tokens": 128000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Use tools for invoices and inventory. Never calculate an invoice or guess stock without a tool result. Complete only the requested action. Call approval tools to request approval. The runtime asks the user after the call. Do not ask for approval in a text reply. Reply with the result in one short sentence.\n\nReference 1: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 2: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 3: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 4: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 5: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 6: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 7: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 8: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 9: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 10: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 11: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 12: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 13: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 14: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 15: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 16: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 17: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 18: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 19: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 20: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 21: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 22: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 23: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 24: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 25: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 26: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 27: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 28: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 29: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 30: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 31: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 32: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 33: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 34: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 35: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 36: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 37: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 38: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 39: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 40: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 41: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 42: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 43: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 44: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 45: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 46: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 47: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 48: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 49: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 50: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 51: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 52: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 53: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 54: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 55: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 56: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 57: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 58: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 59: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 60: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.",
+					"cache_control": {
+						"type": "ephemeral",
+						"ttl": "1h"
+					}
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Issue an invoice for 7 items at a unit price of 6. Use the invoice tool."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "server_tool_use",
+							"id": "srvtoolu_01WGFhpgRCE6Xsv5wZyTbXCr",
+							"name": "tool_search_tool_bm25",
+							"input": {
+								"query": "issue invoice"
+							}
+						},
+						{
+							"type": "tool_search_tool_result",
+							"tool_use_id": "srvtoolu_01WGFhpgRCE6Xsv5wZyTbXCr",
+							"content": {
+								"type": "tool_search_tool_search_result",
+								"tool_references": [
+									{
+										"type": "tool_reference",
+										"tool_name": "issue_invoice"
+									}
+								]
+							}
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01RcvCkB7mNgdYcBRXcHoj4S",
+							"name": "issue_invoice",
+							"input": {
+								"unitPrice": 6,
+								"quantity": 7
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01RcvCkB7mNgdYcBRXcHoj4S",
+							"content": "{\"total\":42}"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "The invoice was issued for 7 items at a unit price of 6, with a total of **42**."
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Now look up stock for SKU A-17 in warehouse west. Use the inventory tool.",
+							"cache_control": {
+								"type": "ephemeral",
+								"ttl": "1h"
+							}
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "workspace_read_file",
+					"description": "Read a file from the workspace.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"cache_control": {
+						"type": "ephemeral",
+						"ttl": "1h"
+					},
+					"defer_loading": false
+				},
+				{
+					"name": "issue_invoice",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"unitPrice": {
+								"type": "number"
+							},
+							"quantity": {
+								"type": "number"
+							}
+						},
+						"required": ["unitPrice", "quantity"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"name": "lookup_warehouse_stock",
+					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"sku": {
+								"type": "string"
+							},
+							"warehouse": {
+								"type": "string"
+							}
+						},
+						"required": ["sku", "warehouse"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "tool_search_tool_bm25_20251119",
+					"name": "tool_search_tool_bm25"
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CfqxTDMLhL3KUvHPwvmTG\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"server_tool_use\",\"id\":\"srvtoolu_01D7UH3gtF6gpVkTgA51Hs1X\",\"name\":\"tool_search_tool_bm25\",\"input\":{\"query\":\"inventory stock lookup\"}},{\"type\":\"tool_search_tool_result\",\"tool_use_id\":\"srvtoolu_01D7UH3gtF6gpVkTgA51Hs1X\",\"content\":{\"type\":\"tool_search_tool_search_result\",\"tool_references\":[{\"type\":\"tool_reference\",\"tool_name\":\"lookup_warehouse_stock\"}]}},{\"type\":\"tool_use\",\"id\":\"toolu_01L2tR7ax5B3ctm2LMGbbhpM\",\"name\":\"lookup_warehouse_stock\",\"input\":{\"sku\":\"A-17\",\"warehouse\":\"west\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":194,\"cache_creation_input_tokens\":48,\"cache_read_input_tokens\":6388,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":48},\"output_tokens\":137,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0}},\"diagnostics\":null}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "22500000",
+			"anthropic-ratelimit-input-tokens-remaining": "22500000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-10-09T03:31:09Z",
+			"anthropic-ratelimit-output-tokens-limit": "4500000",
+			"anthropic-ratelimit-output-tokens-remaining": "4500000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-10-09T03:31:09Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-10-09T03:31:07Z",
+			"anthropic-ratelimit-tokens-limit": "27000000",
+			"anthropic-ratelimit-tokens-remaining": "27000000",
+			"anthropic-ratelimit-tokens-reset": "2026-10-09T03:31:09Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a47a4f81eaa95b25-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Fri, 09 Oct 2026 03:31:09 GMT",
+			"request-id": "req_011CfqxTD9g51nP896HjTtvo",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-0ed601f406fcbb42d6944126a7004810-ec8d1aa17c328a09-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-sonnet-4-6",
+			"max_tokens": 128000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Use tools for invoices and inventory. Never calculate an invoice or guess stock without a tool result. Complete only the requested action. Call approval tools to request approval. The runtime asks the user after the call. Do not ask for approval in a text reply. Reply with the result in one short sentence.\n\nReference 1: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 2: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 3: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 4: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 5: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 6: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 7: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 8: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 9: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 10: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 11: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 12: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 13: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 14: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 15: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 16: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 17: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 18: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 19: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 20: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 21: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 22: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 23: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 24: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 25: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 26: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 27: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 28: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 29: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 30: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 31: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 32: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 33: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 34: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 35: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 36: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 37: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 38: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 39: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 40: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 41: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 42: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 43: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 44: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 45: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 46: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 47: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 48: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 49: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 50: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 51: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 52: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 53: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 54: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 55: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 56: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 57: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 58: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 59: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 60: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.",
+					"cache_control": {
+						"type": "ephemeral",
+						"ttl": "1h"
+					}
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Issue an invoice for 7 items at a unit price of 6. Use the invoice tool."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "server_tool_use",
+							"id": "srvtoolu_01WGFhpgRCE6Xsv5wZyTbXCr",
+							"name": "tool_search_tool_bm25",
+							"input": {
+								"query": "issue invoice"
+							}
+						},
+						{
+							"type": "tool_search_tool_result",
+							"tool_use_id": "srvtoolu_01WGFhpgRCE6Xsv5wZyTbXCr",
+							"content": {
+								"type": "tool_search_tool_search_result",
+								"tool_references": [
+									{
+										"type": "tool_reference",
+										"tool_name": "issue_invoice"
+									}
+								]
+							}
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01RcvCkB7mNgdYcBRXcHoj4S",
+							"name": "issue_invoice",
+							"input": {
+								"unitPrice": 6,
+								"quantity": 7
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01RcvCkB7mNgdYcBRXcHoj4S",
+							"content": "{\"total\":42}"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "The invoice was issued for 7 items at a unit price of 6, with a total of **42**."
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Now look up stock for SKU A-17 in warehouse west. Use the inventory tool."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "server_tool_use",
+							"id": "srvtoolu_01D7UH3gtF6gpVkTgA51Hs1X",
+							"name": "tool_search_tool_bm25",
+							"input": {
+								"query": "inventory stock lookup"
+							}
+						},
+						{
+							"type": "tool_search_tool_result",
+							"tool_use_id": "srvtoolu_01D7UH3gtF6gpVkTgA51Hs1X",
+							"content": {
+								"type": "tool_search_tool_search_result",
+								"tool_references": [
+									{
+										"type": "tool_reference",
+										"tool_name": "lookup_warehouse_stock"
+									}
+								]
+							}
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01L2tR7ax5B3ctm2LMGbbhpM",
+							"name": "lookup_warehouse_stock",
+							"input": {
+								"sku": "A-17",
+								"warehouse": "west"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01L2tR7ax5B3ctm2LMGbbhpM",
+							"content": "{\"quantity\":13}",
+							"cache_control": {
+								"type": "ephemeral",
+								"ttl": "1h"
+							}
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "workspace_read_file",
+					"description": "Read a file from the workspace.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"cache_control": {
+						"type": "ephemeral",
+						"ttl": "1h"
+					},
+					"defer_loading": false
+				},
+				{
+					"name": "issue_invoice",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"unitPrice": {
+								"type": "number"
+							},
+							"quantity": {
+								"type": "number"
+							}
+						},
+						"required": ["unitPrice", "quantity"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"name": "lookup_warehouse_stock",
+					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"sku": {
+								"type": "string"
+							},
+							"warehouse": {
+								"type": "string"
+							}
+						},
+						"required": ["sku", "warehouse"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "tool_search_tool_bm25_20251119",
+					"name": "tool_search_tool_bm25"
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CfqxTQQqyecNW5tsuCoPv\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Warehouse west has **13 units** in stock for SKU A-17.\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":281,\"cache_read_input_tokens\":3218,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":281},\"output_tokens\":21,\"service_tier\":\"standard\",\"inference_geo\":\"global\"},\"diagnostics\":null}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "22500000",
+			"anthropic-ratelimit-input-tokens-remaining": "22500000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-10-09T03:31:10Z",
+			"anthropic-ratelimit-output-tokens-limit": "4500000",
+			"anthropic-ratelimit-output-tokens-remaining": "4500000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-10-09T03:31:10Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-10-09T03:31:09Z",
+			"anthropic-ratelimit-tokens-limit": "27000000",
+			"anthropic-ratelimit-tokens-remaining": "27000000",
+			"anthropic-ratelimit-tokens-reset": "2026-10-09T03:31:10Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a47a4f91f89a5b25-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Fri, 09 Oct 2026 03:31:11 GMT",
+			"request-id": "req_011CfqxTQBTVtkndizscPKpJ",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-1608adb9dcc7d3d0f62bdcd5e9d507b3-fd3f77829d30e962-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]
