@@ -10,6 +10,10 @@ import {
 	transferHints,
 	transferOptions,
 	transferRequest,
+	transferStatus,
+	type TransferChoice,
+	type TransferMoveStatus,
+	type TransferOptionsInput,
 } from '../transferDialogState';
 
 const credentialArb = fc.record({
@@ -78,15 +82,14 @@ describe('transferDialogState (property)', () => {
 		);
 	});
 
-	it('warns exactly when a check could not tell', () => {
+	it('warns exactly when the credential check could not tell', () => {
 		fc.assert(
 			fc.property(preflightArb, (preflight) => {
-				const { warnings } = transferDialogState(preflight);
+				const { warnings, nodeTypesChecked } = transferDialogState(preflight);
+				const unknown = preflight.credentials.some(({ status }) => status === 'unknown');
 
-				expect(warnings.includes('nodeTypesUnchecked')).toBe(preflight.nodeTypeCheck === 'unknown');
-				expect(warnings.includes('credentialsUnchecked')).toBe(
-					preflight.credentials.some(({ status }) => status === 'unknown'),
-				);
+				expect(warnings).toEqual(unknown ? ['credentialsUnchecked'] : []);
+				expect(nodeTypesChecked).toBe(preflight.nodeTypeCheck === 'checked');
 			}),
 		);
 	});
@@ -133,36 +136,119 @@ describe('transferRequest (property)', () => {
 });
 
 describe('transferHints (property)', () => {
-	it('says that nothing runs exactly when the workflow turns off here and the copy stays off', () => {
+	const hintsFor = (
+		preflight: LinkedInstanceTransferPreflight,
+		input: TransferOptionsInput,
+		choice: TransferChoice,
+	) => {
+		const options = transferOptions(input);
+		return {
+			request: transferRequest('wf-1', options, choice),
+			hints: transferHints(transferDialogState(preflight), options, choice),
+		};
+	};
+
+	it('says that the workflow turns off here exactly when the move turns it off and does not publish', () => {
 		fc.assert(
 			fc.property(preflightArb, optionsArb, choiceArb, (preflight, input, choice) => {
-				const options = transferOptions(input);
-				const request = transferRequest('wf-1', options, choice);
-				const hints = transferHints(transferDialogState(preflight), options, choice);
+				const { request, hints } = hintsFor(preflight, input, choice);
 
-				expect(hints.includes('nothingRuns')).toBe(
-					request.deactivateLocal === true && request.publish !== true,
+				expect(hints.includes('turnsOffHere')).toBe(request.deactivateLocal && !request.publish);
+			}),
+		);
+	});
+
+	it('shows no hint about the copy there unless the move asks to publish it', () => {
+		fc.assert(
+			fc.property(preflightArb, optionsArb, choiceArb, (preflight, input, choice) => {
+				const { request, hints } = hintsFor(preflight, input, choice);
+
+				if (!request.publish) {
+					expect(hints).toEqual(request.deactivateLocal ? ['turnsOffHere'] : []);
+				}
+			}),
+		);
+	});
+
+	it('warns that this version stays off exactly when a publish meets an empty credential', () => {
+		fc.assert(
+			fc.property(preflightArb, optionsArb, choiceArb, (preflight, input, choice) => {
+				const { request, hints } = hintsFor(preflight, input, choice);
+				const emptyCredential = preflight.credentials.some(
+					({ status }) => status === 'needs-set-up',
+				);
+
+				expect(hints.includes('notLiveUntilSetUp')).toBe(request.publish && emptyCredential);
+			}),
+		);
+	});
+
+	it('says that the workflow here stays on only when the move asks to turn it off and to publish', () => {
+		fc.assert(
+			fc.property(preflightArb, optionsArb, choiceArb, (preflight, input, choice) => {
+				const { request, hints } = hintsFor(preflight, input, choice);
+				const staysOn =
+					hints.includes('staysOnHere') || hints.includes('nodeTypesUncheckedStaysOnHere');
+
+				if (staysOn) expect(request.deactivateLocal && request.publish).toBe(true);
+				if (hints.includes('staysOnHere')) expect(hints).toContain('notLiveUntilSetUp');
+			}),
+		);
+	});
+
+	it('mentions the node type check only for a publish that no empty credential blocks', () => {
+		fc.assert(
+			fc.property(preflightArb, optionsArb, choiceArb, (preflight, input, choice) => {
+				const { request, hints } = hintsFor(preflight, input, choice);
+				const nodeTypeHint =
+					hints.includes('nodeTypesUnchecked') || hints.includes('nodeTypesUncheckedStaysOnHere');
+
+				expect(nodeTypeHint).toBe(
+					request.publish &&
+						preflight.nodeTypeCheck === 'unknown' &&
+						!hints.includes('notLiveUntilSetUp'),
 				);
 			}),
 		);
 	});
 
-	it('warns that the copy stays off only when the move asks to publish it', () => {
+	it('never repeats a hint', () => {
 		fc.assert(
 			fc.property(preflightArb, optionsArb, choiceArb, (preflight, input, choice) => {
-				const options = transferOptions(input);
-				const request = transferRequest('wf-1', options, choice);
-				const hints = transferHints(transferDialogState(preflight), options, choice);
-				const emptyCredential = preflight.credentials.some(
-					({ status }) => status === 'needs-set-up',
-				);
+				const { hints } = hintsFor(preflight, input, choice);
 
-				expect(hints.includes('staysOffUntilSetUp')).toBe(
-					request.publish === true && emptyCredential,
-				);
-				if (hints.includes('staysOnHereUntilLive')) {
-					expect(hints).toContain('staysOffUntilSetUp');
-					expect(request.deactivateLocal).toBe(true);
+				expect(new Set(hints).size).toBe(hints.length);
+			}),
+		);
+	});
+});
+
+describe('transferStatus (property)', () => {
+	const moveArb = fc.constantFrom<TransferMoveStatus>('idle', 'moving', 'failed');
+
+	it('says "moving" while the move runs, and nothing while an error shows', () => {
+		fc.assert(
+			fc.property(preflightArb, moveArb, (preflight, move) => {
+				const status = transferStatus(transferDialogState(preflight), move);
+
+				expect(status.kind === 'moving').toBe(move === 'moving');
+				expect(status.kind === 'silent').toBe(move === 'failed');
+			}),
+		);
+	});
+
+	it('says that the workflow cannot move exactly when Move is disabled by the check', () => {
+		fc.assert(
+			fc.property(preflightArb, (preflight) => {
+				const state = transferDialogState(preflight);
+				const status = transferStatus(state, 'idle');
+
+				expect(status.kind === 'cannotMove').toBe(!state.canMove);
+				if (status.kind === 'ready') {
+					expect(status.nodeCount).toBe(preflight.moves.nodes);
+					expect(status.needsSetUp).toBe(
+						preflight.credentials.filter(({ status: s }) => s !== 'matched').length,
+					);
 				}
 			}),
 		);

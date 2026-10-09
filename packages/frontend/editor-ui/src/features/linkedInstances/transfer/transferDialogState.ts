@@ -22,7 +22,7 @@ export type TransferSetUpItem = Omit<LinkedInstanceTransferCredential, 'status'>
 };
 
 /** Something that the user should know before the move, although the move can go ahead. */
-export type TransferWarning = 'nodeTypesUnchecked' | 'credentialsUnchecked';
+export type TransferWarning = 'credentialsUnchecked';
 
 /** What the dialog shows for one preflight. */
 export interface TransferDialogState {
@@ -39,6 +39,8 @@ export interface TransferDialogState {
 	subWorkflowCalls: LinkedInstanceTransferSubWorkflow[];
 	/** `false` while anything is listed under "Can't move". */
 	canMove: boolean;
+	/** `false`: the linked instance lists no node types, so only the move can find a missing one. */
+	nodeTypesChecked: boolean;
 	warnings: TransferWarning[];
 }
 
@@ -54,7 +56,6 @@ export function transferDialogState(
 	}
 
 	const warnings: TransferWarning[] = [];
-	if (preflight.nodeTypeCheck === 'unknown') warnings.push('nodeTypesUnchecked');
 	if (needsSetUp.some(({ status }) => status === 'unknown')) warnings.push('credentialsUnchecked');
 
 	return {
@@ -65,6 +66,7 @@ export function transferDialogState(
 		missingNodeTypes: [...preflight.missingNodeTypes],
 		subWorkflowCalls: [...preflight.subWorkflowCalls],
 		canMove: preflight.missingNodeTypes.length === 0 && preflight.subWorkflowCalls.length === 0,
+		nodeTypesChecked: preflight.nodeTypeCheck === 'checked',
 		warnings,
 	};
 }
@@ -101,24 +103,31 @@ export interface TransferChoice {
 }
 
 /** A line under the choices that tells what the picked choices do. */
-export type TransferHint = 'nothingRuns' | 'staysOffUntilSetUp' | 'staysOnHereUntilLive';
+export type TransferHint =
+	| 'turnsOffHere'
+	| 'notLiveUntilSetUp'
+	| 'staysOnHere'
+	| 'nodeTypesUnchecked'
+	| 'nodeTypesUncheckedStaysOnHere';
 
 export function transferHints(
-	state: Pick<TransferDialogState, 'needsSetUp'>,
+	state: Pick<TransferDialogState, 'needsSetUp' | 'nodeTypesChecked'>,
 	options: TransferOptions,
 	choice: TransferChoice,
 ): TransferHint[] {
 	const turnOffHere = options.showTurnOffHere && choice.turnOffHere;
 	const turnOn = options.showTurnOn && choice.turnOn;
-	// The move does not publish a copy that has empty credentials, so the copy stays off there.
-	const blocked = turnOn && state.needsSetUp.some(({ status }) => status === 'needs-set-up');
+	// Without a publish the copy there keeps its state, which the preflight does not know.
+	if (!turnOn) return turnOffHere ? ['turnsOffHere'] : [];
 
-	const hints: TransferHint[] = [];
-	if (turnOffHere && !turnOn) hints.push('nothingRuns');
-	if (blocked) hints.push('staysOffUntilSetUp');
-	// The server keeps the workflow here on when the new version does not go live there.
-	if (blocked && turnOffHere) hints.push('staysOnHereUntilLive');
-	return hints;
+	// The move does not publish a copy that has empty credentials. The server then keeps the
+	// workflow here on.
+	if (state.needsSetUp.some(({ status }) => status === 'needs-set-up')) {
+		return turnOffHere ? ['notLiveUntilSetUp', 'staysOnHere'] : ['notLiveUntilSetUp'];
+	}
+	if (state.nodeTypesChecked) return [];
+	// A missing node type blocks the publish in the same way, but only the move can find it.
+	return [turnOffHere ? 'nodeTypesUncheckedStaysOnHere' : 'nodeTypesUnchecked'];
 }
 
 /** The request of the move. It never asks for a choice that the dialog did not offer. */
@@ -132,4 +141,26 @@ export function transferRequest(
 		publish: options.showTurnOn && choice.turnOn,
 		deactivateLocal: options.showTurnOffHere && choice.turnOffHere,
 	};
+}
+
+/** The preflight as the dialog sees it: still running, failed, or its sections. */
+export type TransferCheck = TransferDialogState | 'checking' | 'failed';
+
+export type TransferMoveStatus = 'idle' | 'moving' | 'failed';
+
+/** What the status line of the dialog tells screen reader users. */
+export type TransferStatus =
+	| { kind: 'silent' }
+	| { kind: 'checking' }
+	| { kind: 'cannotMove' }
+	| { kind: 'ready'; nodeCount: number; needsSetUp: number }
+	| { kind: 'moving' };
+
+export function transferStatus(check: TransferCheck, move: TransferMoveStatus): TransferStatus {
+	if (move === 'moving') return { kind: 'moving' };
+	// A notice with role="alert" reads out each error. The status line then says nothing more.
+	if (move === 'failed' || check === 'failed') return { kind: 'silent' };
+	if (check === 'checking') return { kind: 'checking' };
+	if (!check.canMove) return { kind: 'cannotMove' };
+	return { kind: 'ready', nodeCount: check.nodeCount, needsSetUp: check.needsSetUp.length };
 }

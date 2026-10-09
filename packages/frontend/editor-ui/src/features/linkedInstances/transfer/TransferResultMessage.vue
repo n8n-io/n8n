@@ -16,16 +16,19 @@ const props = defineProps<{
 	place: string;
 	/** The address of the linked instance, for the links to its credentials. */
 	baseUrl: string;
+	/** The move asked to turn on the copy there. */
+	publishAsked: boolean;
 }>();
 
 const REMOTE_STATE_TEXT: Record<RemoteCopyState, BaseTextKey> = {
 	live: 'linkedInstances.transfer.result.live',
 	earlierLive: 'linkedInstances.transfer.result.earlierLive',
+	keptLive: 'linkedInstances.transfer.result.keptLive',
 	notLive: 'linkedInstances.transfer.result.notLive',
 };
 
 const i18n = useI18n();
-const view = computed(() => transferResultView(props.result, props.baseUrl));
+const view = computed(() => transferResultView(props.result, props.baseUrl, props.publishAsked));
 const interpolate = computed(() => ({ place: props.place }));
 const newTab = computed(() => i18n.baseText('linkedInstances.transfer.newTab'));
 
@@ -96,6 +99,8 @@ function setUpLabel(credential: string): string {
 </template>
 
 <style lang="scss" module>
+@use './visually-hidden' as a11y;
+
 .message {
 	display: flex;
 	flex-direction: column;
@@ -128,11 +133,6 @@ function setUpLabel(credential: string): string {
 }
 
 .visuallyHidden {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	clip-path: inset(50%);
-	white-space: nowrap;
+	@include a11y.visually-hidden;
 }
 </style>

@@ -68,6 +68,8 @@ async function setupReady(props: Props = {}, preflight = transferPreflight()) {
 
 const submitButton = () => screen.getByTestId('transfer-submit');
 const cancelButton = () => screen.getByTestId('transfer-cancel');
+const details = () => screen.getByRole('region', { name: 'Move details' });
+const statusLine = () => screen.getByRole('status');
 
 /** The toast is a VNode. Rendering it shows what the user sees. */
 function renderToastMessage() {
@@ -80,6 +82,10 @@ describe('TransferWorkflowDialog', () => {
 		vi.clearAllMocks();
 	});
 
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
 	describe('loading', () => {
 		it('checks what moves when it opens, with Move disabled and focus on Cancel', async () => {
 			const preflight = deferred<LinkedInstanceTransferPreflight>();
@@ -89,7 +95,10 @@ describe('TransferWorkflowDialog', () => {
 				props: { open: true, workflow: workflow(), instance: linkedInstance() },
 			});
 
-			expect(await screen.findByText('Checking what moves…')).toBeVisible();
+			expect(await screen.findByTestId('transfer-checking')).toHaveTextContent(
+				'Checking what moves…',
+			);
+			expect(statusLine()).toHaveTextContent('Checking what moves…');
 			expect(api.fetchTransferPreflight).toHaveBeenCalledWith(expect.anything(), 'link-1', {
 				workflowId: 'wf-1',
 			});
@@ -99,16 +108,17 @@ describe('TransferWorkflowDialog', () => {
 			preflight.resolve(transferPreflight());
 
 			expect(await screen.findByTestId('transfer-moves')).toBeVisible();
-			expect(screen.queryByText('Checking what moves…')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('transfer-checking')).not.toBeInTheDocument();
+			expect(statusLine()).toHaveTextContent('Check done. 4 nodes move to Acme Cloud.');
 			expect(submitButton()).toBeEnabled();
 		});
 
-		it('names the workflow and the place in the title, and says that nothing here is deleted', async () => {
+		it('names the workflow and the place in the title, with no description in the editor', async () => {
 			await setup();
 
 			expect(
 				screen.getByRole('dialog', { name: 'Move "Daily report" to Acme Cloud?' }),
-			).toHaveAccessibleDescription('Acme Cloud gets a copy. Nothing on this computer is deleted.');
+			).not.toHaveAccessibleDescription();
 			expect(
 				screen.queryByText('This chat stays here. The workflow moves.'),
 			).not.toBeInTheDocument();
@@ -152,6 +162,7 @@ describe('TransferWorkflowDialog', () => {
 
 			expect(screen.getByText('1 node')).toBeVisible();
 			expect(screen.getByText('Goes to your personal project')).toBeVisible();
+			expect(statusLine()).toHaveTextContent('Check done. 1 node moves to Acme Cloud.');
 		});
 
 		it('lists the credentials that need setting up with their status', async () => {
@@ -176,16 +187,21 @@ describe('TransferWorkflowDialog', () => {
 					"n8n couldn't check the credentials in Acme Cloud. Some may need setting up after the move.",
 				),
 			).toBeVisible();
+			// One short line for screen readers, in place of the whole summary.
+			expect(statusLine()).toHaveTextContent(
+				'Check done. 4 nodes move to Acme Cloud. 2 credentials need setting up.',
+			);
 		});
 
-		it('says that node types are checked only during the move', async () => {
-			await setupReady({}, transferPreflight({ nodeTypeCheck: 'unknown' }));
+		it('mentions the node type check only when the user turns the copy on', async () => {
+			const text =
+				"n8n checks the node types during the move. If Acme Cloud doesn't have one, this version can't go live there.";
+			await setupReady({ offerTurnOn: true }, transferPreflight({ nodeTypeCheck: 'unknown' }));
+			expect(screen.queryByText(text)).not.toBeInTheDocument();
 
-			expect(
-				screen.getByText(
-					"n8n checks the node types during the move. If Acme Cloud doesn't have one, the copy stays off.",
-				),
-			).toBeVisible();
+			await userEvent.click(screen.getByRole('checkbox', { name: 'Turn it on in Acme Cloud' }));
+
+			expect(screen.getByText(text)).toBeVisible();
 		});
 
 		it('names the called workflows under "Can\'t move" and disables Move', async () => {
@@ -204,6 +220,7 @@ describe('TransferWorkflowDialog', () => {
 			expect(blocked.getByText('Enrich lead')).toBeVisible();
 			expect(blocked.getByText("A workflow you can't open (ID wf-3)")).toBeVisible();
 			expect(submitButton()).toBeDisabled();
+			expect(statusLine()).toHaveTextContent("Check done. The workflow can't move to Acme Cloud.");
 			// Choices do not matter while the workflow cannot move.
 			expect(screen.queryByTestId('transfer-turn-off-here')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('transfer-turn-on')).not.toBeInTheDocument();
@@ -251,19 +268,36 @@ describe('TransferWorkflowDialog', () => {
 			expect(turnOffHere).not.toBeChecked();
 			expect(turnOn).not.toBeChecked();
 
+			const turnsOffHere =
+				'The workflow turns off here. It runs in Acme Cloud only when the copy there is on.';
+			const hints = within(screen.getByTestId('transfer-hints'));
+
 			await userEvent.click(turnOffHere);
-			expect(
-				screen.getByText('Nothing runs this workflow until you turn it on in Acme Cloud.'),
-			).toBeVisible();
+			expect(hints.getByText(turnsOffHere)).toBeVisible();
 
 			await userEvent.click(turnOn);
+			expect(screen.queryByText(turnsOffHere)).not.toBeInTheDocument();
 			expect(
-				screen.queryByText('Nothing runs this workflow until you turn it on in Acme Cloud.'),
-			).not.toBeInTheDocument();
-			expect(
-				screen.getByText('The copy stays off until you set up its credentials in Acme Cloud.'),
+				hints.getByText(
+					"This version can't go live in Acme Cloud until you set up its credentials there.",
+				),
 			).toBeVisible();
-			expect(screen.getByText('The workflow here stays on until then.')).toBeVisible();
+			expect(
+				hints.getByText(
+					'The workflow here stays on. Turn it off here after the copy is on in Acme Cloud.',
+				),
+			).toBeVisible();
+			// Screen readers read each new hint.
+			expect(screen.getByTestId('transfer-hints')).toHaveAttribute('aria-live', 'polite');
+		});
+
+		it('does not offer to turn on the copy unless the opener asks for it', async () => {
+			await setupReady({ workflow: workflow({ liveHere: true, canUnpublish: true }) });
+
+			expect(
+				screen.getByRole('checkbox', { name: 'Turn off the copy on this computer' }),
+			).toBeVisible();
+			expect(screen.queryByTestId('transfer-turn-on')).not.toBeInTheDocument();
 		});
 	});
 
@@ -279,6 +313,10 @@ describe('TransferWorkflowDialog', () => {
 
 			expect(await screen.findByText(UNREACHABLE)).toBeVisible();
 			expect(submitButton()).toBeDisabled();
+			// The notice reads out the error once: no live region around it repeats it.
+			expect(screen.getByRole('alert')).toHaveTextContent(UNREACHABLE);
+			expect(screen.getByRole('alert').closest('[aria-live]')).toBeNull();
+			expect(statusLine()).toBeEmptyDOMElement();
 
 			await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
@@ -309,7 +347,7 @@ describe('TransferWorkflowDialog', () => {
 			});
 
 			expect(
-				await screen.findByText('Could not check what moves to Acme Cloud. Try again.'),
+				await screen.findByText("Couldn't check what moves to Acme Cloud. Try again."),
 			).toBeVisible();
 			expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
 		});
@@ -335,6 +373,11 @@ describe('TransferWorkflowDialog', () => {
 			expect(submitButton()).toHaveTextContent('Moving…');
 			expect(cancelButton()).toBeDisabled();
 			expect(screen.queryByRole('button', { name: 'Close dialog' })).not.toBeInTheDocument();
+			// Every control is disabled, so the details keep focus in the dialog.
+			await waitFor(() => expect(details()).toHaveFocus());
+			expect(statusLine()).toHaveTextContent('Moving the workflow to Acme Cloud…');
+			// The status line reads the move, so the button label is not read a second time.
+			expect(submitButton()).toHaveAttribute('aria-live', 'off');
 
 			const result = pushResult({ published: true });
 			request.resolve(result);
@@ -422,10 +465,52 @@ describe('TransferWorkflowDialog', () => {
 			await userEvent.click(submitButton());
 
 			expect(await screen.findByTestId('transfer-move-error')).toHaveTextContent(UNREACHABLE);
+			expect(screen.getByRole('alert').closest('[aria-live]')).toBeNull();
+			expect(statusLine()).toBeEmptyDOMElement();
 			expect(emitted('update:open')).toBeUndefined();
 			expect(emitted('moved')).toBeUndefined();
 			expect(submitButton()).toBeEnabled();
 			await waitFor(() => expect(submitButton()).toHaveFocus());
+		});
+
+		it('shows its own message when a failed move gives none', async () => {
+			api.moveWorkflow.mockRejectedValue(new TypeError('Failed to fetch'));
+			await setupReady();
+
+			await userEvent.click(submitButton());
+
+			expect(await screen.findByTestId('transfer-move-error')).toHaveTextContent(
+				"Couldn't move the workflow to Acme Cloud. Try again.",
+			);
+		});
+
+		it('does not say that the moved version is on when the move did not publish it', async () => {
+			const warning =
+				'The new version is not live, because the source workflow does not publish this version. An earlier version stays live.';
+			api.moveWorkflow.mockResolvedValue(
+				pushResult({ created: false, published: true, warnings: [warning] }),
+			);
+			const { rerender } = await setupReady({
+				workflow: workflow({ liveHere: true, canUnpublish: true }),
+			});
+
+			await userEvent.click(submitButton());
+			expect(api.moveWorkflow).toHaveBeenCalledWith(expect.anything(), 'link-1', {
+				workflowId: 'wf-1',
+				publish: false,
+				deactivateLocal: false,
+			});
+			await rerender({ open: false });
+			await waitFor(() => expect(toast.showToast).toHaveBeenCalled());
+
+			renderToastMessage();
+			expect(
+				screen.getByText(
+					'A version of it stays on in Acme Cloud. Open it there to see which version runs.',
+				),
+			).toBeVisible();
+			expect(screen.queryByText("It's on in Acme Cloud.")).not.toBeInTheDocument();
+			expect(screen.getByText(warning)).toBeVisible();
 		});
 	});
 
@@ -465,6 +550,37 @@ describe('TransferWorkflowDialog', () => {
 			expect(screen.getByRole('button', { name: 'Close dialog' })).toHaveFocus();
 		});
 
+		it('lets keyboard users scroll the details only when they do not fit', async () => {
+			const notify: Array<() => void> = [];
+			vi.stubGlobal(
+				'ResizeObserver',
+				class {
+					constructor(callback: () => void) {
+						notify.push(callback);
+					}
+
+					observe() {}
+
+					unobserve() {}
+
+					disconnect() {}
+				},
+			);
+			await setupReady();
+			await waitFor(() => expect(cancelButton()).toHaveFocus());
+			expect(details()).toHaveAttribute('tabindex', '-1');
+
+			Object.defineProperties(details(), {
+				scrollHeight: { configurable: true, value: 900 },
+				clientHeight: { configurable: true, value: 400 },
+			});
+			for (const callback of notify) callback();
+
+			await waitFor(() => expect(details()).toHaveAttribute('tabindex', '0'));
+			await userEvent.tab({ shift: true });
+			expect(details()).toHaveFocus();
+		});
+
 		it('tells the opener when it has left, so the opener can move focus', async () => {
 			const { emitted, rerender } = await setupReady();
 
@@ -485,7 +601,7 @@ describe('TransferWorkflowDialog', () => {
 			pinia: createTestingPinia({ stubActions: false }),
 			props: { open: true, workflow: workflow(), instance: linkedInstance() },
 		});
-		await screen.findByText('Checking what moves…');
+		await screen.findByTestId('transfer-checking');
 
 		await rerender({ open: false });
 		await rerender({ open: true });

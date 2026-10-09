@@ -128,9 +128,9 @@ export function toolOutcome(call: AutomationToolCall): AutomationToolOutcome {
 }
 
 /**
- * The outcome of the card's own tool step. A model can use a tool call id again, so the call
- * with the card's id can be an earlier call of another tool. Its result says nothing about the
- * card, so the card then has no tool step to read.
+ * The outcome of the card's own tool step. A model can use a tool call id again, so a call with
+ * the card's id can be a call of another tool. Its result says nothing about the card, so it
+ * gives no outcome.
  */
 export function proposalOutcome(
 	call: AutomationToolCall | undefined,

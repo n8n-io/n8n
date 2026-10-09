@@ -7,23 +7,46 @@ import TransferResultMessage from '../TransferResultMessage.vue';
 
 const renderMessage = createComponentRenderer(TransferResultMessage);
 
-function setup(result: LinkedInstancePushResult, baseUrl = 'https://acme.app.n8n.cloud') {
-	return renderMessage({ props: { result, place: 'Acme Cloud', baseUrl } });
+function setup(
+	result: LinkedInstancePushResult,
+	{ baseUrl = 'https://acme.app.n8n.cloud', publishAsked = false } = {},
+) {
+	return renderMessage({ props: { result, place: 'Acme Cloud', baseUrl, publishAsked } });
 }
 
 describe('TransferResultMessage', () => {
 	it.each<[string, Partial<LinkedInstancePushResult>, string]>([
-		['the new version is live', { published: true }, "It's on in Acme Cloud."],
+		['the move put the new version live', { published: true }, "It's on in Acme Cloud."],
 		[
-			'an earlier version stays live',
+			'the publish failed and an earlier version stays live',
 			{ published: true, publishFailed: true },
 			'An earlier version stays on in Acme Cloud.',
 		],
 		['nothing is live', { published: false, publishFailed: true }, "It's off in Acme Cloud."],
 	])('says so when %s', (_label, overrides, text) => {
-		setup(pushResult(overrides));
+		setup(pushResult(overrides), { publishAsked: true });
 
 		expect(screen.getByText(text)).toBeVisible();
+	});
+
+	it('does not say that the moved version is on when the move did not publish it', () => {
+		const warning =
+			'The new version is not live, because the source workflow does not publish this version. Publish the workflow to make it live. An earlier version stays live.';
+		setup(pushResult({ created: false, published: true, warnings: [warning] }));
+
+		expect(
+			screen.getByText(
+				'A version of it stays on in Acme Cloud. Open it there to see which version runs.',
+			),
+		).toBeVisible();
+		expect(screen.queryByText("It's on in Acme Cloud.")).not.toBeInTheDocument();
+		expect(screen.getByText(warning)).toBeVisible();
+	});
+
+	it("says that the copy is off when the move did not publish it and it wasn't on", () => {
+		setup(pushResult({ published: false }));
+
+		expect(screen.getByText("It's off in Acme Cloud.")).toBeVisible();
 	});
 
 	it('says that the workflow here is off only when the move turned it off', () => {
@@ -56,7 +79,7 @@ describe('TransferResultMessage', () => {
 			pushResult({
 				credentialsNeedingSetup: [{ id: 'cred-1', name: 'Gmail', type: 'gmailOAuth2' }],
 			}),
-			'ftp://acme.example.test',
+			{ baseUrl: 'ftp://acme.example.test' },
 		);
 
 		expect(screen.getByText('Gmail')).toBeVisible();

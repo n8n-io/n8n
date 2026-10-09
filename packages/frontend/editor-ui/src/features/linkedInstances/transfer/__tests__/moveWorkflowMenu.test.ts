@@ -240,7 +240,7 @@ describe('workflow menu: Move to a linked instance', () => {
 			});
 		});
 
-		it('offers both choices for a live workflow', async () => {
+		it('offers to turn off a live workflow here, but not to turn on the copy there', async () => {
 			setup({ live: true });
 			await openMenu();
 			await userEvent.click(await findMoveItem('link-1'));
@@ -248,7 +248,10 @@ describe('workflow menu: Move to a linked instance', () => {
 			expect(
 				await screen.findByRole('checkbox', { name: 'Turn off the copy on this computer' }),
 			).toBeVisible();
-			expect(screen.getByRole('checkbox', { name: 'Turn it on in Acme Cloud' })).toBeVisible();
+			// The editor has no request for a live automation. The Assistant can make one.
+			expect(
+				screen.queryByRole('checkbox', { name: 'Turn it on in Acme Cloud' }),
+			).not.toBeInTheDocument();
 		});
 
 		it('puts focus back on the menu button when the dialog closes', async () => {

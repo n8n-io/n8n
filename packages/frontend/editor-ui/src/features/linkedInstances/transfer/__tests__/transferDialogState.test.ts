@@ -4,6 +4,7 @@ import {
 	transferHints,
 	transferOptions,
 	transferRequest,
+	transferStatus,
 	type TransferChoice,
 	type TransferOptions,
 } from '../transferDialogState';
@@ -92,12 +93,18 @@ describe('transferDialogState', () => {
 		expect(preflight.subWorkflowCalls).toHaveLength(1);
 	});
 
+	it('tells whether the linked instance listed its node types', () => {
+		expect(transferDialogState(transferPreflight({ nodeTypeCheck: 'checked' })).nodeTypesChecked).toBe(
+			true,
+		);
+		expect(transferDialogState(transferPreflight({ nodeTypeCheck: 'unknown' })).nodeTypesChecked).toBe(
+			false,
+		);
+	});
+
 	describe('warnings', () => {
-		it('warns that node types are checked only during the move', () => {
+		it('does not warn about node types, because only the choice to turn the copy on needs them', () => {
 			expect(transferDialogState(transferPreflight({ nodeTypeCheck: 'unknown' })).warnings).toEqual(
-				['nodeTypesUnchecked'],
-			);
-			expect(transferDialogState(transferPreflight({ nodeTypeCheck: 'checked' })).warnings).toEqual(
 				[],
 			);
 		});
@@ -124,12 +131,14 @@ describe('transferDialogState', () => {
 			expect(state.warnings).toEqual([]);
 		});
 
-		it('lists the node type warning before the credential warning', () => {
+		it('warns once, also when several credentials were not checked', () => {
 			const state = transferDialogState(
-				transferPreflight({ credentials: [credential('Gmail', 'unknown')] }),
+				transferPreflight({
+					credentials: [credential('Gmail', 'unknown'), credential('Notion', 'unknown')],
+				}),
 			);
 
-			expect(state.warnings).toEqual(['nodeTypesUnchecked', 'credentialsUnchecked']);
+			expect(state.warnings).toEqual(['credentialsUnchecked']);
 		});
 	});
 });
@@ -158,9 +167,11 @@ describe('transferOptions', () => {
 describe('transferHints', () => {
 	const both: TransferOptions = { showTurnOffHere: true, showTurnOn: true };
 	const needsSetUp = {
+		nodeTypesChecked: true,
 		needsSetUp: [{ name: 'Gmail', type: 'gmailApi', status: 'needs-set-up' as const }],
 	};
-	const ready = { needsSetUp: [] };
+	const ready = { nodeTypesChecked: true, needsSetUp: [] };
+	const unchecked = { nodeTypesChecked: false, needsSetUp: [] };
 	const choice = (turnOffHere: boolean, turnOn: boolean): TransferChoice => ({
 		turnOffHere,
 		turnOn,
@@ -168,30 +179,47 @@ describe('transferHints', () => {
 
 	it('shows no hint before the user picks anything', () => {
 		expect(transferHints(needsSetUp, both, choice(false, false))).toEqual([]);
+		expect(transferHints(unchecked, both, choice(false, false))).toEqual([]);
 	});
 
-	it('says that nothing runs when the workflow turns off here and the copy stays off', () => {
-		expect(transferHints(ready, both, choice(true, false))).toEqual(['nothingRuns']);
+	it('says that the workflow turns off here when the move does not turn the copy on', () => {
+		expect(transferHints(ready, both, choice(true, false))).toEqual(['turnsOffHere']);
+		expect(transferHints(needsSetUp, both, choice(true, false))).toEqual(['turnsOffHere']);
+		expect(transferHints(unchecked, both, choice(true, false))).toEqual(['turnsOffHere']);
 	});
 
-	it('says nothing more when the copy turns on and needs no set-up', () => {
+	it('says nothing more when the copy turns on and the check found nothing', () => {
 		expect(transferHints(ready, both, choice(true, true))).toEqual([]);
 		expect(transferHints(ready, both, choice(false, true))).toEqual([]);
 	});
 
-	it('says that the copy stays off until its credentials are set up', () => {
-		expect(transferHints(needsSetUp, both, choice(false, true))).toEqual(['staysOffUntilSetUp']);
+	it('says that this version cannot go live until its credentials are set up', () => {
+		expect(transferHints(needsSetUp, both, choice(false, true))).toEqual(['notLiveUntilSetUp']);
 	});
 
 	it('also says that the workflow here stays on when the user asked to turn it off', () => {
 		expect(transferHints(needsSetUp, both, choice(true, true))).toEqual([
-			'staysOffUntilSetUp',
-			'staysOnHereUntilLive',
+			'notLiveUntilSetUp',
+			'staysOnHere',
 		]);
+	});
+
+	it('says that the move checks the node types only when the copy is to turn on', () => {
+		expect(transferHints(unchecked, both, choice(false, true))).toEqual(['nodeTypesUnchecked']);
+		expect(transferHints(unchecked, both, choice(true, true))).toEqual([
+			'nodeTypesUncheckedStaysOnHere',
+		]);
+	});
+
+	it('names the empty credentials before the unchecked node types', () => {
+		const emptyAndUnchecked = { ...needsSetUp, nodeTypesChecked: false };
+
+		expect(transferHints(emptyAndUnchecked, both, choice(false, true))).toEqual(['notLiveUntilSetUp']);
 	});
 
 	it('treats a credential that was not checked as no reason to stay off', () => {
 		const unknown = {
+			nodeTypesChecked: true,
 			needsSetUp: [{ name: 'Notion', type: 'notionApi', status: 'unknown' as const }],
 		};
 
@@ -201,11 +229,16 @@ describe('transferHints', () => {
 	it('ignores a choice that the dialog does not offer', () => {
 		const onlyTurnOn: TransferOptions = { showTurnOffHere: false, showTurnOn: true };
 		const onlyTurnOff: TransferOptions = { showTurnOffHere: true, showTurnOn: false };
+		const none: TransferOptions = { showTurnOffHere: false, showTurnOn: false };
 
 		expect(transferHints(needsSetUp, onlyTurnOn, choice(true, true))).toEqual([
-			'staysOffUntilSetUp',
+			'notLiveUntilSetUp',
 		]);
-		expect(transferHints(needsSetUp, onlyTurnOff, choice(true, true))).toEqual(['nothingRuns']);
+		expect(transferHints(unchecked, onlyTurnOn, choice(true, true))).toEqual([
+			'nodeTypesUnchecked',
+		]);
+		expect(transferHints(needsSetUp, onlyTurnOff, choice(true, true))).toEqual(['turnsOffHere']);
+		expect(transferHints(needsSetUp, none, choice(true, true))).toEqual([]);
 	});
 });
 
@@ -238,5 +271,48 @@ describe('transferRequest', () => {
 				{ turnOffHere: true, turnOn: true },
 			),
 		).toEqual({ workflowId: 'wf-1', publish: false, deactivateLocal: false });
+	});
+});
+
+describe('transferStatus', () => {
+	const state = (overrides: Parameters<typeof transferPreflight>[0] = {}) =>
+		transferDialogState(transferPreflight(overrides));
+
+	it('says that the check runs', () => {
+		expect(transferStatus('checking', 'idle')).toEqual({ kind: 'checking' });
+	});
+
+	it('counts the nodes and the credentials to set up when the check is done', () => {
+		expect(
+			transferStatus(
+				state({
+					moves: { nodes: 6 },
+					credentials: [
+						credential('Slack', 'matched'),
+						credential('Gmail', 'needs-set-up'),
+						credential('Notion', 'unknown'),
+					],
+				}),
+				'idle',
+			),
+		).toEqual({ kind: 'ready', nodeCount: 6, needsSetUp: 2 });
+	});
+
+	it('says that the workflow cannot move when something is under "Can\'t move"', () => {
+		expect(transferStatus(state({ missingNodeTypes: ['a@1'] }), 'idle')).toEqual({
+			kind: 'cannotMove',
+		});
+		expect(
+			transferStatus(state({ subWorkflowCalls: [{ id: 'wf-2', name: null }] }), 'idle'),
+		).toEqual({ kind: 'cannotMove' });
+	});
+
+	it('says that the move runs, whatever the check said', () => {
+		expect(transferStatus(state(), 'moving')).toEqual({ kind: 'moving' });
+	});
+
+	it('says nothing when an error notice reads out the problem', () => {
+		expect(transferStatus('failed', 'idle')).toEqual({ kind: 'silent' });
+		expect(transferStatus(state(), 'failed')).toEqual({ kind: 'silent' });
 	});
 });

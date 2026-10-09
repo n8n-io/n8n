@@ -26,12 +26,15 @@ export interface MoveMenuWorkflow {
 	workflowPermissions: PermissionsRecord['workflow'];
 }
 
-/** The props and listeners of the move dialog, bound with `v-bind` next to the menu. */
+/**
+ * The props and listeners of the move dialog, bound with `v-bind` next to the menu. The menu does
+ * not offer to turn on the copy there. Only a request for a live automation does, for example from
+ * the Assistant.
+ */
 export interface MoveDialogBindings {
 	open: boolean;
 	workflow: TransferWorkflow;
 	instance: LinkedInstanceSummary;
-	offerTurnOn: boolean;
 	'onUpdate:open': (open: boolean) => void;
 	onClosed: () => void;
 }
@@ -73,18 +76,15 @@ function useMoveDialog(workflow: MoveMenuWorkflow, focusMenu: () => void) {
 	const dialog = ref<MoveDialogBindings>();
 
 	function open(instance: LinkedInstanceSummary): void {
-		const liveHere = documentStore.value.active;
 		dialog.value = {
 			open: false,
 			workflow: {
 				id: workflow.id,
 				name: workflow.name,
-				liveHere,
+				liveHere: documentStore.value.active,
 				canUnpublish: workflow.workflowPermissions.unpublish === true,
 			},
 			instance,
-			// A live workflow is an automation that the user wants to run, so the copy can run too.
-			offerTurnOn: liveHere,
 			'onUpdate:open': (isOpen) => {
 				if (dialog.value) dialog.value.open = isOpen;
 			},

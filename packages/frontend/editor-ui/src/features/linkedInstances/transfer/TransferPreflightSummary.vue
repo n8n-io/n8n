@@ -22,7 +22,6 @@ const SET_UP_STATUS_TEXT: Record<TransferSetUpItem['status'], BaseTextKey> = {
 };
 
 const WARNING_TEXT: Record<TransferWarning, BaseTextKey> = {
-	nodeTypesUnchecked: 'linkedInstances.transfer.warning.nodeTypesUnchecked',
 	credentialsUnchecked: 'linkedInstances.transfer.warning.credentialsUnchecked',
 };
 
@@ -140,6 +139,8 @@ function subWorkflowLabel({ id, name }: { id: string; name: string | null }): st
 </template>
 
 <style lang="scss" module>
+@use './visually-hidden' as a11y;
+
 .summary {
 	display: flex;
 	flex-direction: column;
@@ -189,11 +190,6 @@ function subWorkflowLabel({ id, name }: { id: string; name: string | null }): st
 }
 
 .visuallyHidden {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	clip-path: inset(50%);
-	white-space: nowrap;
+	@include a11y.visually-hidden;
 }
 </style>

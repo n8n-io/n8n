@@ -3,26 +3,29 @@ import type { LinkedInstancePushResult, LinkedInstanceSummary } from '@n8n/api-t
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
-	N8nCheckbox,
 	N8nDialog,
 	N8nDialogFooter,
 	N8nNotice,
 	N8nSpinner,
 	N8nText,
 } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, h, nextTick, reactive, useTemplateRef, watch } from 'vue';
+import { useI18n } from '@n8n/i18n';
+import { useResizeObserver } from '@vueuse/core';
+import { computed, h, nextTick, reactive, ref, useTemplateRef, watch } from 'vue';
 
 import StableButtonLabel from '../components/StableButtonLabel.vue';
 import { syncLocalTurnOff } from './syncLocalTurnOff';
+import TransferChoices from './TransferChoices.vue';
 import TransferPreflightSummary from './TransferPreflightSummary.vue';
 import TransferResultMessage from './TransferResultMessage.vue';
+import TransferStatusLine from './TransferStatusLine.vue';
 import {
 	transferDialogState,
 	transferHints,
 	transferOptions,
 	transferRequest,
-	type TransferHint,
+	type TransferCheck,
+	type TransferMoveStatus,
 	type TransferWorkflow,
 } from './transferDialogState';
 import { transferResultView } from './transferResult';
@@ -45,15 +48,17 @@ const emit = defineEmits<{
 	closed: [];
 }>();
 
-const HINT_TEXT: Record<TransferHint, BaseTextKey> = {
-	nothingRuns: 'linkedInstances.transfer.hint.nothingRuns',
-	staysOffUntilSetUp: 'linkedInstances.transfer.hint.staysOffUntilSetUp',
-	staysOnHereUntilLive: 'linkedInstances.transfer.hint.staysOnHereUntilLive',
-};
+/** A finished move and whether it asked to turn on the copy there. */
+interface MovedResult {
+	result: LinkedInstancePushResult;
+	publishAsked: boolean;
+}
 
 const i18n = useI18n();
 const toast = useToast();
 const body = useTemplateRef<HTMLElement>('body');
+const details = useTemplateRef<HTMLElement>('details');
+const detailsContent = useTemplateRef<HTMLElement>('detailsContent');
 const place = computed(() => props.instance.name);
 const interpolate = computed(() => ({ place: place.value }));
 
@@ -70,11 +75,18 @@ const { preflight, isMoving, moveError, retry, move } = useTransferWorkflow(
 
 const choice = reactive({ turnOffHere: false, turnOn: false });
 // Shown as a toast once the dialog has left, so that screen readers announce it.
-let movedResult: LinkedInstancePushResult | undefined;
+let moved: MovedResult | undefined;
 
 const state = computed(() =>
 	preflight.value.status === 'ready' ? transferDialogState(preflight.value.preflight) : undefined,
 );
+const check = computed<TransferCheck>(
+	() => state.value ?? (preflight.value.status === 'failed' ? 'failed' : 'checking'),
+);
+const moveStatus = computed<TransferMoveStatus>(() => {
+	if (isMoving.value) return 'moving';
+	return moveError.value ? 'failed' : 'idle';
+});
 const options = computed(() =>
 	transferOptions({
 		liveHere: props.workflow.liveHere,
@@ -82,20 +94,31 @@ const options = computed(() =>
 		offerTurnOn: props.offerTurnOn === true,
 	}),
 );
+const showChoices = computed(
+	() => state.value?.canMove === true && (options.value.showTurnOffHere || options.value.showTurnOn),
+);
 const hints = computed(() =>
 	state.value ? transferHints(state.value, options.value, choice) : [],
 );
 const canSubmit = computed(() => state.value?.canMove === true && !isMoving.value);
+
+// A long list of credentials scrolls. Only then the details take a stop in the Tab order.
+const detailsScroll = ref(false);
+useResizeObserver([details, detailsContent], () => {
+	const element = details.value;
+	detailsScroll.value = element !== null && element.scrollHeight > element.clientHeight;
+});
 
 const title = computed(() =>
 	i18n.baseText('linkedInstances.transfer.title', {
 		interpolate: { name: props.workflow.name, place: place.value },
 	}),
 );
+// The editor shows no description: only an Assistant chat needs to say that it stays here.
 const description = computed(() =>
 	props.fromAssistant
 		? i18n.baseText('linkedInstances.transfer.description.fromAssistant')
-		: i18n.baseText('linkedInstances.transfer.description', { interpolate: interpolate.value }),
+		: undefined,
 );
 const submitLabel = computed(() =>
 	isMoving.value
@@ -113,7 +136,7 @@ watch(
 		if (!open) return;
 		choice.turnOffHere = false;
 		choice.turnOn = false;
-		movedResult = undefined;
+		moved = undefined;
 	},
 	{ immediate: true },
 );
@@ -122,10 +145,14 @@ function actionButton(action: 'cancel' | 'submit' | 'retry'): HTMLElement | null
 	return body.value?.querySelector<HTMLElement>(`[data-transfer-action="${action}"]`) ?? null;
 }
 
-/** A button that becomes disabled or goes away drops focus. Then focus goes to the target. */
-async function focusIfLost(target: () => HTMLElement | null) {
+/**
+ * A button that becomes disabled or goes away drops focus. Then focus goes to the target. Focus on
+ * `holder`, which only held it for a moment, also goes to the target.
+ */
+async function focusIfLost(target: () => HTMLElement | null, holder?: HTMLElement | null) {
 	await nextTick();
-	if (!body.value?.contains(document.activeElement)) target()?.focus();
+	const active = document.activeElement;
+	if (active === holder || !body.value?.contains(active)) target()?.focus();
 }
 
 async function onRetry() {
@@ -135,18 +162,23 @@ async function onRetry() {
 
 async function submit() {
 	if (!canSubmit.value) return;
-	const result = await move(transferRequest(props.workflow.id, options.value, choice));
+	const request = transferRequest(props.workflow.id, options.value, choice);
+	const moving = move(request);
+	// Every control is disabled while the move runs. The details keep focus in the dialog.
+	await nextTick();
+	details.value?.focus();
+	const result = await moving;
 	if (!result) {
-		await focusIfLost(() => actionButton('submit'));
+		await focusIfLost(() => actionButton('submit'), details.value);
 		return;
 	}
 	if (result.localDeactivated) void syncLocalTurnOff(props.workflow.id);
-	movedResult = result;
+	moved = { result, publishAsked: request.publish === true };
 	emit('moved', result);
 	emit('update:open', false);
 }
 
-function showResultToast(result: LinkedInstancePushResult) {
+function showResultToast({ result, publishAsked }: MovedResult) {
 	toast.showToast({
 		title: i18n.baseText('linkedInstances.transfer.result.title', {
 			interpolate: interpolate.value,
@@ -155,8 +187,9 @@ function showResultToast(result: LinkedInstancePushResult) {
 			result,
 			place: place.value,
 			baseUrl: props.instance.baseUrl,
+			publishAsked,
 		}),
-		type: transferResultView(result, props.instance.baseUrl).tone,
+		type: transferResultView(result, props.instance.baseUrl, publishAsked).tone,
 		// The toast holds links, so it stays until the user closes it.
 		duration: 0,
 	});
@@ -178,8 +211,8 @@ function onOpenAutoFocus(event: Event) {
 // event. So the toast and the focus move wait for one more task.
 function onCloseAutoFocus(event: Event) {
 	event.preventDefault();
-	const result = movedResult;
-	movedResult = undefined;
+	const result = moved;
+	moved = undefined;
 	setTimeout(() => {
 		if (result) showResultToast(result);
 		emit('closed');
@@ -193,81 +226,67 @@ function onCloseAutoFocus(event: Event) {
 		:header="title"
 		:description="description"
 		size="medium"
+		:container-class="$style.dialog"
 		:show-close-button="!isMoving"
 		@open-auto-focus="onOpenAutoFocus"
 		@close-auto-focus="onCloseAutoFocus"
 		@update:open="onOpenChange"
 	>
 		<div ref="body" :class="$style.body" data-test-id="transfer-workflow-dialog">
-			<div aria-live="polite">
-				<p
-					v-if="preflight.status === 'checking'"
-					:class="$style.checking"
-					data-test-id="transfer-checking"
-				>
-					<span aria-hidden="true"><N8nSpinner size="small" /></span>
-					<N8nText size="small">{{ i18n.baseText('linkedInstances.transfer.checking') }}</N8nText>
-				</p>
-				<div v-else-if="preflight.status === 'failed'" :class="$style.failed">
-					<N8nNotice theme="danger" :class="$style.notice" data-test-id="transfer-check-error">
-						{{ preflight.message }}
+			<TransferStatusLine :check="check" :move="moveStatus" :place="place" />
+			<div
+				ref="details"
+				:class="$style.details"
+				role="region"
+				:aria-label="i18n.baseText('linkedInstances.transfer.details')"
+				:tabindex="detailsScroll ? 0 : -1"
+				data-test-id="transfer-details"
+			>
+				<div ref="detailsContent" :class="$style.detailsContent">
+					<!-- The status line reads this text, so screen readers skip the copy here. -->
+					<p
+						v-if="preflight.status === 'checking'"
+						:class="$style.checking"
+						aria-hidden="true"
+						data-test-id="transfer-checking"
+					>
+						<span :class="$style.spinner"><N8nSpinner size="small" /></span>
+						<N8nText size="small">{{ i18n.baseText('linkedInstances.transfer.checking') }}</N8nText>
+					</p>
+					<div v-else-if="preflight.status === 'failed'" :class="$style.failed">
+						<N8nNotice theme="warning" :class="$style.notice" data-test-id="transfer-check-error">
+							{{ preflight.message }}
+						</N8nNotice>
+						<N8nButton
+							variant="outline"
+							size="small"
+							:label="i18n.baseText('linkedInstances.transfer.retry')"
+							data-transfer-action="retry"
+							data-test-id="transfer-retry"
+							@click="onRetry"
+						/>
+					</div>
+					<TransferPreflightSummary v-else-if="state" :state="state" :place="place" />
+
+					<TransferChoices
+						v-if="showChoices"
+						v-model:turn-off-here="choice.turnOffHere"
+						v-model:turn-on="choice.turnOn"
+						:options="options"
+						:hints="hints"
+						:place="place"
+						:disabled="isMoving"
+					/>
+
+					<N8nNotice
+						v-if="moveError"
+						theme="danger"
+						:class="$style.notice"
+						data-test-id="transfer-move-error"
+					>
+						{{ moveError }}
 					</N8nNotice>
-					<N8nButton
-						variant="outline"
-						size="small"
-						:label="i18n.baseText('linkedInstances.transfer.retry')"
-						data-transfer-action="retry"
-						data-test-id="transfer-retry"
-						@click="onRetry"
-					/>
 				</div>
-				<TransferPreflightSummary v-else-if="state" :state="state" :place="place" />
-			</div>
-
-			<template v-if="state?.canMove">
-				<section v-if="options.showTurnOffHere" :class="$style.choice">
-					<N8nText tag="h3" size="small" bold>
-						{{ i18n.baseText('linkedInstances.transfer.copyHere.heading') }}
-					</N8nText>
-					<N8nCheckbox
-						v-model="choice.turnOffHere"
-						:label="i18n.baseText('linkedInstances.transfer.copyHere.turnOff')"
-						:disabled="isMoving"
-						data-test-id="transfer-turn-off-here"
-					/>
-				</section>
-				<section v-if="options.showTurnOn" :class="$style.choice">
-					<N8nText tag="h3" size="small" bold>
-						{{ i18n.baseText('linkedInstances.transfer.copyThere.heading', { interpolate }) }}
-					</N8nText>
-					<N8nCheckbox
-						v-model="choice.turnOn"
-						:label="i18n.baseText('linkedInstances.transfer.copyThere.turnOn', { interpolate })"
-						:disabled="isMoving"
-						data-test-id="transfer-turn-on"
-					/>
-				</section>
-			</template>
-
-			<div aria-live="polite" :class="$style.hints">
-				<N8nText
-					v-for="hint in hints"
-					:key="hint"
-					tag="p"
-					size="small"
-					color="text-base"
-					:data-test-id="`transfer-hint-${hint}`"
-				>
-					{{ i18n.baseText(HINT_TEXT[hint], { interpolate }) }}
-				</N8nText>
-				<N8nNotice
-					v-if="moveError"
-					theme="danger"
-					:class="$style.notice"
-					data-test-id="transfer-move-error"
-				>
-					{{ moveError }}
-				</N8nNotice>
 			</div>
 
 			<N8nDialogFooter>
@@ -279,9 +298,11 @@ function onCloseAutoFocus(event: Event) {
 					data-test-id="transfer-cancel"
 					@click="onOpenChange(false)"
 				/>
+				<!-- The status line reads "Moving", so the label change is not read a second time. -->
 				<N8nButton
 					variant="solid"
 					:disabled="!canSubmit"
+					aria-live="off"
 					data-transfer-action="submit"
 					data-test-id="transfer-submit"
 					@click="submit"
@@ -294,11 +315,46 @@ function onCloseAutoFocus(event: Event) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
+
+// The dialog starts at a fixed distance from the top, so a change of its height moves only what is
+// below the change. `translate` adds to the centring `transform` of the design system and cancels
+// its vertical part, so the open animation stays the same.
+.dialog[role='dialog'] {
+	--transfer-dialog--top: min(12dvh, var(--spacing--4xl));
+
+	top: var(--transfer-dialog--top);
+	translate: 0 50%;
+	display: flex;
+	flex-direction: column;
+	max-height: calc(100dvh - var(--transfer-dialog--top) - var(--spacing--lg));
+}
+
 .body {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-height: 0;
+	padding-block: var(--spacing--xs) 0;
+}
+
+// Only the details scroll. The title and the buttons stay in view.
+.details {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	// Room for the focus rings of the controls, which the scroll box clips.
+	margin: calc(-1 * var(--spacing--4xs));
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius);
+
+	@include focus.focus-visible-ring;
+}
+
+.detailsContent {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	padding-block: var(--spacing--xs) 0;
 }
 
 .checking {
@@ -306,6 +362,15 @@ function onCloseAutoFocus(event: Event) {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	margin: 0;
+}
+
+.spinner {
+	display: inline-flex;
+
+	// The blocks do not move with reduced motion. The text alone tells that the check runs.
+	@media (prefers-reduced-motion: reduce) {
+		display: none;
+	}
 }
 
 .failed {
@@ -317,22 +382,5 @@ function onCloseAutoFocus(event: Event) {
 
 .notice {
 	--notice--margin: 0;
-}
-
-.choice {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-}
-
-.hints {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-
-	// An empty live region stays in the page for screen readers, but out of the layout.
-	&:not(:has(> *)) {
-		position: absolute;
-	}
 }
 </style>

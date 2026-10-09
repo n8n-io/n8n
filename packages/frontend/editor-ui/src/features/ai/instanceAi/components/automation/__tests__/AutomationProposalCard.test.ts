@@ -381,7 +381,11 @@ const InChat = defineComponent({
 		if (call) {
 			provideThread({
 				id: 'thread-1',
-				findToolCall: (id: string) => (id === 'tc-1' ? call.value : undefined),
+				// Like the thread runtime: a tool name skips the calls of other tools.
+				findToolCall: (id: string, toolName?: string) =>
+					id === 'tc-1' && (toolName === undefined || call.value?.toolName === toolName)
+						? call.value
+						: undefined,
 			} as unknown as ThreadRuntime);
 		}
 		// The chat resolves the card with the answer that the card sends.
@@ -541,8 +545,9 @@ describe('AutomationProposalCard after the answer', () => {
 		expect(iconOf()).toHaveAttribute('data-icon', 'circle-check');
 	});
 
-	it('trusts the answer when the call with its id is an earlier call of another tool', () => {
+	it('shows what the answer asked for when only a call of another tool has its id', () => {
 		// A model can use a tool call id again, so the build call before the card can have its id.
+		// AutomationProposalResolved.repeatedIds.test.ts reads the card's own call in a real chat.
 		const call = ref(
 			toolCall({ toolName: 'build-workflow', result: { workflowId: 'wf-1', saved: true } }),
 		);

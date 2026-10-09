@@ -242,6 +242,16 @@ function findToolCallById(
 	return undefined;
 }
 
+/**
+ * Matches a tool call by its id, and by its tool when a name is given. A model can use a tool
+ * call id again in a thread, so a caller that knows the tool names it to skip other tools.
+ */
+function isToolCallOf(toolCallId: string, toolName?: string) {
+	return (toolCall: InstanceAiToolCallState) =>
+		toolCall.toolCallId === toolCallId &&
+		(toolName === undefined || toolCall.toolName === toolName);
+}
+
 export type ThreadRuntime = ReturnType<typeof createThreadRuntime>;
 
 /**
@@ -619,9 +629,9 @@ export function createThreadRuntime(
 		}
 	}
 
-	/** Find a mirrored tool call by its id. */
-	function findToolCall(toolCallId: string): InstanceAiToolCallState | undefined {
-		return findToolCallById(messages.value, (toolCall) => toolCall.toolCallId === toolCallId);
+	/** Find a mirrored tool call by its id, and by its tool when the caller names one. */
+	function findToolCall(toolCallId: string, toolName?: string) {
+		return findToolCallById(messages.value, isToolCallOf(toolCallId, toolName));
 	}
 
 	/** Find a mirrored tool call by its confirmation request id. */

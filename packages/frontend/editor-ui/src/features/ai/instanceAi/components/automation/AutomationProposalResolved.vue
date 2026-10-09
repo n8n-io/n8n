@@ -10,6 +10,7 @@ import type { AutomationProposalCard } from '@n8n/api-types';
 import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
+import { PROPOSE_AUTOMATION_TOOL_NAME } from '@/features/ai/shared/agentsChat/automationResult';
 import { useOptionalThread } from '../../instanceAi.store';
 import { placeOf, type AutomationAction } from './automationProposal';
 import { proposalOutcome, resolvedStatus, type AutomationResolvedTone } from './automationResolved';
@@ -38,8 +39,12 @@ const thread = useOptionalThread();
 const statusId = useId();
 const root = useTemplateRef<InstanceType<typeof N8nCard>>('root');
 
+// A model can use a tool call id again, so the card looks up its own tool by name: an earlier
+// call of another tool (for example the build of the workflow) can have the same id.
 const outcome = computed(() =>
-	props.toolCallId ? proposalOutcome(thread?.findToolCall(props.toolCallId)) : undefined,
+	props.toolCallId
+		? proposalOutcome(thread?.findToolCall(props.toolCallId, PROPOSE_AUTOMATION_TOOL_NAME))
+		: undefined,
 );
 
 const status = computed(() => resolvedStatus(props.action, props.proposal, outcome.value));

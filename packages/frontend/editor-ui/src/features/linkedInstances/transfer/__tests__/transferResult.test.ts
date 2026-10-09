@@ -60,14 +60,35 @@ describe('remoteCopyState', () => {
 		[{ published: true, publishFailed: true }, 'earlierLive'],
 		[{ published: false, publishFailed: true }, 'notLive'],
 		[{ published: false, publishFailed: false }, 'notLive'],
-	] as const)('reads %o as %s', (fields, expected) => {
-		expect(remoteCopyState(fields)).toBe(expected);
+	] as const)('reads %o of a move that asked to publish as %s', (fields, expected) => {
+		expect(remoteCopyState(fields, true)).toBe(expected);
+	});
+
+	it.each([
+		[{ published: true, publishFailed: false }, 'keptLive'],
+		[{ published: false, publishFailed: false }, 'notLive'],
+	] as const)('reads %o of a move that did not ask to publish as %s', (fields, expected) => {
+		expect(remoteCopyState(fields, false)).toBe(expected);
+	});
+
+	it('does not say that the moved version is live when only an earlier version is', () => {
+		// A second move of a copy that is live there, from a workflow that is off here.
+		const result = pushResult({
+			created: false,
+			published: true,
+			publishFailed: false,
+			warnings: [
+				'The new version is not live, because the source workflow does not publish this version. An earlier version stays live.',
+			],
+		});
+
+		expect(remoteCopyState(result, false)).toBe('keptLive');
 	});
 });
 
 describe('transferResultView', () => {
 	it('is a success when the copy needs nothing', () => {
-		const view = transferResultView(pushResult({ published: true }), BASE_URL);
+		const view = transferResultView(pushResult({ published: true }), BASE_URL, true);
 
 		expect(view).toEqual({
 			tone: 'success',
@@ -86,7 +107,7 @@ describe('transferResultView', () => {
 		['a node type is missing', { missingNodeTypes: ['acme.thing@1'] }],
 		['the server sent a warning', { warnings: ['The workflow went to your personal project.'] }],
 	])('is a warning when %s', (_label, overrides) => {
-		expect(transferResultView(pushResult(overrides), BASE_URL).tone).toBe('warning');
+		expect(transferResultView(pushResult(overrides), BASE_URL, true).tone).toBe('warning');
 	});
 
 	it('links each credential that needs set-up to the linked instance', () => {
@@ -98,6 +119,7 @@ describe('transferResultView', () => {
 				],
 			}),
 			BASE_URL,
+			false,
 		);
 
 		expect(view.needsSetUp.map(({ name, url }) => ({ name, url }))).toEqual([
@@ -110,15 +132,16 @@ describe('transferResultView', () => {
 		const view = transferResultView(
 			pushResult({ remoteUrl: 'ftp://acme.example.test/workflow/1' }),
 			BASE_URL,
+			false,
 		);
 
 		expect(view.openUrl).toBeUndefined();
 	});
 
 	it('tells when the workflow here was turned off', () => {
-		expect(transferResultView(pushResult({ localDeactivated: true }), BASE_URL).turnedOffHere).toBe(
-			true,
-		);
+		expect(
+			transferResultView(pushResult({ localDeactivated: true }), BASE_URL, false).turnedOffHere,
+		).toBe(true);
 	});
 });
 
@@ -140,8 +163,8 @@ describe('transferResultView (property)', () => {
 
 	it('links only to http(s) addresses', () => {
 		fc.assert(
-			fc.property(resultArb, baseUrlArb, (result, baseUrl) => {
-				const view = transferResultView(result, baseUrl);
+			fc.property(resultArb, baseUrlArb, fc.boolean(), (result, baseUrl, publishAsked) => {
+				const view = transferResultView(result, baseUrl, publishAsked);
 				const urls = [view.openUrl, ...view.needsSetUp.map(({ url }) => url)];
 
 				for (const url of urls) {
@@ -153,33 +176,39 @@ describe('transferResultView (property)', () => {
 
 	it('is a success exactly when nothing needs the user', () => {
 		fc.assert(
-			fc.property(resultArb, (result) => {
+			fc.property(resultArb, fc.boolean(), (result, publishAsked) => {
 				const quiet =
 					!result.publishFailed &&
 					result.credentialsNeedingSetup.length === 0 &&
 					result.missingNodeTypes.length === 0 &&
 					result.warnings.length === 0;
 
-				expect(transferResultView(result, BASE_URL).tone).toBe(quiet ? 'success' : 'warning');
+				expect(transferResultView(result, BASE_URL, publishAsked).tone).toBe(
+					quiet ? 'success' : 'warning',
+				);
 			}),
 		);
 	});
 
-	it('says that the copy is live only when the result says so', () => {
+	it('says that the moved version is live only when the move asked to publish and it worked', () => {
 		fc.assert(
-			fc.property(resultArb, (result) => {
-				const state = transferResultView(result, BASE_URL).remoteState;
+			fc.property(resultArb, fc.boolean(), (result, publishAsked) => {
+				const state = transferResultView(result, BASE_URL, publishAsked).remoteState;
 
 				expect(state === 'notLive').toBe(!result.published);
-				expect(state === 'earlierLive').toBe(result.published && result.publishFailed);
+				expect(state === 'live').toBe(result.published && publishAsked && !result.publishFailed);
+				expect(state === 'earlierLive').toBe(
+					result.published && publishAsked && result.publishFailed,
+				);
+				expect(state === 'keptLive').toBe(result.published && !publishAsked);
 			}),
 		);
 	});
 
 	it('keeps every credential, node type and warning as given', () => {
 		fc.assert(
-			fc.property(resultArb, (result) => {
-				const view = transferResultView(result, BASE_URL);
+			fc.property(resultArb, fc.boolean(), (result, publishAsked) => {
+				const view = transferResultView(result, BASE_URL, publishAsked);
 
 				expect(view.needsSetUp.map(({ id, name, type }) => ({ id, name, type }))).toEqual(
 					result.credentialsNeedingSetup,

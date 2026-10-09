@@ -204,7 +204,9 @@ function matchOpenCalls(
  * response withholds more (deep values, secret-shaped text), so it cannot tell two inputs apart.
  */
 function isRecordedFormOf(recorded: unknown, raw: unknown): boolean {
-	return isDeepStrictEqual(recorded, raw) || isDeepStrictEqual(recorded, sanitizeExecutionLogValue(raw));
+	return (
+		isDeepStrictEqual(recorded, raw) || isDeepStrictEqual(recorded, sanitizeExecutionLogValue(raw))
+	);
 }
 
 /**

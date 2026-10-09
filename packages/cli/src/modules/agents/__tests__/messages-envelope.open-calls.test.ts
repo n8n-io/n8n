@@ -275,6 +275,78 @@ describe('withOpenSuspensions and the raw checkpoint values', () => {
 		expect(JSON.stringify(result)).not.toContain(apiKey);
 	});
 
+	describe('shows the checkpoint input when the inputs differ only in withheld values', () => {
+		// The user stopped the card for "A". The checkpoint waits on the card for "B" with the
+		// same id and tool, and the history does not hold that card yet.
+		function openInputFor(recordedA: Record<string, unknown>, rawA: unknown, rawB: unknown) {
+			const history = [
+				message('stopped:assistant', { ...waitingRun(recordedA), state: undefined }),
+			];
+			const checkpoint = checkpointOf([
+				message('sdk-stopped', { ...rejectedRun, input: rawA }),
+				message('sdk-proposed', waitingRun(rawB as Record<string, unknown>)),
+			]);
+			const result = withOpenSuspensions(history, checkpoint, {
+				appendInactiveCheckpointMessages: false,
+			});
+			const open = result.messages
+				.flatMap(({ content }) => content)
+				.filter((part) => part.toolCallId === REUSED_ID && part.canceled !== true);
+			expect(open).toHaveLength(1);
+			return { input: open[0].input, response: JSON.stringify(result) };
+		}
+
+		const deepInput = (value: string) => ({
+			deep: { l1: { l2: { l3: { l4: { l5: { l6: { l7: { value } } } } } } } },
+		});
+
+		it('for a value deeper than the redaction walks', () => {
+			const { input, response } = openInputFor(
+				deepInput('value-of-A'),
+				deepInput('value-of-A'),
+				deepInput('value-of-B'),
+			);
+
+			expect(input).toHaveProperty('deep');
+			expect(response).not.toContain('value-of-A');
+		});
+
+		it('for secret-shaped text that the memory holds raw', () => {
+			const tokenOf = () => `sk-${randomUUID().replaceAll('-', '')}`;
+			const tokenA = tokenOf();
+			const tokenB = tokenOf();
+
+			const { input, response } = openInputFor(
+				{ note: `use ${tokenA}` },
+				{ note: `use ${tokenA}` },
+				{ note: `use ${tokenB}` },
+			);
+
+			expect(input).toEqual({ note: expect.stringMatching(/^use /) });
+			expect(response).not.toContain(tokenA);
+			expect(response).not.toContain(tokenB);
+		});
+
+		it('keeps the recorded input when it is the sanitised form of the checkpoint input', () => {
+			const token = `sk-${randomUUID().replaceAll('-', '')}`;
+			const deep = deepInput('kept');
+			const history = [
+				message('e1:assistant', {
+					...waitingRun({ note: 'use [REDACTED]', ...deep }),
+					state: undefined,
+				}),
+			];
+			const checkpoint = checkpointOf([
+				message('sdk-1', waitingRun({ note: `use ${token}`, ...structuredClone(deep) })),
+			]);
+
+			const result = withOpenSuspensions(history, checkpoint);
+
+			expect(result.messages[0].content).toEqual([waitingRun({ note: 'use [REDACTED]', ...deep })]);
+			expect(JSON.stringify(result)).not.toContain(token);
+		});
+	});
+
 	it('replaces sensitive values in the checkpoint input when the recorded call has no input', () => {
 		const apiKey = randomUUID();
 		const history = [
