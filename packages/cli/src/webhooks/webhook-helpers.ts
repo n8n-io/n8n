@@ -124,7 +124,7 @@ const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
 interface WebhookInvocationResult {
 	webhookResultData: IWebhookResponseData;
 	runExecutionDataChanges: WebhookExecutionDataChanges;
-	/** Whether the node's webhook threw. The caller has already been sent the error response. */
+	/** If true, the response callback was called with an error. */
 	failed: boolean;
 }
 
@@ -981,7 +981,7 @@ export async function executeWebhook(
 		encryptedRunnerIdentity?: string;
 		/** Store recorded on the execution being resumed. Unset for a new execution. */
 		storedAt?: ExecutionStorageLocation;
-		/** Called right before a waiting execution resumes, i.e. not when the request stops earlier. */
+		/** Called before WorkflowRunner.run for an existing execution. */
 		onResume?: () => void;
 	},
 ): Promise<string | undefined> {
