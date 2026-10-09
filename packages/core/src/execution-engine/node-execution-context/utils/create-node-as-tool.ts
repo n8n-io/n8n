@@ -23,6 +23,8 @@ export type CreateNodeAsToolOptions = {
 	 * Optional supply-data context used to resolve n8n expressions in the
 	 * user-provided `toolDescription` parameter against the upstream input data.
 	 * When omitted, the raw description value is used (no expression evaluation).
+	 * A node may also declare a hidden `toolAttribution` parameter; the agent appends
+	 * its value to the reply when the tool was called.
 	 */
 	context?: ISupplyDataFunctions;
 	itemIndex?: number;
@@ -117,6 +119,7 @@ function createTool(options: CreateNodeAsToolOptions) {
 	const description = NodeHelpers.getToolDescriptionForNode(node, nodeType, resolveToolDescription);
 	const nodeName = nodeNameToToolName(node);
 	const name = nodeName || nodeType.description.name;
+	const attribution = node.parameters.toolAttribution;
 
 	return new DynamicStructuredTool({
 		name,
@@ -127,6 +130,8 @@ function createTool(options: CreateNodeAsToolOptions) {
 		// This is required for HITL tools to know which node to execute after approval
 		metadata: {
 			sourceNodeName: node.name,
+			// The Agent appends `attribution` to its final reply when the tool was called
+			...(typeof attribution === 'string' && attribution && { attribution }),
 		},
 	});
 }
