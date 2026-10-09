@@ -2,6 +2,7 @@
 import {
 	computed,
 	provide,
+	readonly,
 	ref,
 	shallowRef,
 	toRef,
@@ -116,6 +117,17 @@ const props = withDefaults(
 		 * example the user's time zone). Project agents ignore it.
 		 */
 		clientContext?: () => Record<string, unknown> | undefined;
+		/**
+		 * Replaces the default composer placeholder. The placeholders for an open
+		 * question card and for a non-empty queue still take priority.
+		 */
+		placeholder?: string;
+		/**
+		 * Shows the attach button of the composer. A host that opens the file
+		 * picker from its own `footer-start` menu sets this to false and calls
+		 * the exposed `openFilePicker`.
+		 */
+		showAttachButton?: boolean;
 	}>(),
 	{
 		visible: true,
@@ -132,6 +144,8 @@ const props = withDefaults(
 		budgetCards: false,
 		increaseBudget: undefined,
 		clientContext: undefined,
+		placeholder: undefined,
+		showAttachButton: true,
 	},
 );
 
@@ -148,6 +162,23 @@ const emit = defineEmits<{
 	'first-user-message': [text: string | undefined];
 	/** The agent became unavailable in this channel (unpublished before send, or mid-run/resume). */
 	'agent-unavailable': [];
+	/** The server accepted a new message. Answers to an open card do not emit this. */
+	'message-accepted': [payload: { text: string; files: File[] }];
+}>();
+
+defineSlots<{
+	/** Replaces the default empty state. */
+	'empty-state'?: () => unknown;
+	/** Content between the transcript and the composer, for example offers. */
+	'inline-offers'?: () => unknown;
+	/** Content docked above the composer, for example a checklist. */
+	'above-input'?: () => unknown;
+	/** Extra chips at the start of the composer attachment strip. */
+	'composer-attachments'?: () => unknown;
+	/** Controls at the start of the composer footer. */
+	'footer-start'?: () => unknown;
+	/** Content below the composer. */
+	'input-footer'?: () => unknown;
 }>();
 
 const locale = useI18n();
@@ -910,6 +941,8 @@ const chatPlaceholder = computed(() => {
 		);
 	}
 
+	if (props.placeholder) return props.placeholder;
+
 	const agentName = props.agentConfig?.name?.trim();
 	return agentName
 		? locale.baseText('agents.chat.input.placeholder.withAgent', {
@@ -1076,6 +1109,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		const onAccepted = (queueId?: string) => {
 			accepted = true;
 			if (!isCurrentTarget()) return;
+			emit('message-accepted', { text, files });
 			if (installedPreview && firstMessagePreview.value === installedPreview) {
 				previewQueueId.value = queueId;
 			}
@@ -1171,7 +1205,8 @@ async function submitQueuedExternalMessage() {
 		submittingQueuedExternalMessage = false;
 	}
 
-	if (result === 'rejected' && queuedExternalMessage === message) {
+	// The chat does not retry a busy send either, so its text becomes the user's draft.
+	if ((result === 'rejected' || result === 'busy') && queuedExternalMessage === message) {
 		queuedExternalMessage = undefined;
 		firstMessagePreview.value = undefined;
 		// The files stay in the composer as the user's draft now.
@@ -1197,7 +1232,33 @@ function getConversationMarkdown(): string {
 		.join('\n\n---\n\n');
 }
 
-defineExpose({ focusInput, getConversationMarkdown, sendMessageFromOutside, clearBudgetStops });
+/** True when the composer has text or staged files. */
+function isDirty(): boolean {
+	return hasDraft.value;
+}
+
+/** Puts text into the composer without sending it. */
+function setDraft(text: string) {
+	inputText.value = text;
+}
+
+function openFilePicker() {
+	chatInput.value?.openFilePicker();
+}
+
+defineExpose({
+	focusInput,
+	getConversationMarkdown,
+	sendMessageFromOutside,
+	clearBudgetStops,
+	isDirty,
+	setDraft,
+	openFilePicker,
+	// Read-only views of the chat state, for hosts that derive their own UI from it.
+	messages: readonly(messages),
+	isStreaming: computed(() => isStreaming.value),
+	isLoadingHistory: computed(() => isLoadingHistory.value),
+});
 
 onMounted(() => {
 	void loadHistory();
@@ -1299,7 +1360,10 @@ onBeforeUnmount(() => {
 			@increase-budget="onIncreaseBudget"
 		/>
 
+		<slot name="inline-offers" />
+
 		<div :class="$style.inputArea">
+			<slot name="above-input" />
 			<div
 				v-if="showBackgroundJobs"
 				ref="backgroundJobCard"
@@ -1473,8 +1537,9 @@ onBeforeUnmount(() => {
 							@remove="removeQueuedMessage"
 						/>
 					</template>
-					<template v-if="attachedFiles.length > 0" #attachments>
+					<template v-if="attachedFiles.length > 0 || $slots['composer-attachments']" #attachments>
 						<div :class="$style.attachmentsStrip">
+							<slot name="composer-attachments" />
 							<AttachmentPreview
 								v-for="(file, index) in attachedFiles"
 								:key="`${file.name}-${index}`"
@@ -1486,7 +1551,7 @@ onBeforeUnmount(() => {
 					</template>
 					<template #footer-start>
 						<N8nTooltip
-							v-if="showAttach"
+							v-if="showAttach && showAttachButton"
 							:content="locale.baseText('chatInputBase.button.attach')"
 							placement="top"
 						>
