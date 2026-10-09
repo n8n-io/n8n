@@ -2872,6 +2872,12 @@ export interface INodeTypeBaseDescription {
 	deprecated?: true;
 
 	/**
+	 * The node type to suggest as the replacement for this deprecated node.
+	 * The editor's deprecation notice and the error for a refused save name it.
+	 */
+	replacedByNodeType?: string;
+
+	/**
 	 * Whether the node will be wrapped for tool-use by AI Agents,
 	 * optionally replacing provided parts of the description
 	 */

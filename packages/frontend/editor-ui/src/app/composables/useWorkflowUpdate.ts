@@ -104,8 +104,12 @@ export function useWorkflowUpdate() {
 	 * which properly updates pinData, nodeMetadata, runData, etc.
 	 */
 	async function updateExistingNodes(
-		nodesToUpdate: Array<{ existing: INodeUi; updated: INode }>,
+		requestedUpdates: Array<{ existing: INodeUi; updated: INode }>,
 	): Promise<boolean> {
+		// The backend refuses any change to a deprecated node. Moving it to a type that is not deprecated is allowed.
+		const nodesToUpdate = requestedUpdates.filter(
+			({ updated }) => !nodeTypesStore.isNodeDeprecated(updated),
+		);
 		if (nodesToUpdate.length === 0) return false;
 
 		// Track successful renames (nodeId -> actualNewName after uniquification)

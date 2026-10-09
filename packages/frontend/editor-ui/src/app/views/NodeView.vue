@@ -625,7 +625,7 @@ async function onCopyNodes(ids: string[]) {
 			return;
 		}
 
-		await copyNodes(ids);
+		if (!(await copyNodes(ids))) return;
 
 		toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 	};
@@ -751,7 +751,10 @@ function onRenameNode(name: string) {
 }
 
 async function onOpenRenameNodeModal(id: string) {
-	const currentName = workflowDocumentStore?.value?.getNodeById(id)?.name ?? '';
+	const node = workflowDocumentStore?.value?.getNodeById(id);
+	if (node && nodeTypesStore.isNodeDeprecated(node)) return;
+
+	const currentName = node?.name ?? '';
 
 	const activeElement = document.activeElement;
 

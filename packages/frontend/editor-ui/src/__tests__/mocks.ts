@@ -93,6 +93,8 @@ export const mockNodeTypeDescription = ({
 	webhooks,
 	eventTriggerDescription,
 	maxNodes,
+	deprecated,
+	replacedByNodeType,
 }: Partial<INodeTypeDescription> = {}) =>
 	mock<INodeTypeDescription>({
 		name,
@@ -117,6 +119,8 @@ export const mockNodeTypeDescription = ({
 		parameterPane: undefined,
 		hidden,
 		eventTriggerDescription,
+		deprecated,
+		replacedByNodeType,
 	});
 
 export const mockLoadedNodeType = (name: string) => {

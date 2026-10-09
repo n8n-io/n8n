@@ -43,7 +43,7 @@ const $style = useCssModule();
 const i18n = useI18n();
 
 const { isExecuting, isExperimentalNdvActive } = useCanvas();
-const { isDisabled, render, name } = useCanvasNode();
+const { isDisabled, render, name, isDeprecated } = useCanvasNode();
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -92,6 +92,10 @@ const isExecuteNodeVisible = computed(() => {
 		return false;
 	}
 
+	if (isDeprecated.value) {
+		return false;
+	}
+
 	// The agent node is a regular executable main-flow node (not a configuration
 	// sub-node), so it always offers execute.
 	if (render.value.type === CanvasNodeRenderType.Agent) {
@@ -108,6 +112,7 @@ const isExecuteNodeVisible = computed(() => {
 const isDisableNodeVisible = computed(
 	() =>
 		!props.readOnly &&
+		!isDeprecated.value &&
 		(render.value.type === CanvasNodeRenderType.Default ||
 			render.value.type === CanvasNodeRenderType.Agent),
 );

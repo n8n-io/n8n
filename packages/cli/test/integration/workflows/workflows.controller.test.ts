@@ -913,7 +913,14 @@ describe('POST /workflows', () => {
 			expect(response.statusCode).toBe(400);
 			expect(response.body.message).toMatch(/deprecated/i);
 			expect(response.body.meta?.violations).toEqual([
-				{ kind: 'added', nodeName: 'Function', nodeType: 'n8n-nodes-base.function' },
+				expect.objectContaining({
+					kind: 'node-type-deprecated',
+					message: expect.stringContaining(
+						'Cannot use a "n8n-nodes-base.function" node ("Function")',
+					),
+					subject: 'n8n-nodes-base.function',
+					subjectType: 'nodeType',
+				}),
 			]);
 		});
 	});
@@ -4089,7 +4096,14 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			expect(response.statusCode).toBe(400);
 			expect(response.body.meta?.violations).toEqual([
-				{ kind: 'added', nodeName: 'Function', nodeType: 'n8n-nodes-base.function' },
+				expect.objectContaining({
+					kind: 'node-type-deprecated',
+					message: expect.stringContaining(
+						'Cannot use a "n8n-nodes-base.function" node ("Function")',
+					),
+					subject: 'n8n-nodes-base.function',
+					subjectType: 'nodeType',
+				}),
 			]);
 		});
 
@@ -4105,7 +4119,14 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			expect(response.statusCode).toBe(400);
 			expect(response.body.meta?.violations).toEqual([
-				{ kind: 'edited', nodeName: 'Function', nodeType: 'n8n-nodes-base.function' },
+				expect.objectContaining({
+					kind: 'node-type-deprecated',
+					message: expect.stringContaining(
+						'Cannot modify a "n8n-nodes-base.function" node ("Function")',
+					),
+					subject: 'n8n-nodes-base.function',
+					subjectType: 'nodeType',
+				}),
 			]);
 		});
 

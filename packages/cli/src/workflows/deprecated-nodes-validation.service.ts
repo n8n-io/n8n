@@ -5,11 +5,16 @@ import isEqual from 'lodash/isEqual';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { NodeHelpers, normalizeNodeShape } from 'n8n-workflow';
 
-import {
-	DeprecatedNodesError,
-	type DeprecatedNodeViolation,
-} from '@/errors/response-errors/deprecated-nodes.error';
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import { NodeTypes } from '@/node-types';
+
+type DeprecatedNodeViolation = {
+	kind: 'added' | 'edited';
+	nodeName: string;
+	nodeType: string;
+	/** From the description of the node's own version, which may differ from the latest one. */
+	replacedByNodeType?: string;
+};
 
 /**
  * Refuses adding a deprecated node or changing one in place. Removing a
@@ -30,8 +35,14 @@ export class DeprecatedNodesValidationService {
 
 		const violations: DeprecatedNodeViolation[] = [];
 		for (const node of nodes) {
-			if (this.deprecatedDescription(node)) {
-				violations.push({ kind: 'added', nodeName: node.name, nodeType: node.type });
+			const description = this.deprecatedDescription(node);
+			if (description) {
+				violations.push({
+					kind: 'added',
+					nodeName: node.name,
+					nodeType: node.type,
+					replacedByNodeType: description.replacedByNodeType,
+				});
 			}
 		}
 
@@ -52,17 +63,22 @@ export class DeprecatedNodesValidationService {
 			const description = this.deprecatedDescription(incoming);
 			if (!description) continue;
 
+			const violation = {
+				nodeName: incoming.name,
+				nodeType: incoming.type,
+				replacedByNodeType: description.replacedByNodeType,
+			};
 			const before = existingById.get(incoming.id);
 			// A stored node that was not deprecated counts as adding one, so a node cannot be moved back onto a deprecated version.
 			if (!before || !this.deprecatedDescription(before)) {
-				violations.push({ kind: 'added', nodeName: incoming.name, nodeType: incoming.type });
+				violations.push({ kind: 'added', ...violation });
 				continue;
 			}
 
 			if (
 				!isEqual(this.frozenFields(before, description), this.frozenFields(incoming, description))
 			) {
-				violations.push({ kind: 'edited', nodeName: incoming.name, nodeType: incoming.type });
+				violations.push({ kind: 'edited', ...violation });
 			}
 		}
 
@@ -109,7 +125,17 @@ export class DeprecatedNodesValidationService {
 			violations: violations.map(({ kind, nodeType }) => ({ kind, nodeType })),
 		});
 
-		throw new DeprecatedNodesError(this.formatMessage(violations), { violations });
+		const policyViolations = violations.map((v) => ({
+			kind: 'node-type-deprecated',
+			checkId: 'deprecated-nodes',
+			message: this.formatMessage(v),
+			subject: v.nodeType,
+			subjectType: 'nodeType',
+		}));
+
+		throw new DeprecatedNodesError(policyViolations.map(({ message }) => message).join(' '), {
+			violations: policyViolations,
+		});
 	}
 
 	private deprecatedDescription(node: INode): INodeTypeDescription | undefined {
@@ -122,14 +148,21 @@ export class DeprecatedNodesValidationService {
 		}
 	}
 
-	private formatMessage(violations: DeprecatedNodeViolation[]): string {
-		const lines = violations.map((v) => {
-			const verb = v.kind === 'added' ? 'use a' : 'modify a';
-			return `Cannot ${verb} "${v.nodeType}" node ("${v.nodeName}"): this node type is deprecated.`;
-		});
+	private formatMessage(v: DeprecatedNodeViolation): string {
+		const verb = v.kind === 'added' ? 'use a' : 'modify a';
+		const replacement = this.getReplacementDisplayName(v.replacedByNodeType);
+		const fix = replacement
+			? `Replace it with the ${replacement} node or remove it from the workflow.`
+			: 'Replace it with a supported alternative or remove it from the workflow.';
+		return `Cannot ${verb} "${v.nodeType}" node ("${v.nodeName}"): this node type is deprecated. ${fix}`;
+	}
 
-		const suffix = ' Replace the node with a supported alternative or remove it from the workflow.';
-
-		return lines.join(' ') + suffix;
+	private getReplacementDisplayName(replacementType: string | undefined): string | undefined {
+		if (!replacementType) return undefined;
+		try {
+			return this.nodeTypes.getByNameAndVersion(replacementType)?.description?.displayName;
+		} catch {
+			return undefined;
+		}
 	}
 }
