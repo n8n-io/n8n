@@ -346,6 +346,23 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 		expect(configs[0]).not.toHaveProperty('configureTools');
 	});
 
+	it('marks tool configuration as non-interrupting only when the runtime cannot suspend', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+		const server = makeServer({
+			toolPermissions: { categories: { read: 'always_allow', write: 'always_allow' } },
+		});
+		const deps = { credentialProvider, oauthService, projectId: 'proj-1', proxyFetch };
+
+		await buildMcpClientForServer(server, { ...deps, nonInterrupting: true });
+		await buildMcpClientForServer(server, deps);
+
+		const [inlineConfigs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		const [defaultConfigs] = mcpClientCtor.mock.calls[1] as [Array<Record<string, unknown>>];
+		expect(inlineConfigs[0]).toMatchObject({ configureToolsNonInterrupting: true });
+		expect(defaultConfigs[0]).not.toHaveProperty('configureToolsNonInterrupting');
+	});
+
 	it('omits connectionTimeoutMs from the SDK config when not provided', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		const oauthService = mock<OauthService>();

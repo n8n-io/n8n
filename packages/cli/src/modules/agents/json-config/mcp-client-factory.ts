@@ -84,6 +84,11 @@ export interface BuildMcpClientDeps {
 	 */
 	onConnectionFailed?: (event: McpConnectionFailedEvent) => void;
 	onToolCallSettled?: McpServerConfig['onToolCallSettled'];
+	/**
+	 * The runtime cannot suspend and resume (inline agents have no checkpoint
+	 * storage), so tool permissions must never require approval.
+	 */
+	nonInterrupting?: boolean;
 }
 
 /** Stand-in for a URL that could not be built. `.invalid` never resolves (RFC 2606), and `authFetch` rejects before any request is sent. */
@@ -108,6 +113,7 @@ export async function buildMcpClientForServer(
 		proxyFetch,
 		onConnectionFailed,
 		onToolCallSettled,
+		nonInterrupting,
 	} = deps;
 	const { toolPermissions } = server;
 	const { McpClient } = await import('@n8n/agents');
@@ -197,6 +203,7 @@ export async function buildMcpClientForServer(
 		...(toolPermissions !== undefined && {
 			configureTools: (tools) => compileMcpToolPermissions(toolPermissions, tools),
 		}),
+		...(nonInterrupting && { configureToolsNonInterrupting: true }),
 		...(onToolCallSettled !== undefined && { onToolCallSettled }),
 		...(server.connectionTimeoutMs !== undefined && {
 			connectionTimeoutMs: server.connectionTimeoutMs,

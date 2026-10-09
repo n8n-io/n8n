@@ -679,10 +679,13 @@ export class AgentRuntimeReconstructionService {
 		aiMcpFetch: ReturnType<typeof createAiMcpFetch>,
 		mcpServerAttributions: Map<string, string>,
 	) {
-		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation } = options;
+		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation, runtimeProfile } =
+			options;
 		return async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
+				// Inline agents have no checkpoint storage, and their schema rejects approval policies.
+				nonInterrupting: runtimeProfile === 'inline',
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,
