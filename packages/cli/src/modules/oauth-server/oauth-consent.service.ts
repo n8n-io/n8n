@@ -370,6 +370,20 @@ export class OAuthConsentService {
 			(await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource));
 		if (!resource?.isFirstParty) return null;
 
+		const resourceUrl = resource.getResourceUrl();
+		if (
+			resource.skipConsent &&
+			sessionPayload.clientId === resourceUrl &&
+			sessionPayload.redirectUri === resourceUrl
+		) {
+			if (!(await resource.authorize(user))) return null;
+			const grantedScopes = this.grantableScopes(
+				await this.supportedScopesFor(resource, user),
+				sessionPayload.requestedScopes,
+			);
+			return await this.issueGrant(user, sessionPayload, grantedScopes);
+		}
+
 		const consent = await this.userConsentRepository.findOne({
 			where: { clientId: sessionPayload.clientId, userId: user.id },
 		});

@@ -63,8 +63,9 @@ Map `app.localhost` to `127.0.0.1` if the local resolver does not resolve it.
 
 ## Try it
 
-Open the app URL. The browser redirects to n8n for sign-in and first-visit authorization.
-After authorization, the app lists workflows that the user can read, including shared project workflows.
+Open the app URL. The browser uses n8n sign-in and returns to the app automatically.
+The portal's own first-party OAuth client skips the consent prompt, including on the first visit.
+The app lists workflows that the user can read, including shared project workflows.
 
 The app endpoint is:
 

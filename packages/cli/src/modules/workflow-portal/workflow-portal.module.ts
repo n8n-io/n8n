@@ -22,6 +22,7 @@ export class WorkflowPortalModule implements ModuleInterface {
 			id: 'workflow-portal',
 			surface: 'public-api',
 			isFirstParty: true,
+			skipConsent: true,
 			displayName: await portalService.getDisplayName(),
 			uiHints: { icon: 'workflow', consentType: 'app' },
 			getResourceUrl: () => config.callbackUrl,

@@ -79,6 +79,9 @@ export interface ProtectedResource {
 	/** First-party resources skip the third-party consent treatment. */
 	isFirstParty?: boolean;
 
+	/** Approve the resource's own first-party client without prompting. Defaults to false. */
+	skipConsent?: boolean;
+
 	/** Whether the resource is currently served. Treated as `true` when not implemented. */
 	isAvailable?(): Promise<boolean>;
 
