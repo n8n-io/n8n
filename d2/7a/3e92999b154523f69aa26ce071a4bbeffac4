@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_9ff4262de30095::t_55426960b9d4c6 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d27a3e92999b154523f69aa26ce071a4bbeffac4",
+  "prompts": {},
+  "sessions": {
+    "s_9ff4262de30095": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9868a5dd-91a6-459c-9b56-a6c634304b2f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
