@@ -373,11 +373,11 @@ export class InstanceAiConfig {
 	@Env('N8N_NODES_NEXT_CONTAINER_ENABLED')
 	nodesNextContainerEnabled: boolean = false;
 
-	/** The `n8n-sandbox` binary. The `wasm` runtime needs it. */
+	/** The `n8n-sandbox` binary of the `wasm` runtime. Empty: the sandbox build of `@n8n/node-sdk`. */
 	@Env('N8N_NODE_CONTRACT_SANDBOX_SIDECAR')
 	nodeContractSandboxSidecar: string = '';
 
-	/** The directory of the guest components `action.wasm`, `provider.wasm` and `trigger.wasm`. The `wasm` runtime needs it. */
+	/** The directory of `action.wasm`, `provider.wasm` and `trigger.wasm`. Empty: the sandbox build of `@n8n/node-sdk`. */
 	@Env('N8N_NODE_CONTRACT_SANDBOX_GUESTS')
 	nodeContractSandboxGuests: string = '';
 

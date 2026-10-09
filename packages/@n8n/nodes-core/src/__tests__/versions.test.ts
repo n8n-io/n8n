@@ -66,6 +66,12 @@ describe('catalog data', () => {
 });
 
 describe('bundled versions', () => {
+	it('give the catalog the bundle of each contract', () => {
+		const catalog = contractCatalogOf([nodesCore]);
+		const bundles = () => catalog.entries.map(({ manifest }) => catalog.bundleOf(manifest.id));
+		expect(bundles).not.toThrow();
+	});
+
 	it('are the same bytes as the embedded store of the build', async () => {
 		const copy = mkdtempSync(path.join(tmpdir(), 'nodes-core-versions-'));
 		try {

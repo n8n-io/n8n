@@ -194,8 +194,8 @@ The policy (`src/runtime-policy.ts`):
 | `N8N_NODES_NEXT_RUNTIMES_COMMUNITY` | `wasm,container` | The runtimes of community versions (signed by the vetting key), the preferred one first. An admin can add `in-process` or `worker`. n8n then logs a warning at start: community code runs without a security boundary. |
 | `N8N_NODES_NEXT_RUNTIMES_PRIVATE` | `wasm,container` | The runtimes of private versions (signed by no trusted key), the preferred one first. The same warning as for the community list applies. |
 | `N8N_NODES_NEXT_CONTAINER_ENABLED` | `false` | Lets versions run in Docker containers. Needs `docker` on the PATH and the pinned images pulled. |
-| `N8N_NODE_CONTRACT_SANDBOX_SIDECAR` | — | The `n8n-sandbox` binary of the `wasm` runtime. |
-| `N8N_NODE_CONTRACT_SANDBOX_GUESTS` | — | The directory with `action.wasm`, `provider.wasm` and `trigger.wasm`. |
+| `N8N_NODE_CONTRACT_SANDBOX_SIDECAR` | `sandbox/sidecar/target/release/n8n-sandbox` of `@n8n/node-sdk` | The `n8n-sandbox` binary of the `wasm` runtime. |
+| `N8N_NODE_CONTRACT_SANDBOX_GUESTS` | `sandbox/dist` of `@n8n/node-sdk` | The directory with `action.wasm`, `provider.wasm` and `trigger.wasm`. |
 | `N8N_NODE_CONTRACT_SANDBOX_CACHE_DIR` | `<n8n folder>/node-contracts/sandbox` | Compiled guests and verified bundles. Only n8n may write it. |
 | `N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE` | — | PEM of the first-party key. A version that it signs is first-party. |
 | `N8N_NODE_CONTRACTS_VETTING_KEY_FILE` | — | PEM of the vetting key. A version that it signs, and the first-party key does not, is community. |

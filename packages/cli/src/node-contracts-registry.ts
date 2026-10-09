@@ -853,12 +853,7 @@ export class NodeContractsRuntimes {
 }
 
 /** Why the `wasm` runtime cannot start: the sidecar or the guests are missing. */
-function wasmMissingOf({ instanceAi }: GlobalConfig) {
-	const sidecar = instanceAi.nodeContractSandboxSidecar;
-	const guests = instanceAi.nodeContractSandboxGuests;
-	if (!sidecar || !guests) {
-		return 'N8N_NODE_CONTRACT_SANDBOX_SIDECAR or N8N_NODE_CONTRACT_SANDBOX_GUESTS is not set';
-	}
+function wasmMissingOf({ sidecar, guests }: { sidecar: string; guests: string }) {
 	const files = [
 		sidecar,
 		...['action.wasm', 'provider.wasm', 'trigger.wasm'].map((guest) => path.join(guests, guest)),
@@ -899,7 +894,7 @@ export async function nodeContractsRuntime(): Promise<HostRuntime> {
 	const nodes = Container.get(NodesConfig);
 	const [
 		{ containerRuntime, pooledRuntime, wasmReuseRuntime, workerRuntime },
-		{ policyCredentialTypeLoader, policyExecutorLoader, warmSandbox },
+		{ defaultSandbox, policyCredentialTypeLoader, policyExecutorLoader, warmSandbox },
 		{ contractVersionLoader, credentialManifestsOf },
 	] = await Promise.all([
 		import('@n8n/node-sdk/runtimes'),
@@ -927,7 +922,10 @@ export async function nodeContractsRuntime(): Promise<HostRuntime> {
 			);
 		}
 	}
-	const wasmMissing = wasmMissingOf(globalConfig);
+	// Unset paths fall back to the sandbox build of @n8n/node-sdk.
+	const sidecar = instanceAi.nodeContractSandboxSidecar || defaultSandbox().sidecar;
+	const guests = instanceAi.nodeContractSandboxGuests || defaultSandbox().guests;
+	const wasmMissing = wasmMissingOf({ sidecar, guests });
 	if (wasmMissing && listed.has('wasm')) {
 		logger.warn(`The wasm runtime is not available: ${wasmMissing}`);
 	}
@@ -942,7 +940,6 @@ export async function nodeContractsRuntime(): Promise<HostRuntime> {
 		...('oci' in container && { containerOci: container.oci }),
 	};
 	const runtimes = Container.get(NodeContractsRuntimes);
-	const { nodeContractSandboxSidecar: sidecar, nodeContractSandboxGuests: guests } = instanceAi;
 	const cacheDir =
 		instanceAi.nodeContractSandboxCacheDir ||
 		path.join(Container.get(NodeContractsStore).dir, 'sandbox');

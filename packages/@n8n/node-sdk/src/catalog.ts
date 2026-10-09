@@ -173,7 +173,10 @@ export function contractCatalogOf(packages: readonly SourcePackage[]): ContractC
 	const readBundle = (id: string) => {
 		const manifest = owned.find((entry) => entry.manifest.id === id)?.manifest;
 		const pkg = packageOf(id);
-		if (!manifest || !('bundleHash' in manifest) || !pkg) return undefined;
+		// A component bundle is WASM, not JS, so this process cannot evaluate it.
+		if (!manifest || !('bundleHash' in manifest) || manifest.guest === 'component' || !pkg) {
+			return undefined;
+		}
 		const read = (digest: string, what: string) => {
 			const code = readFileSync(
 				path.join(embeddedStoreDirOf(pkg), storeBlobFileOf(digest)),
