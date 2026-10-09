@@ -676,7 +676,14 @@ describe('MigrationRuleDetail', () => {
 			// The first row's search hangs; the second row's answers at once.
 			await userEvent.click(pickers[0]);
 			await userEvent.click(pickers[1]);
-			await waitFor(() => expect(usersApi.getUsers).toHaveBeenCalledTimes(2));
+			// An open picker also runs its debounced remote search, so a slow run can see
+			// more calls. Wait for the second row's search instead of a call count.
+			await waitFor(() =>
+				expect(usersApi.getUsers).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.objectContaining({ filter: { projectId: 'project-2' } }),
+				),
+			);
 			await waitFor(() => {
 				expect(baseElement.querySelector('#user-select-option-id-user-2')).not.toBeNull();
 			});
