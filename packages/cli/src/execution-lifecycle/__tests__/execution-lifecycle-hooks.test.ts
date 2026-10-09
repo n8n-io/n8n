@@ -6,6 +6,7 @@ import { ExecutionsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';
+import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import {
@@ -535,6 +536,69 @@ describe('Execution Lifecycle Hooks', () => {
 			} finally {
 				Container.set(LifecycleMetadata, original);
 			}
+		});
+
+		describe('executedInThisProcess', () => {
+			class RecordingHandler {
+				contexts: WorkflowExecuteAfterContext[] = [];
+
+				async onWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext) {
+					this.contexts.push(ctx);
+				}
+			}
+
+			const recorder = new RecordingHandler();
+
+			const runModuleHandler = async (hooks: ExecutionLifecycleHooks) => {
+				// Module handlers are added last, after the factory's own handlers
+				const moduleHandler = hooks.handlers.workflowExecuteAfter.at(-1);
+				await moduleHandler?.call(hooks, successfulRun, {});
+				return recorder.contexts.at(-1);
+			};
+
+			let original: LifecycleMetadata;
+
+			beforeEach(() => {
+				recorder.contexts = [];
+				const recording = new LifecycleMetadata();
+				recording.register({
+					handlerClass: RecordingHandler as unknown as HandlerClass,
+					methodName: 'onWorkflowExecuteAfter',
+					eventName: 'workflowExecuteAfter',
+				});
+				Container.set(RecordingHandler, recorder);
+				original = Container.get(LifecycleMetadata);
+				Container.set(LifecycleMetadata, recording);
+			});
+
+			afterEach(() => {
+				Container.set(LifecycleMetadata, original);
+			});
+
+			it('should be false for the hooks of a process that only enqueued the run', async () => {
+				const hooks = getLifecycleHooksForScalingMain(
+					{ executionMode: 'webhook', workflowData },
+					executionId,
+				);
+
+				expect(await runModuleHandler(hooks)).toMatchObject({ executedInThisProcess: false });
+			});
+
+			it('should be true for the hooks of a process that runs the execution', async () => {
+				const workerHooks = getLifecycleHooksForScalingWorker(
+					{ executionMode: 'webhook', workflowData },
+					executionId,
+				);
+				const regularHooks = getLifecycleHooksForRegularMain(
+					{ executionMode: 'webhook', workflowData },
+					executionId,
+				);
+
+				expect(await runModuleHandler(workerHooks)).toMatchObject({ executedInThisProcess: true });
+				expect(await runModuleHandler(regularHooks)).toMatchObject({
+					executedInThisProcess: true,
+				});
+			});
 		});
 	});
 
