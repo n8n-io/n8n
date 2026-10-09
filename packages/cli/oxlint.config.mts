@@ -90,10 +90,6 @@ export default defineConfig({
 						message: 'Call a service instead of reaching the repository.',
 					},
 					{
-						rule: 'require-public-api-controller',
-						message: 'Migrate to `@PublicApiController`.',
-					},
-					{
 						rule: 'no-unsealed-workflow-entity-write',
 						message: 'Route the write through a token-gated `WorkflowRepository` method.',
 					},
@@ -144,16 +140,6 @@ export default defineConfig({
 			excludeFiles: ['./src/public-api/**/__tests__/**/*.ts'],
 			rules: {
 				'n8n-local-rules/no-repository-in-public-api-handler': 'error',
-			},
-		},
-		{
-			// Public API guardrail: new endpoints must be `@PublicApiController` classes, not `export =` tuples.
-			files: [
-				'./src/public-api/v1/handlers/**/*.handler.ts',
-				'./src/public-api/v1/handlers/**/*.handler.ee.ts',
-			],
-			rules: {
-				'n8n-local-rules/require-public-api-controller': 'error',
 			},
 		},
 		{

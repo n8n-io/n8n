@@ -1,11 +1,19 @@
 import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { Z } from '@n8n/api-types';
+import { ApiResponse, ControllerRegistryMetadata, Get, Patch } from '@n8n/decorators';
+import type { Controller } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
+import { parse } from 'yaml';
 import { z } from 'zod';
 
+import { markPublicApiController } from '@/public-api/__tests__/public-api-controller-test-utils';
+
 import {
+	assembleSpec,
 	buildArtifactsFromRegistry,
-	mergeDecoratorDocument,
+	DECORATOR_ROOT_FILENAME,
+	getGeneratedArtifacts,
 	registerSharedSchemas,
 	type OpenApiDocument,
 } from '../generate';
@@ -15,130 +23,108 @@ function makeNamedResponseDto(className: string, shape: Parameters<typeof Z.clas
 	return { [className]: class extends Z.class(shape) {} }[className];
 }
 
-describe('mergeDecoratorDocument', () => {
-	it('adds a decorator-only path that the eov spec does not define', () => {
-		const eov: OpenApiDocument = { paths: { '/tags': { post: { operationId: 'createTag' } } } };
-		const decorator: OpenApiDocument = {
-			paths: { '/workflows/{id}/history': { get: { operationId: 'getWorkflowHistory' } } },
-		};
-
-		const merged = mergeDecoratorDocument(eov, decorator);
-
-		expect(merged.paths?.['/tags']).toEqual({ post: { operationId: 'createTag' } });
-		expect(merged.paths?.['/workflows/{id}/history']).toEqual({
-			get: { operationId: 'getWorkflowHistory' },
-		});
+describe('getGeneratedArtifacts path parameter names', () => {
+	beforeEach(() => {
+		Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());
 	});
 
-	it('merges a decorator method into a path the eov spec also serves', () => {
-		const eov: OpenApiDocument = { paths: { '/tags': { post: { operationId: 'createTag' } } } };
-		const decorator: OpenApiDocument = { paths: { '/tags': { get: { operationId: 'getTags' } } } };
-
-		const merged = mergeDecoratorDocument(eov, decorator);
-
-		expect(merged.paths?.['/tags']).toEqual({
-			post: { operationId: 'createTag' },
-			get: { operationId: 'getTags' },
-		});
-	});
-
-	it('throws when the same path+method is declared by both sides', () => {
-		const eov: OpenApiDocument = { paths: { '/tags': { get: { operationId: 'listTagsEov' } } } };
-		const decorator: OpenApiDocument = { paths: { '/tags': { get: { operationId: 'getTags' } } } };
-
-		expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(UnexpectedError);
-		expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(/GET \/tags/);
-	});
-
-	it.each([
-		['/credentials/{id}', '/credentials/{credentialId}'],
-		['/tags/{id}', '/tags/{tagId}'],
-		['/projects/{projectId}/credentials/{id}', '/projects/{projectId}/credentials/{credentialId}'],
-	])('rejects conflicting parameter names in %s and %s', (legacyPath, decoratorPath) => {
-		const eov: OpenApiDocument = {
-			paths: { [legacyPath]: { patch: { operationId: 'updateResource' } } },
-		};
-		const decorator: OpenApiDocument = {
-			paths: { [decoratorPath]: { get: { operationId: 'getResource' } } },
-		};
-
-		expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(UnexpectedError);
-		expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(
-			`Equivalent OpenAPI paths use different parameter names: '${legacyPath}' and '${decoratorPath}'.`,
-		);
-	});
-
-	it.each(['eov', 'decorator'])(
-		'rejects conflicting parameter names within the %s document',
-		(side) => {
-			const conflictingPaths: OpenApiDocument['paths'] = {
-				'/credentials/{id}': { patch: { operationId: 'updateCredential' } },
-				'/credentials/{credentialId}': { get: { operationId: 'getCredential' } },
-			};
-			const eov: OpenApiDocument = { paths: side === 'eov' ? conflictingPaths : {} };
-			const decorator: OpenApiDocument = { paths: side === 'decorator' ? conflictingPaths : {} };
-
-			expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(
-				/Equivalent OpenAPI paths use different parameter names/,
-			);
-		},
-	);
-
-	it('merges methods with matching path parameters without changing either input', () => {
-		const patch = {
-			operationId: 'updateCredential',
-			parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-		};
-		const get = { operationId: 'getCredential' };
-		const eov: OpenApiDocument = { paths: { '/credentials/{id}': { patch } } };
-		const decorator: OpenApiDocument = { paths: { '/credentials/{id}': { get } } };
-
-		const merged = mergeDecoratorDocument(eov, decorator);
-
-		expect(merged.paths).toEqual({ '/credentials/{id}': { patch, get } });
-		expect(eov.paths).toEqual({ '/credentials/{id}': { patch } });
-		expect(decorator.paths).toEqual({ '/credentials/{id}': { get } });
-	});
+	const getRootPaths = (): string[] => {
+		const root = getGeneratedArtifacts().find((a) => a.outputPath === DECORATOR_ROOT_FILENAME);
+		const document = parse(root?.content ?? '') as OpenApiDocument;
+		return Object.keys(document.paths ?? {}).sort();
+	};
 
 	it('keeps different static paths with the same parameter positions separate', () => {
-		const patch = { operationId: 'updateCredential' };
-		const get = { operationId: 'getCredentialType' };
-		const eov: OpenApiDocument = { paths: { '/credentials/{id}': { patch } } };
-		const decorator: OpenApiDocument = { paths: { '/credential-types/{name}': { get } } };
+		class CredentialsPublicController {
+			@Get('/:id')
+			@ApiResponse(200)
+			method() {}
+		}
+		class CredentialTypesPublicController {
+			@Get('/:name')
+			@ApiResponse(200)
+			method() {}
+		}
+		markPublicApiController(CredentialsPublicController as Controller, '/credentials');
+		markPublicApiController(CredentialTypesPublicController as Controller, '/credential-types');
 
-		expect(mergeDecoratorDocument(eov, decorator).paths).toEqual({
-			'/credentials/{id}': { patch },
-			'/credential-types/{name}': { get },
+		expect(getRootPaths()).toEqual(['/credential-types/{name}', '/credentials/{id}']);
+	});
+
+	it('throws when equivalent paths use different parameter names', () => {
+		class CredentialsGetController {
+			@Get('/:id')
+			@ApiResponse(200)
+			method() {}
+		}
+		class CredentialsPatchController {
+			@Patch('/:credentialId')
+			@ApiResponse(200)
+			method() {}
+		}
+		markPublicApiController(CredentialsGetController as Controller, '/credentials');
+		markPublicApiController(CredentialsPatchController as Controller, '/credentials');
+
+		expect(() => getGeneratedArtifacts()).toThrow(UnexpectedError);
+		expect(() => getGeneratedArtifacts()).toThrow(
+			/Equivalent OpenAPI paths use different parameter names/,
+		);
+	});
+});
+
+describe('assembleSpec', () => {
+	it('takes paths and components from the generated document', () => {
+		const envelope: OpenApiDocument = { openapi: '3.0.0', paths: {} };
+		const generated: OpenApiDocument = {
+			paths: { '/tags': { get: { operationId: 'getTags' } } },
+			components: { schemas: { Tag: { type: 'object' } } },
+		};
+
+		const assembled = assembleSpec(envelope, generated);
+
+		expect(assembled.paths).toEqual({ '/tags': { get: { operationId: 'getTags' } } });
+		expect(assembled.components).toEqual({ schemas: { Tag: { type: 'object' } } });
+	});
+
+	it('keeps the envelope keys and its security schemes', () => {
+		const envelope: OpenApiDocument = {
+			openapi: '3.0.0',
+			info: { title: 'n8n Public API', version: '1.1.1' },
+			security: [{ ApiKeyAuth: [] }],
+			tags: [{ name: 'Tags' }],
+			paths: {},
+			components: { securitySchemes: { ApiKeyAuth: { type: 'apiKey', in: 'header' } } },
+		};
+
+		const assembled = assembleSpec(envelope, {
+			paths: {},
+			components: { schemas: { Tag: { type: 'object' } } },
+		});
+
+		expect(assembled).toMatchObject({
+			openapi: '3.0.0',
+			info: { title: 'n8n Public API', version: '1.1.1' },
+			security: [{ ApiKeyAuth: [] }],
+			tags: [{ name: 'Tags' }],
+		});
+		expect(assembled.components).toEqual({
+			schemas: { Tag: { type: 'object' } },
+			securitySchemes: { ApiKeyAuth: { type: 'apiKey', in: 'header' } },
 		});
 	});
 
-	it('dedupes an identical component that both sides hoisted from the same shared file', () => {
-		const unauthorized = { description: 'Unauthorized' };
-		const eov: OpenApiDocument = {
-			paths: {},
-			components: { responses: { Unauthorized: unauthorized } },
-		};
-		const decorator: OpenApiDocument = {
-			paths: {},
-			components: { responses: { Unauthorized: { ...unauthorized } } },
-		};
-
-		const merged = mergeDecoratorDocument(eov, decorator);
-
-		expect(merged.components?.responses).toEqual({ Unauthorized: unauthorized });
-	});
-
-	it('throws when a component name resolves to different definitions', () => {
-		const eov: OpenApiDocument = {
-			paths: {},
-			components: { schemas: { Tag: { type: 'object', properties: { id: {} } } } },
-		};
-		const decorator: OpenApiDocument = {
+	it('throws when the envelope and the generated document define the same component', () => {
+		const envelope: OpenApiDocument = {
 			paths: {},
 			components: { schemas: { Tag: { type: 'string' } } },
 		};
+		const generated: OpenApiDocument = {
+			paths: {},
+			components: { schemas: { Tag: { type: 'object' } } },
+		};
 
-		expect(() => mergeDecoratorDocument(eov, decorator)).toThrow(/components\.schemas\.Tag/);
+		expect(() => assembleSpec(envelope, generated)).toThrow(UnexpectedError);
+		expect(() => assembleSpec(envelope, generated)).toThrow(/components\.schemas\.Tag/);
 	});
 });
 

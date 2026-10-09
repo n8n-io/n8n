@@ -30,6 +30,7 @@ import {
 	findBodyArg,
 	findValidatedParamArgs,
 	isRequestBodyRequired,
+	resolvePublicApiRoutes,
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
@@ -69,6 +70,14 @@ export class PublicApiControllerRegistry {
 			const metadata = this.metadata.getControllerMetadata(controllerClass);
 			if (!metadata.isPublicApi) continue;
 			this.activateController(router, controllerClass, apiVersion);
+		}
+
+		// A known path with a method no controller serves. Registered after every controller, so it
+		// only runs when no route matched.
+		for (const path of new Set(resolvePublicApiRoutes().map((route) => route.path))) {
+			router.all(path, (req, res) => {
+				res.status(405).json({ message: `${req.method} method not allowed` });
+			});
 		}
 	}
 
