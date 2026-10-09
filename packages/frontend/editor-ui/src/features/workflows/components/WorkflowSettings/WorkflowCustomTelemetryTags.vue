@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import {
 	N8nButton,
 	N8nDialog,
@@ -119,8 +119,36 @@ const updateDraftTag = (index: number, field: keyof ICustomTelemetryTag, value: 
 	);
 };
 
-const addTag = () => {
+const addRow = ref<HTMLElement | null>(null);
+
+/** The dialog body that scrolls, when this node sits inside one. */
+function scrollParent(node: HTMLElement): HTMLElement | null {
+	let current = node.parentElement;
+	while (current) {
+		const { overflowY } = getComputedStyle(current);
+		if (overflowY === 'auto' || overflowY === 'scroll') return current;
+		current = current.parentElement;
+	}
+	return null;
+}
+
+// The new row appears after the click. Bring the add button back into view
+// once the list runs past the dialog body.
+function keepAddButtonInView() {
+	const row = addRow.value;
+	if (!row) return;
+	const scroller = scrollParent(row);
+	if (!scroller || scroller.scrollHeight <= scroller.clientHeight) return;
+	const rowRect = row.getBoundingClientRect();
+	const scrollerRect = scroller.getBoundingClientRect();
+	if (rowRect.bottom <= scrollerRect.bottom) return;
+	scroller.scrollTo({ top: scroller.scrollHeight - scroller.clientHeight, behavior: 'smooth' });
+}
+
+const addTag = async () => {
 	draft.value = [...draft.value, createEmptyTag()];
+	await nextTick();
+	keepAddButtonInView();
 };
 
 const deleteTag = (index: number) => {
@@ -247,7 +275,7 @@ const onModalOpenChange = (open: boolean) => {
 					</a>
 				</N8nDialogDescription>
 			</N8nDialogHeader>
-			<N8nDialogBody>
+			<N8nDialogBody :class="$style.body">
 				<div data-test-id="workflow-settings-custom-telemetry-tags-modal">
 					<div
 						v-for="(tag, index) in draft"
@@ -316,18 +344,20 @@ const onModalOpenChange = (open: boolean) => {
 							@click="deleteTag(index)"
 						/>
 					</div>
-					<N8nButton
-						icon="plus"
-						variant="subtle"
-						size="small"
-						native-type="button"
-						:disabled="areControlsDisabled"
-						:class="$style.customTelemetryTagsAdd"
-						data-test-id="workflow-settings-custom-telemetry-tags-add"
-						@click="addTag"
-					>
-						{{ i18n.baseText('workflowSettings.customSpanAttributes.placeholder') }}
-					</N8nButton>
+					<div ref="addRow">
+						<N8nButton
+							icon="plus"
+							variant="subtle"
+							size="small"
+							native-type="button"
+							:disabled="areControlsDisabled"
+							:class="$style.customTelemetryTagsAdd"
+							data-test-id="workflow-settings-custom-telemetry-tags-add"
+							@click="addTag"
+						>
+							{{ i18n.baseText('workflowSettings.customSpanAttributes.placeholder') }}
+						</N8nButton>
+					</div>
 					<N8nText
 						v-if="draftValidationError"
 						size="small"
@@ -362,6 +392,10 @@ const onModalOpenChange = (open: boolean) => {
 </template>
 
 <style module lang="scss">
+.body {
+	max-height: 400px;
+}
+
 .wrapper {
 	display: contents;
 }
