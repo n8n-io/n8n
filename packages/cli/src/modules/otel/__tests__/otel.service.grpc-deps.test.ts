@@ -7,6 +7,8 @@ import { mock } from 'vitest-mock-extended';
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
 import { OtelService } from '../otel.service';
 
+import type { ExternalHooks } from '@/external-hooks';
+
 // Only the gRPC exporter is mocked, so grpc-js and the OTLP/HTTP exporter stay real:
 // their option and metadata rules are stricter than any stand-in, and warn-and-skip
 // and creation-time failures must hold against the real classes.
@@ -50,6 +52,7 @@ describe('OtelService with real gRPC dependencies', () => {
 			mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' }),
 			logger,
 			mock<OutboundHttp>(),
+			mock<ExternalHooks>(),
 		);
 	});
 

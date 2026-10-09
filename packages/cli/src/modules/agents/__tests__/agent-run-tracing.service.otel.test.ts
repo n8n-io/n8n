@@ -5,6 +5,7 @@ import { context, type Tracer } from '@opentelemetry/api';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import type { ExternalHooks } from '@/external-hooks';
 import { OtelTestProvider } from '@/modules/otel/__tests__/support/otel-test-provider';
 import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 import type { OtelSettingsService } from '@/modules/otel/otel-settings.service';
@@ -129,6 +130,7 @@ describe('AgentRunTracingService (real OTel provider)', () => {
 			mock<InstanceSettings>(),
 			mock<Logger>(),
 			mock<OutboundHttp>(),
+			mock<ExternalHooks>(),
 		);
 		const service = new AgentRunTracingService(agentsConfig, otelService);
 

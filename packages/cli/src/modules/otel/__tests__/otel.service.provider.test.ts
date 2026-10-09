@@ -17,6 +17,7 @@ import { ATTR } from '../otel.constants';
 import { OtelService } from '../otel.service';
 
 import { N8N_VERSION } from '@/constants';
+import type { ExternalHooks, OtelConfigureHookApi } from '@/external-hooks';
 
 const { exportedSpans } = vi.hoisted(() => ({ exportedSpans: [] as ReadableSpan[] }));
 
@@ -84,6 +85,7 @@ describe('OtelService tracer provider', () => {
 	} as unknown as OutboundHttp;
 	let otelSettingsService: ReturnType<typeof mock<OtelSettingsService>>;
 	let logger: ReturnType<typeof mock<Logger>>;
+	let externalHooks: ReturnType<typeof mock<ExternalHooks>>;
 	let service: OtelService;
 	let foreign: ReturnType<typeof registerForeignProvider> | undefined;
 
@@ -93,11 +95,13 @@ describe('OtelService tracer provider', () => {
 		otelSettingsService = mock<OtelSettingsService>();
 		otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 		logger = mock<Logger>();
+		externalHooks = mock<ExternalHooks>();
 		service = new OtelService(
 			otelSettingsService,
 			mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' }),
 			logger,
 			outboundHttp,
+			externalHooks,
 		);
 	});
 
@@ -227,6 +231,82 @@ describe('OtelService tracer provider', () => {
 			trace.getTracer('third-party').startSpan('http.request').end();
 
 			expect(exportedSpanNames()).toEqual(['workflow.execute', 'http.request']);
+		});
+	});
+
+	describe('otel.configure hook', () => {
+		const registerMappers = (
+			resourceMapper: (attrs: Record<string, unknown>) => Record<string, string>,
+			baggageMapper?: (input: { spanAttributes: Record<string, unknown> }) => Record<
+				string,
+				string
+			>,
+		) => {
+			externalHooks.run.mockImplementation(async (hookName, params) => {
+				if (hookName !== 'otel.configure' || !params) return;
+				const [api] = params as [OtelConfigureHookApi];
+				api.registerResourceAttributeMapper(resourceMapper);
+				if (baggageMapper) api.registerOutboundBaggageMapper(baggageMapper);
+			});
+		};
+
+		it('merges mapped attributes into the resource of spans that match and leaves others unchanged', async () => {
+			registerMappers((attrs): Record<string, string> => {
+				const projectId = attrs['n8n.project.id'];
+				return typeof projectId === 'string' ? { 'project.id': projectId } : {};
+			});
+			await service.init();
+
+			const tracer = service.getTracer('n8n-workflow');
+			tracer.startSpan('node.execute', { attributes: { 'n8n.project.id': 'p1' } }).end();
+			tracer.startSpan('n8n.test_trace').end();
+
+			const [withProject, withoutProject] = exportedSpans;
+			expect(withProject.resource.attributes['project.id']).toBe('p1');
+			expect(withProject.resource.attributes[ATTR.OTEL_SERVICE_NAME]).toBe('n8n');
+			expect(withoutProject.resource.attributes['project.id']).toBeUndefined();
+			expect(withoutProject.resource.attributes[ATTR.OTEL_SERVICE_NAME]).toBe('n8n');
+		});
+
+		it('keeps exporting with the base resource when a mapper throws', async () => {
+			registerMappers(() => {
+				throw new Error('boom');
+			});
+			await service.init();
+
+			service.getTracer('n8n-workflow').startSpan('workflow.execute').end();
+
+			expect(exportedSpanNames()).toEqual(['workflow.execute']);
+			expect(exportedSpans[0].resource.attributes[ATTR.OTEL_SERVICE_NAME]).toBe('n8n');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'OTEL resource attribute mapper failed',
+				expect.objectContaining({ error: 'boom' }),
+			);
+		});
+
+		it('builds outbound baggage from the registered mapper and drops non-string values', async () => {
+			registerMappers(
+				() => ({}),
+				({ spanAttributes }) => ({
+					'project.id': String(spanAttributes['n8n.project.id']),
+					count: 1 as unknown as string,
+				}),
+			);
+			await service.init();
+
+			expect(service.buildOutboundBaggage({ 'n8n.project.id': 'p1' })).toEqual({
+				'project.id': 'p1',
+			});
+		});
+
+		it('does not wrap the exporter or write baggage when no mapper is registered', async () => {
+			await service.init();
+
+			service.getTracer('n8n-workflow').startSpan('workflow.execute').end();
+
+			expect(externalHooks.run).toHaveBeenCalledWith('otel.configure', [expect.any(Object)]);
+			expect(exportedSpans[0].resource.attributes['project.id']).toBeUndefined();
+			expect(service.buildOutboundBaggage({ 'n8n.project.id': 'p1' })).toEqual({});
 		});
 	});
 });
