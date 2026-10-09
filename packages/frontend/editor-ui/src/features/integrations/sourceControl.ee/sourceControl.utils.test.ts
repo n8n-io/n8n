@@ -11,7 +11,7 @@ import {
 import type { useToast } from '@n8n/composables/useToast';
 import type { Router } from 'vue-router';
 
-import { SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-types';
+import { SOURCE_CONTROL_FILE_STATUS, type SourceControlledFile } from '@n8n/api-types';
 
 describe('source control utils', () => {
 	describe('getStatusText()', () => {
@@ -428,6 +428,47 @@ describe('source control utils', () => {
 					message: 'Variables were pulled',
 				}),
 			);
+		});
+
+		describe('with items skipped by a policy', () => {
+			const toast = { showToast: vi.fn() } as unknown as ReturnType<typeof useToast>;
+			const router = {
+				push: vi.fn(),
+				resolve: vi.fn().mockReturnValue({ href: '/test' }),
+			} as unknown as Router;
+			const workflow = (id: string, blocked: boolean): SourceControlledFile => ({
+				id,
+				name: id,
+				type: 'workflow',
+				status: 'created',
+				location: 'remote',
+				conflict: false,
+				file: `/${id}.json`,
+				updatedAt: '2025-01-09T13:12:24.580Z',
+				...(blocked && {
+					contentImportPolicy: {
+						violations: [{ kind: 'node-type-unavailable', checkId: 'c', message: 'no' }],
+						checkErrors: [],
+					},
+				}),
+			});
+
+			beforeEach(() => {
+				vi.mocked(toast.showToast).mockClear();
+			});
+
+			it('counts only the pulled items and adds no policy warning', async () => {
+				await notifyUserAboutPullWorkFolderOutcome(
+					[workflow('pulled', false), workflow('skipped', true)],
+					toast,
+					router,
+				);
+
+				expect(toast.showToast).toHaveBeenCalledTimes(1);
+				expect(toast.showToast).toHaveBeenCalledWith(
+					expect.objectContaining({ message: '1 Workflow was pulled' }),
+				);
+			});
 		});
 	});
 });

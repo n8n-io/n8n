@@ -4,9 +4,9 @@ import { policyCheckFailureSchema } from './policy-check-failure.schema';
 import { policyViolationSchema } from './policy-violation.schema';
 
 /**
- * Why the content-import policy blocked one artifact. The artifact was skipped; the rest of the
- * import/pull still lands. `checkErrors` stays empty here: under `enforce` a check that cannot
- * answer fails the whole import, so it never lands on a single artifact's result.
+ * Why the content-import policy blocks one artifact; the rest of the import still lands.
+ * `checkErrors` is empty on an import result, because a broken check fails the whole import.
+ * A pull preview only evaluates, so there it can list the checks that could not answer.
  */
 export const contentImportPolicyResultSchema = z.object({
 	violations: z.array(policyViolationSchema),
