@@ -35,7 +35,9 @@ function processSchema(schema: Schema): string {
 				.map((prop) => {
 					const key = prop.key ?? 'unknown';
 					const type = processSchema(prop);
-					return `  ${key}: ${type};`;
+					const needsQuoting = !/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key);
+					const formattedKey = needsQuoting ? JSON.stringify(key) : key;
+					return `  ${formattedKey}: ${type};`;
 				})
 				.join('\n');
 
