@@ -689,36 +689,16 @@ describe('SubAgentRunner', () => {
 		});
 	});
 
-	it.each([
-		{
-			parent: { model: 'openai/gpt-4o-mini', modelProjectId: undefined },
-			child: { model: 'anthropic/claude-sonnet-4-5', modelProjectId: undefined },
-			webSearch: true,
-			providerTools: { 'anthropic.web_search_20250305': { maxUses: 3 } },
-		},
-		{
-			parent: {
-				model: 'google-vertex/gemini-3.1-pro-preview',
-				modelProjectId: 'parent-vertex-project',
-			},
-			child: {
-				model: 'google-vertex/gemini-3-flash-preview',
-				modelProjectId: 'child-vertex-project',
-			},
-			webSearch: false,
-			providerTools: {},
-		},
-	])('applies $child.model without changing the parent draft', async (testCase) => {
-		const { parent, child, webSearch, providerTools } = testCase;
+	it('applies the self-delegation model while preserving the parent draft', async () => {
 		const parentConfig: RunnableAgentJsonConfig = {
 			...runnableConfig,
-			...parent,
+			model: 'openai/gpt-4o-mini',
 			credential: 'parent-credential',
 			instructions: 'Parent instructions.',
 			memory: { enabled: true, storage: 'n8n' },
 			tools: [{ type: 'custom', id: 'tool_1' }],
 			skills: [{ type: 'skill', id: 'skill_1' }],
-			config: { webSearch: { enabled: webSearch } },
+			config: { webSearch: { enabled: true } },
 			providerTools: {
 				'anthropic.web_search': { maxUses: 3 },
 				'openai.image_generation': {},
@@ -726,7 +706,7 @@ describe('SubAgentRunner', () => {
 			subAgents: {
 				modelsByDifficulty: {
 					high: {
-						...child,
+						model: 'anthropic/claude-sonnet-4-5',
 						credential: 'high-credential',
 					},
 				},
@@ -752,16 +732,17 @@ describe('SubAgentRunner', () => {
 			expect.objectContaining({
 				config: {
 					...parentConfig,
-					...child,
+					model: 'anthropic/claude-sonnet-4-5',
 					credential: 'high-credential',
-					providerTools,
+					providerTools: {
+						'anthropic.web_search_20250305': { maxUses: 3 },
+					},
 				},
 				toolDescriptors: runtimeSource.toolDescriptors,
 				toolCodeByName: runtimeSource.toolCodeByName,
 				skills: runtimeSource.skills,
 			}),
 		);
-		expect(parentConfig).toMatchObject({ ...parent, credential: 'parent-credential' });
 	});
 
 	it.each(['saved', 'empty'])('resumes a paused child with its %s snapshot', async (snapshot) => {

@@ -4,9 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type * as typeAvailabilityPolicies from '@n8n/frontend-module-type-availability-policies';
 import type * as permissions from '@n8n/permissions';
-import type { INodeListSearchResult } from 'n8n-workflow';
 
-import { useModelCatalog } from '../composables/useModelCatalog';
 import type {
 	AgentCredentialsByProvider,
 	AgentModelOption,
@@ -55,7 +53,6 @@ const restrictedCredentialTypes = vi.hoisted(() => ({
 const openNewCredential = vi.hoisted(() => vi.fn());
 const closeMenu = vi.hoisted(() => vi.fn());
 const openModalWithData = vi.hoisted(() => vi.fn());
-const getResourceLocatorResults = vi.hoisted(() => vi.fn());
 const aiGatewayState = vi.hoisted(() => ({
 	isEnabled: { value: false },
 	supportedTypes: new Set<string>(),
@@ -74,7 +71,6 @@ const baseText = vi.hoisted(() =>
 				'agents.modelSelector.configureCredentials': 'Create credential',
 				'agents.modelSelector.connectTo': 'Connect to {provider}',
 				'agents.modelSelector.models': 'Models',
-				'agents.modelSelector.projects': 'Projects',
 				'generic.freeCredits': 'Free credits',
 				'generic.n8nCredits': 'Gateway credits',
 				'agents.modelSelector.credentialsMissing': 'Credentials missing',
@@ -215,12 +211,8 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openNewCredential, openModalWithData }),
 }));
 
-vi.mock('@/app/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: () => ({ getResourceLocatorResults }),
-}));
-
 vi.mock('../composables/useModelCatalog', () => ({
-	useModelCatalog: vi.fn(() => ({
+	useModelCatalog: () => ({
 		ensureLoaded: vi.fn(),
 		getDefaultModelForPicker: (
 			_credentials: Record<string, string | null> | null,
@@ -238,7 +230,7 @@ vi.mock('../composables/useModelCatalog', () => ({
 				: null,
 		getVerificationStatus: (_projectId: string, _provider: string, credentialId: string) =>
 			credentialId === 'free-openai-credential' ? 'resolved' : 'loading',
-	})),
+	}),
 }));
 
 const modelsByProvider: AgentModelsByProvider = {
@@ -248,6 +240,8 @@ const modelsByProvider: AgentModelsByProvider = {
 				provider: 'google-vertex',
 				model: 'gemini-3-flash-preview',
 				name: 'Gemini 3 Flash Preview',
+				description: null,
+				createdAt: null,
 				metadata: { functionCalling: true, available: true },
 			},
 		],
@@ -272,7 +266,6 @@ async function mountSelector(
 		credentialModalAppendToBody?: boolean;
 		boundCredentialId?: string | null;
 		selectedModel?: AgentModelOption | null;
-		modelProjectId?: string;
 	} = {},
 ) {
 	const { default: AgentModelSelector } = await import('../components/AgentModelSelector.vue');
@@ -334,7 +327,6 @@ describe('AgentModelSelector', () => {
 		aiGatewayState.creditsLabelKey.value = 'generic.freeCredits';
 		aiGatewayState.fetchWallet.mockReset();
 		aiGatewayState.fetchConfig.mockReset();
-		getResourceLocatorResults.mockReset().mockResolvedValue({ results: [] });
 	});
 
 	it('fetches the gateway config on mount so the managed option can be gated', async () => {
@@ -837,142 +829,29 @@ describe('AgentModelSelector', () => {
 		expect(modelsHeader?.label).toBe('Models');
 	});
 
-	it('lists Vertex project names and saves the selected ID with the model', async () => {
-		credentialsByType.value.googleApi = [{ id: 'gcp', name: 'Google account', type: 'googleApi' }];
-		getResourceLocatorResults.mockResolvedValue({
-			results: [
-				{ name: 'Teaching', value: 'teaching-project' },
-				{ name: 'Research', value: 'research-project' },
-			],
-		});
-		const wrapper = await mountSelector({ 'google-vertex': 'gcp' }, { selectedModel: null });
-		await flushPromises();
+	it('offers only Vertex AI credentials and selects a model without a separate project', async () => {
+		credentialsByType.value = {
+			googleApi: [{ id: 'service-account', name: 'Service account', type: 'googleApi' }],
+			googlePalmApi: [{ id: 'gemini', name: 'Gemini', type: 'googlePalmApi' }],
+			googleVertexAiApi: [{ id: 'vertex', name: 'Vertex', type: 'googleVertexAiApi' }],
+		};
+		const wrapper = await mountSelector({ 'google-vertex': 'vertex' }, { selectedModel: null });
 		const children = getProviderItem(wrapper, 'google-vertex')?.children ?? [];
-		expect(children.map((item) => item.label)).toEqual([
+
+		expect(
+			children.filter((item) => item.id.includes('::select::')).map((item) => item.id),
+		).toEqual(['google-vertex::select::vertex']);
+		expect(children.filter((item) => item.header).map((item) => item.label)).toEqual([
 			'Connect to Google Vertex AI',
-			'Google account',
-			'Create credential',
-			'Projects',
-			'Research',
-			'Teaching',
 			'Models',
-			'Gemini 3 Flash Preview',
 		]);
-		expect(getResourceLocatorResults).toHaveBeenCalledWith(
-			expect.objectContaining({
-				credentials: { googleApi: { id: 'gcp', name: '' } },
-				projectId: 'project-1',
-			}),
+		expect(children.some((item) => item.id === 'google-vertex::configure::googleVertexAiApi')).toBe(
+			true,
 		);
-		const project = children.find((item) => item.label === 'Teaching');
-		expect(project?.keepOpen).toBe(true);
-		getDropdown(wrapper).vm.$emit('select', project?.id);
-		expect(wrapper.emitted('change')).toBeUndefined();
-		getDropdown(wrapper).vm.$emit('select', 'google-vertex::model::gemini-3-flash-preview');
-		expect(wrapper.emitted('change')?.at(-1)).toEqual([
-			{
-				provider: 'google-vertex',
-				model: 'gemini-3-flash-preview',
-				modelProjectId: 'teaching-project',
-			},
-		]);
 
-		await wrapper.setProps({
-			selectedModel: modelsByProvider['google-vertex']?.models[0],
-			modelProjectId: 'teaching-project',
-		});
-		expect(
-			getMenuItemByLabel(getProviderItem(wrapper, 'google-vertex')?.children ?? [], 'Teaching')
-				?.checked,
-		).toBe(true);
-		getDropdown(wrapper).vm.$emit('select', 'google-vertex::project::research-project');
-		expect(wrapper.emitted('change')?.at(-1)).toEqual([
-			{
-				provider: 'google-vertex',
-				model: 'gemini-3-flash-preview',
-				modelProjectId: 'research-project',
-			},
-		]);
-		getDropdown(wrapper).vm.$emit('select', 'anthropic::model::claude-sonnet-4-5');
-		expect(wrapper.emitted('change')?.at(-1)).toEqual([
-			{
-				provider: 'anthropic',
-				model: 'claude-sonnet-4-5',
-			},
-		]);
-	});
-
-	it('ignores projects from an old credential and lets the user retry a failed lookup', async () => {
-		credentialsByType.value.googleApi = [
-			{ id: 'old-gcp', name: 'Old Google account', type: 'googleApi' },
-			{ id: 'new-gcp', name: 'New Google account', type: 'googleApi' },
-		];
-		const previous = Promise.withResolvers<INodeListSearchResult>();
-		getResourceLocatorResults
-			.mockReturnValueOnce(previous.promise)
-			.mockRejectedValueOnce(new Error('Unavailable'))
-			.mockResolvedValue({ results: [{ name: 'Current project', value: 'current-project' }] });
-		vi.mocked(useModelCatalog).mockReturnValueOnce({
-			...useModelCatalog(),
-			getDefaultModelForPicker: () => modelsByProvider['google-vertex']?.models[0] ?? null,
-			getVerificationStatus: () => 'resolved',
-		});
-		const wrapper = await mountSelector(null, {
-			selectedModel: modelsByProvider['google-vertex']?.models[0],
-			modelProjectId: 'old-project',
-		});
-		await wrapper.setProps({ credentials: { 'google-vertex': 'old-gcp' } });
-		getDropdown(wrapper).vm.$emit('select', 'google-vertex::select::old-gcp');
-		await flushPromises();
-		expect(wrapper.emitted('change')?.at(-1)).toMatchObject([
-			{ modelProjectId: 'old-project' },
-			'auto',
-		]);
-		getDropdown(wrapper).vm.$emit('select', 'google-vertex::select::new-gcp');
-		await flushPromises();
-		expect(wrapper.emitted('change')?.at(-1)).toMatchObject([{ modelProjectId: '' }, 'auto']);
 		getDropdown(wrapper).vm.$emit('select', 'google-vertex::model::gemini-3-flash-preview');
-		expect(wrapper.emitted('change')?.at(-1)).toMatchObject([{ modelProjectId: '' }]);
-
-		await wrapper.setProps({
-			credentials: { 'google-vertex': 'new-gcp' },
-			modelProjectId: 'current-project',
-		});
-		await flushPromises();
-		previous.resolve({ results: [{ name: 'Old project', value: 'old-project' }] });
-		await flushPromises();
-		expect(
-			getMenuItemByLabel(getProviderItem(wrapper, 'google-vertex')?.children ?? [], 'Old project'),
-		).toBeUndefined();
-		const retry = getMenuItemByLabel(
-			getProviderItem(wrapper, 'google-vertex')?.children ?? [],
-			'agents.modelSelector.projectsUnavailable',
-		);
-		expect(retry?.disabled).toBe(false);
-		getDropdown(wrapper).vm.$emit('select', retry?.id);
-		await flushPromises();
-		expect(
-			getMenuItemByLabel(
-				getProviderItem(wrapper, 'google-vertex')?.children ?? [],
-				'Current project',
-			)?.checked,
-		).toBe(true);
-
-		await wrapper.setProps({ projectId: 'project-2' });
-		getDropdown(wrapper).vm.$emit('select', 'google-vertex::model::gemini-3-flash-preview');
-		expect(wrapper.emitted('change')?.at(-1)).toMatchObject([
-			{ modelProjectId: 'current-project' },
-		]);
-		await wrapper.setProps({ credentials: { 'google-vertex': 'old-gcp' } });
-		getDropdown(wrapper).vm.$emit('select', 'google-vertex::model::gemini-3-flash-preview');
-		expect(wrapper.emitted('change')?.at(-1)).toMatchObject([{ modelProjectId: '' }]);
-		await wrapper.setProps({
-			credentials: { 'google-vertex': 'new-gcp' },
-			boundCredentialId: 'new-gcp',
-		});
-		getDropdown(wrapper).vm.$emit('select', 'google-vertex::model::gemini-3-flash-preview');
-		expect(wrapper.emitted('change')?.at(-1)).toMatchObject([
-			{ modelProjectId: 'current-project' },
+		expect(wrapper.emitted('change')).toEqual([
+			[{ provider: 'google-vertex', model: 'gemini-3-flash-preview' }],
 		]);
 	});
 

@@ -418,7 +418,7 @@ export class AgentValidationService {
 		findCredential: FindCredential,
 		issues: AgentConfigValidationIssue[],
 	): Promise<void> {
-		type ModelSlot = Pick<AgentJsonConfig, 'model' | 'credential' | 'modelProjectId'>;
+		type ModelSlot = Pick<AgentJsonConfig, 'model' | 'credential'>;
 		const slots: Array<[string, ModelSlot | undefined]> = [
 			['', config],
 			...Object.entries(config.subAgents?.modelsByDifficulty ?? {}).map(
@@ -446,9 +446,6 @@ export class AgentValidationService {
 			if (!isVertexGeminiModel(model.model)) {
 				issues.push(agentIssue('invalid_value', `${path}model`));
 			}
-			if (!model.modelProjectId?.trim()) {
-				issues.push(agentIssue('missing_required', `${path}modelProjectId`));
-			}
 			if (!model.credential?.trim()) {
 				issues.push(agentIssue('missing_credential', `${path}credential`));
 				continue;
@@ -456,7 +453,7 @@ export class AgentValidationService {
 			const credential = await this.findCredentialSafe(findCredential, model.credential.trim());
 			if (!credential) {
 				issues.push(agentIssue('invalid_credential', `${path}credential`));
-			} else if (credential.type !== 'googleApi') {
+			} else if (!this.credentialSupportsModel(credential.type, model.model)) {
 				issues.push(agentIssue('incompatible_credential', `${path}credential`));
 			}
 		}

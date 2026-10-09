@@ -30,7 +30,6 @@ export type AgentCredentialsByProvider = Partial<Record<AgentModelProvider, stri
 export interface AgentModelSelection {
 	provider: AgentModelProvider;
 	model: string;
-	modelProjectId?: string;
 }
 
 /**

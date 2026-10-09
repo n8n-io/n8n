@@ -40,7 +40,7 @@ export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
 	openai: ['openAiApi'],
 	anthropic: ['anthropicApi'],
 	google: ['googlePalmApi'],
-	'google-vertex': ['googleApi'],
+	'google-vertex': ['googleVertexAiApi'],
 	'azure-openai': ['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'],
 	'aws-bedrock': ['aws'],
 	xai: ['xAiApi'],

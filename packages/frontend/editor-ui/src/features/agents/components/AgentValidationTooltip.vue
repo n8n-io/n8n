@@ -57,7 +57,6 @@ const PREVIEW_PATH_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.preview.issue.agent.credential.incompatibleCredential' as BaseTextKey,
 	'agent.modelDeploymentName.missing_required':
 		'agents.builder.preview.issue.agent.modelDeploymentName.missingRequired' as BaseTextKey,
-	'agent.modelProjectId.missing_required': 'agents.builder.vertex.projectId.missingRequired',
 	'mcpServer.url.missing_required':
 		'agents.builder.preview.issue.mcpServer.missingRequired' as BaseTextKey,
 };
@@ -75,7 +74,6 @@ const PUBLISH_PATH_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 		'agents.publish.issue.agent.credential.incompatibleCredential' as BaseTextKey,
 	'agent.modelDeploymentName.missing_required':
 		'agents.publish.issue.agent.modelDeploymentName.missingRequired' as BaseTextKey,
-	'agent.modelProjectId.missing_required': 'agents.builder.vertex.projectId.missingRequired',
 	'mcpServer.url.missing_required': 'agents.publish.issue.mcpServer.missingRequired' as BaseTextKey,
 	'tool.node.url.invalid_value': 'agents.publish.issue.tool.node.url.invalidValue' as BaseTextKey,
 };
@@ -160,10 +158,7 @@ function capabilityLabel(issue: AgentConfigValidationIssue): string {
 }
 
 function previewPathKey(issue: AgentConfigValidationIssue): string | undefined {
-	if (issue.capability.kind === 'agent') {
-		const field = issue.path.endsWith('.modelProjectId') ? 'modelProjectId' : issue.path;
-		return `agent.${field}.${issue.code}`;
-	}
+	if (issue.capability.kind === 'agent') return `agent.${issue.path}.${issue.code}`;
 	if (issue.capability.kind === 'mcpServer' && issue.path.endsWith('.url')) {
 		return `mcpServer.url.${issue.code}`;
 	}

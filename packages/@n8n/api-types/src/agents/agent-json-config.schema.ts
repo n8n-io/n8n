@@ -37,7 +37,6 @@ const EpisodicMemoryCredentialSchema = z.union([
 const MemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
 	credential: CredentialIdSchema,
-	modelProjectId: z.string().trim().optional(),
 });
 
 const ObservationalMemoryConfigSchema = z.object({
@@ -145,7 +144,6 @@ const SubAgentDifficultyModelConfigSchema = z
 	.object({
 		model: AgentModelSchema,
 		credential: z.string().trim(),
-		modelProjectId: z.string().trim().optional(),
 	})
 	.strict();
 
@@ -483,8 +481,6 @@ export const AgentJsonConfigBaseSchema = z.object({
 	 * string is a deliberate clear of a previously stored value.
 	 */
 	modelDeploymentName: z.string().trim().optional(),
-	/** Google Cloud project for Vertex AI. An empty string clears the stored value. */
-	modelProjectId: z.string().trim().optional(),
 	instructions: z.string(),
 	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),
@@ -596,8 +592,7 @@ export type BudgetGuardrailConfig = z.infer<typeof BudgetGuardrailConfigSchema>;
 export interface AgentBudgetSpend {
 	spentUsd: number;
 }
-export type AgentModelCredentialConfig = Required<Pick<AgentJsonConfig, 'model' | 'credential'>> &
-	Pick<AgentJsonConfig, 'modelProjectId'>;
+export type AgentModelCredentialConfig = Required<Pick<AgentJsonConfig, 'model' | 'credential'>>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;

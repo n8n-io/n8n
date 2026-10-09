@@ -8,7 +8,6 @@ import { jsonSchemaToCompactText } from '../../json-config/schema-text-serialize
 const BuilderPromptMemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
 	credential: z.string().trim().min(1),
-	modelProjectId: z.string().trim().optional(),
 });
 
 const BuilderPromptMemoryConfigSchema = z.object({
@@ -63,9 +62,7 @@ export function getConfigRulesSection(): string {
 - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
 - Fresh agents need real \`instructions\` before config is written. \`model\`
   may be \`""\` and \`credential\` omitted in a draft while LLM setup is
-  pending; fill both from a \`resolve_llm\` result before publishing.
-- Google Vertex AI uses a \`googleApi\` credential. Set \`modelProjectId\` on each
-  explicit Vertex model configuration. Ask for the Google Cloud project ID if it is missing.`;
+  pending; fill both from a \`resolve_llm\` result before publishing.`;
 }
 
 export function getSchemaReferenceSection(): string {

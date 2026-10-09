@@ -3,7 +3,6 @@ import { computed, ref, watch } from 'vue';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
-import type { AgentModelCredentialConfig } from '@n8n/api-types';
 
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
@@ -134,16 +133,11 @@ function onMemoryModelChange(selection: AgentModelSelection) {
 	if (!credentialId) return;
 
 	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
-	const workerModel: AgentModelCredentialConfig = { model, credential: credentialId };
-	if (selection.provider === 'google-vertex') {
-		workerModel.modelProjectId =
-			selection.modelProjectId ??
-			configuredMemoryWorker.value?.modelProjectId ??
-			(props.config?.model.startsWith('google-vertex/') ? props.config.modelProjectId : undefined);
-	}
-	selectedMemoryModel.value = model;
+	const workerModel = { model, credential: credentialId };
 	const existingMemory = props.config?.memory;
 	const existingEpisodicMemory = existingMemory?.episodicMemory;
+
+	selectedMemoryModel.value = model;
 	emit('update:config', {
 		memory: {
 			...existingMemory,
@@ -189,7 +183,6 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 				:models-by-provider="modelsByProvider"
 				:is-loading="isLoading"
 				:project-id="projectId"
-				:model-project-id="configuredMemoryWorker?.modelProjectId ?? props.config?.modelProjectId"
 				:warn-missing-credentials="true"
 				:bound-credential-id="configuredMemoryCredential"
 				credential-modal-append-to-body

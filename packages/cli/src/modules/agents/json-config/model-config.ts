@@ -19,19 +19,24 @@ export async function resolveCredentialAwareModelConfig(
 	model: string,
 	credential: string,
 	credentialProvider: CredentialProvider & Partial<AiGatewayModelCredentialResolver>,
-	options: { deploymentName?: string; projectId?: string } = {},
+	/**
+	 * Azure OpenAI classic deployments are user-named in Azure and surfaced in
+	 * the deployment-based URL path. The catalog model id is not the deployment
+	 * id, so the agent flow must carry the user's deployment name separately.
+	 * Only meaningful for the `azure-openai` provider with a classic endpoint.
+	 */
+	deploymentName?: string,
 ): Promise<ModelConfig> {
 	const provider = getProviderPrefix(model);
 	if (provider === 'google-vertex') {
 		if (!isVertexGeminiModel(model)) {
 			throw new UserError('Select a versioned Gemini 3 or newer model for Google Vertex AI.');
 		}
-		if (!options.projectId?.trim()) {
-			throw new UserError('Enter a Google Cloud project ID for the Google Vertex AI model.');
-		}
 		const selected = (await credentialProvider.list()).find((entry) => entry.id === credential);
-		if (selected?.type !== 'googleApi') {
-			throw new UserError('Select a Google Service Account credential for Google Vertex AI.');
+		if (selected?.type !== 'googleVertexAiApi') {
+			throw new UserError(
+				'This model requires a Google Vertex AI credential. Select a compatible credential.',
+			);
 		}
 	}
 
@@ -58,9 +63,6 @@ export async function resolveCredentialAwareModelConfig(
 	return {
 		id: model,
 		...mapped,
-		...(provider === 'azure-openai' && options.deploymentName
-			? { deploymentName: options.deploymentName }
-			: {}),
-		...(provider === 'google-vertex' ? { project: options.projectId?.trim() } : {}),
+		...(provider === 'azure-openai' && deploymentName ? { deploymentName } : {}),
 	};
 }

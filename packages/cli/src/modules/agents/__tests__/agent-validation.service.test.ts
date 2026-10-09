@@ -311,7 +311,6 @@ describe('AgentValidationService — structured issues', () => {
 			const model = {
 				model: 'google-vertex/gemini-3-flash-preview',
 				credential: 'vertex',
-				modelProjectId: '',
 			};
 			const config: AgentJsonConfig = {
 				...runnableConfig,
@@ -341,32 +340,27 @@ describe('AgentValidationService — structured issues', () => {
 			const invalid = await service.validateAgentConfiguration(
 				agentId,
 				projectId,
-				makeCredentialProvider([{ id: 'vertex', type: 'googlePalmApi' }]),
+				makeCredentialProvider([{ id: 'vertex', type: 'googleApi' }]),
 				scope,
 			);
 			for (const path of paths) {
-				expect(invalid.issues).toContainEqual(
-					expect.objectContaining({ code: 'missing_required', path: `${path}modelProjectId` }),
-				);
 				expect(invalid.issues).toContainEqual(
 					expect.objectContaining({ code: 'incompatible_credential', path: `${path}credential` }),
 				);
 			}
 
-			model.modelProjectId = 'model-project';
-			config.modelProjectId = model.modelProjectId;
 			await expect(
 				service.validateAgentConfiguration(
 					agentId,
 					projectId,
-					makeCredentialProvider([{ id: 'vertex', type: 'googleApi' }]),
+					makeCredentialProvider([{ id: 'vertex', type: 'googleVertexAiApi' }]),
 					scope,
 				),
 			).resolves.toEqual({ status: 'valid', issues: [] });
 		},
 	);
 
-	it('does not require a Vertex project for disabled memory workers', async () => {
+	it('does not require a Vertex credential for disabled memory workers', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
