@@ -195,6 +195,8 @@ packages/cli/src/modules/n8n-packages/entities/agent/agent-requirements.extracto
   s_2397c9db9d923f::t_3b0ae306eaaad4 1-2,3-4,12-14,25,27,47,67,68-69,70
   s_2397c9db9d923f::t_882d9f35e407d6 5,54-59,62-66
   s_2397c9db9d923f::t_2534fa89ebfb8f 7-11,15,17-24,26,28-46,60-61
+  s_2397c9db9d923f::t_2bef2d354dabe6 48-53
+  s_2397c9db9d923f::t_824947b95eceb8 16
 packages/cli/src/modules/n8n-packages/entities/variable/variable-requirements.extractor.ts
   s_2397c9db9d923f::t_3689c74d86e973 34-40,43,46,48
   s_2397c9db9d923f::t_e9716f3324c168 34-40,43,46,48
@@ -235,6 +237,7 @@ packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-requirement
   s_2397c9db9d923f::t_bd463cc09c7d43 14
   s_2397c9db9d923f::t_cf28d93d667f08 15-16,23,46,69-70,115-116,118,120,125,211,223,227-231
   s_2397c9db9d923f::t_882d9f35e407d6 18,20-22,71-76,85-109,126-143,147-158,163-166,168-171,173-174,212-222
+  s_2397c9db9d923f::t_824947b95eceb8 19
 packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-dependency-resolver.test.ts
   s_2397c9db9d923f::t_3689c74d86e973 61-90
   s_2397c9db9d923f::t_882d9f35e407d6 61-89
@@ -253,6 +256,8 @@ packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
   s_2397c9db9d923f::t_21179e5969d137 2,38
 packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
   s_2397c9db9d923f::t_43df95cc0bf699 14
+packages/cli/src/modules/n8n-packages/entities/credential/credential-requirements.extractor.ts
+  s_2397c9db9d923f::t_824947b95eceb8 7,30-31
 ---
 {
   "schema_version": "authorship/3.0.0",
