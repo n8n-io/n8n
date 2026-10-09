@@ -20,6 +20,9 @@ import {
 import { GLOBAL_OWNER_ROLE_SLUG, type Principal, type SecurityContext } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
+
 import type { TrustedSourceIdentityEntity } from '../database/entities/trusted-source-identity.entity';
 import {
 	type InsertTrustedSourceIdentityRow,
@@ -74,6 +77,8 @@ export class TrustedSourceIdentityService extends IdentityService {
 		private readonly txRunner: TransactionRunner,
 		private readonly eventService: EventService,
 		private readonly roleService: RoleService,
+		private readonly roleResolver: RoleResolverService,
+		private readonly provisioning: ProvisioningService,
 	) {
 		super();
 	}

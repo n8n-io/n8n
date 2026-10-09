@@ -121,6 +121,7 @@ export class TrustedSourceIdentityRepository {
 		ctx: OperationContext,
 		user: DeepPartial<User>,
 		binding: Pick<InsertTrustedSourceIdentityRow, 'sourceId' | 'subject' | 'provenance' | 'status'>,
+		projectRoles: Array<{ projectId: string; role: string }> = [],
 	): Promise<User> {
 		return await this.store.runInTransaction(ctx, async (tx) => {
 			const { user: createdUser } = await this.users.createUserWithProject(user, tx);
