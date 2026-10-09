@@ -2,6 +2,7 @@
 
 import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents';
 import { getProviderPrefix, splitModelId } from '@n8n/ai-utilities/agent-config';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { evalUsageGuardrail } from './eval-usage';
 import { parseModelHeadersJson } from './parse-model-headers';
@@ -185,7 +186,55 @@ export function createEvalAgent(
 // Text extraction
 // ---------------------------------------------------------------------------
 
+/**
+ * A failed eval model call. `Agent.generate` returns errors on the result
+ * instead of throwing, so reading such a result as empty text turned a bad key
+ * or an outage into "the model sent bad output".
+ * Keep "model provider" and the HTTP status in the message: external eval
+ * consumers match them to tell a provider outage from a case failure.
+ */
+class EvalModelCallError extends Error {
+	constructor(cause: unknown) {
+		const apiError = providerError(cause);
+		const status =
+			isRecord(apiError) && typeof apiError.statusCode === 'number'
+				? apiError.statusCode
+				: undefined;
+		const detail = cause instanceof Error ? cause.message : String(cause);
+		super(`Eval model provider call failed${status ? ` (HTTP ${status})` : ''}: ${detail}`, {
+			cause,
+		});
+		this.name = 'EvalModelCallError';
+	}
+}
+
+/** The provider's own error: the SDK wraps it in a retry error once its retries run out. */
+function providerError(error: unknown): unknown {
+	return isRecord(error) && 'lastError' in error ? error.lastError : error;
+}
+
+/** An AI SDK API call error (directly or as the last retry), not a runtime or setup error. */
+function isProviderError(error: unknown): boolean {
+	const apiError = providerError(error);
+	return isRecord(apiError) && typeof apiError.isRetryable === 'boolean';
+}
+
+/** False only for a model error the provider marked as permanent (bad key, bad request). */
+export function isRetryableEvalError(error: unknown): boolean {
+	if (!(error instanceof EvalModelCallError)) return true;
+	const apiError = providerError(error.cause);
+	return !(isRecord(apiError) && apiError.isRetryable === false);
+}
+
+/**
+ * Assistant text of an eval call. Throws when the call itself failed. Only a
+ * provider error is reported as one; any other agent failure is thrown as is.
+ */
 export function extractText(result: GenerateResult): string {
+	if (result.finishReason === 'error') {
+		if (isProviderError(result.error)) throw new EvalModelCallError(result.error);
+		throw result.error instanceof Error ? result.error : new Error(String(result.error));
+	}
 	const texts: string[] = [];
 	for (const msg of result.messages) {
 		if (!('role' in msg) || msg.role !== 'assistant') continue;

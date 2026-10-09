@@ -448,7 +448,7 @@ export async function generateSimulationFixtures(
 	});
 	if (!result.ok) {
 		input.logger?.warn(
-			'Simulation fixture generation failed; simulated nodes get schema-shaped placeholders',
+			`Simulation fixture generation failed (${result.message ?? result.reason}); simulated nodes get schema-shaped placeholders`,
 			{ reason: result.reason, nodeCount: nodeNames.length },
 		);
 		return placeholderFixtures(nodeNames, schemaContextByName, now);

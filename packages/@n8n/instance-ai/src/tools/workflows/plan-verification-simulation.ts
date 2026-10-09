@@ -356,6 +356,7 @@ export async function planVerificationSimulation({
 			workflow,
 			mockedNodeNames,
 			fallbackModelConfig,
+			logger,
 		});
 		nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan, declaredFixtures);
 		nodeSimulationPlan = withSimulatedTriggerVerdicts(nodeSimulationPlan, workflow);

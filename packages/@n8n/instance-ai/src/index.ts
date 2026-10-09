@@ -452,6 +452,9 @@ export const createEvalAgent: typeof EvalAgentsMod.createEvalAgent = lazyFunctio
 export const extractText: typeof EvalAgentsMod.extractText = lazyFunction(
 	() => loadEvalAgents().extractText,
 );
+export const isRetryableEvalError: typeof EvalAgentsMod.isRetryableEvalError = lazyFunction(
+	() => loadEvalAgents().isRetryableEvalError,
+);
 export const meterEvalUsage: typeof EvalUsageMod.meterEvalUsage = lazyFunction(
 	() => loadEvalUsage().meterEvalUsage,
 );

@@ -20,7 +20,14 @@ vi.mock('@n8n/agents', () => ({
 	Tool: vi.fn(),
 }));
 
-import { createEvalAgent, resolveEvalModelConfig } from '../eval-agents';
+import type { GenerateResult } from '@n8n/agents';
+
+import {
+	createEvalAgent,
+	extractText,
+	isRetryableEvalError,
+	resolveEvalModelConfig,
+} from '../eval-agents';
 
 const ORIGINAL_ENV = { ...process.env };
 const MODEL_ENV_KEYS = [
@@ -211,5 +218,72 @@ describe('eval agent model config', () => {
 			apiKey: 'anthropic-eval-key',
 			url: undefined,
 		});
+	});
+});
+
+describe('extractText', () => {
+	const failed = (error: unknown) =>
+		({ messages: [], finishReason: 'error', error }) as unknown as GenerateResult;
+
+	it('joins the assistant text parts', () => {
+		const result = {
+			messages: [
+				{ role: 'user', content: [{ type: 'text', text: 'ignored' }] },
+				{
+					role: 'assistant',
+					content: [
+						{ type: 'text', text: '{"a":' },
+						{ type: 'text', text: '1}' },
+					],
+				},
+			],
+			finishReason: 'stop',
+		} as unknown as GenerateResult;
+		expect(extractText(result)).toBe('{"a":1}');
+	});
+
+	it('throws the model error with its status instead of returning empty text', () => {
+		const apiError = Object.assign(new Error('invalid x-api-key'), {
+			statusCode: 401,
+			isRetryable: false,
+		});
+		expect(() => extractText(failed(apiError))).toThrow(
+			'Eval model provider call failed (HTTP 401): invalid x-api-key',
+		);
+	});
+
+	it('reads the status from the last error when the SDK retries ran out', () => {
+		const lastError = Object.assign(new Error('Service Unavailable'), {
+			statusCode: 503,
+			isRetryable: true,
+		});
+		const retryError = Object.assign(
+			new Error('Failed after 3 attempts. Last error: Service Unavailable'),
+			{ lastError },
+		);
+		expect(() => extractText(failed(retryError))).toThrow(
+			'Eval model provider call failed (HTTP 503): Failed after 3 attempts. Last error: Service Unavailable',
+		);
+	});
+
+	it('throws a failure that is not a provider error as it is', () => {
+		const runtimeError = new Error('memory store unavailable');
+		expect(() => extractText(failed(runtimeError))).toThrow(runtimeError);
+		expect(() => extractText(failed('socket closed'))).toThrow(/^socket closed$/);
+	});
+
+	it('marks a failure the provider will not recover from as not retryable', () => {
+		const call = (error: unknown) => {
+			try {
+				extractText(failed(error));
+			} catch (thrown) {
+				return thrown;
+			}
+			throw new Error('expected a throw');
+		};
+		expect(isRetryableEvalError(call({ statusCode: 401, isRetryable: false }))).toBe(false);
+		expect(isRetryableEvalError(call({ statusCode: 529, isRetryable: true }))).toBe(true);
+		expect(isRetryableEvalError(call(new Error('fetch failed')))).toBe(true);
+		expect(isRetryableEvalError(new Error('unusable shape'))).toBe(true);
 	});
 });

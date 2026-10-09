@@ -16,6 +16,7 @@ import { attributionForScenario } from './attribution';
 import type { EvalLogger } from './logger';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
 import {
+	throwIfFrameworkIssue,
 	throwIfServerBudgetStop,
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
@@ -318,6 +319,7 @@ async function runScenario(
 	}
 	// Killed for time, not by the builder — throw so the timeout path classifies it.
 	throwIfServerBudgetStop(evalResult);
+	throwIfFrameworkIssue(evalResult);
 
 	const execMs = Date.now() - execStart;
 
