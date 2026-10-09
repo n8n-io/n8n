@@ -10,6 +10,7 @@
 import type {
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalLlmUsage,
 	InstanceAiRunDebugResponse,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -262,6 +263,8 @@ export function reshapeLangSmithRuns(
 	buildExpectationsByKey: Map<string, BuildExpectationResult[]>,
 	n8nBaseUrl: string | undefined,
 	runDebugByThreadId: Map<string, InstanceAiRunDebugResponse[]> = new Map(),
+	/** Keyed by the build-cache key (`iteration:fileSlug`). */
+	harnessUsageByKey: Map<string, InstanceAiEvalLlmUsage[]> = new Map(),
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
@@ -365,7 +368,8 @@ export function reshapeLangSmithRuns(
 			}
 
 			const transcript = threadId ? transcriptByThreadId.get(threadId) : undefined;
-			const buildExpectationResults = buildExpectationsByKey.get(`${String(iter)}:${fileSlug}`);
+			const buildKey = `${String(iter)}:${fileSlug}`;
+			const buildExpectationResults = buildExpectationsByKey.get(buildKey);
 			runResults.push({
 				testCase,
 				fileSlug,
@@ -387,6 +391,7 @@ export function reshapeLangSmithRuns(
 				buildTurns,
 				n8nBaseUrl,
 				runDebug: threadId ? runDebugByThreadId.get(threadId) : undefined,
+				harnessUsage: harnessUsageByKey.get(buildKey),
 			});
 		}
 		allRunResults.push(runResults);

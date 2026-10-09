@@ -34,6 +34,7 @@ import {
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ResponseError } from '@n8n/rest-api-client';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
@@ -105,6 +106,7 @@ import {
 	NEW_SESSION_PARAM,
 	OPEN_PREVIEW_PARAM,
 	PENDING_AGENT_ID_STATE,
+	PENDING_AGENT_STARTER_STATE,
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import {
@@ -118,6 +120,8 @@ import {
 	AGENT_TEMPLATE_SUGGESTIONS_VERSION,
 	applyAgentTemplate,
 	isAgentConfigBlank,
+	isAgentStarter,
+	type AgentStarter,
 	type AgentTemplate,
 } from '../agentTemplates';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
@@ -131,11 +135,14 @@ import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
+	stashPendingFirstMessage,
 	buildInstanceAiCredentialHandoffContext,
 	buildInstanceAiCredentialQuestion,
 	type InstanceAiThreadLaunch,
 	type PendingComposerDraft,
+	type PendingFirstMessage,
 } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
+import { USER_TYPED_MESSAGE } from '@/features/ai/instanceAi/prefills';
 import {
 	useInstanceAiAvailable,
 	useInstanceAiReady,
@@ -259,11 +266,50 @@ function readPendingAgentIdFromHistory(): string | null {
 	const pendingAgentId = (history.state as Record<string, unknown>)[PENDING_AGENT_ID_STATE];
 	return typeof pendingAgentId === 'string' ? pendingAgentId : null;
 }
+function readPendingStarterFromHistory(): AgentStarter | null {
+	const starter = (history.state as Record<string, unknown>)[PENDING_AGENT_STARTER_STATE];
+	return isAgentStarter(starter) ? starter : null;
+}
 const routePendingAgentId = ref(readPendingAgentIdFromHistory());
+const routePendingStarter = ref<AgentStarter | null>(readPendingStarterFromHistory());
+const pendingStarterMessage = ref<PendingFirstMessage | null>(null);
+let starterReady: ReturnType<typeof createDeferredPromise> | undefined;
+let starterSettled = false;
+let starterInFlight = false;
 const isRouteAgentPending = computed(() => {
 	if (isArtifactMode.value) return false;
 	return routePendingAgentId.value === agentId.value;
 });
+function currentStarter(): AgentStarter | null {
+	if (!isRouteAgentPending.value) return null;
+	return routePendingStarter.value;
+}
+function armStarterGate() {
+	starterReady?.resolve(undefined);
+	starterSettled = false;
+	starterInFlight = false;
+	pendingStarterMessage.value = null;
+	if (!currentStarter()) {
+		starterReady = undefined;
+		starterSettled = true;
+		return;
+	}
+	starterReady = createDeferredPromise();
+}
+function settleStarter() {
+	if (starterSettled) return;
+	starterSettled = true;
+	starterReady?.resolve(undefined);
+}
+function clearPendingStarterFromHistory() {
+	const historyState = history.state as Record<string, unknown>;
+	if (PENDING_AGENT_STARTER_STATE in historyState) {
+		const { [PENDING_AGENT_STARTER_STATE]: _starter, ...state } = historyState;
+		history.replaceState(state, '');
+	}
+	routePendingStarter.value = null;
+}
+armStarterGate();
 const isAgentPending = computed(() => props.artifactAgentPending || isRouteAgentPending.value);
 const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
 	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
@@ -312,8 +358,10 @@ watch(agentId, () => {
 	// must be re-read here, before `isRouteAgentPending` (read below, and by the
 	// `initialize()` watcher) reflects the new agent instead of the mounted one.
 	routePendingAgentId.value = readPendingAgentIdFromHistory();
+	routePendingStarter.value = readPendingStarterFromHistory();
 	openedForPendingAgent.value = isRouteAgentPending.value;
 	templateApplied.value = false;
+	armStarterGate();
 });
 const isAiPanelOpen = computed({
 	get: () => storedAiPanelOpen.value ?? (openedForPendingAgent.value && instanceAiReady.value),
@@ -334,6 +382,12 @@ const aiThreadId = computed(() =>
 		: undefined,
 );
 function onAiThreadIdChange(threadId: string) {
+	const message = pendingStarterMessage.value;
+	if (message) {
+		stashPendingFirstMessage(threadId, message);
+		pendingStarterMessage.value = null;
+		clearPendingStarterFromHistory();
+	}
 	void router.replace({ query: { ...route.query, [ASSISTANT_THREAD_PARAM]: threadId } });
 }
 /** True while the embedded assistant is actively mutating this agent. */
@@ -1678,6 +1732,13 @@ async function flushAutosaveIgnoringResult(): Promise<void> {
 	await flushAutosave();
 }
 
+/** The embedded assistant waits to mint its thread until a list-view starter is applied. */
+async function beforeAiNewThread(): Promise<void> {
+	const gate = starterReady;
+	await gate?.promise;
+	await flushAutosaveIgnoringResult();
+}
+
 useEventListener(document, 'keydown', (event) => {
 	if (!isCtrlKeyPressed(event) || event.key.toLowerCase() !== 's') return;
 	event.preventDefault();
@@ -1908,12 +1969,28 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 	});
 }
 
+function templateStarterMessage(template: AgentTemplate): PendingFirstMessage {
+	return {
+		message: locale.baseText('agents.builder.templates.prompt', {
+			interpolate: {
+				name: locale.baseText(template.labelKey),
+				description: locale.baseText(template.descriptionKey),
+			},
+		}),
+		authorship: {
+			kind: 'prefill',
+			prefillType: 'template_adjustment',
+			prefillId: template.id,
+		},
+	};
+}
+
 // Apply a starter template to a blank agent: writes instructions and tools,
-// pre-connects any channel triggers, creates scheduled tasks, and sends the
-// template prompt to the assistant so it starts building right away. Refuses
+// pre-connects any channel triggers, and creates scheduled tasks. Refuses
 // (with a toast) once the agent already has content — the intro is for a first build.
-async function onApplyTemplate(template: AgentTemplate) {
-	if (!localConfig.value) return;
+// Returns false when the prompt must not be sent.
+async function applyTemplateConfig(template: AgentTemplate): Promise<boolean> {
+	if (!localConfig.value) return false;
 	const next = applyAgentTemplate(
 		localConfig.value,
 		template,
@@ -1925,7 +2002,7 @@ async function onApplyTemplate(template: AgentTemplate) {
 			message: locale.baseText('agents.builder.templates.notBlank.message'),
 			type: 'warning',
 		});
-		return;
+		return false;
 	}
 	replaceConfigAndScheduleSave(next);
 	// Derive trigger chips from the template's draft integrations so the two
@@ -1949,7 +2026,7 @@ async function onApplyTemplate(template: AgentTemplate) {
 	}
 	// The user may have opened another agent while the save was in flight.
 	// The panel ref now belongs to that agent, so this prompt must not follow.
-	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	// Task creation writes the task ref into the server config and changes its
 	// hash. Reload that config before the assistant prompt: the tasks counter
 	// only refreshes task bodies, and the update push skips this tab. A later
@@ -1960,7 +2037,7 @@ async function onApplyTemplate(template: AgentTemplate) {
 		try {
 			await ensureAgentPersisted();
 			for (const task of template.tasks) {
-				if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+				if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 				await createAgentTask(rootStore.restApiContext, targetProjectId, targetAgentId, {
 					...task,
 					enabled: true,
@@ -1972,26 +2049,49 @@ async function onApplyTemplate(template: AgentTemplate) {
 				showError(error, locale.baseText('agents.builder.tasks.saveError'));
 			}
 		}
-		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 		// A created task already changed the hash. Do not prompt the assistant
 		// until this tab has reloaded that config.
 		if (tasksCreated) {
 			const refreshed = await refreshConfigAfterTemplateTasks(targetProjectId, targetAgentId);
-			if (!refreshed || isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+			if (!refreshed || isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 		}
 	}
-	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	return !isStaleAgentTarget(targetProjectId, targetAgentId);
+}
+
+async function settlePendingStarter() {
+	const gate = starterReady;
+	starterInFlight = true;
+	try {
+		const starter = currentStarter();
+		if (!starter) return;
+		if (starter.kind === 'prompt') {
+			const text = starter.text.trim();
+			if (text) {
+				pendingStarterMessage.value = { message: text, authorship: USER_TYPED_MESSAGE };
+			}
+			return;
+		}
+		const template = AGENT_TEMPLATES.find((entry) => entry.id === starter.templateId);
+		if (!template) return;
+		if (await applyTemplateConfig(template)) {
+			pendingStarterMessage.value = templateStarterMessage(template);
+		}
+	} finally {
+		starterInFlight = false;
+		if (starterReady === gate) settleStarter();
+	}
+}
+
+async function onApplyTemplate(template: AgentTemplate) {
+	if (!(await applyTemplateConfig(template))) return;
 	const templateIndex = AGENT_TEMPLATES.findIndex((entry) => entry.id === template.id);
 	// Send the template prompt to the assistant right away so it starts
 	// building. The prompt format is "Build {name} agent to {description}".
 	// Catalog positions are one-based, matching the home-screen suggestion list.
 	aiPanelRef.value?.submitSuggestion({
-		prompt: locale.baseText('agents.builder.templates.prompt', {
-			interpolate: {
-				name: locale.baseText(template.labelKey),
-				description: locale.baseText(template.descriptionKey),
-			},
-		}),
+		prompt: templateStarterMessage(template).message,
 		suggestionId: template.id,
 		suggestionKind: 'prompt',
 		position: templateIndex >= 0 ? templateIndex + 1 : 0,
@@ -2594,6 +2694,9 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			localConfig.value = addMissingAgentPersonalisation(draftConfig) ?? draftConfig;
 			agent.value = draftAgentResource(localConfig.value.personalisation);
 			agentName.value = agent.value.name;
+			if (currentStarter() && isCurrentInitialization()) {
+				await settlePendingStarter();
+			}
 		} else {
 			await Promise.all([
 				fetchAgent(targetProjectId, targetAgentId, probedAgent ?? undefined),
@@ -2671,6 +2774,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		}
 	} finally {
 		if (isCurrentInitialization()) {
+			if (!starterInFlight) settleStarter();
 			initialized.value = true;
 			void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
 			warmAgentKnowledgeSandboxForPage();
@@ -3067,7 +3171,7 @@ useKeybindings({
 						:subject="instanceAiEmbedSubject"
 						:launch="instanceAiEmbedLaunch"
 						:thread-id="aiThreadId"
-						:before-new-thread="flushAutosaveIgnoringResult"
+						:before-new-thread="beforeAiNewThread"
 						:before-send="flushAutosaveIgnoringResult"
 						data-testid="agent-ai-chat-panel"
 						@update:thread-id="onAiThreadIdChange"

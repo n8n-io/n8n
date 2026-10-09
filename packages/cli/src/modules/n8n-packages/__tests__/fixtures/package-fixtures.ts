@@ -151,13 +151,15 @@ export function workflowRequirementsFromWorkflows(
 		if (!referencedId) return;
 		const existing = byId.get(referencedId);
 		if (existing) {
-			if (!existing.usedByWorkflows.includes(workflowId)) existing.usedByWorkflows.push(workflowId);
+			if (!existing.usedBy.some(({ id }) => id === workflowId)) {
+				existing.usedBy.push({ kind: 'workflow', id: workflowId });
+			}
 			return;
 		}
 		byId.set(referencedId, {
 			id: referencedId,
 			name: nameById.get(referencedId) ?? referencedId,
-			usedByWorkflows: [workflowId],
+			usedBy: [{ kind: 'workflow', id: workflowId }],
 		});
 	};
 
@@ -206,8 +208,8 @@ export function credentialRequirementsFromWorkflows(
 
 				const existing = byId.get(details.id);
 				if (existing) {
-					if (!existing.usedByWorkflows.includes(workflow.id)) {
-						existing.usedByWorkflows.push(workflow.id);
+					if (!existing.usedBy.some(({ id }) => id === workflow.id)) {
+						existing.usedBy.push({ kind: 'workflow', id: workflow.id });
 					}
 					continue;
 				}
@@ -216,7 +218,7 @@ export function credentialRequirementsFromWorkflows(
 					id: details.id,
 					name: details.name,
 					type: credentialType,
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				});
 			}
 		}
@@ -321,7 +323,11 @@ export function dataTableRequirement(
 	table: SerializedDataTable,
 	usedByWorkflows: string[],
 ): PackageDataTableRequirement {
-	return { id: table.id, name: table.name, usedByWorkflows };
+	return {
+		id: table.id,
+		name: table.name,
+		usedBy: usedByWorkflows.map((id) => ({ kind: 'workflow', id })),
+	};
 }
 
 export function serializedFolder(overrides: Partial<SerializedFolder> = {}): SerializedFolder {

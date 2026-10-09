@@ -12,6 +12,7 @@ import { PrometheusWorkflowPublicationMetricsService } from '../workflow-publica
 import type { CacheService, EventService } from '@n8n/backend-services';
 
 import { CachedMetricQueryFactory } from '../cached-metric-query';
+import { DatabaseMetricQueryService } from '../database-metric-query.service';
 
 vi.mock('prom-client');
 
@@ -48,8 +49,14 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 			workflowsConfig,
 			instanceSettings,
 			eventService,
-			outboxRepository,
-			new CachedMetricQueryFactory(cacheService, dbConnection),
+			new DatabaseMetricQueryService(
+				new CachedMetricQueryFactory(cacheService, dbConnection),
+				mock(),
+				mock(),
+				outboxRepository,
+				mock(),
+				mock(),
+			),
 		);
 
 		mockCounterInc = vi.fn();

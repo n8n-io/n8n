@@ -8,6 +8,7 @@ import type { CacheService } from '@n8n/backend-services';
 
 import { PrometheusActiveWorkflowMetricsService } from '../active-workflow-metrics.service';
 import { CachedMetricQueryFactory } from '../cached-metric-query';
+import { DatabaseMetricQueryService } from '../database-metric-query.service';
 
 vi.mock('prom-client');
 
@@ -27,8 +28,14 @@ describe('PrometheusActiveWorkflowMetricsService', () => {
 		Object.assign(config, { prefix: 'n8n_', activeWorkflowCountInterval: 30 });
 		service = new PrometheusActiveWorkflowMetricsService(
 			config,
-			workflowRepository,
-			new CachedMetricQueryFactory(cacheService, dbConnection),
+			new DatabaseMetricQueryService(
+				new CachedMetricQueryFactory(cacheService, dbConnection),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			),
 		);
 	});
 

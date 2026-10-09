@@ -44,7 +44,7 @@ export class WorkflowRequirementExporter {
 		);
 
 		const requirements = [...usedByWorkflowsByReferencedId].map(
-			([referencedWorkflowId, usedByWorkflows]) => {
+			([referencedWorkflowId, usedByWorkflows]): PackageWorkflowRequirement => {
 				const name =
 					workflowsById.get(referencedWorkflowId)?.name ??
 					missingWorkflowNamesById.get(referencedWorkflowId);
@@ -52,7 +52,7 @@ export class WorkflowRequirementExporter {
 				return {
 					id: referencedWorkflowId,
 					...(name ? { name } : {}),
-					usedByWorkflows,
+					usedBy: usedByWorkflows.map((id) => ({ kind: 'workflow', id })),
 				};
 			},
 		);

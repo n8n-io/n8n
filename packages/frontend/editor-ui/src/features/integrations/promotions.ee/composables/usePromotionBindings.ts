@@ -220,6 +220,7 @@ export function usePromotionBindings() {
 		isSubmitting.value = true;
 		error.value = null;
 		try {
+			const confirmDestructiveChanges = destructiveChanges.value.length > 0 || undefined;
 			const result =
 				continueTarget.kind === 'selection'
 					? await continueApplyProjectSelection(
@@ -228,10 +229,12 @@ export function usePromotionBindings() {
 							{
 								workflowIds: continueTarget.workflowIds,
 								expectedSource: { ...expectedSource },
+								confirmDestructiveChanges,
 							},
 						)
 					: await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
 							expectedSource: { ...expectedSource },
+							confirmDestructiveChanges,
 						});
 			if (currentSession !== session) return;
 			if (result.status === 'blocked') reconcile(result);

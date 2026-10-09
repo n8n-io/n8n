@@ -2,6 +2,17 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# Unreleased
+
+## n8n Packages (preview)
+
+Package manifest requirements now use `usedBy: [{ "kind": "workflow", "id": "workflow-id" }]`.
+The `usedByWorkflows` field is no longer supported.
+Re-export packages after upgrading.
+Regenerate existing Promotions snapshots.
+Package import errors also use `usedBy` for resource consumers.
+Update API clients to read each consumer's `kind` and `id`.
+
 # 2.0.0
 
 ### What changed?

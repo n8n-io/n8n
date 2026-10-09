@@ -33,7 +33,7 @@ const requirement = (id: string): PackageCredentialRequirement => ({
 	id,
 	name: id,
 	type: 'githubApi',
-	usedByWorkflows: ['ignored'],
+	usedBy: [{ kind: 'workflow', id: 'ignored' }],
 });
 
 const scope = (input: {
@@ -106,16 +106,15 @@ const scope = (input: {
 				...Array.from({ length: vars.matched }, (_, i) => `matched-var-${i}`),
 				...overwrittenVariableNames,
 			],
-			missing: missingVariableNames.map((name) => ({ name, usedByWorkflows: [] })),
+			missing: missingVariableNames.map((name) => ({ name })),
 			creations: [...createdVariableNames, ...stubbedVariableNames, ...existingVariableNames].map(
-				(name) => ({ name, usedByWorkflows: [] }),
+				(name) => ({ name }),
 			),
-			conflicts: overwrittenVariableNames.map((name) => ({ name, usedByWorkflows: [] })),
+			conflicts: overwrittenVariableNames.map((name) => ({ name })),
 			overwrites: overwrittenVariableNames.map((name) => ({
 				variableId: `id-of-${name}`,
 				name,
 				value: 'from-package',
-				usedByWorkflows: [],
 			})),
 		},
 		variableResult: {
@@ -158,7 +157,7 @@ const scope = (input: {
 			requirements: (tags.requirementIds ?? []).map((id) => ({
 				id,
 				name: `name-of-${id}`,
-				usedByWorkflows: ['ignored'],
+				usedBy: [{ kind: 'workflow', id: 'ignored' }],
 			})),
 			missingMode: 'create',
 			conflictPolicy: 'skip',

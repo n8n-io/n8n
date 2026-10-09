@@ -253,9 +253,16 @@ describe('workflow package export', () => {
 					{
 						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
-						usedByWorkflows: [wfA.id, wfB.id],
+						usedBy: [
+							{ kind: 'workflow', id: wfA.id },
+							{ kind: 'workflow', id: wfB.id },
+						],
 					},
-					{ type: 'n8n-nodes-base.set', typeVersion: 3.4, usedByWorkflows: [wfB.id] },
+					{
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						usedBy: [{ kind: 'workflow', id: wfB.id }],
+					},
 				],
 			});
 		});
@@ -328,8 +335,16 @@ describe('workflow package export', () => {
 			expect(manifest.requirements?.workflows).toHaveLength(2);
 			expect(manifest.requirements?.workflows).toEqual(
 				expect.arrayContaining([
-					{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
-					{ id: workflowC.id, name: workflowC.name, usedByWorkflows: [workflowB.id] },
+					{
+						id: workflowB.id,
+						name: workflowB.name,
+						usedBy: [{ kind: 'workflow', id: workflowA.id }],
+					},
+					{
+						id: workflowC.id,
+						name: workflowC.name,
+						usedBy: [{ kind: 'workflow', id: workflowB.id }],
+					},
 				]),
 			);
 		});
@@ -374,12 +389,14 @@ describe('workflow package export', () => {
 			const { manifest } = await readExport(stream);
 
 			expect(manifest.requirements).toEqual({
-				workflows: [{ id: child.id, name: child.name, usedByWorkflows: [parent.id] }],
+				workflows: [
+					{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
+				],
 				nodeTypes: [
 					{
 						type: 'n8n-nodes-base.executeWorkflow',
 						typeVersion: 1,
-						usedByWorkflows: [parent.id],
+						usedBy: [{ kind: 'workflow', id: parent.id }],
 					},
 				],
 			});
@@ -426,12 +443,14 @@ describe('workflow package export', () => {
 			const { manifest } = await readExport(stream);
 
 			expect(manifest.requirements).toEqual({
-				workflows: [{ id: child.id, name: child.name, usedByWorkflows: [parent.id] }],
+				workflows: [
+					{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
+				],
 				nodeTypes: [
 					{
 						type: '@n8n/n8n-nodes-langchain.toolWorkflow',
 						typeVersion: 2.2,
-						usedByWorkflows: [parent.id],
+						usedBy: [{ kind: 'workflow', id: parent.id }],
 					},
 				],
 			});
@@ -464,7 +483,13 @@ describe('workflow package export', () => {
 			const { manifest } = await readExport(stream);
 
 			expect(manifest.requirements).toEqual({
-				workflows: [{ id: errorHandler.id, name: errorHandler.name, usedByWorkflows: [parent.id] }],
+				workflows: [
+					{
+						id: errorHandler.id,
+						name: errorHandler.name,
+						usedBy: [{ kind: 'workflow', id: parent.id }],
+					},
+				],
 			});
 		});
 
@@ -491,17 +516,21 @@ describe('workflow package export', () => {
 				workflowIds: [parentA.id, parentB.id, child.id],
 			});
 			const { manifest } = await readExport(stream);
-			const expectedUsedByWorkflows = manifest
+			const expectedUsedBy = manifest
 				.workflows!.map(({ id }) => id)
-				.filter((id) => id === parentA.id || id === parentB.id);
+				.filter((id) => id === parentA.id || id === parentB.id)
+				.map((id) => ({ kind: 'workflow', id }));
 
 			expect(manifest.requirements).toEqual({
-				workflows: [{ id: child.id, name: child.name, usedByWorkflows: expectedUsedByWorkflows }],
+				workflows: [{ id: child.id, name: child.name, usedBy: expectedUsedBy }],
 				nodeTypes: [
 					{
 						type: 'n8n-nodes-base.executeWorkflow',
 						typeVersion: 1,
-						usedByWorkflows: [parentA.id, parentB.id],
+						usedBy: [
+							{ kind: 'workflow', id: parentA.id },
+							{ kind: 'workflow', id: parentB.id },
+						],
 					},
 				],
 			});
@@ -568,12 +597,20 @@ describe('workflow package export', () => {
 					id: credential.id,
 					name: credential.name,
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflowC.id],
+					usedBy: [{ kind: 'workflow', id: workflowC.id }],
 				},
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
-				{ id: workflowC.id, name: workflowC.name, usedByWorkflows: [workflowB.id] },
+				{
+					id: workflowB.id,
+					name: workflowB.name,
+					usedBy: [{ kind: 'workflow', id: workflowA.id }],
+				},
+				{
+					id: workflowC.id,
+					name: workflowC.name,
+					usedBy: [{ kind: 'workflow', id: workflowB.id }],
+				},
 			]);
 		});
 
@@ -677,8 +714,16 @@ describe('workflow package export', () => {
 				[workflowA.id, workflowB.id].sort(),
 			);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
-				{ id: workflowA.id, name: workflowA.name, usedByWorkflows: [workflowB.id] },
+				{
+					id: workflowB.id,
+					name: workflowB.name,
+					usedBy: [{ kind: 'workflow', id: workflowA.id }],
+				},
+				{
+					id: workflowA.id,
+					name: workflowA.name,
+					usedBy: [{ kind: 'workflow', id: workflowB.id }],
+				},
 			]);
 		});
 	});
@@ -709,7 +754,7 @@ describe('workflow package export', () => {
 				{ id: parent.id, name: 'Parent', target: expect.any(String) },
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+				{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
 			]);
 			// Only the parent's workflow.json travels; the referenced child stays out.
 			expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(1);
@@ -739,7 +784,7 @@ describe('workflow package export', () => {
 			expect(manifest.requirements?.credentials).toBeUndefined();
 			expect(entries.some((e) => e.name.includes('credential'))).toBe(false);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+				{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
 			]);
 		});
 
@@ -784,11 +829,11 @@ describe('workflow package export', () => {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					usedByWorkflows: [parent.id],
+					usedBy: [{ kind: 'workflow', id: parent.id }],
 				},
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+				{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
 			]);
 		});
 
@@ -810,7 +855,7 @@ describe('workflow package export', () => {
 				{ id: cheddar.id, name: 'CHEDDAR', target: expect.any(String) },
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: brie.id, name: 'BRIE', usedByWorkflows: [cheddar.id] },
+				{ id: brie.id, name: 'BRIE', usedBy: [{ kind: 'workflow', id: cheddar.id }] },
 			]);
 			expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(1);
 		});
@@ -836,7 +881,11 @@ describe('workflow package export', () => {
 			const { manifest } = await exportReferenceOnly(owner, [workflowA.id]);
 
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: workflowB.id, name: workflowB.name, usedByWorkflows: [workflowA.id] },
+				{
+					id: workflowB.id,
+					name: workflowB.name,
+					usedBy: [{ kind: 'workflow', id: workflowA.id }],
+				},
 			]);
 		});
 
@@ -860,7 +909,7 @@ describe('workflow package export', () => {
 			const { manifest } = await exportReferenceOnly(member, [parent.id]);
 
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: foreignWorkflow.id, usedByWorkflows: [parent.id] },
+				{ id: foreignWorkflow.id, usedBy: [{ kind: 'workflow', id: parent.id }] },
 			]);
 			expect(manifest.requirements?.workflows?.[0]).not.toHaveProperty('name');
 		});
@@ -880,7 +929,7 @@ describe('workflow package export', () => {
 			expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual([parent.id, child.id].sort());
 			expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(2);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+				{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
 			]);
 		});
 
@@ -903,7 +952,11 @@ describe('workflow package export', () => {
 				{ id: parent.id, name: 'Parent', target: expect.any(String) },
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
-				{ id: errorHandler.id, name: errorHandler.name, usedByWorkflows: [parent.id] },
+				{
+					id: errorHandler.id,
+					name: errorHandler.name,
+					usedBy: [{ kind: 'workflow', id: parent.id }],
+				},
 			]);
 		});
 	});
@@ -1113,7 +1166,7 @@ describe('workflow package export', () => {
 					id: publishedCredential.id,
 					name: publishedCredential.name,
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 		});
