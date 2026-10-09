@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const tableName = 'idempotency_key';
 
-export class CreateIdempotencyKeyTable1791321358882 implements ReversibleMigration {
+export class CreateIdempotencyKeyTable1791540050944 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column }, escape, tablePrefix }: MigrationContext) {
 		const status = escape.columnName('status');
 		const responseStatus = escape.columnName('responseStatus');
