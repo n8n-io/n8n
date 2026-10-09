@@ -62,6 +62,42 @@ describe('buildClassificationSchema', () => {
 		expect(() => buildClassificationSchema(CATEGORIES, false, true).parse(answer)).not.toThrow();
 	});
 
+	// One unusable score must not take the others with it, which is what the
+	// per-key catch buys over the one on the whole map.
+	it('keeps the scores either side of one it cannot read', () => {
+		const parsed = buildClassificationSchema(CATEGORIES, false, true).parse({
+			Billing: true,
+			Technical: false,
+			confidence: { Billing: 'high', Technical: 0.2 },
+		});
+
+		expect(parsed.confidence).toEqual({ Technical: 0.2 });
+	});
+
+	// `z.coerce` would read the boolean above as 1 and report certainty the model
+	// never gave. A string that reads as a number is still worth keeping.
+	it.each([
+		['a number as a string', '0.8', 0.8],
+		['a mirrored boolean', true, undefined],
+		['an empty string', '', undefined],
+	])('reads %s', (_name, given, expected) => {
+		const parsed = buildClassificationSchema(CATEGORIES, false, true).parse({
+			Billing: true,
+			Technical: false,
+			confidence: { Billing: given },
+		});
+
+		expect(parsed.confidence?.Billing).toBe(expected);
+	});
+
+	it('tells the model what the scores mean and not to flatten them', () => {
+		const parsed = buildClassificationSchema(CATEGORIES, true, true);
+		const map = parsed.shape.confidence;
+
+		expect(map.description).toContain('0.0 to 1.0');
+		expect(map.description).toContain('never all be high or all be the same');
+	});
+
 	it('names the category in the instruction the model reads', () => {
 		const { description } = buildClassificationSchema(CATEGORIES, false).shape.Billing;
 
@@ -147,6 +183,14 @@ describe('toClassificationResult', () => {
 		['not a number', { Billing: Number.NaN }],
 	])('drops a score that is %s', (_name, confidence) => {
 		expect(toClassificationResult({ confidence }, CATEGORIES).scores).toBeUndefined();
+	});
+
+	// The wording tells the model to answer 0, so every guard between here and the
+	// output has to test for absence rather than truthiness.
+	it('keeps a score of zero', () => {
+		expect(toClassificationResult({ confidence: { Billing: 0 } }, CATEGORIES).scores).toEqual({
+			Billing: 0,
+		});
 	});
 
 	it('reports no scores at all when none were asked for', () => {

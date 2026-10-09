@@ -165,9 +165,9 @@ function buildUpstreamContext(
  */
 const PASS_THROUGH_AI_ROOTS = new Map<string, readonly string[]>([
 	// Value = the keys the node adds ON TOP of its input. Empty means a pure
-	// pass-through, whose output is the input and nothing else. Both roots can
-	// be flipped to `simulate` by a credentialless language-model sub-node
-	// (see withSimulatedCredentiallessAiRootVerdicts).
+	// pass-through, whose output is the input and nothing else. This root, and
+	// the classifier below, can be flipped to `simulate` by a credentialless
+	// language-model sub-node (see withSimulatedCredentiallessAiRootVerdicts).
 	['@n8n/n8n-nodes-langchain.sentimentAnalysis', ['sentimentAnalysis']],
 ]);
 

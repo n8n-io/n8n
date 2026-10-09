@@ -15,6 +15,23 @@ vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
 }));
 
+// The only way to see the schema the node hands the model: every test stubs
+// `processItem`, so the parser is where the option becomes observable.
+const fromZodSchema = vi.hoisted(() => vi.fn());
+vi.mock('@langchain/classic/output_parsers', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@langchain/classic/output_parsers')>();
+	return {
+		...actual,
+		StructuredOutputParser: {
+			...actual.StructuredOutputParser,
+			fromZodSchema: (schema: { shape: Record<string, unknown> }) => {
+				fromZodSchema(schema);
+				return actual.StructuredOutputParser.fromZodSchema(schema as never);
+			},
+		},
+	};
+});
+
 describe('TextClassifier Node', () => {
 	let node: TextClassifier;
 	let mockExecuteFunction: Mocked<IExecuteFunctions>;
@@ -106,6 +123,17 @@ describe('TextClassifier Node', () => {
 
 			expect(result[0]).toHaveLength(0);
 			expect(result[1]).toHaveLength(1);
+		});
+
+		it('carries the rest of the item onto the branch', async () => {
+			mockExecuteFunction.getInputData.mockReturnValue([
+				{ json: { item: 1 }, binary: { file: { data: 'x', mimeType: 'text/plain' } } },
+			]);
+			(processItem as Mock).mockResolvedValue({ matched: ['test'], fallback: false });
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			expect(result[0][0].binary).toEqual({ file: { data: 'x', mimeType: 'text/plain' } });
 		});
 
 		it('leaves the input items alone', async () => {
@@ -278,6 +306,19 @@ describe('TextClassifier Node', () => {
 				{ category: 'Urgent', description: 'second' },
 			];
 
+			it.each([
+				['asks the model for scores when the option is on', true, true],
+				['leaves them out when it is off', false, false],
+			])('%s', async (_name, on, asked) => {
+				withCategories(twoCategories, on ? {} : { includeConfidenceScores: false });
+				(processItem as Mock).mockResolvedValue({ matched: [], fallback: false });
+
+				await node.execute.call(mockExecuteFunction);
+
+				const schema = fromZodSchema.mock.calls.at(-1)?.[0] as { shape: Record<string, unknown> };
+				expect('confidence' in schema.shape).toBe(asked);
+			});
+
 			it('adds nothing while the option is off', async () => {
 				(processItem as Mock).mockResolvedValue({
 					matched: ['test'],
@@ -338,13 +379,51 @@ describe('TextClassifier Node', () => {
 				});
 			});
 
+			// `toEqual` ignores a key whose value is undefined, so the absence has to be
+			// asserted on its own or the `!== undefined` guards survive being removed.
 			it('still reports the category when the model gave no usable score', async () => {
 				withCategories(twoCategories);
 				(processItem as Mock).mockResolvedValue({ matched: ['Billing'], fallback: false });
 
 				const result = await node.execute.call(mockExecuteFunction);
 
-				expect(result[0][0].json.classification).toEqual({ category: 'Billing' });
+				const { classification } = result[0][0].json as { classification: object };
+				expect(classification).toEqual({ category: 'Billing' });
+				expect(Object.keys(classification)).toEqual(['category']);
+			});
+
+			// Only the fallback was scored, so the map the branches share is empty and
+			// must be left out rather than emitted as `{}`.
+			it('leaves out an empty score map', async () => {
+				withCategories(twoCategories, { fallback: 'other' });
+				(processItem as Mock).mockResolvedValue({
+					matched: ['Billing'],
+					fallback: false,
+					scores: { fallback: 0.4 },
+				});
+
+				const result = await node.execute.call(mockExecuteFunction);
+
+				const { classification } = result[0][0].json as { classification: object };
+				expect(Object.keys(classification)).toEqual(['category']);
+			});
+
+			// A score of 0 is a real answer the wording asks for, not a missing one.
+			it('reports a score of zero', async () => {
+				withCategories(twoCategories);
+				(processItem as Mock).mockResolvedValue({
+					matched: ['Billing'],
+					fallback: false,
+					scores: { Billing: 0, Urgent: 0 },
+				});
+
+				const result = await node.execute.call(mockExecuteFunction);
+
+				expect(result[0][0].json.classification).toEqual({
+					category: 'Billing',
+					confidence: 0,
+					scores: { Billing: 0, Urgent: 0 },
+				});
 			});
 
 			it('refuses a category named after the key the scores use', async () => {

@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
 import { findEnvelopeKey, TEXT_CLASSIFIER_NODE_TYPE } from './ai-root-shapes';
@@ -72,12 +73,7 @@ function classifierReportsConfidence(
 	params: Record<string, unknown> | undefined,
 ): boolean {
 	if (nodeType !== TEXT_CLASSIFIER_NODE_TYPE) return false;
-	const options = params?.options;
-	return (
-		typeof options === 'object' &&
-		options !== null &&
-		(options as Record<string, unknown>).includeConfidenceScores === true
-	);
+	return isRecord(params?.options) && params.options.includeConfidenceScores === true;
 }
 
 /**

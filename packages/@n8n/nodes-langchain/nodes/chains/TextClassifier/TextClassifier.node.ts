@@ -36,6 +36,9 @@ const configuredOutputs = (parameters: INodeParameters) => {
 	return ret;
 };
 
+/** The label the Other branch reports, where there is no category to name. */
+const OTHER_LABEL = 'Other';
+
 /**
  * Sends one classified item to the branches it matched.
  *
@@ -43,9 +46,6 @@ const configuredOutputs = (parameters: INodeParameters) => {
  * several branches, and a shared object would carry one branch's changes onto
  * the rest.
  */
-/** The label the Other branch reports, where there is no category to name. */
-const OTHER_LABEL = 'Other';
-
 function routeItem(options: {
 	result: ClassificationResult;
 	item: INodeExecutionData;

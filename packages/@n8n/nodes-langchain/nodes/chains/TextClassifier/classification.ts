@@ -81,8 +81,14 @@ export function buildClassificationSchema(
 					Object.fromEntries(
 						decisions.map((key) => [
 							key,
-							z.coerce
-								.number()
+							z
+								// Only a string that reads as a number. `z.coerce` would turn the
+								// boolean above it into 1, and report certainty the model never gave.
+								.preprocess(
+									(value) =>
+										typeof value === 'string' && value.trim() !== '' ? Number(value) : value,
+									z.number(),
+								)
 								.nullish()
 								.catch(undefined)
 								.describe(
@@ -109,17 +115,17 @@ export function toClassificationResult(raw: unknown, categories: Category[]): Cl
 	const answer = isRecord(raw) ? raw : {};
 
 	const reported = answer[CONFIDENCE_KEY];
-	const scores = isRecord(reported)
-		? Object.fromEntries(
-				Object.entries(reported)
-					.map(([key, value]) => [key, readScore(value)])
-					.filter(([, score]) => score !== undefined),
-			)
-		: undefined;
+	const scores: Record<string, number> = {};
+	if (isRecord(reported)) {
+		for (const [key, value] of Object.entries(reported)) {
+			const score = readScore(value);
+			if (score !== undefined) scores[key] = score;
+		}
+	}
 
 	return {
 		matched: categories.filter((cat) => answer[cat.category] === true).map((cat) => cat.category),
 		fallback: answer[FALLBACK_KEY] === true,
-		...(scores && Object.keys(scores).length > 0 && { scores }),
+		...(Object.keys(scores).length > 0 && { scores }),
 	};
 }
