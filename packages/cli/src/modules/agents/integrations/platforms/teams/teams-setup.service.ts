@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UrlService } from '@n8n/backend-services';
 
+import { renderTeamsAppIcons } from './teams-app-icons';
 import { TeamsArmTemplateService } from './teams-arm-template.service';
 import { TeamsManifestService } from './teams-manifest.service';
 import type { Agent } from '../../../entities/agent.entity';
@@ -118,6 +119,8 @@ export class TeamsSetupService {
 			// The open form wins over what is stored: during setup nothing is stored
 			// yet, and in the settings view the fields sit above this button.
 			settings: selectedSettings ?? this.teamsSettingsOf(agent),
+			// The draft, like the name: the setup shows the agent as it is being edited.
+			icons: await renderTeamsAppIcons(agent.schema?.personalisation),
 		});
 	}
 
