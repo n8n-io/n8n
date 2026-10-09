@@ -663,6 +663,75 @@ describe('AgentEvalCaseGenerationService', () => {
 				});
 			});
 
+			describe('suggesting a fix', () => {
+				const suggestionOutput = { structuredOutput: { suggestion: 'Always state a number.' } };
+
+				it('attaches one suggestion to the verdict of a failed rule', async () => {
+					criteriaRunMock.mockResolvedValue({ pass: false, reasoning: 'Never gives a number.' });
+					generateMock
+						.mockResolvedValueOnce({ structuredOutput: { cases: makeCases(1) } })
+						.mockResolvedValueOnce(suggestionOutput);
+
+					const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+					expect(result).toMatchObject({
+						status: 'completed',
+						verdict: {
+							status: 'completed',
+							outcome: 'fail',
+							reasoning: 'Never gives a number.',
+							suggestion: 'Always state a number.',
+						},
+					});
+					const [prompt] = generateMock.mock.calls[1];
+					expect(prompt).toContain('check 1');
+					expect(prompt).toContain('Never gives a number.');
+				});
+
+				it('leaves the suggestion off when none comes back', async () => {
+					criteriaRunMock.mockResolvedValue({ pass: false, reasoning: 'Never gives a number.' });
+					generateMock
+						.mockResolvedValueOnce({ structuredOutput: { cases: makeCases(1) } })
+						.mockResolvedValueOnce({ structuredOutput: { suggestion: '   ' } });
+
+					const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+					expect(result).toMatchObject({ status: 'completed', verdict: { outcome: 'fail' } });
+					expect(result).not.toHaveProperty('verdict.suggestion');
+				});
+
+				it('does not suggest for a passing rule', async () => {
+					criteriaRunMock.mockResolvedValue({ pass: true, reasoning: 'Gives a number.' });
+
+					const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+					expect(generateMock).toHaveBeenCalledTimes(1);
+					expect(result).not.toHaveProperty('verdict.suggestion');
+				});
+
+				it('does not suggest when the judge errored', async () => {
+					criteriaRunMock.mockRejectedValue(new Error('judge model timed out'));
+
+					const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+					expect(generateMock).toHaveBeenCalledTimes(1);
+					expect(result).not.toHaveProperty('verdict.suggestion');
+				});
+
+				it('does not suggest when the case has no rule to grade against', async () => {
+					generateMock.mockReset();
+
+					const result = await service.runPreviewCase(user, 'project-1', 'agent-1', {
+						input: 'input 1',
+						whatToCheck: '  ',
+						scenario: '',
+					});
+
+					expect(generateMock).not.toHaveBeenCalled();
+					expect(result).toMatchObject({ verdict: { status: 'skipped' } });
+				});
+			});
+
 			// A judge outage must not throw away an agent run that finished.
 			it('still completes the preview, with an error verdict, when the judge throws', async () => {
 				criteriaRunMock.mockRejectedValue(new Error('judge model timed out'));
@@ -698,6 +767,37 @@ describe('AgentEvalCaseGenerationService', () => {
 					status: 'failed',
 				});
 				expect(criteriaRunMock).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('runPreviewCase', () => {
+			it('runs the given case without drafting a new one', async () => {
+				agentTestRunService.executeDraftRun.mockResolvedValue({
+					status: 'completed',
+					response: 'The answer is 42.',
+					executionId: 'exec-1',
+					sessionId: 'session-1',
+				});
+				criteriaRunMock.mockResolvedValue({ pass: true, reasoning: 'Gives a number.' });
+
+				const result = await service.runPreviewCase(user, 'project-1', 'agent-1', {
+					input: 'What is the answer?',
+					whatToCheck: 'gives a number',
+					scenario: '',
+				});
+
+				expect(generateMock).not.toHaveBeenCalled();
+				expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith(
+					expect.objectContaining({ message: 'What is the answer?' }),
+				);
+				expect(result).toEqual({
+					status: 'completed',
+					input: 'What is the answer?',
+					whatToCheck: 'gives a number',
+					scenario: '',
+					response: 'The answer is 42.',
+					verdict: { status: 'completed', outcome: 'pass', reasoning: 'Gives a number.' },
+				});
 			});
 		});
 

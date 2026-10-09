@@ -43,6 +43,13 @@ describe('criteria judge', () => {
 		},
 	);
 
+	it('asks for a short reason of one or two sentences', () => {
+		const prompt = buildCriteriaPrompt('the question', 'the answer', 'the rule');
+
+		expect(prompt).toContain('Keep the reasoning to 1 or 2 short sentences');
+		expect(prompt).toContain('"reasoning": "<1-2 short sentences>"');
+	});
+
 	it('puts the rule, the user message and the response in the prompt', () => {
 		const prompt = buildCriteriaPrompt('the question', 'the answer', 'the rule');
 
