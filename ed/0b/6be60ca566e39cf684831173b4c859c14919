@@ -1,0 +1,43 @@
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  ai_agent 5,44
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_d837b9e3a40147::t_4f879ae921f873 43,152,165
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_d837b9e3a40147::t_4f879ae921f873 237
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_d837b9e3a40147::t_4f879ae921f873 1747
+packages/@n8n/cli/src/commands/promotion-connection/apply-continue.ts
+  s_d837b9e3a40147::t_4f879ae921f873 9,21
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  ai_agent 5,51
+packages/@n8n/cli/src/commands/promotion-connection/apply-command.ts
+  ai_agent 79-81
+packages/@n8n/cli/docs/commands/promotions.md
+  s_d837b9e3a40147::t_4f879ae921f873 297,322-326,399-403
+packages/@n8n/cli/src/commands/promotion-connection/apply-selection-continue.ts
+  s_d837b9e3a40147::t_4f879ae921f873 9,27
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_d837b9e3a40147::t_4f879ae921f873 108-110
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_d837b9e3a40147::t_4f879ae921f873 107,146
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_d837b9e3a40147::t_4f879ae921f873 204,218,284,526
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_d837b9e3a40147::t_4f879ae921f873 569,688
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed0b6be60ca566e39cf684831173b4c859c14919",
+  "prompts": {},
+  "sessions": {
+    "s_d837b9e3a40147": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f6186ac-52ed-4735-bbb4-f6033d34dd42",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+packages/cli/src/__tests__/abstract-server.test.ts
+  h_b49cecddc99496 10-19,100-114
+packages/cli/src/webhooks/__tests__/webhook-request-handler.test.ts
+  h_b49cecddc99496 362-365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "03669466d68c6d815187b86abcfc3c4bf5e20745",
+  "prompts": {},
+  "humans": {
+    "h_b49cecddc99496": {
+      "author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

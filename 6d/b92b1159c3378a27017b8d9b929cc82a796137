@@ -1,0 +1,14 @@
+packages/cli/src/modules/inbound-auth-core/identity/external-identity.ts
+  h_435b1d7d3e52c0 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6db92b1159c3378a27017b8d9b929cc82a796137",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

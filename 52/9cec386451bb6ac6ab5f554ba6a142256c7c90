@@ -1,0 +1,52 @@
+packages/cli/src/credentials/credentials.service.ts
+  s_d2d187c5b0d7b0::t_c1607e7037fdc2 1492-1493
+  s_d2d187c5b0d7b0::t_02049f93544997 1479-1480
+  s_07bd1131784f0d::t_ae0a62e19fe066 1488
+packages/cli/test/integration/environments/source-control-import.service.test.ts
+  s_8faa1db5feef4c::t_47a09b10e534a9 2227-2255
+  s_8faa1db5feef4c::t_39bc2f31802a79 59-63
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_d2d187c5b0d7b0::t_058afb38b126f1 1698,1702,1723,1737-1740,1747,1759,1764,1773-1774
+  s_d2d187c5b0d7b0::t_6d0f1c3c072a44 1716-1718,1724,1728-1730,1735
+  s_d2d187c5b0d7b0::t_4bdbd9a5667e80 1715,1719-1722,1725-1727,1731-1734,1736
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_8faa1db5feef4c::t_bdf13db36c2c46 322-325
+  s_07bd1131784f0d::t_acf923f743dbea 327,331-333,335-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "529cec386451bb6ac6ab5f554ba6a142256c7c90",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_07bd1131784f0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23bc83b3-a3af-434f-af56-27a25f7d08ef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_8faa1db5feef4c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "388180ca-8b41-434d-acb8-242866f91e87",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_d2d187c5b0d7b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e6b95cd-c9d4-4400-a78a-e779d17cf9bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

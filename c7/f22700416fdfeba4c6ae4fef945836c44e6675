@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/__tests__/model-catalog.test.ts
+  s_e99de54a53d3e4::t_06e602030ec82a 10-16,26
+packages/cli/src/modules/agents/model-catalog.ts
+  s_e99de54a53d3e4::t_06e602030ec82a 1,3-6,11
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_e99de54a53d3e4::t_06e602030ec82a 13-25,31-32,45,47,56-58,62-67
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_e99de54a53d3e4::t_06e602030ec82a 312
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_e99de54a53d3e4::t_06e602030ec82a 209
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_e99de54a53d3e4::t_06e602030ec82a 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7f22700416fdfeba4c6ae4fef945836c44e6675",
+  "prompts": {},
+  "sessions": {
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

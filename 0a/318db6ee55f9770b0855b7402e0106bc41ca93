@@ -1,0 +1,19 @@
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_52e2238357a554::t_849f3ac0350943 533
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a318db6ee55f9770b0855b7402e0106bc41ca93",
+  "prompts": {},
+  "sessions": {
+    "s_52e2238357a554": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_eef6c21c2ffekvJZx7PXbINMls",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

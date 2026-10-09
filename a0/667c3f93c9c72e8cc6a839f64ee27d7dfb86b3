@@ -1,0 +1,32 @@
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_2397c9db9d923f::t_6106e11b273654 147,154,162-164,170,172,176,179,185,197
+  s_2397c9db9d923f::t_abbf5a7e26c888 192-194
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_2397c9db9d923f::t_abbf5a7e26c888 1
+  s_2397c9db9d923f::t_6106e11b273654 3
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/agent-package-fixtures.ts
+  s_2397c9db9d923f::t_6106e11b273654 1-2,6,47-50,57-59,65-67
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.agent.test.ts
+  s_2397c9db9d923f::t_abbf5a7e26c888 23,46,51,88,100-103,109,129,141-142,146-147,168-169,176-187,189,193-231,240-245,247,251-252,254,259,261-262,264,269,271,273,280
+packages/cli/src/modules/n8n-packages/spec/serialized/agent.schema.ts
+  s_2397c9db9d923f::t_6106e11b273654 3,14-17,48-66,69
+  s_2397c9db9d923f::t_abbf5a7e26c888 13
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_2397c9db9d923f::t_6106e11b273654 11,24,29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a0667c3f93c9c72e8cc6a839f64ee27d7dfb86b3",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

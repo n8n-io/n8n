@@ -1,0 +1,20 @@
+packages/cli/src/modules/instance-registry/__tests__/instance-registry.service.test.ts
+  s_86b834392d23cd::t_72c4bd7ddce270 9-10,63-67,258-295
+  s_86b834392d23cd::t_de058a3c655325 296-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ed6ac621cd33e518dc8e24ed537c7d5b0a752fee",
+  "prompts": {},
+  "sessions": {
+    "s_86b834392d23cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0f3963e-ef06-4c95-96df-251da96845e1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

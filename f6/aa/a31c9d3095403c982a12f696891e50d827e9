@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/onboarding/InstanceAiOnboardingIntro.test.ts
+  s_9c6286ed559b79::t_1b4926a07aed0c 62,71
+packages/frontend/editor-ui/src/features/ai/instanceAi/onboarding/InstanceAiOnboardingView.test.ts
+  s_9c6286ed559b79::t_1b4926a07aed0c 164,176
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiSettings.store.test.ts
+  s_9c6286ed559b79::t_1b4926a07aed0c 480
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/settings/__tests__/ConnectionDialog.test.ts
+  s_9c6286ed559b79::t_1b4926a07aed0c 135
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  ai_agent 448-450
+  s_9c6286ed559b79::t_1b4926a07aed0c 452
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiModelCatalog.test.ts
+  s_9c6286ed559b79::t_1b4926a07aed0c 8,31-32,98
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiConnection.constants.ts
+  s_9c6286ed559b79::t_224bffde7e64cf 13-15,17-20
+packages/frontend/editor-ui/src/features/ai/instanceAi/onboarding/InstanceAiOnboardingWizard.test.ts
+  s_9c6286ed559b79::t_074e2655f2ceb2 160,166,177
+  s_9c6286ed559b79::t_1b4926a07aed0c 31,90,126,131,139,147,217,224,255,271,273,645
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f6aaa31c9d3095403c982a12f696891e50d827e9",
+  "prompts": {},
+  "sessions": {
+    "s_9c6286ed559b79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d938ebd-3c28-4370-9426-70f3a8a8e892",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

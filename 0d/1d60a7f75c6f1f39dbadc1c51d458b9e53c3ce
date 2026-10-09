@@ -1,0 +1,73 @@
+packages/cli/src/modules/otel/__tests__/otel-workflow-tracing.integration.test.ts
+  s_97073c0a361e75::t_0cf637993bf58f 2,16,161-174,177-184
+  s_9b756ba1f80666::t_8bdcd8db54185e 28-29,224-281
+  s_97073c0a361e75::t_6cc5ae733d6855 175-176
+packages/cli/src/modules/otel/README.md
+  s_97073c0a361e75::t_9fbc0fd742a015 55-57
+  s_d601bc3096fe4d::t_58f5679a1fd22a 58-60
+  s_9b756ba1f80666::t_c3c5815bdea7a9 65-86
+packages/cli/src/modules/otel/execution-level-tracer.types.ts
+  s_9b756ba1f80666::t_3f93e6c9f21543 31,63
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_9b756ba1f80666::t_d32ca306d91e3a 2,13,1327-1466
+  s_1c2bd6c621be68::t_2b32d12081948b 8,1184
+  s_d601bc3096fe4d::t_58f5679a1fd22a 1172,1195,1246
+  s_d601bc3096fe4d::t_562257772cf4e7 1174-1178,1189-1194,1196-1224
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_97073c0a361e75::t_ed1bc924cc5116 3,30,116,278-302,553,686-739,796,893,1052,1068,1287
+  s_9b756ba1f80666::t_f9ebbca258d21d 50-51,740-742,1082-1083,379-410,743-759,1084-1098
+  s_d601bc3096fe4d::t_e1a098aaecacd6 260-265,270-275,325
+  s_d601bc3096fe4d::t_11d806574f55f7 266-269
+  s_97073c0a361e75::t_ea41865e21e03d 1381
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  s_97073c0a361e75::t_9fbc0fd742a015 3,13,52,102-106,110,116,119-121,158,160,163,270-286
+  s_1c2bd6c621be68::t_a81c60310cf9f7 17
+  s_9b756ba1f80666::t_2a1bb34721dba5 111-115,159,223
+  s_97073c0a361e75::t_ed1bc924cc5116 269
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_9b756ba1f80666::t_3f93e6c9f21543 3,79-90,94,97-98,105-106,213-223,225-227,229-230,318-320,322-326,329-331
+  s_1c2bd6c621be68::t_a81c60310cf9f7 20,401
+  s_9b756ba1f80666::t_ede822ce048433 99-104,224,228,317,321,327-328
+  s_d601bc3096fe4d::t_562257772cf4e7 387-389,392-394
+  s_d601bc3096fe4d::t_58f5679a1fd22a 390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0d1d60a7f75c6f1f39dbadc1c51d458b9e53c3ce",
+  "prompts": {},
+  "sessions": {
+    "s_1c2bd6c621be68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb7b6830-2cc1-4d69-a861-6fa85c9c78e3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    },
+    "s_97073c0a361e75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cc86e9e-6f47-4840-a137-b63a117493e1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_9b756ba1f80666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b44936c5-6a25-4e1d-a9d5-02e0e688c96f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    },
+    "s_d601bc3096fe4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48fbda43-86ad-4b54-b85a-036da5f1f528",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
