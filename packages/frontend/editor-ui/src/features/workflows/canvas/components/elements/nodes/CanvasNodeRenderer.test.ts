@@ -7,6 +7,8 @@ import {
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CanvasNodeRenderType } from '../../../canvas.types';
+import { mockedStore } from '@/__tests__/utils';
+import { useMcpDiscoveryStore } from '@/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.store';
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
@@ -24,6 +26,29 @@ beforeEach(() => {
 });
 
 describe('CanvasNodeRenderer', () => {
+	it.each([true, false])('dispatches AddNodes with MCP discovery enabled: %s', (enabled) => {
+		mockedStore(useMcpDiscoveryStore).shouldShowEntryPoints = enabled;
+		const { getByTestId, queryByTestId } = renderComponent({
+			global: {
+				stubs: {
+					CanvasNodeChoicePrompt: { template: '<div data-test-id="mcp-choice-prompt" />' },
+					CanvasNodeAddNodes: { template: '<div data-test-id="legacy-add-nodes" />' },
+				},
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide({
+						data: { render: { type: CanvasNodeRenderType.AddNodes, options: {} } },
+					}),
+				},
+			},
+		});
+
+		expect(getByTestId(enabled ? 'mcp-choice-prompt' : 'legacy-add-nodes')).toBeInTheDocument();
+		expect(
+			queryByTestId(enabled ? 'legacy-add-nodes' : 'mcp-choice-prompt'),
+		).not.toBeInTheDocument();
+	});
+
 	it('should render default node correctly', async () => {
 		const { getByTestId } = renderComponent({
 			global: {

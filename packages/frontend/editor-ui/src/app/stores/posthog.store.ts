@@ -1,3 +1,4 @@
+import { MCP_DISCOVERY_EXPERIMENT_KEY } from '@n8n/api-types';
 import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
@@ -34,6 +35,7 @@ export const usePostHog = defineStore('posthog', () => {
 	const rootStore = useRootStore();
 	const { debounce } = useDebounce();
 
+	const mcpDiscoveryAssignment = ref<'control' | 'variant' | null>(null);
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const featureFlagPayloads: Ref<FeatureFlagPayloads | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
@@ -62,6 +64,7 @@ export const usePostHog = defineStore('posthog', () => {
 	const reset = () => {
 		window.posthog?.reset?.();
 		featureFlags.value = null;
+		mcpDiscoveryAssignment.value = null;
 		featureFlagPayloads.value = null;
 		trackedDemoExp.value = {};
 		trackedExposures.value = {};
@@ -70,6 +73,9 @@ export const usePostHog = defineStore('posthog', () => {
 	};
 
 	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
+		if (experiment === MCP_DISCOVERY_EXPERIMENT_KEY) {
+			return overrides.value[experiment]?.value ?? mcpDiscoveryAssignment.value ?? undefined;
+		}
 		return overrides.value[experiment]?.value ?? featureFlags.value?.[experiment];
 	};
 
@@ -176,7 +182,8 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 		// EOF Experiment cleanup
 
-		const variant = featFlags[name];
+		const variant =
+			name === MCP_DISCOVERY_EXPERIMENT_KEY ? mcpDiscoveryAssignment.value : featFlags[name];
 		if (!variant || trackedDemoExp.value[name] === variant) {
 			return;
 		}
@@ -187,6 +194,11 @@ export const usePostHog = defineStore('posthog', () => {
 		});
 
 		trackedDemoExp.value[name] = variant;
+	};
+
+	const setMcpDiscoveryAssignment = (variant: 'control' | 'variant' | null) => {
+		mcpDiscoveryAssignment.value = variant;
+		if (variant) trackExperiment(featureFlags.value ?? {}, MCP_DISCOVERY_EXPERIMENT_KEY);
 	};
 
 	const trackExperiments = (featFlags: FeatureFlags) => {
@@ -334,6 +346,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 	return {
 		init,
+		setMcpDiscoveryAssignment,
 		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,

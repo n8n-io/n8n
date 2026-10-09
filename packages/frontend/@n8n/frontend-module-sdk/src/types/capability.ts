@@ -30,3 +30,10 @@ export interface McpExposeAllOffer {
 	 */
 	offer(onExposed: () => Promise<void> | void): Promise<boolean>;
 }
+
+export interface McpDiscoverySettings {
+	/** These getters read reactive state. Call them inside a computed. */
+	isEnabled(): boolean;
+	shouldShowCoachmark(): boolean;
+	dismissCoachmark(): Promise<void>;
+}

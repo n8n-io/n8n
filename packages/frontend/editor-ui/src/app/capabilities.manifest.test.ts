@@ -10,6 +10,9 @@ import { useExistingWorkflowDocumentStore } from '@/app/stores/workflowDocument.
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { mockedStore } from '@/__tests__/utils';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
+import { useMcpDiscoveryStore } from '@/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { computed } from 'vue';
 
 const { openDocumentStores, offerToExposeAllWorkflows } = vi.hoisted(() => ({
 	openDocumentStores: new Map<string, { mergeSettings: ReturnType<typeof vi.fn> }>(),
@@ -135,6 +138,62 @@ describe('registerShellCapabilities', () => {
 			expect(openStore.mergeSettings).toHaveBeenCalledWith({ availableInMCP: false });
 			expect(otherOpenStore.mergeSettings).not.toHaveBeenCalled();
 			expect(useExistingWorkflowDocumentStore).toHaveBeenCalledWith('wf-2');
+		});
+	});
+
+	describe('mcpDiscoverySettings', () => {
+		beforeEach(() => {
+			mockedStore(useUsersStore).isInstanceOwner = true;
+			registerShellCapabilities();
+		});
+
+		it('updates settings treatment and guidance from the current experiment state', () => {
+			const store = mockedStore(useMcpDiscoveryStore);
+			const capability = capabilityRegistry.use(capabilities.mcpDiscoverySettings);
+			const enabled = computed(() => capability.isEnabled());
+			const showCoachmark = computed(() => capability.shouldShowCoachmark());
+			expect(enabled.value).toBe(false);
+			expect(showCoachmark.value).toBe(false);
+			store.state = {
+				status: 'assigned',
+				assignment: { variant: 'variant', assignedAt: 1 },
+				coachmarkDismissed: false,
+			};
+			expect(enabled.value).toBe(true);
+			expect(showCoachmark.value).toBe(true);
+
+			store.state.coachmarkDismissed = true;
+			expect(showCoachmark.value).toBe(false);
+			store.state.coachmarkDismissed = false;
+			store.state.hasConnectedClaude = true;
+			expect(showCoachmark.value).toBe(false);
+			store.state.hasConnectedClaude = false;
+			store.state.hasUsedClaudeMcp = true;
+			expect(showCoachmark.value).toBe(false);
+			expect(enabled.value).toBe(true);
+		});
+
+		it.each(['control', 'non-owner'])('disables treatment and guidance for %s', (reason) => {
+			const store = mockedStore(useMcpDiscoveryStore);
+			store.state = {
+				status: 'assigned',
+				assignment: { variant: reason === 'control' ? 'control' : 'variant', assignedAt: 1 },
+				coachmarkDismissed: false,
+			};
+			mockedStore(useUsersStore).isInstanceOwner = reason !== 'non-owner';
+			const capability = capabilityRegistry.use(capabilities.mcpDiscoverySettings);
+			expect(capability.isEnabled()).toBe(false);
+			expect(capability.shouldShowCoachmark()).toBe(false);
+		});
+
+		it('forwards coachmark dismissal and request failures', async () => {
+			const store = mockedStore(useMcpDiscoveryStore);
+			const error = new Error('Unavailable');
+			store.dismissCoachmark.mockRejectedValueOnce(error);
+			await expect(
+				capabilityRegistry.use(capabilities.mcpDiscoverySettings).dismissCoachmark(),
+			).rejects.toBe(error);
+			expect(store.dismissCoachmark).toHaveBeenCalledOnce();
 		});
 	});
 

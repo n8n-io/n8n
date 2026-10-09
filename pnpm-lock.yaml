@@ -7330,6 +7330,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
+      '@vueuse/core':
+        specifier: catalog:frontend
+        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
       element-plus:
         specifier: catalog:frontend
         version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))

@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import { onClickOutside, type VueInstance } from '@vueuse/core';
-import { ref, type Ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
+import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
+import { ClaudeLogo } from '@n8n/frontend-module-mcp';
 import { I18nT } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 import {
@@ -23,6 +25,7 @@ defineProps<{
 	hideCreate?: boolean;
 }>();
 
+const { showMcpDiscovery, mcpDiscovery, entryLabel, openEntry } = useMcpDiscovery();
 const emit = defineEmits<{
 	collapse: [];
 	openCommandBar: [event: MouseEvent];
@@ -56,6 +59,23 @@ const {
 	upgradeLabel,
 	hasPermissionToCreateProjects,
 } = useGlobalEntityCreation();
+const claudeAppendSlotName = 'item.append.claude-mcp';
+const claudeMenu = computed(() =>
+	showMcpDiscovery.value
+		? [
+				...menu.value,
+				{ id: 'claude-divider', isDivider: true as const },
+				{ id: 'claude-mcp', title: entryLabel.value },
+			]
+		: menu.value,
+);
+function selectItem(id: string) {
+	if (id === 'claude-mcp') {
+		openEntry('create_menu');
+	} else {
+		void handleMenuSelect(id);
+	}
+}
 </script>
 
 <template>
@@ -99,9 +119,10 @@ const {
 			v-if="!hideCreate"
 			ref="createBtn"
 			data-test-id="universal-add"
-			:menu="menu"
+			:menu="claudeMenu"
+			:submenu-class="showMcpDiscovery ? $style.claudeMenu : undefined"
 			:teleport="true"
-			@select="handleMenuSelect"
+			@select="selectItem"
 		>
 			<N8nIconButton
 				class="n8n-button--highlight"
@@ -110,7 +131,9 @@ const {
 				icon="plus"
 				icon-size="large"
 				aria-label="Add new item"
+				@click="showMcpDiscovery && mcpDiscovery.trackEntry('create_menu', 'viewed')"
 			/>
+			<template #[claudeAppendSlotName]><ClaudeLogo :class="$style.claudeMenuIcon" /></template>
 			<template #[createWorkflowsAppendSlotName]>
 				<N8nTooltip
 					v-if="sourceControlStore.preferences.branchReadOnly"
@@ -202,6 +225,14 @@ const {
 </template>
 
 <style lang="scss" module>
+.claudeMenu :global(.el-menu-item):has(.claudeMenuIcon) {
+	gap: var(--spacing--2xs);
+}
+.claudeMenu :global(.el-menu-item):has(.claudeMenuIcon) > span:has(.claudeMenuIcon) {
+	order: -1;
+	margin-left: 0;
+}
+
 .header {
 	display: flex;
 	align-items: center;

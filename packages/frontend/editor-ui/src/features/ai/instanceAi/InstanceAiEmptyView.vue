@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
@@ -101,6 +103,8 @@ import {
 	stashPendingN8nChatMessage,
 } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import { base64ToFile } from '@/app/utils/fileUtils';
+
+const { showMcpDiscovery } = useMcpDiscovery();
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -581,6 +585,8 @@ type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
 
 const emptyLayoutRef = useTemplateRef<HTMLElement>('emptyLayout');
 const centeredInputRef = useTemplateRef<HTMLElement>('centeredInput');
+const mcpDiscoveryFooterRef = useTemplateRef<HTMLElement>('mcpDiscoveryFooter');
+const previewAnchorRef = computed(() => mcpDiscoveryFooterRef.value ?? centeredInputRef.value);
 const CANVAS_NATURAL_HEIGHT_PX = 420;
 const PREVIEW_MIN_SCALE = 0.3;
 
@@ -588,19 +594,21 @@ const previewScale = ref(1);
 const previewRemainingSpace = ref(CANVAS_NATURAL_HEIGHT_PX);
 
 function updatePreviewScale() {
-	if (!emptyLayoutRef.value || !centeredInputRef.value) return;
+	if (!emptyLayoutRef.value || !previewAnchorRef.value) return;
 	const containerRect = emptyLayoutRef.value.getBoundingClientRect();
-	const inputRect = centeredInputRef.value.getBoundingClientRect();
+	const anchorRect = previewAnchorRef.value.getBoundingClientRect();
 	const layoutStyles = getComputedStyle(emptyLayoutRef.value);
 	const bottomPadding = parseFloat(layoutStyles.paddingBottom);
 	const gap = parseFloat(layoutStyles.gap) || 0;
-	const remainingSpace = containerRect.bottom - inputRect.bottom - bottomPadding - gap;
+	const remainingSpace = containerRect.bottom - anchorRect.bottom - bottomPadding - gap;
 	previewRemainingSpace.value = Math.max(0, remainingSpace);
 	previewScale.value = Math.max(0, Math.min(1, remainingSpace / CANVAS_NATURAL_HEIGHT_PX));
 }
 
 useResizeObserver(emptyLayoutRef, updatePreviewScale);
 useResizeObserver(centeredInputRef, updatePreviewScale);
+useResizeObserver(mcpDiscoveryFooterRef, updatePreviewScale);
+watch(previewAnchorRef, updatePreviewScale, { flush: 'post' });
 
 const hasSpaceForPreview = computed(() => previewScale.value >= PREVIEW_MIN_SCALE);
 
@@ -802,6 +810,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						</template>
 					</InstanceAiInput>
 				</div>
+				<ClaudeEntryPoint v-if="showMcpDiscovery" placement="footer" />
 			</div>
 			<InstanceAiSplitEmptyState
 				v-else-if="isSplitLayoutActive"
@@ -848,6 +857,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 								</div>
 							</template>
 						</InstanceAiInput>
+						<ClaudeEntryPoint v-if="showMcpDiscovery" placement="footer" />
 					</div>
 				</template>
 			</InstanceAiSplitEmptyState>
@@ -896,6 +906,9 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							</div>
 						</template>
 					</InstanceAiInput>
+				</div>
+				<div v-if="showMcpDiscovery" ref="mcpDiscoveryFooter" :class="$style.mcpDiscoveryFooter">
+					<ClaudeEntryPoint placement="footer" />
 				</div>
 				<!-- Variant A shows the agent picker here instead of the workflow preview;
 				variant B drops the preview canvas entirely (hover preview stays off). -->
@@ -967,6 +980,10 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.mcpDiscoveryFooter {
+	display: flex;
 }
 
 .workflowPreviewWrapper {

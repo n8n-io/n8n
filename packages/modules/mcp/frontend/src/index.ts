@@ -8,3 +8,4 @@ export { MCP_DOCS_PAGE_URL, MCP_SCOPE_GROUPS, MCP_SETTINGS_VIEW } from './mcp.co
 export { getClientBrand } from './clients.utils';
 export { default as McpAccessToggle } from './components/McpAccessToggle.vue';
 export { default as McpClientLogoCards } from './components/McpClientLogoCards.vue';
+export { default as ClaudeLogo } from './components/ClaudeLogo.vue';

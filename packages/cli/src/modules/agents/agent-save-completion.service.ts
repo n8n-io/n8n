@@ -23,7 +23,7 @@ export class AgentSaveCompletionService {
 	): Promise<void> {
 		await this.clearRuntimes(event.agent.id);
 		this.eventService.emit('agent-saved', { agentId: event.agent.id });
-		this.notify(event, pushRef);
+		await this.notify(event, pushRef);
 		await emitSetupCompleted?.();
 	}
 
@@ -33,20 +33,24 @@ export class AgentSaveCompletionService {
 		recordTelemetry = true,
 	): Promise<void> {
 		await this.clearRuntimes(event.agent.id);
-		this.notify(event, pushRef, recordTelemetry);
+		await this.notify(event, pushRef, recordTelemetry);
 	}
 
 	// Task bodies are read for each run. A draft task edit does not change scheduling.
-	taskSaved(event: AgentModificationEvent, pushRef?: string): void {
-		this.notify(event, pushRef);
+	async taskSaved(event: AgentModificationEvent, pushRef?: string): Promise<void> {
+		await this.notify(event, pushRef);
 	}
 
-	private notify(event: AgentModificationEvent, pushRef?: string, recordTelemetry = true): void {
+	private async notify(
+		event: AgentModificationEvent,
+		pushRef?: string,
+		recordTelemetry = true,
+	): Promise<void> {
 		this.broadcaster.notify(
 			{ projectId: event.projectId, agentId: event.agent.id, source: event.by },
 			pushRef,
 		);
-		if (recordTelemetry) this.modificationTelemetry.record(event);
+		if (recordTelemetry) await this.modificationTelemetry.record(event);
 	}
 
 	private async clearRuntimes(agentId: string): Promise<void> {

@@ -32,6 +32,7 @@
     "@n8n/stores": "workspace:*",
     "@n8n/telemetry": "workspace:*",
     "@n8n/utils": "workspace:*",
+    "@vueuse/core": "catalog:frontend",
     "element-plus": "catalog:frontend",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",

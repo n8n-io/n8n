@@ -133,7 +133,7 @@ describe('InvitationController', () => {
 			vi.mocked(userRepository.find).mockResolvedValue([inviter, invitee]);
 			vi.mocked(passwordUtility.hash).mockResolvedValue('Password123!');
 			vi.mocked(userRepository.save).mockResolvedValue(invitee);
-			vi.mocked(authService.issueCookie).mockResolvedValue(invitee as never);
+			vi.mocked(authService.issueCookie).mockReturnValue(undefined);
 			vi.mocked(eventService.emit).mockResolvedValue(invitee as never);
 			vi.mocked(userService.toPublic).mockResolvedValue(invitee as unknown as PublicUser);
 			vi.mocked(externalHooks.run).mockResolvedValue(invitee as never);

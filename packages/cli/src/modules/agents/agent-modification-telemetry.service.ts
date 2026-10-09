@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
 
+import { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import { Telemetry } from '@/telemetry';
 
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
@@ -147,13 +148,21 @@ function modificationProperties({ agent, projectId, user, changedParts }: AgentM
  */
 @Service()
 export class AgentModificationTelemetryService {
-	constructor(private readonly telemetry: Telemetry) {}
+	constructor(
+		private readonly telemetry: Telemetry,
+		private readonly mcpDiscoveryActivity: McpDiscoveryActivityService,
+	) {}
 
-	record(event: AgentModificationEvent): void {
+	async record(event: AgentModificationEvent): Promise<void> {
 		if (event.changedParts.length === 0) return;
 		try {
 			const { agent, by, wasUnconfigured } = event;
 			if (wasUnconfigured && isUnconfiguredAgent(agent.schema, agent.integrations)) return;
+
+			// Match Builder creation/modification semantics independently of telemetry delivery.
+			if (by === 'builder') {
+				await this.mcpDiscoveryActivity.recordAssistantMutation(event.user.id);
+			}
 
 			const properties = modificationProperties(event);
 			if (wasUnconfigured) {

@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
-import type { McpExposeAllOffer } from '@n8n/frontend-module-sdk';
+import type { McpExposeAllOffer, McpDiscoverySettings } from '@n8n/frontend-module-sdk';
 import type { Mock } from 'vitest';
 import {
 	createComponentRenderer,
@@ -76,6 +76,16 @@ vi.mock('./composables/useMcp', () => ({
 let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
+let discoverySettings: {
+	isEnabled: Mock<McpDiscoverySettings['isEnabled']>;
+	shouldShowCoachmark: Mock<McpDiscoverySettings['shouldShowCoachmark']>;
+	dismissCoachmark: Mock<McpDiscoverySettings['dismissCoachmark']>;
+};
+
+const enableDiscovery = (showCoachmark = true) => {
+	discoverySettings.isEnabled.mockReturnValue(true);
+	discoverySettings.shouldShowCoachmark.mockReturnValue(showCoachmark);
+};
 let rbacStore: MockedStore<typeof useRBACStore>;
 let exposeAllOffer: {
 	isEnabled: Mock<McpExposeAllOffer['isEnabled']>;
@@ -130,6 +140,12 @@ describe('SettingsMCPView', () => {
 		rbacStore.hasScope.mockReturnValue(true);
 		mcpStore = mockedStore(useMCPStore);
 		settingsStore = mockedStore(useSettingsStore);
+		discoverySettings = {
+			isEnabled: vi.fn(() => false),
+			shouldShowCoachmark: vi.fn(() => false),
+			dismissCoachmark: vi.fn(async () => {}),
+		};
+		capabilityRegistry.provide(capabilities.mcpDiscoverySettings, discoverySettings);
 		exposeAllOffer = {
 			isEnabled: vi.fn(() => false),
 			offer: vi.fn(async () => false),
@@ -576,6 +592,59 @@ describe('SettingsMCPView', () => {
 		});
 	});
 
+	it('keeps the original settings without a discovery provider', async () => {
+		capabilityRegistry.clear();
+		enableMcpSettings();
+		const { getByText } = createComponent({ pinia });
+		await waitAllPromises();
+		expect(getByText('Connect your client')).toBeVisible();
+		expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+	});
+
+	it('keeps the original settings copy and no coachmark for control', async () => {
+		discoverySettings.isEnabled.mockReturnValue(false);
+		enableMcpSettings();
+		const { getByText } = createComponent({ pinia });
+		await waitAllPromises();
+		expect(getByText('Connect your client')).toBeVisible();
+		expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+	});
+
+	it('does not repeat an explicitly dismissed coachmark', async () => {
+		enableDiscovery(false);
+		enableMcpSettings();
+		createComponent({ pinia });
+		await waitAllPromises();
+		expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+	});
+
+	it('hides the coachmark after a connection reported by the server', async () => {
+		enableDiscovery(false);
+		enableMcpSettings();
+		const { getByTestId } = createComponent({ pinia });
+		await waitAllPromises();
+		expect(getByTestId('mcp-connect-client-button')).toBeVisible();
+		expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+	});
+
+	it.each(['pending', 'failed'])(
+		'shows the coachmark when the clients preview is %s',
+		async (status) => {
+			enableDiscovery();
+			enableMcpSettings();
+			if (status === 'pending') {
+				mcpStore.fetchOAuthClientsPreview.mockReturnValue(new Promise(() => {}));
+			} else {
+				mcpStore.fetchOAuthClientsPreview.mockRejectedValue(new Error('network error'));
+			}
+
+			createComponent({ pinia });
+			await waitFor(() => {
+				expect(within(document.body).getByTestId('mcp-connect-hint')).toBeVisible();
+			});
+		},
+	);
+
 	describe('Toggle MCP on/off', () => {
 		beforeEach(() => {
 			rbacStore.hasScope.mockReturnValue(true);
@@ -590,6 +659,69 @@ describe('SettingsMCPView', () => {
 			await userEvent.click(getByTestId('enable-mcp-button'));
 
 			expect(mcpStore.setMcpAccessEnabled).toHaveBeenCalledWith(true);
+		});
+
+		it('shows the connection hint after enabling MCP and dismisses it with Escape', async () => {
+			enableDiscovery();
+			mcpStore.setMcpAccessEnabled.mockImplementation(async () => {
+				enableMcpSettings();
+				return true;
+			});
+			const { getByTestId } = createComponent({ pinia });
+			await userEvent.click(getByTestId('enable-mcp-button'));
+			await waitFor(() => {
+				expect(within(document.body).getByTestId('mcp-connect-hint')).toHaveTextContent(
+					'Next, connect an AI assistant like Claude to start building workflows.',
+				);
+			});
+			await userEvent.keyboard('{Escape}');
+			await waitFor(() => {
+				expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+			});
+			expect(mcpStore.openConnectPopover).not.toHaveBeenCalled();
+		});
+
+		it('shows the connection hint on an enabled instance and lets the user dismiss it', async () => {
+			enableDiscovery();
+			enableMcpSettings();
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+			expect(getByTestId('mcp-connect-client-button')).toBeVisible();
+			await waitFor(() => {
+				expect(within(document.body).getByTestId('mcp-connect-hint')).toBeVisible();
+			});
+			await userEvent.click(within(document.body).getByRole('button', { name: 'Got it' }));
+			expect(discoverySettings.dismissCoachmark).toHaveBeenCalledOnce();
+			await waitFor(() => {
+				expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+			});
+		});
+
+		it('keeps the hint dismissed with Escape after re-enabling MCP', async () => {
+			enableDiscovery();
+			enableMcpSettings();
+			mcpStore.setMcpAccessEnabled.mockImplementation(async (enabled) => {
+				settingsStore.moduleSettings.mcp!.mcpAccessEnabled = enabled;
+				return enabled;
+			});
+			const { getByTestId } = createComponent({ pinia });
+			await waitFor(() => {
+				expect(within(document.body).getByTestId('mcp-connect-hint')).toBeVisible();
+			});
+			await userEvent.keyboard('{Escape}');
+			await waitFor(() => {
+				expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+			});
+			await userEvent.click(getByTestId('disable-mcp-button'));
+			await userEvent.click(
+				within(document.body).getByRole('button', { name: 'Disable MCP access' }),
+			);
+			await userEvent.click(getByTestId('enable-mcp-button'));
+			await waitAllPromises();
+
+			expect(mcpStore.setMcpAccessEnabled).toHaveBeenLastCalledWith(true);
+			expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+			expect(discoverySettings.dismissCoachmark).not.toHaveBeenCalled();
 		});
 
 		it('should fetch the workflow count and oauth clients after enabling MCP', async () => {
