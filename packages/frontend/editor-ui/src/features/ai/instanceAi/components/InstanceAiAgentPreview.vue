@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from 'vue';
+import { until } from '@vueuse/core';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import AgentBuilderView from '@/features/agents/views/AgentBuilderView.vue';
 import type { AgentResource } from '@/features/agents/types';
@@ -79,30 +80,36 @@ const showBuildingIndicator = computed(
  */
 function savedAgentNamesUpdate(
 	metadata: Record<string, unknown> | undefined,
+	agentId: string,
 	name: string,
 ): Record<string, Omit<AgentNameOverride, 'agentId'>> | undefined {
 	const overrides = getAgentNameOverridesFromThreadMetadata(metadata);
-	const replaces = thread.getAgentEventName(props.agentId);
-	const current = overrides.find((override) => override.agentId === props.agentId);
+	const replaces = thread.getAgentEventName(agentId);
+	const current = overrides.find((override) => override.agentId === agentId);
 	const unchanged = current
 		? current.name === name && current.replaces === replaces
 		: name === replaces;
 	if (unchanged) return undefined;
 
 	const saved: Record<string, Omit<AgentNameOverride, 'agentId'>> = {};
-	for (const { agentId, ...override } of overrides) saved[agentId] = override;
-	saved[props.agentId] = { name, ...(replaces !== undefined ? { replaces } : {}) };
+	for (const { agentId: savedAgentId, ...override } of overrides) saved[savedAgentId] = override;
+	saved[agentId] = { name, ...(replaces !== undefined ? { replaces } : {}) };
 	return saved;
 }
 
 async function syncAgentTarget(name: string) {
+	const { agentId, projectId } = props;
+	// Until hydration loads the events, the latest event name is unknown, and a
+	// saved name without it would lose to the first event that hydration loads.
+	if (thread.isHydratingThread) await until(() => thread.isHydratingThread).toBe(false);
+
 	const metadata = instanceAiStore.getThreadMetadata(thread.id);
 	const target = getAgentBuilderTargetFromThreadMetadata(metadata);
 	const pendingTarget = getPendingAgentTargetFromThreadMetadata(metadata);
-	const savedNames = savedAgentNamesUpdate(metadata, name);
+	const savedNames = savedAgentNamesUpdate(metadata, agentId, name);
 	if (
-		target?.agentId === props.agentId &&
-		target.projectId === props.projectId &&
+		target?.agentId === agentId &&
+		target.projectId === projectId &&
 		target.name === name &&
 		!pendingTarget &&
 		!savedNames
@@ -112,11 +119,7 @@ async function syncAgentTarget(name: string) {
 
 	await instanceAiStore.updateThreadMetadata(thread.id, {
 		[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: null,
-		[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
-			agentId: props.agentId,
-			projectId: props.projectId,
-			name,
-		},
+		[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: { agentId, projectId, name },
 		...(savedNames ? { [INSTANCE_AI_AGENT_NAME_OVERRIDES_METADATA_KEY]: savedNames } : {}),
 	});
 }

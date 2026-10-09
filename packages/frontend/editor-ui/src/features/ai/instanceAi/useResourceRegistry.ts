@@ -35,7 +35,10 @@ export type ResourceEntry = {
 export type AgentNameOverride = {
 	agentId: string;
 	name: string;
-	/** The latest event-derived name when the user saved; absent when no event named the agent. */
+	/**
+	 * The latest build-agent name when the user saved. Absent when no result
+	 * named the agent yet, so the first named result is newer and wins.
+	 */
 	replaces?: string;
 };
 
@@ -70,7 +73,7 @@ interface Collections {
 	origins: Map<string, ArtifactOrigin>;
 	/** Origin the current collection phase stamps on resources it records for the first time. */
 	intake: ArtifactOrigin;
-	/** Latest event-derived name of each agent, keyed by agent ID. */
+	/** Latest name a build-agent result carried for each agent, keyed by agent ID. */
 	agentEventNames: Map<string, string>;
 }
 
@@ -293,10 +296,12 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			result.agentChange === undefined)
 	) {
 		const existing = col.produced.get(result.agentId);
+		const agentName = optionalString(result.agentName);
+		if (agentName) col.agentEventNames.set(result.agentId, agentName);
 		recordProduced(col, {
 			type: 'agent',
 			id: result.agentId,
-			name: optionalString(result.agentName) ?? existing?.name ?? 'Untitled',
+			name: agentName ?? existing?.name ?? 'Untitled',
 		});
 	}
 
@@ -473,14 +478,6 @@ function enrichAgentFromBuilderTarget(
 	);
 }
 
-function collectAgentEventNames(col: Collections): void {
-	for (const entry of col.produced.values()) {
-		if (entry.type === 'agent' && !entry.pending && entry.name !== 'Untitled') {
-			col.agentEventNames.set(entry.id, entry.name);
-		}
-	}
-}
-
 function applyAgentNameOverrides(col: Collections, overrides: AgentNameOverride[]): void {
 	for (const override of overrides) {
 		const existing = col.produced.get(override.agentId);
@@ -652,7 +649,6 @@ export function useResourceRegistry(
 				collectFromMessageAttachments(msg, col);
 				if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
 			}
-			collectAgentEventNames(col);
 			col.intake = 'attached';
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);

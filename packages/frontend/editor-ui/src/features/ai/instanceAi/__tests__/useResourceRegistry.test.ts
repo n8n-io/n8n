@@ -1195,6 +1195,73 @@ describe('useResourceRegistry', () => {
 		});
 	});
 
+	describe('agent event names', () => {
+		test('an attached agent name is not an event name', async () => {
+			const { messages, getAgentEventName } = setup();
+
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{ type: 'agent', id: 'agent-1', name: 'Support Bot', projectId: 'project-1' },
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(getAgentEventName('agent-1')).toBeUndefined();
+		});
+
+		test('a spawn target name is not an event name', async () => {
+			const { messages, getAgentEventName } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(getAgentEventName('agent-1')).toBeUndefined();
+		});
+
+		test('a later event that carries the attached name wins over a name saved after the attachment', async () => {
+			const { messages, producedArtifacts } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => [{ agentId: 'agent-1', name: 'Helpdesk Bot' }],
+			);
+
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{ type: 'agent', id: 'agent-1', name: 'Support Bot', projectId: 'project-1' },
+					],
+				}),
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.name).toBe('Support Bot');
+		});
+	});
+
 	describe('list results do not populate producedArtifacts', () => {
 		test('workflows action=list result is indexed by name only, never in producedArtifacts', async () => {
 			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
