@@ -108,7 +108,7 @@ export class PromotionChangeService {
 		// Apply reads the branch manifest before the export, so an empty branch fails without one.
 		const branchDesired =
 			direction === 'apply' ? await this.readBranchDesired(branch, projectId) : null;
-		const [instance, destinationVariables, destinationCredentialIds] = await Promise.all([
+		const [instance, destinationVariables, destinationCredentials] = await Promise.all([
 			this.exportInstancePackage(user, projectId),
 			branchDesired === null
 				? null
@@ -118,10 +118,23 @@ export class PromotionChangeService {
 					),
 			branchDesired === null
 				? null
-				: this.credentialsRepository.findExistingIds(
+				: this.credentialsRepository.findPromotionBindingAccess(
 						branchDesired.manifest.requirements?.credentials?.map(({ id }) => id) ?? [],
+						[projectId],
 					),
 		]);
+		// Apply binds a credential only when this project can use it: a global
+		// credential, or one shared with the project. An id that exists but belongs
+		// to another project is not reachable, so it stays a change, not a match.
+		const destinationCredentialIds =
+			destinationCredentials === null
+				? null
+				: destinationCredentials
+						.filter(
+							({ usageScope, isGlobal, projectIds }) =>
+								usageScope === 'project' && (isGlobal || projectIds.includes(projectId)),
+						)
+						.map(({ id }) => id);
 		const { base, desired } =
 			branchDesired === null
 				? { base: branch.files, desired: instance }
@@ -452,8 +465,8 @@ function calculateDependencyImpact({
 				// renames or rewrites an existing target credential, so a branch-side
 				// rename never converges with a file-path check and the dependent
 				// workflows would be flagged on every preview. The dependency is
-				// satisfied when the instance already has a credential with this id to
-				// bind to, so only a missing credential counts as a change.
+				// satisfied when this project can bind a credential with this id, so
+				// only an unreachable credential counts as a change.
 				dependencyChanged = !destinationCredentialKeys.has(key);
 			} else if (collection !== 'workflows') {
 				dependencyChanged =

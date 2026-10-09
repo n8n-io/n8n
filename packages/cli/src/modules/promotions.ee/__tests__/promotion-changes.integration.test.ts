@@ -12,6 +12,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
 	FolderRepository,
+	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	VariablesRepository,
 	WorkflowRepository,
@@ -671,6 +672,40 @@ it('counts a credential on apply only when this instance lacks it by id', async 
 	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([
 		expect.objectContaining({ id: dependent.id, status: 'modified', dependencyCount: 1 }),
 	]);
+}, 30_000);
+
+it('counts a credential on apply when the matching id belongs to another project', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Destination', owner);
+	const other = await createTeamProject('Other', owner);
+	// The credential exists on the instance, but only another project can use it,
+	// so this project cannot bind it on apply.
+	const credential = await saveCredential(
+		{ name: 'Owned elsewhere', type: 'githubApi', data: { accessToken: 'token' } },
+		{ project: other, role: 'credential:owner' },
+	);
+	const dependent = await buildWorkflowReferencingCredential({
+		name: 'Dependent',
+		project,
+		credential,
+	});
+	const connection = await createConnection(['promote', 'apply']);
+	await Container.get(PromotionsService).promote(connection.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	const agent = server.authAgentFor(owner);
+	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
+
+	// The id exists, but not for this project, so the dependency still counts.
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([
+		expect.objectContaining({ id: dependent.id, status: 'modified', dependencyCount: 1 }),
+	]);
+
+	// Sharing the credential with the project makes it bindable, so it converges.
+	const shared = Container.get(SharedCredentialsRepository);
+	await shared.save(shared.create({ project, credentials: credential, role: 'credential:user' }));
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
 }, 30_000);
 
 it('answers for a destination that has only an apply configuration', async () => {
