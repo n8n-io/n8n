@@ -1190,7 +1190,7 @@ describe('workflow package import — with data tables', () => {
 				}),
 			},
 		])(
-			'does not require dataTable:update from $caller when the table already matches the package, and keeps its column ids',
+			'does not require dataTable:update from $caller when the table already matches the package',
 			async ({ importer }) => {
 				const table = await dataTableService.createDataTable(project.id, {
 					name: 'Customers',
@@ -1199,7 +1199,25 @@ describe('workflow package import — with data tables', () => {
 						{ name: 'signed_up_at', type: 'date' },
 					],
 				});
-				const columnsBefore = await columnsWithIdsOf(table.id);
+				const { packageBuffer } = await buildDataTablePackage([
+					serializedDataTable({ id: table.id, columns: await columnsWithIdsOf(table.id) }),
+				]);
+
+				const result = await importWithOverwrite({ ...(await importer()), packageBuffer });
+
+				expect(result.dataTables).toEqual({ matched: 1, created: 0, updated: 0 });
+			},
+		);
+
+		describe('when only the column ids differ', () => {
+			async function tableWithOtherColumnIds() {
+				const table = await dataTableService.createDataTable(project.id, {
+					name: 'Customers',
+					columns: [
+						{ name: 'email', type: 'string' },
+						{ name: 'signed_up_at', type: 'date' },
+					],
+				});
 				const { packageBuffer } = await buildDataTablePackage([
 					serializedDataTable({
 						id: table.id,
@@ -1209,13 +1227,38 @@ describe('workflow package import — with data tables', () => {
 						],
 					}),
 				]);
+				return { table, packageBuffer, columnsBefore: await columnsWithIdsOf(table.id) };
+			}
 
-				const result = await importWithOverwrite({ ...(await importer()), packageBuffer });
+			it('blocks a user who cannot update data tables in the project and writes nothing', async () => {
+				const member = await memberWithoutDataTableUpdate();
+				const { table, packageBuffer, columnsBefore } = await tableWithOtherColumnIds();
 
-				expect(result.dataTables).toEqual({ matched: 1, created: 0, updated: 0 });
+				await expectBlocked(importWithOverwrite({ user: member, packageBuffer }), {
+					type: 'data-table-unresolved',
+					kind: 'permission-denied',
+					missingScope: 'dataTable:update',
+				});
+
 				expect(await columnsWithIdsOf(table.id)).toEqual(columnsBefore);
-			},
-		);
+				expect(await workflowRepository.count()).toBe(0);
+			});
+
+			it('rejects an API key without dataTable:update and writes nothing', async () => {
+				const { table, packageBuffer, columnsBefore } = await tableWithOtherColumnIds();
+
+				await expect(
+					importWithOverwrite({
+						user: owner,
+						packageBuffer,
+						apiKeyScopes: ['workflow:import', 'dataTable:create'],
+					}),
+				).rejects.toBeInstanceOf(ForbiddenError);
+
+				expect(await columnsWithIdsOf(table.id)).toEqual(columnsBefore);
+				expect(await workflowRepository.count()).toBe(0);
+			});
+		});
 
 		it('rejects a table-changing overwrite when the API key lacks dataTable:update', async () => {
 			const table = await dataTableService.createDataTable(project.id, {

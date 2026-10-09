@@ -51,18 +51,9 @@ export function assertDataTableWritesAllowed(
 	if (dataTablePlans.some((plan) => plan.creations.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['dataTable:create']);
 	}
-	if (dataTablePlans.some((plan) => plan.updates.length > 0)) {
+	if (dataTablePlans.some((plan) => plan.updates.length + plan.columnAlignments.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['dataTable:update']);
 	}
-}
-
-/** Like the role scope in the plan, a missing key scope skips column alignments instead of blocking. */
-export function skipColumnAlignmentsWithoutUpdateScope(
-	apiKeyScopes: string[] | undefined,
-	dataTablePlans: DataTableImportPlan[],
-): void {
-	if (apiKeyScopes === undefined || apiKeyScopes.includes('dataTable:update')) return;
-	for (const plan of dataTablePlans) plan.columnAlignments = [];
 }
 
 /**

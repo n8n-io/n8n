@@ -15,6 +15,7 @@ const reservedColumnNames = new Set(
 
 export const serializedDataTableColumnSchema = z
 	.object({
+		// Optional: packages exported before column ids pair columns by name.
 		id: dataTableIdSchema.min(1).optional(),
 		name: dataTableColumnNameSchema,
 		type: dataTableColumnTypeSchema,

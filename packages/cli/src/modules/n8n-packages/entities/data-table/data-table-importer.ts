@@ -38,9 +38,12 @@ interface PlannedUpdate extends DataTableUpdate {
 	requirement: PackageDataTableRequirement;
 }
 
+type PlannedAlignment = PlannedCreation;
+
 type RequirementEffect =
 	| TableEffect
 	| { action: 'update'; operations: DataTableSchemaOperation[] }
+	// Same visible schema; only column ids or stored positions differ. Users never see these, so the import adopts the package values silently.
 	| { action: 'align-columns' };
 
 @Service()
@@ -87,7 +90,7 @@ export class DataTableImporter {
 
 		const creations: PlannedCreation[] = [];
 		const updates: PlannedUpdate[] = [];
-		const columnAlignments: SerializedDataTable[] = [];
+		const columnAlignments: PlannedAlignment[] = [];
 		const failures: DataTableResolutionFailure[] = [];
 		let matchedCount = 0;
 
@@ -113,29 +116,22 @@ export class DataTableImporter {
 			else if (effect.action === 'update') {
 				updates.push({ table: packageTable, operations: effect.operations, requirement });
 			} else if (effect.action === 'align-columns') {
-				columnAlignments.push(packageTable);
+				columnAlignments.push({ table: packageTable, requirement });
 				matchedCount++;
 			} else if (effect.action === 'fail') failures.push(effect.failure);
 			else if (matchedTargetTable) matchedCount++;
 		}
 
-		failures.push(...(await this.writeFailures(context, creations, updates)));
+		failures.push(...(await this.writeFailures(context, creations, updates, columnAlignments)));
 
-		// An alignment changes no name, type, value, or position a user can see, so a missing scope skips it.
-		const permittedAlignments =
-			columnAlignments.length > 0 && (await hasProjectScope(context, 'dataTable:update'))
-				? columnAlignments
-				: [];
-		await this.assertColumnIdsAvailable([
-			...creations.map(({ table }) => table),
-			...updates.map(({ table }) => table),
-			...permittedAlignments,
-		]);
+		await this.assertColumnIdsAvailable(
+			[...creations, ...updates, ...columnAlignments].map(({ table }) => table),
+		);
 
 		return {
 			creations: creations.map(({ table }) => table),
 			updates: updates.map(({ table, operations }) => ({ table, operations })),
-			columnAlignments: permittedAlignments,
+			columnAlignments: columnAlignments.map(({ table }) => table),
 			failures,
 			matchedCount,
 		};
@@ -182,7 +178,10 @@ export class DataTableImporter {
 		if (plan.creations.length > 0 && !(await hasProjectScope(context, 'dataTable:create'))) {
 			throw new ForbiddenError('User is missing a scope required to create a data table');
 		}
-		if (plan.updates.length > 0 && !(await hasProjectScope(context, 'dataTable:update'))) {
+		if (
+			plan.updates.length + plan.columnAlignments.length > 0 &&
+			!(await hasProjectScope(context, 'dataTable:update'))
+		) {
 			throw new ForbiddenError('User is missing a scope required to update a data table');
 		}
 
@@ -195,12 +194,7 @@ export class DataTableImporter {
 			);
 		}
 
-		// An alignment is skipped, not rejected, without the scope, as in the plan phase.
-		const columnAlignments =
-			plan.columnAlignments.length > 0 && (await hasProjectScope(context, 'dataTable:update'))
-				? plan.columnAlignments
-				: [];
-		for (const table of [...plan.updates.map(({ table }) => table), ...columnAlignments]) {
+		for (const table of [...plan.updates.map(({ table }) => table), ...plan.columnAlignments]) {
 			await this.dataTableService.replaceSchema(table.id, context.projectId, {
 				name: table.name,
 				columns: table.columns,
@@ -239,6 +233,7 @@ export class DataTableImporter {
 		context: ImportContext,
 		creations: PlannedCreation[],
 		updates: PlannedUpdate[],
+		alignments: PlannedAlignment[],
 	): Promise<DataTableResolutionFailure[]> {
 		const failures: DataTableResolutionFailure[] = [];
 
@@ -250,11 +245,12 @@ export class DataTableImporter {
 			});
 		}
 
-		if (updates.length > 0 && !(await hasProjectScope(context, 'dataTable:update'))) {
+		const changedTables = [...updates, ...alignments];
+		if (changedTables.length > 0 && !(await hasProjectScope(context, 'dataTable:update'))) {
 			failures.push({
 				kind: 'permission-denied',
 				missingScope: 'dataTable:update',
-				usedByWorkflows: workflowsUsing(updates.map(({ requirement }) => requirement)),
+				usedByWorkflows: workflowsUsing(changedTables.map(({ requirement }) => requirement)),
 			});
 		}
 
@@ -345,7 +341,6 @@ function resolveRequirement(
 				}
 				return { action: 'update', operations };
 			}
-			// Column ids and position gaps do not show as changes, but a fresh export must match the package.
 			const isAligned = pairs.every(
 				({ source, target }) =>
 					(source.id === undefined || source.id === target.id) && source.index === target.index,

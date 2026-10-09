@@ -1,4 +1,4 @@
-import { orderColumnRenames } from '../utils/pair-columns';
+import { orderColumnRenames, pairDataTableColumns } from '../utils/pair-columns';
 
 function orderRenames(columns: Array<[from: string, to: string, newType?: string]>) {
 	const { ordered, blocked } = orderColumnRenames(
@@ -80,5 +80,49 @@ describe('orderColumnRenames', () => {
 
 	it('allows a case-only rename', () => {
 		expect(orderRenames([['foo', 'Foo']])).toEqual({ ordered: ['foo->Foo'], blocked: [] });
+	});
+});
+
+describe('pairDataTableColumns', () => {
+	it('pairs a column by id even when another column has its name', () => {
+		const email = { id: 'c1', name: 'email' };
+		const oldEmail = { id: 'c2', name: 'email' };
+		const mail = { id: 'c1', name: 'mail' };
+
+		expect(pairDataTableColumns([email], [oldEmail, mail])).toEqual({
+			pairs: [{ source: email, target: mail }],
+			added: [],
+			removed: [oldEmail],
+		});
+	});
+
+	it('pairs columns by name when they have no id or an id the target does not have', () => {
+		const email = { name: 'email' };
+		const age = { id: 'c9', name: 'age' };
+		const targetEmail = { id: 'c1', name: 'email' };
+		const targetAge = { id: 'c2', name: 'age' };
+
+		expect(pairDataTableColumns([email, age], [targetEmail, targetAge])).toEqual({
+			pairs: [
+				{ source: email, target: targetEmail },
+				{ source: age, target: targetAge },
+			],
+			added: [],
+			removed: [],
+		});
+	});
+
+	it('returns added columns in source order and removed columns in target order', () => {
+		const kept = { id: 'c1', name: 'email' };
+		const firstNew = { name: 'b' };
+		const secondNew = { name: 'a' };
+		const firstOld = { id: 'c3', name: 'y' };
+		const secondOld = { id: 'c2', name: 'x' };
+
+		expect(pairDataTableColumns([firstNew, kept, secondNew], [firstOld, kept, secondOld])).toEqual({
+			pairs: [{ source: kept, target: kept }],
+			added: [firstNew, secondNew],
+			removed: [firstOld, secondOld],
+		});
 	});
 });

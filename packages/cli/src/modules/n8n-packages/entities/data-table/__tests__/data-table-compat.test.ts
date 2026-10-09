@@ -92,7 +92,7 @@ describe('diffDataTableSchema', () => {
 		).toEqual([]);
 	});
 
-	it('detects every kind of change and lists them in a fixed order', () => {
+	it('lists removed, retyped, renamed, and added columns, then a reorder and a table rename, in that order', () => {
 		expect(
 			diffDataTableSchema(
 				{
@@ -147,18 +147,19 @@ describe('diffDataTableSchema', () => {
 		]);
 	});
 
-	it('reports a rename when a column takes the name of a removed column', () => {
+	it('removes the deleted column and renames the other when a column takes the name of a column deleted in the source', () => {
+		// The source deleted `email`, then renamed `mail` to `email`.
 		expect(
 			diffDataTableColumns(
-				[{ id: 'c1', name: 'b', type: 'string', index: 0 }],
+				[{ id: 'c1', name: 'email', type: 'string', index: 0 }],
 				[
-					{ id: 'c2', name: 'b', type: 'string', index: 0 },
-					{ id: 'c1', name: 'a', type: 'string', index: 1 },
+					{ id: 'c2', name: 'email', type: 'string', index: 0 },
+					{ id: 'c1', name: 'mail', type: 'string', index: 1 },
 				],
 			),
 		).toEqual([
-			{ kind: 'remove-column', column: 'b', type: 'string', destructive: true },
-			{ kind: 'rename-column', from: 'a', to: 'b', destructive: false },
+			{ kind: 'remove-column', column: 'email', type: 'string', destructive: true },
+			{ kind: 'rename-column', from: 'mail', to: 'email', destructive: false },
 		]);
 	});
 
