@@ -13,6 +13,7 @@ packages/@n8n/nodes-langchain/utils/google-vertex.ts
   s_9dde2d3ceb6629::t_43f2e10fa447a0 20-21,57-58
 packages/@n8n/nodes-langchain/utils/tests/google-vertex.test.ts
   s_9dde2d3ceb6629::t_395d36283ffc71 2-4,7-10,43-65
+  s_e99de54a53d3e4::t_611ed63bbd89e6 15-19
 packages/cli/src/credentials/__tests__/credential-options.service.test.ts
   s_9dde2d3ceb6629::t_3c5ba4ec1b40a5 53-57,65
 packages/cli/src/credentials/credential-options.service.ts
@@ -37,6 +38,14 @@ packages/workflow/src/interfaces.ts
         "tool": "codex",
         "id": "01a11ac2-6b8c-78c0-8c5b-f0f0c2840b03",
         "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }
