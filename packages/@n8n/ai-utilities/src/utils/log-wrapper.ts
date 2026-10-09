@@ -9,7 +9,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { BaseRetriever } from '@langchain/core/retrievers';
 import { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { StructuredTool, Tool } from '@langchain/core/tools';
-import { VectorStore } from '@langchain/core/vectorstores';
+import type { VectorStore } from '@langchain/core/vectorstores';
 import { TextSplitter } from '@langchain/textsplitters';
 import type {
 	IDataObject,
@@ -26,7 +26,12 @@ import {
 	deepCopy,
 } from 'n8n-workflow';
 
-import { isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from '../guards';
+import {
+	isToolsInstance,
+	isBaseChatMemory,
+	isBaseChatMessageHistory,
+	isVectorStore,
+} from '../guards';
 import {
 	validateEmbedQueryInput,
 	validateEmbedDocumentsInput,
@@ -451,7 +456,7 @@ export function logWrapper<
 			}
 
 			// ========== VectorStore ==========
-			if (originalInstance instanceof VectorStore) {
+			if (isVectorStore(originalInstance)) {
 				if (prop === 'similaritySearch' && 'similaritySearch' in target) {
 					return async (
 						query: string,
