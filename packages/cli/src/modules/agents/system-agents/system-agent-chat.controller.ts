@@ -7,6 +7,7 @@ import {
 	AgentChatQueueSteerDto,
 	AgentChatQueueUpdateDto,
 	AgentChatResumeDto,
+	type AgentThreadUsageResponse,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, RestController } from '@n8n/decorators';
@@ -199,6 +200,18 @@ export class SystemAgentChatController {
 	): Promise<AgentBackgroundJobsResponse> {
 		await this.systemAgents.getUsableThread(req.params.agentId, req.user, req.params.threadId);
 		return { tasks: [] };
+	}
+
+	@Get('/:agentId/chat/:threadId/usage')
+	async getUsage(
+		req: AuthenticatedRequest<{ agentId: string; threadId: string }>,
+	): Promise<AgentThreadUsageResponse> {
+		const thread = await this.systemAgents.getUsableThread(
+			req.params.agentId,
+			req.user,
+			req.params.threadId,
+		);
+		return await this.systemAgents.getUsage(thread);
 	}
 
 	// ── Queue ────────────────────────────────────────────────────────────────

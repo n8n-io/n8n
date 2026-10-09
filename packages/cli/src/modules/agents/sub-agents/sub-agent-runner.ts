@@ -36,6 +36,10 @@ import { v4 as uuid } from 'uuid';
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import type { StartExecutionParams } from '../agent-execution.service';
+import {
+	AgentExecutionRepository,
+	type AgentExecutionLinks,
+} from '../repositories/agent-execution.repository';
 import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
 import { bindExecutionInput } from '../utils/execution-input';
 import { BACKGROUND_SUB_AGENT_METADATA_KEY } from '../background/sub-agent-background-state';
@@ -169,6 +173,7 @@ export class SubAgentRunner {
 		private readonly logger: Logger,
 		private readonly aiConfig: AiConfig,
 		private readonly toolApprovalService: AgentToolApprovalService,
+		private readonly executionRepository: AgentExecutionRepository,
 	) {}
 
 	async run(
@@ -279,6 +284,7 @@ export class SubAgentRunner {
 		const telemetry = deriveSubAgentTelemetry(context.telemetry);
 		const userMessage =
 			operation.type === 'run' ? renderDelegateSubAgentPrompt(operation.request) : null;
+		const executionLinks = await this.resolveExecutionLinks(operation, threadId);
 		const recording: StartExecutionParams = {
 			// Saved parents supply access in the thread creation transaction.
 			access: { accessScope: 'user', ownerId: null },
@@ -291,6 +297,7 @@ export class SubAgentRunner {
 			resumeRunId: operation.type !== 'run' ? operation.request.childRunId : undefined,
 			sessionMode: operation.type !== 'run' ? 'existing' : 'new',
 			source: 'subagent',
+			...(executionLinks !== undefined ? { executionLinks } : {}),
 			threadMetadata: {
 				parentThreadId: operation.request.parentThreadId,
 				parentAgentId: context.parentAgentId,
@@ -468,6 +475,32 @@ export class SubAgentRunner {
 					});
 				});
 			}
+		}
+	}
+
+	/**
+	 * A new run links to the parent execution that delegates it. A resumed run
+	 * keeps the links of the child's first execution, so every execution of one
+	 * child points at the turn that delegated it, even when a later turn resumes it.
+	 */
+	private async resolveExecutionLinks(
+		operation: ForegroundOperation,
+		threadId: string,
+	): Promise<AgentExecutionLinks | undefined> {
+		try {
+			if (operation.type !== 'run') {
+				return (await this.executionRepository.findFirstLinksInThread(threadId)) ?? undefined;
+			}
+			const { parentExecutionId } = operation.request;
+			if (parentExecutionId === undefined) return undefined;
+			return (await this.executionRepository.findLinksForChildOf(parentExecutionId)) ?? undefined;
+		} catch (error) {
+			// Links serve usage reads only. A failed lookup must not stop the delegated run.
+			this.logger.warn('Failed to resolve sub-agent execution links', {
+				taskPath: operation.taskPath,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
 		}
 	}
 

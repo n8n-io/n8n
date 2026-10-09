@@ -49,6 +49,8 @@ export interface BackgroundSpawnRequest {
 	/** Self-delegation only: model tier override applied by the runner. */
 	difficulty?: SubAgentTaskDifficulty;
 	parentThreadId: string;
+	/** Execution of the parent turn that dispatches the job. Links the child execution to it. */
+	parentExecutionId?: string;
 	parentResourceId: string;
 	parentSandboxPrincipalHash: string;
 	parentMessageContext?: IntegrationMessageContext | null;
@@ -123,6 +125,9 @@ export class SubAgentBackgroundRunner {
 						? { expectedOutput: request.expectedOutput }
 						: {}),
 					parentThreadId: request.parentThreadId,
+					...(request.parentExecutionId !== undefined
+						? { parentExecutionId: request.parentExecutionId }
+						: {}),
 					parentResourceId: request.parentResourceId,
 					parentSandboxPrincipalHash: request.parentSandboxPrincipalHash,
 					childThreadId,

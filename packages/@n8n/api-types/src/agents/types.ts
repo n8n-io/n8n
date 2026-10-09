@@ -405,6 +405,51 @@ export interface AgentChatQueueResponse {
 	steerableExecutionId: string | null;
 }
 
+/**
+ * Token usage and cost of one agent execution, or a sum of executions.
+ * `cacheReadTokens` and `cacheWriteTokens` are subsets of `promptTokens`.
+ */
+export interface AgentExecutionUsage {
+	promptTokens: number | null;
+	completionTokens: number | null;
+	totalTokens: number | null;
+	/** Input tokens read from the provider prompt cache. Part of `promptTokens`. */
+	cacheReadTokens: number | null;
+	/** Input tokens written to the provider prompt cache. Part of `promptTokens`. */
+	cacheWriteTokens: number | null;
+	/** Estimated cost in USD. */
+	cost: number | null;
+}
+
+/** Usage of one execution, with the fields that identify it. */
+export interface AgentExecutionUsageEntry extends AgentExecutionUsage {
+	executionId: string;
+	/** Session thread of the execution. A delegated run has its own child thread. */
+	threadId: string;
+	/** Execution that delegated this run. Null for a top-level turn. */
+	parentExecutionId: string | null;
+	status: AgentExecutionStatus;
+	model: string | null;
+	startedAt: string | null;
+	stoppedAt: string | null;
+	duration: number;
+}
+
+/** Usage of one turn: its own execution, its delegated runs and their sum. */
+export interface AgentTurnUsage extends AgentExecutionUsageEntry {
+	/** Delegated runs at all depths that have this turn as their root, oldest first. */
+	descendants: AgentExecutionUsageEntry[];
+	/** Sum of the turn's own usage and the usage of all its descendants. */
+	total: AgentExecutionUsage;
+}
+
+/** Usage of every turn in a system-agent thread, oldest first. */
+export interface AgentThreadUsageResponse {
+	executions: AgentTurnUsage[];
+	/** Sum of all turns and their descendants. */
+	total: AgentExecutionUsage;
+}
+
 /** Chat history envelope returned by the agent chat messages endpoints. */
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];

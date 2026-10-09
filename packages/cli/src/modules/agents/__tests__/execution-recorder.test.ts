@@ -369,6 +369,99 @@ describe('ExecutionRecorder', () => {
 		});
 	});
 
+	describe('prompt-cache tokens', () => {
+		it('stores the prompt-cache tokens of the finish usage as subsets of the prompt tokens', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: {
+					promptTokens: 1000,
+					completionTokens: 40,
+					totalTokens: 1040,
+					cost: 0.1,
+					inputTokenDetails: { noCache: 100, cacheRead: 800, cacheWrite: 100 },
+				},
+			});
+
+			const record = recorder.getMessageRecord();
+			expect(record.usage).toEqual({
+				promptTokens: 1000,
+				completionTokens: 40,
+				totalTokens: 1040,
+			});
+			expect(record.cacheReadTokens).toBe(800);
+			expect(record.cacheWriteTokens).toBe(100);
+		});
+
+		it('keeps zero cache reads apart from a missing value', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: {
+					promptTokens: 10,
+					completionTokens: 1,
+					totalTokens: 11,
+					inputTokenDetails: { cacheRead: 0 },
+				},
+			});
+
+			const record = recorder.getMessageRecord();
+			expect(record.cacheReadTokens).toBe(0);
+			expect(record.cacheWriteTokens).toBeNull();
+		});
+
+		it('has no cache tokens when the turn reports none', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: { promptTokens: 10, completionTokens: 1, totalTokens: 11 },
+			});
+
+			const record = recorder.getMessageRecord();
+			expect(record.cacheReadTokens).toBeNull();
+			expect(record.cacheWriteTokens).toBeNull();
+		});
+
+		it('does not add sub-agent usage to the turn', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'subagent-completed',
+				taskName: 'builder',
+				taskPath: 'builder',
+				parentToolCallId: 'tc1',
+				status: 'completed',
+				startedAt: 0,
+				finishedAt: 1,
+				durationMs: 1,
+				usage: { promptTokens: 300, completionTokens: 30, totalTokens: 330, cost: 0.03 },
+			});
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: {
+					promptTokens: 1000,
+					completionTokens: 40,
+					totalTokens: 1040,
+					cost: 0.1,
+					inputTokenDetails: { cacheRead: 900 },
+				},
+			});
+
+			// The child records its own execution, linked to this one.
+			const record = recorder.getMessageRecord();
+			expect(record.usage).toEqual({ promptTokens: 1000, completionTokens: 40, totalTokens: 1040 });
+			expect(record.totalCost).toBe(0.1);
+			expect(record.cacheReadTokens).toBe(900);
+		});
+	});
+
 	describe('secret scrubbing', () => {
 		it('sanitizes tool inputs and outputs in timeline entries', () => {
 			const recorder = new ExecutionRecorder();

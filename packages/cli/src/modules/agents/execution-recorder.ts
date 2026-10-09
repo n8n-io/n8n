@@ -276,6 +276,10 @@ export interface MessageRecord {
 	finishReason: string;
 	usage: RecordedUsage | null;
 	totalCost: number | null;
+	/** Input tokens read from the prompt cache. A subset of `usage.promptTokens`. */
+	cacheReadTokens: number | null;
+	/** Input tokens written to the prompt cache. A subset of `usage.promptTokens`. */
+	cacheWriteTokens: number | null;
 	timeline: TimelineEvent[];
 	startTime: number;
 	duration: number;
@@ -324,6 +328,10 @@ export class ExecutionRecorder {
 	private usage: RecordedUsage | null = null;
 
 	private totalCost: number | null = null;
+
+	private cacheReadTokens: number | null = null;
+
+	private cacheWriteTokens: number | null = null;
 
 	private timeline: TimelineEvent[] = [];
 
@@ -441,6 +449,8 @@ export class ExecutionRecorder {
 						completionTokens: chunk.usage.completionTokens,
 						totalTokens: chunk.usage.totalTokens,
 					};
+					this.cacheReadTokens = chunk.usage.inputTokenDetails?.cacheRead ?? null;
+					this.cacheWriteTokens = chunk.usage.inputTokenDetails?.cacheWrite ?? null;
 				}
 				this.model = chunk.model ?? null;
 				this.totalCost = chunk.usage?.cost ?? null;
@@ -492,6 +502,8 @@ export class ExecutionRecorder {
 			finishReason: this.finishReason,
 			usage: this.usage,
 			totalCost: this.totalCost,
+			cacheReadTokens: this.cacheReadTokens,
+			cacheWriteTokens: this.cacheWriteTokens,
 			timeline: this.timeline,
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,

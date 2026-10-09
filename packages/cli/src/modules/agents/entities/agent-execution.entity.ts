@@ -25,6 +25,8 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 @Entity({ name: 'agent_execution' })
 @Index(['threadId', 'createdAt'])
 @Index(['status'], { where: '"status" = \'running\'' })
+@Index('IDX_agent_execution_parentExecutionId', ['parentExecutionId'])
+@Index('IDX_agent_execution_rootExecutionId', ['rootExecutionId'])
 export class AgentExecution extends WithTimestampsAndStringId {
 	/** Read projections. Absent for executions recorded before message references. */
 	inputMessageIds?: string[];
@@ -42,6 +44,28 @@ export class AgentExecution extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
+
+	/**
+	 * Execution of the parent turn that delegated this run. Null for a
+	 * top-level turn, and after the parent execution is deleted.
+	 */
+	@ManyToOne(() => AgentExecution, { onDelete: 'SET NULL', nullable: true })
+	@JoinColumn({ name: 'parentExecutionId' })
+	parentExecution?: AgentExecution | null;
+
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	parentExecutionId: string | null;
+
+	/**
+	 * Top-level execution of the delegation tree: the parent's root, or the
+	 * parent itself when it has no root. Null for a top-level turn.
+	 */
+	@ManyToOne(() => AgentExecution, { onDelete: 'SET NULL', nullable: true })
+	@JoinColumn({ name: 'rootExecutionId' })
+	rootExecution?: AgentExecution | null;
+
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	rootExecutionId: string | null;
 
 	@Column({
 		type: 'boolean',
@@ -75,8 +99,17 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	model: string | null;
 
+	/** Input tokens of the turn, cached input included (AI SDK `inputTokens`). */
 	@Column({ type: 'int', nullable: true })
 	promptTokens: number | null;
+
+	/** Input tokens read from the provider prompt cache. A subset of `promptTokens`. */
+	@Column({ type: 'int', nullable: true })
+	cacheReadTokens: number | null;
+
+	/** Input tokens written to the provider prompt cache. A subset of `promptTokens`. */
+	@Column({ type: 'int', nullable: true })
+	cacheWriteTokens: number | null;
 
 	@Column({ type: 'int', nullable: true })
 	completionTokens: number | null;

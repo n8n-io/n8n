@@ -234,6 +234,38 @@ describe('SystemAgentChatController', () => {
 		expect(orchestrator.getConversationHistory).not.toHaveBeenCalled();
 	});
 
+	it('returns the usage of a usable thread', async () => {
+		const { controller, systemAgents } = setup();
+		const usage = {
+			executions: [],
+			total: {
+				promptTokens: null,
+				completionTokens: null,
+				totalTokens: null,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+				cost: null,
+			},
+		};
+		systemAgents.getUsage.mockResolvedValue(usage);
+
+		await expect(
+			controller.getUsage(request({ agentId: AGENT_ID, threadId: 'thread-1' })),
+		).resolves.toBe(usage);
+		expect(systemAgents.getUsableThread).toHaveBeenCalledWith(AGENT_ID, user, 'thread-1');
+		expect(systemAgents.getUsage).toHaveBeenCalledWith(thread);
+	});
+
+	it('reads the usage of a usable thread only', async () => {
+		const { controller, systemAgents } = setup();
+		systemAgents.getUsableThread.mockRejectedValue(new NotFoundError('Session not found'));
+
+		await expect(
+			controller.getUsage(request({ agentId: AGENT_ID, threadId: 'thread-1' })),
+		).rejects.toThrow(NotFoundError);
+		expect(systemAgents.getUsage).not.toHaveBeenCalled();
+	});
+
 	it('cancels a suspended run in the memory scope of the user', async () => {
 		const { controller, systemAgents, orchestrator } = setup();
 		orchestrator.cancelChatRun.mockResolvedValue(true);

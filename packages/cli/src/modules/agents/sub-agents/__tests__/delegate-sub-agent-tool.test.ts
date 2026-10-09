@@ -186,7 +186,10 @@ describe('createN8nDelegateSubAgentTool', () => {
 				persistence: {
 					threadId: 'parent-thread-1',
 					resourceId: 'resource-1',
-					hostMetadata: encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+					hostMetadata: {
+						...encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+						n8nExecutionId: 'parent-execution-1',
+					},
 				},
 			},
 		);
@@ -194,6 +197,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 		expect(runner.run).toHaveBeenCalledWith(
 			expect.objectContaining({
 				parentThreadId: 'parent-thread-1',
+				parentExecutionId: 'parent-execution-1',
 				parentResourceId: 'resource-1',
 				parentSandboxPrincipalHash: principalHash,
 			}),
