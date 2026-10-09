@@ -1,0 +1,84 @@
+{
+	"task": "acme-tasks",
+	"format": "old",
+	"iteration": 1,
+	"pass": true,
+	"checks": [
+		{
+			"name": "build",
+			"pass": true,
+			"reason": ""
+		},
+		{
+			"name": "lint",
+			"pass": true,
+			"reason": ""
+		},
+		{
+			"name": "node",
+			"pass": true,
+			"reason": ""
+		},
+		{
+			"name": "credential",
+			"pass": true,
+			"reason": ""
+		},
+		{
+			"name": "case:create",
+			"pass": true,
+			"reason": ""
+		}
+	],
+	"gradeSeconds": 1.5,
+	"seconds": 20,
+	"exitCode": 0,
+	"timedOut": false,
+	"turns": 2,
+	"toolCalls": 1,
+	"tools": {
+		"bash": {
+			"count": 1,
+			"seconds": 2
+		}
+	},
+	"tokens": {
+		"input": 6,
+		"output": 150,
+		"cacheRead": 3000,
+		"cacheWrite": 3200,
+		"cost": 0.015
+	},
+	"commands": {
+		"build": 0,
+		"check": 0,
+		"test": 0,
+		"run": 0,
+		"curl": 1
+	},
+	"turnTokens": [
+		{
+			"input": 4,
+			"output": 100,
+			"cacheRead": 0,
+			"cacheWrite": 3000,
+			"cost": 0.01
+		},
+		{
+			"input": 2,
+			"output": 50,
+			"cacheRead": 3000,
+			"cacheWrite": 200,
+			"cost": 0.005
+		}
+	],
+	"calls": [
+		{
+			"name": "bash",
+			"seconds": 2,
+			"isError": false,
+			"turn": 1,
+			"command": "curl -s http://127.0.0.1:18090/acme-tasks/docs"
+		}
+	]
+}

@@ -5,7 +5,7 @@
  */
 import { isRecord } from '@n8n/utils/is-record';
 
-import { compat, credential, type AnyCredentialType } from '../credentials';
+import { compat, credential, isUrlTemplate, type AnyCredentialType } from '../credentials';
 import {
 	defineNode,
 	toContract,
@@ -373,16 +373,15 @@ function credentialTypeOf(config: HttpGuestConfig, name: string) {
 	);
 	const baseUrl = given?.baseUrl;
 	if (baseUrl !== undefined && !isUrlTemplate(baseUrl)) {
-		throw new UserError(`The base URL of ${name} must start with https:// or a {field}`);
+		throw new UserError(
+			`The base URL of ${name} must start with https://, http://localhost, http://127.0.0.1 or a {field}`,
+		);
 	}
 	return compat(name, {
 		...(given?.fields ? { fields } : {}),
 		...(baseUrl === undefined ? {} : { baseUrl }),
 	});
 }
-
-const isUrlTemplate = (value: string): value is `https://${string}` | `{${string}}${string}` =>
-	/^(https:\/\/|\{[^}]+\})/.test(value);
 
 /** Top-level fields of the contract that the binding gives in another form, e.g. `egress`. */
 function driftOf(config: HttpGuestConfig, action: Action): string[] {

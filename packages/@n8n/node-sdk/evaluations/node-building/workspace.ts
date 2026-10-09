@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, realpathSync } from 'node:fs';
-import { cp, mkdir, rename, rm, symlink } from 'node:fs/promises';
+import { cp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { SDK_DIR, scaffoldNewProject, writeCliShim } from './n1-adapter';
@@ -20,8 +20,18 @@ function storePackage(prefix: string, name: string) {
 	return path.join(PNPM_DIR, entry, 'node_modules', name);
 }
 
+/** What the package needs at run time. The bin runs from `src`. */
+const SDK_ENTRIES = ['package.json', 'dist', 'spec', 'src', 'templates', 'node_modules'];
+
+/** A package root with only the run-time entries, so the workspace cannot browse `evaluations/`. */
+async function stageSdk(dir: string) {
+	if (existsSync(dir)) return;
+	await mkdir(dir, { recursive: true });
+	for (const entry of SDK_ENTRIES) await symlink(path.join(SDK_DIR, entry), path.join(dir, entry));
+}
+
 /** node_modules entries, resolved to repo packages: no network install. */
-function linksOf(format: Format): Record<string, string> {
+function linksOf(format: Format, sdkDir: string): Record<string, string> {
 	const common = {
 		'n8n-workflow': path.join(REPO_DIR, 'packages/workflow'),
 		'@types/node': realpathSync(path.join(REPO_DIR, 'node_modules/@types/node')),
@@ -37,7 +47,7 @@ function linksOf(format: Format): Record<string, string> {
 			}
 		: {
 				...common,
-				'@n8n/node-sdk': SDK_DIR,
+				'@n8n/node-sdk': sdkDir,
 				typescript: realpathSync(path.join(REPO_DIR, 'node_modules/typescript')),
 			};
 }
@@ -52,18 +62,18 @@ const BINS: Record<Format, Record<string, string>> = {
 	new: { tsc: '../typescript/bin/tsc', tsx: '../tsx/dist/cli.mjs' },
 };
 
-async function linkNodeModules(dir: string, format: Format) {
+async function linkNodeModules(dir: string, format: Format, sdkDir: string) {
 	const modules = path.join(dir, 'node_modules');
 	await rm(modules, { recursive: true, force: true });
 	await mkdir(path.join(modules, '.bin'), { recursive: true });
-	for (const [name, target] of Object.entries(linksOf(format))) {
+	for (const [name, target] of Object.entries(linksOf(format, sdkDir))) {
 		await mkdir(path.dirname(path.join(modules, name)), { recursive: true });
 		await symlink(target, path.join(modules, name));
 	}
 	for (const [name, target] of Object.entries(BINS[format])) {
 		await symlink(target, path.join(modules, '.bin', name));
 	}
-	if (format === 'new') await writeCliShim(path.join(modules, '.bin'));
+	if (format === 'new') await writeCliShim(path.join(modules, '.bin'), sdkDir);
 }
 
 /** Environment for agent and grader: the project's bins first, no GitHub login, no installs. */
@@ -121,7 +131,15 @@ export async function prepareTemplate(
 	// Eval docs for the format, tuned like the new-format scaffold docs; they replace the scaffold files.
 	const overlay = path.join(__dirname, 'overlays', format);
 	if (existsSync(overlay)) await cp(overlay, dir, { recursive: true });
-	await linkNodeModules(dir, format);
+	const sdkDir = path.join(root, 'node-sdk');
+	await stageSdk(sdkDir);
+	if (format === 'new') {
+		// The scaffold links the SDK by its repo path, which points the agent at `evaluations/`.
+		const manifest = path.join(dir, 'package.json');
+		const text = await readFile(manifest, 'utf8');
+		await writeFile(manifest, text.split(`link:${SDK_DIR}`).join(`link:${sdkDir}`));
+	}
+	await linkNodeModules(dir, format, sdkDir);
 	return dir;
 }
 

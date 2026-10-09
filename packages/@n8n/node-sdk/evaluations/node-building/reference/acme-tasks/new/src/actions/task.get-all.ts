@@ -8,9 +8,9 @@ export const getManyTasks = tasks.action('getAll', {
 	summary: 'List Acme tasks, optionally filtered by status.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
-		status: t.oneOf('any', 'open', 'done').default('any'),
-		returnAll: t.bool().default(false),
-		limit: t.int().with({ minimum: 1 }).default(50),
+		status: t.oneOf('any', 'open', 'done').title('Status').default('any'),
+		returnAll: t.bool().title('Return All').default(false),
+		limit: t.int().title('Limit').with({ minimum: 1 }).default(50),
 	},
 	output: task,
 	async *run({ input, http }) {

@@ -1,0 +1,289 @@
+{
+	"id": "projects",
+	"node": "projects",
+	"engine": "n8n",
+	"credential": {
+		"name": "projectsApi",
+		"properties": ["apiKey"],
+		"data": {
+			"apiKey": "{{secret}}"
+		},
+		"secretPrefix": "prj_"
+	},
+	"prompt": [
+		"Build an n8n node for the Projects API. Read its docs first: `curl -s http://127.0.0.1:18090/projects/docs`.",
+		"The API runs locally. Use the sandbox key from the docs for your tests.",
+		"",
+		"A grader checks these names exactly:",
+		"- Node name `projects`, display name \"Projects\".",
+		"- Credential name `projectsApi` with one field `apiKey` (a password field). The credential sends the key the way the docs say.",
+		"- Operation `project.get` (\"Get a project\"). Field: `project` (required), a resource locator with three modes: `list` (a searchable list of the projects that shows the project name and stores the project ID), `id` (the project ID), and `url` (the project URL, `https://app.projects.test/p/<id>`). Emit the project as the API returns it.",
+		"",
+		"{{format}}",
+		"",
+		"Work in the current directory. Dependencies are installed: do not install packages. Do not ask questions.",
+		"Stop when the node builds, passes the format checks, and works against the API."
+	],
+	"cases": [
+		{
+			"id": "get-by-id",
+			"operation": "project.get",
+			"input": {
+				"project": {
+					"__rl": true,
+					"mode": "id",
+					"value": "pj_3a95"
+				}
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "pj_3a95",
+						"name": "Beta project 2",
+						"createdAt": "2026-05-02T00:00:00.000Z"
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/projects/v1/projects/pj_3a95",
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "get-by-url",
+			"operation": "project.get",
+			"input": {
+				"project": {
+					"__rl": true,
+					"mode": "url",
+					"value": "https://app.projects.test/p/pj_3b2a"
+				}
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "pj_3b2a",
+						"name": "Gamma project 3",
+						"createdAt": "2026-05-03T00:00:00.000Z"
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/projects/v1/projects/pj_3b2a",
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "get-from-list",
+			"operation": "project.get",
+			"input": {
+				"project": {
+					"__rl": true,
+					"mode": "list",
+					"value": "pj_3a00"
+				}
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "pj_3a00",
+						"name": "Alpha project 1",
+						"createdAt": "2026-05-01T00:00:00.000Z"
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/projects/v1/projects/pj_3a00",
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "get-unknown",
+			"operation": "project.get",
+			"input": {
+				"project": {
+					"__rl": true,
+					"mode": "id",
+					"value": "pj_ffff"
+				}
+			},
+			"expect": {
+				"error": true
+			}
+		},
+		{
+			"id": "list-all",
+			"operation": "project.get",
+			"input": {},
+			"listSearch": {
+				"field": "project"
+			},
+			"expect": {
+				"items": [
+					{
+						"name": "Alpha project 1",
+						"value": "pj_3a00"
+					},
+					{
+						"name": "Beta project 2",
+						"value": "pj_3a95"
+					},
+					{
+						"name": "Gamma project 3",
+						"value": "pj_3b2a"
+					},
+					{
+						"name": "Alpha project 4",
+						"value": "pj_3bbf"
+					},
+					{
+						"name": "Beta project 5",
+						"value": "pj_3c54"
+					},
+					{
+						"name": "Gamma project 6",
+						"value": "pj_3ce9"
+					},
+					{
+						"name": "Alpha project 7",
+						"value": "pj_3d7e"
+					},
+					{
+						"name": "Beta project 8",
+						"value": "pj_3e13"
+					},
+					{
+						"name": "Gamma project 9",
+						"value": "pj_3ea8"
+					},
+					{
+						"name": "Alpha project 10",
+						"value": "pj_3f3d"
+					},
+					{
+						"name": "Beta project 11",
+						"value": "pj_3fd2"
+					},
+					{
+						"name": "Gamma project 12",
+						"value": "pj_4067"
+					},
+					{
+						"name": "Alpha project 13",
+						"value": "pj_40fc"
+					},
+					{
+						"name": "Beta project 14",
+						"value": "pj_4191"
+					},
+					{
+						"name": "Gamma project 15",
+						"value": "pj_4226"
+					},
+					{
+						"name": "Alpha project 16",
+						"value": "pj_42bb"
+					},
+					{
+						"name": "Beta project 17",
+						"value": "pj_4350"
+					},
+					{
+						"name": "Gamma project 18",
+						"value": "pj_43e5"
+					},
+					{
+						"name": "Alpha project 19",
+						"value": "pj_447a"
+					},
+					{
+						"name": "Beta project 20",
+						"value": "pj_450f"
+					},
+					{
+						"name": "Gamma project 21",
+						"value": "pj_45a4"
+					},
+					{
+						"name": "Alpha project 22",
+						"value": "pj_4639"
+					},
+					{
+						"name": "Beta project 23",
+						"value": "pj_46ce"
+					},
+					{
+						"name": "Gamma project 24",
+						"value": "pj_4763"
+					},
+					{
+						"name": "Alpha project 25",
+						"value": "pj_47f8"
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/projects/v1/projects",
+					"pagination": "cursor"
+				}
+			}
+		},
+		{
+			"id": "list-filter",
+			"operation": "project.get",
+			"input": {},
+			"listSearch": {
+				"field": "project",
+				"filter": "alpha"
+			},
+			"expect": {
+				"items": [
+					{
+						"name": "Alpha project 1",
+						"value": "pj_3a00"
+					},
+					{
+						"name": "Alpha project 4",
+						"value": "pj_3bbf"
+					},
+					{
+						"name": "Alpha project 7",
+						"value": "pj_3d7e"
+					},
+					{
+						"name": "Alpha project 10",
+						"value": "pj_3f3d"
+					},
+					{
+						"name": "Alpha project 13",
+						"value": "pj_40fc"
+					},
+					{
+						"name": "Alpha project 16",
+						"value": "pj_42bb"
+					},
+					{
+						"name": "Alpha project 19",
+						"value": "pj_447a"
+					},
+					{
+						"name": "Alpha project 22",
+						"value": "pj_4639"
+					},
+					{
+						"name": "Alpha project 25",
+						"value": "pj_47f8"
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/projects/v1/projects",
+					"pagination": "cursor"
+				}
+			}
+		}
+	]
+}

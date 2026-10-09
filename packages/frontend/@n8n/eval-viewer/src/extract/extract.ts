@@ -10,6 +10,7 @@ import {
 	MODEL_TIME_KEY,
 	TEXT_ANSWER_KEY,
 	type Arm,
+	type ModelStep,
 	type ArmCase,
 	type BuildTotals,
 	type Expectation,
@@ -167,16 +168,51 @@ function itemsOf(turn: TranscriptTurn, turnIndex: number): TranscriptItem[] {
 	});
 }
 
+type ToolTimes = Map<string, { startedAt: number; finishedAt: number }>;
+
+/** The publish times of the tool-call and tool-result events, by tool call id. */
+function toolTimesOf(transcript: TranscriptTurn[]): ToolTimes {
+	return new Map(
+		transcript.flatMap((turn) =>
+			turn.steps.flatMap((step) =>
+				isToolCallStep(step) && step.toolCallId && step.startedAt && step.finishedAt
+					? [[step.toolCallId, { startedAt: step.startedAt, finishedAt: step.finishedAt }] as const]
+					: [],
+			),
+		),
+	);
+}
+
+/**
+ * The tool window of a step from the event times: from the last call the model gave to the last
+ * result, because the runtime runs the calls of a step after it and sends the results together.
+ * A run with event times leaves a step without them unmeasured: its calls did not run, e.g. an
+ * input the tool refused. Older runs keep the window derived from the step timestamps.
+ */
+function withMeasuredToolWindow(step: ModelStep, times: ToolTimes): ModelStep {
+	if (times.size === 0 || step.toolCalls.length === 0) return step;
+	const measured = step.toolCalls.map((call) => times.get(call.id));
+	if (measured.some((time) => time === undefined)) return { ...step, toolWindowMs: null };
+	const known = measured.filter((time) => time !== undefined);
+	const start = Math.max(...known.map((time) => time.startedAt));
+	const end = Math.max(...known.map((time) => time.finishedAt));
+	return { ...step, toolWindowMs: end - start };
+}
+
 export function turnsOf(transcript: TranscriptTurn[], debug: DebugThread | undefined): Turn[] {
 	const runs = debug?.runs ?? [];
 	const owners = turnOfRuns(
 		transcript.map((turn) => turn.runIds?.length ?? 1),
 		runs.length,
 	);
+	const times = toolTimesOf(transcript);
 	return transcript.map((turn, turnIndex) => ({
 		userMessage: turn.userMessage ?? '',
 		items: itemsOf(turn, turnIndex),
-		steps: runs.filter((_, run) => owners[run] === turnIndex).flatMap((run) => run.steps),
+		steps: runs
+			.filter((_, run) => owners[run] === turnIndex)
+			.flatMap((run) => run.steps)
+			.map((step) => withMeasuredToolWindow(step, times)),
 	}));
 }
 
@@ -210,7 +246,7 @@ export function toolStatsOf(turns: Turn[]): ToolStat[] {
 	return [...stats.values()];
 }
 
-const safeId = (text: string) => text.replace(/[^A-Za-z0-9._-]+/g, '_');
+export const safeId = (text: string) => text.replace(/[^A-Za-z0-9._-]+/g, '_');
 
 async function readSummary(root: string): Promise<RunSummary | null> {
 	const path = join(root, 'summary.json');

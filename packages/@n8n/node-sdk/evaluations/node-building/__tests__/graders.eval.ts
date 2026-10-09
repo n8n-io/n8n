@@ -9,7 +9,7 @@ import { exec } from '../util';
 import { copyTemplate, prepareTemplate } from '../workspace';
 
 const EVAL_DIR = path.resolve(__dirname, '..');
-const TSX = path.resolve(SDK_DIR, '../../../node_modules/.bin/tsx');
+const TSX = path.join(SDK_DIR, 'node_modules/.bin/tsx');
 const ROOT = mkdtempSync(path.join(tmpdir(), 'n8n-6071-nodeeval-test-'));
 
 afterAll(async () => await rm(ROOT, { recursive: true, force: true }));
@@ -72,73 +72,144 @@ interface Broken {
 const SCENARIOS: ReadonlyArray<{
 	task: string;
 	format: Format;
-	broken: Broken & { readonly title: string };
+	broken: ReadonlyArray<Broken & { readonly title: string }>;
 }> = [
 	{
 		task: 'acme-tasks',
 		format: 'old',
-		broken: {
-			title: 'sends an empty assignee',
-			file: 'nodes/AcmeTasks/AcmeTasks.node.ts',
-			from: '...(assignee ? { assignee } : {}),',
-			to: 'assignee,',
-			failed: ['case:create-unassigned'],
-		},
+		broken: [
+			{
+				title: 'sends an empty assignee',
+				file: 'nodes/AcmeTasks/AcmeTasks.node.ts',
+				from: '...(assignee ? { assignee } : {}),',
+				to: 'assignee,',
+				failed: ['case:create-unassigned'],
+			},
+		],
 	},
 	{
 		task: 'acme-tasks',
 		format: 'new',
-		broken: {
-			title: 'drops the status filter',
-			file: 'src/index.ts',
-			from: "const status = input.status === 'any' ? undefined : input.status;",
-			to: 'const status = undefined;',
-			failed: ['case:list-open-limit-5', 'case:list-done-all'],
-		},
+		broken: [
+			{
+				title: 'drops the status filter',
+				file: 'src/actions/task.get-all.ts',
+				from: "const status = input.status === 'any' ? undefined : input.status;",
+				to: 'const status = undefined;',
+				failed: ['case:list-open-limit-5', 'case:list-done-all'],
+			},
+		],
 	},
 	{
 		task: 'inventory',
 		format: 'old',
-		broken: {
-			title: 'joins the field errors with commas',
-			file: 'nodes/Inventory/Inventory.node.ts',
-			from: "fields.join('; ')",
-			to: "fields.join(', ')",
-			failed: ['case:invalid-422'],
-		},
+		broken: [
+			{
+				title: 'joins the field errors with commas',
+				file: 'nodes/Inventory/Inventory.node.ts',
+				from: "fields.join('; ')",
+				to: "fields.join(', ')",
+				failed: ['case:invalid-422'],
+			},
+		],
 	},
 	{
 		task: 'inventory',
 		format: 'new',
-		broken: {
-			title: 'sends dimensions without a unit',
-			file: 'src/index.ts',
-			from: "\t\t\t\t\t\t\tunit: 'cm',\n",
-			to: '',
-			failed: ['case:create-physical', 'case:invalid-422'],
-		},
+		broken: [
+			{
+				title: 'sends dimensions without a unit',
+				file: 'src/actions/item.create.ts',
+				from: "\t\t\t\t\t\t\tunit: 'cm',\n",
+				to: '',
+				failed: ['case:create-physical', 'case:invalid-422'],
+			},
+		],
 	},
 	{
 		task: 'events',
 		format: 'old',
-		broken: {
-			title: 'uses the winter offset all year',
-			file: 'nodes/EventLog/EventLog.node.ts',
-			from: 'zoneOffset(wall - zoneOffset(wall, timeZone), timeZone)',
-			to: 'zoneOffset(Date.UTC(2026, 0, 1), timeZone)',
-			failed: ['case:berlin-dst-all'],
-		},
+		broken: [
+			{
+				title: 'uses the winter offset all year',
+				file: 'nodes/EventLog/EventLog.node.ts',
+				from: 'zoneOffset(wall - zoneOffset(wall, timeZone), timeZone)',
+				to: 'zoneOffset(Date.UTC(2026, 0, 1), timeZone)',
+				failed: ['case:berlin-dst-all'],
+			},
+		],
 	},
 	{
 		task: 'events',
 		format: 'new',
-		broken: {
-			title: 'keeps tombstones',
-			file: 'src/index.ts',
-			from: 'input.includeDeleted || !entry.deleted',
-			to: "input.includeDeleted || entry.id !== ''",
-			failed: ['case:berlin-dst-all', 'case:offset-limit-30', 'case:utc-default-all'],
-		},
+		broken: [
+			{
+				title: 'keeps tombstones',
+				file: 'src/actions/event.get-all.ts',
+				from: 'input.includeDeleted || !entry.deleted',
+				to: "input.includeDeleted || entry.id !== ''",
+				failed: ['case:berlin-dst-all', 'case:offset-limit-30', 'case:utc-default-all'],
+			},
+		],
+	},
+	{
+		task: 'contacts',
+		format: 'old',
+		broken: [
+			{
+				title: 'reads the parameters of item 0 for each item',
+				file: 'nodes/Contacts/Contacts.node.ts',
+				from: 'this.getNodeParameter(name, itemIndex, ',
+				to: 'this.getNodeParameter(name, 0, ',
+				failed: ['case:create-items', 'case:create-continue-on-fail', 'case:search-per-item'],
+			},
+			{
+				title: 'drops the items after a failure with continue on fail',
+				file: 'nodes/Contacts/Contacts.node.ts',
+				from: '\t\t\t\t\tcontinue;\n',
+				to: '\t\t\t\t\tbreak;\n',
+				failed: ['case:create-continue-on-fail'],
+			},
+		],
+	},
+	{
+		task: 'contacts',
+		format: 'new',
+		broken: [
+			{
+				title: 'tags the contact by the parsed numeric id',
+				file: 'src/actions/contact.create.ts',
+				from: 'created.idStr',
+				to: 'String(created.id)',
+				failed: ['case:create-tags-additional'],
+			},
+		],
+	},
+	{
+		task: 'projects',
+		format: 'old',
+		broken: [
+			{
+				title: 'uses the raw resource locator value as the id',
+				file: 'nodes/Projects/Projects.node.ts',
+				from: "this.getNodeParameter('project', itemIndex, '', { extractValue: true })",
+				to: "this.getNodeParameter('project', itemIndex, '')",
+				failed: ['case:get-by-id', 'case:get-by-url', 'case:get-from-list'],
+			},
+		],
+	},
+	{
+		task: 'projects',
+		format: 'new',
+		broken: [
+			{
+				title: 'sends the URL as the id',
+				file: 'src/actions/project.get.ts',
+				from: '?.[1] ?? input.project',
+				to: '?.[0] ?? input.project',
+				failed: ['case:get-by-url'],
+			},
+		],
 	},
 ];
 
@@ -159,12 +230,39 @@ describe.each(SCENARIOS)('$task $format grader', ({ task: taskId, format, broken
 		]);
 	});
 
-	it(`fails a copy that ${broken.title}`, async () => {
-		const dir = await referenceProject(taskId, format, 'broken');
-		await replaceIn(path.join(dir, broken.file), broken.from, broken.to);
-		const graded = await gradeDir(dir, taskId, format);
-		expect(graded.pass).toBe(false);
-		expect(graded.failed, graded.output).toEqual(broken.failed);
+	it.each(broken.map((copy, index) => ({ ...copy, index })))(
+		'fails a copy that $title',
+		async ({ file, from, to, failed, index }) => {
+			const dir = await referenceProject(taskId, format, `broken-${index}`);
+			await replaceIn(path.join(dir, file), from, to);
+			const graded = await gradeDir(dir, taskId, format);
+			expect(graded.pass).toBe(false);
+			expect(graded.failed, graded.output).toEqual(failed);
+		},
+	);
+});
+
+describe('new format paging', () => {
+	it('passes the acme-tasks reference with the SDK paging input', async () => {
+		const dir = await referenceProject('acme-tasks', 'new', 'paging');
+		const file = path.join(dir, 'src/actions/task.get-all.ts');
+		await replaceIn(
+			file,
+			"import { t } from '@n8n/node-sdk';",
+			"import { limitOf, paging, t } from '@n8n/node-sdk';",
+		);
+		await replaceIn(
+			file,
+			"\t\treturnAll: t.bool().title('Return All').default(false),\n\t\tlimit: t.int().title('Limit').with({ minimum: 1 }).default(50),\n",
+			'\t\tpaging,\n',
+		);
+		await replaceIn(
+			file,
+			'input.returnAll ? Infinity : (input.limit ?? 50)',
+			'limitOf(input.paging) ?? Infinity',
+		);
+		const graded = await gradeDir(dir, 'acme-tasks', 'new');
+		expect(graded.failed, graded.output).toEqual([]);
 	});
 });
 

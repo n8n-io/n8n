@@ -1,8 +1,12 @@
+import type { IDataObject, INodeParameters } from 'n8n-workflow';
+
 import acmeTasks from './tasks/acme-tasks.json';
+import contacts from './tasks/contacts.json';
 import events from './tasks/events.json';
 import githubIssues from './tasks/github-issues.json';
 import inventory from './tasks/inventory.json';
 import ledger from './tasks/ledger.json';
+import projects from './tasks/projects.json';
 import searchly from './tasks/searchly.json';
 
 export type Format = 'old' | 'new';
@@ -30,11 +34,18 @@ export interface CaseSpec {
 	readonly id: string;
 	/** `<resource>.<operation>`. */
 	readonly operation: string;
-	readonly input: Readonly<Record<string, unknown>>;
+	readonly input: Readonly<INodeParameters>;
+	/** The input items. Parameter values can be expressions over them, e.g. `={{ $json.sku }}`. */
+	readonly items?: readonly IDataObject[];
 	/** Run with the node setting "continue on fail" on. */
 	readonly continueOnFail?: boolean;
+	/** Run the list search of the resource locator `field` instead; the items are `{ name, value }`. */
+	readonly listSearch?: { readonly field: string; readonly filter?: string };
 	readonly expect: {
+		/** An item `{ "error": true }` matches any item `{ error: <text> }`. */
 		readonly items?: readonly unknown[];
+		/** The input item index of each output item. */
+		readonly pairedItems?: readonly unknown[];
 		readonly error?: boolean;
 		/** Text that the error message (not its description) must contain. */
 		readonly errorMessage?: string;
@@ -51,6 +62,10 @@ export interface CaseSpec {
 export interface TaskSpec {
 	readonly id: string;
 	readonly node: string;
+	/** `n8n`: the new format also runs in n8n's `WorkflowExecute`, not in `runAction`. */
+	readonly engine?: string;
+	/** Output item fields the grader does not compare, e.g. an ID that a JSON parser cannot keep exactly. */
+	readonly ignoreFields?: readonly string[];
 	readonly credential: {
 		readonly name: string;
 		readonly properties: readonly string[];
@@ -69,6 +84,8 @@ export const TASKS: readonly TaskSpec[] = [
 	githubIssues,
 	inventory,
 	events,
+	contacts,
+	projects,
 ];
 
 const FORMAT_PARAGRAPH: Record<Format, readonly string[]> = {
@@ -86,7 +103,8 @@ const FORMAT_PARAGRAPH: Record<Format, readonly string[]> = {
 		'`src/index.ts` exports `node` and `actions`. The node lists its credential types.',
 		'An operation `<resource>.<operation>` means the action ID `<node name>.<resource>.<operation>` (for example `{{node}}.{{example}}`).',
 		'Every field is an action input field with exactly the given name.',
-		'Test actions with `runAction` from `@n8n/node-sdk/testing`. `npx n8n-node-next check` and `npx tsc --noEmit` must pass.',
+		'A list action takes the SDK `paging` input in place of the fields `returnAll` and `limit`.',
+		'`npx n8n-node-next check` and `npx tsc --noEmit` must pass.',
 	],
 };
 

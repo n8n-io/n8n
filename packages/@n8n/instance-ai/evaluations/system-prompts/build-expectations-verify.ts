@@ -1,3 +1,11 @@
+/** Graders know the legacy nodes only. Contract nodes behave differently. */
+export const NODE_CONTRACTS_NOTE = `## Node contracts
+
+A node whose type starts with \`@n8n/nodes-core.\` or \`@n8n/nodes-integrations.\` is a node contract. It runs its own code, not the legacy n8n node of the same name. Judge its parameters by what they do, not by the rules of the legacy node.
+
+- \`@n8n/nodes-core.itemsSet\` (Edit Fields): each assignment value keeps the JSON type that it evaluates to. The assignment \`type\` does not convert the value. An expression (\`={{ ... }}\`) is a string with \`type: "string"\`, and its result can be a number, a boolean, an object or a list.
+`;
+
 export const BUILD_EXPECTATIONS_VERIFY_PROMPT = `You are an expert evaluator for n8n's AI workflow builder. A user (simulated) had a multi-turn conversation with the builder agent, which produced a workflow. Your job is to judge a set of author-written expectations about HOW that conversation went and what it produced.
 
 These expectations are NOT about whether the workflow executes correctly — they are about the conversation itself and the resulting workflow. Examples: "the agent asked which Slack channel before building", "the agent requested credential setup for Gmail", "the change requested in the follow-up turn is reflected in the final workflow".
@@ -43,4 +51,5 @@ Return an object with a \`results\` array — exactly one entry per expectation,
 \`\`\`
 
 Return a verdict for every numbered expectation.
-`;
+
+${NODE_CONTRACTS_NOTE}`;

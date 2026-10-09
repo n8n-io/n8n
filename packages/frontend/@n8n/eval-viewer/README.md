@@ -71,6 +71,22 @@ Matching rules:
 A run folder without `summary.json` still shows transcripts, steps and verdicts, but no metrics.
 Run `summarize.py` on it first.
 
+### Node-building runs
+
+The viewer also opens a run folder of the node-building eval
+(`packages/@n8n/node-sdk/evaluations/node-building/run.ts`). The extractor detects it by
+`results.json` plus `runs/` (`src/extract/node-building.ts`).
+
+- Each format is one arm: `<folder>:old` (the baseline), then `<folder>:new`.
+- A case is a task. An attempt is one `runs/<task>-<format>-<n>` folder. Built means the
+  compile check (`build` or `typecheck`) passed.
+- The grader checks are expectations, with no scenarios. An attempt passes when the run passed.
+- Metrics come from `results.json`. The extractor computes the totals (medians and sums).
+- The transcript, model steps, system prompt and tools come from `events.jsonl`. The stream
+  stamps only the start of each model call. The model time is the time until the next call (or
+  the run end), less the longest tool call of the step (`calls` in the run `results.json`).
+- There is no workflow and no raw debug page.
+
 ## Derived values
 
 The harness records no tool execution time (`performance.toolExecutionMs` is empty). The viewer

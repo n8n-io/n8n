@@ -1,0 +1,341 @@
+{
+	"id": "contacts",
+	"node": "contacts",
+	"engine": "n8n",
+	"ignoreFields": ["id"],
+	"credential": {
+		"name": "contactsApi",
+		"properties": ["apiToken"],
+		"data": {
+			"apiToken": "{{secret}}"
+		},
+		"secretPrefix": "cnt_"
+	},
+	"prompt": [
+		"Build an n8n node for the Contacts API. Read its docs first: `curl -s http://127.0.0.1:18090/contacts/docs`.",
+		"The API runs locally. Use the sandbox token from the docs for your tests.",
+		"",
+		"A grader checks these names exactly:",
+		"- Node name `contacts`, display name \"Contacts\".",
+		"- Credential name `contactsApi` with one field `apiToken` (a password field). The credential sends the token the way the docs say.",
+		"- Operation `contact.create` (\"Create a contact\"). Fields: `email` (string, required), `firstName` (string), `lastName` (string), `tags` (string: tag names separated by commas), `additionalFields` (a collection with the options `company` and `phone`, both strings). Emit the contact as the API returns it, with its tags.",
+		"- Operation `contact.delete` (\"Delete a contact\"). Field: `contactId` (string, required). Emit `{ \"deleted\": true }`.",
+		"- Operation `contact.search` (\"Search contacts\"). Field: `tags` (string: tag names separated by commas). Emit one item per contact.",
+		"",
+		"{{format}}",
+		"",
+		"Work in the current directory. Dependencies are installed: do not install packages. Do not ask questions.",
+		"Stop when the node builds, passes the format checks, and works against the API."
+	],
+	"cases": [
+		{
+			"id": "create-items",
+			"operation": "contact.create",
+			"items": [
+				{
+					"email": "ann@example.com",
+					"first": "Ann"
+				},
+				{
+					"email": "ben@example.com",
+					"first": "Ben"
+				},
+				{
+					"email": "cy@example.com",
+					"first": "Cy"
+				}
+			],
+			"input": {
+				"email": "={{ $json.email }}",
+				"firstName": "={{ $json.first }}"
+			},
+			"expect": {
+				"items": [
+					{
+						"id": 9007199254741112,
+						"email": "ann@example.com",
+						"firstName": "Ann",
+						"lastName": null,
+						"company": null,
+						"phone": null,
+						"tags": [],
+						"idStr": "9007199254741111"
+					},
+					{
+						"id": 9007199254741112,
+						"email": "ben@example.com",
+						"firstName": "Ben",
+						"lastName": null,
+						"company": null,
+						"phone": null,
+						"tags": [],
+						"idStr": "9007199254741113"
+					},
+					{
+						"id": 9007199254741116,
+						"email": "cy@example.com",
+						"firstName": "Cy",
+						"lastName": null,
+						"company": null,
+						"phone": null,
+						"tags": [],
+						"idStr": "9007199254741115"
+					}
+				],
+				"pairedItems": [0, 1, 2],
+				"requests": {
+					"method": "POST",
+					"path": "/contacts/v1/contacts",
+					"count": 3
+				}
+			}
+		},
+		{
+			"id": "create-tags-additional",
+			"operation": "contact.create",
+			"input": {
+				"email": "dana@example.com",
+				"lastName": "Scott",
+				"tags": "vip,partner",
+				"additionalFields": {
+					"company": "Acme Corp",
+					"phone": "+1 555 0100"
+				}
+			},
+			"expect": {
+				"items": [
+					{
+						"id": 9007199254741112,
+						"email": "dana@example.com",
+						"firstName": null,
+						"lastName": "Scott",
+						"company": "Acme Corp",
+						"phone": "+1 555 0100",
+						"tags": ["vip", "partner"],
+						"idStr": "9007199254741111"
+					}
+				]
+			}
+		},
+		{
+			"id": "create-minimal",
+			"operation": "contact.create",
+			"input": {
+				"email": "eve@example.com"
+			},
+			"expect": {
+				"items": [
+					{
+						"id": 9007199254741112,
+						"email": "eve@example.com",
+						"firstName": null,
+						"lastName": null,
+						"company": null,
+						"phone": null,
+						"tags": [],
+						"idStr": "9007199254741111"
+					}
+				],
+				"requests": {
+					"method": "POST",
+					"path": "/contacts/v1/contacts",
+					"body": {
+						"email": "eve@example.com"
+					},
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "create-continue-on-fail",
+			"operation": "contact.create",
+			"continueOnFail": true,
+			"items": [
+				{
+					"email": "fay@example.com",
+					"first": "Fay"
+				},
+				{
+					"email": "not-an-email",
+					"first": "Gus"
+				},
+				{
+					"email": "hal@example.com",
+					"first": "Hal"
+				}
+			],
+			"input": {
+				"email": "={{ $json.email }}",
+				"firstName": "={{ $json.first }}"
+			},
+			"expect": {
+				"items": [
+					{
+						"id": 9007199254741112,
+						"email": "fay@example.com",
+						"firstName": "Fay",
+						"lastName": null,
+						"company": null,
+						"phone": null,
+						"tags": [],
+						"idStr": "9007199254741111"
+					},
+					{
+						"error": true
+					},
+					{
+						"id": 9007199254741112,
+						"email": "hal@example.com",
+						"firstName": "Hal",
+						"lastName": null,
+						"company": null,
+						"phone": null,
+						"tags": [],
+						"idStr": "9007199254741113"
+					}
+				],
+				"pairedItems": [0, 1, 2],
+				"requests": {
+					"method": "POST",
+					"path": "/contacts/v1/contacts",
+					"count": 3
+				}
+			}
+		},
+		{
+			"id": "create-invalid-email",
+			"operation": "contact.create",
+			"input": {
+				"email": "nobody"
+			},
+			"expect": {
+				"error": true,
+				"requests": {
+					"method": "POST",
+					"path": "/contacts/v1/contacts",
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "delete",
+			"operation": "contact.delete",
+			"input": {
+				"contactId": "9007199254741003"
+			},
+			"expect": {
+				"items": [
+					{
+						"deleted": true
+					}
+				],
+				"requests": {
+					"method": "DELETE",
+					"path": "/contacts/v1/contacts/9007199254741003",
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "search-tags",
+			"operation": "contact.search",
+			"input": {
+				"tags": "vip,lead"
+			},
+			"expect": {
+				"items": [
+					{
+						"id": 9007199254741000,
+						"email": "ada@example.com",
+						"firstName": "Ada",
+						"lastName": "Lovelace",
+						"company": null,
+						"phone": null,
+						"tags": ["vip", "lead"],
+						"idStr": "9007199254741001"
+					},
+					{
+						"id": 9007199254741008,
+						"email": "alan@example.com",
+						"firstName": "Alan",
+						"lastName": null,
+						"company": null,
+						"phone": null,
+						"tags": ["partner", "vip", "lead"],
+						"idStr": "9007199254741007"
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/contacts/v1/contacts",
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "search-per-item",
+			"operation": "contact.search",
+			"items": [
+				{
+					"tag": "partner"
+				},
+				{
+					"tag": "lead"
+				}
+			],
+			"input": {
+				"tags": "={{ $json.tag }}"
+			},
+			"expect": {
+				"items": [
+					{
+						"id": 9007199254741008,
+						"email": "alan@example.com",
+						"firstName": "Alan",
+						"lastName": null,
+						"company": null,
+						"phone": null,
+						"tags": ["partner", "vip", "lead"],
+						"idStr": "9007199254741007"
+					},
+					{
+						"id": 9007199254741000,
+						"email": "ada@example.com",
+						"firstName": "Ada",
+						"lastName": "Lovelace",
+						"company": null,
+						"phone": null,
+						"tags": ["vip", "lead"],
+						"idStr": "9007199254741001"
+					},
+					{
+						"id": 9007199254741004,
+						"email": "linus@example.com",
+						"firstName": null,
+						"lastName": null,
+						"company": "Kernel Ltd",
+						"phone": null,
+						"tags": ["lead"],
+						"idStr": "9007199254741005"
+					},
+					{
+						"id": 9007199254741008,
+						"email": "alan@example.com",
+						"firstName": "Alan",
+						"lastName": null,
+						"company": null,
+						"phone": null,
+						"tags": ["partner", "vip", "lead"],
+						"idStr": "9007199254741007"
+					}
+				],
+				"pairedItems": [0, 1, 1, 1],
+				"requests": {
+					"method": "GET",
+					"path": "/contacts/v1/contacts",
+					"count": 2
+				}
+			}
+		}
+	]
+}

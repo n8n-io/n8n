@@ -2,6 +2,7 @@ import type { Agent } from '@n8n/agents';
 
 import { createEvalAgent, extractText } from '../../../src/utils/eval-agents';
 import type { WorkflowResponse } from '../../clients/n8n-client';
+import { NODE_CONTRACTS_NOTE } from '../../system-prompts/build-expectations-verify';
 import { parseJudgeVerdict, REASONING_FIRST_SUFFIX } from '../../utils/llm-judge';
 import type { BinaryCheck, BinaryCheckContext, CheckDimension } from '../types';
 
@@ -49,7 +50,7 @@ function getOrCreateAgent(name: string, modelId: string, instructions: string): 
 }
 
 export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
-	const systemPrompt = options.systemPrompt + REASONING_FIRST_SUFFIX;
+	const systemPrompt = `${options.systemPrompt}\n\n${NODE_CONTRACTS_NOTE}${REASONING_FIRST_SUFFIX}`;
 
 	return {
 		name: options.name,

@@ -12,8 +12,7 @@ This file is the complete API reference. You do not have to read the SDK source.
   `__service__.item.getAll` is in `src/actions/item.get-all.ts`. `check` fails for another file name.
   Add each action to `actions`.
 - `src/actions/<resource>.<operation>.test.ts`: unit tests with `node:test`, `runAction` and `mockHttp`.
-- `src/actions/item.get-all.ts` and its test are an example: a declarative list with cursor pages.
-  Rename or replace them.
+- `src/actions/item.get-all.ts` and its test are an example: a declarative list with cursor pages. Rename or replace them.
 
 ## Commands
 
@@ -26,20 +25,21 @@ n8n-node-next run __service__.item.getAll --input '{"paging":{"mode":"limit","ma
 
 `run` calls the live API and prints the items. `--credential-env __ENV__` reads the field `apiKey`
 from `__ENV___API_KEY`. `--credential-file f.json` reads `{ "type": "...", "data": { ... } }`.
-Run `check` and `test` after each change. Both must pass.
+After each change, run `n8n-node-next check && n8n-node-next test && n8n-node-next run ...` in one command. `check` runs `tsc`.
 
 ## Node and credential
 
 ```ts
 // src/__slug__.node.ts. The one credential: the types a user may pick, and the scopes actions may need.
 export const node = defineNode({ id: '__service__', displayName: '__Service__', baseUrl: 'https://api.example.com/v1',
-	credential: credential({ types: [__service__Api], scopes: { 'items:write': 'Create items' } }) }); // add `optional: true` if the API also works without a key
+	credential: credential({ types: [__service__Api], scopes: { 'items:write': 'Create items' } }) }); // `optional: true`: the API also works without a key; a run without one sends no auth
 // A resource groups actions. Its `input` (optional) goes into the input of each of its actions.
 export const item = node.resource('item', { input: { workspace: t.str().title('Workspace') } });
 // src/credentials.ts: `defineCredential`, `credential` and `field` come from '@n8n/node-sdk/credentials'. Id `service.scheme`. auth is data: a.bearer/header/query/basic/apply/when/oauth2.*; a.custom({ reason, sign }) last.
-export const __service__Api = defineCredential({ id: '__service__.apiKey', legacyName: '__service__Api',
+export const __service__Api = defineCredential({ id: '__service__.apiKey', legacyName: '__service__Api', version: '1.0.0',
 	displayName: '__Service__ API', fields: { apiKey: field.secret('API Key') }, baseUrl: 'https://api.example.com/v1',
 	auth: (a) => a.header('X-Api-Key', '{apiKey}'), test: { get: '/me' } }); // a typo in {apiKey} fails tsc
+// `test` needs the credential `baseUrl`, which overrides the node `baseUrl` for this credential: 'https://…', 'http://localhost:<port>…', 'http://127.0.0.1:<port>…' or '{field}'.
 ```
 
 ## Action
@@ -56,7 +56,7 @@ export const createItem = item.action('create', {
 	async run({ input, http }) {
 		const body = { name: input.name, ...(input.ownerId ? { ownerId: input.ownerId } : {}) };
 		const response = await http.request({ method: 'POST', path: path`/${input.workspace}/items`, body });
-		return parse(itemOutput, response); // passes the body on; n8n checks it against `output`
+		return parse(itemOutput, response); // passes the body on; n8n checks it against `output`. Fits only a `t.loose` output
 	},
 });
 ```
@@ -104,7 +104,7 @@ export const createItem = item.action('create', {
   Narrow it in `run()` with `if (input.body.kind === 'text') input.body.text`, or a `switch` on the tag.
 - `parse(schema, value)` never throws: it passes the value on, typed with each object field optional and
   nullable, so `tsc` makes a read check for a missing field. n8n checks each output item against `output`:
-  a mismatch passes on with one warning per run, and fails in `runAction` and fixture tests. `t.loose(t.obj(...))` makes the fields of an API object optional and nullable. `matches(schema, value)` is a type guard. `Infer<typeof schema>` is the TypeScript type. `isRecord(v)` and `list(v)` narrow `unknown`.
+  a mismatch passes on with one warning per run, and fails in `runAction` and fixture tests. `t.loose(t.obj(...))` makes the fields of an API object optional and nullable. `matches(schema, value)` is a type guard. With a strict `t.obj` output, `return parse(...)` fails `tsc`: use `if (!matches(output, response)) throw new OperationalError('...'); return response;`. `Infer<typeof schema>` is the TypeScript type. `isRecord(v)` and `list(v)` narrow `unknown`.
 
 ## HTTP
 
@@ -120,8 +120,38 @@ export const createItem = item.action('create', {
   backoff and `Retry-After`, for GET, HEAD, PUT, and every request of an action with `flow.idempotent: true`.
   `retry: true` also retries another method; `retry: false` never retries.
 - Lists: `list: { path, query?, response, items(page, input), pages? }` replaces `run()` (see
-  `src/actions/item.get-all.ts`); `pages.style` is `cursor`, `link` or `offset`, and `pages` adds `paging`. n8n checks each page against `response`.
-  In `run()`: `pages(http, { page: schema, request(cursor, room), items, next, limit: limitOf(input.paging) })`. Do not write a page loop. One run may send 10000 requests.
+  `src/actions/item.get-all.ts`); `pages` adds `paging`, and n8n checks each page against `response`. `pages` is `{ style: 'cursor', next, send, size? }`,
+  `{ style: 'link', size: { query: 'per_page', max: 100 } }` (follows `rel="next"` of the `Link` header), or `{ style: 'offset', unit: 'item' | 'page', send: { query: 'offset' }, size? }` (a short page ends the list).
+  In `run()`, use `pages` and `paging` (`limitOf`, `pages`, `paging` come from `@n8n/node-sdk`). Do not write a page loop. One run may send 10000 requests.
+  ```ts
+  input: { query: t.str().title('Query'), paging },  // `{ mode: 'all' }` or `{ mode: 'limit', max }`
+  async *run({ input, http }) {
+  	yield* pages(http, {
+  		page: t.obj({ items: t.arr(itemOutput), nextCursor: t.nullable(t.str()) }),
+  		request: (cursor, room) => ({ path: path`/items`, query: { q: input.query, cursor, pageSize: Math.min(room ?? 100, 100) } }), // room: limit minus items so far; undefined for all
+  		items: (page) => page.items, next: (page) => page.nextCursor, limit: limitOf(input.paging),
+  	});
+  },
+  ```
+
+## Resource locator
+
+```ts
+// A `ref(resource)` input field gets a search list, an ID box and a URL box in n8n. `defineResource`, `ref`: '@n8n/node-sdk'.
+// src/__slug__.node.ts. `list` is data, not code: n8n sends the lookup request with the credential.
+export const folder = defineResource({ id: '__service__.folder', label: 'Folder',
+	shape: { pattern: '^(fld_[a-z0-9]+|https://.+)$' }, // the run gets a URL as it is, so the shape takes it too
+	extract: '/folders/(fld_[a-z0-9]+)',                // the first group is the ID in a URL; this adds the URL mode
+	list: {
+		request: { path: '/folders', query: { q: { input: 'search' } } }, // `search` is the text the user types
+		response: t.obj({ folders: t.arr(t.obj({ id: t.str(), name: t.str() })), nextCursor: t.nullable(t.str()) }),
+		items: 'folders', item: { id: (f) => f.id, label: (f) => f.name, url: (f) => `https://app.example.com/folders/${f.id}` }, // or '={{ $json.name }}'
+		pages: { style: 'cursor', next: 'nextCursor', send: { query: 'cursor' }, size: { query: 'pageSize', max: 100 } },
+		search: 'service', // or 'label': n8n keeps the entries whose label holds the text
+	} });
+// In an action: input: { folder: ref(folder).title('Folder') }, and in run():
+const folderId = /\/folders\/(fld_[a-z0-9]+)/.exec(input.folder)?.[1] ?? input.folder;
+```
 
 ## Tests
 

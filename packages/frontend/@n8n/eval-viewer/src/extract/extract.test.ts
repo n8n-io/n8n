@@ -243,6 +243,55 @@ describe('turnsOf and toolStatsOf', () => {
 		});
 	});
 
+	it('measures the tool window of a step from the tool times in the transcript', () => {
+		const timed: TranscriptTurn[] = [
+			{
+				userMessage: 'first',
+				runIds: ['run_1'],
+				steps: [
+					{
+						kind: 'tool-call',
+						toolName: 'nodes',
+						toolCallId: 'c1',
+						startedAt: 10_000,
+						finishedAt: 11_000,
+					},
+					{
+						kind: 'tool-call',
+						toolName: 'build-workflow',
+						toolCallId: 'c2',
+						startedAt: 10_500,
+						finishedAt: 13_000,
+					},
+				],
+			},
+			transcript[1],
+		];
+
+		expect(turnsOf(timed, debug)[0].steps[0].toolWindowMs).toBe(2_500);
+	});
+
+	it('gives no tool window to a step whose calls the timed transcript does not have', () => {
+		const timed: TranscriptTurn[] = [
+			{
+				userMessage: 'first',
+				runIds: ['run_1'],
+				steps: [
+					{
+						kind: 'tool-call',
+						toolName: 'nodes',
+						toolCallId: 'other',
+						startedAt: 10_000,
+						finishedAt: 11_000,
+					},
+				],
+			},
+			transcript[1],
+		];
+
+		expect(turnsOf(timed, debug)[0].steps[0].toolWindowMs).toBeNull();
+	});
+
 	it('splits the derived tool window and step tokens between the calls of a step', () => {
 		const stats = new Map(toolStatsOf(turnsOf(transcript, debug)).map((stat) => [stat.tool, stat]));
 		expect(stats.get('nodes')).toEqual({

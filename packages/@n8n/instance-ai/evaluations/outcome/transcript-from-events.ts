@@ -172,6 +172,12 @@ function collectRunIds(events: CapturedEvent[]): string[] {
 interface ToolOutcome {
 	result?: unknown;
 	error?: string;
+	finishedAt?: number;
+}
+
+/** The publish time that the event bus puts on each event. Events from before it have none. */
+function publishedAt(event: CapturedEvent): number | undefined {
+	return typeof event.data.ts === 'number' ? event.data.ts : undefined;
 }
 
 /** Pair every tool result/error in the turn to its originating call by toolCallId. */
@@ -182,13 +188,21 @@ function collectToolOutcomes(events: CapturedEvent[]): Map<string, ToolOutcome> 
 		const payload = getRecord(event.data, 'payload') ?? event.data;
 		const callId = getString(payload, 'toolCallId');
 		if (!callId) continue;
+		const finishedAt = publishedAt(event);
+		const timing = finishedAt === undefined ? {} : { finishedAt };
 		if (event.type === 'tool-error') {
 			// Flat string, so content-scrub (key-based redaction can't reach an inline token).
-			map.set(callId, { error: redactSecretsInText(getString(payload, 'error') ?? 'tool error') });
+			map.set(callId, {
+				error: redactSecretsInText(getString(payload, 'error') ?? 'tool error'),
+				...timing,
+			});
 		} else {
 			// Redact secret-shaped keys, then content-scrub string leaves — a token
 			// inlined in a value under a benign key survives the key-based pass.
-			map.set(callId, { result: redactSecretsInTextDeep(redactSecrets(payload.result)) });
+			map.set(callId, {
+				result: redactSecretsInTextDeep(redactSecrets(payload.result)),
+				...timing,
+			});
 		}
 	}
 	return map;
@@ -218,6 +232,7 @@ function interpretToolCall(
 	const outcome = callId ? outcomeByCallId.get(callId) : undefined;
 	// `workflows` output is rendered as the setup-wizard block — don't duplicate its result here.
 	const result = toolName === 'workflows' ? undefined : outcome?.result;
+	const startedAt = publishedAt(event);
 	return {
 		kind: 'tool-call',
 		toolName,
@@ -229,6 +244,8 @@ function interpretToolCall(
 				: undefined,
 		result,
 		error: outcome?.error,
+		...(startedAt === undefined ? {} : { startedAt }),
+		...(outcome?.finishedAt === undefined ? {} : { finishedAt: outcome.finishedAt }),
 	};
 }
 

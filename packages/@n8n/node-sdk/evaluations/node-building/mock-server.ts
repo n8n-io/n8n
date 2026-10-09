@@ -33,6 +33,8 @@ interface Incoming {
 	readonly method: string;
 	readonly path: string;
 	readonly query: Record<string, string>;
+	/** The query string, for a repeated parameter. */
+	readonly search: string;
 	readonly headers: Record<string, string>;
 	readonly body: unknown;
 }
@@ -390,12 +392,167 @@ function events(request: Incoming): Reply {
 	};
 }
 
+export interface Contact {
+	/** Digits of a 64-bit integer: the API sends it as a JSON number in `id` and as text in `idStr`. */
+	readonly id: string;
+	readonly email: string;
+	readonly firstName: string | null;
+	readonly lastName: string | null;
+	readonly company: string | null;
+	readonly phone: string | null;
+	readonly tags: readonly string[];
+}
+
+const contact = (
+	id: string,
+	email: string,
+	fields: Partial<Omit<Contact, 'id' | 'email'>> = {},
+): Contact => ({
+	id,
+	email,
+	firstName: null,
+	lastName: null,
+	company: null,
+	phone: null,
+	tags: [],
+	...fields,
+});
+
+/** IDs above 2^53: `JSON.parse` changes the last digits of `id`, not of `idStr`. */
+export const CONTACTS_SEED: readonly Contact[] = [
+	contact('9007199254741001', 'ada@example.com', {
+		firstName: 'Ada',
+		lastName: 'Lovelace',
+		tags: ['vip', 'lead'],
+	}),
+	contact('9007199254741003', 'grace@example.com', { firstName: 'Grace', tags: ['vip'] }),
+	contact('9007199254741005', 'linus@example.com', { company: 'Kernel Ltd', tags: ['lead'] }),
+	contact('9007199254741007', 'alan@example.com', {
+		firstName: 'Alan',
+		tags: ['partner', 'vip', 'lead'],
+	}),
+	contact('9007199254741009', 'edsger@example.com', { lastName: 'Dijkstra' }),
+];
+
+/** The JSON text of a contact, with `id` as a number that `JSON.stringify` cannot write. */
+const contactText = (value: Contact) =>
+	JSON.stringify({ ...value, idStr: value.id }).replace(/^\{"id":"(\d+)"/, '{"id":$1');
+
+const CONTACT_FIELDS = ['email', 'firstName', 'lastName', 'company', 'phone'];
+
+function contacts(request: Incoming, key: string, stores: Map<string, Contact[]>): Reply {
+	const store = stores.get(key) ?? [...CONTACTS_SEED];
+	stores.set(key, store);
+	const route = request.path.replace('/contacts/v1', '');
+	const [, id, tagsPath] = /^\/contacts\/([^/]+)(\/tags)?$/.exec(route) ?? [];
+	const found = store.find((entry) => entry.id === id);
+	const notFound = error(404, 'not_found', { message: `contact ${id} not found` });
+	if (route === '/contacts' && request.method === 'GET') {
+		const params = new URLSearchParams(request.search);
+		const unknown = [...params.keys()].find((name) => name !== 'tags');
+		if (unknown) return error(400, `unknown query parameter ${unknown}`);
+		const tags = params.getAll('tags');
+		const matching = store.filter((entry) => tags.every((tag) => entry.tags.includes(tag)));
+		return {
+			status: 200,
+			body: `[${matching.map(contactText).join(',')}]`,
+			returned: matching.length,
+		};
+	}
+	if (route === '/contacts' && request.method === 'POST') {
+		const { body } = request;
+		if (!isRecord(body)) return error(400, 'body must be a JSON object');
+		const unknown = hasOnly(body, CONTACT_FIELDS);
+		if (unknown) return error(400, `unknown field ${unknown}`);
+		const empty = CONTACT_FIELDS.find(
+			(field) => field in body && (typeof body[field] !== 'string' || body[field] === ''),
+		);
+		if (empty) return error(400, `${empty} must be a non-empty string`);
+		const { email } = body;
+		if (typeof email !== 'string' || !email.includes('@')) {
+			return error(422, 'invalid_email', { message: 'email must contain @' });
+		}
+		const text = (field: string) => (typeof body[field] === 'string' ? String(body[field]) : null);
+		const created = contact(
+			`90071992547411${String(store.length * 2 + 1).padStart(2, '0')}`,
+			email,
+			{
+				firstName: text('firstName'),
+				lastName: text('lastName'),
+				company: text('company'),
+				phone: text('phone'),
+			},
+		);
+		store.push(created);
+		return { status: 201, body: contactText(created) };
+	}
+	if (!found) return notFound;
+	if (tagsPath && request.method === 'POST') {
+		const tags = isRecord(request.body) ? request.body.tags : undefined;
+		if (
+			!Array.isArray(tags) ||
+			tags.length === 0 ||
+			!tags.every((tag) => typeof tag === 'string' && tag !== '')
+		) {
+			return error(400, 'tags must be a non-empty array of non-empty strings');
+		}
+		const tagged = { ...found, tags: [...new Set([...found.tags, ...tags.map(String)])] };
+		store.splice(store.indexOf(found), 1, tagged);
+		return { status: 200, body: contactText(tagged) };
+	}
+	if (!tagsPath && request.method === 'DELETE') {
+		store.splice(store.indexOf(found), 1);
+		return { status: 204, body: '' };
+	}
+	return error(405, 'method not allowed');
+}
+
+export interface Project {
+	readonly id: string;
+	readonly name: string;
+	readonly createdAt: string;
+}
+
+const PROJECT_WORDS = ['Alpha', 'Beta', 'Gamma'];
+
+/** 25 projects; 9 of them have `alpha` in the name. */
+export const PROJECTS: readonly Project[] = Array.from({ length: 25 }, (_, index) => ({
+	id: `pj_${(0x3a00 + index * 0x95).toString(16)}`,
+	name: `${PROJECT_WORDS[index % 3]} project ${index + 1}`,
+	createdAt: new Date(Date.UTC(2026, 4, 1 + index)).toISOString(),
+}));
+
+function projects(request: Incoming): Reply {
+	if (request.method !== 'GET') return error(405, 'method not allowed');
+	const route = request.path.replace('/projects/v1', '');
+	if (route === '/projects') {
+		const { q, cursor } = request.query;
+		const limit = intParam(request.query.limit, 5);
+		if (!(limit >= 1 && limit <= 10)) return error(400, 'limit must be 1 to 10');
+		const offset = cursor === undefined ? 0 : fromCursor(cursor);
+		if (offset === undefined) return error(400, 'invalid cursor');
+		const matching = PROJECTS.filter(
+			({ name }) => q === undefined || name.toLowerCase().includes(q.toLowerCase()),
+		);
+		const data = matching.slice(offset, offset + limit);
+		const nextCursor = offset + limit < matching.length ? toCursor(offset + limit) : null;
+		return { status: 200, body: { data, nextCursor }, returned: data.length, nextCursor };
+	}
+	const id = /^\/projects\/([^/]+)$/.exec(route)?.[1];
+	const found = PROJECTS.find((project) => project.id === id);
+	return found
+		? { status: 200, body: found }
+		: error(404, 'not_found', { message: `project ${id ?? ''} not found` });
+}
+
 const DOCS: Record<string, { file: string; type: string }> = {
 	'acme-tasks': { file: 'acme-tasks.md', type: 'text/markdown' },
 	ledger: { file: 'ledger.md', type: 'text/markdown' },
 	searchly: { file: 'searchly.openapi.json', type: 'application/json' },
 	inventory: { file: 'inventory.md', type: 'text/markdown' },
 	events: { file: 'events.md', type: 'text/markdown' },
+	contacts: { file: 'contacts.md', type: 'text/markdown' },
+	projects: { file: 'projects.md', type: 'text/markdown' },
 };
 
 /** The credential secret of the request, by service. */
@@ -406,6 +563,8 @@ function keyOf(service: string, request: Incoming): string | undefined {
 		searchly: request.query.api_key,
 		inventory: /^ApiKey (\S+)$/.exec(request.headers.authorization ?? '')?.[1],
 		events: request.headers['x-events-key'],
+		contacts: request.headers['x-contacts-token'],
+		projects: /^Bearer (\S+)$/.exec(request.headers.authorization ?? '')?.[1],
 	};
 	const secret = secrets[service];
 	const prefixes: Record<string, string> = {
@@ -414,6 +573,8 @@ function keyOf(service: string, request: Incoming): string | undefined {
 		searchly: 'sly_',
 		inventory: 'stk_',
 		events: 'evt_',
+		contacts: 'cnt_',
+		projects: 'prj_',
 	};
 	const prefix = prefixes[service];
 	return prefix && secret?.startsWith(prefix) ? secret : undefined;
@@ -435,6 +596,7 @@ async function readIncoming(request: IncomingMessage): Promise<Incoming> {
 		method: request.method ?? 'GET',
 		path: url.pathname.replace(/\/+$/, '') || '/',
 		query: Object.fromEntries(url.searchParams),
+		search: url.search,
 		headers: Object.fromEntries(
 			Object.entries(request.headers).map(([name, value]) => [
 				name,
@@ -458,6 +620,7 @@ export async function startMockServer(port = MOCK_PORT): Promise<MockServer> {
 	const acmeStores = new Map<string, AcmeTask[]>();
 	const limited = new Set<string>();
 	const inventoryCounters = new Map<string, number>();
+	const contactStores = new Map<string, Contact[]>();
 
 	const route = (request: Incoming): { key: string; reply: Reply } => {
 		const service = request.path.split('/')[1] ?? '';
@@ -484,6 +647,8 @@ export async function startMockServer(port = MOCK_PORT): Promise<MockServer> {
 			searchly: () => searchly(request, key, limited),
 			inventory: () => inventory(request, key, inventoryCounters),
 			events: () => events(request),
+			contacts: () => contacts(request, key, contactStores),
+			projects: () => projects(request),
 		};
 		return { key, reply: services[service]?.() ?? error(404, 'not found') };
 	};

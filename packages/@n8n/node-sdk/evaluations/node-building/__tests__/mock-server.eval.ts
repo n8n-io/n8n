@@ -1,4 +1,4 @@
-import { ACME_SEED, EVENTS, startMockServer } from '../mock-server';
+import { ACME_SEED, EVENTS, PROJECTS, startMockServer } from '../mock-server';
 
 describe('mock server', () => {
 	// Port 0: the test must not clash with an eval run on the fixed port.
@@ -13,12 +13,14 @@ describe('mock server', () => {
 
 	it('serves the docs of each service', async () => {
 		const docs = await Promise.all(
-			['acme-tasks', 'ledger', 'searchly', 'inventory', 'events'].map(async (service) => {
-				const response = await fetch(`${(await server).url}/${service}/docs`);
-				return [response.status, (await response.text()).length > 500];
-			}),
+			['acme-tasks', 'ledger', 'searchly', 'inventory', 'events', 'contacts', 'projects'].map(
+				async (service) => {
+					const response = await fetch(`${(await server).url}/${service}/docs`);
+					return [response.status, (await response.text()).length > 500];
+				},
+			),
 		);
-		expect(docs).toEqual(Array.from({ length: 5 }, () => [200, true]));
+		expect(docs).toEqual(Array.from({ length: 7 }, () => [200, true]));
 	});
 
 	it('pages acme tasks with a cursor and logs the requests per key', async () => {
@@ -129,5 +131,54 @@ describe('mock server', () => {
 		expect(
 			(await call('/events/v1/events?occurred_after=2026-03-29T00:00:00.000Z', { headers })).status,
 		).toBe(400);
+	});
+
+	it('creates, tags, searches and deletes contacts with 64-bit ids', async () => {
+		const url = `${(await server).url}/contacts/v1/contacts`;
+		const headers = { 'X-Contacts-Token': 'cnt_test', 'content-type': 'application/json' };
+		const send = async (path: string, method: string, body?: unknown) =>
+			await fetch(`${url}${path}`, {
+				method,
+				headers,
+				...(body === undefined ? {} : { body: JSON.stringify(body) }),
+			});
+		const created = await send('', 'POST', { email: 'zoe@example.com', company: 'Acme Corp' });
+		const text = await created.text();
+		expect(created.status).toBe(201);
+		expect(text).toMatch(/^\{"id":9007199254741111,/);
+		expect(JSON.parse(text)).toMatchObject({ idStr: '9007199254741111', company: 'Acme Corp' });
+		expect((await send('', 'POST', { email: 'zoe@example.com', phone: '' })).status).toBe(400);
+		expect((await send('', 'POST', { email: 'zoe', tags: ['a'] })).status).toBe(400);
+		expect((await send('', 'POST', { email: 'zoe' })).status).toBe(422);
+		const tagged = await send('/9007199254741111/tags', 'POST', { tags: ['vip'] });
+		expect((await tagged.json()).tags).toEqual(['vip']);
+		expect((await send('/9007199254741112/tags', 'POST', { tags: ['vip'] })).status).toBe(404);
+		const found = await (await send('?tags=vip&tags=lead', 'GET')).json();
+		expect(found.map(({ idStr }: { idStr: string }) => idStr)).toEqual([
+			'9007199254741001',
+			'9007199254741007',
+		]);
+		expect((await send('?tags[0]=vip', 'GET')).status).toBe(400);
+		const deleted = await send('/9007199254741003', 'DELETE');
+		expect([deleted.status, await deleted.text()]).toEqual([204, '']);
+		expect((await send('/9007199254741003', 'DELETE')).status).toBe(404);
+	});
+
+	it('pages projects with a cursor and a name filter, and gets one by id', async () => {
+		const headers = { Authorization: 'Bearer prj_test' };
+		const first = await call('/projects/v1/projects?q=ALPHA', { headers });
+		const second = await call(`/projects/v1/projects?q=ALPHA&cursor=${first.body.nextCursor}`, {
+			headers,
+		});
+		expect([...first.body.data, ...second.body.data]).toEqual(
+			PROJECTS.filter(({ name }) => name.startsWith('Alpha')),
+		);
+		expect(second.body.nextCursor).toBeNull();
+		expect((await call(`/projects/v1/projects/${PROJECTS[1].id}`, { headers })).body).toEqual(
+			PROJECTS[1],
+		);
+		expect((await call('/projects/v1/projects/pj_ffff', { headers })).status).toBe(404);
+		expect((await call('/projects/v1/projects?limit=11', { headers })).status).toBe(400);
+		expect((await call('/projects/v1/projects')).status).toBe(401);
 	});
 });

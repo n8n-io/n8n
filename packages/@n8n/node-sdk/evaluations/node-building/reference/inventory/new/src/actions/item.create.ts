@@ -1,4 +1,4 @@
-import { isHttpError, matches, path, t } from '@n8n/node-sdk';
+import { isHttpError, matches, path, t, UserError } from '@n8n/node-sdk';
 
 import { items } from '../inventory.node';
 
@@ -26,14 +26,14 @@ export const createItem = items.action('create', {
 	summary: 'Create a physical or a digital inventory item.',
 	flow: { effect: 'write', cardinality: 'per-item' },
 	input: {
-		kind: t.oneOf('physical', 'digital').default('physical'),
-		sku: t.str(),
-		name: t.str(),
-		weightGrams: t.num().optional(),
-		lengthCm: t.num().optional(),
-		widthCm: t.num().optional(),
-		heightCm: t.num().optional(),
-		downloadUrl: t.str().optional(),
+		kind: t.oneOf('physical', 'digital').title('Kind').default('physical'),
+		sku: t.str().title('SKU'),
+		name: t.str().title('Name'),
+		weightGrams: t.num().title('Weight (Grams)').optional(),
+		lengthCm: t.num().title('Length (Cm)').optional(),
+		widthCm: t.num().title('Width (Cm)').optional(),
+		heightCm: t.num().title('Height (Cm)').optional(),
+		downloadUrl: t.str().title('Download URL').optional(),
 	},
 	output: item,
 	async run({ input, http }) {
@@ -56,11 +56,11 @@ export const createItem = items.action('create', {
 			.catch((error: unknown) => {
 				if (isHttpError(error) && error.status === 422 && matches(validationErrors, error.body)) {
 					const fields = error.body.errors.map(({ field, message }) => `${field}: ${message}`);
-					throw new Error(`Invalid item: ${fields.join('; ')}`);
+					throw new UserError(`Invalid item: ${fields.join('; ')}`);
 				}
 				throw error;
 			});
-		if (!matches(item, created)) throw new Error('Inventory returned an unexpected item');
+		if (!matches(item, created)) throw new UserError('Inventory returned an unexpected item');
 		return created;
 	},
 });

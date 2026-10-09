@@ -15,8 +15,9 @@ import { homedir, platform, tmpdir } from 'node:os';
 import { basename, dirname, extname, isAbsolute, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { ViewerIndex } from '../schema';
+import type { Arm, ViewerIndex } from '../schema';
 import { extractArm } from '../extract/extract';
+import { extractNodeBuildingRun, isNodeBuildingRun } from '../extract/node-building';
 
 const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIST_DIR = join(PACKAGE_DIR, 'dist');
@@ -102,17 +103,21 @@ async function extract(options: Options, out: string) {
 	const folders = options.runs.map((run) => runFolder(run, options.root));
 	await rm(join(out, 'iterations'), { recursive: true, force: true });
 	await mkdir(join(out, 'iterations'), { recursive: true });
-	const arms = [];
+	const arms: Arm[] = [];
 	const rawFiles: Record<string, string> = {};
-	for (const [i, folder] of folders.entries()) {
+	for (const folder of folders) {
 		console.log(`Extracting ${folder}`);
-		const extracted = await extractArm(folder, i, (line) => console.log(line));
-		for (const detail of extracted.details) {
-			await writeFile(join(out, 'iterations', `${detail.id}.json`), JSON.stringify(detail));
+		const extractedArms = isNodeBuildingRun(folder)
+			? await extractNodeBuildingRun(folder, arms.length)
+			: [await extractArm(folder, arms.length, (line) => console.log(line))];
+		for (const extracted of extractedArms) {
+			for (const detail of extracted.details) {
+				await writeFile(join(out, 'iterations', `${detail.id}.json`), JSON.stringify(detail));
+			}
+			for (const warning of extracted.arm.warnings) console.warn(`  warning: ${warning}`);
+			Object.assign(rawFiles, extracted.rawFiles);
+			arms.push(extracted.arm);
 		}
-		for (const warning of extracted.arm.warnings) console.warn(`  warning: ${warning}`);
-		Object.assign(rawFiles, extracted.rawFiles);
-		arms.push(extracted.arm);
 	}
 	const index: ViewerIndex = { version: 1, generatedAt: new Date().toISOString(), arms };
 	await writeFile(join(out, 'index.json'), JSON.stringify(index));

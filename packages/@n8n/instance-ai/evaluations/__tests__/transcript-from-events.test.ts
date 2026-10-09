@@ -458,6 +458,29 @@ describe('buildTranscriptFromEvents', () => {
 			expect(calls[0]).toMatchObject({ kind: 'tool-call', toolName: 'plan' });
 		});
 
+		it('records when a tool call started and finished from the publish times of its events', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('tool-call', {
+						ts: 1_000,
+						payload: { toolCallId: 'c1', toolName: 'nodes', args: {} },
+					}),
+					evt('tool-call', {
+						ts: 1_200,
+						payload: { toolCallId: 'c2', toolName: 'build-workflow', args: {} },
+					}),
+					evt('tool-result', { ts: 3_500, payload: { toolCallId: 'c1', result: { ok: true } } }),
+					evt('tool-error', { ts: 3_600, payload: { toolCallId: 'c2', error: 'failed' } }),
+				],
+			});
+
+			expect(turns[0].steps).toEqual([
+				expect.objectContaining({ toolCallId: 'c1', startedAt: 1_000, finishedAt: 3_500 }),
+				expect.objectContaining({ toolCallId: 'c2', startedAt: 1_200, finishedAt: 3_600 }),
+			]);
+		});
+
 		it('keeps narration on either side of a tool call as separate blocks', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [

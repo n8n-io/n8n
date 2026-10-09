@@ -1,4 +1,13 @@
-import { matches, path, Schema, t, type Http, type Infer, type JsonSchema } from '@n8n/node-sdk';
+import {
+	matches,
+	path,
+	Schema,
+	t,
+	UserError,
+	type Http,
+	type Infer,
+	type JsonSchema,
+} from '@n8n/node-sdk';
 
 const NULLABLE_STRING: JsonSchema = { anyOf: [{ type: 'string' }, { type: 'null' }] };
 
@@ -27,7 +36,7 @@ export async function listTasks(
 		path: path`/tasks`,
 		query: { status, cursor, pageSize: Math.min(50, limit) },
 	});
-	if (!matches(page, response)) throw new Error('Acme Tasks returned an unexpected page');
+	if (!matches(page, response)) throw new UserError('Acme Tasks returned an unexpected page');
 	const rest = limit - response.data.length;
 	return response.nextCursor && rest > 0
 		? [...response.data, ...(await listTasks(http, status, rest, response.nextCursor))]

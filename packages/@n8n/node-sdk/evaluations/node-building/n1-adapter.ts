@@ -5,18 +5,20 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import type { Outcome } from './old-executor';
+import type { ICredentialType, INodeType } from 'n8n-workflow';
+
+import type { OldPackage, Outcome } from './old-executor';
 import { exec, isRecord, type ExecResult } from './util';
 
 export const SDK_DIR = path.resolve(__dirname, '../..');
 
 /** The `n8n-node-next` bin of the package, run with this Node. */
-function cliCommand(): readonly string[] {
-	const manifest: unknown = JSON.parse(readFileSync(path.join(SDK_DIR, 'package.json'), 'utf8'));
+function cliCommand(sdkDir = SDK_DIR): readonly string[] {
+	const manifest: unknown = JSON.parse(readFileSync(path.join(sdkDir, 'package.json'), 'utf8'));
 	const bin =
 		isRecord(manifest) && isRecord(manifest.bin) ? manifest.bin['n8n-node-next'] : undefined;
 	if (typeof bin !== 'string') throw new Error('@n8n/node-sdk has no n8n-node-next bin');
-	return [process.execPath, path.join(SDK_DIR, bin)];
+	return [process.execPath, path.join(sdkDir, bin)];
 }
 
 export async function scaffoldNewProject(dir: string, service: string): Promise<ExecResult> {
@@ -28,9 +30,9 @@ export async function scaffoldNewProject(dir: string, service: string): Promise<
 }
 
 /** A `n8n-node-next` shim in the project's `.bin`, so agent and grader call the same CLI. */
-export async function writeCliShim(binDir: string) {
+export async function writeCliShim(binDir: string, sdkDir: string) {
 	const file = path.join(binDir, 'n8n-node-next');
-	const quoted = cliCommand().map((part) => `'${part}'`);
+	const quoted = cliCommand(sdkDir).map((part) => `'${part}'`);
 	await writeFile(file, `#!/bin/sh\nexec ${quoted.join(' ')} "$@"\n`, { mode: 0o755 });
 }
 
@@ -63,6 +65,36 @@ export async function loadNewProject(dir: string): Promise<NewProject> {
 		node,
 		actions: records(exports.actions),
 		credentials: isProjection(project) ? records(types.map(project)) : [],
+	};
+}
+
+const isConstructor = (value: unknown): value is new () => unknown => typeof value === 'function';
+
+const isNodeType = (value: unknown): value is INodeType =>
+	isRecord(value) && isRecord(value.description) && Array.isArray(value.description.properties);
+
+const isCredentialType = (value: unknown): value is ICredentialType =>
+	isRecord(value) && typeof value.name === 'string' && Array.isArray(value.properties);
+
+/**
+ * The actions as n8n node types, keyed by action ID, made by `toNodeType` of the project's own
+ * SDK host, as n8n loads them. The grader runs them like a community node.
+ */
+export async function n8nPackageOf(dir: string, project: NewProject): Promise<OldPackage> {
+	const resolved = createRequire(path.join(dir, 'package.json')).resolve('@n8n/node-sdk/host');
+	const sdk: unknown = await import(pathToFileURL(resolved).href);
+	const toNodeType = isRecord(sdk) ? sdk.toNodeType : undefined;
+	if (!isProjection(toNodeType)) throw new Error('@n8n/node-sdk/host has no toNodeType');
+	const nodeTypes = project.actions.flatMap((action) => {
+		const type = toNodeType(action);
+		const instance: unknown = isConstructor(type) ? new type() : undefined;
+		return typeof action.id === 'string' && isNodeType(instance) ? [[action.id, instance]] : [];
+	});
+	return {
+		nodeTypes: Object.fromEntries(nodeTypes),
+		credentialTypes: Object.fromEntries(
+			project.credentials.filter(isCredentialType).map((type) => [type.name, type]),
+		),
 	};
 }
 

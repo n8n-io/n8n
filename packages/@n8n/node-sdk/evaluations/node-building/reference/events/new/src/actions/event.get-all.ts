@@ -1,4 +1,4 @@
-import { matches, path, t, type Http, type Infer } from '@n8n/node-sdk';
+import { matches, path, t, UserError, type Http, type Infer } from '@n8n/node-sdk';
 
 import { events } from '../event-log.node';
 
@@ -66,8 +66,12 @@ async function readEvents(
 	wanted: number,
 	kept: readonly Event[],
 ): Promise<readonly Event[]> {
-	const response = await http.request({ path: path`/events`, ...request, fullResponse: true });
-	if (!matches(page, response)) throw new Error('Events returned an unexpected page');
+	const response = await http.request(
+		request.url === undefined
+			? { path: path`/events`, query: request.query, fullResponse: true }
+			: { url: request.url, fullResponse: true },
+	);
+	if (!matches(page, response)) throw new UserError('Events returned an unexpected page');
 	const all = [...kept, ...response.body.data.filter(keep)];
 	const next = nextLink(response.headers.link);
 	return next && all.length < wanted
@@ -80,12 +84,12 @@ export const getManyEvents = events.action('getAll', {
 	summary: 'List events in a time range, without deleted events by default.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
-		since: t.str(),
-		until: t.str().optional(),
-		timeZone: t.str().default('UTC'),
-		includeDeleted: t.bool().default(false),
-		returnAll: t.bool().default(false),
-		limit: t.int().with({ minimum: 1 }).default(50),
+		since: t.str().title('Since'),
+		until: t.str().title('Until').optional(),
+		timeZone: t.str().title('Time Zone').default('UTC'),
+		includeDeleted: t.bool().title('Include Deleted').default(false),
+		returnAll: t.bool().title('Return All').default(false),
+		limit: t.int().title('Limit').with({ minimum: 1 }).default(50),
 	},
 	output: event,
 	async *run({ input, http }) {

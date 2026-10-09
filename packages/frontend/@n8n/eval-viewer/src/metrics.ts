@@ -110,7 +110,7 @@ export const failedChecks = (iteration: IterationSummary) =>
 		.filter((check) => !check.pass)
 		.map(({ label, reason }) => ({ label, reason }));
 
-const median = (values: number[]) => {
+export const median = (values: number[]) => {
 	const sorted = [...values].sort((a, b) => a - b);
 	const middle = Math.floor(sorted.length / 2);
 	if (sorted.length === 0) return null;

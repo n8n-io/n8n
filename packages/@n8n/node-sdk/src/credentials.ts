@@ -113,12 +113,19 @@ type Checked<T extends string, Allowed extends string, Problem extends string> =
 /** A value with `{field}` placeholders, e.g. `Bearer {apiKey}`. Each one names a field. */
 export type Template<F extends Shape, T extends string> = Checked<T, FieldName<F>, 'not a field'>;
 
-/** A base URL: `https://…`, or a URL field first. A placeholder never names a secret. */
+/** An http URL on this machine, e.g. `http://localhost:8080/v1`, for an API that runs locally. */
+type LoopbackUrl = `http://${'localhost' | '127.0.0.1'}${'' | `:${number}`}${'' | `/${string}`}`;
+
+/**
+ * A base URL: `https://…`, `http://localhost…`, `http://127.0.0.1…`, or a URL field first.
+ * A placeholder never names a secret.
+ */
 export type UrlTemplate<F extends Shape, T extends string> = T extends
 	| `https://${string}`
+	| LoopbackUrl
 	| `{${string}}${string}`
 	? Checked<T, Exclude<FieldName<F>, SecretName<F>>, 'not a field, or a secret'>
-	: 'must start with https:// or a {field}';
+	: 'must start with https://, http://localhost, http://127.0.0.1 or a {field}';
 
 /**
  * A value over the fields without secrets: a lambda, e.g. `(c) => `${c.server}/token``, or an n8n
@@ -136,9 +143,9 @@ export type Endpoint<F extends Shape, T extends string> =
 			? T
 			: T extends `${string}{${string}`
 				? 'a URL has no {field}: write (c) => … or an expression'
-				: T extends `https://${string}`
+				: T extends `https://${string}` | LoopbackUrl
 					? T
-					: 'must start with https://');
+					: 'must start with https://, http://localhost or http://127.0.0.1');
 
 type Templates<F extends Shape, R extends Values> = { readonly [K in keyof R]: Template<F, R[K]> };
 
@@ -147,7 +154,7 @@ type TokenTemplates<F extends Shape, R extends Values> = {
 	readonly [K in keyof R]: Checked<R[K], FieldName<F> | '$token', 'not a field or $token'>;
 };
 
-/** One https base URL per value of an options field, e.g. a region. */
+/** One https or loopback base URL per value of an options field, e.g. a region. */
 export interface BaseUrlMap {
 	/** The options field, e.g. `region`. */
 	readonly on: string;
@@ -159,8 +166,8 @@ type TypedBaseUrlMap<F extends Shape> = {
 	[K in OptionName<F>]: {
 		/** The options field, e.g. `region`. */
 		readonly on: K;
-		/** One https base URL for each value of the field, e.g. `{ eu: 'https://api.eu.example.com' }`. */
-		readonly values: { readonly [V in Infer<F[K]> & string]: `https://${string}` };
+		/** One https or loopback base URL for each value, e.g. `{ eu: 'https://api.eu.example.com' }`. */
+		readonly values: { readonly [V in Infer<F[K]> & string]: `https://${string}` | LoopbackUrl };
 	};
 }[OptionName<F>];
 
@@ -780,6 +787,12 @@ export function credential(spec: {
 
 const PLACEHOLDER = /\{([^}]+)\}/g;
 
+/** The runtime form of `UrlTemplate`, without the placeholder check. */
+export const isUrlTemplate = (
+	value: string,
+): value is `https://${string}` | LoopbackUrl | `{${string}}${string}` =>
+	/^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)|\{[^}]+\})/.test(value);
+
 const varsOf = (template: string) =>
 	[...template.matchAll(PLACEHOLDER)].map(([, name]) => name ?? '');
 
@@ -1075,18 +1088,22 @@ function definitionIssues(type: AnyCredentialType): string[] {
 		...urls.flatMap(([label, url, isValue]) => {
 			if (!isValue) {
 				return [
-					...(/^(https:\/\/|\{)/.test(url)
+					...(isUrlTemplate(url)
 						? []
-						: [`${label} must start with https:// or a {field}`]),
+						: [
+								`${label} must start with https://, http://localhost, http://127.0.0.1 or a {field}`,
+							]),
 					...unknown([url], plainField).map(
 						(name) => `${label}: {${name}} is not a field, or a secret`,
 					),
 				];
 			}
 			if (!url.startsWith('=')) {
-				return url.startsWith('https://') && !url.includes('{')
+				return isUrlTemplate(url) && !url.includes('{')
 					? []
-					: [`${label} must start with https://, or be an expression`];
+					: [
+							`${label} must start with https://, http://localhost or http://127.0.0.1, or be an expression`,
+						];
 			}
 			const { reads, problems } = credentialScan(url);
 			return [
@@ -1111,8 +1128,8 @@ function definitionIssues(type: AnyCredentialType): string[] {
 			: []),
 		...(typeof baseUrl === 'object'
 			? Object.values(baseUrl.values)
-					.filter((url) => !url.startsWith('https://') || url.includes('{'))
-					.map((url) => `baseUrl: ${url} is not an https URL`)
+					.filter((url) => !isUrlTemplate(url) || url.includes('{'))
+					.map((url) => `baseUrl: ${url} is not an https or loopback URL`)
 			: []),
 		...(scheme.kind === 'when' && !(scheme.field in fields)
 			? [`when: ${scheme.field} is not a field`]
@@ -1186,9 +1203,9 @@ export function defineCredential<
 	/** The stored fields, e.g. `{ apiKey: field.secret('API Key') }`. */
 	readonly fields?: F;
 	/**
-	 * The API base URL: `https://…`, a template that starts with a URL field, or one URL per
-	 * value of an options field. It replaces the base URL of the node, and its host is a
-	 * credential host.
+	 * The API base URL: `https://…`, `http://localhost…`, `http://127.0.0.1…`, a template that starts
+	 * with a URL field, or one URL per value of an options field. It replaces the base URL of the
+	 * node, and its host is a credential host.
 	 */
 	readonly baseUrl?: BaseUrl<F, B>;
 	/** Hosts besides the host of `baseUrl`. */
@@ -1391,7 +1408,8 @@ export function credentialBaseUrlOf(type: AnyCredentialType, raw: unknown): stri
 	}
 	if (!template.includes('{')) return template;
 	const data = credentialDataOf(type, raw);
-	const slash = template.startsWith('https://') ? template.indexOf('/', 'https://'.length) : 0;
+	const scheme = /^https?:\/\//.exec(template)?.[0].length ?? 0;
+	const slash = scheme > 0 ? template.indexOf('/', scheme) : 0;
 	const hostEnd = slash === -1 ? template.length : slash;
 	return template.replace(PLACEHOLDER, (_, name: string, offset: number) => {
 		const value = storedValue(type, data, name);

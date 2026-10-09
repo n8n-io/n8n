@@ -3,8 +3,14 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { stripVTControlCharacters } from 'node:util';
 
 import { fetchLog, type LoggedRequest } from './mock-server';
-import { CHECK_COMMAND, loadNewProject, runNewAction } from './n1-adapter';
-import { loadOldPackage, runOldNode, type Outcome } from './old-executor';
+import { CHECK_COMMAND, loadNewProject, n8nPackageOf, runNewAction } from './n1-adapter';
+import {
+	loadOldPackage,
+	runListSearch,
+	runOldNode,
+	type OldPackage,
+	type Outcome,
+} from './old-executor';
 import type { CaseSpec, Format, RequestExpectation, TaskSpec } from './tasks';
 import { exec, isRecord, type ExecResult } from './util';
 import { workspaceEnv } from './workspace';
@@ -68,6 +74,20 @@ function credentialCheck(task: TaskSpec, credentials: readonly unknown[]): Check
 	);
 }
 
+/** Runs a case in n8n's `WorkflowExecute`: the operation, or the list search of a field. */
+async function runInN8n(
+	loaded: OldPackage,
+	nodeName: string,
+	parameters: Record<string, string>,
+	{ input, items, continueOnFail, listSearch }: CaseSpec,
+	credential?: Credential,
+): Promise<Outcome> {
+	const run = { loaded, nodeName, parameters: { ...parameters, ...input }, credential, items };
+	return listSearch
+		? await runListSearch({ ...run, ...listSearch })
+		: await runOldNode({ ...run, continueOnFail });
+}
+
 async function prepareOld(dir: string, task: TaskSpec): Promise<Project> {
 	const env = workspaceEnv(dir);
 	const build = commandCheck('build', await exec('n8n-node', ['build'], { cwd: dir, env }));
@@ -86,20 +106,25 @@ async function prepareOld(dir: string, task: TaskSpec): Promise<Project> {
 				),
 				credentialCheck(task, Object.values(loaded.credentialTypes)),
 			],
-			run: async ({ operation, input, continueOnFail }, credential) => {
-				const [resource, operationName] = operation.split('.');
-				return await runOldNode(
-					loaded,
-					task.node,
-					{ resource, operation: operationName, ...input },
-					credential,
-					continueOnFail,
-				);
+			run: async (caseSpec, credential) => {
+				const [resource, operation] = caseSpec.operation.split('.');
+				return await runInN8n(loaded, task.node, { resource, operation }, caseSpec, credential);
 			},
 		};
 	} catch (error) {
 		return { checks: [build, lint, check('load', false, errorText(error))] };
 	}
+}
+
+/** A new-format action may take the SDK `paging` input in place of the task's `returnAll` and `limit`. */
+function pagingInput(action: Record<string, unknown>, input: CaseSpec['input']): CaseSpec['input'] {
+	if (!isRecord(action.input) || !('paging' in action.input)) return input;
+	const { returnAll, limit, ...rest } = input;
+	return returnAll === true
+		? { ...rest, paging: { mode: 'all' } }
+		: typeof limit === 'number'
+			? { ...rest, paging: { mode: 'limit', max: limit } }
+			: rest;
 }
 
 async function prepareNew(dir: string, task: TaskSpec): Promise<Project> {
@@ -110,6 +135,7 @@ async function prepareNew(dir: string, task: TaskSpec): Promise<Project> {
 	if (!typecheck.pass) return notCompiled(typecheck, sdkCheck);
 	try {
 		const project = await loadNewProject(dir);
+		const loaded = task.engine === 'n8n' ? await n8nPackageOf(dir, project) : undefined;
 		return {
 			checks: [
 				typecheck,
@@ -117,12 +143,14 @@ async function prepareNew(dir: string, task: TaskSpec): Promise<Project> {
 				check('node', project.node.id === task.node, `node id is not ${task.node}`),
 				credentialCheck(task, project.credentials),
 			],
-			run: async ({ operation, input, continueOnFail }, credential) => {
-				const id = `${task.node}.${operation}`;
+			run: async (caseSpec, credential) => {
+				const id = `${task.node}.${caseSpec.operation}`;
 				const action = project.actions.find((candidate) => candidate.id === id);
-				return action
-					? await runNewAction(dir, project, action, input, credential, continueOnFail)
-					: { ok: false, error: `no action ${id} in actions` };
+				if (!action) return { ok: false, error: `no action ${id} in actions` };
+				const input = pagingInput(action, caseSpec.input);
+				return loaded
+					? await runInN8n(loaded, id, {}, { ...caseSpec, input }, credential)
+					: await runNewAction(dir, project, action, input, credential, caseSpec.continueOnFail);
 			},
 		};
 	} catch (error) {
@@ -140,10 +168,19 @@ const canonical = (value: unknown) =>
 
 const sameJson = (a: unknown, b: unknown) => canonical(a) === canonical(b);
 
+/** An expected `{ error: true }` is any error item: the message text differs by format. */
+const sameItem = (actual: unknown, expected: unknown) =>
+	sameJson(expected, { error: true })
+		? isRecord(actual) &&
+			Object.keys(actual).length === 1 &&
+			typeof actual.error === 'string' &&
+			actual.error !== ''
+		: sameJson(actual, expected);
+
 const short = (value: unknown) => JSON.stringify(value)?.slice(0, 300) ?? 'undefined';
 
 function itemProblems(actual: readonly unknown[], expected: readonly unknown[]): string[] {
-	const first = expected.findIndex((item, index) => !sameJson(actual[index], item));
+	const first = expected.findIndex((item, index) => !sameItem(actual[index], item));
 	const extra = actual.length > expected.length ? actual[expected.length] : undefined;
 	return [
 		...(actual.length !== expected.length
@@ -159,6 +196,11 @@ function itemProblems(actual: readonly unknown[], expected: readonly unknown[]):
 
 const pick = (item: unknown, fields: readonly string[]) =>
 	isRecord(item) ? Object.fromEntries(fields.map((field) => [field, item[field]])) : item;
+
+const omit = (item: unknown, fields: readonly string[]) =>
+	isRecord(item)
+		? Object.fromEntries(Object.entries(item).filter(([field]) => !fields.includes(field)))
+		: item;
 
 function requestMismatch(request: LoggedRequest, expected: RequestExpectation): string[] {
 	const wrongQuery = Object.entries(expected.query ?? {}).filter(
@@ -298,7 +340,18 @@ async function gradeCase(
 							pick(item, expect.github?.fields ?? []),
 						),
 					)
-				: itemProblems(outcome.items, expect.items ?? []);
+				: [
+						...itemProblems(
+							outcome.items.map((item) => omit(item, task.ignoreFields ?? [])),
+							(expect.items ?? []).map((item) => omit(item, task.ignoreFields ?? [])),
+						),
+						...(expect.pairedItems !== undefined &&
+						!sameJson(outcome.pairedItems, expect.pairedItems)
+							? [
+									`paired items ${short(outcome.pairedItems)}, expected ${short(expect.pairedItems)}`,
+								]
+							: []),
+					];
 	const requests = expect.requests ? requestProblems(await fetchLog(secret), expect.requests) : [];
 	const problems = [...outcomeProblems, ...requests];
 	const reason = problems.join('; ');

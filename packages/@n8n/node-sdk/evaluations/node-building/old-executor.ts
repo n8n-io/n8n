@@ -10,6 +10,7 @@ import type {
 	IDataObject,
 	IHttpRequestOptions,
 	INode,
+	INodeExecutionData,
 	INodeParameters,
 	INodeType,
 	INodeTypes,
@@ -30,7 +31,12 @@ const core: typeof Core = requireFromCore(CORE_DIST);
 const workflowLib: typeof N8nWorkflow = requireFromCore('n8n-workflow');
 
 export type Outcome =
-	| { readonly ok: true; readonly items: readonly unknown[] }
+	| {
+			readonly ok: true;
+			readonly items: readonly unknown[];
+			/** The input item index of each output item, when the engine tracks it. */
+			readonly pairedItems?: readonly unknown[];
+	  }
 	/** `error` is the text for the report; `message` is the error message alone. */
 	| { readonly ok: false; readonly error: string; readonly message?: string };
 
@@ -151,7 +157,7 @@ const unused = async () => await Promise.reject(new Error('Not available in the 
 
 function additionalDataOf(
 	credentialsHelper: EvalCredentialsHelper,
-	node: INode,
+	nodes: INode[],
 ): IWorkflowExecuteAdditionalData {
 	const now = new Date();
 	return {
@@ -163,7 +169,7 @@ function additionalDataOf(
 			isArchived: false,
 			createdAt: now,
 			updatedAt: now,
-			nodes: [node],
+			nodes,
 			connections: {},
 			activeVersionId: null,
 		}),
@@ -194,56 +200,159 @@ const errorText = (value: unknown) =>
 		? [value.message, value.description].filter((part) => typeof part === 'string').join(': ')
 		: String(value);
 
-/** Runs one node in a one-node workflow through WorkflowExecute and returns its output items. */
-export async function runOldNode(
-	loaded: OldPackage,
-	nodeName: string,
-	parameters: INodeParameters,
-	credential?: { readonly type: string; readonly data: ICredentialDataDecryptedObject },
-	continueOnFail = false,
-): Promise<Outcome> {
-	const nodeType = loaded.nodeTypes[nodeName];
-	if (!nodeType) return { ok: false, error: `The package has no node named ${nodeName}` };
+/** The node type of the stub that feeds the case items to the node under test. */
+const SOURCE_TYPE = 'eval.source';
+
+const sourceOf = (items: readonly IDataObject[]): INodeType => ({
+	description: {
+		displayName: 'Source',
+		name: SOURCE_TYPE,
+		group: ['input'],
+		version: 1,
+		description: 'The input items of the case',
+		defaults: { name: 'Source' },
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+	},
+	execute: async () => await Promise.resolve([items.map((json) => ({ json: { ...json } }))]),
+});
+
+type Credential = { readonly type: string; readonly data: ICredentialDataDecryptedObject };
+
+interface NodeRun {
+	readonly loaded: OldPackage;
+	readonly nodeName: string;
+	readonly parameters: INodeParameters;
+	readonly credential?: Credential;
+	readonly continueOnFail?: boolean;
+	/** One empty item when omitted, as the start node of a workflow gets. */
+	readonly items?: readonly IDataObject[];
+}
+
+/** The workflow `Source -> Node`, with the node under test and its credential. */
+function workflowOf(run: NodeRun) {
+	const nodeType = run.loaded.nodeTypes[run.nodeName];
+	if (!nodeType) return undefined;
+	const source = sourceOf(run.items ?? [{}]);
 	const nodeTypes: INodeTypes = {
-		getByName: () => nodeType,
-		getByNameAndVersion: (_type, version) =>
-			workflowLib.NodeHelpers.getVersionedNodeType(nodeType, version),
+		getByName: (type) => (type === SOURCE_TYPE ? source : nodeType),
+		getByNameAndVersion: (type, version) =>
+			type === SOURCE_TYPE
+				? source
+				: workflowLib.NodeHelpers.getVersionedNodeType(nodeType, version),
 		getKnownTypes: () => ({}),
 	};
 	const latest = workflowLib.NodeHelpers.getVersionedNodeType(nodeType).description.version;
+	const sourceNode: INode = {
+		id: 'source',
+		name: 'Source',
+		type: SOURCE_TYPE,
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	};
 	const node: INode = {
 		id: 'node',
 		name: 'Node',
-		type: nodeName,
+		type: run.nodeName,
 		typeVersion: Array.isArray(latest) ? Math.max(...latest) : latest,
-		position: [0, 0],
-		parameters,
-		onError: continueOnFail ? 'continueRegularOutput' : 'stopWorkflow',
-		...(credential ? { credentials: { [credential.type]: { id: '1', name: 'eval' } } } : {}),
+		position: [200, 0],
+		parameters: run.parameters,
+		onError: run.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow',
+		...(run.credential
+			? { credentials: { [run.credential.type]: { id: '1', name: 'eval' } } }
+			: {}),
 	};
 	const workflow = new workflowLib.Workflow({
 		id: 'eval',
-		nodes: [node],
-		connections: {},
+		nodes: [sourceNode, node],
+		connections: { Source: { main: [[{ node: node.name, type: 'main', index: 0 }]] } },
 		active: false,
 		nodeTypes,
 	});
 	const helper = new EvalCredentialsHelper(
-		loaded.credentialTypes,
-		credential ? { [credential.type]: credential.data } : {},
+		run.loaded.credentialTypes,
+		run.credential ? { [run.credential.type]: run.credential.data } : {},
 	);
-	const execution = new core.WorkflowExecute(additionalDataOf(helper, node), 'manual');
-	const run = await execution.run({ workflow, startNode: node });
-	const { error, runData } = run.data.resultData;
+	return {
+		workflow,
+		sourceNode,
+		node: workflow.getNode(node.name) ?? node,
+		nodeType: workflowLib.NodeHelpers.getVersionedNodeType(nodeType, node.typeVersion),
+		additionalData: additionalDataOf(helper, [sourceNode, node]),
+	};
+}
+
+const failureOf = (failure: unknown): Outcome => {
+	const message = isRecord(failure) ? failure.message : undefined;
+	return {
+		ok: false,
+		error: errorText(failure),
+		...(typeof message === 'string' ? { message } : {}),
+	};
+};
+
+/** The input item index of an output item; a list for an item of more input items. */
+const pairedIndexOf = (paired: INodeExecutionData['pairedItem']) =>
+	typeof paired === 'number'
+		? paired
+		: Array.isArray(paired)
+			? paired.map(({ item }) => item)
+			: paired?.item;
+
+/** Runs the node after a stub source of the case items through WorkflowExecute. */
+export async function runOldNode(run: NodeRun): Promise<Outcome> {
+	const setup = workflowOf(run);
+	if (!setup) return { ok: false, error: `The package has no node named ${run.nodeName}` };
+	const { workflow, sourceNode, node, additionalData } = setup;
+	const execution = new core.WorkflowExecute(additionalData, 'manual');
+	const result = await execution.run({ workflow, startNode: sourceNode });
+	const { error, runData } = result.data.resultData;
 	const task = runData[node.name]?.[0];
 	const failure: unknown = error ?? task?.error;
-	if (failure) {
-		const message = isRecord(failure) ? failure.message : undefined;
-		return {
-			ok: false,
-			error: errorText(failure),
-			...(typeof message === 'string' ? { message } : {}),
-		};
-	}
-	return { ok: true, items: (task?.data?.main[0] ?? []).map((item) => item.json) };
+	if (failure) return failureOf(failure);
+	const items = task?.data?.main[0] ?? [];
+	return {
+		ok: true,
+		items: items.map((item) => item.json),
+		pairedItems: items.map((item) => pairedIndexOf(item.pairedItem)),
+	};
+}
+
+/** The most list search pages the grader asks for: more means the node does not stop. */
+const MAX_LIST_PAGES = 50;
+
+/**
+ * Runs the list search of the resource locator `field` as the n8n form does, and follows
+ * `paginationToken` to the last page. The items are `{ name, value }` of each result.
+ */
+export async function runListSearch(
+	run: NodeRun & { readonly field: string; readonly filter?: string },
+): Promise<Outcome> {
+	const setup = workflowOf(run);
+	if (!setup) return { ok: false, error: `The package has no node named ${run.nodeName}` };
+	const { workflow, node, nodeType, additionalData } = setup;
+	const method = nodeType.description.properties
+		.filter(({ name, type }) => name === run.field && type === 'resourceLocator')
+		.flatMap(({ modes }) => modes ?? [])
+		.find(({ type }) => type === 'list')?.typeOptions?.searchListMethod;
+	const search = method === undefined ? undefined : nodeType.methods?.listSearch?.[method];
+	if (!search)
+		return { ok: false, error: `${run.field} has no list mode with a list search method` };
+	const context = new core.LoadOptionsContext(
+		workflow,
+		node,
+		{ ...additionalData, currentNodeParameters: node.parameters },
+		`parameters.${run.field}`,
+	);
+	const pages = async (token: string | undefined, page: number): Promise<unknown[]> => {
+		if (page > MAX_LIST_PAGES) throw new Error(`more than ${MAX_LIST_PAGES} list search pages`);
+		const { results, paginationToken } = await search.call(context, run.filter, token);
+		const entries = results.map(({ name, value }) => ({ name, value }));
+		return paginationToken === undefined || paginationToken === null || paginationToken === ''
+			? entries
+			: [...entries, ...(await pages(String(paginationToken), page + 1))];
+	};
+	return await pages(undefined, 1).then((items): Outcome => ({ ok: true, items }), failureOf);
 }

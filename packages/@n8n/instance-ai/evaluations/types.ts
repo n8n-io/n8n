@@ -453,6 +453,10 @@ export type ToolInteraction =
 			/** Tool output (success) or error message — paired to the call by toolCallId. */
 			result?: unknown;
 			error?: string;
+			/** Server publish time (epoch ms) of the tool-call event. */
+			startedAt?: number;
+			/** Server publish time (epoch ms) of the tool-result or tool-error event. */
+			finishedAt?: number;
 	  };
 
 export interface PlanTask {

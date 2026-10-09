@@ -546,6 +546,34 @@ describe('credentialBaseUrlOf', () => {
 			'tenant must be one host label',
 		);
 	});
+
+	it('takes an http base URL only on localhost or 127.0.0.1', () => {
+		const spec = {
+			id: 'local.token',
+			version: '1.0.0',
+			displayName: 'Local',
+			fields: { token: field.secret('Token'), team: field.text('Team') },
+		} as const;
+		const local = defineCredential({
+			...spec,
+			baseUrl: 'http://localhost:8080/teams/{team}',
+			auth: (a) => a.bearer('token'),
+		});
+		expect(credentialBaseUrlOf(local, { token: 't', team: 'a b' })).toBe(
+			'http://localhost:8080/teams/a%20b',
+		);
+		expect(() =>
+			defineCredential({ ...spec, baseUrl: 'http://127.0.0.1', auth: (a) => a.bearer('token') }),
+		).not.toThrow();
+		expect(() =>
+			defineCredential({
+				...spec,
+				// @ts-expect-error an http URL that is not loopback
+				baseUrl: 'http://localhost.example.test',
+				auth: (a) => a.bearer('token'),
+			}),
+		).toThrow('baseUrl must start with https://, http://localhost, http://127.0.0.1 or a {field}');
+	});
 });
 
 describe('credential types in tsc', () => {
@@ -1092,7 +1120,9 @@ describe('OAuth2 grants and OIDC', () => {
 		).toThrow('tokenExchange: email is not a secret field');
 		expect(
 			make((a) => a.oauth2.clientCredentials({ tokenEndpoint: 'http://acme.test/token' as never })),
-		).toThrow('tokenEndpoint must start with https://, or be an expression');
+		).toThrow(
+			'tokenEndpoint must start with https://, http://localhost or http://127.0.0.1, or be an expression',
+		);
 	});
 
 	it('reads the endpoints from the discovery document of the issuer', async () => {

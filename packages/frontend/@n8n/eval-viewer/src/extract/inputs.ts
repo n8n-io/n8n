@@ -10,6 +10,8 @@ const toolCallStepSchema = z.object({
 	toolCallId: z.string().nullish(),
 	args: z.unknown(),
 	result: z.unknown(),
+	startedAt: z.number().nullish(),
+	finishedAt: z.number().nullish(),
 });
 const textStepSchema = z.object({ kind: z.literal('agent-text'), text: z.string() });
 const otherStepSchema = z.object({ kind: z.string() }).passthrough();
