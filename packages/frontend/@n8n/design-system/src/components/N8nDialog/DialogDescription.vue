@@ -20,8 +20,8 @@ defineProps<DialogDescriptionProps>();
 <style module>
 .description {
 	margin: 0 0 var(--spacing--sm);
-	font-size: var(--font-size--md);
-	line-height: var(--line-height--md);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--sm);
 	color: light-dark(var(--color--neutral-800), var(--color--neutral-200));
 }
 </style>
