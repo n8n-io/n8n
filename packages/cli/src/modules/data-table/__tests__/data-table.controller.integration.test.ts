@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { DataTableCreateColumnSchema } from '@n8n/api-types';
+import { InstanceWriteAccessService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -13,8 +14,6 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import type { DataTableRow } from 'n8n-workflow';
 
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 import { createDataTable } from '@test-integration/db/data-tables';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
@@ -4627,23 +4626,13 @@ describe('row-content authorization on write endpoints', () => {
 	});
 });
 
-describe('Source Control read-only mode', () => {
-	let sourceControlPreferencesService: SourceControlPreferencesService;
+describe('Instance read-only mode', () => {
+	let instanceWriteAccess: InstanceWriteAccessService;
 	let testDataTable: DataTable;
-	let originalPreferences: SourceControlPreferences;
 
-	beforeAll(async () => {
-		sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
-
-		// Capture original preferences
-		originalPreferences = sourceControlPreferencesService.getPreferences();
-
-		// Enable read-only mode
-		await sourceControlPreferencesService.setPreferences({
-			connected: true,
-			keyGeneratorType: 'rsa',
-			branchReadOnly: true,
-		});
+	beforeAll(() => {
+		instanceWriteAccess = Container.get(InstanceWriteAccessService);
+		instanceWriteAccess.setReadOnly(true);
 	});
 
 	beforeEach(async () => {
@@ -4657,9 +4646,8 @@ describe('Source Control read-only mode', () => {
 		});
 	});
 
-	afterAll(async () => {
-		// Restore original preferences
-		await sourceControlPreferencesService.setPreferences(originalPreferences);
+	afterAll(() => {
+		instanceWriteAccess.setReadOnly(false);
 	});
 
 	describe('mutating endpoints should return 403', () => {
