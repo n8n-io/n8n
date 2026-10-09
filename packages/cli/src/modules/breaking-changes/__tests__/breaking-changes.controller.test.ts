@@ -3,7 +3,7 @@ import type {
 	BreakingChangeReportQueryDto,
 	BreakingChangeRuleDetailResult,
 } from '@n8n/api-types';
-import type { WorkflowSharingService } from '@n8n/backend-services';
+import type { EventService, WorkflowSharingService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -15,11 +15,12 @@ import type { BreakingChangeMigrationService } from '../breaking-changes.migrati
 import { BreakingChangesController } from '../breaking-changes.controller';
 import type { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import type { IBreakingChangeRule } from '../types';
+import type { MigrationOwnerAssignmentService } from '../owners/migration-owner-assignment.service';
 import type { MigrationFindingQueryService } from '../query/migration-finding-query.service';
 import type { MigrationFindingSyncService } from '../sync/migration-finding-sync.service';
 import type { MigrationFindingTriageService } from '../triage/migration-finding-triage.service';
 
-const req = mock<AuthenticatedRequest>();
+const req = mock<AuthenticatedRequest>({ user: { id: 'user-1' } });
 const res = mock<Response>();
 
 /** A user whose global role grants the given scopes. */
@@ -65,6 +66,8 @@ describe('BreakingChangesController', () => {
 	let ruleRegistry: MockProxy<RuleRegistry>;
 	let triageService: MockProxy<MigrationFindingTriageService>;
 	let workflowSharingService: MockProxy<WorkflowSharingService>;
+	let eventService: MockProxy<EventService>;
+	let ownerAssignmentService: MockProxy<MigrationOwnerAssignmentService>;
 	let controller: BreakingChangesController;
 
 	beforeEach(() => {
@@ -76,6 +79,8 @@ describe('BreakingChangesController', () => {
 		workflowSharingService = mock<WorkflowSharingService>();
 		workflowSharingService.getSharedWorkflowIdsForScopes.mockResolvedValue(['wf-1', 'wf-2']);
 		req.user = admin;
+		eventService = mock<EventService>();
+		ownerAssignmentService = mock<MigrationOwnerAssignmentService>();
 		controller = new BreakingChangesController(
 			migrationService,
 			syncService,
@@ -83,7 +88,37 @@ describe('BreakingChangesController', () => {
 			ruleRegistry,
 			triageService,
 			workflowSharingService,
+			eventService,
+			ownerAssignmentService,
 		);
+	});
+
+	describe('workflow owner', () => {
+		const owner = {
+			id: 'alice',
+			firstName: 'Alice',
+			lastName: 'A',
+			email: 'alice@example.com',
+			source: 'assigned' as const,
+		};
+
+		it('PUT assigns the user from the body as the acting user and returns the owner', async () => {
+			ownerAssignmentService.assign.mockResolvedValue(owner);
+
+			const result = await controller.assignOwner(req, res, 'wf-1', { userId: 'alice' });
+
+			expect(ownerAssignmentService.assign).toHaveBeenCalledWith('wf-1', 'alice', req.user);
+			expect(result).toEqual({ owner });
+		});
+
+		it('DELETE unassigns and returns what the heuristic suggests instead', async () => {
+			ownerAssignmentService.unassign.mockResolvedValue(null);
+
+			const result = await controller.unassignOwner(req, res, 'wf-1');
+
+			expect(ownerAssignmentService.unassign).toHaveBeenCalledWith('wf-1');
+			expect(result).toEqual({ owner: null });
+		});
 	});
 
 	describe('GET /report', () => {
@@ -141,6 +176,20 @@ describe('BreakingChangesController', () => {
 			});
 		});
 
+		it('announces the served overview for telemetry, as a plain view', async () => {
+			const expected = lightReport(new Date('2026-01-01T00:00:00Z'));
+			queryService.getLightReport.mockResolvedValue(expected);
+
+			await controller.getDetectionReport(req, res, { version: 'v3' });
+
+			expect(eventService.emit).toHaveBeenCalledWith('migration-report-viewed', {
+				user: req.user,
+				targetVersion: 'v3',
+				refreshed: false,
+				report: expected,
+			});
+		});
+
 		it('defaults the target version to v2', async () => {
 			queryService.getLightReport.mockResolvedValue(lightReport(new Date()));
 
@@ -180,6 +229,20 @@ describe('BreakingChangesController', () => {
 			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', INSTANCE);
 			expect(callOrder).toEqual(['sync', 'getLightReport']);
 			expect(syncService.syncIfStale).not.toHaveBeenCalled();
+		});
+
+		it('announces the served overview for telemetry, as a refresh', async () => {
+			const expected = lightReport(new Date('2026-02-01T00:00:00Z'));
+			queryService.getLightReport.mockResolvedValue(expected);
+
+			await controller.regenerate(req, res, { version: 'v3' });
+
+			expect(eventService.emit).toHaveBeenCalledWith('migration-report-viewed', {
+				user: req.user,
+				targetVersion: 'v3',
+				refreshed: true,
+				report: expected,
+			});
 		});
 
 		it('defaults the target version to v2', async () => {

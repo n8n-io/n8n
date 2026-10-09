@@ -54,6 +54,7 @@ export type { DiscoverDataPublic } from './discover/discover-public.dto';
 
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
 export { UpdateMigrationFindingStatusRequestDto } from './breaking-changes/update-migration-finding-status-request.dto';
+export { AssignMigrationOwnerDto } from './breaking-changes/assign-migration-owner.dto';
 
 export {
 	AuditPublicDto,
@@ -489,6 +490,16 @@ export {
 	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
 export { ExportPackageRequestDto } from './packages/export-package-request.dto';
+export {
+	importBlockingIssueSchema,
+	packageRequirementConsumerSchema,
+	type ImportBlockingIssue,
+} from './packages/import-blocking-issue.schema';
+export {
+	ImportResultDto,
+	ImportBlockedErrorDto,
+	importResultSchema,
+} from './packages/import-result.dto';
 export { CommunityPackageRequestDto } from './community-packages/community-package-request.dto';
 
 export * from './evaluations';

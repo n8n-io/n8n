@@ -103,6 +103,12 @@ describe('N8nClient packages', () => {
 				path: 'apply/continue',
 				body: { expectedSource },
 			},
+			{
+				title: 'posts continue with the confirmation of destructive data table changes',
+				send: async () => await client.continueApplyPackage('conn-1', expectedSource, true),
+				path: 'apply/continue',
+				body: { expectedSource, confirmDestructiveChanges: true },
+			},
 		])('$title', async ({ send, path, body }) => {
 			fetchMock.mockResolvedValue(jsonResponse(200, { status: 'applied' }));
 
@@ -134,6 +140,14 @@ describe('N8nClient packages', () => {
 					await client.continueApplyProjectSelection('proj-1', ['wf-1'], expectedSource),
 				path: 'apply/continue',
 				body: { workflowIds: ['wf-1'], expectedSource },
+			},
+			{
+				title:
+					'continues a selection apply with the confirmation of destructive data table changes',
+				send: async () =>
+					await client.continueApplyProjectSelection('proj-1', ['wf-1'], expectedSource, true),
+				path: 'apply/continue',
+				body: { workflowIds: ['wf-1'], expectedSource, confirmDestructiveChanges: true },
 			},
 		])('$title', async ({ send, path, body }) => {
 			fetchMock.mockResolvedValue(jsonResponse(200, { status: 'source-changed' }));
@@ -319,19 +333,19 @@ describe('N8nClient packages', () => {
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], folderIds: ['f1'] }));
 		});
 
-		it('includes the missing workflow dependency policy when provided', async () => {
+		it('includes the dependency policy when provided', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
 
 			await client.exportPackage({
 				projectIds: ['proj-1'],
-				missingWorkflowDependencyPolicy: 'include-in-package',
+				dependencyPolicy: 'include-in-package',
 			});
 
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(
 				JSON.stringify({
 					projectIds: ['proj-1'],
-					missingWorkflowDependencyPolicy: 'include-in-package',
+					dependencyPolicy: 'include-in-package',
 				}),
 			);
 		});
@@ -398,17 +412,17 @@ describe('N8nClient packages', () => {
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeTags: false }));
 		});
 
-		it('includes the workflow version policy when provided', async () => {
+		it('includes the version policy when provided', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
 
 			await client.exportPackage({
 				workflowIds: ['a'],
-				workflowVersionPolicy: 'published-strict',
+				versionPolicy: 'published-strict',
 			});
 
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(
-				JSON.stringify({ workflowIds: ['a'], workflowVersionPolicy: 'published-strict' }),
+				JSON.stringify({ workflowIds: ['a'], versionPolicy: 'published-strict' }),
 			);
 		});
 

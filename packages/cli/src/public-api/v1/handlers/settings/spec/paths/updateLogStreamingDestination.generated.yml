@@ -12,7 +12,7 @@ parameters:
       type: string
     required: true
     description: The id of the log streaming destination.
-    name: id
+    name: destinationId
     in: path
 requestBody:
   required: true
@@ -358,6 +358,7 @@ requestBody:
               - type
               - dsn
         description: 'A log streaming destination. The `type` field selects the variant and its type-specific fields: `webhook`, `syslog`, or `sentry`.'
+        type: object
 responses:
   '200':
     description: Operation successful.

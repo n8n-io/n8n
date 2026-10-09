@@ -165,6 +165,10 @@ export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
 	'119_surface_assistant_on_workflow_error',
 );
 
+export const AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT = createExperiment(
+	'120_agents_empty_state_templates',
+);
+
 export const AGENTS_N8N_CHAT_EXPERIMENT = createExperiment(AGENTS_N8N_CHAT_FLAG, {
 	control: 'control',
 	variantA: 'variant-a',
@@ -212,6 +216,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	MCP_JSON_NUDGE_EXPERIMENT.name,
 	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
+	AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.name,
 	INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name,
 	AGENTS_N8N_CHAT_EXPERIMENT.name,
 ];

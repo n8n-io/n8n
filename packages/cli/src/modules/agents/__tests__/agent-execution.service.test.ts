@@ -1110,6 +1110,7 @@ describe('AgentExecutionService', () => {
 				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run',
+				source: 'instance-ai',
 				record: makeMessageRecord({
 					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 					totalCost: 25,
@@ -1145,6 +1146,7 @@ describe('AgentExecutionService', () => {
 				agent_id: 'agent-1',
 				thread_id: 'thread-1',
 				run_type: 'test',
+				source: 'instance-ai',
 				turn_status: 'succeeded',
 				configuration: {
 					model: 'anthropic/claude-sonnet-4-5',
@@ -1663,13 +1665,16 @@ describe('AgentExecutionService', () => {
 				nextCursor: null,
 			});
 
-			await service.findN8nChatThreadsForAgents(userId, ['agent-1'], 20, 'cursor-1');
+			await service.findN8nChatThreadsForAgents(userId, ['agent-1'], {
+				limit: 20,
+				cursor: 'cursor-1',
+				search: 'refund',
+			});
 
 			expect(agentExecutionThreadRepository.findN8nChatThreadsForOwner).toHaveBeenCalledWith(
 				userId,
 				['agent-1'],
-				20,
-				'cursor-1',
+				{ limit: 20, cursor: 'cursor-1', search: 'refund' },
 			);
 		});
 
@@ -1684,7 +1689,7 @@ describe('AgentExecutionService', () => {
 				nextCursor: 'next-cursor',
 			});
 
-			const result = await service.findN8nChatThreadsForAgents(userId, ['agent-1'], 20);
+			const result = await service.findN8nChatThreadsForAgents(userId, ['agent-1'], { limit: 20 });
 
 			expect(result).toEqual({
 				data: [
@@ -1720,7 +1725,7 @@ describe('AgentExecutionService', () => {
 				nextCursor: null,
 			});
 
-			const result = await service.findN8nChatThreadsForAgents(userId, ['agent-2'], 20);
+			const result = await service.findN8nChatThreadsForAgents(userId, ['agent-2'], { limit: 20 });
 
 			expect(result.data[0].agent).not.toHaveProperty('personalisation');
 		});

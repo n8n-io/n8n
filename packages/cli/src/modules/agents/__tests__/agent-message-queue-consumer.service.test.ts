@@ -11,6 +11,7 @@ import type { AgentChatExecutionService } from '../agent-chat-execution.service'
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
+import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
 import type { AgentMessageQueueService, ClaimedAgentMessage } from '../agent-message-queue.service';
 import type { AgentQueuedPreviewStreamService } from '../agent-queued-preview-stream.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
@@ -256,6 +257,29 @@ describe('AgentMessageQueueConsumer', () => {
 			expect.objectContaining({ type: 'tool-call-suspended' }),
 		);
 		expect(sender.send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+	});
+
+	it('maps an n8n Chat stream failure to its errorCode via toChatErrorEvent', async () => {
+		const thrown = new AgentN8nChatUnavailableError();
+		const item = claim('session');
+		item.payload = { kind: 'n8n_chat', message: 'input', resourceId: 'n8n-chat:user' };
+		item.item.payload = { kind: 'n8n_chat' };
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		// eslint-disable-next-line require-yield
+		orchestrator.executeForN8nChatPublished.mockImplementation(async function* () {
+			throw thrown;
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(queue.recordFailure).toHaveBeenCalledWith(item, thrown, expect.any(AbortSignal));
+		expect(sender.send).toHaveBeenCalledWith({
+			type: 'error',
+			message: thrown.message,
+			errorCode: 'agent_unavailable',
+		});
 	});
 
 	it.each([

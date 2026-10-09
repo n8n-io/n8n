@@ -4,6 +4,7 @@ import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents'
 import { getProviderPrefix, splitModelId } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 
+import { evalUsageGuardrail } from './eval-usage';
 import { parseModelHeadersJson } from './parse-model-headers';
 import { applyAgentThinking } from '../agent/apply-agent-thinking';
 
@@ -175,6 +176,8 @@ export function createEvalAgent(
 	}
 
 	applyAgentThinking(agent, model);
+	// `configuration()` replaces the defaults it was given before: put any other default option in this call.
+	agent.configuration({ guardrails: { hooks: [evalUsageGuardrail(name)] } });
 
 	return agent;
 }

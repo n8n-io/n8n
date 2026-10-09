@@ -25,6 +25,7 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionDataProcess,
 	PollCursor,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -49,6 +50,16 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+/** What the trigger node waits on from the run it starts. A done promise outranks a response. */
+function awaitedByTrigger(
+	responsePromise: IDeferredPromise<IExecuteResponsePromiseData> | undefined,
+	donePromise: IDeferredPromise<IRun | undefined> | undefined,
+): NonNullable<IWorkflowExecutionDataProcess['callerAwaitsOutcome']> {
+	if (donePromise) return 'completion';
+	if (responsePromise) return 'response';
+	return 'none';
+}
 
 export type TriggerFailureHandler = (opts: {
 	error: Error;
@@ -218,6 +229,8 @@ export class TriggerExecutionContextFactory {
 							mode,
 							responsePromise,
 							deduplicationKey,
+							// A node awaiting the run's end, or a response from it, must not get a paused segment instead.
+							awaitedByTrigger(responsePromise, donePromise),
 						);
 					})
 					.catch((error: unknown) => {
@@ -390,6 +403,8 @@ export class TriggerExecutionContextFactory {
 							runAdditionalData,
 							mode,
 							responsePromise,
+							undefined,
+							awaitedByTrigger(responsePromise, donePromise),
 						);
 					}
 
@@ -413,6 +428,7 @@ export class TriggerExecutionContextFactory {
 								cursor,
 								responsePromise,
 								fence,
+								awaitedByTrigger(responsePromise, donePromise),
 							);
 				});
 
