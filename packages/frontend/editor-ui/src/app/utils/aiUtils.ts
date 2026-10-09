@@ -176,6 +176,7 @@ const outputTypeParsers: {
 
 		return fallbackParser(execData);
 	},
+	[NodeConnectionTypes.AiDecisionModel]: fallbackParser,
 	[NodeConnectionTypes.AiOutputParser]: fallbackParser,
 	[NodeConnectionTypes.AiRetriever]: fallbackParser,
 	[NodeConnectionTypes.AiReranker]: fallbackParser,

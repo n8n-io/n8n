@@ -523,6 +523,7 @@ export interface SubnodeConfig {
 	documentLoader?: DocumentLoaderInstance | DocumentLoaderInstance[];
 	textSplitter?: TextSplitterInstance;
 	reranker?: RerankerInstance | RerankerInstance[];
+	decisionModel?: DecisionModelInstance;
 }
 
 // =============================================================================
@@ -788,6 +789,12 @@ export type RerankerInstance<
 	TVersion extends string = string,
 	TOutput = unknown,
 > = SubnodeInstance<TType, TVersion, TOutput, 'ai_reranker'>;
+
+export type DecisionModelInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> = SubnodeInstance<TType, TVersion, TOutput, 'ai_decisionModel'>;
 
 // =============================================================================
 // Composite types

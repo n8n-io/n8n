@@ -46,6 +46,10 @@ describe('constants', () => {
 		it('maps ai_reranker to reranker', () => {
 			expect(AI_CONNECTION_TO_CONFIG_KEY.ai_reranker).toBe('reranker');
 		});
+
+		it('maps ai_decisionModel to decisionModel', () => {
+			expect(AI_CONNECTION_TO_CONFIG_KEY.ai_decisionModel).toBe('decisionModel');
+		});
 	});
 
 	describe('AI_CONNECTION_TO_BUILDER', () => {
@@ -88,6 +92,10 @@ describe('constants', () => {
 		it('maps ai_reranker to reranker', () => {
 			expect(AI_CONNECTION_TO_BUILDER.ai_reranker).toBe('reranker');
 		});
+
+		it('maps ai_decisionModel to decisionModel', () => {
+			expect(AI_CONNECTION_TO_BUILDER.ai_decisionModel).toBe('decisionModel');
+		});
 	});
 
 	describe('AI_ALWAYS_ARRAY_TYPES', () => {
@@ -119,6 +127,10 @@ describe('constants', () => {
 
 		it('includes ai_reranker', () => {
 			expect(AI_OPTIONAL_ARRAY_TYPES.has('ai_reranker')).toBe(true);
+		});
+
+		it('does not include ai_decisionModel, which takes a single model', () => {
+			expect(AI_OPTIONAL_ARRAY_TYPES.has('ai_decisionModel')).toBe(false);
 		});
 
 		it('does not include ai_tool', () => {

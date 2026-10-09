@@ -18,6 +18,7 @@ export const AI_CONNECTION_TO_CONFIG_KEY: Record<AiConnectionType, string> = {
 	ai_document: 'documentLoader',
 	ai_textSplitter: 'textSplitter',
 	ai_reranker: 'reranker',
+	ai_decisionModel: 'decisionModel',
 };
 
 /**
@@ -34,6 +35,7 @@ export const AI_CONNECTION_TO_BUILDER: Record<AiConnectionType, string> = {
 	ai_document: 'documentLoader',
 	ai_textSplitter: 'textSplitter',
 	ai_reranker: 'reranker',
+	ai_decisionModel: 'decisionModel',
 };
 
 /**

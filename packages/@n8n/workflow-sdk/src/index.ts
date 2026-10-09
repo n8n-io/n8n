@@ -111,6 +111,7 @@ export {
 	retriever,
 	documentLoader,
 	textSplitter,
+	decisionModel,
 	fromAi, // Top-level function for $fromAI expressions
 } from './workflow-builder/node-builders/subnode-builders';
 
