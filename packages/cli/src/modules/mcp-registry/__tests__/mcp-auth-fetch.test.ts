@@ -21,7 +21,7 @@ describe('resolveMcpAuthDomainPolicy', () => {
 	});
 
 	it.each([
-		['none', { mode: 'none' }],
+		['none', { mode: 'domains', domains: 'mcp.github.test' }],
 		['domains', { mode: 'domains', domains: 'api.github.test' }],
 		['all', undefined],
 	] as const)('honors the native OAuth %s domain policy', (policy, expected) => {

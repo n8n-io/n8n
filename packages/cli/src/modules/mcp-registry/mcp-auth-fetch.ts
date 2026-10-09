@@ -29,7 +29,6 @@ export function resolveMcpAuthDomainPolicy(
 	}
 
 	switch (credentialData.allowedHttpRequestDomains) {
-		case 'none':
 		case 'domains':
 			return resolveAllowedDomains(credentialData);
 		case 'all':
