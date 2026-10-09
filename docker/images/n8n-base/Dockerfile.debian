@@ -1,0 +1,54 @@
+# glibc variant of ./Dockerfile. Users add vendor libraries that need glibc
+# (Oracle Instant Client, IBM Db2) in a derived image; see the n8n image README.
+#
+# CI passes the DHI reference (see build-base-image.yml). The default keeps
+# plain `docker build` working.
+ARG DHI_REF=dhi.io/node:26.11.1-debian13-dev@sha256:67027a4f08a737750f5a6820968599c20b3d987cbc84ab826ebfbd7ae05c7f09
+
+# The DHI Debian mirror has no msttcorefonts installer, so take the same fonts
+# as the Alpine base from Alpine. They are data files: any platform will do.
+FROM --platform=$BUILDPLATFORM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS fonts
+RUN apk add --no-cache msttcorefonts-installer && \
+    update-ms-fonts && \
+    find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
+
+FROM ${DHI_REF}
+
+COPY --from=fonts /usr/share/fonts/truetype/msttcorefonts /usr/share/fonts/truetype/msttcorefonts
+
+# git, openssl and ca-certificates come with the DHI base. No `apt-get
+# upgrade`: patched packages come from a bump of the pinned DHI digest.
+# libaio is the kernel AIO shim that vendor database clients (Oracle Instant
+# Client) load; they look for the pre-time64 name, so give it that symlink.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libaio1t64 \
+        openssh-client \
+        graphicsmagick \
+        tini \
+        tzdata && \
+    for f in /usr/lib/*-linux-gnu/libaio.so.1t64; do ln -s "$(basename "$f")" "${f%t64}"; done && \
+    # Drop what n8n does not use: yarn, corepack, and the full perl that only
+    # optional git subcommands need (perl-base stays for c_rehash). Then drop
+    # the package manager, like the Alpine base; dpkg cannot purge apt and
+    # itself in one call. The status files stay so scanners see the packages.
+    # These files sit in the DHI layer, so this trims the scan, not the pull.
+    gone="yarn-classic node-corepack perl perl-modules-5.40 libperl5.40 liberror-perl \
+        apt gpgv debian-archive-keyring $(dpkg-query -W -f='${Package} ' 'libapt-pkg*')" && \
+    dpkg --purge --force-remove-essential --force-depends $gone && \
+    dpkg --purge --force-remove-essential --force-depends dpkg && \
+    for p in $gone dpkg; do rm -rf "/var/lib/dpkg/status.d/$p"; done && \
+    rm -rf /var/lib/apt /var/cache/apt /etc/apt /tmp/* /root/.npm /root/.cache
+
+# DHI Debian ships node at /usr/bin. Symlink it to /usr/local/bin so the path
+# matches what the cloud launch and AppArmor profile expect.
+RUN mkdir -p /usr/local/bin && ln -sf /usr/bin/node /usr/local/bin/node
+
+WORKDIR /home/node
+# DHI Debian's npm prefix is /usr. Use /usr/local like the Alpine base, so
+# `npm install -g` modules resolve through the same NODE_PATH.
+ENV NPM_CONFIG_PREFIX=/usr/local
+ENV NODE_PATH=/usr/local/lib/node_modules
+# glibc malloc arenas add idle RSS over musl. Two arenas recover about a third.
+ENV MALLOC_ARENA_MAX=2
+EXPOSE 5678/tcp

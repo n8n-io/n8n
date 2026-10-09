@@ -12,7 +12,8 @@
  *   IMAGE_BASE_NAME, IMAGE_TAG, RUNNERS_IMAGE_BASE_NAME - image naming
  *   NODE_VERSION, BUILDER_IMAGE, RUNTIME_IMAGE          - read by bake directly
  *   DOCKER_PLATFORM                                     - cross-platform builds
- *   DOCKER_BUILD_NO_CACHE, DOCKER_BUILD_BASE_IMAGE, DOCKER_BUILD_DISTROLESS
+ *   DOCKER_BUILD_NO_CACHE, DOCKER_BUILD_BASE_IMAGE, DOCKER_BUILD_DISTROLESS,
+ *   DOCKER_BUILD_DEBIAN
  *   DOCKER_BUILD_TARBALL_DIR - write per-target docker-archives here instead of
  *                              loading into the daemon (CI image distribution)
  *   CONTAINER_ENGINE                                    - force 'docker' or 'podman'
@@ -34,6 +35,8 @@ const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
 const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
 // Opt-in: only cloud deploys the distroless runners image, so local builds skip it.
 const withDistroless = process.env.DOCKER_BUILD_DISTROLESS === 'true';
+// Opt-in: also build the Debian (glibc) n8n image, tagged with a -debian suffix.
+const withDebian = process.env.DOCKER_BUILD_DEBIAN === 'true';
 // Build n8n on the pointer-compressed bases. The pins live in the bake file.
 const pointerCompressed = process.env.DOCKER_BUILD_PC === 'true';
 
@@ -53,8 +56,8 @@ const compiledAppDir = path.join(rootDir, 'compiled');
 const compiledTaskRunnerDir = path.join(rootDir, 'dist', 'task-runner-javascript');
 
 /**
- * Which bake targets to build. n8n and runners are always built; the base image
- * and the distroless runners are opt-in.
+ * Which bake targets to build. n8n and runners are always built; the base image,
+ * the distroless runners and the Debian n8n image are opt-in.
  * @returns {string[]}
  */
 function selectTargets() {
@@ -62,6 +65,7 @@ function selectTargets() {
 	// downstream jobs load `n8nio/n8n:local` either way.
 	const targets = [pointerCompressed ? 'n8n-pc' : 'n8n', 'runners'];
 	if (withDistroless) targets.push('runners-distroless');
+	if (withDebian) targets.push('n8n-debian');
 	if (withBaseImage) targets.unshift('base');
 	return targets;
 }
@@ -225,6 +229,7 @@ async function main() {
 		const unsupported = [
 			withBaseImage && 'DOCKER_BUILD_BASE_IMAGE',
 			pointerCompressed && 'DOCKER_BUILD_PC',
+			withDebian && 'DOCKER_BUILD_DEBIAN',
 			tarballDir && 'DOCKER_BUILD_TARBALL_DIR',
 		].filter(Boolean);
 		if (unsupported.length > 0) {

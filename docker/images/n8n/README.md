@@ -150,6 +150,36 @@ docker pull docker.n8n.io/n8nio/n8n:next
 
 Tags with a `-pc` suffix (for example `n8nio/n8n:2.36.0-pc`) are a pointer-compressed variant, internal to n8n Cloud. They carry no support or stability guarantees and can change or disappear without notice. Use the regular tags instead.
 
+### About `-debian` tags
+
+Tags with a `-debian` suffix (for example `n8nio/n8n:2.41.0-debian`) use Debian (glibc) instead of Alpine (musl). Use them only to add a vendor library that needs glibc, for example Oracle Instant Client for Thick mode or the IBM Db2 driver (`ibm_db`). Use the regular tags otherwise.
+
+Like the regular image, this image has no package manager, so `RUN apt-get install` does not work in a derived image. Build the library in a stage that has one, then copy it in:
+
+1. Start a build stage from an image with `apt` and the same Debian release: `debian:trixie-slim`, or `node:26-trixie` if the library is a Node native addon that you must compile.
+2. Install or download the library in that stage.
+3. `COPY --from` the files into `n8nio/n8n:<version>-debian`. Set `LD_LIBRARY_PATH` or `NODE_PATH` if the library needs it.
+
+This example adds Oracle Instant Client:
+
+```dockerfile
+FROM debian:trixie-slim AS oracle
+ARG TARGETARCH
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip && \
+    case "$TARGETARCH" in \
+      amd64) zip=instantclient-basiclite-linuxx64.zip ;; \
+      arm64) zip=instantclient-basiclite-linux-arm64.zip ;; \
+    esac && \
+    curl -fsSL -o /tmp/ic.zip "https://download.oracle.com/otn_software/linux/instantclient/$zip" && \
+    unzip -q /tmp/ic.zip -d /opt/oracle && mv /opt/oracle/instantclient_* /opt/oracle/instantclient
+
+FROM n8nio/n8n:2.41.0-debian
+COPY --from=oracle /opt/oracle/instantclient /opt/oracle/instantclient
+ENV LD_LIBRARY_PATH=/opt/oracle/instantclient
+```
+
+In queue mode, every n8n container that runs the node must use the derived image.
+
 Stop the container and start it again:
 
 1. Get the container ID:

@@ -2,6 +2,8 @@
 # these targets, so a pin changed here changes both.
 
 variable "NODE_VERSION" { default = "26.10.0" }
+# The Debian track pins its own Node version; see docker/images/n8n/Dockerfile.debian.
+variable "NODE_DEBIAN_VERSION" { default = "26.11.1" }
 variable "N8N_VERSION" { default = "snapshot" }
 variable "N8N_RELEASE_TYPE" { default = "dev" }
 
@@ -27,9 +29,11 @@ variable "DHI_REF" {
 
 variable "N8N_TAGS" { default = "" }
 variable "N8N_PC_TAGS" { default = "" }
+variable "N8N_DEBIAN_TAGS" { default = "" }
 variable "RUNNERS_TAGS" { default = "" }
 variable "RUNNERS_DISTROLESS_TAGS" { default = "" }
 variable "BASE_TAGS" { default = "" }
+variable "BASE_DEBIAN_TAGS" { default = "" }
 
 variable "PLATFORMS" { default = "" }
 
@@ -74,6 +78,15 @@ target "n8n-pc" {
   }
 }
 
+# Inherits _app, not n8n: the Alpine BUILDER_IMAGE and RUNTIME_IMAGE overrides
+# must not reach the Debian build. Its pins are the Dockerfile defaults.
+target "n8n-debian" {
+  inherits   = ["_app"]
+  dockerfile = "docker/images/n8n/Dockerfile.debian"
+  tags       = tags(N8N_DEBIAN_TAGS, "${IMAGE_BASE_NAME}:${IMAGE_TAG}-debian")
+  args       = { NODE_VERSION = NODE_DEBIAN_VERSION }
+}
+
 target "runners" {
   inherits   = ["_app"]
   dockerfile = "docker/images/runners/Dockerfile"
@@ -93,7 +106,13 @@ target "base" {
   tags       = tags(BASE_TAGS, "n8nio/base:${NODE_VERSION}")
 }
 
+target "base-debian" {
+  inherits   = ["_context"]
+  dockerfile = "docker/images/n8n-base/Dockerfile.debian"
+  tags       = tags(BASE_DEBIAN_TAGS, "n8nio/base:${NODE_DEBIAN_VERSION}-debian")
+}
+
 group "default" { targets = ["n8n", "runners"] }
 group "distroless" { targets = ["n8n", "runners", "runners-distroless"] }
 group "all" { targets = ["base", "n8n", "runners", "runners-distroless"] }
-group "release" { targets = ["n8n", "n8n-pc", "runners", "runners-distroless"] }
+group "release" { targets = ["n8n", "n8n-pc", "n8n-debian", "runners", "runners-distroless"] }
