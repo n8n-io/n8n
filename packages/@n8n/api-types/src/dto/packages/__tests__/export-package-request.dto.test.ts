@@ -136,37 +136,36 @@ describe('ExportPackageRequestDto', () => {
 		});
 	});
 
-	describe.each(['missingWorkflowDependencyPolicy', 'missingAgentDependencyPolicy'] as const)(
-		'%s',
-		(field) => {
-			it.each(['fail', 'reference-only', 'include-in-package'])('accepts %s', (value) => {
-				expect(ExportPackageRequestDto.parse({ [field]: value })[field]).toBe(value);
-			});
+	describe('dependencyPolicy', () => {
+		it.each(['fail', 'reference-only', 'include-in-package'])('accepts %s', (dependencyPolicy) => {
+			expect(ExportPackageRequestDto.parse({ dependencyPolicy }).dependencyPolicy).toBe(
+				dependencyPolicy,
+			);
+		});
 
-			it('defaults to fail', () => {
-				expect(ExportPackageRequestDto.parse({})[field]).toBe('fail');
-			});
+		it('defaults to fail', () => {
+			expect(ExportPackageRequestDto.parse({}).dependencyPolicy).toBe('fail');
+		});
 
-			it('rejects unknown values', () => {
-				expect(ExportPackageRequestDto.safeParse({ [field]: 'skip' }).success).toBe(false);
-			});
-		},
-	);
+		it('rejects unknown values', () => {
+			expect(ExportPackageRequestDto.safeParse({ dependencyPolicy: 'skip' }).success).toBe(false);
+		});
+	});
 
-	describe.each(['workflowVersionPolicy', 'agentVersionPolicy'] as const)('%s', (field) => {
+	describe('versionPolicy', () => {
 		it.each(['published-strict', 'prefer-published', 'ignore-unpublished', 'latest'])(
 			'accepts %s',
-			(value) => {
-				expect(ExportPackageRequestDto.parse({ [field]: value })[field]).toBe(value);
+			(versionPolicy) => {
+				expect(ExportPackageRequestDto.parse({ versionPolicy }).versionPolicy).toBe(versionPolicy);
 			},
 		);
 
 		it('defaults to latest', () => {
-			expect(ExportPackageRequestDto.parse({})[field]).toBe('latest');
+			expect(ExportPackageRequestDto.parse({}).versionPolicy).toBe('latest');
 		});
 
 		it('rejects unknown values', () => {
-			expect(ExportPackageRequestDto.safeParse({ [field]: 'published' }).success).toBe(false);
+			expect(ExportPackageRequestDto.safeParse({ versionPolicy: 'published' }).success).toBe(false);
 		});
 	});
 

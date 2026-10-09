@@ -63,8 +63,8 @@ import { PackageDirectoryInventoryReader } from '@/modules/n8n-packages/io/direc
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
-	MissingWorkflowDependencyPolicy,
-	WorkflowVersionPolicy,
+	ExportDependencyPolicy,
+	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import { ProjectService } from '@/services/project.service.ee';
@@ -803,8 +803,8 @@ describe('Promote and Apply', () => {
 				projectIds: [sourceProject.id],
 				includeVariableValues: true,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-				workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+				dependencyPolicy: ExportDependencyPolicy.Fail,
+				versionPolicy: ExportVersionPolicy.Latest,
 			},
 			{ targetDir: path.join(remote.workingDir, 'n8n-export') },
 		);
@@ -867,8 +867,8 @@ describe('Promote and Apply', () => {
 				projectIds: [sourceProject.id],
 				includeVariableValues: true,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-				workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+				dependencyPolicy: ExportDependencyPolicy.Fail,
+				versionPolicy: ExportVersionPolicy.Latest,
 			},
 			{ targetDir: path.join(remote.workingDir, 'n8n-export') },
 		);

@@ -129,16 +129,14 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				const exportResult = await Container.get(N8nPackagesService).exportPackage({
 					user: req.user,
 					agentIds,
-					agentVersionPolicy: payload.data.agentVersionPolicy,
-					missingAgentDependencyPolicy: payload.data.missingAgentDependencyPolicy,
 					workflowIds,
 					folderIds,
 					projectIds,
 					includeVariableValues,
 					canExportVariableValues: apiKeyScopes.includes('variable:list'),
 					includeTags: payload.data.includeTags,
-					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
-					workflowVersionPolicy: payload.data.workflowVersionPolicy,
+					dependencyPolicy: payload.data.dependencyPolicy,
+					versionPolicy: payload.data.versionPolicy,
 					credentialExportPolicy: payload.data.credentialExportPolicy,
 					includeArchivedWorkflows: payload.data.includeArchivedWorkflows,
 				});

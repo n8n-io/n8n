@@ -55,8 +55,8 @@ describe('n8n-packages handler', () => {
 			projectIds?: string[];
 			includeVariableValues?: boolean;
 			includeTags?: boolean;
-			missingWorkflowDependencyPolicy?: string;
-			workflowVersionPolicy?: string;
+			dependencyPolicy?: string;
+			versionPolicy?: string;
 			credentialExportPolicy?: string;
 			includeArchivedWorkflows?: boolean;
 		},
@@ -219,8 +219,6 @@ describe('n8n-packages handler', () => {
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
 				agentIds: [],
-				agentVersionPolicy: 'latest',
-				missingAgentDependencyPolicy: 'fail',
 				user: { id: 'user-1' },
 				workflowIds: ['wf-1'],
 				folderIds: [],
@@ -228,8 +226,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: true,
 				canExportVariableValues: false,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -250,8 +248,6 @@ describe('n8n-packages handler', () => {
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
 				agentIds: [],
-				agentVersionPolicy: 'latest',
-				missingAgentDependencyPolicy: 'fail',
 				user: { id: 'user-1' },
 				workflowIds: ['wf-1'],
 				folderIds: [],
@@ -259,8 +255,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: false,
 				canExportVariableValues: false,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -355,8 +351,6 @@ describe('n8n-packages handler', () => {
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
 				agentIds: [],
-				agentVersionPolicy: 'latest',
-				missingAgentDependencyPolicy: 'fail',
 				user: { id: 'user-1' },
 				workflowIds: ['wf-1', 'wf-2'],
 				folderIds: [],
@@ -364,8 +358,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: true,
 				canExportVariableValues: true,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -394,7 +388,7 @@ describe('n8n-packages handler', () => {
 				makeRequest(
 					{
 						workflowIds: ['wf-1'],
-						missingWorkflowDependencyPolicy: 'reference-only',
+						dependencyPolicy: 'reference-only',
 					},
 					['workflow:export'],
 				),
@@ -406,8 +400,6 @@ describe('n8n-packages handler', () => {
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
 				agentIds: [],
-				agentVersionPolicy: 'latest',
-				missingAgentDependencyPolicy: 'fail',
 				user: { id: 'user-1' },
 				workflowIds: ['wf-1'],
 				folderIds: [],
@@ -415,8 +407,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: true,
 				canExportVariableValues: false,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'reference-only',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'reference-only',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -428,7 +420,7 @@ describe('n8n-packages handler', () => {
 			const res = makeResponse();
 
 			const resultPromise = run(
-				makeRequest({ workflowIds: ['wf-1'], workflowVersionPolicy: 'published-strict' }, [
+				makeRequest({ workflowIds: ['wf-1'], versionPolicy: 'published-strict' }, [
 					'workflow:export',
 				]),
 				res,
@@ -438,7 +430,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ workflowVersionPolicy: 'published-strict' }),
+				expect.objectContaining({ versionPolicy: 'published-strict' }),
 			);
 		});
 
@@ -495,8 +487,6 @@ describe('n8n-packages handler', () => {
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
 				agentIds: [],
-				agentVersionPolicy: 'latest',
-				missingAgentDependencyPolicy: 'fail',
 				user: { id: 'user-1' },
 				workflowIds: [],
 				folderIds: [],
@@ -504,8 +494,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: true,
 				canExportVariableValues: true,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -526,8 +516,6 @@ describe('n8n-packages handler', () => {
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
 				agentIds: [],
-				agentVersionPolicy: 'latest',
-				missingAgentDependencyPolicy: 'fail',
 				user: { id: 'user-1' },
 				workflowIds: [],
 				folderIds: ['fld-1'],
@@ -535,8 +523,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: true,
 				canExportVariableValues: true,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -557,8 +545,6 @@ describe('n8n-packages handler', () => {
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
 				agentIds: [],
-				agentVersionPolicy: 'latest',
-				missingAgentDependencyPolicy: 'fail',
 				user: { id: 'user-1' },
 				workflowIds: ['wf-1'],
 				folderIds: [],
@@ -566,8 +552,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: false,
 				canExportVariableValues: false,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});
@@ -588,8 +574,6 @@ describe('n8n-packages handler', () => {
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
 				agentIds: [],
-				agentVersionPolicy: 'latest',
-				missingAgentDependencyPolicy: 'fail',
 				user: { id: 'user-1' },
 				workflowIds: ['wf-1'],
 				folderIds: [],
@@ -597,8 +581,8 @@ describe('n8n-packages handler', () => {
 				includeVariableValues: true,
 				canExportVariableValues: false,
 				includeTags: false,
-				missingWorkflowDependencyPolicy: 'fail',
-				workflowVersionPolicy: 'latest',
+				dependencyPolicy: 'fail',
+				versionPolicy: 'latest',
 				credentialExportPolicy: 'expression-values-only',
 				includeArchivedWorkflows: false,
 			});

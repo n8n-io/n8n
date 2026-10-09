@@ -17,8 +17,8 @@ import type {
 import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
-	MissingWorkflowDependencyPolicy,
-	WorkflowVersionPolicy,
+	ExportDependencyPolicy,
+	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -272,8 +272,8 @@ describe('PromotionsService', () => {
 					canExportVariableValues: true,
 					includeTags: true,
 					includeArchivedWorkflows: true,
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.Fail,
+					versionPolicy: ExportVersionPolicy.Latest,
 				},
 				{ targetDir: stagingFolder },
 			);
@@ -624,8 +624,8 @@ describe('PromotionsService', () => {
 					projectWorkflowIds: ['w1', 'w2'],
 					includeArchivedWorkflows: true,
 					canExportVariableValues: true,
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
+					versionPolicy: ExportVersionPolicy.Latest,
 				}),
 				expect.any(Object),
 			);

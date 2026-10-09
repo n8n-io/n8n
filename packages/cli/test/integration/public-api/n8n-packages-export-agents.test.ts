@@ -20,6 +20,10 @@ import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.re
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { looseAgentsFixture } from '@/modules/n8n-packages/__tests__/fixtures/agent-package-fixtures';
 import { streamToBuffer } from '@/modules/n8n-packages/__tests__/utils/tar-support';
+import {
+	buildVersionedWorkflow,
+	noOpNode,
+} from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { N8nPackageParser } from '@/modules/n8n-packages/engine/n8n-package-parser';
 import { AgentExporter } from '@/modules/n8n-packages/entities/agent/agent.exporter';
 import { TarPackageReader } from '@/modules/n8n-packages/io/tar/tar-package-reader';
@@ -36,6 +40,7 @@ beforeAll(async () => await testModules.loadModules(['n8n-packages', 'agents']))
 const server = setupTestServer({ endpointGroups: ['publicApi'] });
 let owner: User;
 let project: Project;
+let otherProject: Project;
 let agent: Agent;
 let dependency: Agent;
 let workflow: WorkflowEntity;
@@ -49,7 +54,7 @@ beforeAll(() => {
 beforeEach(async () => {
 	owner = await createOwnerWithApiKey();
 	project = await createTeamProject('Selected project', owner);
-	const otherProject = await createTeamProject('Dependency project', owner);
+	otherProject = await createTeamProject('Dependency project', owner);
 	agent = await repository.save({
 		id: 'support_source',
 		name: 'Support',
@@ -131,8 +136,7 @@ it('downloads an Agent with its skills, tools, tasks, and dependencies', async (
 	const { reader, manifest, counts } = await download(
 		{
 			agentIds: [agent.id],
-			missingAgentDependencyPolicy: 'include-in-package',
-			missingWorkflowDependencyPolicy: 'include-in-package',
+			dependencyPolicy: 'include-in-package',
 		},
 		caller,
 	);
@@ -169,8 +173,7 @@ it.each(['mixed', 'project'] as const)('downloads a %s selection', async (select
 	const { manifest, counts } = await download(
 		{
 			...body,
-			missingAgentDependencyPolicy: 'include-in-package',
-			missingWorkflowDependencyPolicy: 'include-in-package',
+			dependencyPolicy: 'include-in-package',
 		},
 		caller,
 	);
@@ -179,77 +182,84 @@ it.each(['mixed', 'project'] as const)('downloads a %s selection', async (select
 	expect(counts).toMatchObject({ agents: 2, workflows: 1 });
 });
 
-it.each([
-	{ agentPolicy: 'reference-only', workflowPolicy: 'include-in-package', agents: 1, workflows: 1 },
-	{ agentPolicy: 'include-in-package', workflowPolicy: 'reference-only', agents: 2, workflows: 0 },
-] as const)(
-	'keeps dependency policies independent: $agentPolicy / $workflowPolicy',
-	async (policy) => {
-		await addReferences();
-		const { manifest, counts } = await download({
-			agentIds: [agent.id],
-			missingAgentDependencyPolicy: policy.agentPolicy,
-			missingWorkflowDependencyPolicy: policy.workflowPolicy,
-		});
-		expect(counts).toMatchObject({ agents: policy.agents, workflows: policy.workflows });
-		expect(manifest.requirements?.agents?.[0].id).toBe(dependency.id);
-		expect(manifest.requirements?.workflows?.[0].id).toBe(workflow.id);
-	},
-);
+it('records external Agent and workflow requirements with reference-only', async () => {
+	await addReferences();
+	const { manifest, counts } = await download({
+		agentIds: [agent.id],
+		dependencyPolicy: 'reference-only',
+	});
+	expect(counts).toMatchObject({ agents: 1, workflows: 0 });
+	expect(manifest.requirements?.agents?.[0].id).toBe(dependency.id);
+	expect(manifest.requirements?.workflows?.[0].id).toBe(workflow.id);
+});
 
-it.each([{}, { missingAgentDependencyPolicy: 'reference-only' }])(
-	'defaults missing dependency policies to fail: %j',
-	async (options) => {
+it.each(['agent', 'workflow'] as const)(
+	'defaults to fail for a missing %s dependency',
+	async (kind) => {
 		await addReferences();
+		const selection =
+			kind === 'agent'
+				? { agentIds: [agent.id], workflowIds: [workflow.id] }
+				: { agentIds: [agent.id, dependency.id] };
 		const response = await server
 			.publicApiAgentFor(owner)
 			.post('/n8n-packages/export')
-			.send({ agentIds: [agent.id], ...options });
+			.send(selection);
 		expect(response.statusCode).toBe(400);
 		expect(response.headers['x-n8n-export-counts']).toBeUndefined();
 	},
 );
 
-it('selects Agent and workflow versions independently and reports skipped selections', async () => {
-	const schema = AgentJsonConfigSchema.parse({
-		name: 'Published definition',
-		model: '',
-		instructions: '',
-		tools: [{ type: 'workflow', workflowId: workflow.id, workflow: 'Published tool' }],
-	});
-	await Container.get(AgentHistoryRepository).saveVersion({
-		agentId: agent.id,
-		versionId: 'published-version',
-		publishedBy: 'Package test',
-		schema,
-		skills: {},
-		tools: {},
-	});
-	await repository.update(agent.id, { activeVersionId: 'published-version' });
-	const { reader } = await download({
-		agentIds: [agent.id],
-		agentVersionPolicy: 'published-strict',
-		workflowVersionPolicy: 'latest',
-		missingWorkflowDependencyPolicy: 'include-in-package',
-	});
-	const [parsed] = await Container.get(N8nPackageParser).getAgents(reader);
-	expect(parsed.config?.tools).toEqual(schema.tools);
-	expect(parsed.metadata).toEqual({
-		versionId: 'published-version',
-		publishedVersionId: 'published-version',
-	});
-	const emit = vi.spyOn(Container.get(EventService), 'emit');
-	const skipped = await download({
-		agentIds: [agent.id, dependency.id],
-		agentVersionPolicy: 'ignore-unpublished',
-		missingWorkflowDependencyPolicy: 'include-in-package',
-	});
-	expect(skipped.counts.agents).toBe(1);
-	expect(emit).toHaveBeenCalledWith(
-		'n8n-package-exported',
-		expect.objectContaining({ agentIds: [agent.id] }),
-	);
-});
+it.each(['published-strict', 'ignore-unpublished'] as const)(
+	'applies version policy %s to Agents and workflows',
+	async (versionPolicy) => {
+		const { workflow: versionedWorkflow } = await buildVersionedWorkflow({
+			name: 'Versioned workflow',
+			project,
+			versions: [[noOpNode('Published node')], [noOpNode('Draft node')]],
+			publishedVersion: 0,
+		});
+		const schema = AgentJsonConfigSchema.parse({
+			name: 'Published definition',
+			model: '',
+			instructions: '',
+			tools: [{ type: 'workflow', workflowId: versionedWorkflow.id, workflow: 'Published tool' }],
+		});
+		await Container.get(AgentHistoryRepository).saveVersion({
+			agentId: agent.id,
+			versionId: 'published-version',
+			publishedBy: 'Package test',
+			schema,
+			skills: {},
+			tools: {},
+		});
+		await repository.update(agent.id, { activeVersionId: 'published-version' });
+		const selection =
+			versionPolicy === 'ignore-unpublished'
+				? { agentIds: [agent.id, dependency.id], workflowIds: [workflow.id] }
+				: { agentIds: [agent.id] };
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		const { reader, counts } = await download({
+			...selection,
+			versionPolicy,
+			dependencyPolicy: 'include-in-package',
+		});
+		const parser = Container.get(N8nPackageParser);
+		const [parsed] = await parser.getAgents(reader);
+		expect(parsed.config?.tools).toEqual(schema.tools);
+		expect(parsed.metadata).toEqual({
+			versionId: 'published-version',
+			publishedVersionId: 'published-version',
+		});
+		const [parsedWorkflow] = await parser.getWorkflows(reader);
+		expect(parsedWorkflow.entity.nodes).toEqual([noOpNode('Published node')]);
+		expect(counts).toMatchObject({ agents: 1, workflows: 1 });
+		expect(emit).toHaveBeenCalledWith(
+			'n8n-package-exported',
+			expect.objectContaining({ agentIds: [agent.id], workflowIds: [versionedWorkflow.id] }),
+		);
+	},
+);
 
 it('requires the Agent API-key scope for explicit selections before preparation', async () => {
 	const limited = await createOwnerWithApiKey({ scopes: ['project:export', 'workflow:export'] });
@@ -337,16 +347,17 @@ it.each(['selected', 'Agent dependency', 'workflow dependency'] as const)(
 		await addReferences();
 		const caller = await createMemberWithApiKey({ scopes: ['agent:export'] });
 		await linkUserToProject(caller, project, 'project:viewer');
+		if (selection === 'workflow dependency') {
+			const role = await createCustomRoleWithScopeSlugs(['agent:export']);
+			await linkUserToProject(caller, otherProject, role.slug);
+		}
 		const emit = vi.spyOn(Container.get(EventService), 'emit');
 		const response = await server
 			.publicApiAgentFor(caller)
 			.post('/n8n-packages/export')
 			.send({
 				agentIds: [selection === 'selected' ? dependency.id : agent.id],
-				missingAgentDependencyPolicy:
-					selection === 'Agent dependency' ? 'include-in-package' : 'reference-only',
-				missingWorkflowDependencyPolicy:
-					selection === 'workflow dependency' ? 'include-in-package' : 'reference-only',
+				dependencyPolicy: 'include-in-package',
 			});
 		expect(response.statusCode).toBe(400);
 		expect(emit).toHaveBeenCalledWith(

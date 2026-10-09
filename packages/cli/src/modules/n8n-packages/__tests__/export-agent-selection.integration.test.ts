@@ -160,8 +160,7 @@ it.each(['loose', 'project'] as const)(
 					? { projectIds: [project.id] }
 					: { agentIds: [parent.id, parent.id], workflowIds: [loose.id], folderIds: [folder.id] }),
 				includeTags: false,
-				missingAgentDependencyPolicy: 'include-in-package',
-				missingWorkflowDependencyPolicy: 'include-in-package',
+				dependencyPolicy: 'include-in-package',
 			},
 			new CapturingWriter(),
 		);
@@ -207,7 +206,7 @@ it.each(['fail', 'reference-only', 'include-in-package'] as const)(
 			user: owner,
 			writer,
 			agentIds: [parent.id],
-			missingAgentDependencyPolicy: policy,
+			dependencyPolicy: policy,
 		});
 		if (policy === 'fail') {
 			await expect(run).rejects.toThrow(PackageExportBlockedError);
@@ -248,7 +247,7 @@ it.each(['selected', 'dependency'] as const)('rejects a missing %s Agent', async
 			user: owner,
 			writer: new CapturingWriter(),
 			agentIds: [selection === 'selected' ? 'missing-agent' : parent.id],
-			missingAgentDependencyPolicy: 'include-in-package',
+			dependencyPolicy: 'include-in-package',
 		}),
 	).rejects.toThrow(PackageEntityNotFoundError);
 });
@@ -286,7 +285,7 @@ it.each(['reference-only', 'include-in-package'] as const)(
 			user,
 			writer: new CapturingWriter(),
 			agentIds: [parent.id],
-			missingAgentDependencyPolicy: policy,
+			dependencyPolicy: policy,
 		});
 		if (policy === 'include-in-package') {
 			await expect(run).rejects.toThrow(PackageEntityAccessDeniedError);
@@ -315,7 +314,7 @@ it.each(['latest', 'published-strict'] as const)(
 			user: owner,
 			writer,
 			agentIds: [parent.id],
-			agentVersionPolicy: policy,
+			versionPolicy: policy,
 		});
 		const selectedId = policy === 'latest' ? 'draft-workflow' : 'published-workflow';
 		expect(
@@ -353,7 +352,7 @@ it('writes and resolves the prepared snapshot when the draft changes during expo
 });
 
 it.each(['fail', 'reference-only', 'include-in-package'] as const)(
-	'applies workflow policy %s independently of reference-only Agents',
+	'applies dependency policy %s to Agents and workflows',
 	async (policy) => {
 		const nested = await createWorkflow({ name: 'Nested workflow', nodes: [] }, otherProject);
 		const workflow = await createWorkflow(
@@ -368,8 +367,7 @@ it.each(['fail', 'reference-only', 'include-in-package'] as const)(
 			{
 				user: owner,
 				agentIds: [parent.id],
-				missingAgentDependencyPolicy: 'reference-only',
-				missingWorkflowDependencyPolicy: policy,
+				dependencyPolicy: policy,
 			},
 			new CapturingWriter(),
 		);
@@ -378,7 +376,9 @@ it.each(['fail', 'reference-only', 'include-in-package'] as const)(
 			return;
 		}
 		const { manifest } = await run;
-		expect(manifest.agents?.map(({ id }) => id)).toEqual([parent.id]);
+		expect(manifest.agents?.map(({ id }) => id)).toEqual(
+			policy === 'include-in-package' ? [parent.id, child.id] : [parent.id],
+		);
 		expect(manifest.workflows?.map(({ id }) => id) ?? []).toEqual(
 			policy === 'include-in-package' ? [workflow.id, nested.id] : [],
 		);
@@ -398,7 +398,7 @@ it('skips an unpublished root but fails when an included Agent requires it', asy
 		user: owner,
 		writer: new CapturingWriter(),
 		agentIds: [child.id],
-		agentVersionPolicy: 'ignore-unpublished',
+		versionPolicy: 'ignore-unpublished',
 	});
 	expect(skipped.counts.agents).toBe(0);
 	await expect(
@@ -406,8 +406,8 @@ it('skips an unpublished root but fails when an included Agent requires it', asy
 			user: owner,
 			writer: new CapturingWriter(),
 			agentIds: [parent.id],
-			agentVersionPolicy: 'ignore-unpublished',
-			missingAgentDependencyPolicy: 'include-in-package',
+			versionPolicy: 'ignore-unpublished',
+			dependencyPolicy: 'include-in-package',
 		}),
 	).rejects.toThrow(PackageExportBlockedError);
 });

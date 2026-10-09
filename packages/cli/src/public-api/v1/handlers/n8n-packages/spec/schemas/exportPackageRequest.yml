@@ -60,53 +60,22 @@ properties:
       Whether tags assigned to the exported workflows are bundled into the
       package. When `false`, no tag files, tag references, or tag
       requirements travel with the package.
-  missingAgentDependencyPolicy:
+  dependencyPolicy:
     type: string
     enum:
       - fail
       - reference-only
       - include-in-package
     description: >-
-      Policy for agent dependencies, including disabled references. `fail`
-      aborts when a referenced agent is absent from the package.
-      `reference-only` records external requirements without reading those
-      definitions. `include-in-package` adds accessible agent dependencies
-      recursively. This policy is independent of workflow dependency policy.
-    default: fail
-  agentVersionPolicy:
-    type: string
-    enum:
-      - published-strict
-      - prefer-published
-      - ignore-unpublished
-      - latest
-    description: >-
-      Which agent definition travels in the package. `latest` exports the draft.
-      `published-strict` requires a published definition. `prefer-published`
-      uses the published definition when available, otherwise the draft.
-      `ignore-unpublished` skips unpublished selections. Required agent
-      dependencies that cannot be included still cause the export to fail.
-      The selected definition supplies configuration and referenced bodies.
-      The current ID, name, and MCP availability always travel with it.
-      This policy is independent of workflow version policy.
-    default: latest
-  missingWorkflowDependencyPolicy:
-    type: string
-    enum:
-      - fail
-      - reference-only
-      - include-in-package
-    description: >-
-      Policy for workflow dependencies from agents and static sub-workflow
-      references. `fail` aborts the
-      export when any static sub-workflow is missing from the package;
-      `include-in-package` automatically adds missing static sub-workflows.
-      `reference-only` keeps missing static sub-workflows out of the package
-      and lists them in the package requirements as workflows expected to
-      already exist on the target.
+      Policy for workflow and agent dependencies outside the selected package
+      contents. Includes static workflow references and disabled agent references.
+      `fail` aborts when a required workflow or agent is absent from the package.
+      `include-in-package` adds accessible dependencies recursively.
+      `reference-only` records external requirements without including those
+      definitions. The same policy applies to workflows and agents.
     example: fail
     default: fail
-  workflowVersionPolicy:
+  versionPolicy:
     type: string
     enum:
       - published-strict
@@ -114,15 +83,14 @@ properties:
       - ignore-unpublished
       - latest
     description: >-
-      Which version of each workflow travels in the package. `latest` exports
-      the latest version, published or not. `published-strict` exports the
-      published version and aborts the export if any workflow has none.
-      `prefer-published` falls back to the latest version where there is no
-      published one. `ignore-unpublished` leaves unpublished workflows out of
-      the package entirely. The chosen version decides which credentials, data
-      tables, variables and sub-workflows are bundled alongside it; the
-      workflow's name, settings and tags are not versioned and always come from
-      the latest version.
+      Which version of each workflow and agent travels in the package. `latest`
+      exports the current draft. `published-strict` requires a published version.
+      `prefer-published` uses the published version when available and the draft
+      otherwise. `ignore-unpublished` skips unpublished selections.
+      Required dependencies that cannot be included still cause the export to
+      fail. The selected version supplies the definition and its references.
+      Workflow names, settings, and tags always use their current values.
+      Agent IDs, names, and MCP availability always use their current values.
     example: latest
     default: latest
   credentialExportPolicy:

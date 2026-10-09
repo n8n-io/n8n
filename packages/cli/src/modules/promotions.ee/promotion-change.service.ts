@@ -28,8 +28,8 @@ import {
 import { generateSlug } from '@/modules/n8n-packages/io/slug.utils';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
-	MissingWorkflowDependencyPolicy,
-	WorkflowVersionPolicy,
+	ExportDependencyPolicy,
+	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
@@ -251,8 +251,8 @@ export class PromotionChangeService {
 				includeArchivedWorkflows: true,
 				includeTags: true,
 				includeVariableValues: true,
-				workflowVersionPolicy: WorkflowVersionPolicy.Latest,
-				missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
+				versionPolicy: ExportVersionPolicy.Latest,
+				dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 			},
 			{
 				writeDirectory: (path) => writer.writeDirectory(path),

@@ -1,10 +1,7 @@
 import type { User } from '@n8n/db';
 
 import type { PackageWriter } from '../../io/package-writer';
-import type {
-	MissingWorkflowDependencyPolicy,
-	WorkflowVersionPolicy,
-} from '../../n8n-packages.types';
+import type { ExportDependencyPolicy, ExportVersionPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageAgentRequirement } from '../../spec/requirements.schema';
 import type { SerializedAgent, SerializedAgentMetadata } from '../../spec/serialized/agent.schema';
@@ -29,8 +26,8 @@ export interface AgentSelectionExportRequest {
 	projectIds?: string[];
 	/** A restricted project export does not select Agents. */
 	projectWorkflowIds?: string[];
-	agentVersionPolicy?: WorkflowVersionPolicy;
-	missingAgentDependencyPolicy?: MissingWorkflowDependencyPolicy;
+	versionPolicy?: ExportVersionPolicy;
+	dependencyPolicy?: ExportDependencyPolicy;
 	projectTargetsById?: Map<string, string>;
 }
 

@@ -173,11 +173,11 @@ describe('POST /n8n-packages/export', () => {
 	});
 
 	test.each([
-		{ agentVersionPolicy: 'published' },
-		{ missingAgentDependencyPolicy: 'skip' },
+		{ versionPolicy: 'published' },
+		{ dependencyPolicy: 'skip' },
 		{ agentIds: [] },
 		{ includeAgents: false },
-	])('rejects invalid or internal Agent export options: %j', async (options) => {
+	])('rejects invalid or internal export options: %j', async (options) => {
 		const project = await createTeamProject('Export project', owner);
 		const folder = await createFolder(project, { name: 'Selected' });
 		const response = await authOwnerAgent

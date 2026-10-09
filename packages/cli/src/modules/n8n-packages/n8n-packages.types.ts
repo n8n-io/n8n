@@ -94,23 +94,23 @@ export const MissingNodeTypeMode = {
 	ImportAnyway: 'import-anyway',
 } as const;
 
-export const MissingWorkflowDependencyPolicy = {
-	/** Fails the export when a workflow dependency is not included. */
+export const ExportDependencyPolicy = {
+	/** Fails the export when a required workflow or agent is not included. */
 	Fail: 'fail',
-	/** Keeps missing workflow dependencies out of the package, listing them as requirements only. */
+	/** Leaves external dependencies out of the package and lists them as requirements. */
 	ReferenceOnly: 'reference-only',
-	/** Automatically adds missing workflow dependencies to the package. */
+	/** Adds accessible workflow and agent dependencies to the package. */
 	IncludeInPackage: 'include-in-package',
 } as const;
 
-export const WorkflowVersionPolicy = {
-	/** Exports the latest published version, failing if any workflow has none. */
+export const ExportVersionPolicy = {
+	/** Exports published definitions. Fails if a selected workflow or agent has none. */
 	PublishedStrict: 'published-strict',
-	/** Exports the latest published version where there is one, the latest version otherwise. */
+	/** Exports published definitions when available. Exports drafts otherwise. */
 	PreferPublished: 'prefer-published',
-	/** Exports only published workflows, leaving unpublished ones out of the package. */
+	/** Exports only published definitions and skips unpublished selections. */
 	IgnoreUnpublished: 'ignore-unpublished',
-	/** Exports the latest version of every workflow, published or not. */
+	/** Exports the current draft of each workflow and agent. */
 	Latest: 'latest',
 } as const;
 
@@ -203,11 +203,10 @@ export type OverwriteDeletionPolicy =
 
 export type MissingNodeTypeMode = (typeof MissingNodeTypeMode)[keyof typeof MissingNodeTypeMode];
 
-export type MissingWorkflowDependencyPolicy =
-	(typeof MissingWorkflowDependencyPolicy)[keyof typeof MissingWorkflowDependencyPolicy];
+export type ExportDependencyPolicy =
+	(typeof ExportDependencyPolicy)[keyof typeof ExportDependencyPolicy];
 
-export type WorkflowVersionPolicy =
-	(typeof WorkflowVersionPolicy)[keyof typeof WorkflowVersionPolicy];
+export type ExportVersionPolicy = (typeof ExportVersionPolicy)[keyof typeof ExportVersionPolicy];
 
 export type CredentialExportPolicy =
 	(typeof CredentialExportPolicy)[keyof typeof CredentialExportPolicy];
@@ -245,15 +244,13 @@ export interface ExportPackageRequest {
 	projectWorkflowIds?: string[];
 	/** Internal opt-out for callers that cannot import Agents yet. */
 	includeAgents?: boolean;
-	agentVersionPolicy?: WorkflowVersionPolicy;
-	missingAgentDependencyPolicy?: MissingWorkflowDependencyPolicy;
 	includeVariableValues?: boolean;
 	canExportVariableValues?: boolean;
 	includeTags?: boolean;
 	/** Whether folder and project exports include archived workflows. Explicit ids always export. */
 	includeArchivedWorkflows?: boolean;
-	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
-	workflowVersionPolicy?: WorkflowVersionPolicy;
+	dependencyPolicy?: ExportDependencyPolicy;
+	versionPolicy?: ExportVersionPolicy;
 	credentialExportPolicy?: CredentialExportPolicy;
 }
 

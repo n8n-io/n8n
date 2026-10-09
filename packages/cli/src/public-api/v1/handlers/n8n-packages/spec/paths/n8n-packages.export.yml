@@ -13,9 +13,10 @@ post:
     Do not combine these two groups. Each exported folder includes its nested
     folders. Whole projects include their agents when the agents module is enabled.
     Explicit agent selections require the agents module. Empty projects export
-    project metadata only. Agent and workflow dependency policies are independent.
-    Both default to `fail` when a required definition is absent from the package. The
-    response is streamed as `application/gzip` with a `Content-Disposition`
+    project metadata only. `versionPolicy` selects the version for both agents and
+    workflows and defaults to `latest`. `dependencyPolicy` applies to both entity
+    types and defaults to `fail` when a required definition is absent from the
+    package. The response is streamed as `application/gzip` with a `Content-Disposition`
     attachment header. Requires the n8n Packages feature to be licensed.
 
     API key scopes: `agent:export` is required for explicitly selected agents.

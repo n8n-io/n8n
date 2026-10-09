@@ -47,11 +47,11 @@ import { PackageImportConfig } from './n8n-packages.config';
 import {
 	CredentialExportPolicy,
 	DataTableSchemaConflictPolicy,
-	MissingWorkflowDependencyPolicy,
+	ExportDependencyPolicy,
+	ExportVersionPolicy,
 	OverwriteDeletionPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
-	WorkflowVersionPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageDirectoryResult,
@@ -195,12 +195,11 @@ export class N8nPackagesService {
 		writer: PackageWriter,
 		request: ExportPackageRequest,
 	): Promise<WrittenExport> {
-		const { missingWorkflowDependencyPolicy } = request;
-		const isReferenceOnly =
-			missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly;
+		const dependencyPolicy = request.dependencyPolicy ?? ExportDependencyPolicy.Fail;
+		const isReferenceOnly = dependencyPolicy === ExportDependencyPolicy.ReferenceOnly;
 
 		const includeTags = (request.includeTags ?? true) && !this.globalConfig.tags.disabled;
-		const workflowVersionPolicy = request.workflowVersionPolicy ?? WorkflowVersionPolicy.Latest;
+		const versionPolicy = request.versionPolicy ?? ExportVersionPolicy.Latest;
 		const credentialExportPolicy =
 			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
 		const includeArchivedWorkflows = request.includeArchivedWorkflows ?? false;
@@ -208,7 +207,8 @@ export class N8nPackagesService {
 		const { folderExportResult, workflowExportResult, projectExportResult, agentExportResult } =
 			await this.exportSelectedEntities(writer, request, {
 				includeTags,
-				workflowVersionPolicy,
+				versionPolicy,
+				dependencyPolicy,
 				includeArchivedWorkflows,
 			});
 
@@ -243,13 +243,13 @@ export class N8nPackagesService {
 			user: request.user,
 			workflowIds: workflowIdsToResolve,
 			traversal: isReferenceOnly ? 'direct' : 'transitive',
-			workflowVersionPolicy,
+			versionPolicy,
 		});
 		const allWorkflowRequirements = [...agentWorkflowRequirements, ...workflowRequirements];
 
 		let autoIncludedExportResult: AutoIncludedWorkflowExportResult | undefined;
 
-		if (missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.IncludeInPackage) {
+		if (dependencyPolicy === ExportDependencyPolicy.IncludeInPackage) {
 			const autoIncludedWorkflowResolution = await this.autoIncludedWorkflowResolver.resolve({
 				user: request.user,
 				requirements: workflowRequirements,
@@ -273,7 +273,7 @@ export class N8nPackagesService {
 					})),
 				],
 				includeTags,
-				workflowVersionPolicy,
+				versionPolicy,
 			});
 
 			autoIncludedExportResult = await this.autoIncludedWorkflowExporter.export({
@@ -429,14 +429,15 @@ export class N8nPackagesService {
 		request: ExportPackageRequest,
 		options: {
 			includeTags: boolean;
-			workflowVersionPolicy: WorkflowVersionPolicy;
+			versionPolicy: ExportVersionPolicy;
+			dependencyPolicy: ExportDependencyPolicy;
 			includeArchivedWorkflows: boolean;
 		},
 	) {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
-		const { includeTags, workflowVersionPolicy, includeArchivedWorkflows } = options;
+		const { includeTags, versionPolicy, dependencyPolicy, includeArchivedWorkflows } = options;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -445,7 +446,7 @@ export class N8nPackagesService {
 						folderIds,
 						writer,
 						includeTags,
-						workflowVersionPolicy,
+						versionPolicy,
 						includeArchivedWorkflows,
 					})
 				: undefined;
@@ -462,7 +463,7 @@ export class N8nPackagesService {
 						workflowIds: workflowsForExport,
 						writer,
 						includeTags,
-						workflowVersionPolicy,
+						versionPolicy,
 					})
 				: undefined;
 
@@ -474,7 +475,7 @@ export class N8nPackagesService {
 						workflowIds: request.projectWorkflowIds,
 						writer,
 						includeTags,
-						workflowVersionPolicy,
+						versionPolicy,
 						includeArchivedWorkflows,
 					})
 				: undefined;
@@ -488,8 +489,8 @@ export class N8nPackagesService {
 						agentIds: request.agentIds,
 						projectIds,
 						projectWorkflowIds: request.projectWorkflowIds,
-						agentVersionPolicy: request.agentVersionPolicy,
-						missingAgentDependencyPolicy: request.missingAgentDependencyPolicy,
+						versionPolicy,
+						dependencyPolicy,
 						projectTargetsById: projectExportResult?.projectTargetsById,
 					});
 
