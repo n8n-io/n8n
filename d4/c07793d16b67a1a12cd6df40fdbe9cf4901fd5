@@ -1,0 +1,33 @@
+packages/@n8n/db/src/repositories/execution.repository.ts
+  ai_agent 86
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_b3e22ee5973d91::t_0c4c67042081da 97-101
+packages/@n8n/db/src/entities/types-db.ts
+  s_b3e22ee5973d91::t_0c4c67042081da 69-73
+packages/cli/test/integration/database/repositories/execution.repository.test.ts
+  s_9779041469fd1a::t_28f2bc71ea1072 325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d4c07793d16b67a1a12cd6df40fdbe9cf4901fd5",
+  "prompts": {},
+  "sessions": {
+    "s_9779041469fd1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63716222-3eb8-406e-8fa4-7fcaf70370ac",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    },
+    "s_b3e22ee5973d91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7856fa5e-0449-4809-88dd-a25a2edbdb1a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
