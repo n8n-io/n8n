@@ -25,29 +25,32 @@ interface FormattedCategoryResult {
 function formatCategoryResult(
 	nodeTypeParser: NodeTypeParser,
 	category: string,
+	excludedNodeIds?: ReadonlySet<string>,
 ): FormattedCategoryResult | null {
 	const categoryData = suggestedNodesData[category];
 	if (!categoryData) {
 		return null;
 	}
 
-	const nodes = categoryData.nodes.map((node: CategorySuggestedNode) => {
-		const nodeType = nodeTypeParser.getLeanNodeType(node.name);
-		if (nodeType) {
+	const nodes = categoryData.nodes
+		.filter((node: CategorySuggestedNode) => !excludedNodeIds?.has(node.name))
+		.map((node: CategorySuggestedNode) => {
+			const nodeType = nodeTypeParser.getLeanNodeType(node.name);
+			if (nodeType) {
+				return {
+					name: node.name,
+					displayName: nodeType.displayName,
+					description: nodeType.description,
+					note: node.note,
+				};
+			}
 			return {
 				name: node.name,
-				displayName: nodeType.displayName,
-				description: nodeType.description,
+				displayName: '(not found)',
+				description: '(not found)',
 				note: node.note,
 			};
-		}
-		return {
-			name: node.name,
-			displayName: '(not found)',
-			description: '(not found)',
-			note: node.note,
-		};
-	});
+		});
 
 	return {
 		category,
@@ -89,12 +92,17 @@ function formatOutput(results: Array<FormattedCategoryResult | null>): string {
  * Look up suggested nodes by workflow technique category.
  * Unknown categories produce a "Category not found" entry in the output rather
  * than throwing, so callers can pass user-supplied category lists directly.
+ * Nodes in `excludedNodeIds`, such as the ones a policy restricts, are left out.
  */
-export function getSuggestedNodes(nodeTypeParser: NodeTypeParser, categories: string[]): string {
+export function getSuggestedNodes(
+	nodeTypeParser: NodeTypeParser,
+	categories: string[],
+	options: { excludedNodeIds?: ReadonlySet<string> } = {},
+): string {
 	const results: Array<FormattedCategoryResult | null> = [];
 
 	for (const category of categories) {
-		const result = formatCategoryResult(nodeTypeParser, category);
+		const result = formatCategoryResult(nodeTypeParser, category, options.excludedNodeIds);
 		if (result) {
 			results.push(result);
 		} else {

@@ -7,6 +7,7 @@ import {
 	AI_CONNECTION_TYPES,
 	NodeSearchEngine,
 	categoryList,
+	matchRestrictedByQuery,
 	suggestedNodesData,
 	type CategorySuggestedNode,
 	type SearchableNodeType,
@@ -25,6 +26,12 @@ import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext, NodeDescription } from '../types';
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
+import {
+	describeRestricted,
+	findRestricted,
+	findRestrictedByName,
+	reportRestricted,
+} from './nodes/restricted-nodes';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
 import { buildCredentialMap } from './workflows/resolve-credentials';
 
@@ -242,18 +249,55 @@ async function enrichWithSetupPreference<T extends { name: string }>(
 
 // ── Handlers ────────────────────────────────────────────────────────────────
 
+/**
+ * Discovery leaves out the types a policy denies. When the user's words name one, say so, so the
+ * model can tell the user instead of quietly picking something else.
+ */
+async function findRestrictedMatches(
+	context: InstanceAiContext,
+	toolCallId: string | undefined,
+	query: string | undefined,
+) {
+	if (!query) return {};
+
+	const matches = await findRestricted(context, (restricted) =>
+		matchRestrictedByQuery(query, restricted, (node) => node.name),
+	);
+	if (matches.length === 0) return {};
+
+	reportRestricted(context, toolCallId, matches);
+	return { restricted: describeRestricted(matches) };
+}
+
 async function handleList(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'list' }>,
+	toolCallId: string | undefined,
 ) {
-	const nodes = await context.nodeService.listAvailable({
-		query: input.query,
-		gatewayCreditsOnly: input.gatewayCreditsOnly,
-	});
-	return { nodes };
+	const [nodes, restricted] = await Promise.all([
+		context.nodeService.listAvailable({
+			query: input.query,
+			gatewayCreditsOnly: input.gatewayCreditsOnly,
+		}),
+		findRestrictedMatches(context, toolCallId, input.query),
+	]);
+	return { nodes, ...restricted };
 }
 
 async function handleSearch(
+	context: InstanceAiContext,
+	input: Extract<FullInput, { action: 'search' }>,
+	cache: SearchEngineCache,
+	toolCallId: string | undefined,
+) {
+	const [result, restricted] = await Promise.all([
+		searchNodes(context, input, cache),
+		findRestrictedMatches(context, toolCallId, input.query),
+	]);
+	return { ...result, ...restricted };
+}
+
+async function searchNodes(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'search' }>,
 	cache: SearchEngineCache,
@@ -326,9 +370,11 @@ async function handleSearch(
 async function handleDescribe(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'describe' }>,
+	toolCallId: string | undefined,
 ) {
 	try {
 		const desc = await context.nodeService.getDescription(input.nodeType);
+		reportRestricted(context, toolCallId, await findRestrictedByName(context, [desc.name]));
 		return { found: true, ...desc };
 	} catch {
 		return {
@@ -351,7 +397,17 @@ async function handleDescribe(
 async function resolveNodeTypeDefinitions(
 	context: InstanceAiContext,
 	nodeTypes: NodeTypeRequest[],
+	toolCallId: string | undefined,
 ) {
+	reportRestricted(
+		context,
+		toolCallId,
+		await findRestrictedByName(
+			context,
+			nodeTypes.map((req) => (typeof req === 'string' ? req : req.nodeType)),
+		),
+	);
+
 	if (!context.nodeService.getNodeTypeDefinition) {
 		return {
 			definitions: nodeTypes.map((req) => ({
@@ -403,6 +459,7 @@ async function handleTypeDefinition(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'type-definition' }>,
 	loadSkill: ToolContext['loadSkill'],
+	toolCallId: string | undefined,
 ) {
 	// Native tool validation uses the flattened top-level schema (required for
 	// Anthropic's `type: "object"` constraint), which makes every variant field
@@ -419,7 +476,7 @@ async function handleTypeDefinition(
 		};
 	}
 
-	const result = await resolveNodeTypeDefinitions(context, parsed.data.nodeTypes);
+	const result = await resolveNodeTypeDefinitions(context, parsed.data.nodeTypes, toolCallId);
 	if (loadSkill && (await needsModelSelection(context.nodeService, result.definitions))) {
 		await loadSkill('model-selection');
 	}
@@ -429,7 +486,12 @@ async function handleTypeDefinition(
 async function handleSuggested(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'suggested' }>,
+	toolCallId: string | undefined,
 ) {
+	const restrictedNodes = await findRestricted(context, (restricted) => [...restricted]);
+	const restrictedByName = new Map(restrictedNodes.map((node) => [node.name, node]));
+	const withheld = new Map<string, (typeof restrictedNodes)[number]>();
+
 	const results: Array<{
 		category: string;
 		description: string;
@@ -441,8 +503,13 @@ async function handleSuggested(
 	for (const cat of input.categories) {
 		const data = suggestedNodesData[cat];
 		if (data) {
+			const allowed = data.nodes.filter((node) => {
+				const restricted = restrictedByName.get(node.name);
+				if (restricted) withheld.set(restricted.name, restricted);
+				return !restricted;
+			});
 			const suggestedNodes = await Promise.all(
-				data.nodes.map(async (node) => await enrichWithSetupPreference(context, node)),
+				allowed.map(async (node) => await enrichWithSetupPreference(context, node)),
 			);
 			results.push({
 				category: cat,
@@ -455,7 +522,10 @@ async function handleSuggested(
 		}
 	}
 
-	return { results, unknownCategories };
+	if (withheld.size === 0) return { results, unknownCategories };
+
+	reportRestricted(context, toolCallId, [...withheld.values()]);
+	return { results, unknownCategories, restricted: describeRestricted([...withheld.values()]) };
 }
 
 async function handleExploreResources(
@@ -683,7 +753,7 @@ export function createNodesTool(
 			.handler(async (input: OrchestratorInput, ctx) => {
 				switch (input.action) {
 					case 'type-definition':
-						return await handleTypeDefinition(context, input, ctx.loadSkill);
+						return await handleTypeDefinition(context, input, ctx.loadSkill, ctx.toolCallId);
 					case 'explore-resources':
 						return await handleExploreResources(context, input);
 				}
@@ -701,15 +771,15 @@ export function createNodesTool(
 		.handler(async (input: FullInput, ctx) => {
 			switch (input.action) {
 				case 'list':
-					return await handleList(context, input);
+					return await handleList(context, input, ctx.toolCallId);
 				case 'search':
-					return await handleSearch(context, input, searchEngineCache);
+					return await handleSearch(context, input, searchEngineCache, ctx.toolCallId);
 				case 'describe':
-					return await handleDescribe(context, input);
+					return await handleDescribe(context, input, ctx.toolCallId);
 				case 'type-definition':
-					return await handleTypeDefinition(context, input, ctx.loadSkill);
+					return await handleTypeDefinition(context, input, ctx.loadSkill, ctx.toolCallId);
 				case 'suggested':
-					return await handleSuggested(context, input);
+					return await handleSuggested(context, input, ctx.toolCallId);
 				case 'explore-resources':
 					return await handleExploreResources(context, input);
 				case 'execute':

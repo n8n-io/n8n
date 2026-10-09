@@ -23,6 +23,19 @@ describe('CodeBuilderGetTool', () => {
 		});
 	});
 
+	describe('restricted node types', () => {
+		it('refuses a node id that a policy restricts', async () => {
+			const tool = createCodeBuilderGetTool({
+				restrictedNodeIds: new Set(['n8n-nodes-base.gmailTrigger']),
+			});
+
+			const result = await tool.invoke({ nodeIds: ['n8n-nodes-base.gmailTrigger'] });
+
+			expect(result).toContain('is restricted by a policy. Do not use it.');
+			expect(result).not.toContain('TypeScript Type Definitions');
+		});
+	});
+
 	describe('tool invocation', () => {
 		it('should invoke without package.json resolution errors', async () => {
 			// This test verifies that invoking the tool doesn't throw the error:

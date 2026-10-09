@@ -98,6 +98,7 @@ import {
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
+	createRestrictedNodeNoticePublisher,
 	createSetupItemsEmitter,
 	formatWorkflowSetupStateNote,
 	isSetupPanelEnabled,
@@ -2733,6 +2734,13 @@ export class InstanceAiService {
 		}
 
 		context.runId = runId;
+
+		context.onRestrictedNodes = createRestrictedNodeNoticePublisher({
+			eventBus: this.eventBus,
+			threadId,
+			runId,
+			agentId: orchestratorAgentId(runId),
+		});
 
 		// Setup panel v2: wire the durable `setup-items` sink only while the flag
 		// is on — its presence is the package-side gate. Seeded with the thread's

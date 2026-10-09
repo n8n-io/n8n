@@ -559,6 +559,7 @@ export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = laz
 export { orchestratorAgentId } from './runtime/orchestrator-identity';
 export declare const suspendedInstanceContextSchema: typeof InstanceContextStateMod.suspendedInstanceContextSchema;
 export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
+export { createRestrictedNodeNoticePublisher } from './tools/nodes/restricted-node-notices';
 export {
 	formatWorkflowSetupStateNote,
 	observeWorkflowSetupStates,
@@ -753,6 +754,8 @@ export type {
 	CredentialTypeSearchResult,
 	CredentialHostInfo,
 	NodeSummary,
+	RestrictedCredentialTypeSummary,
+	RestrictedNodeSummary,
 	NodeDescription,
 	SearchableNodeDescription,
 	AiGatewayNodeMeta,

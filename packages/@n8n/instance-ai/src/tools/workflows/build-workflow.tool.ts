@@ -27,6 +27,11 @@ import { resolvedCredentialSchema } from './resolved-credential.schema';
 import { describeSavedPublishState, savedWorkflowStateSchema } from './saved-workflow-state';
 import { isSetupPanelEnabled } from './setup-items';
 import {
+	findRestrictedNodeBlockers,
+	NODE_TYPE_RESTRICTED_REASON,
+	RESTRICTED_NODE_GUIDANCE,
+} from './restricted-node-blockers';
+import {
 	applyPendingSetupCredentialSelections,
 	markSetupCredentialSelectionsApplied,
 } from './setup-credential-selections';
@@ -102,11 +107,13 @@ import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
 import type { FolderResolutionFailure, InstanceAiContext, WorkflowFolderRef } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';
+import { reportRestricted } from '../nodes/restricted-nodes';
 import {
 	groupingOutcomeSchema,
 	remediationMetadataSchema,
 	workflowVerificationReadinessSchema,
 	type GroupingOutcome,
+	type RemediationMetadata,
 	type WorkflowBuildOutcome,
 } from '../../workflow-loop/workflow-loop-state';
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
@@ -461,6 +468,8 @@ interface ValidationFailureArgs {
 	withEscalation: (errors: string[], options?: { trackingErrors?: string[] }) => string[];
 	stage?: BuildTelemetryStage;
 	grouping?: GroupingOutcome;
+	/** Replaces the default code-fixable remediation, for a failure that code edits cannot fix. */
+	remediation?: RemediationMetadata;
 }
 
 /**
@@ -528,7 +537,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 			: validationErrors,
 		{ trackingErrors: validationErrors },
 	);
-	const remediation = createCodeFixableRemediation({ reason, guidance });
+	const remediation = args.remediation ?? createCodeFixableRemediation({ reason, guidance });
 	const binding = await markSourceBuildFailed(context, initialBinding, sourceHash);
 	await reportFailedWorkflowBuildOutcome(context, {
 		targetWorkflowId,
@@ -544,7 +553,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		grouping,
 	});
 	trackWorkflowSourceBuild(context, {
-		result: 'failure',
+		result: remediation.category === 'blocked' ? 'blocked' : 'failure',
 		stage,
 		binding,
 		targetWorkflowId,
@@ -1317,6 +1326,41 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					guidance:
 						'Fix the chat-model configuration using nodes(action="explore-resources") to pick a model the connected credential supports, then call build-workflow again.',
 					summary: 'Workflow uses a chat model or parameter the connected credential cannot run.',
+					binding,
+					sourceHash,
+					targetWorkflowId,
+					filePath,
+					resolvedWorkItemId,
+					resolvedTaskId,
+					plannedTaskId,
+					owner,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					withEscalation,
+				});
+			}
+
+			const restrictedNodes = await findRestrictedNodeBlockers(
+				context,
+				json,
+				savedWorkflowSnapshot,
+			);
+			if (restrictedNodes.blocking.length > 0) {
+				reportRestricted(context, ctx.toolCallId, restrictedNodes.restricted);
+				return await handleValidationFailure({
+					abortSignal: ctx.abortSignal,
+					context,
+					blocking: restrictedNodes.blocking,
+					informational,
+					reason: NODE_TYPE_RESTRICTED_REASON,
+					guidance: RESTRICTED_NODE_GUIDANCE,
+					remediation: createRemediation({
+						category: 'blocked',
+						shouldEdit: false,
+						reason: NODE_TYPE_RESTRICTED_REASON,
+						guidance: RESTRICTED_NODE_GUIDANCE,
+					}),
+					summary: 'Workflow uses node types that a policy restricts.',
 					binding,
 					sourceHash,
 					targetWorkflowId,

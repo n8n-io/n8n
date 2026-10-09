@@ -76,6 +76,8 @@ export interface StageLLMs {
 
 export interface WorkflowBuilderAgentConfig {
 	parsedNodeTypes: INodeTypeDescription[];
+	/** Node types that a policy restricts. They are not in `parsedNodeTypes`. */
+	restrictedNodeTypes?: RestrictedNodeType[];
 	/** Per-stage LLM configuration */
 	stageLLMs: StageLLMs;
 	logger?: Logger;
@@ -117,6 +119,17 @@ export interface BuilderFeatureFlags {
 	mergeAskBuild?: boolean;
 }
 
+/** A node type that a policy denies for the workflow's project, and the scope that denies it. */
+export interface RestrictedNodeTypeRef {
+	name: string;
+	scope: 'instance' | 'project';
+}
+
+/** A restricted node type with the name that the builder tools and the user see. */
+export interface RestrictedNodeType extends RestrictedNodeTypeRef {
+	displayName: string;
+}
+
 export interface ChatPayload {
 	id: string;
 	message: string;
@@ -137,6 +150,11 @@ export interface ChatPayload {
 		selectedNodes?: SelectedNodeContext[];
 	};
 	featureFlags?: BuilderFeatureFlags;
+	/**
+	 * Node types that a policy restricts. The host resolves them, never the client. The service
+	 * leaves them out of the node list, and the search tools say when a query names one.
+	 */
+	restrictedNodeTypes?: RestrictedNodeTypeRef[];
 	/** Version ID to store in message metadata for restore functionality */
 	versionId?: string;
 	/** Builder mode: 'build' for direct generation, 'plan' for planning first */
@@ -152,6 +170,8 @@ export interface ChatPayload {
 export class WorkflowBuilderAgent {
 	private checkpointer: MemorySaver;
 	private parsedNodeTypes: INodeTypeDescription[];
+
+	private restrictedNodeTypes?: RestrictedNodeType[];
 	private stageLLMs: StageLLMs;
 	private logger?: Logger;
 	private tracer?: LangChainTracer;
@@ -166,6 +186,7 @@ export class WorkflowBuilderAgent {
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
+		this.restrictedNodeTypes = config.restrictedNodeTypes;
 		this.stageLLMs = config.stageLLMs;
 		this.logger = config.logger;
 		this.checkpointer = config.checkpointer;
@@ -185,6 +206,7 @@ export class WorkflowBuilderAgent {
 	private createWorkflow(featureFlags?: BuilderFeatureFlags) {
 		return createMultiAgentWorkflowWithSubgraphs({
 			parsedNodeTypes: this.parsedNodeTypes,
+			restrictedNodeTypes: this.restrictedNodeTypes,
 			stageLLMs: this.stageLLMs,
 			logger: this.logger,
 			checkpointer: this.checkpointer,
@@ -325,6 +347,7 @@ export class WorkflowBuilderAgent {
 		const codeWorkflowBuilder = new CodeWorkflowBuilder({
 			llm: this.stageLLMs.builder,
 			nodeTypes: this.parsedNodeTypes,
+			restrictedNodeTypes: this.restrictedNodeTypes,
 			logger: this.logger,
 			nodeDefinitionDirs: this.nodeDefinitionDirs,
 			checkpointer: this.checkpointer,

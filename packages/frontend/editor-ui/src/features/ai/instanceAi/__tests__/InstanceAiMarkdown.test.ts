@@ -4,7 +4,9 @@ import { createTestingPinia } from '@pinia/testing';
 import InstanceAiMarkdown from '../components/InstanceAiMarkdown.vue';
 import type { ThreadRuntime } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
-import { computed } from 'vue';
+import { computed, nextTick } from 'vue';
+import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY } from '../embed/instanceAiEmbed.types';
 
 // Stub ChatMarkdownChunk to expose the processed content. v-html mirrors the
@@ -40,6 +42,7 @@ describe('InstanceAiMarkdown', () => {
 			id: 'thread-1',
 			resourceNameIndex: new Map<string, ResourceEntry>(),
 			linkableResourceNameIndex: new Map<string, ResourceEntry>(),
+			restrictedNodeIndex: new Map(),
 		} as unknown as ThreadRuntime;
 	});
 
@@ -161,6 +164,145 @@ describe('InstanceAiMarkdown', () => {
 		);
 		expect(result).toContain('[the My Workflow docs](https://example.com)');
 		expect(result).not.toContain('n8n-resource://');
+	});
+
+	describe('restricted node types', () => {
+		const GMAIL = 'n8n-nodes-base.gmailTrigger';
+
+		const processed = (content: string) =>
+			renderComponent({ props: { content, markRestrictedNodes: true } }).getByTestId(
+				'markdown-output',
+			).textContent ?? '';
+
+		function restrict(scope: 'instance' | 'project' = 'instance') {
+			thread.restrictedNodeIndex = new Map([
+				[GMAIL, { nodeType: GMAIL, displayName: 'Gmail Trigger', scope }],
+			]);
+		}
+
+		it('links each mention of a restricted type, keeping the text the model wrote', () => {
+			restrict();
+
+			const result = processed('The Gmail Trigger is restricted, so I cannot use gmail trigger.');
+
+			expect(result).toContain(
+				`[Gmail Trigger](n8n-restricted-node://${encodeURIComponent(GMAIL)})`,
+			);
+			expect(result).toContain(
+				`[gmail trigger](n8n-restricted-node://${encodeURIComponent(GMAIL)})`,
+			);
+		});
+
+		it('links a bold mention without breaking the bold', () => {
+			restrict();
+
+			const result = processed('The **Gmail Trigger** is restricted.');
+
+			expect(result).toContain(
+				`**[Gmail Trigger](n8n-restricted-node://${encodeURIComponent(GMAIL)})**`,
+			);
+		});
+
+		it('leaves the text alone when no type is restricted', () => {
+			const result = processed('The Gmail Trigger is restricted.');
+
+			expect(result).toBe('The Gmail Trigger is restricted.');
+		});
+
+		it('waits for the block to settle while it streams', () => {
+			restrict();
+
+			const { getByTestId } = renderComponent({
+				props: {
+					content: 'The Gmail Trigger is restricted.',
+					streaming: true,
+					markRestrictedNodes: true,
+				},
+			});
+
+			expect(getByTestId('markdown-output').textContent).not.toContain('n8n-restricted-node://');
+		});
+
+		it('puts a help marker after the name and opens the policy popover from it', async () => {
+			restrict('project');
+			// The stub shows the source as HTML, so feed the anchor the real renderer would produce.
+			const { getByTestId, findByTestId } = renderComponent({
+				props: {
+					content: `The <a href="n8n-restricted-node://${encodeURIComponent(GMAIL)}">Gmail Trigger</a> is restricted.`,
+					streaming: true,
+					markRestrictedNodes: true,
+				},
+			});
+			await nextTick();
+
+			const marker = getByTestId('markdown-output').querySelector('[data-restricted-marker]');
+			expect(marker).not.toBeNull();
+			expect(marker?.parentElement?.textContent).toContain('Gmail Trigger');
+
+			await userEvent.hover(within(marker as HTMLElement).getByTestId('node-restricted-icon'));
+
+			const popover = await findByTestId('node-restricted-popover');
+			expect(popover).toHaveTextContent('Gmail Trigger');
+			expect(popover).toHaveTextContent('Restricted in this project');
+		});
+
+		it('gives each marker its own stable identity, so popovers keep their own state', async () => {
+			restrict();
+			const link = `<a href="n8n-restricted-node://${encodeURIComponent(GMAIL)}">Gmail Trigger</a>`;
+
+			const { getByTestId } = renderComponent({
+				props: {
+					content: `The ${link} and again the ${link}.`,
+					streaming: true,
+					markRestrictedNodes: true,
+				},
+			});
+			await nextTick();
+
+			const ids = [
+				...getByTestId('markdown-output').querySelectorAll<HTMLElement>('[data-restricted-marker]'),
+			].map((marker) => marker.dataset.restrictedMarker);
+			expect(ids).toHaveLength(2);
+			expect(new Set(ids).size).toBe(2);
+		});
+
+		it('leaves the text alone unless the caller marks restricted nodes, as for reasoning text', () => {
+			restrict();
+
+			const { getByTestId } = renderComponent({
+				props: { content: 'The Gmail Trigger is restricted.' },
+			});
+
+			expect(getByTestId('markdown-output').textContent).toBe('The Gmail Trigger is restricted.');
+		});
+
+		it('marks the instance scope when two restricted types share a display name', () => {
+			const OTHER = 'n8n-nodes-base.gmailTriggerLegacy';
+			thread.restrictedNodeIndex = new Map([
+				[OTHER, { nodeType: OTHER, displayName: 'Gmail Trigger', scope: 'project' as const }],
+				[GMAIL, { nodeType: GMAIL, displayName: 'Gmail Trigger', scope: 'instance' as const }],
+			]);
+
+			const result = processed('The Gmail Trigger is restricted.');
+
+			expect(result).toContain(encodeURIComponent(GMAIL));
+			expect(result).not.toContain(encodeURIComponent(OTHER));
+		});
+
+		it('shows plain text for a restricted link whose type the thread does not know', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					content: `<a href="n8n-restricted-node://${encodeURIComponent('n8n-nodes-base.unknown')}">Unknown Node</a>`,
+					streaming: true,
+					markRestrictedNodes: true,
+				},
+			});
+
+			const output = getByTestId('markdown-output');
+			expect(output.querySelector('a')).toBeNull();
+			expect(output.querySelector('[data-restricted-marker]')).toBeNull();
+			expect(output.textContent).toBe('Unknown Node');
+		});
 	});
 
 	describe('streaming deferral', () => {

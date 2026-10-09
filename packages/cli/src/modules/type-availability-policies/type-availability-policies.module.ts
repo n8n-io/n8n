@@ -3,6 +3,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+import { TypeRestrictionProviderProxy } from '@/policy/type-restriction-provider-proxy.service';
 import { RestrictedNodeTypesProviderProxy } from '@/workflows/restricted-node-types-provider-proxy.service';
 
 /**
@@ -34,6 +35,11 @@ export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 		);
 		Container.get(RestrictedNodeTypesProviderProxy).registerProvider(
 			Container.get(NodeTypePolicyRestrictedTypesProvider),
+		);
+
+		const { TypeAvailabilityRestrictionProvider } = await import('./type-restriction.provider.js');
+		Container.get(TypeRestrictionProviderProxy).registerProvider(
+			Container.get(TypeAvailabilityRestrictionProvider),
 		);
 	}
 

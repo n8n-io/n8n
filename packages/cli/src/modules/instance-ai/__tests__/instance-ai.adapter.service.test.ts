@@ -1833,6 +1833,11 @@ import type { AiPreferenceService } from '@/services/ai-preference.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
 import { ModuleRegistry } from '@n8n/backend-common';
+import {
+	TypeRestrictionProviderProxy,
+	type TypeRestriction,
+	type TypeRestrictionProvider,
+} from '@/policy/type-restriction-provider-proxy.service';
 import type { InstanceAiBuilderDelegate, OrchestrationContext } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
@@ -1850,6 +1855,8 @@ function createNodeAdapterServiceForTests(
 		credentialsService?: Record<string, unknown>;
 		credentialsFinderService?: Record<string, unknown>;
 		executeNodeService?: Record<string, unknown>;
+		sharedWorkflowRepository?: Record<string, unknown>;
+		projectId?: string;
 	},
 ) {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1863,14 +1870,18 @@ function createNodeAdapterServiceForTests(
 	const loadNodesAndCredentials = options?.loadNodesAndCredentials ?? {};
 
 	const service = new InstanceAiAdapterService(
-		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[0],
+		{
+			error: vi.fn(),
+			warn: vi.fn(),
+			scoped: vi.fn().mockReturnThis(),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
 		globalConfigStub(),
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[5],
+		(options?.sharedWorkflowRepository ?? {}) as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[5],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[6],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
 		(options?.credentialsService ?? {}) as unknown as ConstructorParameters<
@@ -1941,7 +1952,10 @@ function createNodeAdapterServiceForTests(
 		expiresAt: Date.now() + 60_000,
 	};
 
-	const context = service.createContext(mockUser);
+	const context = service.createContext(
+		mockUser,
+		options?.projectId ? { projectId: options.projectId } : undefined,
+	);
 
 	return {
 		service,
@@ -2307,6 +2321,128 @@ describe('createNodeAdapter', () => {
 				}
 			).nodesCache,
 		).toBeNull();
+	});
+
+	describe('policy-restricted node types', () => {
+		const nodes = [
+			{
+				name: 'n8n-nodes-base.gmailTrigger',
+				displayName: 'Gmail Trigger',
+				description: 'Starts on new email',
+				group: ['trigger'],
+				version: 1,
+				inputs: [],
+				outputs: ['main'],
+				properties: [],
+			},
+			{
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields',
+				description: 'Set values',
+				group: ['input'],
+				version: 3,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			},
+		];
+
+		const findRestrictedTypes = vi.fn<TypeRestrictionProvider['findRestrictedTypes']>();
+
+		const restrict = (...types: Array<[string, TypeRestriction['scope']]>) =>
+			findRestrictedTypes.mockResolvedValue(
+				new Map(types.map(([type, scope]) => [type, { scope }])),
+			);
+
+		beforeEach(() => {
+			findRestrictedTypes.mockReset();
+			findRestrictedTypes.mockResolvedValue(new Map());
+			Container.get(TypeRestrictionProviderProxy).registerProvider({ findRestrictedTypes });
+		});
+
+		it('leaves restricted types out of discovery', async () => {
+			restrict(['n8n-nodes-base.gmailTrigger', 'instance']);
+			const { nodeService } = createNodeAdapterServiceForTests(nodes);
+
+			expect((await nodeService.listSearchable()).map((n) => n.name)).toEqual([
+				'n8n-nodes-base.set',
+			]);
+			expect((await nodeService.listAvailable()).map((n) => n.name)).toEqual([
+				'n8n-nodes-base.set',
+			]);
+		});
+
+		it("asks about the run's project and every distinct node type", async () => {
+			const { nodeService } = createNodeAdapterServiceForTests(nodes, { projectId: 'project-1' });
+
+			await nodeService.listAvailable();
+
+			expect(findRestrictedTypes).toHaveBeenCalledWith('node', 'project-1', [
+				'n8n-nodes-base.gmailTrigger',
+				'n8n-nodes-base.set',
+			]);
+		});
+
+		it('reads the policy once for the whole run', async () => {
+			const { nodeService } = createNodeAdapterServiceForTests(nodes);
+
+			await nodeService.listAvailable();
+			await nodeService.listSearchable();
+			await nodeService.getDescription('n8n-nodes-base.set');
+
+			expect(findRestrictedTypes).toHaveBeenCalledTimes(1);
+		});
+
+		it('lists the restricted types with their display name and scope', async () => {
+			restrict(['n8n-nodes-base.gmailTrigger', 'project']);
+			const { nodeService } = createNodeAdapterServiceForTests(nodes);
+
+			expect(await nodeService.listRestricted?.()).toEqual([
+				{ name: 'n8n-nodes-base.gmailTrigger', displayName: 'Gmail Trigger', scope: 'project' },
+			]);
+		});
+
+		it('lists nothing when no policy restricts a type', async () => {
+			const { nodeService } = createNodeAdapterServiceForTests(nodes);
+
+			expect(await nodeService.listRestricted?.()).toEqual([]);
+		});
+
+		it('names the policy scope when a lookup finds a restricted type', async () => {
+			restrict(['n8n-nodes-base.gmailTrigger', 'instance']);
+			const { nodeService } = createNodeAdapterServiceForTests(nodes);
+
+			const description = await nodeService.getDescription('n8n-nodes-base.gmailTrigger');
+			const definition = await nodeService.getNodeTypeDefinition?.('n8n-nodes-base.gmailTrigger');
+
+			expect(description.unavailable).toMatch(/restricted by an instance policy/);
+			expect(definition?.unavailable).toMatch(/restricted by an instance policy/);
+		});
+
+		it('names the project when the project policy restricts the type', async () => {
+			restrict(['n8n-nodes-base.gmailTrigger', 'project']);
+			const { nodeService } = createNodeAdapterServiceForTests(nodes, { projectId: 'project-1' });
+
+			const description = await nodeService.getDescription('n8n-nodes-base.gmailTrigger');
+
+			expect(description.unavailable).toMatch(/restricted by this project's policy/);
+		});
+
+		it('does not flag an allowed type', async () => {
+			restrict(['n8n-nodes-base.gmailTrigger', 'instance']);
+			const { nodeService } = createNodeAdapterServiceForTests(nodes);
+
+			expect((await nodeService.getDescription('n8n-nodes-base.set')).unavailable).toBeUndefined();
+		});
+
+		it('offers every type when the policy read fails, and reads again next time', async () => {
+			findRestrictedTypes.mockRejectedValueOnce(new Error('policy store down'));
+			const { nodeService } = createNodeAdapterServiceForTests(nodes);
+
+			expect(await nodeService.listAvailable()).toHaveLength(2);
+			expect(await nodeService.listAvailable()).toHaveLength(2);
+			expect(findRestrictedTypes).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe('getResolvedNodeInputs expression isolate lifecycle', () => {
@@ -8291,6 +8427,179 @@ describe('createCredentialAdapter', () => {
 			);
 
 			expect(results).toEqual([{ type: 'slackApi', displayName: 'slackApi' }]);
+		});
+	});
+
+	describe('policy-restricted credential types', () => {
+		const findRestrictedTypes = vi.fn<TypeRestrictionProvider['findRestrictedTypes']>();
+
+		const restrict = (...types: Array<[string, TypeRestriction['scope']]>) =>
+			findRestrictedTypes.mockResolvedValue(
+				new Map(types.map(([type, scope]) => [type, { scope }])),
+			);
+
+		const adapter = (
+			options: {
+				projectId?: string;
+				usable?: Array<Record<string, unknown>>;
+				all?: Array<Record<string, unknown>>;
+				owningProjectId?: string;
+			} = {},
+		) =>
+			createNodeAdapterServiceForTests([], {
+				projectId: options.projectId,
+				sharedWorkflowRepository: {
+					getWorkflowOwningProject: vi
+						.fn()
+						.mockResolvedValue(
+							options.owningProjectId ? { id: options.owningProjectId } : undefined,
+						),
+				},
+				loadNodesAndCredentials: {
+					getCredential: (type: string) => ({
+						type: { name: type, displayName: type === 'slackApi' ? 'Slack API' : 'Notion API' },
+					}),
+					knownCredentials: { slackApi: {}, notionApi: {} },
+				},
+				credentialsService: {
+					getCredentialsAUserCanUseInAWorkflow: vi.fn().mockResolvedValue(options.usable ?? []),
+					getMany: vi.fn().mockResolvedValue(options.all ?? []),
+				},
+			}).credentialService;
+
+		beforeEach(() => {
+			findRestrictedTypes.mockReset();
+			findRestrictedTypes.mockResolvedValue(new Map());
+			Container.get(TypeRestrictionProviderProxy).registerProvider({ findRestrictedTypes });
+		});
+
+		it('leaves restricted types out of the type search', async () => {
+			restrict(['slackApi', 'instance']);
+
+			const results = await adapter().searchCredentialTypes!('api');
+
+			expect(results.map((r) => r.type)).toEqual(['notionApi']);
+		});
+
+		it("asks about the run's project and every known credential type", async () => {
+			await adapter({ projectId: 'project-1' }).searchCredentialTypes!('api');
+
+			expect(findRestrictedTypes).toHaveBeenCalledWith('credential', 'project-1', [
+				'slackApi',
+				'notionApi',
+			]);
+		});
+
+		it('lists the restricted types with their display name and scope', async () => {
+			restrict(['slackApi', 'project']);
+
+			expect(await adapter().listRestrictedTypes!()).toEqual([
+				{ type: 'slackApi', displayName: 'Slack API', scope: 'project' },
+			]);
+		});
+
+		it('offers no credential of a restricted type in a project-scoped list', async () => {
+			restrict(['slackApi', 'instance']);
+			const usable = [
+				{ id: 'c1', name: 'Slack', type: 'slackApi' },
+				{ id: 'c2', name: 'Notion', type: 'notionApi' },
+			];
+
+			const credentials = await adapter({ projectId: 'project-1', usable }).list();
+
+			expect(credentials.map((c) => c.id)).toEqual(['c2']);
+		});
+
+		it('offers no credential of a restricted type in the unscoped list either', async () => {
+			restrict(['slackApi', 'instance']);
+			const all = [
+				{ id: 'c1', name: 'Slack', type: 'slackApi' },
+				{ id: 'c2', name: 'Notion', type: 'notionApi' },
+			];
+
+			const credentials = await adapter({ all }).list();
+
+			expect(credentials.map((c) => c.id)).toEqual(['c2']);
+			expect(findRestrictedTypes).toHaveBeenCalledWith('credential', null, expect.any(Array));
+		});
+
+		it("checks the caller's project when the run has no bound project", async () => {
+			findRestrictedTypes.mockImplementation(
+				async (_kind, projectId) =>
+					new Map(
+						projectId === 'other-project' ? [['slackApi', { scope: 'project' as const }]] : [],
+					),
+			);
+			const usable = [
+				{ id: 'c1', name: 'Slack', type: 'slackApi' },
+				{ id: 'c2', name: 'Notion', type: 'notionApi' },
+			];
+
+			const credentials = await adapter({ usable }).list({ projectId: 'other-project' });
+
+			expect(findRestrictedTypes).toHaveBeenCalledWith(
+				'credential',
+				'other-project',
+				expect.any(Array),
+			);
+			expect(credentials.map((c) => c.id)).toEqual(['c2']);
+		});
+
+		it("checks the owning project of a caller's workflow when the run has no bound project", async () => {
+			findRestrictedTypes.mockImplementation(
+				async (_kind, projectId) =>
+					new Map(
+						projectId === 'owner-project' ? [['slackApi', { scope: 'project' as const }]] : [],
+					),
+			);
+			const usable = [{ id: 'c1', name: 'Slack', type: 'slackApi' }];
+
+			const credentials = await adapter({ usable, owningProjectId: 'owner-project' }).list({
+				workflowId: 'wf-1',
+			});
+
+			expect(credentials).toEqual([]);
+		});
+
+		it('leaves restricted types out of the HTTP credential host list', async () => {
+			restrict(['slackApi', 'instance']);
+			const service = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: {
+					getCredential: (type: string) => ({
+						type: {
+							name: type,
+							displayName: type,
+							authenticate: {},
+							properties: [],
+							test: { request: { baseURL: `https://${type}.example.com` } },
+						},
+					}),
+					knownCredentials: { slackApi: {}, notionApi: {} },
+				},
+			}).credentialService;
+
+			const hosts = (await service.listHttpCredentialHosts?.()) ?? [];
+
+			expect(hosts.map((host) => host.type)).not.toContain('slackApi');
+		});
+
+		it('reads the policy once for the whole run', async () => {
+			const credentialService = adapter({ projectId: 'project-1' });
+
+			await credentialService.searchCredentialTypes!('api');
+			await credentialService.listRestrictedTypes!();
+			await credentialService.list();
+
+			expect(findRestrictedTypes).toHaveBeenCalledTimes(1);
+		});
+
+		it('offers every type when the policy read fails, and reads again next time', async () => {
+			findRestrictedTypes.mockRejectedValueOnce(new Error('policy store down'));
+			const credentialService = adapter();
+
+			expect(await credentialService.searchCredentialTypes!('api')).toHaveLength(2);
+			expect(await credentialService.searchCredentialTypes!('api')).toHaveLength(2);
+			expect(findRestrictedTypes).toHaveBeenCalledTimes(2);
 		});
 	});
 

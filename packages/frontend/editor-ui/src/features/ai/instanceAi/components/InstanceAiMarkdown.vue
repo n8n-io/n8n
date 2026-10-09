@@ -5,7 +5,9 @@ import {
 	resolveAgentPreviewLink,
 	type AgentPreviewTarget,
 } from '@/features/agents/utils/agentPreviewUrl';
-import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
+import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
+import { computed, inject, onMounted, onUpdated, ref, shallowRef, useCssModule } from 'vue';
+import { pickEntriesByDisplayName, type RestrictedNodeEntry } from '../restrictedNodeIndex';
 import { useThread } from '../instanceAi.store';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 
@@ -21,6 +23,8 @@ const props = defineProps<{
 	 * mid-stream (target="_blank" instead of same-tab SPA navigation).
 	 */
 	streaming?: boolean;
+	/** Puts a help marker after each restricted node type that the text names. Reply text only. */
+	markRestrictedNodes?: boolean;
 }>();
 
 const thread = useThread();
@@ -172,6 +176,56 @@ function replaceUnprotectedMarkdownText(
 	return result + replaceSegment(content.slice(segmentStart));
 }
 
+/** Whole-name match: `\b` at a word edge, a space or punctuation edge for names like "Test (v2.0)". */
+function buildNamePattern(name: string, flags = 'g'): RegExp {
+	// Escape special regex characters in the name
+	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+	// Use \b when the name edge is a word character; use a whitespace/
+	// punctuation boundary otherwise (handles names like "Test (v2.0)").
+	const startBoundary = /\w/.test(name[0]) ? '\\b' : '(?<=^|[\\s,;:!?])';
+	const endBoundary = /\w/.test(name[name.length - 1]) ? '\\b' : '(?=$|[\\s,;:!?.])';
+
+	return new RegExp(
+		// Negative lookbehind: not preceded by / so URL paths are not mutated.
+		'(?<!\\/)' +
+			// The name with appropriate boundaries
+			`${startBoundary}(${escaped})${endBoundary}` +
+			// Negative lookahead: not followed by :// so URLs are not mutated.
+			'(?!://)',
+		flags,
+	);
+}
+
+const RESTRICTED_NODE_SCHEME = 'n8n-restricted-node://';
+
+/**
+ * Link every mention of a restricted node type, so the DOM pass can put a help marker after
+ * it. The index comes from the tool calls that found the type, not from the model's text, so
+ * the scope in the popover is the policy's.
+ */
+function decorateRestrictedNodes(content: string): string {
+	const index = thread.restrictedNodeIndex;
+	if (index.size === 0) return content;
+
+	const entries = [...pickEntriesByDisplayName(index.values()).values()]
+		.filter((entry) => entry.displayName.length >= 3)
+		.sort((a, b) => b.displayName.length - a.displayName.length);
+
+	let result = content;
+	for (const entry of entries) {
+		result = replaceUnprotectedMarkdownText(result, (segment) =>
+			segment.replace(
+				buildNamePattern(entry.displayName, 'gi'),
+				(_match, name: string) =>
+					`[${escapeMarkdownLinkText(name)}](${RESTRICTED_NODE_SCHEME}${encodeURIComponent(entry.nodeType)})`,
+			),
+		);
+	}
+
+	return result;
+}
+
 function decorateResourceNames(content: string): string {
 	const registry = thread.linkableResourceNameIndex;
 	if (registry.size === 0) return content;
@@ -184,25 +238,7 @@ function decorateResourceNames(content: string): string {
 	let result = content;
 	for (const entry of entries) {
 		result = replaceUnprotectedMarkdownText(result, (segment) => {
-			// Escape special regex characters in the resource name
-			const escaped = entry.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-			// Use \b when the name edge is a word character; use a whitespace/
-			// punctuation boundary otherwise (handles names like "Test (v2.0)").
-			const startBoundary = /\w/.test(entry.name[0]) ? '\\b' : '(?<=^|[\\s,;:!?])';
-			const endBoundary = /\w/.test(entry.name[entry.name.length - 1])
-				? '\\b'
-				: '(?=$|[\\s,;:!?.])';
-
-			const pattern = new RegExp(
-				// Negative lookbehind: not preceded by / so URL paths are not mutated.
-				'(?<!\\/)' +
-					// The name with appropriate boundaries
-					`${startBoundary}(${escaped})${endBoundary}` +
-					// Negative lookahead: not followed by :// so URLs are not mutated.
-					'(?!://)',
-				'g',
-			);
+			const pattern = buildNamePattern(entry.name);
 
 			return segment.replace(pattern, (_match, name: string) => {
 				const url = `n8n-resource://${entry.type}/${encodeURIComponent(entry.id)}`;
@@ -216,7 +252,11 @@ function decorateResourceNames(content: string): string {
 
 const source = computed(() => ({
 	type: 'text' as const,
-	content: props.streaming ? rawContent.value : decorateResourceNames(rawContent.value),
+	content: props.streaming
+		? rawContent.value
+		: decorateResourceNames(
+				props.markRestrictedNodes ? decorateRestrictedNodes(rawContent.value) : rawContent.value,
+			),
 }));
 
 /** Route patterns that map internal n8n URLs to resource types. */
@@ -318,6 +358,11 @@ function enhanceResourceLinks(): void {
 		if (link.dataset.resourceChip || link.dataset.agentPreviewId) continue;
 
 		const href = link.getAttribute('href') ?? '';
+
+		if (href.startsWith(RESTRICTED_NODE_SCHEME)) {
+			enhanceRestrictedNodeLink(link, href);
+			continue;
+		}
 
 		// 1. Handle n8n-resource:// custom scheme links
 		const resourceMatch = /^n8n-resource:\/\/(workflow|credential|data-table|agent)\/(.+)$/.exec(
@@ -443,19 +488,94 @@ function handleLinkClick(event: MouseEvent): void {
 	if (switched === true) event.preventDefault();
 }
 
-onMounted(enhanceResourceLinks);
+/** A restricted node link becomes the name plus an empty marker that the popover teleports into. */
+function enhanceRestrictedNodeLink(link: HTMLAnchorElement, href: string): void {
+	let nodeType: string;
+	try {
+		nodeType = decodeURIComponent(href.slice(RESTRICTED_NODE_SCHEME.length));
+	} catch {
+		nodeType = '';
+	}
+
+	if (!props.markRestrictedNodes || !thread.restrictedNodeIndex.has(nodeType)) {
+		link.replaceWith(...link.childNodes);
+		return;
+	}
+
+	const marker = document.createElement('span');
+	marker.dataset.restrictedMarker = String(nextRestrictedMarkerId++);
+	marker.dataset.nodeType = nodeType;
+	marker.className = styles.restrictedMarker;
+
+	const name = document.createElement('span');
+	name.append(...link.childNodes, marker);
+	link.replaceWith(name);
+}
+
+interface RestrictedMarker {
+	/** Stable for the life of the marker element, so a popover keeps its own state. */
+	id: string;
+	el: HTMLElement;
+	entry: RestrictedNodeEntry;
+}
+
+let nextRestrictedMarkerId = 0;
+const restrictedMarkers = shallowRef<RestrictedMarker[]>([]);
+
+function collectRestrictedMarkers(): void {
+	const wrapper = wrapperRef.value;
+	if (!wrapper) return;
+
+	const next = [...wrapper.querySelectorAll<HTMLElement>('[data-restricted-marker]')].flatMap(
+		(el) => {
+			const entry = el.dataset.nodeType
+				? thread.restrictedNodeIndex.get(el.dataset.nodeType)
+				: undefined;
+			return entry ? [{ id: el.dataset.restrictedMarker ?? '', el, entry: { ...entry } }] : [];
+		},
+	);
+
+	// Teleports re-render this component, so only a real change may assign.
+	const previous = restrictedMarkers.value;
+	const unchanged =
+		next.length === previous.length &&
+		next.every(
+			(marker, i) =>
+				marker.id === previous[i].id &&
+				marker.entry.nodeType === previous[i].entry.nodeType &&
+				marker.entry.displayName === previous[i].entry.displayName &&
+				marker.entry.scope === previous[i].entry.scope,
+		);
+	if (!unchanged) restrictedMarkers.value = next;
+}
+
+function afterRender(): void {
+	enhanceResourceLinks();
+	collectRestrictedMarkers();
+}
+
+onMounted(afterRender);
 onUpdated(() => {
 	// Runs while streaming too: decorated n8n-resource:// links can't exist yet
 	// (decoration is deferred), but AI-authored internal-route links can, and
 	// this walk is their only target="_blank" — without it a mid-stream click
 	// navigates the SPA tab away from the live chat. O(anchors), cheap.
-	enhanceResourceLinks();
+	afterRender();
 });
 </script>
 
 <template>
 	<div ref="wrapperRef" @click="handleLinkClick">
 		<ChatMarkdownChunk :source="source" />
+		<Teleport v-for="marker in restrictedMarkers" :key="marker.id" :to="marker.el">
+			<RestrictedNodePopover
+				:node-type-name="marker.entry.displayName"
+				:scope="marker.entry.scope"
+				icon="circle-help"
+				side="bottom"
+				:side-offset="8"
+			/>
+		</Teleport>
 	</div>
 </template>
 
@@ -479,6 +599,12 @@ onUpdated(() => {
 		background: none !important;
 		color: var(--color--primary) !important;
 	}
+}
+
+.restrictedMarker {
+	display: inline-flex;
+	vertical-align: middle;
+	margin-left: var(--spacing--5xs);
 }
 
 .resourceChipIcon {

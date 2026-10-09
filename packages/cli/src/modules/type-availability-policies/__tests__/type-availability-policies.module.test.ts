@@ -3,17 +3,21 @@ import { ControllerRegistryMetadata, ModuleMetadata, PolicyCheckMetadata } from 
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import { TypeRestrictionProviderProxy } from '@/policy/type-restriction-provider-proxy.service';
 import { RestrictedNodeTypesProviderProxy } from '@/workflows/restricted-node-types-provider-proxy.service';
 
 import { NodeTypePolicyRestrictedTypesProvider } from '../restricted-node-types.provider';
+import { TypeAvailabilityRestrictionProvider } from '../type-restriction.provider';
 // Importing the module runs the @BackendModule decorator, registering its metadata.
 import { TypeAvailabilityPoliciesModule } from '../type-availability-policies.module';
 
 describe('TypeAvailabilityPoliciesModule', () => {
 	const provider = mock<NodeTypePolicyRestrictedTypesProvider>();
+	const restrictionProvider = mock<TypeAvailabilityRestrictionProvider>();
 
 	beforeEach(() => {
 		Container.set(NodeTypePolicyRestrictedTypesProvider, provider);
+		Container.set(TypeAvailabilityRestrictionProvider, restrictionProvider);
 	});
 
 	it('registers itself under the correct module name', () => {
@@ -90,6 +94,21 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		await expect(
 			Container.get(RestrictedNodeTypesProviderProxy).findRestrictedWorkflowIds(),
 		).resolves.toEqual(restricted);
+	}, 30_000);
+
+	it('answers the type restriction proxy from its restriction provider on init', async () => {
+		restrictionProvider.findRestrictedTypes.mockResolvedValue(
+			new Map([['n8n-nodes-base.slack', { scope: 'instance' as const }]]),
+		);
+		const module = new TypeAvailabilityPoliciesModule();
+
+		await module.init();
+
+		await expect(
+			Container.get(TypeRestrictionProviderProxy).findRestrictedTypes('node', 'p1', [
+				'n8n-nodes-base.slack',
+			]),
+		).resolves.toEqual(new Map([['n8n-nodes-base.slack', { scope: 'instance' }]]));
 	}, 30_000);
 
 	it('exposes its entities so the datasource picks them up', async () => {

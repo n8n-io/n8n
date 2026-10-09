@@ -68,6 +68,7 @@ import {
 	useResourceRegistry,
 	type TransientWorkflowArtifactReference,
 } from './useResourceRegistry';
+import { useRestrictedNodeIndex } from './restrictedNodeIndex';
 import { buildThreadArtifactsContext, type OpenThreadTab } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
@@ -639,6 +640,8 @@ export function createThreadRuntime(
 	const isSendingMessage = computed(() => pendingMessageCount.value > 0);
 	const hasMessages = computed(() => messages.value.length > 0);
 	const isHydratingThread = computed(() => hydrationStatus.value === 'hydrating');
+
+	const restrictedNodeIndex = useRestrictedNodeIndex(() => messages.value);
 
 	const {
 		producedArtifacts,
@@ -1963,6 +1966,7 @@ export function createThreadRuntime(
 		producedArtifacts,
 		resourceNameIndex,
 		linkableResourceNameIndex,
+		restrictedNodeIndex,
 		producedArtifactOrigins,
 		activeArtifactId,
 		setActiveArtifactId,

@@ -256,6 +256,7 @@ describe('AiController', () => {
 				},
 				request.user,
 				expect.any(AbortSignal),
+				undefined,
 			);
 			expect(response.header).toHaveBeenCalledWith('Content-type', 'application/json-lines');
 			expect(response.flush).toHaveBeenCalled();
@@ -269,6 +270,24 @@ describe('AiController', () => {
 				JSON.stringify(mockChunks[1]) + '⧉⇋⇋➽⌑⧉§§\n',
 			);
 			expect(response.end).toHaveBeenCalled();
+		});
+
+		it('hands the project that the editor reports to the builder service', async () => {
+			async function* mockChatGenerator() {
+				yield { messages: [{ role: 'assistant', type: 'message', text: 'Building...' } as const] };
+			}
+			workflowBuilderService.chat.mockReturnValue(mockChatGenerator());
+
+			await controller.build(request, response, {
+				payload: { ...payload.payload, projectId: 'team-project' },
+			});
+
+			expect(workflowBuilderService.chat).toHaveBeenCalledWith(
+				expect.not.objectContaining({ restrictedNodeTypes: expect.anything() }),
+				request.user,
+				expect.any(AbortSignal),
+				'team-project',
+			);
 		});
 
 		it('should handle errors during streaming and send error chunk', async () => {
@@ -425,6 +444,7 @@ describe('AiController', () => {
 					expect.any(Object),
 					request.user,
 					capturedSignal,
+					undefined,
 				);
 			});
 

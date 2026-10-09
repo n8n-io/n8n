@@ -396,6 +396,22 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getCheckpointer).toHaveBeenCalled();
 		});
 
+		it('leaves restricted node types out of the builder node list and names them to the builder', async () => {
+			const restricted = [{ name: mockNodeTypeDescriptions[0].name, scope: 'project' as const }];
+
+			await service.chat({ ...mockPayload, restrictedNodeTypes: restricted }, mockUser).next();
+
+			const config =
+				MockedWorkflowBuilderAgent.mock.calls[MockedWorkflowBuilderAgent.mock.calls.length - 1][0];
+			expect(config.parsedNodeTypes.map((n) => n.name)).not.toContain(restricted[0].name);
+			expect(config.restrictedNodeTypes).toEqual([
+				{
+					...restricted[0],
+					displayName: mockNodeTypeDescriptions[0].displayName,
+				},
+			]);
+		});
+
 		it('should create WorkflowBuilderAgent without tracer when no client', async () => {
 			const serviceWithoutClient = new AiWorkflowBuilderService(
 				mockNodeTypeDescriptions,

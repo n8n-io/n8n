@@ -134,9 +134,17 @@ export class CodeBuilderAgent {
 		});
 
 		// Create tools
-		const searchTool = createCodeBuilderSearchTool(this.nodeTypeParser);
-		const getTool = createCodeBuilderGetTool({ nodeDefinitionDirs: config.nodeDefinitionDirs });
-		const suggestedNodesTool = createGetSuggestedNodesTool(this.nodeTypeParser);
+		const searchTool = createCodeBuilderSearchTool(
+			this.nodeTypeParser,
+			undefined,
+			config.restrictedNodeTypes,
+		);
+		const restrictedNodeIds = new Set(config.restrictedNodeTypes?.map((node) => node.name));
+		const getTool = createCodeBuilderGetTool({
+			nodeDefinitionDirs: config.nodeDefinitionDirs,
+			restrictedNodeIds,
+		});
+		const suggestedNodesTool = createGetSuggestedNodesTool(this.nodeTypeParser, restrictedNodeIds);
 		this.tools = [searchTool, getTool, suggestedNodesTool];
 		this.toolsMap = new Map(this.tools.map((t) => [t.name, t]));
 

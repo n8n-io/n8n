@@ -1,4 +1,5 @@
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
+import { describeRestrictionScope } from '@n8n/ai-utilities/node-catalog';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
@@ -78,6 +79,8 @@ import type {
 	CredentialSummary,
 	CredentialDetail,
 	NodeSummary,
+	RestrictedCredentialTypeSummary,
+	RestrictedNodeSummary,
 	NodeDescription,
 	SearchableNodeDescription,
 	AiGatewayNodeMeta,
@@ -192,6 +195,10 @@ import type { ExecuteNodeResult } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import {
+	TypeRestrictionProviderProxy,
+	type TypeRestriction,
+} from '@/policy/type-restriction-provider-proxy.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
@@ -574,7 +581,7 @@ export class InstanceAiAdapterService {
 				threadId,
 			),
 			credentialService,
-			nodeService: this.createNodeAdapter(user),
+			nodeService: this.createNodeAdapter(user, projectId),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			...(configEvalsEnabled && this.evaluationConfigService
 				? {
@@ -2742,8 +2749,43 @@ export class InstanceAiAdapterService {
 			credentialsFinderService,
 			loadNodesAndCredentials,
 			aiGatewayService,
+			sharedWorkflowRepository,
 		} = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
+
+		// One policy read per adapter and project.
+		const restrictionsByProject = new Map<string, Promise<ReadonlyMap<string, TypeRestriction>>>();
+		const getRestrictions = async (
+			projectId: string | null = boundProjectId ?? null,
+		): Promise<ReadonlyMap<string, TypeRestriction>> => {
+			const key = projectId ?? '';
+			let pending = restrictionsByProject.get(key);
+			if (!pending) {
+				pending = (async () => {
+					try {
+						return await Container.get(TypeRestrictionProviderProxy).findRestrictedTypes(
+							'credential',
+							projectId,
+							Object.keys(loadNodesAndCredentials.knownCredentials ?? {}),
+						);
+					} catch (error) {
+						this.logger.warn('Failed to read credential type restrictions', { error });
+						restrictionsByProject.delete(key);
+						return new Map<string, TypeRestriction>();
+					}
+				})();
+				restrictionsByProject.set(key, pending);
+			}
+			return await pending;
+		};
+		/** Credentials of a restricted type cannot go on a saved workflow, so none is offered. */
+		const withoutRestrictedTypes = async <T extends { type: string }>(
+			items: T[],
+			projectId?: string | null,
+		): Promise<T[]> => {
+			const restricted = await getRestrictions(projectId);
+			return restricted.size === 0 ? items : items.filter((item) => !restricted.has(item.type));
+		};
 
 		const adapter: InstanceAiCredentialService = {
 			async list(options) {
@@ -2755,7 +2797,9 @@ export class InstanceAiAdapterService {
 					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 						projectId: boundProjectId,
 					});
-					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
+					const filtered = await withoutRestrictedTypes(
+						options?.type ? scoped.filter((c) => c.type === options.type) : scoped,
+					);
 					return filtered.map(
 						(c): CredentialSummary => ({
 							id: c.id,
@@ -2778,7 +2822,14 @@ export class InstanceAiAdapterService {
 								projectId: options.projectId!,
 							});
 
-					const filtered = options.type ? scoped.filter((c) => c.type === options.type) : scoped;
+					const scopeProjectId = options.workflowId
+						? ((await sharedWorkflowRepository.getWorkflowOwningProject(options.workflowId))?.id ??
+							null)
+						: options.projectId!;
+					const filtered = await withoutRestrictedTypes(
+						options.type ? scoped.filter((c) => c.type === options.type) : scoped,
+						scopeProjectId,
+					);
 
 					return filtered.map(
 						(c): CredentialSummary => ({
@@ -2790,12 +2841,15 @@ export class InstanceAiAdapterService {
 					);
 				}
 
-				const credentials = await credentialsService.getMany(user, {
-					listQueryOptions: {
-						filter: options?.type ? { type: options.type } : undefined,
-					},
-					includeGlobal: true,
-				});
+				const credentials = await withoutRestrictedTypes(
+					await credentialsService.getMany(user, {
+						listQueryOptions: {
+							filter: options?.type ? { type: options.type } : undefined,
+						},
+						includeGlobal: true,
+					}),
+					null,
+				);
 
 				return credentials.map(
 					(c): CredentialSummary => ({
@@ -3006,11 +3060,14 @@ export class InstanceAiAdapterService {
 			async searchCredentialTypes(query: string): Promise<CredentialTypeSearchResult[]> {
 				const q = query.toLowerCase().trim();
 				if (!q) return [];
+				const restricted = await getRestrictions();
 
 				const known = loadNodesAndCredentials.knownCredentials;
 				const results: CredentialTypeSearchResult[] = [];
 
 				for (const typeName of Object.keys(known)) {
+					if (restricted.has(typeName)) continue;
+
 					// Match against the type key name
 					if (typeName.toLowerCase().includes(q)) {
 						try {
@@ -3047,8 +3104,22 @@ export class InstanceAiAdapterService {
 				return results;
 			},
 
+			async listRestrictedTypes(): Promise<RestrictedCredentialTypeSummary[]> {
+				const restricted = await getRestrictions();
+
+				return [...restricted].map(([type, restriction]) => {
+					let displayName = type;
+					try {
+						displayName = loadNodesAndCredentials.getCredential(type).type.displayName;
+					} catch {
+						// Type not loadable — the type name stands in.
+					}
+					return { type, displayName, scope: restriction.scope };
+				});
+			},
+
 			async listHttpCredentialHosts(): Promise<CredentialHostInfo[]> {
-				if (httpCredentialHostsCache) return httpCredentialHostsCache;
+				if (httpCredentialHostsCache) return await withoutRestrictedTypes(httpCredentialHostsCache);
 
 				const { knownCredentials } = loadNodesAndCredentials;
 				const result: CredentialHostInfo[] = [];
@@ -3077,7 +3148,7 @@ export class InstanceAiAdapterService {
 				}
 
 				httpCredentialHostsCache = result;
-				return result;
+				return await withoutRestrictedTypes(result);
 			},
 
 			async getAccountContext(credentialId: string) {
@@ -3717,18 +3788,49 @@ export class InstanceAiAdapterService {
 		return this.nodeCatalogService ?? Container.get(NodeCatalogService);
 	}
 
-	private createNodeAdapter(user: User): InstanceAiNodeService {
+	private createNodeAdapter(user: User, projectId?: string): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getAllNodes = async () => await this.getNodesFromCache();
-		// Discovery leaves out nodes whose module is off. Lookups by name keep them and say why.
-		const getNodes = async () => {
-			const nodes = await getAllNodes();
-			const disabled = new Set(getModuleDisabledNodeTypes(Container.get(ModuleRegistry)));
-			return disabled.size > 0 ? nodes.filter((n) => !disabled.has(n.name)) : nodes;
+
+		// One policy read per adapter.
+		let restrictions: Promise<ReadonlyMap<string, TypeRestriction>> | undefined;
+		const getRestrictions = async (): Promise<ReadonlyMap<string, TypeRestriction>> => {
+			restrictions ??= getAllNodes()
+				.then(
+					async (nodes) =>
+						await Container.get(TypeRestrictionProviderProxy).findRestrictedTypes(
+							'node',
+							projectId ?? null,
+							[...new Set(nodes.map((n) => n.name))],
+						),
+				)
+				.catch((error: unknown) => {
+					this.logger.warn('Failed to read node type restrictions', { error });
+					restrictions = undefined;
+					return new Map<string, TypeRestriction>();
+				});
+			return await restrictions;
 		};
-		const getUnavailableNotice = (nodeType: string) =>
-			getModuleDisabledNotice(Container.get(ModuleRegistry), nodeType);
+
+		// Discovery leaves out nodes whose module is off and nodes a policy restricts. Lookups by
+		// name keep them and say why.
+		const getNodes = async () => {
+			const [nodes, restricted] = await Promise.all([getAllNodes(), getRestrictions()]);
+			const disabled = new Set(getModuleDisabledNodeTypes(Container.get(ModuleRegistry)));
+			return disabled.size > 0 || restricted.size > 0
+				? nodes.filter((n) => !disabled.has(n.name) && !restricted.has(n.name))
+				: nodes;
+		};
+		const getUnavailableNotice = async (nodeType: string) => {
+			const moduleNotice = getModuleDisabledNotice(Container.get(ModuleRegistry), nodeType);
+			if (moduleNotice) return moduleNotice;
+
+			const restriction = (await getRestrictions()).get(nodeType);
+			if (!restriction) return undefined;
+
+			return `This node is restricted by ${describeRestrictionScope(restriction.scope)}, so do not build with it.`;
+		};
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 		const buildMeta = (config: AiGatewayConfigDto | null, nodeName: string) =>
 			this.buildAiGatewayNodeMeta(config, nodeName);
@@ -3784,6 +3886,24 @@ export class InstanceAiAdapterService {
 				// gatewayCreditsOnly answers "which nodes support Gateway credits?" — keep only
 				// nodes the gateway covers (meta present).
 				return options?.gatewayCreditsOnly ? summaries.filter((s) => s.aiGateway) : summaries;
+			},
+
+			async listRestricted() {
+				const [nodes, restricted] = await Promise.all([getAllNodes(), getRestrictions()]);
+				if (restricted.size === 0) return [];
+
+				const byName = new Map<string, RestrictedNodeSummary>();
+				for (const node of nodes) {
+					const restriction = restricted.get(node.name);
+					if (restriction && !byName.has(node.name)) {
+						byName.set(node.name, {
+							name: node.name,
+							displayName: node.displayName,
+							scope: restriction.scope,
+						});
+					}
+				}
+				return [...byName.values()];
 			},
 
 			async listSearchable() {
@@ -3873,7 +3993,7 @@ export class InstanceAiAdapterService {
 				}
 
 				const meta = buildMeta(gatewayConfig, desc.name);
-				const unavailable = getUnavailableNotice(desc.name);
+				const unavailable = await getUnavailableNotice(desc.name);
 
 				return {
 					name: desc.name,
@@ -3933,7 +4053,7 @@ export class InstanceAiAdapterService {
 					});
 
 				const result = await getDefinition(nodeType);
-				const unavailable = getUnavailableNotice(nodeType);
+				const unavailable = await getUnavailableNotice(nodeType);
 				if (unavailable && !result.error) return { ...result, unavailable };
 				if (!result.error || nodeType.includes('.')) return result;
 

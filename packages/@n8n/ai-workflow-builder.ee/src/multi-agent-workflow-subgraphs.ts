@@ -47,7 +47,7 @@ import {
 	handleDeleteMessages,
 } from './utils/state-modifier';
 import { extractUserRequest, filterOutSubgraphToolMessages } from './utils/subgraph-helpers';
-import type { BuilderFeatureFlags, StageLLMs } from './workflow-builder-agent';
+import type { BuilderFeatureFlags, RestrictedNodeType, StageLLMs } from './workflow-builder-agent';
 
 /**
  * Type guard to check if a value is a coordination log entry-like object.
@@ -81,6 +81,8 @@ function routeToNode(next: string): string {
 
 export interface MultiAgentSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
+	/** Node types that a policy restricts. They are not in `parsedNodeTypes`. */
+	restrictedNodeTypes?: RestrictedNodeType[];
 	/** Per-stage LLM configuration */
 	stageLLMs: StageLLMs;
 	logger?: Logger;
@@ -211,6 +213,7 @@ function createCompiledSubgraphExecutor<
 export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraphConfig) {
 	const {
 		parsedNodeTypes,
+		restrictedNodeTypes,
 		stageLLMs,
 		logger,
 		checkpointer,
@@ -237,6 +240,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	const discoverySubgraph = new DiscoverySubgraph();
 	const compiledDiscovery = discoverySubgraph.create({
 		parsedNodeTypes,
+		restrictedNodeTypes,
 		llm: stageLLMs.discovery,
 		plannerLLM: stageLLMs.planner,
 		logger,

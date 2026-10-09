@@ -36,6 +36,7 @@ import {
 import type { GlobalConfig } from '@n8n/config';
 import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { TypeRestrictionProviderProxy } from '@/policy/type-restriction-provider-proxy.service';
 import { LessThan } from '@n8n/typeorm';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
@@ -189,7 +190,12 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	license.isLicensed.mockReturnValue(true);
 	instanceWriteAccess.isReadOnly.mockReturnValue(false);
-	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence);
+	// Everything resolves to the persistence mock except the restriction proxy, which a real
+	// instance answers with a map.
+	const restrictionProxy = new TypeRestrictionProviderProxy();
+	vi.spyOn(Container, 'get').mockImplementation((token) =>
+		token === TypeRestrictionProviderProxy ? restrictionProxy : executionPersistence,
+	);
 });
 
 // ---------------------------------------------------------------------------

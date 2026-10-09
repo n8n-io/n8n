@@ -24,7 +24,12 @@ import {
 	BuilderFeatureFlags,
 	WorkflowBuilderAgent,
 	type ChatPayload,
+	type RestrictedNodeTypeRef,
 } from '@/workflow-builder-agent';
+import {
+	resolveRestrictedNodeTypes,
+	withoutRestrictedNodeTypes,
+} from '@/utils/restricted-node-notes';
 
 type OnCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => void;
 
@@ -197,7 +202,12 @@ export class AiWorkflowBuilderService {
 		});
 	}
 
-	private async getAgent(user: IUser, userMessageId: string, featureFlags?: BuilderFeatureFlags) {
+	private async getAgent(
+		user: IUser,
+		userMessageId: string,
+		featureFlags?: BuilderFeatureFlags,
+		restrictedNodeTypes?: RestrictedNodeTypeRef[],
+	) {
 		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
 			user,
 			userMessageId,
@@ -211,7 +221,8 @@ export class AiWorkflowBuilderService {
 			: undefined;
 
 		const agent = new WorkflowBuilderAgent({
-			parsedNodeTypes: this.nodeTypes,
+			parsedNodeTypes: withoutRestrictedNodeTypes(this.nodeTypes, restrictedNodeTypes),
+			restrictedNodeTypes: resolveRestrictedNodeTypes(this.nodeTypes, restrictedNodeTypes),
 			// Use the same model for all stages
 			stageLLMs: {
 				supervisor: anthropicClaude,
@@ -269,7 +280,12 @@ export class AiWorkflowBuilderService {
 	}
 
 	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
-		const { agent } = await this.getAgent(user, payload.id, payload.featureFlags);
+		const { agent } = await this.getAgent(
+			user,
+			payload.id,
+			payload.featureFlags,
+			payload.restrictedNodeTypes,
+		);
 		const userId = user?.id?.toString();
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);

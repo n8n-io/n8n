@@ -13,6 +13,8 @@ export type { ParsedNodeType } from './node-type-parser';
 
 export { NodeSearchEngine, SCORE_WEIGHTS } from './search-engine';
 
+export { describeRestrictionScope, matchRestrictedByQuery } from './restricted-types';
+
 export { searchCodeBuilderNodes, formatNodeResult } from './search';
 export type {
 	CodeBuilderSearchResult,

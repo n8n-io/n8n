@@ -370,6 +370,20 @@ export interface CredentialDetail extends CredentialSummary {
 	nodesWithAccess?: Array<{ nodeType: string }>;
 }
 
+/** A node type that a policy denies for this run's project, and the scope that denies it. */
+export interface RestrictedNodeSummary {
+	name: string;
+	displayName: string;
+	scope: 'instance' | 'project';
+}
+
+/** A credential type that a policy denies for this run's project, and the scope that denies it. */
+export interface RestrictedCredentialTypeSummary {
+	type: string;
+	displayName: string;
+	scope: 'instance' | 'project';
+}
+
 export interface NodeSummary {
 	name: string;
 	displayName: string;
@@ -796,6 +810,12 @@ export interface InstanceAiCredentialService {
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	/**
+	 * Credential types a policy denies for this run's project. Type search and the scoped
+	 * credential list leave them out, so this is how a tool learns that a type the user asked
+	 * for exists but is restricted.
+	 */
+	listRestrictedTypes?(): Promise<RestrictedCredentialTypeSummary[]>;
 	/** Whether a credential type with this exact registered name exists on the instance. */
 	credentialTypeExists?(credentialType: string): Promise<boolean>;
 	/** HTTP-usable credential types with the API host(s) they authenticate against,
@@ -946,6 +966,12 @@ export interface InstanceAiNodeService {
 	): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
+	/**
+	 * Node types a policy denies for this run's project. Discovery leaves them out, so this is
+	 * how a tool learns that a name the user asked for exists but is restricted. Absent when
+	 * no policy applies.
+	 */
+	listRestricted?(): Promise<RestrictedNodeSummary[]>;
 	/** Return the TypeScript type definition for a node, resolved by the host n8n instance. */
 	getNodeTypeDefinition?(
 		nodeType: string,
@@ -1705,6 +1731,11 @@ export interface InstanceAiContext {
 	 * paths stay in effect.
 	 */
 	setupItemsEmitter?: SetupItemsEmitter;
+	/**
+	 * Called when a tool call finds node types a policy denies, so the host can tell the chat.
+	 * Wired by the host. Absent: the tool still tells the model, and the chat shows nothing.
+	 */
+	onRestrictedNodes?: (toolCallId: string, nodes: RestrictedNodeSummary[]) => void;
 	/**
 	 * Setup panel v2: the setup tool announced a workflow's final checklist
 	 * instead of suspending, so the host must treat that build's setup as

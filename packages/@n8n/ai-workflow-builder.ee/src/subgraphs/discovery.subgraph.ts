@@ -57,7 +57,7 @@ import {
 	extractUserRequest,
 	extractToolMessagesForPersistence,
 } from '@/utils/subgraph-helpers';
-import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+import type { BuilderFeatureFlags, RestrictedNodeType } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 
@@ -242,6 +242,8 @@ export const DiscoverySubgraphState = Annotation.Root({
 
 export interface DiscoverySubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
+	/** Node types that a policy restricts. Search says when a query names one. */
+	restrictedNodeTypes?: RestrictedNodeType[];
 	llm: BaseChatModel;
 	plannerLLM: BaseChatModel;
 	logger?: Logger;
@@ -290,7 +292,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 		// Create base tools - search_nodes provides all data needed for discovery
 		const baseTools: StructuredTool[] = [
-			createNodeSearchTool(config.parsedNodeTypes).tool,
+			createNodeSearchTool(config.parsedNodeTypes, config.restrictedNodeTypes).tool,
 			submitQuestionsTool,
 			createWebFetchTool(discoverySecurityFactory, ssrf).tool,
 		];

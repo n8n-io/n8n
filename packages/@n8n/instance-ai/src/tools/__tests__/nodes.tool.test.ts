@@ -728,6 +728,194 @@ describe('nodes tool', () => {
 		});
 	});
 
+	describe('restricted node types', () => {
+		const gmailTrigger = {
+			name: 'n8n-nodes-base.gmailTrigger',
+			displayName: 'Gmail Trigger',
+			scope: 'instance' as const,
+		};
+
+		function contextWithRestricted() {
+			const onRestrictedNodes = vi.fn();
+			const context = createMockContext({
+				onRestrictedNodes,
+				nodeService: {
+					listAvailable: vi.fn().mockResolvedValue([]),
+					getDescription: vi.fn().mockResolvedValue({ name: gmailTrigger.name }),
+					listSearchable: vi.fn().mockResolvedValue([]),
+					exploreResources: vi.fn(),
+					listRestricted: vi.fn().mockResolvedValue([gmailTrigger]),
+					getNodeTypeDefinition: vi.fn().mockResolvedValue({ content: 'export type X = unknown;' }),
+				},
+			});
+			return { context, onRestrictedNodes };
+		}
+
+		it('tells the model and the host when a search names a restricted type', async () => {
+			const { context, onRestrictedNodes } = contextWithRestricted();
+
+			const result = await executeTool(
+				createNodesTool(context, 'full'),
+				{ action: 'search', query: 'gmail' } as never,
+				{ toolCallId: 'tc-1' } as never,
+			);
+
+			expect(result).toMatchObject({
+				results: [],
+				restricted: [
+					{
+						name: gmailTrigger.name,
+						displayName: 'Gmail Trigger',
+						scope: 'instance',
+						note: expect.stringContaining('Do not build with it'),
+					},
+				],
+			});
+			expect(onRestrictedNodes).toHaveBeenCalledWith('tc-1', [gmailTrigger]);
+		});
+
+		it('does the same for a list query', async () => {
+			const { context, onRestrictedNodes } = contextWithRestricted();
+
+			const result = await executeTool(
+				createNodesTool(context, 'full'),
+				{ action: 'list', query: 'gmail' } as never,
+				{ toolCallId: 'tc-2' } as never,
+			);
+
+			expect(result).toMatchObject({ nodes: [], restricted: [{ name: gmailTrigger.name }] });
+			expect(onRestrictedNodes).toHaveBeenCalledWith('tc-2', [gmailTrigger]);
+		});
+
+		it('adds nothing when the query names no restricted type', async () => {
+			const { context, onRestrictedNodes } = contextWithRestricted();
+
+			const result = await executeTool(
+				createNodesTool(context, 'full'),
+				{ action: 'search', query: 'slack' } as never,
+				{ toolCallId: 'tc-1' } as never,
+			);
+
+			expect(result).not.toHaveProperty('restricted');
+			expect(onRestrictedNodes).not.toHaveBeenCalled();
+		});
+
+		it('reports a restricted type that a lookup names exactly', async () => {
+			const { context, onRestrictedNodes } = contextWithRestricted();
+			const tool = createNodesTool(context, 'full');
+
+			await executeTool(
+				tool,
+				{ action: 'describe', nodeType: gmailTrigger.name } as never,
+				{ toolCallId: 'tc-3' } as never,
+			);
+			await executeTool(
+				tool,
+				{ action: 'type-definition', nodeTypes: [gmailTrigger.name] } as never,
+				{ toolCallId: 'tc-4' } as never,
+			);
+
+			expect(onRestrictedNodes).toHaveBeenCalledWith('tc-3', [gmailTrigger]);
+			expect(onRestrictedNodes).toHaveBeenCalledWith('tc-4', [gmailTrigger]);
+		});
+
+		it('reports on the orchestrator surface too', async () => {
+			const { context, onRestrictedNodes } = contextWithRestricted();
+
+			await executeTool(
+				createNodesTool(context, 'orchestrator'),
+				{ action: 'type-definition', nodeTypes: [gmailTrigger.name] } as never,
+				{ toolCallId: 'tc-5' } as never,
+			);
+
+			expect(onRestrictedNodes).toHaveBeenCalledWith('tc-5', [gmailTrigger]);
+		});
+
+		it('still reports a restricted type when the search also names a connection type', async () => {
+			const { context, onRestrictedNodes } = contextWithRestricted();
+
+			const result = await executeTool(
+				createNodesTool(context, 'full'),
+				{ action: 'search', query: 'gmail', connectionType: 'ai_tool' } as never,
+				{ toolCallId: 'tc-7' } as never,
+			);
+
+			expect(result).toMatchObject({ restricted: [{ name: gmailTrigger.name }] });
+			expect(onRestrictedNodes).toHaveBeenCalledWith('tc-7', [gmailTrigger]);
+		});
+
+		it('still reports a restricted type when the list is limited to Gateway credits', async () => {
+			const { context } = contextWithRestricted();
+
+			const result = await executeTool(
+				createNodesTool(context, 'full'),
+				{ action: 'list', query: 'gmail', gatewayCreditsOnly: true } as never,
+				{ toolCallId: 'tc-8' } as never,
+			);
+
+			expect(result).toMatchObject({ restricted: [{ name: gmailTrigger.name }] });
+		});
+
+		it('withholds a restricted node from the curated suggestions and says so', async () => {
+			const { context, onRestrictedNodes } = contextWithRestricted();
+			const category = Object.keys(suggestedNodesData).find(
+				(key) => suggestedNodesData[key].nodes.length > 1,
+			)!;
+			const [withheldNode, ...others] = suggestedNodesData[category].nodes;
+			(context.nodeService.listRestricted as Mock).mockResolvedValue([
+				{ name: withheldNode.name, displayName: 'Withheld', scope: 'instance' },
+			]);
+			(context.nodeService.getDescription as Mock).mockRejectedValue(new Error('none'));
+
+			const result = (await executeTool(
+				createNodesTool(context, 'full'),
+				{ action: 'suggested', categories: [category] } as never,
+				{ toolCallId: 'tc-9' } as never,
+			)) as {
+				results: Array<{ suggestedNodes: Array<{ name: string }> }>;
+				restricted: Array<{ name: string }>;
+			};
+
+			const names = result.results[0].suggestedNodes.map((node) => node.name);
+			expect(names).not.toContain(withheldNode.name);
+			expect(names).toEqual(others.map((node) => node.name));
+			expect(result.restricted).toEqual([expect.objectContaining({ name: withheldNode.name })]);
+			expect(onRestrictedNodes).toHaveBeenCalledWith('tc-9', [
+				{ name: withheldNode.name, displayName: 'Withheld', scope: 'instance' },
+			]);
+		});
+
+		it('keeps working when the host reports no restrictions or fails to list them', async () => {
+			const { context, onRestrictedNodes } = contextWithRestricted();
+			(context.nodeService.listRestricted as Mock).mockRejectedValue(new Error('policy down'));
+
+			const result = await executeTool(
+				createNodesTool(context, 'full'),
+				{ action: 'search', query: 'gmail' } as never,
+				{ toolCallId: 'tc-1' } as never,
+			);
+
+			expect(result).toMatchObject({ results: [] });
+			expect(result).not.toHaveProperty('restricted');
+			expect(onRestrictedNodes).not.toHaveBeenCalled();
+		});
+
+		it('does not break the call when the host callback throws', async () => {
+			const { context, onRestrictedNodes } = contextWithRestricted();
+			onRestrictedNodes.mockImplementation(() => {
+				throw new Error('event bus down');
+			});
+
+			const result = await executeTool(
+				createNodesTool(context, 'full'),
+				{ action: 'search', query: 'gmail' } as never,
+				{ toolCallId: 'tc-1' } as never,
+			);
+
+			expect(result).toMatchObject({ restricted: [{ name: gmailTrigger.name }] });
+		});
+	});
+
 	describe('describe action', () => {
 		it('should return found: false when node type is not found', async () => {
 			const context = createMockContext();

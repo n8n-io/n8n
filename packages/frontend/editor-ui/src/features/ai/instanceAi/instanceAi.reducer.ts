@@ -304,6 +304,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		// Apply context events during live runs as well as history replay.
 		case 'instance-context':
 		case 'preference-card':
+		case 'restricted-node-notice':
 		case 'status': {
 			const { runState } = resolveTarget(state, event.runId);
 			if (runState) {

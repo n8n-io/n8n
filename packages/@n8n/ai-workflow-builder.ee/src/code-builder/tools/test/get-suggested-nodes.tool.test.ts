@@ -204,3 +204,19 @@ describe('GetSuggestedNodesTool', () => {
 		});
 	});
 });
+
+describe('createGetSuggestedNodesTool — restricted node ids', () => {
+	it('does not recommend a node that a policy restricts', async () => {
+		const category = categoryList.find((key) => suggestedNodesData[key].nodes.length > 1)!;
+		const [restricted, allowed] = suggestedNodesData[category].nodes;
+		const tool = createGetSuggestedNodesTool(
+			new NodeTypeParser([mockSlackNode, mockDataTableNode]),
+			new Set([restricted.name]),
+		);
+
+		const result = await tool.invoke({ categories: [category] });
+
+		expect(result).not.toContain(`- ${restricted.name}\n`);
+		expect(result).toContain(`- ${allowed.name}`);
+	});
+});

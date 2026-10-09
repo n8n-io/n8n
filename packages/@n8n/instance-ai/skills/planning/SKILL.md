@@ -145,7 +145,9 @@ Skip only for trivial mechanical edits you have already reviewed in this thread.
 
 - Never ask about things tools can discover, such as available credentials,
   existing data tables, workflow names, node availability, or attached-file
-  structure.
+  structure. A node type that a policy restricts is the exception: the user
+  decides the replacement. Follow "Restricted node types" in `workflow-builder`
+  before you plan around it.
 - Never ask for implementation details such as node choices, column names, or
   trigger mechanics when a sensible default exists.
 - Never ask for the user's timezone when the current date/time section includes

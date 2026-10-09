@@ -121,6 +121,38 @@ describe('sandbox provider', () => {
 });
 
 describe('instanceAiEventSchema', () => {
+	it('round-trips a restricted-node-notice event', () => {
+		const event = {
+			type: 'restricted-node-notice',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				toolCallId: 'tc-1',
+				nodeType: 'n8n-nodes-base.gmailTrigger',
+				displayName: 'Gmail Trigger',
+				scope: 'instance',
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('rejects a restricted-node-notice event with an unknown scope', () => {
+		const result = instanceAiEventSchema.safeParse({
+			type: 'restricted-node-notice',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				toolCallId: 'tc-1',
+				nodeType: 'n8n-nodes-base.gmailTrigger',
+				displayName: 'Gmail Trigger',
+				scope: 'team',
+			},
+		});
+
+		expect(result.success).toBe(false);
+	});
+
 	it('preserves traceId on run-start events', () => {
 		const event = {
 			type: 'run-start',

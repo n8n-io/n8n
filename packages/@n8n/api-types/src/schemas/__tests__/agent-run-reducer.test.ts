@@ -1397,6 +1397,62 @@ describe('agent-run-reducer', () => {
 		});
 	});
 
+	describe('restricted-node-notice', () => {
+		function searchState(): AgentRunState {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'nodes'));
+			return state;
+		}
+
+		const notice = (nodeType: string, scope: 'instance' | 'project' = 'instance') => ({
+			type: 'restricted-node-notice' as const,
+			runId: 'run-1',
+			agentId: 'root',
+			payload: { toolCallId: 'tc-1', nodeType, displayName: nodeType, scope },
+		});
+
+		it('folds each blocked type onto the tool call that found it', () => {
+			const state = searchState();
+
+			reduceEvent(state, notice('n8n-nodes-base.gmailTrigger'));
+			reduceEvent(state, notice('n8n-nodes-base.slack', 'project'));
+
+			expect(state.toolCallsById['tc-1'].restrictedNodes).toEqual([
+				{
+					nodeType: 'n8n-nodes-base.gmailTrigger',
+					displayName: 'n8n-nodes-base.gmailTrigger',
+					scope: 'instance',
+				},
+				{ nodeType: 'n8n-nodes-base.slack', displayName: 'n8n-nodes-base.slack', scope: 'project' },
+			]);
+		});
+
+		it('keeps one entry when the same type is reported again', () => {
+			const state = searchState();
+
+			reduceEvent(state, notice('n8n-nodes-base.gmailTrigger'));
+			reduceEvent(state, notice('n8n-nodes-base.gmailTrigger'));
+
+			expect(state.toolCallsById['tc-1'].restrictedNodes).toHaveLength(1);
+		});
+
+		it('ignores a notice for a tool call it does not know', () => {
+			const state = searchState();
+
+			reduceEvent(state, {
+				...notice('n8n-nodes-base.gmailTrigger'),
+				payload: {
+					toolCallId: 'toString',
+					nodeType: 'n8n-nodes-base.gmailTrigger',
+					displayName: 'Gmail Trigger',
+					scope: 'instance',
+				},
+			});
+
+			expect(state.toolCallsById['tc-1'].restrictedNodes).toBeUndefined();
+		});
+	});
+
 	describe('error routing', () => {
 		it('routes error to specific agent', () => {
 			const state = stateWithRun('run-1', 'root');

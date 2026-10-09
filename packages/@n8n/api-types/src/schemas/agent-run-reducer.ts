@@ -561,6 +561,21 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		// A node type a policy blocks, found by a tool call. It folds onto that call, once per
+		// type, so the notice survives a reload and a repeated search does not stack copies.
+		case 'restricted-node-notice': {
+			if (!Object.hasOwn(state.toolCallsById, event.payload.toolCallId)) break;
+			const tc = state.toolCallsById[event.payload.toolCallId];
+			if (tc) {
+				const { nodeType, displayName, scope } = event.payload;
+				const known = tc.restrictedNodes ?? [];
+				if (!known.some((node) => node.nodeType === nodeType)) {
+					tc.restrictedNodes = [...known, { nodeType, displayName, scope }];
+				}
+			}
+			break;
+		}
+
 		case 'status': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {

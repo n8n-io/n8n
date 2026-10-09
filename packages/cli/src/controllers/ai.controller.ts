@@ -118,6 +118,7 @@ export class AiController {
 				},
 				req.user,
 				signal,
+				payload.payload.projectId,
 			);
 
 			res.header('Content-type', 'application/json-lines').flush();

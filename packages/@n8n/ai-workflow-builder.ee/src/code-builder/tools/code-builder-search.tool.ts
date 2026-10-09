@@ -13,6 +13,9 @@ import {
 } from '@n8n/ai-utilities/node-catalog';
 import { z } from 'zod';
 
+import type { RestrictedNodeType } from '@/workflow-builder-agent';
+import { describeRestrictedMatches } from '@/utils/restricted-node-notes';
+
 /**
  * Create the simplified node search tool for code builder.
  * Accepts multiple queries and returns separate results for each.
@@ -21,10 +24,15 @@ import { z } from 'zod';
 export function createCodeBuilderSearchTool(
 	nodeTypeParser: NodeTypeParser,
 	options?: CodeBuilderSearchToolOptions,
+	restrictedNodeTypes?: readonly RestrictedNodeType[],
 ) {
 	return tool(
-		async (input: { queries: string[] }) =>
-			searchCodeBuilderNodes(nodeTypeParser, input.queries, options).results,
+		async (input: { queries: string[] }) => {
+			const { results } = searchCodeBuilderNodes(nodeTypeParser, input.queries, options);
+			const restricted = describeRestrictedMatches(input.queries, restrictedNodeTypes);
+
+			return restricted ? `${results}\n\n${restricted}` : results;
+		},
 		{
 			name: 'search_nodes',
 			description:
