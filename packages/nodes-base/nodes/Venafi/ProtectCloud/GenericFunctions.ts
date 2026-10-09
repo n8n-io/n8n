@@ -115,7 +115,7 @@ export async function encryptPassphrase(
 
 	// js-nacl is an Emscripten build with a large per-instance heap, so it is only
 	// pulled in on this path rather than by every node that imports this module.
-	const nacl_factory = await import('js-nacl');
+	const { default: nacl_factory } = await import('js-nacl');
 
 	// `instantiate` resolves to the same instance it passes to the callback, so awaiting it
 	// surfaces initialisation failures as a rejection instead of never invoking the callback.
