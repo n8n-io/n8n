@@ -105,7 +105,7 @@ it.each<{
 		allowed: false,
 		scope: 'once',
 		source: 'n8n_chat_production',
-		expectedSource: 'n8n_chat',
+		expectedSource: 'n8n_chat_production',
 	},
 	{
 		decision: { approved: false, scope: 'session' },

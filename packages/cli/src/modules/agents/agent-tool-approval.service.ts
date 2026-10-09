@@ -4,7 +4,6 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError } from 'n8n-workflow';
 
 import { Telemetry } from '@/telemetry';
-import { normalizeAgentTelemetrySource } from '@/telemetry/agent-source';
 
 import type { StartExecutionParams } from './agent-execution.service';
 import { buildApprovalArgs } from './execution-recorder';
@@ -39,7 +38,7 @@ export class AgentToolApprovalService {
 						run_type: telemetry.runType,
 						approved: decision.approved,
 						scope: decision.scope ?? 'once',
-						counts_by_source: { [normalizeAgentTelemetrySource(source)]: { count: 1 } },
+						counts_by_source: { [source || 'unknown']: { count: 1 } },
 					});
 				}
 				if (!decision.approved || decision.scope !== 'session') return;

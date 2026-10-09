@@ -27,7 +27,6 @@ import type {
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
-import { normalizeAgentTelemetrySource } from './agent-source';
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
 
@@ -473,7 +472,7 @@ export class Telemetry {
 		agentExecutionCounts.token_count += token_count;
 		agentExecutionCounts.tool_call_count += tool_call_count;
 
-		const source = normalizeAgentTelemetrySource(properties.source);
+		const source = properties.source || 'unknown';
 		const sourceCounts = (agentExecutionCounts.counts_by_source[source] ??= {
 			message_count: 0,
 			token_count: 0,
@@ -500,7 +499,7 @@ export class Telemetry {
 		};
 
 		const bucket = this.agentSessionMetricsBuffer[bufferKey];
-		const source = normalizeAgentTelemetrySource(properties.source);
+		const source = properties.source || 'unknown';
 		const sourceSessions = (bucket.sessions_by_source[source] ??= {});
 		// A session can contain turns from several sources. Keep the total deduplicated.
 		for (const sessions of [bucket.sessions, sourceSessions]) {

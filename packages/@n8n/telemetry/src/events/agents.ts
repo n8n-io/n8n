@@ -18,7 +18,7 @@ const agentRunType = z
 const agentRunSource = z
 	.string()
 	.describe(
-		'Run source: instance-ai, mcp, chat, n8n_chat, workflow, task, subagent, or a chat integration (slack, telegram, linear, discord, whatsapp, teams). n8n_chat includes n8n_chat_production. unknown means the source was unavailable.',
+		'Run source: instance-ai, mcp, chat, n8n_chat, n8n_chat_production, workflow, task, subagent, or a chat integration (slack, telegram, linear, discord, whatsapp, teams). Preserve the runtime source value. unknown means the source was unavailable.',
 	);
 
 const agentExecutionCounts = {

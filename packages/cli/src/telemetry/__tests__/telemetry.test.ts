@@ -533,7 +533,7 @@ describe('Telemetry', () => {
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
 		});
 
-		test('should bucket test and production runs of the same agent into separate events', () => {
+		test('should preserve source values within separate test and production events', () => {
 			telemetry.trackAgentExecution({
 				agent_id: 'agent-1',
 				run_type: 'test',
@@ -570,7 +570,10 @@ describe('Telemetry', () => {
 				expect.objectContaining({
 					run_type: 'production',
 					message_count: 2,
-					counts_by_source: { n8n_chat: { message_count: 2, token_count: 0, tool_call_count: 0 } },
+					counts_by_source: {
+						n8n_chat_production: { message_count: 1, token_count: 0, tool_call_count: 0 },
+						n8n_chat: { message_count: 1, token_count: 0, tool_call_count: 0 },
+					},
 				}),
 			);
 		});
@@ -813,6 +816,7 @@ describe('Telemetry', () => {
 				agent_id: 'agent-1',
 				thread_id: 'thread-1',
 				run_type: 'test',
+				source: 'n8n_chat',
 				turn_status: 'succeeded',
 				configuration,
 				latency_ms: 100,
@@ -824,6 +828,7 @@ describe('Telemetry', () => {
 				agent_id: 'agent-1',
 				thread_id: 'thread-2',
 				run_type: 'production',
+				source: 'n8n_chat_production',
 				turn_status: 'failed',
 				configuration,
 				latency_ms: 200,
@@ -841,6 +846,7 @@ describe('Telemetry', () => {
 					run_type: 'test',
 					turn_status: 'succeeded',
 					latency_ms_sum: 100,
+					counts_by_source: { n8n_chat: expect.objectContaining({ turn_count: 1 }) },
 				}),
 			);
 			expect(spyTrack).toHaveBeenCalledWith(
@@ -849,6 +855,7 @@ describe('Telemetry', () => {
 					run_type: 'production',
 					turn_status: 'failed',
 					latency_ms_sum: 200,
+					counts_by_source: { n8n_chat_production: expect.objectContaining({ turn_count: 1 }) },
 				}),
 			);
 		});
