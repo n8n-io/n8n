@@ -1,7 +1,14 @@
-import { getGoogleServiceAccountCredentials } from 'n8n-nodes-base/google-service-account';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import {
+	getGoogleAccessToken,
+	getGoogleServiceAccountCredentials,
+} from 'n8n-nodes-base/google-service-account';
 import {
 	NodeOperationError,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
 	type INodeCredentialDescription,
+	type INodeCredentialTestResult,
 	type INodeProperties,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
@@ -17,7 +24,7 @@ export const googleVertexCredentials: INodeCredentialDescription[] = [
 	{
 		name: 'googleVertexAiApi',
 		required: true,
-		testedBy: 'googleApiCredentialTest',
+		testedBy: 'googleVertexAiCredentialTest',
 		displayOptions: { show: { authentication: ['googleVertexAiApi'] } },
 	},
 ];
@@ -44,9 +51,6 @@ export async function resolveGoogleVertexCredentials(
 	let projectId: unknown;
 	if (credentialType === 'googleVertexAiApi') {
 		projectId = credentials.projectId;
-		if (typeof projectId === 'string') {
-			projectId = projectId.trim();
-		}
 	} else {
 		projectId = context.getNodeParameter('projectId', itemIndex, '', { extractValue: true });
 	}
@@ -62,5 +66,51 @@ export async function resolveGoogleVertexCredentials(
 		credentials.region,
 	);
 
-	return { projectId, location, credentials: getGoogleServiceAccountCredentials(credentials) };
+	return {
+		projectId: projectId.trim(),
+		location,
+		credentials: getGoogleServiceAccountCredentials(credentials),
+	};
+}
+
+export async function googleVertexAiCredentialTest(
+	this: ICredentialTestFunctions,
+	credential: ICredentialsDecrypted,
+): Promise<INodeCredentialTestResult> {
+	const data = credential.data;
+	if (typeof data?.projectId !== 'string' || !data.projectId.trim()) {
+		return { status: 'Error', message: 'Select or enter a Google Cloud project ID.' };
+	}
+
+	try {
+		const { client_email, private_key } = getGoogleServiceAccountCredentials(data);
+		const token = await getGoogleAccessToken.call(
+			this,
+			{ email: client_email, privateKey: private_key },
+			'vertex',
+		);
+		if (typeof token.access_token !== 'string' || !token.access_token) {
+			return {
+				status: 'Error',
+				message: 'Could not get an access token. Check the service account email and private key.',
+			};
+		}
+
+		// Check project access without running a model or requiring the Resource Manager API.
+		await this.helpers.request({
+			method: 'GET',
+			uri: `https://aiplatform.googleapis.com/v1/projects/${encodeURIComponent(data.projectId.trim())}/locations`,
+			headers: { Authorization: `Bearer ${token.access_token}` },
+			qs: { pageSize: 1 },
+			json: true,
+			timeout: 10000,
+		});
+
+		return { status: 'OK', message: 'Connection successful' };
+	} catch (error) {
+		return {
+			status: 'Error',
+			message: `Could not connect to Vertex AI. Check the service account details, project ID, and Vertex AI permissions. ${getErrorMessage(error)}`,
+		};
+	}
 }

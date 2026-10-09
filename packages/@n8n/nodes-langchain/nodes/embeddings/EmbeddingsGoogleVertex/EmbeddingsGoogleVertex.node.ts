@@ -1,8 +1,5 @@
 import { ProjectsClient } from '@google-cloud/resource-manager';
-import {
-	getGoogleServiceAccountCredentials,
-	googleApiCredentialTest,
-} from 'n8n-nodes-base/google-service-account';
+import { getGoogleServiceAccountCredentials } from 'n8n-nodes-base/google-service-account';
 import { VertexAIEmbeddings } from '@langchain/google-vertexai';
 import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -19,12 +16,13 @@ import { getVertexEndpoint, vertexLocationField } from '../../llms/gemini-common
 import {
 	googleVertexAuthentication,
 	googleVertexCredentials,
+	googleVertexAiCredentialTest,
 	resolveGoogleVertexCredentials,
 } from '@utils/google-vertex';
 
 export class EmbeddingsGoogleVertex implements INodeType {
 	methods = {
-		credentialTest: { googleApiCredentialTest },
+		credentialTest: { googleVertexAiCredentialTest },
 		listSearch: {
 			async gcpProjectsList(this: ILoadOptionsFunctions) {
 				const results: Array<{ name: string; value: string }> = [];

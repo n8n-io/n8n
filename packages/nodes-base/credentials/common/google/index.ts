@@ -1,2 +1,2 @@
-export { googleApiCredentialTest } from '../../../nodes/Google/Sheet/v2/methods/credentialTest';
+export { getGoogleAccessToken } from '../../../nodes/Google/GenericFunctions';
 export { getGoogleServiceAccountCredentials } from './utils';

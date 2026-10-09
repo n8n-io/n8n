@@ -110,7 +110,7 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'authentication') return authentication;
 					if (paramName === 'modelName') return 'gemini-3.1-flash-lite';
-					if (paramName === 'projectId') return 'test-project';
+					if (paramName === 'projectId') return ' test-project ';
 					if (paramName === 'location') return 'global';
 					if (paramName === 'options') return {};
 					if (paramName === 'options.safetySettings.values') return null;
