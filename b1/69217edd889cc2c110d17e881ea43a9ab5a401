@@ -59,12 +59,14 @@ packages/cli/src/modules/n8n-packages/CLAUDE.md
 packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
   s_8631ec10eb1199::t_fff3109db1257e 4,7-8,15-37,39-41,44-46,48-59
   s_8631ec10eb1199::t_3f39f509f46915 3
+  s_8631ec10eb1199::t_dce64a83002ff5 9-14,38,42-43,47
 packages/@n8n/api-types/src/dto/packages/export-package-request.openapi.ts
   s_8631ec10eb1199::t_94fba0c6bc2381 34
   s_8631ec10eb1199::t_20c61d460ad667 1-2,4,9-18,21-24,26-30,32,35,37,40-43,45-50
   s_8631ec10eb1199::t_1d93c33666eade 51
   s_8631ec10eb1199::t_02ed641c802086 39
   s_8631ec10eb1199::t_89313d65365642 44
+  s_8631ec10eb1199::t_dce64a83002ff5 3,5-8,19-20,25,31,33,36,38
 packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
   s_8631ec10eb1199::t_bc51cb25fdb3b2 201-207
 packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
