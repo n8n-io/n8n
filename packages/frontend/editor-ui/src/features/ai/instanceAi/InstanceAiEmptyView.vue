@@ -690,6 +690,9 @@ async function handleSubmit(
 
 	const threadId = uuidv4();
 	isStartingThread.value = true;
+	// The composer clears on submit, but this view stays up until the send is
+	// accepted. Put the prompt back so the user sees what they sent meanwhile.
+	void nextTick(restoreDraft);
 
 	// Persist the thread on the BE first. Otherwise we'd navigate to
 	// `/assistant/:threadId` for a thread the BE doesn't know about, and the
