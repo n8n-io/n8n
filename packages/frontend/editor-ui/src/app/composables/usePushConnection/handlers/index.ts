@@ -11,6 +11,7 @@ export * from './reloadNodeType';
 export * from './removeNodeType';
 export * from './sendConsoleMessage';
 export * from './sendWorkerStatusMessage';
+export * from './subworkflowNodeProgress';
 export * from './testWebhookDeleted';
 export * from './testWebhookReceived';
 export * from './workflowActivated';

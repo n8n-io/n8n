@@ -16,6 +16,7 @@ import {
 	executionStarted,
 	sendWorkerStatusMessage,
 	sendConsoleMessage,
+	subworkflowNodeProgress,
 	workflowFailedToActivate,
 	workflowPartiallyActivated,
 	executionFinished,
@@ -100,6 +101,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				return await sendWorkerStatusMessage(event);
 			case 'sendConsoleMessage':
 				return await sendConsoleMessage(event);
+			case 'subworkflowNodeProgress':
+				return await subworkflowNodeProgress(event);
 			case 'workflowFailedToActivate':
 				return await workflowFailedToActivate(event, options);
 			case 'workflowPartiallyActivated':

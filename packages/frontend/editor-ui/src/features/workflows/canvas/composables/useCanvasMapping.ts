@@ -183,6 +183,10 @@ export function useCanvasMapping({
 					waiting: executionSnapshot.waiting,
 					waitingForNext: executionSnapshot.waitingForNext,
 					running: executionSnapshot.running,
+					// A node that skips waiting finishes before its child, leaving stale progress.
+					subworkflowProgress: executionSnapshot.running
+						? rd.subworkflowProgressByNodeId.get(node.id)?.value
+						: undefined,
 				},
 				runData: {
 					outputMap: rd.executionRunDataOutputMapByNodeId.get(node.id),

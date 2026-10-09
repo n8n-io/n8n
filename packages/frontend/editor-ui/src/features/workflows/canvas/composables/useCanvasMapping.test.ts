@@ -187,6 +187,33 @@ describe('useCanvasMapping — mapped nodes', () => {
 		expect(nodes.value[0].data?.execution.waitingForNext).toBe(true);
 	});
 
+	it.each([
+		{ running: true, expected: { currentNodeIndex: 2, totalNodes: 5 } },
+		{ running: false, expected: undefined },
+	])(
+		'exposes sub-workflow progress only while the node runs (running=$running)',
+		({ running, expected }) => {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData();
+			rd.executionRunningByNodeId.set(
+				'a',
+				computed(() => running),
+			);
+			rd.subworkflowProgressByNodeId.set(
+				'a',
+				computed(() => ({ currentNodeIndex: 2, totalNodes: 5 })),
+			);
+
+			const { nodes } = useCanvasMapping({
+				nodes: ref([node]),
+				connections: ref({}),
+				renderData: shallowRef(rd),
+			});
+
+			expect(nodes.value[0].data?.execution.subworkflowProgress).toEqual(expected);
+		},
+	);
+
 	it('exposes runData with iterations (excluding canceled) and outputMap', () => {
 		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
 		const rd = createEmptyCanvasRenderData();

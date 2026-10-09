@@ -32,6 +32,7 @@ const {
 	validationErrors,
 	hasValidationErrors,
 	executionStatus,
+	subworkflowProgress,
 	hasRunData,
 	runDataIterations,
 	isDisabled,
@@ -98,6 +99,15 @@ const restrictionTitle = computed(() =>
 			: 'node.restricted.instance.title',
 	),
 );
+// No denominator: the total is only an estimate, the count is exact.
+const subworkflowStepLabel = computed(() => {
+	const currentNodeIndex = subworkflowProgress.value?.currentNodeIndex ?? 0;
+	if (currentNodeIndex <= 0) return undefined;
+
+	return i18n.baseText('node.subworkflow.progress.step', {
+		interpolate: { current: String(currentNodeIndex) },
+	});
+});
 
 const groupedExecutionErrors = computed(() => {
 	const errorCounts = executionErrors.value.reduce(
@@ -164,6 +174,13 @@ const groupedExecutionErrors = computed(() => {
 			</template>
 			<N8nIcon :icon="needsCredentialSetup ? 'key-round' : 'node-validation-error'" :size="size" />
 		</N8nTooltip>
+	</div>
+	<div
+		v-else-if="subworkflowStepLabel"
+		data-test-id="canvas-node-status-subworkflow-progress"
+		:class="[...commonClasses, $style.subworkflowProgress]"
+	>
+		<span :class="$style.count">{{ subworkflowStepLabel }}</span>
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
 		<!-- Do nothing, unknown means the node never executed -->
@@ -253,5 +270,16 @@ const groupedExecutionErrors = computed(() => {
 
 .disabled {
 	color: var(--color--foreground--shade-2);
+}
+
+.subworkflowProgress {
+	// Matches the arc, so the count and the border read as one indicator.
+	color: var(--node--border-color--progress);
+	cursor: default;
+}
+
+.count {
+	font-size: var(--font-size--sm);
+	font-variant-numeric: tabular-nums;
 }
 </style>
