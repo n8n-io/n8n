@@ -1,9 +1,16 @@
+import { Time } from '@n8n/constants';
 import { Column, Entity, Index, JoinColumn, ManyToOne, Relation } from '@n8n/typeorm';
 
 import { JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 import type { User } from './user';
 
 export const idempotencyKeyStatuses = ['processing', 'completed'] as const;
+
+/**
+ * A key expires this long after `createdAt`.
+ * A new value applies to rows that already exist.
+ */
+export const idempotencyKeyTtlMs = 12 * Time.hours.toMilliseconds;
 
 export type IdempotencyKeyStatus = (typeof idempotencyKeyStatuses)[number];
 
