@@ -45,6 +45,7 @@ const {
 	executionWaiting,
 	executionWaitingForNext,
 	executionRunning,
+	subworkflowProgress,
 	hasRunData,
 	render,
 	isNotInstalledCommunityNode,
@@ -95,6 +96,7 @@ const classes = computed(() => {
 		),
 		[$style.error]: hasExecutionErrors.value,
 		[$style.running]: running,
+		[$style.progress]: running && Boolean(subworkflowProgress.value),
 		[$style.waiting]: waiting,
 		[$style.pinned]: hasSubstitutedOutput.value,
 		[$style.configurable]: renderOptions.value.configurable,
@@ -126,11 +128,39 @@ const nodeSize = computed(() =>
 
 const nodeBorderOpacityStyle = calculateNodeBorderOpacityStyle();
 
+/**
+ * While a sub-workflow runs, the subtitle line carries the live step instead of
+ * the static subtitle. Reusing the line means nothing shifts as the child advances.
+ */
+const displaySubtitle = computed(() => {
+	const currentNodeName = subworkflowProgress.value?.currentNodeName;
+	if (!currentNodeName) return subtitle.value;
+
+	return i18n.baseText('node.subworkflow.progress.running', {
+		interpolate: { nodeName: currentNodeName },
+	});
+});
+
+/** The total is only an upper bound, so a full turn is reserved for completion. */
+const MAX_PROGRESS_FRACTION = 0.9;
+
+const subworkflowProgressStyle = computed(() => {
+	const progress = subworkflowProgress.value;
+	if (!progress || progress.totalNodes <= 0) return {};
+
+	const fraction = Math.min(
+		Math.max(progress.currentNodeIndex / progress.totalNodes, 0),
+		MAX_PROGRESS_FRACTION,
+	);
+	return { '--node--progress--fraction': `${(fraction * 100).toFixed(2)}%` };
+});
+
 const styles = computed(() => ({
 	'--canvas-node--width': `${nodeSize.value.width}px`,
 	'--canvas-node--height': `${nodeSize.value.height}px`,
 	'--node--icon--size': `${iconSize.value}px`,
 	...nodeBorderOpacityStyle.value,
+	...subworkflowProgressStyle.value,
 }));
 
 const dataTestId = computed(() => {
@@ -251,8 +281,12 @@ function onActivate(event: MouseEvent) {
 			<div v-if="isRestricted" :class="$style.subtitle" data-test-id="canvas-node-restricted">
 				{{ i18n.baseText('node.restricted') }}
 			</div>
-			<div v-else-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
-				{{ subtitle }}
+			<div
+				v-else-if="displaySubtitle && !isNotInstalledCommunityNode"
+				:class="$style.subtitle"
+				:title="displaySubtitle"
+			>
+				{{ displaySubtitle }}
 			</div>
 		</div>
 		<CanvasNodeStatusIcons v-if="!isDisabled || isRestricted" :class="$style.statusIcons" />
@@ -419,6 +453,15 @@ function onActivate(event: MouseEvent) {
 }
 .waiting::after {
 	@include styles.status-waiting-animation;
+}
+
+// Own layer, separate from the `.running::after` halo — see the mixin.
+.progress::before {
+	@include styles.status-progress-arc;
+}
+
+.progress {
+	transition: --node--progress--fraction 300ms ease-out;
 }
 
 @include styles.status-animation-definitions;
