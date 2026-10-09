@@ -55,6 +55,23 @@ export function isTriggerNode(
 	return hasTriggerGroup(descriptionValue) || isTriggerNodeClass(node);
 }
 
+export function isAiOnlyNode(descriptionValue: TSESTree.ObjectExpression): boolean {
+	const outputs = findArrayLiteralProperty(descriptionValue, 'outputs');
+	const inputs = findArrayLiteralProperty(descriptionValue, 'inputs');
+	if (!outputs || inputs?.elements.length !== 0) return false;
+
+	return outputs.elements.some((element) => {
+		const isAiOutputEnum =
+			element?.type === AST_NODE_TYPES.MemberExpression &&
+			element.object.type === AST_NODE_TYPES.Identifier &&
+			element.object.name === 'NodeConnectionTypes' &&
+			element.property.type === AST_NODE_TYPES.Identifier &&
+			element.property.name !== 'Main';
+		const isAiOutputLiteral = element?.type === AST_NODE_TYPES.Literal && element.value !== 'main';
+		return isAiOutputEnum || isAiOutputLiteral;
+	});
+}
+
 /**
  * Returns the name a property key stands for, or null when it is only known at
  * runtime. `delete`, `'delete'` and `['delete']` all name the same property, so

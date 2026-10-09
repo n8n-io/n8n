@@ -21,6 +21,13 @@ export class Example implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		properties: [
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				options: [{ name: 'Append', value: 'append', action: 'Append text to each item' }],
+				default: 'append',
+			},
 			// Node properties which the user gets displayed and
 			// can change on the node.
 			{
