@@ -55,14 +55,6 @@ export class AgentSelectionExporter {
 		const projectIds = request.projectIds ?? [];
 		const agentIds = request.agentIds ?? [];
 		if (
-			projectIds.length > 0 &&
-			[agentIds, request.workflowIds, request.folderIds].some((ids) => ids?.length)
-		) {
-			throw new PackageExportBlockedError(
-				'Select whole projects or loose entities. Export aborted.',
-			);
-		}
-		if (
 			agentIds.length === 0 &&
 			(projectIds.length === 0 || request.projectWorkflowIds !== undefined)
 		) {

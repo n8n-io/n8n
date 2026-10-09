@@ -158,9 +158,7 @@ it.each(['loose', 'project', 'existing project'] as const)(
 			user,
 			writer: context.writer,
 			projectTargetsById: context.projectTargetsById,
-			...(wholeProjects
-				? { projectIds: [project.id] }
-				: { agentIds: [parent.id, parent.id], workflowIds: [nested.id] }),
+			...(wholeProjects ? { projectIds: [project.id] } : { agentIds: [parent.id, parent.id] }),
 			missingAgentDependencyPolicy: 'include-in-package',
 		});
 		expect(result.agentIds).toEqual([parent.id, child.id]);
@@ -461,20 +459,6 @@ it.each([{ projectWorkflowIds: [] }, { projectWorkflowIds: ['selected-workflow']
 			projectWorkflowIds,
 		});
 		expect(result.agentIds).toEqual([]);
-	},
-);
-
-it.each(['agentIds', 'workflowIds', 'folderIds'] as const)(
-	'rejects whole projects mixed with %s',
-	async (field) => {
-		await expect(
-			exporter.export({
-				user: owner,
-				writer: new CapturingWriter(),
-				projectIds: [project.id],
-				[field]: ['selected-id'],
-			}),
-		).rejects.toThrow(PackageExportBlockedError);
 	},
 );
 

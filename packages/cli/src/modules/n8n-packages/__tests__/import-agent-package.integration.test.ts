@@ -167,8 +167,7 @@ describe('Agent package import boundary', () => {
 		const project = await createTeamProject('Available project', owner);
 		const workflow = await createWorkflow({ name: 'Available workflow', nodes: [] }, project);
 		for (const selection of [
-			{ workflowIds: [workflow.id] },
-			{ folderIds: ['folder'] },
+			{},
 			{ projectIds: [project.id] },
 			{ projectIds: [project.id], projectWorkflowIds: [] },
 		]) {
