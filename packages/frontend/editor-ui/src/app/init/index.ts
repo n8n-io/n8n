@@ -39,6 +39,10 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
+import {
+	initializeQuickJsExpressionShadow,
+	stopQuickJsExpressionShadow,
+} from '@/experiments/quickjsExpressionShadow/init';
 
 export const state = {
 	initialized: false,
@@ -319,12 +323,16 @@ function registerAuthenticationHooks() {
 			// don't let posthog failing prevent further function calls
 			console.error(e);
 		}
+		// Not awaited: the shadow run waits for flags and loads WASM, and the editor must not wait for it.
+		void initializeQuickJsExpressionShadow().catch(() => {});
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		await settingsStore.getModuleSettings();
 		void bannersStore.loadDynamicBanners();
 	});
 
 	usersStore.registerLogoutHook(() => {
+		// Before telemetry.reset(), so the last shadow report keeps its user.
+		stopQuickJsExpressionShadow();
 		bannersStore.clearBannerStack();
 		npsSurveyStore.resetNpsSurveyOnLogOut();
 		postHogStore.reset();
