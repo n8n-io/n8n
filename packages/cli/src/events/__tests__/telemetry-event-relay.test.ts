@@ -3597,8 +3597,8 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			const [info] = telemetry.identify.mock.calls[0];
-			expect(info).not.toHaveProperty('db_vendor', expect.any(String));
-			expect(info).not.toHaveProperty('redis_vendor', expect.any(String));
+			expect(info?.db_vendor).toBeUndefined();
+			expect(info?.redis_vendor).toBeUndefined();
 		});
 
 		it('should leave out the Kubernetes kind outside Kubernetes', async () => {

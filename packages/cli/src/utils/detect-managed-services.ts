@@ -10,15 +10,19 @@ const endsWithAny = (host: string, suffixes: string[]) =>
 	suffixes.some((suffix) => host.endsWith(suffix));
 
 /**
- * Names the managed Postgres service from the host suffix and the server's own
- * markers. The host name itself is never reported, only the result.
- * Aurora comes first because its host names end in the same suffix as RDS.
+ * Names the managed Postgres service from the host suffix first, then the server's
+ * own markers. The host name itself is never reported, only the result.
+ * Aurora host names end in the same suffix as RDS, so the Aurora marker decides there.
  */
 export function detectDbVendor(host: string, markers: ManagedPostgresMarkers | null): DbVendor {
 	const h = normalize(host);
+	if (h.endsWith('.postgres.database.azure.com')) return 'azure';
+	if (endsWithAny(h, ['.rds.amazonaws.com', '.rds.amazonaws.com.cn'])) {
+		return markers?.aurora ? 'aurora' : 'rds';
+	}
 	if (markers?.aurora) return 'aurora';
-	if (markers?.rds || endsWithAny(h, ['.rds.amazonaws.com', '.rds.amazonaws.com.cn'])) return 'rds';
-	if (markers?.azure || h.endsWith('.postgres.database.azure.com')) return 'azure';
+	if (markers?.rds) return 'rds';
+	if (markers?.azure) return 'azure';
 	if (markers?.cloudSql) return 'cloud-sql';
 	return 'other';
 }

@@ -20,11 +20,15 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 			db_vendor: z
 				.enum(['aurora', 'rds', 'azure', 'cloud-sql', 'other'])
 				.optional()
-				.describe('Managed Postgres service n8n runs on. Absent on SQLite'),
+				.describe(
+					'Managed Postgres service n8n runs on. `other` covers self-managed and unrecognized providers. Absent on SQLite',
+				),
 			redis_vendor: z
 				.enum(['elasticache', 'azure-cache', 'other'])
 				.optional()
-				.describe('Managed Redis service n8n uses. Absent outside queue mode'),
+				.describe(
+					'Managed Redis service n8n uses. `other` covers self-managed and unrecognized providers. Absent outside queue mode',
+				),
 			n8n_disable_production_main_process: z.boolean(),
 			system_info: z.object({
 				os: z.object({
