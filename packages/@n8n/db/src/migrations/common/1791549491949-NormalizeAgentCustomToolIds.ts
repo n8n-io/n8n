@@ -175,7 +175,7 @@ async function collectToolIdsByAgent(ctx: MigrationContext): Promise<Map<string,
 	return new Map(Array.from(toolsByAgent, ([agentId, tools]) => [agentId, allocateToolIds(tools)]));
 }
 
-export class NormalizeAgentCustomToolIds1791455618098 implements IrreversibleMigration {
+export class NormalizeAgentCustomToolIds1791549491949 implements IrreversibleMigration {
 	async up(ctx: MigrationContext) {
 		const toolsByAgent = await collectToolIdsByAgent(ctx);
 
