@@ -19,18 +19,18 @@ import {
 	Body,
 	Post,
 	PublicApiController,
+	type BinaryResult,
 } from '@n8n/decorators';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
-import { pipeline } from 'node:stream/promises';
 
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
 } from '@/modules/n8n-packages/entities/package-export.errors';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
-import type { ImportResult } from '@/modules/n8n-packages/n8n-packages.types';
+import type { ExportPackageResult, ImportResult } from '@/modules/n8n-packages/n8n-packages.types';
 import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-classifier';
 import {
 	IMPORT_PACKAGE_FIELD_SIZE_BYTES,
@@ -93,10 +93,6 @@ function assertPackageExportApiKeyScopes(
 	}
 
 	return apiKeyScopes;
-}
-
-function isPrematureClose(error: unknown): boolean {
-	return error instanceof Error && 'code' in error && error.code === 'ERR_STREAM_PREMATURE_CLOSE';
 }
 
 @PublicApiController('/n8n-packages')
@@ -217,10 +213,12 @@ export class N8nPackagesPublicController {
 	@ApiErrorResponse(404)
 	async exportPackage(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Body({ required: true }) body: ExportPackageRequestDto,
-	): Promise<void> {
+	): Promise<BinaryResult> {
 		const { workflowIds = [], folderIds = [], projectIds = [] } = body;
+
+		let exportResult: ExportPackageResult;
 
 		try {
 			// A package is either a set of loose workflows/folders or a set of whole projects, not both.
@@ -239,7 +237,7 @@ export class N8nPackagesPublicController {
 				projectIds,
 			);
 
-			const { stream, counts } = await this.n8nPackagesService.exportPackage({
+			exportResult = await this.n8nPackagesService.exportPackage({
 				user: req.user,
 				workflowIds,
 				folderIds,
@@ -252,17 +250,7 @@ export class N8nPackagesPublicController {
 				credentialExportPolicy: body.credentialExportPolicy,
 				includeArchivedWorkflows: body.includeArchivedWorkflows,
 			});
-
-			res.setHeader('Content-Disposition', 'attachment; filename="export.n8np"');
-			res.setHeader(EXPORT_COUNTS_HEADER, JSON.stringify(counts));
-			// Cross-origin browser clients can only read the counts header if it is exposed.
-			res.setHeader('Access-Control-Expose-Headers', EXPORT_COUNTS_HEADER);
-
-			await pipeline(stream, res);
 		} catch (error) {
-			// The client closed the connection mid-stream. The export did not fail.
-			if (isPrematureClose(error)) return;
-
 			this.eventService.emit('n8n-package-export-failed', {
 				user: req.user,
 				reason: classifyPackageFailure(error),
@@ -279,5 +267,15 @@ export class N8nPackagesPublicController {
 			}
 			throw error;
 		}
+
+		return {
+			body: exportResult.stream,
+			headers: {
+				'Content-Disposition': 'attachment; filename="export.n8np"',
+				[EXPORT_COUNTS_HEADER]: JSON.stringify(exportResult.counts),
+				// Cross-origin browser clients can only read the counts header if it is exposed.
+				'Access-Control-Expose-Headers': EXPORT_COUNTS_HEADER,
+			},
+		};
 	}
 }
