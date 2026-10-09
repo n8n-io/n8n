@@ -110,11 +110,11 @@ const apiMock = (
 	context: ReturnType<typeof createLoadOptionsContext> | ReturnType<typeof createExecuteContext>,
 ) => context.helpers.httpRequestWithAuthentication;
 
-const project = (value: string): Locator => ({ mode: 'list', value });
-const selectedProject = { lakebaseProject: project('spike-test') };
-const selectedBranch = { ...selectedProject, lakebaseBranch: project('production') };
-const selectedDatabase = { ...selectedBranch, lakebaseDatabase: project('databricks_postgres') };
-const selectedSchema = { ...selectedDatabase, lakebaseSchema: project('public') };
+const locator = (value: string): Locator => ({ mode: 'list', value });
+const selectedProject = { lakebaseProject: locator('spike-test') };
+const selectedBranch = { ...selectedProject, lakebaseBranch: locator('production') };
+const selectedDatabase = { ...selectedBranch, lakebaseDatabase: locator('databricks_postgres') };
+const selectedSchema = { ...selectedDatabase, lakebaseSchema: locator('public') };
 
 describe('listSearch -> getLakebaseProjects', () => {
 	const projectsPage = {
@@ -229,7 +229,7 @@ describe('listSearch -> getLakebaseProjects', () => {
 });
 
 describe('listSearch -> getLakebaseBranches', () => {
-	it.each<Record<string, Locator>>([{}, { lakebaseProject: project('') }])(
+	it.each<Record<string, Locator>>([{}, { lakebaseProject: locator('') }])(
 		'asks for a project first (%j)',
 		async (params) => {
 			const context = createLoadOptionsContext(params);
@@ -272,7 +272,7 @@ describe('listSearch -> getLakebaseBranches', () => {
 	});
 
 	it('encodes the project id in the path', async () => {
-		const context = createLoadOptionsContext({ lakebaseProject: project('a b') });
+		const context = createLoadOptionsContext({ lakebaseProject: locator('a b') });
 		apiMock(context).mockResolvedValue({});
 
 		await getLakebaseBranches.call(context);
@@ -288,8 +288,8 @@ describe('listSearch -> getLakebaseDatabases', () => {
 	it.each([
 		[{}, 'Please Select a Project First'],
 		[selectedProject, 'Please Select a Branch First'],
-		[{ ...selectedProject, lakebaseBranch: project('') }, 'Please Select a Branch First'],
-	])('asks for a project, then a branch', async (params, placeholder) => {
+		[{ ...selectedProject, lakebaseBranch: locator('') }, 'Please Select a Branch First'],
+	])('asks for a project, then a branch (%j -> %s)', async (params, placeholder) => {
 		const context = createLoadOptionsContext(params);
 
 		const result = await getLakebaseDatabases.call(context);
@@ -327,6 +327,52 @@ describe('listSearch -> getLakebaseDatabases', () => {
 	});
 });
 
+describe('listSearch filter', () => {
+	it.each([
+		[
+			'getLakebaseProjects',
+			getLakebaseProjects,
+			{},
+			{
+				projects: [
+					{ project_id: 'p-1', status: { display_name: 'Spike Test' } },
+					{ project_id: 'other' },
+				],
+			},
+			{ name: 'Spike Test', value: 'p-1' },
+		],
+		[
+			'getLakebaseBranches',
+			getLakebaseBranches,
+			selectedProject,
+			{ branches: [{ branch_id: 'production' }, { branch_id: 'other' }] },
+			{ name: 'production', value: 'production' },
+		],
+		[
+			'getLakebaseDatabases',
+			getLakebaseDatabases,
+			selectedBranch,
+			{
+				databases: [
+					{ database_id: 'db-1', status: { postgres_database: 'databricks_postgres' } },
+					{ database_id: 'other' },
+				],
+			},
+			{ name: 'db-1', value: 'databricks_postgres' },
+		],
+	] as const)(
+		'%s keeps rows whose name or value contains the filter',
+		async (_, picker, params, page, kept) => {
+			const context = createLoadOptionsContext(params);
+			apiMock(context).mockResolvedValue(page);
+
+			const result = await picker.call(context, kept.value.slice(0, 4).toUpperCase());
+
+			expect(result.results).toEqual([kept]);
+		},
+	);
+});
+
 describe('listSearch -> getLakebaseSchemas', () => {
 	it('returns public without a request', async () => {
 		const context = createLoadOptionsContext();
@@ -356,16 +402,19 @@ describe('listSearch -> getLakebaseTables', () => {
 		[{}, 'Please Select a Project First'],
 		[selectedProject, 'Please Select a Branch First'],
 		[selectedBranch, 'Please Select a Database First'],
-		[{ ...selectedBranch, lakebaseDatabase: project('') }, 'Please Select a Database First'],
+		[{ ...selectedBranch, lakebaseDatabase: locator('') }, 'Please Select a Database First'],
 		[selectedDatabase, 'Please Select a Schema First'],
-	])('asks for a project, branch, database and schema first', async (params, placeholder) => {
-		const context = createLoadOptionsContext(params);
+	])(
+		'asks for a project, branch, database and schema first (%j -> %s)',
+		async (params, placeholder) => {
+			const context = createLoadOptionsContext(params);
 
-		const result = await getLakebaseTables.call(context);
+			const result = await getLakebaseTables.call(context);
 
-		expect(result).toEqual({ results: [{ name: placeholder, value: '' }] });
-		expect(apiMock(context)).not.toHaveBeenCalled();
-	});
+			expect(result).toEqual({ results: [{ name: placeholder, value: '' }] });
+			expect(apiMock(context)).not.toHaveBeenCalled();
+		},
+	);
 
 	it('refuses personal access token auth before any request', async () => {
 		const context = createLoadOptionsContext(selectedSchema);
@@ -409,7 +458,7 @@ describe('listSearch -> getLakebaseTables', () => {
 	it('uses the selected schema and encodes it', async () => {
 		const context = createLoadOptionsContext({
 			...selectedDatabase,
-			lakebaseSchema: project('my schema'),
+			lakebaseSchema: locator('my schema'),
 		});
 		mockChain(context, {});
 
