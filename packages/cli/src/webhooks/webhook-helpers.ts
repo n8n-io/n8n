@@ -131,6 +131,8 @@ const IMMEDIATE_RESPONSE_MODES = new Set<WebhookResponseMode>([
 interface WebhookInvocationResult {
 	webhookResultData: IWebhookResponseData;
 	runExecutionDataChanges: WebhookExecutionDataChanges;
+	/** If true, the response callback was called with an error. */
+	failed: boolean;
 }
 
 interface WebhookExecutionDataChanges {
@@ -581,7 +583,7 @@ export async function invokeWebhook({
 			node: workflowStartNode,
 		});
 
-		return { webhookResultData, runExecutionDataChanges: {} };
+		return { webhookResultData, runExecutionDataChanges: {}, failed: false };
 	} catch (e: unknown) {
 		const error = ensureError(e);
 		const errorMessage = _privateGetWebhookErrorMessage(error, webhookType);
@@ -613,6 +615,7 @@ export async function invokeWebhook({
 				noWebhookResponse: true,
 				workflowData: [[{ json: {} }]],
 			},
+			failed: true,
 		};
 	}
 }
@@ -989,6 +992,8 @@ export async function executeWebhook(
 		encryptedRunnerIdentity?: string;
 		/** Store recorded on the execution being resumed. Unset for a new execution. */
 		storedAt?: ExecutionStorageLocation;
+		/** Called before WorkflowRunner.run for an existing execution. */
+		onResume?: () => void;
 	},
 ): Promise<string | undefined> {
 	const responder = new WebhookResponder(responseCallback);
@@ -1130,6 +1135,9 @@ export async function executeWebhook(
 			webhookType: ['formTrigger', 'form'].includes(nodeType.description.name) ? 'Form' : 'Webhook',
 			responder,
 		});
+
+		if (invocationResult.failed && executionId !== undefined) return;
+
 		const { webhookResultData } = invocationResult;
 		runExecutionDataMerge = invocationResult.runExecutionDataChanges;
 		if (routesToEngineV2) engineV2Payload = webhookResultData.workflowData;
@@ -1299,6 +1307,8 @@ export async function executeWebhook(
 		// From here the dispatcher owns the payload: it deletes the files when the
 		// data plane does not accept the run.
 		engineV2Payload = undefined;
+
+		if (executionId) options?.onResume?.();
 
 		// Start now to run the workflow
 		executionId = await Container.get(WorkflowRunner).run(
