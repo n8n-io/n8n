@@ -81,9 +81,14 @@ export async function getHost(
 	return credentials.host.replace(/\/$/, '');
 }
 
-/** Adds the Genie UI link for a space or a conversation. `?o=` carries the workspace id; Azure workspaces need it. */
+export type GenieApiResponse = { body: IDataObject; headers: IDataObject };
+
+/**
+ * Adds the Genie UI link for a space or a conversation. `?o=` carries the workspace id;
+ * Azure workspaces need it.
+ */
 export function withGenieDeepLink(
-	response: { body: IDataObject; headers: IDataObject },
+	response: GenieApiResponse,
 	host: string,
 	spaceId: string,
 	conversationId?: string,

@@ -377,9 +377,9 @@ describe('withGenieDeepLink', () => {
 		expect(result.deep_link).toBe(`${HOST}/genie/rooms/space123`);
 	});
 
-	it('URL-encodes the space id', () => {
-		const result = withGenieDeepLink({ body: {}, headers: {} }, HOST, 'a b');
+	it('URL-encodes the space and conversation ids', () => {
+		const result = withGenieDeepLink({ body: {}, headers: {} }, HOST, 'a b', 'c/d');
 
-		expect(result.deep_link).toBe(`${HOST}/genie/rooms/a%20b`);
+		expect(result.deep_link).toBe(`${HOST}/genie/rooms/a%20b/chats/c%2Fd`);
 	});
 });

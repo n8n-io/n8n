@@ -1,5 +1,6 @@
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
+import type { GenieApiResponse } from '../helpers';
 import {
 	databricksApiRequest,
 	getActiveCredentialType,
@@ -14,17 +15,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const conversationId = this.getNodeParameter('conversationId', i) as string;
 	const messageId = this.getNodeParameter('messageId', i) as string;
 
-	const response: { body: IDataObject; headers: IDataObject } = await databricksApiRequest(
-		this,
-		credentialType,
-		{
-			method: 'GET',
-			url: `${host}/api/2.0/genie/spaces/${spaceId}/conversations/${conversationId}/messages/${messageId}`,
-			headers: { 'Content-Type': 'application/json' },
-			json: true,
-			returnFullResponse: true,
-		},
-	);
+	const response: GenieApiResponse = await databricksApiRequest(this, credentialType, {
+		method: 'GET',
+		url: `${host}/api/2.0/genie/spaces/${spaceId}/conversations/${conversationId}/messages/${messageId}`,
+		headers: { 'Content-Type': 'application/json' },
+		json: true,
+		returnFullResponse: true,
+	});
 
 	return [
 		{ json: withGenieDeepLink(response, host, spaceId, conversationId), pairedItem: { item: i } },
