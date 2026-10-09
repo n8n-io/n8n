@@ -18,6 +18,7 @@ vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	getReportForRule: vi.fn(),
 	migrateWorkflowForRule: vi.fn(),
 	updateFindingStatus: vi.fn(),
+	updateFindingStatuses: vi.fn(),
 	assignWorkflowOwner: vi.fn(),
 	unassignWorkflowOwner: vi.fn(),
 }));
@@ -210,7 +211,8 @@ describe('MigrationRuleDetail', () => {
 				const titles = screen
 					.getAllByRole('columnheader')
 					.map((th) => th.textContent?.replace(/[↑↓]/g, '').trim());
-				expect(titles).toEqual(['Name', 'Nodes affected', 'Usage', 'Owner', 'State', '']);
+				// The first column holds the select-all checkbox.
+				expect(titles).toEqual(['', 'Name', 'Nodes affected', 'Usage', 'Owner', 'State', '']);
 			});
 		});
 	});
@@ -349,6 +351,135 @@ describe('MigrationRuleDetail', () => {
 			await waitFor(() => expect(isStateDisabled('Test Workflow 1')).toBe(true));
 			expect(isStateDisabled('Test Workflow 2')).toBe(false);
 			expect(screen.getByText('1 affected')).toBeInTheDocument();
+		});
+	});
+
+	describe('bulk selection', () => {
+		const getRowCheckbox = (workflowName: string) => {
+			const row = screen.getByText(workflowName).closest('tr');
+			if (!row) throw new Error('Row not found');
+			return within(row).getByRole('checkbox');
+		};
+
+		const getStateSelect = (workflowName: string) => {
+			const row = screen.getByText(workflowName).closest('tr');
+			if (!row) throw new Error('Row not found');
+			return within(row).getByTestId('migration-finding-state-select');
+		};
+
+		it('should show the selection bar only while rows are selected', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+			expect(screen.queryByTestId('selected-items-info')).not.toBeInTheDocument();
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+
+			expect(await screen.findByTestId('selected-items-info')).toHaveTextContent('1 row selected');
+
+			await userEvent.click(screen.getByTestId('clear-selection-button'));
+
+			await waitFor(() =>
+				expect(screen.queryByTestId('selected-items-info')).not.toBeInTheDocument(),
+			);
+		});
+
+		it("should mark the selected rows as won't fix in one request and clear the selection", async () => {
+			vi.mocked(breakingChangesApi.updateFindingStatuses).mockResolvedValue();
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			await userEvent.click(getRowCheckbox('Test Workflow 2'));
+			await userEvent.click(screen.getByTestId('migration-bulk-wont-fix-button'));
+
+			await waitFor(() => {
+				expect(getStateSelect('Test Workflow 1')).toHaveTextContent("Won't fix");
+				expect(getStateSelect('Test Workflow 2')).toHaveTextContent("Won't fix");
+				expect(screen.getByText('0 affected')).toBeInTheDocument();
+				expect(screen.queryByTestId('selected-items-info')).not.toBeInTheDocument();
+			});
+			expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledTimes(1);
+			const [, ruleId, workflowIds, status] = vi.mocked(breakingChangesApi.updateFindingStatuses)
+				.mock.calls[0];
+			expect(ruleId).toBe('rule-1');
+			expect([...workflowIds].sort()).toEqual(['workflow-1', 'workflow-2']);
+			expect(status).toBe('wont_fix');
+		});
+
+		it('should reopen only the selected rows that are not open', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						mockWorkflowWithIssue,
+						{ ...mockWorkflowWithMultipleNodes, status: 'wont_fix' },
+					],
+				}),
+			);
+			vi.mocked(breakingChangesApi.updateFindingStatuses).mockResolvedValue();
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('1 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			await userEvent.click(getRowCheckbox('Test Workflow 2'));
+			await userEvent.click(screen.getByTestId('migration-bulk-reopen-button'));
+
+			await waitFor(() => expect(screen.getByText('2 affected')).toBeInTheDocument());
+			expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'rule-1',
+				['workflow-2'],
+				'open',
+			);
+		});
+
+		it('should disable an action that would change none of the selected rows', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+
+			expect(await screen.findByTestId('migration-bulk-reopen-button')).toBeDisabled();
+			expect(screen.getByTestId('migration-bulk-wont-fix-button')).toBeEnabled();
+		});
+
+		it('should revert the rows, keep the selection and show an error when the save fails', async () => {
+			const error = new Error('Request failed');
+			vi.mocked(breakingChangesApi.updateFindingStatuses).mockRejectedValue(error);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			await userEvent.click(screen.getByTestId('migration-bulk-wont-fix-button'));
+
+			await waitFor(() => {
+				expect(showError).toHaveBeenCalledWith(error, 'Could not change the state');
+			});
+			expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Open');
+			expect(screen.getByText('2 affected')).toBeInTheDocument();
+			expect(screen.getByTestId('selected-items-info')).toHaveTextContent('1 row selected');
+		});
+
+		it('should drop rows that a search hides from the selection', async () => {
+			const user = userEvent.setup({ delay: null });
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await user.click(getRowCheckbox('Test Workflow 1'));
+			await user.click(getRowCheckbox('Test Workflow 2'));
+			await user.type(screen.getByPlaceholderText('Search workflows...'), 'workflow 1');
+
+			await vi.waitFor(
+				() => expect(screen.getByTestId('selected-items-info')).toHaveTextContent('1 row selected'),
+				{ timeout: 1000 },
+			);
+		});
+
+		it('should not offer selection to a user without the migrate scope', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
 		});
 	});
 
