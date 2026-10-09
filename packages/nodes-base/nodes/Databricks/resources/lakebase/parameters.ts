@@ -406,7 +406,9 @@ export const lakebaseParameters: INodeProperties[] = [
 					plural: 'columns',
 				},
 				addAllFields: true,
-				multiKeyMatch: false,
+				// A composite primary key needs every component selected, or the filter
+				// picks up more rows than the one the user means
+				multiKeyMatch: true,
 				refreshStaleSchemaOnOpen: true,
 			},
 		},
