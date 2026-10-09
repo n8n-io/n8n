@@ -371,6 +371,7 @@ export class AgentConfigService {
 			...(decomposedSchema.vectorStores !== undefined
 				? { vectorStores: decomposedSchema.vectorStores }
 				: {}),
+			...(decomposedSchema.cards !== undefined ? { cards: decomposedSchema.cards } : {}),
 		};
 		this.normalizeOptionalConfigFields(nextSchema, decomposedSchema, clearOmitted);
 		return nextSchema;
@@ -532,6 +533,7 @@ function clearOmittedOptionalFields(schema: AgentJsonConfig, submitted: AgentJso
 		'config',
 		'mcpServers',
 		'vectorStores',
+		'cards',
 	] as const;
 	for (const field of optionalFields) {
 		if (submitted[field] === undefined) delete schema[field];
