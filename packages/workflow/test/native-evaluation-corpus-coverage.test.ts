@@ -18,14 +18,13 @@
 
 import { getParsedExpression } from '@n8n/tournament';
 import { isNativelyEvaluable } from '../src/expressions/native-evaluation';
-import { DATA_ROOTS } from '../src/expressions/native-evaluation/grammar';
+import { RESERVED_NAMES } from '../src/expressions/native-evaluation/grammar';
 import { ALL_CORPORA } from './native-evaluation-corpus';
 
 // ── Shape tokenization ────────────────────────────────────────────────────
 // A generic AST walk over the same parse the native evaluator uses.
 
 const SKIP_KEYS = new Set(['loc', 'range', 'tokens', 'comments', 'start', 'end']);
-const GRAMMAR_IDENTIFIERS = new Set<string>([...DATA_ROOTS, '$input', '$node', '$', 'undefined']);
 
 type AstRecord = Record<string, unknown>;
 
@@ -73,7 +72,7 @@ function walk(node: unknown, feats: Set<string>): void {
 	switch (o.type) {
 		case 'Identifier':
 			// Grammar-level identifiers only; member names are data, not shape.
-			if (GRAMMAR_IDENTIFIERS.has(String(o.name))) {
+			if (RESERVED_NAMES.has(String(o.name))) {
 				feats.add(`id:${String(o.name)}`);
 			}
 			break;
@@ -97,6 +96,12 @@ function walk(node: unknown, feats: Set<string>): void {
 			break;
 		case 'CallExpression':
 			feats.add(callFeature(o));
+			break;
+		case 'ArrayExpression':
+			feats.add(Array.isArray(o.elements) && o.elements.length === 0 ? 'array:empty' : 'array');
+			break;
+		case 'ArrowFunctionExpression':
+			feats.add('arrow');
 			break;
 		default:
 			break;
@@ -240,6 +245,19 @@ const CANDIDATES = [
 	'={{ $json.item.names.flat(2) }}',
 	'={{ $json.item.names.toSorted() }}',
 	'={{ $json.item.names.toReversed() }}',
+	// array literals
+	'={{ [1, "a", true, null] }}',
+	'={{ [] }}',
+	'={{ ["bar"].includes($json.item.name) }}',
+	// iterator methods with a callback
+	'={{ $json.item.names.some(n => n === "bar") }}',
+	'={{ $json.item.names.every(n => n === "bar") }}',
+	'={{ $json.item.names.find(n => n === "bar") }}',
+	'={{ $json.item.names.filter(n => n === "bar") }}',
+	'={{ $json.item.names.map(n => n.length) }}',
+	'={{ $json.item.names?.map(n => n) }}',
+	'={{ $json.item.names.map(n => $json.item.count) }}',
+	'={{ $json.item.names.map(n => n.missing?.deep ?? "d") }}',
 	// compound shapes
 	'={{ $json.item.name.trim().toUpperCase() }}',
 	'={{ $json.item.name.toUpperCase().length }}',
