@@ -379,6 +379,115 @@ describe('SystemAgentExecutionService', () => {
 		});
 	});
 
+	describe('error formatting', () => {
+		const failure = new Error('raw provider failure');
+		const errorChunk = { type: 'error', error: failure } as AgentExecutionStreamChunk;
+
+		it('sends the raw error text when the handle has no formatter', async () => {
+			const { service, turnExecutionService } = setup([errorChunk]);
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'raw provider failure' });
+			const [config] = turnExecutionService.execute.mock.calls[0];
+			expect(config.formatError?.(failure)).toBeUndefined();
+		});
+
+		it('sends the formatted text and gives the same formatter to the recorder', async () => {
+			const { service, handle, turnExecutionService, onSettled } = setup([errorChunk]);
+			handle.formatError = vi.fn(() => 'You ran out of credits.');
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(handle.formatError).toHaveBeenCalledWith(failure);
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'You ran out of credits.' });
+			expect(send).not.toHaveBeenCalledWith({ type: 'error', message: 'raw provider failure' });
+			const [config] = turnExecutionService.execute.mock.calls[0];
+			expect(config.formatError?.(failure)).toBe('You ran out of credits.');
+			// The settle hook keeps the raw error, so the provider can inspect it.
+			expect(onSettled).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'errored', error: failure }),
+			);
+		});
+
+		it('keeps the raw error when the formatter returns undefined', async () => {
+			const { service, handle } = setup([errorChunk]);
+			handle.formatError = vi.fn(() => undefined);
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'raw provider failure' });
+		});
+
+		it('keeps the raw error and logs when the formatter throws', async () => {
+			const { service, handle, logger, turnExecutionService } = setup([errorChunk]);
+			handle.formatError = vi.fn(() => {
+				throw new Error('formatter broke');
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'raw provider failure' });
+			expect(logger.warn).toHaveBeenCalledWith(
+				'System agent error formatter failed',
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+			const [config] = turnExecutionService.execute.mock.calls[0];
+			expect(config.formatError?.(failure)).toBeUndefined();
+		});
+
+		it('rethrows a thrown turn error with the formatted text and the raw cause', async () => {
+			const { service, handle, onSettled, turnExecutionService } = setup();
+			handle.formatError = vi.fn(() => 'The attachment was removed.');
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* () {
+				throw failure;
+			});
+
+			const consumed = service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			await expect(consumed).rejects.toThrow('The attachment was removed.');
+			await expect(consumed).rejects.toMatchObject({ cause: failure });
+			expect(onSettled).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'errored', error: failure }),
+			);
+		});
+
+		it('rethrows a thrown turn error as is when the handle has no formatter', async () => {
+			const { service, turnExecutionService } = setup();
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* () {
+				throw failure;
+			});
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toBe(failure);
+		});
+
+		it('formats the errors of a resumed turn', async () => {
+			const { service, handle, checkpointStorage } = setup([errorChunk]);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+			handle.formatError = vi.fn(() => 'You ran out of credits.');
+			const send = vi.fn();
+
+			const { done } = await service.resume({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				resumeData: { approved: true },
+				send,
+			});
+			await done;
+
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'You ran out of credits.' });
+		});
+	});
+
 	describe('resume', () => {
 		it('finds the suspended tool call in the checkpoint and prepares a resume turn', async () => {
 			const { service, provider, checkpointStorage, prepared } = setup([textChunk]);

@@ -64,6 +64,11 @@ interface ExecuteTurnConfig {
 	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	onExecutionRecorded?: (executionId: string) => void;
 	onSettled?: (suspended: boolean) => Promise<void>;
+	/**
+	 * Map a turn error to the text to store on the execution. Return
+	 * `undefined` to store the raw error. Must not throw.
+	 */
+	formatError?: (error: unknown) => string | undefined;
 }
 
 interface TurnExecutionState {
@@ -139,7 +144,7 @@ export class AgentTurnExecutionService {
 			yield* this.streamTurn(stream, preparedTurn, config, recorder, state);
 		} catch (error) {
 			state.executionError = error;
-			recorder.record({ type: 'error', error });
+			recorder.record({ type: 'error', error: config.formatError?.(error) ?? error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
@@ -227,7 +232,11 @@ export class AgentTurnExecutionService {
 				}
 				continue;
 			}
-			recorder.record(chunk);
+			recorder.record(
+				chunk.type === 'error'
+					? { ...chunk, error: config.formatError?.(chunk.error) ?? chunk.error }
+					: chunk,
+			);
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
 			if (chunk.type === 'error') state.executionError = chunk.error;
 			if (chunk.type === 'finish') state.receivedFinish = true;

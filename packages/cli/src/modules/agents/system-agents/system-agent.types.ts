@@ -70,6 +70,15 @@ export interface SystemAgentTurnHandle {
 	hideUserMessage?: boolean;
 	onChunk?: (chunk: AgentExecutionStreamChunk) => void;
 	onSettled?: (outcome: SystemAgentTurnOutcome) => Promise<void>;
+	/**
+	 * Give the user-facing text for a turn error. The runtime sends this text
+	 * in the `error` event and stores it as the execution error, so the live
+	 * view and the history show the same text. Return `undefined` to keep the
+	 * raw error. The runtime can call this more than once for the same error,
+	 * so keep it free of side effects. When it throws, the runtime logs the
+	 * failure and keeps the raw error.
+	 */
+	formatError?: (error: unknown) => string | undefined;
 }
 
 /** The sandbox scope of one thread of a system agent. */
