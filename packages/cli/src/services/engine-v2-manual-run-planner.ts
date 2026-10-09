@@ -213,7 +213,9 @@ export class EngineV2ManualRunPlanner {
 		pinData: IPinData,
 	): INodeExecutionData[][] | undefined {
 		const pinned = pinData[node.name];
-		const outputs = pinned ? [pinned] : this.lastRunOutputs(node, runData[node.name]);
+		const outputs = pinned
+			? [withPairedItems(pinned)]
+			: this.lastRunOutputs(node, runData[node.name]);
 		if (!outputs) return undefined;
 
 		assertNoBinaryData(node, outputs);
@@ -282,6 +284,17 @@ function nodesOnCycles(graph: DirectedGraph): Set<INode> {
 		if (connection.from === connection.to) onCycle.add(connection.from);
 	}
 	return onCycle;
+}
+
+/**
+ * Pinned data carries no lineage, and the node never runs to be given one. v1
+ * pairs its items with the inputs of the same index after the pinned "run";
+ * the same pairing is set here, since the step is recorded without running.
+ */
+function withPairedItems(items: INodeExecutionData[]): INodeExecutionData[] {
+	return items.map((item, index) =>
+		item.pairedItem === undefined ? { ...item, pairedItem: { item: index } } : item,
+	);
 }
 
 function toConnections(graph: DirectedGraph): IConnections {
