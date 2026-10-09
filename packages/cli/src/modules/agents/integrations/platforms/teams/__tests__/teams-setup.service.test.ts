@@ -152,6 +152,57 @@ describe('TeamsSetupService', () => {
 
 			expect(JSON.stringify(state)).not.toContain('super-secret');
 		});
+
+		/**
+		 * The channel settings offer publishing only for an app n8n made for this
+		 * agent. Reading the provenance too loosely offers it for an app n8n
+		 * cannot change, and reading it too strictly sends the user back to the
+		 * manual package.
+		 */
+		describe('the provenance that offers the managed app', () => {
+			const provisionedFor = (agentId: string) => {
+				connectTeamsCredential();
+				credentialsService.decrypt.mockResolvedValue({
+					clientId: CLIENT_ID,
+					tenantId: TENANT_ID,
+					clientSecret: 'super-secret',
+					provisionedForAgentId: agentId,
+				});
+			};
+
+			it('claims the credential the recommended setup made for this agent', async () => {
+				provisionedFor(AGENT_ID);
+
+				const state = await service.getSetupState(user, {
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				});
+
+				expect(state.provisionedByN8n).toBe(true);
+			});
+
+			it('disclaims a hand-made credential, which carries no provenance', async () => {
+				connectTeamsCredential();
+
+				const state = await service.getSetupState(user, {
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				});
+
+				expect(state.provisionedByN8n).toBe(false);
+			});
+
+			it('disclaims one the recommended setup made for a different agent', async () => {
+				provisionedFor('agent-2');
+
+				const state = await service.getSetupState(user, {
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				});
+
+				expect(state.provisionedByN8n).toBe(false);
+			});
+		});
 	});
 
 	describe('a credential another agent already uses', () => {
