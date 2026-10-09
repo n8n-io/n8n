@@ -1,7 +1,5 @@
 packages/@n8n/backend-common/src/modules/module-registry.ts
   s_f831103c61a711::t_79e98d2e04e912 60
-packages/cli/src/deprecation/__tests__/deprecation.service.test.ts
-  s_f831103c61a711::t_34abc16ea85004 87-91
 packages/testing/playwright/tests/e2e/chat-hub/fixtures.ts
   s_f831103c61a711::t_2015c452a056cf 25-29
 packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
@@ -9,6 +7,8 @@ packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
 packages/cli/src/deprecation/deprecation.service.ts
   s_f831103c61a711::t_4acc9eba6262b5 83-86,88
   s_f831103c61a711::t_235fd195796156 87
+packages/cli/src/deprecation/__tests__/deprecation.service.test.ts
+  s_f831103c61a711::t_34abc16ea85004 87-91
 ---
 {
   "schema_version": "authorship/3.0.0",
