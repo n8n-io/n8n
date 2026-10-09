@@ -15,6 +15,7 @@ export type InboxListSection = {
 	loadingMore: boolean;
 	hasMore: boolean;
 	error: Error | null;
+	failedRequest: 'list' | 'loadMore' | null;
 	partial: boolean;
 };
 

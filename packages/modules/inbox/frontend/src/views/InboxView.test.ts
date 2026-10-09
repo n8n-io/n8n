@@ -425,12 +425,12 @@ it('keeps the main loading state until both Open groups finish', async () => {
 	store.lists.authored.loading = true;
 	const { queryByText } = renderComponent();
 	await waitAllPromises();
-	expect(queryByText('Open items')).not.toBeInTheDocument();
+	expect(queryByText('Open reviews')).not.toBeInTheDocument();
 
 	store.lists.authored.loading = false;
 	store.lists.authored.hasLoaded = true;
 	await waitAllPromises();
-	expect(queryByText('Open items')).toBeInTheDocument();
+	expect(queryByText('Open reviews')).toBeInTheDocument();
 });
 
 it('provides the list fallback when review detail has no data', async () => {
@@ -440,12 +440,12 @@ it('provides the list fallback when review detail has no data', async () => {
 	store.lists.authored.loading = true;
 	const { queryByText, queryByRole } = renderComponent();
 	await waitAllPromises();
-	expect(queryByText('Open items')).not.toBeInTheDocument();
+	expect(queryByText('Open reviews')).not.toBeInTheDocument();
 
 	store.lists.authored.loading = false;
 	store.lists.authored.hasLoaded = true;
 	await waitAllPromises();
-	expect(queryByText('Open items')).toBeInTheDocument();
+	expect(queryByText('Open reviews')).toBeInTheDocument();
 	expect(queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
 });
 
@@ -457,6 +457,17 @@ it('does not show an empty Inbox when one group has rows and the other fails', a
 	await waitAllPromises();
 	expect(queryByTestId('inbox-empty')).not.toBeInTheDocument();
 });
+
+it.each(['list', 'loadMore'] as const)(
+	'shows the main Retry only for an initial failure after a failed %s request',
+	async (failedRequest) => {
+		store.lists.waiting.error = new Error('Request failed');
+		store.lists.waiting.failedRequest = failedRequest;
+		const { queryByRole } = renderComponent();
+		await waitAllPromises();
+		expect(queryByRole('button', { name: 'Retry' }) !== null).toBe(failedRequest === 'list');
+	},
+);
 
 it('restarts a partial group after a page failure while retaining exact page retry', async () => {
 	const request = vi

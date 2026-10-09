@@ -215,7 +215,7 @@ const isInboxVisible = computed(() => settingsStore.settings.inbox?.enabled === 
 
 const inbox = computed<IMenuItem>(() => ({
 	id: 'inbox',
-	icon: 'inbox',
+	icon: 'message-square-text',
 	label: locale.baseText('inbox.title'),
 	route: { to: { name: INBOX_VIEW } },
 }));

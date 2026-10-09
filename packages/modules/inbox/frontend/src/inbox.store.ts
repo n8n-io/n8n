@@ -201,7 +201,9 @@ export const useInboxStore = defineStore('inbox', () => {
 	const activeLists = computed(() => activeSectionKeys.value.map((key) => lists[key]));
 	const hasItems = computed(() => activeLists.value.some((list) => list.items.length > 0));
 	const loading = computed(() => activeLists.value.some((list) => list.loading));
-	const hasError = computed(() => activeLists.value.some((list) => list.error !== null));
+	const initialLoadFailed = computed(() =>
+		activeLists.value.some((list) => list.failedRequest === 'list'),
+	);
 	const partial = computed(() => activeLists.value.some((list) => list.partial));
 	const isEmpty = computed(() =>
 		activeLists.value.every(
@@ -279,7 +281,7 @@ export const useInboxStore = defineStore('inbox', () => {
 		activeLists,
 		hasItems,
 		loading,
-		hasError,
+		initialLoadFailed,
 		partial,
 		isEmpty,
 		enabled,

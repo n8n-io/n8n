@@ -33,7 +33,7 @@ const hasUsableRows = computed(() => props.sections.some((section) => section.it
 const showInitialLoadError = computed(
 	() =>
 		!hasUsableRows.value &&
-		props.sections.some((section) => section.error !== null) &&
+		props.sections.some((section) => section.failedRequest === 'list') &&
 		!props.sections.some((section) => section.partial),
 );
 const visibleSections = computed(() =>

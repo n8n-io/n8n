@@ -256,7 +256,7 @@ it('requires both groups to be successfully empty before showing the Open empty 
 	authoredRequest.mockRejectedValueOnce(new Error('timeout'));
 	await store.refreshListAndSummary();
 	expect(store.lists.waiting.hasLoaded).toBe(true);
-	expect(store.hasError).toBe(true);
+	expect(store.initialLoadFailed).toBe(true);
 	expect(store.isEmpty).toBe(false);
 	authoredRequest.mockResolvedValueOnce(
 		page([], { partial: true, failedSources: ['workflow_review'] }),

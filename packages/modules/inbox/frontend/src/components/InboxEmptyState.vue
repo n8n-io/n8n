@@ -7,8 +7,16 @@ import { computed } from 'vue';
 import { useInboxStore } from '../inbox.store';
 
 const store = useInboxStore();
-const { activeTab, hasItems, loading, hasError, partial, isEmpty, openCount, closedCount } =
-	storeToRefs(store);
+const {
+	activeTab,
+	hasItems,
+	loading,
+	initialLoadFailed,
+	partial,
+	isEmpty,
+	openCount,
+	closedCount,
+} = storeToRefs(store);
 const i18n = useI18n();
 const alertIcon = { type: 'icon', value: 'circle-alert' } as const;
 const inboxIcon: EmptyStateIconCards = {
@@ -30,10 +38,10 @@ const noSelectionHeading = computed(() => {
 	<N8nLoading v-if="loading" :loading="true" :rows="3" />
 	<div v-else :class="$style.emptyStateWrapper">
 		<N8nEmptyState
-			v-if="hasError && !hasItems"
+			v-if="initialLoadFailed && !hasItems"
 			:class="$style.emptyState"
 			:icon="alertIcon"
-			:heading="i18n.baseText('inbox.loadError')"
+			:heading="i18n.baseText('workflowReviews.error.load')"
 			:button-text="i18n.baseText('generic.retry')"
 			@click:button="store.fetchActiveTab()"
 		/>
@@ -50,7 +58,7 @@ const noSelectionHeading = computed(() => {
 			:class="$style.emptyState"
 			:icon="inboxIcon"
 			:heading="i18n.baseText(activeTab === 'open' ? 'inbox.empty.open' : 'inbox.empty.closed')"
-			:description="i18n.baseText('inbox.empty.body')"
+			:description="i18n.baseText(`inbox.empty.body.${activeTab}`)"
 			data-test-id="inbox-empty"
 		/>
 		<N8nEmptyState

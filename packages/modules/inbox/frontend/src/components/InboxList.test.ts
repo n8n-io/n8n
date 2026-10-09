@@ -23,6 +23,7 @@ function section(
 		loadingMore: false,
 		hasMore: false,
 		error: null,
+		failedRequest: null,
 		partial: false,
 		...props,
 	};
@@ -72,8 +73,8 @@ it('offers one retry when the first load fails without rows', () => {
 	const { getAllByRole, queryByTestId, emitted } = renderComponent({
 		props: {
 			sections: [
-				section('waiting', { error: new Error('Request failed') }),
-				section('authored', { error: new Error('Request failed') }),
+				section('waiting', { error: new Error('Request failed'), failedRequest: 'list' }),
+				section('authored', { error: new Error('Request failed'), failedRequest: 'list' }),
 			],
 		},
 	});
@@ -82,6 +83,24 @@ it('offers one retry when the first load fails without rows', () => {
 	buttons[0].click();
 	expect(emitted('retryActiveTab')).toEqual([[]]);
 	expect(queryByTestId('inbox-section-header')).not.toBeInTheDocument();
+});
+it('retries the failed page after all loaded rows leave the list', () => {
+	const { getByRole, emitted } = renderComponent({
+		props: {
+			sections: [
+				section('waiting', {
+					hasMore: true,
+					error: new Error('Page failed'),
+					failedRequest: 'loadMore',
+				}),
+				section('authored'),
+			],
+		},
+	});
+	getByRole('button', { name: 'Retry' }).click();
+	expect(emitted('retry')).toEqual([['waiting']]);
+	expect(emitted('retryActiveTab')).toBeUndefined();
+	expect(getByRole('button', { name: 'Waiting for your review' })).toBeInTheDocument();
 });
 it('keeps healthy rows visible beside a failed group', () => {
 	const { queryByRole, getByRole, emitted } = renderComponent({
