@@ -21,6 +21,7 @@ import { assertNever } from '@/utils';
 import { JOB_TYPE_NAME } from './constants';
 import { JobOutcomeTracker } from './job-outcome-tracker';
 import { JobProcessor } from './job-processor';
+import { cancelJobRecovery, clearJobRecovery } from './job-recovery';
 import { throwJobBackToQueue } from './job-return';
 import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
 import type {
@@ -474,12 +475,23 @@ export class ScalingService {
 	}
 
 	async stopJob(job: Job) {
-		const props = { jobId: job.id, executionId: job.data.executionId };
+		const { executionId } = job.data;
+		const props = { jobId: job.id, executionId };
+		const trackedJobId = this.jobOutcomeTracker.currentJobId(executionId);
 
-		// A removed job emits no completion event, and the caller handles the cancellation
-		this.jobOutcomeTracker.drop(job.data.executionId);
+		// A removed job emits no completion event, and the caller handles the cancellation.
+		this.jobOutcomeTracker.drop(executionId);
 
 		try {
+			// Read Redis as well as the tracker, because the recovery event may have been missed.
+			const currentJobId = (await cancelJobRecovery(job)) ?? trackedJobId;
+			const originalJob = job;
+
+			if (currentJobId !== undefined && currentJobId !== job.id) {
+				job = (await job.queue.getJob(currentJobId)) ?? job;
+				props.jobId = job.id;
+			}
+
 			if (await job.isActive()) {
 				await job.progress({ kind: 'abort-job' }); // being processed by worker
 				this.logger.debug('Sent abort signal to worker', props);
@@ -487,6 +499,7 @@ export class ScalingService {
 			}
 
 			await job.remove(); // not yet picked up, or waiting for next pickup (stalled)
+			await clearJobRecovery(originalJob);
 			this.logger.debug('Stopped inactive job', props);
 			return true;
 		} catch (error: unknown) {
@@ -547,6 +560,15 @@ export class ScalingService {
 			if (!this.isJobMessage(msg)) return;
 
 			if (msg.kind === 'abort-job') this.jobProcessor.stopJob(jobId);
+		});
+
+		// With maxStalledCount 0 the sweep fails every activated stall, so this event
+		// only ever reports a never-started job that went back to the queue
+		queue.on('stalled', (job: Job) => {
+			this.logger.warn('Returned a never-started job to the queue', {
+				jobId: job.id,
+				executionId: job.data.executionId,
+			});
 		});
 
 		queue.on('error', (error: Error) => {
@@ -683,6 +705,20 @@ export class ScalingService {
 		});
 		queue.on('global:completed', (jobId: JobId) => {
 			this.jobOutcomeTracker.settleByJobKey(queue.name, jobId);
+		});
+		// The stall sweep returns a never-started job to the queue under a fresh job ID
+		queue.on('global:stalled', (jobId: JobId) => {
+			queue
+				.getJob(jobId)
+				.then((job) => {
+					if (job) this.jobOutcomeTracker.rebind(queue.name, job);
+				})
+				.catch((error: Error) => {
+					this.logger.warn('Failed to load a job the stall sweep returned to the queue', {
+						jobId,
+						error,
+					});
+				});
 		});
 
 		if (this.isQueueMetricsEnabled) {
