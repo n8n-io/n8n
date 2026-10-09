@@ -60,6 +60,7 @@ import type {
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
+import type { DataTableEventMap } from '@/modules/data-table/data-table-event-map';
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
@@ -216,6 +217,7 @@ export class TelemetryEventRelay extends EventRelay {
 		await this.telemetry.init();
 
 		this.setupListeners({
+			'data-table-storage-limit-hit': (event) => this.dataTableStorageLimitHit(event),
 			'team-project-updated': (event) => this.teamProjectUpdated(event),
 			'team-project-deleted': (event) => this.teamProjectDeleted(event),
 			'team-project-created': (event) => this.teamProjectCreated(event),
@@ -338,6 +340,16 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 			'runner-disconnected': (event) => this.runnerDisconnected(event),
+		});
+	}
+
+	private dataTableStorageLimitHit({
+		totalBytes,
+		maxBytes,
+	}: DataTableEventMap['data-table-storage-limit-hit']) {
+		this.telemetry.track('User hit data table storage limit', {
+			total_bytes: totalBytes,
+			max_bytes: maxBytes,
 		});
 	}
 
