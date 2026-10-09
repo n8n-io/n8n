@@ -24,7 +24,7 @@ import {
 	type InboxSourceBoundary,
 } from './inbox-source.registry';
 
-const sourceOrder: InboxSourceType[] = ['workflow_review'];
+const sourceOrder: InboxSourceType[] = ['workflow_review', 'self_healing_result'];
 
 const cursorSchema = z
 	.object({

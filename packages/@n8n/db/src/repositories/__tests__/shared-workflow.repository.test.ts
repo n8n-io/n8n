@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type {
 	Folder,
 	Project,
+	User,
 	WorkflowEntity,
 	WorkflowHistory,
 	WorkflowPublishHistory,
@@ -31,8 +32,77 @@ describe('SharedWorkflowRepository', () => {
 		queryBuilder.andWhere.mockReturnThis();
 		queryBuilder.innerJoin.mockReturnThis();
 		queryBuilder.select.mockReturnThis();
+		queryBuilder.from.mockReturnThis();
+		entityManager.createQueryBuilder.mockReturnValue(queryBuilder);
 
 		vi.spyOn(sharedWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+	});
+
+	describe('buildSharedWorkflowIdsSubquery', () => {
+		const readOnlyUser = mock<User>({
+			id: 'reader',
+			role: { slug: 'custom:reader', scopes: [{ slug: 'workflow:read' }] },
+		});
+
+		it.each([undefined, 'workflow:update', 'execution:read'] as const)(
+			'keeps global read behavior for legacy calls with scope %s',
+			(scope) => {
+				sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(readOnlyUser, {
+					scopes: scope ? [scope] : undefined,
+				});
+				expect(queryBuilder.innerJoin).not.toHaveBeenCalled();
+			},
+		);
+
+		it('keeps share filtering for legacy calls without global workflow read', () => {
+			const executionReader = mock<User>({ role: { scopes: [{ slug: 'execution:read' }] } });
+			sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(executionReader, {
+				scopes: ['execution:read'],
+				projectRoles: [],
+				workflowRoles: [],
+			});
+			expect(queryBuilder.where).toHaveBeenCalledWith('sw.role IN (:...workflowRoles)', {
+				workflowRoles: [],
+			});
+		});
+
+		it('requires a matching share when the global role lacks update', () => {
+			sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(readOnlyUser, {
+				globalScopes: ['workflow:read', 'workflow:update'],
+				projectRoles: ['project:editor'],
+				workflowRoles: ['workflow:owner', 'workflow:editor'],
+			});
+			expect(queryBuilder.where).toHaveBeenCalledWith('sw.role IN (:...workflowRoles)', {
+				workflowRoles: ['workflow:owner', 'workflow:editor'],
+			});
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('pr.userId = :subqueryUserId', {
+				subqueryUserId: readOnlyUser.id,
+			});
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('pr.role IN (:...projectRoles)', {
+				projectRoles: ['project:editor'],
+			});
+		});
+
+		it('allows global access when the role has all requested scopes', () => {
+			const editor = mock<User>({
+				role: { scopes: [{ slug: 'workflow:read' }, { slug: 'workflow:update' }] },
+			});
+			sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(editor, {
+				globalScopes: ['workflow:read', 'workflow:update'],
+			});
+			expect(queryBuilder.innerJoin).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{ projectRoles: [], workflowRoles: ['workflow:editor'] },
+			{ projectRoles: ['project:editor'], workflowRoles: [] },
+		])('returns no rows when an eligible role list is empty', (roles) => {
+			sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(readOnlyUser, {
+				...roles,
+				globalScopes: ['workflow:read', 'workflow:update'],
+			});
+			expect(queryBuilder.where).toHaveBeenCalledWith('1 = 0');
+		});
 	});
 
 	describe('workflow access IDs', () => {
