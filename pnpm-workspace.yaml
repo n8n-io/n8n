@@ -291,6 +291,8 @@ catalog:
   zod-to-json-schema: 3.23.3
   knip: ^6.35.1
   openapi-types: 12.1.3
+  culori: 4.0.2
+  '@types/culori': 4.0.1
 
 catalogMode: strict
 
