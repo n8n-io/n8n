@@ -653,10 +653,11 @@ export const test = base.extend<InstanceAiFixtures>({
 	},
 
 	instanceAiProxySetup: [
-		async ({ n8nContainer, backendUrl, api }, use, testInfo) => {
+		async ({ sut, backendUrl, api }, use, testInfo) => {
 			await api.updateInstanceAiSettings({ searchDisabled: true });
 			// Local-build mode (no Docker container) — skip all proxy setup.
 			// LLM calls go straight to Anthropic, no recording or replay.
+			const n8nContainer = sut.stack;
 			if (!n8nContainer) {
 				await use(undefined);
 				return;

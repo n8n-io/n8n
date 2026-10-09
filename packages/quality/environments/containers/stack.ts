@@ -18,6 +18,7 @@ import {
 	type N8NInstancesResult,
 	type N8NStartupDiagnostics,
 } from './services/n8n';
+import type { PostgresHelper } from './services/postgres';
 import { helperFactories, services } from './services/registry';
 import type { TaskRunnerResult } from './services/task-runner';
 import type {
@@ -72,6 +73,8 @@ export interface N8NStack {
 	 * stacks only — the substrate of the upgrade/downgrade cycles.
 	 */
 	replaceN8N: (options: ReplaceN8NOptions) => Promise<void>;
+	/** The database engine v2 writes to. Present only when the stack runs engine v2. */
+	engineDatabase?: PostgresHelper;
 	/** Direct URLs to each main instance (bypasses load balancer). Index 0 = main-1, etc. */
 	mainUrls: string[];
 	/**
@@ -86,6 +89,14 @@ export interface N8NStack {
 	 */
 	processUrls: N8NProcessUrl[];
 	startupDiagnostics: N8NStartupDiagnostics;
+}
+
+function logKeepalive(baseUrl: string, projectName: string): void {
+	console.log('\n=== KEEPALIVE: Containers left running for debugging ===');
+	console.log(`    URL: ${baseUrl}`);
+	console.log(`    Project: ${projectName}`);
+	console.log('    Cleanup: pnpm --filter n8n-containers stack:clean:all');
+	console.log('=========================================================\n');
 }
 
 export interface N8NProcessUrl {
@@ -571,6 +582,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			baseUrl,
 			projectName: uniqueProjectName,
 			stop: async () => {
+				if (process.env.N8N_CONTAINERS_KEEPALIVE === 'true') {
+					logKeepalive(baseUrl, uniqueProjectName);
+					return;
+				}
 				const cleanup = await resources.dispose(coverageHostDir ? { timeout: 30_000 } : undefined);
 				if (cleanup.failures.length > 0 || cleanup.remaining.length > 0) {
 					throw new Error(cleanupDetails(cleanup));
@@ -580,6 +595,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			serviceResults,
 			hostedServiceEnv,
 			services: servicesProxy,
+			// The engine uses its own server when one is started, otherwise the shared one.
+			engineDatabase: engine ? (servicesProxy.enginePostgres ?? servicesProxy.postgres) : undefined,
 			get logs() {
 				return servicesProxy.observability.logs;
 			},

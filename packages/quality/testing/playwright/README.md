@@ -18,7 +18,6 @@ Commands in this table run from the repository root. Container-backed tests need
 | Investigate Instance AI memory with a local-only, Docker-backed run | `benchmark-memory-instanceai:infrastructure` | `pnpm --filter n8n-playwright exec playwright test --project=benchmark-memory-instanceai:infrastructure` | [Local benchmark setup](tests/infrastructure/benchmarks-local/README.md) |
 | Test workflow execution and schemas | `cli-workflows` | `pnpm --filter n8n-playwright test:workflows` | [Workflow tests](tests/cli-workflows/README.md) |
 | Check fixture, reporter, or helper code without a browser | Vitest | `pnpm --filter n8n-playwright test:unit` | [Test-writing patterns](docs/TESTING_PATTERNS.md) |
-| Check browser-backed harness contracts | Harness Vitest config | `pnpm --filter n8n-playwright test:harness` | [Test-writing patterns](docs/TESTING_PATTERNS.md) |
 | Run evaluation scenarios | `eval` | `pnpm --filter n8n-playwright test:evals` | [Evaluation tests](tests/evals/) |
 
 The Playwright package owns the runner and its specs. Standalone measurement tools live in [efficiency](../../efficiency/README.md). Read [AGENTS.md](AGENTS.md) before you change a test. The examples below run from this package unless noted.
@@ -42,15 +41,11 @@ Product Playwright tests live under `tests/`. Most product tests are grouped
 under `tests/e2e/`, with infrastructure, performance, evaluation, and other
 test suites beside it.
 
-Framework and harness tests live under `tests/framework/`. These tests verify
-the test framework, fixtures, startup lifecycle, diagnostics, and harness
-contracts. They are not product E2E tests and must not be added under
-`tests/e2e/`.
-
-Run browser-free fixture, reporter, and helper tests with `pnpm test:unit`. The default Vitest configuration does not include `tests/framework/`. Run its browser-backed harness contracts with the dedicated configuration:
+Fixtures have no separate harness suite. The product specs exercise them. Unit
+tests for pure fixture logic live next to the code and run with:
 
 ```bash
-pnpm test:harness
+pnpm test:unit
 ```
 
 Inspect the full E2E distribution without running tests or containers:
