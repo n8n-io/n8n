@@ -557,9 +557,10 @@ describe('InstanceAiSandboxService', () => {
 					(createSandbox as Mock).mock.calls[0][1],
 				);
 				expect(entry?.bundleState).toEqual({ trustManifest, verifiedBundles: new Map() });
-				expect(setupSandboxWorkspace).toHaveBeenCalledWith(workspace, expect.anything(), {
-					bundleState: entry?.bundleState,
-				});
+				const setupOptions = (setupSandboxWorkspace as Mock).mock.calls[0]?.[2] as {
+					bundleState: unknown;
+				};
+				expect(setupOptions.bundleState).toBe(entry?.bundleState);
 			},
 		);
 

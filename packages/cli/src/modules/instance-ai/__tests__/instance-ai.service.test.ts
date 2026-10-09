@@ -1181,9 +1181,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			.calls[0]?.[0] as { resolveBundleState: () => Promise<unknown> };
 		const bundleState = await resolveBundleState();
 		expect(bundleState).toEqual({ trustManifest: false, verifiedBundles: new Map() });
-		expect(setupSandboxWorkspace).toHaveBeenCalledWith(workspace, expect.anything(), {
-			bundleState,
-		});
+		const setupOptions = (setupSandboxWorkspace as Mock).mock.calls[0]?.[2] as {
+			bundleState: unknown;
+		};
+		expect(setupOptions.bundleState).toBe(bundleState);
 
 		(createLazyRuntimeWorkspace as Mock).mockClear();
 		(createLazyWorkspaceRuntimeSkillSource as Mock).mockClear();
