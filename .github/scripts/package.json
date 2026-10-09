@@ -6,7 +6,7 @@
   },
   "packageManager": "pnpm@12.4.2",
   "scripts": {
-    "test": "node --test --experimental-test-module-mocks ./*.test.mjs ./docker/*.test.mjs ./owners/*.test.mjs ./quality/*.test.mjs ./slack/*.test.mjs ./stale/*.test.mjs ../../scripts/*.test.mjs ../../scripts/codespace-preview/*.test.mjs ../../scripts/licenses/*.test.mjs ../../scripts/mutation-health/*.test.mjs ../../.devcontainer/codespaces/*.test.mjs",
+    "test": "node --test --experimental-test-module-mocks ./*.test.mjs ./docker/*.test.mjs ./owners/*.test.mjs ./quality/*.test.mjs ./slack/*.test.mjs ./stale/*.test.mjs ./link-check/*.test.mjs ../../scripts/*.test.mjs ../../scripts/codespace-preview/*.test.mjs ../../scripts/licenses/*.test.mjs ../../scripts/mutation-health/*.test.mjs ../../.devcontainer/codespaces/*.test.mjs",
     "generate-sbom": "FETCH_LICENSE=true cdxgen -t pnpm --no-install-deps --profile license-compliance --spec-version 1.6 -o ../../sbom-source.cdx.json ../../compiled/",
     "enrich-sbom": "node ../../scripts/licenses/enrich-sbom.mjs ../../sbom-source.cdx.json",
     "render-licenses-md": "node ../../scripts/licenses/render-licenses-md.mjs ../../sbom-source.cdx.json ../../packages/cli/THIRD_PARTY_LICENSES.md ../../compiled/node_modules",
@@ -19,6 +19,7 @@
     "ajv": "8.20.0",
     "conventional-changelog": "7.2.0",
     "minimatch": "10.2.4",
+    "playwright-core": "1.62.1",
     "semver": "7.7.4",
     "tempfile": "6.0.1",
     "yaml": "^2.8.3"
