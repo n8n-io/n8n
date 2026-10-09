@@ -1,24 +1,27 @@
 export const PACKAGE_TAGS = ['N8nPackage'];
 
 export const EXPORT_SUMMARY = 'Beta: Export workflows, folders, or projects as an n8n package';
+// Line breaks match the legacy YAML literal block, so the generated text is identical.
 export const EXPORT_DESCRIPTION =
 	'**Beta** — breaking changes may still occur without major version bump.\n\n' +
-	'Export workflows and/or folders, or projects, as a gzipped tar archive (.n8np). Provide ' +
-	'`workflowIds`/`folderIds`, or `projectIds`, but not both groups. Each exported folder ' +
-	'includes its nested folders. Empty projects export project metadata only. Statically ' +
-	'referenced sub-workflows must also be included in the resulting package, otherwise the ' +
-	'export is rejected. The response is streamed as `application/gzip` with a ' +
-	'`Content-Disposition` attachment header. Requires the n8n Packages feature to be licensed.\n\n' +
+	'Export workflows and/or folders, or projects, as a gzipped tar archive\n' +
+	'(.n8np). Provide `workflowIds`/`folderIds`, or `projectIds`, but not both\n' +
+	'groups. Each exported folder includes its nested folders. Empty projects\n' +
+	'export project metadata only. Statically referenced sub-workflows must also\n' +
+	'be included in the resulting package, otherwise the export is rejected. The\n' +
+	'response is streamed as `application/gzip` with a `Content-Disposition`\n' +
+	'attachment header. Requires the n8n Packages feature to be licensed.\n\n' +
 	'API key scopes: `workflow:export` is required when exporting workflows or folders, and ' +
 	'`project:export` is required when exporting projects. When `includeVariableValues` is true ' +
 	'(the default) and the exported workflows reference variables, `variable:list` is also ' +
-	'required; exports that reference no variables never need it.';
+	'required; exports that reference no variables never need it.\n';
 
 export const EXPORT_200_DESCRIPTION =
 	'A gzipped tar archive containing the exported package contents.';
 export const EXPORT_COUNTS_HEADER_DESCRIPTION =
-	'JSON-serialized per-entity counts of what actually ended up in the package (after folder ' +
-	'bundling and auto-inclusion), e.g. `{"workflows":2,"folders":1,"credentials":0,"dataTables":0,"variables":0}`.';
+	'JSON-serialized per-entity counts of what actually ended up in the\n' +
+	'package (after folder bundling and auto-inclusion), e.g.\n' +
+	'`{"workflows":2,"folders":1,"credentials":0,"dataTables":0,"variables":0}`.\n';
 
 export const IMPORT_SUMMARY = 'Beta: Import an n8n package into a project';
 export const IMPORT_DESCRIPTION =
