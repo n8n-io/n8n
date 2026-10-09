@@ -204,6 +204,24 @@ describe('withOpenSuspensions with an earlier call that never got its result', (
 		expect(result.messages[2].content).toEqual([waitingRun()]);
 	});
 
+	it('replaces the stored copy of the waiting message that lacks the call, not an older open call', () => {
+		// The memory holds an old stopped call that the checkpoint window does not hold, and the
+		// message of the waiting call without the call.
+		const history = [
+			message('m-old', waitingRun({ workflowId: 'wf-A' })),
+			{ id: 'm-asst-2', role: 'assistant', content: [{ type: 'text', text: 'Proposing' }] },
+		];
+		const checkpoint = checkpointOf([message('m-asst-2', waitingRun({ workflowId: 'wf-B' }))]);
+
+		const result = withOpenSuspensions(history, checkpoint);
+
+		expect(ids(result.messages)).toEqual(['m-old', 'm-asst-2']);
+		expect(result.messages[0].content).toEqual([
+			{ ...waitingRun({ workflowId: 'wf-A' }), canceled: true },
+		]);
+		expect(result.messages[1].content).toEqual([waitingRun({ workflowId: 'wf-B' })]);
+	});
+
 	it('leaves the history as it was when no call is open', () => {
 		const history = [message('e1:assistant', waitingRun())];
 
@@ -219,6 +237,24 @@ describe('withOpenSuspensions and the raw checkpoint values', () => {
 				...waitingRun({ apiKey: '[REDACTED]', action: 'run' }),
 				state: undefined,
 			}),
+		];
+		// The checkpoint has the input that the model sent, with a value that the recorder dropped.
+		const checkpoint = checkpointOf([
+			message('sdk-1', waitingRun({ apiKey, action: 'run', raw: true })),
+		]);
+
+		const result = withOpenSuspensions(history, checkpoint);
+
+		expect(result.messages[0].content).toEqual([
+			waitingRun({ apiKey: '[REDACTED]', action: 'run' }),
+		]);
+		expect(JSON.stringify(result)).not.toContain(apiKey);
+	});
+
+	it('replaces sensitive values in the checkpoint input when the recorded call has no input', () => {
+		const apiKey = randomUUID();
+		const history = [
+			message('e1:assistant', { ...waitingRun(), input: undefined, state: undefined }),
 		];
 		const checkpoint = checkpointOf([message('sdk-1', waitingRun({ apiKey, action: 'run' }))]);
 

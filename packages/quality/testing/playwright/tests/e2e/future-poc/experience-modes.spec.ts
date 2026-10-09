@@ -280,12 +280,44 @@ async function turnOnProposal(
 	});
 }
 
-/** Clicks "Turn it on" on the card. The workflow must then be active and listed as On. */
+/**
+ * Clicks "Turn it on" on the card. The card then shows its answered state, and the workflow
+ * must be active and listed as On.
+ */
 async function turnOnFromCard(n8n: n8nPage, digestId: string): Promise<void> {
 	await n8n.experienceModes.getProposalTurnOnButton().click();
-	await expect.poll(async () => (await n8n.api.workflows.getWorkflow(digestId)).active).toBe(true);
+	await expect(n8n.experienceModes.getProposalResolved()).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
+	await expect(n8n.experienceModes.getProposalCard()).toBeHidden();
+	await expect(n8n.experienceModes.getProposalResolvedStatus()).toHaveAttribute(
+		'data-status',
+		'on',
+		{
+			timeout: CHAT_TIMEOUT_MS,
+		},
+	);
+	// The answer resumes the run, which turns the workflow on.
+	await expect
+		.poll(async () => (await n8n.api.workflows.getWorkflow(digestId)).active, {
+			timeout: CHAT_TIMEOUT_MS,
+		})
+		.toBe(true);
 	await n8n.navigate.toInstanceAi();
 	await expect(n8n.experienceModes.getAutomationRow(`${AUTOMATION_WORKFLOW_NAME}, On`)).toBeVisible(
+		{ timeout: CHAT_TIMEOUT_MS },
+	);
+}
+
+/**
+ * Waits for a read of the chat history that holds the proposal call. The chat does not read
+ * its history while a turn streams, so the first such read is the read after the turn ended.
+ * The page applies that read to the chat, so the card must stay after it.
+ */
+async function waitForHistoryWithProposal(n8n: n8nPage, threadId: string): Promise<void> {
+	await n8n.page.waitForResponse(
+		async (response) =>
+			response.request().method() === 'GET' &&
+			response.url().includes(`/chat/${threadId}/messages`) &&
+			(await response.text()).includes('"toolName":"propose_automation"'),
 		{ timeout: CHAT_TIMEOUT_MS },
 	);
 }
@@ -537,7 +569,9 @@ test.describe(
 
 			await turnOnProposal(n8n, suspension);
 			await expect
-				.poll(async () => (await n8n.api.workflows.getWorkflow(digestId)).active)
+				.poll(async () => (await n8n.api.workflows.getWorkflow(digestId)).active, {
+					timeout: CHAT_TIMEOUT_MS,
+				})
 				.toBe(true);
 			await n8n.navigate.toInstanceAi();
 			await expect(
@@ -572,9 +606,9 @@ test.describe(
 			const digestId = await buildDigestInChat(n8n, startLlm, startAssistantRun, chat.id);
 			const proposeLlm = await startLlm(proposeDigestScript(digestId));
 
-			// When the turn ends, the chat reads its history again. Check the card after that:
-			// the row then says that the chat waits for the user.
 			await n8n.start.fromInstanceAiThread(chat.id);
+			// When the turn ends, the chat reads its history again. Check the card after that read.
+			const historyAfterTurn = waitForHistoryWithProposal(n8n, chat.id);
 			await n8n.instanceAi.sendMessage('Turn it into an automation');
 			await expect(n8n.instanceAi.getPanelText(PROPOSAL_REPLY)).toBeVisible({
 				timeout: CHAT_TIMEOUT_MS,
@@ -583,6 +617,13 @@ test.describe(
 			await expect(
 				n8n.experienceModes.getSidebarMenuItem(`${LIVE_CHAT_TITLE}, Waiting for you`),
 			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
+			await historyAfterTurn;
+			await expect(n8n.experienceModes.getProposalCard()).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+
+			// A reload shows the same card.
+			await n8n.page.reload();
 			await expect(n8n.experienceModes.getProposalCard()).toBeVisible({
 				timeout: CHAT_TIMEOUT_MS,
 			});

@@ -27,6 +27,13 @@ import {
 	splitIntoSegments,
 } from './messageSegments';
 import {
+	isSettledToolCall,
+	openSuspensionOf,
+	reconcileMessageStatus,
+	settleUnfinishedToolCall,
+	type OpenSuspensionsById,
+} from './openSuspensionState';
+import {
 	attachmentFromPersistedPart,
 	reasoningSegmentFromPersistedPart,
 	toolCallFromPersistedPart,
@@ -425,25 +432,6 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 	return result;
 }
 
-type OpenSuspensionsById = ReadonlyMap<string, AgentBuilderOpenSuspension>;
-
-const SETTLED_TOOL_CALL_STATES: ReadonlySet<ToolCall['state']> = new Set([
-	TOOL_CALL_STATE.DONE,
-	TOOL_CALL_STATE.ERROR,
-	TOOL_CALL_STATE.CANCELLED,
-]);
-
-/**
- * The open suspension of a call. A model can use a tool call id again, so the server marks an
- * earlier call with the id of the open call as cancelled. Such a call is never the open call.
- */
-function openSuspensionOf(
-	call: { toolCallId: string; cancelled?: boolean },
-	byToolCallId: OpenSuspensionsById,
-): AgentBuilderOpenSuspension | undefined {
-	return call.cancelled === true ? undefined : byToolCallId.get(call.toolCallId);
-}
-
 function reArmToolCall(
 	msg: ChatMessage,
 	toolCall: ToolCall,
@@ -461,16 +449,6 @@ function reArmToolCall(
 	}
 }
 
-/** A call that no open suspension waits for ended with its run. */
-function settleUnfinishedToolCall(msg: ChatMessage, toolCall: ToolCall): void {
-	if (msg.status === CHAT_MESSAGE_STATUS.ERROR) {
-		toolCall.state = TOOL_CALL_STATE.ERROR;
-	} else if (msg.status !== CHAT_MESSAGE_STATUS.STREAMING || toolCall.canceled === true) {
-		toolCall.state = TOOL_CALL_STATE.CANCELLED;
-		toolCall.canceled = true;
-	}
-}
-
 /** Resolved cards stay. An open card stays only while its suspension is open. */
 function retainedInteractives(
 	msg: ChatMessage,
@@ -482,16 +460,6 @@ function retainedInteractives(
 		if (suspension) interactive.runId = suspension.runId;
 		return suspension !== undefined;
 	});
-}
-
-function reconcileMessageStatus(msg: ChatMessage, hasOpenToolCall: boolean): void {
-	if (hasOpenToolCall) {
-		msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
-	} else if (msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER) {
-		msg.status = msg.toolCalls?.some((tc) => tc.state === TOOL_CALL_STATE.ERROR)
-			? CHAT_MESSAGE_STATUS.ERROR
-			: CHAT_MESSAGE_STATUS.SUCCESS;
-	}
 }
 
 /**
@@ -512,7 +480,7 @@ export function applyOpenSuspensions(
 	for (const msg of chat) {
 		let hasOpenToolCall = false;
 		for (const toolCall of msg.toolCalls ?? []) {
-			if (SETTLED_TOOL_CALL_STATES.has(toolCall.state)) continue;
+			if (isSettledToolCall(toolCall)) continue;
 
 			const suspension = openSuspensionOf(
 				{ toolCallId: toolCall.toolCallId, cancelled: toolCall.canceled },

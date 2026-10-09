@@ -12,7 +12,7 @@ import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useOptionalThread } from '../../instanceAi.store';
 import { placeOf, type AutomationAction } from './automationProposal';
-import { resolvedStatus, toolOutcome, type AutomationResolvedTone } from './automationResolved';
+import { proposalOutcome, resolvedStatus, type AutomationResolvedTone } from './automationResolved';
 import { placeName, triggerText } from './automationText';
 
 const props = defineProps<{
@@ -38,11 +38,9 @@ const thread = useOptionalThread();
 const statusId = useId();
 const root = useTemplateRef<InstanceType<typeof N8nCard>>('root');
 
-const outcome = computed(() => {
-	if (!props.toolCallId) return undefined;
-	const call = thread?.findToolCall(props.toolCallId);
-	return call === undefined ? undefined : toolOutcome(call);
-});
+const outcome = computed(() =>
+	props.toolCallId ? proposalOutcome(thread?.findToolCall(props.toolCallId)) : undefined,
+);
 
 const status = computed(() => resolvedStatus(props.action, props.proposal, outcome.value));
 const trigger = computed(() => triggerText(props.proposal.trigger, 'clause'));

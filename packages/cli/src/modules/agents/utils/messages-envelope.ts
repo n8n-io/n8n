@@ -151,18 +151,20 @@ function persistedCopiesOf(
 }
 
 /**
- * The persisted part that is the open call. A message with the id of the waiting checkpoint
- * message holds it. Otherwise the call is the latest part with its identity, when that part
- * still waits. A settled latest part is the call only when the history holds more parts with
- * the identity than the checkpoint holds before the waiting part: the user answered, and the
- * checkpoint is not removed yet. Otherwise the history does not hold the call yet.
+ * The persisted part that is the open call. When the history holds the waiting checkpoint
+ * message (the same id), the part in that message is the call, if the message has it yet.
+ * Otherwise the call is the latest part with its identity, when that part still waits. A
+ * settled latest part is the call only when the history holds more parts with the identity
+ * than the checkpoint holds before the waiting part: the user answered, and the checkpoint is
+ * not removed yet. Otherwise the history does not hold the call yet.
  */
 function persistedCallOf(
 	copies: PersistedCopy[],
 	waiting: WaitingCall | undefined,
+	waitingMessagePersisted: boolean,
 ): PersistedCopy | undefined {
 	const inWaitingMessage = copies.findLast((copy) => copy.place === 'waiting');
-	if (inWaitingMessage) return inWaitingMessage;
+	if (inWaitingMessage !== undefined || waitingMessagePersisted) return inWaitingMessage;
 	const latest = copies.at(-1);
 	if (latest?.place !== 'unknown') return undefined;
 	if (!latest.terminal) return latest;
@@ -176,6 +178,7 @@ function matchOpenCalls(
 ): Map<string, OpenCallMatch> {
 	const waitingCalls = waitingCallsIn(checkpointMessages, open);
 	const checkpointIds = new Set(checkpointMessages.map(({ id }) => id));
+	const persistedIds = new Set(messages.map(({ id }) => id));
 	const matches = new Map<string, OpenCallMatch>();
 	for (const toolCallId of open.keys()) {
 		const waiting = waitingCalls.get(toolCallId);
@@ -184,7 +187,11 @@ function matchOpenCalls(
 			return checkpointIds.has(messageId) ? 'earlier' : 'unknown';
 		};
 		const copies = persistedCopiesOf(messages, toolCallId, open, placeOf);
-		matches.set(toolCallId, { waiting, target: persistedCallOf(copies, waiting) });
+		const waitingMessagePersisted = waiting !== undefined && persistedIds.has(waiting.messageId);
+		matches.set(toolCallId, {
+			waiting,
+			target: persistedCallOf(copies, waiting, waitingMessagePersisted),
+		});
 	}
 	return matches;
 }

@@ -239,10 +239,16 @@ describe('open suspensions in a history with repeated ids (property)', () => {
 						...message,
 						id: sameIds ? message.id : `sdk-${message.id}`,
 						content: message.content.map((part) =>
-							part.state === 'pending' ? { ...part, state: 'rejected', error: 'INTERRUPTED' } : part,
+							part.state === 'pending'
+								? { ...part, state: 'rejected', error: 'INTERRUPTED' }
+								: part,
 						),
 					})),
-					{ id: 'sdk-open', role: 'assistant', content: [waitingPartOf(open.openId, open.openName)] },
+					{
+						id: 'sdk-open',
+						role: 'assistant',
+						content: [waitingPartOf(open.openId, open.openName)],
+					},
 				],
 			},
 		} as unknown as SerializableAgentState;
@@ -292,8 +298,7 @@ describe('open suspensions in a history with repeated ids (property)', () => {
 							}
 						}),
 					);
-					// Every history call with the open identity has its part, and only the waiting
-					// call is open, with the input of the checkpoint.
+					// Only the waiting call is open, with the input of the checkpoint.
 					expect(openPartsOf(result.messages, open.openId)).toEqual([
 						waitingPartOf(open.openId, open.openName),
 					]);
@@ -312,7 +317,9 @@ describe('open suspensions in a history with repeated ids (property)', () => {
 				const answered: AgentPersistedMessageDto = {
 					id: sameIds ? 'sdk-open' : 'answered:assistant',
 					role: 'assistant',
-					content: [{ ...waitingPartOf(open.openId, open.openName), state: 'resolved', output: 'ok' }],
+					content: [
+						{ ...waitingPartOf(open.openId, open.openName), state: 'resolved', output: 'ok' },
+					],
 				};
 
 				const result = withOpenSuspensions(
@@ -320,7 +327,9 @@ describe('open suspensions in a history with repeated ids (property)', () => {
 					checkpointOf(history, open, sameIds),
 				);
 
-				expect(result.messages.map(({ id }) => id)).toEqual([...history, answered].map(({ id }) => id));
+				expect(result.messages.map(({ id }) => id)).toEqual(
+					[...history, answered].map(({ id }) => id),
+				);
 				expect(result.messages.at(-1)).toEqual(answered);
 				expect(openPartsOf(result.messages, open.openId)).toEqual([]);
 			}),

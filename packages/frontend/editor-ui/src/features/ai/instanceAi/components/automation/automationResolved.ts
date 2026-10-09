@@ -3,6 +3,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 
 import {
 	automationResultOf,
+	PROPOSE_AUTOMATION_TOOL_NAME,
 	type AutomationResult,
 } from '@/features/ai/shared/agentsChat/automationResult';
 import { triggerLineKey, type AutomationAction } from './automationProposal';
@@ -20,6 +21,7 @@ export type AutomationToolOutcome = AutomationResult | { kind: 'waiting' } | { k
 
 /** The tool call fields that the outcome reads (the Assistant thread mirror has this shape). */
 export interface AutomationToolCall {
+	toolName?: string;
 	result?: unknown;
 	error?: string;
 }
@@ -123,6 +125,18 @@ const NO_TRIGGER_KEYS: Partial<Record<AutomationResolvedKind, BaseTextKey>> = {
 export function toolOutcome(call: AutomationToolCall): AutomationToolOutcome {
 	if (call.error !== undefined) return { kind: 'failed' };
 	return automationResultOf(call.result) ?? { kind: 'waiting' };
+}
+
+/**
+ * The outcome of the card's own tool step. A model can use a tool call id again, so the call
+ * with the card's id can be an earlier call of another tool. Its result says nothing about the
+ * card, so the card then has no tool step to read.
+ */
+export function proposalOutcome(
+	call: AutomationToolCall | undefined,
+): AutomationToolOutcome | undefined {
+	if (call === undefined) return undefined;
+	return toolOutcome(call);
 }
 
 /** "Make changes live" is "Turn it on" for a workflow that was on already. */

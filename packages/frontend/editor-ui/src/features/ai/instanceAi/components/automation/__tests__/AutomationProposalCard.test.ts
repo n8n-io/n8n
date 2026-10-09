@@ -541,6 +541,19 @@ describe('AutomationProposalCard after the answer', () => {
 		expect(iconOf()).toHaveAttribute('data-icon', 'circle-check');
 	});
 
+	it('trusts the answer when the call with its id is an earlier call of another tool', () => {
+		// A model can use a tool call id again, so the build call before the card can have its id.
+		const call = ref(
+			toolCall({ toolName: 'build-workflow', result: { workflowId: 'wf-1', saved: true } }),
+		);
+		const { getByTestId } = renderAnswered(TURN_ON, { call });
+
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveAttribute('data-status', 'on');
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+			`It's on. "Morning digest" runs at 08:00`,
+		);
+	});
+
 	it('says that the workflow was saved but is off when the result is not active', async () => {
 		const call = ref(toolCall({ result: TURN_ON }));
 		const { getByTestId } = renderAnswered(TURN_ON, { call });

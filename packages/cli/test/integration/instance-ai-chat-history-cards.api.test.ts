@@ -353,3 +353,61 @@ describe('a card that waits in the Assistant chat history', () => {
 		});
 	});
 });
+
+describe('a card that the user stopped, and a later card with its id and tool', () => {
+	/** The owner sends a message, and the turn suspends on a card of another run. */
+	async function ownerOpensAnotherCard(threadId: string, message: string, runIdBefore: string) {
+		const response = await ownerAgent.post(url()).send({ message, sessionId: threadId });
+		expect(response.text).not.toContain('"type":"error"');
+		return await vi.waitFor(async () => {
+			const checkpoint = await Container.get(N8NCheckpointStorage).findSuspendedForThread(
+				ASSISTANT_AGENT_ID,
+				threadId,
+			);
+			const pending = Object.values(checkpoint?.pendingToolCalls ?? {}).find(
+				(call) => call.suspended && call.runId !== runIdBefore,
+			);
+			if (!pending?.suspended) throw new Error('The new card is not open yet');
+			return { runId: pending.runId, toolCallId: pending.toolCallId };
+		});
+	}
+
+	test('keeps the stopped card cancelled, and the answer settles the later card only', async () => {
+		const threadId = await createSharedThread();
+		const stopped = await ownerOpensCard(threadId, 'propose');
+		const stop = await ownerAgent.delete(url(`/runs/${stopped.runId}`)).expect(200);
+		expect(stop.body.data).toEqual({ cancelled: true });
+
+		const card = await ownerOpensAnotherCard(threadId, 'propose', stopped.runId);
+		expect(card.toolCallId).toBe(stopped.toolCallId);
+
+		const waiting = await readMessages(viewerAgent, threadId);
+		const [stoppedPart, openPart] = toolParts(waiting);
+		expect(toolParts(waiting)).toHaveLength(2);
+		expect(stoppedPart).toMatchObject({ toolName: 'propose_automation', canceled: true });
+		expect(openPart).toMatchObject({ toolName: 'propose_automation', toolCallId: REUSED_ID });
+		expect(openPart.canceled).toBeUndefined();
+		expect(waiting.openSuspensions).toEqual([
+			expect.objectContaining({ toolCallId: REUSED_ID, runId: card.runId }),
+		]);
+
+		const answer = await ownerAgent
+			.post(url('/resume'))
+			.send({ ...card, resumeData: { kind: 'capabilityDecision', approved: true } });
+		expect(answer.status).toBe(200);
+		expect(answer.text).not.toContain('"type":"error"');
+
+		const answered = await readMessages(viewerAgent, threadId);
+		const [stoppedAfter, settled] = toolParts(answered);
+		expect(toolParts(answered)).toHaveLength(2);
+		expect(stoppedAfter).toMatchObject({ canceled: true });
+		expect(stoppedAfter).not.toHaveProperty('output');
+		expect(stoppedAfter).not.toHaveProperty('approvedBy');
+		expect(settled).toMatchObject({
+			toolName: 'propose_automation',
+			state: 'resolved',
+			approvedBy: { id: owner.id, name: 'Olivia Owner' },
+		});
+		expect(answered.openSuspensions).toEqual([]);
+	});
+});

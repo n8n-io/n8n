@@ -84,6 +84,16 @@ export class ExperienceModes {
 		return this.page.getByTestId('automation-proposal-turn-on');
 	}
 
+	/** The answered proposal card. It says what happened to the workflow. */
+	getProposalResolved(): Locator {
+		return this.page.getByTestId('automation-proposal-resolved');
+	}
+
+	/** The status line of the answered proposal card. Its `data-status` names the outcome. */
+	getProposalResolvedStatus(): Locator {
+		return this.page.getByTestId('automation-proposal-resolved-status');
+	}
+
 	/** One group of the chat list in Power mode. */
 	getChatGroup(group: 'needs-you' | 'working' | 'ready' | 'done'): Locator {
 		return this.page.getByTestId(`assistant-chat-group-${group}`);

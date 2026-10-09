@@ -53,6 +53,17 @@ describe('isDesignSystemMenuItem', () => {
 		expect(isDesignSystemMenuItem(menuItem('aria-required-parent', html))).toBe(true);
 	});
 
+	test('matches a menu item link whose first attribute is the role', () => {
+		for (const html of ['<a role="menuitem">', '<a role="menuitem" href="/x">']) {
+			expect(isDesignSystemMenuItem(menuItem('aria-required-parent', html))).toBe(true);
+		}
+	});
+
+	test('does not match a tag whose name only starts with a', () => {
+		const html = '<abbr role="menuitem" title="x">';
+		expect(isDesignSystemMenuItem(menuItem('aria-required-parent', html))).toBe(false);
+	});
+
 	test('does not match a menu item link with another blocking rule', () => {
 		const html = '<a href="/home" role="menuitem" aria-label="">';
 		expect(isDesignSystemMenuItem(menuItem('link-name', html))).toBe(false);
