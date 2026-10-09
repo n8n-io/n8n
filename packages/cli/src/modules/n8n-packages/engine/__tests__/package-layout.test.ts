@@ -1,4 +1,5 @@
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 import type { SerializedCredential } from '../../spec/serialized/credential.schema';
 import type { SerializedVariable } from '../../spec/serialized/variable.schema';
 import {
@@ -61,11 +62,11 @@ describe('package-layout', () => {
 	});
 
 	describe('credential data placement', () => {
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'cred-1',
 			name: 'GitHub',
 			type: 'githubApi',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 		const bundled = (target: string, data?: SerializedCredential['data']) =>
 			new Map<string, SerializedCredential>([

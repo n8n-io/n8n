@@ -246,10 +246,12 @@ describe('ImportPackageRequestDto', () => {
 	});
 
 	it('accepts create-with-values credentialMissingMode', () => {
-		const result = ImportPackageRequestDto.safeParse({
-			credentialMissingMode: 'create-with-values',
-			workflowConflictPolicy: 'fail',
-		});
+		const result = ImportPackageRequestDto.safeParse(
+			withPackageFile({
+				credentialMissingMode: 'create-with-values',
+				workflowConflictPolicy: 'fail',
+			}),
+		);
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data.credentialMissingMode).toBe('create-with-values');

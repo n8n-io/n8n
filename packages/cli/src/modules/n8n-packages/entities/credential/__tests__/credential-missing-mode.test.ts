@@ -77,12 +77,17 @@ describe('credentialBlockingFailures', () => {
 	describe('create-with-values', () => {
 		it('rescues the same failures as create-stub', () => {
 			const rescuable = createFailure(
-				{ id: 'cred-1', name: 'X', type: 'githubApi', usedByWorkflows: ['wf-1'] },
+				{ id: 'cred-1', name: 'X', type: 'githubApi', usedBy: [{ kind: 'workflow', id: 'wf-1' }] },
 				'not_found',
 			);
 			const blockedBinding = {
 				...createFailure(
-					{ id: 'cred-2', name: 'Y', type: 'githubApi', usedByWorkflows: ['wf-2'] },
+					{
+						id: 'cred-2',
+						name: 'Y',
+						type: 'githubApi',
+						usedBy: [{ kind: 'workflow', id: 'wf-2' }],
+					},
 					'not_found',
 				),
 				targetId: 'target-missing',
@@ -98,11 +103,11 @@ describe('credentialBlockingFailures', () => {
 
 		it('still blocks unknown_type and source_not_found failures', () => {
 			const unknownType = createFailure(
-				{ id: 'cred-1', name: 'X', type: 'bad', usedByWorkflows: ['wf-1'] },
+				{ id: 'cred-1', name: 'X', type: 'bad', usedBy: [{ kind: 'workflow', id: 'wf-1' }] },
 				'unknown_type',
 			);
 			const sourceNotFound = createFailure(
-				{ id: 'cred-2', name: 'Y', type: 'githubApi', usedByWorkflows: ['wf-2'] },
+				{ id: 'cred-2', name: 'Y', type: 'githubApi', usedBy: [{ kind: 'workflow', id: 'wf-2' }] },
 				'source_not_found',
 			);
 

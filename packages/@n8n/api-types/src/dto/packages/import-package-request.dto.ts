@@ -108,9 +108,10 @@ export class ImportPackageRequestDto extends Z.class(
 			['id-only', 'name-and-type', 'type-only'],
 			'id-only',
 		).openapi(importPackageRequestFieldDocs.credentialMatchingMode),
-		credentialMissingMode: optionalEnum(['must-preexist', 'create-stub', 'create-with-values'], 'create-stub').openapi(
-			importPackageRequestFieldDocs.credentialMissingMode,
-		),
+		credentialMissingMode: optionalEnum(
+			['must-preexist', 'create-stub', 'create-with-values'],
+			'create-stub',
+		).openapi(importPackageRequestFieldDocs.credentialMissingMode),
 		bindings: bindingsSchema.openapi(importPackageRequestFieldDocs.bindings),
 		// Required (unlike every other mode/policy field here), matching the legacy handler, which
 		// required it even though this schema alone would otherwise default it to `new-version`.
