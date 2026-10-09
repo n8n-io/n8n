@@ -70,6 +70,10 @@ Include `execution.id` only when `execution.status` is `available`.
 Offer this action for `needs_you` and `could_not_fix` results.
 The normal handoff opens a new chat in the clicking user's personal project.
 Normal chat ownership and tool permissions apply. Do not copy the background conversation or grants.
+After the opening message is accepted and navigation succeeds, the Inbox calls the dismissal
+endpoint for an open result. This moves the result to Closed. A failed handoff leaves it open.
+The normal chat APIs do not close results themselves. If dismissal fails after the chat opens,
+read the result again to check its state. Show a warning if closure cannot be confirmed.
 
 ## Availability
 

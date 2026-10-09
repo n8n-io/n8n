@@ -647,13 +647,13 @@ export function useInstanceAiHandoff() {
 			newTab?: boolean;
 			context?: InstanceAiHandoffContext;
 		},
-	): Promise<void> {
+	): Promise<boolean> {
 		if (!instanceAiReady.value) {
 			await routeToSetup();
-			return;
+			return false;
 		}
 		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
-		if (handoffInFlight) return;
+		if (handoffInFlight) return false;
 		handoffInFlight = true;
 		const responseStartedAtEpochMs = instanceAiResponseNow();
 		try {
@@ -670,12 +670,15 @@ export function useInstanceAiHandoff() {
 				if (!threadId) {
 					tab?.close();
 					showOpenFailed();
-					return;
+					return false;
 				}
 				const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
 				if (tab) tab.location.href = router.resolve(route).href;
-				else await router.push(route); // popup blocked → same tab; it consumes the message
-				return;
+				else if (await router.push(route)) {
+					showOpenFailed();
+					return false;
+				}
+				return true;
 			}
 			// Same tab: send through a runtime seeded here, which survives the navigation.
 			const threadId = uuidv4();
@@ -683,14 +686,14 @@ export function useInstanceAiHandoff() {
 				await instanceAiStore.syncThread(threadId, projectId, launch);
 			} catch {
 				showOpenFailed();
-				return;
+				return false;
 			}
 			const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 			prepare?.(threadId);
-			if (!(await navigateToNewThread(threadId))) return;
+			if (!(await navigateToNewThread(threadId))) return false;
 			// Send only after the navigation lands, so a run never starts in a thread
 			// the user can't see.
-			void thread.sendMessage(message, {
+			return await thread.sendMessage(message, {
 				authorship,
 				attachments,
 				pushRef: rootStore.pushRef,

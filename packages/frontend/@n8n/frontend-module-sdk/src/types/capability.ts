@@ -44,5 +44,6 @@ export interface SelfHealingChatInput {
 
 export interface SelfHealingChatHandoff {
 	available: ComputedRef<boolean>;
-	start(input: SelfHealingChatInput): Promise<void>;
+	/** Returns true after the opening message is accepted and the chat opens. */
+	start(input: SelfHealingChatInput): Promise<boolean>;
 }

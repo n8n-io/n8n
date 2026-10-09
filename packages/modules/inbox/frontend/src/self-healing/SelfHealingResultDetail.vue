@@ -64,9 +64,13 @@ watch(
 	{ immediate: true },
 );
 
-function reconcile(before: SelfHealingResultDetail, after: SelfHealingResultDetail) {
+function reconcile(
+	before: SelfHealingResultDetail,
+	after: SelfHealingResultDetail,
+	onItemChange = props.onItemChange,
+) {
 	if (before.reviewState === 'open' && after.reviewState !== 'open') {
-		props.onItemChange({
+		onItemChange({
 			type: 'self_healing_result',
 			id: after.resultId,
 			state: 'closed',
@@ -133,6 +137,35 @@ async function retryDetail() {
 	}
 }
 
+async function closeAfterChat(
+	before: SelfHealingResultDetail,
+	target: SelfHealingSelection,
+	onItemChange: (change: InboxItemChange) => void,
+) {
+	let current: SelfHealingResultDetail | undefined;
+	try {
+		current = await reviewSelfHealingResult(rootStore.restApiContext, target, 'dismiss');
+	} catch {
+		// Chat has already opened. Recover a lost close response without starting it again.
+		try {
+			current = await fetchSelfHealingResult(rootStore.restApiContext, target);
+		} catch (readError) {
+			store.setError(target, readError);
+			if (props.isSelected(target.id)) unresolvedAction.value = { before, action: 'dismiss' };
+		}
+	}
+	if (current) {
+		store.acceptResult(current);
+		reconcile(before, current, onItemChange);
+		if (current.reviewState !== 'open') return;
+	}
+	showMessage({
+		type: 'warning',
+		duration: 0,
+		title: i18n.baseText('inbox.selfHealing.action.chatCloseError'),
+	});
+}
+
 async function onAction(action: SelfHealingReviewAction | 'chat') {
 	const before = detail.value;
 	if (!before || pendingAction.value || !store.isSelected(props.selection)) return;
@@ -144,6 +177,7 @@ async function onAction(action: SelfHealingReviewAction | 'chat') {
 
 	const target = { ...props.selection };
 	const isSelected = props.isSelected;
+	const onItemChange = props.onItemChange;
 	pendingAction.value = action;
 	try {
 		if (action === 'chat') {
@@ -151,7 +185,7 @@ async function onAction(action: SelfHealingReviewAction | 'chat') {
 			store.acceptResult(fresh);
 			reconcile(before, fresh);
 			if (!isSelected(target.id) || fresh.outcome === 'fix_ready') return;
-			await chat?.start({
+			const opened = await chat?.start({
 				resultId: fresh.resultId,
 				outcome: fresh.outcome,
 				report: fresh.report,
@@ -159,6 +193,7 @@ async function onAction(action: SelfHealingReviewAction | 'chat') {
 				workflowName: workflowName.value,
 				...(fresh.execution.status === 'available' ? { executionId: fresh.execution.id } : {}),
 			});
+			if (opened && fresh.reviewState === 'open') await closeAfterChat(fresh, target, onItemChange);
 			return;
 		}
 

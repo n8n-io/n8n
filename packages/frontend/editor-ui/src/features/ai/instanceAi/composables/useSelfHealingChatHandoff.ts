@@ -11,15 +11,15 @@ export function useSelfHealingChatHandoff(): SelfHealingChatHandoff {
 	const { showError } = useToast();
 	const i18n = useI18n();
 
-	async function start(input: SelfHealingChatInput): Promise<void> {
-		if (!available.value) return;
+	async function start(input: SelfHealingChatInput): Promise<boolean> {
+		if (!available.value) return false;
 		const projectId = await ensurePersonalProjectId();
 		if (!projectId) {
 			showError(
 				new Error(i18n.baseText('instanceAi.handoff.openFailed.message')),
 				i18n.baseText('instanceAi.handoff.openFailed.title'),
 			);
-			return;
+			return false;
 		}
 
 		const outcome = i18n.baseText(
@@ -34,7 +34,7 @@ export function useSelfHealingChatHandoff(): SelfHealingChatHandoff {
 			})}`;
 		}
 
-		await startThread(
+		return await startThread(
 			projectId,
 			message,
 			{ kind: 'prefill', prefillType: 'handoff_self_healing_result' },

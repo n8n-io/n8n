@@ -12,7 +12,8 @@ review opens the Closed tab, as before.
 Assistant details live in `src/self-healing`. They show saved reports, workflow
 changes, review activity, and usage. Result actions use the existing self-healing
 API. Continue in chat opens a new private chat in the current user's personal
-project. Self-healing remains off by default.
+project. After the chat opens, it closes the result through the dismissal API.
+If the chat cannot open, the result stays open. Self-healing remains off by default.
 
 Frontend feature module. Consumed from source by the editor-ui shell through
 `src/app/modules.manifest.ts`; there is no build step and no `dist`.
