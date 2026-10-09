@@ -44,8 +44,14 @@ const PLACEHOLDER_PASSWORD = '!trusted-source-no-password';
 // Matches the `firstName`/`lastName` column length on `User`.
 const MAX_NAME_LENGTH = 32;
 
-/** A resolved principal plus the event to emit once the transaction committed. */
-type Resolved = Result<{ principal: Principal; onCommit?: () => void | Promise<void> }>;
+/**
+ * A resolved principal plus the work to run once the transaction committed.
+ * `onCommit` returns a principal when the work changed the role the transaction read.
+ */
+type Resolved = Result<{
+	principal: Principal;
+	onCommit?: () => Promise<Principal | undefined>;
+}>;
 
 function buildContext(
 	verified: Verified,
@@ -189,6 +195,14 @@ export class TrustedSourceIdentityService extends IdentityService {
 							mappedRoles.resolved,
 							mappedRoles.managed,
 						);
+						// The request that changed the role must run with the new role, so re-read it.
+						if (
+							!mappedRoles.managed.instanceRole ||
+							binding.user.role.slug === mappedRoles.instanceRole
+						)
+							return;
+						const user = await this.users.findByIdWithRole(binding.user.id);
+						return user === null ? undefined : principalFromUser(user);
 					},
 				}),
 			},
@@ -222,7 +236,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 				value: {
 					principal: accepted.value.principal,
 					onCommit: async () => {
-						await accepted.value.onCommit?.();
+						const refreshed = await accepted.value.onCommit?.();
 						this.eventService.emit('trusted-source-identity-linked', {
 							userId: user.id,
 							sourceId: source.id,
@@ -230,6 +244,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 							issuer: source.issuer,
 							provenance: 'claim-match',
 						});
+						return refreshed;
 					},
 				},
 			};
@@ -282,7 +297,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 			ok: true,
 			value: {
 				principal: principalFromUser(user),
-				onCommit: () => {
+				onCommit: async () => {
 					this.eventService.emit('trusted-source-user-provisioned', {
 						userId: user.id,
 						sourceId: source.id,
@@ -290,6 +305,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 						issuer: source.issuer,
 						role,
 					});
+					return undefined;
 				},
 			},
 		};
@@ -341,8 +357,8 @@ export class TrustedSourceIdentityService extends IdentityService {
 			return await this.linkOrProvision(source, external, mapped.value, ctx);
 		});
 		if (result.ok) {
-			await result.value.onCommit?.();
-			return { ok: true, value: result.value.principal };
+			const refreshed = await result.value.onCommit?.();
+			return { ok: true, value: refreshed ?? result.value.principal };
 		}
 
 		return result;

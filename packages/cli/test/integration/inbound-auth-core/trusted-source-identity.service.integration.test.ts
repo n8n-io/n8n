@@ -751,8 +751,10 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			await bind(source, 'alice', member.id, { provenance: 'jit' });
 			const input = verified(source, claims('alice', member.email, ['admins']));
 
-			expectOk(await service.identify(input));
+			const context = expectOk(await service.identify(input));
 
+			// The request that changes the role must already run with the new role.
+			expect(context.subject.role.slug).toBe('global:admin');
 			expect(await roleOf(member.id)).toBe('global:admin');
 			expect(emit).toHaveBeenCalledWith('sso-user-instance-role-updated', {
 				role: 'global:admin',
