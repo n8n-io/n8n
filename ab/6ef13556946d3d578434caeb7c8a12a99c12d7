@@ -1,0 +1,114 @@
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_e4711c58d1e6aa::t_eb44ec6253374b 19,210
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_e4711c58d1e6aa::t_6c3f3773126956 28-32
+  s_e4711c58d1e6aa::t_4f9be28e316e7d 33
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_e4711c58d1e6aa::t_bb78a97b3ccffd 88-96,928-952,954-965,967-969
+  s_e4711c58d1e6aa::t_a11ac33077d2a1 953
+  s_e4711c58d1e6aa::t_3e447f84a16bb9 966,970-971
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e4711c58d1e6aa::t_6c3f3773126956 5708-5710
+  s_e4711c58d1e6aa::t_d7943f91485f2d 8423
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  s_e4711c58d1e6aa::t_6c3f3773126956 33
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 45
+packages/@n8n/agents/src/runtime/model/raw-error.ts
+  s_e4711c58d1e6aa::t_96da0c33ee2cb9 56
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_e4711c58d1e6aa::t_a9fd3c6dc63754 527-532
+  s_e4711c58d1e6aa::t_837857d1939f8e 533-536,538-549,553-567,571-573
+packages/cli/src/modules/agents/model-catalog.ts
+  s_e4711c58d1e6aa::t_eb44ec6253374b 1-2,4-21,26-29
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_e4711c58d1e6aa::t_d025ce82565868 13,294
+  s_e4711c58d1e6aa::t_7eea27f1991318 416-426,428-464
+  s_e4711c58d1e6aa::t_c5985905fd1cc3 427
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 39-44
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_e4711c58d1e6aa::t_0b73aea7e76209 611
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryModelSetting.vue
+  s_e4711c58d1e6aa::t_6c3f3773126956 140,192
+  s_e4711c58d1e6aa::t_7eea27f1991318 6,137-139,141-144
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryModelSetting.test.ts
+  s_e4711c58d1e6aa::t_a9fd3c6dc63754 12,154-159,170
+  s_e4711c58d1e6aa::t_837857d1939f8e 160-169,171-184,186-188,191-193
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 40,148,486-487,599-600
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_e4711c58d1e6aa::t_eb44ec6253374b 3,22,25-36,61-64
+packages/cli/src/modules/agents/__tests__/model-catalog.test.ts
+  s_e4711c58d1e6aa::t_1e21a0e3b39a55 1,9-12,18-19,25-27,32-33,40,50-62
+  s_e4711c58d1e6aa::t_9667560df58734 34-39,41-49
+  s_e4711c58d1e6aa::t_ec64916fb665c0 63
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 4,280-296
+  s_e4711c58d1e6aa::t_1f23f73d91f28a 297-298
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_e4711c58d1e6aa::t_6760994bee0506 717-718,725-728,737,744-748,756-760,765,773,780-796,800-806,813-814
+  s_e4711c58d1e6aa::t_837857d1939f8e 203-210,719-724,729-736,738-743,749-755,761-764,766-772,774-779,797-799,807-812
+  s_e4711c58d1e6aa::t_4f9be28e316e7d 6,51,70,175-178,202,211,232,292
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_e4711c58d1e6aa::t_bb78a97b3ccffd 11-24,26-39,41-45,47-51,53-59,61-62,64-65
+  s_e4711c58d1e6aa::t_eda86096c99179 25,40,46,52,60,63
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_e4711c58d1e6aa::t_d5d38fbb120bb0 321,323-325,327,376
+  s_e4711c58d1e6aa::t_9667560df58734 311-313,315,356-357
+  s_e4711c58d1e6aa::t_c426027b9b6600 307-310,316-320,322,328-344,346-348,350-351,353-355,358-362,365,367-375,377,380,382-386,389-391
+  s_e4711c58d1e6aa::t_12ea7c705755ec 314,326,345,349,352,363-364,366,378-379,381,387-388
+packages/cli/src/modules/agents/json-config/credential-field-mapping.ts
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 23-27
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 318-319,398
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_e4711c58d1e6aa::t_eb44ec6253374b 1162
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_e4711c58d1e6aa::t_4d24805b19c397 661,663,665-667,681-683,685,699-704
+  s_e4711c58d1e6aa::t_1219d6e289ac7d 662,684,705
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 5,43,64-67
+  s_e4711c58d1e6aa::t_10e4a1f91e19c4 68-69
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_e4711c58d1e6aa::t_96da0c33ee2cb9 60,78,163,165-166
+  s_e4711c58d1e6aa::t_25feea31e53336 164
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_e4711c58d1e6aa::t_fdadc3d1709bcd 398-400
+  s_e4711c58d1e6aa::t_6c3f3773126956 278
+  s_e4711c58d1e6aa::t_7eea27f1991318 9,232,275-277,279-281
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_e4711c58d1e6aa::t_6c3f3773126956 294-297,422
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_e4711c58d1e6aa::t_19d1b5494e61a9 182-184
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_e4711c58d1e6aa::t_eb44ec6253374b 637,653
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_e4711c58d1e6aa::t_7ada4887449e53 67
+  s_e4711c58d1e6aa::t_eb44ec6253374b 11,66,68
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_e4711c58d1e6aa::t_9667560df58734 581-582,590,595,600,602,606,611,616,627
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_e4711c58d1e6aa::t_6c3f3773126956 12,16,53,64,94,106-125,129-186,463-464,473,655,691-703,738
+  s_e4711c58d1e6aa::t_fdadc3d1709bcd 126-128,501-507
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_e4711c58d1e6aa::t_837857d1939f8e 166-172
+  s_e4711c58d1e6aa::t_adc2d8ebbef5ff 242-248,255-256,261-266
+  s_e4711c58d1e6aa::t_4f9be28e316e7d 241,249-253,257-260
+  s_e4711c58d1e6aa::t_95e733411bc273 254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab6ef13556946d3d578434caeb7c8a12a99c12d7",
+  "prompts": {},
+  "sessions": {
+    "s_e4711c58d1e6aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1158d-df08-7c82-b2ce-f486eedc3174",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
