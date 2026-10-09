@@ -618,6 +618,26 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
+	it('passes the engine v2 flag to the prompt so the execution-engine section renders', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'engine-v2-prompt',
+				engineV2Enabled: true,
+				computerUseState: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'engine-v2-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map()),
+		} as never);
+
+		expect(getSystemPrompt).toHaveBeenCalledWith(
+			expect.objectContaining({ engineV2Enabled: true }),
+		);
+	});
+
 	describe('connected MCP services', () => {
 		const lastDomainToolContext = () => {
 			const calls = createOrchestratorDomainTools.mock.calls as Array<

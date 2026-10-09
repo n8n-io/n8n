@@ -215,6 +215,11 @@ export {
 	STORED_PLANNED_TASK_KINDS,
 } from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export {
+	ENGINE_V2_UNSUPPORTED_NODE_TYPES,
+	isNodeTypeSupportedOnEngineV2,
+} from './engine-v2/node-support';
+export type { EngineV2NodeCandidate } from './engine-v2/node-support';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export {
 	builderRequiredArtifactSchema,

@@ -28,6 +28,8 @@ interface SystemPromptOptions {
 	preferenceSavingEnabled?: boolean;
 	/** Setup panel v2 flag: `workflows(action="setup")` announces instead of opening a card. */
 	setupPanelEnabled?: boolean;
+	/** The engine-v2 module is on: new workflows run on engine v2, which supports a subset of nodes. */
+	engineV2Enabled?: boolean;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -187,6 +189,32 @@ ${licenseHints.map((hint) => `- ${hint}`).join('\n')}
 `;
 }
 
+/**
+ * Engine v2 runs a subset of what v1 runs. The builder has to know the
+ * boundary before it picks nodes, so the list mirrors what the v1-to-v2
+ * converter and the step executor refuse.
+ */
+function getEngineV2Section(engineV2Enabled?: boolean): string {
+	if (!engineV2Enabled) return '';
+
+	return `
+## Execution Engine
+
+This instance runs new workflows on **engine v2**. Every workflow you build or edit runs on it, so only use what it supports. Engine v2 does NOT support:
+
+- The **Code node** (JavaScript or Python). Use native nodes and expressions instead: Edit Fields (Set), Filter, If, Switch, Sort, Limit, Aggregate, Summarize, Split Out, Remove Duplicates, Merge, Date & Time, Crypto, HTML, XML, Markdown, Compression, Extract From File, Convert To File.
+- **AI and LangChain nodes**: AI Agent, LLM chains, chat models, memory, tools, vector stores, embeddings, output parsers.
+- **Sub-workflows**: Execute Workflow, Execute Workflow Trigger, Execute Sub-workflow, and workflows used as AI tools.
+- **Wait**, **Form** and **Form Trigger**, **Chat Trigger**, and **MCP Server Trigger** nodes.
+- The **"Continue (using error output)"** on-error setting on a node. Use "Stop" or "Continue" instead.
+- **Merge** in "Choose Branch" mode, or a Merge mode set by an expression.
+- **Loops** other than **Split In Batches** (Loop Over Items) version 3 with a literal batch size, no "reset" option, and the loop entered through the batch node.
+- The \`$vars\` and \`$secrets\` variables.
+
+When a request needs one of these, say so and offer the closest supported design. Do not build a workflow that depends on an unsupported node.
+`;
+}
+
 function getReadOnlySection(branchReadOnly?: boolean): string {
 	if (!branchReadOnly) return '';
 	return `
@@ -255,6 +283,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			conversationHistoryEnabled,
 			preferenceSavingEnabled,
 			setupPanelEnabled,
+			engineV2Enabled,
 		} = options;
 
 		return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load one or more skills to help them achieve their goal. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\` / \`load_tool\`).
@@ -300,6 +329,7 @@ ${UNTRUSTED_CONTENT_DOCTRINE}
 
 ${getComputerUsePrompt({ state: computerUseState })}
 ${getLicenseLimitationsSection(licenseHints)}
+${getEngineV2Section(engineV2Enabled)}
 ${getReadOnlySection(branchReadOnly)}
 ${getLimitedModeSection(parameterValuesHidden)}
 

@@ -108,6 +108,7 @@ import {
 	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
+	isNodeTypeSupportedOnEngineV2,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	FolderResolutionError,
@@ -162,6 +163,8 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
+import { isExecutionIdV2 } from '@/executions/execution-id';
+import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -196,6 +199,7 @@ import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import { AiPreferenceService } from '@/services/ai-preference.service';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -225,6 +229,9 @@ import {
 	pruneUnreachedVerificationPinData,
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
+import { waitForEngineV2Execution } from './instance-ai-engine-v2-execution';
+import { assertWorkflowRunsOnEngineV2 } from './instance-ai-engine-v2-support';
+import { loadInstanceAiExecution } from './instance-ai-execution-load';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import {
 	buildToolAgentRequest,
@@ -390,6 +397,11 @@ export class InstanceAiAdapterService {
 
 	private templatesService: BuilderTemplatesServiceInstance | undefined;
 
+	/** Whether the engine-v2 module registered a data plane with this main. */
+	private engineV2Available(): boolean {
+		return this.engineDataPlane?.isAvailable() ?? false;
+	}
+
 	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
 			return await this.nodesCache.promise;
@@ -460,8 +472,11 @@ export class InstanceAiAdapterService {
 		// See `teamProjectsLicensed()` for the absent case.
 		private readonly licenseState?: LicenseState,
 		// Optional for the same reason as the other services above: existing tests
-		// construct this class positionally, and this must stay the last parameter.
+		// construct this class positionally.
 		private readonly aiPreferenceService?: AiPreferenceService,
+		// Absent when the engine-v2 module is off or in package/test contexts.
+		// Appended last for the same positional-construction reason as above.
+		private readonly engineDataPlane?: EngineDataPlaneProxyService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -604,6 +619,7 @@ export class InstanceAiAdapterService {
 			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
+			engineV2Enabled: this.engineV2Available(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			// Optional call for the same reason as addPostProcessor?.() above:
@@ -1071,6 +1087,25 @@ export class InstanceAiAdapterService {
 		} = this;
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
+		// Fixed for the adapter's life: the module registers its data plane at init,
+		// before any run can build a context.
+		const engineV2Available = this.engineV2Available();
+		// A workflow bound for engine v2 is checked before it is saved, so the
+		// builder can fix the source instead of finding out at run time. The
+		// generated code carries the stored settings, so an update sees them too.
+		const assertSupportedOnTargetEngine = async (
+			settings: IWorkflowSettings,
+			json: Pick<WorkflowJSON, 'nodes' | 'connections'>,
+		) => {
+			if (settings.engineType !== 'v2') return;
+			await assertWorkflowRunsOnEngineV2(
+				{
+					nodes: json.nodes as unknown as INode[],
+					connections: json.connections as unknown as IConnections,
+				},
+				await this.getNodesFromCache(),
+			);
+		};
 		// Resolved once per context, upstream in `createContext`: the tool registers the action from
 		// the method's presence, so nothing downstream has to know a rollout flag exists.
 		const nodeUsageEnabled =
@@ -1682,10 +1717,14 @@ export class InstanceAiAdapterService {
 
 				// Without an explicit order the engine falls back to legacy v0, which walks
 				// the graph breadth-first. Generated code still wins if it sets its own.
+				// A main that runs engine v2 routes every new workflow to it; the stored
+				// value survives later updates because `WorkflowService.update` merges.
 				const settings = {
 					executionOrder: 'v1',
+					...(engineV2Available ? { engineType: 'v2' } : {}),
 					...(json.settings ?? {}),
 				} as IWorkflowSettings;
+				await assertSupportedOnTargetEngine(settings, json);
 
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
@@ -1824,6 +1863,7 @@ export class InstanceAiAdapterService {
 				// Strip redactionPolicy if the user lacks the required directional scope —
 				// mirrors the check in WorkflowService.update().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
+				await assertSupportedOnTargetEngine(settings, json);
 				if (settings.redactionPolicy !== undefined) {
 					const [existingWorkflow, ownerProject] = await Promise.all([
 						workflowRepository.findOne({ where: { id: workflowId } }),
@@ -2011,7 +2051,6 @@ export class InstanceAiAdapterService {
 			workflowRunner,
 			activeExecutions,
 			executionRepository,
-			executionPersistence,
 			workflowHistoryService,
 			nodeTypes,
 			roleService,
@@ -2032,9 +2071,12 @@ export class InstanceAiAdapterService {
 			executionId: string,
 			scopes: Scope[] = ['workflow:read'],
 		) => {
-			const execution = await executionRepository.findSingleExecution(executionId, {
-				includeData: false,
-			});
+			// A v2 execution lives on the data plane only, so its row is read there.
+			const execution = isExecutionIdV2(executionId)
+				? await loadInstanceAiExecution(executionId)
+				: await executionRepository.findSingleExecution(executionId, {
+						includeData: false,
+					});
 			if (!execution) {
 				throw new Error(`Execution ${executionId} not found`);
 			}
@@ -2048,6 +2090,28 @@ export class InstanceAiAdapterService {
 			}
 			return execution;
 		};
+
+		// A v2 run is never in `ActiveExecutions`: the data plane is the only place
+		// that knows when it settled, so it is waited on and cancelled there.
+		const engineDataPlane = this.engineDataPlane;
+		const waitForExecution = async (
+			executionId: string,
+			timeoutMs: number,
+			abortSignal?: AbortSignal,
+		) =>
+			isExecutionIdV2(executionId) && engineDataPlane
+				? await waitForEngineV2Execution({
+						dataPlane: engineDataPlane,
+						executionId,
+						timeoutMs,
+						abortSignal,
+					})
+				: await waitForInstanceAiExecution({
+						activeExecutions,
+						executionId,
+						timeoutMs,
+						abortSignal,
+					});
 
 		return {
 			async list(options) {
@@ -2086,7 +2150,11 @@ export class InstanceAiAdapterService {
 						: {}),
 				};
 
-				const executions = await executionRepository.findManyByRangeQuery(query);
+				// With engine v2 on, the merged list service pages both planes together;
+				// the control-plane query alone would miss every v2 execution.
+				const executions = engineDataPlane?.isAvailable()
+					? (await Container.get(ExecutionListService).findPageWithCount(query)).results
+					: await executionRepository.findManyByRangeQuery(query);
 
 				return executions.map(
 					(e): InstanceAiExecutionSummary => ({
@@ -2167,7 +2235,10 @@ export class InstanceAiAdapterService {
 					inputData,
 					triggerNode,
 				});
-				if (pinDataPlan.startNodeName) {
+				// Engine v2 refuses start nodes; it takes the injected payload from the
+				// trigger's pin instead, and reads it only when the trigger is named.
+				const runsOnEngineV2 = workflow.settings?.engineType === 'v2';
+				if (pinDataPlan.startNodeName && !runsOnEngineV2) {
 					runData.startNodes = [{ name: pinDataPlan.startNodeName, sourceData: null }];
 				} else if (triggerNode) {
 					// No inputData but we have a trigger node (e.g. test-trigger from
@@ -2251,6 +2322,8 @@ export class InstanceAiAdapterService {
 				try {
 					const executionId = await workflowRunner.run(runData);
 					const pruneVerificationPins = async (executedNodeNames?: string[]) => {
+						// A v2 execution has no control-plane row to prune.
+						if (isExecutionIdV2(executionId)) return;
 						try {
 							await pruneUnreachedVerificationPinData({
 								executionId,
@@ -2267,12 +2340,7 @@ export class InstanceAiAdapterService {
 					};
 
 					// Wait for completion with timeout / abort protection
-					const waitOutcome = await waitForInstanceAiExecution({
-						activeExecutions,
-						executionId,
-						timeoutMs,
-						abortSignal: options?.abortSignal,
-					});
+					const waitOutcome = await waitForExecution(executionId, timeoutMs, options?.abortSignal);
 
 					if (waitOutcome.kind === 'cancelled') {
 						const result = {
@@ -2361,10 +2429,7 @@ export class InstanceAiAdapterService {
 							`Execution ${options.reuseExecutionId} belongs to a different workflow.`,
 						);
 					}
-					const stored = await executionPersistence.findSingleExecution(options.reuseExecutionId, {
-						includeData: true,
-						unflattenData: true,
-					});
+					const stored = await loadInstanceAiExecution(options.reuseExecutionId);
 					// An execution with no stored run data still counts as a request to
 					// replay: `planStepRun` has to see the empty set to refuse the run
 					// rather than fall back to running the chain.
@@ -2609,12 +2674,7 @@ export class InstanceAiAdapterService {
 				try {
 					const executionId = await workflowRunner.run(runData);
 
-					const waitOutcome = await waitForInstanceAiExecution({
-						activeExecutions,
-						executionId,
-						timeoutMs,
-						abortSignal: options?.abortSignal,
-					});
+					const waitOutcome = await waitForExecution(executionId, timeoutMs, options?.abortSignal);
 
 					if (waitOutcome.kind === 'cancelled') {
 						trackStepRun('error', waitOutcome.message);
@@ -2653,7 +2713,9 @@ export class InstanceAiAdapterService {
 			async getResult(executionId: string) {
 				await assertExecutionAccess(executionId);
 				// If still running, wait for it to complete
-				if (activeExecutions.has(executionId)) {
+				if (isExecutionIdV2(executionId)) {
+					await waitForExecution(executionId, MAX_TIMEOUT_MS);
+				} else if (activeExecutions.has(executionId)) {
 					await activeExecutions.getPostExecutePromise(executionId);
 				}
 				return await extractExecutionResult(executionId, allowSendingParameterValues, nodeTypes);
@@ -2662,6 +2724,12 @@ export class InstanceAiAdapterService {
 			async stop(executionId: string) {
 				assertNotReadOnly();
 				await assertExecutionAccess(executionId, ['workflow:execute']);
+				if (isExecutionIdV2(executionId)) {
+					const outcome = await engineDataPlane?.cancelExecution(executionId);
+					return outcome
+						? { success: true, message: `Execution ${executionId} cancelled` }
+						: { success: false, message: `Execution ${executionId} is not currently running` };
+				}
 				if (!activeExecutions.has(executionId)) {
 					return {
 						success: false,
@@ -3714,14 +3782,25 @@ export class InstanceAiAdapterService {
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getAllNodes = async () => await this.getNodesFromCache();
-		// Discovery leaves out nodes whose module is off. Lookups by name keep them and say why.
+		// Discovery leaves out nodes whose module is off, and nodes engine v2 cannot
+		// run when that is the engine new workflows get. Lookups by name keep them and say why.
+		const engineV2Available = this.engineV2Available();
 		const getNodes = async () => {
 			const nodes = await getAllNodes();
 			const disabled = new Set(getModuleDisabledNodeTypes(Container.get(ModuleRegistry)));
-			return disabled.size > 0 ? nodes.filter((n) => !disabled.has(n.name)) : nodes;
+			const offered = disabled.size > 0 ? nodes.filter((n) => !disabled.has(n.name)) : nodes;
+			return engineV2Available ? offered.filter(isNodeTypeSupportedOnEngineV2) : offered;
 		};
-		const getUnavailableNotice = (nodeType: string) =>
-			getModuleDisabledNotice(Container.get(ModuleRegistry), nodeType);
+		const getEngineV2Notice = async (nodeType: string) => {
+			if (!engineV2Available) return undefined;
+			const desc = (await getAllNodes()).find((n) => n.name === nodeType);
+			return isNodeTypeSupportedOnEngineV2(desc ?? { name: nodeType })
+				? undefined
+				: `This instance runs workflows on engine v2, which cannot run "${nodeType}" yet. Use a node engine v2 supports instead.`;
+		};
+		const getUnavailableNotice = async (nodeType: string) =>
+			getModuleDisabledNotice(Container.get(ModuleRegistry), nodeType) ??
+			(await getEngineV2Notice(nodeType));
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 		const buildMeta = (config: AiGatewayConfigDto | null, nodeName: string) =>
 			this.buildAiGatewayNodeMeta(config, nodeName);
@@ -3866,7 +3945,7 @@ export class InstanceAiAdapterService {
 				}
 
 				const meta = buildMeta(gatewayConfig, desc.name);
-				const unavailable = getUnavailableNotice(desc.name);
+				const unavailable = await getUnavailableNotice(desc.name);
 
 				return {
 					name: desc.name,
@@ -3926,7 +4005,7 @@ export class InstanceAiAdapterService {
 					});
 
 				const result = await getDefinition(nodeType);
-				const unavailable = getUnavailableNotice(nodeType);
+				const unavailable = await getUnavailableNotice(nodeType);
 				if (unavailable && !result.error) return { ...result, unavailable };
 				if (!result.error || nodeType.includes('.')) return result;
 
@@ -4712,10 +4791,7 @@ export async function extractExecutionOutcome(
 	 */
 	subNodeTarget?: string,
 ): Promise<{ result: ExecutionResult; telemetryError?: string }> {
-	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-		includeData: true,
-		unflattenData: true,
-	});
+	const execution = await loadInstanceAiExecution(executionId);
 
 	if (!execution) {
 		return { result: { executionId, status: 'unknown' } };
@@ -5025,10 +5101,7 @@ export async function extractNodeOutput(
 	options?: { startIndex?: number; maxItems?: number },
 	nodeTypes?: NodeTypes,
 ): Promise<NodeOutputResult> {
-	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-		includeData: true,
-		unflattenData: true,
-	});
+	const execution = await loadInstanceAiExecution(executionId);
 
 	if (!execution) {
 		throw new Error(`Execution ${executionId} not found`);
@@ -5225,10 +5298,7 @@ export async function extractExecutionDebugInfo(
 	includeOutputData = true,
 	nodeTypes?: NodeTypes,
 ): Promise<ExecutionDebugInfo> {
-	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-		includeData: true,
-		unflattenData: true,
-	});
+	const execution = await loadInstanceAiExecution(executionId);
 
 	if (!execution) {
 		return {

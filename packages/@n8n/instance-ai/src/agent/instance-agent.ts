@@ -207,6 +207,7 @@ export async function createInstanceAgent(
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 			licenseHints: context.licenseHints,
+			engineV2Enabled: context.engineV2Enabled,
 			branchReadOnly: context.branchReadOnly,
 			parameterValuesHidden: context.allowSendingParameterValues === false,
 			projectId: context.projectId,

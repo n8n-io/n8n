@@ -150,6 +150,23 @@ export class EngineV2ExecutionReader {
 		// The `workflow:read` check.
 		if (!sharedWorkflowIds.includes(snapshot.workflowId)) return undefined;
 
+		return await this.toExecutionResponseFromSnapshot(snapshot);
+	}
+
+	/**
+	 * As `findOne`, with no workflow scope: for a caller that checks access on
+	 * the returned `workflowId` itself, the way the v1 persistence readers do.
+	 */
+	async findOneUnscoped(executionId: ExecutionIdV2): Promise<IExecutionResponse | undefined> {
+		const snapshot = await this.dataPlane.getExecution(executionId, { includeSteps: true });
+		if (!snapshot) return undefined;
+
+		return await this.toExecutionResponseFromSnapshot(snapshot);
+	}
+
+	private async toExecutionResponseFromSnapshot(
+		snapshot: ExecutionSnapshot,
+	): Promise<IExecutionResponse | undefined> {
 		const workflow = asWorkflowSnapshot(snapshot.workflow);
 		if (!workflow) return undefined;
 
