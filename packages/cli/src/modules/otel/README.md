@@ -36,9 +36,31 @@ Consequences:
   `traceparent` header still sets the parent.
 - Persisted trace context and outbound headers always use the W3C `traceparent` and
   `tracestate` format, whoever owns the global propagator. `OTEL_PROPAGATORS` has no effect
-  on them.
+  on them. Outbound headers never carry `baggage`.
 - The resource uses the env, process and host detectors. `OTEL_NODE_RESOURCE_DETECTORS` has
   no effect.
+
+### Execution identity
+
+Workflow and node spans carry `n8n.execution.id`, `n8n.workflow.id`, `n8n.workflow.name`,
+`n8n.project.id` and `n8n.project.name`. Only team projects get a name, because a personal
+project name holds the user's name and email.
+
+- `ExecutionLevelTracer` builds the identity once for each execution segment and puts it in
+  the parent context under a private context key.
+- `ExecutionIdentitySpanProcessor` copies the identity from that key to each span at start.
+  It never reads baggage: a caller can send `n8n.*` entries in an inbound `baggage` header,
+  but cannot write the private key.
+- The tracer never makes this context active. `getActiveContext` returns the span only.
+- Each segment of an execution builds the identity from the current workflow name and
+  project, because a workflow can be renamed or moved during a wait. A later segment runs
+  the workflow saved at the start, so it reads the current name from the database.
+- The identity is saved as an object in `tracingContext.identity`. A resume reads it only
+  when the project lookup fails. A reconstructed crash span reads it, so it shows the
+  identity of the last segment.
+
+This key is n8n's single source of truth for the execution identity. Inbound and outbound
+baggage (GOV-143) decides what it reads from this key and what it adds to baggage.
 
 ### Module architecture
 ```mermaid
@@ -72,7 +94,7 @@ graph TD
         ELT["ExecutionLevelTracer
         span maps by execution id, W3C propagator"]
         TCS["TraceContextService
-        traceparent on the execution row"]
+        trace context and identity on the execution row"]
     end
 
     subgraph n8n Core
