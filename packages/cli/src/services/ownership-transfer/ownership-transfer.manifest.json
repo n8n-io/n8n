@@ -90,6 +90,11 @@
 			"reason": "Promotion configuration for the project (which connection it is linked to), not user data. Dropped via the projectId FK cascade when the source project is deleted, as in ownership-transfer flows."
 		},
 		{
+			"name": "Skill",
+			"path": "packages/cli/src/modules/agents/entities/skill.entity.ts",
+			"reason": "Project-scoped skills belong to the project's agents, which are not transferred either (see Agent); both are dropped via FK cascade. \"Just you\" and instance skills carry no projectId."
+		},
+		{
 			"name": "AiPreference",
 			"path": "packages/@n8n/db/src/entities/ai-preference.ts",
 			"reason": "Project-scoped AI preferences describe how to work inside the deleted project; dropped via FK cascade, like Variables. Personal and global preferences carry no projectId."
