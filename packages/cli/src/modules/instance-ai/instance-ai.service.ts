@@ -92,6 +92,7 @@ import {
 	RunDebugBuffer,
 	buildRunDebugLabel,
 	createRunDebugStepHooks,
+	createRunDebugSubAgentStepHooks,
 	streamAgentRun,
 	truncateToTitle,
 	generateTitleForRun,
@@ -2980,6 +2981,12 @@ export class InstanceAiService {
 					});
 				}
 			},
+			...(this.isRunDebugEnabled()
+				? {
+						createSubAgentStepHooks: (options) =>
+							createRunDebugSubAgentStepHooks(this.runDebugBuffer, runId, options),
+					}
+				: {}),
 			abortSignal,
 			taskStorage,
 			timeZone: this.defaultTimeZone,

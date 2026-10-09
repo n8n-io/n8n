@@ -8,6 +8,7 @@ import { sanitizeDebugSnapshotRecord, sanitizeDebugSnapshotValue } from './sanit
 const MAX_RUNS = 50;
 const MAX_STEPS_PER_RUN = 200;
 const MAX_WORKFLOW_SNAPSHOTS_PER_RUN = 100;
+const MAX_SUB_AGENTS_PER_RUN = 20;
 
 export interface WorkflowCodeSnapshotInput {
 	code: string;
@@ -38,6 +39,23 @@ export interface RunDebugStep {
 	output?: SanitizedStepFinish;
 }
 
+/** Steps of one sub-agent turn that an orchestrator tool call started. */
+export interface RunDebugSubAgent {
+	/** Buffer-scoped id, unique inside the run. */
+	id: string;
+	/** Sub-agent role, e.g. `agent-builder`. */
+	role: string;
+	label?: string;
+	/** Orchestrator tool call that started this sub-agent turn. */
+	parentToolCallId?: string;
+	/** Last orchestrator step recorded before the sub-agent started. Fallback link when no step has the tool call. */
+	afterStepNumber?: number;
+	startedAt: number;
+	/** Next sub-agent-scoped step index; survives step-cap eviction. */
+	nextStepIndex: number;
+	steps: RunDebugStep[];
+}
+
 export interface RunDebugRecord {
 	threadId: string;
 	runId: string;
@@ -46,12 +64,30 @@ export interface RunDebugRecord {
 	/** Next run-scoped step index; survives step-cap eviction. */
 	nextStepIndex: number;
 	steps: RunDebugStep[];
+	subAgents: RunDebugSubAgent[];
 	workflowCode: WorkflowCodeSnapshot[];
 }
 
 export interface RunDebugStepHookOptions {
 	runId: string;
 	threadId: string;
+}
+
+export interface RunDebugSubAgentOptions {
+	role: string;
+	label?: string;
+	parentToolCallId?: string;
+}
+
+export interface RunDebugStepHooks {
+	onStepStart: (event: GenerateTextStepStartEvent) => void;
+	onStepEnd: (event: GenerateTextStepEndEvent) => void;
+}
+
+/** Steps container shared by the orchestrator record and its sub-agents. */
+interface StepContainer {
+	nextStepIndex: number;
+	steps: RunDebugStep[];
 }
 
 /**
@@ -158,6 +194,30 @@ export function createRunDebugStepHooks(
 	};
 }
 
+/**
+ * Step hooks for one sub-agent turn. The sub-agent keeps its own step sequence,
+ * so its steps do not shift the orchestrator's step numbers.
+ */
+export function createRunDebugSubAgentStepHooks(
+	buffer: RunDebugBuffer,
+	runId: string,
+	options: RunDebugSubAgentOptions,
+): RunDebugStepHooks | undefined {
+	const subAgentId = buffer.startSubAgent(runId, options);
+	if (!subAgentId) return undefined;
+
+	let stepIndex = 0;
+	return {
+		onStepStart: (event) => {
+			buffer.recordSubAgentStepStart(runId, subAgentId, stepIndex, event);
+		},
+		onStepEnd: (event) => {
+			buffer.recordSubAgentStepFinish(runId, subAgentId, stepIndex, event);
+			stepIndex++;
+		},
+	};
+}
+
 export function buildRunDebugLabel(options: {
 	message?: string;
 	resumeReason?: string;
@@ -187,6 +247,8 @@ export function buildRunDebugLabel(options: {
 export class RunDebugBuffer {
 	private readonly records = new Map<string, RunDebugRecord>();
 
+	private subAgentSequence = 0;
+
 	constructor(private readonly logger?: Logger) {}
 
 	ensure(runId: string, threadId: string, label?: string): void {
@@ -200,6 +262,7 @@ export class RunDebugBuffer {
 			label: label ? scrubSecretsInText(label.trim()) : undefined,
 			nextStepIndex: 0,
 			steps: [],
+			subAgents: [],
 			workflowCode: [],
 		});
 	}
@@ -211,39 +274,111 @@ export class RunDebugBuffer {
 	recordStepStart(runId: string, stepIndex: number, event: GenerateTextStepStartEvent): void {
 		const record = this.records.get(runId);
 		if (!record) return;
-
-		const existing = record.steps.find((step) => step.stepNumber === stepIndex);
-		if (existing) {
-			existing.input = sanitizeStepStart(event, stepIndex);
-			return;
-		}
-
-		this.evictOldestStepIfNeeded(record);
-		record.steps.push({
-			stepNumber: stepIndex,
-			input: sanitizeStepStart(event, stepIndex),
-		});
-		record.steps.sort((a, b) => a.stepNumber - b.stepNumber);
+		this.writeStepStart(record, stepIndex, event, runId);
 	}
 
 	recordStepFinish(runId: string, stepIndex: number, event: GenerateTextStepEndEvent): void {
 		const record = this.records.get(runId);
 		if (!record) return;
+		this.writeStepFinish(record, stepIndex, event, runId);
+	}
 
-		const existing = record.steps.find((step) => step.stepNumber === stepIndex);
+	/** Registers a sub-agent turn in the run. Returns its id, or `undefined` when the run is unknown. */
+	startSubAgent(runId: string, options: RunDebugSubAgentOptions): string | undefined {
+		const record = this.records.get(runId);
+		if (!record) return undefined;
+
+		if (record.subAgents.length >= MAX_SUB_AGENTS_PER_RUN) {
+			const removed = record.subAgents.shift();
+			this.logger?.warn('Evicted oldest sub-agent from run debug buffer', {
+				runId,
+				subAgentId: removed?.id,
+				maxSubAgents: MAX_SUB_AGENTS_PER_RUN,
+			});
+		}
+
+		this.subAgentSequence++;
+		const id = `sub-agent-${this.subAgentSequence}`;
+		const lastStep = record.steps.at(-1);
+		record.subAgents.push({
+			id,
+			role: options.role,
+			label: options.label ? scrubSecretsInText(options.label.trim()) : undefined,
+			parentToolCallId: options.parentToolCallId,
+			afterStepNumber: lastStep?.stepNumber,
+			startedAt: Date.now(),
+			nextStepIndex: 0,
+			steps: [],
+		});
+		return id;
+	}
+
+	recordSubAgentStepStart(
+		runId: string,
+		subAgentId: string,
+		stepIndex: number,
+		event: GenerateTextStepStartEvent,
+	): void {
+		const subAgent = this.findSubAgent(runId, subAgentId);
+		if (!subAgent) return;
+		this.writeStepStart(subAgent, stepIndex, event, runId);
+	}
+
+	recordSubAgentStepFinish(
+		runId: string,
+		subAgentId: string,
+		stepIndex: number,
+		event: GenerateTextStepEndEvent,
+	): void {
+		const subAgent = this.findSubAgent(runId, subAgentId);
+		if (!subAgent) return;
+		this.writeStepFinish(subAgent, stepIndex, event, runId);
+	}
+
+	private findSubAgent(runId: string, subAgentId: string): RunDebugSubAgent | undefined {
+		return this.records.get(runId)?.subAgents.find((subAgent) => subAgent.id === subAgentId);
+	}
+
+	private writeStepStart(
+		container: StepContainer,
+		stepIndex: number,
+		event: GenerateTextStepStartEvent,
+		runId: string,
+	): void {
+		const existing = container.steps.find((step) => step.stepNumber === stepIndex);
 		if (existing) {
-			existing.output = sanitizeStepFinish(event, stepIndex);
-			record.nextStepIndex = stepIndex + 1;
+			existing.input = sanitizeStepStart(event, stepIndex);
 			return;
 		}
 
-		this.evictOldestStepIfNeeded(record);
-		record.steps.push({
+		this.evictOldestStepIfNeeded(container, runId);
+		container.steps.push({
+			stepNumber: stepIndex,
+			input: sanitizeStepStart(event, stepIndex),
+		});
+		container.steps.sort((a, b) => a.stepNumber - b.stepNumber);
+	}
+
+	private writeStepFinish(
+		container: StepContainer,
+		stepIndex: number,
+		event: GenerateTextStepEndEvent,
+		runId: string,
+	): void {
+		const existing = container.steps.find((step) => step.stepNumber === stepIndex);
+		if (existing) {
+			existing.output = sanitizeStepFinish(event, stepIndex);
+			container.nextStepIndex = stepIndex + 1;
+			return;
+		}
+
+		this.evictOldestStepIfNeeded(container, runId);
+		container.steps.push({
 			stepNumber: stepIndex,
 			output: sanitizeStepFinish(event, stepIndex),
 		});
-		record.steps.sort((a, b) => a.stepNumber - b.stepNumber);
-		record.nextStepIndex = stepIndex + 1;
+		container.steps.sort((a, b) => a.stepNumber - b.stepNumber);
+		container.nextStepIndex = stepIndex + 1;
 	}
 
 	recordWorkflowCode(runId: string, snapshot: WorkflowCodeSnapshotInput): void {
@@ -293,12 +428,12 @@ export class RunDebugBuffer {
 		});
 	}
 
-	private evictOldestStepIfNeeded(record: RunDebugRecord): void {
-		if (record.steps.length < MAX_STEPS_PER_RUN) return;
+	private evictOldestStepIfNeeded(container: StepContainer, runId: string): void {
+		if (container.steps.length < MAX_STEPS_PER_RUN) return;
 
-		const removed = record.steps.shift();
+		const removed = container.steps.shift();
 		this.logger?.warn('Evicted oldest step from run debug buffer', {
-			runId: record.runId,
+			runId,
 			stepNumber: removed?.stepNumber,
 			maxSteps: MAX_STEPS_PER_RUN,
 		});

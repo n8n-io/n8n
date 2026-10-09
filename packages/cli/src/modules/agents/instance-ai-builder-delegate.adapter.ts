@@ -121,6 +121,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			abortSignal: session.abortSignal,
 			...(session.mcpTools ? { mcpTools: session.mcpTools } : {}),
 			...(useEvalModelCatalog ? { useEvalModelCatalog: true } : {}),
+			...(session.stepHooks ? { stepHooks: session.stepHooks } : {}),
 			onRequiredArtifact,
 		};
 	}

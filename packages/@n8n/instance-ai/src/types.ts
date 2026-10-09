@@ -44,7 +44,11 @@ import type { z } from 'zod';
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
 
-import type { WorkflowCodeSnapshotInput } from './debug/run-debug-buffer';
+import type {
+	RunDebugStepHooks,
+	RunDebugSubAgentOptions,
+	WorkflowCodeSnapshotInput,
+} from './debug/run-debug-buffer';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
@@ -1409,6 +1413,8 @@ export interface BuilderDelegateSession {
 	abortSignal: AbortSignal;
 	/** The parent orchestrator's validated, approval-wrapped MCP tools. */
 	mcpTools?: InstanceAiToolRegistry;
+	/** Run debug hooks that record the builder's LLM steps. Set only when run debug is on. */
+	stepHooks?: RunDebugStepHooks;
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
@@ -2244,6 +2250,11 @@ export interface OrchestrationContext {
 		usage: BuilderUsageItem[],
 		status: TraceStatus,
 	) => Promise<void>;
+	/**
+	 * Creates run debug hooks for one sub-agent turn. Wired by the host only
+	 * when run debug is on; returns `undefined` when the run is not recorded.
+	 */
+	createSubAgentStepHooks?: (options: RunDebugSubAgentOptions) => RunDebugStepHooks | undefined;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
 	tracing?: InstanceAiTraceContext;
