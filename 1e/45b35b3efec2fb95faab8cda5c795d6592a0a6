@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Strava/__tests__/workflow/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_9dbaf5dbe7c32c 15,32,50,68,86,105,123,145,197
+packages/nodes-base/nodes/Strava/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_901243f1c3968b 12,17-18,22-24,29,32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e45b35b3efec2fb95faab8cda5c795d6592a0a6",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
