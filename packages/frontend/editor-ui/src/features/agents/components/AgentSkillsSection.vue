@@ -11,8 +11,8 @@ import AgentItemContextMenu from './AgentItemContextMenu.vue';
 
 const props = withDefaults(
 	defineProps<{
+		/** In ref order. A skill has no on/off toggle: a ref is attached or it is not. */
 		skills: Array<{ id: string; skill: AgentSkill; enabled?: boolean }>;
-		supportsActivation?: boolean;
 		disabled?: boolean;
 		showLabel?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
@@ -20,7 +20,6 @@ const props = withDefaults(
 	{
 		disabled: false,
 		showLabel: true,
-		supportsActivation: false,
 		validationIssues: () => [],
 	},
 );
@@ -29,7 +28,6 @@ const emit = defineEmits<{
 	'open-skill': [id: string];
 	'add-skill': [];
 	'remove-skill': [id: string];
-	'toggle-skill': [payload: { id: string; enabled: boolean }];
 }>();
 
 const i18n = useI18n();
@@ -50,12 +48,7 @@ const skillIssueMessages = computed(() =>
 		@add="emit('add-skill')"
 	>
 		<div v-for="{ id, skill, enabled } in skills" :key="id" :class="$style.chipGroup">
-			<AgentItemContextMenu
-				:disabled="props.disabled"
-				:enabled="props.supportsActivation ? enabled !== false : undefined"
-				@update:enabled="emit('toggle-skill', { id, enabled: $event })"
-				@remove="emit('remove-skill', id)"
-			>
+			<AgentItemContextMenu :disabled="props.disabled" @remove="emit('remove-skill', id)">
 				<AgentChipButton
 					icon="book-open"
 					:invalid="(skillIssueMessages.get(id) ?? []).length > 0"

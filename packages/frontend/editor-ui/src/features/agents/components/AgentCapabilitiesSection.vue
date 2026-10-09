@@ -88,7 +88,6 @@ const emit = defineEmits<{
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
-	'toggle-skill': [payload: { id: string; enabled: boolean }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
 	'update:config': [updates: Partial<AgentJsonConfig>];
@@ -697,13 +696,11 @@ function openExistingSubAgentModal(subAgent: {
 				<AgentSkillsSection
 					v-else-if="section === 'skills'"
 					:skills="skills"
-					:supports-activation="props.supportsActivation"
 					:disabled="props.disabled"
 					:validation-issues="props.validationIssues"
 					@open-skill="emit('open-skill', $event)"
 					@add-skill="emit('add-skill')"
 					@remove-skill="emit('remove-skill', $event)"
-					@toggle-skill="emit('toggle-skill', $event)"
 				/>
 
 				<AgentChipRow
