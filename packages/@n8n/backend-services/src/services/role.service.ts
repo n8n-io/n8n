@@ -474,9 +474,10 @@ export class RoleService {
 		scopes: Scope | Scope[],
 		context: OperationContext,
 	): Promise<string[]> {
-		return await this.rolesWithScope(
+		const requiredScopes = Array.isArray(scopes) ? scopes : [scopes];
+		return await this.roleCacheService.getRolesWithAllScopesUncached(
 			namespace,
-			scopes,
+			requiredScopes,
 			async () => await this.roleRepository.findAllInContext(context),
 		);
 	}

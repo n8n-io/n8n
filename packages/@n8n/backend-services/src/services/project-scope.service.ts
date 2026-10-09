@@ -19,8 +19,9 @@ export class ProjectScopeService {
 		user: User,
 		scopes: Scope[],
 		ctx: OperationContext = {},
+		options: { ignoreGlobalScope?: boolean } = {},
 	): Promise<string[] | null> {
-		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return null;
+		if (!options.ignoreGlobalScope && hasGlobalScope(user, scopes, { mode: 'allOf' })) return null;
 
 		return await this.roleService.rolesWithScopeInContext('project', scopes, ctx);
 	}
@@ -29,8 +30,9 @@ export class ProjectScopeService {
 		user: User,
 		scopes: Scope[],
 		ctx: OperationContext = {},
+		options: { ignoreGlobalScope?: boolean } = {},
 	): Promise<string[] | null> {
-		const roles = await this.getProjectRoleSlugs(user, scopes, ctx);
+		const roles = await this.getProjectRoleSlugs(user, scopes, ctx, options);
 		if (roles === null) return null;
 
 		return await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, roles, ctx);

@@ -3,6 +3,7 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	type OperationContext,
 	type User,
 } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
@@ -47,7 +48,8 @@ describe('ScopeAccessService', () => {
 		);
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 		roleService.rolesWithScopeInContext.mockResolvedValue([]);
-		credentialsRepository.isInstanceCredential.mockResolvedValue(false);
+		credentialsRepository.findInstanceCredentialById.mockResolvedValue(null);
+		credentialsFinderService.hasGlobalAccess.mockReturnValue(false);
 		credentialsFinderService.hasGlobalReadOnlyAccess.mockReturnValue(false);
 		credentialsFinderService.hasGlobalConnectAccess.mockReturnValue(false);
 	});
@@ -99,6 +101,24 @@ describe('ScopeAccessService', () => {
 		);
 	});
 
+	it('forwards the operation context to project scope resolution', async () => {
+		const context = mock<OperationContext>();
+
+		await service.hasScopes({
+			user: makeUser(),
+			scopes: ['project:read'],
+			resource: { type: 'project', projectId: 'project-1' },
+			context,
+		});
+
+		expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(
+			expect.anything(),
+			['project:read'],
+			context,
+			{ ignoreGlobalScope: false },
+		);
+	});
+
 	it('throws when the workflow does not exist', async () => {
 		sharedWorkflowRepository.findScopeAccess.mockResolvedValue({ exists: false, hasAccess: false });
 
@@ -120,7 +140,7 @@ describe('ScopeAccessService', () => {
 	});
 
 	it('grants supported instance credential management access', async () => {
-		credentialsRepository.isInstanceCredential.mockResolvedValue(true);
+		credentialsRepository.findInstanceCredentialById.mockResolvedValue(mock());
 
 		await expect(
 			hasScopes(
@@ -129,6 +149,30 @@ describe('ScopeAccessService', () => {
 				makeUser(['credential:manageInstance']),
 			),
 		).resolves.toBe(true);
+	});
+
+	it('does not let a global visibility scope bypass credential sharing', async () => {
+		credentialsFinderService.hasGlobalAccess.mockReturnValue(false);
+		sharedCredentialsRepository.findScopeAccess.mockResolvedValue({
+			exists: true,
+			hasAccess: false,
+		});
+		credentialsFinderService.hasGlobalReadOnlyAccess.mockReturnValue(true);
+		credentialsFinderService.findGlobalCredentialById.mockResolvedValue(mock());
+
+		await expect(
+			hasScopes(
+				{ type: 'credential', credentialId: 'credential-1' },
+				['credential:read'],
+				makeUser(['credential:read']),
+			),
+		).resolves.toBe(false);
+		expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(
+			expect.anything(),
+			['credential:read'],
+			{},
+			{ ignoreGlobalScope: true },
+		);
 	});
 
 	it('grants global read-only credential access', async () => {
@@ -159,6 +203,34 @@ describe('ScopeAccessService', () => {
 		await expect(
 			hasScopes({ type: 'credential', credentialId: 'credential-1' }, ['credential:connect']),
 		).resolves.toBe(true);
+	});
+
+	it('denies connect access to a non-resolvable global credential', async () => {
+		sharedCredentialsRepository.findScopeAccess.mockResolvedValue({
+			exists: true,
+			hasAccess: false,
+		});
+		credentialsFinderService.hasGlobalConnectAccess.mockReturnValue(true);
+		credentialsFinderService.findGlobalCredentialById.mockResolvedValue(
+			mock({ isResolvable: false }),
+		);
+
+		await expect(
+			hasScopes({ type: 'credential', credentialId: 'credential-1' }, ['credential:connect']),
+		).resolves.toBe(false);
+	});
+
+	it('denies global credential access when the credential is missing', async () => {
+		sharedCredentialsRepository.findScopeAccess.mockResolvedValue({
+			exists: true,
+			hasAccess: false,
+		});
+		credentialsFinderService.hasGlobalReadOnlyAccess.mockReturnValue(true);
+		credentialsFinderService.findGlobalCredentialById.mockResolvedValue(null);
+
+		await expect(
+			hasScopes({ type: 'credential', credentialId: 'credential-1' }, ['credential:read']),
+		).resolves.toBe(false);
 	});
 
 	it('throws when the credential does not exist', async () => {

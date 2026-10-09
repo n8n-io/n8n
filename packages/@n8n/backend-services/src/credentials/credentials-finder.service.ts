@@ -84,7 +84,7 @@ export class CredentialsFinderService {
 	 * Owner and Admin hold `credential:use` from GLOBAL_OWNER_SCOPES, so for them the
 	 * added conjunct is always true and behaviour is unchanged.
 	 */
-	private hasGlobalOverride(user: User, scopes: Scope[], visibilityOnly = false): boolean {
+	hasGlobalAccess(user: User, scopes: Scope[], visibilityOnly = false): boolean {
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) return false;
 		if (scopes.some((scope) => !VISIBILITY_SCOPES.has(scope))) return true;
 		return visibilityOnly || hasGlobalScope(user, 'credential:use');
@@ -113,10 +113,12 @@ export class CredentialsFinderService {
 	async findGlobalCredentialById(
 		credentialId: string,
 		relations?: { shared: { project: boolean } },
+		context: OperationContext = {},
 	): Promise<CredentialsEntity | null> {
 		return await this.credentialAccessRepository.findGlobalProjectCredentialById(
 			credentialId,
 			relations?.shared.project ?? false,
+			context,
 		);
 	}
 
@@ -163,7 +165,7 @@ export class CredentialsFinderService {
 		scopes: Scope[],
 		options: { visibilityOnly?: boolean } = {},
 	) {
-		const access = this.hasGlobalOverride(user, scopes, options.visibilityOnly)
+		const access = this.hasGlobalAccess(user, scopes, options.visibilityOnly)
 			? null
 			: await this.resolveAccessRoles(user.id, scopes);
 		const credentials = await this.credentialAccessRepository.findProjectCredentialsForUser(access);
@@ -190,7 +192,7 @@ export class CredentialsFinderService {
 			if (instanceCredential) return instanceCredential;
 		}
 
-		const access = this.hasGlobalOverride(user, scopes, options.visibilityOnly)
+		const access = this.hasGlobalAccess(user, scopes, options.visibilityOnly)
 			? null
 			: await this.resolveAccessRoles(user.id, scopes);
 		const credential = await this.credentialAccessRepository.findProjectCredentialForUser(
@@ -225,7 +227,7 @@ export class CredentialsFinderService {
 		ctx: OperationContext = {},
 		options?: { includeGlobalCredentials?: boolean; visibilityOnly?: boolean },
 	) {
-		const access = this.hasGlobalOverride(user, scopes, options?.visibilityOnly)
+		const access = this.hasGlobalAccess(user, scopes, options?.visibilityOnly)
 			? null
 			: await this.resolveAccessRoles(user.id, scopes, ctx);
 		let sharedCredentialsList =
@@ -340,7 +342,7 @@ export class CredentialsFinderService {
 		if (credentialIds.length === 0) return new Set();
 
 		const access =
-			options.ignoreGlobalOverride || !this.hasGlobalOverride(user, scopes, options.visibilityOnly)
+			options.ignoreGlobalOverride || !this.hasGlobalAccess(user, scopes, options.visibilityOnly)
 				? await this.resolveAccessRoles(user.id, scopes)
 				: null;
 

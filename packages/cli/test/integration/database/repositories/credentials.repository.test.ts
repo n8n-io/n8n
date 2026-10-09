@@ -1,6 +1,11 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { CredentialSharingRelation, ListQuery } from '@n8n/db';
-import { CredentialsRepository, SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
+import {
+	CredentialsEntity,
+	CredentialsRepository,
+	SharedCredentials,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
@@ -42,6 +47,32 @@ describe('CredentialsRepository', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	describe('findInstanceCredentialById', () => {
+		const createCredential = async (usageScope: CredentialsEntity['usageScope']) => {
+			const repository = Container.get(CredentialsRepository);
+			return await repository.save(
+				repository.create({ name: 'Test', type: 'test', data: '', usageScope }),
+			);
+		};
+
+		it('returns an instance credential', async () => {
+			const repository = Container.get(CredentialsRepository);
+			const credential = await createCredential('instance');
+
+			await expect(repository.findInstanceCredentialById(credential.id, {})).resolves.toEqual(
+				expect.objectContaining({ id: credential.id, usageScope: 'instance' }),
+			);
+		});
+
+		it('does not return project or missing credentials', async () => {
+			const repository = Container.get(CredentialsRepository);
+			const credential = await createCredential('project');
+
+			await expect(repository.findInstanceCredentialById(credential.id, {})).resolves.toBeNull();
+			await expect(repository.findInstanceCredentialById('missing', {})).resolves.toBeNull();
+		});
 	});
 
 	describe('getManyAndCountWithSharingSubquery', () => {

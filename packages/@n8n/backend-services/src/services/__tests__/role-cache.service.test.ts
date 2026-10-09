@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { RoleRepository } from '@n8n/db';
+import { Role, RoleRepository, Scope as ScopeEntity } from '@n8n/db';
 import { staticRolesWithScope } from '@n8n/permissions';
 import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -99,6 +99,23 @@ describe('RoleCacheService', () => {
 	});
 
 	describe('cache behavior', () => {
+		it('does not cache roles loaded from a transaction', async () => {
+			const loadRoles = vi.fn().mockResolvedValue([
+				mock<Role>({
+					slug: 'project:custom',
+					roleType: 'project',
+					scopes: [mock<ScopeEntity>({ slug: 'project:read' })],
+				}),
+			]);
+
+			await expect(
+				roleCacheService.getRolesWithAllScopesUncached('project', ['project:read'], loadRoles),
+			).resolves.toEqual(['project:custom']);
+			expect(loadRoles).toHaveBeenCalledOnce();
+			expect(cacheService.get).not.toHaveBeenCalled();
+			expect(cacheService.set).not.toHaveBeenCalled();
+		});
+
 		it('should use cached data when available', async () => {
 			cacheService.get.mockResolvedValue(mockRoleScopeMap);
 

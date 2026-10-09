@@ -39,14 +39,19 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		roles: string[],
 		ctx: OperationContext = {},
 	): Promise<{ exists: boolean; hasAccess: boolean }> {
-		const rows = await this.managerFor(ctx).find(SharedWorkflow, {
-			where: { workflowId },
-			select: ['projectId', 'role'],
-		});
+		const manager = this.managerFor(ctx);
+		const exists = await manager.existsBy(SharedWorkflow, { workflowId });
+		if (!exists || projectIds.length === 0 || roles.length === 0) {
+			return { exists, hasAccess: false };
+		}
 
 		return {
-			exists: rows.length > 0,
-			hasAccess: rows.some((row) => projectIds.includes(row.projectId) && roles.includes(row.role)),
+			exists,
+			hasAccess: await manager.existsBy(SharedWorkflow, {
+				workflowId,
+				projectId: In(projectIds),
+				role: In(roles),
+			}),
 		};
 	}
 

@@ -46,6 +46,10 @@ export class ScopeAccessService {
 		private readonly resourceResolverRegistry: ProjectOwnedResourceScopeResolverRegistry,
 	) {}
 
+	hasGlobalScopes(user: User, scopes: Scope[]): boolean {
+		return hasGlobalScope(user, scopes, { mode: 'allOf' });
+	}
+
 	async hasScopes({
 		user,
 		scopes,
@@ -53,10 +57,18 @@ export class ScopeAccessService {
 		resource,
 		context = {},
 	}: ScopeAccessRequest) {
-		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return true;
+		const hasGenericGlobalAccess = this.hasGlobalScopes(user, scopes);
+		const hasResourceGlobalAccess =
+			resource.type === 'credential'
+				? this.credentialsFinderService.hasGlobalAccess(user, scopes)
+				: hasGenericGlobalAccess;
+		if (hasResourceGlobalAccess) return true;
 		if (globalOnly) return false;
 
-		const projectIds = (await this.projectScopeService.getProjectIds(user, scopes, context)) ?? [];
+		const projectIds =
+			(await this.projectScopeService.getProjectIds(user, scopes, context, {
+				ignoreGlobalScope: resource.type === 'credential' && hasGenericGlobalAccess,
+			})) ?? [];
 
 		switch (resource.type) {
 			case 'project':
@@ -104,7 +116,7 @@ export class ScopeAccessService {
 		if (
 			hasGlobalScope(user, 'credential:manageInstance') &&
 			scopes.every((scope) => INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES.has(scope)) &&
-			(await this.credentialsRepository.isInstanceCredential(credentialId, context))
+			(await this.credentialsRepository.findInstanceCredentialById(credentialId, context)) !== null
 		) {
 			return true;
 		}
@@ -119,15 +131,29 @@ export class ScopeAccessService {
 
 		if (!access.exists) throw new NotFoundError(`Credential with ID "${credentialId}" not found.`);
 		if (access.hasAccess) return true;
-		return await this.hasGlobalCredentialAccess(credentialId, scopes);
+		if (
+			hasGlobalScope(user, scopes, { mode: 'allOf' }) &&
+			!this.credentialsFinderService.hasGlobalAccess(user, scopes)
+		) {
+			return false;
+		}
+		return await this.hasGlobalCredentialAccess(credentialId, scopes, context);
 	}
 
-	private async hasGlobalCredentialAccess(credentialId: string, scopes: Scope[]) {
+	private async hasGlobalCredentialAccess(
+		credentialId: string,
+		scopes: Scope[],
+		context: OperationContext,
+	) {
 		const isReadOnlyRequest = this.credentialsFinderService.hasGlobalReadOnlyAccess(scopes);
 		const isConnectRequest = this.credentialsFinderService.hasGlobalConnectAccess(scopes);
 		if (!isReadOnlyRequest && !isConnectRequest) return false;
 
-		const credential = await this.credentialsFinderService.findGlobalCredentialById(credentialId);
+		const credential = await this.credentialsFinderService.findGlobalCredentialById(
+			credentialId,
+			undefined,
+			context,
+		);
 		return credential !== null && (isReadOnlyRequest || credential.isResolvable);
 	}
 

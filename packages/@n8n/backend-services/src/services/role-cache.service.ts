@@ -100,6 +100,19 @@ export class RoleCacheService {
 		return matchingRoles;
 	}
 
+	async getRolesWithAllScopesUncached(
+		namespace: 'global' | 'project' | 'credential' | 'workflow' | 'secretsProviderConnection',
+		requiredScopes: Scope[],
+		loadRoles: RoleLoader,
+	): Promise<string[]> {
+		if (requiredScopes.length === 0) return [];
+
+		const roleScopeMap = await this.buildRoleScopeMap(loadRoles);
+		return Object.entries(roleScopeMap[namespace] ?? {})
+			.filter(([, roleInfo]) => requiredScopes.every((scope) => roleInfo.scopes.includes(scope)))
+			.map(([roleSlug]) => roleSlug);
+	}
+
 	/**
 	 * Invalidate the role cache (call after role changes)
 	 */

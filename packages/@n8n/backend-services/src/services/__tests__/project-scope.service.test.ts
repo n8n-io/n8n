@@ -1,4 +1,4 @@
-import { ProjectRelationRepository, User } from '@n8n/db';
+import { type OperationContext, ProjectRelationRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ProjectScopeService } from '../project-scope.service';
@@ -79,5 +79,39 @@ describe('ProjectScopeService', () => {
 			{},
 		);
 		expect(result).toEqual(['project-1', 'project-2']);
+	});
+
+	it('forwards a transaction context through role and project relation queries', async () => {
+		const context = mock<OperationContext>();
+		roleService.rolesWithScopeInContext.mockResolvedValue(['project:editor']);
+		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['project-1']);
+
+		await service.getProjectIds(makeUser(), ['agent:update'], context);
+
+		expect(roleService.rolesWithScopeInContext).toHaveBeenCalledWith(
+			'project',
+			['agent:update'],
+			context,
+		);
+		expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+			'user-1',
+			['project:editor'],
+			context,
+		);
+	});
+
+	it('resolves project roles when the global scope must not bypass sharing', async () => {
+		roleService.rolesWithScopeInContext.mockResolvedValue(['project:editor']);
+
+		await expect(
+			service.getProjectRoleSlugs(
+				makeUser(['credential:read']),
+				['credential:read'],
+				{},
+				{
+					ignoreGlobalScope: true,
+				},
+			),
+		).resolves.toEqual(['project:editor']);
 	});
 });
