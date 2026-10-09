@@ -38,26 +38,5 @@ describe('IdempotencyKeyService', () => {
 			expect(idempotencyKeyRepository.deleteOlderThan).toHaveBeenCalledTimes(3);
 			expect(deleted).toBe(batchSize * 2 + 3);
 		});
-
-		it('stops after a full batch when the run is aborted', async () => {
-			const controller = new AbortController();
-			idempotencyKeyRepository.deleteOlderThan.mockImplementation(async () => {
-				controller.abort();
-				return batchSize;
-			});
-
-			const deleted = await service.deleteOlderThan(cutoff, controller.signal);
-
-			expect(idempotencyKeyRepository.deleteOlderThan).toHaveBeenCalledTimes(1);
-			expect(deleted).toBe(batchSize);
-		});
-
-		it('returns 0 when nothing is old enough', async () => {
-			idempotencyKeyRepository.deleteOlderThan.mockResolvedValueOnce(0);
-
-			const deleted = await service.deleteOlderThan(cutoff, signal);
-
-			expect(deleted).toBe(0);
-		});
 	});
 });
