@@ -478,7 +478,7 @@ export class RoleService {
 		return await this.roleCacheService.getRolesWithAllScopesUncached(
 			namespace,
 			requiredScopes,
-			async () => await this.roleRepository.findAllInContext(context),
+			async () => await this.roleRepository.findAll(context),
 		);
 	}
 

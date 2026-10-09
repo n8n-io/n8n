@@ -95,7 +95,7 @@ describe('scope access repositories', () => {
 			const transactionManager = mockEntityManager(Role);
 			transactionManager.find.mockResolvedValue([]);
 
-			await repository.findAllInContext({
+			await repository.findAll({
 				trx: new TypeOrmTransaction(transactionManager),
 			});
 
