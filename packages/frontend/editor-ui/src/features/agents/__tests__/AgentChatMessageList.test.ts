@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AgentChatMessageList from '../components/AgentChatMessageList.vue';
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { planMessage, planTask, planView } from './fixtures/agent-plan';
+import { computed } from 'vue';
+import { AGENTS_CHAT_INTERACTION_EXTENSIONS } from '@/features/ai/shared/agentsChat/interactionRegistry';
+import {
+	TEST_RESULT_TOOL_NAME,
+	testToolResultExtension,
+} from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 
 const copySpy = vi.fn();
 
@@ -1296,6 +1302,120 @@ describe('AgentChatMessageList', () => {
 			});
 
 			expect(wrapper.findAll('[data-testid="agent-chat-timestamp-divider"]')).toHaveLength(0);
+		});
+	});
+	describe('host tool-result renderers', () => {
+		const savedNote: ToolCall = {
+			tool: TEST_RESULT_TOOL_NAME,
+			toolCallId: 'tc-note',
+			state: 'done',
+			input: { text: 'Remember this' },
+			output: { saved: true },
+		};
+		const httpCall: ToolCall = {
+			tool: 'http_request',
+			toolCallId: 'tc-http',
+			state: 'done',
+			output: { status: 200 },
+		};
+
+		function assistantMessage(toolCalls: ToolCall[], content = ''): ChatMessage {
+			return { id: 'assistant-1', role: 'assistant', content, toolCalls, status: 'success' };
+		}
+
+		function mountList(messages: ChatMessage[], withExtension = true) {
+			return mount(AgentChatMessageList, {
+				props: { messages, messagingState: 'idle' },
+				global: withExtension
+					? {
+							provide: {
+								[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => [testToolResultExtension]),
+							},
+						}
+					: {},
+			});
+		}
+
+		function stepToolCallIds(wrapper: ReturnType<typeof mountList>): string[] {
+			return wrapper
+				.findAllComponents({ name: 'AgentChatToolSteps' })
+				.flatMap((steps) => (steps.props('toolCalls') as ToolCall[]).map((tc) => tc.toolCallId));
+		}
+
+		it.each([
+			['a tool run', ''],
+			['a message with text', 'Saved your note.'],
+		])('renders the host component in place of the default step in %s', (_, content) => {
+			const wrapper = mountList([assistantMessage([httpCall, savedNote], content)]);
+
+			const results = wrapper.findAll('[data-testid="agent-chat-host-tool-result"]');
+			expect(results).toHaveLength(1);
+			expect(results[0].find('[data-testid="test-tool-result"]').text()).toContain('tc-note');
+			expect(results[0].text()).toContain('{"saved":true}');
+			expect(stepToolCallIds(wrapper)).toEqual(['tc-http']);
+			wrapper.unmount();
+		});
+
+		it('hides the tool steps when the host renders every call', () => {
+			const wrapper = mountList([assistantMessage([savedNote])]);
+
+			expect(wrapper.findAll('[data-testid="test-tool-result"]')).toHaveLength(1);
+			expect(wrapper.findComponent({ name: 'AgentChatToolSteps' }).exists()).toBe(false);
+			wrapper.unmount();
+		});
+
+		it('renders the default step without extensions', () => {
+			const wrapper = mountList([assistantMessage([httpCall, savedNote])], false);
+
+			expect(wrapper.find('[data-testid="agent-chat-host-tool-result"]').exists()).toBe(false);
+			expect(stepToolCallIds(wrapper)).toEqual(['tc-http', 'tc-note']);
+			wrapper.unmount();
+		});
+
+		it('falls back to the default step until the call finishes', async () => {
+			const running: ToolCall = { ...savedNote, state: 'running', output: undefined };
+			const wrapper = mountList([assistantMessage([running])]);
+
+			expect(wrapper.find('[data-testid="test-tool-result"]').exists()).toBe(false);
+			expect(stepToolCallIds(wrapper)).toEqual(['tc-note']);
+
+			await wrapper.setProps({ messages: [assistantMessage([savedNote])] });
+
+			expect(wrapper.findAll('[data-testid="test-tool-result"]')).toHaveLength(1);
+			expect(stepToolCallIds(wrapper)).toEqual([]);
+			wrapper.unmount();
+		});
+
+		it('falls back to the default step until the output arrives', () => {
+			const ended: ToolCall = { ...savedNote, output: undefined };
+			const wrapper = mountList([assistantMessage([ended])]);
+
+			expect(wrapper.find('[data-testid="test-tool-result"]').exists()).toBe(false);
+			expect(stepToolCallIds(wrapper)).toEqual(['tc-note']);
+			wrapper.unmount();
+		});
+
+		it('keeps the default step for a suspended copy of a call that finished later', () => {
+			const suspended: ToolCall = { ...savedNote, state: 'suspended', output: undefined };
+			const wrapper = mountList([
+				{ ...assistantMessage([suspended], 'Saving your note.'), id: 'assistant-1' },
+				{ ...assistantMessage([savedNote]), id: 'assistant-2' },
+			]);
+
+			const results = wrapper.findAll('[data-testid="test-tool-result"]');
+			expect(results).toHaveLength(1);
+			expect(results[0].text()).toContain('{"saved":true}');
+			expect(stepToolCallIds(wrapper)).toEqual(['tc-note']);
+			wrapper.unmount();
+		});
+
+		it('falls back to the default step for a failed call', () => {
+			const failed: ToolCall = { ...savedNote, state: 'error', output: 'boom' };
+			const wrapper = mountList([assistantMessage([failed])]);
+
+			expect(wrapper.find('[data-testid="test-tool-result"]').exists()).toBe(false);
+			expect(stepToolCallIds(wrapper)).toEqual(['tc-note']);
+			wrapper.unmount();
 		});
 	});
 });
