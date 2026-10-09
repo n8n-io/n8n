@@ -126,6 +126,7 @@ describe('DataTableExporter', () => {
 				requirements: [
 					makeRequirement({ workflowId: 'wf-a' }),
 					makeRequirement({ workflowId: 'wf-b' }),
+					makeRequirement({ workflowId: 'wf-a' }),
 				],
 				writer,
 			});

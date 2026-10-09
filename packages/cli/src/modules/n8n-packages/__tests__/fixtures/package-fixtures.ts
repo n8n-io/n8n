@@ -11,6 +11,7 @@ import type { PackageManifest } from '../../spec/manifest.schema';
 import type {
 	PackageCredentialRequirement,
 	PackageDataTableRequirement,
+	PackageRequirementConsumer,
 	PackageWorkflowRequirement,
 } from '../../spec/requirements.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
@@ -321,12 +322,12 @@ export function serializedWorkflowWithDataTable(options: {
 /** Builds a manifest data table requirement (simulates export). */
 export function dataTableRequirement(
 	table: SerializedDataTable,
-	usedByWorkflows: string[],
+	usedBy: PackageRequirementConsumer[],
 ): PackageDataTableRequirement {
 	return {
 		id: table.id,
 		name: table.name,
-		usedBy: usedByWorkflows.map((id) => ({ kind: 'workflow', id })),
+		usedBy,
 	};
 }
 

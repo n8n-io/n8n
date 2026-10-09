@@ -12,11 +12,11 @@ import type { PackageWriter } from '../../io/package-writer';
 import type { CredentialExportPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+import { addRequirementUsage, type RequirementUsage } from '../requirement-source';
 
-interface CredentialGroup {
+interface CredentialGroup extends RequirementUsage {
 	// Name+type to use if the DB lookup fails — sourced from the workflow snapshot.
 	fallback: WorkflowCredentialRequirement;
-	usedByWorkflows: string[];
 }
 
 export interface CredentialExportRequest {
@@ -44,7 +44,7 @@ export class CredentialExporter {
 		const entries: ManifestEntry[] = [];
 		const requirements: PackageCredentialRequirement[] = [];
 
-		for (const [credentialId, { fallback, usedByWorkflows }] of this.groupByCredentialId(
+		for (const [credentialId, { fallback, usedBy }] of this.groupByCredentialId(
 			request.requirements,
 		)) {
 			const credential = await this.credentialsFinder.findCredentialForUser(
@@ -89,7 +89,7 @@ export class CredentialExporter {
 				id,
 				name,
 				type,
-				usedBy: usedByWorkflows.map((workflowId) => ({ kind: 'workflow', id: workflowId })),
+				usedBy,
 			});
 		}
 
@@ -109,17 +109,12 @@ export class CredentialExporter {
 	): Map<string, CredentialGroup> {
 		const grouped = new Map<string, CredentialGroup>();
 		for (const requirement of requirements) {
-			const existing = grouped.get(requirement.credentialId);
-			if (existing) {
-				if (!existing.usedByWorkflows.includes(requirement.workflowId)) {
-					existing.usedByWorkflows.push(requirement.workflowId);
-				}
-			} else {
-				grouped.set(requirement.credentialId, {
-					fallback: requirement,
-					usedByWorkflows: [requirement.workflowId],
-				});
-			}
+			const group = grouped.get(requirement.credentialId) ?? {
+				fallback: requirement,
+				usedBy: [],
+			};
+			addRequirementUsage(group, requirement);
+			grouped.set(requirement.credentialId, group);
 		}
 		return grouped;
 	}

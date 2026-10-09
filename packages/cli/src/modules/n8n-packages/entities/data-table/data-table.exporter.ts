@@ -11,6 +11,7 @@ import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-en
 import type { PackageWriter } from '../../io/package-writer';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
+import { groupRequirementUsage } from '../requirement-source';
 
 export interface DataTableExportRequest {
 	user: User;
@@ -43,8 +44,8 @@ export class DataTableExporter {
 			);
 		}
 
-		const usedByWorkflowsById = this.groupByDataTableId(request.requirements);
-		const requestedIds = [...usedByWorkflowsById.keys()];
+		const usageById = groupRequirementUsage(request.requirements, ({ dataTableId }) => dataTableId);
+		const requestedIds = [...usageById.keys()];
 
 		const dataTables = await this.dataTableService.findDataTablesByIdsForUser(
 			requestedIds,
@@ -70,29 +71,11 @@ export class DataTableExporter {
 			requirements.push({
 				id: dataTable.id,
 				name: dataTable.name,
-				usedBy: (usedByWorkflowsById.get(dataTable.id) ?? []).map((id) => ({
-					kind: 'workflow',
-					id,
-				})),
+				usedBy: usageById.get(dataTable.id)?.usedBy ?? [],
 			});
 		}
 
 		return { entries, requirements };
-	}
-
-	private groupByDataTableId(requirements: WorkflowDataTableRequirement[]): Map<string, string[]> {
-		const grouped = new Map<string, string[]>();
-		for (const requirement of requirements) {
-			const usedByWorkflows = grouped.get(requirement.dataTableId);
-			if (usedByWorkflows) {
-				if (!usedByWorkflows.includes(requirement.workflowId)) {
-					usedByWorkflows.push(requirement.workflowId);
-				}
-			} else {
-				grouped.set(requirement.dataTableId, [requirement.workflowId]);
-			}
-		}
-		return grouped;
 	}
 
 	private assertAllRequestedDataTablesFound(
