@@ -372,6 +372,16 @@ describe('ToolRow', () => {
 			expect(emitted().connect).toBeUndefined();
 		});
 
+		it('opens the detail of a connected restricted row', async () => {
+			const { getByTestId, emitted } = render({ ...restrictedNode, status: 'connected' });
+
+			const main = getByTestId('tools-connection-row-main');
+			expect(main.getAttribute('aria-disabled')).toBeNull();
+			await fireEvent.click(main);
+
+			expect(emitted()['open-detail']?.[0]).toEqual([{ ...restrictedNode, status: 'connected' }]);
+		});
+
 		it('shows the lock, not the install action, for a restricted community node', () => {
 			const item: NodeConnectionItem = {
 				...restrictedNode,

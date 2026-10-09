@@ -4,11 +4,11 @@
  * for use in integration tests. No mocking of SDK internals.
  */
 
-import { Server as McpServer } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import http from 'http';
+import { z } from 'zod';
 
 /** 1×1 transparent PNG in base64 (smallest valid PNG). Used for image tool tests. */
 export const TINY_PNG =
@@ -20,84 +20,47 @@ export interface TestServer {
 }
 
 /** Create an in-process MCP Server with three test tools: echo, add, and image. */
-// oxlint-disable-next-line typescript/no-deprecated
 export function createTestMcpServer(): McpServer {
-	// oxlint-disable-next-line typescript/no-deprecated
-	const server = new McpServer(
-		{ name: 'test-mcp-server', version: '1.0.0' },
-		{ capabilities: { tools: {} } },
+	const server = new McpServer({ name: 'test-mcp-server', version: '1.0.0' });
+	server.registerTool(
+		'echo',
+		{
+			description: 'Echo the message back as-is',
+			inputSchema: { message: z.string().describe('Message to echo') },
+		},
+		async ({ message }) => ({ content: [{ type: 'text', text: message }] }),
 	);
-
-	server.setRequestHandler(ListToolsRequestSchema, async () => ({
-		tools: [
-			{
-				name: 'echo',
-				description: 'Echo the message back as-is',
-				inputSchema: {
-					type: 'object',
-					properties: { message: { type: 'string', description: 'Message to echo' } },
-					required: ['message'],
-				},
+	server.registerTool(
+		'add',
+		{
+			description: 'Add two numbers together',
+			inputSchema: {
+				a: z.number().describe('First number'),
+				b: z.number().describe('Second number'),
 			},
-			{
-				name: 'add',
-				description: 'Add two numbers together',
-				inputSchema: {
-					type: 'object',
-					properties: {
-						a: { type: 'number', description: 'First number' },
-						b: { type: 'number', description: 'Second number' },
-					},
-					required: ['a', 'b'],
-				},
-			},
-			{
-				name: 'image',
-				description: 'Return a small image with a caption',
-				inputSchema: {
-					type: 'object',
-					properties: { caption: { type: 'string', description: 'Image caption' } },
-					required: ['caption'],
-				},
-			},
-		],
-	}));
-
-	server.setRequestHandler(CallToolRequestSchema, async (request) => {
-		const { name, arguments: args = {} } = request.params;
-
-		if (name === 'echo') {
-			// eslint-disable-next-line @typescript-eslint/no-base-to-string
-			return { content: [{ type: 'text', text: String(args.message ?? '') }] };
-		}
-
-		if (name === 'add') {
-			const sum = Number(args.a ?? 0) + Number(args.b ?? 0);
-			return { content: [{ type: 'text', text: String(sum) }] };
-		}
-
-		if (name === 'image') {
-			return {
-				content: [
-					// eslint-disable-next-line @typescript-eslint/no-base-to-string
-					{ type: 'text', text: String(args.caption ?? '') },
-					{ type: 'image', data: TINY_PNG, mimeType: 'image/png' },
-				],
-			};
-		}
-
-		return {
-			isError: true,
-			content: [{ type: 'text', text: `Unknown tool: ${name}` }],
-		};
-	});
+		},
+		async ({ a, b }) => ({ content: [{ type: 'text', text: String(a + b) }] }),
+	);
+	server.registerTool(
+		'image',
+		{
+			description: 'Return a small image with a caption',
+			inputSchema: { caption: z.string().describe('Image caption') },
+		},
+		async ({ caption }) => ({
+			content: [
+				{ type: 'text', text: caption },
+				{ type: 'image', data: TINY_PNG, mimeType: 'image/png' },
+			],
+		}),
+	);
 
 	return server;
 }
 
 /** Start an SSE MCP server on a random port. Returns the SSE endpoint URL and a close function. */
 export async function startSseServer(): Promise<TestServer> {
-	// oxlint-disable-next-line typescript/no-deprecated
+	// oxlint-disable-next-line typescript/no-deprecated -- Test the supported SSE compatibility path.
 	const transports = new Map<string, SSEServerTransport>();
 
 	const httpServer = http.createServer(async (req, res) => {
@@ -107,7 +70,7 @@ export async function startSseServer(): Promise<TestServer> {
 				// a single active transport reference and rejects a second connect() call
 				// if the first transport hasn't been fully torn down yet.
 				const mcpServer = createTestMcpServer();
-				// oxlint-disable-next-line typescript/no-deprecated
+				// oxlint-disable-next-line typescript/no-deprecated -- Test the supported SSE compatibility path.
 				const transport = new SSEServerTransport('/message', res);
 				transports.set(transport.sessionId, transport);
 				await mcpServer.connect(transport);

@@ -57,6 +57,7 @@ requestBody:
                   - username
                   - password
                 additionalProperties: false
+            type: object
           config:
             type: object
             properties:

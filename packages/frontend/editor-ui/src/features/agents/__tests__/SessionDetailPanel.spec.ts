@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createRouter, createMemoryHistory, type Router } from 'vue-router';
 import SessionDetailPanel from '../components/SessionDetailPanel.vue';
+import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
+import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import type { TimelineItem } from '../session-timeline.types';
 
 vi.mock('../components/WorkflowExecutionLogViewer.vue', () => ({
@@ -67,6 +69,44 @@ describe('SessionDetailPanel — user attachments', () => {
 	it('skips the attachments block for user items without files', () => {
 		const w = mountIt({ ...userItem, attachments: undefined }, { projectId: 'p1', agentId: 'a1' });
 		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(false);
+	});
+});
+
+describe('SessionDetailPanel — reasoning', () => {
+	it.each(['The answer.', '{"answer":42}', ''])(
+		'shows collapsed reasoning below response content %j',
+		async (content) => {
+			const thinkingSegments = [
+				{ id: 'r-1', content: 'Check the facts. Then answer.', startTime: 1000, endTime: 4000 },
+			];
+			const w = mountIt({
+				kind: 'agent',
+				executionId: 'e1',
+				timestamp: 5000,
+				content,
+				thinkingSegments,
+			});
+			const thinking = w.findComponent(AiThinkingBlock);
+			expect(thinking.props()).toMatchObject({
+				segments: thinkingSegments,
+				active: false,
+				durationSec: 3,
+			});
+			const header = thinking.find('[data-test-id="thinking-block-header"]');
+			expect(header.attributes('aria-expanded')).toBe('false');
+			await header.trigger('click');
+			expect(header.attributes('aria-expanded')).toBe('true');
+			const reasoning = thinking.findComponent(AiReasoningBlock);
+			expect(reasoning.props('entry')).toEqual(thinkingSegments[0]);
+			await reasoning.find('button').trigger('click');
+			expect(reasoning.text()).toContain('Then answer.');
+			w.unmount();
+		},
+	);
+
+	it('shows no reasoning section for a message without traces', () => {
+		const w = mountIt({ kind: 'agent', executionId: 'e1', timestamp: 0, content: 'The answer.' });
+		expect(w.findComponent(AiThinkingBlock).exists()).toBe(false);
 	});
 });
 

@@ -17,10 +17,10 @@ import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
 import type { SerializedVariable } from '../../spec/serialized/variable.schema';
 import { PackageExportBlockedError } from '../package-export.errors';
+import { groupRequirementUsage, type RequirementUsage } from '../requirement-source';
 
-interface ResolvedName {
+interface ResolvedName extends RequirementUsage {
 	name: string;
-	usedByWorkflows: string[];
 	variables: Array<Variables | undefined>;
 }
 
@@ -71,7 +71,7 @@ export class VariableExporter {
 		const bundledVariableIds = new Set<string>();
 		const requirements: PackageVariableRequirement[] = [];
 
-		for (const { name, usedByWorkflows, variables } of resolvedNames) {
+		for (const { name, usedBy, variables } of resolvedNames) {
 			for (const variable of variables) {
 				if (!isBundleableVariable(variable)) continue;
 
@@ -89,7 +89,7 @@ export class VariableExporter {
 				);
 			}
 
-			requirements.push({ name, usedByWorkflows });
+			requirements.push({ name, usedBy });
 		}
 
 		return { entries, requirements };
@@ -147,10 +147,11 @@ export class VariableExporter {
 			return picked && accessibleIds.has(picked.id) ? picked : undefined;
 		};
 
-		return [...this.groupByName(requirements)].map(([name, usedByWorkflows]) => ({
+		const usageByName = groupRequirementUsage(requirements, ({ variableName }) => variableName);
+		return [...usageByName].map(([name, { usedBy }]) => ({
 			name,
-			usedByWorkflows,
-			variables: usedByWorkflows.map((workflowId) => resolveForWorkflow(name, workflowId)),
+			usedBy,
+			variables: usedBy.map(({ id }) => resolveForWorkflow(name, id)),
 		}));
 	}
 
@@ -205,20 +206,5 @@ export class VariableExporter {
 			idByDir.set(dir, variable.id);
 		}
 		return false;
-	}
-
-	private groupByName(requirements: WorkflowVariableRequirement[]): Map<string, string[]> {
-		const grouped = new Map<string, string[]>();
-		for (const requirement of requirements) {
-			const workflowIds = grouped.get(requirement.variableName);
-			if (workflowIds) {
-				if (!workflowIds.includes(requirement.workflowId)) {
-					workflowIds.push(requirement.workflowId);
-				}
-			} else {
-				grouped.set(requirement.variableName, [requirement.workflowId]);
-			}
-		}
-		return grouped;
 	}
 }

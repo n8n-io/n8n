@@ -19,6 +19,11 @@ type NewPolicyScope = {
 	updatedBy: string;
 };
 
+export type ProjectPolicyScope = TypeAvailabilityPolicyScope & { projectId: string };
+
+const isProjectScope = (scope: TypeAvailabilityPolicyScope): scope is ProjectPolicyScope =>
+	scope.projectId !== null;
+
 @Service()
 export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAvailabilityPolicyScope> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -143,6 +148,15 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		}
 
 		return keys;
+	}
+
+	async findProjectScopes(kind: string, ctx: OperationContext): Promise<ProjectPolicyScope[]> {
+		const scopes = await this.managerFor(ctx).findBy(TypeAvailabilityPolicyScope, {
+			kind,
+			projectId: Not(IsNull()),
+		});
+
+		return scopes.filter(isProjectScope);
 	}
 
 	/**

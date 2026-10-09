@@ -7,7 +7,7 @@ import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
-import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
+import { BinaryDataConfig, InstanceSettings, type Types } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
@@ -119,6 +119,8 @@ export class FrontendService {
 
 	private publishedWorkflowCountRequest?: Promise<number>;
 
+	private writeQueue: Promise<void> = Promise.resolve();
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
@@ -203,6 +205,7 @@ export class FrontendService {
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
 			endpointHealth: resolveFrontendHealthEndpointPath(this.globalConfig),
+			healthCheckTimeoutMs: this.globalConfig.endpoints.frontendHealthCheckTimeoutMs,
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
@@ -439,6 +442,7 @@ export class FrontendService {
 				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
 				configEvalsEnabled: this.globalConfig.evaluation.configEvalsEnabled,
 				agentEvalsEnabled: this.globalConfig.evaluation.agentEvalsEnabled,
+				forceAgentWorthTesting: this.globalConfig.evaluation.forceAgentWorthTesting,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly.enabled,
@@ -453,8 +457,17 @@ export class FrontendService {
 	async generateTypes() {
 		this.overwriteCredentialsProperties();
 
-		const { credentials, nodes } = await this.loadNodesAndCredentials.collectTypes();
+		const types = await this.loadNodesAndCredentials.collectTypes();
+		await this.enqueueWrite(types);
+	}
 
+	private async enqueueWrite(types: Types) {
+		const write = this.writeQueue.then(async () => await this.writeTypesFiles(types));
+		this.writeQueue = write.catch(() => {});
+		await write;
+	}
+
+	private async writeTypesFiles({ credentials, nodes }: Types) {
 		const { staticCacheDir } = this.instanceSettings;
 		// pre-render all the node and credential types as static json files
 		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });

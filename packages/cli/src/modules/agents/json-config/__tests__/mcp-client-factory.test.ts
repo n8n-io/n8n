@@ -2,7 +2,7 @@ import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import type { OauthService } from '@/oauth/oauth.service';
 
@@ -19,10 +19,16 @@ import {
 const mcpClientCtor = vi.fn();
 const listToolsMock = vi.fn();
 const closeMock = vi.fn();
+const getConnectionFailuresMock = vi.fn();
 vi.mock('@n8n/agents', () => ({
 	McpClient: vi.fn(function (configs: unknown) {
 		mcpClientCtor(configs);
-		return { configs, close: closeMock, listTools: listToolsMock };
+		return {
+			configs,
+			close: closeMock,
+			listTools: listToolsMock,
+			getConnectionFailures: getConnectionFailuresMock,
+		};
 	}),
 }));
 
@@ -800,6 +806,8 @@ describe('listMcpServerTools', () => {
 		listToolsMock.mockReset();
 		closeMock.mockReset();
 		closeMock.mockResolvedValue(undefined);
+		getConnectionFailuresMock.mockReset();
+		getConnectionFailuresMock.mockReturnValue([]);
 	});
 
 	it('returns name/description pairs (empty description fallback) and closes the client', async () => {
@@ -821,6 +829,17 @@ describe('listMcpServerTools', () => {
 		listToolsMock.mockRejectedValue(new Error('connection refused'));
 
 		await expect(listMcpServerTools(makeServer(), deps())).rejects.toThrow('connection refused');
+		expect(closeMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('rejects a recorded connection failure and still closes the client', async () => {
+		listToolsMock.mockResolvedValue([]);
+		getConnectionFailuresMock.mockReturnValue([{ server: 'srv', error: 'fetch failed' }]);
+
+		const pending = listMcpServerTools(makeServer(), deps());
+
+		await expect(pending).rejects.toBeInstanceOf(OperationalError);
+		await expect(pending).rejects.toThrow('MCP server "srv" connection failed: fetch failed');
 		expect(closeMock).toHaveBeenCalledTimes(1);
 	});
 

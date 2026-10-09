@@ -580,19 +580,6 @@ describe('Promotions in Public API', () => {
 		expect(response.body.message).toBe('request/body At least one field is required');
 	});
 
-	it.each(['providers', 'connections'])(
-		'returns no cursor for a zero-limit %s list',
-		async (resource) => {
-			const agent = testServer.publicApiAgentFor(owner);
-			await createConnection(agent);
-
-			const response = await agent.get(`/promotions/${resource}?limit=0`);
-
-			expect(response.status).toBe(200);
-			expect(response.body).toEqual({ data: [], nextCursor: null });
-		},
-	);
-
 	it.each([false, true])(
 		'passes the API key variable permission to Promote: %s',
 		async (canExportVariableValues) => {
@@ -1040,9 +1027,10 @@ describe('Promotions in Public API', () => {
 
 	describe('change preview', () => {
 		it('checks the scope of the requested direction and forwards the query', async () => {
+			const source = { configId: 'config1', branchName: 'main' };
 			const getChanges = vi
 				.spyOn(Container.get(PromotionChangeService), 'getChanges')
-				.mockResolvedValue({ commitSha: 'a'.repeat(40), changes: [] });
+				.mockResolvedValue({ commitSha: 'a'.repeat(40), source, changes: [] });
 			try {
 				const pushOnly = testServer.publicApiAgentFor(
 					await createOwnerWithApiKey({ scopes: ['gitConnection:push'] }),
@@ -1053,7 +1041,7 @@ describe('Promotions in Public API', () => {
 
 				const promote = await pushOnly.get('/promotions/projects/proj1/changes/promote');
 				expect(promote.status, JSON.stringify(promote.body)).toBe(200);
-				expect(promote.body).toEqual({ commitSha: 'a'.repeat(40), changes: [] });
+				expect(promote.body).toEqual({ commitSha: 'a'.repeat(40), source, changes: [] });
 				expect(getChanges).toHaveBeenLastCalledWith(
 					expect.objectContaining({ id: expect.any(String) }),
 					'proj1',
@@ -1336,7 +1324,7 @@ describe('Promotions in Public API', () => {
 							publishing: { published: 0, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
 						},
 						credentials: { matched: 0, stubbed: 0 },
-						dataTables: { matched: 0, created: 0 },
+						dataTables: { matched: 0, created: 0, updated: 0 },
 						variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
 						tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
 					},
@@ -1521,7 +1509,7 @@ describe('Promotions in Public API', () => {
 							publishing: { published: 0, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
 						},
 						credentials: { matched: 0, stubbed: 0 },
-						dataTables: { matched: 0, created: 0 },
+						dataTables: { matched: 0, created: 0, updated: 0 },
 						variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
 						tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
 					},

@@ -110,7 +110,9 @@ export class AutoIncludedWorkflowExporter {
 			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);
-			credentials.push(...this.credentialRequirementsExtractor.extract(included.workflow));
+			credentials.push(
+				...this.credentialRequirementsExtractor.extractFromWorkflow(included.workflow),
+			);
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(included.workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(included.workflow));
 			tags.push(...this.tagRequirementsExtractor.extract(included.workflow));

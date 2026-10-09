@@ -3,11 +3,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { defineComponent, onMounted, nextTick } from 'vue';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { AgentModalTestStub } from './utils/AgentModalTestStub';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 
 import AgentToolConfigModal from '../components/AgentToolConfigModal.vue';
 import type { AgentJsonToolRef, CustomToolEntry } from '../types';
@@ -64,6 +67,7 @@ function createToolSettingsStub(emitValid: boolean) {
 			'projectId',
 			'parameterIssues',
 			'fromAiDisabledParameters',
+			'readOnly',
 		],
 		emits: ['update:valid', 'update:node-name', 'update:node'],
 		setup(props, { emit, expose }) {
@@ -91,7 +95,11 @@ function createToolSettingsStub(emitValid: boolean) {
 			return {};
 		},
 		template: `
-			<div data-test-id="node-tool-settings-content" :data-project-id="projectId">
+			<div
+				data-test-id="node-tool-settings-content"
+				:data-project-id="projectId"
+				:data-read-only="readOnly"
+			>
 				<button
 					v-if="!fromAiDisabledParameters?.includes('url')"
 					data-test-id="from-ai-override-button"
@@ -197,14 +205,18 @@ function renderModal({
 				AgentToolConfigNodeContent: createToolSettingsStub(valid),
 				AgentToolConfigWorkflowContent: createWorkflowToolConfigStub(valid),
 				N8nSwitch2: {
-					props: ['modelValue'],
+					props: ['modelValue', 'disabled'],
 					emits: ['update:modelValue'],
 					template:
-						'<button data-test-id="agent-tool-approval-toggle" :data-checked="modelValue" @click="$emit(\'update:modelValue\', !modelValue)" />',
+						'<button data-test-id="agent-tool-approval-toggle" :data-checked="modelValue" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)" />',
 				},
 				AgentToolConfigCustomContent: {
 					props: ['code'],
 					template: '<pre data-test-id="agent-custom-tool-viewer">{{ code }}</pre>',
+				},
+				ContactInstanceAdminModal: {
+					props: ['open', 'nodeTypeName'],
+					template: '<div v-if="open" data-test-id="contact-instance-admin-modal" />',
 				},
 			},
 		},
@@ -232,6 +244,7 @@ describe('AgentToolConfigModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia({ stubActions: false });
+		vi.spyOn(useNodeTypesStore(), 'loadNodeTypesIfNotLoaded').mockResolvedValue(undefined);
 		uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
@@ -240,6 +253,12 @@ describe('AgentToolConfigModal', () => {
 	it('renders the shared node-tool settings content', () => {
 		const { getByTestId } = renderModal();
 		expect(getByTestId('node-tool-settings-content')).toBeTruthy();
+	});
+
+	it('loads the node types so the tool shows its display name and parameters', () => {
+		renderModal();
+
+		expect(useNodeTypesStore().loadNodeTypesIfNotLoaded).toHaveBeenCalledOnce();
 	});
 
 	it('does not open for a persisted node tool without node data', () => {
@@ -492,5 +511,70 @@ describe('AgentToolConfigModal', () => {
 
 		expect(onRemove).toHaveBeenCalledOnce();
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	describe('restricted node types', () => {
+		beforeEach(() => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.slack': 'instance' });
+		});
+
+		it('loads the policy for the agent project', () => {
+			const fetchForProject = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+				.mockResolvedValue(undefined);
+
+			renderModal({ projectId: 'project-1' });
+
+			expect(fetchForProject).toHaveBeenCalledWith('project-1');
+		});
+
+		it('explains the restriction, locks the form and disables Save', async () => {
+			const { container, getByTestId } = renderModal({ valid: true });
+			await nextTick();
+
+			expect(getByTestId('restricted-tool-callout').textContent).toContain(
+				'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
+			);
+			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'true');
+			expect(getByTestId('agent-tool-approval-toggle')).toBeDisabled();
+			expect(queryNativeTestId(container, 'agent-modal-title-input')).toBeNull();
+
+			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
+			expect(saveBtn.disabled).toBe(true);
+		});
+
+		it('opens the contact admin dialog from the callout', async () => {
+			const { getByTestId, queryByTestId } = renderModal();
+			await nextTick();
+
+			expect(queryByTestId('contact-instance-admin-modal')).toBeNull();
+			await fireEvent.click(getByTestId('restricted-tool-contact-admin'));
+
+			expect(getByTestId('contact-instance-admin-modal')).toBeInTheDocument();
+		});
+
+		it('keeps Remove so the agent can be repaired', async () => {
+			const onRemove = vi.fn();
+			const { container } = renderModal({ onRemove });
+			await nextTick();
+
+			await fireEvent.click(getNativeTestId(container, 'agent-tool-config-remove'));
+
+			expect(onRemove).toHaveBeenCalledOnce();
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('leaves an unrestricted tool editable', async () => {
+			mockRestrictedNodeTypes();
+			const { container, getByTestId, queryByTestId } = renderModal({ valid: true });
+			await nextTick();
+
+			expect(queryByTestId('restricted-tool-callout')).toBeNull();
+			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'false');
+			expect(getByTestId('agent-tool-approval-toggle')).not.toBeDisabled();
+			expect(getNativeTestId(container, 'agent-modal-title-input')).toBeInTheDocument();
+			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
+			expect(saveBtn.disabled).toBe(false);
+		});
 	});
 });
