@@ -9,6 +9,7 @@ import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { OperationalError } from 'n8n-workflow';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -1839,6 +1840,21 @@ describe('McpAgentToolsService', () => {
 			transport: 'streamableHttp',
 			authentication: 'none',
 		};
+
+		it('returns ok: false when the MCP connection fails', async () => {
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
+			listMcpServerToolsMock.mockRejectedValue(
+				new OperationalError('MCP server "srv" connection failed: fetch failed'),
+			);
+
+			const result = await callTool('verify_agent_mcp_server', input);
+
+			expect(result.structuredContent).toEqual({
+				ok: false,
+				error: 'MCP server "srv" connection failed: fetch failed',
+			});
+			expect(result.isError).toBe(true);
+		});
 
 		it('connects and returns the server tool list', async () => {
 			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);

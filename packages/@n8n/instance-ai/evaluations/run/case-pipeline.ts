@@ -426,6 +426,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 							),
 							testCaseName: inputs.testCaseFile,
 							seedContext,
+							projectId: agentRef.projectId,
 						});
 						break;
 					} catch (error: unknown) {

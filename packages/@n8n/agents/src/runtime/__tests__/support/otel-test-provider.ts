@@ -8,7 +8,7 @@ import {
 
 /**
  * Disposable OTel test harness. Sets up an in-memory tracer that captures
- * spans for assertion, plus a real async-hooks context manager so parent/child
+ * spans for assertion, plus a real context manager so parent/child
  * span nesting is preserved across `await` boundaries (without it, every span
  * looks like a root regardless of `startActiveSpan` nesting, since the default
  * no-op context manager never tracks an "active" context).

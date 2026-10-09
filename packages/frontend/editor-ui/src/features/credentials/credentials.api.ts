@@ -79,6 +79,20 @@ export async function getAllCredentials(
 	});
 }
 
+export async function searchCredentials(
+	context: IRestApiContext,
+	options: { name: string; skip: number; take: number },
+): Promise<ICredentialsResponse[]> {
+	const { name, skip, take } = options;
+
+	return await makeRestApiRequest(context, 'GET', '/credentials', {
+		...(name ? { filter: { name } } : {}),
+		skip,
+		take,
+		includeGlobal: true,
+	});
+}
+
 export async function getUsableCredentials(
 	context: IRestApiContext,
 	options: CredentialFetchScope,
