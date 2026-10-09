@@ -7,6 +7,7 @@ import { DataSource, type Repository } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { TrustedSourceEntity } from '@/modules/inbound-auth-core/database/entities/trusted-source.entity';
+import { TrustedSourceRepository } from '@/modules/inbound-auth-core/database/repositories/trusted-source.repository';
 import { SystemTrustedSourceSeeder } from '@/modules/inbound-auth-core/system-trusted-source.seeder';
 import {
 	SystemTrustedSourceModificationError,
@@ -131,6 +132,19 @@ describe('SystemTrustedSourceSeeder (integration)', () => {
 		expect(await store.getById(ID)).toMatchObject({ issuer: MOVED_URL });
 	});
 
+	it('treats an issuer that another process moved first as up to date', async () => {
+		await seederFor().seed();
+		const stale = await systemRow();
+		await seederFor(MOVED_URL).seed();
+		// This process read the row before the other one moved it.
+		vi.spyOn(Container.get(TrustedSourceRepository), 'findById').mockResolvedValueOnce(stale);
+
+		await seederFor(MOVED_URL).seed();
+
+		expect(await systemRow()).toMatchObject({ issuer: MOVED_URL });
+		expect(logger.error).not.toHaveBeenCalled();
+	});
+
 	it.each<[string, (store: TrustedSourceDbStore) => Promise<void>]>([
 		['rename it', async (s) => await s.update(ID, { name: 'Renamed' })],
 		[
@@ -179,6 +193,36 @@ describe('SystemTrustedSourceSeeder (integration)', () => {
 			await expect(seederFor(MOVED_URL).seed()).resolves.toBeUndefined();
 
 			expect(await systemRow()).toEqual(before);
+			expect(logger.error).toHaveBeenCalledTimes(1);
+		});
+
+		it('logs an error when it takes the new base URL after the issuer check', async () => {
+			await seederFor().seed();
+			const before = await systemRow();
+			await store.create({ name: 'Acme', issuer: MOVED_URL, config: adminConfig });
+			// The check ran before the admin row existed.
+			vi.spyOn(Container.get(TrustedSourceRepository), 'findByIssuer').mockResolvedValueOnce(null);
+
+			await expect(seederFor(MOVED_URL).seed()).resolves.toBeUndefined();
+
+			expect(await systemRow()).toEqual(before);
+			expect(logger.error).toHaveBeenCalledTimes(1);
+		});
+
+		it('logs an error and leaves it alone when it holds the reserved id', async () => {
+			// Only a direct database write can do this: admin ids are generated.
+			const admin = await store.create({
+				name: 'Acme',
+				issuer: 'https://idp.example',
+				config: adminConfig,
+			});
+			await rows.update({ id: admin.id }, { id: ID });
+			const before = await systemRow();
+
+			await expect(seederFor().seed()).resolves.toBeUndefined();
+
+			expect(await systemRow()).toEqual(before);
+			expect(before.managedBy).toBe('admin');
 			expect(logger.error).toHaveBeenCalledTimes(1);
 		});
 	});
