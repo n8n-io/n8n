@@ -22,6 +22,8 @@ export interface SynthesizeBinaryFixtureOptions {
 	sizeHint?: FixtureSizeHint;
 	/** Scenario-pinned override — when present, returned untouched (Step 4 precedence). */
 	override?: Buffer;
+	/** The document's text: a PDF carries it as its text layer, a text MIME uses it as the body. */
+	text?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -484,9 +486,10 @@ function applySizeHint(base: Buffer, hint: FixtureSizeHint, mime: string): Buffe
  *
  * Precedence:
  *  1. `options.override` — scenario-pinned bytes returned untouched.
- *  2. MIME-keyed minimal fixture (PDF, PNG, OGG, …).
- *  3. Text MIME plaintext stub seeded with `filename`.
- *  4. Deterministic-random 256-byte payload (octet-stream fallback).
+ *  2. `options.text` — a PDF with that text, or the text itself for a text MIME.
+ *  3. MIME-keyed minimal fixture (PDF, PNG, OGG, …).
+ *  4. Text MIME plaintext stub seeded with `filename`.
+ *  5. Deterministic-random 256-byte payload (octet-stream fallback).
  *
  * `options.sizeHint` only pads the tail of MIMEs whose decoder tolerates
  * trailing bytes (everything except ZIP-based formats and MP4).
@@ -500,6 +503,12 @@ export function synthesizeBinaryFixture(
 
 	const mime = (contentType || 'application/octet-stream').toLowerCase().split(';')[0].trim();
 	const hint: FixtureSizeHint = options.sizeHint ?? 'small';
+
+	if (options.text?.trim()) {
+		if (mime === 'application/pdf')
+			return applySizeHint(buildPdfWithText(options.text), hint, mime);
+		if (isTextMime(mime)) return applySizeHint(Buffer.from(options.text, 'utf8'), hint, mime);
+	}
 
 	const binary = pickBinaryFixture(mime, filename);
 	if (binary) return applySizeHint(binary, hint, mime);

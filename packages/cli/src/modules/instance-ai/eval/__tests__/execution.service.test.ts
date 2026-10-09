@@ -1869,6 +1869,48 @@ describe('EvalExecutionService', () => {
 			});
 		});
 
+		it('writes the embedded text into a synthesized PDF', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				body: {},
+				binary: {
+					attachment_0: {
+						mimeType: 'application/pdf',
+						fileName: 'invoice.pdf',
+						text: 'Invoice Number: INV-2026-0042',
+					},
+				},
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			const pdf = Buffer.from(item?.binary?.attachment_0.data ?? '', 'base64');
+			expect(pdf.toString('latin1')).toContain('(Invoice Number: INV-2026-0042) Tj');
+		});
+
+		it('does not add the requirement key when the embedded map names other files', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				body: {},
+				binary: { CV_0: { mimeType: 'application/pdf', fileName: 'cv.pdf' } },
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+			detectBinaryDependenciesMock.mockReturnValueOnce({
+				propertyName: 'data',
+				contentType: 'application/octet-stream',
+				filename: 'input.bin',
+			});
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			expect(Object.keys(item?.binary ?? {})).toEqual(['CV_0']);
+		});
+
 		it('does not create pin data when triggerContent is empty', async () => {
 			const hints = makeEmptyHints();
 			hints.triggerContent = {};
