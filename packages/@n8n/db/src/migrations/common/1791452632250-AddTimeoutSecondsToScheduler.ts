@@ -53,10 +53,11 @@ export class AddTimeoutSecondsToScheduler1791452632250 implements ReversibleMigr
 		const columnName = escape.columnName(column);
 
 		// A timeout of 0 stops every run as soon as it starts. CAST rejects a fractional
-		// value, which SQLite stores as given.
+		// value, which SQLite stores as given. A Postgres int column never holds one.
+		const integerOnly = isPostgres ? '' : ` AND CAST(${columnName} AS INTEGER) = ${columnName}`;
 		const check =
 			`CONSTRAINT "${checkName(tablePrefix, table)}" CHECK (${columnName} > 0 AND ` +
-			`${columnName} <= ${maxTimeoutSeconds} AND CAST(${columnName} AS INTEGER) = ${columnName})`;
+			`${columnName} <= ${maxTimeoutSeconds}${integerOnly})`;
 		const addColumn = `ALTER TABLE ${tableName} ADD COLUMN ${columnName} int NOT NULL DEFAULT ${defaultTimeoutSeconds}`;
 
 		if (!isPostgres) {
