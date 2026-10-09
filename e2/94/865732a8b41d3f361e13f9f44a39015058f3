@@ -1,0 +1,95 @@
+packages/nodes-base/nodes/Clearbit/Clearbit.node.ts
+  s_2e1fa95fc44f8f::t_9e11b57aa3a9bc 8
+  s_011c996fdfa425::t_c899abe76eeeca 109,136,148
+packages/nodes-base/nodes/Clockify/ClockifyTrigger.node.ts
+  s_2e1fa95fc44f8f::t_2b493d0235e264 10
+  s_9ad2ddf902ab5e::t_e23d9d2e8fd65a 12,77,99,104,111
+packages/nodes-base/nodes/CircleCi/CircleCi.node.ts
+  s_5e0de13e5e682e::t_dbae7e40a81bba 8,68,71,83,89,114,118
+packages/nodes-base/nodes/CircleCi/GenericFunctions.ts
+  s_5e0de13e5e682e::t_2cfa12b299987b 9-10,12,17,23,31,52
+packages/nodes-base/nodes/CircleCi/__tests__/GenericFunctions.test.ts
+  s_011c996fdfa425::t_6ca5cca4c96990 1-38
+packages/nodes-base/nodes/Cisco/Webex/CiscoWebex.node.ts
+  s_011c996fdfa425::t_13f7715ee66254 11,81,96,197,204,218,232,259,265-271,287,341,359,387,424,430-436,457,496-501
+packages/nodes-base/nodes/Cisco/Webex/CiscoWebexTrigger.node.ts
+  s_011c996fdfa425::t_f538dcb1b07159 10,503-508,536,568,603
+packages/nodes-base/nodes/Cisco/Webex/GenericFunctions.ts
+  s_5e0de13e5e682e::t_991fb499e2abf2 14-15,17,22,27,29,33,58
+packages/nodes-base/nodes/Cisco/Webex/__tests__/GenericFunctions.test.ts
+  s_5e0de13e5e682e::t_c827da39dbc166 1-32
+packages/nodes-base/nodes/Clearbit/GenericFunctions.ts
+  s_1784f57a265e56::t_3f14ae0f525597 9-10,12,18,24,29
+packages/nodes-base/nodes/Clearbit/__tests__/GenericFunctions.test.ts
+  s_011c996fdfa425::t_7f3949c0c429a4 1-39
+packages/nodes-base/nodes/ClickUp/ClickUp.node.ts
+  s_011c996fdfa425::t_49bd6f07b36d64 10,12,208,224-228,244-248,264-268,284-288,305,307,309,330-334,353,370-374,391-395,416-418,455,465,482,502,513,537,561,567-571,581,601-606,620,626-630,635-639,651,665-670,698-703,708-712,717,726,759-764,825,835,864,890,901,911,935,998-1003,1063-1068,1084-1090,1158,1168,1182,1192,1224,1230-1235,1247,1260,1274,1284,1300,1314,1346,1367,1383,1387,1414,1429,1439,1456,1480,1491,1511,1533,1544,1551-1555,1575-1580,1615,1623,1635,1645,1655-1659,1664-1668,1673,1682,1685,1718-1723
+packages/nodes-base/nodes/ClickUp/ClickUpTrigger.node.ts
+  s_2e63c578eedb67::t_d1a2cdc129f119 12,249,271,288,315
+packages/nodes-base/nodes/ClickUp/GenericFunctions.ts
+  s_2e63c578eedb67::t_64777582cf96b2 11-12,14,19,24,31,64
+packages/nodes-base/nodes/ClickUp/__tests__/GenericFunctions.test.ts
+  s_011c996fdfa425::t_14b4a961a00865 1-34
+packages/nodes-base/nodes/Clockify/Clockify.node.ts
+  s_011c996fdfa425::t_e4901e3c6cb1bb 2,125,141,158,175,192,211,255,269,292,306,325,335,368,382,396,415,425,454,474,488,509,519,542,573,589,605,626,636,664,701,715,731,765,776,797,807,820-826
+packages/nodes-base/nodes/Clockify/GenericFunctions.ts
+  s_011c996fdfa425::t_0794b706c4a624 8-9,11,16,25,32,42
+packages/nodes-base/nodes/Clockify/__tests__/GenericFunctions.test.ts
+  s_011c996fdfa425::t_c95ba43212eca7 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e294865732a8b41d3f361e13f9f44a39015058f3",
+  "prompts": {},
+  "sessions": {
+    "s_011c996fdfa425": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab6cdd889fabef339",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_1784f57a265e56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae4316d2f9da06192",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e63c578eedb67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5a4e105bc6f439cf",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_5e0de13e5e682e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa768470753f420c9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_9ad2ddf902ab5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a847cf65c598fe6ab",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

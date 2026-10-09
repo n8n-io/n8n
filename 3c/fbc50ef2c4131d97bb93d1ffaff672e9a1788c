@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/requestUrls.test.ts
+  s_2e1fa95fc44f8f::t_a580e71e91a0da 55-58
+  s_2e1fa95fc44f8f::t_63fb3bfb8c2b3b 1-38,40-54,59-81
+  s_2e1fa95fc44f8f::t_fd17600454f89e 39
+packages/nodes-base/nodes/Microsoft/Teams/test/v1/requestUrls.test.ts
+  s_2e1fa95fc44f8f::t_f8d48069c7c4f0 1-86
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_cc5f7bdf61e5b1 1-367
+packages/nodes-base/nodes/Microsoft/Teams/test/v1/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_f6ab0e95589b4d 1-554
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3cfbc50ef2c4131d97bb93d1ffaff672e9a1788c",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

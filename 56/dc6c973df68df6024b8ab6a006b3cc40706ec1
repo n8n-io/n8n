@@ -1,0 +1,77 @@
+packages/nodes-base/nodes/Box/__test__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_f1d497246b964f 1-25
+packages/nodes-base/nodes/Cal/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b75285eb8a55b0 35-48
+  s_1784f57a265e56::t_7b98190a4efb7c 2,24,31,55-62,69,77-79
+packages/nodes-base/nodes/Chargebee/test/Chargebee.node.test.ts
+  s_2e1fa95fc44f8f::t_55bc9af1839516 1-17,19-30
+  s_2e1fa95fc44f8f::t_2dcff063572f27 18
+packages/nodes-base/nodes/Box/Box.node.ts
+  s_1784f57a265e56::t_e79b37ba05f685 10,97,105,112,121,161-167,210,216,262-268,310,313,342,345,378,386-391,397-402,445,451,497-503,530-536
+packages/nodes-base/nodes/Box/BoxTrigger.node.ts
+  s_1784f57a265e56::t_d0aaeb7739155d 8,272,292-296,318,342
+packages/nodes-base/nodes/Box/GenericFunctions.ts
+  s_011c996fdfa425::t_1ac3f26c87a1d5 10-12,14,19,23-24,26,33,57,80
+packages/nodes-base/nodes/Box/__test__/BoxTrigger.node.test.ts
+  s_60ced84f4534d4::t_bde7841ee005cc 3,239,274
+packages/nodes-base/nodes/Cal/GenericFunctions.ts
+  s_c4b1c3b9a71d1d::t_63f73b673ae4b9 11-12,14,19,24,45,48,51,56
+packages/nodes-base/nodes/Cal/test/CalTrigger.node.test.ts
+  s_60ced84f4534d4::t_6452ce205dfc2c 3,81,120,176
+packages/nodes-base/nodes/Cal/test/CalTriggerV2.node.test.ts
+  s_1784f57a265e56::t_4f576faecd4b94 9,77,94,110,141-146,166,181-184
+packages/nodes-base/nodes/Cal/v1/CalTriggerV1.node.ts
+  s_60ced84f4534d4::t_55d222207a946a 13,170,196-197,233-234,251-252
+packages/nodes-base/nodes/Cal/v2/CalTriggerV2.node.ts
+  s_60ced84f4534d4::t_30872cec6f42e6 14-15,42,44,47,147,253
+packages/nodes-base/nodes/Chargebee/Chargebee.node.ts
+  s_1784f57a265e56::t_421d4a5f9b89d7 11-18,475,502,516,547,566,576,594,600
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "56dc6c973df68df6024b8ab6a006b3cc40706ec1",
+  "prompts": {},
+  "sessions": {
+    "s_011c996fdfa425": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab6cdd889fabef339",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_1784f57a265e56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae4316d2f9da06192",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_60ced84f4534d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9ffba14b3ec9d434",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c4b1c3b9a71d1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab361632eb2d98716",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

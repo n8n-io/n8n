@@ -1,0 +1,47 @@
+packages/nodes-base/nodes/Demio/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3b678221e231f1 1-24
+packages/nodes-base/nodes/DeepL/DeepL.node.ts
+  s_1784f57a265e56::t_f40b6a260b1e03 10,81,131-136
+packages/nodes-base/nodes/DeepL/GenericFunctions.ts
+  s_6f275bb3f32bbd::t_c596195cba788b 8-9,11,16,26,33
+packages/nodes-base/nodes/Demio/Demio.node.ts
+  s_1784f57a265e56::t_c9483677165bb6 10,70-76,99-104,136,140-146,155,188-193,206
+packages/nodes-base/nodes/Demio/GenericFunctions.ts
+  s_1784f57a265e56::t_85b6c348d9b2dd 8-9,12,17,24,32
+packages/nodes-base/nodes/Dhl/Dhl.node.ts
+  s_1784f57a265e56::t_78448cd49df605 12,145-151
+packages/nodes-base/nodes/Dhl/GenericFunctions.ts
+  s_1784f57a265e56::t_6bb27d7838737c 10-11,14,19,26,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4df5ae858e8c80aa47044fbc7ef95bf1a77fe508",
+  "prompts": {},
+  "sessions": {
+    "s_1784f57a265e56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae4316d2f9da06192",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_6f275bb3f32bbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad6f88d4af989655d",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

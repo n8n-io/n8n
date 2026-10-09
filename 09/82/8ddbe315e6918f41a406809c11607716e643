@@ -1,0 +1,147 @@
+packages/nodes-base/nodes/Google/Drive/test/v1/GoogleDriveV1.node.test.ts
+  s_2e1fa95fc44f8f::t_28bb193424462f 1-25,27-30,32-34
+  s_2e1fa95fc44f8f::t_cfd54b20fd04df 26
+  s_2e1fa95fc44f8f::t_b35671508e3ffa 31
+packages/nodes-base/nodes/Google/Drive/v2/actions/file/download.operation.ts
+  s_2e1fa95fc44f8f::t_2916cd9b540c14 203
+  s_5d6ed0a3a903e0::t_b3b45b0d3d037a 8,210,244,254
+packages/nodes-base/nodes/Google/Drive/test/v2/node/file/upload.test.ts
+  s_2e1fa95fc44f8f::t_025f6f976718f4 23
+  s_2e1fa95fc44f8f::t_773bc1ab82f95e 90,155
+  s_2e1fa95fc44f8f::t_62a53ef4791d65 125-127
+  s_07471f89218761::t_5abb2eb90e315f 2,77,147
+packages/nodes-base/nodes/Google/Drive/test/v2/node/drive/get.test.ts
+  s_2e1fa95fc44f8f::t_8207c40b0e224a 44-60,63-64
+  s_2e1fa95fc44f8f::t_09da5257ce5f11 61
+  s_5d6ed0a3a903e0::t_e39ddc1d9e80d0 1,39
+  s_2e1fa95fc44f8f::t_e6e6ce2fba8ac7 62
+packages/nodes-base/nodes/Google/Drive/v2/actions/file/createFromText.operation.ts
+  s_2e1fa95fc44f8f::t_17f123a054e4a5 7
+  s_2e1fa95fc44f8f::t_667048e4f9b2f2 140,143
+  s_5d6ed0a3a903e0::t_f6508ed71bf0bd 117,163,186
+packages/nodes-base/nodes/Google/Drive/test/v2/node/file/copy.test.ts
+  s_2e1fa95fc44f8f::t_42bce1f40e1980 247
+  s_4f3504813bf8cd::t_2b819be45b7d9c 1,67,100,133,140,173,180,210
+packages/nodes-base/nodes/Google/Drive/GoogleDriveTrigger.node.ts
+  s_5d6ed0a3a903e0::t_ba73afe4f6e4b4 12,412,491,498
+packages/nodes-base/nodes/Google/Drive/test/GoogleDriveTrigger.node.test.ts
+  s_5d6ed0a3a903e0::t_8cecd8cfc9f306 4,83,139,187,216,242,277,312,338,377,703
+packages/nodes-base/nodes/Google/Drive/test/v1/GenericFunctions.test.ts
+  s_07471f89218761::t_33972292b77cb2 3,42,61
+packages/nodes-base/nodes/Google/Drive/test/v2/node/drive/create.test.ts
+  s_5d6ed0a3a903e0::t_be77fe0b66f81d 1,54
+packages/nodes-base/nodes/Google/Drive/test/v2/node/drive/deleteDrive.test.ts
+  s_5d6ed0a3a903e0::t_3da34489f57e80 1,36
+packages/nodes-base/nodes/Google/Drive/test/v2/node/drive/list.test.ts
+  s_5d6ed0a3a903e0::t_e38603812d7632 2,42,64
+packages/nodes-base/nodes/Google/Drive/test/v2/node/drive/update.test.ts
+  s_5d6ed0a3a903e0::t_f37a9b33550298 1,43
+packages/nodes-base/nodes/Google/Drive/test/v2/node/file/createFromText.test.ts
+  s_5d6ed0a3a903e0::t_8e9b490a0f6700 1,64,77
+packages/nodes-base/nodes/Google/Drive/test/v2/node/file/deleteFile.test.ts
+  s_5d6ed0a3a903e0::t_846eea7226db7d 1,40
+packages/nodes-base/nodes/Google/Drive/test/v2/node/file/download.test.ts
+  s_5d6ed0a3a903e0::t_64f4668698903e 1,43,49,88,123
+packages/nodes-base/nodes/Google/Drive/test/v2/node/file/move.test.ts
+  s_5d6ed0a3a903e0::t_71733ed145f993 2,51,63
+packages/nodes-base/nodes/Google/Drive/test/v2/node/file/share.test.ts
+  s_5d6ed0a3a903e0::t_55ca0775a0d683 1,51
+packages/nodes-base/nodes/Google/Drive/test/v2/node/file/update.test.ts
+  s_5d6ed0a3a903e0::t_bd2638258602c6 1,44
+packages/nodes-base/nodes/Google/Drive/test/v2/node/fileFolder/search.test.ts
+  s_0f7982f67d1b35::t_0978a901f93bca 2,48-61,81,127
+packages/nodes-base/nodes/Google/Drive/test/v2/node/folder/create.test.ts
+  s_5d6ed0a3a903e0::t_ad9bd1923ed483 1,41
+packages/nodes-base/nodes/Google/Drive/test/v2/node/folder/deleteFolder.test.ts
+  s_5d6ed0a3a903e0::t_8d7c189b81bcca 1,38,64
+packages/nodes-base/nodes/Google/Drive/test/v2/node/folder/share.test.ts
+  s_5d6ed0a3a903e0::t_7cdfd200a4b04a 1,48
+packages/nodes-base/nodes/Google/Drive/v1/GenericFunctions.ts
+  s_0f7982f67d1b35::t_dc995cb4be0f84 9-11,13,20,23-24,32,39,73
+packages/nodes-base/nodes/Google/Drive/v1/GoogleDriveV1.node.ts
+  s_0f7982f67d1b35::t_a5a4eb2b26679e 10,2071-2079,2097,2122,2151,2157-2163,2190,2230,2261,2299,2309,2425-2431,2488,2509,2579,2592,2638,2669-2675,2697,2737
+packages/nodes-base/nodes/Google/Drive/v1/SearchFunctions.ts
+  s_5d6ed0a3a903e0::t_3ab3752398da90 2,30,56,77
+packages/nodes-base/nodes/Google/Drive/v2/actions/drive/create.operation.ts
+  s_5d6ed0a3a903e0::t_51407febfe65cd 7,256
+packages/nodes-base/nodes/Google/Drive/v2/actions/drive/deleteDrive.operation.ts
+  s_5d6ed0a3a903e0::t_50c4a8b8f27fc6 2,32
+packages/nodes-base/nodes/Google/Drive/v2/actions/drive/get.operation.ts
+  s_0f7982f67d1b35::t_b0653434a63e0e 7,59-65
+packages/nodes-base/nodes/Google/Drive/v2/actions/drive/list.operation.ts
+  s_5d6ed0a3a903e0::t_377edab7e26c5d 7,90,96
+packages/nodes-base/nodes/Google/Drive/v2/actions/drive/update.operation.ts
+  s_0f7982f67d1b35::t_828d13313caeef 7,112-117
+packages/nodes-base/nodes/Google/Drive/v2/actions/file/copy.operation.ts
+  s_5d6ed0a3a903e0::t_62e677652ccfcb 8,100,146
+packages/nodes-base/nodes/Google/Drive/v2/actions/file/deleteFile.operation.ts
+  s_0f7982f67d1b35::t_0a8203aa6582f7 2,54-60,62-68
+packages/nodes-base/nodes/Google/Drive/v2/actions/file/move.operation.ts
+  s_5d6ed0a3a903e0::t_53d6c1560d373e 7,64,75
+packages/nodes-base/nodes/Google/Drive/v2/actions/file/share.operation.ts
+  s_5d6ed0a3a903e0::t_46fdf5f62db369 7,58
+packages/nodes-base/nodes/Google/Drive/v2/actions/file/update.operation.ts
+  s_5d6ed0a3a903e0::t_b4643ee9e31007 7,185,203,269
+packages/nodes-base/nodes/Google/Drive/v2/actions/file/upload.operation.ts
+  s_5d6ed0a3a903e0::t_35418c98a36fa0 9,120,140,207
+packages/nodes-base/nodes/Google/Drive/v2/actions/fileFolder/search.operation.ts
+  s_0f7982f67d1b35::t_b9a03df9e04a1b 7,353-360,363-369
+packages/nodes-base/nodes/Google/Drive/v2/actions/folder/create.operation.ts
+  s_0f7982f67d1b35::t_3a577e94c2251e 7,107-113
+packages/nodes-base/nodes/Google/Drive/v2/actions/folder/deleteFolder.operation.ts
+  s_0f7982f67d1b35::t_e9c4a87b50cc69 2,56-62,67
+packages/nodes-base/nodes/Google/Drive/v2/actions/folder/share.operation.ts
+  s_5d6ed0a3a903e0::t_5b432df2641666 7,58
+packages/nodes-base/nodes/Google/Drive/v2/methods/listSearch.ts
+  s_5d6ed0a3a903e0::t_fc423b4e987f29 7,38,65,151
+packages/nodes-base/nodes/Google/Drive/v2/transport/index.ts
+  s_0f7982f67d1b35::t_d7054544233a1a 9-11,13,20,23-24,32,39,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09828ddbe315e6918f41a406809c11607716e643",
+  "prompts": {},
+  "sessions": {
+    "s_07471f89218761": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6bf88bb756ab931c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_0f7982f67d1b35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a65b801439482db1f",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4f3504813bf8cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa919897bbe5abc49",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_5d6ed0a3a903e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac4f3ba7f23434a1d",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

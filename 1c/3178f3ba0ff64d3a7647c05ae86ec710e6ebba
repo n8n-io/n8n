@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/test/workflow/requestUrls.workflow.test.ts
+  s_2e1fa95fc44f8f::t_ffda05246fa140 1-36
+packages/nodes-base/nodes/Microsoft/SharePoint/test/workflow/requestUrls.workflow.json
+  s_401904c7bcadc9::t_f305ffccb06ab5 1-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c3178f3ba0ff64d3a7647c05ae86ec710e6ebba",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_401904c7bcadc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa6dedfe825ee566c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
