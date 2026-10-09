@@ -70,16 +70,14 @@ describe('safeUserRegex', () => {
 		expect(safeUserRegex.split('source', 'input')).toEqual(['a', 'b']);
 	});
 
-	it('leaves safeInternalRegex on its own engine', () => {
+	it('keeps safeInternalRegex on the built-in engine when a user engine is set', () => {
 		setUserRegexEngine(engine);
 
-		// The two entry points are independent: n8n's own patterns must stay on the
-		// built-in engine whatever the instance selects for a user's patterns.
 		expect(safeInternalRegex.test('^a$', 'a')).toBe(true);
 		expect(safeInternalRegex.test('^a$', 'b')).toBe(false);
 	});
 
-	it('defaults to the same engine as safeInternalRegex', () => {
+	it('defaults to the built-in engine', () => {
 		expect(safeUserRegex.test('^a$', 'a')).toBe(true);
 		expect(() => safeUserRegex.test('(a+)+$', `${'a'.repeat(30)}b`)).toThrow(
 			'Regular expression execution timed out',

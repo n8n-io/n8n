@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 describe('init', () => {
-	it('installs the built-in engine for js', async () => {
+	it('uses the built-in engine for js', async () => {
 		await service('js').init();
 
 		expect(safeUserRegex.test('^a$', 'a')).toBe(true);
@@ -38,18 +38,17 @@ describe('init', () => {
 		);
 	});
 
-	it('builds no engine for js: the default is already installed', async () => {
+	it('does not throw on shutdown after init for js', async () => {
 		const subject = service('js');
 		await subject.init();
 
-		// A no-op init leaves shutdown with nothing to tear down.
 		expect(() => subject.shutdown()).not.toThrow();
 		expect(safeUserRegex.test('^a$', 'a')).toBe(true);
 	});
 });
 
 describe('shutdown', () => {
-	it('leaves both entry points usable', async () => {
+	it('leaves safeUserRegex and safeInternalRegex usable', async () => {
 		const subject = service('js');
 		await subject.init();
 
@@ -69,8 +68,6 @@ describe('shutdown', () => {
 		const engine = mock<ManagedRegexEngine>({
 			test: vi.fn(() => true),
 			dispose: vi.fn(() => {
-				// If reset ran first, this now hits the restored default engine, which
-				// does not match this pattern.
 				stillRoutedToTheInstalledEngineAtDisposeTime = safeUserRegex.test('no-match', 'x');
 			}),
 		});
