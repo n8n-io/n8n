@@ -1,10 +1,15 @@
 import {
+	credentialTypePolicyRuleSchemas,
+	nodeTypePolicyRuleSchemas,
 	nonDelegatingPolicyActionSchema,
-	nonDelegatingPolicyRuleListSchema,
 	policyActionSchema,
-	policyRuleListSchema,
-	policyRuleSchema,
 } from '../policy-rule.schema';
+
+const {
+	rule: policyRuleSchema,
+	ruleList: policyRuleListSchema,
+	nonDelegatingRuleList: nonDelegatingPolicyRuleListSchema,
+} = nodeTypePolicyRuleSchemas;
 
 const nameSelector = { kind: 'name' as const, value: 'n8n-nodes-base.slack' };
 
@@ -103,5 +108,24 @@ describe('nonDelegatingPolicyRuleListSchema', () => {
 		if (!result.success) {
 			expect(result.error.issues[0].message).toBe('Duplicate rule id: r1');
 		}
+	});
+});
+
+describe('rule schemas per kind', () => {
+	const packageRule = {
+		id: 'r1',
+		action: 'deny',
+		selector: { kind: 'package', value: 'n8n-nodes-base' },
+	};
+
+	it('accepts the same selectors for both kinds', () => {
+		expect(nodeTypePolicyRuleSchemas.ruleList.safeParse([packageRule]).success).toBe(true);
+		expect(credentialTypePolicyRuleSchemas.ruleList.safeParse([packageRule]).success).toBe(true);
+	});
+
+	it('rejects duplicate rule ids in a credential type policy', () => {
+		expect(
+			credentialTypePolicyRuleSchemas.ruleList.safeParse([packageRule, packageRule]).success,
+		).toBe(false);
 	});
 });
