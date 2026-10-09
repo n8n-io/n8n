@@ -63,23 +63,21 @@ function close(): void {
 		data-test-id="credential-type-to-confirm-dialog"
 		@update:open="emit('update:open', $event)"
 	>
-		<N8nDialogBody>
-			<div :class="$style.body">
-				<N8nText color="text-base">{{ message }}</N8nText>
-				<N8nInputLabel
-					:label="
-						i18n.baseText('credentialEdit.credentialEdit.confirmMessage.typeToConfirm', {
-							interpolate: { keyword: confirmKeyword },
-						})
-					"
-				>
-					<N8nInput
-						v-model="typed"
-						data-test-id="credential-type-to-confirm-input"
-						@keyup.enter="onConfirm"
-					/>
-				</N8nInputLabel>
-			</div>
+		<N8nDialogBody :class="$style.body">
+			<N8nText color="text-base">{{ message }}</N8nText>
+			<N8nInputLabel
+				:label="
+					i18n.baseText('credentialEdit.credentialEdit.confirmMessage.typeToConfirm', {
+						interpolate: { keyword: confirmKeyword },
+					})
+				"
+			>
+				<N8nInput
+					v-model="typed"
+					data-test-id="credential-type-to-confirm-input"
+					@keyup.enter="onConfirm"
+				/>
+			</N8nInputLabel>
 		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
@@ -102,8 +100,6 @@ function close(): void {
 
 <style lang="scss" module>
 .body {
-	display: flex;
-	flex-direction: column;
 	gap: var(--spacing--sm);
 }
 </style>
