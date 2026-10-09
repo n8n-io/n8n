@@ -27,7 +27,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		});
 	}
 
-	const missing = matchingColumns.filter((column) => row[column] === undefined);
+	// A match value that is null or missing becomes `col.eq.` in the filter and
+	// selects rows by an empty string. Own properties only: a column named after
+	// one of Object's would read through.
+	const missing = matchingColumns.filter(
+		(column) => !Object.hasOwn(row, column) || row[column] === null || row[column] === undefined,
+	);
 	if (missing.length > 0) {
 		throw new NodeOperationError(
 			this.getNode(),

@@ -130,8 +130,18 @@ describe('Lakebase -> Update', () => {
 		expect(apiMock(context)).not.toHaveBeenCalled();
 	});
 
-	it('refuses to run when the match column has no value', async () => {
-		const { context, result } = run([{ id: 7 }], { 'columns.value': { sku: 'WF-2' } });
+	const autoMapIdAndSku = {
+		'columns.mappingMode': 'autoMapInputData',
+		'columns.schema': [{ id: 'id' }, { id: 'sku' }],
+	};
+
+	it.each([
+		['the mapped column is absent', { 'columns.value': { sku: 'WF-2' } }, [{ id: 7 }]],
+		['the mapped column is null', { 'columns.value': { id: null, sku: 'WF-2' } }, [{ id: 7 }]],
+		['the auto-mapped column is null', autoMapIdAndSku, [{ id: null, sku: 'auto' }]],
+		['the auto-mapped column is undefined', autoMapIdAndSku, [{ id: undefined, sku: 'auto' }]],
+	])('refuses to run when %s', async (_name, overrides, inputJson) => {
+		const { context, result } = run([{ id: 7 }], overrides, inputJson);
 
 		await expect(result).rejects.toThrow('The column to match on has no value');
 		expect(apiMock(context)).not.toHaveBeenCalled();
