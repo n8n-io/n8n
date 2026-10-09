@@ -84,7 +84,7 @@ export interface ResolvedPublicApiRoute {
 	requestBodyHandler?: RequestBodyHandler;
 	requestQueryDto?: ZodClass;
 	responseDto?: ResponseDtoClass;
-	/** Set when the controller method writes a binary body itself. Mutually exclusive with `responseDto`. */
+	/** Mutually exclusive with `responseDto`. */
 	binaryResponse?: BinaryResponse;
 	/** Success status declared via `@ApiResponse` - always present, see `resolveSuccessStatus`. */
 	successStatus: SuccessStatus;

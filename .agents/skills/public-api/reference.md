@@ -166,7 +166,7 @@ example an `application/gzip` stream. The framework treats options whose
   fails before its first chunk gives the normal JSON error response, with no
   binary `Content-Type`. A method that throws before it returns does the same.
 - After the first chunk is sent, an error ends the response. A client that
-  disconnects is not an error.
+  disconnects is not an error, and the framework destroys the stream.
 - A method that returns no binary body fails with a `500`.
 - The generator documents the body as `{ type: string, format: binary }`
   under the `mediaType` content key, with the description and headers.
