@@ -1,6 +1,8 @@
 import { effectScope, shallowReactive } from 'vue';
 import { camelCase } from 'change-case';
+import isEqual from 'lodash/isEqual';
 import type { INode } from 'n8n-workflow';
+import type { McpToolPermissions } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { TIME } from '@/app/constants/durations';
@@ -12,12 +14,20 @@ import {
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import type { ToolConnectionCredentialAdapter } from '@/features/shared/toolsConnection/types';
-import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
+import { useInstanceAiMcpStore, type InstanceAiMcpConnection } from '../instanceAiMcp.store';
 
 export interface McpConnectTarget {
 	slug: string;
 	credentialType: string;
 	credentialTypes?: readonly string[];
+}
+
+/** The wanted state of the connection to a server */
+interface McpConnectionSaveInput {
+	serverSlug: string;
+	credentialId: string;
+	/** Without it a new connection gets the default permissions and a saved one keeps its own. */
+	toolPermissions?: McpToolPermissions;
 }
 
 export type McpCredentialSelectionHandler = (
@@ -55,33 +65,65 @@ export function useMcpServerConnect() {
 	const { canOAuthCredentialQuickConnect, createAndAuthorize } = useCredentialOAuth();
 
 	/**
-	 * Patches the existing connection instead of creating a second one — the
-	 * backend allows only one per server. Null when nothing changed or failed.
+	 * Saves the wanted connection to a server and shows the success message. The
+	 * backend allows only one connection per server, so a saved one is updated
+	 * and not created again. An update sends only the credential and the
+	 * permissions that differ from the saved connection, and sends nothing when
+	 * both are the same. Null when the request failed.
 	 */
-	async function connectWithCredential(
-		serverSlug: string,
-		credentialId: string,
-	): Promise<string | null> {
-		credentialRequestLockedServerSlugs.add(serverSlug);
+	async function saveConnection({
+		serverSlug,
+		credentialId,
+		toolPermissions,
+	}: McpConnectionSaveInput): Promise<InstanceAiMcpConnection | null> {
+		const saved = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
+		// A new credential reconnects the server. A permissions-only change does not.
+		const isCredentialChanged = saved?.credentialId !== credentialId;
+		const changedPermissions =
+			toolPermissions && !isEqual(saved?.toolPermissions, toolPermissions)
+				? toolPermissions
+				: undefined;
+		if (isCredentialChanged) credentialRequestLockedServerSlugs.add(serverSlug);
 		try {
-			const existing = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
-			if (existing?.credentialId === credentialId) return null;
-
-			const connection = existing
-				? await mcpStore.updateConnection(existing.id, { credentialId })
-				: await mcpStore.connect({ serverSlug, credentialId });
+			let connection: InstanceAiMcpConnection | null;
+			if (!saved) {
+				connection = await mcpStore.connect({
+					serverSlug,
+					credentialId,
+					...(toolPermissions && { toolPermissions }),
+				});
+			} else if (!isCredentialChanged && !changedPermissions) {
+				connection = saved;
+			} else {
+				connection = await mcpStore.updateConnection(saved.id, {
+					...(isCredentialChanged && { credentialId }),
+					...(changedPermissions && { toolPermissions: changedPermissions }),
+				});
+			}
 			if (!connection) return null;
 
 			toast.showMessage({
 				type: 'success',
 				title: i18n.baseText(
-					existing ? 'instanceAi.mcp.success.changeCredential' : 'instanceAi.mcp.success.connect',
+					saved ? 'instanceAi.mcp.settings.saved' : 'instanceAi.mcp.success.connect',
 				),
 			});
-			return connection.id;
+			return connection;
 		} finally {
-			credentialRequestLockedServerSlugs.delete(serverSlug);
+			if (isCredentialChanged) credentialRequestLockedServerSlugs.delete(serverSlug);
 		}
+	}
+
+	/** Saves the credential at once. Null when nothing changed or failed. */
+	async function connectWithCredential(
+		serverSlug: string,
+		credentialId: string,
+	): Promise<string | null> {
+		const existing = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
+		if (existing?.credentialId === credentialId) return null;
+
+		const connection = await saveConnection({ serverSlug, credentialId });
+		return connection?.id ?? null;
 	}
 
 	/**
@@ -308,5 +350,6 @@ export function useMcpServerConnect() {
 		createCredentialAdapter,
 		ignorePendingConnectResult,
 		isConnectLocked,
+		saveConnection,
 	};
 }

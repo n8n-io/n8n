@@ -45,8 +45,8 @@ vi.mock('@/experiments/instanceAiComputerUse', () => ({
 const {
 	mockConnect,
 	mockConnectServer,
-	mockConnectWithCredential,
 	mockIgnorePendingConnectResult,
+	mockSaveConnection,
 	mockUpdateConnection,
 	mockDisconnect,
 	mockIsConnectLocked,
@@ -58,8 +58,8 @@ const {
 	return {
 		mockConnect,
 		mockConnectServer: vi.fn(),
-		mockConnectWithCredential: vi.fn(),
 		mockIgnorePendingConnectResult: vi.fn(),
+		mockSaveConnection: vi.fn(),
 		mockUpdateConnection,
 		mockDisconnect,
 		mockIsConnectLocked: vi.fn(),
@@ -105,9 +105,9 @@ vi.mock('../../../instanceAiMcp.store', () => ({
 vi.mock('../../../composables/useMcpServerConnect', () => ({
 	useMcpServerConnect: () => ({
 		connectServer: mockConnectServer,
-		connectWithCredential: mockConnectWithCredential,
 		ignorePendingConnectResult: mockIgnorePendingConnectResult,
 		isConnectLocked: mockIsConnectLocked,
+		saveConnection: mockSaveConnection,
 		createCredentialAdapter: (
 			openNewCredential: ToolConnectionCredentialAdapter['openNewCredential'],
 		) => ({
@@ -284,6 +284,19 @@ function emitModalEvent<Args extends unknown[]>(eventName: string, ...args: Args
 	(listener as (...listenerArgs: Args) => void)(...args);
 }
 
+/** The saved connection behind `connectedLinearItem` */
+function seedSavedLinearConnection(): void {
+	mcpStoreMock.connections = [
+		{
+			id: 'conn-1',
+			serverSlug: 'linear',
+			credentialId: 'cred-1',
+			status: 'connected',
+			toolPermissions: toolSettings,
+		},
+	];
+}
+
 function emitSave(settings: ToolConnectionSettings): void {
 	emitModalEvent('onSave', connectedLinearItem, settings);
 }
@@ -346,7 +359,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		delete uiStoreMock.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		mockConnect.mockResolvedValue(null);
 		mockConnectServer.mockResolvedValue(null);
-		mockConnectWithCredential.mockResolvedValue(null);
+		mockSaveConnection.mockResolvedValue({ serverSlug: 'linear' });
 		mockUpdateConnection.mockResolvedValue({ serverSlug: 'linear' });
 		mockDisconnect.mockResolvedValue(true);
 		discoverMcpConnectionMock.mockResolvedValue({
@@ -373,18 +386,23 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 	});
 
 	it('closes the modal after saving settings opened from the tools list', async () => {
+		seedSavedLinearConnection();
 		renderComponent();
 
 		emitSave(toolSettings);
 		await flushPromises();
 
-		expect(mockUpdateConnection).toHaveBeenCalledWith('conn-1', {
+		expect(mockSaveConnection).toHaveBeenCalledWith({
+			serverSlug: 'linear',
+			credentialId: 'cred-1',
 			toolPermissions: toolSettings,
 		});
+		expect(mockUpdateConnection).not.toHaveBeenCalled();
 		expect(uiStoreMock.closeModal).toHaveBeenCalledWith('instanceAiToolsConnection');
 	});
 
 	it('tracks changed MCP tool permissions after saving', async () => {
+		seedSavedLinearConnection();
 		renderComponent();
 		const changedSettings: ToolConnectionSettings = {
 			categories: { read: 'blocked', write: 'require_approval' },
@@ -401,6 +419,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 	});
 
 	it('does not track unchanged MCP tool permissions', async () => {
+		seedSavedLinearConnection();
 		renderComponent();
 
 		emitSave({
@@ -413,7 +432,8 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 	});
 
 	it('does not track MCP tool permissions when saving fails', async () => {
-		mockUpdateConnection.mockResolvedValue(null);
+		mockSaveConnection.mockResolvedValue(null);
+		seedSavedLinearConnection();
 		renderComponent();
 
 		emitSave({
@@ -461,6 +481,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 
 	it('closes the modal after saving settings opened directly', async () => {
 		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
+		seedSavedLinearConnection();
 		renderComponent();
 
 		emitSave(toolSettings);
@@ -471,7 +492,8 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 
 	it('keeps the directly opened modal open when saving fails', async () => {
 		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
-		mockUpdateConnection.mockResolvedValue(null);
+		mockSaveConnection.mockResolvedValue(null);
+		seedSavedLinearConnection();
 		renderComponent();
 
 		emitSave(toolSettings);
@@ -676,11 +698,12 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		emitModalEvent('onSave', modalProps.detailItem, toolSettings);
 		await flushPromises();
 
-		expect(mockConnect).toHaveBeenCalledWith({
+		expect(mockSaveConnection).toHaveBeenCalledWith({
 			serverSlug: 'linear',
 			credentialId: 'cred-1',
 			toolPermissions: toolSettings,
 		});
+		expect(telemetryMock.trackToolPermissionsUpdated).not.toHaveBeenCalled();
 	});
 
 	it('shows Cancel and Add connector for an unsaved connection', async () => {
@@ -720,6 +743,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		emitModalEvent('onSelectCredential', connectedItem, 'mcpOAuth2Api', 'cred-1');
 		await flushPromises();
 
+		expect(mockSaveConnection).not.toHaveBeenCalled();
 		expect(mockUpdateConnection).not.toHaveBeenCalled();
 
 		const changedSettings: ToolConnectionSettings = {
@@ -728,7 +752,8 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		emitModalEvent('onSave', modalProps.detailItem, changedSettings);
 		await flushPromises();
 
-		expect(mockUpdateConnection).toHaveBeenCalledWith('conn-1', {
+		expect(mockSaveConnection).toHaveBeenCalledWith({
+			serverSlug: 'linear',
 			credentialId: 'cred-1',
 			toolPermissions: changedSettings,
 		});

@@ -124,7 +124,7 @@ describe('useMcpServerConnect', () => {
 			});
 			expect(mockShowMessage).toHaveBeenCalledWith({
 				type: 'success',
-				title: 'instanceAi.mcp.success.changeCredential',
+				title: 'instanceAi.mcp.settings.saved',
 			});
 		});
 
@@ -145,6 +145,160 @@ describe('useMcpServerConnect', () => {
 			await expect(connectWithCredential('linear', 'cred-1')).resolves.toBeNull();
 
 			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('saveConnection', () => {
+		const toolPermissions = { categories: { read: 'blocked', write: 'require_approval' } } as const;
+
+		it('creates a connection with the given tool permissions', async () => {
+			const { saveConnection } = useMcpServerConnect();
+
+			await expect(
+				saveConnection({
+					serverSlug: 'linear',
+					credentialId: 'cred-1',
+					toolPermissions,
+				}),
+			).resolves.toEqual(makeConnection({ id: 'conn-new' }));
+
+			expect(mcpStore.updateConnection).not.toHaveBeenCalled();
+			expect(mcpStore.connect).toHaveBeenCalledWith({
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+				toolPermissions,
+			});
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				type: 'success',
+				title: 'instanceAi.mcp.success.connect',
+			});
+		});
+
+		describe('for a server with a saved connection', () => {
+			const savedPermissions = { categories: { read: 'always_allow', write: 'blocked' } } as const;
+			const savedConnection = () =>
+				makeConnection({
+					id: 'conn-1',
+					credentialId: 'cred-1',
+					toolPermissions: savedPermissions,
+				});
+
+			function trackLockDuringUpdate(isConnectLocked: (slug: string) => boolean) {
+				const state = { lockedWhileSaving: false };
+				mcpStore.updateConnection.mockImplementation(async () => {
+					state.lockedWhileSaving = isConnectLocked('linear');
+					return makeConnection({ id: 'conn-1' });
+				});
+				return state;
+			}
+
+			beforeEach(() => {
+				mcpStore.connections = [savedConnection()];
+			});
+
+			it('sends the credential and the permissions when both changed, and locks the server', async () => {
+				const { saveConnection, isConnectLocked } = useMcpServerConnect();
+				const lock = trackLockDuringUpdate(isConnectLocked);
+
+				await saveConnection({
+					serverSlug: 'linear',
+					credentialId: 'cred-new',
+					toolPermissions,
+				});
+
+				expect(mcpStore.connect).not.toHaveBeenCalled();
+				expect(mcpStore.updateConnection).toHaveBeenCalledWith('conn-1', {
+					credentialId: 'cred-new',
+					toolPermissions,
+				});
+				expect(lock.lockedWhileSaving).toBe(true);
+				expect(isConnectLocked('linear')).toBe(false);
+				expect(mockShowMessage).toHaveBeenCalledWith({
+					type: 'success',
+					title: 'instanceAi.mcp.settings.saved',
+				});
+			});
+
+			it('sends only the permissions when the credential is the same, and does not lock the server', async () => {
+				const { saveConnection, isConnectLocked } = useMcpServerConnect();
+				const lock = trackLockDuringUpdate(isConnectLocked);
+				lock.lockedWhileSaving = true;
+
+				await saveConnection({
+					serverSlug: 'linear',
+					credentialId: 'cred-1',
+					toolPermissions,
+				});
+
+				expect(mcpStore.updateConnection).toHaveBeenCalledWith('conn-1', { toolPermissions });
+				expect(lock.lockedWhileSaving).toBe(false);
+			});
+
+			it('sends only the credential when the permissions are deeply equal', async () => {
+				const { saveConnection } = useMcpServerConnect();
+
+				await saveConnection({
+					serverSlug: 'linear',
+					credentialId: 'cred-new',
+					toolPermissions: { categories: { read: 'always_allow', write: 'blocked' } },
+				});
+
+				expect(mcpStore.updateConnection).toHaveBeenCalledWith('conn-1', {
+					credentialId: 'cred-new',
+				});
+			});
+
+			it('sends nothing but still reports success when nothing changed', async () => {
+				const { saveConnection } = useMcpServerConnect();
+
+				await expect(
+					saveConnection({
+						serverSlug: 'linear',
+						credentialId: 'cred-1',
+						toolPermissions: { categories: { read: 'always_allow', write: 'blocked' } },
+					}),
+				).resolves.toEqual(savedConnection());
+
+				expect(mcpStore.updateConnection).not.toHaveBeenCalled();
+				expect(mockShowMessage).toHaveBeenCalledWith({
+					type: 'success',
+					title: 'instanceAi.mcp.settings.saved',
+				});
+			});
+		});
+
+		it('returns null without a success message when creating fails', async () => {
+			mcpStore.connect.mockResolvedValue(null);
+			const { saveConnection } = useMcpServerConnect();
+
+			await expect(
+				saveConnection({ serverSlug: 'linear', credentialId: 'cred-1', toolPermissions }),
+			).resolves.toBeNull();
+
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('returns null without a success message when updating fails', async () => {
+			mcpStore.connections = [makeConnection({ id: 'conn-1', credentialId: 'cred-old' })];
+			mcpStore.updateConnection.mockResolvedValue(null);
+			const { saveConnection } = useMcpServerConnect();
+
+			await expect(
+				saveConnection({ serverSlug: 'linear', credentialId: 'cred-1', toolPermissions }),
+			).resolves.toBeNull();
+
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('keeps the saved permissions of a connection when none are given', async () => {
+			mcpStore.connections = [makeConnection({ id: 'conn-1', credentialId: 'cred-old' })];
+			const { saveConnection } = useMcpServerConnect();
+
+			await saveConnection({ serverSlug: 'linear', credentialId: 'cred-new' });
+
+			expect(mcpStore.updateConnection).toHaveBeenCalledWith('conn-1', {
+				credentialId: 'cred-new',
+			});
 		});
 	});
 

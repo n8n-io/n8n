@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, provide, ref, watch, type Component } from 'vue';
+import isEqual from 'lodash/isEqual';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@n8n/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -68,7 +68,6 @@ const mcpTelemetry = useInstanceAiMcpTelemetry();
 const browserUseTelemetry = useInstanceAiBrowserUseTelemetry();
 const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
-const toast = useToast();
 const message = useMessage();
 
 interface McpConnectionDraft {
@@ -123,8 +122,13 @@ const detailMode = computed<'detail' | 'settings'>(() =>
 	detailItem.value?.kind === 'mcp-server' ? 'settings' : 'detail',
 );
 
-const { connectServer, createCredentialAdapter, ignorePendingConnectResult, isConnectLocked } =
-	useMcpServerConnect();
+const {
+	connectServer,
+	createCredentialAdapter,
+	ignorePendingConnectResult,
+	isConnectLocked,
+	saveConnection,
+} = useMcpServerConnect();
 
 /** Reveals the settings view of the server the user just connected */
 function showConnectedServer(connectionId: string | null): void {
@@ -374,26 +378,6 @@ function findServerForItem(item: McpServerConnectionItem): McpRegistryServerResp
 	return mcpStore.catalog?.find((server) => server.slug === serverSlug);
 }
 
-function areToolPermissionsEqual(
-	left: ToolConnectionSettings,
-	right: ToolConnectionSettings,
-): boolean {
-	if (
-		left.categories.read !== right.categories.read ||
-		left.categories.write !== right.categories.write
-	) {
-		return false;
-	}
-
-	const leftTools = left.tools ?? {};
-	const rightTools = right.tools ?? {};
-	const leftToolNames = Object.keys(leftTools);
-	return (
-		leftToolNames.length === Object.keys(rightTools).length &&
-		leftToolNames.every((toolName) => leftTools[toolName] === rightTools[toolName])
-	);
-}
-
 function trackMcpCredentialInteraction(
 	item: ToolConnectionItem,
 	track: (serverSlug: string) => void,
@@ -436,40 +420,20 @@ async function handleSelectCredential(
 }
 
 async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSettings) {
-	if (!settings) return;
+	if (!settings || item.kind !== 'mcp-server') return;
 	const draft = draftConnection.value;
 	if (draft && draft.status !== 'connected') return;
-	const existingConnection =
-		item.kind === 'mcp-server'
-			? mcpStore.connections.find((connection) => connection.id === item.id)
-			: undefined;
-	const permissionsChanged =
-		item.kind === 'mcp-server' &&
-		(!item.settings || !areToolPermissionsEqual(item.settings, settings));
-	const updated = draft
-		? existingConnection
-			? await mcpStore.updateConnection(existingConnection.id, {
-					credentialId: draft.credentialId,
-					toolPermissions: settings,
-				})
-			: await mcpStore.connect({
-					serverSlug: draft.serverSlug,
-					credentialId: draft.credentialId,
-					toolPermissions: settings,
-				})
-		: await mcpStore.updateConnection(item.id, {
-				toolPermissions: settings,
-			});
+	// Without a draft, the item is a saved connection that keeps its credential.
+	// A draft of a new connection has no saved one.
+	const saved = mcpStore.connections.find((connection) => connection.id === item.id);
+	const serverSlug = draft?.serverSlug ?? saved?.serverSlug;
+	const credentialId = draft?.credentialId ?? saved?.credentialId;
+	if (!serverSlug || !credentialId) return;
+	const updated = await saveConnection({ serverSlug, credentialId, toolPermissions: settings });
 	if (!updated) return;
-	if (permissionsChanged && (!draft || existingConnection)) {
+	if (saved && !isEqual(item.settings, settings)) {
 		mcpTelemetry.trackToolPermissionsUpdated(updated.serverSlug, settings);
 	}
-	toast.showMessage({
-		type: 'success',
-		title: i18n.baseText(
-			existingConnection ? 'instanceAi.mcp.settings.saved' : 'instanceAi.mcp.success.connect',
-		),
-	});
 	draftConnection.value = null;
 	uiStore.closeModal(props.modalName);
 }

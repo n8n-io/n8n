@@ -7193,7 +7193,6 @@
 	"instanceAi.inputMenu.preferences.manage": "Manage preferences",
 	"instanceAi.inputMenu.preferences.scope.user": "Just you",
 	"instanceAi.mcp.success.connect": "Connected successfully",
-	"instanceAi.mcp.success.changeCredential": "Credential changed successfully",
 	"instanceAi.mcp.error.fetchConnections": "Failed to load MCP connections",
 	"instanceAi.mcp.error.fetchCatalog": "Failed to load MCP server catalog",
 	"instanceAi.mcp.error.checkConnections": "Failed to check MCP server connections",
