@@ -14,31 +14,25 @@ describe('IdempotencyKeyRepository', () => {
 
 	const cutoff = new Date('2026-10-08T00:00:00.000Z');
 	const limit = 2;
-	const queryBuilder = {
+	const createQueryBuilder = () => ({
+		getQuery: vi.fn().mockReturnValue('SELECT "key"."id" FROM "idempotency_key" "key"'),
+		getParameters: vi.fn().mockReturnValue({ cutoff }),
+		execute: vi.fn(),
 		select: vi.fn().mockReturnThis(),
 		where: vi.fn().mockReturnThis(),
 		orderBy: vi.fn().mockReturnThis(),
 		addOrderBy: vi.fn().mockReturnThis(),
 		limit: vi.fn().mockReturnThis(),
-		getQuery: vi.fn().mockReturnValue('SELECT "key"."id" FROM "idempotency_key" "key"'),
-		getParameters: vi.fn().mockReturnValue({ cutoff }),
 		delete: vi.fn().mockReturnThis(),
 		setParameters: vi.fn().mockReturnThis(),
-		execute: vi.fn(),
-	};
+	});
+
+	let queryBuilder: ReturnType<typeof createQueryBuilder>;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		queryBuilder.select.mockReturnThis();
-		queryBuilder.where.mockReturnThis();
-		queryBuilder.orderBy.mockReturnThis();
-		queryBuilder.addOrderBy.mockReturnThis();
-		queryBuilder.limit.mockReturnThis();
-		queryBuilder.getQuery.mockReturnValue('SELECT "key"."id" FROM "idempotency_key" "key"');
-		queryBuilder.getParameters.mockReturnValue({ cutoff });
-		queryBuilder.delete.mockReturnThis();
-		queryBuilder.setParameters.mockReturnThis();
-		entityManager.createQueryBuilder.mockReturnValue(queryBuilder as never);
+		queryBuilder = createQueryBuilder();
+		entityManager.createQueryBuilder.mockReturnValue(queryBuilder);
 	});
 
 	describe('deleteOlderThan', () => {
