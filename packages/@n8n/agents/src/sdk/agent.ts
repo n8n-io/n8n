@@ -745,7 +745,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			thinking: this.thinkingConfig ?? null,
 			reasoning: this.reasoningLevel ?? null,
 			promptCaching: this.promptCachingConfig ?? null,
-			nativeToolDeferral: this.nativeToolDeferralConfig ?? null,
+			nativeToolDeferral: this.nativeToolDeferralConfig
+				? { eagerToolNames: [...this.nativeToolDeferralConfig.eagerToolNames] }
+				: null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 		};
 	}
