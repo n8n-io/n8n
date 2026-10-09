@@ -4,6 +4,7 @@ import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-avai
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import AgentModal from './modals/AgentModal.vue';
@@ -18,6 +19,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const form = ref<InstanceType<typeof AgentToolConfigForm> | null>(null);
 const credentialModalOpen = ref(false);
@@ -42,6 +44,8 @@ const removeLabel = computed(() => {
 	}
 	return i18n.baseText('agents.builder.tools.remove');
 });
+
+void nodeTypesStore.loadNodeTypesIfNotLoaded();
 
 watch(
 	() => props.data.projectId,
