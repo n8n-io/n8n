@@ -42,7 +42,9 @@ import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
 import {
 	CredentialExportPolicy,
+	DataTableSchemaConflictPolicy,
 	MissingWorkflowDependencyPolicy,
+	OverwriteDeletionPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowVersionPolicy,
@@ -84,18 +86,21 @@ type DirectoryProjectPackage =
 	| { status: 'empty'; result: ImportResult }
 	| { status: 'project'; reader: PackageReader; manifest: PackageManifest };
 
-/** Merge preserves workflows omitted from the selection. Skip preserves existing shared tags. */
+/**
+ * A cherry-pick import acts only on its selection, so most policies are fixed here. Deletion mode is
+ * left to the caller (`overwriteDeletionPolicy`): promotion passes `hard-delete` for diff convergence,
+ * while the public selection import defaults to the safe `archive`. The caller also sets
+ * `dataTableSchemaConflictPolicy`, which defaults to `fail`.
+ */
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
 	folderConflictPolicy: 'merge',
-	overwriteDeletionPolicy: 'archive',
 	workflowPublishingPolicy: 'match-source',
 	missingNodeTypeMode: 'fail',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
 	dataTableMatchingMode: 'by-id',
 	dataTableMissingMode: 'create',
-	dataTableSchemaConflictPolicy: 'fail',
 	variableMissingMode: 'must-preexist',
 	variableConflictPolicy: 'keep-existing',
 	tagMissingMode: 'create',
@@ -108,8 +113,10 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'apiKeyScopes'
 	| 'bindings'
 	| 'selection'
+	| 'overwriteDeletionPolicy'
 	| 'workflowConflictPolicy'
 	| 'workflowIdPolicy'
+	| 'dataTableSchemaConflictPolicy'
 >;
 
 @Service()
@@ -414,7 +421,7 @@ export class N8nPackagesService {
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
-		const manifest = await this.packageParser.getManifest(reader);
+		const manifest = await this.readImportManifest(reader);
 		const { result, scopes } = await this.dispatchImport(
 			request,
 			reader,
@@ -472,7 +479,7 @@ export class N8nPackagesService {
 		selection: ImportSelection,
 	): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
-		const manifest = await this.packageParser.getManifest(reader);
+		const manifest = await this.readImportManifest(reader);
 		if (!isProjectPackage(manifest)) {
 			throw new BadRequestError('A selection import requires a project package.');
 		}
@@ -493,13 +500,21 @@ export class N8nPackagesService {
 		return result;
 	}
 
+	private async readImportManifest(reader: PackageReader): Promise<PackageManifest> {
+		const manifest = await this.packageParser.getManifest(reader);
+		if (manifest.agents?.length) {
+			throw new BadRequestError('Importing packages that contain Agents is not supported yet.');
+		}
+		return manifest;
+	}
+
 	/** An empty working copy needs no import. Reject content without a project. */
 	private async readDirectoryProjectPackage(source: {
 		sourceDir: string;
 	}): Promise<DirectoryProjectPackage> {
 		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
 		await reader.listEntries();
-		const manifest = await this.packageParser.getManifest(reader);
+		const manifest = await this.readImportManifest(reader);
 		if (isProjectPackage(manifest)) {
 			return { status: 'project', reader, manifest };
 		}
@@ -529,8 +544,11 @@ export class N8nPackagesService {
 			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
 			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
 			...CHERRY_PICK_IMPORT_POLICY,
+			overwriteDeletionPolicy: request.overwriteDeletionPolicy ?? OverwriteDeletionPolicy.Archive,
 			workflowConflictPolicy: request.workflowConflictPolicy ?? WorkflowConflictPolicy.NewVersion,
 			workflowIdPolicy: request.workflowIdPolicy ?? WorkflowIdPolicy.Source,
+			dataTableSchemaConflictPolicy:
+				request.dataTableSchemaConflictPolicy ?? DataTableSchemaConflictPolicy.Fail,
 			selection,
 		};
 
@@ -638,7 +656,7 @@ function emptyImportResult(manifest: PackageManifest): ImportResult {
 		projects: [],
 		bindings: createBindings(),
 		credentials: { matched: [], stubbed: [] },
-		dataTables: { matched: 0, created: 0 },
+		dataTables: { matched: 0, created: 0, updated: 0 },
 		variables: { matched: [], created: [], stubbed: [], updated: [], missing: [] },
 		tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
 	});

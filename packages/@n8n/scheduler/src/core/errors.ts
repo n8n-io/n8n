@@ -60,6 +60,25 @@ export class DuplicateTaskHandlerError extends Error {
 }
 
 /**
+ * The abort reason of a handler's signal when its claim is lost: the lease
+ * could not be renewed, so another instance may run the same occurrence.
+ */
+export class LeaseLostError extends Error {
+	constructor() {
+		super('The claim on this occurrence was lost');
+		this.name = 'LeaseLostError';
+	}
+}
+
+/** Raised when a lease heartbeat is given a lease duration that is not a positive integer. */
+export class InvalidLeaseDurationError extends Error {
+	constructor(readonly leaseDurationMs: number) {
+		super('The lease duration must be a positive integer of milliseconds');
+		this.name = 'InvalidLeaseDurationError';
+	}
+}
+
+/**
  * Raised when a stored row is missing a column its `kind` guarantees should be
  * set (a corrupt or hand-edited row), while assembling its `Schedule` from the
  * flat columns (see `resolveSchedule`).

@@ -11,6 +11,8 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentCheckpointPruningTask } from '@/modules/agents/agent-checkpoint-pruning.task';
+import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
+import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
@@ -60,7 +62,7 @@ describe('AgentCheckpointPruningTask', () => {
 		checkpointRepository = Container.get(AgentCheckpointRepository);
 		config = Container.get(AgentsConfig);
 		storage = makeStorage(checkpointRepository);
-		task = new AgentCheckpointPruningTask(storage);
+		task = new AgentCheckpointPruningTask(storage, Container.get(AgentBackgroundJobService));
 		stale = new Date(Date.now() - (config.checkpointTtlSeconds + Time.hours.toSeconds) * 1000);
 	});
 
@@ -126,8 +128,27 @@ describe('AgentCheckpointPruningTask', () => {
 
 	it('should expire each stale checkpoint once across repeated runs', async () => {
 		// Arrange: 3000 checkpoints past the TTL and 200 inside it.
-		await insertCheckpoints('stale', 3000, stale);
+		const [runId] = await insertCheckpoints('stale', 3000, stale);
 		await insertCheckpoints('fresh', 200, new Date());
+		await checkpointRepository.update(runId, { threadId: 'paused-child', updatedAt: stale });
+		const jobId = uuid();
+		const notifiedAt = new Date();
+		const jobs = Container.get(AgentBackgroundJobRepository);
+		await jobs.insert({
+			id: jobId,
+			kind: 'subagent',
+			status: 'paused',
+			pauseRequestId: uuid(),
+			parentAgentId: agentId,
+			parentThreadId: 'paused-parent',
+			parentResourceId: 'draft-chat:user-1',
+			parentPrincipalHash: 'principal-hash',
+			title: 'Paused task',
+			subAgentId: agentId,
+			childThreadId: 'paused-child',
+			settledAt: new Date(),
+			notifiedAt,
+		});
 
 		// Act: four prune runs at once. The pool may serialize them, so this is
 		// the idempotency check; the two-connection tests below cover the race.
@@ -137,6 +158,8 @@ describe('AgentCheckpointPruningTask', () => {
 		// logged counts sum to the stale rows, so no run expired a row twice.
 		expect(await counts()).toEqual({ expired: 3000, open: 200 });
 		expect(expiredTotal()).toBe(3000);
+		expect(await jobs.findById(jobId)).toMatchObject({ status: 'failed', notifiedAt });
+		expect(await jobs.findRequestedPauses('paused-parent')).toEqual([]);
 	});
 
 	// A second connection holds one side of the race open in a transaction, so the
@@ -175,7 +198,10 @@ describe('AgentCheckpointPruningTask', () => {
 		it('rejects expired approval while pruning is uncommitted', async () => {
 			// Arrange: the other connection prunes the row but does not commit.
 			const [runId] = await insertCheckpoints('stale', 1, stale);
-			await new AgentCheckpointPruningTask(otherStorage).run();
+			await new AgentCheckpointPruningTask(
+				otherStorage,
+				Container.get(AgentBackgroundJobService),
+			).run();
 
 			// Expiry rejects the claim before it needs the pruning lock.
 			const claim = storage.claimForResume(runId, suspendedState, agentId);

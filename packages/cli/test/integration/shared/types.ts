@@ -15,6 +15,7 @@ type EndpointGroup =
 	| 'auth'
 	| 'oauth1'
 	| 'oauth2'
+	| 'jwks'
 	| 'owner'
 	| 'passwordReset'
 	| 'changeEmail'
@@ -71,6 +72,7 @@ type ModuleName =
 	| 'data-table'
 	| 'instance-ai'
 	| 'mcp'
+	| 'oauth-jwe'
 	| 'oauth-server'
 	| 'dynamic-credentials'
 	| 'log-streaming'
@@ -82,7 +84,8 @@ type ModuleName =
 	| 'token-exchange'
 	| 'policy-infrastructure'
 	| 'workflow-reviews'
-	| 'type-availability-policies';
+	| 'type-availability-policies'
+	| 'inbound-auth-core';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

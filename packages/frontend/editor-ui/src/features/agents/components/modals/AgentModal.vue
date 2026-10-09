@@ -13,7 +13,8 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { FocusScope } from 'reka-ui';
-import { computed, nextTick, useSlots, useTemplateRef } from 'vue';
+import { computed, nextTick, provide, ref, useSlots, useTemplateRef } from 'vue';
+import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 
 const props = withDefaults(
 	defineProps<{
@@ -28,6 +29,8 @@ const props = withDefaults(
 		showCancel?: boolean;
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
+		/** Pin the body height so the dialog does not resize between steps. Short modals leave it off. */
+		stableHeight?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -44,6 +47,7 @@ const props = withDefaults(
 		showCancel: true,
 		bodyScrollable: true,
 		bodyFlush: false,
+		stableHeight: false,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -62,12 +66,15 @@ const emit = defineEmits<{
 const slots = useSlots();
 const i18n = useI18n();
 const body = useTemplateRef<HTMLElement>('body');
+const parameterDialogs = ref(new Set<string>());
+provide(ParameterInputModalContextKey, { openDialogs: parameterDialogs, appendTo: 'body' });
+const trapFocus = computed(() => props.trapFocus && parameterDialogs.value.size === 0);
 const hasFooter = computed(
 	() =>
 		props.showFooter ??
 		Boolean(slots.footer || slots.footerLeft || slots.footerBeforeCancel || slots.footerActions),
 );
-const dismissalBlocked = computed(() => props.busy || !props.trapFocus);
+const dismissalBlocked = computed(() => props.busy || !trapFocus.value);
 
 function onOpenChange(open: boolean) {
 	if (!open && dismissalBlocked.value) return;
@@ -83,7 +90,9 @@ function onBack() {
 }
 
 function onEscapeKeyDown(event: KeyboardEvent) {
-	if (dismissalBlocked.value) event.preventDefault();
+	const isOutsideDialog =
+		event.target instanceof Node && !body.value?.closest('[role="dialog"]')?.contains(event.target);
+	if (dismissalBlocked.value || isOutsideDialog) event.preventDefault();
 }
 
 function onInteractOutside(event: Event) {
@@ -112,8 +121,10 @@ function onOpenAutoFocus(event: Event) {
 		:open="props.open"
 		:size="props.size"
 		:stacked="props.stacked"
-		:trap-focus="props.trapFocus"
-		:disable-outside-pointer-events="props.disableOutsidePointerEvents"
+		:trap-focus="trapFocus"
+		:disable-outside-pointer-events="
+			props.disableOutsidePointerEvents && parameterDialogs.size === 0
+		"
 		:show-close-button="false"
 		@escape-key-down="onEscapeKeyDown"
 		@interact-outside="onInteractOutside"
@@ -186,12 +197,7 @@ function onOpenAutoFocus(event: Event) {
 			</N8nText>
 		</N8nDialogHeader>
 
-		<FocusScope
-			v-if="!props.trapFocus"
-			as-child
-			@mount-auto-focus.prevent
-			@unmount-auto-focus.prevent
-		>
+		<FocusScope v-if="!trapFocus" as-child @mount-auto-focus.prevent @unmount-auto-focus.prevent>
 			<span hidden aria-hidden="true" />
 		</FocusScope>
 
@@ -201,6 +207,7 @@ function onOpenAutoFocus(event: Event) {
 				$style.body,
 				!props.bodyScrollable && $style.bodyNotScrollable,
 				props.bodyFlush && $style.bodyFlush,
+				props.stableHeight && $style.bodyStableHeight,
 			]"
 			data-testid="agent-modal-body"
 		>
@@ -319,7 +326,6 @@ function onOpenAutoFocus(event: Event) {
 
 .body {
 	box-sizing: border-box;
-	height: min(60dvh, calc(var(--height--5xl) * 5));
 	min-height: 0;
 	max-height: min(70dvh, calc(var(--height--5xl) * 6));
 	overflow-y: auto;
@@ -336,6 +342,10 @@ function onOpenAutoFocus(event: Event) {
 
 .bodyNotScrollable {
 	overflow-y: hidden;
+}
+
+.bodyStableHeight {
+	height: min(60dvh, calc(var(--height--5xl) * 5));
 }
 
 .bodyFlush {

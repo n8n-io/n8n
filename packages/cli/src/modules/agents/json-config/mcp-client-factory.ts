@@ -84,6 +84,11 @@ export interface BuildMcpClientDeps {
 	 */
 	onConnectionFailed?: (event: McpConnectionFailedEvent) => void;
 	onToolCallSettled?: McpServerConfig['onToolCallSettled'];
+	/**
+	 * The runtime cannot suspend and resume (inline agents have no checkpoint
+	 * storage), so tool permissions must never require approval.
+	 */
+	nonInterrupting?: boolean;
 }
 
 /** Stand-in for a URL that could not be built. `.invalid` never resolves (RFC 2606), and `authFetch` rejects before any request is sent. */
@@ -108,6 +113,7 @@ export async function buildMcpClientForServer(
 		proxyFetch,
 		onConnectionFailed,
 		onToolCallSettled,
+		nonInterrupting,
 	} = deps;
 	const { toolPermissions } = server;
 	const { McpClient } = await import('@n8n/agents');
@@ -197,6 +203,7 @@ export async function buildMcpClientForServer(
 		...(toolPermissions !== undefined && {
 			configureTools: (tools) => compileMcpToolPermissions(toolPermissions, tools),
 		}),
+		...(nonInterrupting && { configureToolsNonInterrupting: true }),
 		...(onToolCallSettled !== undefined && { onToolCallSettled }),
 		...(server.connectionTimeoutMs !== undefined && {
 			connectionTimeoutMs: server.connectionTimeoutMs,
@@ -223,6 +230,14 @@ export async function listMcpServerTools(
 	try {
 		client = await buildMcpClientForServer(server, deps);
 		const tools = await client.listTools();
+		const failures = client.getConnectionFailures();
+		if (failures.length > 0) {
+			throw new OperationalError(
+				failures
+					.map((failure) => `MCP server "${failure.server}" connection failed: ${failure.error}`)
+					.join('; '),
+			);
+		}
 		return tools.map((tool) => ({ name: tool.name, description: tool.description ?? '' }));
 	} finally {
 		await client?.close().catch(() => {});

@@ -34,6 +34,7 @@ describe('SystemTaskRunner', () => {
 		enabledForSystemTasks = false,
 		instanceRole = 'leader' as InstanceSettings['instanceRole'],
 		instanceType = 'main' as InstanceSettings['instanceType'],
+		timezone = 'UTC',
 	} = {}) {
 		const logger = mock<Logger>();
 		const metadata = new SystemTaskMetadata();
@@ -54,7 +55,7 @@ describe('SystemTaskRunner', () => {
 			jobRegistrar,
 			systemTaskOwner,
 			mock<GlobalConfig>({
-				generic: { timezone: 'UTC' },
+				generic: { timezone },
 				scheduler: { enabledForSystemTasks },
 			}),
 			instanceSettings,
@@ -786,7 +787,11 @@ describe('SystemTaskRunner', () => {
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
 			await expect(
-				handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn())),
+				handler.execute(
+					mock<ClaimedTask>(),
+					createDispatchReporter(vi.fn()),
+					new AbortController().signal,
+				),
 			).rejects.toThrow(error);
 
 			expect(errorReporter.error).toHaveBeenCalledWith(error, {
@@ -811,7 +816,11 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
-			const executing = handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn()));
+			const executing = handler.execute(
+				mock<ClaimedTask>(),
+				createDispatchReporter(vi.fn()),
+				new AbortController().signal,
+			);
 			expect(runSignal?.aborted).toBe(false);
 
 			await runner.shutdown();
@@ -852,6 +861,22 @@ describe('SystemTaskRunner', () => {
 
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(durableScheduler.registerTaskHandler).not.toHaveBeenCalled();
+			expect(dummy.runCount).toBe(1);
+		});
+
+		it('runs a durable cron task on its timer, in the instance timezone, while the scheduler is inactive', async () => {
+			dummy.placement = { scope: 'cluster', durable: true };
+			dummy.schedule = { kind: 'cron', cronExpression: '0 3 * * *', timezone: null };
+			const { runner, metadata, durableScheduler } = setup({ timezone: 'Europe/Berlin' });
+			metadata.register(DummySystemTask);
+
+			await initRunner(runner);
+			// 03:00 in Berlin is 02:00 UTC in January.
+			await vi.advanceTimersByTimeAsync(2 * Time.hours.toMilliseconds - 1);
+			expect(dummy.runCount).toBe(0);
+			await vi.advanceTimersByTimeAsync(1);
 
 			expect(durableScheduler.registerTaskHandler).not.toHaveBeenCalled();
 			expect(dummy.runCount).toBe(1);
@@ -1314,7 +1339,11 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
-			await handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn()));
+			await handler.execute(
+				mock<ClaimedTask>(),
+				createDispatchReporter(vi.fn()),
+				new AbortController().signal,
+			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-started', {
 				name: 'dummy',

@@ -1,10 +1,16 @@
+import { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import {
+	MessageEventBusDestinationTypeNames,
+	type MessageEventBusDestinationWebhookOptions,
+} from 'n8n-workflow';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { createMessageEventBusDestination } from '@/modules/log-streaming.ee/create-message-event-bus-destination';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
@@ -73,12 +79,8 @@ describe('Log streaming in Public API', () => {
 		setManagedByEnv(false);
 	});
 
-	// Every endpoint is gated the same way (valid key → licensed → required scope), so the
-	// 401 / 403-unlicensed / 403-missing-scope checks are asserted uniformly across all routes.
 	describe('authorization', () => {
 		const dummyId = '11111111-1111-4111-8111-111111111111';
-		// POST/PUT carry a valid body so the request passes body validation and reaches the
-		// license/scope middleware (otherwise a bodyless request short-circuits with 415).
 		const endpoints: Array<{
 			name: string;
 			method: 'get' | 'post' | 'put' | 'delete';
@@ -168,7 +170,64 @@ describe('Log streaming in Public API', () => {
 		});
 	});
 
-	describe('GET /settings/log-streaming/destinations/{id}', () => {
+	describe('GET /settings/log-streaming/destinations/{destinationId}', () => {
+		it('omits credentials and backend-only fields of a destination stored outside the Public API', async () => {
+			const options: MessageEventBusDestinationWebhookOptions = {
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				label: 'Stored with credentials',
+				enabled: false,
+				subscribedEvents: ['n8n.workflow'],
+				url: 'http://localhost:3456',
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'httpHeaderAuth',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My cred' } },
+				responseCodeMustMatch: true,
+				sendPayload: true,
+			};
+			const stored = await service().addDestination(
+				createMessageEventBusDestination(
+					Container.get(MessageEventBus),
+					Container.get(OutboundHttp),
+					options,
+				),
+				false,
+			);
+
+			const single = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/settings/log-streaming/destinations/${stored.getId()}`);
+			const list = await testServer
+				.publicApiAgentFor(owner)
+				.get('/settings/log-streaming/destinations');
+
+			expect(single.status).toBe(200);
+			expect(list.status).toBe(200);
+			const listed = list.body.data.find((d: { id: string }) => d.id === stored.getId());
+			// Strict match: `__type`, `credentials`, `authentication`, `nodeCredentialType`,
+			// `responseCodeMustMatch` and `sendPayload` must not appear.
+			const expected = {
+				id: stored.getId(),
+				type: 'webhook',
+				label: 'Stored with credentials',
+				enabled: false,
+				subscribedEvents: ['n8n.workflow'],
+				anonymizeAuditMessages: false,
+				url: 'http://localhost:3456',
+				method: 'POST',
+				sendHeaders: false,
+				specifyHeaders: '',
+				headerParameters: { parameters: [] },
+				jsonHeaders: '',
+				sendQuery: false,
+				specifyQuery: '',
+				queryParameters: { parameters: [] },
+				jsonQuery: '',
+				options: {},
+			};
+			expect(single.body).toStrictEqual(expected);
+			expect(listed).toStrictEqual(expected);
+		});
+
 		it('returns a single destination by id', async () => {
 			const created = await createDestination();
 
@@ -203,7 +262,6 @@ describe('Log streaming in Public API', () => {
 			expect(response.body).not.toHaveProperty('__type');
 			expect(response.body.label).toBe('Test Webhook');
 
-			// the destination is persisted through the service, readable on the next request
 			const listResponse = await testServer
 				.publicApiAgentFor(owner)
 				.get('/settings/log-streaming/destinations');
@@ -218,8 +276,23 @@ describe('Log streaming in Public API', () => {
 				.post('/settings/log-streaming/destinations')
 				.send({ ...webhookPayload, id: clientId });
 
-			// id is readOnly: eov rejects it in the request body
 			expect(response.status).toBe(400);
+		});
+
+		it('drops fields that do not belong to the destination type', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/log-streaming/destinations')
+				.send({
+					...webhookPayload,
+					dsn: 'https://examplePublicKey@o0.ingest.sentry.io/0',
+					unknownField: 'value',
+				});
+
+			expect(response.status).toBe(200);
+			expect(response.body.type).toBe('webhook');
+			expect(response.body).not.toHaveProperty('dsn');
+			expect(response.body).not.toHaveProperty('unknownField');
 		});
 
 		it('creates a fully-populated webhook destination', async () => {
@@ -247,13 +320,14 @@ describe('Log streaming in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('id');
-			expect(response.body).toMatchObject(payload);
-			// fields the UI does not expose are dropped from the public surface
-			expect(response.body).not.toHaveProperty('responseCodeMustMatch');
-			expect(response.body).not.toHaveProperty('sendPayload');
-			expect(response.body).not.toHaveProperty('authentication');
-			expect(response.body).not.toHaveProperty('credentials');
+			// Strict match: `responseCodeMustMatch`, `sendPayload`, `authentication` and
+			// `credentials` must not appear.
+			expect(response.body).toStrictEqual({
+				id: expect.any(String),
+				...payload,
+				jsonHeaders: '',
+				jsonQuery: '',
+			});
 		});
 
 		it('creates a fully-populated syslog destination', async () => {
@@ -277,8 +351,7 @@ describe('Log streaming in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('id');
-			expect(response.body).toMatchObject(payload);
+			expect(response.body).toStrictEqual({ id: expect.any(String), ...payload });
 		});
 
 		it('creates a fully-populated sentry destination', async () => {
@@ -298,8 +371,7 @@ describe('Log streaming in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('id');
-			expect(response.body).toMatchObject(payload);
+			expect(response.body).toStrictEqual({ id: expect.any(String), ...payload });
 		});
 
 		it('rejects a malformed body with 400', async () => {
@@ -322,7 +394,7 @@ describe('Log streaming in Public API', () => {
 		});
 	});
 
-	describe('PUT /settings/log-streaming/destinations/{id}', () => {
+	describe('PUT /settings/log-streaming/destinations/{destinationId}', () => {
 		it('updates an existing destination', async () => {
 			const created = await createDestination();
 
@@ -336,12 +408,27 @@ describe('Log streaming in Public API', () => {
 			expect(response.body.label).toBe('Renamed webhook');
 			expect(response.body.url).toBe('http://localhost:9999');
 
-			// the change is persisted (no extra destination created)
 			const listResponse = await testServer
 				.publicApiAgentFor(owner)
 				.get('/settings/log-streaming/destinations');
 			expect(listResponse.body.data).toHaveLength(1);
 			expect(listResponse.body.data[0].label).toBe('Renamed webhook');
+		});
+
+		it('accepts a GET response as the body and keeps the path id', async () => {
+			const created = await createDestination();
+			const read = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/settings/log-streaming/destinations/${created.id}`);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/settings/log-streaming/destinations/${created.id}`)
+				.send({ ...read.body, id: '99999999-9999-4999-8999-999999999999', label: 'Round trip' });
+
+			expect(response.status).toBe(200);
+			expect(response.body.id).toBe(created.id);
+			expect(response.body.label).toBe('Round trip');
 		});
 
 		it('returns 404 for an unknown destination id', async () => {
@@ -365,7 +452,7 @@ describe('Log streaming in Public API', () => {
 		});
 	});
 
-	describe('POST /settings/log-streaming/destinations/{id}/test', () => {
+	describe('POST /settings/log-streaming/destinations/{destinationId}/test', () => {
 		it('sends a test message to a destination', async () => {
 			const created = await createDestination();
 			const testSpy = vi.spyOn(service(), 'testDestination').mockResolvedValue(true);
@@ -400,7 +487,7 @@ describe('Log streaming in Public API', () => {
 		});
 	});
 
-	describe('DELETE /settings/log-streaming/destinations/{id}', () => {
+	describe('DELETE /settings/log-streaming/destinations/{destinationId}', () => {
 		it('removes the destination', async () => {
 			const created = await createDestination();
 

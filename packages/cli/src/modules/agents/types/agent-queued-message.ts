@@ -15,11 +15,16 @@ interface QueuedMessageInput {
 	attachments?: StoredAttachmentRef[];
 }
 
-export interface QueuedPreviewMessage extends QueuedMessageInput {
-	kind: 'preview';
+/** A message from an n8n user. Preview runs the draft agent. n8n Chat runs the published agent. */
+export interface QueuedUserChatMessage extends QueuedMessageInput {
+	kind: 'preview' | 'n8n_chat';
 	userId: string;
 	messageId?: string;
 }
+
+/** One rule for steering eligibility: the allow-list of kinds. Integrations never steer. */
+export const acceptsSteering = (kind: AgentQueuedMessage['kind']): boolean =>
+	kind === 'preview' || kind === 'n8n_chat';
 
 export interface QueuedIntegrationMessage extends QueuedMessageInput {
 	kind: 'integration';
@@ -34,11 +39,11 @@ export interface QueuedIntegrationMessage extends QueuedMessageInput {
 	slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
 }
 
-export type AgentQueuedMessage = QueuedPreviewMessage | QueuedIntegrationMessage;
+export type AgentQueuedMessage = QueuedUserChatMessage | QueuedIntegrationMessage;
 
 /** Queue storage keeps dispatch data. Conversation input belongs to the referenced message. */
 export type AgentQueueDispatch =
-	| { kind: 'preview' }
+	| { kind: QueuedUserChatMessage['kind'] }
 	| (Omit<
 			QueuedIntegrationMessage,
 			keyof QueuedMessageInput | 'modelMessage' | 'author' | 'platformThreadId' | 'messageContext'

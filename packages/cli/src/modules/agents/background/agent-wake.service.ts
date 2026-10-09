@@ -1,3 +1,4 @@
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
@@ -29,6 +30,7 @@ import { AgentRepository } from '../repositories/agent.repository';
 import {
 	integrationTypeFromMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
+	userIdFromProductionChatMemoryResourceId,
 } from '../utils/agent-memory-scope';
 
 export const WAKE_DEBOUNCE_MS = 5_000;
@@ -108,10 +110,15 @@ export class AgentWakeService {
 		if (!this.agentsConfig.backgroundTasksEnabled) return undefined;
 		if (this.activeWakes.has(threadId)) return undefined;
 
-		const jobs = (await this.jobRepository.findWakeableUnconsumed(threadId)).filter(
-			(job) => job.parentResourceId === resourceId && job.status !== 'suspended',
+		const [pending, stoppedHere] = await Promise.all([
+			this.jobRepository.findWakeableUnconsumed(threadId),
+			this.jobRepository.hasRequestedStop(threadId, resourceId),
+		]);
+		const jobs = pending.filter(
+			(job) =>
+				job.parentResourceId === resourceId && job.status !== 'suspended' && !job.pauseRequestId,
 		);
-		if (jobs.length === 0) return undefined;
+		if (jobs.length === 0 && !stoppedHere) return undefined;
 
 		// Remove tag characters so titles cannot close the surrounding tag.
 		// Quote titles to distinguish them from instructions.
@@ -121,7 +128,16 @@ export class AgentWakeService {
 				return `${JSON.stringify(title)} (${job.status})`;
 			})
 			.join(', ');
-		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${jobs.length} background job(s) settled: ${summaries}. Call check_background_jobs once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
+		const updates: string[] = [];
+		if (jobs.length > 0)
+			updates.push(
+				`${jobs.length} background job(s) settled: ${summaries}. Call check_background_jobs once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.`,
+			);
+		if (stoppedHere)
+			updates.push(
+				'The user requested a stop for background tasks. Sub-agents pause at their checkpoints. Workflows stop through execution cancellation. One combined report follows when the selected tasks are inactive. Do not replace or resume these tasks automatically. First call resume_background_jobs when the latest user message explicitly asks to continue. If that message arrived before the report, ask the user to wait and retry. Cancelled workflows need new calls through their normal tools. Check conversation history and current jobs before repeating a workflow call.',
+			);
+		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${updates.join('\n')}${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
 	}
 
 	private scheduleLocal(threadId: string): void {
@@ -150,8 +166,16 @@ export class AgentWakeService {
 	}
 
 	private async deliverInsideLease(threadId: string, signal: AbortSignal): Promise<void> {
-		const pending = await this.jobRepository.findWakeableUnconsumed(threadId);
-		for (const job of pending.filter((item) => item.status === 'suspended')) {
+		let pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+		const stopped = pending.filter((job) => job.pauseRequestId);
+		if (stopped.length > 0) {
+			// A worker can stop after settlement and before it replaces older checkpoints.
+			for (const job of stopped) await this.backgroundJobService.retainLatestStopGroup(job);
+			pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+		}
+		for (const job of pending.filter(
+			(item) => item.status === 'suspended' && !item.pauseRequestId,
+		)) {
 			if (signal.aborted) return;
 			await this.deliverApproval(job, signal);
 		}
@@ -161,7 +185,11 @@ export class AgentWakeService {
 
 		// Each wake delivers results for one author. The oldest pending job determines
 		// the wake identity. Results for other authors stay pending for the next wake.
-		const jobs = settled.filter((job) => this.hasSameParentIdentity(job, first));
+		const jobs = settled.filter(
+			(job) =>
+				this.hasSameParentIdentity(job, first) &&
+				(job.pauseRequestId ?? null) === (first.pauseRequestId ?? null),
+		);
 		const generation = jobs
 			.map((job) => `${job.id}:${job.status}:${job.updatedAt.toISOString()}`)
 			.sort()
@@ -184,6 +212,7 @@ export class AgentWakeService {
 			await this.backgroundJobService.markMailConsumed(
 				threadId,
 				jobs.map((job) => job.id),
+				Boolean(first.pauseRequestId),
 			);
 			this.failures.delete(threadId);
 
@@ -233,20 +262,27 @@ export class AgentWakeService {
 		principalHash: string,
 		projectId: string,
 	): Promise<ExecuteForWakeConfig['identity']> {
-		const userId = userIdFromDraftChatMemoryResourceId(resourceId);
+		const draftUserId = userIdFromDraftChatMemoryResourceId(resourceId);
+		const userId = draftUserId ?? userIdFromProductionChatMemoryResourceId(resourceId);
 		if (userId) {
 			const expectedHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId });
 			if (expectedHash !== principalHash) {
-				throw new UnexpectedError('Draft wake identity does not match its principal');
+				throw new UnexpectedError('Wake identity does not match its principal');
 			}
 
 			// Load the current user role to verify that the user still has permission to run the agent.
 			const user = await this.userRepository.findByIdWithRole(userId);
-			if (!user || user.disabled) throw new OperationalError('Draft wake user is no longer active');
+			if (!user || user.disabled) throw new OperationalError('Wake user is no longer active');
 			if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
-				throw new OperationalError('Draft wake user can no longer execute this agent');
+				throw new OperationalError('Wake user can no longer execute this agent');
 			}
-			return { type: 'draft', user, principalHash: expectedHash };
+			return draftUserId
+				? { type: 'draft', user, principalHash: expectedHash }
+				: {
+						type: 'published',
+						integrationType: N8N_CHAT_INTEGRATION_TYPE,
+						principalHash: expectedHash,
+					};
 		}
 
 		const integrationType = integrationTypeFromMemoryResourceId(resourceId);
@@ -304,9 +340,15 @@ export class AgentWakeService {
 				agentId: agent.id,
 				projectId: agent.projectId,
 				message: formatWakeMessage(jobs),
+				pauseReport: Boolean(jobs[0]?.pauseRequestId),
 				backgroundJobSignal: {
 					tasks: jobs.flatMap(({ id, title, kind, status }) =>
-						status === 'running' || status === 'suspended' ? [] : [{ id, title, kind, status }],
+						status === 'running' ||
+						status === 'suspended' ||
+						status === 'paused' ||
+						jobs[0]?.pauseRequestId
+							? []
+							: [{ id, title, kind, status }],
 					),
 				},
 				memory: { threadId, resourceId },

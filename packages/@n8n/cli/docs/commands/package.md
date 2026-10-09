@@ -79,8 +79,8 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 | `--credential-matching-mode` | How credential references are matched on the target instance: `id-only` (default, match by id), `name-and-type` (match by exact name and type), or `type-only` (match by type). For `name-and-type` and `type-only`, candidates are ranked by scope — owned by the target project, then shared into it, then global — and ties within a scope use the most recently updated credential. |
 | `--credential-missing-mode` | What to do when a referenced credential cannot be resolved. `create-stub` (instance default) creates empty placeholder credentials in the target project; `must-preexist` requires every referenced credential to already exist. |
 | `--data-table-matching-mode` | How data tables referenced by the package's workflows are matched on the target instance: `by-id` (default and only mode) matches the target-project table with the same id — imported tables keep their source id — and never falls back to name matching. |
-| `--data-table-missing-mode` | What to do when a referenced data table is absent in the target project. `create` (instance default) creates it from the package schema — keeping the source id, with no rows; `must-preexist` requires it to already exist; `do-nothing` skips creation. Matched tables are always used as-is and schema-validated (all package columns present with the same name and type), even under `do-nothing`. |
-| `--data-table-schema-conflict-policy` | How strictly a matched data table's schema is compared. Every package column must exist on the matched target table with the same name and type — a missing column or a type mismatch always rejects. `keep-existing` (instance default) ignores additional columns the target table has of its own; `fail` is the strict drift-detection choice and rejects those too. Neither policy alters the matched target table — package columns are never added to it. |
+| `--data-table-missing-mode` | What to do when a referenced data table is absent in the target project. `create` (instance default) creates it from the package schema — keeping the source id, with no rows; `must-preexist` requires it to already exist; `do-nothing` skips creation. Under the `keep-existing` and `fail` schema conflict policies, matched tables are schema-validated (all package columns present with the same name and type), even under `do-nothing`. Under `overwrite-non-destructive`, a matched table blocks the import only when a change removes or retypes a column. The import never imports table rows. Matched tables change only under `--data-table-schema-conflict-policy=overwrite` or `overwrite-non-destructive`, which keep their rows. |
+| `--data-table-schema-conflict-policy` | How strictly a matched data table's schema is compared. Under `keep-existing` and `fail`, every package column must exist on the matched target table with the same name and type. A missing column or a type mismatch rejects the import. `keep-existing` (instance default) ignores additional columns the target table has of its own; `fail` is the strict drift-detection choice and rejects those too. `keep-existing` and `fail` never alter the matched target table. `overwrite` changes the matched target table to match the package and can delete data in specific columns while preserving rows. Removing, retyping, or renaming a column deletes the data in that column. The changes apply to all workflows that use the table. `overwrite-non-destructive` makes the same changes as `overwrite`, but rejects the import and writes nothing when a change removes or retypes a column. A renamed or target-only column counts as removed. |
 | `--variable-missing-mode` | What to do when a referenced variable is absent from both the target project and global scope: `create-with-value` (instance default) creates it with the package value and reports it under `variables.created`, falling back to an empty stub under `variables.stubbed` when the package carries no value for it; `create-stub` always creates an empty value; `do-nothing` reports unresolved names without creating anything; `must-preexist` rejects the import. What happens to a variable that *does* resolve is `--variable-conflict-policy`'s job. Requires a variables-enabled license only when the import creates a variable. |
 | `--variable-conflict-policy` | What to do when a referenced variable resolves in the target project or global scope but the package bundles a different value for it. `keep-existing` (instance default) leaves the target value alone and reports the name under `variables.matched`; `overwrite` silently replaces the value of the existing variable at whichever scope it was found — including a global variable other projects also read — and reports the name under `variables.updated`; `fail` rejects the import. No policy touches a resolved variable when there is nothing to change: either the package bundles no value for it (values excluded at export, or an exported value that was itself empty), or the value it bundles already matches the target's. Under `overwrite`, a project package whose projects hold *different* values for a name they all resolve to one row — a global none of them shadows — is rejected: one row cannot carry both values. Requires a variables-enabled license only when the import overwrites. |
 | `--variable-parent-policy` | Where `create-with-value` and `create-stub` place missing variables for workflow/folder packages (`project`, the behaviour when omitted, uses the target project; `global` uses global scope). Must be omitted for project packages, which reject it with a 400 — their placement follows the package layout, so a variable bundled under a project is created in that project and one bundled at the top level is created globally. |
@@ -93,6 +93,7 @@ Requires the API key to hold:
 - `workflow:import` — always
 - `workflow:delete` and `folder:delete` — when the effective folder conflict policy is `overwrite` (set directly, or inherited from `--project-conflict-policy=overwrite`)
 - `dataTable:create` — when the package references data tables and `--data-table-missing-mode` is `create`
+- `dataTable:update` — when `--data-table-schema-conflict-policy` is `overwrite` or `overwrite-non-destructive` and changes at least one matched table
 - `variable:create` — when the import actually creates a variable, i.e. `--variable-missing-mode` is `create-with-value` (the default) or `create-stub` and at least one referenced variable does not already resolve. A package whose variables all resolve creates nothing and needs neither this scope nor a variables-enabled license.
 - `variable:update` — when the import would overwrite a variable, i.e. `--variable-conflict-policy=overwrite` and at least one resolved variable's value differs from the package's. `keep-existing` (the default) never overwrites and needs neither this scope nor a variables-enabled license.
 - `tag:create` — when the import would create a tag (under `--tag-missing-mode create`, the instance default; tags that match, are dropped, or belong only to skipped workflows need no scope)
@@ -124,9 +125,10 @@ are stubbed instead of blocking the import.
 
 Import a chosen subset of workflows from a `.n8np` project package. Workflow and
 folder packages are not supported. The command imports workflows listed in
-`--selected-workflow-ids` and archives workflows listed in `--deleted-workflow-ids`.
-It leaves workflows outside both lists and other projects unchanged. It can also
-create folders and referenced resources under the fixed policies below.
+`--selected-workflow-ids` and removes workflows listed in `--deleted-workflow-ids`
+(archived by default; see `--overwrite-deletion-policy`). It leaves workflows
+outside both lists and other projects unchanged. It can also create folders and
+referenced resources under the fixed policies below.
 
 The selection belongs to one source project (`--selected-project-id`). The command
 writes selected workflows into the target instance project with the same ID.
@@ -147,10 +149,13 @@ An imported workflow's destination ID must not appear in `--deleted-workflow-ids
 The command rejects this overlap before any writes, including with the `skip`
 policy. It checks the destination ID even if the workflow is absent or archived.
 
-The result lists archived workflows under `removedWorkflows`, each with
-`deletion: archived`. The command does not permanently delete workflows or their
-execution history. It skips absent or already archived workflows and omits them
-from this list.
+The result lists removed workflows under `removedWorkflows`. Each entry has a
+`deletion` field of `archived` or `deleted` that reports what actually happened.
+With the default `--overwrite-deletion-policy=archive` the command archives each
+workflow, so it and its execution history stay recoverable. `hard-delete` also
+removes the workflow permanently. A workflow can stay `archived` under
+`hard-delete` when deferred trigger teardown blocks the delete. The command skips
+absent workflows and omits them from this list.
 
 ```bash
 n8n-cli package export --project-id=<id> --output=project.n8np
@@ -163,9 +168,10 @@ n8n-cli package import-selection --file=project.n8np --selected-project-id=<id> 
 | `--file` | Path to the `.n8np` project package file. (required) |
 | `--selected-project-id` | Source project ID for the selection. The target project uses the same ID. (required) |
 | `--selected-workflow-ids` | Source workflow IDs to import. Comma-separate them, or repeat the flag. Only these workflows are imported. |
-| `--deleted-workflow-ids` | Target workflow IDs to archive. Separate IDs with commas, or repeat the flag. Absent or already archived workflows are ignored. |
+| `--deleted-workflow-ids` | Target workflow IDs to remove. Separate IDs with commas, or repeat the flag. The removal manner follows `--overwrite-deletion-policy`. Absent workflows are ignored. |
 | `--workflow-conflict-policy` | What to do when a workflow already exists by source ID: `new-version` (default), `fail`, or `skip`. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
+| `--overwrite-deletion-policy` | How `--deleted-workflow-ids` removes each target workflow: `archive` (default) archives it, keeping it and its execution history recoverable; `hard-delete` archives it — the step that unpublishes it — then deletes the workflow and its executions permanently. A workflow can stay `archived` under `hard-delete` when deferred trigger teardown blocks the delete. Each `removedWorkflows` entry reports the actual result in its `deletion` field. |
 
 Requires the API key to hold:
 

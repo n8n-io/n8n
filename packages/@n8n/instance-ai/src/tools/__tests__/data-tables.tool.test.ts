@@ -1505,4 +1505,154 @@ describe('data-tables tool', () => {
 			expect(context.dataTableService.deleteRows).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('artifact changes', () => {
+		it('reports a created table with its name and project', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { createDataTable: 'always_allow' },
+			});
+			vi.mocked(context.dataTableService.create).mockResolvedValue({
+				id: 'dt-1',
+				name: 'Contacts',
+				projectId: 'proj-1',
+				columns: [],
+				createdAt: '',
+				updatedAt: '',
+			});
+
+			const tool = createDataTablesTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'create',
+					name: 'Contacts',
+					columns: [{ name: 'email', type: 'string' }],
+				} as never,
+				noSuspendCtx(),
+			);
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'data-table',
+				id: 'dt-1',
+				name: 'Contacts',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('reports the table that rows were inserted into', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { mutateDataTableRows: 'always_allow' },
+			});
+			vi.mocked(context.dataTableService.insertRows).mockResolvedValue({
+				insertedCount: 1,
+				dataTableId: 'dt-1',
+				tableName: 'Contacts',
+				projectId: 'proj-1',
+			});
+
+			const tool = createDataTablesTool(context);
+			await executeTool(
+				tool,
+				{ action: 'insert-rows', dataTableId: 'dt-1', rows: [{ email: 'a@example.com' }] } as never,
+				noSuspendCtx(),
+			);
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'data-table',
+				id: 'dt-1',
+				name: 'Contacts',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('reports the resolved table ID when a column action names the table', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { mutateDataTableSchema: 'always_allow' },
+			});
+			context.dataTableService.resolveTableReference = vi
+				.fn()
+				.mockResolvedValue({ id: 'dt-1', name: 'Contacts', projectId: 'proj-1' });
+
+			const tool = createDataTablesTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'add-column',
+					dataTableId: 'Contacts',
+					columnName: 'age',
+					type: 'number',
+				} as never,
+				noSuspendCtx(),
+			);
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'data-table',
+				id: 'dt-1',
+				name: 'Contacts',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('reports the table as given when the lookup fails after a column change', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { mutateDataTableSchema: 'always_allow' },
+			});
+			context.dataTableService.resolveTableReference = vi
+				.fn()
+				.mockRejectedValue(new Error('Lookup unavailable'));
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'rename-column', dataTableId: 'dt-1', columnId: 'c-1', newName: 'age' } as never,
+				noSuspendCtx(),
+			);
+
+			expect(result).toEqual({ success: true });
+			expect(onArtifactChanged).toHaveBeenCalledWith({ type: 'data-table', id: 'dt-1' });
+		});
+
+		it('reports a table that the agent reads', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({ onArtifactChanged });
+
+			const tool = createDataTablesTool(context);
+			await executeTool(
+				tool,
+				{ action: 'query', dataTableId: 'dt-1', projectId: 'proj-1' } as never,
+				noSuspendCtx(),
+			);
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'data-table',
+				id: 'dt-1',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('reports nothing for a denied change', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { mutateDataTableSchema: 'blocked' },
+			});
+
+			const tool = createDataTablesTool(context);
+			await executeTool(
+				tool,
+				{ action: 'add-column', dataTableId: 'dt-1', columnName: 'age', type: 'number' } as never,
+				noSuspendCtx(),
+			);
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+	});
 });

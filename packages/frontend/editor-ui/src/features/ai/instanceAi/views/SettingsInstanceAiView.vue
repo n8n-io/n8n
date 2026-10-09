@@ -16,6 +16,7 @@ import {
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nStatusDot,
 	N8nSwitch,
 	N8nText,
 	type DropdownMenuItemProps,
@@ -41,8 +42,9 @@ import { useInstanceCredentialTest } from '../composables/useInstanceCredentialT
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
-import { SANDBOX_PROVIDER_LABELS, type InstanceAiConnectionKind } from '../constants';
+import type { InstanceAiConnectionKind } from '../constants';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
+import SandboxSettingsRow from '../components/settings/SandboxSettingsRow.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -107,23 +109,6 @@ const modelDescription = computed<{ key: BaseTextKey; warning: boolean } | null>
 		return { key: 'settings.n8nAgent.modelCredential.env.description', warning: false };
 	if (store.settings?.modelCredentialId && store.settings.modelName) return null;
 	return { key: 'settings.n8nAgent.modelCredential.missing.description', warning: !isOff.value };
-});
-
-const sandboxValue = computed(() => {
-	if (isSandboxEnvManaged.value) return i18n.baseText('instanceAi.onboarding.foundOnServer');
-	if (sandboxCredentialId.value) {
-		return store.settings?.sandboxProvider === 'daytona'
-			? SANDBOX_PROVIDER_LABELS.daytona
-			: SANDBOX_PROVIDER_LABELS['n8n-sandbox'];
-	}
-	return i18n.baseText('settings.n8nAgent.sandbox.env.value');
-});
-const sandboxDescription = computed<{ key: BaseTextKey; warning: boolean }>(() => {
-	if (isSandboxEnvManaged.value)
-		return { key: 'settings.n8nAgent.sandbox.env.description', warning: false };
-	if (sandboxCredentialId.value)
-		return { key: 'settings.n8nAgent.sandbox.set.description', warning: false };
-	return { key: 'settings.n8nAgent.sandbox.missing.description', warning: !isOff.value };
 });
 
 const searchValue = computed(() => {
@@ -536,12 +521,10 @@ function openAiUsageSettings() {
 										:aria-label="i18n.baseText('settings.n8nAgent.status.manage')"
 									>
 										<span :class="$style.statusLabel">
-											<span
-												:class="[
-													$style.statusDot,
-													isSetupRequired ? $style.statusDotWarning : $style.statusDotSuccess,
-												]"
-												aria-hidden="true"
+											<N8nStatusDot
+												:variant="isSetupRequired ? 'warning' : 'success'"
+												:pulse="!isSetupRequired"
+												data-test-id="n8n-agent-status-dot"
 											/>
 											{{
 												isSetupRequired
@@ -608,51 +591,13 @@ function openAiUsageSettings() {
 						</template>
 					</N8nSettingsRow>
 
-					<N8nSettingsRow
+					<SandboxSettingsRow
 						v-if="showSandboxRow"
 						:class="{ [$style.dim]: isOff }"
-						:clickable="!isOff && isSandboxConfigured && !isSandboxEnvManaged"
-						data-test-id="n8n-agent-sandbox-row"
-						@click="openSandboxDialog"
-					>
-						<template #info>
-							<N8nText bold size="medium" color="text-dark">
-								{{ i18n.baseText('settings.n8nAgent.sandbox.label') }}
-							</N8nText>
-							<N8nText size="small" :color="sandboxDescription.warning ? 'warning' : 'text-light'">
-								{{ i18n.baseText(sandboxDescription.key) }}
-							</N8nText>
-						</template>
-						<template v-if="!isOff" #action>
-							<N8nButton
-								v-if="isSandboxEnvManaged && !isSandboxConfigured"
-								variant="solid"
-								size="medium"
-								:label="i18n.baseText('settings.n8nAgent.sandbox.enable')"
-								:disabled="store.isSaving"
-								data-test-id="n8n-agent-sandbox-enable"
-								@click="enableEnvironmentSandboxIfNeeded"
-							/>
-							<N8nText
-								v-else-if="isSandboxEnvManaged"
-								size="small"
-								color="text-light"
-								data-test-id="n8n-agent-sandbox-env-value"
-							>
-								{{ sandboxValue }}
-							</N8nText>
-							<N8nButton
-								v-else-if="!isSandboxConfigured"
-								variant="solid"
-								size="medium"
-								:label="i18n.baseText('settings.n8nAgent.sandbox.add')"
-								:disabled="store.isSaving"
-								data-test-id="n8n-agent-sandbox-add"
-								@click="openSandboxDialog"
-							/>
-							<N8nSettingsRowConfigure v-else :value="sandboxValue" />
-						</template>
-					</N8nSettingsRow>
+						:disabled="isOff"
+						@configure="openSandboxDialog"
+						@enable="enableEnvironmentSandboxIfNeeded"
+					/>
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
@@ -882,20 +827,6 @@ function openAiUsageSettings() {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-}
-
-.statusDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: var(--radius--full);
-}
-
-.statusDotSuccess {
-	background: var(--text-color--success);
-}
-
-.statusDotWarning {
-	background: var(--text-color--warning);
 }
 
 .danger {

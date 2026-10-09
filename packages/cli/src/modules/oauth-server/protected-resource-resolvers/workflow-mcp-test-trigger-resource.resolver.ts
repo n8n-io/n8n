@@ -82,6 +82,7 @@ export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResource
 			const audiences = [resourceUrl];
 			return {
 				id: 'workflow-mcp-test:' + workflowEntity.id,
+				surface: 'trigger' as const,
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => audiences,
 				scopes: WORKFLOW_MCP_TRIGGER_SCOPES,

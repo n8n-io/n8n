@@ -254,6 +254,44 @@ describe('saving a workflow', () => {
 		await expect(workflowRepository.count()).resolves.toBe(0);
 	});
 
+	test('blocks a create whose inline agent has a node tool with a blocked credential', async () => {
+		await denyBlockedAtInstanceScope();
+		const inlineAgent: INode = {
+			...node('n8n-nodes-base.messageAnAgent', 'Message an Agent'),
+			parameters: {
+				agentSource: 'inline',
+				inlineAgent: {
+					config: {
+						tools: [
+							{
+								type: 'node',
+								name: 'Call API',
+								node: {
+									nodeType: HTTP_REQUEST,
+									nodeTypeVersion: 1,
+									nodeParameters: {},
+									credentials: {
+										[BLOCKED]: { id: ownerCredentials[BLOCKED], name: `${BLOCKED} account` },
+									},
+								},
+							},
+						],
+					},
+				},
+			},
+		};
+
+		const response = await ownerAgent
+			.post('/workflows')
+			.send({ name: 'New workflow', nodes: [node(MANUAL_TRIGGER), inlineAgent], connections: {} })
+			.expect(403);
+
+		expect(response.body.meta.violations).toEqual([
+			violationFor(BLOCKED, 'instance', 'deny-github'),
+		]);
+		await expect(workflowRepository.count()).resolves.toBe(0);
+	});
+
 	test('saves as usual when no rule matches the credential types asked for', async () => {
 		await denyBlockedAtInstanceScope();
 

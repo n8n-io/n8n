@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -220,7 +220,11 @@ describe('get-workflow-details MCP tool', () => {
 				'wf-1',
 				user,
 				['workflow:read'],
-				expect.objectContaining({ includeActiveVersion: true, includeParentFolder: true }),
+				expect.objectContaining({
+					includeActiveVersion: true,
+					includeParentFolder: true,
+					publishHistory: 'none',
+				}),
 			);
 
 			expect(payload.workflow.nodes).toBeUndefined();

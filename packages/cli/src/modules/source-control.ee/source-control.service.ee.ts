@@ -636,6 +636,9 @@ export class SourceControlService {
 					`Skipped workflow ${id}: ${contentImportPolicy.violations.length} content-import policy violation(s)`,
 					{ violations: contentImportPolicy.violations },
 				);
+			} else {
+				// A pull writes the workflow directly, so no save event fires for it.
+				this.eventService.emit('workflow-imported', { workflowId: id });
 			}
 
 			if (contentImportPolicy && statusItem) {
@@ -703,7 +706,11 @@ export class SourceControlService {
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);
 
 		const projectsToBeDeleted = getDeletedResources(statusResult, 'project');
-		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(projectsToBeDeleted);
+		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(
+			user,
+			projectsToBeDeleted,
+			credentialsToBeImported,
+		);
 
 		// #region Tracking Information
 		this.eventService.emit(

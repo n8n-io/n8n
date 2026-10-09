@@ -29,7 +29,7 @@ describe('MultiMainMetadata', () => {
 			throw new Error('listener failed');
 		});
 
-		expect(() => metadata.register(stepdownHandler)).toThrowError(
+		expect(() => metadata.register(stepdownHandler)).toThrow(
 			'Failed to handle the registration of multi-main event handler "SecondService.onStepdown"',
 		);
 	});

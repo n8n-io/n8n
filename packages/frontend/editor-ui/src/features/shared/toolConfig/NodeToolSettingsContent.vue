@@ -66,6 +66,7 @@ const props = defineProps<{
 	fromAiDisabledParameters?: string[];
 	/** Keeps standalone Agent tool parameters resolvable through the scoped NDV store. */
 	syncNodeToNdv?: boolean;
+	readOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -496,7 +497,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					:parameters="parametersByTab.params"
 					:hide-delete="true"
 					:node-values="node.parameters"
-					:is-read-only="false"
+					:is-read-only="props.readOnly"
 					:node="node"
 					:parameter-issues="props.parameterIssues"
 					:from-ai-disabled-parameters="props.fromAiDisabledParameters"
@@ -504,7 +505,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 				>
 					<NodeCredentials
 						:node="node"
-						:readonly="false"
+						:readonly="props.readOnly"
 						:show-all="true"
 						:project-id="credentialProjectId"
 						:hide-issues="false"
@@ -530,7 +531,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					v-if="node && parametersByTab.settings.length > 0"
 					:parameters="parametersByTab.settings"
 					:node-values="settingsNodeValues"
-					:is-read-only="false"
+					:is-read-only="props.readOnly"
 					:hide-delete="true"
 					path="parameters"
 					:node="node"
@@ -541,7 +542,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					:parameters="nodeSettings"
 					:hide-delete="true"
 					:node-values="settingsNodeValues"
-					:is-read-only="false"
+					:is-read-only="props.readOnly"
 					path=""
 					:node="node"
 					@value-changed="handleChangeSettingsValue"

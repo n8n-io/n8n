@@ -8,7 +8,7 @@ import type { ExecutionListService } from '@/executions/execution-list.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ExecutionsController } from '@/executions/executions.controller';
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import type { WorkflowSharingService } from '@n8n/backend-services';
 
 const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 

@@ -20,7 +20,7 @@ import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleCacheService } from '@/services/role-cache.service';
+import { RoleCacheService } from '@n8n/backend-services';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -320,6 +320,63 @@ describe('GET /credentials/for-workflow', () => {
 				}
 			},
 		);
+	});
+
+	describe('for team projects with N8N_ENV_FEAT_CRED_SHARING enabled', () => {
+		beforeEach(() => {
+			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+		});
+
+		afterEach(() => {
+			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+		});
+
+		test('offers a credential shared directly with the user only to that user', async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:editor');
+			await linkUserToProject(anotherMember, teamProject, 'project:editor');
+			const teamWorkflow = await createWorkflow({}, teamProject);
+
+			// owned by the owner, shared directly with member only
+			const sharedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+			await shareCredentialWithUsers(sharedCredential, [member]);
+
+			const memberResponse = await testServer
+				.authAgentFor(member)
+				.get('/credentials/for-workflow')
+				.query({ workflowId: teamWorkflow.id });
+
+			expect(memberResponse.statusCode).toBe(200);
+			expect(memberResponse.body.data).toHaveLength(1);
+			expect(memberResponse.body.data[0]).toMatchObject({
+				id: sharedCredential.id,
+				sharedRoute: 'personal',
+			});
+
+			const anotherMemberResponse = await testServer
+				.authAgentFor(anotherMember)
+				.get('/credentials/for-workflow')
+				.query({ workflowId: teamWorkflow.id });
+
+			expect(anotherMemberResponse.statusCode).toBe(200);
+			expect(anotherMemberResponse.body.data).toEqual([]);
+		});
+
+		test('does not offer a credential shared directly with a user who is not in the project', async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(anotherMember, teamProject, 'project:editor');
+
+			const sharedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+			await shareCredentialWithUsers(sharedCredential, [member]);
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get('/credentials/for-workflow')
+				.query({ projectId: teamProject.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toEqual([]);
+		});
 	});
 
 	describe('for personal projects', () => {

@@ -1,7 +1,8 @@
-import { computed, defineComponent, h, nextTick, reactive, shallowRef } from 'vue';
+import { computed, defineComponent, h, nextTick, reactive, ref, shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
 	ToolConfigCredentialSelectedKey,
+	ParameterInputModalContextKey,
 	WorkflowDocumentStoreKey,
 	WorkflowIdKey,
 } from '@/app/constants/injectionKeys';
@@ -1004,6 +1005,33 @@ describe('ParameterInput.vue', () => {
 		expect(expressionEditor).toBeInTheDocument();
 		const expressionEditorInput = within(expressionEditor).getByRole('textbox');
 		await waitFor(() => expect(expressionEditorInput).toHaveFocus());
+	});
+
+	it('hosts the expanded expression editor and clears its focus state on close or unmount', async () => {
+		const openDialogs = ref(new Set<string>());
+		const view = renderComponent({
+			global: {
+				provide: { [ParameterInputModalContextKey]: { openDialogs, appendTo: 'body' } },
+			},
+			props: {
+				path: 'name',
+				parameter: createTestNodeProperties({ name: 'name', type: 'string' }),
+				modelValue: '={{ $json.name }}',
+			},
+		});
+
+		await fireEvent.click(view.getByTestId('expander'));
+		const expandedInput = await view.findByTestId('expression-modal-input');
+		expect(view.container.contains(expandedInput)).toBe(false);
+		expect(expandedInput.closest('#app-modals')).toBeNull();
+		expect(openDialogs.value.size).toBe(1);
+		await fireEvent.click(view.getByRole('button', { name: 'Close this dialog' }));
+		await waitFor(() => expect(openDialogs.value.size).toBe(0));
+
+		await fireEvent.click(view.getByTestId('expander'));
+		expect(openDialogs.value.size).toBe(1);
+		view.unmount();
+		expect(openDialogs.value.size).toBe(0);
 	});
 
 	describe('when not in focus', () => {

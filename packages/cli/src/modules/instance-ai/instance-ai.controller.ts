@@ -58,6 +58,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import {
 	buildAgentTreeFromEvents,
 	clearedAgentBuilderTargetMetadata,
+	meterEvalUsage,
 	seedAgentBuilderTargetMetadata,
 } from '@n8n/instance-ai';
 import {
@@ -1160,7 +1161,11 @@ export class InstanceAiController {
 		@Param('workflowId') workflowId: string,
 		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
-		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
+		// The mocks run on the eval model; the caller adds their usage to the case's cost.
+		const { result, usage } = await meterEvalUsage(
+			async () => await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload),
+		);
+		return { ...result, llmUsage: usage };
 	}
 
 	// Runs for minutes; same client timeout handling as the workflow variant.
@@ -1172,7 +1177,11 @@ export class InstanceAiController {
 		@Param('agentId') agentId: string,
 		@Body payload: InstanceAiEvalAgentExecutionRequest,
 	) {
-		return await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload);
+		const { result, usage } = await meterEvalUsage(
+			async () =>
+				await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload),
+		);
+		return { ...result, llmUsage: usage };
 	}
 
 	/**
@@ -1309,7 +1318,13 @@ export class InstanceAiController {
 			// (no trigger, webhook conflict, unresolved credential) must fail while the
 			// restore is still fully rollback-able. The rollback unpublishes.
 			publishedWorkflowIds = await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
-			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
+			createdAgentIds = await this.evalThreadRestore.restoreAgents(
+				agents,
+				projectId,
+				req.user,
+				idMap,
+				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
+			);
 			// Built (and validated) BEFORE the message write: a rejected binding — two
 			// agents whose refs collide — must fail while the restore is still fully
 			// rollback-able, not after the messages have committed.

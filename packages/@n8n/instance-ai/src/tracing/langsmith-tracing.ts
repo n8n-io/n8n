@@ -185,9 +185,15 @@ interface ProductOtelTraceRuntime {
 	spans: Map<string, OtelApiSpan>;
 	contexts: Map<string, OtelContext>;
 	pendingOperations: Map<string, InstanceAiTraceRun>;
+	/** Work started in the trace that can outlive the root run. The release waits for it. */
+	backgroundOperations: Set<Promise<unknown>>;
+	releaseDeferred: boolean;
 	shutdown: boolean;
 	lifetime: ProductTelemetryLifetime;
 }
+
+/** Upper limit for how long a background operation can keep a closed trace open. */
+const BACKGROUND_OPERATION_RELEASE_TIMEOUT_MS = 2 * 60 * 1000;
 
 interface OTelTracer {
 	startSpan(
@@ -488,7 +494,19 @@ async function releaseProductOtelRuntime(
 	runtime: ProductOtelTraceRuntime,
 	traceId: string,
 ): Promise<void> {
-	if (runtime.shutdown) return;
+	if (runtime.shutdown || runtime.releaseDeferred) return;
+
+	if (runtime.backgroundOperations.size > 0) {
+		// Do not block the caller. Release after the background work settles, so its
+		// spans finish normally instead of being cancelled.
+		runtime.releaseDeferred = true;
+		void settleBackgroundOperations(runtime).then(async () => {
+			runtime.releaseDeferred = false;
+			runtime.backgroundOperations.clear();
+			await releaseProductOtelRuntime(runtime, traceId);
+		});
+		return;
+	}
 
 	runtime.shutdown = true;
 	for (const run of runtime.pendingOperations.values()) {
@@ -503,6 +521,27 @@ async function releaseProductOtelRuntime(
 	otelTraceRuntimes.delete(traceId);
 
 	await runtime.lifetime.release();
+}
+
+async function settleBackgroundOperations(runtime: ProductOtelTraceRuntime): Promise<void> {
+	let timer: NodeJS.Timeout | undefined;
+	const timeout = new Promise<void>((resolve) => {
+		timer = setTimeout(resolve, BACKGROUND_OPERATION_RELEASE_TIMEOUT_MS);
+		timer.unref?.();
+	});
+	const allSettled = (async () => {
+		// Operations can register while earlier ones are in flight.
+		while (runtime.backgroundOperations.size > 0) {
+			const operations = [...runtime.backgroundOperations];
+			await Promise.allSettled(operations);
+			for (const operation of operations) runtime.backgroundOperations.delete(operation);
+		}
+	})();
+	try {
+		await Promise.race([allSettled, timeout]);
+	} finally {
+		clearTimeout(timer);
+	}
 }
 
 async function withProxyHeaders<T>(
@@ -1318,6 +1357,13 @@ function createTraceContext(
 		finishRun,
 		failRun,
 		onMemoryTaskEvent,
+		keepOpenUntilSettled: (operation) => {
+			if (otelRuntime.shutdown) return;
+			otelRuntime.backgroundOperations.add(operation);
+			void operation
+				.catch(() => undefined)
+				.finally(() => otelRuntime.backgroundOperations.delete(operation));
+		},
 		...(telemetryFactory ? { getTelemetry: telemetryFactory } : {}),
 		wrapTools: (tools, traceOptions) => {
 			if (ctx.replayMode === 'replay' && ctx.traceIndex && ctx.idRemapper) {
@@ -1767,6 +1813,8 @@ async function createProductOtelRuntime(
 		spans: new Map(),
 		contexts: new Map(),
 		pendingOperations: new Map(),
+		backgroundOperations: new Set(),
+		releaseDeferred: false,
 		shutdown: false,
 		lifetime: new ProductTelemetryLifetime(telemetry),
 	};

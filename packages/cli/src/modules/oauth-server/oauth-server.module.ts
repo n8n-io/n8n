@@ -18,12 +18,36 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'oauth-server', instanceTypes: ['main', 'webhook', 'worker'] })
 export class OAuthServerModule implements ModuleInterface {
 	async init() {
+		const { instanceType } = Container.get(InstanceSettings);
+
 		// Only import controllers in the main process, since the webhook/worker processes don't run an HTTP server and don't need them.
-		if (Container.get(InstanceSettings).instanceType === 'main') {
+		if (instanceType === 'main') {
 			await import('./oauth.controller.js');
 			await import('./oauth-consent.controller.js');
 			await import('./oauth-clients.controller.js');
 		}
+
+		// Main and webhook processes mint access tokens (Form and Chat flows mint
+		// on webhook processes), so they load the private signing key. Workers only
+		// verify, and load the public keys on first use.
+		if (instanceType === 'main' || instanceType === 'webhook') {
+			const { OAuthSigningKeyService } = await import('./oauth-signing-key.service.js');
+			await Container.get(OAuthSigningKeyService).initialize();
+		}
+
+		// The JWKS endpoint is served by main only.
+		if (instanceType === 'main') {
+			const { JwksRegistry } = await import('@/jwks/jwks.registry.js');
+			const { OAuthSigningJwksProvider } = await import('./oauth-signing-jwks.provider.js');
+			Container.get(JwksRegistry).register(Container.get(OAuthSigningJwksProvider));
+		}
+
+		// Discovery reads this server's metadata and keys in process, like any other trusted source.
+		const { LocalAuthorizationServer } = await import('@n8n/inbound-auth');
+		const { OAuthServerLocalAuthorizationServer } = await import(
+			'./oauth-local-authorization-server.js'
+		);
+		Container.set(LocalAuthorizationServer, Container.get(OAuthServerLocalAuthorizationServer));
 
 		// Register the token service as the OAuth token verifier provider, so
 		// protected-resource modules verify bearer tokens through the core

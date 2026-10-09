@@ -2,7 +2,10 @@ import type { Agent, ModelConfig } from '@n8n/agents';
 import { PROVIDER_CAPABILITIES } from '@n8n/api-types';
 
 import { resolveModelIdString, resolveModelProvider } from './model-config-identity';
-import { resolveCustomModelExperimentDefaultsFromEnv } from '../utils/custom-model-defaults';
+import {
+	parseReasoningEffort,
+	resolveCustomModelExperimentDefaultsFromEnv,
+} from '../utils/custom-model-defaults';
 
 /** Grok 4.5 via xAI (`xai/grok-4.5`). */
 function isGrok45Model(modelId: ModelConfig): boolean {
@@ -14,6 +17,15 @@ function isGrok45Model(modelId: ModelConfig): boolean {
 function isGpt56Model(modelId: ModelConfig): boolean {
 	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
 	return id.includes('gpt-5.6');
+}
+
+const ANTHROPIC_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+type AnthropicEffort = (typeof ANTHROPIC_EFFORTS)[number];
+
+/** Eval override via N8N_INSTANCE_AI_REASONING_EFFORT. Unsupported values fall back to medium. */
+function resolveAnthropicEffort(): AnthropicEffort {
+	const effort = parseReasoningEffort(process.env.N8N_INSTANCE_AI_REASONING_EFFORT);
+	return ANTHROPIC_EFFORTS.find((supported) => supported === effort) ?? 'medium';
 }
 
 export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
@@ -49,7 +61,7 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	}
 
 	if (provider === 'anthropic' || provider === 'google-vertex-anthropic') {
-		agent.thinking(provider, { mode: 'adaptive', effort: 'medium' });
+		agent.thinking(provider, { mode: 'adaptive', effort: resolveAnthropicEffort() });
 		return;
 	}
 

@@ -1,13 +1,20 @@
 import { In, type Repository } from '@n8n/typeorm';
 
-import type { WorkflowExecution } from './entities';
+import { WorkflowSeededStep, type WorkflowExecution } from './entities';
 import {
 	ExecutionNotFoundError,
 	type ExecutionRecord,
 	type ExecutionStore,
 	type NewExecutionRecord,
 } from '../execution/execution-store';
-import { LIVE_EXECUTION_STATUSES, type ExecutionStatus } from '../execution/execution.types';
+import {
+	LIVE_EXECUTION_STATUSES,
+	stepKeyId,
+	type ExecutionStatus,
+	type StepKey,
+	type StepKeyId,
+	type StepSlots,
+} from '../execution/execution.types';
 
 /**
  * Insert payload accepted by the repository. Derived from the method rather than
@@ -19,12 +26,42 @@ type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
 export class TypeOrmExecutionStore implements ExecutionStore {
 	constructor(private readonly repo: Repository<WorkflowExecution>) {}
 
-	async createExecution(record: NewExecutionRecord): Promise<void> {
+	async createExecution({ seededSteps, ...record }: NewExecutionRecord): Promise<void> {
 		const execution = this.repo.create({ ...record, finishedAt: null });
-		// The cast is needed because the insert payload type recurses into the
-		// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
-		// NOTE: prefer insert to save for performance reasons.
-		await this.repo.insert(execution as InsertValues);
+		const seeded = Object.entries(seededSteps ?? {}).flatMap(([nodeId, passes]) =>
+			passes.map((outputs, iteration) => ({ executionId: record.id, nodeId, iteration, outputs })),
+		);
+		await this.repo.manager.transaction(async (manager) => {
+			// The cast is needed because the insert payload type recurses into the
+			// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
+			// NOTE: prefer insert to save for performance reasons.
+			await manager.insert(this.repo.target, execution as InsertValues);
+			if (seeded.length > 0) await manager.insert(WorkflowSeededStep, seeded);
+		});
+	}
+
+	async loadSeededOutputs(
+		executionId: string,
+		keys: StepKey[],
+	): Promise<Map<StepKeyId, StepSlots>> {
+		if (keys.length === 0) return new Map();
+
+		const tuples: string[] = [];
+		const parameters: Record<string, string | number> = { executionId };
+		keys.forEach(({ nodeId, iteration }, index) => {
+			tuples.push(`(:n${index}, :i${index})`);
+			parameters[`n${index}`] = nodeId;
+			parameters[`i${index}`] = iteration;
+		});
+		const rows = await this.repo.manager
+			.getRepository(WorkflowSeededStep)
+			.createQueryBuilder('seeded')
+			.where('seeded.execution_id = :executionId')
+			.andWhere(`(seeded.node_id, seeded.iteration) IN (${tuples.join(', ')})`)
+			.setParameters(parameters)
+			.getMany();
+
+		return new Map(rows.map((row) => [stepKeyId(row), row.outputs]));
 	}
 
 	async loadExecution(id: string): Promise<ExecutionRecord> {
@@ -38,6 +75,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.addSelect('execution.trigger_outputs', 'triggerOutputs')
 			.addSelect('execution.caller_context', 'callerContext')
 			.addSelect('execution.response_expectation', 'responseExpectation')
+			.addSelect('execution.finished_at', 'finishedAt')
 			.where('execution.id = :id', { id })
 			.getRawOne();
 		if (!row) throw new ExecutionNotFoundError(id);
@@ -49,21 +87,26 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		return result.affected === 1;
 	}
 
-	async finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean> {
+	async finishExecution(
+		id: string,
+		status: 'completed' | 'failed',
+	): Promise<{ finishedAt: Date } | null> {
 		// A waiting execution can end too: a failure elsewhere cancels its waits.
+		const finishedAt = new Date();
 		const result = await this.repo.update(
 			{ id, status: In([...LIVE_EXECUTION_STATUSES]) },
-			{ status, finishedAt: new Date() },
+			{ status, finishedAt },
 		);
-		return result.affected === 1;
+		return result.affected === 1 ? { finishedAt } : null;
 	}
 
-	async cancelExecution(id: string): Promise<boolean> {
+	async cancelExecution(id: string): Promise<{ finishedAt: Date } | null> {
+		const finishedAt = new Date();
 		const result = await this.repo.update(
 			{ id, status: In(['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[]) },
-			{ status: 'cancelled', finishedAt: new Date() },
+			{ status: 'cancelled', finishedAt },
 		);
-		return result.affected === 1;
+		return result.affected === 1 ? { finishedAt } : null;
 	}
 
 	async refreshLiveStatus(id: string): Promise<void> {

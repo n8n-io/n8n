@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { computed, ref } from 'vue';
+import { computed, onUnmounted, reactive, ref } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import N8nDialog from '@n8n/design-system/components/N8nDialog/Dialog.vue';
@@ -137,6 +137,144 @@ const itemsWithKeywords: ComboboxItemType[] = [
 	{ label: 'United Kingdom', value: 'uk', keywords: ['Britain', 'England', 'UK', 'GB'] },
 	{ label: 'United States', value: 'us', keywords: ['USA', 'America', 'US'] },
 ];
+
+type RemoteWorkflow = {
+	id: string;
+	name: string;
+};
+
+const workflowCatalog: RemoteWorkflow[] = [
+	{ id: 'sync-contacts', name: 'Sync contacts' },
+	{ id: 'sync-invoices', name: 'Sync invoices' },
+	{ id: 'send-welcome-email', name: 'Send welcome email' },
+	{ id: 'send-digest', name: 'Send weekly digest' },
+	{ id: 'enrich-leads', name: 'Enrich leads' },
+	{ id: 'score-leads', name: 'Score leads' },
+	{ id: 'notify-slack', name: 'Notify Slack' },
+	{ id: 'notify-on-call', name: 'Notify on-call' },
+	{ id: 'backup-database', name: 'Backup database' },
+	{ id: 'archive-logs', name: 'Archive logs' },
+	{ id: 'resize-images', name: 'Resize images' },
+	{ id: 'transcribe-calls', name: 'Transcribe calls' },
+	{ id: 'classify-tickets', name: 'Classify tickets' },
+	{ id: 'route-tickets', name: 'Route tickets' },
+	{ id: 'publish-report', name: 'Publish report' },
+	{ id: 'refresh-cache', name: 'Refresh cache' },
+];
+
+const REMOTE_SEARCH_LIMIT = 8;
+const REMOTE_SEARCH_DELAY_MS = 1200;
+const REMOTE_SEARCH_DEBOUNCE_MS = 250;
+
+function searchWorkflows(query: string): RemoteWorkflow[] {
+	const normalized = query.trim().toLowerCase();
+	return workflowCatalog
+		.filter((workflow) => !normalized || workflow.name.toLowerCase().includes(normalized))
+		.slice(0, REMOTE_SEARCH_LIMIT);
+}
+
+function useRemoteWorkflowSearch(getSelectedIds: () => string[]) {
+	const results = ref<RemoteWorkflow[]>([]);
+	const known = ref<RemoteWorkflow[]>([]);
+	const idleResults = ref<RemoteWorkflow[]>([]);
+	const loading = ref(false);
+	const query = ref('');
+	let requestId = 0;
+	let disposed = false;
+	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function remember(workflows: RemoteWorkflow[]) {
+		const byId = new Map(known.value.map((workflow) => [workflow.id, workflow]));
+		for (const workflow of workflows) {
+			byId.set(workflow.id, workflow);
+		}
+		known.value = [...byId.values()];
+	}
+
+	function showIdleResults() {
+		clearTimeout(debounceTimer);
+		requestId += 1;
+		results.value = idleResults.value;
+		loading.value = false;
+	}
+
+	async function fetchWorkflows(nextQuery: string) {
+		const id = ++requestId;
+		loading.value = true;
+
+		if (nextQuery !== '') {
+			results.value = [];
+		}
+
+		await new Promise((resolve) => setTimeout(resolve, REMOTE_SEARCH_DELAY_MS));
+		if (disposed || id !== requestId) {
+			return;
+		}
+
+		results.value = searchWorkflows(nextQuery);
+		if (nextQuery === '') {
+			idleResults.value = results.value;
+		}
+		remember(results.value);
+		loading.value = false;
+	}
+
+	function onSearchTerm(value: string) {
+		if (value === query.value) {
+			return;
+		}
+
+		query.value = value;
+		requestId += 1;
+		if (value === '' && idleResults.value.length > 0) {
+			showIdleResults();
+			return;
+		}
+
+		loading.value = true;
+		clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(() => {
+			void fetchWorkflows(value);
+		}, REMOTE_SEARCH_DEBOUNCE_MS);
+	}
+
+	const items = computed<ComboboxItemType[]>(() => {
+		const resultIds = new Set(results.value.map((workflow) => workflow.id));
+		const retained = getSelectedIds().flatMap((id) => {
+			if (resultIds.has(id)) {
+				return [];
+			}
+
+			const workflow = known.value.find((entry) => entry.id === id);
+			return workflow ? [workflow] : [];
+		});
+
+		return [...retained, ...results.value].map((workflow) => ({
+			value: workflow.id,
+			label: workflow.name,
+		}));
+	});
+
+	const emptyText = computed(() => (loading.value ? 'Searching…' : 'No results found.'));
+
+	const status = computed(() => {
+		if (loading.value) {
+			return 'Searching…';
+		}
+
+		const count = results.value.length;
+		return count === 1 ? '1 result' : `${count} results`;
+	});
+
+	onUnmounted(() => {
+		disposed = true;
+		clearTimeout(debounceTimer);
+	});
+
+	void fetchWorkflows('');
+
+	return { items, emptyText, query, status, loading, onSearchTerm };
+}
 
 const storyContainerStyle = 'max-width: 400px';
 
@@ -398,6 +536,152 @@ export const AsyncItems = {
 			description: {
 				story:
 					'Simulates a selected value arriving before async options. The input falls back to the raw value until items resolve, then updates to the matching label. Reload remounts the field so you can watch the handoff again.',
+			},
+		},
+	},
+} satisfies Story;
+
+export const RemoteSearch = {
+	name: 'Remote Search',
+	render: () => ({
+		components: { Combobox },
+		setup() {
+			const singleValue = ref<string | undefined>('sync-contacts');
+			const multipleValue = ref<string[]>(['sync-contacts']);
+			const singleSearch = reactive(
+				useRemoteWorkflowSearch(() => (singleValue.value ? [singleValue.value] : [])),
+			);
+			const multipleSearch = reactive(useRemoteWorkflowSearch(() => multipleValue.value));
+
+			return { singleValue, multipleValue, singleSearch, multipleSearch };
+		},
+		template: `
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--xl);">
+			<section style="display: flex; flex-direction: column; gap: var(--spacing--sm);">
+				<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Single
+				</h3>
+				<p style="margin: 0; font-size: var(--font-size--sm); color: var(--text-color--subtle);">
+					<strong>Sync contacts</strong> is selected.
+					Type <strong>ticket</strong>.
+					The spinner replaces the clear button and the arrow while the API runs.
+				</p>
+				<Combobox
+					v-model="singleValue"
+					:items="singleSearch.items"
+					:empty-text="singleSearch.emptyText"
+					:loading="singleSearch.loading"
+					clearable
+					placeholder="Search workflows..."
+					@update:search-term="singleSearch.onSearchTerm"
+				/>
+				<p style="margin: 0; font-size: var(--font-size--sm);">
+					Query: <strong>{{ singleSearch.query || '(empty)' }}</strong>
+					· API: <strong>{{ singleSearch.status }}</strong>
+				</p>
+			</section>
+			<section style="display: flex; flex-direction: column; gap: var(--spacing--sm);">
+				<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Multiple
+				</h3>
+				<p style="margin: 0; font-size: var(--font-size--sm); color: var(--text-color--subtle);">
+					The same search. The spinner shows in the tags field, in place of the clear button and the arrow.
+					<strong>Sync contacts</strong> leaves the list. The tag keeps its name.
+				</p>
+				<Combobox
+					v-model="multipleValue"
+					:items="multipleSearch.items"
+					:empty-text="multipleSearch.emptyText"
+					:loading="multipleSearch.loading"
+					multiple
+					clearable
+					placeholder="Search workflows..."
+					@update:search-term="multipleSearch.onSearchTerm"
+				/>
+				<p style="margin: 0; font-size: var(--font-size--sm);">
+					Query: <strong>{{ multipleSearch.query || '(empty)' }}</strong>
+					· API: <strong>{{ multipleSearch.status }}</strong>
+				</p>
+			</section>
+		</div>
+		`,
+	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Replace `items` when `update:searchTerm` fires. Keep selected options in `items` so tags keep their labels. Set `loading` while the request runs.',
+			},
+		},
+	},
+} satisfies Story;
+
+export const ProgrammaticFocus = {
+	name: 'Programmatic Focus',
+	render: () => ({
+		components: { Combobox, N8nButton },
+		setup() {
+			const singleRef = ref<{ focusOnInput: () => void } | null>(null);
+			const multipleRef = ref<{ focusOnInput: () => void } | null>(null);
+			const singleValue = ref<string | undefined>();
+			const multipleValue = ref<string[]>([]);
+
+			function focusSingle() {
+				singleRef.value?.focusOnInput();
+			}
+
+			function focusMultiple() {
+				multipleRef.value?.focusOnInput();
+			}
+
+			return {
+				statusItems,
+				singleRef,
+				multipleRef,
+				singleValue,
+				multipleValue,
+				focusSingle,
+				focusMultiple,
+			};
+		},
+		template: `
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--xl);">
+			<p style="margin: 0; font-size: var(--font-size--sm); color: var(--text-color--subtle);">
+				Click <strong>Focus input</strong>. Focus moves into the field.
+			</p>
+			<section style="display: flex; flex-direction: column; gap: var(--spacing--sm);">
+				<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Single
+				</h3>
+				<Combobox
+					ref="singleRef"
+					v-model="singleValue"
+					:items="statusItems"
+					placeholder="Select a status..."
+				/>
+				<N8nButton label="Focus input" variant="outline" @click="focusSingle" />
+			</section>
+			<section style="display: flex; flex-direction: column; gap: var(--spacing--sm);">
+				<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Multiple
+				</h3>
+				<Combobox
+					ref="multipleRef"
+					v-model="multipleValue"
+					:items="statusItems"
+					multiple
+					placeholder="Select statuses..."
+				/>
+				<N8nButton label="Focus input" variant="outline" @click="focusMultiple" />
+			</section>
+		</div>
+		`,
+	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Call `focusOnInput()` on the component ref to move focus into the input. This works for single and multiple selection. It does not depend on search.',
 			},
 		},
 	},

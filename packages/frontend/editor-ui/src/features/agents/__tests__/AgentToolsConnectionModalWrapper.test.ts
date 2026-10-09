@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, watchEffect } from 'vue';
+import { defineComponent, onMounted, watchEffect } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import type { McpRegistryServerResponse } from '@n8n/api-types';
@@ -146,6 +146,8 @@ let modalAttrs: Record<string, unknown> = {};
 let multiStepAttrs: Record<string, unknown> = {};
 let configFormData: AgentToolConfigData | null = null;
 let configuredResult: AgentJsonToolRef | AgentJsonMcpServerConfig | null = null;
+/** Node types for which the form stub reports `update:restricted`. Other forms emit nothing, like the registry form. */
+const restrictedFormNodeTypes = new Set<string>();
 
 const AgentModalMultiStepStub = defineComponent({
 	name: 'AgentModalMultiStep',
@@ -184,9 +186,21 @@ const AgentModalMultiStepStub = defineComponent({
 const AgentToolConfigFormStub = defineComponent({
 	name: 'AgentToolConfigForm',
 	props: ['data'],
-	setup(props, { expose }) {
+	emits: ['update:restricted'],
+	setup(props, { emit, expose }) {
 		watchEffect(() => {
 			configFormData = props.data as AgentToolConfigData;
+		});
+		onMounted(() => {
+			const data = props.data as AgentToolConfigData;
+			if (
+				data.kind !== 'mcpServer' &&
+				data.kind !== 'registryMcpServer' &&
+				data.toolRef.type === 'node' &&
+				restrictedFormNodeTypes.has(data.toolRef.node.nodeType)
+			) {
+				emit('update:restricted', true);
+			}
 		});
 		expose({
 			confirm: () => {
@@ -304,6 +318,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		multiStepAttrs = {};
 		configFormData = null;
 		configuredResult = null;
+		restrictedFormNodeTypes.clear();
 		fetchMcpRegistryCatalogMock.mockResolvedValue([]);
 		createTestingPinia({ stubActions: false });
 
@@ -320,7 +335,6 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		aiGatewayStore.isNodeTypeVersionSupported = vi.fn().mockReturnValue(true);
 		aiGatewayStore.isCredentialTypeSupported = vi.fn().mockReturnValue(false);
 		nodeTypesStore.getNodeVersions = vi.fn().mockReturnValue([1]);
-
 		const credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
 		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
@@ -1385,6 +1399,53 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(connected).toMatchObject({
 				restriction: { available: false, scope: 'instance' },
 			});
+		});
+
+		it('opens the existing configuration of a connected restricted tool', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			const ref = toolRef(SLACK.name);
+
+			render([ref]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitOpenDetail(connected!);
+			await flushPromises();
+
+			const data = getConfigData();
+			expect(
+				data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer' && data.toolRef,
+			).toEqual(ref);
+			expect(data.onRemove).toBeDefined();
+		});
+
+		it('does not keep Save and the title locked after leaving a restricted tool', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			restrictedFormNodeTypes.add(SLACK.name);
+
+			render([toolRef(SLACK.name)]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitOpenDetail(connected!);
+			await flushPromises();
+
+			const saveButton = () => document.querySelector('[data-testid="agent-tool-config-save"]');
+			expect(saveButton()).toBeDisabled();
+			expect(multiStepAttrs['editable-title']).toBe(false);
+
+			const back = document.querySelector('[data-test-id="agent-modal-back"]');
+			if (!(back instanceof HTMLButtonElement)) throw new Error('Missing Back button');
+			back.click();
+			await flushPromises();
+
+			// This form never reports a restriction, as with registry MCP servers.
+			const wikipedia = getItems().find((item) => item.id === `nodeType:${WIKIPEDIA.name}`);
+			emitConnect(wikipedia!);
+			await flushPromises();
+
+			expect(saveButton()).not.toBeDisabled();
+			expect(multiStepAttrs['editable-title']).toBe(true);
 		});
 
 		it('adds nothing when the installed community tool turns out to be restricted', async () => {

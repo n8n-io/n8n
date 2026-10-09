@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { Module } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Service } from '@n8n/di';
+import { Logger } from '@n8n/backend-common';
+import { Container, Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
 import { CUSTOM_NODES_PACKAGE_NAME, CustomDirectoryLoader, DirectoryLoader } from 'n8n-core';
@@ -10,6 +11,7 @@ import type {
 	ICredentialType,
 	INodeProperties,
 	INodeTypeDescription,
+	KnownNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
@@ -873,6 +875,7 @@ describe('LoadNodesAndCredentials', () => {
 			createHitlTools.mockClear();
 
 			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
 		});
 
 		it('should keep types in memory after post-processing for post-processors to read', async () => {
@@ -926,6 +929,53 @@ describe('LoadNodesAndCredentials', () => {
 			expect(createHitlTools).toHaveBeenCalledWith(instance.types, expectedKnown);
 		});
 
+		it('should drop generated tool types that NODES_EXCLUDE lists', async () => {
+			createAiTools.mockImplementationOnce(
+				(types: { nodes: INodeTypeDescription[] }, known: KnownNodesAndCredentials) => {
+					for (const name of ['test-package.testNodeTool', 'test-package.otherNodeTool']) {
+						types.nodes.push({ name } as INodeTypeDescription);
+						known.nodes[name] = { className: 'TestNode', sourcePath: 'Test.node.js' };
+					}
+					known.credentials.testApi = {
+						className: 'TestApi',
+						sourcePath: 'TestApi.credentials.js',
+						supportedNodes: [
+							'test-package.testNode',
+							'test-package.testNodeTool',
+							'test-package.otherNodeTool',
+						],
+					};
+				},
+			);
+			instance.excludeNodes = ['test-package.testNodeTool'];
+			instance.loaders = {
+				'test-package': mock<NodeLoader>({
+					packageName: 'test-package',
+					known: {
+						nodes: { testNode: { className: 'TestNode', sourcePath: 'Test.node.js' } },
+						credentials: {},
+					},
+					types: { nodes: [{ name: 'testNode' }], credentials: [] },
+					ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+				}),
+			};
+
+			await instance.postProcessLoaders();
+
+			expect(instance.types.nodes.map(({ name }) => name)).toEqual([
+				'test-package.testNode',
+				'test-package.otherNodeTool',
+			]);
+			expect(Object.keys(instance.knownNodes)).toEqual([
+				'test-package.testNode',
+				'test-package.otherNodeTool',
+			]);
+			expect(instance.knownCredentials.testApi.supportedNodes).toEqual([
+				'test-package.testNode',
+				'test-package.otherNodeTool',
+			]);
+		});
+
 		describe('atomic registry swap (known, loaded, types)', () => {
 			const createLoader = () =>
 				mock<NodeLoader>({
@@ -975,6 +1025,7 @@ describe('LoadNodesAndCredentials', () => {
 
 		beforeEach(() => {
 			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
 		});
 
 		it('should return a snapshot of types with package-namespaced node names', async () => {
@@ -1020,6 +1071,73 @@ describe('LoadNodesAndCredentials', () => {
 			await instance.collectTypes();
 
 			expect(mockLoader.releaseTypes).toHaveBeenCalled();
+		});
+	});
+
+	describe('concurrent rebuilds', () => {
+		class TwoStepLoader extends DirectoryLoader {
+			packageName = 'testPackage';
+
+			betweenSteps = async () => await new Promise<void>((resolve) => setImmediate(resolve));
+
+			override async loadAll() {
+				this.types.nodes = [
+					{ name: 'testNode', properties: [] } as unknown as INodeTypeDescription,
+				];
+				await this.betweenSteps();
+				this.types.credentials = [
+					{ name: 'testApi', properties: [] } as unknown as ICredentialType,
+				];
+			}
+		}
+
+		let instance: LoadNodesAndCredentials;
+		let loader: TwoStepLoader;
+		let snapshots: Array<{ nodes: number; credentials: number }>;
+
+		const fullSnapshot = { nodes: 1, credentials: 1 };
+
+		beforeEach(() => {
+			Container.set(Logger, mock<Logger>());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
+			loader = new TwoStepLoader('/test/two-step');
+			instance.loaders = { testPackage: loader };
+
+			snapshots = [];
+			instance.addPostProcessor(async () => {
+				snapshots.push({
+					nodes: instance.types.nodes.length,
+					credentials: instance.types.credentials.length,
+				});
+			});
+
+			instance.releaseTypes();
+		});
+
+		it('should give each concurrent rebuild the full set of types', async () => {
+			await Promise.all([instance.postProcessLoaders(), instance.postProcessLoaders()]);
+
+			expect(snapshots).toEqual([fullSnapshot, fullSnapshot]);
+		});
+
+		it('should keep the full set of types when types are released during a rebuild', async () => {
+			loader.betweenSteps = async () => instance.releaseTypes();
+
+			await instance.postProcessLoaders();
+
+			expect(snapshots).toEqual([fullSnapshot]);
+		});
+
+		it('should not deadlock when a post-processor calls collectTypes() during a rebuild', async () => {
+			instance.addPostProcessor(async () => {
+				await instance.collectTypes();
+			});
+
+			const types = await instance.collectTypes();
+
+			expect(types.nodes).toHaveLength(1);
+			expect(types.credentials).toHaveLength(1);
 		});
 	});
 });

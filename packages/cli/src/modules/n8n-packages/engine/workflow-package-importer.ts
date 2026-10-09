@@ -173,6 +173,7 @@ export class WorkflowPackageImporter {
 			dataTables: {
 				matched: content.dataTablePlan.matchedCount,
 				created: content.dataTablePlan.creations.length,
+				updated: content.dataTablePlan.updates.length,
 			},
 			variables: toVariableSummary(content.variablePlan, content.variableResult),
 			tags: toTagSummary(content.tagPlan),

@@ -328,6 +328,20 @@ describe('components/N8nInputNumber', () => {
 	});
 
 	describe('slots', () => {
+		it('should not render a prefix by default', () => {
+			const wrapper = render(InputNumber);
+			expect(wrapper.container.querySelector('.prefix')).not.toBeInTheDocument();
+		});
+
+		it('should render prefix slot content', () => {
+			const wrapper = render(InputNumber, {
+				slots: {
+					prefix: '$',
+				},
+			});
+			expect(wrapper.getByText('$')).toBeInTheDocument();
+		});
+
 		it('should render custom increment slot', () => {
 			const wrapper = render(InputNumber, {
 				props: {

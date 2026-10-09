@@ -338,6 +338,29 @@ describe('workflows tool', () => {
 	});
 
 	describe('version actions', () => {
+		it('reports a restored workflow as changed, and a failed restore as not changed', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { restoreWorkflowVersion: 'always_allow' },
+			});
+			context.workflowService.restoreVersion = vi
+				.fn()
+				.mockResolvedValueOnce({ versionId: 'v1', activeVersionId: null })
+				.mockRejectedValueOnce(new Error('Version not found'));
+			const tool = createWorkflowsTool(context, 'full');
+			const input = { action: 'restore-version', workflowId: 'wf1', versionId: 'v1' } as never;
+
+			await executeTool(tool, input, {} as never);
+			expect(onArtifactChanged).toHaveBeenCalledWith({ type: 'workflow', id: 'wf1' });
+
+			onArtifactChanged.mockClear();
+			await expect(executeTool(tool, input, {} as never)).resolves.toMatchObject({
+				success: false,
+			});
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
 		it('should support version actions when listVersions exists', async () => {
 			const context = createMockContext();
 			const versions = [{ id: 'v1', versionId: 1 }];
@@ -3052,6 +3075,28 @@ describe('workflows tool', () => {
 				{ 'HTTP Request': { url: 'https://example.com/api' } },
 				['HTTP Request'],
 			);
+		});
+
+		it('returns a failed result when the save fails so nothing counts as applied', async () => {
+			// The save is where a credential the workflow's project cannot use is
+			// rejected. Reporting it as a partial success would hide the reason.
+			(applyNodeChanges as Mock).mockResolvedValue({
+				applied: [],
+				failed: [{ nodeName: 'HTTP Request', error: 'Failed to save workflow: no access' }],
+				saveError: 'Failed to save workflow: no access',
+			});
+
+			const tool = createWorkflowsTool(createMockContext());
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					credentials: { 'HTTP Request': { httpHeaderAuth: 'cred-1' } },
+				},
+			} as never);
+
+			expect(result).toEqual({ success: false, error: 'Failed to save workflow: no access' });
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('reports a just-applied credential whose test failed as a failed node', async () => {

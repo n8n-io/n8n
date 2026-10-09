@@ -243,6 +243,14 @@ describe('scrubSecretsInText', () => {
 		);
 	});
 
+	it('redacts a bare Databricks personal access token, with or without a suffix', () => {
+		const token = join('dapi', '0123456789abcdef0123456789abcdef');
+		expect(scrubSecretsInText(`workspace rejected ${token}`)).toBe('workspace rejected [REDACTED]');
+		expect(scrubSecretsInText(`workspace rejected ${token}-2`)).toBe(
+			'workspace rejected [REDACTED]',
+		);
+	});
+
 	it('redacts a Telegram bot token, including inside a /bot… URL', () => {
 		const url = join(
 			'https://api.telegram.org/bot',

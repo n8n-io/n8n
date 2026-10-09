@@ -220,6 +220,27 @@ describe('AgentToolConfigMcpApprovalSetting', () => {
 		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([true]);
 	});
 
+	it('keeps "Ask selected" active when the model round-trips before a tool is picked', async () => {
+		const wrapper = renderComponent({
+			modelValue: {
+				categories: { read: 'require_approval', write: 'require_approval' },
+			},
+		});
+		await wrapper.setProps({
+			'onUpdate:modelValue': async (value: McpToolPermissions) =>
+				await wrapper.setProps({ modelValue: value }),
+		});
+		await flushPromises();
+
+		await wrapper
+			.find('[data-testid="agent-mcp-approval-mode"] [data-value="selected"]')
+			.trigger('click');
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-mcp-approval-tools"]').exists()).toBe(true);
+		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([false]);
+	});
+
 	it('shows a load error when selected mode cannot load MCP tools', async () => {
 		nodeTypesStore.getNodeParameterOptions = vi
 			.fn()

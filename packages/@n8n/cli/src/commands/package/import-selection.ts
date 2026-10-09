@@ -48,6 +48,12 @@ export default class PackageImportSelection extends BaseCommand {
 			options: ['new', 'source'],
 			aliases: ['workflow-id-policy'],
 		}),
+		overwriteDeletionPolicy: Flags.string({
+			description:
+				'How --deleted-workflow-ids removes each target workflow (default: archive). archive keeps it recoverable; hard-delete also drops the workflow and its execution history',
+			options: ['archive', 'hard-delete'],
+			aliases: ['overwrite-deletion-policy'],
+		}),
 	};
 
 	async run(): Promise<void> {
@@ -70,6 +76,7 @@ export default class PackageImportSelection extends BaseCommand {
 						deletedWorkflowIds: flags.deletedWorkflowIds,
 						workflowConflictPolicy: flags.workflowConflictPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,
+						overwriteDeletionPolicy: flags.overwriteDeletionPolicy,
 					},
 				);
 			} catch (error) {

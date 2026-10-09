@@ -25,6 +25,10 @@ vi.mock('@n8n/instance-ai', () => {
 			...(prior ?? {}),
 			boundTargets: prior?.boundTargets,
 		})),
+		meterEvalUsage: vi.fn(async (fn: () => Promise<unknown>) => ({
+			result: await fn(),
+			usage: [],
+		})),
 	};
 });
 
@@ -40,7 +44,10 @@ import type {
 	AiPreferenceDto,
 	InstanceAiPreferenceCardEvent,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalLlmUsage,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiSendMessageRequest,
@@ -59,7 +66,11 @@ import type {
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { buildAgentTreeFromEvents, seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
+import {
+	buildAgentTreeFromEvents,
+	meterEvalUsage,
+	seedAgentBuilderTargetMetadata,
+} from '@n8n/instance-ai';
 import {
 	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadTabsRequestDto,
@@ -116,6 +127,16 @@ function scopeOf(handlerName: string): { scope: Scope; globalOnly: boolean } | u
 	return route.accessScope;
 }
 
+const MOCK_RESPONDER_USAGE: InstanceAiEvalLlmUsage = {
+	agent: 'eval-mock-responder',
+	model: 'anthropic/claude-sonnet-4-6',
+	calls: 2,
+	uncachedInputTokens: 1200,
+	cacheReadTokens: 0,
+	cacheWriteTokens: 0,
+	outputTokens: 300,
+};
+
 describe('InstanceAiController', () => {
 	const instanceAiService = mock<InstanceAiService>();
 	const gatewayService = mock<InstanceAiGatewayService>();
@@ -142,6 +163,8 @@ describe('InstanceAiController', () => {
 	const projectService = mock<ProjectService>();
 	const instanceAiErrorReporter = mock<InstanceAiErrorReporterService>();
 
+	const evalExecutionService = mock<EvalExecutionService>();
+	const evalAgentExecutionService = mock<EvalAgentExecutionService>();
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
 	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
@@ -157,8 +180,8 @@ describe('InstanceAiController', () => {
 		pendingAgentService,
 		settingsService,
 		modelCatalogService,
-		mock<EvalExecutionService>(),
-		mock<EvalAgentExecutionService>(),
+		evalExecutionService,
+		evalAgentExecutionService,
 		evalCredentialAllowlists,
 		evalThreadRestore,
 		eventBus,
@@ -1010,6 +1033,41 @@ describe('InstanceAiController', () => {
 		it('should require instanceAi:eval scope', () => {
 			expect(scopeOf('executeWithLlmMock')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
 		});
+
+		it('should return the model usage of the run with its result', async () => {
+			const runResult = { executionId: 'exec-1', success: true } as InstanceAiEvalExecutionResult;
+			evalExecutionService.executeWithLlmMock.mockResolvedValue(runResult);
+			vi.mocked(meterEvalUsage).mockImplementationOnce(async (fn) => ({
+				result: await fn(),
+				usage: [MOCK_RESPONDER_USAGE],
+			}));
+
+			const result = await controller.executeWithLlmMock(req, res, 'wf-1', {});
+
+			expect(result).toEqual({ ...runResult, llmUsage: [MOCK_RESPONDER_USAGE] });
+			expect(evalExecutionService.executeWithLlmMock).toHaveBeenCalledWith('wf-1', req.user, {});
+		});
+	});
+
+	describe('executeAgentWithLlmMock', () => {
+		it('should return the model usage of the run with its result', async () => {
+			const runResult = { runId: 'run-1', success: true } as InstanceAiEvalAgentExecutionResult;
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(runResult);
+			vi.mocked(meterEvalUsage).mockImplementationOnce(async (fn) => ({
+				result: await fn(),
+				usage: [MOCK_RESPONDER_USAGE],
+			}));
+			const payload = { projectId: 'project-1' };
+
+			const result = await controller.executeAgentWithLlmMock(req, res, 'agent-1', payload);
+
+			expect(result).toEqual({ ...runResult, llmUsage: [MOCK_RESPONDER_USAGE] });
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledWith(
+				'agent-1',
+				req.user,
+				payload,
+			);
+		});
 	});
 
 	describe('setThreadCredentialAllowlist', () => {
@@ -1400,6 +1458,20 @@ describe('InstanceAiController', () => {
 				evalThreadRestore.restoreAgents.mockResolvedValue(['agent-seed-1']);
 			});
 
+			it('should hand the pinned credential allowlist to the agent restore', async () => {
+				evalCredentialAllowlists.set(THREAD_ID, ['cred-openai']);
+
+				await controller.restoreEvalThread(req, res, agentPayload);
+
+				expect(evalThreadRestore.restoreAgents).toHaveBeenCalledWith(
+					[seedAgent],
+					'project-1',
+					expect.objectContaining({ id: expect.any(String) }),
+					expect.any(Map),
+					new Set(['cred-openai']),
+				);
+			});
+
 			it('should recreate the agent and bind the thread to it', async () => {
 				const result = await controller.restoreEvalThread(req, res, agentPayload);
 
@@ -1408,7 +1480,9 @@ describe('InstanceAiController', () => {
 				expect(evalThreadRestore.restoreAgents).toHaveBeenCalledWith(
 					[seedAgent],
 					'project-1',
+					expect.objectContaining({ id: expect.any(String) }),
 					expect.any(Map),
+					undefined,
 				);
 				// Refs and ordering are reconstructed from the seeded history, so the
 				// messages are handed in alongside the agents.

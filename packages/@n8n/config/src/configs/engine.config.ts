@@ -82,7 +82,9 @@ export class EngineConfig {
 	/**
 	 * How long (in ms) the control plane waits for a run to answer before it
 	 * answers the webhook request itself. The response channel is at-most-once,
-	 * so a lost answer must not hold the request open forever.
+	 * so a lost answer must not hold the request open forever. For a streaming
+	 * request, each chunk starts the wait again, so this limits the silence
+	 * between chunks, not the length of the stream.
 	 */
 	@Env('N8N_ENGINE_WEBHOOK_RESPONSE_TIMEOUT', positiveIntSchema.max(2147483647))
 	webhookResponseTimeout: number = 2 * 60 * 1000;

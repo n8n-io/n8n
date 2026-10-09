@@ -2,9 +2,11 @@ import {
 	APPROVAL_RESUME_SCHEMA,
 	APPROVAL_SUSPEND_SCHEMA,
 	Tool,
+	type ApprovalResumePayload,
 	type InterruptibleToolContext,
 } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import {
@@ -22,6 +24,8 @@ import {
 	executeActionToolOperation,
 	executeContextToolOperation,
 	INTEGRATION_ACTION_RESUME_SCHEMA,
+	integrationActionApprovalKey,
+	isSilentActionOutput,
 } from './integration-tool-execution';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import {
@@ -164,11 +168,13 @@ export function createIntegrationActionTool(params: {
 }) {
 	const { descriptor, messageContextStore, actionExecutor } = params;
 
+	// The model is told to stop after staying silent, but may call it again.
 	return new Tool(descriptor.actionToolName)
 		.description(buildActionToolDescription(descriptor))
 		.input(buildActionInputSchema(descriptor.actionToolDefinitions))
 		.suspend(actionSuspendSchema)
 		.resume(INTEGRATION_ACTION_RESUME_SCHEMA)
+		.endsTurnWhen(isSilentActionOutput)
 		.handler(async (input, ctx) => {
 			const interruptCtx = ctx as InterruptibleToolContext;
 			const approvalDecision = readApprovalDecision(interruptCtx);
@@ -178,6 +184,17 @@ export function createIntegrationActionTool(params: {
 			// either falls through to execution below or stops here.
 			if (approvalDecision === undefined && ctx.resumeData) {
 				return ctx.resumeData;
+			}
+			if (approvalDecision) {
+				const { action, ...decision } = approvalDecision;
+				if (decision.scope === 'session' && !ctx.approvalContext) {
+					throw new UserError('Session approvals are not available for this tool.');
+				}
+				await ctx.approvalContext?.onDecision(
+					integrationActionApprovalKey(descriptor.integrationConnectionId, action),
+					decision,
+				);
+				ctx.abortSignal?.throwIfAborted();
 			}
 			if (approvalDecision?.approved === false) {
 				return {
@@ -221,7 +238,7 @@ export function createIntegrationActionTool(params: {
  */
 function readApprovalDecision(
 	ctx: InterruptibleToolContext,
-): { action: string; approved: boolean } | undefined {
+): ({ action: string } & ApprovalResumePayload) | undefined {
 	const payload = APPROVAL_SUSPEND_SCHEMA.safeParse(ctx.suspendPayload);
 	if (!payload.success) return undefined;
 
@@ -229,7 +246,7 @@ function readApprovalDecision(
 	return {
 		action: payload.data.toolName,
 		// An unreadable resume payload is not consent.
-		approved: resume.success && resume.data.approved,
+		...(resume.success ? resume.data : { approved: false }),
 	};
 }
 

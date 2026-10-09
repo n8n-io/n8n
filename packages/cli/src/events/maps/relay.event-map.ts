@@ -1,4 +1,10 @@
-import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n/api-types';
+import type {
+	AuthenticationMethod,
+	BreakingChangeLightReportResult,
+	BreakingChangeVersion,
+	ProjectRelation,
+	RedactionFloor,
+} from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
@@ -267,6 +273,11 @@ export type RelayEventMap = {
 		versionId: string;
 		versionName?: string | null;
 		versionDescription?: string | null;
+	};
+
+	/** A source-control pull wrote a workflow, which happens outside the save path. */
+	'workflow-imported': {
+		workflowId: string;
 	};
 
 	// #endregion
@@ -1098,6 +1109,19 @@ export type RelayEventMap = {
 	// #endregion
 
 	// #region workflow history compaction
+	// #region Migration report
+
+	/** The overview was served to a user. `report` is what they saw; telemetry keeps its counts only. */
+	'migration-report-viewed': {
+		user: UserLike;
+		targetVersion: BreakingChangeVersion;
+		/** The request was a Refresh click, which re-scanned every workflow first. */
+		refreshed: boolean;
+		report: BreakingChangeLightReportResult;
+	};
+
+	// #endregion
+
 	'history-compacted': {
 		workflowsProcessed: number;
 		totalVersionsSeen: number;

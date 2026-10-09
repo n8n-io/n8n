@@ -2,7 +2,7 @@ import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import type { OauthService } from '@/oauth/oauth.service';
 
@@ -15,10 +15,16 @@ import { buildMcpClientForServer, listMcpServerTools } from '../mcp-client-facto
 const mcpClientCtor = vi.fn();
 const listToolsMock = vi.fn();
 const closeMock = vi.fn();
+const getConnectionFailuresMock = vi.fn();
 vi.mock('@n8n/agents', () => ({
 	McpClient: vi.fn(function (configs: unknown) {
 		mcpClientCtor(configs);
-		return { configs, close: closeMock, listTools: listToolsMock };
+		return {
+			configs,
+			close: closeMock,
+			listTools: listToolsMock,
+			getConnectionFailures: getConnectionFailuresMock,
+		};
 	}),
 }));
 
@@ -338,6 +344,23 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
 		expect(configs[0]).not.toHaveProperty('configureTools');
+	});
+
+	it('marks tool configuration as non-interrupting only when the runtime cannot suspend', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+		const server = makeServer({
+			toolPermissions: { categories: { read: 'always_allow', write: 'always_allow' } },
+		});
+		const deps = { credentialProvider, oauthService, projectId: 'proj-1', proxyFetch };
+
+		await buildMcpClientForServer(server, { ...deps, nonInterrupting: true });
+		await buildMcpClientForServer(server, deps);
+
+		const [inlineConfigs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		const [defaultConfigs] = mcpClientCtor.mock.calls[1] as [Array<Record<string, unknown>>];
+		expect(inlineConfigs[0]).toMatchObject({ configureToolsNonInterrupting: true });
+		expect(defaultConfigs[0]).not.toHaveProperty('configureToolsNonInterrupting');
 	});
 
 	it('omits connectionTimeoutMs from the SDK config when not provided', async () => {
@@ -806,6 +829,8 @@ describe('listMcpServerTools', () => {
 		listToolsMock.mockReset();
 		closeMock.mockReset();
 		closeMock.mockResolvedValue(undefined);
+		getConnectionFailuresMock.mockReset();
+		getConnectionFailuresMock.mockReturnValue([]);
 	});
 
 	it('returns name/description pairs (empty description fallback) and closes the client', async () => {
@@ -827,6 +852,17 @@ describe('listMcpServerTools', () => {
 		listToolsMock.mockRejectedValue(new Error('connection refused'));
 
 		await expect(listMcpServerTools(makeServer(), deps())).rejects.toThrow('connection refused');
+		expect(closeMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('rejects a recorded connection failure and still closes the client', async () => {
+		listToolsMock.mockResolvedValue([]);
+		getConnectionFailuresMock.mockReturnValue([{ server: 'srv', error: 'fetch failed' }]);
+
+		const pending = listMcpServerTools(makeServer(), deps());
+
+		await expect(pending).rejects.toBeInstanceOf(OperationalError);
+		await expect(pending).rejects.toThrow('MCP server "srv" connection failed: fetch failed');
 		expect(closeMock).toHaveBeenCalledTimes(1);
 	});
 

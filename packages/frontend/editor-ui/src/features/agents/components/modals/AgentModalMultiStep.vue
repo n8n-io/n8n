@@ -16,6 +16,7 @@ const props = withDefaults(
 		showBack?: boolean;
 		showFooter?: boolean;
 		showCancel?: boolean;
+		stableHeight?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -30,6 +31,7 @@ const props = withDefaults(
 		showBack: false,
 		showFooter: undefined,
 		showCancel: true,
+		stableHeight: false,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -69,6 +71,7 @@ watch(
 		:show-footer="showFooter"
 		:show-cancel="showCancel"
 		:body-scrollable="!isPickerStep"
+		:stable-height="stableHeight"
 		:busy="busy"
 		:size="size"
 		:stacked="stacked"

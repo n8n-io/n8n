@@ -32,6 +32,7 @@ type InputTestProps = {
 	suggestionCatalogVersion?: string;
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
+	placeholder?: string;
 	contextChip?: ContextChip | null;
 };
 
@@ -314,16 +315,21 @@ describe('InstanceAiInput', () => {
 		);
 	});
 
-	it('uses the new agent placeholder for a pending agent artifact', () => {
+	it('prefers a caller-provided placeholder text over the placeholder key', () => {
 		const { getByRole } = renderComponent({
 			props: {
-				contextChip: {
-					type: 'agent-artifact',
-					agentId: 'agent-1',
-					projectId: 'project-1',
-					isNewAgent: true,
-					label: 'New Agent',
-				},
+				placeholder: 'Ask Support Agent…',
+				placeholderKey: 'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute('placeholder', 'Ask Support Agent…');
+	});
+
+	it('uses the new agent placeholder when the caller passes its key', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				placeholderKey: 'instanceAi.input.newAgentPlaceholder',
 			},
 		});
 
@@ -340,7 +346,6 @@ describe('InstanceAiInput', () => {
 					type: 'agent-artifact',
 					agentId: 'agent-1',
 					projectId: 'project-1',
-					isNewAgent: false,
 					label: 'Support Agent',
 				},
 			},

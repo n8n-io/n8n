@@ -146,6 +146,7 @@ export class WorkflowWebhookTestTriggerResourceResolver implements ProtectedReso
 			const audiences = methods.map(urlFor);
 			return {
 				id: `workflow-webhook-test:${workflowEntity.id}:${resourcePath}`,
+				surface: 'trigger' as const,
 				getResourceUrl: () => urlFor(requestedMethod),
 				getAudiences: () => audiences,
 				scopes: WEBHOOK_TRIGGER_SCOPES,

@@ -39,7 +39,7 @@ import { assignNodeId, serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IWorkflowDb } from '@/Interface';
 import type { INode, ProjectSharingData } from 'n8n-workflow';
-import { deepCopy, nodeIssuesToString } from 'n8n-workflow';
+import { deepCopy, nodeIssuesToString, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
@@ -251,6 +251,32 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			allNodes: workflowDocumentNodes.allNodes,
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
+			connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode,
+			connectionsByDestinationNode: workflowDocumentConnections.connectionsByDestinationNode,
+			// The editor only has the node description, so it reads the `trigger` group
+			// where the server reads the type's trigger/webhook/poll implementation.
+			isTriggerLike: (node) => nodeTypesStore.isTriggerNode(node.type),
+			canOutputMain: (node) => {
+				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				// Unknown type answers "yes", so a half-built graph is never written off
+				// as unable to affect a run.
+				if (!nodeType) return true;
+				try {
+					// Evaluated, not read off the description: several vector stores build
+					// `outputs` from an expression, and reading the raw expression would
+					// call them main-path nodes. The server evaluates it the same way.
+					return NodeHelpers.getNodeOutputs(
+						{ expression: workflowDocumentExpression.getExpressionHandler() },
+						node,
+						nodeType,
+					).some(
+						(output) =>
+							(typeof output === 'string' ? output : output.type) === NodeConnectionTypes.Main,
+					);
+				} catch {
+					return true;
+				}
+			},
 			nodesById: workflowDocumentNodes.nodesById,
 			onNodesChange: workflowDocumentNodes.onNodesChange,
 			nodeIssuesToString,
@@ -418,6 +444,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			return {
 				id: workflowId,
 				connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode.value,
+				connectionsByDestinationNode:
+					workflowDocumentConnections.connectionsByDestinationNode.value,
 				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				expression: workflowDocumentExpression.getExpressionHandler(),
 				getNode: workflowDocumentNodes.getNodeByName,

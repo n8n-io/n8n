@@ -1,6 +1,11 @@
 import { silentLogger } from './fixtures';
 import type { N8nClient } from '../clients/n8n-client';
-import { cleanupLaneUsers, LaneUserPool, provisionCaseBuildUser } from '../run/lane-users';
+import {
+	cleanupLaneUsers,
+	LaneUserPool,
+	provisionBuildProject,
+	provisionCaseBuildUser,
+} from '../run/lane-users';
 import type { TestCaseCredential } from '../types';
 
 type InvitedUser = { id: string; email: string; acceptToken: string };
@@ -169,6 +174,31 @@ describe('provisionCaseBuildUser', () => {
 				onCredentialCreated: () => {},
 			}),
 		).rejects.toThrow('credential POST failed');
+	});
+});
+
+describe('provisionBuildProject', () => {
+	it("accepts a pooled invite under the given name and returns that user's personal project", async () => {
+		const { client: ownerClient, inviteBatches } = fakeOwnerClient();
+		const pool = new LaneUserPool(ownerClient, 1);
+		const member = {
+			acceptInvitation: vi.fn().mockResolvedValue(undefined),
+			getPersonalProjectId: vi.fn().mockResolvedValue('member-project'),
+		};
+
+		const project = await provisionBuildProject({
+			pool,
+			memberClient: member as unknown as N8nClient,
+			name: { firstName: 'Eval', lastName: 'Bot' },
+		});
+
+		expect(member.acceptInvitation).toHaveBeenCalledWith({
+			token: `token-${inviteBatches[0][0]}`,
+			firstName: 'Eval',
+			lastName: 'Bot',
+			password: pool.password,
+		});
+		expect(project).toEqual({ userId: 'u1', projectId: 'member-project' });
 	});
 });
 

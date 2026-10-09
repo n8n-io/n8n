@@ -205,6 +205,8 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		action: 'connect' | 'disconnect',
 	): Promise<void> {
+		// n8n Chat has no runtime connection for peers to reconcile.
+		if (!isCredentialAgentIntegration(integration)) return;
 		await this.changePublisher.publish({
 			command: 'agent-chat-integration-changed',
 			payload: { agentId, integration, action },

@@ -20,6 +20,7 @@ const emit = defineEmits<{
 	'credential-deleted': [];
 	'request-credential-picker': [];
 	'update:title': [title: string];
+	'update:restricted': [restricted: boolean];
 }>();
 
 const genericForm = ref<InstanceType<typeof AgentToolConfigForm> | null>(null);
@@ -84,5 +85,6 @@ defineExpose({
 		:data="data"
 		@credential-deleted="emit('credential-deleted')"
 		@update:title="emit('update:title', $event)"
+		@update:restricted="emit('update:restricted', $event)"
 	/>
 </template>
