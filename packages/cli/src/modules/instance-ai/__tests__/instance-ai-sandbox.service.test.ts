@@ -7,6 +7,7 @@ import { OperationalError } from 'n8n-workflow';
 
 vi.mock('@n8n/instance-ai', () => ({
 	createSandbox: vi.fn(),
+	createsSandboxFromSnapshot: vi.fn(() => false),
 	createWorkspace: vi.fn(),
 	setupSandboxWorkspace: vi.fn(),
 	traceSandboxOperation: vi.fn(
@@ -28,6 +29,7 @@ vi.mock('@n8n/instance-ai', () => ({
 
 import {
 	createSandbox,
+	createsSandboxFromSnapshot,
 	createWorkspace,
 	setupSandboxWorkspace,
 	withSandboxLifecycleTrace,
@@ -528,6 +530,40 @@ describe('InstanceAiSandboxService', () => {
 			expect(workspace.init).toHaveBeenCalledTimes(1);
 			expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 		});
+
+		it.each([
+			{ fromSnapshot: true, trustManifest: true },
+			{ fromSnapshot: false, trustManifest: false },
+		])(
+			'trusts prebaked manifests only for snapshot sandboxes (fromSnapshot: $fromSnapshot)',
+			async ({ fromSnapshot, trustManifest }) => {
+				const { service } = createSandboxService({
+					config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+				});
+				const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+				(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+				(createsSandboxFromSnapshot as Mock).mockReturnValueOnce(fromSnapshot);
+				(createWorkspace as Mock).mockReturnValue(workspace);
+				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+				const entry = await service.getOrCreateWorkspace(
+					'thread-1',
+					fakeUser,
+					{} as InstanceAiContext,
+				);
+
+				expect(createsSandboxFromSnapshot).toHaveBeenCalledWith(
+					(createSandbox as Mock).mock.calls[0][0],
+					(createSandbox as Mock).mock.calls[0][1],
+				);
+				expect(entry?.bundleState).toEqual({ trustManifest, verifiedBundles: new Map() });
+				const setupOptions = (setupSandboxWorkspace as Mock).mock.calls[0]?.[2] as {
+					bundleState: unknown;
+				};
+				expect((setupSandboxWorkspace as Mock).mock.calls[0]?.[0]).toBe(workspace);
+				expect(setupOptions.bundleState).toBe(entry?.bundleState);
+			},
+		);
 
 		it('assigns a deterministic thread-scoped UUID for the n8n-sandbox provider', async () => {
 			const n8nSandboxConfig: Overrides['config'] = {

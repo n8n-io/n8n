@@ -2919,6 +2919,7 @@ export class InstanceAiService {
 				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
 					source: allRuntimeSkills,
 					workspace: runtimeSkillWorkspace,
+					resolveBundleState: async () => (await getSandboxEntry())?.bundleState,
 					logger: this.logger,
 				});
 			}

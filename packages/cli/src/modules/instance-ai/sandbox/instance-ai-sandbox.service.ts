@@ -5,6 +5,7 @@ import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
 	createSandbox,
+	createsSandboxFromSnapshot,
 	createWorkspace,
 	setupSandboxWorkspace,
 	traceSandboxOperation,
@@ -14,6 +15,7 @@ import {
 	type Logger,
 	type ManagedBackgroundTask,
 	type SandboxConfig,
+	type WorkspaceBundleState,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
@@ -36,6 +38,8 @@ export type RuntimeSandboxEntry = {
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
 	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
 	configFingerprint: string;
+	/** Prebaked bundle checks for this sandbox, shared across runs. */
+	bundleState: WorkspaceBundleState;
 	setupComplete: boolean;
 	setupPromise: Promise<void> | undefined;
 	expiresAt: number;
@@ -419,7 +423,9 @@ export class InstanceAiSandboxService {
 	): Promise<void> {
 		if (entry.setupComplete) return;
 
-		entry.setupPromise ??= setupSandboxWorkspace(entry.workspace, context)
+		entry.setupPromise ??= setupSandboxWorkspace(entry.workspace, context, {
+			bundleState: entry.bundleState,
+		})
 			.then(() => {
 				entry.setupComplete = true;
 			})
@@ -441,11 +447,12 @@ export class InstanceAiSandboxService {
 		);
 		if (!config.enabled) return undefined;
 
-		const sandbox = await createSandbox(config, {
+		const createOptions = {
 			logger: this.logger,
 			errorReporter: this.options.errorReporter,
 			useSnapshotFallback: true,
-		});
+		};
+		const sandbox = await createSandbox(config, createOptions);
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;
 		try {
@@ -481,6 +488,10 @@ export class InstanceAiSandboxService {
 			sandbox,
 			workspace,
 			configFingerprint: cacheState.fingerprint,
+			bundleState: {
+				trustManifest: createsSandboxFromSnapshot(config, createOptions),
+				verifiedBundles: new Map(),
+			},
 			setupComplete: false,
 			setupPromise: undefined,
 			expiresAt: this.nextSandboxExpiry(),

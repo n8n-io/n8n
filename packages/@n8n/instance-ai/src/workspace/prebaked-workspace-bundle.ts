@@ -8,8 +8,24 @@ import {
 import { parseVersionedWorkspaceManifest } from './workspace-manifest';
 import { traceSandboxOperation, sandboxFileBytes } from '../tracing/sandbox-tracing';
 
+/**
+ * Bundle check state for one sandbox. Keep it as long as the sandbox, so that
+ * repeated checks in that sandbox do not read the bundle again.
+ */
+export interface WorkspaceBundleState {
+	/**
+	 * Trust a matching manifest and do not read each bundle file. Set this only
+	 * for sandboxes created from a published snapshot. The snapshot bakes the
+	 * files and the manifest together, and a live write puts the manifest last.
+	 */
+	trustManifest: boolean;
+	/** Bundle hash by manifest path, for bundles this sandbox already has. */
+	verifiedBundles: Map<string, string>;
+}
+
 export interface LoadPrebakedWorkspaceBundleOptions<TBundle> {
 	workspace: WorkspaceFileTarget;
+	bundleState?: WorkspaceBundleState;
 	manifestPath: string;
 	expectedHash: string;
 	hashField: string;
@@ -33,16 +49,26 @@ export async function loadPrebakedWorkspaceBundle<TBundle extends { files: Map<s
 ): Promise<TBundle | undefined> {
 	let decision = 'reused';
 	let actualHash: string | undefined;
+	let filesChecked = 0;
+	const { bundleState } = options;
 	return await traceSandboxOperation(
 		'check-bundle',
 		{
 			kind: 'batch',
 			inputs: { manifestPath: options.manifestPath, expectedHash: options.expectedHash },
 			processResult: (bundle) => ({
-				outputs: { decision, actualHash, fileCount: bundle?.files.size ?? 0 },
+				outputs: { decision, actualHash, filesChecked, fileCount: bundle?.files.size ?? 0 },
 			}),
 		},
 		async () => {
+			if (bundleState?.verifiedBundles.get(options.manifestPath) === options.expectedHash) {
+				decision = 'cached';
+				actualHash = options.expectedHash;
+				const bundle = await options.buildBundle();
+				if (!bundle) decision = 'empty';
+				return bundle;
+			}
+
 			const manifestRaw = await readWorkspaceFile(options.workspace, options.manifestPath, {
 				logger: options.logger,
 				resourceLabel: options.resourceLabel,
@@ -81,29 +107,33 @@ export async function loadPrebakedWorkspaceBundle<TBundle extends { files: Map<s
 				return undefined;
 			}
 
-			const payloadPaths = Array.from(bundle.files.keys()).filter(
-				(path) => path !== options.manifestPath,
-			);
-			const existenceChecks = await Promise.all(
-				payloadPaths.map(async (path) => ({
-					path,
-					exists:
-						(await readWorkspaceFile(options.workspace, path, {
-							logger: options.logger,
-							resourceLabel: options.resourceLabel,
-						})) !== null,
-				})),
-			);
-			const missingPath = existenceChecks.find((check) => !check.exists)?.path;
-			if (missingPath) {
-				decision = 'incomplete';
-				options.logger.debug('Ignoring incomplete prebaked workspace bundle', {
-					manifestPath: options.manifestPath,
-					missingPath,
-				});
-				return undefined;
+			if (!bundleState?.trustManifest) {
+				const payloadPaths = Array.from(bundle.files.keys()).filter(
+					(path) => path !== options.manifestPath,
+				);
+				filesChecked = payloadPaths.length;
+				const existenceChecks = await Promise.all(
+					payloadPaths.map(async (path) => ({
+						path,
+						exists:
+							(await readWorkspaceFile(options.workspace, path, {
+								logger: options.logger,
+								resourceLabel: options.resourceLabel,
+							})) !== null,
+					})),
+				);
+				const missingPath = existenceChecks.find((check) => !check.exists)?.path;
+				if (missingPath) {
+					decision = 'incomplete';
+					options.logger.debug('Ignoring incomplete prebaked workspace bundle', {
+						manifestPath: options.manifestPath,
+						missingPath,
+					});
+					return undefined;
+				}
 			}
 
+			bundleState?.verifiedBundles.set(options.manifestPath, options.expectedHash);
 			options.logger.debug(options.successLogMessage, options.successLogContext(bundle));
 			return bundle;
 		},
@@ -114,10 +144,13 @@ export interface MaterializeWorkspaceBundleOptions<
 	TBundle extends { files: Map<string, string>; manifestPath: string },
 > {
 	workspace: WorkspaceFileTarget;
+	bundleState?: WorkspaceBundleState;
 	resourceLabel: string;
 	logger: Logger;
 	loadPrebaked: () => Promise<TBundle | undefined>;
 	buildBundle: () => Promise<TBundle> | TBundle;
+	/** Hash that the bundle manifest records. */
+	bundleHash: (bundle: TBundle) => string;
 	materializedLogMessage: string;
 	materializedLogContext: (bundle: TBundle) => Record<string, unknown>;
 }
@@ -168,6 +201,7 @@ export async function materializeWorkspaceBundle<
 				});
 			}
 
+			options.bundleState?.verifiedBundles.set(bundle.manifestPath, options.bundleHash(bundle));
 			options.logger.debug(options.materializedLogMessage, options.materializedLogContext(bundle));
 			return bundle;
 		},

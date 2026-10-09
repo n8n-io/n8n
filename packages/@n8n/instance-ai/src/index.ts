@@ -534,6 +534,9 @@ export const createSandbox: typeof CreateWorkspaceMod.createSandbox = lazyFuncti
 export const createWorkspace: typeof CreateWorkspaceMod.createWorkspace = lazyFunction(
 	() => loadCreateWorkspace().createWorkspace,
 );
+export const createsSandboxFromSnapshot: typeof CreateWorkspaceMod.createsSandboxFromSnapshot =
+	lazyFunction(() => loadCreateWorkspace().createsSandboxFromSnapshot);
+export type { WorkspaceBundleState } from './workspace/prebaked-workspace-bundle';
 export type SnapshotManager = SnapshotManagerMod.SnapshotManager;
 export const SnapshotManager: typeof SnapshotManagerMod.SnapshotManager = lazyClass(
 	() => loadSnapshotManager().SnapshotManager,
