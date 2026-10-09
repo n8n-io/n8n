@@ -1225,6 +1225,38 @@ describe('InstanceAiEmptyView', () => {
 		expect(showErrorMock).not.toHaveBeenCalled();
 	});
 
+	it('keeps the submitted prompt in the composer while the thread is created', async () => {
+		const sync = createDeferredPromise<undefined>();
+		store.syncThread.mockReturnValue(sync.promise);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await nextTick();
+
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+
+		sync.resolve(undefined);
+		await flushPromises();
+	});
+
+	it('keeps the submitted prompt in the composer until the send is accepted', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		const send = createDeferredPromise<boolean>();
+		vi.mocked(thread.sendMessage).mockReturnValue(send.promise);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(thread.sendMessage).toHaveBeenCalled();
+		expect(replaceMock).not.toHaveBeenCalled();
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+
+		send.resolve(true);
+		await flushPromises();
+		expect(replaceMock).toHaveBeenCalled();
+	});
+
 	it('stays on the empty view and restores the draft when the send is refused', async () => {
 		store.syncThread.mockResolvedValue(undefined);
 		vi.mocked(thread.sendMessage).mockResolvedValue(false);
