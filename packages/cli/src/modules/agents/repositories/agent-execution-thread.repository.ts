@@ -432,13 +432,23 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 	}
 
-	/** One private session of a user with an agent. */
+	/**
+	 * One top-level private session of a user with an agent. A child session
+	 * (for example an Agent builder session) has the same agent and owner as
+	 * its parent, so the parent filter keeps it out of the session routes.
+	 */
 	async findOwnedById(
 		agentId: string,
 		ownerId: string,
 		threadId: string,
 	): Promise<AgentExecutionThread | null> {
-		return await this.findOneBy({ id: threadId, agentId, ownerId, accessScope: 'user' });
+		return await this.findOneBy({
+			id: threadId,
+			agentId,
+			ownerId,
+			accessScope: 'user',
+			parentThreadId: IsNull(),
+		});
 	}
 
 	/**
@@ -504,7 +514,13 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return { threads, hasMore };
 	}
 
-	/** Sessions of an agent last updated before `cutoff`, oldest first, for pruning. */
+	/**
+	 * Sessions of an agent last updated before `cutoff`, oldest first, for
+	 * pruning. It returns only threads of the given agent, and it does not
+	 * filter out child sessions. A future retention job must delete through
+	 * `deleteThread` of the execution service. Then child sessions (for
+	 * example Agent builder sessions) go with their parent.
+	 */
 	async findByAgentUpdatedBefore(
 		agentId: string,
 		cutoff: Date,

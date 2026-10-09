@@ -1,7 +1,8 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { ProjectRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { NotFoundError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 
 import {
@@ -24,8 +25,9 @@ import { AgentObservationRepository } from '@/modules/agents/repositories/agent-
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
 import { EXECUTION_METADATA_KEY } from '@/modules/agents/types/agent-queued-message';
+import { UserService } from '@/services/user.service';
 
-import { createMember } from '../shared/db/users';
+import { createMember, createOwner } from '../shared/db/users';
 
 const INSTANCE_AGENT_ID = 'test-instance-assistant';
 
@@ -50,6 +52,7 @@ describe('Agent builder execution records', () => {
 	let checkpointRepo: AgentCheckpointRepository;
 	let observationRepo: AgentObservationRepository;
 	let owner: User;
+	let admin: User;
 	let workingProjectId: string;
 	let targetProjectId: string;
 	let targetAgentId: string;
@@ -67,6 +70,7 @@ describe('Agent builder execution records', () => {
 		checkpointRepo = Container.get(AgentCheckpointRepository);
 		observationRepo = Container.get(AgentObservationRepository);
 		owner = await createMember();
+		admin = await createOwner();
 		await systemAgentService.register({
 			agentId: INSTANCE_AGENT_ID,
 			name: 'Assistant',
@@ -415,10 +419,135 @@ describe('Agent builder execution records', () => {
 		const page = await threadRepo.findOwnedHistoryPage(INSTANCE_AGENT_ID, owner.id, 10);
 		expect(page.threads.map(({ id }) => id)).toEqual([parent.threadId]);
 
-		// Known gap, closed in the next stacked PR: the single-session lookup
-		// has no parent filter, so it returns the builder session.
 		expect(
 			await threadRepo.findOwnedById(INSTANCE_AGENT_ID, owner.id, builder.threadId),
-		).toMatchObject({ id: builder.threadId, parentThreadId: parent.threadId });
+		).toBeNull();
+		expect((await threadRepo.findOwnedById(INSTANCE_AGENT_ID, owner.id, parent.threadId))?.id).toBe(
+			parent.threadId,
+		);
+	});
+
+	it('does not open a builder session through the system agent session entry points', async () => {
+		const parent = await createParentTurn();
+		const builder = await recordBuilderTurn(parent);
+		await executionRepo.update({ threadId: parent.threadId }, { status: 'success' });
+
+		await expect(
+			systemAgentService.getThread(INSTANCE_AGENT_ID, owner, builder.threadId),
+		).rejects.toThrow(NotFoundError);
+		await expect(
+			systemAgentService.getUsableThread(INSTANCE_AGENT_ID, owner, builder.threadId),
+		).rejects.toThrow(NotFoundError);
+		await expect(
+			systemAgentService.updateThread(INSTANCE_AGENT_ID, owner, builder.threadId, {
+				title: 'Renamed',
+			}),
+		).rejects.toThrow(NotFoundError);
+		await expect(
+			systemAgentService.sendMessage({
+				agentId: INSTANCE_AGENT_ID,
+				user: owner,
+				threadId: builder.threadId,
+				message: 'hi',
+			}),
+		).rejects.toThrow(NotFoundError);
+		await expect(
+			systemAgentService.cancel(INSTANCE_AGENT_ID, owner, builder.threadId),
+		).rejects.toThrow(NotFoundError);
+		await expect(
+			systemAgentService.deleteThread(INSTANCE_AGENT_ID, owner, builder.threadId),
+		).rejects.toThrow(NotFoundError);
+		// A client cannot start a new session with the id of a builder session.
+		await expect(
+			systemAgentService.createThread({
+				agentId: INSTANCE_AGENT_ID,
+				user: owner,
+				projectId: workingProjectId,
+				threadId: builder.threadId,
+			}),
+		).rejects.toThrow(NotFoundError);
+		await expect(
+			systemAgentService.prepareChatMessage({
+				agentId: INSTANCE_AGENT_ID,
+				user: owner,
+				sessionId: builder.threadId,
+				message: 'hi',
+			}),
+		).rejects.toThrow();
+		await expect(
+			systemAgentService.prepareChatMessage({
+				agentId: INSTANCE_AGENT_ID,
+				user: owner,
+				projectId: workingProjectId,
+				sessionId: builder.threadId,
+				message: 'hi',
+			}),
+		).rejects.toThrow(NotFoundError);
+
+		expect(await threadRepo.findOneBy({ id: builder.threadId })).toMatchObject({
+			title: null,
+			parentThreadId: parent.threadId,
+		});
+		expect(await executionRepo.findByThreadIdOrdered(builder.threadId)).toHaveLength(1);
+	});
+
+	/**
+	 * No service deletes system agent sessions when their owner is deleted.
+	 * The database decides: the owner column is set to null, and deleting the
+	 * personal project cascades to the sessions in it. A builder session has
+	 * the working project of its parent, so it always shares the fate of its
+	 * parent.
+	 */
+	describe('when the session owner is deleted', () => {
+		async function deleteUserWithSessions(projectOf: (user: User) => Promise<string>) {
+			const user = await createMember();
+			workingProjectId = await projectOf(user);
+			const parentThread = await threadRepo.save(
+				threadRepo.create({
+					id: uuid(),
+					agentId: INSTANCE_AGENT_ID,
+					agentName: 'Assistant',
+					projectId: workingProjectId,
+					accessScope: 'user',
+					ownerId: user.id,
+				}),
+			);
+			const parentExecution = await executionRepo.save(
+				executionRepo.create({ id: uuid(), threadId: parentThread.id, status: 'success' }),
+			);
+			const previousOwner = owner;
+			owner = user;
+			try {
+				const builder = await recordBuilderTurn({
+					threadId: parentThread.id,
+					executionId: parentExecution.id,
+				});
+				await Container.get(UserService).deleteUser(admin, user.id);
+				return { parentThreadId: parentThread.id, builderThreadId: builder.threadId };
+			} finally {
+				owner = previousOwner;
+			}
+		}
+
+		it('keeps the parent and the builder session of a team project, without an owner', async () => {
+			const { parentThreadId, builderThreadId } = await deleteUserWithSessions(
+				async (user) => (await createTeamProject(undefined, user)).id,
+			);
+
+			for (const id of [parentThreadId, builderThreadId]) {
+				expect(await threadRepo.findOneBy({ id })).toMatchObject({ ownerId: null });
+			}
+			expect(await executionRepo.findByThreadIdOrdered(builderThreadId)).toHaveLength(1);
+		});
+
+		it('deletes the parent and the builder session of the personal project together', async () => {
+			const { parentThreadId, builderThreadId } = await deleteUserWithSessions(
+				async (user) =>
+					(await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id)).id,
+			);
+
+			expect(await threadRepo.findOneBy({ id: parentThreadId })).toBeNull();
+			expect(await threadRepo.findOneBy({ id: builderThreadId })).toBeNull();
+		});
 	});
 });

@@ -10,6 +10,7 @@ import type { NodeCatalogService } from '@/node-catalog';
 import type { InstanceAiCreditService } from '../../../instance-ai/instance-ai-credit.service';
 import type { StartExecutionParams } from '../../agent-execution.service';
 import type { AgentTurnExecutionService } from '../../agent-turn-execution.service';
+import { AgentTurnAlreadyRunningError } from '../../agent-turn-already-running.error';
 import type { AgentsService } from '../../agents.service';
 import { ExecutionRecorder } from '../../execution-recorder';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
@@ -1133,6 +1134,160 @@ describe('AgentsBuilderService execution records', () => {
 			'Failed to resolve builder execution links',
 			expect.objectContaining({ agentId: 'agent-1' }),
 		);
+	});
+
+	describe('best-effort recording', () => {
+		it('runs the turn without a record when the admission fails', async () => {
+			const { service, logger, user, credentialProvider, credentialService, turnExecutionService } =
+				setup();
+			turnExecutionService.startExecution.mockRejectedValue(new AgentTurnAlreadyRunningError());
+			agentsSdkMocks.nextChunks.push(finishChunk);
+
+			const chunks = await drain(
+				service.buildAgent(
+					'agent-1',
+					'project-1',
+					'hi',
+					credentialProvider,
+					credentialService,
+					user,
+					{ ...baseSession, parentExecution },
+				),
+			);
+
+			expect(chunks).toEqual([finishChunk]);
+			expect(turnExecutionService.finalizeExecution).not.toHaveBeenCalled();
+			expect(agentsSdkMocks.streamCalls[0]?.message).toBe('hi');
+			expect(agentsSdkMocks.streamCalls[0]?.options).toEqual({
+				persistence: { threadId: 'ia-builder:t:agent-1', resourceId: 'user-1' },
+				abortSignal: baseSession.abortSignal,
+				recoverUsageOnAbort: true,
+				executionCounter,
+			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to start the builder execution record, running without it',
+				expect.objectContaining({ agentId: 'agent-1', threadId: 'ia-builder:t:agent-1' }),
+			);
+		});
+
+		it('runs the turn without a record when the memory thread cannot be saved', async () => {
+			const {
+				service,
+				user,
+				credentialProvider,
+				credentialService,
+				turnExecutionService,
+				memoryImplementation,
+			} = setup();
+			memoryImplementation.saveThread.mockRejectedValue(new Error('db down'));
+			agentsSdkMocks.nextChunks.push(finishChunk);
+
+			const chunks = await drain(
+				service.buildAgent(
+					'agent-1',
+					'project-1',
+					'hi',
+					credentialProvider,
+					credentialService,
+					user,
+					{ ...baseSession, parentExecution },
+				),
+			);
+
+			expect(chunks).toEqual([finishChunk]);
+			expect(turnExecutionService.startExecution).not.toHaveBeenCalled();
+			expect(turnExecutionService.finalizeExecution).not.toHaveBeenCalled();
+		});
+
+		it('resumes without a record when the admission fails', async () => {
+			const {
+				service,
+				user,
+				credentialProvider,
+				credentialService,
+				turnExecutionService,
+				n8nCheckpointStorage,
+			} = setup();
+			n8nCheckpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: {} as never,
+			});
+			turnExecutionService.startExecution.mockRejectedValue(new Error('db down'));
+			agentsSdkMocks.nextChunks.push(finishChunk);
+
+			const chunks = await drain(
+				service.resumeBuild(
+					'agent-1',
+					'project-1',
+					'builder-run-1',
+					'tool-call-1',
+					{ approved: true },
+					credentialProvider,
+					credentialService,
+					user,
+					{ ...baseSession, parentExecution },
+				),
+			);
+
+			expect(chunks).toEqual([finishChunk]);
+			expect(turnExecutionService.finalizeExecution).not.toHaveBeenCalled();
+			expect(agentsSdkMocks.resumeCalls[0]?.options).toEqual({
+				runId: 'builder-run-1',
+				toolCallId: 'tool-call-1',
+				abortSignal: baseSession.abortSignal,
+				recoverUsageOnAbort: true,
+				executionCounter,
+			});
+		});
+
+		it('keeps the turn result when the record cannot be finalized', async () => {
+			const { service, logger, user, credentialProvider, credentialService, turnExecutionService } =
+				setup();
+			turnExecutionService.finalizeExecution.mockRejectedValue(new Error('db down'));
+			agentsSdkMocks.nextChunks.push(finishChunk);
+
+			const chunks = await drain(
+				service.buildAgent(
+					'agent-1',
+					'project-1',
+					'hi',
+					credentialProvider,
+					credentialService,
+					user,
+					{ ...baseSession, parentExecution },
+				),
+			);
+
+			expect(chunks).toEqual([finishChunk]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to finalize the builder execution record',
+				expect.objectContaining({ executionId: 'builder-execution-1' }),
+			);
+		});
+
+		it('rethrows the runtime error when the record cannot be finalized', async () => {
+			const { service, user, credentialProvider, credentialService, turnExecutionService } =
+				setup();
+			turnExecutionService.finalizeExecution.mockRejectedValue(new Error('db down'));
+			const streamSpy = vi
+				.spyOn(agentsSdkMocks.MockAgent.prototype, 'stream')
+				.mockRejectedValueOnce(new Error('model unavailable'));
+
+			await expect(
+				drain(
+					service.buildAgent(
+						'agent-1',
+						'project-1',
+						'hi',
+						credentialProvider,
+						credentialService,
+						user,
+						{ ...baseSession, parentExecution },
+					),
+				),
+			).rejects.toThrow('model unavailable');
+			streamSpy.mockRestore();
+		});
 	});
 });
 

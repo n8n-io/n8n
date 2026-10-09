@@ -125,6 +125,13 @@ describe('Agent thread repository queries for system agents', () => {
 			expect(await threadRepo.findOwnedById(agentId, ownerId, shared.id)).toBeNull();
 			expect(await threadRepo.findOwnedById(agentId, ownerId, 'missing')).toBeNull();
 		});
+
+		it('does not return a child session with the same agent and owner', async () => {
+			const parent = await createThread();
+			const child = await createThread({ parentThreadId: parent.id, parentAgentId: agentId });
+
+			expect(await threadRepo.findOwnedById(agentId, ownerId, child.id)).toBeNull();
+		});
 	});
 
 	describe('updateOwned', () => {

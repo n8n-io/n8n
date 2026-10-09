@@ -148,10 +148,12 @@ export class SystemAgentExecutionService {
 		const threadId = params.threadId ?? randomUUID();
 		const existing = await this.threadRepository.findOneBy({ id: threadId });
 		if (existing) {
+			// A child session (for example an Agent builder session) is not a top-level session.
 			if (
 				existing.agentId !== params.agentId ||
 				existing.accessScope !== 'user' ||
-				existing.ownerId !== params.user.id
+				existing.ownerId !== params.user.id ||
+				existing.parentThreadId !== null
 			) {
 				throw new NotFoundError('Session not found');
 			}
