@@ -10,7 +10,7 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
@@ -253,7 +253,7 @@ describe('EngineV2ManualRunPlanner', () => {
 						runData: fullRunData(TRIGGER, A),
 					}),
 				),
-			).toThrow(UserError);
+			).toThrow(/Cannot execute a disabled node/);
 		});
 	});
 
