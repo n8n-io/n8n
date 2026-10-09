@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { IRun } from 'n8n-workflow';
+import type { INode, IRun } from 'n8n-workflow';
 import { Expression } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -274,3 +274,44 @@ test('exitWithCrash logs the crash message to the console', async () => {
 test('execute needs the expression engine', () => {
 	expect(new Execute().needsExpressionEngine).toBe(true);
 });
+
+test.each([true, false])(
+	'starts from the selected trigger when pinned data is %s',
+	async (pinned) => {
+		const startingNode = mock<INode>({
+			name: 'Execute Workflow Trigger',
+			type: 'n8n-nodes-base.executeWorkflowTrigger',
+		});
+		const workflow = mock<WorkflowEntity>({
+			id: '123',
+			nodes: [
+				mock<INode>({ name: 'Manual Trigger', type: 'n8n-nodes-base.manualTrigger' }),
+				startingNode,
+			],
+			pinData: pinned ? { [startingNode.name]: [{ json: {} }] } : undefined,
+		});
+		workflowRepository.findOneBy.mockResolvedValue(workflow);
+		ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: 'owner-id' }));
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-id', name: 'Project' }),
+		);
+		workflowRunner.run.mockResolvedValue('execution-id');
+		activeExecutions.getPostExecutePromise.mockResolvedValue(
+			mock<IRun>({ data: { resultData: { error: undefined } } }),
+		);
+		workflowRunner.run.mockClear();
+
+		const cmd = new Execute();
+		// @ts-expect-error Protected property
+		cmd.flags = { id: workflow.id };
+
+		await cmd.run();
+
+		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith({
+			executionMode: 'cli',
+			triggerToStartFrom: { name: startingNode.name },
+			workflowData: workflow,
+			userId: 'owner-id',
+		});
+	},
+);
