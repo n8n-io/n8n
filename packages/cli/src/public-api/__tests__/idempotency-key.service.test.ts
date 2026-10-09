@@ -9,16 +9,18 @@ describe('IdempotencyKeyService', () => {
 	const idempotencyKeyRepository = mock<IdempotencyKeyRepository>();
 	const service = new IdempotencyKeyService(idempotencyKeyRepository);
 	const cutoff = new Date('2026-10-08T00:00:00.000Z');
+	let signal: AbortSignal;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		signal = new AbortController().signal;
 	});
 
 	describe('deleteOlderThan', () => {
 		it('deletes one batch when fewer rows than the batch size are old enough', async () => {
 			idempotencyKeyRepository.deleteOlderThan.mockResolvedValueOnce(10);
 
-			const deleted = await service.deleteOlderThan(cutoff);
+			const deleted = await service.deleteOlderThan(cutoff, signal);
 
 			expect(idempotencyKeyRepository.deleteOlderThan).toHaveBeenCalledTimes(1);
 			expect(idempotencyKeyRepository.deleteOlderThan).toHaveBeenCalledWith(cutoff, batchSize);
@@ -31,16 +33,29 @@ describe('IdempotencyKeyService', () => {
 				.mockResolvedValueOnce(batchSize)
 				.mockResolvedValueOnce(3);
 
-			const deleted = await service.deleteOlderThan(cutoff);
+			const deleted = await service.deleteOlderThan(cutoff, signal);
 
 			expect(idempotencyKeyRepository.deleteOlderThan).toHaveBeenCalledTimes(3);
 			expect(deleted).toBe(batchSize * 2 + 3);
 		});
 
+		it('stops after a full batch when the run is aborted', async () => {
+			const controller = new AbortController();
+			idempotencyKeyRepository.deleteOlderThan.mockImplementation(async () => {
+				controller.abort();
+				return batchSize;
+			});
+
+			const deleted = await service.deleteOlderThan(cutoff, controller.signal);
+
+			expect(idempotencyKeyRepository.deleteOlderThan).toHaveBeenCalledTimes(1);
+			expect(deleted).toBe(batchSize);
+		});
+
 		it('returns 0 when nothing is old enough', async () => {
 			idempotencyKeyRepository.deleteOlderThan.mockResolvedValueOnce(0);
 
-			const deleted = await service.deleteOlderThan(cutoff);
+			const deleted = await service.deleteOlderThan(cutoff, signal);
 
 			expect(deleted).toBe(0);
 		});

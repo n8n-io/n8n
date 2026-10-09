@@ -36,9 +36,9 @@ export class IdempotencyKeyCleanupTask implements SystemTask {
 		this.logger = this.logger.scoped('idempotency-key');
 	}
 
-	async run(): Promise<void> {
+	async run(signal: AbortSignal): Promise<void> {
 		const cutoff = new Date(Date.now() - idempotencyKeyTtlMs);
-		const deleted = await this.idempotencyKeyService.deleteOlderThan(cutoff);
+		const deleted = await this.idempotencyKeyService.deleteOlderThan(cutoff, signal);
 
 		if (deleted > 0) {
 			this.logger.debug('Cleaned up expired idempotency keys', { count: deleted });
