@@ -25,11 +25,17 @@ export type ModuleComponentSlot = 'project-filter' | 'workflow-diff';
 export type SlotProjectSelection = { id: string } | null;
 
 /** Plain snapshots keep the editor canvas types inside the shell. */
+export type SlotWorkflowDiffSnapshot = Pick<
+	WorkflowReviewVersionSnapshot,
+	'nodes' | 'connections'
+> &
+	Partial<Pick<WorkflowReviewVersionSnapshot, 'versionId' | 'createdAt' | 'nodeGroups'>>;
+
 export type SlotWorkflowDiffProps = {
 	workflowId: string;
 	workflowName: string;
-	sourceSnapshot?: WorkflowReviewVersionSnapshot;
-	targetSnapshot?: WorkflowReviewVersionSnapshot;
+	sourceSnapshot?: SlotWorkflowDiffSnapshot;
+	targetSnapshot?: SlotWorkflowDiffSnapshot;
 	sourceLabel?: string;
 	targetLabel?: string;
 	showFullscreenButton?: boolean;

@@ -1,14 +1,78 @@
-import type { Thread } from '@n8n/agents';
-import { BaseRepository, TransactionRunner, escapeLike, LIKE_ESCAPE_CLAUSE } from '@n8n/db';
+import type { AgentDbMessage, Thread } from '@n8n/agents';
+import {
+	BaseRepository,
+	Project,
+	TransactionRunner,
+	escapeLike,
+	LIKE_ESCAPE_CLAUSE,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, LessThan, Raw } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThan, Not, Raw } from '@n8n/typeorm';
 
+import { InstanceAiMessage } from '../entities/instance-ai-message.entity';
 import { InstanceAiThread } from '../entities/instance-ai-thread.entity';
 
 @Service()
 export class InstanceAiThreadRepository extends BaseRepository<InstanceAiThread> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(InstanceAiThread, dataSource.manager, transactionRunner);
+	}
+
+	async getPersonalProjectForChat(userId: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).findOneByOrFail(Project, {
+			type: 'personal',
+			creatorId: userId,
+		});
+	}
+
+	async findSelfHealingChat(resultId: string, userId: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).findOneBy(InstanceAiThread, {
+			selfHealingResultId: resultId,
+			resourceId: userId,
+		});
+	}
+
+	async findOwnedSelfHealingChat(threadId: string, userId: string) {
+		return await this.findOneBy({
+			id: threadId,
+			resourceId: userId,
+			selfHealingResultId: Not(IsNull()),
+		});
+	}
+
+	async createSelfHealingChat(
+		input: Pick<
+			InstanceAiThread,
+			'id' | 'resourceId' | 'projectId' | 'selfHealingResultId' | 'title' | 'metadata'
+		>,
+		openingMessage: AgentDbMessage & { type: 'llm'; role: 'user' },
+		ctx: OperationContext,
+	) {
+		const manager = this.managerFor(ctx);
+		const thread = await manager.save(manager.create(InstanceAiThread, input));
+		await manager.save(
+			manager.create(InstanceAiMessage, {
+				id: openingMessage.id,
+				threadId: thread.id,
+				resourceId: thread.resourceId,
+				role: 'user',
+				type: 'llm',
+				content: JSON.stringify(openingMessage),
+				createdAt: openingMessage.createdAt,
+				updatedAt: openingMessage.createdAt,
+			}),
+		);
+		return thread;
+	}
+
+	async hasUserTurnAfterOpening(threadId: string) {
+		const messages = await this.managerFor({}).find(InstanceAiMessage, {
+			where: { threadId, role: 'user' },
+			select: { id: true },
+			take: 2,
+		});
+		return messages.length > 1;
 	}
 
 	/** Apply decisions to the locked row so sibling mains cannot claim the same state. */

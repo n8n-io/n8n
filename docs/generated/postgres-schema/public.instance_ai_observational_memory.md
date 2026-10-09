@@ -117,6 +117,7 @@ erDiagram
   json metadata
   varchar_36_ projectId FK
   varchar_255_ resourceId
+  varchar_36_ selfHealingResultId FK
   text title
   timestamp_3__with_time_zone updatedAt
 }

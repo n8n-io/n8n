@@ -69,6 +69,11 @@ function isSelectedReview(id: string) {
 	return selected?.type === 'workflow_review' && selected.id === id;
 }
 
+function isSelectedResult(id: string) {
+	const selected = selectionFromRoute(router.currentRoute.value);
+	return selected?.type === 'self_healing_result' && selected.id === id;
+}
+
 // Reset on entry. A layout-swap copy can unmount after the next view has mounted.
 store.reset();
 store.activeTab = route.query.state === 'closed' ? 'closed' : 'open';
@@ -182,17 +187,21 @@ onBeforeUnmount(() => {
 				>
 					<InboxEmptyState />
 				</WorkflowReviewDetail>
+				<SelfHealingResultDetail
+					v-else-if="
+						selection?.type === 'self_healing_result' &&
+						!store.disabledSources.includes(selection.type)
+					"
+					:selection="selection"
+					:tab="detailTab"
+					:on-item-change="onItemChange"
+					:is-selected="isSelectedResult"
+					@update:tab="onDetailTabChange"
+				/>
 				<template v-else>
 					<div :class="$style.columnTitle" />
 					<div :class="$style.mainBody">
-						<SelfHealingResultDetail
-							v-if="
-								selection?.type === 'self_healing_result' &&
-								!store.disabledSources.includes(selection.type)
-							"
-							:selection="selection"
-						/>
-						<InboxEmptyState v-else />
+						<InboxEmptyState />
 					</div>
 				</template>
 			</div>

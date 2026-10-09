@@ -191,6 +191,7 @@ erDiagram
   json metadata
   varchar_36_ projectId FK
   varchar_255_ resourceId
+  varchar_36_ selfHealingResultId FK
   text title
   timestamp_3__with_time_zone updatedAt
 }
@@ -227,6 +228,10 @@ erDiagram
 "public.self_healing_result" {
   uuid backgroundUserId FK
   timestamp_3__with_time_zone completedAt
+  varchar_16_ continuationDestination
+  uuid continuationThreadId FK
+  timestamp_3__with_time_zone continuedAt
+  uuid continuedById FK
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone dismissedAt
   uuid dismissedById FK
