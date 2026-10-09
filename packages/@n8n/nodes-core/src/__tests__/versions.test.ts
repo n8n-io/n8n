@@ -16,8 +16,6 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { ACTION_ORDER } from '../catalog';
-
 const nodesCore = { name: '@n8n/nodes-core', dir: path.resolve(__dirname, '../..') };
 // The actions with a bundle, as the build finds them in the action files.
 const actions: Action[] = [];
@@ -56,14 +54,6 @@ async function headOf(id: string): Promise<PackedVersion> {
 		readSdk: async () => runtime?.toString('utf8') ?? '',
 	};
 }
-
-describe('catalog data', () => {
-	it('orders only contracts of the embedded store, each once', () => {
-		const ids = new Set(contractCatalogOf([nodesCore]).entries.map(({ manifest }) => manifest.id));
-		expect(ACTION_ORDER.filter((id) => !ids.has(id))).toEqual([]);
-		expect(new Set(ACTION_ORDER).size).toBe(ACTION_ORDER.length);
-	});
-});
 
 describe('bundled versions', () => {
 	it('give the catalog the bundle of each contract', () => {

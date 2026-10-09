@@ -20,6 +20,10 @@ export const notion = defineNode({
 		},
 	}),
 	baseUrl: 'https://api.notion.com/v1',
+	migrates: {
+		type: 'n8n-nodes-base.notion',
+		versions: { 4: { legacy: 3, slots: { 'databasePage.getAll': 1 } } },
+	},
 });
 
 const ID = '[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}';

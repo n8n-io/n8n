@@ -6,19 +6,17 @@ import {
 	contractCatalogOf,
 	contractNodeTypeOf,
 	embeddedCompatTypeOf,
+	migratedVersionsOf,
 	parentNodeOf,
 	type ContractCatalog,
 	type ParentNode,
 	type SourcePackage,
 } from '@n8n/node-sdk/registry';
-import { MIGRATED_NODES } from '@n8n/nodes-integrations/catalog';
 import { FIRST_PARTY_PACKAGES } from '@n8n/workflow-sdk/next';
 import { isRecord } from '@n8n/utils/is-record';
 import { once } from '@n8n/utils/once';
 import { VersionedNodeType, type IVersionedNodeType } from 'n8n-workflow';
 import path from 'path';
-
-export { MIGRATED_NODES };
 
 /**
  * The package of the stored versions and credential types that no first-party package ships,
@@ -78,26 +76,12 @@ export const sandboxCredentialTypeOf =
 	(name: string): AnyCredentialType | undefined =>
 		embeddedCompatTypeOf(firstPartyCatalog(), name) ?? (known(name) ? compat(name) : undefined);
 
-/** A slot of a migrated legacy node version: the action and the major that run it. */
-export interface MigratedSlot {
-	readonly id: string;
-	readonly major: number;
-	/** The `resource` parameter value of the slot. */
-	readonly resource: string;
-	/** The `operation` parameter value of the slot. */
-	readonly operation: string;
-}
+/** The legacy node versions where first-party contract actions run some slots. */
+export const migratedVersions = once(() => migratedVersionsOf(firstPartyCatalog()));
 
-/** The slots of a migrated node version, with the resource and operation of each action. */
-function migratedSlotsOf(nodeType: string, typeVersion: number): MigratedSlot[] {
-	const { entries } = firstPartyCatalog();
-	return (MIGRATED_NODES[nodeType]?.[typeVersion]?.slots ?? []).flatMap(({ action, major }) => {
-		const entry = entries.find(({ manifest }) => manifest.id === action);
-		return entry?.resource === undefined
-			? []
-			: [{ id: action, major, resource: entry.resource, operation: entry.operation }];
-	});
-}
+/** The migrated versions of a legacy node type. */
+export const migratedVersionsOfType = (nodeType: string) =>
+	migratedVersions().filter((version) => version.nodeType === nodeType);
 
 /** A workflow node, as saved or built. */
 export interface WorkflowNodeRef {
@@ -110,9 +94,9 @@ export interface WorkflowNodeRef {
 export function migratedSlotOf({ type, typeVersion, parameters }: WorkflowNodeRef) {
 	if (typeVersion === undefined) return undefined;
 	const { resource, operation } = isRecord(parameters) ? parameters : {};
-	return migratedSlotsOf(type, typeVersion).find(
-		(slot) => slot.resource === resource && slot.operation === operation,
-	);
+	return migratedVersionsOfType(type)
+		.find((version) => version.typeVersion === typeVersion)
+		?.slots.find((slot) => slot.resource === resource && slot.operation === operation);
 }
 
 /**
@@ -128,22 +112,19 @@ export function withMigratedVersions(
 	loadedVersionsOf: (actionId: string) => readonly PackedVersion[],
 	runtime: HostRuntime,
 ) {
-	const migrated = Object.entries(MIGRATED_NODES[nodeType] ?? {}).flatMap(
-		([version, { legacy: base, slots }]) => {
-			const known = migratedSlotsOf(nodeType, Number(version));
-			const loaded = known.map((slot) => ({ ...slot, versions: loadedVersionsOf(slot.id) }));
-			const hasMajors =
-				known.length === slots.length &&
-				loaded.every(({ major, versions }) =>
-					versions.some(({ manifest }) => manifest.contract.version === major),
-				);
+	const migrated = migratedVersionsOfType(nodeType).flatMap(
+		({ typeVersion, legacy: base, slots }) => {
+			const loaded = slots.map((slot) => ({ ...slot, versions: loadedVersionsOf(slot.id) }));
+			const hasMajors = loaded.every(({ major, versions }) =>
+				versions.some(({ manifest }) => manifest.contract.version === major),
+			);
 			if (!hasMajors) return [];
 			return [
 				[
-					Number(version),
+					typeVersion,
 					migrateVersion({
 						legacy: legacy.getNodeType(base),
-						version: Number(version),
+						version: typeVersion,
 						slots: loaded.map(({ resource, operation, major, versions }) => ({
 							resource,
 							operation,

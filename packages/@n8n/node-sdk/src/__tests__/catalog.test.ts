@@ -1,4 +1,4 @@
-import { embeddedCompatTypeOf } from '../catalog';
+import { embeddedCompatTypeOf, migratedVersionsOf, type CatalogEntry } from '../catalog';
 import { firstParty } from './first-party';
 
 describe('contractCatalogOf', () => {
@@ -45,5 +45,34 @@ describe('embeddedCompatTypeOf', () => {
 		});
 		expect(embeddedCompatTypeOf(firstParty, 'githubOAuth2Api')).toBeUndefined();
 		expect(embeddedCompatTypeOf(firstParty, 'unknownApi')).toBeUndefined();
+	});
+});
+
+describe('migratedVersionsOf', () => {
+	it('refuses two nodes that migrate one legacy node version', () => {
+		const notion = firstParty.entries.find(
+			({ manifest }) => manifest.id === 'notion.databasePage.getAll',
+		) as CatalogEntry;
+		const { manifest } = notion;
+		const copy = {
+			...notion,
+			manifest: {
+				...manifest,
+				id: 'acme.databasePage.getAll',
+				contract: { ...manifest.contract, node: 'acme' },
+			},
+		} as CatalogEntry;
+		const catalog = {
+			...firstParty,
+			entries: [...firstParty.entries, copy],
+			bundleOf: (id: string) => firstParty.bundleOf(id === copy.manifest.id ? manifest.id : id),
+		};
+
+		expect(migratedVersionsOf(firstParty).map(({ nodeType }) => nodeType)).toEqual([
+			'n8n-nodes-base.notion',
+		]);
+		expect(() => migratedVersionsOf(catalog)).toThrow(
+			'More than one node migrates n8n-nodes-base.notion@4',
+		);
 	});
 });

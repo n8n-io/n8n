@@ -5,8 +5,8 @@ import type { IExecuteFunctions, IHttpRequestOptions, INodeProperties } from 'n8
 import {
 	actionOfNode,
 	firstPartyCatalog,
-	MIGRATED_NODES,
 	migratedSlotOf,
+	migratedVersions,
 	withMigratedVersions,
 } from '../node-contracts-catalog';
 
@@ -147,14 +147,12 @@ describe('migrated nodes of the first-party catalog', () => {
 	});
 
 	it('run only actions with a bundled version of the slot major', () => {
-		const slots = Object.values(MIGRATED_NODES).flatMap((versions) =>
-			Object.values(versions).flatMap(({ slots: own }) => own),
-		);
+		const slots = migratedVersions().flatMap(({ slots: own }) => own);
 		const shipped = new Set(firstPartyCatalog().entries.map(({ manifest }) => manifest.id));
 		const missing = slots.filter(
-			({ action, major }) =>
-				!shipped.has(action) ||
-				!versionsOf(action).some(({ manifest }) => manifest.contract.version === major),
+			({ id, major }) =>
+				!shipped.has(id) ||
+				!versionsOf(id).some(({ manifest }) => manifest.contract.version === major),
 		);
 		expect(missing).toEqual([]);
 	});

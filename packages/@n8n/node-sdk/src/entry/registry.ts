@@ -35,6 +35,8 @@ export { npmNameOf, npmPackageOf, npmRegistryOf, npmStoreReader } from '../npm';
 export { checkCredentialType } from '../credentials';
 export {
 	parseCredentialManifest,
+	parseSdkManifest,
+	SDK_RUNTIME_ID,
 	type CredentialManifest,
 	type NativeManifest,
 } from '../manifest';
@@ -76,10 +78,13 @@ export {
 	contractCatalogOf,
 	contractNodeTypeOf,
 	embeddedCompatTypeOf,
+	migratedVersionsOf,
 	versionsOf,
 	type CatalogEntry,
 	type ContractCatalog,
 	type DigestedVersion,
+	type MigratedSlot,
+	type MigratedVersion,
 } from '../catalog';
 export {
 	admitVersions,

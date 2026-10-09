@@ -1560,7 +1560,7 @@ describe('nodes tool', () => {
 			});
 
 			expect(result.nodeModules?.map(({ node }) => node)).toEqual(['slack']);
-			expect(result.nodeModules?.[0]?.module).toContain('sendTool: <In, Ctx>(');
+			expect(result.nodeModules?.[0]?.module).toContain('createTool: <In, Ctx>(');
 			expect(JSON.stringify(result)).not.toContain('n8n-nodes-base.slackTool');
 		});
 

@@ -89,7 +89,7 @@ describe('next workflow build', () => {
 		const ai = `import { ai } from '@n8n/nodes/ai';
 import { openAi } from '@n8n/nodes/openAi';
 import { googleGemini } from '@n8n/nodes/googleGemini';`;
-		expect(catalogProvidersOf(ai)).toEqual(['openai', 'google']);
+		expect(catalogProvidersOf(ai)).toEqual(['google', 'openai']);
 		expect(catalogProvidersOf(source)).toEqual([]);
 		const file = await modelCatalogFile(ai, async (provider) =>
 			provider === 'openai' ? ['gpt-5', 'gpt-5-mini'] : undefined,
@@ -414,7 +414,7 @@ export default workflow('Ranged', manual(),
 				nodeName: 'Fetch',
 				severity: 'informational',
 				message: expect.stringContaining(
-					'has httpRequest.get, httpRequest.send, httpRequest.download',
+					'has httpRequest.download, httpRequest.get, httpRequest.send',
 				),
 			}),
 			expect.objectContaining({

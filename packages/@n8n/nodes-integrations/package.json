@@ -4,10 +4,6 @@
   "private": true,
   "description": "n8n integration nodes defined as node contracts",
   "exports": {
-    "./catalog": {
-      "types": "./dist/catalog.d.ts",
-      "default": "./dist/catalog.js"
-    },
     "./package.json": "./package.json"
   },
   "files": [

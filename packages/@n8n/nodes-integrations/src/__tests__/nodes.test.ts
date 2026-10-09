@@ -6,6 +6,7 @@ import {
 	checkCredentialType,
 	contractCatalogOf,
 	contractNodeTypeOf,
+	migratedVersionsOf,
 } from '@n8n/node-sdk/registry';
 import { mockHttp, runAction } from '@n8n/node-sdk/testing';
 import type { IExecuteFunctions } from 'n8n-workflow';
@@ -13,7 +14,6 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { dateTime, getRequest, passItems, sendRequest } from '@n8n/nodes-core';
 import { simplifyObjects } from 'n8n-nodes-base/dist/nodes/Notion/shared/GenericFunctions';
 
-import { ACTION_ORDER, MIGRATED_NODES } from '../catalog';
 import { getManyDatabasePages } from '../nodes/notion/actions/database-page.get-all';
 import { FIRST_PARTY_PACKAGES, nodesIntegrations, sourceOf, versionsOf } from './first-party';
 
@@ -103,15 +103,22 @@ describe('first-party packages', () => {
 		);
 	});
 
-	it('name only contracts of the embedded store in the catalog data', () => {
-		const { entries } = contractCatalogOf([nodesIntegrations]);
-		const ids = new Set(entries.map(({ manifest }) => manifest.id));
-		expect(ACTION_ORDER.filter((id) => !ids.has(id))).toEqual([]);
-		expect(new Set(ACTION_ORDER).size).toBe(ACTION_ORDER.length);
-		const slots = Object.values(MIGRATED_NODES).flatMap((versions) =>
-			Object.values(versions).flatMap(({ slots: own }) => own),
-		);
-		expect(slots.filter(({ action }) => !ids.has(action))).toEqual([]);
+	it('read the migrated legacy node versions from the embedded bundles', () => {
+		expect(migratedVersionsOf(contractCatalogOf([nodesIntegrations]))).toEqual([
+			{
+				nodeType: 'n8n-nodes-base.notion',
+				typeVersion: 4,
+				legacy: 3,
+				slots: [
+					{
+						id: 'notion.databasePage.getAll',
+						major: 1,
+						resource: 'databasePage',
+						operation: 'getAll',
+					},
+				],
+			},
+		]);
 	});
 
 	it('bundle the versions of each package as first-party', () => {

@@ -251,7 +251,7 @@ describe('next-modules', () => {
 	it('inlines only nodes the query names and keeps other matches to one line', () => {
 		expect(searchNextActions('http request')).toEqual({
 			nodes: ['httpRequest'],
-			actions: ['httpRequest.get', 'httpRequest.send', 'httpRequest.download'],
+			actions: ['httpRequest.download', 'httpRequest.get', 'httpRequest.send'],
 			otherActions: [],
 			coversQuery: true,
 		});
@@ -305,7 +305,7 @@ describe('next-modules', () => {
 			'google sheets append row',
 			['googleSheets.sheet.append', 'googleSheets.sheet.appendOrUpdate'],
 		],
-		['gmail', ['gmail.message.send', 'gmail.message.getAll', 'gmail.message.get']],
+		['gmail', ['gmail.message.get', 'gmail.message.getAll', 'gmail.message.send']],
 	])('names the actions of %s that the query singles out', (query, ids) => {
 		expect(searchNextActions(query).actions).toEqual(ids);
 	});
@@ -428,6 +428,18 @@ describe('next-modules of the first-party packages', () => {
 			nodeId: 'noOp',
 			actions: [{ id: 'noOp.pass' }],
 		});
+	});
+
+	it('orders the catalog by node, then resource, then operation', () => {
+		const { entries } = firstPartyCatalog();
+		const nodes = entries.map(({ manifest }) => manifest.contract.node);
+		expect(nodes).toEqual([...nodes].sort((a, b) => a.localeCompare(b)));
+		const notion = entries.filter(({ manifest }) => manifest.contract.node === 'notion');
+		expect(notion.map(({ manifest }) => manifest.id)).toEqual([
+			'notion.databasePage.getAll',
+			'notion.dataSource.pageAdded',
+			'notion.user.get',
+		]);
 	});
 
 	it('lists the node of each action and trigger of each first-party package', () => {

@@ -39,6 +39,15 @@ import { firstGroupOf, firstMatchOf } from './pattern';
 import { exampleOf, outputBinaryKeys, readAs } from './validate';
 import { validate } from './validator';
 
+/** See `NodeDefinition.migrates`. */
+export interface NodeMigration {
+	/** The full legacy node type, e.g. `n8n-nodes-base.notion`. */
+	readonly type: string;
+	readonly versions: Readonly<
+		Record<number, { readonly legacy: number; readonly slots: Readonly<Record<string, number>> }>
+	>;
+}
+
 /**
  * The integration identity: name, credential, and base URL shared by its actions.
  *
@@ -70,6 +79,21 @@ export interface NodeDefinition {
 	 * legacy node with operations this node lacks must not be in the list.
 	 */
 	readonly replaces?: readonly string[];
+	/**
+	 * Versions of a legacy node where actions of this node run some resource/operation slots, and
+	 * the `legacy` version runs the rest. A user sees one node. A slot names an action of this node
+	 * without the node id, and gives the action major that runs it. Saved workflows hold the node
+	 * version, so a version never changes: a new slot or a new major needs a new version.
+	 *
+	 * @example
+	 * ```ts
+	 * migrates: {
+	 * 	type: 'n8n-nodes-base.notion',
+	 * 	versions: { 4: { legacy: 3, slots: { 'databasePage.getAll': 1 } } },
+	 * },
+	 * ```
+	 */
+	readonly migrates?: NodeMigration;
 	/**
 	 * The error message in the JSON body of a successful response, or no message when the body
 	 * has no error. It runs for every request of the node's actions and triggers, so a service

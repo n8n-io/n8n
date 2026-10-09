@@ -471,13 +471,17 @@ function actionsNamedBy(nodeId: string, terms: readonly string[]): Action[] {
 	return best ? scored.filter(({ score }) => score === best).map(({ action }) => action) : own;
 }
 
+// A service without a node goes through the HTTP Request node, so its actions win a tie.
+const httpFirst = (a: Action, b: Action) =>
+	Number(b.node.id === 'httpRequest') - Number(a.node.id === 'httpRequest');
+
 /** Actions that share words with the query. Node words weigh more than action words. */
 export function findNextActions(query: string): Action[] {
 	const terms = termsOf(query);
 	return offeredActions()
 		.map((action) => ({ action, score: scoreOf(action, terms) }))
 		.filter(({ score }) => score > 0)
-		.sort((a, b) => b.score - a.score)
+		.sort((a, b) => b.score - a.score || httpFirst(a.action, b.action))
 		.map(({ action }) => action);
 }
 
@@ -605,7 +609,7 @@ export function nearestNextActions(id: string, limit = 3): Action[] {
 		(action.node.id === node ? 2 : 0) + (operation && action.id.endsWith(`.${operation}`) ? 1 : 0);
 	return offeredActions()
 		.filter((action) => score(action) > 0)
-		.sort((a, b) => score(b) - score(a))
+		.sort((a, b) => score(b) - score(a) || httpFirst(a, b))
 		.slice(0, limit);
 }
 

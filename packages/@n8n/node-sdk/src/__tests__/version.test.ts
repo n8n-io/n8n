@@ -1278,4 +1278,24 @@ export const pass = demo.action('pass', {
 			await rm(dir, { recursive: true, force: true });
 		}
 	});
+
+	it('refuses a migrated slot that names no action of a resource of its node', async () => {
+		const dir = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
+		try {
+			const actionsDir = path.join(dir, 'src', 'nodes', 'demo', 'actions');
+			await mkdir(actionsDir, { recursive: true });
+			const migrates =
+				"migrates: { type: 'n8n-nodes-base.demo', versions: { 2: { legacy: 1, slots: { pass: 1, copy: 1 } } } }";
+			await writeFile(
+				path.join(actionsDir, 'pass.ts'),
+				pass.replace("displayName: 'Demo' ", `displayName: 'Demo', ${migrates} `),
+			);
+
+			await expect(packPackage({ name: '@acme/nodes', dir })).rejects.toThrow(
+				'These migrated slots of @acme/nodes name no action of a resource of their node: demo.pass, demo.copy.',
+			);
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	});
 });

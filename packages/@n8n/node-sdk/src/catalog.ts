@@ -211,6 +211,54 @@ export function contractCatalogOf(packages: readonly SourcePackage[]): ContractC
 	};
 }
 
+/** A resource/operation slot of a legacy node version and the action major that runs it. */
+export interface MigratedSlot {
+	readonly id: string;
+	readonly major: number;
+	readonly resource: string;
+	readonly operation: string;
+}
+
+/** A legacy node version where contract actions run some slots, see `NodeDefinition.migrates`. */
+export interface MigratedVersion {
+	/** The full legacy node type, e.g. `n8n-nodes-base.notion`. */
+	readonly nodeType: string;
+	readonly typeVersion: number;
+	/** The legacy version that runs every other slot. */
+	readonly legacy: number;
+	readonly slots: readonly MigratedSlot[];
+}
+
+/**
+ * The migrated legacy node versions that the nodes of the catalog declare. `migrates` is a node
+ * field, so one embedded bundle of each node gives it. A native contract has no bundle.
+ */
+export function migratedVersionsOf({ entries, bundleOf }: ContractCatalog): MigratedVersion[] {
+	const nodes = [...new Set(entries.map(({ manifest }) => manifest.contract.node))];
+	const versions = nodes.flatMap((node): MigratedVersion[] => {
+		const entry = entries.find(
+			({ manifest }) => manifest.contract.node === node && 'bundleHash' in manifest,
+		);
+		const migrates = entry && bundleOf(entry.manifest.id)?.node.migrates;
+		if (!migrates) return [];
+		return Object.entries(migrates.versions).flatMap(([version, { legacy, slots }]) => {
+			const resolved = Object.entries(slots).map(([slot, major]) => {
+				const id = `${node}.${slot}`;
+				return { id, major, ...pathOf(id, node) };
+			});
+			// Pack refuses a slot without a resource; a legacy router reads `resource`.
+			if (!resolved.every((slot): slot is MigratedSlot => slot.resource !== undefined)) return [];
+			return [{ nodeType: migrates.type, typeVersion: Number(version), legacy, slots: resolved }];
+		});
+	});
+	const keys = versions.map(({ nodeType, typeVersion }) => `${nodeType}@${typeVersion}`);
+	const repeated = keys.filter((key, index) => keys.indexOf(key) !== index);
+	if (repeated.length > 0) {
+		throw new UnexpectedError(`More than one node migrates ${[...new Set(repeated)].join(', ')}`);
+	}
+	return versions;
+}
+
 /**
  * The compat credential type of a name, as the embedded bundle of the first contract that lists
  * the name defines it, e.g. with the base URL of the node. A compat type has no credential

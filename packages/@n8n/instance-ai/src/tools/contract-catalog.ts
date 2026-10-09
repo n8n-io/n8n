@@ -4,15 +4,11 @@ import {
 	contractCatalogOf,
 	contractNodeTypeOf,
 	embeddedStoreDirOf,
+	migratedVersionsOf,
 	type CatalogEntry,
 	type ContractCatalog,
 	type CredentialManifest,
 } from '@n8n/node-sdk/registry';
-import { ACTION_ORDER as CORE_ORDER } from '@n8n/nodes-core/catalog';
-import {
-	ACTION_ORDER as INTEGRATIONS_ORDER,
-	MIGRATED_NODES,
-} from '@n8n/nodes-integrations/catalog';
 import { FIRST_PARTY_PACKAGES } from '@n8n/workflow-sdk/next';
 import { isRecord } from '@n8n/utils/is-record';
 import { once } from '@n8n/utils/once';
@@ -21,23 +17,14 @@ import path from 'node:path';
 // The host types a stored id that no first-party package ships with this package name.
 const FALLBACK_PACKAGE = '@n8n/nodes-integrations';
 
-/** The position of each listed contract, as each package orders its contracts. */
-const ORDER = new Map([...CORE_ORDER, ...INTEGRATIONS_ORDER].map((id, index) => [id, index]));
-
-/**
- * The entries in the order of the packages, then in the order that each package lists. An
- * unlisted entry comes after the listed ones of its package, in id order.
- */
-const orderedEntries = ({ packages, entries }: ContractCatalog) => {
-	const packageIndex = new Map(packages.map(({ name }, index) => [name, index]));
-	const rankOf = ({ package: name, manifest }: CatalogEntry) =>
-		[packageIndex.get(name) ?? packages.length, ORDER.get(manifest.id) ?? ORDER.size] as const;
-	return [...entries].sort((a, b) => {
-		const [packageA, orderA] = rankOf(a);
-		const [packageB, orderB] = rankOf(b);
-		return packageA - packageB || orderA - orderB;
-	});
-};
+/** The entries by node, then resource, then operation; an action without a resource first. */
+const orderedEntries = ({ entries }: ContractCatalog) =>
+	[...entries].sort(
+		(a, b) =>
+			a.manifest.contract.node.localeCompare(b.manifest.contract.node) ||
+			(a.resource ?? '').localeCompare(b.resource ?? '') ||
+			a.operation.localeCompare(b.operation),
+	);
 
 /**
  * The contracts of the embedded stores of the first-party packages, from their manifests. The
@@ -114,24 +101,8 @@ export interface WorkflowNodeRef {
 
 /** The slots of the migrated node versions, with the resource and operation of each action. */
 const migratedSlots = once(() =>
-	Object.entries(MIGRATED_NODES).flatMap(([nodeType, versions]) =>
-		Object.entries(versions).flatMap(([version, { slots }]) =>
-			slots.flatMap(({ action, major }) => {
-				const entry = entryOf(action);
-				return entry?.resource === undefined
-					? []
-					: [
-							{
-								nodeType,
-								typeVersion: Number(version),
-								id: action,
-								major,
-								resource: entry.resource,
-								operation: entry.operation,
-							},
-						];
-			}),
-		),
+	migratedVersionsOf(firstPartyCatalog()).flatMap(({ nodeType, typeVersion, slots }) =>
+		slots.map((slot) => ({ nodeType, typeVersion, ...slot })),
 	),
 );
 

@@ -50,7 +50,7 @@ flowchart BT
 | Package | Has | Read first |
 |---|---|---|
 | `@n8n/node-sdk` | `defineNode` and `t` for authors; the spec (`spec/`); the host side that makes n8n node types from packed versions (`toVersionedNodeType`); pack, publish, npm and the store format; the instance store (origin, admission, range locks, import, export) and the version loader; the guest runtimes and the sandbox | `src/runtime.ts`, `src/contract-registry.ts`, `src/npm.ts`, `src/sandbox.ts`, `src/runtime-policy.ts` |
-| `@n8n/nodes-integrations` | Integration nodes, one vendor each (`src/nodes/<service>/actions/*.ts`), and the migrated legacy nodes (`MIGRATED_NODES`) | `src/catalog.ts` |
+| `@n8n/nodes-integrations` | Integration nodes, one vendor each (`src/nodes/<service>/actions/*.ts`). A node can migrate a legacy node (`migrates`) | `src/nodes/notion/notion.node.ts` |
 | `@n8n/nodes-core` | Core nodes: flow control, item transforms, host features (wait, webhook, form, schedule, data tables, code), HTTP Request and the AI roots. The engine and the flow SDK may name them by type | `src/index.ts` |
 | `@n8n/node-contract-compat` | Derives manifests and typed modules from legacy node descriptions; composes a legacy node version where contract actions run some operations | `src/derive/`, `src/migrate/` |
 | `@n8n/workflow-sdk` (`/next`) | The typed workflow code that the AI builder writes, and get-as-code (`decompile.ts`). `@n8n/node-sdk/codegen` makes the module text of each node for it | `src/next/flow.ts`, `src/next/decompile.ts` |
@@ -58,7 +58,7 @@ flowchart BT
 | `cli` | Loads the node types, locks the range of each contract node at save, keeps the store in the database, makes the runtimes, syncs from the registry, and has the `contracts:*` commands and the versions endpoint of the editor | `src/load-nodes-and-credentials.ts`, `src/node-contracts-*.ts`, `src/commands/contracts/` |
 | `@n8n/config`, `@n8n/db` | The settings (`instance-ai.config.ts`, `nodes.config.ts`) and the tables `node_contract_version` and `node_contract_status` | — |
 
-The node packages hold node code and plain catalog data only (`src/catalog.ts`). The host code is
+The node packages hold node code only. The host code is
 generic and lives in `@n8n/node-sdk`: the store, the version loader and the catalog of the
 embedded stores (`src/contract-registry.ts`, `src/catalog.ts`). `cli` gives it the database rows,
 the keys, the runtimes and the logger in one `HostRuntime` (`hostRuntime`, `src/runtime.ts`). So
@@ -78,8 +78,9 @@ the same logic runs in tests and scripts without n8n.
 
 The engine sees both as `INodeType` in one registry (`LoadNodesAndCredentials`). Bridges:
 
-- **Composed versions.** `MIGRATED_NODES` (`nodes-integrations/src/catalog.ts`) adds a new
-  version of a legacy node, for example Notion v4. A contract action runs some operations, and
+- **Composed versions.** `defineNode({ migrates })` adds a new version of a legacy node, for
+  example Notion v4 in `notion.node.ts`. The host reads the field from an embedded bundle of the
+  node (`migratedVersionsOf`). A contract action runs some operations, and
   the legacy version runs the rest (`migrateVersion` of compat). A user sees one Notion node.
 - **Hidden single types.** The nodes panel hides the type of each single action
   (`composeContractNodes`). The AI builder and saved workflows still use them.
