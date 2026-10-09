@@ -1,5 +1,6 @@
 export { TypeAvailabilityPoliciesModule } from './type-availability-policies.module';
 export { useTypeAvailabilityPoliciesStore } from './type-availability-policies.store';
+export { SCOPE_LABEL_KEY } from './type-availability-policies.constants';
 export {
 	describeNodeTypeRestriction,
 	getNodeTypeRestriction,

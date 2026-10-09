@@ -1401,6 +1401,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
+			agent_count: counts.agents,
 			workflow_count: counts.workflows,
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
@@ -1415,6 +1416,7 @@ export class TelemetryEventRelay extends EventRelay {
 	private packageExportFailed({
 		user,
 		reason,
+		agentIds,
 		workflowIds,
 		folderIds,
 		projectIds,
@@ -1422,6 +1424,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User package export failed', {
 			user_id: user.id,
 			reason,
+			agent_count: agentIds?.length ?? 0,
 			workflow_count: workflowIds?.length ?? 0,
 			folder_count: folderIds?.length ?? 0,
 			project_count: projectIds?.length ?? 0,
@@ -1815,6 +1818,7 @@ export class TelemetryEventRelay extends EventRelay {
 					this.globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
 			},
 			n8n_deployment_type: this.globalConfig.deployment.type,
+			n8n_deployment_artifact: this.globalConfig.deployment.artifact || undefined,
 			n8n_binary_data_mode: this.binaryDataConfig.mode,
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
@@ -1891,6 +1895,7 @@ export class TelemetryEventRelay extends EventRelay {
 			release_channel: this.globalConfig.generic.releaseChannel,
 			executions_mode: this.globalConfig.executions.mode,
 			n8n_deployment_type: this.globalConfig.deployment.type,
+			n8n_deployment_artifact: this.globalConfig.deployment.artifact || undefined,
 			db_type: this.globalConfig.database.type,
 			db_version: dbVersion,
 
