@@ -67,6 +67,7 @@ import { jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { makeBuilderTemplatesTarGz } from '../../knowledge-base/__tests__/builder-templates-archive.fixtures';
+import { buildKnowledgeBaseWorkspaceBundle } from '../../knowledge-base/materialize-knowledge-base';
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { SandboxWorkspace } from '../sandbox-fs';
@@ -400,6 +401,55 @@ describe('setupSandboxWorkspace', () => {
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
 		expect(writtenPaths).not.toContain('/sandbox/workflow-diagnostics.mts');
 		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
+	});
+
+	it('reads only the knowledge base manifest when the sandbox trusts prebaked bundles', async () => {
+		const runInSandbox: RunInSandboxMock =
+			vi.fn<
+				(
+					...args: [SandboxWorkspace, string, string?]
+				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+			>();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock =
+			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+			runInSandbox,
+			readFileViaSandbox,
+		);
+		const context = createSetupContext();
+		const knowledgeBase = await buildKnowledgeBaseWorkspaceBundle({
+			root: '/sandbox',
+			logger: context.logger,
+		});
+		const files = new Map(knowledgeBase.files);
+		files.set('/sandbox/.sandbox-initialized', '2024-01-01T00:00:00.000Z');
+		const writeFile = vi.fn<
+			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
+		>(async () => await Promise.resolve());
+		const readFile = vi.fn(async (path: string) => {
+			const content = files.get(path);
+			if (content === undefined) return await Promise.reject(new Error(`ENOENT: ${path}`));
+			return await Promise.resolve(content);
+		});
+		const bundleState = { trustManifest: true, verifiedBundles: new Map<string, string>() };
+
+		const initialized = await setupSandboxWorkspace(
+			createLocalWorkspace(writeFile, undefined, readFile),
+			context,
+			{ bundleState },
+		);
+
+		expect(initialized).toBe(false);
+		expect(readFile.mock.calls.map(([path]) => path)).toEqual([
+			'/sandbox/.sandbox-initialized',
+			knowledgeBase.manifestPath,
+		]);
+		expect(writeFile).not.toHaveBeenCalled();
+		expect(bundleState.verifiedBundles.get(knowledgeBase.manifestPath)).toBe(
+			knowledgeBase.contentHash,
+		);
 	});
 
 	it('materializes knowledge-base templates on the local provider when a bundle is available', async () => {

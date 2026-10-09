@@ -128,6 +128,14 @@ and installed dependencies. The node-type catalog is written after sandbox
 creation because it is instance-specific and too large for the Daytona image
 request.
 
+The knowledge base and runtime skills each have a manifest with a content
+hash. Setup compares the manifest hash with the expected hash. When the
+hashes do not match, setup writes the bundle again and writes the manifest
+last. A sandbox from a published snapshot trusts a matching manifest and
+reads no other bundle file. Other sandboxes read each bundle file one time
+to confirm that it exists. Each cached sandbox entry keeps the result, so
+later runs do not check the bundle again.
+
 When `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` is enabled for local development,
 Instance AI packs and installs the local `@n8n/utils`, `@n8n/errors`,
 `n8n-workflow`, and `@n8n/workflow-sdk` packages. Build those packages before

@@ -57,6 +57,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		createDomainAccessTracker: vi.fn(),
 		emitAgentSnapshotTraceEvent: vi.fn(async () => await Promise.resolve('emitted')),
 		createSandbox: vi.fn(),
+		createsSandboxFromSnapshot: vi.fn(() => false),
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(
 			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
@@ -1174,6 +1175,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
+
+		// Runtime skills and workspace setup share the bundle state of the sandbox.
+		const { resolveBundleState } = (createLazyWorkspaceRuntimeSkillSource as Mock).mock
+			.calls[0]?.[0] as { resolveBundleState: () => Promise<unknown> };
+		const bundleState = await resolveBundleState();
+		expect(bundleState).toEqual({ trustManifest: false, verifiedBundles: new Map() });
+		expect(setupSandboxWorkspace).toHaveBeenCalledWith(workspace, expect.anything(), {
+			bundleState,
+		});
 
 		(createLazyRuntimeWorkspace as Mock).mockClear();
 		(createLazyWorkspaceRuntimeSkillSource as Mock).mockClear();

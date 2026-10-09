@@ -14,6 +14,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		},
 		createDomainAccessTracker: vi.fn(),
 		createSandbox: vi.fn(),
+		createsSandboxFromSnapshot: vi.fn(() => false),
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),

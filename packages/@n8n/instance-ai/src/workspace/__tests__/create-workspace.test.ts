@@ -37,6 +37,7 @@ import {
 	type SandboxConfig,
 	type InstanceAiCreateSandboxOptions,
 	createSandbox,
+	createsSandboxFromSnapshot,
 	createWorkspace,
 } from '../create-workspace';
 
@@ -363,6 +364,43 @@ describe('createSandbox', () => {
 				errorReporter: undefined,
 			},
 		);
+	});
+});
+
+describe('createsSandboxFromSnapshot', () => {
+	const proxyConfig: SandboxConfig = {
+		enabled: true,
+		provider: 'daytona',
+		daytonaApiUrl: 'https://proxy.example.com',
+		getAuthToken: async () => await Promise.resolve('jwt-token'),
+	};
+
+	it('returns true for proxied Daytona sandboxes with snapshot fallback', () => {
+		expect(createsSandboxFromSnapshot(proxyConfig, { useSnapshotFallback: true })).toBe(true);
+	});
+
+	it('returns false for direct Daytona sandboxes, which build the image', () => {
+		const directConfig: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiKey: 'daytona-key',
+		};
+
+		expect(createsSandboxFromSnapshot(directConfig, { useSnapshotFallback: true })).toBe(false);
+	});
+
+	it('returns false without snapshot fallback', () => {
+		expect(createsSandboxFromSnapshot(proxyConfig)).toBe(false);
+	});
+
+	it('returns false for the n8n sandbox provider', () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'n8n-sandbox',
+			serviceUrl: 'https://sandbox.example.com',
+		};
+
+		expect(createsSandboxFromSnapshot(config, { useSnapshotFallback: true })).toBe(false);
 	});
 });
 

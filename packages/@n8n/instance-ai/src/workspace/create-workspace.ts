@@ -70,6 +70,23 @@ function toSharedSandboxConfig(config: InstanceAiSandboxConfig): SharedSandboxCo
 }
 
 /**
+ * Whether `createSandbox` creates this sandbox from a published snapshot.
+ * Only the sandbox proxy mode does this. Direct Daytona mode builds the
+ * declarative image instead.
+ */
+export function createsSandboxFromSnapshot(
+	config: InstanceAiSandboxConfig,
+	options: InstanceAiCreateSandboxOptions = {},
+): boolean {
+	return (
+		config.enabled &&
+		config.provider === 'daytona' &&
+		options.useSnapshotFallback === true &&
+		config.getAuthToken !== undefined
+	);
+}
+
+/**
  * Create a sandbox instance based on config.
  * Returns undefined when sandbox is disabled.
  *
@@ -96,7 +113,7 @@ export async function createSandbox(
 		config.n8nVersion,
 	);
 
-	const isProxyMode = config.getAuthToken !== undefined;
+	const isProxyMode = createsSandboxFromSnapshot(config, options);
 	// An explicit snapshot name (e.g. from N8N_INSTANCE_AI_SANDBOX_SNAPSHOT) overrides the
 	// version-derived default.
 	const snapshot = isProxyMode
