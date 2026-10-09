@@ -81,9 +81,10 @@ so response stubs only need to be valid enough for the real adapter to proceed.
   before trusting a declared type, so `StubResponse` supports an optional `rawResponseBody` (raw
   bytes, no `JSON.stringify`) alongside the normal JSON `responseBody` — see
   `WHATSAPP_MEDIA_CONTENT` in whatsapp's `replay-test-context` for genuine minimal file content per
-  media kind. Attachments also need `createReplayContextSetup`'s `attachmentService` wired in (it
-  defaults to a mock that echoes back a plausible stored record) — without it, `AgentChatBridge`'s
-  attachment pipeline silently no-ops for every platform, not just WhatsApp.
+  media kind. Attachments also need an `attachmentService` passed to `createReplayContextSetup`
+  (opt-in; `createMockAttachmentService()` echoes back a plausible stored record) — without it,
+  `AgentChatBridge`'s attachment pipeline silently no-ops for every platform, not just WhatsApp.
+  It is not the default because other platforms' replay tests do not stub their file downloads.
 
 #### Teams setup, outside the adapter
 
