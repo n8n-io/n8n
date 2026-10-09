@@ -11,7 +11,7 @@ const requirement = (id: string, usedByWorkflows: string[]): PackageCredentialRe
 	id,
 	name: id,
 	type: 'githubApi',
-	usedByWorkflows,
+	usedBy: usedByWorkflows.map((workflowId) => ({ kind: 'workflow', id: workflowId })),
 });
 
 const prepared = (sourceWorkflowId: string): PreparedWorkflow =>
@@ -27,7 +27,6 @@ describe('identifyRequirements', () => {
 
 		const scoped = identifyRequirements(requirements, [prepared('W1')]);
 
-		// credA stays (W1 is in scope) but with W2 trimmed off; credB drops entirely (W3 is out of scope).
 		expect(scoped).toEqual([requirement('credA', ['W1'])]);
 	});
 });

@@ -1,3 +1,8 @@
+import {
+	applyPackageResultSchema,
+	type ApplyPackageResultDto,
+	type ContinueApplyPackageDto,
+} from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
@@ -27,7 +32,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Cipher, InstanceSettings } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, type INode } from 'n8n-workflow';
 import assert from 'node:assert';
 import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -443,6 +448,51 @@ async function setupProjectWithWorkflows(projectName: string, workflowNames: str
 		workflows.push(await createWorkflow({ name, nodes: [], connections: {} }, project));
 	}
 	return { project, workflows };
+}
+
+function dataTableNode(table: { id: string; name: string }): INode {
+	return {
+		id: `node-${table.id}`,
+		name: table.name,
+		type: 'n8n-nodes-base.dataTable',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: { dataTableId: { __rl: true, mode: 'id', value: table.id } },
+	};
+}
+
+/** Promotes a team project whose `Process order` workflow uses the `Orders` and `Customers` tables. */
+async function promoteDataTableWorkflows() {
+	const remote = await createRemote();
+	const connection = await createInstanceConnection(remote.bareDir);
+	await service.clone(connection.id, 'promote');
+	await service.clone(connection.id, 'apply');
+	const project = await createTeamProject('Sales', owner);
+	const dataTableService = Container.get(DataTableService);
+	const orders = await dataTableService.createDataTable(project.id, {
+		name: 'Orders',
+		columns: [
+			{ name: 'email', type: 'string' },
+			{ name: 'note', type: 'string' },
+		],
+	});
+	const customers = await dataTableService.createDataTable(project.id, {
+		name: 'Customers',
+		columns: [{ name: 'email', type: 'string' }],
+	});
+	const workflow = await createWorkflow(
+		{ name: 'Process order', nodes: [orders, customers].map(dataTableNode), connections: {} },
+		project,
+	);
+	const plainWorkflow = await createWorkflow(
+		{ name: 'Send report', nodes: [], connections: {} },
+		project,
+	);
+	await service.promote(connection.id, owner, {
+		canExportVariableValues: true,
+		commitMessage: 'Export sales',
+	});
+	return { connection, project, workflow, plainWorkflow, orders, customers, dataTableService };
 }
 
 async function writeRemoteFile(remote: TestRemote, relativePath: string, content: string) {
@@ -1397,6 +1447,28 @@ describe('Apply a project selection', () => {
 		).toMatchObject({ value: 'target value' });
 	});
 
+	it('applies a selection when only an unselected workflow uses a data table whose change removes column values', async () => {
+		const { project, plainWorkflow, orders, dataTableService } = await promoteDataTableWorkflows();
+		await dataTableService.addColumn(orders.id, project.id, { name: 'extra', type: 'string' });
+		const columnsBefore = await dataTableService.getColumns(orders.id, project.id);
+
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [plainWorkflow.id],
+		});
+
+		expect(result.status).toBe('applied');
+		expect(await dataTableService.getColumns(orders.id, project.id)).toEqual(columnsBefore);
+
+		const confirmed = await service.continueApplyProjectSelection(project.id, owner, {
+			workflowIds: [plainWorkflow.id],
+			expectedSource: { configId: result.configId, ...result.git },
+			confirmDestructiveChanges: true,
+		});
+
+		expect(confirmed.status).toBe('applied');
+		expect(await dataTableService.getColumns(orders.id, project.id)).toEqual(columnsBefore);
+	});
+
 	it('returns source-changed for a stale commit without importing workflows', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
@@ -1606,6 +1678,161 @@ describe('Apply a project selection over the public API', () => {
 		expect(response.status, JSON.stringify(response.body)).toBe(409);
 		expect(await snapshotApplyState()).toEqual(before);
 	});
+});
+
+describe('Apply data table changes', () => {
+	const applyFlow = async (
+		flow: 'full' | 'selection',
+		{ connection, project, workflow }: Awaited<ReturnType<typeof promoteDataTableWorkflows>>,
+	) =>
+		flow === 'full'
+			? await service.apply(connection.id, owner)
+			: await service.applyProjectSelection(project.id, owner, { workflowIds: [workflow.id] });
+
+	it.each([{ flow: 'full' as const }, { flow: 'selection' as const }])(
+		'blocks a $flow apply whose data table change removes column values and writes nothing',
+		async ({ flow }) => {
+			const promoted = await promoteDataTableWorkflows();
+			const { project, workflow, orders, dataTableService } = promoted;
+			await dataTableService.addColumn(orders.id, project.id, { name: 'extra', type: 'string' });
+			await dataTableService.insertRows(orders.id, project.id, [
+				{ email: 'a@example.com', extra: 'keep me' },
+			]);
+			await dataTableService.updateDataTable(orders.id, project.id, { name: 'Local orders' });
+			await Container.get(WorkflowRepository).update(workflow.id, { name: 'Target workflow' });
+			const before = await snapshotApplyState();
+
+			const result = await applyFlow(flow, promoted);
+
+			assert(result.status === 'blocked');
+			expect(result.preflight.conflicts).toEqual([
+				expect.objectContaining({
+					kind: 'data-table',
+					code: 'destructive-change',
+					id: orders.id,
+					name: 'Orders',
+					consumers: [
+						{
+							project: { id: project.id, name: project.name },
+							workflows: [{ id: workflow.id, name: 'Process order' }],
+						},
+					],
+				}),
+			]);
+			const [conflict] = result.preflight.conflicts;
+			assert(conflict.kind === 'data-table');
+			const { changes } = conflict;
+			const removeExtra = {
+				kind: 'remove-column',
+				column: 'extra',
+				type: 'string',
+				destructive: true,
+			};
+			expect(changes).toContainEqual(removeExtra);
+			expect(changes).toContainEqual({
+				kind: 'rename-table',
+				from: 'Local orders',
+				to: 'Orders',
+				destructive: false,
+			});
+			expect(changes.filter(({ destructive }) => destructive)).toEqual([removeExtra]);
+			expect(await snapshotApplyState()).toEqual(before);
+			const { data } = await dataTableService.getManyRowsAndCount(orders.id, project.id, {});
+			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com', extra: 'keep me' })]);
+			expect(applyPackageResultSchema.parse(result)).toEqual(result);
+		},
+	);
+
+	it.each([{ flow: 'full' as const }, { flow: 'selection' as const }])(
+		'applies a $flow column removal only after Continue confirms it and keeps the rows',
+		async ({ flow }) => {
+			const promoted = await promoteDataTableWorkflows();
+			const { connection, project, workflow, orders, dataTableService } = promoted;
+			await dataTableService.addColumn(orders.id, project.id, { name: 'extra', type: 'string' });
+			await dataTableService.insertRows(orders.id, project.id, [
+				{ email: 'a@example.com', extra: 'keep me' },
+			]);
+			await dataTableService.updateDataTable(orders.id, project.id, { name: 'Local orders' });
+			const continueFlow = async (
+				expectedSource: ContinueApplyPackageDto['expectedSource'],
+				confirmDestructiveChanges?: boolean,
+			): Promise<ApplyPackageResultDto> =>
+				flow === 'full'
+					? (
+							await testServer
+								.publicApiAgentFor(owner)
+								.post(`/promotions/connections/${connection.id}/apply/continue`)
+								.send({ expectedSource, confirmDestructiveChanges })
+								.expect(200)
+						).body
+					: await service.continueApplyProjectSelection(project.id, owner, {
+							workflowIds: [workflow.id],
+							expectedSource,
+							confirmDestructiveChanges,
+						});
+
+			const blocked = await applyFlow(flow, promoted);
+			assert(blocked.status === 'blocked');
+			const expectedSource = { configId: blocked.configId, ...blocked.git };
+
+			expect(await continueFlow(expectedSource)).toEqual(blocked);
+			const { data: rowsBefore } = await dataTableService.getManyRowsAndCount(
+				orders.id,
+				project.id,
+				{},
+			);
+			expect(rowsBefore).toEqual([expect.objectContaining({ extra: 'keep me' })]);
+
+			const result = await continueFlow(expectedSource, true);
+
+			assert(result.status === 'applied', JSON.stringify(result));
+			expect(result.counts.dataTables.updated).toBe(1);
+			expect(await dataTableService.getOne(orders.id, project.id)).toMatchObject({
+				name: 'Orders',
+			});
+			expect(
+				(await dataTableService.getColumns(orders.id, project.id)).map(({ name }) => name),
+			).toEqual(['email', 'note']);
+			const { data } = await dataTableService.getManyRowsAndCount(orders.id, project.id, {});
+			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com' })]);
+			expect(data[0]).not.toHaveProperty('extra');
+		},
+	);
+
+	it.each([{ flow: 'full' as const }, { flow: 'selection' as const }])(
+		'applies a $flow data table change that removes no column values, counts the table as updated and recreates a missing table',
+		async ({ flow }) => {
+			const promoted = await promoteDataTableWorkflows();
+			const { project, orders, customers, dataTableService } = promoted;
+			const note = (await dataTableService.getColumns(orders.id, project.id)).find(
+				({ name }) => name === 'note',
+			);
+			assert(note);
+			await dataTableService.deleteColumn(orders.id, project.id, note.id);
+			await dataTableService.updateDataTable(orders.id, project.id, { name: 'Local orders' });
+			await dataTableService.deleteDataTable(customers.id, project.id);
+
+			const result = await applyFlow(flow, promoted);
+
+			assert(result.status === 'applied');
+			expect(result.counts.dataTables).toEqual({ matched: 0, created: 1, updated: 1 });
+			expect(await dataTableService.getOne(orders.id, project.id)).toMatchObject({
+				name: 'Orders',
+			});
+			expect(
+				(await dataTableService.getColumns(orders.id, project.id)).map(({ name, type }) => ({
+					name,
+					type,
+				})),
+			).toEqual([
+				{ name: 'email', type: 'string' },
+				{ name: 'note', type: 'string' },
+			]);
+			expect(await dataTableService.getOne(customers.id, project.id)).toMatchObject({
+				name: 'Customers',
+			});
+		},
+	);
 });
 
 describe('Promote a project selection — branch effects', () => {

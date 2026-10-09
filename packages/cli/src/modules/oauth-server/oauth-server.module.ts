@@ -42,6 +42,13 @@ export class OAuthServerModule implements ModuleInterface {
 			Container.get(JwksRegistry).register(Container.get(OAuthSigningJwksProvider));
 		}
 
+		// Discovery reads this server's metadata and keys in process, like any other trusted source.
+		const { LocalAuthorizationServer } = await import('@n8n/inbound-auth');
+		const { OAuthServerLocalAuthorizationServer } = await import(
+			'./oauth-local-authorization-server.js'
+		);
+		Container.set(LocalAuthorizationServer, Container.get(OAuthServerLocalAuthorizationServer));
+
 		// Register the token service as the OAuth token verifier provider, so
 		// protected-resource modules verify bearer tokens through the core
 		// `OAuthTokenVerifierProxy` instead of importing this module.

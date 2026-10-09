@@ -348,6 +348,8 @@ export type {
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
+	breakingChangeRuleImpactSchema,
+	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
 	migrationFindingTriageStatusSchema,
 	migrationOwnerSourceSchema,
@@ -712,6 +714,7 @@ export type {
 	InstanceAiEvalMockHints,
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
+	InstanceAiEvalLlmUsage,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalAgentToolCallRecord,
 	InstanceAiEvalAgentModelTurnRecord,
