@@ -42,6 +42,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
 
+		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
+		registerUserDeletionHandler();
+
 		// Register blob backends for agent execution logs and knowledge files.
 		// The fs backend is always available; s3/az reuse the clients base-command
 		// already initialized (initBinaryDataService runs before module init in

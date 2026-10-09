@@ -120,6 +120,10 @@ export class Reset extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// user tables) before the projects are removed, so they are not orphaned
 		// by the FK cascade. After a transfer this is a no-op.
 		await Container.get(OwnershipTransferService).deleteModuleOwnedResources(personalProjectIds);
+		// Private module resources do not move with a transfer, so delete them in both cases.
+		await Container.get(OwnershipTransferService).deleteUserOwnedModuleResources(
+			ldapIdentities.map((i) => i.userId),
+		);
 
 		await Container.get(AuthProviderSyncHistoryRepository).delete({ providerType: 'ldap' });
 		await Container.get(AuthIdentityRepository).delete({ providerType: 'ldap' });

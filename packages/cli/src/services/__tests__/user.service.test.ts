@@ -961,6 +961,33 @@ describe('UserService', () => {
 
 			expect(ownershipTransferService.enforceTransferPolicy).not.toHaveBeenCalled();
 		});
+
+		it.each([
+			['without a transferee', undefined],
+			['with a transferee', transfereeProject.id],
+		])(
+			'deletes the private module resources of the user before the delete transaction, %s',
+			async (_case, transferId) => {
+				await userService.deleteUser(actor, userToDelete.id, transferId);
+
+				expect(
+					ownershipTransferService.deleteUserOwnedModuleResources,
+				).toHaveBeenCalledExactlyOnceWith([userToDelete.id]);
+				expect(
+					ownershipTransferService.deleteUserOwnedModuleResources.mock.invocationCallOrder[0],
+				).toBeLessThan(manager.transaction.mock.invocationCallOrder[0]);
+			},
+		);
+
+		it('deletes the project module resources only without a transferee', async () => {
+			await userService.deleteUser(actor, userToDelete.id, transfereeProject.id);
+			expect(ownershipTransferService.deleteModuleOwnedResources).not.toHaveBeenCalled();
+
+			await userService.deleteUser(actor, userToDelete.id);
+			expect(ownershipTransferService.deleteModuleOwnedResources).toHaveBeenCalledExactlyOnceWith([
+				personalProject.id,
+			]);
+		});
 	});
 
 	describe('changeGlobalRole', () => {
