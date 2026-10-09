@@ -1,4 +1,10 @@
-import { INSTANCE_AI_EPHEMERAL_EVENT_TYPES, type InstanceAiEvent } from '@n8n/api-types';
+import {
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
+	acceptInstanceAiEvent,
+	createInstanceAiEventLifecycle,
+	type InstanceAiEventLifecycle,
+	type InstanceAiEvent,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -47,6 +53,22 @@ export interface DrainedEvent {
 	id?: number;
 	event: InstanceAiEvent;
 	live: boolean;
+}
+
+interface PlannedEvent {
+	event: InstanceAiEvent;
+	persistIndex?: number;
+	live: boolean;
+}
+
+interface PersistedBatch {
+	firstSeq?: number;
+	entries: PlannedEvent[];
+}
+
+interface ActivityCache {
+	state: InstanceAiEventLifecycle;
+	loadedRunIds: Set<string>;
 }
 
 interface PendingEvent {
@@ -120,6 +142,9 @@ export class DurableEventLog {
 	private readonly buffers = new Map<string, Map<string, CoalesceBuffer>>();
 
 	private readonly emitters = new Map<string, EmitFn>();
+
+	/** Token deltas use this cache. Durable batches re-read terminal facts on each attempt. */
+	private readonly activityByThread = new Map<string, ActivityCache>();
 
 	/**
 	 * Lifecycle token per thread, compared by identity. A drain captures it at
@@ -218,6 +243,7 @@ export class DurableEventLog {
 			return;
 		}
 		this.buffers.delete(threadId);
+		this.activityByThread.delete(threadId);
 		this.lastSeq.delete(threadId);
 		this.emitters.delete(threadId);
 		this.lifecycles.delete(threadId);
@@ -235,6 +261,7 @@ export class DurableEventLog {
 			...this.draining.keys(),
 			...this.lastSeq.keys(),
 			...this.buffers.keys(),
+			...this.activityByThread.keys(),
 			...this.emitters.keys(),
 			...this.lifecycles.keys(),
 			...this.idleFlushTimers.keys(),
@@ -319,6 +346,7 @@ export class DurableEventLog {
 		this.pendingByThread.delete(threadId);
 		this.lastSeq.delete(threadId);
 		this.buffers.delete(threadId);
+		this.activityByThread.delete(threadId);
 		this.emitters.delete(threadId);
 		// Invalidates any drain currently awaiting the DB for this thread: it
 		// re-checks the token when it resumes and aborts its persist/emits.
@@ -334,6 +362,7 @@ export class DurableEventLog {
 		this.pendingByThread.clear();
 		this.lastSeq.clear();
 		this.buffers.clear();
+		this.activityByThread.clear();
 		this.emitters.clear();
 		this.lifecycles.clear();
 		for (const timer of this.idleFlushTimers.values()) clearTimeout(timer);
@@ -433,7 +462,25 @@ export class DurableEventLog {
 		// Build the batch plan first; seqs are assigned inside persistWithRetry so
 		// an append conflict can re-assign them from a re-seeded counter.
 		const toPersist: InstanceAiEvent[] = [];
-		const toEmit: Array<{ event: InstanceAiEvent; persistIndex?: number; live: boolean }> = [];
+		const toEmit: PlannedEvent[] = [];
+		const activity = this.activityByThread.get(threadId) ?? {
+			state: createInstanceAiEventLifecycle(),
+			loadedRunIds: new Set<string>(),
+		};
+		const unseededRuns = [
+			...new Set(batch.flatMap((entry) => (isFlushMarker(entry) ? [] : [entry.event.runId]))),
+		].filter((runId) => !activity.loadedRunIds.has(runId));
+		if (unseededRuns.length > 0) {
+			for (const event of await this.repo.getActivityTerminalEvents(threadId, unseededRuns)) {
+				acceptInstanceAiEvent(activity.state, event);
+			}
+			if (this.lifecycles.get(threadId) !== lifecycle) {
+				for (const entry of batch) if (isFlushMarker(entry)) entry.flushSignal.resolve();
+				return;
+			}
+			for (const runId of unseededRuns) activity.loadedRunIds.add(runId);
+		}
+		this.activityByThread.set(threadId, activity);
 
 		for (const entry of batch) {
 			if (isFlushMarker(entry)) {
@@ -447,6 +494,7 @@ export class DurableEventLog {
 				continue;
 			}
 			const { event } = entry;
+			if (!acceptInstanceAiEvent(activity.state, event)) continue;
 			if (EPHEMERAL_TYPES.has(event.type)) {
 				// A delta with a new responseId starts a new segment: close the old
 				// one as a block first, so blocks stay exactly 1:1 with segments and
@@ -470,8 +518,11 @@ export class DurableEventLog {
 		}
 
 		let firstSeq: number | undefined;
+		let admitted = toEmit;
 		if (toPersist.length > 0) {
-			firstSeq = await this.persistWithRetry(threadId, toPersist, lifecycle);
+			const persisted = await this.persistWithRetry(threadId, toEmit, lifecycle);
+			firstSeq = persisted.firstSeq;
+			admitted = persisted.entries;
 			// The thread was cleared while the persist was in flight: its next
 			// lifecycle (a recreated id, or nothing) must not receive this batch's
 			// emissions. Flush waiters still settle — there is nothing left to flush.
@@ -485,7 +536,7 @@ export class DurableEventLog {
 			}
 		}
 
-		for (const drained of toEmit) {
+		for (const drained of admitted) {
 			const id =
 				drained.persistIndex !== undefined && firstSeq !== undefined
 					? firstSeq + drained.persistIndex
@@ -526,18 +577,20 @@ export class DurableEventLog {
 	}
 
 	/**
-	 * Append `events` with contiguous seqs, retrying on (threadId, seq) PK
-	 * collision — another main won the range (multi-main only), so re-seed from
-	 * the DB and try again. Returns the first assigned seq, or undefined when
-	 * the batch had to be dropped (logged; live delivery still happens). The
-	 * batch INSERT is also what assigns the ids, so it is one round trip.
+	 * Append admitted events with contiguous seqs. Re-read terminal facts on
+	 * each retry so a competing cancellation can close the run. Return the
+	 * admitted entries and their first seq when persistence succeeds.
 	 */
 	private async persistWithRetry(
 		threadId: string,
-		events: InstanceAiEvent[],
+		entries: PlannedEvent[],
 		lifecycle: object,
-	): Promise<number | undefined> {
+	): Promise<PersistedBatch> {
 		let lastError: unknown;
+		let admitted = entries;
+		let events = entries
+			.filter((entry) => entry.persistIndex !== undefined)
+			.map((entry) => entry.event);
 		for (let attempt = 1; attempt <= MAX_APPEND_ATTEMPTS; attempt++) {
 			// The thread was cleared while an earlier attempt was in flight: stop
 			// instead of appending into the id's next lifecycle (deleted threads
@@ -548,17 +601,45 @@ export class DurableEventLog {
 					threadId,
 					events: events.length,
 				});
-				return undefined;
+				return { entries: [] };
 			}
 			// The seed read lives inside the try: a transient failure there must
 			// consume an attempt and retry, not reject the (unawaited) drain.
 			let firstSeq: number | undefined;
 			try {
+				// Seed seq before the read. A concurrent terminal write then forces an append conflict.
 				firstSeq = (await this.currentSeq(threadId)) + 1;
+				const activity = createInstanceAiEventLifecycle();
+				const runIds = [...new Set(entries.map((entry) => entry.event.runId))];
+				for (const event of await this.repo.getActivityTerminalEvents(threadId, runIds)) {
+					acceptInstanceAiEvent(activity, event);
+				}
+				admitted = [];
+				events = [];
+				for (const entry of entries) {
+					if (!acceptInstanceAiEvent(activity, entry.event)) continue;
+					if (entry.persistIndex === undefined) admitted.push(entry);
+					else {
+						admitted.push({ ...entry, persistIndex: events.length });
+						events.push(entry.event);
+					}
+				}
+				if (this.lifecycles.get(threadId) !== lifecycle) return { entries: [] };
+				const cached = this.activityByThread.get(threadId);
+				if (cached) {
+					for (const runId of runIds) {
+						delete cached.state.closedRuns[runId];
+						delete cached.state.closedAgents[runId];
+						if (activity.closedRuns[runId]) cached.state.closedRuns[runId] = true;
+						if (activity.closedAgents[runId])
+							cached.state.closedAgents[runId] = activity.closedAgents[runId];
+					}
+				}
+				if (events.length === 0) return { entries: admitted };
 				const bytes = await this.repo.appendBatch(threadId, firstSeq, events);
 				this.lastSeq.set(threadId, firstSeq + events.length - 1);
 				this.metrics.recordDrainBatch(events.length, bytes);
-				return firstSeq;
+				return { firstSeq, entries: admitted };
 			} catch (error) {
 				lastError = error;
 				if (isUniqueConstraintError(error)) {
@@ -580,7 +661,7 @@ export class DurableEventLog {
 				if (firstSeq !== undefined && (await this.didBatchCommit(threadId, firstSeq, events))) {
 					this.lastSeq.set(threadId, firstSeq + events.length - 1);
 					this.metrics.recordDrainBatch(events.length, serializedBytes(events));
-					return firstSeq;
+					return { firstSeq, entries: admitted };
 				}
 				// Also covers a PK violation a driver reports under a code the
 				// detector doesn't know: the committed row differs from ours, so the
@@ -599,7 +680,7 @@ export class DurableEventLog {
 			events: events.length,
 			error: lastError,
 		});
-		return undefined;
+		return { entries: admitted };
 	}
 
 	/**

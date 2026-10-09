@@ -472,7 +472,10 @@ export function buildRoutingFromMessages(messages: InstanceAiMessage[]): {
 		if (msg.role !== 'assistant' || !msg.agentTree) continue;
 		const groupId = msg.messageGroupId ?? msg.runId;
 		if (!groupId || !isSafeObjectKey(groupId)) continue;
-		const rebuiltRunState = createRunStateFromTree(msg.agentTree);
+		const rebuiltRunState = createRunStateFromTree(
+			msg.agentTree,
+			msg.runIds ?? (msg.runId ? [msg.runId] : []),
+		);
 		if (!rebuiltRunState) continue;
 		runStateByGroupId.set(groupId, rebuiltRunState);
 		if (msg.runIds) {
@@ -1292,7 +1295,7 @@ export function createThreadRuntime(
 			if (!isSafeObjectKey(data.runId) || !isSafeObjectKey(groupId)) return;
 			// Adopts the snapshot tree's nodes — `msg.agentTree` below points at the
 			// same objects, so subsequent live events mutate what's rendered.
-			const rebuiltRunState = createRunStateFromTree(data.agentTree);
+			const rebuiltRunState = createRunStateFromTree(data.agentTree, data.runIds ?? [data.runId]);
 			if (!rebuiltRunState) return;
 
 			// Find the message to update — by messageGroupId first, then runId
