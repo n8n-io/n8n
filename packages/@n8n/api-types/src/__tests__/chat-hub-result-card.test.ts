@@ -89,6 +89,65 @@ describe('resultCardSchema', () => {
 		).toBe(false);
 		expect(resultCardSchema.safeParse({ ...base, tone: 'neon' }).success).toBe(false);
 	});
+
+	describe('weather card', () => {
+		const validWeatherCard = {
+			type: 'weather',
+			title: 'Lisbon, Portugal',
+			location: 'Lisbon, Portugal',
+			temperature: 14.2,
+			condition: 'Light rain',
+			icon: 'rain',
+			sources: [
+				{ name: 'Open-Meteo', temperature: 14.2 },
+				{ name: 'MET Norway', temperature: 13.6, condition: 'Rain' },
+			],
+		};
+
+		it('accepts a minimal card and defaults the unit to Celsius', () => {
+			const result = resultCardSchema.safeParse(validWeatherCard);
+			expect(result.success).toBe(true);
+			if (!result.success || result.data.type !== 'weather') return;
+			expect(result.data.unit).toBe('C');
+		});
+
+		it('accepts the full shape with wind, range and a five-day forecast', () => {
+			const result = resultCardSchema.safeParse({
+				...validWeatherCard,
+				unit: 'F',
+				feelsLike: 55,
+				humidity: 78,
+				wind: { speed: 13, unit: 'mph', direction: 'W' },
+				high: 61,
+				low: 48,
+				forecast: Array.from({ length: 5 }, (_, i) => ({
+					label: `D${i}`,
+					high: 60,
+					low: 50,
+					icon: 'sun',
+				})),
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it('rejects an unknown glyph, an empty source list and a sixth forecast day', () => {
+			expect(resultCardSchema.safeParse({ ...validWeatherCard, icon: 'tornado' }).success).toBe(
+				false,
+			);
+			expect(resultCardSchema.safeParse({ ...validWeatherCard, sources: [] }).success).toBe(false);
+			expect(
+				resultCardSchema.safeParse({
+					...validWeatherCard,
+					forecast: Array.from({ length: 6 }, () => ({
+						label: 'Mon',
+						high: 1,
+						low: 0,
+						icon: 'sun',
+					})),
+				}).success,
+			).toBe(false);
+		});
+	});
 });
 
 describe('chatHubMessageWithButtonsSchema', () => {

@@ -220,6 +220,41 @@ describe('N8nResultCard', () => {
 		expect(telegram.getByText(DEMO_CARDS.telegram.title)).toBeInTheDocument();
 	});
 
+	it('renders a weather card: rounded hero, detail line, one chip per source, agreement, forecast', () => {
+		const { container, getByTestId, getByText } = renderCard({ card: DEMO_CARDS.weather });
+		expect(getByText('Lisbon, Portugal')).toBeInTheDocument();
+		expect(getByTestId('result-card-weather-temperature').textContent).toBe('14°C');
+		expect(getByText('Light rain')).toBeInTheDocument();
+		expect(getByTestId('result-card-weather-details').textContent).toContain('Feels 12°');
+		expect(getByTestId('result-card-weather-details').textContent).toContain('78%');
+		expect(getByTestId('result-card-weather-details').textContent).toContain('21 km/h W');
+		expect(getByTestId('result-card-weather-details').textContent).toContain('H 16° L 9°');
+		expect(getByTestId('result-card-weather-sources').children).toHaveLength(3);
+		expect(getByText('Open-Meteo')).toBeInTheDocument();
+		expect(getByText('3 sources within 1.4°')).toBeInTheDocument();
+		expect(getByTestId('result-card-weather-forecast').children).toHaveLength(5);
+		expect(container.querySelector('article')?.getAttribute('data-tone')).toBe('sky');
+	});
+
+	it('hides the weather parts that are absent and skips the agreement line for one source', () => {
+		const { queryByTestId, queryByText, getByTestId } = renderCard({
+			card: {
+				type: 'weather',
+				title: 'Berlin',
+				location: 'Berlin',
+				temperature: 3.6,
+				unit: 'F',
+				condition: 'Snow',
+				icon: 'snow',
+				sources: [{ name: 'Open-Meteo', temperature: 3.6 }],
+			},
+		});
+		expect(getByTestId('result-card-weather-temperature').textContent).toBe('4°F');
+		expect(queryByTestId('result-card-weather-details')).toBeNull();
+		expect(queryByTestId('result-card-weather-forecast')).toBeNull();
+		expect(queryByText(/sources within/)).toBeNull();
+	});
+
 	it('renders an unsplash cover and ignores other hosts', () => {
 		const safe = renderCard({ card: DEMO_CARDS.keyValue });
 		expect(DEMO_CARDS.keyValue.cover?.src.startsWith('https://images.unsplash.com/')).toBe(true);

@@ -3,10 +3,12 @@ import { z } from 'zod';
 import {
 	resultCardSchema,
 	resultCardTones,
+	weatherConditionIcons,
 	type ResultCard,
 	type ResultCardArchetype,
 	type ResultCardStatus,
 	type ResultCardTone,
+	type WeatherConditionIcon,
 } from './chat-hub-result-card';
 
 /**
@@ -52,6 +54,9 @@ const ARCHETYPE_ALIASES: Record<string, ResultCardArchetype> = {
 	details: 'keyValue',
 	detail: 'keyValue',
 	summary: 'keyValue',
+	weather: 'weather',
+	forecast: 'weather',
+	climate: 'weather',
 };
 
 const TONE_ALIASES: Record<string, ResultCardTone> = {
@@ -493,6 +498,105 @@ function normalizeMessage(card: Dict, target: Dict): void {
 	if (typeof card.isReply === 'boolean') target.isReply = card.isReply;
 }
 
+const CONDITION_ICON_RULES: Array<[RegExp, WeatherConditionIcon]> = [
+	[/thunder|storm|lightning/, 'thunder'],
+	[/snow|sleet|hail|blizzard|flurr/, 'snow'],
+	[/drizzle|shower/, 'drizzle'],
+	[/rain|wet/, 'rain'],
+	[/fog|mist|haze|smoke/, 'fog'],
+	[/wind|gale|breez/, 'wind'],
+	[/partly|mostly sunny|some cloud|few cloud|scattered/, 'partly-cloudy'],
+	[/cloud|overcast|grey|gray|dull/, 'cloud'],
+	[/clear|sun|fair|bright/, 'sun'],
+];
+
+/** A glyph from the icon enum, an alias, or the words of a condition ("Light rain" → rain). */
+function weatherIcon(value: unknown, condition: string | undefined): WeatherConditionIcon | undefined {
+	const key = lower(value);
+	if (key && (weatherConditionIcons as readonly string[]).includes(key)) {
+		return key as WeatherConditionIcon;
+	}
+	const haystack = [key, lower(condition)].filter(Boolean).join(' ');
+	if (!haystack) return undefined;
+	return CONDITION_ICON_RULES.find(([pattern]) => pattern.test(haystack))?.[1];
+}
+
+function temperatureUnit(value: unknown): 'C' | 'F' | undefined {
+	const key = lower(value)?.replace(/[°\s]/g, '');
+	if (!key) return undefined;
+	if (key === 'f' || key === 'fahrenheit') return 'F';
+	if (key === 'c' || key === 'celsius' || key === 'centigrade') return 'C';
+	return undefined;
+}
+
+function normalizeWeather(card: Dict, target: Dict): void {
+	const location = nonEmptyText(pick(card, 'location', 'place', 'city'), 80);
+	set(target, 'location', location);
+	if (target.title === undefined) set(target, 'title', location);
+	set(target, 'temperature', num(pick(card, 'temperature', 'temp', 'value')));
+	set(target, 'unit', temperatureUnit(pick(card, 'unit', 'units', 'temperatureUnit')));
+	const condition = nonEmptyText(pick(card, 'condition', 'summary', 'description', 'weather'), 40);
+	set(target, 'condition', condition);
+	set(target, 'icon', weatherIcon(card.icon, condition));
+	set(target, 'feelsLike', num(pick(card, 'feelsLike', 'feels_like', 'apparentTemperature')));
+	set(target, 'humidity', num(card.humidity));
+	const windRaw = pick(card, 'wind', 'windSpeed', 'wind_speed');
+	if (isDict(windRaw)) {
+		const speed = num(pick(windRaw, 'speed', 'value'));
+		if (speed !== undefined) {
+			const unitKey = lower(windRaw.unit)?.replace(/\s/g, '');
+			const wind: Dict = {
+				speed,
+				unit: unitKey === 'mph' ? 'mph' : unitKey === 'm/s' || unitKey === 'ms' ? 'm/s' : 'km/h',
+			};
+			set(wind, 'direction', nonEmptyText(pick(windRaw, 'direction', 'dir'), 4));
+			target.wind = wind;
+		}
+	} else {
+		const speed = num(windRaw);
+		if (speed !== undefined) target.wind = { speed, unit: 'km/h' };
+	}
+	set(target, 'high', num(pick(card, 'high', 'max', 'tempMax', 'temperatureMax')));
+	set(target, 'low', num(pick(card, 'low', 'min', 'tempMin', 'temperatureMin')));
+	const sources = labelledEntries(
+		pick(card, 'sources', 'providers', 'services'),
+		['name', 'source', 'provider', 'label'],
+		['temperature', 'temp', 'value'],
+	)
+		.map((entry) => {
+			const name = nonEmptyText(entry.label, 40);
+			const temperature = num(entry.value);
+			if (!name || temperature === undefined) return undefined;
+			const source: Dict = { name, temperature };
+			if (isDict(entry.extra)) {
+				set(source, 'condition', nonEmptyText(pick(entry.extra, 'condition', 'summary'), 40));
+			}
+			return source;
+		})
+		.filter((source): source is Dict => source !== undefined)
+		.slice(0, 5);
+	if (sources.length) target.sources = sources;
+	else if (target.temperature !== undefined) {
+		// A card without a comparison still has one source: whoever composed it.
+		target.sources = [{ name: location ?? 'Forecast', temperature: target.temperature }];
+	}
+	const forecast = (list(pick(card, 'forecast', 'daily', 'days')) ?? [])
+		.map((day) => {
+			if (!isDict(day)) return undefined;
+			const label = nonEmptyText(pick(day, 'label', 'day', 'date', 'name'), 12);
+			const high = num(pick(day, 'high', 'max', 'tempMax'));
+			const low = num(pick(day, 'low', 'min', 'tempMin'));
+			if (!label || high === undefined || low === undefined) return undefined;
+			const dayCondition = nonEmptyText(pick(day, 'condition', 'summary'), 40);
+			const icon = weatherIcon(day.icon, dayCondition) ?? 'cloud';
+			const forecastDay: Dict = { label, high, low, icon };
+			return forecastDay;
+		})
+		.filter((day): day is Dict => day !== undefined)
+		.slice(0, 5);
+	if (forecast.length) target.forecast = forecast;
+}
+
 /**
  * Coerce an LLM-authored card into the strict wire shape where that is
  * unambiguous; return the input untouched when it isn't even an object so the
@@ -525,6 +629,9 @@ export function normalizeResultCardInput(raw: unknown): unknown {
 			break;
 		case 'message':
 			normalizeMessage(card, target);
+			break;
+		case 'weather':
+			normalizeWeather(card, target);
 			break;
 	}
 	return target;

@@ -317,6 +317,8 @@ export const SHOW_CARD_ACTION_TOOL_DEFINITIONS = [
 			'- "keyValue": { pairs: [{ key: string, value: string }] (1–6) }.',
 			'- "email": { direction: "sent" | "received", to: string[], subject: string, preview?: string, from?: string }.',
 			'- "message": { channel: "slack" | "telegram" | "discord" | "whatsapp" | "teams" | "sms" | "chat" | "other", to: string, text: string }.',
+			'- "weather": { location: string, temperature: number, unit?: "C" | "F", condition: string, icon: "sun" | "partly-cloudy" | "cloud" | "fog" | "drizzle" | "rain" | "snow" | "thunder" | "wind", feelsLike?: number, humidity?: number (0–100), wind?: { speed: number, unit: "km/h" | "mph" | "m/s", direction?: string }, high?: number, low?: number, sources: [{ name: string, temperature: number, condition?: string }] (1–5), forecast?: [{ label: string, high: number, low: number, icon: same enum }] (≤5) }.',
+			'If a workflow tool result already contains "cards", those are shown to the user automatically — do not repeat them with show_card.',
 			'Example: {"action":"show_card","input":{"card":{"type":"metric","title":"Pipeline this month","tone":"forest","value":"$48.2k","label":"weighted pipeline","delta":{"value":"+12%","direction":"up","label":"vs. last month"},"breakdown":[{"label":"Qualified","value":5},{"label":"Proposal","value":3}]}}}',
 		].join('\n'),
 	},

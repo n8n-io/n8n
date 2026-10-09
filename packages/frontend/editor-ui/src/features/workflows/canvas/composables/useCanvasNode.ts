@@ -54,6 +54,7 @@ export function useCanvasNode() {
 	const runDataOutputMap = computed(() => data.value.runData.outputMap);
 	const runDataIterations = computed(() => data.value.runData.iterations);
 	const hasRunData = computed(() => data.value.runData.visible);
+	const resultCards = computed(() => data.value.runData.resultCards ?? []);
 
 	const render = computed(() => data.value.render);
 
@@ -82,6 +83,7 @@ export function useCanvasNode() {
 		runDataIterations,
 		runDataOutputMap,
 		hasRunData,
+		resultCards,
 		validationErrors,
 		hasIssues,
 		hasValidationErrors,

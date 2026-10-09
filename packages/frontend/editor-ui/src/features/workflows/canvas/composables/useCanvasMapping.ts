@@ -27,6 +27,7 @@ import {
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
 import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import { extractDeclaredResultCards, type ResultCard } from '@n8n/api-types';
 import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
@@ -95,6 +96,34 @@ export function useCanvasMapping({
 				render?.type === CanvasNodeRenderType.Default && render.options.dirtiness !== undefined,
 			iterations: countNonCanceledIterations(tasks),
 		};
+	}
+
+	/**
+	 * Cards the node declared in its final output — shown beside the node that
+	 * finished the execution, once the execution has settled. Any other node,
+	 * a node still running, or a failed final node yields nothing, so the
+	 * check is a name comparison for every node but one.
+	 */
+	function getDeclaredResultCards(
+		node: INodeUi,
+		tasks: ITaskData[] | null,
+		snapshot: NodeExecutionSnapshot,
+	): ResultCard[] | undefined {
+		const rd = renderData.value;
+		if (
+			rd.isExecutionRunning ||
+			rd.executionLastNodeExecuted !== node.name ||
+			!tasks?.length ||
+			node.disabled ||
+			snapshot.running ||
+			snapshot.hasExecutionError
+		) {
+			return undefined;
+		}
+		const lastTask = tasks[tasks.length - 1];
+		if (lastTask.executionStatus === 'canceled') return undefined;
+		const cards = extractDeclaredResultCards(lastTask.data?.main?.[0] ?? []);
+		return cards.length > 0 ? cards : undefined;
 	}
 
 	// Node id → its collapsed group, for nodes hidden by a collapsed group.
@@ -177,6 +206,7 @@ export function useCanvasMapping({
 					outputMap: rd.executionRunDataOutputMapByNodeId.get(node.id),
 					iterations: executionSnapshot.iterations,
 					visible: !!runData,
+					resultCards: getDeclaredResultCards(node, runData, executionSnapshot),
 				},
 				render:
 					rd.renderTypeByNodeId.get(node.id)?.value ??

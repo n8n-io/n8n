@@ -10,6 +10,7 @@ import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
 	parseN8nChatActionInput,
+	parseN8nChatDeclaredCardsOutput,
 	parseN8nChatResultCardInput,
 	parseWaitSuspendPayload,
 } from './n8nChatInteraction';
@@ -204,6 +205,20 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 			input: waitInput,
 			...(tc.canceled !== true && resolved?.success && { resolvedValue: resolved.data }),
 		};
+	}
+
+	// Cards a workflow declared in its own output travel on the tool result, so
+	// any settled tool call can carry them. Display-only, like `show_card`.
+	if (tc.output !== undefined && tc.state !== TOOL_CALL_STATE.ERROR && tc.canceled !== true) {
+		const declaredCards = parseN8nChatDeclaredCardsOutput(tc.output);
+		if (declaredCards) {
+			return {
+				toolCallId: tc.toolCallId,
+				resolvedAt: 1,
+				toolName: N8N_CHAT_RESULT_CARD_INTERACTION,
+				input: declaredCards,
+			};
+		}
 	}
 
 	if (tc.tool === N8N_CHAT_ACTION_TOOL_NAME) {

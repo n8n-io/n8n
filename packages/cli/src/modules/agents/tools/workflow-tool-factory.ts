@@ -1,12 +1,14 @@
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
+	extractDeclaredResultCards,
 	getWorkflowToolIncompatibilityReason,
 	WORKFLOW_WAIT_ACTION_CANCEL,
 	WORKFLOW_WAIT_ACTION_CHECK,
 	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
 	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type AgentJsonToolConfig,
+	type ResultCard,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -23,6 +25,7 @@ import type {
 	INode,
 	IPinData,
 	IRun,
+	IRunData,
 	IWorkflowExecutionDataProcess,
 	RelatedAgentRun,
 	WorkflowExecuteMode,
@@ -132,6 +135,11 @@ interface WorkflowToolResult {
 	error?: string;
 	/** Explains a non-obvious outcome to the model, e.g. that the user stopped waiting. */
 	note?: string;
+	/**
+	 * Result cards the workflow declared in its final output. The chat UI renders
+	 * these straight from the tool result, so the model only has to summarise.
+	 */
+	cards?: ResultCard[];
 }
 
 /** Internal result, carrying wait details that are stripped before the model sees them. */
@@ -567,6 +575,10 @@ function formatResult(
 	const resultData = runData ? collectResultData(runData, allOutputs) : {};
 	const normalisedStatus = normaliseExecutionStatus(status);
 	const wait = normalisedStatus === 'waiting' ? extractWaitState(data) : undefined;
+	const cards =
+		normalisedStatus === 'success' && runData
+			? extractDeclaredResultCards(lastNodeOutputItems(runData, data?.resultData?.lastNodeExecuted))
+			: [];
 
 	return {
 		executionId,
@@ -574,7 +586,28 @@ function formatResult(
 		data: Object.keys(resultData).length > 0 ? resultData : undefined,
 		error: data?.resultData?.error?.message,
 		...(wait ? { wait } : {}),
+		...(cards.length > 0 ? { cards, note: declaredCardsNote(cards) } : {}),
 	};
+}
+
+/** Main-output items of the node that finished the run (falls back to the last node in run order). */
+function lastNodeOutputItems(runData: IRunData, lastNodeExecuted: string | undefined): unknown[] {
+	const nodeNames = Object.keys(runData);
+	const nodeName =
+		lastNodeExecuted && runData[lastNodeExecuted] ? lastNodeExecuted : nodeNames[nodeNames.length - 1];
+	if (!nodeName) return [];
+	const lastRun = runData[nodeName]?.at(-1);
+	return lastRun?.data?.main?.[0] ?? [];
+}
+
+/** Tells the model the card is already on screen so it does not rebuild it with `show_card`. */
+function declaredCardsNote(cards: ResultCard[]): string {
+	const titles = cards.map((card) => `"${card.title}"`).join(', ');
+	const noun = cards.length === 1 ? 'result card' : 'result cards';
+	return (
+		`The workflow produced ${cards.length} ${noun} (${titles}) that the user can already see. ` +
+		'Do not call show_card with the same data; summarise the result in one or two sentences instead.'
+	);
 }
 
 export async function extractResult(
@@ -1045,6 +1078,7 @@ function assembleWorkflowTool(
 				error: z.string().optional(),
 				note: z.string().optional(),
 				jobId: z.string().optional(),
+				cards: z.array(z.record(z.unknown())).optional(),
 			}),
 		)
 		.suspend(WAIT_SUSPEND_SCHEMA)

@@ -16,7 +16,7 @@ import type {
 	OnConnectStartParams,
 	ViewportTransform,
 } from '@vue-flow/core';
-import type { AgentCapabilitySummary } from '@n8n/api-types';
+import type { AgentCapabilitySummary, ResultCard } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ComputedRef, Ref } from 'vue';
@@ -151,6 +151,8 @@ export interface CanvasNodeData {
 		outputMap?: ExecutionOutputMap;
 		iterations: number;
 		visible: boolean;
+		/** Cards the node declared in its final output; only set on the node that finished the execution. */
+		resultCards?: ResultCard[];
 	};
 	render:
 		| CanvasNodeDefaultRender

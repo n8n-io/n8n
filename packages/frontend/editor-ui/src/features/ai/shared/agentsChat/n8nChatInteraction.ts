@@ -1,5 +1,6 @@
 import {
 	lenientResultCardSchema,
+	MAX_RESULT_CARDS_PER_MESSAGE,
 	richCardComponentSchema,
 	richMessageSchema,
 	WORKFLOW_WAIT_SUSPEND_TYPE,
@@ -98,14 +99,42 @@ const showCardToolInputSchema = z
 	.passthrough();
 
 export interface N8nChatResultCardInput {
-	card: ResultCard;
+	/** One card from `show_card`, or the cards a workflow tool declared in its output (≤ 3). */
+	cards: ResultCard[];
 }
 
 /** Parse a persisted/live `show_card` tool input into a renderable result card, or undefined. */
 export function parseN8nChatResultCardInput(input: unknown): N8nChatResultCardInput | undefined {
 	const parsed = showCardToolInputSchema.safeParse(input);
 	if (!parsed.success) return undefined;
-	return { card: parsed.data.input.card };
+	return { cards: [parsed.data.input.card] };
+}
+
+/**
+ * A workflow tool result carrying `cards` the workflow itself declared — lifted
+ * by the backend out of the last node's output (see `formatResult` in
+ * `workflow-tool-factory.ts`). Any tool can carry them, so this is matched on
+ * the output shape rather than the tool name.
+ */
+const declaredCardsToolOutputSchema = z
+	.object({ cards: z.array(lenientResultCardSchema).min(1).max(MAX_RESULT_CARDS_PER_MESSAGE) })
+	.passthrough();
+
+/** Parse a settled tool output into the cards it declared, or undefined when it declared none. */
+export function parseN8nChatDeclaredCardsOutput(
+	output: unknown,
+): N8nChatResultCardInput | undefined {
+	let value = output;
+	if (typeof value === 'string' && value.trimStart().startsWith('{')) {
+		try {
+			value = JSON.parse(value);
+		} catch {
+			return undefined;
+		}
+	}
+	const parsed = declaredCardsToolOutputSchema.safeParse(value);
+	if (!parsed.success) return undefined;
+	return { cards: parsed.data.cards };
 }
 
 /**

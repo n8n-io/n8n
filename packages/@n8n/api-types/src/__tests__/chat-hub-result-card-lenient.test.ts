@@ -290,6 +290,63 @@ describe('lenientResultCardSchema', () => {
 			expect(result.success).toBe(true);
 		});
 
+		it('coerces a loosely written weather card: degree strings, unit words, icon from the condition, sources as a map', () => {
+			const result = lenientResultCardSchema.safeParse({
+				type: 'forecast',
+				location: 'Lisbon, Portugal',
+				temp: '14°',
+				units: '°C',
+				condition: 'Light rain showers',
+				feels_like: '12 °C',
+				humidity: '78%',
+				wind: 21,
+				max: 16,
+				min: 9,
+				sources: { 'Open-Meteo': 14.2, 'MET Norway': '13.6°', 'wttr.in': 15 },
+				forecast: [
+					{ day: 'Sat', max: 17, min: 10, condition: 'Sunny' },
+					{ day: 'Sun', max: 15, min: 9, condition: 'Overcast' },
+				],
+			});
+
+			expect(result.success).toBe(true);
+			if (!result.success || result.data.type !== 'weather') return;
+			expect(result.data.title).toBe('Lisbon, Portugal');
+			expect(result.data.temperature).toBe(14);
+			expect(result.data.unit).toBe('C');
+			expect(result.data.icon).toBe('drizzle');
+			expect(result.data.feelsLike).toBe(12);
+			expect(result.data.humidity).toBe(78);
+			expect(result.data.wind).toEqual({ speed: 21, unit: 'km/h' });
+			expect(result.data.high).toBe(16);
+			expect(result.data.low).toBe(9);
+			expect(result.data.sources).toEqual([
+				{ name: 'Open-Meteo', temperature: 14.2 },
+				{ name: 'MET Norway', temperature: 13.6 },
+				{ name: 'wttr.in', temperature: 15 },
+			]);
+			expect(result.data.forecast).toEqual([
+				{ label: 'Sat', high: 17, low: 10, icon: 'sun' },
+				{ label: 'Sun', high: 15, low: 9, icon: 'cloud' },
+			]);
+		});
+
+		it('gives a weather card without a comparison a single implicit source', () => {
+			const result = lenientResultCardSchema.safeParse({
+				type: 'weather',
+				title: 'Berlin',
+				location: 'Berlin',
+				temperature: 3,
+				unit: 'fahrenheit',
+				condition: 'Snow',
+			});
+			expect(result.success).toBe(true);
+			if (!result.success || result.data.type !== 'weather') return;
+			expect(result.data.unit).toBe('F');
+			expect(result.data.icon).toBe('snow');
+			expect(result.data.sources).toEqual([{ name: 'Berlin', temperature: 3 }]);
+		});
+
 		it('passes already-valid cards through unchanged', () => {
 			const card = {
 				type: 'metric',

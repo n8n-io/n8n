@@ -29,7 +29,7 @@ function toolCall(overrides: Partial<ToolCall> = {}): ToolCall {
 
 describe('parseN8nChatResultCardInput', () => {
 	it('parses a show_card tool input into its result card', () => {
-		expect(parseN8nChatResultCardInput(showCardInput)).toEqual({ card: metricCard });
+		expect(parseN8nChatResultCardInput(showCardInput)).toEqual({ cards: [metricCard] });
 	});
 
 	it('rejects a respond (rich card) input and malformed cards', () => {
@@ -54,7 +54,7 @@ describe('rebuildInteractiveFromHistory · result cards', () => {
 			toolCallId: 'tc-1',
 			resolvedAt: 1,
 			toolName: N8N_CHAT_RESULT_CARD_INTERACTION,
-			input: { card: metricCard },
+			input: { cards: [metricCard] },
 		});
 	});
 
@@ -63,6 +63,69 @@ describe('rebuildInteractiveFromHistory · result cards', () => {
 		expect(
 			rebuildInteractiveFromHistory(
 				toolCall({ state: TOOL_CALL_STATE.ERROR, output: 'Card validation failed' }),
+			),
+		).toBeUndefined();
+	});
+});
+
+describe('rebuildInteractiveFromHistory · cards declared by a workflow tool', () => {
+	const weatherCard = {
+		type: 'weather',
+		title: 'Lisbon, Portugal',
+		location: 'Lisbon, Portugal',
+		temperature: 14,
+		unit: 'C',
+		condition: 'Light rain',
+		icon: 'rain',
+		sources: [{ name: 'Open-Meteo', temperature: 14 }],
+		source: 'declared',
+	};
+	const workflowOutput = {
+		executionId: 'exec-1',
+		status: 'success',
+		data: { 'Compose weather card': [{ type: 'cards', cards: [weatherCard] }] },
+		cards: [weatherCard],
+		note: 'The workflow produced 1 result card ("Lisbon, Portugal") that the user can already see.',
+	};
+
+	it('renders the cards of a settled workflow tool call, whatever the tool is called', () => {
+		const rebuilt = rebuildInteractiveFromHistory(
+			toolCall({ tool: 'weather_check', input: { city: 'Lisbon' }, output: workflowOutput }),
+		);
+		expect(rebuilt).toEqual({
+			toolCallId: 'tc-1',
+			resolvedAt: 1,
+			toolName: N8N_CHAT_RESULT_CARD_INTERACTION,
+			input: { cards: [weatherCard] },
+		});
+	});
+
+	it('also reads a JSON-serialised output', () => {
+		const rebuilt = rebuildInteractiveFromHistory(
+			toolCall({ tool: 'weather_check', input: {}, output: JSON.stringify(workflowOutput) }),
+		);
+		expect(rebuilt?.toolName).toBe(N8N_CHAT_RESULT_CARD_INTERACTION);
+	});
+
+	it('ignores workflow outputs without cards, errored calls and running calls', () => {
+		expect(
+			rebuildInteractiveFromHistory(
+				toolCall({ tool: 'weather_check', input: {}, output: { executionId: 'x', status: 'success' } }),
+			),
+		).toBeUndefined();
+		expect(
+			rebuildInteractiveFromHistory(
+				toolCall({
+					tool: 'weather_check',
+					input: {},
+					output: workflowOutput,
+					state: TOOL_CALL_STATE.ERROR,
+				}),
+			),
+		).toBeUndefined();
+		expect(
+			rebuildInteractiveFromHistory(
+				toolCall({ tool: 'weather_check', input: {}, state: TOOL_CALL_STATE.RUNNING }),
 			),
 		).toBeUndefined();
 	});

@@ -72,13 +72,41 @@ export interface KeyValueCardData extends ResultCardBase {
 	pairs: Array<{ key: string; value: string }>;
 }
 
+export type WeatherConditionIcon =
+	| 'sun'
+	| 'partly-cloudy'
+	| 'cloud'
+	| 'fog'
+	| 'drizzle'
+	| 'rain'
+	| 'snow'
+	| 'thunder'
+	| 'wind';
+
+export interface WeatherCardData extends ResultCardBase {
+	type: 'weather';
+	location: string;
+	temperature: number;
+	unit: 'C' | 'F';
+	condition: string;
+	icon: WeatherConditionIcon;
+	feelsLike?: number;
+	humidity?: number;
+	wind?: { speed: number; unit: 'km/h' | 'mph' | 'm/s'; direction?: string };
+	high?: number;
+	low?: number;
+	sources?: Array<{ name: string; temperature: number; condition?: string }>;
+	forecast?: Array<{ label: string; high: number; low: number; icon: WeatherConditionIcon }>;
+}
+
 export type ResultCardData =
 	| EmailCardData
 	| MessageCardData
 	| RecordsCardData
 	| MetricCardData
 	| ListCardData
-	| KeyValueCardData;
+	| KeyValueCardData
+	| WeatherCardData;
 
 export type ResultCardTone =
 	| 'terracotta'

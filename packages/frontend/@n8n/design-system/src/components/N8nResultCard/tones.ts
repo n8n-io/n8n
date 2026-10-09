@@ -80,6 +80,7 @@ const ARCHETYPE_TONES: Record<ResultCardData['type'], ResultCardTone> = {
 	message: 'graphite',
 	email: 'paper',
 	keyValue: 'paper',
+	weather: 'sky',
 };
 
 export function resolveResultCardTone(

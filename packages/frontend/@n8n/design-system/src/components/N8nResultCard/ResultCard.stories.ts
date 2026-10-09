@@ -39,7 +39,14 @@ interface GalleryEntry {
 	icons: ResultCardIcon[];
 }
 
+const CLOUD: ResultCardIcon = { type: 'icon', name: 'cloud' };
+
 const GALLERY: GalleryEntry[] = [
+	{
+		card: DEMO_CARDS.weather,
+		footer: { workflowName: 'Weather check', time: '12:40' },
+		icons: [CLOUD, BOT],
+	},
 	{
 		card: DEMO_CARDS.metric,
 		footer: { workflowName: 'Leads log', time: '09:32' },
@@ -91,6 +98,13 @@ const galleryTemplate = (extra = '') =>
 	column(
 		`<N8nResultCard v-for="(entry, index) in entries" :key="index" :card="entry.card" :footer="entry.footer" :icons="entry.icons" ${extra} />`,
 	);
+
+export const Weather = Template.bind({});
+Weather.args = {
+	card: DEMO_CARDS.weather,
+	footer: { workflowName: 'Weather check', time: '12:40' },
+	icons: [CLOUD, BOT],
+};
 
 export const Metric = Template.bind({});
 Metric.args = {

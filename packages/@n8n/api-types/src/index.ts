@@ -103,6 +103,8 @@ export {
 	normalizeResultCardInput,
 } from './chat-hub-result-card-lenient';
 
+export { extractDeclaredResultCards } from './chat-hub-result-card-declared';
+
 export {
 	resultCardSchema,
 	resultCardArchetypes,
@@ -122,6 +124,10 @@ export {
 	type MetricCard,
 	type ListCard,
 	type KeyValueCard,
+	type WeatherCard,
+	type WeatherConditionIcon,
+	weatherCardSchema,
+	weatherConditionIcons,
 	type ChatHubMessageCards,
 } from './chat-hub-result-card';
 

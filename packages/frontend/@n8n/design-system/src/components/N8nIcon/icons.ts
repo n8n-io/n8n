@@ -101,6 +101,12 @@ import IconLucideClipboardList from '~icons/lucide/clipboard-list';
 import IconLucideClock from '~icons/lucide/clock';
 import IconLucideCloud from '~icons/lucide/cloud';
 import IconLucideCloudDownload from '~icons/lucide/cloud-download';
+import IconLucideCloudDrizzle from '~icons/lucide/cloud-drizzle';
+import IconLucideCloudFog from '~icons/lucide/cloud-fog';
+import IconLucideCloudLightning from '~icons/lucide/cloud-lightning';
+import IconLucideCloudRain from '~icons/lucide/cloud-rain';
+import IconLucideCloudSnow from '~icons/lucide/cloud-snow';
+import IconLucideCloudSun from '~icons/lucide/cloud-sun';
 import IconLucideCode from '~icons/lucide/code';
 import IconLucideCog from '~icons/lucide/cog';
 import IconLucideColumns3Cog from '~icons/lucide/columns-3-cog';
@@ -281,6 +287,7 @@ import IconLucideVolumeX from '~icons/lucide/volume-x';
 import IconLucideWallet from '~icons/lucide/wallet';
 import IconLucideWandSparkles from '~icons/lucide/wand-sparkles';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
+import IconLucideWind from '~icons/lucide/wind';
 import IconLucideWorkflow from '~icons/lucide/workflow';
 import IconLucideWrench from '~icons/lucide/wrench';
 import IconLucideX from '~icons/lucide/x';
@@ -613,6 +620,12 @@ export const updatedIconSet = {
 	clock: IconLucideClock,
 	cloud: IconLucideCloud,
 	'cloud-download': IconLucideCloudDownload,
+	'cloud-drizzle': IconLucideCloudDrizzle,
+	'cloud-fog': IconLucideCloudFog,
+	'cloud-lightning': IconLucideCloudLightning,
+	'cloud-rain': IconLucideCloudRain,
+	'cloud-snow': IconLucideCloudSnow,
+	'cloud-sun': IconLucideCloudSun,
 	code: IconLucideCode,
 	cog: IconLucideCog,
 	contrast: IconLucideContrast,
@@ -786,6 +799,7 @@ export const updatedIconSet = {
 	wallet: IconLucideWallet,
 	'wand-sparkles': IconLucideWandSparkles,
 	waypoints: IconLucideWaypoints,
+	wind: IconLucideWind,
 	workflow: IconLucideWorkflow,
 	wrench: IconLucideWrench,
 	x: IconLucideX,

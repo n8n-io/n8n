@@ -21,6 +21,7 @@ export const resultCardArchetypes = [
 	'metric',
 	'list',
 	'keyValue',
+	'weather',
 ] as const;
 export type ResultCardArchetype = (typeof resultCardArchetypes)[number];
 
@@ -155,6 +156,65 @@ export const keyValueCardSchema = z.object({
 		.max(6),
 });
 
+/** Finite glyph set for conditions; the renderer maps each to an icon. */
+export const weatherConditionIcons = [
+	'sun',
+	'partly-cloudy',
+	'cloud',
+	'fog',
+	'drizzle',
+	'rain',
+	'snow',
+	'thunder',
+	'wind',
+] as const;
+export type WeatherConditionIcon = (typeof weatherConditionIcons)[number];
+
+const weatherTemperature = z.number().min(-100).max(100);
+
+/**
+ * Current conditions for one place, composed by a workflow from one or more
+ * forecast services. `temperature` is the headline (already in `unit`);
+ * `sources` carries what each service said so the card can show agreement.
+ */
+export const weatherCardSchema = z.object({
+	type: z.literal('weather'),
+	...envelope,
+	location: text(80),
+	temperature: weatherTemperature,
+	unit: z.enum(['C', 'F']).default('C'),
+	condition: text(40),
+	icon: z.enum(weatherConditionIcons),
+	feelsLike: weatherTemperature.optional(),
+	humidity: z.number().min(0).max(100).optional(),
+	wind: z
+		.object({
+			speed: z.number().min(0).max(500),
+			unit: z.enum(['km/h', 'mph', 'm/s']),
+			direction: optionalText(4),
+		})
+		.optional(),
+	high: weatherTemperature.optional(),
+	low: weatherTemperature.optional(),
+	sources: z
+		.array(
+			z.object({ name: text(40), temperature: weatherTemperature, condition: optionalText(40) }),
+		)
+		.min(1)
+		.max(5),
+	forecast: z
+		.array(
+			z.object({
+				label: text(12),
+				high: weatherTemperature,
+				low: weatherTemperature,
+				icon: z.enum(weatherConditionIcons),
+			}),
+		)
+		.max(5)
+		.optional(),
+});
+
 export const resultCardSchema = z.discriminatedUnion('type', [
 	emailCardSchema,
 	messageCardSchema,
@@ -162,6 +222,7 @@ export const resultCardSchema = z.discriminatedUnion('type', [
 	metricCardSchema,
 	listCardSchema,
 	keyValueCardSchema,
+	weatherCardSchema,
 ]);
 
 export type ResultCard = z.infer<typeof resultCardSchema>;
@@ -171,6 +232,7 @@ export type RecordsCard = z.infer<typeof recordsCardSchema>;
 export type MetricCard = z.infer<typeof metricCardSchema>;
 export type ListCard = z.infer<typeof listCardSchema>;
 export type KeyValueCard = z.infer<typeof keyValueCardSchema>;
+export type WeatherCard = z.infer<typeof weatherCardSchema>;
 
 export const MAX_RESULT_CARDS_PER_MESSAGE = 3;
 

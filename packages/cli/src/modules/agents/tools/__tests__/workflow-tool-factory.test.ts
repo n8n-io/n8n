@@ -222,6 +222,117 @@ describe('executeWorkflow → execution classification', () => {
 
 		expect(result.data).toEqual({ Result: [{ answer: 42 }] });
 	});
+
+	it('lifts cards the last node declared into the result with a note for the model', async () => {
+		const weather = {
+			type: 'weather',
+			title: 'Lisbon, Portugal',
+			location: 'Lisbon, Portugal',
+			temperature: '14°',
+			condition: 'Light rain',
+			sources: { 'Open-Meteo': 14.2, 'MET Norway': 13.6 },
+		};
+		const completedRun = {
+			mode: 'integrated',
+			status: 'success',
+			finished: true,
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+			storedAt: 'db',
+			data: createRunExecutionData({
+				resultData: {
+					lastNodeExecuted: 'Compose weather card',
+					runData: {
+						'Compose weather card': [
+							{
+								data: {
+									main: [[{ json: { type: 'cards', text: 'Lisbon: rain.', cards: [weather] } }]],
+								},
+								executionIndex: 1,
+								startTime: 0,
+								executionTime: 1,
+								source: [],
+							},
+						],
+						// Run order in the map is not execution order; `lastNodeExecuted` wins.
+						Geocode: [
+							{
+								data: { main: [[{ json: { type: 'weather', title: 'not a card' } }]] },
+								executionIndex: 0,
+								startTime: 0,
+								executionTime: 1,
+								source: [],
+							},
+						],
+					},
+				},
+			}),
+		} satisfies IRun;
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const activeExecutions = {
+			has: vi.fn().mockReturnValue(true),
+			getPostExecutePromise: vi.fn().mockResolvedValue(completedRun),
+		} as unknown as ActiveExecutions;
+
+		const result = await executeWorkflow(workflow, triggerNode, {}, {
+			...buildContext(run),
+			activeExecutions,
+			executionMode: 'integrated',
+		} as WorkflowToolContext);
+
+		expect(result.cards).toHaveLength(1);
+		expect(result.cards?.[0]).toMatchObject({
+			type: 'weather',
+			source: 'declared',
+			temperature: 14,
+			icon: 'rain',
+			unit: 'C',
+		});
+		expect(result.note).toContain('"Lisbon, Portugal"');
+		expect(result.note).toContain('Do not call show_card');
+		// Raw data still reaches the model for follow-up questions.
+		expect(result.data).toMatchObject({ Geocode: expect.any(Array) });
+	});
+
+	it('returns no cards and no note for ordinary output', async () => {
+		const completedRun = {
+			mode: 'integrated',
+			status: 'success',
+			finished: true,
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+			storedAt: 'db',
+			data: createRunExecutionData({
+				resultData: {
+					lastNodeExecuted: 'Result',
+					runData: {
+						Result: [
+							{
+								data: { main: [[{ json: { answer: 42 } }]] },
+								executionIndex: 0,
+								startTime: 0,
+								executionTime: 1,
+								source: [],
+							},
+						],
+					},
+				},
+			}),
+		} satisfies IRun;
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const activeExecutions = {
+			has: vi.fn().mockReturnValue(true),
+			getPostExecutePromise: vi.fn().mockResolvedValue(completedRun),
+		} as unknown as ActiveExecutions;
+
+		const result = await executeWorkflow(workflow, triggerNode, {}, {
+			...buildContext(run),
+			activeExecutions,
+			executionMode: 'integrated',
+		} as WorkflowToolContext);
+
+		expect(result).toEqual({ executionId: 'exec-1', status: 'success', data: { Result: [{ answer: 42 }] } });
+	});
 });
 
 describe('executeWorkflow → eval instrumentation', () => {

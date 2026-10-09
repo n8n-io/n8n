@@ -15,6 +15,7 @@ import ExperimentalInPlaceNodeSettings from '../../../../experimental/components
 import CanvasNodeTooltip from './parts/CanvasNodeTooltip.vue';
 import CanvasNodeDisabledStrikeThrough from './parts/CanvasNodeDisabledStrikeThrough.vue';
 import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
+import CanvasNodeResultCards from './parts/CanvasNodeResultCards.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
@@ -256,6 +257,7 @@ function onActivate(event: MouseEvent) {
 			</div>
 		</div>
 		<CanvasNodeStatusIcons v-if="!isDisabled || isRestricted" :class="$style.statusIcons" />
+		<CanvasNodeResultCards />
 	</div>
 </template>
 

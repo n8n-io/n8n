@@ -5,6 +5,7 @@ import type {
 	MessageCardData,
 	MetricCardData,
 	RecordsCardData,
+	WeatherCardData,
 } from './ResultCard.types';
 
 export const DEMO_EMAIL: EmailCardData = {
@@ -180,8 +181,44 @@ export const DEMO_KEY_VALUE_PAPER: KeyValueCardData = {
 	tone: 'paper',
 };
 
+export const DEMO_WEATHER: WeatherCardData = {
+	type: 'weather',
+	title: 'Lisbon, Portugal',
+	eyebrow: 'Now · Fri 12:40',
+	status: 'info',
+	statusLabel: 'Live',
+	nodeTypes: ['n8n-nodes-base.httpRequest', 'n8n-nodes-base.code'],
+	nodeName: 'Compose weather card',
+	itemCount: 1,
+	source: 'declared',
+	tone: 'sky',
+	location: 'Lisbon, Portugal',
+	temperature: 14,
+	unit: 'C',
+	condition: 'Light rain',
+	icon: 'rain',
+	feelsLike: 12,
+	humidity: 78,
+	wind: { speed: 21, unit: 'km/h', direction: 'W' },
+	high: 16,
+	low: 9,
+	sources: [
+		{ name: 'Open-Meteo', temperature: 14.2, condition: 'Light rain' },
+		{ name: 'MET Norway', temperature: 13.6, condition: 'Rain' },
+		{ name: 'wttr.in', temperature: 15, condition: 'Patchy rain' },
+	],
+	forecast: [
+		{ label: 'Sat', high: 17, low: 10, icon: 'partly-cloudy' },
+		{ label: 'Sun', high: 15, low: 9, icon: 'cloud' },
+		{ label: 'Mon', high: 12, low: 8, icon: 'rain' },
+		{ label: 'Tue', high: 14, low: 7, icon: 'sun' },
+		{ label: 'Wed', high: 16, low: 9, icon: 'sun' },
+	],
+};
+
 export const DEMO_CARDS = {
 	email: DEMO_EMAIL,
+	weather: DEMO_WEATHER,
 	records: DEMO_RECORDS,
 	recordsMany: DEMO_RECORDS_MANY,
 	metric: DEMO_METRIC,

@@ -118,6 +118,8 @@ export function createEmptyCanvasRenderData(
 		executionWaitingByNodeId: shallowReactive(new Map()),
 		executionRunningByNodeId: shallowReactive(new Map()),
 		executionWaitingForNextByNodeId: shallowReactive(new Map()),
+		executionLastNodeExecuted: undefined,
+		isExecutionRunning: false,
 		tooltipByNodeId: shallowReactive(new Map()),
 		hasIssuesByNodeId: shallowReactive(new Map()),
 		renderTypeByNodeId: shallowReactive(new Map()),

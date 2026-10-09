@@ -186,6 +186,107 @@ describe('useCanvasMapping — mapped nodes', () => {
 		});
 	});
 
+	describe('declared result cards', () => {
+		const weatherItem = {
+			json: {
+				type: 'cards',
+				cards: [
+					{
+						type: 'weather',
+						title: 'Berlin',
+						location: 'Berlin',
+						condition: 'Cloudy',
+						temperature: 18,
+						unit: 'C',
+						icon: 'cloud',
+					},
+				],
+			},
+		};
+
+		function settledRun(items: unknown[] = [weatherItem]): ITaskData[] {
+			return [
+				{
+					executionStatus: 'success',
+					data: { main: [items] },
+				} as unknown as ITaskData,
+			];
+		}
+
+		function mapWith(rd: CanvasRenderData, nodes: INodeUi[]) {
+			return useCanvasMapping({
+				nodes: ref(nodes),
+				connections: ref({}),
+				renderData: shallowRef(rd),
+			}).nodes.value;
+		}
+
+		it('attaches the cards of the last executed node once the execution has settled', () => {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData({
+				executionLastNodeExecuted: 'Alpha',
+				isExecutionRunning: false,
+			});
+			setRunData(rd, 'a', settledRun());
+
+			const [mapped] = mapWith(rd, [node]);
+
+			expect(mapped.data?.runData.resultCards).toEqual([
+				expect.objectContaining({ type: 'weather', title: 'Berlin', temperature: 18 }),
+			]);
+		});
+
+		it('leaves every other node without cards even when their output declares some', () => {
+			const alpha = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const beta = createTestNode({ id: 'b', name: 'Beta' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData({ executionLastNodeExecuted: 'Beta' });
+			setRunData(rd, 'a', settledRun());
+			setRunData(rd, 'b', settledRun());
+
+			const [mappedAlpha, mappedBeta] = mapWith(rd, [alpha, beta]);
+
+			expect(mappedAlpha.data?.runData.resultCards).toBeUndefined();
+			expect(mappedBeta.data?.runData.resultCards).toHaveLength(1);
+		});
+
+		it('withholds cards while the execution is still running', () => {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData({
+				executionLastNodeExecuted: 'Alpha',
+				isExecutionRunning: true,
+			});
+			setRunData(rd, 'a', settledRun());
+
+			const [mapped] = mapWith(rd, [node]);
+
+			expect(mapped.data?.runData.resultCards).toBeUndefined();
+		});
+
+		it('withholds cards when the last node failed', () => {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData({ executionLastNodeExecuted: 'Alpha' });
+			setRunData(rd, 'a', settledRun());
+			rd.executionIssuesByNodeId.set(
+				'a',
+				computed(() => ['Boom']),
+			);
+
+			const [mapped] = mapWith(rd, [node]);
+
+			expect(mapped.data?.runData.resultCards).toBeUndefined();
+		});
+
+		it('yields no cards when the output declares none', () => {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData({ executionLastNodeExecuted: 'Alpha' });
+			setRunData(rd, 'a', settledRun([{ json: { temperature: 18 } }]));
+
+			const [mapped] = mapWith(rd, [node]);
+
+			expect(mapped.data?.runData.resultCards).toBeUndefined();
+		});
+	});
+
 	it('falls back to a render entry derived from node.type when renderData has none', () => {
 		// Placeholder nodes injected via the canvas's `fallbackNodes` prop
 		// (AddNodes, ChoicePrompt — see NodeView.vue) are not in the workflow

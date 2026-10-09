@@ -286,4 +286,7 @@ export default {
 	'resultCard.email.to': 'To',
 	'resultCard.email.from': 'From',
 	'resultCard.email.cc': 'Cc',
+	'resultCard.weather.feelsLike': 'Feels {temperature}',
+	'resultCard.weather.range': 'H {high} L {low}',
+	'resultCard.weather.agreement': '{count} sources within {spread}',
 } as N8nLocale;

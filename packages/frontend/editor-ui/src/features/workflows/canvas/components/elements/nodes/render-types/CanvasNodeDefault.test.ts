@@ -112,6 +112,57 @@ describe('CanvasNodeDefault', () => {
 		expect(getByTestId('canvas-default-node')).toMatchSnapshot();
 	});
 
+	describe('declared result cards', () => {
+		it('floats the cards the node declared in its final output beside the node', () => {
+			const { getByTestId, getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								runData: {
+									outputMap: {},
+									iterations: 1,
+									visible: true,
+									resultCards: [
+										{
+											type: 'weather',
+											title: 'Berlin',
+											location: 'Berlin',
+											condition: 'Sunny',
+											temperature: 18,
+											unit: 'C',
+											icon: 'sun',
+											sources: [{ name: 'Open-Meteo', temperature: 18 }],
+										},
+									],
+								},
+							},
+						}),
+					},
+					stubs,
+				},
+			});
+
+			expect(getByTestId('canvas-node-result-cards')).toBeInTheDocument();
+			expect(getByText('Berlin')).toBeInTheDocument();
+		});
+
+		it('shows no cards when the node is not the one that finished the execution', () => {
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: { runData: { outputMap: {}, iterations: 1, visible: true } },
+						}),
+					},
+					stubs,
+				},
+			});
+
+			expect(queryByTestId('canvas-node-result-cards')).toBeNull();
+		});
+	});
+
 	describe('private credential', () => {
 		it('shows the private-credential icon (with tooltip) as the node badge, replacing the node badge', () => {
 			vi.mocked(useNodePrivateCredential).mockReturnValue({

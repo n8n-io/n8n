@@ -585,6 +585,13 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		get executionWaitingForNextByNodeId() {
 			return executionStateStore.executionWaitingForNextByNodeId;
 		},
+		/** Name of the node that finished the active/displayed execution — the one whose declared result cards the canvas shows. */
+		get executionLastNodeExecuted(): string | undefined {
+			return executionStateStore.activeExecution?.data?.resultData?.lastNodeExecuted;
+		},
+		get isExecutionRunning(): boolean {
+			return executionStateStore.isWorkflowRunning;
+		},
 
 		// --- multi-store fusion projections ---
 		tooltipByNodeId,

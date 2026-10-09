@@ -10,6 +10,7 @@ import ResultCardList from './bodies/ResultCardList.vue';
 import ResultCardMessage from './bodies/ResultCardMessage.vue';
 import ResultCardMetric from './bodies/ResultCardMetric.vue';
 import ResultCardRecords from './bodies/ResultCardRecords.vue';
+import ResultCardWeather from './bodies/ResultCardWeather.vue';
 import type { ResultCardIcon, ResultCardProps } from './ResultCard.types';
 import { resolveResultCardService, resolveResultCardTone } from './tones';
 import { isSafeCoverSrc, isSafeHref } from './utils';
@@ -122,6 +123,12 @@ const detailsJson = computed(() => JSON.stringify(props.card, null, 2));
 			/>
 			<ResultCardList
 				v-else-if="card.type === 'list'"
+				:card="card"
+				:light="isLight"
+				:animated="animated"
+			/>
+			<ResultCardWeather
+				v-else-if="card.type === 'weather'"
 				:card="card"
 				:light="isLight"
 				:animated="animated"
