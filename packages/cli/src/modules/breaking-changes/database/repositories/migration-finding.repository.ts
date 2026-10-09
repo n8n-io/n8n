@@ -197,6 +197,31 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	}
 
 	/**
+	 * Sets the status a user picked on the findings of one rule on many workflows.
+	 * Findings in a status only the scan sets, for example `fixed`, stay as they are.
+	 * `statusChangedAt` moves only on the findings whose status changes.
+	 */
+	async setTriageStatusForWorkflows(
+		targetVersion: BreakingChangeVersion,
+		ruleId: string,
+		workflowIds: string[],
+		status: MigrationFindingTriageStatus,
+		ctx: OperationContext,
+	): Promise<void> {
+		const otherTriageStatuses = TRIAGE_STATUSES.filter((triageStatus) => triageStatus !== status);
+		// One transaction, so a failed chunk does not leave the earlier chunks changed.
+		await this.runInTransaction(ctx, async (manager) => {
+			for (const chunk of chunkIds(workflowIds)) {
+				await manager.update(
+					MigrationFinding,
+					{ targetVersion, ruleId, workflowId: In(chunk), status: In(otherTriageStatuses) },
+					{ status, statusChangedAt: new Date() },
+				);
+			}
+		});
+	}
+
+	/**
 	 * Inserts the findings as `open`. A finding that exists for the same workflow,
 	 * rule and target version is left as it is, so two syncs that run at the same
 	 * time on different mains do not fail each other's batches.

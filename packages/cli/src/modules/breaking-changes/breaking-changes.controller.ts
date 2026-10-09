@@ -6,6 +6,7 @@ import {
 	BreakingChangeVersion,
 	MigrationWorkflowOwnerResponse,
 	UpdateMigrationFindingStatusRequestDto,
+	UpdateMigrationFindingStatusesRequestDto,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
 import { EventService, WorkflowSharingService } from '@n8n/backend-services';
@@ -138,6 +139,18 @@ export class BreakingChangesController {
 		const scope = await this.scopeFor(req.user);
 		await this.syncService.syncIfStale(version);
 		return await this.queryService.getRuleFindings(version, ruleId, scope);
+	}
+
+	/** Sets the status a user picks for the findings of one rule on many workflows. */
+	@Patch('/report/:ruleId/workflows')
+	@GlobalScope('breakingChanges:migrate')
+	async updateFindingStatuses(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('ruleId') ruleId: string,
+		@Body body: UpdateMigrationFindingStatusesRequestDto,
+	): Promise<void> {
+		await this.triageService.setStatuses(ruleId, body.workflowIds, body.status);
 	}
 
 	/** Sets the status a user picks for the finding of one rule on one workflow. */

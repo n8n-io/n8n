@@ -333,6 +333,36 @@ describe('BreakingChangesController', () => {
 		});
 	});
 
+	describe('PATCH /report/:ruleId/workflows', () => {
+		it('passes the rule, workflows and status to the triage service and returns nothing', async () => {
+			triageService.setStatuses.mockResolvedValue(undefined);
+
+			const result = await controller.updateFindingStatuses(req, res, 'removed-nodes-v3', {
+				workflowIds: ['wf-1', 'wf-2'],
+				status: 'wont_fix',
+			});
+
+			expect(result).toBeUndefined();
+			expect(triageService.setStatuses).toHaveBeenCalledWith(
+				'removed-nodes-v3',
+				['wf-1', 'wf-2'],
+				'wont_fix',
+			);
+			expect(syncService.syncIfStale).not.toHaveBeenCalled();
+		});
+
+		it('requires the global breakingChanges:migrate scope', () => {
+			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+				BreakingChangesController as Controller,
+			);
+
+			expect(metadata.routes.get('updateFindingStatuses')?.accessScope).toEqual({
+				scope: 'breakingChanges:migrate',
+				globalOnly: true,
+			});
+		});
+	});
+
 	describe('PATCH /report/:ruleId/workflows/:workflowId', () => {
 		it('passes the rule, workflow and status to the triage service and returns nothing', async () => {
 			triageService.setStatus.mockResolvedValue(undefined);
