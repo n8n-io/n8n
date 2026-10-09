@@ -407,6 +407,23 @@ const unassignedCount = computed(
 
 const currentUserId = computed(() => usersStore.currentUserId ?? undefined);
 
+const assignedToMeCount = computed(
+	() =>
+		state.value.affectedWorkflows.filter((workflow) => workflow.owner?.id === currentUserId.value)
+			.length,
+);
+
+function quickFilterLabel(
+	key:
+		| 'settings.migrationReport.detail.quickFilter.assignedToMe'
+		| 'settings.migrationReport.detail.quickFilter.open'
+		| 'settings.migrationReport.detail.quickFilter.wontFix'
+		| 'settings.migrationReport.detail.quickFilter.unassigned',
+	count: number,
+): string {
+	return i18n.baseText(key, { interpolate: { count: String(count) } });
+}
+
 function toggleStateFilter(status: MigrationFindingTriageStatus) {
 	stateFilter.value = stateFilter.value === status ? undefined : status;
 }
@@ -524,7 +541,12 @@ const sortedWorkflows = computed(() => {
 					data-test-id="migration-rule-quick-filter-mine"
 					@click="toggleOwnerFilter(currentUserId)"
 				>
-					{{ i18n.baseText('settings.migrationReport.detail.quickFilter.assignedToMe') }}
+					{{
+						quickFilterLabel(
+							'settings.migrationReport.detail.quickFilter.assignedToMe',
+							assignedToMeCount,
+						)
+					}}
 				</N8nButton>
 				<N8nButton
 					:variant="stateFilter === 'open' ? 'solid' : 'subtle'"
@@ -533,7 +555,7 @@ const sortedWorkflows = computed(() => {
 					data-test-id="migration-rule-quick-filter-open"
 					@click="toggleStateFilter('open')"
 				>
-					{{ i18n.baseText('settings.migrationReport.detail.state.open') }} {{ openCount }}
+					{{ quickFilterLabel('settings.migrationReport.detail.quickFilter.open', openCount) }}
 				</N8nButton>
 				<N8nButton
 					:variant="stateFilter === 'wont_fix' ? 'solid' : 'subtle'"
@@ -542,7 +564,9 @@ const sortedWorkflows = computed(() => {
 					data-test-id="migration-rule-quick-filter-wont-fix"
 					@click="toggleStateFilter('wont_fix')"
 				>
-					{{ i18n.baseText('settings.migrationReport.detail.state.wontFix') }} {{ wontFixCount }}
+					{{
+						quickFilterLabel('settings.migrationReport.detail.quickFilter.wontFix', wontFixCount)
+					}}
 				</N8nButton>
 				<N8nButton
 					:variant="workflowFilters.owner === UNASSIGNED_OWNER ? 'solid' : 'subtle'"
@@ -551,8 +575,12 @@ const sortedWorkflows = computed(() => {
 					data-test-id="migration-rule-quick-filter-unassigned"
 					@click="toggleOwnerFilter(UNASSIGNED_OWNER)"
 				>
-					{{ i18n.baseText('settings.migrationReport.detail.table.unassigned') }}
-					{{ unassignedCount }}
+					{{
+						quickFilterLabel(
+							'settings.migrationReport.detail.quickFilter.unassigned',
+							unassignedCount,
+						)
+					}}
 				</N8nButton>
 			</div>
 			<N8nInput

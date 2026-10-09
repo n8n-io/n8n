@@ -1006,6 +1006,9 @@ describe('MigrationRuleDetail', () => {
 			mockedStore(useUsersStore).currentUserId = 'user-1';
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await waitFor(() => expect(rowNames()).toHaveLength(3));
+			expect(screen.getByTestId('migration-rule-quick-filter-mine')).toHaveTextContent(
+				'Assigned to me 1',
+			);
 
 			await userEvent.click(screen.getByTestId('migration-rule-quick-filter-mine'));
 			await waitFor(() => expect(rowNames()).toEqual(['Test Workflow 1']));
@@ -1038,7 +1041,19 @@ describe('MigrationRuleDetail', () => {
 		});
 
 		it('should sort a workflow that never ran last when the latest run comes first', async () => {
+			// The workflow that never ran has the most runs, so the default sort puts it first.
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						mockWorkflowWithIssue,
+						{ ...mockWorkflowWithMultipleNodes, numberOfExecutions: 200 },
+					],
+				}),
+			);
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() =>
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 2'),
+			);
 
 			const trigger = await screen.findByTestId('migration-rule-sort-trigger');
 			await userEvent.click(trigger);
@@ -1046,6 +1061,7 @@ describe('MigrationRuleDetail', () => {
 
 			await waitFor(() => {
 				expect(trigger).toHaveTextContent('Sort: Last run ↓');
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
 				expect(screen.getAllByRole('row')[2].textContent).toContain('Test Workflow 2');
 			});
 		});
