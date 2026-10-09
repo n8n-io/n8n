@@ -762,7 +762,7 @@ export class WorkflowsPublicController {
 				workflowId,
 				workflowVersionId,
 				{
-					includePublishHistory: false,
+					publishHistory: 'none',
 				},
 			);
 		} catch (error) {
@@ -860,7 +860,7 @@ export class WorkflowsPublicController {
 				req.user,
 				workflowId,
 				workflowVersionId,
-				{ includePublishHistory: false },
+				{ publishHistory: 'none' },
 			);
 
 			this.eventService.emit('user-retrieved-workflow-version', {

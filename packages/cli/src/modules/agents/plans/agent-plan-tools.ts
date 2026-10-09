@@ -208,10 +208,10 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 					'Do not add final communication-only tasks, such as "Presented findings to user", to the plan. ' +
 					'Include such a task only when it requires a sub-agent or a tool call beyond plan maintenance. ' +
 					'If the current plan content and revision are not in context, call read_plan before updating the plan. ' +
-					'For sub-agent work on a plan task, always use spawn_background_subagent, even for short or sequential tasks. ' +
-					'Do not use delegate_subagent for plan work. ' +
+					'For sub-agent work on a plan task, always use delegate_subagent with mode: "background", even for short or sequential tasks. ' +
+					'Do not use foreground delegation for plan work. ' +
 					'This rule overrides the default foreground-delegation guidance for plan work. ' +
-					'If spawn_background_subagent is unavailable, explain the limitation instead of delegating plan work in the foreground. ' +
+					'If background mode is unavailable, explain the limitation instead of delegating plan work in the foreground. ' +
 					'Keep task and group statuses current. Accept results before marking work Done. ' +
 					'Before announcing plan changes or task progress to the user, always update the plan with that information. ' +
 					'Wait for the plan update to succeed before announcing the change. ' +

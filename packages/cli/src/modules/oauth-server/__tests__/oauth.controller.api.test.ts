@@ -939,6 +939,32 @@ describe('IP rate limit configuration', () => {
 	});
 
 	test.each([
+		['GET', '/mcp-oauth/authorize'],
+		['POST', '/mcp-oauth/token'],
+		['POST', '/mcp-oauth/revoke'],
+		['POST', '/mcp-oauth/register'],
+		['GET', '/oauth/authorize'],
+		['POST', '/oauth/token'],
+		['POST', '/oauth/revoke'],
+		['POST', '/oauth/register'],
+	])('does not apply an SDK rate limit to %s %s', async (method, path) => {
+		const response =
+			method === 'GET'
+				? await testServer.restlessAgent.get(path)
+				: await testServer.restlessAgent.post(path).send({});
+
+		expect(response.statusCode).not.toBe(404);
+		expect(response.headers).not.toHaveProperty('ratelimit-policy');
+	});
+
+	test('does not cap authorization requests at the SDK default of 100', async () => {
+		for (let attempt = 0; attempt <= 100; attempt++) {
+			const response = await testServer.restlessAgent.get('/mcp-oauth/authorize');
+			expect(response.statusCode).toBe(400);
+		}
+	});
+
+	test.each([
 		'metadata',
 		'metadataOptions',
 		'protectedResourceMetadata',

@@ -91,7 +91,7 @@ export interface ImportPackageCounts {
 		};
 	};
 	credentials: { matched: number; stubbed: number };
-	dataTables: { matched: number; created: number };
+	dataTables: { matched: number; created: number; updated: number };
 	variables: {
 		matched: number;
 		created: number;
@@ -440,9 +440,14 @@ export class N8nClient {
 		);
 	}
 
-	async continueApplyPackage(id: string, expectedSource: PromotionExpectedSource) {
+	async continueApplyPackage(
+		id: string,
+		expectedSource: PromotionExpectedSource,
+		confirmDestructiveChanges?: boolean,
+	) {
 		return await this.post<ApplyPackageResult>(`/promotions/connections/${id}/apply/continue`, {
 			expectedSource,
+			confirmDestructiveChanges,
 		});
 	}
 
@@ -481,10 +486,12 @@ export class N8nClient {
 		projectId: string,
 		workflowIds: string[],
 		expectedSource: PromotionExpectedSource,
+		confirmDestructiveChanges?: boolean,
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply/continue`, {
 			workflowIds,
 			expectedSource,
+			confirmDestructiveChanges,
 		});
 	}
 

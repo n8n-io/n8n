@@ -28,7 +28,6 @@ export type CredentialResolutionFailure = {
 	expectedType?: string;
 	/** For `type_mismatch`: the actual type of the resolved target credential. */
 	actualType?: string;
-	usedByWorkflows: string[];
 };
 
 export interface CredentialResolution {
@@ -58,6 +57,5 @@ export function createFailure(
 		sourceId: reference.id,
 		name: reference.name,
 		type: reference.type,
-		usedByWorkflows: [...reference.usedByWorkflows].sort(),
 	};
 }

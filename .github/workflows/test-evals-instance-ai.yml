@@ -346,7 +346,7 @@ jobs:
           # ANTHROPIC_API_KEY is the provider-native key resolveEvalModelConfig prefers
           # when N8N_INSTANCE_AI_EVAL_MODEL differs from N8N_INSTANCE_AI_MODEL.
           MODEL_ARGS+=(
-            -e N8N_INSTANCE_AI_EVAL_MODEL=anthropic/claude-sonnet-4-6
+            -e N8N_INSTANCE_AI_EVAL_MODEL=anthropic/claude-sonnet-5-5
             -e ANTHROPIC_API_KEY="$EVALS_ANTHROPIC_KEY"
           )
 

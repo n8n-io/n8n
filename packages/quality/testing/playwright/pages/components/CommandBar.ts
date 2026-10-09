@@ -8,7 +8,7 @@ export class CommandBar {
 	}
 
 	getInput(): Locator {
-		return this.getContainer().getByRole('textbox');
+		return this.getContainer().getByRole('combobox');
 	}
 
 	getItemsList(): Locator {

@@ -74,6 +74,9 @@ function readMessageAloud() {
 	}
 
 	wasStoppedByUser.value = false;
+	const utterance = speech.utterance.value;
+	utterance.voice = window.speechSynthesis.getVoices().find((voice) => voice.default) ?? null;
+	utterance.lang = utterance.voice?.lang.replace('_', '-') || 'en-US';
 	speech.speak();
 	props.onReadAloud?.({ text: props.content, status: 'started' });
 }

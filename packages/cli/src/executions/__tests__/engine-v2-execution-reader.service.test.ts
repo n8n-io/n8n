@@ -171,6 +171,50 @@ describe('EngineV2ExecutionReader', () => {
 		});
 	});
 
+	describe('findReference', () => {
+		it('returns only execution identity without requesting steps', async () => {
+			await expect(reader.findReference(EXECUTION_ID)).resolves.toEqual({
+				id: EXECUTION_ID,
+				workflowId: WORKFLOW_ID,
+			});
+			expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, {
+				includeSteps: false,
+			});
+		});
+
+		it('returns the identity even when the workflow snapshot is unavailable', async () => {
+			dataPlane.getExecution.mockResolvedValue(snapshot({ workflow: {} }));
+
+			await expect(reader.findReference(EXECUTION_ID)).resolves.toEqual({
+				id: EXECUTION_ID,
+				workflowId: WORKFLOW_ID,
+			});
+		});
+
+		it('returns undefined when the execution is missing', async () => {
+			dataPlane.getExecution.mockResolvedValue(undefined);
+
+			await expect(reader.findReference(EXECUTION_ID)).resolves.toBeUndefined();
+		});
+
+		it('rejects a response that identifies a different execution', async () => {
+			dataPlane.getExecution.mockResolvedValue(
+				snapshot({ id: '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb' }),
+			);
+
+			await expect(reader.findReference(EXECUTION_ID)).rejects.toThrow(
+				'The execution response does not match the requested execution.',
+			);
+		});
+
+		it('leaves provider failures to the caller', async () => {
+			const error = new Error('Data plane unavailable');
+			dataPlane.getExecution.mockRejectedValue(error);
+
+			await expect(reader.findReference(EXECUTION_ID)).rejects.toBe(error);
+		});
+	});
+
 	describe('findOne', () => {
 		it('should map the snapshot onto an execution response', async () => {
 			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);

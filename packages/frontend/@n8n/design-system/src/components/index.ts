@@ -209,7 +209,13 @@ export { default as N8nInlineTextEdit } from './N8nInlineTextEdit';
 export { default as N8nScrollArea } from './N8nScrollArea';
 export * from './DateRangePicker';
 export { default as N8nCommandBar } from './N8nCommandBar';
-export type { CommandBarItem } from './N8nCommandBar/types';
+export type {
+	CommandBarItem,
+	CommandBarItemIcon,
+	CommandBarSection,
+	CommandBarSelectOptions,
+	CommandBarTab,
+} from './N8nCommandBar/types';
 export * from './N8nDialog';
 export * from './N8nAlertDialog';
 export { default as N8nVisuallyHidden } from './N8nVisuallyHidden';

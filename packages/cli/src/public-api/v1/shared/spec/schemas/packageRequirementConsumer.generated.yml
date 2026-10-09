@@ -1,0 +1,12 @@
+type: object
+properties:
+  kind:
+    type: string
+    enum:
+      - workflow
+  id:
+    type: string
+    minLength: 1
+required:
+  - kind
+  - id
