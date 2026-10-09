@@ -23,14 +23,15 @@ function hasWebhooksDeclared(descriptionValue: TSESTree.ObjectExpression): boole
 	return webhooksProperty.value.elements.length > 0;
 }
 
-/** Returns true when the property defines a (possibly async) method named `name`. */
+/** Returns true when the property provides a lifecycle method named `name`. */
 function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string): boolean {
 	if (property.type !== AST_NODE_TYPES.Property) return false;
 	if (getPropertyKeyName(property) !== name) return false;
 
 	return (
 		property.value.type === AST_NODE_TYPES.FunctionExpression ||
-		property.value.type === AST_NODE_TYPES.ArrowFunctionExpression
+		property.value.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+		property.value.type === AST_NODE_TYPES.Identifier
 	);
 }
 
