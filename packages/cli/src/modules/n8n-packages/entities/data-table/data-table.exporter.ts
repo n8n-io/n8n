@@ -70,7 +70,10 @@ export class DataTableExporter {
 			requirements.push({
 				id: dataTable.id,
 				name: dataTable.name,
-				usedByWorkflows: usedByWorkflowsById.get(dataTable.id) ?? [],
+				usedBy: (usedByWorkflowsById.get(dataTable.id) ?? []).map((id) => ({
+					kind: 'workflow',
+					id,
+				})),
 			});
 		}
 

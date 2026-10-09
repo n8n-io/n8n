@@ -560,7 +560,7 @@ describe('WorkingCopyUpdater', () => {
 						projects: [alpha],
 						workflows: [wf('w1')],
 						requirements: {
-							tags: [{ id: 't-old', name: 'prod', usedByWorkflows: ['w1'] }],
+							tags: [{ id: 't-old', name: 'prod', usedBy: [{ kind: 'workflow', id: 'w1' }] }],
 						},
 					}),
 					files: {
