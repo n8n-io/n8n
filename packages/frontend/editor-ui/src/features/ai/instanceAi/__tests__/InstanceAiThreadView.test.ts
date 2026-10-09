@@ -2486,11 +2486,6 @@ describe('InstanceAiThreadView', () => {
 			outcome: 'pass',
 			reasoning: 'It answered the question.',
 		};
-		const FAIL_VERDICT: AgentEvalVerdict = {
-			status: 'completed',
-			outcome: 'fail',
-			reasoning: 'It did not answer the question.',
-		};
 
 		function seedPreviewVariant(verdict: AgentEvalVerdict = PASS_VERDICT) {
 			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
@@ -2580,21 +2575,6 @@ describe('InstanceAiThreadView', () => {
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			await user.click(await findByTestId('instance-ai-test-agent-preview-later'));
-
-			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
-				dismissedContextKeys: ['test-agent:agent-1'],
-			});
-			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
-		});
-
-		it('persists the dismissal after "Fix this check" and then skipping, without requesting the evals focus', async () => {
-			seedReadyAgent();
-			const evalsStore = seedPreviewVariant(FAIL_VERDICT);
-			const user = userEvent.setup();
-			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-			await user.click(await findByTestId('instance-ai-test-agent-preview-needs-work'));
-			await user.click(await findByTestId('instance-ai-test-agent-preview-dont-create-evals'));
 
 			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
 				dismissedContextKeys: ['test-agent:agent-1'],

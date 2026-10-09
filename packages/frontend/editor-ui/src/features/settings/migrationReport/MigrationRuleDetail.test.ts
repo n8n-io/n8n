@@ -48,6 +48,13 @@ const mockWorkflowWithIssue = {
 	lastUpdatedAt: new Date('2024-01-15'),
 	lastExecutedAt: new Date('2024-01-14'),
 	status: 'open' as const,
+	owner: {
+		id: 'user-1',
+		firstName: 'Ada',
+		lastName: 'Lovelace',
+		email: 'ada@example.com',
+		source: 'suggested' as const,
+	},
 	issues: [
 		{
 			nodeId: 'node-1',
@@ -186,6 +193,7 @@ describe('MigrationRuleDetail', () => {
 
 			await waitFor(() => {
 				expect(screen.getByText('Name')).toBeInTheDocument();
+				expect(screen.getByText('Owner')).toBeInTheDocument();
 				expect(screen.getByText('Status', { selector: 'th' })).toBeInTheDocument();
 				expect(screen.getByText('Nodes affected')).toBeInTheDocument();
 				expect(screen.getByText(/Number of executions/)).toBeInTheDocument();
@@ -448,6 +456,42 @@ describe('MigrationRuleDetail', () => {
 			});
 		});
 
+		it('should show the owner name, or Unassigned when the workflow has none', async () => {
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+
+			await waitFor(() => {
+				expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+				expect(screen.getByText('Unassigned')).toBeInTheDocument();
+			});
+		});
+
+		it('should fall back to the email when the owner has no name', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							owner: { ...mockWorkflowWithIssue.owner, firstName: null, lastName: null },
+						},
+					],
+				}),
+			);
+
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+
+			await waitFor(() => {
+				expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+			});
+		});
+
 		it('should display workflow execution counts', async () => {
 			renderComponent({
 				props: {
@@ -558,6 +602,39 @@ describe('MigrationRuleDetail', () => {
 				const firstDataRow = rows[1]; // Skip header row
 				expect(firstDataRow.textContent).toContain('Test Workflow 1');
 				expect(firstDataRow.textContent).toContain('100');
+			});
+		});
+
+		it('should sort by the shown owner label in both directions', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							owner: { ...mockWorkflowWithIssue.owner, firstName: 'Zed', lastName: 'Zulu' },
+						},
+						{ ...mockWorkflowWithMultipleNodes, owner: mockWorkflowWithIssue.owner },
+					],
+				}),
+			);
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+			// Default order is by executions, so the Zed Zulu workflow comes first.
+			await waitFor(() => {
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
+			});
+
+			await userEvent.click(screen.getByRole('columnheader', { name: /Owner/ }));
+			await waitFor(() => {
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Ada Lovelace');
+			});
+
+			await userEvent.click(screen.getByRole('columnheader', { name: /Owner/ }));
+			await waitFor(() => {
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Zed Zulu');
 			});
 		});
 	});

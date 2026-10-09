@@ -497,38 +497,41 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			</div>
 		</div>
 
-		<ExecutionPreviewHost :workflow-id="workflowId" :execution-id="executionId" :node-id="nodeId" />
+		<ExecutionPreviewHost
+			:class="$style.previewHost"
+			:workflow-id="workflowId"
+			:execution-id="executionId"
+			:node-id="nodeId"
+		/>
 	</div>
 </template>
 
 <style module lang="scss">
 .previewContainer {
-	position: relative;
+	display: flex;
+	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
 }
 
 .executionDetails {
-	position: absolute;
-	// Stack above the native canvas below it; the canvas owns its own stacking
-	// context, so without this its panes would intercept clicks on these actions.
-	z-index: 1;
+	flex-shrink: 0;
 	padding: var(--spacing--md);
 	width: 100%;
 	display: flex;
 	justify-content: space-between;
 	align-items: flex-start;
-	transition: all 150ms ease-in-out;
-	pointer-events: none;
+	background-color: var(--background--surface);
 
 	> div:last-child {
 		display: flex;
 		align-items: center;
 	}
+}
 
-	& * {
-		pointer-events: all;
-	}
+.previewHost {
+	flex: 1;
+	min-height: 0;
 }
 
 .executionDetailsLeft {

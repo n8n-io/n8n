@@ -3232,9 +3232,11 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `n8n-package-exported` event with entity counts only, not ids', () => {
 			const event: RelayEventMap['n8n-package-exported'] = {
 				user: { id: 'user123' },
+				agentIds: ['agent1', 'agent2'],
 				workflowIds: ['wf1', 'wf2', 'wf3'],
 				projectIds: ['proj1'],
 				counts: {
+					agents: 2,
 					workflows: 3,
 					folders: 1,
 					credentials: 2,
@@ -3250,6 +3252,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User exported n8n package', {
 				user_id: 'user123',
+				agent_count: 2,
 				workflow_count: 3,
 				folder_count: 1,
 				credential_count: 2,
@@ -3264,6 +3267,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `n8n-package-export-failed` event with entity counts and reason only, not ids', () => {
 			const event: RelayEventMap['n8n-package-export-failed'] = {
 				user: { id: 'user123' },
+				agentIds: ['agent1', 'agent2'],
 				reason: 'access-denied',
 				workflowIds: ['wf1', 'wf2'],
 			};
@@ -3272,6 +3276,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User package export failed', {
 				user_id: 'user123',
+				agent_count: 2,
 				reason: 'access-denied',
 				workflow_count: 2,
 				folder_count: 0,
@@ -4554,6 +4559,67 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User ran out of free AI credits');
 		});
 	});
+	describe('migration report events', () => {
+		it('tracks the overview counts when the report is viewed', () => {
+			const payload: RelayEventMap['migration-report-viewed'] = {
+				user: { id: 'user-1' },
+				targetVersion: 'v3',
+				refreshed: true,
+				report: {
+					report: {
+						generatedAt: new Date('2026-01-01T00:00:00.000Z'),
+						targetVersion: 'v3',
+						currentVersion: '2.0.0',
+						instanceResults: [
+							{
+								ruleId: 'docker-only-deployment-v3',
+								ruleTitle: 'Title',
+								ruleDescription: 'Description',
+								ruleImpact: 'upgradeBlocked',
+								ruleDocumentationUrl: 'https://docs.n8n.io',
+								recommendations: [],
+								migratable: false,
+								instanceIssues: [],
+							},
+						],
+						workflowResults: [
+							{
+								ruleId: 'removed-nodes-v3',
+								ruleTitle: 'Title',
+								ruleDescription: 'Description',
+								ruleImpact: 'executionsFail',
+								ruleDocumentationUrl: 'https://docs.n8n.io',
+								recommendations: [],
+								migratable: false,
+								nbAffectedWorkflows: 4,
+								nbWontFixWorkflows: 1,
+							},
+						],
+					},
+					totalWorkflows: 10,
+					totalAffectedWorkflows: 4,
+					shouldCache: false,
+				},
+			};
+
+			eventService.emit('migration-report-viewed', payload);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.MIGRATION_REPORT.USER_VIEWED_MIGRATION_REPORT,
+				{
+					user_id: 'user-1',
+					target_version: 'v3',
+					refreshed: true,
+					total_workflows: 10,
+					affected_workflows: 4,
+					affected_instance_rules: 1,
+					rules: [{ rule_id: 'removed-nodes-v3', impact: 'executionsFail', affected_workflows: 4 }],
+					synced_at: '2026-01-01T00:00:00.000Z',
+				},
+			);
+		});
+	});
+
 	describe('workflow history compaction events', () => {
 		it('should call telemetry.track when compacting history finishes', async () => {
 			const payload = {

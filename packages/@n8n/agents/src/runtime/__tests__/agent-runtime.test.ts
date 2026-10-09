@@ -98,12 +98,56 @@ type AiImport = typeof import('ai');
 // Mock generateText and streamText from the 'ai' package
 vi.mock('ai', async () => {
 	const actual = await vi.importActual<AiImport>('ai');
+	// Keep existing model fixtures in one place while exercising the current SDK result shape.
+	const generateMock = vi.fn();
+	const streamMock = vi.fn();
 	return {
 		...actual,
 		embed: vi.fn(),
 		embedMany: vi.fn(),
-		generateText: vi.fn(),
-		streamText: vi.fn(),
+		generateText: new Proxy(generateMock, {
+			apply: async (target, thisArg, args) => {
+				const result: unknown = await Reflect.apply(target, thisArg, args);
+				if (!result || typeof result !== 'object') return result;
+				const legacy = result as {
+					response?: { messages: unknown[] };
+					responseMessages?: unknown[];
+					providerMetadata?: unknown;
+					finalStep?: unknown;
+				};
+				return {
+					...legacy,
+					responseMessages: legacy.responseMessages ?? legacy.response?.messages,
+					finalStep: legacy.finalStep ?? { providerMetadata: legacy.providerMetadata },
+				};
+			},
+		}),
+		streamText: new Proxy(streamMock, {
+			apply: (target, thisArg, args) => {
+				const result: unknown = Reflect.apply(target, thisArg, args);
+				if (!result || typeof result !== 'object') return result;
+				const legacy = result as {
+					response?: PromiseLike<{ messages: unknown[] }>;
+					responseMessages?: PromiseLike<unknown[]>;
+					providerMetadata?: PromiseLike<unknown>;
+					finalStep?: PromiseLike<unknown>;
+				};
+				const responseMessages =
+					legacy.responseMessages ??
+					Promise.resolve(legacy.response).then((response) => response?.messages);
+				// Aborted streams need no result. Mark the derived promise as handled.
+				void Promise.resolve(responseMessages).catch(() => {});
+				return {
+					...legacy,
+					responseMessages,
+					finalStep:
+						legacy.finalStep ??
+						Promise.resolve(legacy.providerMetadata).then((providerMetadata) => ({
+							providerMetadata,
+						})),
+				};
+			},
+		}),
 		tool: vi.fn((config: unknown) => config),
 		jsonSchema: vi.fn((schema: unknown) => ({ _type: 'jsonSchema', schema })),
 		Output: {
@@ -1049,6 +1093,47 @@ describe('AgentRuntime — execution counters', () => {
 			expect(args.onStepStart).toBe(onStepStart);
 			expect(args.onStepEnd).toBe(onStepEnd);
 		}
+	});
+
+	it('preserves messages and final-step metadata in generate and stream results', async () => {
+		const usage = { inputTokens: 10, outputTokens: 5, totalTokens: 15 };
+		const providerMetadata = { openai: { cachedPromptTokens: 3 } };
+		const responseMessages = [{ role: 'assistant', content: [{ type: 'text', text: 'Hello' }] }];
+		generateText.mockResolvedValue({
+			finishReason: 'stop',
+			usage,
+			responseMessages,
+			finalStep: { providerMetadata },
+			toolCalls: [],
+		});
+		streamText.mockReturnValue({
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'Hello' }]),
+			finishReason: Promise.resolve('stop'),
+			usage: Promise.resolve(usage),
+			responseMessages: Promise.resolve(responseMessages),
+			finalStep: Promise.resolve({ providerMetadata }),
+			toolCalls: Promise.resolve([]),
+		});
+		const { runtime } = createRuntime();
+		const generated = await runtime.generate('hi');
+		const streamed = await collectChunks((await runtime.stream('hi')).stream);
+		const expectedUsage = {
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			inputTokenDetails: { noCache: 7, cacheRead: 3 },
+		};
+		expect(generated.messages).toMatchObject(responseMessages);
+		expect(generated.finishReason).toBe('stop');
+		expect(generated.usage).toMatchObject(expectedUsage);
+		expect(streamed).toContainEqual(
+			expect.objectContaining({ type: 'text-delta', delta: 'Hello' }),
+		);
+		expect(streamed.at(-1)).toMatchObject({
+			type: 'finish',
+			finishReason: 'stop',
+			usage: expectedUsage,
+		});
 	});
 
 	it('allows system-role messages in generateText and streamText history', async () => {
@@ -8796,6 +8881,55 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(JSON.stringify(capturedCall(2))).not.toContain('Old workflow policy.');
 	});
 
+	it('resumes a deferred tool that a skill dependency loaded', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'planning',
+				name: 'planning',
+				description: 'Plan multi-step work.',
+				instructions: 'Ask the user to approve the plan.',
+				dependencies: { tools: ['approve'] },
+			},
+		]);
+		const checkpointStore = makeClaimingCheckpointStore();
+		const memory = new InMemoryMemory();
+		const options = {
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+			deferredTools: [makeInterruptibleTool()],
+			checkpointStorage: checkpointStore,
+		};
+		const first = buildMidRunRuntime(memory, options);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-planning', 'load_skill', { skillId: 'planning' }),
+			)
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('confirm', 'approve', { question: 'Run the plan?' }),
+			);
+		const result = await first.generate('Plan it', { persistence: PERSISTENCE });
+		await first.dispose();
+		const suspension = result.pendingSuspend?.[0];
+		if (!suspension) throw new Error('Expected a plan confirmation');
+
+		const resumed = buildMidRunRuntime(memory, options);
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Plan approved.'));
+		const resumeResult = await resumed.resume(
+			'generate',
+			{ approved: true },
+			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
+		);
+		await resumed.dispose();
+
+		expect(resumeResult.error).toBeUndefined();
+		expect(resumeResult.toolCalls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ tool: 'approve', output: { approved: true } }),
+			]),
+		);
+		expect(capturedCall(2).tools).toHaveProperty('approve');
+	});
+
 	it('merges system messages after compaction for custom OpenAI-compatible endpoints', async () => {
 		const memory = new InMemoryMemory();
 		const runtime = buildMidRunRuntime(memory, {
@@ -10259,8 +10393,11 @@ describe('AgentRuntime — oversized tool results', () => {
 			type: 'content' as const,
 			value: [
 				{
-					type: 'file-data' as const,
-					data: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.repeat(8_000),
+					type: 'file' as const,
+					data: {
+						type: 'data' as const,
+						data: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.repeat(8_000),
+					},
 					mediaType: 'application/pdf',
 				},
 			],
@@ -10645,8 +10782,8 @@ describe('AgentRuntime — oversized tool results', () => {
 				},
 			];
 			const filePart = {
-				type: 'file-data' as const,
-				data: 'base64-pdf',
+				type: 'file' as const,
+				data: { type: 'data' as const, data: 'base64-pdf' },
 				mediaType: 'application/pdf',
 			};
 			const tool: BuiltTool = {

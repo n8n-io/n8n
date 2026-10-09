@@ -80,6 +80,20 @@ const workflowIssueSchema = instanceIssueSchema.extend({
 });
 export type BreakingChangeWorkflowIssue = z.infer<typeof workflowIssueSchema>;
 
+/** `suggested` by the owner heuristic, or `assigned` by a person. */
+export const migrationOwnerSourceSchema = z.enum(['suggested', 'assigned']);
+export type MigrationOwnerSource = z.infer<typeof migrationOwnerSourceSchema>;
+
+/** The user responsible for fixing a workflow's findings. The name and email columns of a user are nullable. */
+const workflowOwnerSchema = z.object({
+	id: z.string(),
+	firstName: z.string().nullable(),
+	lastName: z.string().nullable(),
+	email: z.string().nullable(),
+	source: migrationOwnerSourceSchema,
+});
+export type BreakingChangeWorkflowOwner = z.infer<typeof workflowOwnerSchema>;
+
 const affectedWorkflowSchema = z.object({
 	id: z.string(),
 	name: z.string(),
@@ -88,6 +102,8 @@ const affectedWorkflowSchema = z.object({
 	lastUpdatedAt: z.date(),
 	lastExecutedAt: z.date().optional(),
 	issues: z.array(workflowIssueSchema),
+	// Absent when no owner is known for the workflow.
+	owner: workflowOwnerSchema.optional(),
 });
 export type BreakingChangeAffectedWorkflow = z.infer<typeof affectedWorkflowSchema>;
 
@@ -141,7 +157,10 @@ const breakingChangeLightReportDataSchema = {
 	instanceResults: z.array(instanceRuleResultsSchema),
 	workflowResults: z.array(
 		workflowRuleResultsSchema.omit({ affectedWorkflows: true }).extend({
+			// Workflows with an open finding for the rule.
 			nbAffectedWorkflows: z.number(),
+			// Workflows with a won't fix finding for the rule.
+			nbWontFixWorkflows: z.number(),
 		}),
 	),
 } as const;

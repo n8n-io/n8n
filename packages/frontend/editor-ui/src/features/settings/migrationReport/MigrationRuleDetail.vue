@@ -76,12 +76,26 @@ const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 
 type AffectedWorkflow = BreakingChangeRuleDetailWorkflow;
 
+function ownerLabel(workflow: AffectedWorkflow): string {
+	const owner = workflow.owner;
+	const fullName = [owner?.firstName, owner?.lastName].filter(Boolean).join(' ');
+	return (
+		fullName || owner?.email || i18n.baseText('settings.migrationReport.detail.table.unassigned')
+	);
+}
+
 const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 	const headers: Array<TableHeader<AffectedWorkflow>> = [
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.name'),
 			key: 'name',
 			width: 240,
+		},
+		{
+			title: i18n.baseText('settings.migrationReport.detail.table.owner'),
+			key: 'owner',
+			value: ownerLabel,
+			width: 160,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.status'),
@@ -291,10 +305,12 @@ const filteredWorkflows = computed(() => {
 const sortedWorkflows = computed(() => {
 	if (!sortBy.value.length) return filteredWorkflows.value;
 
+	const { id, desc } = sortBy.value[0];
+	// The owner cell shows a label, so it sorts by that label and not by the owner object.
 	return orderBy(
 		filteredWorkflows.value,
-		[sortBy.value[0].id],
-		[sortBy.value[0].desc ? 'desc' : 'asc'],
+		[id === 'owner' ? ownerLabel : id],
+		[desc ? 'desc' : 'asc'],
 	);
 });
 </script>

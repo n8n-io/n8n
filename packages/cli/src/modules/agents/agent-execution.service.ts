@@ -748,15 +748,13 @@ export class AgentExecutionService {
 	async findN8nChatThreadsForAgents(
 		userId: string,
 		agentIds: string[],
-		limit: number,
-		cursor?: string,
+		options: { limit: number; cursor?: string; search?: string },
 	): Promise<AgentN8nChatThreadsResponse> {
 		const { threads, nextCursor } =
 			await this.agentExecutionThreadRepository.findN8nChatThreadsForOwner(
 				userId,
 				agentIds,
-				limit,
-				cursor,
+				options,
 			);
 		return { data: threads.map(toN8nChatThreadSummary), nextCursor };
 	}
@@ -1267,6 +1265,7 @@ export class AgentExecutionService {
 				user_id: params.telemetry.userId,
 				thread_id: threadId,
 				run_type: params.telemetry.runType,
+				source: params.source,
 				turn_status: status === 'success' ? 'succeeded' : 'failed',
 				configuration: params.telemetry.configuration,
 				...buildAgentTurnMetrics(record),
