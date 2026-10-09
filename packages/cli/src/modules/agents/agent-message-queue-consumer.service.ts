@@ -20,6 +20,9 @@ import type { AgentExecutionThread } from './entities/agent-execution-thread.ent
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
+import { canUseSystemAgent } from './system-agents/system-agent-access';
+import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 
 @Service()
 export class AgentMessageQueueConsumer {
@@ -40,6 +43,8 @@ export class AgentMessageQueueConsumer {
 		private readonly integrations: ChatIntegrationService,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly logger: Logger,
+		private readonly systemAgents: SystemAgentRegistry,
+		private readonly systemAgentExecution: SystemAgentExecutionService,
 	) {}
 
 	start(): void {
@@ -137,7 +142,7 @@ export class AgentMessageQueueConsumer {
 			payload.kind === 'integration' ? undefined : this.previewStreams.createSender(item.id);
 		try {
 			if (sender) {
-				const user = await this.getThreadOwner(thread);
+				const user = await this.getThreadOwner(thread, payload.kind === 'system');
 				this.chatExecutionService.register(
 					{
 						projectId: thread.projectId,
@@ -156,11 +161,15 @@ export class AgentMessageQueueConsumer {
 					inputMessageIds: admission.inputMessageIds,
 					message: payload.message,
 				});
-				await this.chatExecutionService.settle(admission.executionId, async () =>
-					payload.kind === 'n8n_chat'
-						? await this.consumeN8nChat(claim, user, signal, sender.send)
-						: await this.consumePreview(claim, user, signal, sender.send),
-				);
+				await this.chatExecutionService.settle(admission.executionId, async () => {
+					if (payload.kind === 'system') {
+						await this.systemAgentExecution.consume(claim, user, signal, sender.send);
+					} else if (payload.kind === 'n8n_chat') {
+						await this.consumeN8nChat(claim, user, signal, sender.send);
+					} else {
+						await this.consumePreview(claim, user, signal, sender.send);
+					}
+				});
 			} else {
 				await this.consumeIntegration(claim, signal, bridge);
 			}
@@ -178,17 +187,30 @@ export class AgentMessageQueueConsumer {
 		}
 	}
 
-	private async getThreadOwner(thread: AgentExecutionThread): Promise<User> {
+	/**
+	 * Load the thread owner and check that they can still run the agent. A
+	 * system agent uses the runtime floor and its provider checks instead of
+	 * the project `agent:execute` scope.
+	 */
+	private async getThreadOwner(thread: AgentExecutionThread, systemKind: boolean): Promise<User> {
 		if (!thread.ownerId) throw new UserError('You can no longer execute this agent');
 		const user = await this.userRepository.findByIdWithRole(thread.ownerId);
-		if (
-			!user ||
-			user.disabled ||
-			!(await userHasScopes(user, ['agent:execute'], false, { projectId: thread.projectId }))
-		) {
+		if (!user || user.disabled || !(await this.canExecute(user, thread, systemKind))) {
 			throw new UserError('You can no longer execute this agent');
 		}
 		return user;
+	}
+
+	private async canExecute(
+		user: User,
+		thread: AgentExecutionThread,
+		systemKind: boolean,
+	): Promise<boolean> {
+		if (!systemKind) {
+			return await userHasScopes(user, ['agent:execute'], false, { projectId: thread.projectId });
+		}
+		const provider = this.systemAgents.get(thread.agentId);
+		return provider !== undefined && (await canUseSystemAgent(provider, user, thread.projectId));
 	}
 
 	private async consumePreview(
