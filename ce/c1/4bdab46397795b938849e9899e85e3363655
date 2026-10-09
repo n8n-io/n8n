@@ -1,0 +1,30 @@
+packages/cli/src/services/pruning/__tests__/workflow-history-pruning.task.test.ts
+  s_274bb09dbc56ad::t_8616a6d3ac27d6 28
+packages/@n8n/config/src/configs/database.config.ts
+  s_274bb09dbc56ad::t_8336e29d872f07 273-275
+  s_274bb09dbc56ad::t_bce5cc7b29c05b 9-10,103,272,276,280
+packages/cli/src/modules/agents/__tests__/agent-checkpoint-pruning.task.test.ts
+  s_274bb09dbc56ad::t_8616a6d3ac27d6 30
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-checkpoint-pruning.task.test.ts
+  s_274bb09dbc56ad::t_8616a6d3ac27d6 39
+packages/cli/src/services/pruning/__tests__/execution-pruning-soft-delete.task.test.ts
+  s_274bb09dbc56ad::t_8616a6d3ac27d6 33
+packages/modules/insights/backend/src/__tests__/insights-pruning.task.test.ts
+  s_274bb09dbc56ad::t_8616a6d3ac27d6 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cec14bdab46397795b938849e9899e85e3363655",
+  "prompts": {},
+  "sessions": {
+    "s_274bb09dbc56ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b18c1fc7-57ce-43c2-8f32-b9d771a637ac",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
