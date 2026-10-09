@@ -84,10 +84,10 @@ describe('findHostSandboxPackages', () => {
 		expect(found.map((pkg) => pkg.name).sort()).toEqual(sdkPackages);
 	});
 
-	it('also finds @n8n/expression-types when node contracts are enabled', async () => {
+	it('also finds @n8n/expression-types and @n8n/node-sdk when node contracts are enabled', async () => {
 		const names = (await findHostSandboxPackages(true)).map((pkg) => pkg.name);
 
-		expect(names.slice(0, -1).sort()).toEqual(sdkPackages);
-		expect(names.at(-1)).toBe('@n8n/expression-types');
+		expect(names.slice(0, -2).sort()).toEqual(sdkPackages);
+		expect(names.slice(-2)).toEqual(['@n8n/expression-types', '@n8n/node-sdk']);
 	});
 });

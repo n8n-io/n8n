@@ -9,7 +9,7 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	loadInstanceAiRuntimeSkillSourceForBuildMode,
 } from '../runtime-skills';
-import { disabledInstanceAiSkillIds } from '../skill-gates';
+import { NODE_BUILDER_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
 const logger = mock<Logger>();
 
@@ -25,7 +25,11 @@ describe('progressive workflow skill variants', () => {
 			const original = await source.loadSkill(entry.id);
 			const selected = await progressive.loadSkill(entry.id);
 			const selectedEntry = progressive.registry.skills.find(({ id }) => id === entry.id);
-			if (entry.id === 'planning' || PROMPT_FRAGMENT_SKILLS.includes(entry.id)) {
+			if (
+				entry.id === 'planning' ||
+				entry.id === NODE_BUILDER_SKILL_ID ||
+				PROMPT_FRAGMENT_SKILLS.includes(entry.id)
+			) {
 				expect(original).not.toBeNull();
 				expect(selected).toBeNull();
 				expect(selectedEntry).toBeUndefined();
@@ -46,7 +50,7 @@ describe('progressive workflow skill variants', () => {
 		expect(source.registry).toEqual(originalRegistry);
 		const control = await loadInstanceAiRuntimeSkillSourceForBuildMode('default');
 		expect(control.registry).toEqual(
-			filterRuntimeSkillSource(source, PROMPT_FRAGMENT_SKILLS).registry,
+			filterRuntimeSkillSource(source, [...PROMPT_FRAGMENT_SKILLS, NODE_BUILDER_SKILL_ID]).registry,
 		);
 		await expect(loadInstanceAiRuntimeSkillSourceForBuildMode(undefined)).resolves.toBe(control);
 	});

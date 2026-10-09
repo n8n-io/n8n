@@ -2,14 +2,20 @@ import { createSkillLoadTool } from '@n8n/agents';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { resolvePromptProfile } from '../../prompts/prompt-profiles';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
 import {
 	INSTANCE_AI_SKILLS_DIR,
+	loadInstanceAiPromptSkills,
 	loadInstanceAiRuntimeSkillSource,
 	loadInstanceAiRuntimeSkillSourceForBuildMode,
 	substituteSkillPlaceholders,
 } from '../runtime-skills';
-import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
+import {
+	CONFIG_EVALS_SKILL_ID,
+	NODE_BUILDER_SKILL_ID,
+	disabledInstanceAiSkillIds,
+} from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
 const AGENTS_MODULE_SKILL_IDS = ['agent-builder', 'intent-recognition'] as const;
@@ -574,6 +580,34 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('within two rounds');
 		expect(loaded?.instructions).toContain('<background-task-completed>');
 		expect(loaded?.instructions).toContain('Never poll and never sleep');
+	});
+
+	it.each([false, true])(
+		'lists the node-builder skill only with node contracts (enabled=%s)',
+		async (nodeContractsEnabled) => {
+			const { profile } = resolvePromptProfile({});
+			const { source } = await loadInstanceAiPromptSkills(profile, { nodeContractsEnabled });
+
+			expect(source.registry.skills.some(({ id }) => id === NODE_BUILDER_SKILL_ID)).toBe(
+				nodeContractsEnabled,
+			);
+		},
+	);
+
+	it('teaches the node-builder skill to pack, test and publish with custom-nodes', async () => {
+		const skill = await loadInstanceAiRuntimeSkillSource().loadSkill(NODE_BUILDER_SKILL_ID);
+
+		expect(skill?.recommendedTools).toContain('custom-nodes');
+		for (const text of [
+			'custom-nodes(action="scaffold"',
+			'custom-nodes(action="test"',
+			'custom-nodes(action="publish"',
+			'src/credentials.ts',
+			'Do not install packages',
+			'`@n8n/nodes/<nodeId>`',
+		]) {
+			expect(skill?.instructions).toContain(text);
+		}
 	});
 
 	it('loads the bundled instance-awareness skill', async () => {

@@ -2341,6 +2341,7 @@ const instanceAiPermissionsSchema = z.object({
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeNode: instanceAiPermissionModeSchema,
+	publishCustomNode: instanceAiPermissionModeSchema,
 	mcpRead: instanceAiPermissionModeSchema,
 	mcpWrite: instanceAiPermissionModeSchema,
 	createPreference: instanceAiPermissionModeSchema,
@@ -2370,6 +2371,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 	executeNode: 'require_approval',
+	publishCustomNode: 'require_approval',
 	mcpRead: 'always_allow',
 	mcpWrite: 'require_approval',
 	// The save_user_preference tool writes first and lets the user edit or undo

@@ -33,6 +33,7 @@ import {
 	contractDocumentSchema,
 	credentialManifestOf,
 	parseCredentialManifest,
+	parseSdkManifest,
 	SDK_RUNTIME_ID,
 	type CredentialHook,
 	type CredentialManifest,
@@ -974,6 +975,20 @@ export async function contractsOfPackage(
 			`These contracts of ${pkg.name} have more than one export: ${repeated.join('; ')}. Export each action once.`,
 		);
 	}
+	const ids = new Set(found.map(({ action }) => action.id));
+	const nodes = new Map(found.map(({ action }) => [action.node.id, action.node]));
+	const unknownSlots = [...nodes.values()].flatMap(({ id, migrates }) =>
+		Object.values(migrates?.versions ?? {})
+			.flatMap(({ slots }) => Object.keys(slots))
+			// A legacy router selects the slot by `resource` and `operation`.
+			.filter((slot) => !slot.includes('.') || !ids.has(`${id}.${slot}`))
+			.map((slot) => `${id}.${slot}`),
+	);
+	if (unknownSlots.length > 0) {
+		throw new UserError(
+			`These migrated slots of ${pkg.name} name no action of a resource of their node: ${[...new Set(unknownSlots)].join(', ')}.`,
+		);
+	}
 	return {
 		entries: found.flatMap(({ entryFile, exportName, action }) =>
 			action.native ? [] : [{ entryFile, exportName, action }],
@@ -1032,11 +1047,16 @@ const contractHashOf = (manifest: StoreManifest) =>
  */
 export function assertPublishedMatches(published: StoreManifest, head: StoreManifest) {
 	const at = `${head.id}@${head.semver}`;
+	// The SDK runtime takes its version from the package, not from a contract source.
+	const bump =
+		head.kind === 'sdk'
+			? 'bump the version in packages/@n8n/node-sdk/package.json'
+			: 'bump the version in source';
 	if (contractHashOf(published) !== contractHashOf(head)) {
-		throw new UserError(`${at} is published with another contract; bump the version in source`);
+		throw new UserError(`${at} is published with another contract; ${bump}`);
 	}
 	if (shipKeyOf(published) !== shipKeyOf(head)) {
-		throw new UserError(`${at} is published with other bytes; bump the version in source`);
+		throw new UserError(`${at} is published with other bytes; ${bump}`);
 	}
 }
 
@@ -1150,7 +1170,8 @@ export async function packPackage(
 		registry
 			? await shippedOf(registry, local, parse, log)
 			: { ...local, manifestText: manifestTextOf(local.manifest) };
-	const [shipped, shippedCredentials, shippedNatives] = await Promise.all([
+	const [shippedSdk, shipped, shippedCredentials, shippedNatives] = await Promise.all([
+		ship(sdk, parseSdkManifest),
 		Promise.all(packed.map(async (version) => await ship(version, parseManifest))),
 		Promise.all(
 			packedCredentials.map(async (credential) => await ship(credential, parseCredentialManifest)),
@@ -1175,7 +1196,7 @@ export async function packPackage(
 		: [];
 	rmSync(outDir, { recursive: true, force: true });
 	await addToStore(outDir, [
-		{ manifestText: manifestTextOf(sdk.manifest), bundle: sdk.bundle },
+		shippedSdk,
 		...publishedSdks,
 		...shipped,
 		...shippedCredentials,

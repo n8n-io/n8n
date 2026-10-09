@@ -233,6 +233,18 @@ describe('domain tool construction', () => {
 		expect(getActiveOrchestratorDomainToolNames(enabled)).toContain('activity');
 	});
 
+	it('registers custom-nodes only with node contracts and the custom node service', () => {
+		const customNodeService = {} as InstanceAiContext['customNodeService'];
+		expect(getActiveOrchestratorDomainToolNames(makeContext({ customNodeService }))).not.toContain(
+			'custom-nodes',
+		);
+		expect(
+			getActiveOrchestratorDomainToolNames(makeContext({ nodeContractsEnabled: true })),
+		).not.toContain('custom-nodes');
+		const enabled = makeContext({ nodeContractsEnabled: true, customNodeService });
+		expect(createOrchestratorDomainTools(enabled).get('custom-nodes')).toBeDefined();
+	});
+
 	it('never defers activity behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('activity')).toBe(true);
 	});

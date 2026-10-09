@@ -290,19 +290,20 @@ describe('ContractNodeLoader', () => {
 			Object.keys(all.known.nodes).filter((name) => !(name in known.nodes));
 
 		expect(refused(egressInput)).toEqual([
+			'browserScreenshot',
 			'httpRequestDownload',
 			'httpRequestGet',
 			'httpRequestSend',
 		]);
 		expect(refused(code)).toEqual(['codeJavaScript', 'codePython']);
 		expect(refused(others)).toEqual([]);
-		expect(logger.warn).toHaveBeenCalledTimes(5);
+		expect(logger.warn).toHaveBeenCalledTimes(6);
 		expect(logger.warn).toHaveBeenCalledWith(
 			expect.stringMatching(
 				/^code\.python@\S+ does not load: N8N_NODE_PERMISSIONS_DENY denies its permission class "code"$/,
 			),
 		);
-		expect(events.emit).toHaveBeenCalledTimes(5);
+		expect(events.emit).toHaveBeenCalledTimes(6);
 		expect(events.emit).toHaveBeenCalledWith('node-permission-refused', {
 			action: 'httpRequest.get',
 			version: versionsOf('httpRequest.get')[0]?.manifest.semver,

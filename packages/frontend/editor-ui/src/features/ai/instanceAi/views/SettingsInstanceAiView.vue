@@ -182,7 +182,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'nodes',
 		labelKey: 'settings.n8nAgent.permissions.group.nodes',
-		keys: ['executeNode'],
+		keys: ['executeNode', 'publishCustomNode'],
 	},
 	{
 		id: 'folders',

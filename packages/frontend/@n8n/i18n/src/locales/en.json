@@ -5920,6 +5920,7 @@
 	"settings.n8nAgent.permissions.createPreference": "Save preferences from chat",
 	"settings.n8nAgent.permissions.restoreWorkflowVersion": "Restore workflow versions",
 	"settings.n8nAgent.permissions.executeNode": "Execute a node",
+	"settings.n8nAgent.permissions.publishCustomNode": "Publish custom nodes",
 	"settings.n8nAgent.permissions.mcpRead": "Use read-only tools",
 	"settings.n8nAgent.permissions.mcpWrite": "Use write and delete tools",
 	"dataTable.search.dateSearchInfo": "Date searches use UTC format, while the table displays dates in your local timezone",

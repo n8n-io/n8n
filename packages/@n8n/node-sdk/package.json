@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Define n8n nodes as typed action contracts",
   "bin": {
@@ -65,7 +65,10 @@
   },
   "files": [
     "dist/**/*",
-    "spec/**/*"
+    "spec/**/*",
+    "src/**/*",
+    "!src/**/__tests__/**",
+    "templates/**/*"
   ],
   "scripts": {
     "clean": "rimraf dist .turbo",

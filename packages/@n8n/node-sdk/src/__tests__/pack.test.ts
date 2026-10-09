@@ -779,4 +779,35 @@ export const token = defineCredential({
 		expect(sdkLines).toEqual([expect.objectContaining({ kind: 'sdk', version: sdkVersion() })]);
 		expect(local.manifests[0]?.sdk).toEqual({ version: sdkVersion(), digest: sdkLines[0]?.bundle });
 	}, 60_000);
+
+	it('refuses an SDK runtime whose version the registry has with other bytes, and keeps the store', async () => {
+		const registry = state.registry as FakeNpmRegistry;
+		const keyFile = path.join(state.pkg, 'first-party.pem');
+		await writeFile(
+			keyFile,
+			createPublicKey(privateKey).export({ type: 'spki', format: 'pem' }).toString(),
+		);
+		vi.stubEnv('N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE', keyFile);
+		await writeFile(state.entry, passSource(run));
+		const pkg = { name: '@acme/nodes', dir: state.pkg };
+		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', '');
+		await packPackage(pkg);
+		const before = await storeOf().records('demo.pass');
+		const sdk = await packSdkRuntime();
+		// The same version with other bytes, as when the SDK code changed without a version bump.
+		const otherBundle = `${sdk.bundle}\n`;
+		const otherSdk = {
+			manifest: { ...sdk.manifest, bundleHash: sha256(otherBundle) },
+			bundle: otherBundle,
+		};
+		const published = await packAction(state.entry, 'pass', otherSdk);
+		registry.put(npmPackageOf(otherSdk, { privateKey }));
+		registry.put(npmPackageOf({ ...published, fixtures: { executions: [] } }, { privateKey }));
+		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', registry.url);
+
+		await expect(packPackage(pkg)).rejects.toThrow(
+			`sdkRuntime@${sdkVersion()} is published with other bytes; bump the version in packages/@n8n/node-sdk/package.json`,
+		);
+		expect(await storeOf().records('demo.pass')).toEqual(before);
+	}, 60_000);
 });

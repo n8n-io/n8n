@@ -5,7 +5,8 @@ import { parseArgs } from 'node:util';
 import type { ICredentialType } from 'n8n-workflow';
 
 import { generateNodeModule } from '../codegen';
-import { toContract, type Action } from '../define';
+import { actionFileOf, toContract, type Action } from '../define';
+import { packAction, packSdkRuntime } from '../pack';
 import { nodeNameOf } from '../runtime';
 import { runAction } from '../testing';
 import { checkContracts, loadProject, type Project } from './project';
@@ -19,8 +20,10 @@ const USAGE = `Usage: n8n-node-next <command>
   describe [actionId]             Print the typed module the AI workflow builder reads
   run <actionId> --input '<json>' [--credential-file <file.json> | --credential-env <PREFIX>]
                                   Run one action against the live API
+  pack [--json]                   Pack each action into a version manifest and a bundle.
+                                  --json prints { actions, errors? } as one JSON line
 
-Run check, test, describe and run in the project root.`;
+Run check, test, describe, run and pack in the project root.`;
 
 const SDK_ROOT = resolve(__dirname, '..', '..');
 
@@ -276,6 +279,47 @@ async function run(
 	console.log(JSON.stringify(result.items, null, 2));
 }
 
+/** The export of `entryFile` that holds the action with `id`, as `packAction` takes it. */
+async function exportNameOf(entryFile: string, id: string): Promise<string> {
+	const { require: tsxRequire } = await import('tsx/cjs/api');
+	const module: unknown = tsxRequire(entryFile, __filename);
+	const name = (isRecord(module) ? Object.entries(module) : []).find(
+		([, value]) => isRecord(value) && value.id === id,
+	)?.[0];
+	if (name === undefined) throw new CliError(`${entryFile} exports no action ${id}`);
+	return name;
+}
+
+async function pack(root: string, json: boolean | undefined) {
+	const { actions } = await loadProject(root);
+	// One SDK runtime for all actions: packAction packs it again for each action without it.
+	const sdk = await packSdkRuntime();
+	const outcomes = await Promise.all(
+		actions.map(async (action) => {
+			try {
+				const entryFile = join(root, 'src', actionFileOf(action));
+				const exportName = await exportNameOf(entryFile, action.id);
+				const { manifest, bundle, sdk: runtime } = await packAction(entryFile, exportName, sdk);
+				return { packed: { manifest, bundle, ...(runtime ? { sdk: runtime } : {}) } };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return { error: { actionId: action.id, message } };
+			}
+		}),
+	);
+	const packed = outcomes.flatMap(({ packed: one }) => (one ? [one] : []));
+	const errors = outcomes.flatMap(({ error }) => (error ? [error] : []));
+	if (json) {
+		console.log(JSON.stringify({ actions: packed, ...(errors.length > 0 ? { errors } : {}) }));
+	} else {
+		packed.forEach(({ manifest }) =>
+			console.log(`packed ${manifest.id}@${manifest.semver} sha256:${manifest.bundleHash}`),
+		);
+		errors.forEach(({ actionId, message }) => console.error(`${actionId}: ${message}`));
+	}
+	if (errors.length > 0) process.exitCode = 1;
+}
+
 async function main(argv: string[]) {
 	const { values, positionals } = parseArgs({
 		args: argv,
@@ -286,6 +330,7 @@ async function main(argv: string[]) {
 			timeout: { type: 'string' },
 			'credential-file': { type: 'string' },
 			'credential-env': { type: 'string' },
+			json: { type: 'boolean' },
 			help: { type: 'boolean', short: 'h' },
 		},
 	});
@@ -306,6 +351,8 @@ async function main(argv: string[]) {
 				file: values['credential-file'],
 				env: values['credential-env'],
 			});
+		case 'pack':
+			return await pack(root, values.json);
 		default:
 			console.log(USAGE);
 			if (!values.help && command !== undefined) process.exitCode = 1;

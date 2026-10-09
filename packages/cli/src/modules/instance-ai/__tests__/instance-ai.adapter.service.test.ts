@@ -6045,6 +6045,7 @@ function createAdapterWithGatewayMock(
 		instanceContext?: InstanceContextService;
 		aiPreferenceService?: unknown;
 		logger?: unknown;
+		nodeContractsEnabled?: boolean;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -6064,7 +6065,7 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = globalConfigStub();
+	args[1] = globalConfigStub({ nodeContractsEnabled: overrides?.nodeContractsEnabled });
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -6117,6 +6118,33 @@ describe('createContext activity gate', () => {
 		const context = service.createContext(user, { instanceContextEnabled: enabled });
 
 		expect(context.activityService !== undefined).toBe(enabled === true);
+	});
+});
+
+describe('createContext custom node gate', () => {
+	const userWith = (slugs: string[]) =>
+		({ id: 'user-1', role: { slug: 'global:x', scopes: slugs.map((slug) => ({ slug })) } }) as User;
+
+	beforeEach(() => {
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) {
+				return { isActive: (name: string) => name === 'next-nodes-instance' };
+			}
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it.each([
+		[['nodeDefinition:upload'], true],
+		[['nodeDefinition:list'], false],
+	])('with scopes %j has the custom node service: %s', (scopes, expected) => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { nodeContractsEnabled: true });
+
+		expect(service.createContext(userWith(scopes)).customNodeService !== undefined).toBe(expected);
 	});
 });
 

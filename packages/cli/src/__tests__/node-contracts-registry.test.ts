@@ -77,7 +77,10 @@ vi.mock('@n8n/node-sdk/registry', async (importOriginal) => ({
 		unsupported: [],
 	}),
 }));
-vi.mock('@n8n/node-sdk/sandbox', () => ({
+vi.mock('@n8n/node-sdk/sandbox', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	// The tests set the sandbox files they need, so the build of this checkout does not count.
+	defaultSandbox: () => ({ sidecar: '/nonexistent/n8n-sandbox', guests: '/nonexistent/guests' }),
 	policyExecutorLoader: (policy: RuntimePolicy, sandbox: SandboxOptions) => {
 		policies.push([policy, sandbox]);
 		return async () => await Promise.reject(new Error('no executor in this test'));
@@ -198,26 +201,21 @@ describe('nodeContractsRuntime', () => {
 		});
 		expect(logger.warn).toHaveBeenCalledTimes(1);
 		expect(logger.warn).toHaveBeenCalledWith(
-			'The wasm runtime is not available: N8N_NODE_CONTRACT_SANDBOX_SIDECAR or N8N_NODE_CONTRACT_SANDBOX_GUESTS is not set',
+			'The wasm runtime is not available: the sandbox files are missing: /nonexistent/n8n-sandbox, /nonexistent/guests/action.wasm, /nonexistent/guests/provider.wasm, /nonexistent/guests/trigger.wasm',
 		);
 	});
 
-	it('warns when the community or private list has a runtime without a security boundary', async () => {
+	it('warns when the community list has a runtime without a security boundary', async () => {
 		const { instanceAi } = globalConfig;
 		instanceAi.nodesNextRuntimesCommunity = ['wasm', 'worker', 'in-process'];
-		instanceAi.nodesNextRuntimesPrivate = ['in-process'];
 		try {
 			await nodeContractsRuntime();
 
 			expect(logger.warn).toHaveBeenCalledWith(
 				'N8N_NODES_NEXT_RUNTIMES_COMMUNITY has worker, in-process: community node code runs without a security boundary',
 			);
-			expect(logger.warn).toHaveBeenCalledWith(
-				'N8N_NODES_NEXT_RUNTIMES_PRIVATE has in-process: private node code runs without a security boundary',
-			);
 		} finally {
 			instanceAi.nodesNextRuntimesCommunity = ['wasm', 'container'];
-			instanceAi.nodesNextRuntimesPrivate = ['wasm', 'container'];
 		}
 	});
 

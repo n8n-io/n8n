@@ -258,7 +258,7 @@ async function uploadLinkedWorkspacePackages(
 	if (!packedPackages?.length) {
 		linkedPackagesPromises.delete(nodeContractsEnabled);
 		throw new Error(
-			'Sandbox workspace packages could not be packed. Run `pnpm build` in packages/@n8n/utils, packages/@n8n/errors, packages/workflow, packages/@n8n/workflow-sdk, and (with node contracts) packages/@n8n/expression-types, or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
+			'Sandbox workspace packages could not be packed. Run `pnpm build` in packages/@n8n/utils, packages/@n8n/errors, packages/workflow, packages/@n8n/workflow-sdk, and (with node contracts) packages/@n8n/expression-types and packages/@n8n/node-sdk, or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
 		);
 	}
 

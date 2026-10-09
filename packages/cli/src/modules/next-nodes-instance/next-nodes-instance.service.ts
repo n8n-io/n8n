@@ -16,9 +16,11 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
+import type { HostRuntime, PackedVersion } from '@n8n/node-sdk/host';
 import type { OpenApiCredential } from '@n8n/node-sdk/openapi';
 import type { PackedAction } from '@n8n/node-sdk/pack';
 import type { ExecutionFixture, VersionManifest } from '@n8n/node-sdk/registry';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import type { JsonSchema } from '@n8n/workflow-sdk';
 import { createHash } from 'node:crypto';
@@ -27,7 +29,10 @@ import {
 	UnexpectedError,
 	UserError,
 	type IDataObject,
+	type IHttpRequestOptions,
 	type INode,
+	type INodeParameters,
+	type INodeType,
 	type INodeTypes,
 } from 'n8n-workflow';
 
@@ -46,6 +51,7 @@ import {
 	ContractNodeLoader,
 	contractActionOf,
 	NodeContractsStore,
+	privateCodeSandbox,
 } from '@/node-contracts-registry';
 import { NodeTypes } from '@/node-types';
 
@@ -59,6 +65,15 @@ export interface DraftTestResult {
 	/** The output schema that the items show, for the form to trim. */
 	readonly outputSchema?: JsonSchema;
 }
+
+/** A JS action that the AI builder packed in its sandbox. It is untrusted until the checks pass. */
+export interface PackedCode {
+	readonly manifest: unknown;
+	readonly bundle: string;
+	readonly sdk?: string;
+}
+
+const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 
 /**
  * The generic credential type that sends the secret of an OpenAPI security scheme. An instance
@@ -79,9 +94,9 @@ interface CustomVersion {
 }
 
 /**
- * The custom actions of this instance: HTTP guest versions that a user made in the form. They are
- * `private` rows of the node contracts store, so the contract loader serves them as node types
- * and pins keep each workflow on its version.
+ * The custom actions of this instance: HTTP guest versions that a user made in the form, and JS
+ * bundles that the AI builder packed. They are `private` rows of the node contracts store, so the
+ * contract loader serves them as node types and pins keep each workflow on its version.
  */
 @Service()
 export class NextNodesInstanceService {
@@ -103,10 +118,7 @@ export class NextNodesInstanceService {
 		const { compareSemver, parseManifest } = await import('@n8n/node-sdk/registry');
 		return (await this.repository.findAllForExport())
 			.filter(({ origin, kind }) => origin === 'private' && kind === 'action')
-			.flatMap((row) => {
-				const manifest = parseManifest(row.manifest);
-				return manifest.guest === 'http' ? [{ row, manifest }] : [];
-			})
+			.map((row) => ({ row, manifest: parseManifest(row.manifest) }))
 			.sort((a, b) => compareSemver(b.manifest.semver, a.manifest.semver));
 	}
 
@@ -261,37 +273,143 @@ export class NextNodesInstanceService {
 		versions: readonly CustomVersion[],
 		options: { readonly userId: string },
 	) {
-		const [{ checkPublish }, { manifestTextOf, parseFixtures }] = await Promise.all([
+		const [{ checkPublish }, { parseFixtures }] = await Promise.all([
 			import('@n8n/node-sdk/publish'),
 			import('@n8n/node-sdk/registry'),
 		]);
 		const packed = await this.nextVersionOf(config, versions);
 		const { manifest } = packed;
+		this.assertNew(manifest, versions);
+		const previous = this.newestOf(versions, manifest.id, manifest.contract.version);
+		await checkPublish(previous?.manifest, packed, parseFixtures(JSON.stringify(fixtures)));
+		return { row: await this.rowOf(manifest, packed.bundle, fixtures, options), manifest };
+	}
+
+	/**
+	 * Publishes a JS action that the AI builder packed, at the version of its manifest. The publish
+	 * gate loads the bundle and replays the fixtures only in the wasm sandbox.
+	 */
+	async publishPacked(
+		packed: PackedCode,
+		fixtures: { executions: unknown[] },
+		options: { readonly userId: string },
+	): Promise<VersionManifest> {
+		const [code, { checkSandboxedPublish }, { compareSemver, parseFixtures }] = await Promise.all([
+			this.codeOf(packed),
+			import('@n8n/node-sdk/publish'),
+			import('@n8n/node-sdk/registry'),
+		]);
+		const { manifest } = code;
+		const versions = await this.versions();
+		this.assertNew(manifest, versions);
+		const newest = this.newestOf(versions, manifest.id);
+		if (newest && compareSemver(manifest.semver, newest.manifest.semver) <= 0) {
+			throw new UserError(
+				`This instance has ${manifest.id}@${newest.manifest.semver}. Set a higher version and pack again.`,
+			);
+		}
+		await checkSandboxedPublish(
+			newest?.manifest,
+			code,
+			parseFixtures(JSON.stringify(fixtures)),
+			await privateCodeSandbox(),
+			this.runtime(),
+		);
+		await this.repository.insertNew([await this.rowOf(manifest, code.bundle, fixtures, options)]);
+		await this.reloadEverywhere();
+		return manifest;
+	}
+
+	/**
+	 * Refuses an id that n8n ships, a bundle that this instance has, and a config after code or
+	 * code after a config of the same id.
+	 */
+	private assertNew(manifest: VersionManifest, versions: readonly CustomVersion[]) {
 		// One id names one action: the AI builder and the node types resolve actions by id.
 		if (firstPartyCatalog().packageOf(manifest.id)) {
 			throw new UserError(`n8n ships ${manifest.id}, so this instance cannot publish it`);
 		}
+		// The form edits only configs, and the publish gate diffs only versions of one kind.
+		const kindOf = ({ guest }: VersionManifest) => (guest === 'http' ? 'a config' : 'code');
+		const newest = this.newestOf(versions, manifest.id);
+		if (newest && kindOf(newest.manifest) !== kindOf(manifest)) {
+			throw new UserError(
+				`${manifest.id}@${newest.manifest.semver} is ${kindOf(newest.manifest)}, so the next version cannot be ${kindOf(manifest)}. Use a new action id.`,
+			);
+		}
 		const known = versions.find((entry) => entry.manifest.bundleHash === manifest.bundleHash);
 		if (known) {
-			throw new UserError(`${manifest.id}@${known.manifest.semver} already has this config`);
+			const what = manifest.guest === 'http' ? 'config' : 'bundle';
+			throw new UserError(`${manifest.id}@${known.manifest.semver} already has this ${what}`);
 		}
-		const previous = this.newestOf(versions, manifest.id, manifest.contract.version);
-		await checkPublish(previous?.manifest, packed, parseFixtures(JSON.stringify(fixtures)));
+	}
+
+	/** The `private` row of a version that a user of this instance publishes. */
+	private async rowOf(
+		manifest: VersionManifest,
+		bundle: string,
+		fixtures: unknown,
+		options: { readonly userId: string },
+	) {
+		const { manifestTextOf } = await import('@n8n/node-sdk/registry');
 		const manifestText = manifestTextOf(manifest);
-		const row = {
-			digest: `sha256:${createHash('sha256').update(manifestText).digest('hex')}`,
+		return {
+			digest: `sha256:${sha256(manifestText)}`,
 			contractId: manifest.id,
 			version: manifest.semver,
 			kind: 'action' as const,
 			manifest: manifestText,
-			bundle: packed.bundle,
+			bundle,
 			fixtures: JSON.stringify(fixtures),
 			signatures: [],
 			published: new Date(),
 			origin: 'private' as const,
 			createdById: options.userId,
 		};
-		return { row, manifest };
+	}
+
+	/**
+	 * The manifest, bundle and SDK runtime of a packed JS action, after the checks that need no
+	 * sandbox. The sandbox checks the hashes too, but its error reads as a fault of n8n.
+	 */
+	private async codeOf({ manifest, bundle, sdk }: PackedCode) {
+		const { parseManifest, parseSdkManifest, SDK_RUNTIME_ID } = await import(
+			'@n8n/node-sdk/registry'
+		);
+		const parsed = (() => {
+			try {
+				return parseManifest(JSON.stringify(manifest) ?? '');
+			} catch (error) {
+				throw new UserError(`The manifest is not valid: ${ensureError(error).message}`, {
+					cause: error,
+				});
+			}
+		})();
+		const at = `${parsed.id}@${parsed.semver}`;
+		if (parsed.kind !== 'action' || parsed.guest !== undefined || parsed.contract.runtime) {
+			throw new UserError(`${at} is not a JS action`);
+		}
+		if (sha256(bundle) !== parsed.bundleHash) {
+			throw new UserError(`The bundle of ${at} does not match its manifest. Pack it again.`);
+		}
+		const pin = typeof parsed.sdk === 'object' ? parsed.sdk.digest : undefined;
+		if (pin === undefined) return { manifest: parsed, bundle, sdk };
+		if (`sha256:${sha256(sdk ?? '')}` !== pin) {
+			throw new UserError(`The SDK runtime of ${at} does not match its manifest. Pack it again.`);
+		}
+		// The SDK runtime runs in every action that pins it, so n8n never stores one that a user sends.
+		const { rows } = this.store;
+		const known =
+			rows.embedded.sdk(pin) !== undefined ||
+			(await rows.manifests(SDK_RUNTIME_ID)).some(
+				({ manifestText }) => `sha256:${parseSdkManifest(manifestText).bundleHash}` === pin,
+			);
+		if (!known) {
+			throw new UserError(
+				`${at} pins the SDK runtime ${pin}, which this instance does not have. The SDK in the sandbox differs from the SDK of n8n. The node code cannot fix this: tell an admin.`,
+			);
+		}
+		return { manifest: parsed, bundle, sdk };
 	}
 
 	/**
@@ -304,8 +422,10 @@ export class NextNodesInstanceService {
 		versions: readonly CustomVersion[],
 	): Promise<PackedAction> {
 		const contract = isRecord(config) && isRecord(config.contract) ? config.contract : undefined;
+		// Without a config of the id, `assertNew` refuses the config after code.
+		const configs = versions.filter(({ manifest }) => manifest.guest === 'http');
 		const latest =
-			typeof contract?.id === 'string' ? this.newestOf(versions, contract.id) : undefined;
+			typeof contract?.id === 'string' ? this.newestOf(configs, contract.id) : undefined;
 		if (!isRecord(config) || !contract) return await this.pack(config);
 		// The version is in the bundle, so the first version names it as each next one does.
 		if (!latest && typeof contract.version === 'number') {
@@ -349,16 +469,90 @@ export class NextNodesInstanceService {
 		user: User,
 	): Promise<DraftTestResult> {
 		if (!isNodeParameters(params)) throw new UserError('The parameters are not node parameters');
-		const [{ draftNodeTypeOf, nodeDescriptionOf, nodeNameOf }, { fixtureRouteOf }] =
-			await Promise.all([import('@n8n/node-sdk/host'), import('@n8n/node-sdk/testing')]);
+		const { draftNodeTypeOf } = await import('@n8n/node-sdk/host');
 		const { manifest, bundle } = await this.pack(config);
+		return await this.runDraft(
+			manifest,
+			params,
+			credentialId,
+			user,
+			(onExchange) =>
+				draftNodeTypeOf(
+					{ manifest, origin: 'private', readBundle: async () => bundle },
+					this.runtime(),
+					onExchange,
+				),
+			bundle,
+		);
+	}
+
+	/**
+	 * Runs a JS action that the AI builder packed once, as `test` runs a config. The bundle runs
+	 * only in the wasm sandbox, never in this process.
+	 */
+	async testPacked(
+		packed: PackedCode,
+		params: unknown,
+		credentialId: string | undefined,
+		user: User,
+	): Promise<DraftTestResult> {
+		if (!isNodeParameters(params)) throw new UserError('The parameters are not node parameters');
+		const [code, { toVersionedNodeType }, { sandboxedVersionOf }] = await Promise.all([
+			this.codeOf(packed),
+			import('@n8n/node-sdk/host'),
+			import('@n8n/node-sdk/sandbox'),
+		]);
+		const { manifest } = code;
+		const sandbox = await privateCodeSandbox();
+		const version: PackedVersion = {
+			manifest,
+			origin: 'private',
+			readBundle: async () => code.bundle,
+			readSdk: async () => code.sdk ?? '',
+		};
+		return await this.runDraft(manifest, params, credentialId, user, (onExchange) => {
+			const runtime: HostRuntime = {
+				...this.runtime(),
+				// No pin picks a draft, and the cache of the stored versions must not keep its executor.
+				versionLoader: undefined,
+				executors: new Map(),
+				executorLoader: async (draft, host) => {
+					const { executor } = await sandboxedVersionOf(draft, sandbox, host);
+					return async (executorHost) =>
+						await executor({
+							...executorHost,
+							request: async (options, credentialType) => {
+								const response = await executorHost.request(options, credentialType);
+								// A stream is read once, by the action, so a fixture cannot keep it.
+								if (options.encoding !== 'stream') onExchange(options, response);
+								return response;
+							},
+						});
+				},
+			};
+			return new (toVersionedNodeType([version], runtime))().getNodeType(manifest.contract.version);
+		});
+	}
+
+	/**
+	 * Runs the node type of a draft once with the user's credential. `config` is the bundle of an
+	 * HTTP guest config: the fixture keeps the credential fields that its base URL reads.
+	 */
+	private async runDraft(
+		manifest: VersionManifest,
+		params: INodeParameters,
+		credentialId: string | undefined,
+		user: User,
+		draftOf: (onExchange: (request: IHttpRequestOptions, response: unknown) => void) => INodeType,
+		config?: string,
+	): Promise<DraftTestResult> {
+		const [{ nodeNameOf }, { fixtureRouteOf }] = await Promise.all([
+			import('@n8n/node-sdk/host'),
+			import('@n8n/node-sdk/testing'),
+		]);
 		const credential = await this.credentialOf(manifest, credentialId, user);
 		const routes: Array<ReturnType<typeof fixtureRouteOf>> = [];
-		const draft = draftNodeTypeOf(
-			{ manifest, origin: 'private', readBundle: async () => bundle },
-			this.runtime(),
-			(request, response) => routes.push(fixtureRouteOf(request, response)),
-		);
+		const draft = draftOf((request, response) => routes.push(fixtureRouteOf(request, response)));
 		const type = `${FALLBACK_PACKAGE}.${nodeNameOf(manifest.id)}`;
 		const nodeTypes: INodeTypes = {
 			getByName: (name) => (name === type ? draft : this.nodeTypes.getByName(name)),
@@ -366,9 +560,7 @@ export class NextNodesInstanceService {
 				name === type ? draft : this.nodeTypes.getByNameAndVersion(name, version),
 			getKnownTypes: () => this.nodeTypes.getKnownTypes(),
 		};
-		const selects = nodeDescriptionOf(manifest).properties.some(
-			({ name }) => name === 'authentication',
-		);
+		const selects = draft.description.properties.some(({ name }) => name === 'authentication');
 		const parameters = {
 			...params,
 			...(credential && selects ? { authentication: credential.type } : {}),
@@ -390,7 +582,8 @@ export class NextNodesInstanceService {
 		);
 		const items = result.data.map(({ json }) => json);
 		if (result.status === 'error') return { status: 'error', items, error: result.error };
-		const urlFields = credential ? await this.urlFieldsOf(credential, bundle) : {};
+		const urlFields =
+			credential && config !== undefined ? await this.urlFieldsOf(credential, config) : {};
 		const fixture = {
 			name: 'test',
 			params: parameters,
@@ -430,6 +623,9 @@ export class NextNodesInstanceService {
 	async configOf(actionId: string): Promise<NextNodeActionConfig> {
 		const newest = this.newestOf(await this.versions(), actionId);
 		if (!newest?.row.bundle) throw new NotFoundError(`This instance has not published ${actionId}`);
+		if (newest.manifest.guest !== 'http') {
+			throw new UserError(`${actionId} is code, so the form cannot edit it`);
+		}
 		const config: unknown = JSON.parse(newest.row.bundle);
 		if (!isRecord(config)) throw new UnexpectedError(`The config of ${actionId} is not an object`);
 		return { semver: newest.manifest.semver, config };

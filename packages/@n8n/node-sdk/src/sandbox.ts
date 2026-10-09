@@ -2275,19 +2275,24 @@ function unsupported({ id, kind, contract }: VersionManifest): string | undefine
  * A component describes the contract document of its manifest, the WIT form of `describe`. The
  * host takes the node from it.
  */
-function componentDescribed({ id, semver, contract }: VersionManifest, described: unknown) {
-	if (canonicalJson(described) !== canonicalJson(contract)) {
-		throw new UserError(`The component of ${id}@${semver} describes another contract`);
+function componentDescribed(manifest: VersionManifest, described: unknown) {
+	if (canonicalJson(described) !== canonicalJson(manifest.contract)) {
+		throw new UserError(
+			`The component of ${manifest.id}@${manifest.semver} describes another contract`,
+		);
 	}
-	return {
-		id,
-		node: {
-			id: contract.node,
-			displayName: contract.nodeDisplayName,
-			...(contract.baseUrl === undefined ? {} : { baseUrl: contract.baseUrl }),
-		},
-	};
+	return contractDescribed(manifest);
 }
+
+/** The `describe` reply that the contract of a manifest gives: the action id and its node. */
+const contractDescribed = ({ id, contract }: VersionManifest) => ({
+	id,
+	node: {
+		id: contract.node,
+		displayName: contract.nodeDisplayName,
+		...(contract.baseUrl === undefined ? {} : { baseUrl: contract.baseUrl }),
+	},
+});
 
 /**
  * The contract document that a WASM component file describes, from a sidecar that grants no
@@ -2313,11 +2318,22 @@ export async function describeComponent(
 	}
 }
 
-/** The action of a packed version in the sandbox, the executor that runs it, and its `migrate`. */
+/**
+ * The action of a packed version in the sandbox, the executor that runs it, its `migrate`, and
+ * what its bundle describes. With `describe: false`, an action takes its node from its manifest
+ * and no sandbox starts until it runs. Use it only for a version that passed the publish gate,
+ * which checks that the bundle describes the contract of its manifest.
+ */
 export async function sandboxedVersionOf(
 	packed: PackedVersion,
 	options: SandboxOptions,
 	hostRuntime: HostRuntime,
+	{
+		describe = true,
+	}: {
+		/** False: take the node from the manifest, and start no sandbox to describe the bundle. */
+		readonly describe?: boolean;
+	} = {},
 ) {
 	const { manifest } = packed;
 	const missing = unsupported(manifest);
@@ -2355,10 +2371,11 @@ export async function sandboxedVersionOf(
 	};
 	const runtime = runtimeOf(options);
 	const start = async (recorder?: RunRecorder) => await openSession(runtime, config, recorder);
-	const describing = await start();
-	const described = await describing
-		.request(`${kind}.describe`, {})
-		.finally(() => describing.close());
+	// Only an action skips `describe`: e.g. a trigger needs the webhook of its reply.
+	const describing = describe || kind !== 'action' ? await start() : undefined;
+	const described = describing
+		? await describing.request(`${kind}.describe`, {}).finally(() => describing.close())
+		: contractDescribed(manifest);
 	if (kind === 'trigger') {
 		const webhook = isRecord(described) ? described.webhook : undefined;
 		assertWebhookSignature(
@@ -2371,7 +2388,9 @@ export async function sandboxedVersionOf(
 		manifest,
 		await nodeOf(
 			manifest,
-			manifest.guest === 'component' ? componentDescribed(manifest, described) : described,
+			describing && manifest.guest === 'component'
+				? componentDescribed(manifest, described)
+				: described,
 			options.credentialType,
 			hostRuntime.credentialManifestOf,
 		),
@@ -2391,7 +2410,13 @@ export async function sandboxedVersionOf(
 		}
 		return migrated;
 	};
-	return { action, start, executor: sandboxedExecutor(executorOf(action), start), migrate };
+	return {
+		action,
+		start,
+		executor: sandboxedExecutor(executorOf(action), start),
+		migrate,
+		described,
+	};
 }
 
 /**

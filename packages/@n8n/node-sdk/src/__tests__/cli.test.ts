@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -61,7 +62,7 @@ describe('n8n-node-next', () => {
 		expect(result.code).toBe(0);
 		const manifest = JSON.parse(readFileSync(join(project, 'package.json'), 'utf8'));
 		expect(manifest.dependencies['@n8n/node-sdk']).toBe(`link:${SDK_ROOT}`);
-		expect(readFileSync(join(project, 'AGENTS.md'), 'utf8').split('\n').length).toBeLessThan(150);
+		expect(readFileSync(join(project, 'AGENTS.md'), 'utf8').split('\n').length).toBeLessThan(180);
 		expect(readFileSync(join(project, 'src/index.ts'), 'utf8')).toContain('export const actions');
 		// The scaffold has the layout that check enforces.
 		expect(readFileSync(join(project, 'src/todo.node.ts'), 'utf8')).toContain(
@@ -82,6 +83,17 @@ describe('n8n-node-next', () => {
 			stdout: 'check passed. Next: n8n-node-next test\n',
 		});
 	});
+
+	it('tsc passes on the scaffold', async () => {
+		const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin', 'tsc');
+		const result = await promisify(execFile)(process.execPath, [
+			tsc,
+			'--noEmit',
+			'-p',
+			project,
+		]).catch((error: { stdout: string }) => error);
+		expect(result.stdout).toBe('');
+	}, 30_000);
 
 	it('check reports the file, action id and schema path', async () => {
 		const file = join(project, 'src/actions/item.get-all.ts');
@@ -170,6 +182,22 @@ describe('n8n-node-next', () => {
 		expect(result.stdout).toContain('export type TodoItemGetAllOutput');
 		expect(result.stdout).toContain('contractStep("n8n-nodes-todo.todoItemGetAll", config)');
 	});
+
+	it('pack --json prints the manifest and bundle of each action as one line', async () => {
+		const result = await cli(project, ['pack', '--json']);
+		expect(result.code).toBe(0);
+		expect(result.stdout.trimEnd().split('\n')).toHaveLength(1);
+		const { actions, errors } = JSON.parse(result.stdout);
+		expect(errors).toBeUndefined();
+		expect(actions).toHaveLength(1);
+		const [{ manifest, bundle, sdk }] = actions;
+		expect(manifest).toMatchObject({ kind: 'action', id: 'todo.item.getAll', semver: '1.0.0' });
+		expect(manifest.bundleHash).toBe(createHash('sha256').update(bundle).digest('hex'));
+		expect(manifest.sdk.digest).toBe(`sha256:${createHash('sha256').update(sdk).digest('hex')}`);
+
+		const human = await cli(project, ['pack']);
+		expect(human.stdout).toBe(`packed todo.item.getAll@1.0.0 sha256:${manifest.bundleHash}\n`);
+	}, 30_000);
 
 	it('run calls the API with the credential from the environment', async () => {
 		const node = join(project, 'src/todo.node.ts');

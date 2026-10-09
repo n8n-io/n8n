@@ -189,6 +189,7 @@ import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mc
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
+import type { NextNodesInstanceService } from '@/modules/next-nodes-instance/next-nodes-instance.service';
 import { contractVersionOf } from '@/node-contracts-run';
 import { ExecuteNodeService } from '@/node-execution';
 import type { ExecuteNodeResult } from '@/node-execution';
@@ -622,6 +623,18 @@ export class InstanceAiAdapterService {
 						projectId,
 					)
 				: undefined,
+			// Without the scope, the tool and its skill stay out of the run.
+			...(this.globalConfig.instanceAi.nodeContractsEnabled &&
+			Container.get(ModuleRegistry).isActive('next-nodes-instance') &&
+			hasGlobalScope(user, 'nodeDefinition:upload')
+				? {
+						customNodeService: createCustomNodeAdapter(
+							user,
+							allowSendingParameterValues,
+							getNextNodesInstanceService,
+						),
+					}
+				: {}),
 			conversationHistoryService: conversationHistory,
 			// The tool and context block use the same instance gate result.
 			...(instanceContextEnabled === true && this.instanceContext
@@ -5031,6 +5044,57 @@ function capItemsBySerializedSize<T>(items: T[], maxBytes: number): T[] {
 		size += itemStr.length + 1;
 	}
 	return kept;
+}
+
+type CustomNodePublisher = Pick<NextNodesInstanceService, 'testPacked' | 'publishPacked'>;
+
+// Load the module service on first use: it pulls in the node SDK host code.
+async function getNextNodesInstanceService(): Promise<CustomNodePublisher> {
+	const { NextNodesInstanceService: Service } = await import(
+		'@/modules/next-nodes-instance/next-nodes-instance.service.js'
+	);
+	return Container.get(Service);
+}
+
+const CUSTOM_NODE_TEST_ERROR_SUPPRESSED =
+	'The test run failed. Its error details are suppressed by the instance AI privacy setting; ask the user to run the node and share the error from the UI.';
+
+/**
+ * Tests and publishes the code actions that the assistant packs in its sandbox. The service has
+ * no route guard on this path, so the adapter checks the scope of the code upload endpoint. A
+ * test run sends its items and error to the LLM only when the privacy setting allows it, as
+ * `redactExecuteNodeResult` does. The fixture stays on the host for publish.
+ */
+export function createCustomNodeAdapter(
+	user: User,
+	allowSendingParameterValues: boolean,
+	getService: () => Promise<CustomNodePublisher>,
+): NonNullable<InstanceAiContext['customNodeService']> {
+	const assertCanUpload = () => {
+		if (!hasGlobalScope(user, 'nodeDefinition:upload')) {
+			throw new UserError('Only an instance owner or admin can test and publish custom nodes.');
+		}
+	};
+	return {
+		test: async (packed, params, credentialId) => {
+			assertCanUpload();
+			const result = await (await getService()).testPacked(packed, params, credentialId, user);
+			if (allowSendingParameterValues) return result;
+			return {
+				status: result.status,
+				items: [],
+				...(result.error !== undefined ? { error: CUSTOM_NODE_TEST_ERROR_SUPPRESSED } : {}),
+				...(result.fixture !== undefined ? { fixture: result.fixture } : {}),
+			};
+		},
+		publish: async (packed, fixtures) => {
+			assertCanUpload();
+			const { id, semver } = await (await getService()).publishPacked(packed, fixtures, {
+				userId: user.id,
+			});
+			return { id, semver };
+		},
+	};
 }
 
 const EXECUTE_NODE_DETAILS_SUPPRESSED =

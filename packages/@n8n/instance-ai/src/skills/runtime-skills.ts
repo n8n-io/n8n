@@ -14,6 +14,7 @@ import {
 	type PromptProfile,
 } from '../prompts/prompt-profiles';
 import { composeSkillVariants } from '../prompts/skill-variants';
+import { NODE_BUILDER_SKILL_ID } from './skill-gates';
 
 export const INSTANCE_AI_SKILLS_DIR = resolve(__dirname, '..', '..', 'skills');
 const AGENTS_MODULE_RUNTIME_SKILLS = new Set(['agent-builder', 'intent-recognition']);
@@ -56,7 +57,10 @@ async function composePromptSkills(profile: PromptProfile, nodeContractsEnabled:
 	const base = nodeContractsEnabled
 		? (await composeSkillVariants(runtime, [NODE_CONTRACTS_SKILL_VARIANT])).source
 		: runtime;
-	return await composeSkillVariants(base, profile.variants, PROMPT_FRAGMENT_SKILLS);
+	const hidden = nodeContractsEnabled
+		? PROMPT_FRAGMENT_SKILLS
+		: [...PROMPT_FRAGMENT_SKILLS, NODE_BUILDER_SKILL_ID];
+	return await composeSkillVariants(base, profile.variants, hidden);
 }
 
 export async function loadInstanceAiPromptSkills(

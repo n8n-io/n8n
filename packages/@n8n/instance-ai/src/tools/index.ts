@@ -18,6 +18,9 @@ const loadParseFileTool = lazyMod(
 const loadCredentialsTool = lazyMod(
 	() => require('./credentials.tool') as typeof import('./credentials.tool'),
 );
+const loadCustomNodesTool = lazyMod(
+	() => require('./custom-nodes.tool') as typeof import('./custom-nodes.tool'),
+);
 const loadConversationHistoryTool = lazyMod(
 	() => require('./conversation-history.tool') as typeof import('./conversation-history.tool'),
 );
@@ -185,6 +188,14 @@ function getOrchestratorDomainToolFactories(
 		tools.push([
 			DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
 			() => loadSaveUserPreferenceTool().createSaveUserPreferenceTool(context),
+		]);
+	}
+
+	// The adapter wires `customNodeService` only when the custom actions module is active.
+	if (context.nodeContractsEnabled && context.customNodeService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.CUSTOM_NODES,
+			() => loadCustomNodesTool().createCustomNodesTool(context),
 		]);
 	}
 

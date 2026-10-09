@@ -7,6 +7,7 @@ import {
 	resolvePromptProfile,
 } from '../../prompts/prompt-profiles';
 import { loadInstanceAiPromptSkills, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
+import { NODE_BUILDER_SKILL_ID } from '../skill-gates';
 
 describe('post-build-flow-contracts skill', () => {
 	it('replaces post-build-flow only when node contracts are enabled', async () => {
@@ -106,7 +107,10 @@ describe('post-build-flow-contracts skill', () => {
 
 	it('keeps the flag-off prompt skills of every profile unchanged', async () => {
 		const runtime = loadInstanceAiRuntimeSkillSource();
-		const catalog = filterRuntimeSkillSource(runtime, [...PROMPT_FRAGMENT_SKILLS]).registry;
+		const catalog = filterRuntimeSkillSource(runtime, [
+			...PROMPT_FRAGMENT_SKILLS,
+			NODE_BUILDER_SKILL_ID,
+		]).registry;
 
 		for (const profile of INSTANCE_AI_PROMPT_PROFILES) {
 			const off = (await loadInstanceAiPromptSkills(profile)).source;

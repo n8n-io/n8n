@@ -768,6 +768,35 @@ export interface InstanceAiExecuteNodeService {
 	}): Promise<ExecuteNodeResult>;
 }
 
+/** One action of `n8n-node-next pack --json` in the sandbox. The host service parses and checks
+ *  it. The host never evaluates the bundle in its own process. */
+export interface PackedCustomAction {
+	manifest: unknown;
+	bundle: string;
+	sdk?: string;
+}
+
+export interface CustomNodeTestResult {
+	status: 'success' | 'error';
+	items: readonly unknown[];
+	error?: string;
+	/** The execution fixture that publish needs. Only a run without an error has one. */
+	fixture?: unknown;
+}
+
+/** Tests and publishes code actions that the agent packs in the sandbox, as private versions. */
+export interface InstanceAiCustomNodeService {
+	test(
+		packed: PackedCustomAction,
+		params: unknown,
+		credentialId: string | undefined,
+	): Promise<CustomNodeTestResult>;
+	publish(
+		packed: PackedCustomAction,
+		fixtures: { executions: unknown[] },
+	): Promise<{ id: string; semver: string }>;
+}
+
 export interface CredentialTypeSearchResult {
 	type: string;
 	displayName: string;
@@ -1658,6 +1687,8 @@ export interface InstanceAiContext {
 	mcpService?: InstanceAiMcpService;
 	/** Optional — presence gates the `execute` action on the `nodes` tool. */
 	executeNodeService?: InstanceAiExecuteNodeService;
+	/** Optional — presence (with `nodeContractsEnabled`) gates the `custom-nodes` tool. */
+	customNodeService?: InstanceAiCustomNodeService;
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
 	conversationHistoryService?: InstanceAiConversationHistoryReader;

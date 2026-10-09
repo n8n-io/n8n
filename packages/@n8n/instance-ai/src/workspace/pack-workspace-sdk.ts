@@ -50,6 +50,12 @@ export const SANDBOX_LINK_ROOT_PACKAGE = '@n8n/workflow-sdk';
 export const NODE_CONTRACTS_LINK_ROOT_PACKAGE = '@n8n/expression-types';
 
 /**
+ * Node contracts author, check and pack custom actions in the sandbox with this package's
+ * `n8n-node-next` CLI. The package is not on npm, so the sandbox always gets the host copy.
+ */
+export const NODE_SDK_LINK_ROOT_PACKAGE = '@n8n/node-sdk';
+
+/**
  * Workspace packages installed into the sandbox when workspace linking is
  * enabled. Add a package here when the SDK breaks against its npm copy.
  */
@@ -156,13 +162,14 @@ export async function packWorkspacePackage(
 
 /**
  * The host packages linked into the sandbox: the SDK with its linked workspace dependencies,
- * and with node contracts also `@n8n/expression-types`. Dependencies come before dependents.
+ * and with node contracts also `@n8n/expression-types` and `@n8n/node-sdk`. Dependencies come
+ * before dependents.
  */
 export async function findHostSandboxPackages(
 	nodeContractsEnabled: boolean,
 ): Promise<HostWorkspacePackage[]> {
 	const rootNames = nodeContractsEnabled
-		? [SANDBOX_LINK_ROOT_PACKAGE, NODE_CONTRACTS_LINK_ROOT_PACKAGE]
+		? [SANDBOX_LINK_ROOT_PACKAGE, NODE_CONTRACTS_LINK_ROOT_PACKAGE, NODE_SDK_LINK_ROOT_PACKAGE]
 		: [SANDBOX_LINK_ROOT_PACKAGE];
 	const found = new Map<string, HostWorkspacePackage>();
 	for (const rootName of rootNames) {

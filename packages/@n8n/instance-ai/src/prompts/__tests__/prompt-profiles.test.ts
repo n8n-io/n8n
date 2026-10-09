@@ -5,6 +5,7 @@ import {
 	loadInstanceAiPromptSkills,
 	loadInstanceAiRuntimeSkillSource,
 } from '../../skills/runtime-skills';
+import { NODE_BUILDER_SKILL_ID } from '../../skills/skill-gates';
 import {
 	assertInstanceAiPromptVersion,
 	getVersionedSystemPrompt,
@@ -18,10 +19,10 @@ import { composeSkillVariants, type SkillVariant } from '../skill-variants';
 describe('prompt profiles', () => {
 	it('preserves the default prompt, skills, and tools', async () => {
 		const selected = resolvePromptProfile({});
-		const original = filterRuntimeSkillSource(
-			loadInstanceAiRuntimeSkillSource(),
-			PROMPT_FRAGMENT_SKILLS,
-		);
+		const original = filterRuntimeSkillSource(loadInstanceAiRuntimeSkillSource(), [
+			...PROMPT_FRAGMENT_SKILLS,
+			NODE_BUILDER_SKILL_ID,
+		]);
 		const result = await loadInstanceAiPromptSkills(selected.profile);
 		expect(result.source.registry).toEqual(original.registry);
 		expect(result.disabledTools).toEqual([]);

@@ -15,6 +15,7 @@ import { satisfies } from 'semver';
 import { isSecretField, type AnyCredentialType } from './credentials';
 import {
 	missingTitlesOf,
+	toContract,
 	type Action,
 	type DataTable,
 	type DataTables,
@@ -47,6 +48,7 @@ import {
 	type BinaryStore,
 	type Executor,
 	type ExecutorHost,
+	type HostRuntime,
 } from './runtime';
 import { parameterPathOf, toProperty } from './properties';
 import { providedKindOf, providerInputsOf, replayCapability, type ProviderKind } from './providers';
@@ -74,12 +76,13 @@ import {
 	type NpmSource,
 	type NpmVersion,
 } from './npm';
-import { defaultSandbox, sandboxedVersionOf } from './sandbox';
+import { defaultSandbox, sandboxedVersionOf, type SandboxOptions } from './sandbox';
 import { credentialRangesOf, type SourcePackage, type StoreManifest } from './store';
 import { evaluateAlone, mockHttp, sendRequest } from './testing';
 import { validate } from './validator';
 import {
 	compareSemver,
+	contractHash,
 	diffContracts,
 	diffCredentials,
 	isFixtureBinary,
@@ -504,6 +507,8 @@ export async function checkPublish(
 	previous: VersionManifest | undefined,
 	packed: PackedAction,
 	fixtures: ContractFixtures,
+	/** The version in a sandbox. Then the fixtures replay there, see `checkSandboxedPublish`. */
+	loaded?: LoadedVersion,
 ): Promise<ContractDiff | undefined> {
 	const { manifest, action } = packed;
 	const at = `${manifest.id}@${manifest.semver}`;
@@ -520,7 +525,8 @@ export async function checkPublish(
 	}
 	if (previous && checked?.bump === 'major' && checked.diff.breaksInput) {
 		const fromMajor = previous.contract.version;
-		if (!action.migrate) {
+		// A sandboxed action has no functions here. The replay of the migration fixture checks its migrate.
+		if (!loaded && !action.migrate) {
 			throw new UserError(`${at} breaks old input, so it needs migrate`);
 		}
 		if (!fixtures.migrations?.some((pair) => pair.fromMajor === fromMajor)) {
@@ -532,9 +538,64 @@ export async function checkPublish(
 	const credentials = credentialTypesOf([action]).flatMap(
 		(type) => credentialManifestOf(type) ?? [],
 	);
-	const issues = await replayFixtures({ ...packed, credentials }, fixtures);
+	const issues = await replayFixtures({ ...packed, credentials }, fixtures, loaded);
 	if (issues.length > 0) throw new UserError(`${at} fails its fixtures: ${issues.join('; ')}`);
 	return checked?.diff;
+}
+
+/** The JSON of an action, as the sandbox describes it. `toContract` reads only its data. */
+const isDescribedAction = (value: unknown): value is Action =>
+	isRecord(value) &&
+	typeof value.id === 'string' &&
+	isRecord(value.node) &&
+	isRecord(value.output) &&
+	isRecord(value.flow) &&
+	Array.isArray(value.credentialTypes);
+
+/**
+ * The publish gate of a private JS action from an untrusted source, e.g. the sandbox of an agent.
+ * The bundle loads and runs only in `sandbox`, never in this process. The bundle must describe
+ * the contract of its manifest, so a forged manifest fails. Then `checkPublish` replays the
+ * fixtures in the sandbox.
+ */
+export async function checkSandboxedPublish(
+	previous: VersionManifest | undefined,
+	version: Pick<PackedAction, 'manifest' | 'bundle' | 'sdk'>,
+	fixtures: ContractFixtures,
+	sandbox: SandboxOptions,
+	runtime: HostRuntime = hostRuntime(),
+): Promise<ContractDiff | undefined> {
+	const { manifest, bundle, sdk } = version;
+	const at = `${manifest.id}@${manifest.semver}`;
+	if (manifest.kind !== 'action' || needsOf(manifest) !== 'web') {
+		throw new UserError(`${at} is not a JS action, so it cannot be a private version`);
+	}
+	if (contractHash(manifest.contract) !== manifest.contractHash) {
+		throw new UserError(`The contract hash of ${at} does not match its contract`);
+	}
+	// sandboxedVersionOf checks the bundle hash and the SDK digest before the sandbox loads them.
+	const { described, ...loaded } = await sandboxedVersionOf(
+		{
+			manifest,
+			origin: 'private',
+			readBundle: async () => bundle,
+			readSdk: async () => sdk ?? '',
+		},
+		sandbox,
+		runtime,
+	);
+	if (
+		!isDescribedAction(described) ||
+		canonicalJson(toContract(described)) !== canonicalJson(manifest.contract)
+	) {
+		throw new UserError(`The bundle of ${at} describes another contract than its manifest`);
+	}
+	const { action, executor, migrate } = loaded;
+	return await checkPublish(previous, { ...version, action }, fixtures, {
+		contract: action,
+		executor,
+		migrate,
+	});
 }
 
 /**

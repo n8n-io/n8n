@@ -11,6 +11,12 @@ export const CONFIG_EVALS_SKILL_ID = 'config-evals';
  */
 export const INSTANCE_AWARENESS_SKILL_ID = 'instance-awareness';
 
+/**
+ * Skill folder id gated by node contracts. `loadInstanceAiPromptSkills` hides it when they are off,
+ * because its `custom-nodes` tool exists only with them.
+ */
+export const NODE_BUILDER_SKILL_ID = 'node-builder';
+
 /** Resolved feature flags that gate one or more runtime skills. */
 export interface InstanceAiSkillFlags {
 	configEvalsEnabled: boolean;

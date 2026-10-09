@@ -42,6 +42,13 @@ class PrivateRuntimes extends CommaSeparatedStringArray<NodesNextRuntime> {
 	constructor(str: string) {
 		super(str);
 		checkRuntimes('N8N_NODES_NEXT_RUNTIMES_PRIVATE', this);
+		// A private version is code that no trusted key signs, e.g. code that a user or an agent wrote.
+		const unbounded = this.filter((name) => name === 'in-process' || name === 'worker');
+		if (unbounded.length > 0) {
+			throw new Error(
+				`N8N_NODES_NEXT_RUNTIMES_PRIVATE has ${unbounded.join(', ')}: private node code must run in wasm or container.`,
+			);
+		}
 	}
 }
 
@@ -363,8 +370,9 @@ export class InstanceAiConfig {
 
 	/**
 	 * The runtimes of private node versions, the preferred one first: the versions that no trusted
-	 * key signs, e.g. a version that only its pin anchors. `in-process` and `worker` give no
-	 * security boundary, so n8n logs a warning at start when this list has them.
+	 * key signs, e.g. a version that only its pin anchors. Runtimes: `wasm`, `container`. n8n
+	 * refuses `in-process` and `worker` here, because they give no security boundary. An HTTP
+	 * guest version is data, so it uses the first-party list.
 	 */
 	@Env('N8N_NODES_NEXT_RUNTIMES_PRIVATE')
 	nodesNextRuntimesPrivate: PrivateRuntimes = ['wasm', 'container'];

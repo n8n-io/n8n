@@ -167,7 +167,8 @@ The policy (`src/runtime-policy.ts`):
   image, with `--allow-child-process` and `--allow-addons` from the contract. Without a loaded
   action, `replayFixtures` replays it in `containerRuntime`, so publish fails when docker or the
   image is missing. The first-party example is `browser.screenshot` in `@n8n/nodes-core`: it
-  renders HTML to a PNG with the headless Chromium of the Playwright image. `component`: the
+  gets the HTML of a URL on the host and renders it to a PNG with the headless Chromium of the
+  Playwright image. The container has no network, so the page loads no external resources. `component`: the
   bundle is a WASM component (`guest: 'component'`, see "Languages"). It runs only in `wasm`, and
   `replayFixtures` replays it there. `http-guest`: the bundle is an HTTP guest config. It runs
   only in `in-process`.
@@ -192,7 +193,7 @@ The policy (`src/runtime-policy.ts`):
 |---|---|---|
 | `N8N_NODES_NEXT_RUNTIMES_FIRST_PARTY` | `worker,in-process,wasm,container` | The runtimes of first-party versions, the preferred one first. |
 | `N8N_NODES_NEXT_RUNTIMES_COMMUNITY` | `wasm,container` | The runtimes of community versions (signed by the vetting key), the preferred one first. An admin can add `in-process` or `worker`. n8n then logs a warning at start: community code runs without a security boundary. |
-| `N8N_NODES_NEXT_RUNTIMES_PRIVATE` | `wasm,container` | The runtimes of private versions (signed by no trusted key), the preferred one first. The same warning as for the community list applies. |
+| `N8N_NODES_NEXT_RUNTIMES_PRIVATE` | `wasm,container` | The runtimes of private versions (signed by no trusted key), the preferred one first. Only `wasm` and `container`: n8n refuses to start with `in-process` or `worker`. An HTTP guest config runs in `in-process` as first-party code. |
 | `N8N_NODES_NEXT_CONTAINER_ENABLED` | `false` | Lets versions run in Docker containers. Needs `docker` on the PATH and the pinned images pulled. |
 | `N8N_NODE_CONTRACT_SANDBOX_SIDECAR` | `sandbox/sidecar/target/release/n8n-sandbox` of `@n8n/node-sdk` | The `n8n-sandbox` binary of the `wasm` runtime. |
 | `N8N_NODE_CONTRACT_SANDBOX_GUESTS` | `sandbox/dist` of `@n8n/node-sdk` | The directory with `action.wasm`, `provider.wasm` and `trigger.wasm`. |

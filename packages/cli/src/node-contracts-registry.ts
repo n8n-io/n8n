@@ -53,7 +53,7 @@ import {
 	type VersionManifest,
 } from '@n8n/node-sdk/registry';
 import type { RuntimeAvailability, RuntimeName } from '@n8n/node-sdk/runtimes';
-import type { GuestRuntime } from '@n8n/node-sdk/sandbox';
+import type { GuestRuntime, SandboxOptions } from '@n8n/node-sdk/sandbox';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { existsSync, readFileSync } from 'fs';
 import {
@@ -93,8 +93,9 @@ import {
 	firstPartyCatalog,
 	firstPartyPackages,
 	isContractNodeType,
-	MIGRATED_NODES,
 	migratedSlotOf,
+	migratedVersions,
+	migratedVersionsOfType,
 	packageNameOf,
 	customActionCredentialTypeOf,
 	sandboxCredentialTypeOf,
@@ -382,11 +383,11 @@ function legacyNodeTypeOf(
 }
 
 /**
- * A custom action: a version that someone on this instance made in the form. No trusted key signs
- * it, and it runs n8n's HTTP guest on its config.
+ * A custom action: a private action version, e.g. an HTTP guest config that someone on this
+ * instance made in the form, or a JS bundle that the AI builder wrote. No trusted key signs it.
  */
 export const isCustomAction = ({ manifest, origin }: Pick<PackedVersion, 'manifest' | 'origin'>) =>
-	origin === 'private' && manifest.guest === 'http';
+	origin === 'private' && manifest.kind === 'action';
 
 /**
  * The description of a custom action: its app for the nodes panel (with the legacy node of the
@@ -617,17 +618,38 @@ export class ContractNodeLoader implements NodeLoader {
 			return latest && !yanked.has(latest.manifest.id) ? [latest] : [];
 		});
 		const exported = await Promise.all(
-			newest.map(
-				async (version) =>
-					await verifiedBundleOf(
-						version,
-						this.runtime.nodeContractRange,
-						this.runtime.credentialManifestOf,
-					),
-			),
+			newest.map(async (version) => {
+				try {
+					return [await this.customActionOf(version)];
+				} catch (error) {
+					const { id, semver } = version.manifest;
+					Container.get(Logger).warn(
+						`${id}@${semver} is not in the AI builder: ${ensureError(error).message}`,
+					);
+					return [];
+				}
+			}),
 		);
 		const { setPublishedActions } = await import('@n8n/instance-ai');
-		setPublishedActions(exported.flatMap((action) => ('kind' in action ? [] : [action])));
+		setPublishedActions(exported.flat().flatMap((action) => ('kind' in action ? [] : [action])));
+	}
+
+	/**
+	 * The action of a custom version. A config is data, so it is read here. A code bundle never
+	 * runs in this process. Its action comes from its manifest, which the publish gate checked
+	 * against what the bundle describes, so no sandbox starts at each load.
+	 */
+	private async customActionOf(version: PackedVersion) {
+		if (version.manifest.guest === 'http') {
+			return await verifiedBundleOf(
+				version,
+				this.runtime.nodeContractRange,
+				this.runtime.credentialManifestOf,
+			);
+		}
+		const { sandboxedVersionOf } = await import('@n8n/node-sdk/sandbox');
+		const sandbox = await privateCodeSandbox();
+		return (await sandboxedVersionOf(version, sandbox, this.runtime, { describe: false })).action;
 	}
 
 	/** The packed versions that the node type of a node name projects. */
@@ -814,6 +836,40 @@ export class NodeContractsRuntimes {
 	}
 }
 
+/** The sandbox files of the `wasm` runtime, from the settings, else the sandbox build of @n8n/node-sdk. */
+async function wasmFilesOf() {
+	const { instanceAi } = Container.get(GlobalConfig);
+	const { defaultSandbox } = await import('@n8n/node-sdk/sandbox');
+	return {
+		sidecar: instanceAi.nodeContractSandboxSidecar || defaultSandbox().sidecar,
+		guests: instanceAi.nodeContractSandboxGuests || defaultSandbox().guests,
+		cacheDir:
+			instanceAi.nodeContractSandboxCacheDir ||
+			path.join(Container.get(NodeContractsStore).dir, 'sandbox'),
+	};
+}
+
+/**
+ * The wasm sandbox of private code that n8n did not review, e.g. a bundle that the AI builder
+ * wrote. The code runs only there, never in this process, whatever the runtime lists allow.
+ */
+export async function privateCodeSandbox(): Promise<SandboxOptions> {
+	const { sidecar, guests, cacheDir } = await wasmFilesOf();
+	const missing = wasmMissingOf({ sidecar, guests });
+	if (missing) throw new UserError(`n8n cannot run code actions: ${missing}`);
+	const { wasmReuseRuntime } = await import('@n8n/node-sdk/runtimes');
+	return {
+		cacheDir,
+		// The credential hosts and base URLs never come from a bundle.
+		credentialType: sandboxCredentialTypeOf((name) =>
+			Container.get(CredentialTypes).recognizes(name),
+		),
+		runtime: Container.get(NodeContractsRuntimes).get('wasm', () =>
+			wasmReuseRuntime({ sidecar, guests }),
+		),
+	};
+}
+
 /** Why the `wasm` runtime cannot start: the sidecar or the guests are missing. */
 function wasmMissingOf({ sidecar, guests }: { sidecar: string; guests: string }) {
 	const files = [
@@ -856,7 +912,7 @@ export async function nodeContractsRuntime(): Promise<HostRuntime> {
 	const nodes = Container.get(NodesConfig);
 	const [
 		{ containerRuntime, pooledRuntime, wasmReuseRuntime, workerRuntime },
-		{ defaultSandbox, policyCredentialTypeLoader, policyExecutorLoader, warmSandbox },
+		{ policyCredentialTypeLoader, policyExecutorLoader, warmSandbox },
 		{ contractVersionLoader, credentialManifestsOf },
 	] = await Promise.all([
 		import('@n8n/node-sdk/runtimes'),
@@ -876,17 +932,14 @@ export async function nodeContractsRuntime(): Promise<HostRuntime> {
 		private: instanceAi.nodesNextRuntimesPrivate,
 	};
 	const listed = new Set(Object.values(lists).flat());
-	for (const origin of ['community', 'private'] as const) {
-		const unbounded = lists[origin].filter((name) => name === 'in-process' || name === 'worker');
-		if (unbounded.length > 0) {
-			logger.warn(
-				`N8N_NODES_NEXT_RUNTIMES_${origin.toUpperCase()} has ${unbounded.join(', ')}: ${origin} node code runs without a security boundary`,
-			);
-		}
+	// The config refuses `in-process` and `worker` in the private list, so only community warns.
+	const unbounded = lists.community.filter((name) => name === 'in-process' || name === 'worker');
+	if (unbounded.length > 0) {
+		logger.warn(
+			`N8N_NODES_NEXT_RUNTIMES_COMMUNITY has ${unbounded.join(', ')}: community node code runs without a security boundary`,
+		);
 	}
-	// Unset paths fall back to the sandbox build of @n8n/node-sdk.
-	const sidecar = instanceAi.nodeContractSandboxSidecar || defaultSandbox().sidecar;
-	const guests = instanceAi.nodeContractSandboxGuests || defaultSandbox().guests;
+	const { sidecar, guests, cacheDir } = await wasmFilesOf();
 	const wasmMissing = wasmMissingOf({ sidecar, guests });
 	if (wasmMissing && listed.has('wasm')) {
 		logger.warn(`The wasm runtime is not available: ${wasmMissing}`);
@@ -902,9 +955,6 @@ export async function nodeContractsRuntime(): Promise<HostRuntime> {
 		...('oci' in container && { containerOci: container.oci }),
 	};
 	const runtimes = Container.get(NodeContractsRuntimes);
-	const cacheDir =
-		instanceAi.nodeContractSandboxCacheDir ||
-		path.join(Container.get(NodeContractsStore).dir, 'sandbox');
 	if (!wasmMissing && listed.has('wasm')) {
 		// Without the warm-up, the first run in wasm compiles the guest, so a failure only costs time.
 		void warmSandbox({ sidecar, guests, cacheDir }).catch((error: unknown) =>
@@ -1066,7 +1116,7 @@ export async function pinnedNodesOf(
 	// The pin runs before the save validation, so a node may have no type yet.
 	const mayPin = ({ type, contract }: INode) =>
 		typeof type === 'string' &&
-		(contract !== undefined || isContractNodeType(type) || type in MIGRATED_NODES);
+		(contract !== undefined || isContractNodeType(type) || migratedVersionsOfType(type).length > 0);
 	if (!nodes.some(mayPin)) return [...nodes];
 	const { loaders } = Container.get(LoadNodesAndCredentials);
 	const actions = nodes.map((node) => (mayPin(node) ? contractActionOf(loaders, node) : undefined));
@@ -1177,15 +1227,17 @@ export function composeContractNodes(
 		runtime
 			? [
 					...toolNodesOf(loaders, runtime),
-					...Object.keys(MIGRATED_NODES).flatMap((nodeType) => {
-						const legacy = versionedNodeOf(loaders, nodeType);
-						if (!legacy) return [];
-						const composed: LoadedClass<IVersionedNodeType> = {
-							...legacy,
-							type: withMigratedVersions(nodeType, legacy.type, loadedVersionsOf, runtime),
-						};
-						return [[nodeType, composed] as const];
-					}),
+					...[...new Set(migratedVersions().map(({ nodeType }) => nodeType))].flatMap(
+						(nodeType) => {
+							const legacy = versionedNodeOf(loaders, nodeType);
+							if (!legacy) return [];
+							const composed: LoadedClass<IVersionedNodeType> = {
+								...legacy,
+								type: withMigratedVersions(nodeType, legacy.type, loadedVersionsOf, runtime),
+							};
+							return [[nodeType, composed] as const];
+						},
+					),
 				]
 			: [],
 	);
@@ -1196,18 +1248,18 @@ export function composeContractNodes(
 	);
 	// A copy, because later steps add options to the properties of the newest version.
 	const added = [...nodes].flatMap(([name, { type }]) =>
-		Object.keys(MIGRATED_NODES[name] ?? {})
-			.filter((version) => version in type.nodeVersions)
+		migratedVersionsOfType(name)
+			.filter(({ typeVersion }) => typeVersion in type.nodeVersions)
 			.map(
-				(version): INodeTypeDescription => ({
-					...deepCopy(type.getNodeType(Number(version)).description),
+				({ typeVersion }): INodeTypeDescription => ({
+					...deepCopy(type.getNodeType(typeVersion).description),
 					name,
 				}),
 			),
 	);
 	const patched = types.map((description): INodeTypeDescription => {
 		const defaultVersion =
-			description.name in MIGRATED_NODES
+			migratedVersionsOfType(description.name).length > 0
 				? nodes.get(description.name)?.type.description.defaultVersion
 				: undefined;
 		if (defaultVersion !== undefined) return { ...description, defaultVersion };

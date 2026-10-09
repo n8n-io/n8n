@@ -134,6 +134,16 @@ describe('InstanceAiConfig node runtimes', () => {
 		);
 	});
 
+	it.each([
+		['wasm,in-process', 'N8N_NODES_NEXT_RUNTIMES_PRIVATE has in-process'],
+		['worker', 'N8N_NODES_NEXT_RUNTIMES_PRIVATE has worker'],
+		['worker,wasm,in-process', 'N8N_NODES_NEXT_RUNTIMES_PRIVATE has worker, in-process'],
+	])('refuses the private list "%s", which has a runtime without a boundary', (value, error) => {
+		vi.stubEnv('N8N_NODES_NEXT_RUNTIMES_PRIVATE', value);
+
+		expect(() => Container.get(GlobalConfig)).toThrow(error);
+	});
+
 	it('refuses an unknown first-party runtime', () => {
 		vi.stubEnv('N8N_NODES_NEXT_RUNTIMES_FIRST_PARTY', 'worker,wasm-reuse');
 
