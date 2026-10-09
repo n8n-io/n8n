@@ -42,6 +42,7 @@ import { resolveInboundMimeType } from '../utils/inbound-attachments';
 import type {
 	AgentChatIntegration,
 	BridgeExecutionContext,
+	BridgeMessageContextParams,
 	PlatformAgentContext,
 } from './agent-chat-integration';
 import {
@@ -63,7 +64,6 @@ import { IntegrationMessageContextService } from './integration-message-context.
 import type {
 	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
-	ReplyExpectation,
 } from './integration-tools';
 import { downloadDiscordAttachment } from './platforms/discord-operations';
 
@@ -117,6 +117,13 @@ interface TurnSession {
  */
 function isResetCommand(inbound: InboundMessage): boolean {
 	return inbound.text.toLowerCase() === RESET_SESSION_COMMAND && inbound.attachments.length === 0;
+}
+
+interface InboundOptions {
+	isNewMention: boolean;
+	inSubscribedThread?: boolean;
+	/** False when `/new` must not reset the session from this message. */
+	allowReset?: boolean;
 }
 
 function buildModelMessage(
@@ -184,11 +191,13 @@ function errorText(error: unknown): string {
 /**
  * Bridges Chat SDK events to the agent execution pipeline.
  *
- * Registers four handlers on a Chat SDK `Bot` instance:
+ * Registers these handlers on a Chat SDK `Bot` instance:
  * 1. `onNewMention` — new @mentions and DMs → subscribe + enqueue
  * 2. `onSubscribedMessage` — follow-up messages in subscribed threads
- * 3. `onAction` — button clicks for HITL resume flow
- * 4. `onSlashCommand` — /new session reset for adapters that never deliver a
+ * 3. `onNewMessage` — every other message, only for platforms that implement
+ *    `shouldHandleUnmentionedMessage`
+ * 4. `onAction` — button clicks for HITL resume flow
+ * 5. `onSlashCommand` — /new session reset for adapters that never deliver a
  *    leading "/" as a plain message (e.g. Telegram)
  *
  * Stream consumption has two strategies, selected per integration via the
@@ -402,14 +411,16 @@ export class AgentChatBridge {
 		});
 
 		this.chat.onSubscribedMessage(async (thread, message) => {
-			try {
-				if (!this.canUserAccess(message.author)) return;
-				const anchoredThread = this.anchorInboundThread(thread, message);
-				await this.handleInboundMessage(anchoredThread, message, { isNewMention: false });
-			} catch (error) {
-				await this.postErrorToThread(thread, error);
-			}
+			await this.handleFollowUp(thread, message, { inSubscribedThread: true });
 		});
+
+		if (this.integrationImpl?.shouldHandleUnmentionedMessage) {
+			// No subscribe: a later message is routed here again, so the platform
+			// decides each time, and turning read-all off takes effect at once.
+			this.chat.onNewMessage(/[\s\S]*/, async (thread, message) => {
+				await this.handleFollowUp(thread, message, { inSubscribedThread: false });
+			});
+		}
 
 		this.chat.onAction(async (event) => {
 			try {
@@ -437,6 +448,49 @@ export class AgentChatBridge {
 				await this.postErrorToThread(thread, error);
 			}
 		});
+	}
+
+	/**
+	 * A message that is not a new mention. Without a mention the platform's hook
+	 * decides; platforms without one accept every message they deliver.
+	 */
+	private async handleFollowUp(
+		thread: Thread,
+		message: Message,
+		{ inSubscribedThread }: { inSubscribedThread: boolean },
+	): Promise<void> {
+		const unaddressed =
+			!message.isMention && this.integrationImpl?.shouldHandleUnmentionedMessage !== undefined;
+		try {
+			if (!this.canUserAccess(message.author)) return;
+			if (
+				unaddressed &&
+				!this.integrationImpl?.shouldHandleUnmentionedMessage?.({
+					thread,
+					message,
+					integration: this.integration,
+				})
+			) {
+				return;
+			}
+			const anchoredThread = this.anchorInboundThread(thread, message);
+			await this.handleInboundMessage(anchoredThread, message, {
+				isNewMention: false,
+				inSubscribedThread,
+				// Anyone in a read-all conversation could otherwise reset its session.
+				allowReset: !unaddressed,
+			});
+		} catch (error) {
+			if (!unaddressed) {
+				await this.postErrorToThread(thread, error);
+				return;
+			}
+			// Nobody asked the agent here, so an error post would be noise.
+			this.logger.warn('Failed to handle an un-mentioned message', {
+				agentId: this.agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	private canUserAccess(author: Author): boolean {
@@ -582,10 +636,19 @@ export class AgentChatBridge {
 	 */
 	private async resolveActiveThreadId(thread: Thread): Promise<InternalThread> {
 		const baseId = this.baseThreadId(thread);
-		const idleTimeoutMinutes =
+		// `null` is a documented, explicit opt-out distinct from `undefined`
+		// (unset) — only fall back to the integration's default when the setting
+		// was never configured at all, not when it was deliberately disabled.
+		// Some integration types (see `AgentIntegrationConfig`) carry no
+		// `settings` field at all, hence the `in` check before reading it.
+		const configuredIdleTimeoutMinutes =
 			'settings' in this.integration
-				? (this.integration.settings?.sessionIdleTimeoutMinutes ?? null)
-				: null;
+				? this.integration.settings?.sessionIdleTimeoutMinutes
+				: undefined;
+		const idleTimeoutMinutes =
+			configuredIdleTimeoutMinutes !== undefined
+				? configuredIdleTimeoutMinutes
+				: (this.integrationImpl?.defaultSessionIdleTimeoutMinutes ?? null);
 		const id = await this.withSessionLock(
 			baseId,
 			async () => await this.computeGeneration(baseId, false, idleTimeoutMinutes),
@@ -715,12 +778,12 @@ export class AgentChatBridge {
 	private async handleInboundMessage(
 		thread: Thread,
 		message: Message,
-		options: { isNewMention: boolean },
+		options: InboundOptions,
 	): Promise<void> {
 		const inbound = await this.readInboundMessage(message);
 		if (!inbound) return;
 		if (isResetCommand(inbound)) {
-			await this.resetSession(thread);
+			if (options.allowReset !== false) await this.resetSession(thread);
 			return;
 		}
 		await this.runTurn(thread, message, inbound, options);
@@ -742,7 +805,7 @@ export class AgentChatBridge {
 		thread: Thread,
 		message: Message,
 		inbound: InboundMessage,
-		options: { isNewMention: boolean },
+		options: InboundOptions,
 	): Promise<void> {
 		const platformAgentContext = this.getPlatformAgentContext();
 		const session = await this.resolveTurnSession(thread, message);
@@ -759,6 +822,7 @@ export class AgentChatBridge {
 			attachments,
 			attachmentNotes,
 			isNewMention: options.isNewMention,
+			inSubscribedThread: options.inSubscribedThread === true,
 			platformAgentContext,
 		});
 	}
@@ -800,6 +864,7 @@ export class AgentChatBridge {
 		attachments,
 		attachmentNotes,
 		isNewMention,
+		inSubscribedThread,
 		platformAgentContext,
 	}: {
 		thread: Thread;
@@ -809,6 +874,7 @@ export class AgentChatBridge {
 		attachments: StoredAttachmentRef[];
 		attachmentNotes: string[];
 		isNewMention: boolean;
+		inSubscribedThread: boolean;
 		platformAgentContext: PlatformAgentContext;
 	}): Promise<void> {
 		const replyExpectation =
@@ -820,13 +886,11 @@ export class AgentChatBridge {
 		let accepted = false;
 		try {
 			const [context, subject] = await Promise.all([
-				this.resolveBridgeExecutionContext(
-					thread,
-					message,
-					platformAgentContext,
+				this.resolveBridgeExecutionContext(thread, message, platformAgentContext, {
 					isNewMention,
+					inSubscribedThread,
 					replyExpectation,
-				),
+				}),
 				this.messageContextBridge.resolveSubject(message),
 			]);
 			const messageContext = this.messageContextBridge.capture(thread, {
@@ -881,13 +945,14 @@ export class AgentChatBridge {
 		integration: AgentIntegrationConfig,
 	): Promise<void> {
 		const thread = await this.restoreQueuedReplyThread(payload);
+		const replyOptional = payload.messageContext.replyExpectation === 'optional';
 		let statusHandle: ReturnType<typeof onceStatusHandle>;
 		try {
 			if (this.integrationImpl?.isUserAllowed?.(payload.sender, integration) === false) {
 				throw new UserError('You can no longer use this integration');
 			}
 			abortSignal.throwIfAborted();
-			if (payload.messageContext.replyExpectation !== 'optional') {
+			if (!replyOptional) {
 				const context = await this.integrationImpl?.createResumeExecutionContext?.({
 					chat: this.chat,
 					thread,
@@ -922,9 +987,18 @@ export class AgentChatBridge {
 				forceBuffered: payload.forceBuffered,
 				statusHandle,
 				actingUserId: payload.sender.userId,
+				quietErrors: replyOptional,
 			});
 		} catch (error) {
-			await this.postErrorToThread(thread, error);
+			if (replyOptional) {
+				this.logger.warn('[AgentChatBridge] Failed a turn whose reply was optional', {
+					agentId: this.agentId,
+					threadId: thread.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			} else {
+				await this.postErrorToThread(thread, error);
+			}
 			throw error;
 		} finally {
 			await statusHandle?.clearBeforeResponse();
@@ -1056,8 +1130,10 @@ export class AgentChatBridge {
 		thread: Thread<unknown, unknown>,
 		message: Message<unknown>,
 		platformAgentContext: PlatformAgentContext,
-		isNewMention: boolean,
-		replyExpectation: ReplyExpectation,
+		route: Pick<
+			BridgeMessageContextParams,
+			'isNewMention' | 'inSubscribedThread' | 'replyExpectation'
+		>,
 	): Promise<BridgeExecutionContext> {
 		return (
 			(await this.integrationImpl?.createBridgeExecutionContext?.({
@@ -1068,8 +1144,7 @@ export class AgentChatBridge {
 				logger: this.logger,
 				agentId: this.agentId,
 				startStatus: false,
-				isNewMention,
-				replyExpectation,
+				...route,
 			})) ?? { platformAgentContext }
 		);
 	}

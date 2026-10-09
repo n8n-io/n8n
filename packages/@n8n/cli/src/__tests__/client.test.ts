@@ -103,6 +103,12 @@ describe('N8nClient packages', () => {
 				path: 'apply/continue',
 				body: { expectedSource },
 			},
+			{
+				title: 'posts continue with the confirmation of destructive data table changes',
+				send: async () => await client.continueApplyPackage('conn-1', expectedSource, true),
+				path: 'apply/continue',
+				body: { expectedSource, confirmDestructiveChanges: true },
+			},
 		])('$title', async ({ send, path, body }) => {
 			fetchMock.mockResolvedValue(jsonResponse(200, { status: 'applied' }));
 
@@ -113,6 +119,46 @@ describe('N8nClient packages', () => {
 			]);
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(typeof init.body === 'string' ? JSON.parse(init.body) : init.body).toEqual(body);
+		});
+
+		it.each([
+			{
+				title: 'applies a selection with only the workflow ids by default',
+				send: async () => await client.applyProjectSelection('proj-1', ['wf-1', 'wf-2']),
+				path: 'apply',
+				body: { workflowIds: ['wf-1', 'wf-2'] },
+			},
+			{
+				title: 'pins the reviewed source when applying a selection',
+				send: async () => await client.applyProjectSelection('proj-1', ['wf-1'], expectedSource),
+				path: 'apply',
+				body: { workflowIds: ['wf-1'], expectedSource },
+			},
+			{
+				title: 'continues a selection apply against the reviewed source',
+				send: async () =>
+					await client.continueApplyProjectSelection('proj-1', ['wf-1'], expectedSource),
+				path: 'apply/continue',
+				body: { workflowIds: ['wf-1'], expectedSource },
+			},
+			{
+				title:
+					'continues a selection apply with the confirmation of destructive data table changes',
+				send: async () =>
+					await client.continueApplyProjectSelection('proj-1', ['wf-1'], expectedSource, true),
+				path: 'apply/continue',
+				body: { workflowIds: ['wf-1'], expectedSource, confirmDestructiveChanges: true },
+			},
+		])('$title', async ({ send, path, body }) => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { status: 'source-changed' }));
+
+			await send();
+
+			expect(requestLines(fetchMock)).toEqual([
+				`POST https://n8n.example.com/api/v1/promotions/projects/proj-1/${path}`,
+			]);
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(JSON.parse(init.body as string)).toEqual(body);
 		});
 
 		describe('list changes', () => {
@@ -408,6 +454,7 @@ describe('N8nClient packages', () => {
 					deletedWorkflowIds: ['workflow-3', 'workflow-4'],
 					workflowConflictPolicy: 'skip',
 					workflowIdPolicy: 'new',
+					overwriteDeletionPolicy: 'hard-delete',
 				},
 			);
 
@@ -423,6 +470,7 @@ describe('N8nClient packages', () => {
 			expect(form.get('deletedWorkflowIds')).toBe('["workflow-3","workflow-4"]');
 			expect(form.get('workflowConflictPolicy')).toBe('skip');
 			expect(form.get('workflowIdPolicy')).toBe('new');
+			expect(form.get('overwriteDeletionPolicy')).toBe('hard-delete');
 
 			const pkg = form.get('package') as File;
 			expect(pkg).toBeInstanceOf(Blob);
@@ -446,6 +494,7 @@ describe('N8nClient packages', () => {
 			expect(form.has('deletedWorkflowIds')).toBe(false);
 			expect(form.has('workflowConflictPolicy')).toBe(false);
 			expect(form.has('workflowIdPolicy')).toBe(false);
+			expect(form.has('overwriteDeletionPolicy')).toBe(false);
 		});
 
 		it('preserves an explicit empty deletion list', async () => {

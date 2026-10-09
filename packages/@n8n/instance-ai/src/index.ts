@@ -670,6 +670,7 @@ export const PlannedTaskCoordinator: typeof PlannedTaskServiceMod.PlannedTaskCoo
 	lazyClass(() => loadPlannedTaskService().PlannedTaskCoordinator);
 export declare const PLANNED_TASK_PERMISSION_OVERRIDES: typeof PlannedTaskPermissionsMod.PLANNED_TASK_PERMISSION_OVERRIDES;
 export type {
+	InstanceAiChangedArtifact,
 	InstanceAiContext,
 	InstanceAiToolRegistry,
 	InstanceAiWorkflowService,

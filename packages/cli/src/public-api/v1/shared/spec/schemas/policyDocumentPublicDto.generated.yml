@@ -44,6 +44,7 @@ properties:
               required:
                 - kind
                 - value
+          type: object
       required:
         - id
         - action

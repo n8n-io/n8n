@@ -38,6 +38,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.addSelect('execution.trigger_outputs', 'triggerOutputs')
 			.addSelect('execution.caller_context', 'callerContext')
 			.addSelect('execution.response_expectation', 'responseExpectation')
+			.addSelect('execution.finished_at', 'finishedAt')
 			.where('execution.id = :id', { id })
 			.getRawOne();
 		if (!row) throw new ExecutionNotFoundError(id);

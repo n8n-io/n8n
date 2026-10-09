@@ -10,6 +10,8 @@ import {
 	ProjectRelation,
 	ProjectRepository,
 	Role,
+	type SharedCredentialsRepository,
+	type SharedWorkflowRepository,
 	User,
 	UserRepository,
 } from '@n8n/db';
@@ -29,6 +31,7 @@ import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import type { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from '../jwt.service';
+import type { OwnershipTransferService } from '../ownership-transfer/ownership-transfer.service';
 import type { OwnershipService } from '../ownership.service';
 import type { ProjectService } from '../project.service.ee';
 import type { PublicApiKeyService } from '../public-api-key.service';
@@ -62,6 +65,8 @@ describe('UserService', () => {
 	const jwtService = mockInstance(JwtService, {
 		sign: vi.fn().mockReturnValue('mock-jwt-token'),
 	});
+	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const userService = new UserService(
 		mock(),
 		userRepository,
@@ -77,8 +82,8 @@ describe('UserService', () => {
 		projectService,
 		license,
 		externalHooks,
-		mock(),
-		mock(),
+		sharedCredentialsRepository,
+		sharedWorkflowRepository,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -569,7 +574,7 @@ describe('UserService', () => {
 			const result = await userService.getInvitationIdsFromPayload(token);
 
 			expect(result).toEqual({ inviterId, inviteeId });
-			expect(jwtService.verify).toHaveBeenCalledWith(token);
+			expect(jwtService.verify).toHaveBeenCalledWith('invite', token);
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			});
@@ -891,6 +896,70 @@ describe('UserService', () => {
 			expect(externalHooks.run).toHaveBeenCalledWith('user.invited', [
 				inviteUsersResult.usersCreated,
 			]);
+		});
+	});
+
+	describe('deleteUser', () => {
+		const actor = Object.assign(new User(), { id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+		const userToDelete = Object.assign(new User(), { id: 'member-1', role: GLOBAL_MEMBER_ROLE });
+		const personalProject = Object.assign(new Project(), { id: 'personal-1', type: 'personal' });
+		const transfereeProject = Object.assign(new Project(), { id: 'team-1', type: 'team' });
+		const ownershipTransferService = mock<OwnershipTransferService>();
+
+		beforeEach(() => {
+			userRepository.findByIdWithRole.mockResolvedValue(userToDelete);
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(personalProject);
+			projectService.findProject.mockResolvedValue(transfereeProject);
+			userRepository.findOneByProjectIdOrFail.mockResolvedValue(
+				Object.assign(new User(), { id: 'transferee-1' }),
+			);
+			sharedWorkflowRepository.find.mockResolvedValue([]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+			ownershipTransferService.enforceTransferPolicy.mockResolvedValue(undefined);
+			ownershipTransferService.transferAllResources.mockResolvedValue(undefined);
+			vi.spyOn(
+				userService as unknown as { getOwnershipTransferService: () => unknown },
+				'getOwnershipTransferService',
+			).mockResolvedValue(ownershipTransferService);
+			vi.spyOn(
+				userService as unknown as { getWorkflowService: () => unknown },
+				'getWorkflowService',
+			).mockResolvedValue({ delete: vi.fn() });
+			vi.spyOn(
+				userService as unknown as { getCredentialsService: () => unknown },
+				'getCredentialsService',
+			).mockResolvedValue({ delete: vi.fn() });
+		});
+
+		it('checks the transferee project policy before transferring anything', async () => {
+			await userService.deleteUser(actor, userToDelete.id, transfereeProject.id);
+
+			expect(ownershipTransferService.enforceTransferPolicy).toHaveBeenCalledExactlyOnceWith(
+				personalProject.id,
+				transfereeProject.id,
+				{ kind: 'user', user: actor },
+			);
+			expect(
+				ownershipTransferService.enforceTransferPolicy.mock.invocationCallOrder[0],
+			).toBeLessThan(ownershipTransferService.transferAllResources.mock.invocationCallOrder[0]);
+		});
+
+		it('rejects the deletion and transfers nothing when the policy check throws', async () => {
+			const violation = new Error('blocked by policy');
+			ownershipTransferService.enforceTransferPolicy.mockRejectedValue(violation);
+
+			await expect(
+				userService.deleteUser(actor, userToDelete.id, transfereeProject.id),
+			).rejects.toThrow(violation);
+
+			expect(ownershipTransferService.transferAllResources).not.toHaveBeenCalled();
+			expect(manager.transaction).not.toHaveBeenCalled();
+		});
+
+		it('skips the policy check when the user is deleted without a transferee', async () => {
+			await userService.deleteUser(actor, userToDelete.id);
+
+			expect(ownershipTransferService.enforceTransferPolicy).not.toHaveBeenCalled();
 		});
 	});
 

@@ -8,6 +8,7 @@ import { ConflictError, BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
@@ -23,12 +24,13 @@ import {
 	AgentMessageRepository,
 } from './repositories/agent-message.repository';
 import { AgentRepository } from './repositories/agent.repository';
-import type {
-	AgentExecutionAdmission,
-	AgentQueuedMessage,
-	AgentQueueDispatch,
-	QueuedIntegrationMessage,
-	QueuedUserChatMessage,
+import {
+	acceptsSteering,
+	type AgentExecutionAdmission,
+	type AgentQueuedMessage,
+	type AgentQueueDispatch,
+	type QueuedIntegrationMessage,
+	type QueuedUserChatMessage,
 } from './types/agent-queued-message';
 import {
 	canContinueThreadInN8nChat,
@@ -73,6 +75,7 @@ export class AgentMessageQueueService {
 		private readonly updates: AgentExecutionUpdateBroadcaster,
 		private readonly messages: AgentMessageRepository,
 		private readonly steering: AgentMessageSteeringService,
+		private readonly settingsService: AgentsSettingsService,
 	) {}
 
 	/** Save a pending message. It is durably accepted when the transaction commits. */
@@ -87,6 +90,7 @@ export class AgentMessageQueueService {
 		},
 		onInserted?: (queueId: string) => void,
 	): Promise<{ status: 'accepted'; item: AgentMessageQueue } | { status: 'duplicate' }> {
+		await this.settingsService.assertEnabled();
 		const agent = await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
 		if (!agent) throw new UserError('Agent not found');
 		const { payload } = input;
@@ -94,6 +98,7 @@ export class AgentMessageQueueService {
 		let item: AgentMessageQueue;
 		try {
 			item = await this.txRunner.run({}, async (ctx) => {
+				await this.settingsService.assertEnabled(ctx);
 				await this.executionService.prepareThread(
 					{
 						...input,
@@ -183,8 +188,7 @@ export class AgentMessageQueueService {
 		if (!thread) return { items: [], steerableExecutionId: null };
 		await this.assertUserChatAccess(thread, input);
 		const items = await this.repository.listPending(thread.id);
-		// Only Preview executions accept steering.
-		const steerable = kind === 'preview' ? await this.steering.findEligible(thread) : null;
+		const steerable = acceptsSteering(kind) ? await this.steering.findEligible(thread) : null;
 		return {
 			steerableExecutionId: steerable?.id ?? null,
 			items: items
@@ -260,16 +264,18 @@ export class AgentMessageQueueService {
 		queueId: string;
 		targetQueueId: string;
 		expectedQueueIds: string[];
+		kind: QueuedUserChatMessage['kind'];
 	}): Promise<void> {
 		await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(input.threadId, ctx);
 			if (!thread) throw new NotFoundError('Session not found');
-			await this.assertUserChatAccess(thread, { ...input, kind: 'preview' }, ctx);
+			await this.assertUserChatAccess(thread, input, ctx);
 			const moved = await this.repository.movePending(
 				thread.id,
 				input.queueId,
 				input.targetQueueId,
 				input.expectedQueueIds,
+				input.kind,
 				ctx,
 			);
 			if (!moved) {
@@ -286,13 +292,14 @@ export class AgentMessageQueueService {
 		userId: string;
 		queueId: string;
 		executionId: string;
+		kind: QueuedUserChatMessage['kind'];
 	}): Promise<void> {
 		await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(input.threadId, ctx);
 			if (!thread) throw new NotFoundError('Session not found');
-			await this.assertUserChatAccess(thread, { ...input, kind: 'preview' }, ctx);
+			await this.assertUserChatAccess(thread, input, ctx);
 			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
-			if (!item || item.payload.kind !== 'preview')
+			if (!item || item.payload.kind !== input.kind)
 				throw new ConflictError('This message is no longer available');
 			const execution = await this.steering.findEligible(thread, ctx);
 			if (
@@ -341,6 +348,7 @@ export class AgentMessageQueueService {
 	): Promise<ClaimedAgentMessage | null> {
 		let steeringChanged = false;
 		const claimed = await this.txRunner.run({}, async (ctx) => {
+			if (!(await this.settingsService.getEnabled(ctx))) return null;
 			const thread = await this.threadRepository.lockById(threadId, ctx);
 			if (!thread) return null;
 			steeringChanged = await this.steering.releaseInactive(thread, ctx);
@@ -440,6 +448,7 @@ export class AgentMessageQueueService {
 			sessionMode: 'existing',
 			queueItemId: item.id,
 			previewChat: item.payload.kind === 'preview',
+			acceptsSteering: acceptsSteering(item.payload.kind),
 			userMessage: payload.message,
 			resourceId: payload.resourceId,
 			source: item.message.origin?.source ?? undefined,

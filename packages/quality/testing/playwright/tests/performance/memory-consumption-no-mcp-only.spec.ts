@@ -10,4 +10,4 @@ test.use({
 	},
 });
 
-runMemoryBaseline({ name: 'no-mcp-only', owner: 'AI' });
+runMemoryBaseline({ name: 'no-mcp-only', owner: 'Adore' });

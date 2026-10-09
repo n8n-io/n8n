@@ -1291,12 +1291,12 @@ describe('TriggerExecutionContextFactory', () => {
 
 			const fence = { taskId: 'task-1', leaseEpoch: 1 };
 
-			// Budget = min(poll timeout, lease duration) minus a margin of
-			// max(20%, 5s), so a node that exhausts it still finishes its
-			// in-flight batch before the engine abandons the tick.
+			// Budget = poll timeout minus a margin of max(20%, 5s), so a node
+			// that exhausts it still finishes its in-flight batch before the
+			// engine abandons the tick. The lease is renewed, so it does not cap it.
 			test.each([
 				{ pollTimeoutSeconds: 45, leaseDurationSeconds: 60, expected: 36_000 },
-				{ pollTimeoutSeconds: 100, leaseDurationSeconds: 60, expected: 48_000 },
+				{ pollTimeoutSeconds: 100, leaseDurationSeconds: 60, expected: 80_000 },
 				// The margin never eats more than half the ceiling, so a tiny (but
 				// schema-valid) timeout still yields a positive budget.
 				{ pollTimeoutSeconds: 4, leaseDurationSeconds: 60, expected: 2_000 },

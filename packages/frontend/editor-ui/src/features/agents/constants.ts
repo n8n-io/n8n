@@ -9,6 +9,20 @@ export {
 } from '@n8n/frontend-constants/agents';
 
 export const AGENTS_MODULE_NAME = 'agents';
+export const AGENTS_SETTINGS_VIEW = 'AgentsSettings';
+
+/** The shared "chat with a published agent over n8n Chat" screen. */
+export const AGENT_N8N_CHAT_VIEW = 'AgentN8nChatView';
+
+/** The "browse agents available over n8n Chat" library screen. */
+export const AGENT_N8N_CHAT_LIBRARY_VIEW = 'AgentN8nChatLibraryView';
+
+/**
+ * n8n Chat agent search cap, shared by the library view and the "Chat with"
+ * picker. Matches the backend filter (`agentListFilterSchema.query` `.max(128)`,
+ * `@n8n/api-types`), so a longer search term never reaches the API.
+ */
+export const AGENT_N8N_CHAT_SEARCH_MAX_LENGTH = 128;
 
 export const AGENT_TOOLS_MODAL_KEY = 'agentToolsModal';
 export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
@@ -41,6 +55,15 @@ export const EXECUTIONS_SECTION_KEY = '__executions';
  */
 export const AGENT_EVAL_CASES_PAGE_SIZE = 250;
 
+/** Agent n8n Chat threads fetched for the sidebar's "recent chats" list. */
+export const AGENT_N8N_CHAT_RECENT_THREADS_LIMIT = 10;
+
+/** Rows in the recent-chats lists: the sidebar and the "Chat history" dropdown. */
+export const RECENT_CHATS_LIMIT = 5;
+
+/** Page size for the agent side of the "All chats" view's infinite scroll. */
+export const AGENT_N8N_CHAT_HISTORY_PAGE_SIZE = 30;
+
 export {
 	CHAT_MESSAGE_STATUS,
 	TOOL_CALL_STATE,
@@ -62,3 +85,10 @@ export const ASSISTANT_THREAD_PARAM = 'assistantThread';
  * query cannot force the builder to adopt an arbitrary id.
  */
 export const PENDING_AGENT_ID_STATE = 'instanceAiPendingAgentId';
+
+/**
+ * History-state key for the empty-state starter (typed prompt or template id)
+ * that the builder sends as the assistant's first message. Kept beside the
+ * pending agent id, and out of the URL, for the same reason.
+ */
+export const PENDING_AGENT_STARTER_STATE = 'instanceAiPendingAgentStarter';

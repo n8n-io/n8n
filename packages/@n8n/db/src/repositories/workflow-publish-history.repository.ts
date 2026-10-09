@@ -1,13 +1,26 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { WorkflowPublishHistory } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
+import { chunkIds } from '../utils/chunk-ids';
+
+export type PublishHistoryScope = 'all' | 'latestActivation' | 'none';
 
 @Service()
-export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublishHistory> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowPublishHistory, dataSource.manager);
+export class WorkflowPublishHistoryRepository extends BaseRepository<WorkflowPublishHistory> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowPublishHistory, dataSource.manager, transactionRunner);
+	}
+
+	async getLatestPublishHistoryEventId(workflowId: string, ctx: OperationContext = {}) {
+		const publication = await this.managerFor(ctx).findOne(WorkflowPublishHistory, {
+			where: { workflowId },
+			order: { id: 'DESC' },
+		});
+		return publication?.id ?? null;
 	}
 
 	async addRecord(
@@ -28,14 +41,62 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 		});
 	}
 
-	async getPublishedVersions(
+	/**
+	 * Use this method, not a join on the `workflowPublishHistory` relation.
+	 * A join repeats the nodes JSON of the version for each event.
+	 */
+	async findByVersion(
 		workflowId: string,
-	): Promise<Array<Pick<WorkflowPublishHistory, 'versionId'>>> {
-		return await this.manager
-			.createQueryBuilder(WorkflowPublishHistory, 'wph')
-			.select('wph.versionId')
-			.distinct(true)
+		versionId: string,
+		scope: Exclude<PublishHistoryScope, 'none'> = 'all',
+		trx?: EntityManager,
+	) {
+		const repository = trx ? trx.getRepository(WorkflowPublishHistory) : this;
+		if (scope === 'latestActivation') {
+			return await repository.find({
+				where: { workflowId, versionId, event: 'activated' },
+				order: { id: 'DESC' },
+				take: 1,
+			});
+		}
+		return await repository.find({ where: { workflowId, versionId }, order: { id: 'ASC' } });
+	}
+
+	async findLatestActivations(workflowId: string, versionIds: string[]) {
+		if (versionIds.length === 0) return [];
+
+		const activations: WorkflowPublishHistory[] = [];
+		for (const batch of chunkIds([...new Set(versionIds)])) {
+			const latestIds = this.createQueryBuilder('latest')
+				.select('MAX(latest.id)')
+				.where('latest.workflowId = :workflowId', { workflowId })
+				.andWhere('latest.versionId IN (:...versionIds)', { versionIds: batch })
+				.andWhere('latest.event = :event', { event: 'activated' })
+				.groupBy('latest.versionId');
+
+			const batchActivations = await this.createQueryBuilder('wph')
+				.where(`wph.id IN (${latestIds.getQuery()})`)
+				.setParameters(latestIds.getParameters())
+				.getMany();
+			activations.push(...batchActivations);
+		}
+		return activations;
+	}
+
+	async findTimelinePage(workflowId: string, { offset, limit }: { offset: number; limit: number }) {
+		// TypeORM omits the SQL limit when it is zero.
+		if (limit <= 0) return [];
+
+		// The joins are many-to-one, so `offset` and `limit` page the events.
+		return await this.createQueryBuilder('wph')
+			.leftJoinAndSelect('wph.user', 'user')
+			.leftJoin('wph.workflowHistory', 'wh')
+			.addSelect('wh.name')
 			.where('wph.workflowId = :workflowId', { workflowId })
+			.orderBy('wph.createdAt', 'DESC')
+			.addOrderBy('wph.id', 'DESC')
+			.offset(offset)
+			.limit(limit)
 			.getMany();
 	}
 

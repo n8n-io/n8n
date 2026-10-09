@@ -378,16 +378,23 @@ const CustomToolJsonConfigSchema = z.object({
 
 /**
  * Per-field binding for a workflow tool's Execute Workflow Trigger inputs.
- * - `ai`: field is advertised to the LLM and must be supplied at call time.
+ * - `ai`: field is advertised to the LLM with optional input guidance.
  * - `fixed`: field is omitted from the LLM schema and injected at invoke time.
+ * - `expression`: field is omitted from the LLM schema and resolved at invoke time.
  */
 export const WorkflowToolInputFieldSchema = z.discriminatedUnion('mode', [
-	z.object({ mode: z.literal('ai') }).strict(),
+	z.object({ mode: z.literal('ai'), description: z.string().optional() }).strict(),
 	z
 		.object({
 			mode: z.literal('fixed'),
 			// Reject missing/undefined — fixed bindings must pin a concrete value.
 			value: jsonValueSchema,
+		})
+		.strict(),
+	z
+		.object({
+			mode: z.literal('expression'),
+			value: z.string().regex(/^=\s*\S/, 'Enter an expression that starts with ='),
 		})
 		.strict(),
 ]);
@@ -432,15 +439,15 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	NodeToolJsonConfigSchema,
 ]);
 
-const NonNegativeUsdSchema = z.number().min(0);
+const PositiveUsdSchema = z.number().positive();
 
-/** Opt-in session cap and monthly budget. `enabled: false` keeps the saved amounts. */
+/** Opt-in session cap and monthly budget. Amounts are greater than 0. `enabled: false` keeps the saved amounts. */
 export const BudgetGuardrailConfigSchema = z
 	.object({
 		enabled: z.boolean(),
-		monthlyBudgetUsd: NonNegativeUsdSchema.optional(),
+		monthlyBudgetUsd: PositiveUsdSchema.optional(),
 		alertThresholdPercent: z.number().int().min(1).max(100).optional(),
-		sessionCostCapUsd: NonNegativeUsdSchema.optional(),
+		sessionCostCapUsd: PositiveUsdSchema.optional(),
 	})
 	.superRefine((budget, ctx) => {
 		if (budget.alertThresholdPercent !== undefined && budget.monthlyBudgetUsd === undefined) {
@@ -580,6 +587,11 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type BudgetGuardrailConfig = z.infer<typeof BudgetGuardrailConfigSchema>;
+
+/** In-memory monthly spend for one agent. This process only. */
+export interface AgentBudgetSpend {
+	spentUsd: number;
+}
 export type AgentModelCredentialConfig = Required<Pick<AgentJsonConfig, 'model' | 'credential'>>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;

@@ -28,11 +28,15 @@ interface BaseExecutionRecord {
 export type NewExecutionRecord = BaseExecutionRecord;
 
 /**
- * What running an execution needs of its row. No timing: the execution path
- * decides on `status`, never on when anything happened. The read path has its
+ * What running an execution needs of its row. The execution path decides on
+ * `status`, never on when anything happened, so the only time it carries is
+ * `finishedAt`, which it reports but never decides on. The read path has its
  * own view (`ExecutionView`).
  */
-export type ExecutionRecord = BaseExecutionRecord;
+export type ExecutionRecord = BaseExecutionRecord & {
+	/** When the execution ended, or `null` while it has not. */
+	finishedAt: Date | null;
+};
 
 /** Thrown by `loadExecution` when no execution exists for the given id. */
 export class ExecutionNotFoundError extends Error {

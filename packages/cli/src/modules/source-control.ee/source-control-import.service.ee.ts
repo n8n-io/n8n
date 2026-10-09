@@ -61,6 +61,7 @@ import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
@@ -173,6 +174,7 @@ export class SourceControlImportService {
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -783,7 +785,7 @@ export class SourceControlImportService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
-			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId', 'isArchived'],
+			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId', 'isArchived', 'nodes'],
 		});
 
 		const folders = await this.folderRepository.find({ select: ['id'] });
@@ -856,6 +858,19 @@ export class SourceControlImportService {
 			return;
 		}
 		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
+
+		// Apply the same deprecated-node enforcement as the REST/public API
+		// endpoints. A re-sync that leaves the deprecated nodes untouched is
+		// allowed; introducing or in-place editing them through git is not.
+		if (existingWorkflow) {
+			this.deprecatedNodesValidationService.validateOnUpdate(
+				nodes,
+				existingWorkflow.nodes ?? [],
+				id,
+			);
+		} else {
+			this.deprecatedNodesValidationService.validateOnCreate(nodes, id);
+		}
 
 		await this.redactionEnforcementService.assertPolicyChangeAllowed(
 			existingWorkflow?.settings?.redactionPolicy,

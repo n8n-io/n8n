@@ -191,6 +191,10 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 			</slot>
 		</NumberFieldDecrement>
 
+		<span v-if="$slots.prefix" :class="$style.prefix">
+			<slot name="prefix" />
+		</span>
+
 		<NumberFieldInput
 			ref="inputRef"
 			:class="$style.input"
@@ -304,6 +308,15 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 .isControlsBoth .input {
 	text-align: center;
 	padding-inline: var(--spacing--3xs);
+}
+
+.prefix {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	padding-left: var(--input--padding);
+	color: var(--color--text--shade-1);
+	opacity: 0.7;
 }
 
 .button {

@@ -29,6 +29,7 @@ import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schem
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import type { BranchLayout } from '../branch-placement';
+import { PromotionsWorkflowsMovedCrossProjectError } from '../promotions-selective-push.error';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 import type { SelectivePushOptions } from '../working-copy-updater';
 
@@ -315,7 +316,7 @@ describe('WorkingCopyUpdater', () => {
 
 			expect(() =>
 				updater.assertNoCrossProjectMoves(branch, selection({ workflowIds: ['w-moved'] })),
-			).toThrow('These workflows moved to another project: w-moved');
+			).toThrow(PromotionsWorkflowsMovedCrossProjectError);
 		});
 
 		it('rejects it even when the branch does not hold the selected project yet', () => {
@@ -323,7 +324,7 @@ describe('WorkingCopyUpdater', () => {
 
 			expect(() =>
 				updater.assertNoCrossProjectMoves(branch, selection({ workflowIds: ['w-moved'] })),
-			).toThrow('These workflows moved to another project: w-moved');
+			).toThrow(PromotionsWorkflowsMovedCrossProjectError);
 		});
 
 		it('accepts a selected workflow that the branch holds under the selected project', () => {
@@ -424,7 +425,7 @@ describe('WorkingCopyUpdater', () => {
 
 			await expect(
 				overlaySelection(staging, selection({ workflowIds: ['w-moved'] })),
-			).rejects.toThrow('These workflows moved to another project: w-moved');
+			).rejects.toThrow(PromotionsWorkflowsMovedCrossProjectError);
 
 			expect(await readExported('projects/beta/workflows/w-moved/workflow.json')).toBe(
 				workflowFile('w-moved'),

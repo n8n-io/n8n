@@ -88,6 +88,46 @@ describe('ThinkingBlock', () => {
 		expect(getByTestId('thinking-block-header')).toHaveTextContent('Thought for 1m 5s');
 	});
 
+	it('should not count the time until an interrupted tool call was swept', () => {
+		const tc = makeToolCall({
+			startedAt: '2026-01-01T00:00:00Z',
+			completedAt: '2026-01-02T22:06:23Z',
+			interrupted: true,
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry('tc-1')],
+				active: false,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Finished thinking');
+	});
+
+	it('should end the duration at the last completed call when a later call was interrupted', () => {
+		const done = makeToolCall({
+			toolCallId: 'tc-1',
+			startedAt: '2026-01-01T00:00:00Z',
+			completedAt: '2026-01-01T00:00:12Z',
+		});
+		const swept = makeToolCall({
+			toolCallId: 'tc-2',
+			startedAt: '2026-01-01T00:00:13Z',
+			completedAt: '2026-01-02T22:06:23Z',
+			interrupted: true,
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [done, swept] }),
+				entries: [toolEntry('tc-1'), toolEntry('tc-2')],
+				active: false,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Thought for 12s');
+	});
+
 	it('should fall back to a static title when no timestamps exist', () => {
 		const { getByTestId } = renderComponent({
 			props: {

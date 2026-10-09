@@ -43,10 +43,18 @@ const primitive = fc.oneof(
 	fc.constant(null),
 );
 
+// Array elements include nested arrays and objects: the methods that
+// stringify elements (join, toSorted) must hand those to the engine.
+const element = fc.oneof(
+	{ weight: 4, arbitrary: primitive },
+	fc.array(primitive, { maxLength: 2 }),
+	fc.record({ x: primitive }),
+);
+
 const jsonValue = fc.oneof(
 	{ weight: 3, arbitrary: primitive },
-	fc.array(primitive, { maxLength: 4 }),
-	fc.record({ x: primitive, y: fc.array(primitive, { maxLength: 3 }) }),
+	fc.array(element, { maxLength: 4 }),
+	fc.record({ x: primitive, y: fc.array(element, { maxLength: 3 }) }),
 );
 
 const data = fc.record({ a: jsonValue, b: jsonValue, c: jsonValue, d: jsonValue });
@@ -180,7 +188,10 @@ describe('Expression - fast native evaluation fuzz parity', () => {
 		}
 	};
 
-	test('native and engine agree on value or error', () => {
+	// 300 runs through two engine evaluations each take a few seconds on an
+	// isolate engine, and longer when the three engine projects share a
+	// machine; the default 5 s test timeout is not a budget for that.
+	test('native and engine agree on value or error', { timeout: 30_000 }, () => {
 		fc.assert(
 			fc.property(expression, data, (expr, json) => {
 				const viaEngine = outcome(expr, json, false);

@@ -25,6 +25,7 @@ export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentRunContext
 	policy?: SubAgentRunPolicy;
 	inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
 	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
+	runBackgroundSubAgent?: CreateDelegateSubAgentToolOptions['runBackgroundSubAgent'];
 }
 
 export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgentToolOptions) {
@@ -35,6 +36,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 		policy,
 		inlineSubAgentModelsByDifficulty,
 		resolveInlineSubAgentProviderTools,
+		runBackgroundSubAgent,
 		parentBudget,
 		...runContext
 	} = options;
@@ -47,6 +49,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 			? { resolveInlineSubAgentProviderTools }
 			: {}),
 		shouldRetrySubAgentResumeError,
+		runBackgroundSubAgent,
 		runSubAgent: async (request, helpers) => {
 			const isSelfDelegation = request.subAgentId === INLINE_SUB_AGENT_ID;
 			const selectedSource = selectSubAgentSource({
@@ -162,21 +165,28 @@ function shouldRetrySubAgentResumeError(error: unknown): boolean {
 	return [408, 425, 429, 502, 503, 504].includes(error.httpStatusCode);
 }
 
+function positiveSessionCap(budget: BudgetGuardrailConfig | undefined): number | undefined {
+	const cap = budget?.enabled ? budget.sessionCostCapUsd : undefined;
+	if (cap === undefined || !(cap > 0)) return undefined;
+	return cap;
+}
+
 function rootBudgetSession(
 	runContext: SubAgentRunContext,
 	parentBudget: BudgetGuardrailConfig | undefined,
 	parentThreadId: string | undefined,
 ): Pick<SubAgentRunContext, 'rootSessionId' | 'rootSessionCapUsd' | 'budgetForwarded'> {
 	if (runContext.budgetForwarded) {
+		const cap = runContext.rootSessionCapUsd;
 		return {
 			rootSessionId: runContext.rootSessionId,
-			rootSessionCapUsd: runContext.rootSessionCapUsd,
+			rootSessionCapUsd: cap !== undefined && cap > 0 ? cap : undefined,
 			budgetForwarded: true,
 		};
 	}
 	return {
 		rootSessionId: parentThreadId,
-		rootSessionCapUsd: parentBudget?.enabled ? parentBudget.sessionCostCapUsd : undefined,
+		rootSessionCapUsd: positiveSessionCap(parentBudget),
 		budgetForwarded: true,
 	};
 }

@@ -3,7 +3,7 @@ import { User } from '@n8n/db';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { LockedError } from '@n8n/errors';
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
+import { ProjectScopeService } from '@n8n/backend-services';
 
 import { AgentMcpAccessService } from '../agent-mcp-access.service';
 import { AgentRepository } from '../repositories/agent.repository';

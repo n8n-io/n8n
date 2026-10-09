@@ -97,7 +97,7 @@ const nodeContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | nul
 const mcpContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null>(null);
 const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowContent> | null>(null);
 const isValid = ref(false);
-const submitted = ref(false);
+const submitCount = ref(0);
 const approvalRequired = ref(false);
 const mcpApproval = ref<AgentJsonMcpServerConfig['approval']>();
 const mcpApprovalValid = ref(true);
@@ -235,7 +235,7 @@ function withMcpApproval(server: AgentJsonMcpServerConfig): AgentJsonMcpServerCo
 }
 
 function confirm(): boolean {
-	submitted.value = true;
+	submitCount.value += 1;
 	if (!canSave.value) return false;
 
 	if (isCustomTool.value) {
@@ -300,7 +300,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 <template>
 	<div :class="[$style.contentWrapper, isCustomTool && $style.codeContentWrapper]">
 		<N8nText
-			v-if="submitted && !canSave"
+			v-if="submitCount && !canSave"
 			size="small"
 			color="danger"
 			data-testid="agent-tool-config-validation-error"
@@ -321,6 +321,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 				v-if="workflowInitialRef"
 				ref="workflowContentRef"
 				:initial-ref="workflowInitialRef"
+				:submit-count="submitCount"
 				:project-id="data.projectId"
 				:show-approval-setting="showApprovalSetting"
 				:approval-required="approvalRequired"

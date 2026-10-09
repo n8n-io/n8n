@@ -1,5 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
 import { flushPromises, mount } from '@vue/test-utils';
+import { computed, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentResource } from '../types';
 
@@ -9,7 +10,11 @@ import {
 	AGENT_DUPLICATE_MODAL_KEY,
 	NEW_SESSION_PARAM,
 	PENDING_AGENT_ID_STATE,
+	PENDING_AGENT_STARTER_STATE,
 } from '../constants';
+
+const templatesEnabled = ref(false);
+const instanceAiReady = ref(false);
 
 const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
@@ -91,6 +96,19 @@ vi.mock('../composables/useAgentPermissions', async () => {
 	};
 });
 
+vi.mock(
+	'@/experiments/agentsListEmptyStateTemplates/useAgentsListEmptyStateTemplatesExperiment',
+	() => ({
+		useAgentsListEmptyStateTemplatesExperiment: () => ({
+			isFeatureEnabled: computed(() => templatesEnabled.value),
+		}),
+	}),
+);
+
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
+	useInstanceAiReady: () => computed(() => instanceAiReady.value),
+}));
+
 vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({
 		trackClickedNewAgent: mocks.trackClickedNewAgent,
@@ -122,6 +140,7 @@ vi.mock('@/app/components/layouts/ResourcesListLayout.vue', async () => {
 					<div v-for="(item, index) in resources" :key="item.id">
 						<slot name="item" :item="item" :index="index" />
 					</div>
+					<slot v-if="resources.length === 0" name="empty" />
 				</div>
 			`,
 		}),
@@ -157,6 +176,21 @@ const mountView = async () => {
 				ProjectHeader: { template: '<div><slot /></div>' },
 				InsightsSummary: true,
 				N8nEmptyState: { template: '<div />' },
+				ResourcesListEmptyState: {
+					template: '<div data-test-id="agents-list-empty-fallback" />',
+				},
+				AgentsListIntro: {
+					name: 'AgentsListIntro',
+					props: ['disabled'],
+					emits: ['create-blank', 'submit', 'select'],
+					template: `
+						<div data-test-id="agents-list-intro">
+							<button data-test-id="agents-list-intro-create-blank" @click="$emit('create-blank')">blank</button>
+							<button data-test-id="agents-list-intro-submit" @click="$emit('submit', 'Summarize my inbox')">prompt</button>
+							<button data-test-id="agents-list-intro-template" @click="$emit('select', { id: 'morning-news-brief' })">template</button>
+						</div>
+					`,
+				},
 			},
 		},
 	});
@@ -168,6 +202,8 @@ describe('AgentsListView — project page', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
+		templatesEnabled.value = false;
+		instanceAiReady.value = false;
 	});
 
 	afterEach(() => {
@@ -372,6 +408,8 @@ describe('AgentsListView — overview page', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = undefined;
+		templatesEnabled.value = false;
+		instanceAiReady.value = false;
 	});
 
 	afterEach(() => {
@@ -425,6 +463,8 @@ describe('AgentsListView — create agent', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
+		templatesEnabled.value = false;
+		instanceAiReady.value = false;
 	});
 
 	it('opens the builder for a new pending agent in the current project', async () => {
@@ -442,6 +482,77 @@ describe('AgentsListView — create agent', () => {
 			name: AGENT_BUILDER_VIEW,
 			params: { projectId: 'project-1', agentId: mintedAgentId },
 			state: { [PENDING_AGENT_ID_STATE]: mintedAgentId },
+		});
+	});
+});
+
+describe('AgentsListView — empty state templates', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mocks.routeProjectId = 'project-1';
+		templatesEnabled.value = false;
+		instanceAiReady.value = false;
+		mocks.listAgentsPage.mockResolvedValue({ count: 0, data: [] });
+	});
+
+	it('keeps the current empty state unless the flag is on and Instance AI is ready', async () => {
+		const flagOff = await mountView();
+		expect(flagOff.find('[data-test-id="agents-list-intro"]').exists()).toBe(false);
+		expect(flagOff.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(true);
+
+		templatesEnabled.value = true;
+		const notReady = await mountView();
+		expect(notReady.find('[data-test-id="agents-list-intro"]').exists()).toBe(false);
+
+		instanceAiReady.value = true;
+		const ready = await mountView();
+		expect(ready.find('[data-test-id="agents-list-intro"]').exists()).toBe(true);
+		expect(ready.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(false);
+	});
+
+	it.each([
+		{
+			name: 'Create blank',
+			testId: 'agents-list-intro-create-blank',
+			source: 'empty_state_blank',
+			starter: undefined,
+		},
+		{
+			name: 'a typed prompt',
+			testId: 'agents-list-intro-submit',
+			source: 'empty_state_prompt',
+			starter: { kind: 'prompt', text: 'Summarize my inbox' },
+		},
+		{
+			name: 'a template card',
+			testId: 'agents-list-intro-template',
+			source: 'empty_state_template',
+			starter: { kind: 'template', templateId: 'morning-news-brief' },
+		},
+	])('records $name and opens the builder', async ({ testId, source, starter }) => {
+		templatesEnabled.value = true;
+		instanceAiReady.value = true;
+		const wrapper = await mountView();
+
+		await wrapper.get(`[data-test-id="${testId}"]`).trigger('click');
+
+		const [, mintedAgentId] = mocks.trackClickedNewAgent.mock.calls[0] as [string, string];
+		if (starter?.kind === 'template') {
+			expect(mocks.trackClickedNewAgent).toHaveBeenCalledWith(
+				source,
+				mintedAgentId,
+				starter.templateId,
+			);
+		} else {
+			expect(mocks.trackClickedNewAgent).toHaveBeenCalledWith(source, mintedAgentId);
+		}
+		expect(mocks.routerPush).toHaveBeenCalledWith({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: 'project-1', agentId: mintedAgentId },
+			state: {
+				[PENDING_AGENT_ID_STATE]: mintedAgentId,
+				...(starter ? { [PENDING_AGENT_STARTER_STATE]: starter } : {}),
+			},
 		});
 	});
 });

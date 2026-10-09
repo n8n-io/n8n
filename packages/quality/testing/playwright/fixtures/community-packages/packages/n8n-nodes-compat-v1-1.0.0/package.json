@@ -1,0 +1,12 @@
+{
+	"name": "n8n-nodes-compat-v1",
+	"version": "1.0.0",
+	"description": "Compatibility fixture: explicit node API level 1",
+	"license": "MIT",
+	"keywords": ["n8n-community-node-package"],
+	"files": ["dist"],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"nodes": ["dist/CompatProbe.node.js"]
+	}
+}

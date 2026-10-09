@@ -13,7 +13,7 @@ test.use({
 
 test.describe(
 	'Agent builder write lock',
-	{ annotation: [{ type: 'owner', description: 'AI' }] },
+	{ annotation: [{ type: 'owner', description: 'Agent' }] },
 	() => {
 		/**
 		 * Two tabs of the same user open the same agent. The first tab acquires the

@@ -113,6 +113,7 @@ export class InstanceAiPendingAgentService {
 		const { agents, defaultModelResolver } = this.agentsModule();
 		const defaultModel = await defaultModelResolver.resolve(user, projectId);
 		return await agents.create(projectId, name, {
+			actor: { kind: 'user', user },
 			id: agentId,
 			adoptOnCollision,
 			...(defaultModel ? { defaultModel } : {}),

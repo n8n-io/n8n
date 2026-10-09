@@ -1,5 +1,7 @@
 import {
+	AgentIntegrationConfigSchema,
 	AgentIntegrationSchema,
+	isCredentialAgentIntegration,
 	type AgentIntegrationConfig,
 	type AgentIntegrationDisconnectWarning,
 } from '@n8n/api-types';
@@ -56,7 +58,7 @@ export class AgentIntegrationManagementService {
 	) {}
 
 	async validateConfig(integration: unknown): Promise<AgentIntegrationConfig> {
-		const parsed = await AgentIntegrationSchema.safeParseAsync(integration);
+		const parsed = await AgentIntegrationConfigSchema.safeParseAsync(integration);
 		if (!parsed.success) throw new BadRequestError(parsed.error.message);
 		const result = parsed.data;
 		this.registry.require(result.type).validateConfig?.(result);
@@ -79,7 +81,10 @@ export class AgentIntegrationManagementService {
 		pushRef?: string;
 	}): Promise<{ integration: AgentIntegrationConfig; savedAgent: Agent }> {
 		const integration = await this.validateConfig(options.integration);
-		await this.assertUsableCredential(options.agent, options.user, integration);
+		// n8n Chat has no credential to look up or claim.
+		if (isCredentialAgentIntegration(integration)) {
+			await this.assertUsableCredential(options.agent, options.user, integration);
+		}
 
 		const result = await this.applyChange({
 			agent: options.agent,
@@ -157,7 +162,8 @@ export class AgentIntegrationManagementService {
 				options.pushRef,
 			);
 		}
-		if (add && result.published !== undefined) {
+		// n8n Chat has no runtime to reconcile.
+		if (add && isCredentialAgentIntegration(add) && result.published !== undefined) {
 			connected = await this.reconcileRuntimeWithPublication(
 				agent,
 				add,
@@ -337,6 +343,8 @@ export class AgentIntegrationManagementService {
 		add: AgentIntegrationConfig,
 		published: boolean,
 	): Promise<boolean> {
+		// n8n Chat has no channel runtime; the persisted entry is all there is.
+		if (!isCredentialAgentIntegration(add)) return false;
 		if (!published) {
 			await this.chatService.validateBeforeConnect(agent.id, add, agent.projectId);
 			return false;

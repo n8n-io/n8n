@@ -5,7 +5,7 @@ const TRACING_ON = process.env.LANGSMITH_TRACING === 'true';
 
 test(
 	'traced fixture forwards the wrapped function return value',
-	{ annotation: [{ type: 'owner', description: 'AI' }] },
+	{ annotation: [{ type: 'owner', description: 'AI Trust' }] },
 	async ({ traced }) => {
 		const result = await traced('smoke-success', () => Promise.resolve('ok'));
 		expect(result).toBe('ok');
@@ -14,7 +14,7 @@ test(
 
 test(
 	'traced fixture propagates thrown errors',
-	{ annotation: [{ type: 'owner', description: 'AI' }] },
+	{ annotation: [{ type: 'owner', description: 'AI Trust' }] },
 	async ({ traced }) => {
 		await expect(
 			traced('smoke-failure', () => Promise.reject(new Error('intentional smoke failure'))),
@@ -24,7 +24,7 @@ test(
 
 test(
 	'traced fixture emits one run-id annotation per call',
-	{ annotation: [{ type: 'owner', description: 'AI' }] },
+	{ annotation: [{ type: 'owner', description: 'AI Trust' }] },
 	async ({ traced }, testInfo) => {
 		test.skip(!TRACING_ON, 'LANGSMITH_TRACING not enabled');
 		await traced('multi-1', () => Promise.resolve('one'));

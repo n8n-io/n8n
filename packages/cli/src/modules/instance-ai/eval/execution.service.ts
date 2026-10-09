@@ -553,11 +553,14 @@ export class EvalExecutionService {
 			return this.errorResult(randomUUID(), 'No trigger or start node found in the workflow');
 		}
 
+		// Aborted when the run ends: a stopped execution can still be looping inside a node.
+		const mockAbort = new AbortController();
 		const mockHandler = createLlmMockHandler({
 			scenarioHints,
 			globalContext: hints.globalContext,
 			nodeHints: hints.nodeHints,
 			pinnedOutputs: summarizePinnedOutputs(hints.bypassPinData),
+			signal: mockAbort.signal,
 		});
 
 		const binaryRequirement = detectBinaryDependencies(workflowEntity);
@@ -688,6 +691,7 @@ export class EvalExecutionService {
 				credentialsHelper,
 			);
 		} finally {
+			mockAbort.abort();
 			if (restoreNoProxy) restoreNoProxy();
 			if (wireServer) {
 				try {

@@ -15,7 +15,7 @@ import { test, expect } from '../../../fixtures/base';
 test.describe(
 	'Builder Setup Wizard @auth:owner @ai',
 	{
-		annotation: [{ type: 'owner', description: 'AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		let projectId: string;

@@ -27,7 +27,7 @@ never a copy per directory. Security and QA & DX deliberately don't link
 agents shouldn't be able to produce.
 
 All five slots are used, so a new domain now merges into an existing agent. QA &
-DX covers the build, test, and CI surface — the same paths `.github/OWNERS`
+DX covers the build, test, and CI surface — the same paths `OWNERS`
 assigns to `@n8n-io/qa-dx`. Code-quality rules that happen to apply broadly
 (error classes, `any`, lazy imports) are backend rules, not QA & DX ones. DB
 migrations is split out of Backend because a migration is permanent and runs

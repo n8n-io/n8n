@@ -2,7 +2,7 @@ import type { AgentTaskDto, CreateAgentTaskDto, UpdateAgentTaskDto } from '@n8n/
 import { isValidTimeZone } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { TransactionRunner, type User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
@@ -14,14 +14,14 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 
 import {
-	AgentModificationTelemetryService,
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
 	captureAgentMutation,
 } from './agent-modification-telemetry.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
-import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
+import { AgentSaveCompletionService } from './agent-save-completion.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { AgentTaskJobRegistrar } from './scheduling/agent-task-job-registrar';
 import { knownTaskTimezone } from './scheduling/task-timezone';
 import { Agent } from './entities/agent.entity';
@@ -30,6 +30,8 @@ import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
+import { getAgentConfigHash } from './utils/agent-config-hash';
+import { composeJsonConfig } from './json-config/agent-config-composition';
 import {
 	type AgentTaskRunLockHandle,
 	AgentTaskRunLockRepository,
@@ -74,9 +76,10 @@ export class AgentTaskService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly changePublisher: AgentChangePublisher,
-		private readonly modificationTelemetry: AgentModificationTelemetryService,
 		private readonly durableJobRegistrar: AgentTaskJobRegistrar,
-		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly saveCompletion: AgentSaveCompletionService,
+		private readonly settingsService: AgentsSettingsService,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -97,8 +100,8 @@ export class AgentTaskService {
 		dto: CreateAgentTaskDto,
 		context: AgentMutationTelemetryContext,
 	): Promise<AgentTaskDto> {
-		const [task] = await this.createTasksBatch(agentId, projectId, [dto], context);
-		return task;
+		const { tasks } = await this.createTasksBatch(agentId, projectId, [dto], context);
+		return tasks[0];
 	}
 
 	/**
@@ -112,8 +115,9 @@ export class AgentTaskService {
 		projectId: string,
 		dtos: CreateAgentTaskDto[],
 		context: AgentMutationTelemetryContext,
-	): Promise<AgentTaskDto[]> {
-		return await this.createTasksBatch(agentId, projectId, dtos, context);
+	): Promise<{ tasks: AgentTaskDto[]; configHash: string | null }> {
+		const { tasks, agent } = await this.createTasksBatch(agentId, projectId, dtos, context);
+		return { tasks, configHash: getAgentConfigHash(composeJsonConfig(agent)) };
 	}
 
 	/**
@@ -128,7 +132,7 @@ export class AgentTaskService {
 		projectId: string,
 		dtos: CreateAgentTaskDto[],
 		context: AgentMutationTelemetryContext,
-	): Promise<AgentTaskDto[]> {
+	): Promise<{ tasks: AgentTaskDto[]; agent: Agent }> {
 		if (dtos.length === 0) {
 			throw new BadRequestError('At least one task is required');
 		}
@@ -161,26 +165,20 @@ export class AgentTaskService {
 
 		markAgentDraftDirty(agent);
 
-		await this.agentRepository.manager.transaction(async (em) => {
-			for (const task of tasks) {
-				await em.save(task);
-			}
-			await saveAgentDraftFenced(this.agentRepository, agent, em);
+		await this.transactionRunner.run({}, async (ctx) => {
+			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
+			await this.taskRepository.saveDefinitions(tasks, ctx);
 		});
-		this.agentUpdateBroadcaster.notify(
-			{ projectId, agentId, source: context.modifiedBy },
-			context.pushRef,
-		);
-
-		this.modificationTelemetry.record(
+		this.saveCompletion.taskSaved(
 			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
+			context.pushRef,
 		);
 
 		this.logger.debug('[AgentTaskService] Created tasks', {
 			agentId,
 			taskIds: tasks.map((task) => task.id),
 		});
-		return tasks.map((task) => this.toDto(task));
+		return { tasks: tasks.map((task) => this.toDto(task)), agent };
 	}
 
 	/**
@@ -208,30 +206,26 @@ export class AgentTaskService {
 		dto: UpdateAgentTaskDto,
 		context: AgentMutationTelemetryContext,
 	): Promise<{ task: AgentTaskDto; changed: boolean }> {
+		// Read the revision before the task to detect concurrent replacements.
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		const task = await this.getOrThrow(agentId, taskId);
 
 		const changed = this.applyTaskUpdates(task, dto);
 
-		// Nothing actually changed — skip the agent lookup, draft-dirty bump, and writes.
+		// Skip the draft version change and writes when no field changed.
 		if (!changed) return { task: this.toDto(task), changed: false };
-
-		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const previous = captureAgentMutation(agent);
 
-		const saved = await this.agentRepository.manager.transaction(async (em) => {
-			const savedTask = await em.save(task);
+		const saved = await this.transactionRunner.run({}, async (ctx) => {
 			markAgentDraftDirty(agent);
-			await saveAgentDraftFenced(this.agentRepository, agent, em);
+			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
+			const [savedTask] = await this.taskRepository.saveDefinitions([task], ctx);
 			return savedTask;
 		});
-		this.agentUpdateBroadcaster.notify(
-			{ projectId, agentId, source: context.modifiedBy },
-			context.pushRef,
-		);
-
-		this.modificationTelemetry.record(
+		this.saveCompletion.taskSaved(
 			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
+			context.pushRef,
 		);
 
 		return { task: this.toDto(saved), changed: true };
@@ -244,7 +238,7 @@ export class AgentTaskService {
 		taskId: string,
 		context: AgentMutationTelemetryContext,
 	): Promise<void> {
-		const task = await this.getOrThrow(agentId, taskId);
+		await this.getOrThrow(agentId, taskId);
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const previous = captureAgentMutation(agent);
@@ -254,17 +248,13 @@ export class AgentTaskService {
 			markAgentDraftDirty(agent);
 		}
 
-		await this.agentRepository.manager.transaction(async (em) => {
-			await em.remove(task);
-			await saveAgentDraftFenced(this.agentRepository, agent, em);
+		await this.transactionRunner.run({}, async (ctx) => {
+			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
+			await this.taskRepository.deleteForAgent(agentId, [taskId], ctx);
 		});
-		this.agentUpdateBroadcaster.notify(
-			{ projectId, agentId, source: context.modifiedBy },
-			context.pushRef,
-		);
-
-		this.modificationTelemetry.record(
+		this.saveCompletion.taskSaved(
 			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
+			context.pushRef,
 		);
 
 		this.logger.debug('[AgentTaskService] Deleted task', { agentId, taskId });
@@ -471,7 +461,9 @@ export class AgentTaskService {
 	async startScheduledRun(
 		agentId: string,
 		taskId: string,
-	): Promise<'started' | 'skipped-active' | 'stale'> {
+	): Promise<'started' | 'skipped-active' | 'skipped-disabled' | 'stale'> {
+		if (!(await this.settingsService.getEnabled())) return 'skipped-disabled';
+
 		// Body comes from the PUBLISHED snapshot row, so name/objective/cron
 		// reflect publish time rather than live draft edits.
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });

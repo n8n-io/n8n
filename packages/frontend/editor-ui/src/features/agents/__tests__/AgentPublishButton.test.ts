@@ -105,6 +105,7 @@ interface RenderProps {
 	agent?: AgentResource | null;
 	projectId?: string;
 	agentId?: string;
+	isSaving?: boolean;
 	beforeRevertToPublished?: () => Promise<void> | void;
 	configValidationStatus?: 'valid' | 'invalid' | null;
 	configValidationIssues?: AgentConfigValidationIssue[];
@@ -460,6 +461,57 @@ describe('AgentPublishButton', () => {
 			expect(
 				publishedWrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled'),
 			).toBe('true');
+		});
+
+		it('reports readiness when tool credentials and validation change', async () => {
+			const wrapper = await renderComponent({
+				configValidationStatus: 'invalid',
+				configValidationIssues: [
+					{
+						code: 'missing_credential',
+						path: 'tools.0.credential',
+						capability: { kind: 'tool', toolType: 'node', id: 'Lookup', index: 0 },
+					},
+				],
+			});
+
+			expect(wrapper.emitted('publish-ready')).toEqual([[false]]);
+
+			await wrapper.setProps({ configValidationStatus: 'valid', configValidationIssues: [] });
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([true]);
+
+			await wrapper.setProps({ configValidationStatus: null });
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([false]);
+
+			await wrapper.setProps({
+				configValidationStatus: 'invalid',
+				configValidationIssues: [notPublishedIssue],
+			});
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([true]);
+		});
+
+		it('reports readiness when saving, permissions, and the published version change', async () => {
+			const wrapper = await renderComponent({ isSaving: true });
+			expect(wrapper.emitted('publish-ready')).toEqual([[false]]);
+
+			await wrapper.setProps({ isSaving: false });
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([true]);
+
+			agentPermissionsMock.canPublish.value = false;
+			await flushPromises();
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([false]);
+
+			agentPermissionsMock.canPublish.value = true;
+			await flushPromises();
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([true]);
+
+			await wrapper.setProps({ agent: createAgent({ activeVersionId: 'v1', activeVersion }) });
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([false]);
+
+			await wrapper.setProps({
+				agent: createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion }),
+			});
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([true]);
 		});
 
 		it('aborts the publish request when beforePublish resolves false', async () => {

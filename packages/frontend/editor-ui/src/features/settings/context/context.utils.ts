@@ -8,7 +8,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 
-import { usePostHog } from '@/app/stores/posthog.store';
+import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -28,19 +28,13 @@ export function isContextPreferencesEnabled(): boolean {
 
 const FLAG_WAIT_TIMEOUT_MS = 3000;
 
-/** Waits for a pending client-side flag evaluation before a deep link fails closed. */
+/**
+ * Waits for a pending client-side flag evaluation before a deep link fails closed.
+ * `waitForFeatureFlagsWithTimeout` resolves immediately when nothing is pending, so
+ * this doesn't need its own `hasPendingFeatureFlags()` guard.
+ */
 export async function isContextPreferencesEnabledOnceEvaluated(): Promise<boolean> {
-	const posthog = usePostHog();
-	if (posthog.hasPendingFeatureFlags()) {
-		let timeoutId: number | undefined;
-		await Promise.race([
-			posthog.waitForFeatureFlags(),
-			new Promise<void>((resolve) => {
-				timeoutId = window.setTimeout(resolve, FLAG_WAIT_TIMEOUT_MS);
-			}),
-		]);
-		if (timeoutId !== undefined) window.clearTimeout(timeoutId);
-	}
+	await waitForFeatureFlagsWithTimeout(usePostHog(), FLAG_WAIT_TIMEOUT_MS);
 	return isContextPreferencesEnabled();
 }
 

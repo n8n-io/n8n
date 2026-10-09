@@ -54,18 +54,19 @@ describe('TelemetryRecorder', () => {
 
 	test('redacts secrets from failure evidence', () => {
 		vi.stubEnv('CONTAINER_TELEMETRY_VERBOSE', '1');
+		vi.stubEnv('GITHUB_HEAD_REF', 'fix-1password-preview');
 		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
 		const telemetry = new TelemetryRecorder({});
 
 		telemetry.startStage('service:proxy');
 		telemetry.finishStage(
 			'failure',
-			new Error('https://user:password@example.test?token=secret-value'),
+			new Error('https://user:test-password-value@example.test?token=secret-value'),
 		);
 		telemetry.flush(false, 'Authorization: Bearer secret-token');
 
 		const output = String(log.mock.calls[0]?.[0] ?? '');
-		expect(output).not.toContain('password');
+		expect(output).not.toContain('test-password-value');
 		expect(output).not.toContain('secret-value');
 		expect(output).not.toContain('secret-token');
 		expect(output).toContain('[REDACTED]');

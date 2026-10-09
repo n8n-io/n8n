@@ -22,7 +22,7 @@ import {
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
-import { noopExecutionResponseSender } from '../../response-channel';
+import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
 import type { SearchExecutionsResponse } from '../api.types';
@@ -219,6 +219,7 @@ let container: StartedPostgreSqlContainer;
 let dataSource: DataSource;
 let workQueue: WorkQueue<OrchestrationMessage>;
 let lifecycleEventPublisher: LifecycleEventPublisher;
+let responseSender: ExecutionResponseSender;
 let url: string;
 let stop: () => Promise<void>;
 
@@ -234,10 +235,16 @@ beforeAll(async () => {
 beforeEach(async () => {
 	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 	lifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
+	responseSender = { send: vi.fn(), stop: vi.fn() };
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
 	({ url, stop } = await startEngineServer({
 		startExecution: new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
-		cancelExecution: new CancelExecutionService(executionStore, stepStore, lifecycleEventPublisher),
+		cancelExecution: new CancelExecutionService(
+			executionStore,
+			stepStore,
+			lifecycleEventPublisher,
+			responseSender,
+		),
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		identityVerifier: new SharedSecretIdentityVerifier(secret),
 	}));
@@ -684,8 +691,9 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 	const cancel = (id: string) =>
 		request(url).post(`/api/workflow-executions/${id}/cancel`).set(authHeader());
+	/** Started expecting the run end, so a cancel owes the caller an `ended` response. */
 	async function start() {
-		const body = startBody();
+		const body = startBody({ responseExpectation: { kind: 'runEnd' } });
 		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
 		return body.executionId;
 	}
@@ -721,12 +729,17 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 
 		const response = await cancel(executionId).expect(200);
 
-		expect(response.body).toEqual({ executionId, status: 'cancelled' });
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
 			.findOneOrFail({ where: { id: executionId } });
 		expect(row.status).toBe('cancelled');
 		expect(row.finishedAt).toBeInstanceOf(Date);
+		// the time the row records, so a caller can show when the run stopped
+		expect(response.body).toEqual({
+			executionId,
+			status: 'cancelled',
+			finishedAt: row.finishedAt?.toISOString(),
+		});
 		for (const step of [queued, waiting]) {
 			expect((await stepRepo.findOneOrFail({ where: { id: step.id } })).status).toBe('cancelled');
 		}
@@ -736,15 +749,24 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 			workflowId: 'wf-1',
 			at: expect.any(String),
 		});
+		expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
+			type: 'ended',
+			executionId,
+			workflowId: 'wf-1',
+			status: 'cancelled',
+			lastStep: null,
+		});
 	});
 
 	it('answers a repeated cancel the same way, announcing nothing more', async () => {
 		const executionId = await start();
-		await cancel(executionId).expect(200);
+		const first = await cancel(executionId).expect(200);
 
-		const response = await cancel(executionId).expect(200);
+		const repeat = await cancel(executionId).expect(200);
 
-		expect(response.body).toEqual({ executionId, status: 'cancelled' });
+		// the same time as well: the row's, not a reading taken on the repeat
+		expect(repeat.body).toEqual(first.body);
+		expect(first.body).toMatchObject({ executionId, status: 'cancelled' });
 		expect(lifecycleEventPublisher.publish).toHaveBeenCalledTimes(1);
 	});
 

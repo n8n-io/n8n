@@ -10,6 +10,7 @@ import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { clientMintedAgentIdSchema } from '../agents/dto';
 import type { McpToolPermissions } from './mcp-tool-permissions.schema';
+import { threadTitleSearchSchema } from './thread-title-search.schema';
 import { Z } from '../zod-class';
 
 // ---------------------------------------------------------------------------
@@ -1721,7 +1722,10 @@ export const instanceAiThreadTabsStateSchema = z.object({
 export type InstanceAiThreadTabsState = z.infer<typeof instanceAiThreadTabsStateSchema>;
 
 export interface InstanceAiThreadTabsResponse {
-	/** `null` when the user has not changed the tabs of this thread yet. */
+	/**
+	 * `null` when no tabs are stored for this thread yet. The server stores them
+	 * when the agent changes an artifact, and the client when the user changes a tab.
+	 */
 	state: InstanceAiThreadTabsState | null;
 }
 
@@ -2168,13 +2172,7 @@ export interface InstanceAiThreadListResponse {
 
 export class InstanceAiThreadHistoryQuery extends Z.class({
 	limit: z.coerce.number().int().min(1).max(100).default(30),
-	// Postgres rejects NUL bytes in text parameters, so reject them here as a 400.
-	search: z
-		.string()
-		.trim()
-		.max(500)
-		.refine((value) => !value.includes('\u0000'))
-		.optional(),
+	search: threadTitleSearchSchema,
 	cursor: z.string().min(1).max(256).optional(),
 }) {}
 

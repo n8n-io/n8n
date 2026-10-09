@@ -659,18 +659,21 @@ describe('formatAgentConfigZodError', () => {
 });
 
 describe('WorkflowToolJsonConfigSchema — inputs', () => {
-	it('accepts AI and fixed input bindings on a workflow tool', () => {
+	it('round-trips workflow input bindings', () => {
+		const inputs = {
+			chatId: { mode: 'ai' },
+			query: { mode: 'ai', description: 'Input guidance' },
+			shoppingListId: { mode: 'fixed', value: 'OySx3QNU0BcCs8yz' },
+			label: { mode: 'fixed', value: '={{ literal }}' },
+			count: { mode: 'expression', value: '={{ 1 + 2 }}' },
+		};
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
 			tools: [
 				{
 					type: 'workflow',
 					workflow: 'Show Shopping List',
-					inputs: {
-						chatId: { mode: 'ai' },
-						shoppingListId: { mode: 'fixed', value: 'OySx3QNU0BcCs8yz' },
-						botName: { mode: 'fixed', value: 'Jarvis' },
-					},
+					inputs,
 				},
 			],
 		});
@@ -679,16 +682,17 @@ describe('WorkflowToolJsonConfigSchema — inputs', () => {
 		if (result.success) {
 			expect(result.data.tools?.[0]).toMatchObject({
 				type: 'workflow',
-				inputs: {
-					chatId: { mode: 'ai' },
-					shoppingListId: { mode: 'fixed', value: 'OySx3QNU0BcCs8yz' },
-					botName: { mode: 'fixed', value: 'Jarvis' },
-				},
+				inputs,
 			});
 		}
 	});
 
-	it('rejects a fixed binding without a value', () => {
+	it.each([
+		{ mode: 'fixed' },
+		{ mode: 'expression' },
+		{ mode: 'expression', value: '{{ 1 }}' },
+		{ mode: 'expression', value: '=   ' },
+	])('rejects an invalid binding: %j', (binding) => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
 			tools: [
@@ -696,7 +700,7 @@ describe('WorkflowToolJsonConfigSchema — inputs', () => {
 					type: 'workflow',
 					workflow: 'Show Shopping List',
 					inputs: {
-						botName: { mode: 'fixed' },
+						botName: binding,
 					},
 				},
 			],
@@ -780,6 +784,15 @@ describe('AgentJsonConfigSchema — config.guardrails.budget', () => {
 			alertThresholdPercent: 80,
 			sessionCostCapUsd: 2,
 		});
+	});
+
+	it.each(['sessionCostCapUsd', 'monthlyBudgetUsd'] as const)('rejects a %s of 0', (field) => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { guardrails: { budget: { enabled: true, [field]: 0 } } },
+		});
+
+		expect(result.success).toBe(false);
 	});
 
 	it('rejects a negative amount', () => {

@@ -5,8 +5,10 @@ import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
 	AuthenticatedCaller,
+	CancelExecutionResponse,
 	EngineErrorResponse,
 	ExecutionSnapshot,
+	ExecutionStatus,
 	StartExecutionRequest,
 	StartExecutionResult,
 	SearchExecutionsRequest,
@@ -15,13 +17,20 @@ import type {
 import { mintIdentityToken } from '@n8n/engine';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
 import {
 	EngineDidNotAdmitError,
 	EngineRejectedWorkflowError,
+	type CancelExecutionOutcome,
 	type EngineDataPlaneProvider,
 } from '@/services/engine-data-plane-proxy.service';
+
+/** Must match the engine's `ExecutionStatus`. */
+const notCancellableDetailsSchema = z.object({
+	status: z.enum(['queued', 'running', 'waiting', 'completed', 'failed', 'cancelled']),
+});
 
 /**
  * Calls the engine's HTTP API.
@@ -124,6 +133,40 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		});
 		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
 		return response.body as SearchExecutionsResponse;
+	}
+
+	async cancelExecution(id: ExecutionIdV2): Promise<CancelExecutionOutcome | undefined> {
+		const response = await this.http.request<CancelExecutionResponse | EngineErrorResponse>({
+			url: `/api/workflow-executions/${encodeURIComponent(id)}/cancel`,
+			method: 'POST',
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			disableFollowRedirect: true,
+		});
+
+		if (response.statusCode === 404) return undefined;
+
+		// The engine refuses to cancel an ended execution and names its status.
+		if (response.statusCode === 409) {
+			return { cancelled: false, status: this.endedStatus(response.body) };
+		}
+
+		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
+
+		const { finishedAt } = response.body as CancelExecutionResponse;
+		return { cancelled: true, finishedAt: new Date(finishedAt) };
+	}
+
+	/** The status a `not_cancellable` response names. */
+	private endedStatus(body: unknown): ExecutionStatus {
+		const parsed = notCancellableDetailsSchema.safeParse(this.parseErrorResponse(body).details);
+		if (!parsed.success) {
+			throw new OperationalError(
+				'Engine refused to cancel the execution without naming its status',
+			);
+		}
+		return parsed.data.status;
 	}
 
 	private toError(statusCode: number, body: unknown): Error {

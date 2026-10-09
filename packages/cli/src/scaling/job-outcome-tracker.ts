@@ -77,6 +77,10 @@ export class JobOutcomeTracker {
 		this.logger = this.logger.scoped('scaling');
 	}
 
+	getDiagnosticCounts() {
+		return { jobResults: this.results.size };
+	}
+
 	/**
 	 * Record that the worker reported the job as finished, with the result when
 	 * the worker sent one. Bull broadcasts the message to every main and webhook

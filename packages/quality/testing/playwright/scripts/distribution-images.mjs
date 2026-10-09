@@ -34,6 +34,7 @@ const SERVICE_IMAGES = {
 	sandbox: ['sandboxApi', 'sandboxRunner', 'sandboxSandbox'],
 	taskRunner: ['taskRunner'],
 	tracing: ['jaeger', 'n8nTracer'],
+	vault: ['vault'],
 	vector: ['vector'],
 	victoriaLogs: ['victoriaLogs'],
 	victoriaMetrics: ['victoriaMetrics'],

@@ -32,7 +32,7 @@ const CALLBACK_PATH = 'mcp-oauth-e2e-callback';
 test.describe(
 	'MCP OAuth',
 	{
-		annotation: [{ type: 'owner', description: 'AI' }],
+		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
 		test.describe.configure({ mode: 'serial' });

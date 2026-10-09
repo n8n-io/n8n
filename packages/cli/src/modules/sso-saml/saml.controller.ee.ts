@@ -215,6 +215,7 @@ export class SamlController {
 		try {
 			const refererUrl = req.headers.referer;
 			if (refererUrl) {
+				// oxlint-disable-next-line typescript/no-deprecated
 				const parsedUrl = url.parse(refererUrl);
 				if (parsedUrl?.query) {
 					const parsedQueryParams = querystring.parse(parsedUrl.query);

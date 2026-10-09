@@ -60,8 +60,15 @@ describe('toWebhookOutcome', () => {
 
 		expect(outcome).toEqual({
 			status: 'failed',
+			nodeId: 'c',
 			nodeName: 'C',
 			error: { name: 'NodeOperationError', message: 'it broke' },
+		});
+	});
+
+	it('reports a cancelled run', () => {
+		expect(toWebhookOutcome(ended({ status: 'cancelled', lastStep: null }), runEnd)).toEqual({
+			status: 'cancelled',
 		});
 	});
 
@@ -110,7 +117,7 @@ describe('toWebhookOutcome', () => {
 		expect(Buffer.isBuffer((outcome as { response: { body: unknown } }).response.body)).toBe(true);
 	});
 
-	it.each([runEnd, { kind: 'none' } as const])(
+	it.each([runEnd, { kind: 'stream' } as const, { kind: 'none' } as const])(
 		'ignores a Respond node result when the expectation is %j',
 		(expectation) => {
 			const payload = { body: { ignored: true }, headers: {}, statusCode: 200 };

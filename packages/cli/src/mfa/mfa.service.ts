@@ -163,6 +163,7 @@ export class MfaService {
 	}
 
 	private async disableMfaForUser(userId: string) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await this.userRepository.update(userId, {
 			mfaEnabled: false,
 			mfaSecret: null,

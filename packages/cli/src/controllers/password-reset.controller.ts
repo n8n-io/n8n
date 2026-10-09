@@ -93,6 +93,7 @@ export class PasswordResetController {
 				return;
 			}
 
+			// oxlint-disable-next-line typescript/no-deprecated
 			if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
 				this.logger.debug(
 					'Request to send password reset email failed because the user limit was reached',
@@ -122,6 +123,7 @@ export class PasswordResetController {
 				return;
 			}
 
+			// oxlint-disable-next-line typescript/no-deprecated
 			if (this.license.isLdapEnabled() && ldapIdentity) {
 				throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 			}
@@ -178,6 +180,7 @@ export class PasswordResetController {
 		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',

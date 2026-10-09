@@ -7,7 +7,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { BadRequestError } from '@n8n/errors';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { WorkflowSharingService } from '@n8n/backend-services';
 
 @Service()
 export class ActiveWorkflowsService {

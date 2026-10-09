@@ -39,6 +39,7 @@ import type {
 	WebhookResponseData,
 	IDestinationNode,
 	IUser,
+	ExecutionStorageLocation,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -82,6 +83,7 @@ import {
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/webhook-outcome';
 import type { WebhookResponseWait } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -974,6 +976,8 @@ export async function executeWebhook(
 		 * a node that establishes its own carrier below still wins.
 		 */
 		encryptedRunnerIdentity?: string;
+		/** Store recorded on the execution being resumed. Unset for a new execution. */
+		storedAt?: ExecutionStorageLocation;
 	},
 ): Promise<string | undefined> {
 	const responder = new WebhookResponder(responseCallback);
@@ -1232,7 +1236,8 @@ export async function executeWebhook(
 				{ executionId },
 			);
 			// TODO: Add check for streaming nodes here
-			runData.httpResponse = res;
+			// On engine v2, the response registry writes the stream instead.
+			if (!routesToEngineV2) runData.httpResponse = res;
 			runData.streamingEnabled = true;
 			// No `responder.respondWith()` here, unlike the formPage and hostedChat
 			// branches: streaming requires the trigger to have taken over the
@@ -1246,14 +1251,19 @@ export async function executeWebhook(
 		if (engineV2ExecutionId !== undefined) {
 			// Before the run, because a short workflow answers before `startExecution`
 			// returns and nothing replays a missed response.
-			if (responseMode === 'lastNode' || responseMode === 'responseNode') {
+			if (
+				responseMode === 'lastNode' ||
+				responseMode === 'responseNode' ||
+				responseMode === 'streaming'
+			) {
 				// Loaded here, because only an engine v2 run needs the module code.
 				const { EngineV2WebhookResponseRegistry } = await import(
 					'@/modules/engine-v2/webhook-response/webhook-response-registry.service.js'
 				);
+				// The registry writes to `res` only when the expectation is `stream`.
 				pendingEngineV2Response = await Container.get(
 					EngineV2WebhookResponseRegistry,
-				).waitForResponse(engineV2ExecutionId, toResponseExpectation(responseMode));
+				).waitForResponse(engineV2ExecutionId, toResponseExpectation(responseMode), res);
 				runData.engineV2Response = { responseMode };
 			}
 			// The files the node stored are under this id, so the run must use it.
@@ -1284,7 +1294,9 @@ export async function executeWebhook(
 			true,
 			!responder.hasResponded && !shouldDeferOnReceivedResponse,
 			// An execution id here means we are resuming one that is waiting on this webhook
-			executionId ? { executionId, expectedStatus: 'waiting' } : undefined,
+			executionId
+				? { executionId, expectedStatus: 'waiting', storedAt: options?.storedAt }
+				: undefined,
 			responsePromise,
 		);
 
@@ -1300,6 +1312,7 @@ export async function executeWebhook(
 		}
 
 		if (shouldDeferOnReceivedResponse) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			additionalKeys.$executionId = executionId;
 			additionalKeys.$execution = {
 				id: executionId,
@@ -1389,26 +1402,15 @@ export async function executeWebhook(
 				return await engineV2Webhooks.toRun(outcome, executionMode);
 			}
 
-			const isUndeliverable = outcome.status === 'undeliverable';
-			const errorResponse = isUndeliverable
-				? {
-						logMessage: 'Could not deliver an engine v2 webhook response',
-						responseMessage: outcome.error.message,
-						responseCode: 500,
-					}
-				: {
-						// timeout
-						logMessage: 'No answer arrived for an engine v2 webhook run',
-						responseMessage: 'The workflow did not answer in time',
-						responseCode: 504,
-					};
+			const errorResponse = toUnansweredRunResponse(outcome);
 			Container.get(Logger).warn(errorResponse.logMessage, {
 				executionId,
 				workflowId: workflowData.id,
-				...(isUndeliverable ? { error: outcome.error } : {}),
+				...(outcome.status === 'undeliverable' ? { error: outcome.error } : {}),
 			});
 			// The webhook node can answer before the execution starts. Do not send a
-			// second response when the execution response later settles.
+			// second response when the execution response later settles. A streaming
+			// request is marked as answered, and the registry ends its stream.
 			if (!responder.hasResponded) {
 				responder.respondWith({
 					data: { message: errorResponse.responseMessage },
@@ -1551,6 +1553,11 @@ export async function executeWebhook(
 	} catch (e: unknown) {
 		// Nothing will ever answer this one, so stop waiting for it.
 		pendingEngineV2Response?.release();
+		// The trigger already sent the stream headers, so no error response can
+		// follow. End the stream, or the caller waits for chunks that never come.
+		if (routesToEngineV2 && responseMode === 'streaming' && res.headersSent && !res.writableEnded) {
+			res.end();
+		}
 
 		const error = ensureError(e);
 		let responseError: Error;
@@ -1745,4 +1752,30 @@ export function _privateGetWebhookErrorMessage(
 		return error.message;
 	}
 	return `Workflow ${webhookType} Error: Workflow could not be started!`;
+}
+
+/** What to answer when an engine v2 run ends without a node's answer. */
+function toUnansweredRunResponse(
+	outcome: Extract<WebhookRunOutcome, { status: 'undeliverable' | 'cancelled' | 'timeout' }>,
+): { logMessage: string; responseMessage: string; responseCode: number } {
+	switch (outcome.status) {
+		case 'undeliverable':
+			return {
+				logMessage: 'Could not deliver an engine v2 webhook response',
+				responseMessage: outcome.error.message,
+				responseCode: 500,
+			};
+		case 'cancelled':
+			return {
+				logMessage: 'An engine v2 webhook run was cancelled',
+				responseMessage: 'The execution was cancelled',
+				responseCode: 500,
+			};
+		case 'timeout':
+			return {
+				logMessage: 'No answer arrived for an engine v2 webhook run',
+				responseMessage: 'The workflow did not answer in time',
+				responseCode: 504,
+			};
+	}
 }

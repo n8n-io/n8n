@@ -311,15 +311,12 @@ export class TriggerExecutionContextFactory {
 		prefetchedCursor?: PollerCursor,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
-			// A poll must finish inside both the handler's abandon deadline and the task
-			// lease; past either, its commits are fenced out or discarded. The margin —
-			// 20%, at least 5s, at most half the ceiling — leaves room for the trailing
-			// hand-off and cursor commit.
+			// A poll must finish inside the handler's abandon deadline; past it, its
+			// commits are discarded. The lease is renewed while the poll runs, so it
+			// does not bound the poll. The margin — 20%, at least 5s, at most half the
+			// ceiling — leaves room for the trailing hand-off and cursor commit.
 			const ceilingMs =
-				Math.min(
-					this.globalConfig.scheduler.pollTimeoutSeconds,
-					this.globalConfig.scheduler.leaseDurationSeconds,
-				) * Time.seconds.toMilliseconds;
+				this.globalConfig.scheduler.pollTimeoutSeconds * Time.seconds.toMilliseconds;
 			const marginMs = Math.min(Math.max(0.2 * ceilingMs, 5_000), ceilingMs / 2);
 			const pollBudgetMs = ceilingMs - marginMs;
 			// A poll's staged snapshot lives in an async scope entered per poll, rather
@@ -474,7 +471,7 @@ export class TriggerExecutionContextFactory {
 				__commitCursor,
 				__runPoll,
 				resolveNodeStaticData,
-				// Only a leased (durable) poll is bounded by the timeout and lease; a
+				// Only a leased (durable) poll is bounded by the timeout; a
 				// legacy in-memory poll keeps PollContext's generous default.
 				fence ? () => pollBudgetMs : undefined,
 			);

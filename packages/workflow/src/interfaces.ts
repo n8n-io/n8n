@@ -1129,8 +1129,7 @@ type CronRecurrenceRule =
 /**
  * @deprecated Remnant of the legacy in-memory scheduling path. `registerCron`
  * takes {@link Cron}, not this type; the durable scheduler path never uses it.
- * Only `ScheduledTaskManager` and its helper still reference it (and only for
- * `CronContext['recurrence']`). Slated to go away with `ScheduledTaskManager`.
+ * Legacy test helpers still use it. Use {@link Cron} for new scheduling code.
  */
 export type CronContext = {
 	nodeId: string;
@@ -2851,6 +2850,19 @@ export interface INodeTypeBaseDescription {
 	hidden?: true;
 
 	/**
+	 * Marks the node, or one version of it, as deprecated. When `N8N_DEPRECATED_NODES_BLOCK` is enabled, workflows cannot add or
+	 * change a deprecated node, and workflow definitions that run without being
+	 * saved, such as inline sub-workflows, cannot contain one. Saved workflows that
+	 * already contain it keep running. Set this only for nodes that pose an active
+	 * risk, such as legacy nodes with insecure sandboxing; use `hidden` for nodes
+	 * that are only superseded.
+	 *
+	 * For versioned nodes, set this on the per-version description to mark only
+	 * that version as deprecated.
+	 */
+	deprecated?: true;
+
+	/**
 	 * Whether the node will be wrapped for tool-use by AI Agents,
 	 * optionally replacing provided parts of the description
 	 */
@@ -3802,7 +3814,7 @@ export interface IWorkflowExecutionDataProcess {
 	 * which answer the caller waits for. Without this field, nobody waits.
 	 */
 	engineV2Response?: {
-		responseMode: 'lastNode' | 'responseNode';
+		responseMode: 'lastNode' | 'responseNode' | 'streaming';
 	};
 	startedAt?: Date;
 
@@ -4580,4 +4592,4 @@ export interface StructuredChunk {
 	};
 }
 
-export type ApiKeyAudience = 'public-api' | 'mcp-server-api';
+export type ApiKeyAudience = 'public-api' | 'mcp-server-api' | 'scim-api';
