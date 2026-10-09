@@ -113,6 +113,11 @@ const projectsToShow = computed(() => {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) 0;
+	border-bottom: var(--border);
+
+	&:last-child {
+		border-bottom: none;
+	}
 }
 
 .info {
