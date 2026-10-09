@@ -16,6 +16,7 @@ packages/cli/src/modules/n8n-packages/spec/requirement-consumers.ts
   s_c71d8d6a27245a::t_fd9060d19281a9 15-18
   s_c71d8d6a27245a::t_708d8a46be4756 1-2
   s_9dde2d3ceb6629::t_2ae15fa961501c 19
+  s_2397c9db9d923f::t_79f04f681d53cb 9
 packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
   s_c71d8d6a27245a::t_3ca14818f85353 715,1344,1457
   s_c71d8d6a27245a::t_fd9060d19281a9 1368-1372
@@ -65,6 +66,50 @@ packages/cli/src/public-api/v1/shared/spec/schemas/packageRequirementConsumer.ge
 packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
   s_c71d8d6a27245a::t_3ca14818f85353 2841
   s_c71d8d6a27245a::t_fd9060d19281a9 2832-2835
+packages/cli/src/modules/n8n-packages/__tests__/import-agent-package.integration.test.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 1-180
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 5,12,18-22,26-30,82-91,136-213
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 14-19,25,28,35-37
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 1-6
+packages/cli/src/modules/promotions.ee/import-manifest-bridge.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 81-83,285
+packages/cli/src/modules/n8n-packages/spec/serialized/agent.schema.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 1-71
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 115-118
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 179-181
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 424,482,503-510,517
+packages/cli/src/modules/promotions.ee/__tests__/import-manifest-bridge.test.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 108-116,143-151,160-168
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/agent-package-fixtures.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 1-145
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 152
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 60-63,339
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 27,45,84-85
+packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 51,62
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.agent.test.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 1-299
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/sub-workflow-ordering.test.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 29
+packages/cli/src/modules/n8n-packages/spec/__tests__/requirements.schema.test.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 86-113,119,125-166
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 25,27-28
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 8-26,43,55,114-117,145
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 19-20,55-70,209
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_2397c9db9d923f::t_79f04f681d53cb 35-42
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -72,6 +117,14 @@ packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.
   "base_commit_sha": "71a9f2e4ddc3aca73a34eab91346f4a9a4942414",
   "prompts": {},
   "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
     "s_9dde2d3ceb6629": {
       "agent_id": {
         "tool": "codex",
