@@ -38,6 +38,9 @@ import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/tele
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { OtelConfig } from '@/modules/otel/otel.config';
+import { CredentialTypesPolicyKind } from '@/modules/type-availability-policies/credential-types.policy-kind';
+import { NodeTypesPolicyKind } from '@/modules/type-availability-policies/node-types.policy-kind';
+import { PolicyKindRegistry } from '@/modules/type-availability-policies/policy-kind.registry';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
@@ -167,6 +170,10 @@ describe('TelemetryEventRelay', () => {
 	const dynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
 	const dbConnection = mock<DbConnection>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+	const policyKinds = new PolicyKindRegistry(
+		new NodeTypesPolicyKind(nodeTypes, loadNodesAndCredentials),
+		new CredentialTypesPolicyKind(loadNodesAndCredentials),
+	);
 	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
 	const postHogClient = mock<PostHogClient>();
 	const ownershipService = mock<OwnershipService>();
@@ -190,9 +197,9 @@ describe('TelemetryEventRelay', () => {
 			credentialsRepository,
 			dynamicCredentialsProxy,
 			dbConnection,
-			loadNodesAndCredentials,
 			postHogClient,
 			ownershipService,
+			policyKinds,
 		);
 
 		await telemetryEventRelay.init();
@@ -229,9 +236,9 @@ describe('TelemetryEventRelay', () => {
 				credentialsRepository,
 				dynamicCredentialsProxy,
 				dbConnection,
-				loadNodesAndCredentials,
 				postHogClient,
 				ownershipService,
+				policyKinds,
 			);
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
 
@@ -258,9 +265,9 @@ describe('TelemetryEventRelay', () => {
 				credentialsRepository,
 				dynamicCredentialsProxy,
 				dbConnection,
-				loadNodesAndCredentials,
 				postHogClient,
 				ownershipService,
+				policyKinds,
 			);
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
 

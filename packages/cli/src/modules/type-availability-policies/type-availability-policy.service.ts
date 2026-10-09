@@ -5,29 +5,16 @@ import { Time } from '@n8n/constants';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { LRUCache } from 'lru-cache';
-import {
-	getCredentialOnlyNodeCredentialType,
-	isCredentialOnlyNodeType,
-	OperationalError,
-	UserError,
-} from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeTypes } from '@/node-types';
 
 import { TypeAvailabilityPolicyAttachmentRepository } from './database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from './database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from './database/repositories/type-availability-policy.repository';
 import type { TypeAvailabilityPolicy } from './database/entities/type-availability-policy.entity';
 import type { TypeAvailabilityPolicyScope } from './database/entities/type-availability-policy-scope.entity';
-import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from './constants';
-import {
-	isCredentialTypeKnown,
-	isPackageInstalled,
-	packageResolverFor,
-	policedTypeFor,
-} from './package-resolver';
+import { PolicyKindRegistry } from './policy-kind.registry';
 import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
 import type {
 	PolicyAction,
@@ -226,80 +213,6 @@ function assertNoDelegateAtProjectScope(
 	}
 }
 
-/**
- * A `package` rule that names a package this instance never loaded can never match anything —
- * worse than not supporting the rule at all, since it looks like it works. Checked at every
- * write so a policy is never saved with one.
- */
-function assertPackagesInstalled(
-	rules: readonly PolicyRule[],
-	loadNodesAndCredentials: LoadNodesAndCredentials,
-): void {
-	const missing = new Set<string>();
-
-	for (const rule of rules) {
-		if (
-			rule.selector.kind === 'package' &&
-			!isPackageInstalled(loadNodesAndCredentials, rule.selector.value)
-		) {
-			missing.add(rule.selector.value);
-		}
-	}
-
-	if (missing.size > 0) {
-		throw new UserError(
-			`Package rule names a package that is not installed: ${[...missing].join(', ')}`,
-		);
-	}
-}
-
-/**
- * A credential-only node (`n8n-creds-base.<type>`) exists only in the editor. It is stored and
- * executed as `n8n-nodes-base.httpRequest`, so a node type rule on the generated name would
- * never match anything and never reach the builder. The credential type rule on `<type>` is
- * what hides that node and blocks it, so the write points there.
- */
-function assertNoCredentialOnlyNodeRules(kind: string, rules: readonly PolicyRule[]): void {
-	if (kind !== NODE_TYPES_KIND) return;
-
-	for (const rule of rules) {
-		if (rule.selector.kind === 'name' && isCredentialOnlyNodeType(rule.selector.value)) {
-			const credentialType = getCredentialOnlyNodeCredentialType(rule.selector.value);
-			throw new UserError(
-				`Node type rule names the credential-only node "${rule.selector.value}", which is HTTP Request with a credential attached. Write a credential type rule on "${credentialType}" instead.`,
-			);
-		}
-	}
-}
-
-/**
- * Only credential types declare `extends`, so the selector means nothing for another kind. An
- * unknown base would match nothing, the same trap `assertPackagesInstalled` closes.
- */
-function assertExtendsSelectorsValid(
-	kind: string,
-	rules: readonly PolicyRule[],
-	loadNodesAndCredentials: LoadNodesAndCredentials,
-): void {
-	const values = rules.flatMap((rule) =>
-		rule.selector.kind === 'extends' ? [rule.selector.value] : [],
-	);
-	if (values.length === 0) return;
-
-	if (kind !== CREDENTIAL_TYPES_KIND) {
-		throw new UserError('An "extends" rule is only valid in a credential type policy');
-	}
-
-	const unknown = new Set(
-		values.filter((value) => !isCredentialTypeKnown(loadNodesAndCredentials, value)),
-	);
-	if (unknown.size > 0) {
-		throw new UserError(
-			`Extends rule names a credential type that is not installed: ${[...unknown].join(', ')}`,
-		);
-	}
-}
-
 /** Mirrors the DTO-level check in `ReplaceAttachmentsDto`, as a defensive service-level guard. */
 function assertNoDuplicateAttachmentSlots(attachments: readonly AttachmentInput[]): void {
 	const seenPolicyIds = new Set<string>();
@@ -335,8 +248,7 @@ export class TypeAvailabilityPolicyService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly eventService: EventService,
 		private readonly cacheService: CacheService,
-		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly nodeTypes: NodeTypes,
+		private readonly policyKinds: PolicyKindRegistry,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('policy');
@@ -495,14 +407,7 @@ export class TypeAvailabilityPolicyService {
 		rules: readonly PolicyRule[],
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
-		assertPackagesInstalled(rules, this.loadNodesAndCredentials);
-		assertNoCredentialOnlyNodeRules(kind, rules);
-		assertExtendsSelectorsValid(kind, rules, this.loadNodesAndCredentials);
-		const warnings = lintRulesForShadowing(
-			rules,
-			packageResolverFor(kind, this.loadNodesAndCredentials),
-			policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
-		);
+		const warnings = this.validateRules(kind, rules);
 
 		const policy = await this.policyRepository.createPolicy({ kind, rules, updatedBy }, {});
 
@@ -535,14 +440,7 @@ export class TypeAvailabilityPolicyService {
 		expectedVersion: number,
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
-		assertPackagesInstalled(rules, this.loadNodesAndCredentials);
-		assertNoCredentialOnlyNodeRules(kind, rules);
-		assertExtendsSelectorsValid(kind, rules, this.loadNodesAndCredentials);
-		const warnings = lintRulesForShadowing(
-			rules,
-			packageResolverFor(kind, this.loadNodesAndCredentials),
-			policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
-		);
+		const warnings = this.validateRules(kind, rules);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			let invalidated: PolicyScopeKey[] = [];
@@ -791,15 +689,7 @@ export class TypeAvailabilityPolicyService {
 		warnings: readonly ShadowWarning[];
 	}> {
 		assertNoDelegateAtProjectScope(projectId, input.defaultAction, input.rules);
-		assertPackagesInstalled(input.rules, this.loadNodesAndCredentials);
-		assertNoCredentialOnlyNodeRules(kind, input.rules);
-		assertExtendsSelectorsValid(kind, input.rules, this.loadNodesAndCredentials);
-
-		const warnings = lintRulesForShadowing(
-			input.rules,
-			packageResolverFor(kind, this.loadNodesAndCredentials),
-			policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
-		);
+		const warnings = this.validateRules(kind, input.rules);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			const scope = await this.scopeRepository.findScopeByKindAndProject(
@@ -1006,12 +896,7 @@ export class TypeAvailabilityPolicyService {
 	): Promise<ComposedVerdict> {
 		const { instance, project } = await this.readComposedScopes(kind, projectId);
 
-		return evaluateComposedType(
-			instance,
-			project,
-			policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials)(typeName),
-			packageResolverFor(kind, this.loadNodesAndCredentials),
-		);
+		return evaluateComposedType(instance, project, this.policyKinds.get(kind).matcherFor(typeName));
 	}
 
 	/**
@@ -1084,14 +969,21 @@ export class TypeAvailabilityPolicyService {
 		};
 	}
 
+	/** Throws for a rule the kind refuses, and reports rules an earlier rule shadows. */
+	private validateRules(kind: string, rules: readonly PolicyRule[]): ShadowWarning[] {
+		const policyKind = this.policyKinds.get(kind);
+		policyKind.assertWritable(rules);
+		return lintRulesForShadowing(rules, policyKind);
+	}
+
 	private verdictComposer(kind: string, typeNames: readonly string[]) {
-		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
-		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials));
+		const policyKind = this.policyKinds.get(kind);
+		const types = typeNames.map((name) => ({ name, matches: policyKind.matcherFor(name) }));
 
 		return (instance: EffectivePolicy, project: EffectivePolicy): ComposedTypeVerdict[] =>
 			types.map((type) => ({
 				name: type.name,
-				...evaluateComposedType(instance, project, type, resolvePackage),
+				...evaluateComposedType(instance, project, type.matches),
 			}));
 	}
 

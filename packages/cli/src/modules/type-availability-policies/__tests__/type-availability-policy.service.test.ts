@@ -10,6 +10,9 @@ import type { NodeTypes } from '@/node-types';
 import type { CacheService } from '@n8n/backend-services';
 
 import { CREDENTIAL_TYPES_KIND } from '../constants';
+import { CredentialTypesPolicyKind } from '../credential-types.policy-kind';
+import { NodeTypesPolicyKind } from '../node-types.policy-kind';
+import { PolicyKindRegistry } from '../policy-kind.registry';
 import type { TypeAvailabilityPolicyAttachmentRepository } from '../database/repositories/type-availability-policy-attachment.repository';
 import type { TypeAvailabilityPolicyScopeRepository } from '../database/repositories/type-availability-policy-scope.repository';
 import type { TypeAvailabilityPolicyRepository } from '../database/repositories/type-availability-policy.repository';
@@ -94,8 +97,10 @@ describe('TypeAvailabilityPolicyService', () => {
 		transactionRunner,
 		eventService,
 		cacheService,
-		loadNodesAndCredentials,
-		nodeTypes,
+		new PolicyKindRegistry(
+			new NodeTypesPolicyKind(nodeTypes, loadNodesAndCredentials),
+			new CredentialTypesPolicyKind(loadNodesAndCredentials),
+		),
 		mockLogger(),
 	);
 

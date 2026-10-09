@@ -154,6 +154,13 @@ both scopes configured and attached costs 12 queries where one kind cost 6, and 
 costs none — pinned in `node-type-policy.store-reads.test.ts`. The decision service runs the
 checks together, so the second kind costs queries rather than latency.
 
+### Adding a kind
+
+Each kind is one `PolicyKindDefinition` in `policy-kind.registry.ts`. It lists the kind's known
+types, says how a selector matches a type and which selectors cover a rule, and refuses rules it
+cannot accept. The evaluator, the shadow lint, the service and telemetry ask the kind and never
+branch on it. A kind still needs its own DTO classes, controllers and check.
+
 ## What a violation looks like
 
 One violation per blocked type, deduplicated, in the order the types first appear:
@@ -315,7 +322,10 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `credential-type-policy.check.ts`                 | Credential types: all eight points, including `credentialSave`                  |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
-| `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |
+| `policy-kind.ts`                                  | The contract each kind implements: known types, matching, covering, write checks |
+| `node-types.policy-kind.ts`                       | Node types: tool variants, the package prefix, no `extends`                     |
+| `credential-types.policy-kind.ts`                 | Credential types: the loader's package, the `extends` family                    |
+| `policy-kind.registry.ts`                         | Looks a kind up by id, so shared code never branches on the kind                |
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |
 | `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments, `node-types`                         |
 | `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |

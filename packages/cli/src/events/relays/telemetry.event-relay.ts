@@ -42,17 +42,11 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { CREDENTIAL_TYPES_KIND } from '@/modules/type-availability-policies/constants';
-import {
-	packageResolverFor,
-	policedTypeFor,
-} from '@/modules/type-availability-policies/package-resolver';
 import {
 	partitionTypesByAction,
-	type PackageResolver,
 	type PolicedType,
 } from '@/modules/type-availability-policies/policy-evaluator';
+import { PolicyKindRegistry } from '@/modules/type-availability-policies/policy-kind.registry';
 import type {
 	PolicyAction,
 	PolicyRule,
@@ -142,9 +136,8 @@ function summarizeTypeAvailability(
 	rules: readonly PolicyRule[],
 	defaultAction: PolicyAction,
 	types: readonly PolicedType[],
-	resolvePackage: PackageResolver,
 ) {
-	const partition = partitionTypesByAction(rules, defaultAction, types, resolvePackage);
+	const partition = partitionTypesByAction(rules, defaultAction, types);
 
 	return {
 		evaluated_type_count: types.length,
@@ -203,10 +196,10 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly dbConnection: DbConnection,
-		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
 		private readonly postHogClient: PostHogClient,
 		private readonly ownershipService: OwnershipService,
+		private readonly policyKinds: PolicyKindRegistry,
 	) {
 		super(eventService);
 	}
@@ -583,12 +576,10 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['node-type-policy-saved']) {
 		if (!isPolicyKind(kind)) return;
 
-		const typeNames =
-			kind === CREDENTIAL_TYPES_KIND
-				? Object.keys(this.loadNodesAndCredentials.knownCredentials)
-				: Object.keys(this.nodeTypes.getKnownTypes());
-		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials));
-		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
+		const policyKind = this.policyKinds.get(kind);
+		const types = policyKind
+			.knownTypeNames()
+			.map((name) => ({ name, matches: policyKind.matcherFor(name) }));
 
 		this.telemetry.track(
 			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
@@ -601,7 +592,7 @@ export class TelemetryEventRelay extends EventRelay {
 				is_first_write: before === null,
 				...countRuleActions(rulesAfter),
 				...countSelectorKinds(rulesAfter),
-				...summarizeTypeAvailability(rulesAfter, after.defaultAction, types, resolvePackage),
+				...summarizeTypeAvailability(rulesAfter, after.defaultAction, types),
 				previous_rule_count: rulesBefore?.length ?? null,
 				shadow_warning_count: warningCount,
 				version: after.version,

@@ -1,10 +1,10 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 
+import type { SelectorMatcher } from './policy-kind';
 import type {
 	PolicyAction,
 	PolicyAttachment,
 	PolicyRule,
-	PolicySelector,
 	PolicyVerdict,
 } from './policy-rule.types';
 
@@ -34,43 +34,8 @@ export type ComposedVerdict = {
 	readonly optInAvailable: boolean;
 };
 
-/**
- * Resolves the package a type belongs to, for matching a `package` selector. Returns `null`
- * when the type's package cannot be determined, in which case a `package` selector never
- * matches it — every caller still validates at write time that a rule names an installed
- * package (see `package-resolver.ts`), so this only covers a type that is itself unknown.
- */
-export type PackageResolver = (typeName: string) => string | null;
-
-/**
- * The `node-types` resolver: a full node type name is always `<packageName>.<nodeName>`, so
- * the package is the segment before the first dot. A credential type name carries no such
- * prefix and needs a different resolver — see `credentialTypePackageResolver` in
- * `package-resolver.ts`.
- */
-export const nodeTypePackageResolver: PackageResolver = (typeName) => typeName.split('.')[0];
-
-/** `ancestors` lists what a credential type is built on through `extends`; empty for node types. */
-export type PolicedType = {
-	readonly name: string;
-	readonly baseName: string;
-	readonly ancestors?: readonly string[];
-};
-
-function selectorMatches(
-	selector: PolicySelector,
-	type: PolicedType,
-	resolvePackage: PackageResolver,
-): boolean {
-	switch (selector.kind) {
-		case 'name':
-			return selector.value === type.name || selector.value === type.baseName;
-		case 'package':
-			return resolvePackage(type.name) === selector.value;
-		case 'extends':
-			return selector.value === type.name || (type.ancestors ?? []).includes(selector.value);
-	}
-}
+/** One known type and how a selector matches it, as its kind resolved it. */
+export type PolicedType = { readonly name: string; readonly matches: SelectorMatcher };
 
 /**
  * Floor attachments first, normal attachments after; each partition ordered by `priority`
@@ -95,31 +60,25 @@ export function orderedAttachments(attachments: readonly PolicyAttachment[]): Po
  * back to the scope's `defaultAction` when nothing matches.
  *
  * Pure and synchronous — callers own fetching attachments and the scope's `defaultAction`
- * from storage, and own resolving `resolvePackage` for the policy's `kind` (defaults to the
- * `node-types` convention).
+ * from storage, and get `matches` from the policy's kind.
  */
 export function evaluateType(
 	attachments: readonly PolicyAttachment[],
 	defaultAction: PolicyAction,
-	type: PolicedType,
-	resolvePackage: PackageResolver = nodeTypePackageResolver,
+	matches: SelectorMatcher,
 ): PolicyVerdict {
 	for (const attachment of orderedAttachments(attachments)) {
-		const matched = firstMatch(attachment.rules, type, resolvePackage);
+		const matched = firstMatch(attachment.rules, matches);
 		if (matched) return matched;
 	}
 
 	return { action: defaultAction, matchedRuleId: null };
 }
 
-/** The first rule matching `type`, or `null` when none does. */
-function firstMatch(
-	rules: readonly PolicyRule[],
-	type: PolicedType,
-	resolvePackage: PackageResolver,
-): PolicyVerdict | null {
+/** The first matching rule, or `null` when none does. */
+function firstMatch(rules: readonly PolicyRule[], matches: SelectorMatcher): PolicyVerdict | null {
 	for (const rule of rules) {
-		if (selectorMatches(rule.selector, type, resolvePackage)) {
+		if (matches(rule.selector)) {
 			return { action: rule.action, matchedRuleId: rule.id };
 		}
 	}
@@ -134,10 +93,9 @@ function firstMatch(
 export function evaluateRules(
 	rules: readonly PolicyRule[],
 	defaultAction: PolicyAction,
-	type: PolicedType,
-	resolvePackage: PackageResolver = nodeTypePackageResolver,
+	matches: SelectorMatcher,
 ): PolicyVerdict {
-	return firstMatch(rules, type, resolvePackage) ?? { action: defaultAction, matchedRuleId: null };
+	return firstMatch(rules, matches) ?? { action: defaultAction, matchedRuleId: null };
 }
 
 /**
@@ -148,12 +106,11 @@ export function partitionTypesByAction(
 	rules: readonly PolicyRule[],
 	defaultAction: PolicyAction,
 	types: readonly PolicedType[],
-	resolvePackage: PackageResolver = nodeTypePackageResolver,
 ): Record<PolicyAction, string[]> {
 	const partition: Record<PolicyAction, string[]> = { allow: [], deny: [], delegate: [] };
 
 	for (const type of types) {
-		partition[evaluateRules(rules, defaultAction, type, resolvePackage).action].push(type.name);
+		partition[evaluateRules(rules, defaultAction, type.matches).action].push(type.name);
 	}
 
 	return partition;
@@ -177,15 +134,9 @@ export function partitionTypesByAction(
 export function evaluateComposedType(
 	instance: ScopePolicy,
 	project: ScopePolicy,
-	type: PolicedType,
-	resolvePackage: PackageResolver = nodeTypePackageResolver,
+	matches: SelectorMatcher,
 ): ComposedVerdict {
-	const instanceVerdict = evaluateType(
-		instance.attachments,
-		instance.defaultAction,
-		type,
-		resolvePackage,
-	);
+	const instanceVerdict = evaluateType(instance.attachments, instance.defaultAction, matches);
 
 	if (instanceVerdict.action === 'deny') {
 		return {
@@ -196,12 +147,7 @@ export function evaluateComposedType(
 		};
 	}
 
-	const projectVerdict = evaluateType(
-		project.attachments,
-		project.defaultAction,
-		type,
-		resolvePackage,
-	);
+	const projectVerdict = evaluateType(project.attachments, project.defaultAction, matches);
 
 	if (instanceVerdict.action === 'delegate') {
 		if (projectVerdict.action === 'allow' && projectVerdict.matchedRuleId !== null) {

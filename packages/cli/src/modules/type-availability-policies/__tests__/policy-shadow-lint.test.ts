@@ -1,3 +1,5 @@
+import { credentialTypeCoveringSelectors } from '../credential-types.policy-kind';
+import { nodeTypeCoveringSelectors } from '../node-types.policy-kind';
 import { lintRulesForShadowing } from '../policy-shadow-lint';
 import type { PolicyRule } from '../policy-rule.types';
 
@@ -9,9 +11,20 @@ const rule = (overrides: RuleOverrides): PolicyRule => ({
 });
 
 /** Stands in for `NodeTypes.resolveBaseName`: `gmailTool` is a synthetic variant of `gmail`. */
-const policedType = (name: string) => ({
-	name,
-	baseName: name === 'n8n-nodes-base.gmailTool' ? 'n8n-nodes-base.gmail' : name,
+const nodeKind = {
+	coveringSelectors: (selector: PolicyRule['selector']) =>
+		nodeTypeCoveringSelectors(selector, (name) =>
+			name === 'n8n-nodes-base.gmailTool' ? 'n8n-nodes-base.gmail' : name,
+		),
+};
+
+/** A credential type name carries no package prefix: only `slackApi` has a known package here. */
+const credentialKind = (ancestors: Record<string, string[]> = {}) => ({
+	coveringSelectors: (selector: PolicyRule['selector']) =>
+		credentialTypeCoveringSelectors(selector, {
+			packageOf: (name) => (name === 'slackApi' ? 'n8n-nodes-base' : null),
+			ancestorsOf: (name) => ancestors[name] ?? [],
+		}),
 });
 
 describe('lintRulesForShadowing', () => {
@@ -25,7 +38,7 @@ describe('lintRulesForShadowing', () => {
 			}),
 		];
 
-		expect(lintRulesForShadowing(rules)).toEqual([
+		expect(lintRulesForShadowing(rules, nodeKind)).toEqual([
 			{ ruleId: 'deny-slack', shadowedByRuleId: 'allow-package' },
 		]);
 	});
@@ -52,7 +65,7 @@ describe('lintRulesForShadowing', () => {
 			rule({ id: 'later', selector: laterSelector }),
 		];
 
-		expect(lintRulesForShadowing(rules)).toEqual([]);
+		expect(lintRulesForShadowing(rules, nodeKind)).toEqual([]);
 	});
 
 	it('flags a name rule for a synthetic tool variant placed after the rule for its base node', () => {
@@ -65,7 +78,7 @@ describe('lintRulesForShadowing', () => {
 			}),
 		];
 
-		expect(lintRulesForShadowing(rules, undefined, policedType)).toEqual([
+		expect(lintRulesForShadowing(rules, nodeKind)).toEqual([
 			{ ruleId: 'deny-gmail-tool', shadowedByRuleId: 'allow-gmail' },
 		]);
 	});
@@ -81,7 +94,7 @@ describe('lintRulesForShadowing', () => {
 			rule({ id: 'allow-gmail', selector: { kind: 'name', value: 'n8n-nodes-base.gmail' } }),
 		];
 
-		expect(lintRulesForShadowing(rules, undefined, policedType)).toEqual([]);
+		expect(lintRulesForShadowing(rules, nodeKind)).toEqual([]);
 	});
 
 	it('does not flag a name rule followed by a package rule for its own package', () => {
@@ -91,7 +104,7 @@ describe('lintRulesForShadowing', () => {
 			rule({ id: 'later', selector: { kind: 'package', value: 'n8n-nodes-base' } }),
 		];
 
-		expect(lintRulesForShadowing(rules)).toEqual([]);
+		expect(lintRulesForShadowing(rules, nodeKind)).toEqual([]);
 	});
 
 	it('flags identical selectors as shadowing even when the actions differ', () => {
@@ -108,7 +121,7 @@ describe('lintRulesForShadowing', () => {
 			}),
 		];
 
-		expect(lintRulesForShadowing(rules)).toEqual([
+		expect(lintRulesForShadowing(rules, nodeKind)).toEqual([
 			{ ruleId: 'deny-slack', shadowedByRuleId: 'allow-slack' },
 		]);
 	});
@@ -120,36 +133,30 @@ describe('lintRulesForShadowing', () => {
 			rule({ id: 'later-name', selector: { kind: 'name', value: 'n8n-nodes-base.slack' } }),
 		];
 
-		expect(lintRulesForShadowing(rules)).toEqual([
+		expect(lintRulesForShadowing(rules, nodeKind)).toEqual([
 			{ ruleId: 'second-package', shadowedByRuleId: 'first-package' },
 			{ ruleId: 'later-name', shadowedByRuleId: 'first-package' },
 		]);
 	});
 
-	it('flags a shadow via a custom resolver, for a type whose package is not part of its name', () => {
-		// Stands in for the `credential-types` resolver: a credential type name (e.g.
-		// `slackApi`) carries no package prefix, unlike a node type.
-		const resolvePackage = (typeName: string) =>
-			typeName === 'slackApi' ? 'n8n-nodes-base' : null;
+	it('flags a credential type shadowed by the package its loader reports', () => {
 		const rules = [
 			rule({ id: 'allow-package', selector: { kind: 'package', value: 'n8n-nodes-base' } }),
 			rule({ id: 'deny-slack-api', action: 'deny', selector: { kind: 'name', value: 'slackApi' } }),
 		];
 
-		expect(lintRulesForShadowing(rules, resolvePackage)).toEqual([
+		expect(lintRulesForShadowing(rules, credentialKind())).toEqual([
 			{ ruleId: 'deny-slack-api', shadowedByRuleId: 'allow-package' },
 		]);
 	});
 
-	it('does not flag a name rule whose package the resolver cannot determine', () => {
-		const resolvePackage = (typeName: string) =>
-			typeName === 'slackApi' ? 'n8n-nodes-base' : null;
+	it('does not flag a credential type whose package is unknown', () => {
 		const rules = [
 			rule({ id: 'allow-package', selector: { kind: 'package', value: 'n8n-nodes-base' } }),
 			rule({ id: 'deny-other-api', action: 'deny', selector: { kind: 'name', value: 'otherApi' } }),
 		];
 
-		expect(lintRulesForShadowing(rules, resolvePackage)).toEqual([]);
+		expect(lintRulesForShadowing(rules, credentialKind())).toEqual([]);
 	});
 
 	it('picks the earlier of a name match and a package match, whichever ran first', () => {
@@ -161,7 +168,7 @@ describe('lintRulesForShadowing', () => {
 			rule({ id: 'later-name', selector: { kind: 'name', value: 'n8n-nodes-base.slack' } }),
 		];
 
-		expect(lintRulesForShadowing(nameFirst)).toEqual([
+		expect(lintRulesForShadowing(nameFirst, nodeKind)).toEqual([
 			{ ruleId: 'later-name', shadowedByRuleId: 'earlier-name' },
 		]);
 
@@ -171,7 +178,7 @@ describe('lintRulesForShadowing', () => {
 			rule({ id: 'later-name-2', selector: { kind: 'name', value: 'n8n-nodes-base.slack' } }),
 		];
 
-		expect(lintRulesForShadowing(packageFirst)).toEqual([
+		expect(lintRulesForShadowing(packageFirst, nodeKind)).toEqual([
 			{ ruleId: 'later-name-1', shadowedByRuleId: 'earlier-package' },
 			{ ruleId: 'later-name-2', shadowedByRuleId: 'earlier-package' },
 		]);
@@ -179,16 +186,11 @@ describe('lintRulesForShadowing', () => {
 
 	describe('extends selector', () => {
 		/** `googleSheetsOAuth2Api` is built on `googleOAuth2Api`, which is built on `oAuth2Api`. */
-		const credentialType = (name: string) => ({
-			name,
-			baseName: name,
-			ancestors:
-				{
-					googleSheetsOAuth2Api: ['googleOAuth2Api', 'oAuth2Api'],
-					googleOAuth2Api: ['oAuth2Api'],
-				}[name] ?? [],
+		const kind = credentialKind({
+			googleSheetsOAuth2Api: ['googleOAuth2Api', 'oAuth2Api'],
+			googleOAuth2Api: ['oAuth2Api'],
 		});
-		const lint = (rules: PolicyRule[]) => lintRulesForShadowing(rules, () => null, credentialType);
+		const lint = (rules: PolicyRule[]) => lintRulesForShadowing(rules, kind);
 		const family = (id: string, value: string) =>
 			rule({ id, selector: { kind: 'extends', value } });
 		const name = (id: string, value: string) => rule({ id, selector: { kind: 'name', value } });
@@ -229,11 +231,12 @@ describe('lintRulesForShadowing', () => {
 	});
 
 	it('returns no warnings for an empty or single-rule list', () => {
-		expect(lintRulesForShadowing([])).toEqual([]);
+		expect(lintRulesForShadowing([], nodeKind)).toEqual([]);
 		expect(
-			lintRulesForShadowing([
-				rule({ id: 'only', selector: { kind: 'name', value: 'n8n-nodes-base.slack' } }),
-			]),
+			lintRulesForShadowing(
+				[rule({ id: 'only', selector: { kind: 'name', value: 'n8n-nodes-base.slack' } })],
+				nodeKind,
+			),
 		).toEqual([]);
 	});
 });

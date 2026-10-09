@@ -4,11 +4,10 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeTypes } from '@/node-types';
 import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
+import { PolicyKindRegistry } from '@/modules/type-availability-policies/policy-kind.registry';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
 import { CacheService } from '@n8n/backend-services';
@@ -152,8 +151,7 @@ describe('node type policy document fan-out', () => {
 			Container.get(TransactionRunner),
 			Container.get(EventService),
 			Container.get(CacheService),
-			Container.get(LoadNodesAndCredentials),
-			Container.get(NodeTypes),
+			Container.get(PolicyKindRegistry),
 			Container.get(Logger),
 		);
 
