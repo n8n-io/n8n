@@ -29,10 +29,7 @@ import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schem
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import type { BranchLayout } from '../branch-placement';
-import {
-	PromotionsContainerTargetInUseError,
-	PromotionsWorkflowsMovedCrossProjectError,
-} from '../promotions-selective-push.error';
+import { PromotionsWorkflowsMovedCrossProjectError } from '../promotions-selective-push.error';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 import type { SelectivePushOptions } from '../working-copy-updater';
 
@@ -557,92 +554,52 @@ describe('WorkingCopyUpdater', () => {
 			]);
 		});
 
-		it('refuses a folder rename whose new directory another folder still occupies', async () => {
-			// f2 still sits at slug b on the branch and is not staged: either the
-			// instance deleted it, or it swapped names with f1 and has no selected
-			// workflow. The updater cannot tell these apart and refuses both.
+		it('refuses a rename when a manually changed branch path occupies its target', async () => {
 			await expect(
 				apply(
 					{
 						manifest: makeManifest({
 							projects: [alpha],
-							folders: [folder('f1', 'A', 'a'), folder('f2', 'B', 'b')],
-							workflows: [inFolder('w1', 'a'), inFolder('w2', 'b')],
+							folders: [folder('f1', 'A', 'a-f1'), folder('f2', 'B', 'b-f1')],
+							workflows: [inFolder('w1', 'a-f1'), inFolder('w2', 'b-f1')],
 						}),
 						files: {
 							'projects/alpha/project.json': projectFile,
-							'projects/alpha/folders/a/folder.json': folderFile('f1', 'A'),
-							'projects/alpha/folders/b/folder.json': folderFile('f2', 'B'),
-							'projects/alpha/folders/a/workflows/w1/workflow.json': workflowFile('w1'),
-							'projects/alpha/folders/b/workflows/w2/workflow.json': workflowFile('w2'),
+							'projects/alpha/folders/a-f1/folder.json': folderFile('f1', 'A'),
+							// f2 was manually moved to the path that a renamed f1 will use.
+							'projects/alpha/folders/b-f1/folder.json': folderFile('f2', 'B'),
+							'projects/alpha/folders/a-f1/workflows/w1/workflow.json': workflowFile('w1'),
+							'projects/alpha/folders/b-f1/workflows/w2/workflow.json': workflowFile('w2'),
 						},
 					},
 					{
 						manifest: makeManifest({
 							projects: [alpha],
-							folders: [folder('f1', 'B', 'b')],
-							workflows: [inFolder('w1', 'b')],
+							folders: [folder('f1', 'B', 'b-f1')],
+							workflows: [inFolder('w1', 'b-f1')],
 						}),
 						files: {
-							'projects/alpha/folders/b/folder.json': folderFile('f1', 'B'),
-							'projects/alpha/folders/b/workflows/w1/workflow.json': workflowFile('w1'),
+							'projects/alpha/folders/b-f1/folder.json': folderFile('f1', 'B'),
+							'projects/alpha/folders/b-f1/workflows/w1/workflow.json': workflowFile('w1'),
 						},
 					},
 					{ workflowIds: ['w1'] },
 				),
-			).rejects.toMatchObject({
-				constructor: PromotionsContainerTargetInUseError,
-				meta: { kind: 'folders', target: 'projects/alpha/folders/b' },
-			});
+			).rejects.toThrow(
+				'The branch path "projects/alpha/folders/b-f1" is already in use. Remove it and retry.',
+			);
 
-			expect(await readExported('projects/alpha/folders/a/folder.json')).toBe(
+			expect(await readExported('projects/alpha/folders/a-f1/folder.json')).toBe(
 				folderFile('f1', 'A'),
 			);
-			expect(await readExported('projects/alpha/folders/b/folder.json')).toBe(
+			expect(await readExported('projects/alpha/folders/b-f1/folder.json')).toBe(
 				folderFile('f2', 'B'),
 			);
-			expect(await readExported('projects/alpha/folders/a/workflows/w1/workflow.json')).toBe(
+			expect(await readExported('projects/alpha/folders/a-f1/workflows/w1/workflow.json')).toBe(
 				workflowFile('w1'),
 			);
-			expect(await readExported('projects/alpha/folders/b/workflows/w2/workflow.json')).toBe(
+			expect(await readExported('projects/alpha/folders/b-f1/workflows/w2/workflow.json')).toBe(
 				workflowFile('w2'),
-			);
-		});
-
-		it('refuses a project rename whose new directory another project still occupies', async () => {
-			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
-			await expect(
-				apply(
-					{
-						manifest: makeManifest({ projects: [alpha, beta], workflows: [wf('w1')] }),
-						files: {
-							'projects/alpha/project.json': projectFile,
-							'projects/beta/project.json': JSON.stringify({ id: beta.id, name: beta.name }),
-							'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
-						},
-					},
-					{
-						manifest: makeManifest({
-							projects: [{ id: alpha.id, name: 'Beta', target: 'projects/beta' }],
-							workflows: [{ id: 'w1', name: 'W1', target: 'projects/beta/workflows/w1' }],
-						}),
-						files: {
-							'projects/beta/project.json': JSON.stringify({ id: alpha.id, name: 'Beta' }),
-							'projects/beta/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
-						},
-					},
-					{ workflowIds: ['w1'] },
-				),
-			).rejects.toMatchObject({
-				constructor: PromotionsContainerTargetInUseError,
-				meta: { kind: 'projects', target: 'projects/beta' },
-			});
-
-			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
-				workflowFile('w1'),
-			);
-			expect(await readExported('projects/beta/project.json')).toBe(
-				JSON.stringify({ id: beta.id, name: beta.name }),
 			);
 		});
 

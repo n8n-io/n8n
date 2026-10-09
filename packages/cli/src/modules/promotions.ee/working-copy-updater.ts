@@ -14,10 +14,7 @@ import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec
 import { containerMoves, isUnder, staleWorkflowTargets } from './branch-placement';
 import type { BranchLayout, ContainerMove } from './branch-placement';
 import { writeImportManifest } from './import-manifest-bridge';
-import {
-	PromotionsContainerTargetInUseError,
-	PromotionsWorkflowsMovedCrossProjectError,
-} from './promotions-selective-push.error';
+import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -636,7 +633,9 @@ export class WorkingCopyUpdater {
 			for (const { holding, dest, move } of parked) {
 				// After parking, so a case-only rename does not collide with its own source.
 				if (await fs.lstat(dest).catch(() => null)) {
-					throw new PromotionsContainerTargetInUseError(move.kind, move.to);
+					throw new BadRequestError(
+						`The branch path "${move.to}" is already in use. Remove it and retry.`,
+					);
 				}
 				await fs.mkdir(path.dirname(dest), { recursive: true });
 				await fs.rename(holding, dest);

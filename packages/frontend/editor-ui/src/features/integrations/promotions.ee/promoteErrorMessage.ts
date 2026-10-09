@@ -1,5 +1,4 @@
 import {
-	parsePromotionsContainerTargetInUseMeta,
 	parsePromotionsWorkflowsMovedCrossProjectMeta,
 	type PromotableResource,
 } from '@n8n/api-types';
@@ -28,16 +27,6 @@ export function getPromoteErrorMessage(
 				workflows: resolveWorkflowTitles(movedMeta.workflowIds, changes),
 			},
 		});
-	}
-
-	const targetMeta = parsePromotionsContainerTargetInUseMeta(error.meta);
-	if (targetMeta) {
-		return i18n.baseText(
-			targetMeta.kind === 'folders'
-				? 'promotions.modal.promoteError.folderTargetInUse'
-				: 'promotions.modal.promoteError.projectTargetInUse',
-			{ interpolate: { target: targetMeta.target } },
-		);
 	}
 
 	return undefined;
