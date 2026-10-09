@@ -1,0 +1,26 @@
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  ai_agent 10,88,111,119-123,129-136,172,179,212,389,396,405,450-457
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_7d22491671b2cf::t_471500852823a1 34
+  s_7d22491671b2cf::t_cdd34b721e0c55 40
+  s_7d22491671b2cf::t_92123d85d92c70 74-75
+  s_7d22491671b2cf::t_b9c4400f9cfe30 635-637
+  s_7d22491671b2cf::t_d8c2c63bbe5f6e 632-634,638-675
+  s_7d22491671b2cf::t_2f2b147a5b66b6 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b09d820c7fb4ab013ebdc6fae8a0001ca26f08b",
+  "prompts": {},
+  "sessions": {
+    "s_7d22491671b2cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc9c8e6f-ad96-4495-967d-4b9ed6266b4a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
