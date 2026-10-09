@@ -425,10 +425,12 @@ describe('N8NIdentifier', () => {
 						},
 						{},
 					),
-				).rejects.toThrow('Invalid context metadata: grant: Required');
+				).rejects.toThrow(
+					'Invalid context metadata: grant: Invalid input: expected object, received undefined',
+				);
 				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
 				expect(mockLogger.warn).toHaveBeenCalledWith('Sealed identity metadata is invalid', {
-					error: 'grant: Required',
+					error: 'grant: Invalid input: expected object, received undefined',
 				});
 			});
 
@@ -579,7 +581,9 @@ describe('N8NIdentifier', () => {
 			it('rejects a version 2 seal without a grant, without asking the gate or loading the user', async () => {
 				await expect(
 					identifier.resolve(sealedContext({ grant: undefined }), {}, 'exec-root'),
-				).rejects.toThrow('Invalid context metadata: grant: Required');
+				).rejects.toThrow(
+					'Invalid context metadata: grant: Invalid input: expected object, received undefined',
+				);
 				expect(mockTrustedSourceGate.authorizeSealed).not.toHaveBeenCalled();
 				expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
 				expect(mockLogger.warn).toHaveBeenCalled();

@@ -536,6 +536,20 @@ describe('ExecutionContextService', () => {
 			expect(metadata).not.toHaveProperty('version');
 		});
 
+		it('leaves a version 2 seal without a grant unbound', async () => {
+			const context = contextWith({
+				source: 'n8n-oauth',
+				version: 2,
+				resource: 'r',
+				subject: 'user-123',
+			});
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
 		it('appends a child execution id, preserving the inherited path', async () => {
 			const bound = await service.maybeBindExecutionId(
 				contextWith({
