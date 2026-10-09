@@ -349,6 +349,33 @@ describe('WorkflowReviewDetailTabs', () => {
 			);
 		});
 
+		// The detail lists only the workflows the viewer can read, so a refresh can drop one.
+		it('opens the first workflow when a refresh removes the open one', async () => {
+			const first = makeWorkflowDetail();
+			const third = makeWorkflowDetail({ workflowId: 'wf-3' });
+			const { getAllByTestId, findByTestId, rerender } = renderComponent({
+				props: {
+					review: makeDetail({
+						workflows: [first, makeWorkflowDetail({ workflowId: 'wf-2' }), third],
+					}),
+					tab: 'changes',
+					deciding: false,
+				},
+			});
+
+			await userEvent.click(getAllByTestId('workflow-review-changes-item-trigger')[1]);
+			await rerender({
+				review: makeDetail({ workflows: [first, third] }),
+				tab: 'changes',
+				deciding: false,
+			});
+
+			expect(await findByTestId('workflow-review-changes-section')).toHaveAttribute(
+				'data-workflow-id',
+				'wf-1',
+			);
+		});
+
 		// A closed review keeps its diff: the backend serves the baseline frozen at
 		// approval, and the section needs the lifecycle to phrase the sides.
 		it('renders the diff for a closed review and forwards its lifecycle', () => {
