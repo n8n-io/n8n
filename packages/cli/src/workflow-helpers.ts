@@ -460,7 +460,9 @@ export async function updateParentExecutionWithChildResults(
 		unflattenData: true,
 	});
 
-	if (parent?.status !== 'waiting') {
+	// A parent parked at a node boundary is not waiting on this child; its stack
+	// head is the next node, whose input must not be replaced by the child's output.
+	if (parent?.status !== 'waiting' || parent.data.waitReason === 'suspended') {
 		return false;
 	}
 

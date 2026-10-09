@@ -1019,6 +1019,21 @@ describe('updateParentExecutionWithChildResults', () => {
 		};
 	};
 
+	it('leaves a parent parked at a node boundary alone', async () => {
+		const executionPersistence = mockInstance(ExecutionPersistence);
+		const parked = waitingParent();
+		parked.data.waitReason = 'suspended';
+		executionPersistence.findSingleExecution.mockResolvedValue(parked);
+
+		const resumed = await updateParentExecutionWithChildResults(
+			PARENT_ID,
+			childRun('success', 'Last', { data: { main: [[{ json: { out: 1 } }]] } }),
+		);
+
+		expect(resumed).toBe(false);
+		expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+	});
+
 	// Runs the workflow helper against a waiting parent and returns the updated stack entry.
 	async function resumeWith(
 		child: IRun,

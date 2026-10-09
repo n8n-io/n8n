@@ -149,6 +149,11 @@ export type AbortJobMessage = {
 
 export type RunningJob = RunningJobSummary & {
 	run: PCancelable<IRun>;
+	/**
+	 * Present only when the job may be suspended at worker shutdown. Returns
+	 * false while the run still owes its webhook caller a response.
+	 */
+	suspend?: () => boolean;
 };
 
 export type QueueRecoveryContext = {
