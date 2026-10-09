@@ -255,7 +255,7 @@ describe('Databricks', () => {
 
 	describe('Genie -> toolAttribution', () => {
 		it.each([
-			['genie', 'getSpace', 'Powered by Genie'],
+			['genie', 'getSpace', 'Powered by Databricks Genie'],
 			['job', 'run', undefined],
 		])(
 			'should resolve toolAttribution only for the genie resource (%s)',

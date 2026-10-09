@@ -144,11 +144,11 @@ describe('createNodeAsTool', () => {
 		});
 
 		it('should set metadata.attribution from the toolAttribution parameter', () => {
-			node.parameters.toolAttribution = 'Powered by Genie';
+			node.parameters.toolAttribution = 'Powered by Databricks Genie';
 
 			const tool = createNodeAsTool(options).response;
 
-			expect(tool.metadata?.attribution).toBe('Powered by Genie');
+			expect(tool.metadata?.attribution).toBe('Powered by Databricks Genie');
 		});
 
 		it('should not set metadata.attribution when toolAttribution is absent', () => {

@@ -103,7 +103,7 @@ export const genieParameters: INodeProperties[] = [
 		displayName: 'Tool Attribution',
 		name: 'toolAttribution',
 		type: 'hidden',
-		default: 'Powered by Genie',
+		default: 'Powered by Databricks Genie',
 		displayOptions: { show: { resource: ['genie'] } },
 	},
 ];

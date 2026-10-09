@@ -1517,12 +1517,12 @@ describe('createHitlToolkit', () => {
 			description: 'Test tool description',
 			schema: z.object({ input: z.string() }),
 			func: async () => 'result',
-			metadata: { sourceNodeName: 'Original Node', attribution: 'Powered by Genie' },
+			metadata: { sourceNodeName: 'Original Node', attribution: 'Powered by Databricks Genie' },
 		});
 
 		const result = createHitlToolkit(originalTool, hitlNode);
 
-		expect(result.tools[0].metadata?.attribution).toBe('Powered by Genie');
+		expect(result.tools[0].metadata?.attribution).toBe('Powered by Databricks Genie');
 	});
 
 	it('should handle tool without metadata', () => {
