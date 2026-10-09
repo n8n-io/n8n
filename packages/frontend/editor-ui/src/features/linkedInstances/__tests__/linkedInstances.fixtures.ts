@@ -1,4 +1,8 @@
-import type { LinkedInstanceSummary } from '@n8n/api-types';
+import type {
+	LinkedInstancePushResult,
+	LinkedInstanceSummary,
+	LinkedInstanceTransferPreflight,
+} from '@n8n/api-types';
 
 export function linkedInstance(
 	overrides: Partial<LinkedInstanceSummary> = {},
@@ -28,4 +32,37 @@ export function deferred<T>() {
 		reject = onReject;
 	});
 	return { promise, resolve, reject };
+}
+
+export function transferPreflight(
+	overrides: Partial<LinkedInstanceTransferPreflight> = {},
+): LinkedInstanceTransferPreflight {
+	return {
+		workflowName: 'Daily report',
+		moves: { nodes: 4 },
+		nodeTypeCheck: 'unknown',
+		missingNodeTypes: [],
+		credentials: [],
+		targetProject: { id: 'project-1', name: 'Automations' },
+		subWorkflowCalls: [],
+		...overrides,
+	};
+}
+
+export function pushResult(
+	overrides: Partial<LinkedInstancePushResult> = {},
+): LinkedInstancePushResult {
+	return {
+		remoteWorkflowId: 'remote-wf-1',
+		remoteUrl: 'https://acme.app.n8n.cloud/workflow/remote-wf-1',
+		targetProject: { id: 'project-1', name: 'Automations' },
+		created: true,
+		published: false,
+		publishFailed: false,
+		credentialsNeedingSetup: [],
+		missingNodeTypes: [],
+		localDeactivated: false,
+		warnings: [],
+		...overrides,
+	};
 }

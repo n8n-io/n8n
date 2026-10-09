@@ -1,16 +1,27 @@
 <script setup lang="ts">
-import { N8nBadge } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nCallout, type BadgeVariant } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import { computed, defineAsyncComponent, inject, ref } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useFollowScroll } from '../composables/useFollowScroll';
 import { CODING_OPEN_FILE } from '../utils/coding-review';
-import { parseCodingEdit } from '../utils/coding-tool-step';
+import {
+	codingStepFailureText,
+	codingStepOutcome,
+	parseCodingEdit,
+	parseCodingEditFailure,
+	type CodingEditResultStatus,
+} from '../utils/coding-tool-step';
 
 const CodeViewer = defineAsyncComponent(async () => await import('./AgentCustomToolViewer.vue'));
 const MAX_SHOWN_CHARACTERS = 12000;
 const EDIT_SIGNS = { added: '+', removed: '−', context: ' ' };
+const EDIT_RESULTS: Record<CodingEditResultStatus, { text: BaseTextKey; variant: BadgeVariant }> = {
+	success: { text: 'agents.coding.tools.changeStatus.success', variant: 'outline' },
+	failed: { text: 'agents.coding.tools.changeStatus.failed', variant: 'danger' },
+	not_attempted: { text: 'agents.coding.tools.changeStatus.notAttempted', variant: 'outline' },
+};
 
 const props = defineProps<{ toolCall: ToolCall }>();
 const i18n = useI18n();
@@ -21,27 +32,49 @@ const path = computed(() => (typeof input.value.path === 'string' ? input.value.
 const command = computed(() =>
 	typeof input.value.command === 'string' ? input.value.command : '',
 );
+const done = computed(() => codingStepOutcome(props.toolCall) === 'done');
 const isWrite = computed(() => props.toolCall.tool === 'workspace_write_file');
 const edit = computed(() =>
 	props.toolCall.tool === 'workspace_str_replace_file'
 		? parseCodingEdit(props.toolCall.input)
 		: undefined,
 );
-const contentLabel = computed<BaseTextKey>(() => {
-	if (edit.value) return 'agents.coding.changes';
-	return isWrite.value ? 'agents.coding.tools.written' : 'agents.coding.tools.read';
+const exitCode = computed(() =>
+	typeof output.value.exitCode === 'number' ? output.value.exitCode : undefined,
+);
+// The exit code badge tells how a command ended, so it needs no failure text too.
+const failure = computed(() =>
+	exitCode.value === undefined ? codingStepFailureText(i18n, props.toolCall) : undefined,
+);
+const editFailure = computed(() =>
+	edit.value ? parseCodingEditFailure(props.toolCall.output) : undefined,
+);
+/** The changed lines of each replacement, with the result of a replacement that did not apply. */
+const editBlocks = computed(() => {
+	const results = new Map((editFailure.value?.results ?? []).map((item) => [item.index, item]));
+	return (edit.value?.replacements ?? []).map((lines, index) => ({
+		lines,
+		number: String(index + 1),
+		result: results.get(index),
+	}));
 });
 const content = computed(() => {
 	const value = isWrite.value ? input.value.content : output.value.content;
 	return typeof value === 'string' ? value : '';
 });
+/** A step that did not finish shows what it asked for, not a result. */
+const contentLabel = computed<BaseTextKey | undefined>(() => {
+	if (edit.value) {
+		return done.value ? 'agents.coding.changes' : 'agents.coding.tools.requestedChanges';
+	}
+	if (!content.value) return undefined;
+	if (!isWrite.value) return 'agents.coding.tools.read';
+	return done.value ? 'agents.coding.tools.written' : 'agents.coding.tools.toWrite';
+});
 const commandOutput = computed(() =>
 	[output.value.stdout, output.value.stderr]
 		.filter((value): value is string => typeof value === 'string' && value.length > 0)
 		.join('\n'),
-);
-const exitCode = computed(() =>
-	typeof output.value.exitCode === 'number' ? output.value.exitCode : undefined,
 );
 const outputElement = ref<HTMLElement>();
 useFollowScroll(outputElement, commandOutput);
@@ -49,28 +82,54 @@ useFollowScroll(outputElement, commandOutput);
 
 <template>
 	<div :class="$style.details">
+		<N8nButton
+			v-if="path"
+			variant="ghost"
+			size="xsmall"
+			:class="$style.file"
+			:title="path"
+			:aria-label="i18n.baseText('agents.coding.tools.openFile', { interpolate: { path } })"
+			data-testid="agent-coding-tool-path"
+			@click="openFile?.(path)"
+		>
+			<span :class="$style.fileName">{{ path }}</span>
+		</N8nButton>
+		<N8nCallout v-if="failure" theme="danger" data-testid="agent-coding-tool-failure">
+			{{ failure }}
+			<template v-if="editFailure">
+				{{ i18n.baseText('agents.coding.tools.editNotApplied') }}
+			</template>
+		</N8nCallout>
 		<template v-if="path">
-			<button
-				type="button"
-				:class="$style.file"
-				:title="path"
-				:aria-label="i18n.baseText('agents.coding.tools.openFile', { interpolate: { path } })"
-				data-testid="agent-coding-tool-path"
-				@click="openFile?.(path)"
-			>
-				{{ path }}
-			</button>
-			<div :class="$style.header">
+			<div v-if="contentLabel" :class="$style.header">
 				<span :class="$style.label">{{ i18n.baseText(contentLabel) }}</span>
-				<span v-if="edit" :class="$style.stats" data-testid="agent-coding-tool-stats"
+				<span v-if="edit && done" :class="$style.stats" data-testid="agent-coding-tool-stats"
 					><span :class="$style.additions">+{{ edit.stats.additions }}</span>
 					<span :class="$style.deletions">−{{ edit.stats.deletions }}</span></span
 				>
 			</div>
 			<div v-if="edit" :class="$style.output" data-testid="agent-coding-tool-edit">
-				<div v-for="(lines, index) in edit.replacements" :key="index" :class="$style.replacement">
+				<div v-for="block in editBlocks" :key="block.number" :class="$style.replacement">
 					<div
-						v-for="(line, lineIndex) in lines"
+						v-if="block.result"
+						:class="$style.result"
+						data-testid="agent-coding-tool-edit-result"
+						:data-status="block.result.status"
+					>
+						<span>{{
+							i18n.baseText('agents.coding.tools.change', {
+								interpolate: { number: block.number },
+							})
+						}}</span>
+						<N8nBadge :variant="EDIT_RESULTS[block.result.status].variant" size="xsmall">{{
+							i18n.baseText(EDIT_RESULTS[block.result.status].text)
+						}}</N8nBadge>
+						<span v-if="block.result.error" :class="$style.resultError">{{
+							block.result.error
+						}}</span>
+					</div>
+					<div
+						v-for="(line, lineIndex) in block.lines"
 						:key="lineIndex"
 						:class="[$style.editLine, $style[line.kind]]"
 						:data-kind="line.kind"
@@ -118,36 +177,41 @@ useFollowScroll(outputElement, commandOutput);
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/focus';
-
 .details {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	min-width: 0;
 }
-/* The path is the header of the details, so it lines up with the labels below it. */
-.file {
+/* The path is the header of the details. With no padding, it lines up with the labels below it.
+   The class is doubled so that it wins over the size class of the button. */
+.file.file {
+	--button--padding: 0;
+	--button--height: auto;
+	--button--font-size: var(--font-size--2xs);
+	--button--color: var(--text-color);
+	--button--color--background-hover: transparent;
+	--button--color--background-active: transparent;
+
 	align-self: flex-start;
 	max-width: 100%;
-	padding: 0;
-	border: 0;
-	border-radius: var(--radius--3xs);
-	background: none;
-	color: var(--text-color);
 	font-family: var(--font-family--monospace);
-	font-size: var(--font-size--2xs);
-	text-align: left;
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--md);
+
+	> * {
+		min-width: 0;
+		overflow: hidden;
+	}
+
+	&:hover .fileName {
+		text-decoration: underline;
+	}
+}
+.fileName {
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
-	cursor: pointer;
-
-	&:hover {
-		text-decoration: underline;
-	}
-
-	@include focus.focus-visible-ring;
 }
 .header {
 	display: flex;
@@ -193,6 +257,19 @@ useFollowScroll(outputElement, commandOutput);
 	margin-top: var(--spacing--2xs);
 	padding-top: var(--spacing--2xs);
 	border-top: var(--border);
+}
+.result {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--4xs) var(--spacing--2xs);
+	margin-bottom: var(--spacing--4xs);
+	font-family: var(--font-family);
+	color: var(--text-color--subtle);
+}
+.resultError {
+	flex-basis: 100%;
+	color: var(--text-color--danger);
 }
 .editLine {
 	display: flex;

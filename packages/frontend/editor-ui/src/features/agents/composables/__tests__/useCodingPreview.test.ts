@@ -8,20 +8,22 @@ const READY: AgentCodingPreview = { available: true, url: '/sandbox-preview/toke
 
 function setup(fetchPreview: () => Promise<AgentCodingPreview>) {
 	const app = ref<AgentCodingStatus['app']>('running');
-	const canLoad = ref(true);
+	const isOpen = ref(true);
+	const canExecute = ref(true);
 	const onError = vi.fn();
 	const fetch = vi.fn(fetchPreview);
 	const scope = effectScope();
 	const preview = scope.run(() =>
 		useCodingPreview({
 			fetchPreview: fetch,
-			canLoad: () => canLoad.value,
+			isOpen: () => isOpen.value,
+			canExecute: () => canExecute.value,
 			app: () => app.value,
 			onError,
 		}),
 	);
 	if (!preview) throw new Error('The scope did not run');
-	return { preview, app, canLoad, onError, fetch, stop: () => scope.stop() };
+	return { preview, app, isOpen, canExecute, onError, fetch, stop: () => scope.stop() };
 }
 
 describe('useCodingPreview', () => {
@@ -62,17 +64,39 @@ describe('useCodingPreview', () => {
 		expect(preview.state.value).toBe('ready');
 	});
 
-	it('does not ask while it cannot load, or while a URL is already there', async () => {
-		const { preview, canLoad, fetch } = setup(async () => READY);
+	it('does not ask while the panel is closed, or while a URL is already there', async () => {
+		const { preview, isOpen, fetch } = setup(async () => READY);
 
-		canLoad.value = false;
+		isOpen.value = false;
 		await preview.load();
 		expect(fetch).not.toHaveBeenCalled();
 
-		canLoad.value = true;
+		isOpen.value = true;
 		await preview.load();
 		await preview.load();
 		expect(fetch).toHaveBeenCalledOnce();
+	});
+
+	it.each(['stopped', 'error', undefined] as const)(
+		'does not ask while the app is %s',
+		async (status) => {
+			const { preview, app, fetch } = setup(async () => READY);
+
+			app.value = status;
+			await preview.load();
+
+			expect(fetch).not.toHaveBeenCalled();
+		},
+	);
+
+	it('does not ask for a user who cannot run the agent, and says why', async () => {
+		const { preview, canExecute, fetch } = setup(async () => READY);
+
+		canExecute.value = false;
+		await preview.load();
+
+		expect(fetch).not.toHaveBeenCalled();
+		expect(preview.state.value).toBe('noAccess');
 	});
 
 	it('ignores an answer that arrives after the preview was cleared', async () => {
@@ -85,7 +109,8 @@ describe('useCodingPreview', () => {
 		await loading;
 
 		expect(preview.url.value).toBe('');
-		expect(preview.state.value).toBe('loading');
+		// No request is open any more, so the panel offers to show the preview again.
+		expect(preview.state.value).toBe('running');
 	});
 
 	it('ignores an answer and an error that arrive after the scope ends', async () => {

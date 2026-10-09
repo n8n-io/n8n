@@ -76,7 +76,7 @@ async function setStatus(overrides: Partial<AgentCodingStatus>) {
 	api.status.mockResolvedValue({ ...ready, ...overrides });
 }
 
-function renderWorkspace() {
+function renderWorkspace({ canExecute = true } = {}) {
 	return render(AgentCodingWorkspace, {
 		props: {
 			projectId: 'project',
@@ -89,7 +89,7 @@ function renderWorkspace() {
 				checkCommand: '',
 				port: 3000,
 			},
-			canExecute: true,
+			canExecute,
 			sendReview: vi.fn().mockResolvedValue(true),
 		},
 		slots: { default: '<textarea aria-label="Chat draft" />' },
@@ -196,9 +196,9 @@ it('shows a check that stopped before it finished', async () => {
 	expect(screen.getByRole('button', { name: 'Check stopped before it finished' })).toBeVisible();
 });
 
-async function openPreviewTab() {
+async function openPreviewTab(options: { canExecute?: boolean } = {}) {
 	const user = userEvent.setup({ delay: null });
-	renderWorkspace();
+	renderWorkspace(options);
 	await user.click(await screen.findByRole('button', { name: 'Preview' }));
 	const panel = await screen.findByRole('tabpanel', { name: 'Preview' });
 	return { user, panel };
@@ -248,6 +248,22 @@ it('does not offer to run the app while it opens the preview of a running app', 
 	expect(state).not.toHaveTextContent('Run the app');
 	expect(within(state).queryByRole('button')).toBeNull();
 });
+
+it.each(['running', 'starting'] as const)(
+	'tells a user who cannot run the agent why a %s app has no preview',
+	async (app) => {
+		await setStatus({ app });
+		const { panel } = await openPreviewTab({ canExecute: false });
+
+		const state = await within(panel).findByRole('status');
+		await waitFor(() => expect(state).toHaveAttribute('data-state', 'noAccess'));
+		expect(within(state).getByRole('heading')).toHaveTextContent('You cannot open the preview');
+		expect(state).toHaveTextContent('To open the preview, you need permission to run this agent.');
+		expect(state).not.toHaveTextContent('Opening the preview');
+		expect(within(state).queryByRole('button')).toBeNull();
+		expect(api.preview).not.toHaveBeenCalled();
+	},
+);
 
 it.each([
 	['stopped', 'App stopped', 'Run the app to test your changes here.'],

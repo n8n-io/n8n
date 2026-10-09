@@ -405,12 +405,11 @@ export function createThreadRuntime(
 
 	/** The planned-task checklist from thread metadata, else the agent's own checklist. */
 	const currentTasks = computed(
-		() => getTasksFromThreadMetadata(threadMetadata()) ?? findLatestTasksFromMessages(messages.value),
+		() =>
+			getTasksFromThreadMetadata(threadMetadata()) ?? findLatestTasksFromMessages(messages.value),
 	);
 
-	const setupItemsByWorkflowId = computed(() =>
-		getSetupItemsFromThreadMetadata(threadMetadata()),
-	);
+	const setupItemsByWorkflowId = computed(() => getSetupItemsFromThreadMetadata(threadMetadata()));
 	const latestSetupWorkflowId = computed(() => Object.keys(setupItemsByWorkflowId.value).at(-1));
 
 	// --- Telemetry: 'User viewed new builder workflow' ---

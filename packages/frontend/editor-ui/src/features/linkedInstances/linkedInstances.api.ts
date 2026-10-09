@@ -24,7 +24,8 @@ const linkedInstanceSummarySchema = z.object({
 
 const linkedInstanceListSchema = z.array(linkedInstanceSummarySchema);
 
-const instancePath = (id: string) => `${ENDPOINT}/${encodeURIComponent(id)}`;
+/** The REST path of one link. The id goes into the path, so it is encoded. */
+export const instancePath = (id: string) => `${ENDPOINT}/${encodeURIComponent(id)}`;
 
 /** The links of the current user, oldest first. Rejects when the response has an unknown shape. */
 export async function fetchLinkedInstances(

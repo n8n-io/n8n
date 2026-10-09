@@ -18,9 +18,23 @@ afterEach(() => {
 	cleanup();
 });
 
-function toolCall(tool: string, input: unknown, output?: unknown): ToolCall {
-	return { toolCallId: 'call-1', tool, input, output, state: TOOL_CALL_STATE.DONE };
+function toolCall(
+	tool: string,
+	input: unknown,
+	output?: unknown,
+	state: ToolCall['state'] = TOOL_CALL_STATE.DONE,
+): ToolCall {
+	return { toolCallId: 'call-1', tool, input, output, state };
 }
+
+const EDIT_INPUT = {
+	path: 'src/a.ts',
+	replacements: [
+		{ old_str: 'one', new_str: 'uno' },
+		{ old_str: 'two', new_str: 'dos' },
+		{ old_str: 'three', new_str: 'tres' },
+	],
+};
 
 function renderDetails(call: ToolCall) {
 	const openFile = vi.fn();
@@ -91,6 +105,89 @@ describe('AgentCodingToolDetails', () => {
 		]);
 	});
 
+	it('shows why an edit did not apply, with the result of each replacement', () => {
+		const { container } = renderDetails(
+			toolCall('workspace_str_replace_file', EDIT_INPUT, {
+				success: false,
+				error: 'String replacement failed.',
+				results: [
+					{ index: 0, old_str: 'one', status: 'success' },
+					{ index: 1, old_str: 'two', status: 'failed', error: 'Found 2 matches.' },
+					{ index: 2, old_str: 'three', status: 'not_attempted' },
+				],
+			}),
+		);
+
+		expect(byTestId(container, 'agent-coding-tool-failure')).toHaveTextContent(
+			'String replacement failed. The file did not change.',
+		);
+		expect(screen.getByText('Requested changes')).toBeVisible();
+		expect(screen.queryByText('Changes')).toBeNull();
+		expect(byTestId(container, 'agent-coding-tool-stats')).toBeNull();
+		const results = [
+			...container.querySelectorAll('[data-testid="agent-coding-tool-edit-result"]'),
+		].map((result) => [result.getAttribute('data-status'), result.textContent?.trim()]);
+		expect(results).toEqual([
+			['success', 'Change 1Matched'],
+			['failed', 'Change 2FailedFound 2 matches.'],
+			['not_attempted', 'Change 3Not tried'],
+		]);
+		// The requested lines stay, so the user can see what the agent tried to change.
+		expect(container.querySelectorAll('[data-kind="added"]')).toHaveLength(3);
+	});
+
+	it('shows the error of an edit that failed before it tried a replacement', () => {
+		const { container } = renderDetails(
+			toolCall('workspace_str_replace_file', EDIT_INPUT, {
+				success: false,
+				error: 'ENOENT: no such file',
+			}),
+		);
+
+		expect(byTestId(container, 'agent-coding-tool-failure')).toHaveTextContent(
+			'ENOENT: no such file The file did not change.',
+		);
+		expect(byTestId(container, 'agent-coding-tool-edit-result')).toBeNull();
+	});
+
+	it.each([
+		['running', TOOL_CALL_STATE.RUNNING],
+		['stopped', TOOL_CALL_STATE.CANCELLED],
+	])('shows the requested changes of a %s edit without stats or a failure', (_case, state) => {
+		const { container } = renderDetails(
+			toolCall('workspace_str_replace_file', EDIT_INPUT, undefined, state),
+		);
+
+		expect(screen.getByText('Requested changes')).toBeVisible();
+		expect(byTestId(container, 'agent-coding-tool-stats')).toBeNull();
+		expect(byTestId(container, 'agent-coding-tool-failure')).toBeNull();
+	});
+
+	it.each([
+		['running', TOOL_CALL_STATE.RUNNING],
+		['failed', TOOL_CALL_STATE.ERROR],
+		['stopped', TOOL_CALL_STATE.CANCELLED],
+	])('does not call the content of a %s write written', async (_case, state) => {
+		const { container } = renderDetails(
+			toolCall('workspace_write_file', { path: 'a.ts', content: 'export {}' }, undefined, state),
+		);
+
+		expect(screen.getByText('Content to write')).toBeVisible();
+		expect(screen.queryByText('Written content')).toBeNull();
+		await waitFor(() => expect(byTestId(container, 'code-viewer')).toHaveTextContent('export {}'));
+	});
+
+	it('shows no content header for a read that failed', () => {
+		const { container } = renderDetails(
+			toolCall('workspace_read_file', { path: 'missing.ts' }, 'ENOENT', TOOL_CALL_STATE.ERROR),
+		);
+
+		expect(screen.getByRole('button', { name: 'Open missing.ts' })).toBeVisible();
+		expect(screen.queryByText('File content')).toBeNull();
+		// A call that threw shows its error in the step, not here.
+		expect(byTestId(container, 'agent-coding-tool-failure')).toBeNull();
+	});
+
 	it.each([
 		[0, 'success'],
 		[2, 'danger'],
@@ -106,6 +203,27 @@ describe('AgentCodingToolDetails', () => {
 		const badge = byTestId(container, 'agent-coding-tool-exit-code');
 		expect(badge).toHaveTextContent(`Exit code: ${exitCode}`);
 		expect(badge).toHaveClass(variant);
+		expect(screen.getByText('$ pnpm test')).toBeVisible();
+		// The badge tells how the command ended, so there is no extra failure text.
+		expect(byTestId(container, 'agent-coding-tool-failure')).toBeNull();
+	});
+
+	it('shows the error of a command result that has no exit code', () => {
+		const { container } = renderDetails(
+			toolCall(
+				'workspace_execute_command',
+				{ command: 'pnpm test' },
+				{
+					success: false,
+					error: 'The sandbox stopped.',
+				},
+			),
+		);
+
+		expect(byTestId(container, 'agent-coding-tool-failure')).toHaveTextContent(
+			'The sandbox stopped.',
+		);
+		expect(byTestId(container, 'agent-coding-tool-exit-code')).toBeNull();
 		expect(screen.getByText('$ pnpm test')).toBeVisible();
 	});
 

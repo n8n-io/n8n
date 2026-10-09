@@ -5,8 +5,10 @@ import { codingPreviewState, type CodingPreviewRequest } from '../utils/coding-p
 
 export interface CodingPreviewOptions {
 	fetchPreview: () => Promise<AgentCodingPreview>;
-	/** True when the preview panel is open, the app runs, and the user can run it. */
-	canLoad: () => boolean;
+	/** True when the preview panel is open. A closed panel does not ask for a URL. */
+	isOpen: () => boolean;
+	/** True when the user can run the agent. Only such a user can ask for a URL. */
+	canExecute: () => boolean;
 	app: () => AgentCodingStatus['app'] | undefined;
 	onError: (cause: unknown) => void;
 }
@@ -27,8 +29,19 @@ export function useCodingPreview(options: CodingPreviewOptions) {
 	});
 
 	const state = computed(() =>
-		codingPreviewState({ app: options.app(), url: url.value, request: request.value }),
+		codingPreviewState({
+			app: options.app(),
+			url: url.value,
+			request: request.value,
+			canExecute: options.canExecute(),
+		}),
 	);
+
+	function canLoad() {
+		const app = options.app();
+		const appActive = app === 'starting' || app === 'running';
+		return appActive && options.isOpen() && options.canExecute();
+	}
 
 	function clear() {
 		generation++;
@@ -48,7 +61,7 @@ export function useCodingPreview(options: CodingPreviewOptions) {
 	async function load() {
 		// An unavailable preview stays so until `clear`, for example when the app stops.
 		const settled = request.value === 'loading' || request.value === 'unavailable';
-		if (settled || url.value || !options.canLoad()) return;
+		if (settled || url.value || !canLoad()) return;
 		const id = ++generation;
 		request.value = 'loading';
 		try {

@@ -135,7 +135,7 @@ export function toolOutcome(call: AutomationToolCall): AutomationToolOutcome {
 export function proposalOutcome(
 	call: AutomationToolCall | undefined,
 ): AutomationToolOutcome | undefined {
-	if (call === undefined) return undefined;
+	if (call?.toolName !== PROPOSE_AUTOMATION_TOOL_NAME) return undefined;
 	return toolOutcome(call);
 }
 

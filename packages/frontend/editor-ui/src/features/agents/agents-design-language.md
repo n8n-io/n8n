@@ -229,6 +229,21 @@ The credential picker's create action uses the outline variant, so the dialog
 has one solid action. `Remove coding` uses the destructive variant with
 `trash-2`, because it removes the repository setup of the agent.
 
+Coding tool steps say what they did and how they ended: `Read {path}`,
+`Wrote {path} (N lines)`, `Edited {path} +N −M` and `Ran {command}`. A write
+shows its line count and no `−` count, because the tool does not know how many
+lines it replaced. A step that failed says `Could not …` and shows the warning
+icon. A step that its run stopped says `Stopped …`. A command that ran and
+ended with an exit code other than 0 keeps `Ran {command}` and shows the
+warning icon, and its details show the exit code. The details of an edit that
+did not apply show the error and the result of each replacement, with no line
+stats. Shorten a long path in the middle and a long command at its end, and
+give the whole label to `N8nAiActivityStep` as `fullLabel`.
+
+The preview panel says `Opening the preview…` only while a request for the
+preview URL is open. A user who cannot run the agent sees
+`You cannot open the preview` and the reason, not a loading state.
+
 ## Recoverable plan errors
 
 Show rejected plan input and revision conflicts in the normal tool-call row.

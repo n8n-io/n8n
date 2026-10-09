@@ -23,14 +23,31 @@ describe('codingPreviewState', () => {
 		['starting', '', 'loading', 'starting'],
 		['starting', '/sandbox-preview/a/', 'idle', 'starting'],
 		['starting', '', 'unavailable', 'unavailable'],
-		['running', '', 'idle', 'loading'],
+		// Nothing loads, so the panel offers to show the preview.
+		['running', '', 'idle', 'running'],
 		['running', '', 'loading', 'loading'],
 		['running', '', 'unavailable', 'unavailable'],
 		['running', '', 'failed', 'failed'],
 		['running', '/sandbox-preview/a/', 'idle', 'ready'],
 	] as const)('shows app %s with url %j and request %s as %s', (app, url, request, state) => {
-		expect(codingPreviewState({ app, url, request })).toBe(state);
+		expect(codingPreviewState({ app, url, request, canExecute: true })).toBe(state);
 	});
+
+	it.each([
+		['running', '', 'idle', 'noAccess'],
+		['starting', '', 'idle', 'noAccess'],
+		['stopped', '', 'idle', 'stopped'],
+		['error', '', 'idle', 'error'],
+		// A request or a URL from before keeps its own state.
+		['running', '', 'loading', 'loading'],
+		['running', '', 'failed', 'failed'],
+		['running', '/sandbox-preview/a/', 'idle', 'ready'],
+	] as const)(
+		'shows app %s with url %j and request %s as %s to a user who cannot run the agent',
+		(app, url, request, state) => {
+			expect(codingPreviewState({ app, url, request, canExecute: false })).toBe(state);
+		},
+	);
 
 	it('shows the frame only for a running app with a URL (property)', () => {
 		fc.assert(
@@ -38,8 +55,9 @@ describe('codingPreviewState', () => {
 				fc.constantFrom(...apps),
 				fc.string({ maxLength: 20 }),
 				fc.constantFrom(...requests),
-				(app, url, request) => {
-					const state = codingPreviewState({ app, url, request });
+				fc.boolean(),
+				(app, url, request, canExecute) => {
+					const state = codingPreviewState({ app, url, request, canExecute });
 					const ready =
 						app === 'running' && url !== '' && request !== 'unavailable' && request !== 'failed';
 					expect(state === 'ready').toBe(ready);
@@ -54,12 +72,30 @@ describe('codingPreviewState', () => {
 				fc.constantFrom(...apps),
 				fc.string({ maxLength: 20 }),
 				fc.constantFrom(...requests),
-				(app, url, request) => {
-					const state = codingPreviewState({ app, url, request });
+				fc.boolean(),
+				(app, url, request, canExecute) => {
+					const state = codingPreviewState({ app, url, request, canExecute });
 					const offersRun = state === 'stopped' || state === 'error';
 					const appActive = app === 'starting' || app === 'running';
 					expect(offersRun).toBe(!appActive);
 					if (state !== 'ready') expect(CODING_PREVIEW_COPY[state].title).toBeTruthy();
+				},
+			),
+		);
+	});
+
+	it('says that it loads only while a request is open (property)', () => {
+		fc.assert(
+			fc.property(
+				fc.constantFrom(...apps),
+				fc.string({ maxLength: 20 }),
+				fc.constantFrom(...requests),
+				fc.boolean(),
+				(app, url, request, canExecute) => {
+					const state = codingPreviewState({ app, url, request, canExecute });
+					if (state === 'loading') expect(request).toBe('loading');
+					if (state === 'noAccess') expect(canExecute).toBe(false);
+					if (state === 'running') expect([app, url, request]).toEqual(['running', '', 'idle']);
 				},
 			),
 		);
@@ -74,6 +110,14 @@ describe('CODING_PREVIEW_COPY', () => {
 		});
 		expect(CODING_PREVIEW_COPY.starting.hint).not.toBe('agents.coding.app.hint');
 		expect(CODING_PREVIEW_COPY.loading.hint).toBeUndefined();
+	});
+
+	it('names the missing permission instead of the app status for a user who cannot run it', () => {
+		expect(CODING_PREVIEW_COPY.noAccess).toEqual({
+			title: 'agents.coding.app.noAccess',
+			hint: 'agents.coding.app.noAccessHint',
+		});
+		expect(CODING_PREVIEW_COPY.running).toEqual({ title: 'agents.coding.app.running' });
 	});
 });
 

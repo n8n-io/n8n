@@ -19,6 +19,7 @@ import type {
 import type { AgentExecution } from './composables/useAgentThreadsApi';
 import { backgroundJobResultLabel } from './utils/background-job-labels';
 import { isDelegateSubAgentTool } from './utils/delegate-tool';
+import { isFailedToolOutput } from './utils/tool-output-failure';
 import {
 	formatToolNameForDisplay,
 	getToolNameTranslationKey,
@@ -88,21 +89,7 @@ export function isErroredToolCallTimelineItem(item: TimelineItem): boolean {
 	}
 	if (item.toolOutcome === 'error') return true;
 	if (item.toolOutcome === undefined && item.toolSuccess === false) return true;
-	if (!isRecord(item.toolOutput)) return false;
-
-	const { error, status, success, ok, isError } = item.toolOutput;
-	const hasErrorMessage =
-		(typeof error === 'string' && error.length > 0) ||
-		(isRecord(error) && typeof error.message === 'string' && error.message.length > 0);
-
-	return (
-		hasErrorMessage ||
-		status === 'error' ||
-		status === 'failed' ||
-		success === false ||
-		ok === false ||
-		isError === true
-	);
+	return isFailedToolOutput(item.toolOutput);
 }
 
 export function isErroredTimelineItem(item: TimelineItem): boolean {

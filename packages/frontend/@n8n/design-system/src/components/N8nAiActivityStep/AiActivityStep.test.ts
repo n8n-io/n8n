@@ -1,6 +1,17 @@
-import { render } from '@testing-library/vue';
+import { render, waitFor } from '@testing-library/vue';
 
 import AiActivityStep from './AiActivityStep.vue';
+
+/** Reka UI opens a tooltip on a mouse `pointermove` over its trigger. */
+function hover(element: Element) {
+	element.dispatchEvent(
+		new PointerEvent('pointermove', { bubbles: true, cancelable: true, pointerType: 'mouse' }),
+	);
+}
+
+function openTooltip(): Element | null {
+	return document.querySelector('[data-dismissable-layer]');
+}
 
 const global = {
 	stubs: {
@@ -89,6 +100,43 @@ describe('N8nAiActivityStep', () => {
 		});
 
 		expect(getByText('Custom details').parentElement?.className).toContain('resultSection');
+	});
+
+	describe('fullLabel', () => {
+		const fullLabel = 'Read packages/frontend/editor-ui/src/components/AgentCodingDiff.vue';
+		const label = 'Read packages/…/AgentCodingDiff.vue';
+
+		it('shows the full label as a tooltip of the label, not of the details', async () => {
+			const { getByText, getByRole } = render(AiActivityStep, {
+				props: { label, fullLabel },
+				slots: { default: '<pre>Command output</pre>' },
+			});
+
+			getByRole('button', { name: fullLabel }).click();
+			hover(await waitFor(() => getByText('Command output')));
+			expect(openTooltip()).toBeNull();
+
+			hover(getByText(label));
+			await waitFor(() => expect(openTooltip()).toHaveTextContent(fullLabel));
+		});
+
+		it('names the step with the full label for screen readers', () => {
+			const { getByRole } = render(AiActivityStep, {
+				props: { label, fullLabel, hasContent: false },
+			});
+
+			expect(getByRole('button', { name: fullLabel })).toHaveTextContent(label);
+		});
+
+		it('adds no tooltip and no other name when the label is whole', () => {
+			const { getByRole, getByText } = render(AiActivityStep, {
+				props: { label: 'Read a.ts', fullLabel: 'Read a.ts' },
+			});
+
+			hover(getByText('Read a.ts'));
+			expect(getByRole('button')).not.toHaveAttribute('aria-label');
+			expect(openTooltip()).toBeNull();
+		});
 	});
 
 	it('should hide collapsible affordances and content when hasContent is false', () => {

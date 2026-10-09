@@ -23,6 +23,11 @@ const props = withDefaults(
 		wrapContent?: boolean;
 		/** Keep error icon/tooltip but skip the inner danger callout. */
 		hideErrorCallout?: boolean;
+		/**
+		 * The whole label when `label` is a shortened form of it. It shows as a
+		 * tooltip on the label only, and it is the accessible name of the step.
+		 */
+		fullLabel?: string;
 	}>(),
 	{
 		loading: false,
@@ -30,6 +35,7 @@ const props = withDefaults(
 		hasContent: true,
 		wrapContent: false,
 		hideErrorCallout: false,
+		fullLabel: undefined,
 	},
 );
 
@@ -40,6 +46,10 @@ const isNested = inject(aiActivityStepGroupContext, false);
 const errorTooltip = computed(() =>
 	props.error ? truncate(props.error, MAX_ERROR_TOOLTIP_LENGTH) : '',
 );
+
+const labelTooltip = computed(() =>
+	props.fullLabel && props.fullLabel !== props.label ? props.fullLabel : undefined,
+);
 </script>
 
 <template>
@@ -49,8 +59,14 @@ const errorTooltip = computed(() =>
 		</span>
 		<CollapsibleRoot v-if="props.hasContent" v-slot="{ open: isOpen }">
 			<CollapsibleTrigger as-child>
-				<N8nAiActivityStepButton size="small" :loading="props.loading">
-					{{ props.label }}
+				<N8nAiActivityStepButton size="small" :loading="props.loading" :aria-label="labelTooltip">
+					<N8nTooltip v-if="labelTooltip" placement="top">
+						<template #content>
+							<span :class="$style.labelTooltip">{{ labelTooltip }}</span>
+						</template>
+						{{ props.label }}
+					</N8nTooltip>
+					<template v-else>{{ props.label }}</template>
 					<template #icon>
 						<N8nTooltip v-if="props.error" placement="top">
 							<template #content>
@@ -83,8 +99,20 @@ const errorTooltip = computed(() =>
 				</N8nCallout>
 			</N8nAnimatedCollapsibleContent>
 		</CollapsibleRoot>
-		<N8nAiActivityStepButton v-else size="small" :loading="props.loading" :interactive="false">
-			{{ props.label }}
+		<N8nAiActivityStepButton
+			v-else
+			size="small"
+			:loading="props.loading"
+			:interactive="false"
+			:aria-label="labelTooltip"
+		>
+			<N8nTooltip v-if="labelTooltip" placement="top">
+				<template #content>
+					<span :class="$style.labelTooltip">{{ labelTooltip }}</span>
+				</template>
+				{{ props.label }}
+			</N8nTooltip>
+			<template v-else>{{ props.label }}</template>
 			<template #icon>
 				<N8nTooltip v-if="props.error" placement="top">
 					<template #content>
@@ -159,6 +187,10 @@ const errorTooltip = computed(() =>
 
 .errorTooltip {
 	white-space: pre-wrap;
+}
+
+.labelTooltip {
+	overflow-wrap: anywhere;
 }
 
 .errorCallout {

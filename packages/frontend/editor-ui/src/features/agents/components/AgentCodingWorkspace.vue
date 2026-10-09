@@ -207,7 +207,8 @@ const {
 	markUnavailable: markPreviewUnavailable,
 } = useCodingPreview({
 	fetchPreview: async () => await api.value.preview(),
-	canLoad: () => previewOpen.value && appActive.value && props.canExecute,
+	isOpen: () => previewOpen.value,
+	canExecute: () => props.canExecute,
 	app: () => status.value?.app,
 	onError: (cause) => showError(cause, i18n.baseText('agents.coding.previewFailed')),
 });
@@ -791,7 +792,7 @@ onBeforeUnmount(() => {
 							>{{ i18n.baseText('agents.coding.app.showLogs') }}</N8nButton
 						>
 						<N8nButton
-							v-else-if="previewState === 'failed'"
+							v-else-if="previewState === 'failed' || previewState === 'running'"
 							variant="outline"
 							:disabled="!canExecute"
 							@click="loadPreview"
