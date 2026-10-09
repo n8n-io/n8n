@@ -1,6 +1,6 @@
 # @n8n/frontend-module-inbox
 
-The shared Inbox lists workflow reviews and saved Assistant results. Review details, comments, and decisions live in `src/reviews`. The editor supplies only the workflow diff renderer through the SDK component registry. Backend services keep their existing access rules and actions.
+The shared Inbox lists workflow reviews and saved Assistant results. Review details, comments, and decisions live in `src/reviews`. The editor supplies the workflow diff renderer and Assistant chat handoff through the SDK. Backend services keep their existing access rules and actions.
 
 Open has two groups: Waiting for review and Authored by you. Assistant results go
 in Waiting for review. Each group has its own cursor, Load more button, and retry.
@@ -9,7 +9,10 @@ Closed is a flat list with infinite scroll. Group collapse state persists per us
 Review decisions update the loaded rows and counts in place. Approving a selected
 review opens the Closed tab, as before.
 
-Self-healing detail UI remains gated by the disabled-by-default self-healing rollout. AST-1518 replaces the explicit unavailable detail state.
+Assistant details live in `src/self-healing`. They show saved reports, workflow
+changes, review activity, and usage. Result actions use the existing self-healing
+API. Continue in chat opens a new private chat in the current user's personal
+project. Self-healing remains off by default.
 
 Frontend feature module. Consumed from source by the editor-ui shell through
 `src/app/modules.manifest.ts`; there is no build step and no `dist`.
