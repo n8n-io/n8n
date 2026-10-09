@@ -186,8 +186,8 @@ function createDefaultEngine(): RegexEngine {
 }
 
 /**
- * The built-in engine: `RegExp` behind a `node:vm` timeout, or plain `RegExp` where vm is
- * unavailable. Exported so a caller can select it the same way as any other engine.
+ * Creates the built-in engine: `RegExp` behind a `node:vm` timeout, or plain `RegExp`
+ * without `node:vm`.
  */
 export function createDefaultRegexEngine(): RegexEngine {
 	return createDefaultEngine();

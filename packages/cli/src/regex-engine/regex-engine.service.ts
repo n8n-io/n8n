@@ -4,16 +4,11 @@ import { Service } from '@n8n/di';
 import type { RegexEngine } from 'n8n-workflow';
 import { createDefaultRegexEngine, resetUserRegexEngine, setUserRegexEngine } from 'n8n-workflow';
 
-/** An engine this service can install, plus the teardown it needs when the process exits. */
 export interface ManagedRegexEngine extends RegexEngine {
 	dispose?(): void;
 }
 
-/**
- * Installs the engine that runs the patterns a user writes. The instance picks it once, at
- * start-up; there is no switching later. Patterns n8n itself authored stay on
- * `safeInternalRegex`.
- */
+/** Installs the engine that runs the patterns a user writes, once at start-up. */
 @Service()
 export class RegexEngineService {
 	private active?: ManagedRegexEngine;
@@ -26,8 +21,7 @@ export class RegexEngineService {
 	async init(): Promise<void> {
 		const engine: string = this.globalConfig.regexEngine.engine;
 
-		// The default engine is already installed at module load: nothing to build or
-		// swap in, so skip constructing and tearing down a second, identical one.
+		// `safeUserRegex` builds the built-in engine on first use when none is set.
 		if (engine === 'js') return;
 
 		this.active = await this.create();
@@ -38,15 +32,15 @@ export class RegexEngineService {
 	shutdown(): void {
 		if (!this.active) return;
 
-		// Restore the built-in engine before freeing the selected one: a user's regex
-		// evaluated during the rest of the shutdown must still find an engine.
+		// Restore the built-in engine first, so a user's pattern that runs later in shutdown
+		// never reaches a freed engine.
 		resetUserRegexEngine();
 		this.active.dispose?.();
 		this.active = undefined;
 	}
 
-	/** The config schema rejects any value with no case here, so this needs no fallback. */
 	private async create(): Promise<ManagedRegexEngine> {
+		// No default case: the config schema accepts only the engines handled here.
 		switch (this.globalConfig.regexEngine.engine) {
 			case 'js':
 				return createDefaultRegexEngine();

@@ -24,7 +24,7 @@ describe('RegexEngineConfig', () => {
 		expect(warn).toHaveBeenCalled();
 	});
 
-	it('reaches a consumer through GlobalConfig', () => {
+	it('is available as GlobalConfig.regexEngine', () => {
 		expect(Container.get(GlobalConfig).regexEngine.engine).toBe('js');
 	});
 });
