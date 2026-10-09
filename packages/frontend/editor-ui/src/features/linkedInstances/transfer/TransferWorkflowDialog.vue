@@ -95,7 +95,8 @@ const options = computed(() =>
 	}),
 );
 const showChoices = computed(
-	() => state.value?.canMove === true && (options.value.showTurnOffHere || options.value.showTurnOn),
+	() =>
+		state.value?.canMove === true && (options.value.showTurnOffHere || options.value.showTurnOn),
 );
 const hints = computed(() =>
 	state.value ? transferHints(state.value, options.value, choice) : [],
@@ -277,19 +278,20 @@ function onCloseAutoFocus(event: Event) {
 						:place="place"
 						:disabled="isMoving"
 					/>
-
-					<N8nNotice
-						v-if="moveError"
-						theme="danger"
-						:class="$style.notice"
-						data-test-id="transfer-move-error"
-					>
-						{{ moveError }}
-					</N8nNotice>
 				</div>
 			</div>
 
-			<N8nDialogFooter>
+			<!-- Outside the scrolling details, so the error is always in view next to the Move button. -->
+			<N8nNotice
+				v-if="moveError"
+				theme="danger"
+				:class="$style.moveError"
+				data-test-id="transfer-move-error"
+			>
+				{{ moveError }}
+			</N8nNotice>
+
+			<N8nDialogFooter :class="$style.footer">
 				<N8nButton
 					variant="outline"
 					:disabled="isMoving"
@@ -301,6 +303,7 @@ function onCloseAutoFocus(event: Event) {
 				<!-- The status line reads "Moving", so the label change is not read a second time. -->
 				<N8nButton
 					variant="solid"
+					:class="$style.submit"
 					:disabled="!canSubmit"
 					aria-live="off"
 					data-transfer-action="submit"
@@ -328,6 +331,13 @@ function onCloseAutoFocus(event: Event) {
 	display: flex;
 	flex-direction: column;
 	max-height: calc(100dvh - var(--transfer-dialog--top) - var(--spacing--lg));
+	// Names can be long and have no spaces. They wrap in place of running out of the dialog.
+	overflow-wrap: anywhere;
+
+	// A title that wraps stays clear of the close button.
+	header {
+		padding-inline-end: var(--spacing--lg);
+	}
 }
 
 .body {
@@ -382,5 +392,35 @@ function onCloseAutoFocus(event: Event) {
 
 .notice {
 	--notice--margin: 0;
+}
+
+.moveError {
+	--notice--margin: var(--spacing--sm) 0 0;
+
+	flex: none;
+}
+
+// With a long place name, Move goes below Cancel, and its label ends in an ellipsis. The title
+// shows the full name.
+.footer {
+	flex-wrap: wrap;
+}
+
+.submit {
+	max-width: 100%;
+
+	// The design-system button and its label do not shrink below the width of the text.
+	&,
+	* {
+		min-width: 0;
+	}
+
+	// The texts of the label. A line height above 1 keeps the descenders inside the clip.
+	span span {
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		line-height: var(--line-height--md);
+	}
 }
 </style>

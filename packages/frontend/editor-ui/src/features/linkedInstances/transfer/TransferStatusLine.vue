@@ -27,7 +27,9 @@ function readyText(nodeCount: number, needsSetUp: number): string {
 		adjustToNumber: needsSetUp,
 		interpolate: { count: String(needsSetUp) },
 	});
-	return `${checked} ${setUp}`;
+	return i18n.baseText('linkedInstances.transfer.status.checkedNeedsSetUp', {
+		interpolate: { checked, setUp },
+	});
 }
 
 const text = computed(() => {
@@ -42,9 +44,9 @@ const text = computed(() => {
 			return readyText(status.nodeCount, status.needsSetUp);
 		case 'moving':
 			return i18n.baseText('linkedInstances.transfer.status.moving', { interpolate });
-		case 'silent':
-			return '';
 	}
+	// 'silent': each error has its own alert, so the line says nothing more.
+	return '';
 });
 </script>
 

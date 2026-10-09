@@ -47,6 +47,7 @@ const matchedCredentials = computed(() => {
 	if (names.length === 0) return undefined;
 	const list = new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' });
 	return i18n.baseText('linkedInstances.transfer.moves.matchedCredentials', {
+		adjustToNumber: names.length,
 		interpolate: { place: props.place, names: list.format(names) },
 	});
 });
@@ -54,6 +55,16 @@ const matchedCredentials = computed(() => {
 const cannotMove = computed(
 	() => props.state.missingNodeTypes.length > 0 || props.state.subWorkflowCalls.length > 0,
 );
+
+function setUpStatus({ status }: TransferSetUpItem): string {
+	return i18n.baseText(SET_UP_STATUS_TEXT[status]);
+}
+
+function setUpRow(credential: TransferSetUpItem): string {
+	return i18n.baseText('linkedInstances.transfer.setUp.row', {
+		interpolate: { name: credential.name, status: setUpStatus(credential) },
+	});
+}
 
 function subWorkflowLabel({ id, name }: { id: string; name: string | null }): string {
 	return (
@@ -65,11 +76,40 @@ function subWorkflowLabel({ id, name }: { id: string; name: string | null }): st
 
 <template>
 	<div :class="$style.summary">
+		<!-- "Can't move" comes first: it is why Move is disabled, so it must not scroll out of view. -->
+		<section v-if="cannotMove" :class="$style.section" data-test-id="transfer-cannot-move">
+			<N8nText tag="h3" size="small" bold>
+				{{ i18n.baseText('linkedInstances.transfer.cannotMove.heading') }}
+			</N8nText>
+			<!-- role="note": the status line announces the result, so the notices do not interrupt it. -->
+			<template v-if="state.subWorkflowCalls.length > 0">
+				<N8nNotice theme="warning" role="note" :class="$style.notice">
+					{{ i18n.baseText('linkedInstances.transfer.cannotMove.subWorkflows') }}
+				</N8nNotice>
+				<ul :class="$style.list">
+					<li v-for="call in state.subWorkflowCalls" :key="call.id">
+						<N8nText size="small">{{ subWorkflowLabel(call) }}</N8nText>
+					</li>
+				</ul>
+			</template>
+			<template v-if="state.missingNodeTypes.length > 0">
+				<N8nNotice theme="warning" role="note" :class="$style.notice">
+					{{ i18n.baseText('linkedInstances.transfer.cannotMove.nodeTypes', { interpolate }) }}
+				</N8nNotice>
+				<ul :class="$style.list">
+					<li v-for="nodeType in state.missingNodeTypes" :key="nodeType">
+						<code :class="$style.code">{{ nodeType }}</code>
+					</li>
+				</ul>
+			</template>
+		</section>
+
 		<section :class="$style.section">
 			<N8nText tag="h3" size="small" bold>
 				{{ i18n.baseText('linkedInstances.transfer.moves.heading') }}
 			</N8nText>
-			<ul :class="$style.facts" data-test-id="transfer-moves">
+			<!-- Safari drops the list role of a list without bullets, so the role is explicit. -->
+			<ul :class="$style.facts" role="list" data-test-id="transfer-moves">
 				<li>
 					<N8nText size="small">{{ nodes }}</N8nText>
 				</li>
@@ -86,47 +126,22 @@ function subWorkflowLabel({ id, name }: { id: string; name: string | null }): st
 			<N8nText tag="h3" size="small" bold>
 				{{ i18n.baseText('linkedInstances.transfer.setUp.heading') }}
 			</N8nText>
-			<ul :class="$style.facts" data-test-id="transfer-needs-set-up">
-				<li v-for="(credential, index) in state.needsSetUp" :key="index" :class="$style.row">
-					<N8nText size="small">{{ credential.name }}</N8nText>
-					<N8nText size="small" color="text-base">
-						<!-- The row shows two columns. A screen reader reads one line, so it gets a separator. -->
-						<span :class="$style.visuallyHidden">: </span>
-						{{ i18n.baseText(SET_UP_STATUS_TEXT[credential.status]) }}
-					</N8nText>
+			<ul :class="$style.facts" role="list" data-test-id="transfer-needs-set-up">
+				<li v-for="(credential, index) in state.needsSetUp" :key="index" :class="$style.setUpItem">
+					<!-- Screen readers read the row as one translated line. The two columns are visual only. -->
+					<span :class="$style.visuallyHidden">{{ setUpRow(credential) }}</span>
+					<span :class="$style.row" aria-hidden="true">
+						<N8nText size="small">{{ credential.name }}</N8nText>
+						<N8nText size="small" color="text-base">{{ setUpStatus(credential) }}</N8nText>
+					</span>
 				</li>
 			</ul>
-		</section>
-
-		<section v-if="cannotMove" :class="$style.section" data-test-id="transfer-cannot-move">
-			<N8nText tag="h3" size="small" bold>
-				{{ i18n.baseText('linkedInstances.transfer.cannotMove.heading') }}
-			</N8nText>
-			<template v-if="state.subWorkflowCalls.length > 0">
-				<N8nNotice theme="warning" :class="$style.notice">
-					{{ i18n.baseText('linkedInstances.transfer.cannotMove.subWorkflows') }}
-				</N8nNotice>
-				<ul :class="$style.list">
-					<li v-for="call in state.subWorkflowCalls" :key="call.id">
-						<N8nText size="small">{{ subWorkflowLabel(call) }}</N8nText>
-					</li>
-				</ul>
-			</template>
-			<template v-if="state.missingNodeTypes.length > 0">
-				<N8nNotice theme="warning" :class="$style.notice">
-					{{ i18n.baseText('linkedInstances.transfer.cannotMove.nodeTypes', { interpolate }) }}
-				</N8nNotice>
-				<ul :class="$style.list">
-					<li v-for="nodeType in state.missingNodeTypes" :key="nodeType">
-						<code :class="$style.code">{{ nodeType }}</code>
-					</li>
-				</ul>
-			</template>
 		</section>
 
 		<ul
 			v-if="state.warnings.length > 0"
 			:class="[$style.facts, $style.warnings]"
+			role="list"
 			data-test-id="transfer-warnings"
 		>
 			<li v-for="warning in state.warnings" :key="warning">
@@ -160,6 +175,11 @@ function subWorkflowLabel({ id, name }: { id: string; name: string | null }): st
 	margin: 0;
 	padding: 0;
 	list-style: none;
+}
+
+// Keeps the hidden row text next to its row, inside the scrolling details.
+.setUpItem {
+	position: relative;
 }
 
 .row {

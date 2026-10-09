@@ -34,10 +34,9 @@ const newTab = computed(() => i18n.baseText('linkedInstances.transfer.newTab'));
 
 // Each link names its credential, so a list of links reads well without the item text.
 function setUpLabel(credential: string): string {
-	const label = i18n.baseText('linkedInstances.transfer.result.setUp.linkLabel', {
+	return i18n.baseText('linkedInstances.transfer.result.setUp.linkLabel', {
 		interpolate: { place: props.place, credential },
 	});
-	return `${label} ${newTab.value}`;
 }
 </script>
 

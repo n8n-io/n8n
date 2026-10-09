@@ -69,7 +69,21 @@ async function setupReady(props: Props = {}, preflight = transferPreflight()) {
 const submitButton = () => screen.getByTestId('transfer-submit');
 const cancelButton = () => screen.getByTestId('transfer-cancel');
 const details = () => screen.getByRole('region', { name: 'Move details' });
-const statusLine = () => screen.getByRole('status');
+// By test id: the spinner of the design system has a role="status" of its own.
+const statusLine = () => screen.getByTestId('transfer-status');
+
+/** The text that a screen reader reads: the text outside aria-hidden parts. */
+function spokenText(element: Element): string {
+	const parts: string[] = [];
+	const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+		acceptNode: (node) =>
+			node.parentElement?.closest('[aria-hidden="true"]')
+				? NodeFilter.FILTER_REJECT
+				: NodeFilter.FILTER_ACCEPT,
+	});
+	while (walker.nextNode()) parts.push(walker.currentNode.textContent ?? '');
+	return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
 
 /** The toast is a VNode. Rendering it shows what the user sees. */
 function renderToastMessage() {
@@ -98,6 +112,7 @@ describe('TransferWorkflowDialog', () => {
 			expect(await screen.findByTestId('transfer-checking')).toHaveTextContent(
 				'Checking what moves…',
 			);
+			expect(statusLine()).toHaveAttribute('role', 'status');
 			expect(statusLine()).toHaveTextContent('Checking what moves…');
 			expect(api.fetchTransferPreflight).toHaveBeenCalledWith(expect.anything(), 'link-1', {
 				workflowId: 'wf-1',
@@ -165,6 +180,21 @@ describe('TransferWorkflowDialog', () => {
 			expect(statusLine()).toHaveTextContent('Check done. 1 node moves to Acme Cloud.');
 		});
 
+		it('uses the singular form for one credential that is there already', async () => {
+			await setupReady(
+				{},
+				transferPreflight({
+					credentials: [{ name: 'Slack', type: 'slackApi', status: 'matched' }],
+				}),
+			);
+
+			expect(
+				within(screen.getByTestId('transfer-moves')).getByText(
+					'Uses the credential with the same name in Acme Cloud: Slack',
+				),
+			).toBeVisible();
+		});
+
 		it('lists the credentials that need setting up with their status', async () => {
 			await setupReady(
 				{},
@@ -177,11 +207,14 @@ describe('TransferWorkflowDialog', () => {
 			);
 
 			expect(screen.getByRole('heading', { name: 'Needs setting up' })).toBeVisible();
-			const items = within(screen.getByTestId('transfer-needs-set-up')).getAllByRole('listitem');
-			expect(items.map((item) => item.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
-				'Gmail account: Arrives empty',
-				'Notion: Not checked',
-			]);
+			const list = screen.getByTestId('transfer-needs-set-up');
+			// Safari reads a list without bullets as a list only with an explicit role.
+			expect(list).toHaveAttribute('role', 'list');
+			const rows = within(list).getAllByRole('listitem');
+			// Two columns on screen, one translated line for screen readers.
+			expect(rows.map(spokenText)).toEqual(['Gmail account: Arrives empty', 'Notion: Not checked']);
+			expect(within(rows[0]).getByText('Gmail account')).toBeVisible();
+			expect(within(rows[0]).getByText('Arrives empty')).toBeVisible();
 			expect(
 				screen.getByText(
 					"n8n couldn't check the credentials in Acme Cloud. Some may need setting up after the move.",
@@ -224,6 +257,30 @@ describe('TransferWorkflowDialog', () => {
 			// Choices do not matter while the workflow cannot move.
 			expect(screen.queryByTestId('transfer-turn-off-here')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('transfer-turn-on')).not.toBeInTheDocument();
+		});
+
+		it('shows why Move is off first, and lets only the status line announce it', async () => {
+			await setupReady(
+				{},
+				transferPreflight({
+					nodeTypeCheck: 'checked',
+					missingNodeTypes: ['acme.thing@2'],
+					subWorkflowCalls: [{ id: 'wf-2', name: 'Enrich lead' }],
+					credentials: [{ name: 'Gmail', type: 'gmailOAuth2', status: 'needs-set-up' }],
+				}),
+			);
+
+			const blocked = screen.getByTestId('transfer-cannot-move');
+			// A long "Needs setting up" list cannot push the reason out of view.
+			const [first] = within(details()).getAllByRole('heading');
+			expect(first).toHaveTextContent("Can't move");
+			expect(blocked.compareDocumentPosition(screen.getByTestId('transfer-needs-set-up'))).toBe(
+				Node.DOCUMENT_POSITION_FOLLOWING,
+			);
+			// Notes, not alerts: an alert would interrupt the status line and say the same thing.
+			expect(within(blocked).getAllByRole('note')).toHaveLength(2);
+			expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+			expect(statusLine()).toHaveTextContent("Check done. The workflow can't move to Acme Cloud.");
 		});
 
 		it('lists node types that the linked instance does not have and disables Move', async () => {
@@ -464,8 +521,13 @@ describe('TransferWorkflowDialog', () => {
 
 			await userEvent.click(submitButton());
 
-			expect(await screen.findByTestId('transfer-move-error')).toHaveTextContent(UNREACHABLE);
-			expect(screen.getByRole('alert').closest('[aria-live]')).toBeNull();
+			const error = await screen.findByTestId('transfer-move-error');
+			expect(error).toHaveTextContent(UNREACHABLE);
+			expect(screen.getByRole('alert')).toBe(error);
+			expect(error.closest('[aria-live]')).toBeNull();
+			// The details scroll. The error stays in view, just before the button that failed.
+			expect(details()).not.toContainElement(error);
+			expect(error.compareDocumentPosition(submitButton())).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 			expect(statusLine()).toBeEmptyDOMElement();
 			expect(emitted('update:open')).toBeUndefined();
 			expect(emitted('moved')).toBeUndefined();
@@ -555,8 +617,8 @@ describe('TransferWorkflowDialog', () => {
 			vi.stubGlobal(
 				'ResizeObserver',
 				class {
-					constructor(callback: () => void) {
-						notify.push(callback);
+					constructor(onResize: () => void) {
+						notify.push(onResize);
 					}
 
 					observe() {}
@@ -574,7 +636,7 @@ describe('TransferWorkflowDialog', () => {
 				scrollHeight: { configurable: true, value: 900 },
 				clientHeight: { configurable: true, value: 400 },
 			});
-			for (const callback of notify) callback();
+			for (const onResize of notify) onResize();
 
 			await waitFor(() => expect(details()).toHaveAttribute('tabindex', '0'));
 			await userEvent.tab({ shift: true });
