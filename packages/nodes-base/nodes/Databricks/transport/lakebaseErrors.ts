@@ -27,8 +27,11 @@ export const LAKEBASE_ERROR_HINTS = new Map<string, string>([
 		"Reconnect the Databricks OAuth2 credential. If it is valid, the identity has no Postgres role on this branch: run `SELECT databricks_create_role('your-identity', 'SERVICE_PRINCIPAL')` in the Databricks SQL editor, using 'USER' for a user identity.",
 	],
 	['PGRST100', 'Check the filter column, operator and value.'],
-	['PGRST102', 'Check the filter column, operator and value.'],
-	['PGRST103', 'Check the filter column, operator and value.'],
+	[
+		'PGRST102',
+		'The Data API could not read the request body. Check the column values being written.',
+	],
+	['PGRST103', 'The requested range of rows is not valid. Check the limit and offset.'],
 	[
 		'42501',
 		'The Postgres role is not granted to the Data API. Run `GRANT "your-role" TO authenticator` as the role\'s creator. A project owner cannot use the Data API at all, so use a non-owner identity.',
