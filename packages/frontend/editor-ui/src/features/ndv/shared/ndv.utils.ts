@@ -761,25 +761,30 @@ export function collectParametersByTab(parameters: INodeProperties[], isEmbedded
 	return ret;
 }
 
-/**
- * Declarations that share a name also share one stored value, which carries over when
- * another of them becomes visible. A value only fits declarations of the same shape.
- * `options` and `string` both hold plain strings, so they share one.
- */
-export function getParameterValueShape(parameter: INodeProperties): string {
-	const type = parameter.type === 'options' ? 'string' : parameter.type;
-	return parameter.typeOptions?.multipleValues === true ? `${type}[]` : type;
-}
-
-const PLAIN_PARAMETER_TYPES = new Set<INodeProperties['type']>([
+const SCALAR_PARAMETER_TYPES = new Set<INodeProperties['type']>([
 	'string',
 	'number',
 	'boolean',
 	'options',
-	'multiOptions',
 	'dateTime',
 	'color',
 ]);
+
+const PLAIN_PARAMETER_TYPES = new Set<INodeProperties['type']>([
+	...SCALAR_PARAMETER_TYPES,
+	'multiOptions',
+]);
+
+/**
+ * Declarations that share a name also share one stored value, which carries over when
+ * another of them becomes visible. A value only fits declarations of the same shape.
+ * Single scalar values share one shape, so a string still carries into a number field.
+ */
+function getParameterValueShape(parameter: INodeProperties): string {
+	const isList = parameter.typeOptions?.multipleValues === true;
+	if (SCALAR_PARAMETER_TYPES.has(parameter.type) && !isList) return 'scalar';
+	return isList ? `${parameter.type}[]` : parameter.type;
+}
 
 export function isObjectInPlainParameter(parameter: INodeProperties, value: unknown): boolean {
 	return (

@@ -45,7 +45,6 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
 	getParameterTypeOption,
-	getParameterValueShape,
 	type ParameterOptionsOverrides,
 } from '@/features/ndv/shared/ndv.utils';
 import type { IconName } from '@n8n/design-system';
@@ -1025,9 +1024,8 @@ watch(
 					@click="deleteOption(item.parameter.name)"
 				></N8nIconButton>
 
-				<!-- A new shape gets a fresh input, so no local state of the previous one leaks in -->
 				<ParameterInputFull
-					:key="`${node?.name}:${getParameterValueShape(item.parameter)}`"
+					:key="node?.name"
 					:parameter="item.parameter"
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
 					:external-issues="parameterIssues?.[item.parameter.name]"

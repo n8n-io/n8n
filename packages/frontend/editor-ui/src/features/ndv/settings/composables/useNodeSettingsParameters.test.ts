@@ -282,6 +282,20 @@ describe('useNodeSettingsParameters', () => {
 					default: '',
 					displayOptions: show('create'),
 				},
+				{
+					displayName: 'Limit',
+					name: 'limit',
+					type: 'number',
+					default: 50,
+					displayOptions: show('get'),
+				},
+				{
+					displayName: 'Limit',
+					name: 'limit',
+					type: 'string',
+					default: '',
+					displayOptions: show('create'),
+				},
 				{ displayName: 'Many', name: 'many', type: 'boolean', default: false },
 				{
 					displayName: 'Method',
@@ -382,6 +396,13 @@ describe('useNodeSettingsParameters', () => {
 			change('operation', 'archive');
 
 			expect(node.parameters.channelId).toEqual(picked);
+		});
+
+		it('carries values between number and string parameters', () => {
+			change('limit', 10);
+			change('operation', 'create');
+
+			expect(node.parameters.limit).toBe(10);
 		});
 
 		it('carries values between string and options parameters', () => {
