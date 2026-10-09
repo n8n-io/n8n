@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { type AiBuilderTemporaryWorkflowRepository, User, type WorkflowEntity } from '@n8n/db';
@@ -12,10 +12,12 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { WorkflowProvenanceService } from '../../provenance/workflow-provenance.service';
 import { AutomationInstanceInfo } from '../automation-instance-info';
+import { AutomationPlacement } from '../automation-placement';
 import { AutomationProposalService } from '../automation-proposal.service';
 import { AutomationTemporaryMarker } from '../automation-temporary-marker';
 import { AutomationWorkflowKeeper } from '../automation-workflow-keeper';
 import { AutomationWorkflowPublisher } from '../automation-workflow-publisher';
+import { AutomationWorkflowReader } from '../automation-workflow-reader';
 
 export const SCHEDULE = 'n8n-nodes-base.scheduleTrigger';
 export const MANUAL = 'n8n-nodes-base.manualTrigger';
@@ -85,13 +87,19 @@ export function createAutomationWorld() {
 	const urlService = mock<UrlService>();
 	const logger = mock<Logger>();
 	const globalConfig = mock<GlobalConfig>({ generic: { timezone: INSTANCE_TIMEZONE } });
+	// Off unless a test turns on the linked-instances module.
+	const moduleRegistry = mock<ModuleRegistry>();
 	const marker = new AutomationTemporaryMarker(temporaryWorkflows, provenance, logger);
 	const keeper = new AutomationWorkflowKeeper(workflowService, marker, writeAccess);
 	const publisher = new AutomationWorkflowPublisher(workflowService, collaborationService, logger);
-	const instance = new AutomationInstanceInfo(urlService, globalConfig);
+	const reader = new AutomationWorkflowReader(
+		finder,
+		new AutomationInstanceInfo(urlService, globalConfig),
+	);
+	const placement = new AutomationPlacement(moduleRegistry, logger);
 	Container.set(
 		AutomationProposalService,
-		new AutomationProposalService(finder, keeper, publisher, instance),
+		new AutomationProposalService(reader, keeper, publisher, placement),
 	);
 
 	/** Access as stored: the workflow for the scopes that the user holds, null otherwise. */
@@ -114,6 +122,7 @@ export function createAutomationWorld() {
 	const reset = () => {
 		vi.resetAllMocks();
 		urlService.getInstanceBaseUrl.mockReturnValue(BASE_URL);
+		moduleRegistry.isActive.mockReturnValue(false);
 		writeAccess.isReadOnly.mockReturnValue(false);
 		temporaryWorkflows.existsForWorkflow.mockResolvedValue(true);
 		temporaryWorkflows.findThreadIdForWorkflow.mockResolvedValue(THREAD_ID);
@@ -145,6 +154,7 @@ export function createAutomationWorld() {
 		writeAccess,
 		collaborationService,
 		logger,
+		moduleRegistry,
 		grant,
 		reset,
 		nothingChanged,

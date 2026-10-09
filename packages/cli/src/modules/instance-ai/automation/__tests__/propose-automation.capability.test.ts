@@ -156,6 +156,8 @@ describe('propose_automation on the n8n Assistant', () => {
 			expect(tool.description).toContain('Do not call it for a one-off job');
 			expect(tool.description).toContain('The user answers on a card');
 			expect(tool.description).not.toContain('Set activate to true');
+			// The card links to a copy in a linked instance, so the reply needs no address.
+			expect(tool.description).toContain('do not repeat its address');
 		});
 	});
 
@@ -170,18 +172,22 @@ describe('propose_automation on the n8n Assistant', () => {
 				workflowId: 'wf-1',
 				versionId: 'v-1',
 				title: 'Morning digest',
+				workflowName: 'Digest builder',
 				why: ['You asked for it every weekday'],
-				trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: INSTANCE_TIMEZONE },
+				trigger: {
+					kind: 'schedule',
+					cron: '0 8 * * 1-5',
+					timezone: INSTANCE_TIMEZONE,
+					timezoneIsDefault: true,
+				},
 				steps: [
 					{ name: 'Every weekday', type: 'n8n-nodes-base.scheduleTrigger' },
 					{ name: 'Send digest', type: 'n8n-nodes-base.slack' },
 				],
 				stepCount: 2,
-				recommended: {
-					targetId: 'local',
-					kind: 'local',
-					reasons: ['always-on-trigger', 'no-cloud-linked'],
-				},
+				// A run that does not say whether the chat is shared lists no links, so the card
+				// cannot say whether the user has a linked cloud.
+				recommended: { targetId: 'local', kind: 'local', reasons: ['always-on-trigger'] },
 				targets: [{ id: 'local', kind: 'local', status: 'online' }],
 				visibleTo: { projectId: 'p-1', projectName: 'Ops', projectType: 'team' },
 				sharedWith: { projects: [], total: 0 },
@@ -542,6 +548,29 @@ describe('propose_automation on the n8n Assistant', () => {
 			['an activation that is not true', { approved: true, values: { activate: 'true' } }],
 		])('does not turn the workflow on for an answer with %s', (_label, answer) => {
 			expect(applyAutomationAnswer(args, answer, checkpoint).activate).toBe(false);
+		});
+
+		it('takes the target from the answer, and keeps it here without a chosen target', () => {
+			const linkId = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
+
+			expect(
+				applyAutomationAnswer(
+					{ ...args, target: 'local' },
+					{ approved: true, values: { target: linkId, activate: true } },
+					checkpoint,
+				).target,
+			).toBe(linkId);
+			expect(
+				applyAutomationAnswer(
+					{ ...args, target: linkId },
+					{ approved: true, values: { activate: true } },
+					checkpoint,
+				).target,
+			).toBe('local');
+			expect(
+				applyAutomationAnswer(args, { approved: true, values: { target: true } }, checkpoint)
+					.target,
+			).toBe('local');
 		});
 
 		it('fails for a checkpoint without the version of the card', () => {

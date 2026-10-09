@@ -2,8 +2,9 @@ import { z } from 'zod';
 
 import { projectTypeSchema } from './project.schema';
 import { StrictTimeZoneSchema } from './timezone.schema';
+import { LINKED_INSTANCE_STATUSES } from '../dto/linked-instances/linked-instance.schema';
 
-/** The run target of this n8n instance. Only this target is offered for now. */
+/** The run target of this n8n instance. A linked instance is named by the id of its link. */
 export const AUTOMATION_LOCAL_TARGET_ID = 'local';
 
 export const AUTOMATION_PROPOSAL_LIMITS = {
@@ -45,13 +46,19 @@ export type AutomationTriggerKind = z.infer<typeof automationTriggerKindSchema>;
 
 const runTargetKindSchema = z.enum(['local', 'linked']);
 
-/** A place where the automation can run. Mirrors `RunTargetOption` of `@n8n/instance-ai`. */
+/**
+ * A place where the automation can run. Mirrors `RunTargetOption` of `@n8n/instance-ai`, which
+ * has no `mcp-disabled`: for the recommendation, that status counts as `offline`.
+ *
+ * The card holds no name and no address of a link. The chat stores the card, and the owner can
+ * share the chat later, so the frontend names a link from the viewer's own list of links.
+ */
 export const automationRunTargetSchema = z.object({
+	/** `AUTOMATION_LOCAL_TARGET_ID`, or the id of a link of the user. */
 	id: z.string().min(1),
 	kind: runTargetKindSchema,
-	/** Display name of a linked instance. The frontend names the local target. */
-	label: z.string().optional(),
-	status: z.enum(['online', 'offline', 'unauthorised', 'unknown']),
+	/** The status that the last check of the link stored. The local target is always `online`. */
+	status: z.enum(LINKED_INSTANCE_STATUSES),
 });
 export type AutomationRunTarget = z.infer<typeof automationRunTargetSchema>;
 
@@ -80,6 +87,12 @@ export const automationProposalCardSchema = z.object({
 	 */
 	versionId: z.string().min(1),
 	title: z.string().min(1).max(AUTOMATION_PROPOSAL_LIMITS.titleLength),
+	/**
+	 * The stored name of the workflow that the answer acts on. The server reads it, so the card
+	 * names the workflow when the `title` of the model differs. Absent on cards stored before this
+	 * field.
+	 */
+	workflowName: z.string().optional(),
 	why: z
 		.array(z.string().min(1).max(AUTOMATION_PROPOSAL_LIMITS.whyLength))
 		.max(AUTOMATION_PROPOSAL_LIMITS.whyItems),
@@ -96,6 +109,11 @@ export const automationProposalCardSchema = z.object({
 		 * default zone of the instance. Present together with `cron`.
 		 */
 		timezone: StrictTimeZoneSchema.optional(),
+		/**
+		 * True when `timezone` is the default zone of this instance, because the workflow settings
+		 * set no zone. A linked instance then runs the schedule in its own default zone.
+		 */
+		timezoneIsDefault: z.boolean().optional(),
 	}),
 	/**
 	 * The first running nodes of the workflow in their order, for the node icons. Sticky notes and
@@ -140,17 +158,60 @@ export const automationProposalCardSchema = z.object({
 });
 export type AutomationProposalCard = z.infer<typeof automationProposalCardSchema>;
 
+/** Where a kept automation is. */
+export const automationPlaceSchema = z.object({
+	/** `AUTOMATION_LOCAL_TARGET_ID`, or the id of the link. */
+	targetId: z.string().min(1),
+	kind: runTargetKindSchema,
+	/**
+	 * Display name of a linked instance, for the model. The frontend names a link from the
+	 * viewer's own list of links, as for the card.
+	 */
+	name: z.string().optional(),
+});
+export type AutomationPlace = z.infer<typeof automationPlaceSchema>;
+
+/**
+ * What went other than the user asked when the workflow went to a linked instance. `error` says
+ * the same in words, for the model. The frontend reads these values, never the words.
+ * - `not-on`: the move asked to turn on the copy there, and the new version did not go live.
+ * - `not-ready`: a version of the copy is live there, and the new version needs set-up there.
+ *   After "Turn it on" the live version is the new one. After a save it can be an earlier one.
+ * - `kept-on-here`: the workflow here stays on until the new version runs there as set up.
+ * - `still-on-here`: the copy runs there and the workflow here still runs too, so it runs twice.
+ * - `not-kept-here`: the copy is there, but n8n could not keep the workflow here.
+ */
+export const automationLinkedProblemSchema = z.enum([
+	'not-on',
+	'not-ready',
+	'kept-on-here',
+	'still-on-here',
+	'not-kept-here',
+]);
+export type AutomationLinkedProblem = z.infer<typeof automationLinkedProblemSchema>;
+
 /** The result of `propose_automation` after the workflow was kept. */
 export const automationProposalResultSchema = z.object({
+	/** The workflow here, or the copy in the linked instance of `place`. */
 	workflowId: z.string(),
-	/** Link that opens the workflow in the editor. */
+	/** Link that opens the workflow in the editor of the instance that runs it. */
 	url: z.string(),
 	/** True when a version of the workflow is live. */
 	active: z.boolean(),
 	kept: z.literal(true),
 	/** Input that the tool ignored, for example a cron expression that is not valid. */
 	warnings: z.array(z.string()).optional(),
-	/** Set when the workflow was kept, but could not be turned on. */
+	/**
+	 * Set when the workflow was kept, but could not be turned on. For a linked instance, set for
+	 * each problem in `problems`.
+	 */
 	error: z.string().optional(),
+	/**
+	 * Set when the workflow went to a linked instance. Absent: it is in this n8n instance. Optional,
+	 * so that MCP clients of this instance get the same result as before.
+	 */
+	place: automationPlaceSchema.optional(),
+	/** The problems of a move to a linked instance, in the order of `error`. Absent: none. */
+	problems: z.array(automationLinkedProblemSchema).optional(),
 });
 export type AutomationProposalResult = z.infer<typeof automationProposalResultSchema>;

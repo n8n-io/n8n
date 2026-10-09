@@ -39,8 +39,8 @@ export interface RunTargetOption {
 	disabled: boolean;
 }
 
-/** The label and the hint of a link that cannot take a chat now. */
-const UNAVAILABLE_LINK: Record<
+/** The label and the hint of a link that cannot take a chat or an automation now. */
+export const UNAVAILABLE_LINK: Record<
 	Exclude<LinkedInstanceStatus, 'online'>,
 	{ label: RunTargetTextKey; hint: RunTargetTextKey }
 > = {

@@ -1,0 +1,204 @@
+import { defineComponent, h, nextTick, ref } from 'vue';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestingPinia } from '@pinia/testing';
+import { flushPromises, mount } from '@vue/test-utils';
+import type { LinkedInstanceTransferPreflight } from '@n8n/api-types';
+import { useUsersStore } from '@n8n/stores/users.store';
+
+import { fetchTransferPreflight } from '@/features/linkedInstances/transfer/transfer.api';
+import {
+	clearAutomationPreflights,
+	MAX_STORED_PREFLIGHTS,
+	useAutomationPreflight,
+	type AutomationPreflightRequest,
+} from '../useAutomationPreflight';
+
+vi.mock('@/features/linkedInstances/transfer/transfer.api', () => ({
+	fetchTransferPreflight: vi.fn(),
+}));
+
+const preflightMock = vi.mocked(fetchTransferPreflight);
+const CLOUD = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
+const LAB = '0b9a8c7d-6e5f-4a3b-8c2d-1e0f9a8b7c6d';
+
+function preflight(nodes: number): LinkedInstanceTransferPreflight {
+	return {
+		workflowName: 'Digest builder',
+		moves: { nodes },
+		nodeTypeCheck: 'unknown',
+		missingNodeTypes: [],
+		credentials: [],
+		targetProject: null,
+		subWorkflowCalls: [],
+	};
+}
+
+const on = (linkId: string, versionId = 'v-1'): AutomationPreflightRequest => ({
+	linkId,
+	workflowId: 'wf-1',
+	versionId,
+});
+
+/** Mounts the composable, so that its watcher runs as it does in the card. */
+function setup(initial: AutomationPreflightRequest | undefined) {
+	const request = ref(initial);
+	let result!: ReturnType<typeof useAutomationPreflight>;
+	mount(
+		defineComponent({
+			setup() {
+				result = useAutomationPreflight(request);
+				return () => h('div');
+			},
+		}),
+	);
+	return { request, result };
+}
+
+/** The node count of a finished check, or the state of a check without one. */
+function nodesOf(check: ReturnType<typeof useAutomationPreflight>['check']['value']) {
+	return typeof check === 'string' ? check : check.nodeCount;
+}
+
+describe('useAutomationPreflight', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		useUsersStore().currentUserId = 'user-1';
+		clearAutomationPreflights();
+		preflightMock.mockReset();
+	});
+
+	it('stays idle without a link, and checks nothing', () => {
+		const { result } = setup(undefined);
+
+		expect(result.check.value).toBe('idle');
+		expect(preflightMock).not.toHaveBeenCalled();
+	});
+
+	it('keeps only the answer of the latest link when the user changes it during a check', async () => {
+		let answerCloud!: (value: LinkedInstanceTransferPreflight) => void;
+		preflightMock.mockImplementation(async (_context, linkId) =>
+			linkId === CLOUD ? await new Promise((resolve) => (answerCloud = resolve)) : preflight(5),
+		);
+		const { request, result } = setup(on(CLOUD));
+
+		request.value = on(LAB);
+		await flushPromises();
+		answerCloud(preflight(1));
+		await flushPromises();
+
+		expect(nodesOf(result.check.value)).toBe(5);
+	});
+
+	it('goes back to idle when the link goes away, and drops the late answer', async () => {
+		let answer!: (value: LinkedInstanceTransferPreflight) => void;
+		preflightMock.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+		const { request, result } = setup(on(CLOUD));
+		expect(result.check.value).toBe('checking');
+
+		request.value = undefined;
+		await nextTick();
+		answer(preflight(1));
+		await flushPromises();
+
+		expect(result.check.value).toBe('idle');
+	});
+
+	it('checks a new version of the workflow again, and asks again on request', async () => {
+		preflightMock.mockResolvedValueOnce(preflight(1)).mockResolvedValueOnce(preflight(2));
+		preflightMock.mockResolvedValueOnce(preflight(3));
+		const { request, result } = setup(on(CLOUD));
+		await flushPromises();
+
+		request.value = on(CLOUD, 'v-2');
+		await flushPromises();
+		expect(nodesOf(result.check.value)).toBe(2);
+
+		result.recheck();
+		await flushPromises();
+		expect(nodesOf(result.check.value)).toBe(3);
+		expect(preflightMock).toHaveBeenCalledTimes(3);
+	});
+
+	it('keeps the answer of a new check in the store when the answer of an earlier check comes late', async () => {
+		let answerFirst!: (value: LinkedInstanceTransferPreflight) => void;
+		preflightMock
+			.mockImplementationOnce(async () => await new Promise((resolve) => (answerFirst = resolve)))
+			.mockResolvedValueOnce(preflight(2));
+		const first = setup(on(CLOUD));
+
+		first.result.recheck();
+		await flushPromises();
+		expect(nodesOf(first.result.check.value)).toBe(2);
+		answerFirst(preflight(1));
+		await flushPromises();
+
+		// The card shows the new answer, and so does a card that reads the store later.
+		expect(nodesOf(first.result.check.value)).toBe(2);
+		const later = setup(on(CLOUD));
+		expect(nodesOf(later.result.check.value)).toBe(2);
+		expect(preflightMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('stores the late answer of a check that a change of link stopped, for when the link comes back', async () => {
+		let answerCloud!: (value: LinkedInstanceTransferPreflight) => void;
+		preflightMock.mockImplementation(async (_context, linkId) =>
+			linkId === CLOUD ? await new Promise((resolve) => (answerCloud = resolve)) : preflight(5),
+		);
+		const { request, result } = setup(on(CLOUD));
+
+		request.value = on(LAB);
+		await flushPromises();
+		answerCloud(preflight(1));
+		await flushPromises();
+		request.value = on(CLOUD);
+		await flushPromises();
+
+		expect(nodesOf(result.check.value)).toBe(1);
+		expect(preflightMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('reuses a finished check of the same version, but not a failed one', async () => {
+		preflightMock.mockRejectedValueOnce(new Error('offline')).mockResolvedValue(preflight(4));
+		const first = setup(on(CLOUD));
+		await flushPromises();
+		expect(first.result.check.value).toBe('failed');
+
+		const second = setup(on(CLOUD));
+		await flushPromises();
+		const third = setup(on(CLOUD));
+
+		expect(nodesOf(second.result.check.value)).toBe(4);
+		expect(nodesOf(third.result.check.value)).toBe(4);
+		expect(preflightMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('checks again for another user, who must not read the check of the first one', async () => {
+		preflightMock.mockResolvedValueOnce(preflight(1)).mockResolvedValue(preflight(2));
+		const { result } = setup(on(CLOUD));
+		await flushPromises();
+		expect(nodesOf(result.check.value)).toBe(1);
+
+		useUsersStore().currentUserId = 'user-2';
+		await flushPromises();
+
+		expect(nodesOf(result.check.value)).toBe(2);
+		expect(preflightMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps only the latest checks, so that a long chat does not grow the store', async () => {
+		preflightMock.mockImplementation(async () => preflight(1));
+		for (let version = 0; version <= MAX_STORED_PREFLIGHTS; version++) {
+			setup(on(CLOUD, `v-${version}`));
+		}
+		await flushPromises();
+		expect(preflightMock).toHaveBeenCalledTimes(MAX_STORED_PREFLIGHTS + 1);
+
+		setup(on(CLOUD, `v-${MAX_STORED_PREFLIGHTS}`));
+		setup(on(CLOUD, 'v-0'));
+		await flushPromises();
+
+		// The newest check is still there; the oldest went to make room.
+		expect(preflightMock).toHaveBeenCalledTimes(MAX_STORED_PREFLIGHTS + 2);
+		expect(preflightMock.mock.lastCall?.[2]).toEqual({ workflowId: 'wf-1' });
+	});
+});

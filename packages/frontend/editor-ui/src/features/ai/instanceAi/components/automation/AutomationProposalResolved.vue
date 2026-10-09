@@ -2,23 +2,42 @@
 /**
  * An answered automation card: one line that says what happened, and a link to the workflow
  * unless nothing was kept ("Not now", or a refusal of the server). The answer gives the first
- * state. The result of the tool step, when it arrives, says if the workflow is really on.
+ * state. The result of the tool step, when it arrives, says if the workflow is really on. A copy
+ * in a linked instance opens there, in a new tab, for a viewer who has that link.
  */
 import { computed, onMounted, useId, useTemplateRef } from 'vue';
 import { I18nT } from 'vue-i18n';
-import type { AutomationProposalCard } from '@n8n/api-types';
-import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText, type IconName } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nCard,
+	N8nExternalLink,
+	N8nIcon,
+	N8nLink,
+	N8nText,
+	type IconName,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { PROPOSE_AUTOMATION_TOOL_NAME } from '@/features/ai/shared/agentsChat/automationResult';
 import { useOptionalThread } from '../../instanceAi.store';
 import { placeOf, type AutomationAction } from './automationProposal';
-import { proposalOutcome, resolvedStatus, type AutomationResolvedTone } from './automationResolved';
+import {
+	proposalOutcome,
+	resolvedLink,
+	resolvedName,
+	resolvedStatus,
+	type AutomationResolvedTone,
+} from './automationResolved';
+import { isViewerLinkAnswer } from './automationTargets';
 import { placeName, triggerText } from './automationText';
+import type { ViewedProposal } from './automationViewerLinks';
 
 const props = defineProps<{
-	proposal: AutomationProposalCard;
+	/** The card, with the names of the viewer's own links. */
+	proposal: ViewedProposal;
 	action: AutomationAction;
+	/** The place that the answer chose. Without it, the default answer target. */
+	targetId?: string;
 	/** The tool call behind the card. Without it, the line shows what the answer asked for. */
 	toolCallId?: string;
 	/** True when the user answered in this card, so focus moves here from the removed buttons. */
@@ -47,9 +66,28 @@ const outcome = computed(() =>
 		: undefined,
 );
 
-const status = computed(() => resolvedStatus(props.action, props.proposal, outcome.value));
-const trigger = computed(() => triggerText(props.proposal.trigger, 'clause'));
-const place = computed(() => placeName(placeOf(props.proposal)));
+const placeOfAnswer = computed(() => placeOf(props.proposal, props.targetId));
+const status = computed(() =>
+	resolvedStatus(props.action, props.proposal, outcome.value, placeOfAnswer.value.linked),
+);
+const link = computed(() =>
+	resolvedLink(status.value, outcome.value, {
+		linked: placeOfAnswer.value.linked,
+		ownLink: isViewerLinkAnswer(props.proposal, props.targetId),
+	}),
+);
+const note = computed(() =>
+	status.value.noteKey === undefined ? undefined : i18n.baseText(status.value.noteKey),
+);
+const place = computed(() => placeName(placeOfAnswer.value));
+const name = computed(() => resolvedName(props.proposal, placeOfAnswer.value.linked));
+const trigger = computed(() =>
+	triggerText(
+		props.proposal.trigger,
+		'clause',
+		placeOfAnswer.value.linked ? place.value : undefined,
+	),
+);
 const workflowRoute = computed(() => ({
 	name: VIEWS.WORKFLOW,
 	params: { workflowId: props.proposal.workflowId },
@@ -92,15 +130,31 @@ onMounted(() => {
 				data-test-id="automation-proposal-resolved-status"
 			>
 				<I18nT :keypath="status.messageKey" scope="global">
-					<template #title>{{ proposal.title }}</template>
+					<template #title>{{ name }}</template>
 					<template #trigger>{{ trigger }}</template>
 					<template #place>
 						<N8nBadge variant="outline" :class="$style.chip" :title="place">{{ place }}</N8nBadge>
 					</template>
 				</I18nT>
+				<!-- The compiler drops a leading space of a text node, so the space is in the expression. -->
+				<template v-if="note">{{ ` ${note}` }}</template>
 			</N8nText>
+			<N8nExternalLink
+				v-if="link?.kind === 'remote'"
+				:href="link.url"
+				size="small"
+				:class="$style.link"
+				:aria-label="
+					i18n.baseText('instanceAi.automation.resolved.openInLabel', {
+						interpolate: { title: name, place },
+					})
+				"
+				data-test-id="automation-proposal-open-remote"
+			>
+				{{ i18n.baseText('instanceAi.automation.resolved.openIn', { interpolate: { place } }) }}
+			</N8nExternalLink>
 			<N8nLink
-				v-if="status.showsLink"
+				v-else-if="link?.kind === 'local'"
 				:to="workflowRoute"
 				size="small"
 				:class="$style.link"

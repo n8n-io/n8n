@@ -13,6 +13,7 @@ import {
 	runningNodes,
 	sharedProjectsOf,
 } from '../automation-card';
+import { LOCAL_PLACES } from '../automation-places';
 import type { AutomationNode, AutomationTrigger } from '../automation-trigger';
 
 const SCHEDULE = 'n8n-nodes-base.scheduleTrigger';
@@ -30,6 +31,7 @@ const teamProject = { id: 'project-ops', name: 'Ops', type: 'team' as const };
 
 const workflow = (overrides: Partial<ProposalWorkflow> = {}): ProposalWorkflow => ({
 	id: 'wf-1',
+	name: 'Digest builder',
 	nodes: [
 		{ name: 'Every weekday', type: SCHEDULE },
 		{ name: 'Note', type: STICKY },
@@ -58,6 +60,7 @@ const cardInput = (overrides: Partial<AutomationCardInput> = {}): AutomationCard
 		kind: 'local',
 		reasons: ['always-on-trigger', 'no-cloud-linked'],
 	},
+	places: LOCAL_PLACES,
 	canActivate: true,
 	...overrides,
 });
@@ -246,6 +249,7 @@ describe('buildAutomationCard', () => {
 			workflowId: 'wf-1',
 			versionId: 'v-2',
 			title: 'Morning digest',
+			workflowName: 'Digest builder',
 			why: ['You asked for it every weekday'],
 			trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: 'Europe/London' },
 			steps: [
@@ -293,6 +297,48 @@ describe('buildAutomationCard', () => {
 			expect(card.hasUnpublishedChanges).toBe(hasUnpublishedChanges);
 		},
 	);
+
+	it('lists the places and offers the ones of the places, as copies', () => {
+		const places = {
+			targets: [
+				{ id: 'local', kind: 'local' as const, status: 'online' as const },
+				{ id: 'link-1', kind: 'linked' as const, label: 'Cloud', status: 'online' as const },
+				{ id: 'link-2', kind: 'linked' as const, label: 'Lab', status: 'offline' as const },
+			],
+			offered: ['local', 'link-1'],
+			noLinks: false,
+		};
+
+		const card = buildAutomationCard(
+			cardInput({
+				places,
+				recommendation: { targetId: 'link-1', kind: 'linked', reasons: ['always-on-trigger'] },
+			}),
+		);
+
+		expect(card.targets).toEqual(places.targets);
+		expect(card.targets[1]).not.toBe(places.targets[1]);
+		expect(card.offered).toEqual({ target: ['local', 'link-1'], activate: [true, false] });
+		expect(card.recommended).toEqual({
+			targetId: 'link-1',
+			kind: 'linked',
+			reasons: ['always-on-trigger'],
+		});
+		card.offered.target.push('changed');
+		expect(places.offered).toEqual(['local', 'link-1']);
+	});
+
+	it('names the stored workflow next to a title of the model that differs from it', () => {
+		const card = buildAutomationCard(
+			cardInput({
+				workflow: workflow({ name: 'Payroll export' }),
+				request: { title: 'Morning digest', why: [] },
+			}),
+		);
+
+		expect(card.title).toBe('Morning digest');
+		expect(card.workflowName).toBe('Payroll export');
+	});
 
 	it('says that keeping an archived workflow restores it', () => {
 		const card = buildAutomationCard(cardInput({ workflow: workflow({ isArchived: true }) }));
@@ -368,12 +414,13 @@ describe('buildAutomationCard', () => {
 					),
 					reasons: fc.array(reasonArb, { minLength: 1, maxLength: 3 }),
 					sharings: fc.array(sharingArb, { maxLength: 15 }),
+					name: fc.string({ maxLength: 128 }),
 				}),
-				({ nodes, canActivate, schedule, reasons, sharings }) => {
+				({ nodes, canActivate, schedule, reasons, sharings, name }) => {
 					const shared = [{ role: 'workflow:owner', project: teamProject }, ...sharings];
 					const card = buildAutomationCard(
 						cardInput({
-							workflow: workflow({ nodes, shared }),
+							workflow: workflow({ nodes, shared, name }),
 							schedule,
 							canActivate,
 							recommendation: { targetId: 'local', kind: 'local', reasons },
@@ -385,6 +432,7 @@ describe('buildAutomationCard', () => {
 					expect(card.offered.activate).toContain(false);
 					expect(card.stepCount).toBeGreaterThanOrEqual(card.steps.length);
 					expect(card.sharedWith.total).toBe(sharings.length);
+					expect(card.workflowName).toBe(name);
 				},
 			),
 			{ numRuns: 300 },

@@ -8,6 +8,7 @@ import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	type InstanceAiPermissions,
 } from '@n8n/api-types';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { UrlService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { User, type WorkflowEntity } from '@n8n/db';
@@ -22,9 +23,11 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { AutomationBlockedError } from '../automation-errors';
 import { AutomationInstanceInfo } from '../automation-instance-info';
+import { AutomationPlacement } from '../automation-placement';
 import { AutomationProposalService } from '../automation-proposal.service';
 import type { AutomationWorkflowKeeper } from '../automation-workflow-keeper';
 import type { AutomationWorkflowPublisher } from '../automation-workflow-publisher';
+import { AutomationWorkflowReader } from '../automation-workflow-reader';
 
 const SCHEDULE = 'n8n-nodes-base.scheduleTrigger';
 const MANUAL = 'n8n-nodes-base.manualTrigger';
@@ -112,8 +115,13 @@ describe('AutomationProposalService', () => {
 	const publisher = mock<AutomationWorkflowPublisher>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({ generic: { timezone: INSTANCE_ZONE } });
-	const instance = new AutomationInstanceInfo(urlService, globalConfig);
-	const service = new AutomationProposalService(finder, keeper, publisher, instance);
+	const reader = new AutomationWorkflowReader(
+		finder,
+		new AutomationInstanceInfo(urlService, globalConfig),
+	);
+	// The linked-instances module is off, so every card offers only this instance.
+	const placement = new AutomationPlacement(mock<ModuleRegistry>(), mock<Logger>());
+	const service = new AutomationProposalService(reader, keeper, publisher, placement);
 	const assistant: CapabilityContext = { user, surface: 'assistant' };
 
 	/** Access as stored: the workflow for the scopes that the user holds, null otherwise. */
@@ -161,13 +169,11 @@ describe('AutomationProposalService', () => {
 				workflowId: 'wf 1',
 				versionId: 'v-2',
 				title: 'Morning digest',
+				workflowName: 'Digest builder',
 				why: ['Every weekday'],
 				trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: INSTANCE_ZONE },
-				recommended: {
-					targetId: 'local',
-					kind: 'local',
-					reasons: ['always-on-trigger', 'no-cloud-linked'],
-				},
+				// The module is off, so the card cannot say whether the user has a linked cloud.
+				recommended: { targetId: 'local', kind: 'local', reasons: ['always-on-trigger'] },
 				visibleTo: { projectId: 'p-1', projectName: 'Ops', projectType: 'team' },
 				archived: false,
 				active: false,
@@ -188,6 +194,7 @@ describe('AutomationProposalService', () => {
 				kind: 'schedule',
 				cron: '0 7 * * *',
 				timezone: INSTANCE_ZONE,
+				timezoneIsDefault: true,
 			});
 		});
 
@@ -222,7 +229,12 @@ describe('AutomationProposalService', () => {
 
 				const { card } = await service.propose({ ...request, cron: given }, assistant);
 
-				expect(card.trigger).toEqual({ kind: 'schedule', cron: shown, timezone: INSTANCE_ZONE });
+				expect(card.trigger).toEqual({
+					kind: 'schedule',
+					cron: shown,
+					timezone: INSTANCE_ZONE,
+					timezoneIsDefault: true,
+				});
 			},
 		);
 
@@ -332,7 +344,7 @@ describe('AutomationProposalService', () => {
 
 			const { card } = await service.propose(request, assistant);
 
-			expect(card.recommended.reasons).toEqual(['always-on-trigger', 'no-cloud-linked']);
+			expect(card.recommended.reasons).toEqual(['always-on-trigger']);
 		});
 
 		it('refuses a workflow that the user cannot update', async () => {

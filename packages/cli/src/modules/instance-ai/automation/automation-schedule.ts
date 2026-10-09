@@ -20,8 +20,12 @@ export type ScheduleWorkflow = { nodes: readonly ScheduleNode[]; settings?: unkn
 /** Why the card shows no schedule. */
 export type ScheduleGap = 'not-schedule' | 'other-starters' | 'unreadable' | 'invalid-timezone';
 
-/** A schedule that the card shows: the cron and the time zone that n8n runs it in. */
-export type ShownSchedule = { cron: string; timezone: string };
+/**
+ * A schedule that the card shows: the cron and the time zone that n8n runs it in.
+ * `timezoneIsDefault` says that the zone is the default zone of this instance, because the
+ * workflow settings set none. A linked instance then runs the schedule in its own default zone.
+ */
+export type ShownSchedule = { cron: string; timezone: string; timezoneIsDefault?: true };
 
 /** What the server reads from the workflow: the schedule, or why the card shows none. */
 export type TriggerSchedule = ShownSchedule | { gap: ScheduleGap };
@@ -68,16 +72,6 @@ function normaliseCron(expression: string): string {
 export function isFiveFieldCron(expression: string): boolean {
 	// The validator also accepts six fields, with seconds first. The card shows five only.
 	return expression.split(' ').length === 5 && isValidCronExpression(expression);
-}
-
-/**
- * The cron when the card can show it. A cron with seconds, an expression (text that starts with
- * "=") and text that is not a cron fail the check, and so does a cron that the card cannot hold.
- */
-function cardCron(expression: string): string | undefined {
-	const cron = normaliseCron(expression);
-	const fits = cron.length <= AUTOMATION_PROPOSAL_LIMITS.cronLength && isFiveFieldCron(cron);
-	return fits ? cron : undefined;
 }
 
 /** A cron field for each value, or for each `step` values. */
@@ -135,8 +129,14 @@ function readTriggerCron(
 	const starters = nodes.filter((node) => node.disabled !== true && canStartAutomation(node.type));
 	if (starters.length > 1) return { gap: 'other-starters' };
 	const raw = cronOfScheduleNode(nodes.find((node) => node.name === trigger.node?.name));
-	const cron = raw === undefined ? undefined : cardCron(raw);
-	return cron === undefined ? { gap: 'unreadable' } : { cron };
+	// The card shows a cron only when it can hold it and it has five fields that n8n accepts. A
+	// cron with seconds, an expression (text that starts with "=") and text that is not a cron fail.
+	const cron = normaliseCron(raw ?? '');
+	const fits =
+		raw !== undefined &&
+		cron.length <= AUTOMATION_PROPOSAL_LIMITS.cronLength &&
+		isFiveFieldCron(cron);
+	return fits ? { cron } : { gap: 'unreadable' };
 }
 
 /**
@@ -154,15 +154,20 @@ export function triggerCronOf(
 }
 
 /**
+ * The zone that the workflow settings set, or undefined when they set none. As for the
+ * scheduler, an empty zone and "DEFAULT" mean the default zone of the instance.
+ */
+function ownTimezoneOf(settings: unknown): string | undefined {
+	const stored = isRecord(settings) ? settings.timezone : undefined;
+	return typeof stored === 'string' && stored !== '' && stored !== 'DEFAULT' ? stored : undefined;
+}
+
+/**
  * The time zone that n8n runs the schedule in: the zone of the workflow settings, else the
- * default zone of the instance. As for the scheduler, an empty zone and "DEFAULT" mean the
- * default zone. Undefined for a zone that is not valid.
+ * default zone of the instance. Undefined for a zone that is not valid.
  */
 export function scheduleTimezoneOf(settings: unknown, defaultTimezone: string): string | undefined {
-	const stored = isRecord(settings) ? settings.timezone : undefined;
-	const zone =
-		typeof stored === 'string' && stored !== '' && stored !== 'DEFAULT' ? stored : defaultTimezone;
-	const parsed = StrictTimeZoneSchema.safeParse(zone);
+	const parsed = StrictTimeZoneSchema.safeParse(ownTimezoneOf(settings) ?? defaultTimezone);
 	return parsed.success ? parsed.data : undefined;
 }
 
@@ -180,7 +185,9 @@ export function readTriggerSchedule(
 	const read = readTriggerCron(workflow.nodes, trigger);
 	if (!('cron' in read)) return read;
 	const timezone = scheduleTimezoneOf(workflow.settings, defaultTimezone);
-	return timezone === undefined ? { gap: 'invalid-timezone' } : { cron: read.cron, timezone };
+	if (timezone === undefined) return { gap: 'invalid-timezone' };
+	const isDefault = ownTimezoneOf(workflow.settings) === undefined;
+	return { cron: read.cron, timezone, ...(isDefault && { timezoneIsDefault: true }) };
 }
 
 /** Why the card does not show the cron of the model, for each gap. */

@@ -25,7 +25,11 @@ describe('run-target recommendation and the automation card schema', () => {
 	it('use the same target kinds and statuses', () => {
 		type CardTarget = z.infer<typeof automationRunTargetSchema>;
 		expectTypeOf<RunTargetOption['kind']>().toEqualTypeOf<CardTarget['kind']>();
-		expectTypeOf<RunTargetOption['status']>().toEqualTypeOf<CardTarget['status']>();
+		// The card shows the stored status of a link. The recommendation counts a link with MCP
+		// turned off as offline, so it has no status of its own for it.
+		expectTypeOf<RunTargetOption['status']>().toEqualTypeOf<
+			Exclude<CardTarget['status'], 'mcp-disabled'>
+		>();
 	});
 
 	it('can put every recommendation on the card', () => {

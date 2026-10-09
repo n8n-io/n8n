@@ -17,11 +17,13 @@ import {
 	decisionFor,
 	hiddenStepCount,
 	liveStatusKey,
+	LINKED_REASON_KEY,
 	LOCAL_CAVEAT_KEY,
 	placeOf,
 	placeReasonKey,
 	sharedProjectCount,
 	showsLocalCaveat,
+	shownWorkflowName,
 	timezoneLabel,
 	titleKey,
 	triggerLineKey,
@@ -75,6 +77,44 @@ describe('triggerLineKey', () => {
 			key: 'instanceAi.automation.trigger.cron',
 			cron: '*/15 * * * *',
 			fallbackKey: 'instanceAi.automation.trigger.schedule',
+		});
+	});
+
+	describe('in a linked place', () => {
+		const defaultZone = {
+			kind: 'schedule',
+			cron: '0 8 * * 1-5',
+			timezone: 'Europe/London',
+			timezoneIsDefault: true,
+		} as const;
+
+		it('names the zone of the place for a schedule without a zone of its own', () => {
+			expect(triggerLineKey(defaultZone, 'line', true)).toEqual({
+				key: 'instanceAi.automation.trigger.cronInPlaceZone',
+				cron: '0 8 * * 1-5',
+				inPlaceZone: true,
+				fallbackKey: 'instanceAi.automation.trigger.schedule',
+			});
+			expect(triggerLineKey(defaultZone, 'clause', true)).toMatchObject({
+				key: 'instanceAi.automation.resolved.trigger.cronInPlaceZone',
+				inPlaceZone: true,
+			});
+		});
+
+		it('keeps the zone of the workflow settings, which the place runs it in too', () => {
+			const ownZone = { ...defaultZone, timezoneIsDefault: undefined };
+
+			expect(triggerLineKey(ownZone, 'line', true)).toMatchObject({
+				key: 'instanceAi.automation.trigger.cronWithTimezone',
+				timezone: 'Europe/London',
+			});
+		});
+
+		it('keeps the zone of this instance for a schedule that runs here', () => {
+			expect(triggerLineKey(defaultZone, 'line', false)).toMatchObject({
+				key: 'instanceAi.automation.trigger.cronWithTimezone',
+				timezone: 'Europe/London',
+			});
 		});
 	});
 });
@@ -212,11 +252,13 @@ describe('placeOf', () => {
 		expect(placeOf(makeProposal({ ...linked, targets: [CLOUD_TARGET] }))).toEqual({
 			linked: true,
 			linkedLabel: 'Team cloud',
+			reasonKey: LINKED_REASON_KEY,
 			caveat: false,
 		});
 		for (const label of [undefined, '', '   ']) {
 			expect(placeOf(makeProposal({ ...linked, targets: [{ ...CLOUD_TARGET, label }] }))).toEqual({
 				linked: true,
+				reasonKey: LINKED_REASON_KEY,
 				caveat: false,
 			});
 		}
@@ -233,12 +275,17 @@ describe('placeOf', () => {
 		expect(placeOf(proposal)).toEqual({ linked: false, caveat: true });
 	});
 
-	it('shows no local reason when the targets list says the place is linked', () => {
+	it('shows the linked reason, not a local one, when the targets list says the place is linked', () => {
 		const proposal = makeProposal({
 			targets: [{ id: 'local', kind: 'linked', label: 'Team cloud', status: 'online' }],
 		});
 
-		expect(placeOf(proposal)).toEqual({ linked: true, linkedLabel: 'Team cloud', caveat: false });
+		expect(placeOf(proposal)).toEqual({
+			linked: true,
+			linkedLabel: 'Team cloud',
+			reasonKey: LINKED_REASON_KEY,
+			caveat: false,
+		});
 	});
 
 	it('reads the kind of a target that the targets list leaves out', () => {
@@ -250,7 +297,11 @@ describe('placeOf', () => {
 		});
 
 		expect(placeOf(missingLocal).linked).toBe(false);
-		expect(placeOf(missingLinked)).toEqual({ linked: true, caveat: false });
+		expect(placeOf(missingLinked)).toEqual({
+			linked: true,
+			reasonKey: LINKED_REASON_KEY,
+			caveat: false,
+		});
 	});
 });
 
@@ -445,6 +496,52 @@ describe('decisionFor', () => {
 	});
 });
 
+describe('shownWorkflowName', () => {
+	it('names the stored workflow when the title of the model differs from it', () => {
+		const proposal = makeProposal({ title: 'Morning digest', workflowName: 'Payroll export' });
+
+		expect(shownWorkflowName(proposal)).toBe('Payroll export');
+	});
+
+	it.each([
+		['the title is the name', 'Morning digest'],
+		['they differ only in spaces around them', '  Morning digest '],
+		['the name is blank', '   '],
+		['the name is empty', ''],
+	])('names nothing when %s', (_label, workflowName) => {
+		expect(shownWorkflowName(makeProposal({ title: 'Morning digest', workflowName }))).toBe(
+			undefined,
+		);
+	});
+
+	it('names nothing on a card that was stored without the name', () => {
+		const { workflowName: _dropped, ...card } = makeProposal();
+
+		expect(shownWorkflowName(card)).toBeUndefined();
+	});
+
+	it('keeps the case of the name, because a name that differs only in case is another name', () => {
+		const proposal = makeProposal({ title: 'Morning digest', workflowName: 'Morning Digest' });
+
+		expect(shownWorkflowName(proposal)).toBe('Morning Digest');
+	});
+
+	it('shows the trimmed name exactly when it differs from the trimmed title (property)', () => {
+		fc.assert(
+			fc.property(
+				fc.string({ minLength: 1, maxLength: 20 }),
+				fc.option(fc.string({ maxLength: 20 }), { nil: undefined }),
+				(title, workflowName) => {
+					const shown = shownWorkflowName({ ...makeProposal(), title, workflowName });
+					const name = workflowName?.trim() ?? '';
+
+					expect(shown).toBe(name !== '' && name !== title.trim() ? name : undefined);
+				},
+			),
+		);
+	});
+});
+
 describe('visibleSteps and hiddenStepCount', () => {
 	const step = (index: number) => ({ name: `Step ${index}`, type: 'n8n-nodes-base.set' });
 
@@ -531,12 +628,16 @@ const proposalArb: fc.Arbitrary<Proposal> = fc
 
 const TYPE_ORDER = { primary: 0, secondary: 1, tertiary: 2 } as const;
 
-/** The title asks the question of the primary button, or only to keep the workflow. */
+/**
+ * The title asks the question of the primary button, or only to keep the workflow. A live
+ * workflow that goes to a linked place moves there.
+ */
 function expectedTitle(proposal: Proposal, offersTurnOn: boolean): string {
 	if (proposal.active) {
-		return offersTurnOn
-			? 'instanceAi.automation.proposal.titleUpdate'
-			: 'instanceAi.automation.proposal.titleKeepLive';
+		if (!offersTurnOn) return 'instanceAi.automation.proposal.titleKeepLive';
+		return placeOf(proposal).linked
+			? 'instanceAi.automation.proposal.titleMove'
+			: 'instanceAi.automation.proposal.titleUpdate';
 	}
 	return offersTurnOn
 		? 'instanceAi.automation.proposal.title'
@@ -567,13 +668,30 @@ describe('automation proposal properties', () => {
 		);
 	});
 
-	it('never offers to turn on when the card cannot activate or the saved version is live', () => {
+	it('never offers to turn on when the card cannot activate or the saved version is live here', () => {
 		fc.assert(
 			fc.property(proposalArb, (proposal) => {
 				const actions = cardActions(proposal).map(({ action }) => action);
 				const savedVersionLive = proposal.active && !proposal.hasUnpublishedChanges;
-				if (!proposal.canActivate || savedVersionLive) expect(actions).not.toContain('activate');
+				const liveHere = savedVersionLive && !placeOf(proposal).linked;
+				if (!proposal.canActivate || liveHere) expect(actions).not.toContain('activate');
 				expect(titleKey(proposal)).toBe(expectedTitle(proposal, actions.includes('activate')));
+			}),
+		);
+	});
+
+	it('offers to turn on the copy in a linked place whenever the card can turn it on', () => {
+		fc.assert(
+			fc.property(proposalArb, (proposal) => {
+				fc.pre(placeOf(proposal).linked);
+				const canTurnOn =
+					proposal.canActivate &&
+					proposal.offered.activate.includes(true) &&
+					answerTargetId(proposal) !== undefined;
+
+				const actions = cardActions(proposal).map(({ action }) => action);
+
+				expect(actions.includes('activate')).toBe(canTurnOn);
 			}),
 		);
 	});
@@ -582,7 +700,8 @@ describe('automation proposal properties', () => {
 		fc.assert(
 			fc.property(proposalArb, (proposal) => {
 				const offersTurnOn = cardActions(proposal).some(({ action }) => action === 'activate');
-				const savedVersionLive = proposal.active && !proposal.hasUnpublishedChanges;
+				const savedVersionLive =
+					proposal.active && !proposal.hasUnpublishedChanges && !placeOf(proposal).linked;
 				const needsNote = !offersTurnOn && proposal.trigger.kind !== 'manual' && !savedVersionLive;
 
 				expect(activationNoteKey(proposal) !== undefined).toBe(needsNote);

@@ -10,6 +10,11 @@ import { AutomationTemporaryMarker } from './automation-temporary-marker';
 /** The fields of the stored workflow that `keep` reads. */
 export type KeptWorkflow = { id: string; name: string; isArchived: boolean; versionId: string };
 
+const readOnlyError = (workflow: KeptWorkflow) =>
+	new UserError(
+		`This n8n instance is read-only, so "${workflow.name}" cannot be kept. Nothing was changed.`,
+	);
+
 /**
  * Keeps a workflow that the n8n Assistant built: restores it from the archive and clears its
  * AI-temporary marker, so that the run-end cleanup leaves it alone. Every step acts as the user,
@@ -34,14 +39,23 @@ export class AutomationWorkflowKeeper {
 		const isTemporary = await this.temporaryMarker.isMarked(workflow.id);
 		if (!workflow.isArchived && !isTemporary) return workflow.versionId;
 
-		if (this.instanceWriteAccess.isReadOnly()) {
-			throw new UserError(
-				`This n8n instance is read-only, so "${workflow.name}" cannot be kept. Nothing was changed.`,
-			);
-		}
+		if (this.instanceWriteAccess.isReadOnly()) throw readOnlyError(workflow);
 		const versionId = workflow.isArchived ? await this.restore(user, workflow) : workflow.versionId;
 		if (isTemporary) await this.temporaryMarker.clear(user, workflow.id);
 		return versionId;
+	}
+
+	/**
+	 * Fails when `keep` would fail on a read-only instance. A caller that changes something
+	 * elsewhere before it keeps the workflow checks this first, so that a refusal changes nothing.
+	 *
+	 * @throws UserError when the instance is read-only and the workflow is archived or temporary
+	 */
+	async assertCanKeep(workflow: KeptWorkflow): Promise<void> {
+		if (!this.instanceWriteAccess.isReadOnly()) return;
+		if (workflow.isArchived || (await this.temporaryMarker.isMarked(workflow.id))) {
+			throw readOnlyError(workflow);
+		}
 	}
 
 	private async restore(user: User, workflow: KeptWorkflow): Promise<string> {

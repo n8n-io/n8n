@@ -14,13 +14,18 @@ import {
  * stay in `automationProposal.ts`; these functions only turn their keys into text.
  */
 
-/** "Runs at 08:00, Monday through Friday (United Kingdom Time)", or the clause without "Runs". */
+/**
+ * "Runs at 08:00, Monday through Friday (United Kingdom Time)", or the clause without "Runs".
+ * `linkedPlace` is the name of the linked instance that runs the workflow: a schedule without a
+ * zone of its own runs there in the zone of that instance ("(Team cloud time)").
+ */
 export function triggerText(
 	trigger: AutomationProposalCard['trigger'],
 	form: AutomationTriggerForm = 'line',
+	linkedPlace?: string,
 ): string | undefined {
 	const i18n = useI18n();
-	const line = triggerLineKey(trigger, form);
+	const line = triggerLineKey(trigger, form, linkedPlace !== undefined);
 	if (!line) return undefined;
 	if (!('cron' in line)) return i18n.baseText(line.key);
 	const description = describeSchedule(line.cron);
@@ -28,7 +33,7 @@ export function triggerText(
 	const timezone = line.timezone === undefined ? '' : timezoneLabel(line.timezone, i18n.locale);
 	// cronstrue starts with a capital ("At 08:00"), and the copy puts it mid-sentence.
 	return i18n.baseText(line.key, {
-		interpolate: { description: lowerFirst(description), timezone },
+		interpolate: { description: lowerFirst(description), timezone, place: linkedPlace ?? '' },
 	});
 }
 

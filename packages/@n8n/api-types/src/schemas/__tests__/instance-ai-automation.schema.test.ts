@@ -16,6 +16,7 @@ function makeCard(overrides: Partial<AutomationProposalCard> = {}): AutomationPr
 		workflowId: 'wf-1',
 		versionId: 'v-1',
 		title: 'Morning digest',
+		workflowName: 'Digest builder',
 		why: ['You asked for this every weekday'],
 		trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: 'Europe/London' },
 		steps: [
@@ -97,15 +98,52 @@ describe('automationProposalCardSchema', () => {
 		},
 	);
 
-	it('accepts a linked target with a label for later slices', () => {
-		const card = makeCard({
-			targets: [
-				{ id: 'local', kind: 'local', status: 'online' },
-				{ id: 'instance-7', kind: 'linked', label: 'Team cloud', status: 'offline' },
-			],
-		});
+	it.each(['online', 'offline', 'unauthorised', 'mcp-disabled', 'unknown'] as const)(
+		'accepts a linked target with the stored status %s',
+		(status) => {
+			const card = makeCard({
+				targets: [
+					{ id: 'local', kind: 'local', status: 'online' },
+					{ id: 'instance-7', kind: 'linked', status },
+				],
+				offered: { target: ['local', 'instance-7'], activate: [true, false] },
+			});
 
-		expect(automationProposalCardSchema.safeParse(card).success).toBe(true);
+			expect(automationProposalCardSchema.parse(card)).toEqual(card);
+		},
+	);
+
+	it('drops the name and the address of a link, so that a stored card does not keep them', () => {
+		const target = { id: 'instance-7', kind: 'linked', status: 'online' } as const;
+		// A card that an earlier version stored, with the name and the address of the link.
+		const stored = { ...target, label: 'Team cloud', baseUrl: 'https://cloud.example.test' };
+		const card = makeCard({ targets: [stored] });
+
+		expect(automationProposalCardSchema.parse(card).targets).toEqual([target]);
+	});
+
+	it('accepts the flag that a schedule runs in the default zone of the instance', () => {
+		const trigger = {
+			kind: 'schedule',
+			cron: '0 8 * * 1-5',
+			timezone: 'Europe/London',
+			timezoneIsDefault: true,
+		} as const;
+
+		expect(automationProposalCardSchema.parse(makeCard({ trigger })).trigger).toEqual(trigger);
+	});
+
+	it('keeps the stored name of the workflow next to the title of the model', () => {
+		const card = makeCard({ title: 'Morning digest', workflowName: 'Sales export (old)' });
+
+		expect(automationProposalCardSchema.parse(card).workflowName).toBe('Sales export (old)');
+	});
+
+	it('accepts a card that an earlier version stored without the name of the workflow', () => {
+		const card = makeCard();
+		delete card.workflowName;
+
+		expect(automationProposalCardSchema.parse(card)).not.toHaveProperty('workflowName');
 	});
 
 	it.each([
@@ -263,6 +301,67 @@ describe('automationProposalResultSchema', () => {
 		};
 
 		expect(automationProposalResultSchema.parse(result)).toEqual(result);
+	});
+
+	it('accepts a workflow that went to a linked instance', () => {
+		const result = {
+			workflowId: 'remote-wf-9',
+			url: 'https://cloud.example.test/workflow/remote-wf-9',
+			active: true,
+			kept: true,
+			place: { targetId: 'instance-7', kind: 'linked', name: 'Team cloud' },
+		};
+
+		expect(automationProposalResultSchema.parse(result)).toEqual(result);
+	});
+
+	it('accepts a copy that is live there while the workflow here still runs', () => {
+		const result = {
+			workflowId: 'remote-wf-9',
+			url: 'https://cloud.example.test/workflow/remote-wf-9',
+			active: true,
+			kept: true,
+			error: 'It still runs on this computer too.',
+			place: { targetId: 'instance-7', kind: 'linked' },
+			problems: ['still-on-here', 'not-kept-here'],
+		};
+
+		expect(automationProposalResultSchema.parse(result)).toEqual(result);
+	});
+
+	it.each(['not-on', 'not-ready', 'kept-on-here', 'still-on-here', 'not-kept-here'] as const)(
+		'accepts the problem %s of a move',
+		(problem) => {
+			const parsed = automationProposalResultSchema.parse({
+				workflowId: 'remote-wf-9',
+				url: 'u',
+				active: false,
+				kept: true,
+				problems: [problem],
+			});
+
+			expect(parsed.problems).toEqual([problem]);
+		},
+	);
+
+	it.each([
+		['an unknown problem', ['runs-twice']],
+		['a problem that is not text', [1]],
+		['problems that are not a list', 'not-on'],
+	])('rejects %s', (_label, problems) => {
+		const result = { workflowId: 'wf-1', url: 'u', active: true, kept: true, problems };
+
+		expect(automationProposalResultSchema.safeParse(result).success).toBe(false);
+	});
+
+	it.each([
+		['an empty target id', { targetId: '', kind: 'linked' }],
+		['an unknown kind', { targetId: 'instance-7', kind: 'cloud' }],
+		['a name that is not text', { targetId: 'instance-7', kind: 'linked', name: 7 }],
+	])('rejects a place with %s', (_label, place) => {
+		const result = { workflowId: 'wf-1', url: 'u', active: true, kept: true, place };
+
+		expect(automationProposalResultSchema.safeParse(result).success).toBe(false);
 	});
 
 	it('rejects a result that did not keep the workflow', () => {
