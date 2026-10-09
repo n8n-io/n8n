@@ -1,0 +1,46 @@
+packages/nodes-base/nodes/LoneScale/test/LoneScale.test.ts
+  s_2e1fa95fc44f8f::t_8312b2668f9528 35-42
+packages/nodes-base/nodes/Mailcheck/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_3a31a59fdeca5a 1-60
+packages/nodes-base/nodes/LoneScale/test/LoneScale.workflow.json
+  s_2e1fa95fc44f8f::t_4d64d86fa576f5 144-160
+  s_2e1fa95fc44f8f::t_02cf70bc7f6921 76-116
+  s_2e1fa95fc44f8f::t_b33f043a10022e 181-190
+packages/nodes-base/nodes/LingvaNex/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_8a2757142639b1 1-61
+packages/nodes-base/nodes/LingvaNex/test/LingvaNex.workflow.test.ts
+  s_2e1fa95fc44f8f::t_77519a3efe4298 1-22
+packages/nodes-base/nodes/Magento/test/Magento2.workflow.test.ts
+  s_2e1fa95fc44f8f::t_3920568374f233 1-16,18-34
+  s_2e1fa95fc44f8f::t_3aba194dd8aa46 17
+packages/nodes-base/nodes/LoneScale/test/LoneScaleTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_613d048a1f833c 1-43
+packages/nodes-base/nodes/Mailcheck/test/Mailcheck.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a9ab96a0387ef5 1-22
+packages/nodes-base/nodes/Magento/test/requests.workflow.json
+  s_01cb885e0ad060::t_a3e5a46f49a00f 1-350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a84fa57a049adc18b6fbafce9e7082ec884ad954",
+  "prompts": {},
+  "sessions": {
+    "s_01cb885e0ad060": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7ddd85cc749261b8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
