@@ -27,7 +27,7 @@ describe('AgentCheckpointPruningTask', () => {
 		{ type: 'postgresdb', statementTimeoutMs: 300_000, timeoutSeconds: 600 },
 		{ type: 'postgresdb', statementTimeoutMs: 1_200_000, timeoutSeconds: 1500 },
 		{ type: 'postgresdb', statementTimeoutMs: 0, timeoutSeconds: MAX_TIMER_DELAY_SECONDS },
-		{ type: 'sqlite', statementTimeoutMs: 300_000, timeoutSeconds: MAX_TIMER_DELAY_SECONDS },
+		{ type: 'sqlite', statementTimeoutMs: 0, timeoutSeconds: 600 },
 	] as const)(
 		'should time out 5 minutes after the statement timeout ($type, $statementTimeoutMs ms)',
 		({ type, statementTimeoutMs, timeoutSeconds }) => {
