@@ -156,15 +156,16 @@ describe('MigrationOwnerSuggestionService', () => {
 			]);
 		});
 
-		it('strips the MCP marker from an author name before matching', async () => {
-			givenVersions({
-				'wf-1': { authors: 'Carol Clark (via MCP)', at: at('2026-09-05T10:00:00Z') },
-			});
+		it.each(['Carol Clark (via MCP)', 'Carol Clark (with n8n Assistant)'])(
+			'strips the tool marker from the author name "%s" before matching',
+			async (authors) => {
+				givenVersions({ 'wf-1': { authors, at: at('2026-09-05T10:00:00Z') } });
 
-			expect(await service.suggestOwners(['wf-1'])).toEqual([
-				{ workflowId: 'wf-1', userId: 'carol' },
-			]);
-		});
+				expect(await service.suggestOwners(['wf-1'])).toEqual([
+					{ workflowId: 'wf-1', userId: 'carol' },
+				]);
+			},
+		);
 
 		it('ignores an author name that matches two users', async () => {
 			givenUsers(alice, bob, user('bob-2', 'Bob', 'Brown'));

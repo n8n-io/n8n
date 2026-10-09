@@ -9,6 +9,8 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { versionAuthorName } from '@/workflows/workflow-history/workflow-history-authors';
+
 import type { OwnerSuggestion } from '../database/repositories/migration-workflow-owner.repository';
 
 /** A user and when they acted on the workflow. */
@@ -16,9 +18,6 @@ interface Candidate {
 	userId: string;
 	at: Date;
 }
-
-/** Workflow history stores the author's display name, with this suffix for saves through MCP. */
-const MCP_AUTHOR_SUFFIX = ' (via MCP)';
 
 /**
  * How many recent actions per source and workflow are considered. The newest
@@ -159,9 +158,6 @@ interface EligibleUsers {
  * eligible user carries it.
  */
 function resolveAuthor(authors: string, users: EligibleUsers): string | undefined {
-	const name = authors.endsWith(MCP_AUTHOR_SUFFIX)
-		? authors.slice(0, -MCP_AUTHOR_SUFFIX.length)
-		: authors;
-	const ids = users.idsByName.get(name);
+	const ids = users.idsByName.get(versionAuthorName(authors));
 	return ids?.length === 1 ? ids[0] : undefined;
 }
