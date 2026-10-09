@@ -94,9 +94,35 @@ const canSave = computed(() => {
 	return true;
 });
 
+const addUrlRow = ref<HTMLElement | null>(null);
+
 const addUrl = () => {
 	drafts.value.push(createDraft());
 };
+
+/** The dialog body that actually scrolls, if this node sits inside one. */
+function scrollParent(node: HTMLElement): HTMLElement | null {
+	let current = node.parentElement;
+	while (current) {
+		const { overflowY } = getComputedStyle(current);
+		if (overflowY === 'auto' || overflowY === 'scroll') return current;
+		current = current.parentElement;
+	}
+	return null;
+}
+
+// The new row grows in after the click. Once that motion ends, bring the add
+// button back if the list now runs past the dialog body.
+function keepAddButtonInView() {
+	const row = addUrlRow.value;
+	if (!row) return;
+	const scroller = scrollParent(row);
+	if (!scroller || scroller.scrollHeight <= scroller.clientHeight) return;
+	const rowRect = row.getBoundingClientRect();
+	const scrollerRect = scroller.getBoundingClientRect();
+	if (rowRect.bottom <= scrollerRect.bottom) return;
+	scroller.scrollTo({ top: scroller.scrollHeight - scroller.clientHeight, behavior: 'smooth' });
+}
 
 const removeUrl = (id: number) => {
 	// The list never goes empty. Clearing the last row keeps its identity, so the
@@ -163,6 +189,7 @@ const onSave = () => emit('save', result.value);
 								:enter-active-class="$style['slot-animating']"
 								:leave-active-class="$style['slot-animating']"
 								:leave-to-class="$style['slot-collapsed']"
+								@after-enter="keepAddButtonInView"
 							>
 								<div
 									v-for="draft in drafts"
@@ -213,7 +240,7 @@ const onSave = () => emit('save', result.value);
 									</div>
 								</div>
 							</Transition>
-							<div>
+							<div ref="addUrlRow">
 								<N8nButton
 									variant="outline"
 									size="small"
@@ -257,7 +284,6 @@ $slot-easing: motion.$blur-motion-easing;
 .body {
 	display: flex;
 	flex-direction: column;
-	margin-block: var(--spacing--xs);
 }
 
 .modes {
