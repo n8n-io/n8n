@@ -65,7 +65,7 @@ describe('GlobalConfig', () => {
 		hideUsagePage: false,
 		deployment: {
 			type: 'default',
-			installMethod: '',
+			artifact: '',
 		},
 		mfa: {
 			enabled: true,

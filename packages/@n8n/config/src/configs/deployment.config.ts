@@ -7,9 +7,9 @@ export class DeploymentConfig {
 	type: string = 'default';
 
 	/**
-	 * Which official artefact installed n8n, with its version, for example `helm-chart/1.14.0`.
-	 * Set by the artefact itself. Telemetry only: nothing in n8n behaves differently because of it.
+	 * Which official artifact installed n8n, with its version, for example `helm-chart/1.14.0`.
+	 * Set by the artifact itself. Telemetry only: nothing in n8n behaves differently because of it.
 	 */
-	@Env('N8N_INSTALL_METHOD')
-	installMethod: string = '';
+	@Env('N8N_DEPLOYMENT_ARTIFACT')
+	artifact: string = '';
 }
