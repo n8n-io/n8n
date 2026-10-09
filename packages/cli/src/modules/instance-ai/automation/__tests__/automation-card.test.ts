@@ -13,6 +13,7 @@ import {
 	runningNodes,
 	sharedProjectsOf,
 } from '../automation-card';
+import { LOCAL_PLACES } from '../automation-places';
 import type { AutomationNode, AutomationTrigger } from '../automation-trigger';
 
 const SCHEDULE = 'n8n-nodes-base.scheduleTrigger';
@@ -58,6 +59,7 @@ const cardInput = (overrides: Partial<AutomationCardInput> = {}): AutomationCard
 		kind: 'local',
 		reasons: ['always-on-trigger', 'no-cloud-linked'],
 	},
+	places: LOCAL_PLACES,
 	canActivate: true,
 	...overrides,
 });
@@ -293,6 +295,35 @@ describe('buildAutomationCard', () => {
 			expect(card.hasUnpublishedChanges).toBe(hasUnpublishedChanges);
 		},
 	);
+
+	it('lists the places and offers the ones of the places, as copies', () => {
+		const places = {
+			targets: [
+				{ id: 'local', kind: 'local' as const, status: 'online' as const },
+				{ id: 'link-1', kind: 'linked' as const, label: 'Cloud', status: 'online' as const },
+				{ id: 'link-2', kind: 'linked' as const, label: 'Lab', status: 'offline' as const },
+			],
+			offered: ['local', 'link-1'],
+		};
+
+		const card = buildAutomationCard(
+			cardInput({
+				places,
+				recommendation: { targetId: 'link-1', kind: 'linked', reasons: ['always-on-trigger'] },
+			}),
+		);
+
+		expect(card.targets).toEqual(places.targets);
+		expect(card.targets[1]).not.toBe(places.targets[1]);
+		expect(card.offered).toEqual({ target: ['local', 'link-1'], activate: [true, false] });
+		expect(card.recommended).toEqual({
+			targetId: 'link-1',
+			kind: 'linked',
+			reasons: ['always-on-trigger'],
+		});
+		card.offered.target.push('changed');
+		expect(places.offered).toEqual(['local', 'link-1']);
+	});
 
 	it('says that keeping an archived workflow restores it', () => {
 		const card = buildAutomationCard(cardInput({ workflow: workflow({ isArchived: true }) }));

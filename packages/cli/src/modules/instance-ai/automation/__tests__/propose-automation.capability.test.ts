@@ -544,6 +544,29 @@ describe('propose_automation on the n8n Assistant', () => {
 			expect(applyAutomationAnswer(args, answer, checkpoint).activate).toBe(false);
 		});
 
+		it('takes the target from the answer, and keeps it here without a chosen target', () => {
+			const linkId = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
+
+			expect(
+				applyAutomationAnswer(
+					{ ...args, target: 'local' },
+					{ approved: true, values: { target: linkId, activate: true } },
+					checkpoint,
+				).target,
+			).toBe(linkId);
+			expect(
+				applyAutomationAnswer(
+					{ ...args, target: linkId },
+					{ approved: true, values: { activate: true } },
+					checkpoint,
+				).target,
+			).toBe('local');
+			expect(
+				applyAutomationAnswer(args, { approved: true, values: { target: true } }, checkpoint)
+					.target,
+			).toBe('local');
+		});
+
 		it('fails for a checkpoint without the version of the card', () => {
 			const { automationProposal: _, ...withoutCard } = checkpoint;
 

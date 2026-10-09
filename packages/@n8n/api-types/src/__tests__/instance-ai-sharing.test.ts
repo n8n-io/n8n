@@ -284,6 +284,38 @@ describe('sharedCardRule', () => {
 			]);
 		});
 
+		it.each([
+			['turning it on', { activate: true }],
+			['saving it', { activate: false }],
+		])('keeps %s in a linked instance for the owner', (_label, values) => {
+			const answer: InstanceAiConfirmRequest = {
+				kind: 'capabilityDecision',
+				approved: true,
+				values: { ...values, target: '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c' },
+			};
+
+			expect(sharedCardRule(proposal(), answer, PROJECT)).toBeUndefined();
+		});
+
+		it('lets a teammate keep it on this instance, or decline a linked target', () => {
+			const local: InstanceAiConfirmRequest = {
+				kind: 'capabilityDecision',
+				approved: true,
+				values: { activate: true, target: 'local' },
+			};
+			const declined: InstanceAiConfirmRequest = {
+				kind: 'capabilityDecision',
+				approved: false,
+				values: { target: '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c' },
+			};
+
+			expect(sharedCardRule(proposal(), local, PROJECT)?.scopes).toEqual([
+				'workflow:update',
+				'workflow:publish',
+			]);
+			expect(sharedCardRule(proposal(), declined, PROJECT)?.scopes).toEqual(['workflow:update']);
+		});
+
 		it('keeps a proposal answered with a plain approval for the owner', () => {
 			expect(sharedCardRule(proposal(), approve, PROJECT)).toBeUndefined();
 		});

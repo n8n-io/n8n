@@ -103,4 +103,33 @@ describe('AutomationWorkflowKeeper', () => {
 		);
 		expect(calls).toEqual([]);
 	});
+
+	describe('assertCanKeep', () => {
+		it.each([
+			['a temporary workflow', false, true],
+			['an archived workflow', true, false],
+		])('refuses %s on a read-only instance', async (_label, isArchived, isTemporary) => {
+			marker.isMarked.mockResolvedValue(isTemporary);
+			writeAccess.isReadOnly.mockReturnValue(true);
+
+			await expect(keeper.assertCanKeep(workflow({ isArchived }))).rejects.toThrow(
+				'This n8n instance is read-only, so "Digest builder" cannot be kept. Nothing was changed.',
+			);
+			expect(calls).toEqual([]);
+		});
+
+		it('accepts a workflow that is kept already, also on a read-only instance', async () => {
+			marker.isMarked.mockResolvedValue(false);
+			writeAccess.isReadOnly.mockReturnValue(true);
+
+			await expect(keeper.assertCanKeep(workflow())).resolves.toBeUndefined();
+		});
+
+		it('accepts every workflow on an instance that can change, without reading the marker', async () => {
+			await expect(keeper.assertCanKeep(workflow({ isArchived: true }))).resolves.toBeUndefined();
+
+			expect(marker.isMarked).not.toHaveBeenCalled();
+			expect(calls).toEqual([]);
+		});
+	});
 });

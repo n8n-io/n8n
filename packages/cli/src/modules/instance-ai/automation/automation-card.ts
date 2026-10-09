@@ -7,6 +7,7 @@ import {
 } from '@n8n/api-types';
 import { isTriggerNodeType, STICKY_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
 
+import type { CardPlaces } from './automation-places';
 import type { ShownSchedule } from './automation-schedule';
 import {
 	type AutomationNode,
@@ -114,14 +115,16 @@ export type AutomationCardInput = {
 	trigger: AutomationTrigger;
 	/** The schedule that `chooseCron` kept. */
 	schedule?: ShownSchedule;
+	/** The recommended target. It is one of the offered places. */
 	recommendation: ProposalRecommendation;
+	places: Readonly<CardPlaces>;
 	/** False when the trigger, the scopes of the user or an admin do not allow turning it on. */
 	canActivate: boolean;
 };
 
 /** The `automationProposal` field of the card. `offered` lists the only answers it accepts. */
 export function buildAutomationCard(input: AutomationCardInput): AutomationProposalCard {
-	const { workflow, request, trigger, schedule, recommendation, canActivate } = input;
+	const { workflow, request, trigger, schedule, recommendation, places, canActivate } = input;
 	const active = workflow.activeVersionId !== null;
 	return {
 		workflowId: workflow.id,
@@ -136,7 +139,7 @@ export function buildAutomationCard(input: AutomationCardInput): AutomationPropo
 			kind: recommendation.kind,
 			reasons: recommendation.reasons,
 		},
-		targets: [{ ...LOCAL_CARD_TARGET }],
+		targets: places.targets.map((target) => ({ ...target })),
 		visibleTo: ownerProjectOf(workflow),
 		sharedWith: sharedProjectsOf(workflow),
 		archived: workflow.isArchived,
@@ -144,7 +147,7 @@ export function buildAutomationCard(input: AutomationCardInput): AutomationPropo
 		hasUnpublishedChanges: active && !isSavedVersionLive(workflow),
 		canActivate,
 		offered: {
-			target: [AUTOMATION_LOCAL_TARGET_ID],
+			target: [...places.offered],
 			activate: canActivate ? [true, false] : [false],
 		},
 	};

@@ -136,6 +136,10 @@ describe('propose_automation over MCP', () => {
 			['a reason over 200 characters', { workflowId: 'wf-1', title: 'D', why: ['x'.repeat(201)] }],
 			['a blank reason', { workflowId: 'wf-1', title: 'D', why: [' '] }],
 			['a target other than this instance', { workflowId: 'wf-1', title: 'D', target: 'cloud-1' }],
+			[
+				'the id of a linked instance as target',
+				{ workflowId: 'wf-1', title: 'D', target: '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c' },
+			],
 			['a cron over 200 characters', { workflowId: 'wf-1', title: 'D', cron: '*'.repeat(201) }],
 			['an activation that is not a boolean', { workflowId: 'wf-1', title: 'D', activate: 'yes' }],
 			['an empty version id', { workflowId: 'wf-1', title: 'D', versionId: '' }],

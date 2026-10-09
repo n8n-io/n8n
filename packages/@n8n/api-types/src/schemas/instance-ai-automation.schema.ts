@@ -2,8 +2,9 @@ import { z } from 'zod';
 
 import { projectTypeSchema } from './project.schema';
 import { StrictTimeZoneSchema } from './timezone.schema';
+import { LINKED_INSTANCE_STATUSES } from '../dto/linked-instances/linked-instance.schema';
 
-/** The run target of this n8n instance. Only this target is offered for now. */
+/** The run target of this n8n instance. A linked instance is named by the id of its link. */
 export const AUTOMATION_LOCAL_TARGET_ID = 'local';
 
 export const AUTOMATION_PROPOSAL_LIMITS = {
@@ -45,13 +46,19 @@ export type AutomationTriggerKind = z.infer<typeof automationTriggerKindSchema>;
 
 const runTargetKindSchema = z.enum(['local', 'linked']);
 
-/** A place where the automation can run. Mirrors `RunTargetOption` of `@n8n/instance-ai`. */
+/**
+ * A place where the automation can run. Mirrors `RunTargetOption` of `@n8n/instance-ai`, which
+ * has no `mcp-disabled`: for the recommendation, that status counts as `offline`.
+ */
 export const automationRunTargetSchema = z.object({
 	id: z.string().min(1),
 	kind: runTargetKindSchema,
 	/** Display name of a linked instance. The frontend names the local target. */
 	label: z.string().optional(),
-	status: z.enum(['online', 'offline', 'unauthorised', 'unknown']),
+	/** The status that the last check of the link stored. The local target is always `online`. */
+	status: z.enum(LINKED_INSTANCE_STATUSES),
+	/** Address of a linked instance, for links that open it in a new tab. */
+	baseUrl: z.string().optional(),
 });
 export type AutomationRunTarget = z.infer<typeof automationRunTargetSchema>;
 
@@ -140,10 +147,21 @@ export const automationProposalCardSchema = z.object({
 });
 export type AutomationProposalCard = z.infer<typeof automationProposalCardSchema>;
 
+/** Where a kept automation is. */
+export const automationPlaceSchema = z.object({
+	/** `AUTOMATION_LOCAL_TARGET_ID`, or the id of the link. */
+	targetId: z.string().min(1),
+	kind: runTargetKindSchema,
+	/** Display name of a linked instance. The frontend names this computer. */
+	name: z.string().optional(),
+});
+export type AutomationPlace = z.infer<typeof automationPlaceSchema>;
+
 /** The result of `propose_automation` after the workflow was kept. */
 export const automationProposalResultSchema = z.object({
+	/** The workflow here, or the copy in the linked instance of `place`. */
 	workflowId: z.string(),
-	/** Link that opens the workflow in the editor. */
+	/** Link that opens the workflow in the editor of the instance that runs it. */
 	url: z.string(),
 	/** True when a version of the workflow is live. */
 	active: z.boolean(),
@@ -152,5 +170,10 @@ export const automationProposalResultSchema = z.object({
 	warnings: z.array(z.string()).optional(),
 	/** Set when the workflow was kept, but could not be turned on. */
 	error: z.string().optional(),
+	/**
+	 * Set when the workflow went to a linked instance. Absent: it is in this n8n instance. Optional,
+	 * so that MCP clients of this instance get the same result as before.
+	 */
+	place: automationPlaceSchema.optional(),
 });
 export type AutomationProposalResult = z.infer<typeof automationProposalResultSchema>;

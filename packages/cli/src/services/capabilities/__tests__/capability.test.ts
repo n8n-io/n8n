@@ -221,6 +221,16 @@ describe('defineCapability on the Assistant surface', () => {
 		expect(build.mock.calls[2][0]).not.toHaveProperty('permissions');
 	});
 
+	it('tells the Assistant context when the chat is shared', () => {
+		const { build, capability } = surfaceProbe();
+		const user = makeUser('kim');
+
+		capability.toAssistantTool({ user, sharedThread: true });
+		capability.toAssistantTool({ user, sharedThread: false });
+
+		expect(build.mock.calls.map(([context]) => context.sharedThread)).toEqual([true, false]);
+	});
+
 	it('defers the Assistant tool unless the capability asks to stay loaded', () => {
 		const user = makeUser('gina');
 

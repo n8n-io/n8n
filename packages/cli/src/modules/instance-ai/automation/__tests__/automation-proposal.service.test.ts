@@ -8,6 +8,7 @@ import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	type InstanceAiPermissions,
 } from '@n8n/api-types';
+import type { ModuleRegistry } from '@n8n/backend-common';
 import type { UrlService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { User, type WorkflowEntity } from '@n8n/db';
@@ -22,6 +23,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { AutomationBlockedError } from '../automation-errors';
 import { AutomationInstanceInfo } from '../automation-instance-info';
+import { AutomationPlacement } from '../automation-placement';
 import { AutomationProposalService } from '../automation-proposal.service';
 import type { AutomationWorkflowKeeper } from '../automation-workflow-keeper';
 import type { AutomationWorkflowPublisher } from '../automation-workflow-publisher';
@@ -113,7 +115,9 @@ describe('AutomationProposalService', () => {
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({ generic: { timezone: INSTANCE_ZONE } });
 	const instance = new AutomationInstanceInfo(urlService, globalConfig);
-	const service = new AutomationProposalService(finder, keeper, publisher, instance);
+	// The linked-instances module is off, so every card offers only this instance.
+	const placement = new AutomationPlacement(instance, mock<ModuleRegistry>());
+	const service = new AutomationProposalService(finder, keeper, publisher, placement);
 	const assistant: CapabilityContext = { user, surface: 'assistant' };
 
 	/** Access as stored: the workflow for the scopes that the user holds, null otherwise. */

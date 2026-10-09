@@ -29,7 +29,31 @@ import type { AutomationProposal } from './automation-proposal.service';
 
 export { PROPOSE_AUTOMATION_CAPABILITY_NAME };
 
-const inputSchema = {
+/** A link is named by a UUID. */
+const LINK_ID_PATTERN = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+
+/**
+ * Both surfaces use a string, so that the tool has one input type. MCP clients keep automations
+ * on this instance. The Assistant takes the target from the card answer, which the server checks
+ * against the targets that the card offered.
+ */
+const TARGET_OF_SURFACE: Record<CapabilitySurface, z.ZodOptional<z.ZodString>> = {
+	assistant: z
+		.string()
+		.regex(
+			new RegExp(`^(${AUTOMATION_LOCAL_TARGET_ID}|${LINK_ID_PATTERN})$`, 'i'),
+			'Use "local" or the id of a linked instance',
+		)
+		.optional()
+		.describe('Leave it out. The user chooses on the card where the automation runs.'),
+	mcp: z
+		.string()
+		.regex(new RegExp(`^${AUTOMATION_LOCAL_TARGET_ID}$`), 'Only "local" is available')
+		.optional()
+		.describe('Where the automation runs. Only "local" (this n8n instance) is available.'),
+};
+
+const baseInputSchema = {
 	workflowId: z.string().min(1).describe('The ID of the workflow to keep and turn on'),
 	title: z
 		.string()
@@ -62,26 +86,27 @@ const inputSchema = {
 		.describe(
 			'MCP clients: the saved version that the user agreed to turn on. When the workflow has a different saved version, nothing changes. The n8n Assistant ignores this value and uses the version on the card.',
 		),
-	target: z
-		.literal(AUTOMATION_LOCAL_TARGET_ID)
-		.optional()
-		.describe('Where the automation runs. Only "local" (this n8n instance) is available.'),
 } satisfies z.ZodRawShape;
 
-type ProposeAutomationArgs = CapabilityArgs<typeof inputSchema>;
+const inputSchemaFor = (surface: CapabilitySurface) => ({
+	...baseInputSchema,
+	target: TARGET_OF_SURFACE[surface],
+});
+
+type ProposeAutomationArgs = CapabilityArgs<ReturnType<typeof inputSchemaFor>>;
 
 /** The sentences of the tool description that apply on every surface. */
 const SHARED_DESCRIPTION = [
-	'Offer to keep a workflow and turn it on, so that it runs on its own on this n8n instance.',
+	'Offer to keep a workflow and turn it on, so that it runs on its own.',
 	'Call it after you built and tested a workflow that the user wants to repeat (for example on a schedule, or each time a form, chat message, webhook or app event arrives), or when the user asks to automate a workflow.',
 	'Do not call it for a one-off job, or for a workflow that the user wants to run only by hand.',
 ];
 
 const DESCRIPTION_OF_SURFACE: Record<CapabilitySurface, string> = {
 	assistant:
-		'The user answers on a card: turn it on, save it but leave it off, or not now. Keeping an archived workflow restores it. The result says if the workflow is kept and active.',
+		'The user answers on a card: where it runs (this n8n instance or one of their linked n8n instances), then turn it on, save it but leave it off, or not now. Keeping an archived workflow restores it. The result says if the workflow is kept and active. When it went to a linked instance, the result has "place", and "workflowId" and "url" name the copy there.',
 	// The built-in MCP tools do not act on archived workflows, so this tool does not restore them.
-	mcp: 'The workflow must be available in MCP and must not be archived. Set activate to true to turn it on after it is saved. The result says if the workflow is kept and active.',
+	mcp: 'It runs on this n8n instance. The workflow must be available in MCP and must not be archived. Set activate to true to turn it on after it is saved. The result says if the workflow is kept and active.',
 };
 
 const describeFor = (surface: CapabilitySurface) =>
@@ -126,9 +151,10 @@ const pinnedCardSchema = z.object({
 });
 
 /**
- * The card answer decides the action. `activate` comes only from the chosen values, never from
- * the model, so a plain approval keeps the workflow without turning it on. The version comes
- * from the card in the server checkpoint, so "Turn it on" publishes only what the card showed.
+ * The card answer decides the action. `activate` and `target` come only from the chosen values,
+ * never from the model, so a plain approval keeps the workflow here without turning it on. The
+ * bridge checked the chosen values against the card. The version comes from the card in the
+ * server checkpoint, so the answer acts only on what the card showed.
  */
 export function applyAutomationAnswer(
 	args: ProposeAutomationArgs,
@@ -140,7 +166,7 @@ export function applyAutomationAnswer(
 	const values = isRecord(answer.values) ? answer.values : {};
 	return {
 		...args,
-		target: AUTOMATION_LOCAL_TARGET_ID,
+		target: typeof values.target === 'string' ? values.target : AUTOMATION_LOCAL_TARGET_ID,
 		activate: values.activate === true,
 		versionId: pinned.data.automationProposal.versionId,
 	};
@@ -154,12 +180,14 @@ async function proposeCard(
 	return toCard(await service.propose(args, context));
 }
 
-function buildTool(context: CapabilityContext): CapabilityToolDefinition<typeof inputSchema> {
+function buildTool(
+	context: CapabilityContext,
+): CapabilityToolDefinition<ReturnType<typeof inputSchemaFor>> {
 	return {
 		name: PROPOSE_AUTOMATION_CAPABILITY_NAME,
 		config: {
 			description: describeFor(context.surface),
-			inputSchema,
+			inputSchema: inputSchemaFor(context.surface),
 			outputSchema: automationProposalResultSchema.shape,
 			annotations: {
 				title: 'Propose automation',
@@ -184,8 +212,9 @@ function buildTool(context: CapabilityContext): CapabilityToolDefinition<typeof 
 }
 
 /**
- * Keeps a workflow that the n8n Assistant built and turns it on. The Assistant shows a card first,
- * and the user chooses. MCP clients own consent, so they act at once, on this instance only.
+ * Keeps a workflow that the n8n Assistant built and turns it on, here or on a linked instance.
+ * The Assistant shows a card first, and the user chooses. MCP clients own consent, so they act
+ * at once, on this instance only.
  */
 export const proposeAutomationCapability = defineCapability({
 	name: PROPOSE_AUTOMATION_CAPABILITY_NAME,

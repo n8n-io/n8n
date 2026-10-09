@@ -1,6 +1,7 @@
 import type { Scope } from '@n8n/permissions';
 
 import type { InstanceAiConfirmRequest } from './dto/instance-ai/instance-ai-confirm-request.dto';
+import { AUTOMATION_LOCAL_TARGET_ID } from './schemas/instance-ai-automation.schema';
 
 /**
  * Rules for teammates who answer a card in a shared Assistant thread. The answer runs as the
@@ -38,6 +39,8 @@ interface CardFacts {
 }
 
 type ToolRule = (facts: CardFacts) => SharedCardRule | undefined;
+
+type CapabilityDecision = Extract<InstanceAiConfirmRequest, { kind: 'capabilityDecision' }>;
 
 type ActionScopes = Readonly<Record<string, Scope>>;
 
@@ -82,13 +85,20 @@ function decidesCard(payload: Fields, answer: InstanceAiConfirmRequest): boolean
 	return false;
 }
 
+/** An approval that puts the automation on a linked instance, not on this one. */
+function choosesAnotherInstance(answer: CapabilityDecision): boolean {
+	const target = answer.values?.target;
+	return answer.approved && target !== undefined && target !== AUTOMATION_LOCAL_TARGET_ID;
+}
+
 /**
  * Keeping a proposed automation changes the workflow. Turning it on publishes it, and keeping
  * an archived workflow restores it, which needs the delete scope. A card that does not say
- * that the workflow is not archived counts as archived.
+ * that the workflow is not archived counts as archived. A target other than this instance uses
+ * the owner's link to another instance, so only the owner sends it.
  */
 const automationRule: ToolRule = ({ input, payload, answer }) => {
-	if (answer.kind !== 'capabilityDecision') return undefined;
+	if (answer.kind !== 'capabilityDecision' || choosesAnotherInstance(answer)) return undefined;
 	const scopes: Scope[] = ['workflow:update'];
 	if (answer.approved && answer.values?.activate === true) scopes.push('workflow:publish');
 	const proposal = isFields(payload.automationProposal) ? payload.automationProposal : {};

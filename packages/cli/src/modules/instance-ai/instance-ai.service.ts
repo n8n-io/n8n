@@ -3763,7 +3763,11 @@ export class InstanceAiService {
 				.map((capability) =>
 					toAssistantTool(
 						capability,
-						{ user, permissions: environment.context.permissions },
+						{
+							user,
+							permissions: environment.context.permissions,
+							sharedThread: environment.sharedThread,
+						},
 						this.eventService,
 					),
 				),

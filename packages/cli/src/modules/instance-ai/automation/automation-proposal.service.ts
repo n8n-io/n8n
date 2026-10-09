@@ -1,11 +1,13 @@
 import type {
 	AutomationProposalCard,
 	AutomationProposalResult,
+	AutomationRunTarget,
 	InstanceAiPermissions,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type * as InstanceAi from '@n8n/instance-ai';
+import type { Scope } from '@n8n/permissions';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { UserError } from 'n8n-workflow';
 
@@ -21,13 +23,19 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import {
 	buildAutomationCard,
 	isSavedVersionLive,
-	LOCAL_CARD_TARGET,
 	type ProposalRecommendation,
 	type ProposalRequest,
 	recommendationNodeTypes,
 } from './automation-card';
 import { AutomationBlockedError, isExpectedFailure } from './automation-errors';
-import { AutomationInstanceInfo } from './automation-instance-info';
+import {
+	type CardPlaces,
+	cardPlaces,
+	isLinkedTarget,
+	LOCAL_PLACES,
+	recommendationTargets,
+} from './automation-places';
+import { AutomationPlacement } from './automation-placement';
 import { chooseCron, readTriggerSchedule } from './automation-schedule';
 import { type AutomationTrigger, classifyAutomationTrigger } from './automation-trigger';
 import { AutomationWorkflowKeeper } from './automation-workflow-keeper';
@@ -39,6 +47,8 @@ export type AutomationRequest = ProposalRequest & {
 	activate?: boolean;
 	/** The saved version that the user agreed to turn on. */
 	versionId?: string;
+	/** `local` (the default) or the id of a link of the user. */
+	target?: string;
 };
 
 export type AutomationProposal = {
@@ -52,17 +62,20 @@ const ACTION_SOURCE: Record<CapabilitySurface, WorkflowActionSource> = {
 	mcp: 'n8n-mcp',
 };
 
-/** Recommends where the workflow runs. Only this n8n instance is a run target for now. */
-async function recommendLocal(nodeTypes: string[]): Promise<ProposalRecommendation> {
+/** A move reads and exports the workflow here. */
+const MOVE_SCOPES: Scope[] = ['workflow:read', 'workflow:export'];
+
+/** Recommends where the workflow runs: this instance or an online link of the card. */
+async function recommendPlace(
+	nodeTypes: string[],
+	targets: readonly AutomationRunTarget[],
+): Promise<ProposalRecommendation> {
 	// Loaded at the first call, so that MCP requests do not load the Assistant package at boot.
 	// The first call still loads the whole package.
 	const { recommendRunTarget } = await lazyImport<typeof InstanceAi>(
 		async () => await import('@n8n/instance-ai'),
 	);
-	return recommendRunTarget({
-		nodeTypes,
-		targets: [{ ...LOCAL_CARD_TARGET, label: 'This computer' }],
-	});
+	return recommendRunTarget({ nodeTypes, targets: recommendationTargets(targets) });
 }
 
 /** Admin permission modes apply to the n8n Assistant only. MCP clients own consent. */
@@ -72,24 +85,25 @@ function isBlockedByAdmin(context: CapabilityContext, key: keyof InstanceAiPermi
 	);
 }
 
-/** Refuses to turn on a version that the user did not agree to. */
-function assertAgreedVersion(workflow: FoundWorkflow, versionId: string | undefined): void {
+/**
+ * Refuses to act on a version that the user did not see on the card. Archiving saves a new
+ * version too, so this also tells if the card showed an archived workflow.
+ */
+function assertCardVersion(
+	workflow: FoundWorkflow,
+	versionId: string | undefined,
+	refusal: (name: string) => string,
+): void {
 	if (versionId === undefined || versionId === workflow.versionId) return;
-	throw new UserError(
-		`"${workflow.name}" changed after the automation was proposed, so it was not turned on. Nothing was changed. Propose it again to turn on the current version.`,
-	);
+	throw new UserError(refusal(workflow.name));
 }
 
-/**
- * Refuses to restore a workflow that was archived after the card was shown. Archiving saves a new
- * version, so the version of the card tells if the card showed the archived workflow.
- */
-function assertArchivedOnCard(workflow: FoundWorkflow, versionId: string | undefined): void {
-	if (versionId === undefined || versionId === workflow.versionId) return;
-	throw new UserError(
-		`"${workflow.name}" was archived or changed after the automation was proposed, so it was not restored. Nothing was changed. Propose it again to keep it.`,
-	);
-}
+const CHANGED_SO_NOT_ON = (name: string) =>
+	`"${name}" changed after the automation was proposed, so it was not turned on. Nothing was changed. Propose it again to turn on the current version.`;
+const CHANGED_SO_NOT_RESTORED = (name: string) =>
+	`"${name}" was archived or changed after the automation was proposed, so it was not restored. Nothing was changed. Propose it again to keep it.`;
+const CHANGED_SO_NOT_COPIED = (name: string) =>
+	`"${name}" changed after the automation was proposed, so it was not copied. Nothing was changed. Propose it again to copy the current version.`;
 
 /**
  * Proposes to keep a workflow that the n8n Assistant built and to turn it on, and carries out
@@ -101,12 +115,13 @@ export class AutomationProposalService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly keeper: AutomationWorkflowKeeper,
 		private readonly publisher: AutomationWorkflowPublisher,
-		private readonly instance: AutomationInstanceInfo,
+		private readonly placement: AutomationPlacement,
 	) {}
 
 	/**
 	 * Builds the card data. The card offers "Turn it on" only when the trigger, the scopes of the
-	 * user and the admin permission modes allow it.
+	 * user and the admin permission modes allow it. It lists the user's links, and offers the ones
+	 * that were online at their last check.
 	 *
 	 * @throws WorkflowAccessError when the user cannot update the workflow
 	 * @throws UserError when the workflow is archived and cannot be restored
@@ -121,17 +136,18 @@ export class AutomationProposalService {
 		const canActivate =
 			trigger.canActivate &&
 			!isBlockedByAdmin(context, 'publishWorkflow') &&
-			(await this.hasScope(workflow.id, context.user, 'workflow:publish'));
-		const recommendation = await recommendLocal(recommendationNodeTypes(workflow.nodes));
+			(await this.hasScope(workflow.id, context.user, ['workflow:publish']));
+		const places = await this.placesFor(workflow, context);
 		const card = buildAutomationCard({
 			workflow,
 			request,
 			trigger,
 			schedule: chooseCron(
 				request.cron,
-				readTriggerSchedule(workflow, trigger, this.instance.defaultTimezone),
+				readTriggerSchedule(workflow, trigger, this.placement.instance.defaultTimezone),
 			).shown,
-			recommendation,
+			recommendation: await recommendPlace(recommendationNodeTypes(workflow.nodes), places.targets),
+			places,
 			canActivate,
 		});
 		return { card, workflowName: workflow.name };
@@ -156,29 +172,97 @@ export class AutomationProposalService {
 				'An admin has blocked turning on workflows for the n8n Assistant. Nothing was changed.',
 			);
 		}
+		if (isLinkedTarget(request.target)) {
+			return await this.applyOnLink(request, request.target, context);
+		}
 		const workflow = await this.findWorkflow(request.workflowId, context);
-		if (workflow.isArchived) assertArchivedOnCard(workflow, request.versionId);
+		if (workflow.isArchived) {
+			assertCardVersion(workflow, request.versionId, CHANGED_SO_NOT_RESTORED);
+		}
 		await this.assertCanRestore(workflow, context);
 		const trigger = classifyAutomationTrigger(workflow.nodes);
-		const { warning } = chooseCron(
-			request.cron,
-			readTriggerSchedule(workflow, trigger, this.instance.defaultTimezone),
-		);
-		if (wantsOn) assertAgreedVersion(workflow, request.versionId);
+		const warning = this.cronWarning(workflow, trigger, request.cron);
+		if (wantsOn) assertCardVersion(workflow, request.versionId, CHANGED_SO_NOT_ON);
 		const turnOn = wantsOn && !isSavedVersionLive(workflow);
-		if (turnOn) await this.assertCanTurnOn(workflow, trigger, context.user);
+		if (turnOn) {
+			await this.assertCanPublish(workflow, trigger, context.user);
+			// A lock that a user holds in the editor would stop the publish after the keep.
+			await this.publisher.assertEditable(workflow.id);
+		}
 
 		const keptVersionId = await this.keeper.keep(context.user, workflow);
 
 		const result: AutomationProposalResult = {
 			workflowId: workflow.id,
-			url: this.instance.workflowUrl(workflow.id),
+			url: this.placement.instance.workflowUrl(workflow.id),
 			active: workflow.activeVersionId !== null,
 			kept: true,
 			...(warning ? { warnings: [warning] } : {}),
 		};
 		if (!turnOn) return result;
 		return await this.turnOn(result, workflow.name, keptVersionId, context);
+	}
+
+	/**
+	 * Copies the workflow to the user's link, turns the copy on there when asked, then keeps the
+	 * workflow here. The copy comes first, so that a refused or failed copy keeps nothing. A move
+	 * of a live workflow turns it off here when the copy went live there.
+	 */
+	private async applyOnLink(
+		request: AutomationRequest,
+		linkId: string,
+		context: CapabilityContext,
+	): Promise<AutomationProposalResult> {
+		const wantsOn = request.activate === true;
+		const link = await this.placement.findLink(context, linkId);
+		const workflow = await this.findWorkflow(request.workflowId, context);
+		if (workflow.isArchived) {
+			throw new UserError(
+				`"${workflow.name}" is archived. Keep it on this computer first, then move it. Nothing was changed.`,
+			);
+		}
+		// The workflow leaves this instance, so it must be the version that the card showed.
+		assertCardVersion(workflow, request.versionId, CHANGED_SO_NOT_COPIED);
+		const trigger = classifyAutomationTrigger(workflow.nodes);
+		if (wantsOn) await this.assertCanPublish(workflow, trigger, context.user);
+		await this.keeper.assertCanKeep(workflow);
+		const warning = this.cronWarning(workflow, trigger, request.cron);
+
+		const result = await this.placement.copyToLink(context.user, {
+			link,
+			workflowId: workflow.id,
+			workflowName: workflow.name,
+			publish: wantsOn,
+			deactivateLocal: wantsOn && workflow.activeVersionId !== null,
+			source: ACTION_SOURCE[context.surface],
+			warnings: warning ? [warning] : [],
+		});
+		await this.keeper.keep(context.user, workflow);
+		return result;
+	}
+
+	/** The places of the card. Only a workflow that the user can move lists the links. */
+	private async placesFor(
+		workflow: FoundWorkflow,
+		context: CapabilityContext,
+	): Promise<Readonly<CardPlaces>> {
+		// A move refuses an archived workflow, and keeping it here restores it first.
+		if (workflow.isArchived) return LOCAL_PLACES;
+		const links = await this.placement.linksFor(context);
+		if (links.length === 0) return LOCAL_PLACES;
+		// A move exports the workflow, so it needs the export scope as well.
+		const canMove = await this.hasScope(workflow.id, context.user, MOVE_SCOPES);
+		return canMove ? cardPlaces(links) : LOCAL_PLACES;
+	}
+
+	/** The warning when the cron of the model differs from the schedule of the trigger. */
+	private cronWarning(
+		workflow: FoundWorkflow,
+		trigger: AutomationTrigger,
+		cron: string | undefined,
+	): string | undefined {
+		const defaultTimezone = this.placement.instance.defaultTimezone;
+		return chooseCron(cron, readTriggerSchedule(workflow, trigger, defaultTimezone)).warning;
 	}
 
 	/** Publishes the kept version. An expected failure keeps the workflow and reports why. */
@@ -220,14 +304,8 @@ export class AutomationProposalService {
 	}
 
 	/** Reads only a few columns. The caller has loaded the nodes and sharings already. */
-	private async hasScope(
-		workflowId: string,
-		user: User,
-		scope: 'workflow:publish' | 'workflow:delete',
-	): Promise<boolean> {
-		const head = await this.workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
-			scope,
-		]);
+	private async hasScope(workflowId: string, user: User, scopes: Scope[]): Promise<boolean> {
+		const head = await this.workflowFinderService.findWorkflowHeadForUser(workflowId, user, scopes);
 		return head !== null;
 	}
 
@@ -239,14 +317,15 @@ export class AutomationProposalService {
 				`"${workflow.name}" is archived, and an admin has blocked restoring workflows for the n8n Assistant. Nothing was changed.`,
 			);
 		}
-		if (!(await this.hasScope(workflow.id, context.user, 'workflow:delete'))) {
+		if (!(await this.hasScope(workflow.id, context.user, ['workflow:delete']))) {
 			throw new UserError(
 				`"${workflow.name}" is archived, and you do not have permission to restore it. Ask the owner of the workflow to restore it. Nothing was changed.`,
 			);
 		}
 	}
 
-	private async assertCanTurnOn(
+	/** The rules of the card for "Turn it on", here and on a linked instance. */
+	private async assertCanPublish(
 		workflow: FoundWorkflow,
 		trigger: AutomationTrigger,
 		user: User,
@@ -256,12 +335,10 @@ export class AutomationProposalService {
 				`"${workflow.name}" has no trigger that starts it on its own, so it cannot be turned on. Nothing was changed.`,
 			);
 		}
-		if (!(await this.hasScope(workflow.id, user, 'workflow:publish'))) {
+		if (!(await this.hasScope(workflow.id, user, ['workflow:publish']))) {
 			throw new UserError(
 				`You do not have permission to turn on "${workflow.name}". Ask the owner of the workflow to turn it on. Nothing was changed.`,
 			);
 		}
-		// A lock that a user holds in the editor would stop the publish after the keep.
-		await this.publisher.assertEditable(workflow.id);
 	}
 }

@@ -43,6 +43,11 @@ export type CapabilityRequest = { user: User };
 export type CapabilityContext = CapabilityRequest & {
 	surface: CapabilitySurface;
 	permissions?: InstanceAiPermissions;
+	/**
+	 * True when the Assistant chat is shared with a project. The turn then runs as the chat owner,
+	 * and a teammate can answer its cards, so nothing leaves this instance.
+	 */
+	sharedThread?: boolean;
 };
 
 /** Runs one tool call for a surface, for example to record it in the audit log. */
@@ -52,8 +57,14 @@ export type CapabilityCallRunner = (
 	invoke: () => Promise<CallToolResult>,
 ) => Promise<CallToolResult>;
 
-/** What the n8n Assistant knows about the request: the user and the admin permission modes. */
-export type AssistantRequest = CapabilityRequest & { permissions?: InstanceAiPermissions };
+/**
+ * What the n8n Assistant knows about the request: the user, the admin permission modes, and
+ * whether the chat is shared.
+ */
+export type AssistantRequest = CapabilityRequest & {
+	permissions?: InstanceAiPermissions;
+	sharedThread?: boolean;
+};
 
 export type AssistantToolRequest = AssistantRequest & { runCall?: CapabilityCallRunner };
 

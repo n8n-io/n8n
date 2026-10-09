@@ -97,16 +97,26 @@ describe('automationProposalCardSchema', () => {
 		},
 	);
 
-	it('accepts a linked target with a label for later slices', () => {
-		const card = makeCard({
-			targets: [
-				{ id: 'local', kind: 'local', status: 'online' },
-				{ id: 'instance-7', kind: 'linked', label: 'Team cloud', status: 'offline' },
-			],
-		});
+	it.each(['online', 'offline', 'unauthorised', 'mcp-disabled', 'unknown'] as const)(
+		'accepts a linked target with a label, an address and the stored status %s',
+		(status) => {
+			const card = makeCard({
+				targets: [
+					{ id: 'local', kind: 'local', status: 'online' },
+					{
+						id: 'instance-7',
+						kind: 'linked',
+						label: 'Team cloud',
+						status,
+						baseUrl: 'https://cloud.example.test',
+					},
+				],
+				offered: { target: ['local', 'instance-7'], activate: [true, false] },
+			});
 
-		expect(automationProposalCardSchema.safeParse(card).success).toBe(true);
-	});
+			expect(automationProposalCardSchema.parse(card)).toEqual(card);
+		},
+	);
 
 	it.each([
 		['an empty title', { title: '' }],
@@ -263,6 +273,28 @@ describe('automationProposalResultSchema', () => {
 		};
 
 		expect(automationProposalResultSchema.parse(result)).toEqual(result);
+	});
+
+	it('accepts a workflow that went to a linked instance', () => {
+		const result = {
+			workflowId: 'remote-wf-9',
+			url: 'https://cloud.example.test/workflow/remote-wf-9',
+			active: true,
+			kept: true,
+			place: { targetId: 'instance-7', kind: 'linked', name: 'Team cloud' },
+		};
+
+		expect(automationProposalResultSchema.parse(result)).toEqual(result);
+	});
+
+	it.each([
+		['an empty target id', { targetId: '', kind: 'linked' }],
+		['an unknown kind', { targetId: 'instance-7', kind: 'cloud' }],
+		['a name that is not text', { targetId: 'instance-7', kind: 'linked', name: 7 }],
+	])('rejects a place with %s', (_label, place) => {
+		const result = { workflowId: 'wf-1', url: 'u', active: true, kept: true, place };
+
+		expect(automationProposalResultSchema.safeParse(result).success).toBe(false);
 	});
 
 	it('rejects a result that did not keep the workflow', () => {
