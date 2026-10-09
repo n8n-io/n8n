@@ -16,7 +16,7 @@ const execution: ExecutionRecord = {
 	workflowId: 'wf-1',
 	status: 'running',
 	mode: 'production',
-	graph: { nodes: [], edges: [] },
+	graph: { nodes: [], edges: [], seeded: [] },
 	workflow: {},
 	triggerOutputs: null,
 	callerContext: { hostMode: 'trigger' },

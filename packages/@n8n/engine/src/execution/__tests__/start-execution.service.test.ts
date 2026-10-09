@@ -61,8 +61,7 @@ describe('StartExecutionService', () => {
 			workflowId: 'wf-1',
 			status: 'queued',
 			mode: 'production',
-			seededSteps: null,
-			graph: sampleGraph,
+			graph: { ...sampleGraph, seeded: [] },
 			workflow: sampleWorkflow,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			callerContext: { hostMode: 'trigger' },
@@ -241,10 +240,7 @@ describe('StartExecutionService', () => {
 			// settlement knows to record it rather than run it.
 			expect(store.createExecution).toHaveBeenCalledWith(
 				expect.objectContaining({
-					graph: {
-						...graph,
-						nodes: graph.nodes.map((node) => (node.id === 'a' ? { ...node, seeded: true } : node)),
-					},
+					graph: { ...graph, seeded: ['a'] },
 				}),
 			);
 			expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ seededSteps }));
