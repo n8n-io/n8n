@@ -184,14 +184,17 @@ describe('googleVertexAiCredentialTest', () => {
 	const context = mock<ICredentialTestFunctions>({
 		helpers: mock<ICredentialTestFunctions['helpers']>({ request }),
 	});
-	const credential = mock<ICredentialsDecrypted>({
+	const credential: ICredentialsDecrypted = {
+		id: 'vertex-credential',
+		name: 'Google Vertex AI',
+		type: 'googleVertexAiApi',
 		data: {
 			email: 'test@example.com',
 			privateKey: 'test-private-key',
 			projectId: ' test-project ',
 			delegatedEmail: 'unused@example.com',
 		},
-	});
+	};
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -199,23 +202,41 @@ describe('googleVertexAiCredentialTest', () => {
 		request.mockResolvedValue({ locations: [] });
 	});
 
-	it('checks the credential project with Vertex scopes and service account authentication', async () => {
-		const result = await googleVertexAiCredentialTest.call(context, credential);
+	it.each([
+		{ project: undefined, projectId: ' test-project ', expected: 'test-project' },
+		{ project: '__custom__', projectId: ' manual-project ', expected: 'manual-project' },
+		{
+			project: ' selected-project ',
+			projectId: 'old-manual-project',
+			expected: 'selected-project',
+		},
+	])(
+		'checks project $expected with Vertex scopes and service account authentication',
+		async ({ project, projectId, expected }) => {
+			const result = await googleVertexAiCredentialTest.call(context, {
+				...credential,
+				data: {
+					...credential.data,
+					...(project === undefined ? {} : { project }),
+					projectId,
+				},
+			});
 
-		expect(result.status).toBe('OK');
-		expect(getGoogleAccessToken).toHaveBeenCalledWith(
-			{ email: 'test@example.com', privateKey: 'test-private-key' },
-			'vertex',
-		);
-		expect(request).toHaveBeenCalledWith(
-			expect.objectContaining({
-				method: 'GET',
-				uri: 'https://aiplatform.googleapis.com/v1/projects/test-project/locations',
-				headers: { Authorization: 'Bearer test-access-token' },
-				qs: { pageSize: 1 },
-			}),
-		);
-	});
+			expect(result.status).toBe('OK');
+			expect(getGoogleAccessToken).toHaveBeenCalledWith(
+				{ email: 'test@example.com', privateKey: 'test-private-key' },
+				'vertex',
+			);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'GET',
+					uri: `https://aiplatform.googleapis.com/v1/projects/${expected}/locations`,
+					headers: { Authorization: 'Bearer test-access-token' },
+					qs: { pageSize: 1 },
+				}),
+			);
+		},
+	);
 
 	it('reports a project error even when the service account key is valid', async () => {
 		request.mockRejectedValue(new Error('Project not found'));
