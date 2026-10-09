@@ -98,7 +98,7 @@ function nativeEngine(): RegexEngine {
 		warnedAboutBrowserFallback = true;
 		LoggerProxy.warn('Using native regular expression engine without timeout protection');
 	}
-	/* eslint-disable n8n-local-rules/no-dynamic-regexp -- isomorphic native fallback; backend overrides via setInternalRegexEngine */
+	/* eslint-disable n8n-local-rules/no-dynamic-regexp -- isomorphic native fallback */
 	return {
 		exec: (pattern, input, flags) => new RegExp(pattern, flags).exec(input),
 		test: (pattern, input, flags) => new RegExp(pattern, flags).test(input),
@@ -191,10 +191,10 @@ export function resetInternalRegexEngine(): void {
 	internalEngine = createDefaultEngine();
 }
 
-/** @deprecated Renamed to {@link setInternalRegexEngine}. */
+/** @deprecated Use {@link setInternalRegexEngine} instead. */
 export const setSafeRegexEngine = setInternalRegexEngine;
 
-/** @deprecated Renamed to {@link resetInternalRegexEngine}. */
+/** @deprecated Use {@link resetInternalRegexEngine} instead. */
 export const resetSafeRegexEngine = resetInternalRegexEngine;
 
 export function setUserRegexEngine(regexEngine: RegexEngine): void {
@@ -222,16 +222,10 @@ function makeRegexFacade(getEngine: () => RegexEngine): RegexEngine {
 	};
 }
 
-/**
- * For a pattern n8n itself authored: resource-locator extraction, `displayOptions`
- * matching, node-description validation, SQL placeholder substitution, and the like.
- * Always the built-in engine, whatever an instance selects for a user's patterns.
- *
- * A pattern a user typed belongs on `safeUserRegex` instead.
- */
+/** For patterns n8n authors, not user-authored ones. */
 export const safeInternalRegex: RegexEngine = makeRegexFacade(() => internalEngine);
 
-/** @deprecated Renamed to {@link safeInternalRegex}. */
+/** @deprecated Use {@link safeInternalRegex} instead. */
 export const safeRegex: RegexEngine = safeInternalRegex;
 
 /**
