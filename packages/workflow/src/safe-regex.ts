@@ -3,8 +3,10 @@ import * as LoggerProxy from './logger-proxy';
 const REGEX_TIMEOUT_MS = 250;
 const REGEX_TIMEOUT_ERROR_MESSAGE = 'Regular expression execution timed out';
 
-// Results use the native `RegExp` types, as these interfaces are public. A capture group
-// that did not take part in the match is `undefined` at runtime despite its `string` type.
+// Check a capture group for `undefined` before using it. A group that did not take part in
+// the match is `undefined` at runtime, but the native `RegExp` result types used here declare
+// it `string`, so the compiler does not flag a missing check. They match the native types
+// because these interfaces are public and external code is typed against them.
 export interface RegexEngine {
 	exec(pattern: string, input: string, flags?: string): RegExpExecArray | null;
 	test(pattern: string, input: string, flags?: string): boolean;
@@ -47,8 +49,8 @@ type VmModule = typeof import('node:vm');
 
 let warnedAboutBrowserFallback = false;
 let internalEngine: RegexEngine;
-// Built lazily: most instances never touch the user-regex config, so building it
-// eagerly at module load would pay for a second vm context and script set for nothing.
+// Built on first use, so a process that sets its own user engine, or runs no user pattern,
+// never builds a second default engine.
 let userEngine: RegexEngine | undefined;
 
 export function parseRegexLiteral(value: string): RegexLiteral {
@@ -229,10 +231,7 @@ export const safeInternalRegex: RegexEngine = makeRegexFacade(() => internalEngi
 export const safeRegex: RegexEngine = safeInternalRegex;
 
 /**
- * For a pattern a user wrote. Runs on whichever engine the instance selects, so callers
- * must treat its results as that engine's, not as the built-in engine's.
- *
- * A pattern n8n itself authored belongs on `safeInternalRegex` instead: it is written
- * for the built-in engine and must keep its semantics whatever the instance selects.
+ * For a pattern a user wrote. Runs on the engine the instance selects, whose syntax and
+ * results can differ from the built-in engine.
  */
 export const safeUserRegex: RegexEngine = makeRegexFacade(getUserEngine);
