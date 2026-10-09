@@ -7,8 +7,7 @@
 			"description": "The called agent's final reply text"
 		},
 		"structuredOutput": {
-			"type": ["object", "null"],
-			"description": "Parsed structured output when the node defines an output schema; null otherwise"
+			"description": "Parsed structured output when the node defines an output schema; null otherwise. Any JSON value: a manual schema can ask for an array or a single value"
 		},
 		"usage": {
 			"type": ["object", "null"],

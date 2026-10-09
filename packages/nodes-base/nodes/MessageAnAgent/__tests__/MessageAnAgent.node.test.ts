@@ -10,6 +10,13 @@ import { MessageAnAgent, baseDescription } from '../MessageAnAgent.node';
 import { MessageAnAgentV1 } from '../v1/MessageAnAgentV1.node';
 import { MessageAnAgentV2 } from '../v2/MessageAnAgentV2.node';
 
+/** The JSON Schema type name of a JSON value. */
+function jsonType(value: unknown): string {
+	if (value === null) return 'null';
+	if (Array.isArray(value)) return 'array';
+	return typeof value;
+}
+
 describe('MessageAnAgent Node', () => {
 	let node: MessageAnAgentV2;
 	let executeFunctions: Mocked<IExecuteFunctions>;
@@ -1050,19 +1057,22 @@ describe('MessageAnAgent Node', () => {
 		});
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		mockParams();
-		// An inline agent with no output schema: every nullable field is null.
-		executeFunctions.executeAgent.mockResolvedValue({
-			...mockAgentResult,
-			usage: null,
-			session: null,
-		});
 
-		const result = await versionNode.execute.call(executeFunctions);
-		const item = result[0][0].json;
+		// Every field set; every nullable field null; and an array, which a manual
+		// output schema can ask for.
+		for (const agentResult of [
+			mockAgentResult,
+			{ ...mockAgentResult, usage: null, session: null },
+			{ ...mockAgentResult, structuredOutput: ['first', 'second'] },
+		]) {
+			executeFunctions.executeAgent.mockResolvedValue(agentResult);
+			const [[{ json: item }]] = await versionNode.execute.call(executeFunctions);
 
-		expect([...schema.required].sort()).toEqual(Object.keys(item).sort());
-		for (const [key, value] of Object.entries(item)) {
-			if (value === null) expect([schema.properties[key].type].flat()).toContain('null');
+			expect(Object.keys(item).sort()).toEqual([...schema.required].sort());
+			for (const [key, value] of Object.entries(item)) {
+				const declared = schema.properties[key].type;
+				if (declared) expect([declared].flat()).toContain(jsonType(value));
+			}
 		}
 	});
 });
