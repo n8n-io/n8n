@@ -2,7 +2,7 @@ operationId: createPromotionProvider
 tags:
   - Promotions
 summary: Create a promotion provider
-description: Creates a provider and its authentication material. An SSH provider returns the generated public key; add it to the remote as a deploy key.
+description: Creates a provider and its authentication material. A Git host provider validates authenticated API access before it saves. An SSH provider returns the generated public key; add it to the remote as a deploy key.
 x-required-scope: gitConnection:create
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -22,6 +22,7 @@ requestBody:
             type: string
             enum:
               - git
+              - gitlab
           auth:
             oneOf:
               - type: object
@@ -56,6 +57,19 @@ requestBody:
                   - username
                   - password
                 additionalProperties: false
+          config:
+            type: object
+            properties:
+              schemaVersion:
+                type: number
+                enum:
+                  - 1
+              baseUrl:
+                type: string
+            required:
+              - schemaVersion
+              - baseUrl
+            additionalProperties: false
         required:
           - name
           - type
@@ -82,6 +96,7 @@ responses:
                   type: string
                   enum:
                     - git
+                    - gitlab
                 authType:
                   type: string
                   enum:
@@ -116,6 +131,18 @@ responses:
                             - 1
                       required:
                         - schemaVersion
+                      additionalProperties: false
+                    - type: object
+                      properties:
+                        schemaVersion:
+                          type: number
+                          enum:
+                            - 1
+                        baseUrl:
+                          type: string
+                      required:
+                        - schemaVersion
+                        - baseUrl
                       additionalProperties: false
                 createdAt:
                   type: string

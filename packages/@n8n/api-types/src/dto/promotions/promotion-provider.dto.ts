@@ -7,12 +7,39 @@ import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
-export const promotionProviderTypeSchema = z.enum(['git']);
+export const promotionProviderTypeSchema = z.enum(['git', 'gitlab']);
 export type PromotionProviderType = z.infer<typeof promotionProviderTypeSchema>;
 
-/** `token` is an HTTP(S) username and password, not a Git host API token. */
+/** A token authenticates Git over HTTP(S) and can also authenticate a host API. */
 export const promotionProviderAuthTypeSchema = z.enum(['ssh-key', 'token']);
 export type PromotionProviderAuthType = z.infer<typeof promotionProviderAuthTypeSchema>;
+
+export const promotionProviderTypeCapabilities = {
+	git: { authTypes: ['ssh-key', 'token'], hasHostApi: false, tokenUsername: null },
+	gitlab: { authTypes: ['token'], hasHostApi: true, tokenUsername: 'n8n' },
+} as const satisfies Record<
+	PromotionProviderType,
+	{
+		authTypes: readonly PromotionProviderAuthType[];
+		hasHostApi: boolean;
+		/** Null means the user supplies the Git transport username. */
+		tokenUsername: string | null;
+	}
+>;
+
+export type PromotionGitHostType = {
+	[T in PromotionProviderType]: (typeof promotionProviderTypeCapabilities)[T]['hasHostApi'] extends true
+		? T
+		: never;
+}[PromotionProviderType];
+
+export const isPromotionGitHostType = (type: PromotionProviderType): type is PromotionGitHostType =>
+	promotionProviderTypeCapabilities[type].hasHostApi;
+
+export const supportsPromotionAuthType = (
+	type: PromotionProviderType,
+	authType: PromotionProviderAuthType,
+) => promotionProviderTypeCapabilities[type].authTypes.some((supported) => supported === authType);
 
 /** Key algorithms the backend can generate for an `ssh-key` provider. */
 export const promotionSshKeyTypeSchema = z.enum(['ed25519', 'rsa']);
@@ -33,6 +60,36 @@ export const promotionGitSshKeyConfigSchema = z
 /** HTTP(S) keeps the username with the password, so there is nothing public. */
 export const promotionGitTokenConfigSchema = z.object({ schemaVersion: z.literal(1) }).strict();
 
+function isPlainHttpUrl(value: string) {
+	for (const char of value) {
+		if (char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127) return false;
+	}
+	try {
+		const url = new URL(value);
+		return (
+			['http:', 'https:'].includes(url.protocol) &&
+			!url.username &&
+			!url.password &&
+			!url.search &&
+			!url.hash
+		);
+	} catch {
+		return false;
+	}
+}
+
+export const promotionGitHostBaseUrlSchema = z.string().trim().refine(isPlainHttpUrl, {
+	message: 'Base URL must be an HTTP(S) URL without credentials, a query, or a fragment',
+});
+
+export const promotionGitHostConfigSchema = z
+	.object({
+		schemaVersion: z.literal(1),
+		baseUrl: promotionGitHostBaseUrlSchema,
+	})
+	.strict();
+export type PromotionGitHostConfig = z.infer<typeof promotionGitHostConfigSchema>;
+
 /**
  * Config schema for each auth type. Use this map once the auth type is known: the
  * union below accepts either shape and cannot tell them apart. A new provider type
@@ -46,6 +103,7 @@ export const promotionGitConfigSchemas = {
 export const promotionProviderConfigSchema = z.union([
 	promotionGitSshKeyConfigSchema,
 	promotionGitTokenConfigSchema,
+	promotionGitHostConfigSchema,
 ]);
 export type PromotionProviderConfig = z.infer<typeof promotionProviderConfigSchema>;
 
@@ -109,23 +167,22 @@ export type PromotionProviderAuthUpdate = z.infer<typeof promotionProviderAuthUp
  * The auth type is stated once, inside `auth`, so it always matches the credentials
  * beside it. The service reads it from there for the `authType` column.
  *
- * `git` is the only provider type today, so its two auth methods are the only ones
- * the union accepts. A second provider type brings its own auth variants, and the
- * pairing of provider type to auth method becomes a choice to model here.
+ * A Git host takes a public config with its base URL. Plain Git generates its
+ * config. The service checks the provider, auth method, and config together.
  */
 export class CreatePromotionProviderDto extends Z.class(
 	{
 		name: promotionDisplayNameSchema,
 		type: promotionProviderTypeSchema,
 		auth: promotionProviderAuthInputSchema,
+		config: promotionGitHostConfigSchema.optional(),
 	},
 	{ strict: true },
 ) {}
 
 /**
- * `type` cannot change and `config` holds generated key material, so a strict shape
- * rejects both. Leaving out `auth` keeps the stored credentials. Sending it replaces
- * them.
+ * Type cannot change. A host can change its base URL. Plain Git keeps its generated
+ * config. Leaving out auth keeps the stored credentials. Sending it replaces them.
  *
  * `auth.authType` states which credentials are being sent, and the auth type itself
  * cannot change, so the service compares it with the stored one and rejects a
@@ -136,11 +193,15 @@ const updatePromotionProviderSchema = z
 	.object({
 		name: promotionDisplayNameSchema.optional(),
 		auth: promotionProviderAuthUpdateSchema.optional(),
+		config: promotionGitHostConfigSchema.optional(),
 	})
 	.strict()
-	.refine(({ name, auth }) => name !== undefined || auth !== undefined, {
-		message: 'At least one field is required',
-	})
+	.refine(
+		({ name, auth, config }) => name !== undefined || auth !== undefined || config !== undefined,
+		{
+			message: 'At least one field is required',
+		},
+	)
 	.openapi({ minProperties: 1 });
 
 type UpdatePromotionProvider = z.infer<typeof updatePromotionProviderSchema>;
@@ -149,6 +210,8 @@ export class UpdatePromotionProviderDto implements UpdatePromotionProvider {
 	name?: string;
 
 	auth?: PromotionProviderAuthUpdate;
+
+	config?: PromotionGitHostConfig;
 
 	static schema = updatePromotionProviderSchema;
 
@@ -180,7 +243,7 @@ export class PromotionProviderPublicDto extends Z.class(promotionProviderPublicS
 
 /**
  * A provider without its public config. Used for list rows and inside a
- * connection, neither of which shows the SSH public key. Only the provider detail
+ * connection, neither of which shows the public config. Only the provider detail
  * route does.
  */
 export const promotionProviderSummarySchema = promotionProviderPublicSchema.omit({ config: true });

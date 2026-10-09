@@ -1,10 +1,12 @@
 import { ApplyPackageResultDto, type ContinueApplyPackageDto } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { Cipher } from 'n8n-core';
+import nock from 'nock';
 
 import { BadRequestError } from '@n8n/errors';
 import { PromotionConfigRepository } from '@/modules/promotions.ee/database/repositories/promotion-config.repository';
@@ -142,6 +144,347 @@ describe('Promotions in Public API', () => {
 		expect(
 			await Container.get(PromotionProviderRepository).findOneBy({ id: providerId }),
 		).not.toBeNull();
+	});
+
+	describe('GitLab provider validation', () => {
+		const payload = {
+			name: 'GitLab',
+			type: 'gitlab',
+			auth: { authType: 'token', username: 'bot', password: 'example-token' },
+			config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+		};
+
+		function validAccess(baseUrl = payload.config.baseUrl, token = payload.auth.password) {
+			const instance = new URL(baseUrl);
+			const apiPath = `${instance.pathname.replace(/\/$/, '')}/api/v4`;
+			return nock(instance.origin)
+				.matchHeader('PRIVATE-TOKEN', token)
+				.get(`${apiPath}/user`)
+				.reply(200, { id: 1 })
+				.get(`${apiPath}/projects`)
+				.query({ membership: 'true', simple: 'true', per_page: '1', page: '1' })
+				.reply(200, []);
+		}
+
+		beforeEach(() => vi.mocked(Container.get(Logger).warn).mockClear());
+		afterEach(() => nock.cleanAll());
+
+		it('creates and renames a provider without exposing or replacing credentials', async () => {
+			const decrypt = vi.spyOn(Container.get(Cipher), 'decryptV2');
+			try {
+				const api = validAccess();
+				const agent = testServer.publicApiAgentFor(owner);
+				const created = await agent.post('/promotions/providers').send({
+					...payload,
+					config: { ...payload.config, baseUrl: `  ${payload.config.baseUrl}  ` },
+				});
+				expect(created.status, JSON.stringify(created.body)).toBe(201);
+				expect(created.body.publicKey).toBeNull();
+				expect(decrypt).not.toHaveBeenCalled();
+				const id = created.body.provider.id as string;
+				const stored = await Container.get(PromotionProviderRepository).findOneByOrFail({ id });
+				const detail = await agent.get(`/promotions/providers/${id}`);
+				const list = await agent.get('/promotions/providers');
+
+				expect(stored.auth).not.toContain(payload.auth.password);
+				expect(detail.status).toBe(200);
+				expect(detail.body).toMatchObject({
+					type: 'gitlab',
+					authType: 'token',
+					config: payload.config,
+				});
+				expect(list.body.data).toEqual([expect.objectContaining({ id, type: 'gitlab' })]);
+				expect(list.body.data[0]).not.toHaveProperty('config');
+				expect(JSON.stringify([created.body, detail.body, list.body])).not.toContain(
+					payload.auth.password,
+				);
+				expect(detail.body).not.toHaveProperty('auth');
+				api.done();
+
+				const offline = nock(payload.config.baseUrl).get('/api/v4/user').reply(503);
+				const renamed = await agent.put(`/promotions/providers/${id}`).send({ name: 'Renamed' });
+				expect(renamed.status).toBe(200);
+				expect(renamed.body.name).toBe('Renamed');
+				expect(
+					(await Container.get(PromotionProviderRepository).findOneByOrFail({ id })).auth,
+				).toBe(stored.auth);
+				expect(offline.isDone()).toBe(false);
+			} finally {
+				decrypt.mockRestore();
+			}
+		});
+
+		it.each([
+			{ ...payload, config: undefined },
+			{ ...payload, auth: { authType: 'ssh-key' } },
+			{ ...payload, config: { ...payload.config, schemaVersion: 2 } },
+			{ ...payload, type: 'github' },
+		])('rejects invalid provider configuration before saving: %j', async (input) => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/promotions/providers')
+				.send(input);
+
+			expect(response.status).toBe(400);
+			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+		});
+
+		it('rejects host settings on plain Git providers without changing stored settings', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const created = await agent.post('/promotions/providers').send({ ...payload, type: 'git' });
+			expect(created.status).toBe(400);
+			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+			const id = await createProvider(agent);
+			const before = await Container.get(PromotionProviderRepository).findOneByOrFail({ id });
+			const updated = await agent
+				.put(`/promotions/providers/${id}`)
+				.send({ config: payload.config });
+			expect(updated.status).toBe(400);
+			expect(await Container.get(PromotionProviderRepository).findOneByOrFail({ id })).toEqual(
+				before,
+			);
+		});
+
+		it.each([
+			[401, 400, 'GitLab rejected the access token'],
+			[404, 400, 'No GitLab API was found'],
+			[429, 503, 'GitLab is not available'],
+			[502, 503, 'GitLab is not available'],
+			[418, 400, 'GitLab returned status 418'],
+		])(
+			'reports GitLab HTTP %i without saving or exposing secrets',
+			async (status, expectedStatus, message) => {
+				const api = nock(payload.config.baseUrl)
+					.get('/api/v4/user')
+					.reply(status, { message: payload.auth.password });
+
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.post('/promotions/providers')
+					.send(payload);
+
+				expect(response.status).toBe(expectedStatus);
+				expect(response.body.message).toContain(message);
+				expect(JSON.stringify(response.body)).not.toContain(payload.auth.password);
+				expect(JSON.stringify(vi.mocked(Container.get(Logger).warn).mock.calls)).not.toContain(
+					payload.auth.password,
+				);
+				expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+				api.done();
+			},
+		);
+
+		it('reports a missing API read scope rather than saving the provider', async () => {
+			const api = nock(payload.config.baseUrl)
+				.get('/api/v4/user')
+				.reply(200, { id: 1 })
+				.get('/api/v4/projects')
+				.query(true)
+				.reply(403, { message: 'Forbidden' });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/promotions/providers')
+				.send(payload);
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('read_api scope');
+			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+			api.done();
+		});
+
+		it.each(['user', 'projects'])(
+			'rejects an unexpected %s response without saving',
+			async (path) => {
+				const api = nock(payload.config.baseUrl);
+				if (path === 'projects') api.get('/api/v4/user').reply(200, { id: 1 });
+				api.get(`/api/v4/${path}`).query(true).reply(200, '<html>Sign in</html>');
+
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.post('/promotions/providers')
+					.send(payload);
+
+				expect(response.status).toBe(400);
+				expect(response.body.message).toContain('GitLab returned an unexpected response');
+				expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+				api.done();
+			},
+		);
+
+		it('rejects redirects without forwarding the token', async () => {
+			const api = nock(payload.config.baseUrl)
+				.get('/api/v4/user')
+				.reply(302, '', { Location: 'https://other.example.com/api/v4/user' });
+			const destination = nock('https://other.example.com')
+				.get('/api/v4/user')
+				.reply(200, { id: 1 });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/promotions/providers')
+				.send(payload);
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('Use the final GitLab URL');
+			expect(destination.isDone()).toBe(false);
+			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+			api.done();
+		});
+
+		it('rejects oversized responses without retrying or saving credentials', async () => {
+			const api = nock(payload.config.baseUrl)
+				.get('/api/v4/user')
+				.reply(200, { id: 1, details: payload.auth.password + 'x'.repeat(1024 * 1024) });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/promotions/providers')
+				.send(payload);
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('GitLab returned a response that is too large');
+			expect(JSON.stringify(response.body)).not.toContain(payload.auth.password);
+			expect(JSON.stringify(vi.mocked(Container.get(Logger).warn).mock.calls)).not.toContain(
+				payload.auth.password,
+			);
+			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+			api.done();
+		});
+
+		it.each([
+			['ECONNREFUSED', 2, 503, 'Could not reach GitLab'],
+			['ETIMEDOUT', 2, 503, 'The GitLab request timed out'],
+			['ENOTFOUND', 1, 400, 'n8n server DNS settings'],
+			['SELF_SIGNED_CERT_IN_CHAIN', 1, 400, 'trusted certificate authority'],
+			['UNRECOGNIZED', 1, 503, 'Could not complete the GitLab API request'],
+		])(
+			'reports %s with bounded retries and no saved credentials',
+			async (code, attempts, expectedStatus, message) => {
+				const api = nock(payload.config.baseUrl)
+					.get('/api/v4/user')
+					.times(attempts)
+					.replyWithError(Object.assign(new Error(payload.auth.password), { code }));
+
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.post('/promotions/providers')
+					.send(payload);
+
+				expect(response.status).toBe(expectedStatus);
+				expect(response.body.message).toContain(message);
+				expect(JSON.stringify(response.body)).not.toContain(payload.auth.password);
+				expect(JSON.stringify(vi.mocked(Container.get(Logger).warn).mock.calls)).not.toContain(
+					payload.auth.password,
+				);
+				expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+				api.done();
+			},
+		);
+
+		it('saves the provider after one transient failure recovers', async () => {
+			const reset = nock(payload.config.baseUrl)
+				.get('/api/v4/user')
+				.replyWithError(Object.assign(new Error('socket closed'), { code: 'ECONNRESET' }));
+			const api = validAccess();
+
+			await createProvider(testServer.publicApiAgentFor(owner), payload);
+
+			expect(await Container.get(PromotionProviderRepository).count()).toBe(1);
+			reset.done();
+			api.done();
+		});
+
+		it.each([
+			{
+				auth: { authType: 'token', username: 'ignored', password: 'replacement-token' },
+				config: undefined,
+			},
+			{
+				auth: undefined,
+				config: { schemaVersion: 1, baseUrl: 'http://gitlab.internal:8929/gitlab/' },
+			},
+			{
+				auth: { authType: 'token', username: 'ignored', password: 'replacement-token' },
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.internal' },
+			},
+		])('validates partial and combined provider updates: %j', async (input) => {
+			validAccess();
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createProvider(agent, payload);
+			const before = await Container.get(PromotionProviderRepository).findOneByOrFail({ id });
+			const baseUrl = input.config?.baseUrl ?? payload.config.baseUrl;
+			const token = input.auth?.password ?? payload.auth.password;
+			const api = validAccess(baseUrl, token);
+
+			const response = await agent.put(`/promotions/providers/${id}`).send(input);
+
+			expect(response.status, JSON.stringify(response.body)).toBe(200);
+			expect(response.body.config.baseUrl).toBe(baseUrl);
+			expect(JSON.stringify(response.body)).not.toContain(token);
+			const stored = await Container.get(PromotionProviderRepository).findOneByOrFail({ id });
+			if (!input.auth) expect(stored.auth).toBe(before.auth);
+			await expect(
+				Container.get(PromotionProvidersService).decryptCredentials(stored),
+			).resolves.toEqual({ authType: 'token', username: 'n8n', password: token });
+			api.done();
+		});
+
+		it('does not change any persisted fields when a replacement fails validation', async () => {
+			validAccess();
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createProvider(agent, payload);
+			const before = await Container.get(PromotionProviderRepository).findOneByOrFail({ id });
+			const api = nock('https://gitlab.internal')
+				.get('/api/v4/user')
+				.reply(401, { message: 'Unauthorized' });
+
+			const response = await agent.put(`/promotions/providers/${id}`).send({
+				name: 'Changed',
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.internal' },
+				auth: { authType: 'token', username: 'bot', password: 'bad-token' },
+			});
+
+			expect(response.status).toBe(400);
+			expect(await Container.get(PromotionProviderRepository).findOneByOrFail({ id })).toEqual(
+				before,
+			);
+			api.done();
+		});
+
+		it('preserves project assignment and both directional branch configurations', async () => {
+			validAccess();
+			const agent = testServer.publicApiAgentFor(owner);
+			const providerId = await createProvider(agent, payload);
+			const project = await createTeamProject('GitLab deployment', owner);
+			const id = await createConnection(agent, {
+				providerId,
+				scope: 'projects',
+				target: {
+					schemaVersion: 1,
+					remoteUrl: 'https://gitlab.example.com/platform/workflows.git',
+				},
+				configs: {
+					apply: { settings: { schemaVersion: 1, branchName: 'production' } },
+					promote: {
+						settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
+					},
+				},
+			});
+
+			const link = await agent.post(`/promotions/connections/${id}/projects/${project.id}`);
+			const rename = await agent.put(`/promotions/connections/${id}`).send({ name: 'Renamed' });
+			const projects = await agent.get(`/promotions/connections/${id}/projects`);
+
+			expect(link.status, JSON.stringify(link.body)).toBe(200);
+			expect(rename.status, JSON.stringify(rename.body)).toBe(200);
+			expect(rename.body.provider).toMatchObject({ id: providerId, type: 'gitlab' });
+			expect(rename.body.configs).toMatchObject({
+				apply: { settings: { branchName: 'production' } },
+				promote: { settings: { baseBranchName: 'main', createBranchOnPromotion: true } },
+			});
+			expect(projects.body.projectIds).toEqual([project.id]);
+		});
 	});
 
 	it('rejects a key that has no promotion scope', async () => {
