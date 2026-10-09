@@ -470,7 +470,7 @@ describe('MigrationFindingQueryService', () => {
 				new Map([['wf-1', { id: 'project-1' } as Project]]),
 			);
 
-			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a');
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
 
 			expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).toHaveBeenCalledWith([
 				'wf-1',
