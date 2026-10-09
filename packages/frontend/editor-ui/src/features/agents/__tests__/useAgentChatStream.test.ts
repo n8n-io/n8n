@@ -70,6 +70,13 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 });
 
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
+import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
+import {
+	TEST_EXTENSION_KEY,
+	testCardSuspendPayload,
+	testInteractionExtensions,
+} from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 
 // Runtime fixtures include the admission event sent before runtime output.
 function withExecutionStart(events: AgentSseEvent[]): AgentSseEvent[] {
@@ -222,6 +229,7 @@ function buildHook(
 		onAgentUnavailable?: () => void;
 		budgetCards?: boolean;
 		channel?: Ref<'chat' | 'n8n-chat'>;
+		interactionExtensions?: readonly AgentsChatInteractionExtension[];
 	} = {},
 ) {
 	const scope = effectScope();
@@ -4945,5 +4953,139 @@ describe('useAgentChatStream — client context', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(sentBody()).toEqual({ message: 'hello' });
 		expect(sentBody()).not.toHaveProperty('clientContext');
+	});
+});
+
+describe('useAgentChatStream — interaction extensions', () => {
+	let originalFetch: typeof fetch;
+	let originalLocalStorage: typeof globalThis.localStorage | undefined;
+
+	const suspendEvents: AgentSseEvent[] = [
+		{ type: 'tool-call', toolCallId: 'tc-ext', toolName: 'ask_host', input: {} },
+		{
+			type: 'tool-call-suspended',
+			payload: {
+				toolCallId: 'tc-ext',
+				runId: 'run-ext',
+				toolName: 'ask_host',
+				input: testCardSuspendPayload,
+			},
+		},
+		{ type: 'done' },
+	];
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch;
+		originalLocalStorage = globalThis.localStorage;
+		vi.stubGlobal('localStorage', {
+			getItem: vi.fn(() => ''),
+		});
+		getChatMessagesMock.mockReset();
+		getTestChatMessagesMock.mockReset();
+	});
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		vi.stubGlobal('localStorage', originalLocalStorage);
+		vi.restoreAllMocks();
+	});
+
+	it('maps a live suspension to the extension card and resolves it on resume', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(makeSseResponse(suspendEvents))
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{
+						type: 'tool-result',
+						toolCallId: 'tc-ext',
+						toolName: 'ask_host',
+						output: { answer: 'yes' },
+					},
+					{ type: 'done' },
+				]),
+			);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook(undefined, { interactionExtensions: testInteractionExtensions });
+		await hook.sendMessage('ask me');
+		await flushPromises();
+		await nextTick();
+
+		const assistant = hook.messages.value[1];
+		expect(assistant.status).toBe('awaitingUser');
+		expect(assistant.interactive).toEqual({
+			toolCallId: 'tc-ext',
+			toolName: INTERACTION_EXTENSION_TOOL_NAME,
+			extensionKey: TEST_EXTENSION_KEY,
+			input: { question: 'Continue?', tool: 'ask_host' },
+			runId: 'run-ext',
+		});
+
+		await hook.resume({ runId: 'run-ext', toolCallId: 'tc-ext', resumeData: { answer: 'yes' } });
+
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			2,
+			'http://localhost:5678/projects/p1/agents/v2/a1/chat/resume',
+			expect.objectContaining({
+				body: JSON.stringify({
+					runId: 'run-ext',
+					toolCallId: 'tc-ext',
+					resumeData: { answer: 'yes' },
+				}),
+			}),
+		);
+		const interactive = hook.messages.value[1].interactive;
+		expect(interactive).toMatchObject({ extensionKey: TEST_EXTENSION_KEY });
+		expect(interactive?.resolvedAt).toBeDefined();
+		expect(interactive).not.toHaveProperty('resolvedValue');
+	});
+
+	it('does not map the suspension in a chat without the extension', async () => {
+		globalThis.fetch = vi.fn(async () => makeSseResponse(suspendEvents)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('ask me');
+		await flushPromises();
+		await nextTick();
+
+		const assistant = hook.messages.value[1];
+		expect(assistant.toolCalls?.[0]).toMatchObject({ state: 'suspended', runId: 'run-ext' });
+		expect(assistant.interactive).toBeUndefined();
+		expect(assistant.status).not.toBe('awaitingUser');
+	});
+
+	it('restores an open extension card from history with its run id', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'm1',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: 'ask_host',
+							toolCallId: 'tc-ext',
+							input: {},
+							state: 'pending',
+						},
+					],
+				},
+			],
+			openSuspensions: [
+				{ toolCallId: 'tc-ext', runId: 'run-ext', suspendPayload: testCardSuspendPayload },
+			],
+		});
+
+		const hook = buildHook(undefined, { interactionExtensions: testInteractionExtensions });
+		await hook.loadHistory();
+
+		const message = hook.messages.value.at(-1)!;
+		expect(message.status).toBe('awaitingUser');
+		expect(message.interactive).toMatchObject({
+			toolName: INTERACTION_EXTENSION_TOOL_NAME,
+			extensionKey: TEST_EXTENSION_KEY,
+			runId: 'run-ext',
+		});
 	});
 });

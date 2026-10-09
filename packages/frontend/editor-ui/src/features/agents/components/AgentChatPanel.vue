@@ -51,6 +51,11 @@ import {
 	getMessageInteractives,
 	parseApprovalInput,
 } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	type AgentsChatInteractionExtension,
+} from '@/features/ai/shared/agentsChat/interactionRegistry';
+import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import type { ChatMessage, ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
 import { resolveFileMimeType } from '@/app/utils/fileUtils';
@@ -116,6 +121,11 @@ const props = withDefaults(
 		 * example the user's time zone). Project agents ignore it.
 		 */
 		clientContext?: () => Record<string, unknown> | undefined;
+		/**
+		 * Card types of the host agent. Only this chat maps and renders them. The
+		 * list is read once, when the panel is set up.
+		 */
+		interactionExtensions?: readonly AgentsChatInteractionExtension[];
 	}>(),
 	{
 		visible: true,
@@ -132,6 +142,7 @@ const props = withDefaults(
 		budgetCards: false,
 		increaseBudget: undefined,
 		clientContext: undefined,
+		interactionExtensions: () => [],
 	},
 );
 
@@ -198,7 +209,13 @@ const {
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 	onAgentUnavailable: () => emit('agent-unavailable'),
 	budgetCards: props.budgetCards,
+	interactionExtensions: props.interactionExtensions,
 });
+
+provide(
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	computed(() => props.interactionExtensions),
+);
 
 const currentPlan = computed(() => selectLatestAgentPlan(messages.value));
 
@@ -810,6 +827,21 @@ const hasOpenWaitCard = computed(() => openInteractive.value?.toolName === WAIT_
 const hasOpenInteractiveQuestion = computed(
 	() => hasOpenInteraction.value && !hasOpenApproval.value && !hasOpenWaitCard.value,
 );
+
+/**
+ * The resume for the open card when its extension answers it with the composer
+ * text, or `undefined` to keep cancel-and-steer. Only extension cards can do
+ * this, so the built-in cards keep their composer behavior.
+ */
+function getExtensionComposerResume(text: string) {
+	const payload = openInteractive.value;
+	if (payload?.toolName !== INTERACTION_EXTENSION_TOOL_NAME || !payload.runId) return undefined;
+	const extension = props.interactionExtensions.find(({ key }) => key === payload.extensionKey);
+	const resumeData = extension?.composerResumeData?.(payload.input, text);
+	if (resumeData === undefined) return undefined;
+	return { runId: payload.runId, toolCallId: payload.toolCallId, resumeData };
+}
+
 const hasOpenSuspension = computed(
 	() =>
 		messages.value[messages.value.length - 1]?.toolCalls?.some(
@@ -1039,6 +1071,17 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		props.projectId === target.projectId &&
 		props.agentId === target.agentId &&
 		props.continueSessionId === target.continueSessionId;
+
+	const composerResume = text ? getExtensionComposerResume(text) : undefined;
+	if (composerResume) {
+		const result = await resume(composerResume, () => {
+			if (!isCurrentTarget()) return;
+			if (inputText.value.trim() === text) inputText.value = '';
+			consumeQueuedExternalMessage(text);
+			trackSentToN8nChat(hadNoMessagesBeforeSend);
+		});
+		return result === 'busy' ? 'busy' : 'sent';
+	}
 
 	if (hasOpenInteractiveQuestion.value) {
 		if (!text) return 'rejected';
