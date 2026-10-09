@@ -1,3 +1,4 @@
+import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
 import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
 
 /**
@@ -20,7 +21,7 @@ export function orderBySubWorkflowDependencies<T extends { sourceWorkflowId: str
 
 	for (const requirement of requirements) {
 		if (!workflowsById.has(requirement.id)) continue;
-		for (const callerId of requirement.usedByWorkflows) {
+		for (const callerId of getWorkflowConsumerIds(requirement)) {
 			// Ignore callers outside the batch and self-references (a workflow calling itself).
 			if (!workflowsById.has(callerId) || callerId === requirement.id) continue;
 			const existing = callers.get(requirement.id);

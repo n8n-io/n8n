@@ -30,6 +30,14 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
+		const { InstanceAiConfig } = await import('@n8n/config');
+		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
+			await import('./self-healing/self-healing-results.controller.js');
+			const { WorkflowSuggestionEventRelay } = await import(
+				'./workflow-suggestions/workflow-suggestion-event-relay.service.js'
+			);
+			Container.get(WorkflowSuggestionEventRelay);
+		}
 
 		// Instantiating the relay registers its `user-deleted` listener, which
 		// cleans up Instance AI data owned by the deleted user.
@@ -124,6 +132,9 @@ export class InstanceAiModule implements ModuleInterface {
 		const { WorkflowSuggestionActivity } = await import(
 			'./workflow-suggestions/database/workflow-suggestion-activity.entity.js'
 		);
+		const { SelfHealingResult } = await import(
+			'./self-healing/database/self-healing-result.entity.js'
+		);
 
 		return [
 			InstanceAiThread,
@@ -141,6 +152,7 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiEventLogEntry,
 			WorkflowSuggestion,
 			WorkflowSuggestionActivity,
+			SelfHealingResult,
 		];
 	}
 

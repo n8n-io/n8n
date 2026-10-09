@@ -306,6 +306,14 @@ export async function listMcpServerTools(
 	try {
 		client = await buildMcpClientForServer(server, deps);
 		const tools = await client.listTools();
+		const failures = client.getConnectionFailures();
+		if (failures.length > 0) {
+			throw new OperationalError(
+				failures
+					.map((failure) => `MCP server "${failure.server}" connection failed: ${failure.error}`)
+					.join('; '),
+			);
+		}
 		return tools.map((tool) => ({ name: tool.name, description: tool.description ?? '' }));
 	} finally {
 		await client?.close().catch(() => {});

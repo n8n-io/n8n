@@ -9,7 +9,7 @@ import type {
 export interface SchemaIncompatibility {
 	missingColumns: string[];
 	typeMismatches: DataTableColumnTypeMismatch[];
-	/** Target columns not in the package schema; only reported by the strict `fail` conflict policy. */
+	/** Target columns not in the package schema; reported by the `fail` and `overwrite-non-destructive` policies. */
 	extraColumns?: string[];
 }
 

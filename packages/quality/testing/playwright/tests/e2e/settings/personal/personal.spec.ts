@@ -33,28 +33,24 @@ test.describe(
 		test('should allow to change first and last name', async ({ n8n }) => {
 			await n8n.settingsPersonal.goto();
 
-			for (const name of VALID_NAMES) {
-				await n8n.settingsPersonal.fillPersonalData(name[0], name[1]);
-				await n8n.settingsPersonal.saveSettings();
-
-				await expect(
-					n8n.notifications.getNotificationByTitleOrContent('Personal details updated'),
-				).toBeVisible();
-				await n8n.notifications.closeNotificationByText('Personal details updated');
+			// Each field saves on its own. The confirmation closes itself and has no close button,
+			// so check each save's response and the confirmation once at the end.
+			for (const [firstName, lastName] of VALID_NAMES) {
+				expect((await n8n.settingsPersonal.saveFirstName(firstName)).ok()).toBe(true);
+				expect((await n8n.settingsPersonal.saveLastName(lastName)).ok()).toBe(true);
 			}
+			await n8n.notifications.waitForNotification('Personal details updated');
 		});
 
 		test('should not allow malicious values for personal data', async ({ n8n }) => {
 			await n8n.settingsPersonal.goto();
 
 			for (const name of INVALID_NAMES) {
-				await n8n.settingsPersonal.fillPersonalData(name, name);
-				await n8n.settingsPersonal.saveSettings();
+				expect((await n8n.settingsPersonal.saveFirstName(name)).ok()).toBe(false);
+				await n8n.notifications.waitForNotificationAndClose('Problem updating your details');
 
-				await expect(
-					n8n.notifications.getNotificationByTitleOrContent('Problem updating your details'),
-				).toBeVisible();
-				await n8n.notifications.closeNotificationByText('Problem updating your details');
+				expect((await n8n.settingsPersonal.saveLastName(name)).ok()).toBe(false);
+				await n8n.notifications.waitForNotificationAndClose('Problem updating your details');
 			}
 		});
 	},

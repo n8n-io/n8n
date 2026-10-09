@@ -220,7 +220,11 @@ describe('get-workflow-details MCP tool', () => {
 				'wf-1',
 				user,
 				['workflow:read'],
-				expect.objectContaining({ includeActiveVersion: true, includeParentFolder: true }),
+				expect.objectContaining({
+					includeActiveVersion: true,
+					includeParentFolder: true,
+					publishHistory: 'none',
+				}),
 			);
 
 			expect(payload.workflow.nodes).toBeUndefined();

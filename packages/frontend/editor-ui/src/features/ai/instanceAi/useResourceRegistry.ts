@@ -370,9 +370,9 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 	const existing = col.produced.get(target.id);
 	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
 	if (target.type === 'agent') {
-		// New events report the target before the result is known. Only the
-		// build-agent result can confirm that this Agent changed.
-		if (node.activity !== undefined && (!existing || existing.pending)) return;
+		// A read-only turn cannot confirm that this Agent changed. Wait for the
+		// build-agent result. A mutating build registers the Agent at spawn.
+		if (node.activity === 'exploring' && (!existing || existing.pending)) return;
 		const entry = entryFromAgentBuilderTarget(target, existing, name);
 		if (entry) recordProduced(col, entry);
 		return;
@@ -381,7 +381,7 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 }
 
 function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void {
-	const deferAgentTarget = node.targetResource?.type === 'agent' && node.activity !== undefined;
+	const deferAgentTarget = node.targetResource?.type === 'agent' && node.activity === 'exploring';
 	// A sub-agent spawned onto a resource is there to work on it.
 	col.intake = 'built';
 	if (!deferAgentTarget) extractFromTargetResource(node, col);

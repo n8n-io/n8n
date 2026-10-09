@@ -1261,6 +1261,22 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			});
 		});
 
+		it('opens the existing configuration of a connected restricted tool', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			const ref = toolRef(SLACK.name);
+
+			render([ref]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitOpenDetail(connected!);
+			await flushPromises();
+
+			const data = getConfigData();
+			expect(data.kind !== 'mcpServer' && data.toolRef).toEqual(ref);
+			expect(data.onRemove).toBeDefined();
+		});
+
 		it('adds nothing when the installed community tool turns out to be restricted', async () => {
 			mockCommunityPreviewCatalog();
 			mockRestrictedNodeTypes();

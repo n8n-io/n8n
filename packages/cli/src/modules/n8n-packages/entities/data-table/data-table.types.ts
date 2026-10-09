@@ -38,7 +38,7 @@ export type DataTableResolutionFailure = {
 	missingColumns?: string[];
 	/** For `schema-incompatible`: package columns whose target type differs. */
 	typeMismatches?: DataTableColumnTypeMismatch[];
-	/** For `schema-incompatible` under the `fail` policy: target columns not in the package schema. */
+	/** For `schema-incompatible` under the `fail` and `overwrite-non-destructive` policies: target columns not in the package schema. */
 	extraColumns?: string[];
 	/** For `schema-incompatible`: the changes `overwrite` would make to the target table. */
 	overwriteChanges?: DataTableSchemaOperation[];
@@ -48,7 +48,6 @@ export type DataTableResolutionFailure = {
 	conflictingTableId?: string;
 	/** For a rename `name-conflict`: the matched table's current name. */
 	currentName?: string;
-	usedByWorkflows: string[];
 };
 
 export function createFailure(
@@ -72,7 +71,6 @@ export function createFailure(
 		kind,
 		sourceId: requirement.id,
 		name: requirement.name,
-		usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
 		...details,
 	};
 }
@@ -108,7 +106,7 @@ export interface DataTableImportRequest {
 export interface DataTableImportPlan {
 	/** Tables to create in the target project, keeping their package (source) id. */
 	creations: SerializedDataTable[];
-	/** Matched tables to change to the package schema under the `overwrite` policy. */
+	/** Matched tables to change to the package schema under the `overwrite` and `overwrite-non-destructive` policies. */
 	updates: DataTableUpdate[];
 	failures: DataTableResolutionFailure[];
 	/** Requirements resolved to an existing compatible table, used as-is. Carried for telemetry. */

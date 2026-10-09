@@ -282,5 +282,26 @@ describe('UserManagementMailer', () => {
 				);
 			});
 		});
+
+		it('should send an agent budget alert email', async () => {
+			const result = await userManagementMailer.agentBudgetAlert({
+				email,
+				firstName: 'Ada',
+				agentName: 'Support Agent',
+				agentUrl: 'https://n8n.url/projects/project-1/agents/agent-1',
+				alertThresholdPercent: 80,
+			});
+
+			expect(result.emailSent).toBe(true);
+			expect(nodeMailer.sendMail).toHaveBeenCalledWith({
+				body: expect.stringContaining('href="https://n8n.url/projects/project-1/agents/agent-1"'),
+				emailRecipients: email,
+				subject: 'Your agent reached its monthly budget alert',
+			});
+			const callBody = nodeMailer.sendMail.mock.calls[0][0].body;
+			expect(callBody).toContain('Support Agent');
+			expect(callBody).toContain('80%');
+			expect(callBody).toContain('Hi Ada,');
+		});
 	});
 });

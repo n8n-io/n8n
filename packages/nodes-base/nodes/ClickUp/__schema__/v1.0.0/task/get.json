@@ -292,6 +292,9 @@
                                         "id": {
                                             "type": "string"
                                         },
+                                        "label": {
+                                            "type": "string"
+                                        },
                                         "name": {
                                             "type": "string"
                                         },
@@ -341,6 +344,9 @@
                     "depends_on": {
                         "type": "string"
                     },
+                    "lag_ms": {
+                        "type": "null"
+                    },
                     "task_id": {
                         "type": "string"
                     },
@@ -382,7 +388,7 @@
                 "type": "object",
                 "properties": {
                     "color": {
-                        "type": "string"
+                        "type": "null"
                     },
                     "email": {
                         "type": "string"
@@ -586,5 +592,5 @@
             }
         }
     },
-    "version": 4
+    "version": 5
 }

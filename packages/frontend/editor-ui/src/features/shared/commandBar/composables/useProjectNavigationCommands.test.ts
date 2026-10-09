@@ -1,21 +1,26 @@
-import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useProjectNavigationCommands } from './useProjectNavigationCommands';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { VIEWS } from '@/app/constants';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useProjectNavigationCommands } from './useProjectNavigationCommands';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { searchProjects } from '@/features/collaboration/projects/projects.api';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import {
+	createProjectListItem,
+	createTestProject,
+} from '@/features/collaboration/projects/__tests__/utils';
+import { VIEWS } from '@/app/constants';
 
 const routerPushMock = vi.fn();
+const routerResolveMock = vi.fn(() => ({ href: '/resolved-href' }));
+
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		push: routerPushMock,
+		resolve: routerResolveMock,
 	}),
-	useRoute: () => ({
-		name: VIEWS.WORKFLOWS,
-		params: { projectId: 'project-1' },
-	}),
+	useRoute: () => ({ params: {} }),
 	RouterLink: vi.fn(),
 }));
 
@@ -33,310 +38,172 @@ vi.mock('@/app/composables/useGlobalEntityCreation', () => ({
 	}),
 }));
 
-describe('useProjectNavigationCommands', () => {
-	let mockProjectsStore: ReturnType<typeof useProjectsStore>;
+vi.mock('@/features/collaboration/projects/projects.api', async (importOriginal) => ({
+	...(await importOriginal()),
+	searchProjects: vi.fn(),
+}));
 
-	const createMockProject = (
-		id: string,
-		name: string,
-		type: 'personal' | 'team',
-	): ProjectListItem => ({
-		id,
-		name,
-		type,
-		icon: null,
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString(),
-		role: type === 'personal' ? 'project:personalOwner' : 'project:admin',
-	});
+const createProject = (overrides: Partial<ProjectListItem> = {}): ProjectListItem => ({
+	...createProjectListItem('team'),
+	id: 'project-1',
+	name: 'Marketing Team',
+	icon: null,
+	...overrides,
+});
+
+describe('useProjectNavigationCommands', () => {
+	let projectsStore: ReturnType<typeof useProjectsStore>;
+
+	const setStoreFlag = (
+		flag: 'canViewProjects' | 'hasPermissionToCreateProjects' | 'canCreateProjects',
+		value: boolean,
+	) => {
+		Object.defineProperty(projectsStore, flag, { value });
+	};
+
+	const searchSingleProject = async (project: ProjectListItem) => {
+		vi.mocked(searchProjects).mockResolvedValue({ count: 1, data: [project] });
+		const result = await useProjectNavigationCommands().source?.search({
+			query: '',
+			offset: 0,
+			limit: 10,
+		});
+		return result?.items[0];
+	};
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
-
-		mockProjectsStore = useProjectsStore();
-
-		Object.defineProperty(mockProjectsStore, 'availableProjects', {
-			value: [],
-		});
-
-		Object.defineProperty(mockProjectsStore, 'hasPermissionToCreateProjects', {
-			value: true,
-		});
-
-		Object.defineProperty(mockProjectsStore, 'canCreateProjects', {
-			value: true,
-		});
-
-		Object.defineProperty(mockProjectsStore, 'canViewProjects', {
-			value: true,
-		});
-
 		vi.clearAllMocks();
+
+		projectsStore = useProjectsStore();
+		projectsStore.personalProject = createTestProject({ id: 'personal-1', type: 'personal' });
+
+		setStoreFlag('canViewProjects', true);
+		setStoreFlag('hasPermissionToCreateProjects', true);
+		setStoreFlag('canCreateProjects', true);
 	});
 
-	describe('create project command', () => {
-		it('should include create project command when user has permission', () => {
-			const { commands } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId: ref(null),
-			});
-
-			const createCommand = commands.value.find((cmd) => cmd.id === 'create-project');
-			expect(createCommand).toBeDefined();
-		});
-
-		it('should not include create project command when user lacks permission', () => {
-			Object.defineProperty(mockProjectsStore, 'hasPermissionToCreateProjects', {
-				value: false,
-			});
-
-			const { commands } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId: ref(null),
-			});
-
-			const createCommand = commands.value.find((cmd) => cmd.id === 'create-project');
-			expect(createCommand).toBeUndefined();
-		});
-
-		it('should not include any commands when user is chat user', () => {
-			Object.defineProperty(mockProjectsStore, 'hasPermissionToCreateProjects', {
-				value: false,
-			});
-			Object.defineProperty(mockProjectsStore, 'canViewProjects', {
-				value: false,
-			});
-
-			const { commands } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId: ref(null),
-			});
-
-			expect(commands.value.length).toBe(0);
-		});
-
-		it('should not include create project command when user cannot create more projects', () => {
-			Object.defineProperty(mockProjectsStore, 'canCreateProjects', {
-				value: false,
-			});
-
-			const { commands } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId: ref(null),
-			});
-
-			const createCommand = commands.value.find((cmd) => cmd.id === 'create-project');
-			expect(createCommand).toBeUndefined();
-		});
-
-		it('should call createProject handler when create command is executed', () => {
-			const { commands } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId: ref(null),
-			});
-
-			const createCommand = commands.value.find((cmd) => cmd.id === 'create-project');
-			void createCommand?.handler?.();
-
-			expect(mockCreateProject).toHaveBeenCalledWith('command_bar');
-		});
-	});
-
-	describe('open project command', () => {
-		beforeEach(() => {
-			Object.defineProperty(mockProjectsStore, 'availableProjects', {
-				value: [
-					createMockProject('personal-1', 'Personal', 'personal'),
-					createMockProject('project-1', 'Team Project', 'team'),
-				],
+	describe('source', () => {
+		it('exposes a remote projects source', () => {
+			expect(useProjectNavigationCommands().source).toMatchObject({
+				id: 'projects',
+				title: 'commandBar.sections.projects',
+				isRemote: true,
 			});
 		});
 
-		it('should include open project command when projects exist', () => {
-			const { commands } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId: ref(null),
+		it.each([true, false])(
+			'reports source availability as %s from the project view permission',
+			(canViewProjects) => {
+				setStoreFlag('canViewProjects', canViewProjects);
+
+				expect(useProjectNavigationCommands().source?.isAvailable()).toBe(canViewProjects);
+			},
+		);
+
+		it('searches projects by trimmed query with paging', async () => {
+			vi.mocked(searchProjects).mockResolvedValue({ count: 0, data: [] });
+
+			await useProjectNavigationCommands().source?.search({
+				query: '  marketing ',
+				offset: 20,
+				limit: 10,
 			});
 
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			expect(openCommand).toBeDefined();
-		});
-
-		it('should not include open project command when no projects exist', () => {
-			Object.defineProperty(mockProjectsStore, 'availableProjects', {
-				value: [],
-			});
-
-			const { commands } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId: ref(null),
-			});
-
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			expect(openCommand).toBeUndefined();
-		});
-
-		it('should have empty children when not navigated into', () => {
-			const { commands } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId: ref(null),
-			});
-
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			expect(openCommand?.children).toHaveLength(0);
-		});
-
-		it('should populate children after navigating to open-project', () => {
-			const activeNodeId = ref<string | null>(null);
-			const { commands, handlers } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId,
-			});
-
-			handlers.onCommandBarNavigateTo('open-project');
-
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			expect(openCommand?.children).toHaveLength(2);
-		});
-	});
-
-	describe('project search and filtering', () => {
-		beforeEach(() => {
-			Object.defineProperty(mockProjectsStore, 'availableProjects', {
-				value: [
-					createMockProject('personal-1', 'Personal', 'personal'),
-					createMockProject('project-1', 'Marketing Team', 'team'),
-					createMockProject('project-2', 'Sales Team', 'team'),
-				],
-				writable: true,
+			expect(searchProjects).toHaveBeenCalledWith(useRootStore().restApiContext, {
+				search: 'marketing',
+				skip: 20,
+				take: 10,
 			});
 		});
 
-		it('should filter projects based on search query', () => {
-			const activeNodeId = ref<string | null>('open-project');
-			const lastQuery = ref('');
-			const { commands, handlers } = useProjectNavigationCommands({
-				lastQuery,
-				activeNodeId,
-			});
+		it('omits the search term when the query is empty', async () => {
+			vi.mocked(searchProjects).mockResolvedValue({ count: 0, data: [] });
 
-			handlers.onCommandBarNavigateTo('open-project');
-			expect(commands.value.find((cmd) => cmd.id === 'open-project')?.children).toHaveLength(3);
+			await useProjectNavigationCommands().source?.search({ query: '  ', offset: 0, limit: 10 });
 
-			lastQuery.value = 'marketing';
-			handlers.onCommandBarChange('marketing');
-
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			expect(openCommand?.children).toHaveLength(1);
-			expect(openCommand?.children?.[0].id).toBe('project-1');
-		});
-
-		it('should filter projects by ID', () => {
-			const activeNodeId = ref<string | null>('open-project');
-			const lastQuery = ref('');
-			const { commands, handlers } = useProjectNavigationCommands({
-				lastQuery,
-				activeNodeId,
-			});
-
-			handlers.onCommandBarNavigateTo('open-project');
-
-			lastQuery.value = 'project-2';
-			handlers.onCommandBarChange('project-2');
-
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			expect(openCommand?.children).toHaveLength(1);
-			expect(openCommand?.children?.[0].id).toBe('project-2');
-		});
-
-		it('should be case insensitive when filtering', () => {
-			const activeNodeId = ref<string | null>('open-project');
-			const lastQuery = ref('');
-			const { commands, handlers } = useProjectNavigationCommands({
-				lastQuery,
-				activeNodeId,
-			});
-
-			handlers.onCommandBarNavigateTo('open-project');
-
-			lastQuery.value = 'SALES';
-			handlers.onCommandBarChange('SALES');
-
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			expect(openCommand?.children).toHaveLength(1);
-			expect(openCommand?.children?.[0].id).toBe('project-2');
-		});
-
-		it('should show all projects when search query is empty', () => {
-			const activeNodeId = ref<string | null>('open-project');
-			const lastQuery = ref('');
-			const { commands, handlers } = useProjectNavigationCommands({
-				lastQuery,
-				activeNodeId,
-			});
-
-			handlers.onCommandBarNavigateTo('open-project');
-
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			expect(openCommand?.children).toHaveLength(3);
-		});
-	});
-
-	describe('root project items', () => {
-		beforeEach(() => {
-			Object.defineProperty(mockProjectsStore, 'availableProjects', {
-				value: [createMockProject('project-1', 'Marketing Team', 'team')],
-				writable: true,
+			expect(searchProjects).toHaveBeenCalledWith(useRootStore().restApiContext, {
+				skip: 0,
+				take: 10,
 			});
 		});
 
-		it('should not show root project items when query is too short', () => {
-			const { commands } = useProjectNavigationCommands({
-				lastQuery: ref('ma'),
-				activeNodeId: ref(null),
-			});
+		it.each([
+			{ offset: 0, count: 3, hasMore: true },
+			{ offset: 1, count: 3, hasMore: false },
+		])(
+			'reports hasMore as $hasMore for offset $offset and total count $count',
+			async ({ offset, count, hasMore }) => {
+				vi.mocked(searchProjects).mockResolvedValue({
+					count,
+					data: [createProject({ id: 'project-1' }), createProject({ id: 'project-2' })],
+				});
 
-			const rootProjects = commands.value.filter((cmd) => cmd.id === 'project-1');
-			expect(rootProjects).toHaveLength(0);
+				const result = await useProjectNavigationCommands().source?.search({
+					query: '',
+					offset,
+					limit: 2,
+				});
+
+				expect(result?.items).toHaveLength(2);
+				expect(result?.hasMore).toBe(hasMore);
+			},
+		);
+
+		it('maps a team project to a command bar item that links to its workflows', async () => {
+			const item = await searchSingleProject(createProject());
+
+			expect(item).toMatchObject({
+				id: 'project-1',
+				title: 'Marketing Team',
+				icon: { type: 'icon', value: 'layers' },
+				href: '/resolved-href',
+			});
+			expect(routerResolveMock).toHaveBeenCalledWith({
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: 'project-1' },
+			});
 		});
 
-		it('should show root project items when query is longer than 2 characters', () => {
-			const lastQuery = ref('mar');
-			const { commands, handlers } = useProjectNavigationCommands({
-				lastQuery,
-				activeNodeId: ref(null),
-			});
+		it('uses the project icon when the project has one', async () => {
+			const item = await searchSingleProject(
+				createProject({ icon: { type: 'icon', value: 'rocket' } }),
+			);
 
-			handlers.onCommandBarChange('mar');
-
-			const rootProjects = commands.value.filter((cmd) => cmd.id === 'project-1');
-			expect(rootProjects).toHaveLength(1);
-			expect(rootProjects[0].title).toEqual('generic.openResource');
+			expect(item?.icon).toEqual({ type: 'icon', value: 'rocket' });
 		});
-	});
 
-	describe('project command handler', () => {
-		beforeEach(() => {
-			Object.defineProperty(mockProjectsStore, 'availableProjects', {
-				value: [
-					createMockProject('personal-1', 'Personal', 'personal'),
-					createMockProject('project-1', 'Team Project', 'team'),
-				],
+		it('titles the own personal project with the personal label and a user icon', async () => {
+			const item = await searchSingleProject(
+				createProject({ id: 'personal-1', name: 'Jane Doe', type: 'personal' }),
+			);
+
+			expect(item).toMatchObject({
+				title: 'projects.menu.personal',
+				icon: { type: 'icon', value: 'user' },
 			});
 		});
 
-		it('should navigate to project workflows when project is clicked', () => {
-			const activeNodeId = ref<string | null>('open-project');
-			const { commands, handlers } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId,
+		it('titles another personal project by name with a user icon', async () => {
+			const item = await searchSingleProject(
+				createProject({ id: 'personal-2', name: 'John Doe', type: 'personal' }),
+			);
+
+			expect(item).toMatchObject({
+				title: 'John Doe',
+				icon: { type: 'icon', value: 'user' },
 			});
+		});
 
-			handlers.onCommandBarNavigateTo('open-project');
+		it('uses the unnamed label when the project has no name', async () => {
+			const item = await searchSingleProject(createProject({ name: null }));
 
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			const projectCommand = openCommand?.children?.[1]; // Team Project
-			void projectCommand?.handler?.();
+			expect(item?.title).toBe('commandBar.projects.unnamed');
+		});
+
+		it('navigates to the project workflows when the item handler runs', async () => {
+			const item = await searchSingleProject(createProject());
+			await item?.handler?.();
 
 			expect(routerPushMock).toHaveBeenCalledWith({
 				name: VIEWS.PROJECTS_WORKFLOWS,
@@ -345,86 +212,32 @@ describe('useProjectNavigationCommands', () => {
 		});
 	});
 
-	describe('project title formatting', () => {
-		it('should show localized text for personal project', () => {
-			Object.defineProperty(mockProjectsStore, 'availableProjects', {
-				value: [createMockProject('personal-1', 'Personal', 'personal')],
-			});
+	describe('create project command', () => {
+		const findCreateCommand = () =>
+			useProjectNavigationCommands().commands.value.find(
+				(command) => command.id === 'create-project',
+			);
 
-			const activeNodeId = ref<string | null>('open-project');
-			const { commands, handlers } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId,
-			});
-
-			handlers.onCommandBarNavigateTo('open-project');
-
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			const personalProject = openCommand?.children?.[0];
-			expect(personalProject).toBeDefined();
-			expect(personalProject?.title).toEqual('projects.menu.personal');
-		});
-
-		it('should show project name for team project', () => {
-			Object.defineProperty(mockProjectsStore, 'availableProjects', {
-				value: [createMockProject('project-1', 'Marketing Team', 'team')],
-			});
-
-			const activeNodeId = ref<string | null>('open-project');
-			const { commands, handlers } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId,
-			});
-
-			handlers.onCommandBarNavigateTo('open-project');
-
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			const teamProject = openCommand?.children?.[0];
-			expect(teamProject).toBeDefined();
-			expect(teamProject?.title).toEqual('Marketing Team');
-		});
-
-		it('should show unnamed text for team project without name', () => {
-			Object.defineProperty(mockProjectsStore, 'availableProjects', {
-				value: [createMockProject('project-1', '', 'team')],
-			});
-
-			const activeNodeId = ref<string | null>('open-project');
-			const { commands, handlers } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId,
-			});
-
-			handlers.onCommandBarNavigateTo('open-project');
-
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			const unnamedProject = openCommand?.children?.[0];
-			expect(unnamedProject).toBeDefined();
-			expect(unnamedProject?.title).toEqual('commandBar.projects.unnamed');
-		});
-	});
-
-	describe('onCommandBarNavigateTo handler', () => {
-		beforeEach(() => {
-			Object.defineProperty(mockProjectsStore, 'availableProjects', {
-				value: [createMockProject('project-1', 'Team Project', 'team')],
+		it('shows the create command when the user can create projects', () => {
+			expect(findCreateCommand()).toMatchObject({
+				title: 'commandBar.projects.create',
+				section: 'commandBar.sections.projects',
 			});
 		});
 
-		it('should clear project results when navigating back to root', () => {
-			const activeNodeId = ref<string | null>('open-project');
-			const { commands, handlers } = useProjectNavigationCommands({
-				lastQuery: ref(''),
-				activeNodeId,
-			});
+		it.each(['hasPermissionToCreateProjects', 'canCreateProjects'] as const)(
+			'hides the create command when %s is false',
+			(flag) => {
+				setStoreFlag(flag, false);
 
-			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			expect(openCommand?.children).toHaveLength(1);
+				expect(findCreateCommand()).toBeUndefined();
+			},
+		);
 
-			handlers.onCommandBarNavigateTo(null);
+		it('creates a project from the command bar when the create command runs', async () => {
+			await findCreateCommand()?.handler?.();
 
-			const updatedOpenCommand = commands.value.find((cmd) => cmd.id === 'open-project');
-			expect(updatedOpenCommand?.children).toHaveLength(0);
+			expect(mockCreateProject).toHaveBeenCalledWith('command_bar');
 		});
 	});
 });

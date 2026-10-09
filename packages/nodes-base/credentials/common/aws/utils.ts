@@ -450,6 +450,21 @@ export function uriEncodeS3Pathname(
 	return options.preserveEncodedSlashes ? encodedPathname : encodedPathname.replace(/%2F/g, '/');
 }
 
+const COPY_SOURCE_VERSION_SELECTOR = '?versionId=';
+
+/**
+ * Encodes the value of the S3 `x-amz-copy-source` header. CopyObject reads an
+ * optional `?versionId=<id>` selector after the key, so the key is encoded as a
+ * pathname and the selector is kept as written. Encoding the selector too would
+ * make S3 read it as the last characters of the key.
+ */
+export function uriEncodeS3CopySource(copySource: string): string {
+	const selectorIndex = copySource.lastIndexOf(COPY_SOURCE_VERSION_SELECTOR);
+	if (selectorIndex === -1) return uriEncodeS3Pathname(copySource);
+
+	return uriEncodeS3Pathname(copySource.slice(0, selectorIndex)) + copySource.slice(selectorIndex);
+}
+
 /**
  * Prepares AWS request options for signing by constructing the proper endpoint URL,
  * handling query parameters, and setting up the request body for AWS4 signature.

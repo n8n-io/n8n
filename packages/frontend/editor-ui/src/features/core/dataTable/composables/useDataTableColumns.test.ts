@@ -166,30 +166,6 @@ describe('useDataTableColumns', () => {
 			expect(colDef.editable).toBe(false);
 			expect(colDef.width).toBe(100);
 		});
-
-		it('should suppress column move only in read-only mode', () => {
-			const column: DataTableColumn = { id: 'col1', name: 'Column 1', type: 'string', index: 0 };
-
-			const editable = useDataTableColumns({
-				onDeleteColumn: mockOnDeleteColumn,
-				onRenameColumn: mockOnRenameColumn,
-				onAddRowClick: mockOnAddRowClick,
-				onAddColumn: mockOnAddColumn,
-				isTextEditorOpen,
-				readOnly: ref(false),
-			});
-			expect(editable.createColumnDef(column).suppressMovable).toBe(false);
-
-			const readOnly = useDataTableColumns({
-				onDeleteColumn: mockOnDeleteColumn,
-				onRenameColumn: mockOnRenameColumn,
-				onAddRowClick: mockOnAddRowClick,
-				onAddColumn: mockOnAddColumn,
-				isTextEditorOpen,
-				readOnly: ref(true),
-			});
-			expect(readOnly.createColumnDef(column).suppressMovable).toBe(true);
-		});
 	});
 
 	describe('loadColumns', () => {
@@ -462,7 +438,7 @@ describe('useDataTableColumns', () => {
 			}
 		});
 
-		it('should disable column menu actions when readOnly is true', () => {
+		it('should pass the current lock to column menus', () => {
 			const readOnly = ref(true);
 			const { createColumnDef } = useDataTableColumns({
 				onDeleteColumn: mockOnDeleteColumn,
@@ -483,8 +459,11 @@ describe('useDataTableColumns', () => {
 			const colDef = createColumnDef(column);
 
 			expect(colDef.headerComponentParams).toMatchObject({
-				allowMenuActions: false,
+				allowMenuActions: true,
 			});
+			expect(colDef.headerComponentParams.readOnly()).toBe(true);
+			readOnly.value = false;
+			expect(colDef.headerComponentParams.readOnly()).toBe(false);
 		});
 
 		it('should enable column menu actions when readOnly is false', () => {
@@ -532,17 +511,12 @@ describe('useDataTableColumns', () => {
 			const idColumn = colDefs.value.find((col) => col.colId === 'id');
 			expect(idColumn).toBeDefined();
 
-			// Check cellRendererSelector for AddRowButton params
-			// The cellRendererSelector should return the AddRowButton with disabled: true
-			// when the row value is the ADD_ROW_ROW_ID constant
 			if (idColumn?.cellRendererSelector) {
 				const addRowParams = { value: ADD_ROW_ROW_ID } as ICellRendererParams;
 				const result = idColumn.cellRendererSelector(addRowParams);
 				expect(result).toBeDefined();
 				if (result && 'params' in result) {
-					expect(result.params).toMatchObject({
-						disabled: true,
-					});
+					expect(result.params.disabled()).toBe(true);
 				}
 			}
 		});
@@ -567,17 +541,12 @@ describe('useDataTableColumns', () => {
 			const idColumn = colDefs.value.find((col) => col.colId === 'id');
 			expect(idColumn).toBeDefined();
 
-			// Check cellRendererSelector for AddRowButton params
-			// The cellRendererSelector should return the AddRowButton with disabled: false
-			// when the row value is the ADD_ROW_ROW_ID constant
 			if (idColumn?.cellRendererSelector) {
 				const addRowParams = { value: ADD_ROW_ROW_ID } as ICellRendererParams;
 				const result = idColumn.cellRendererSelector(addRowParams);
 				expect(result).toBeDefined();
 				if (result && 'params' in result) {
-					expect(result.params).toMatchObject({
-						disabled: false,
-					});
+					expect(result.params.disabled()).toBe(false);
 				}
 			}
 		});
@@ -601,9 +570,7 @@ describe('useDataTableColumns', () => {
 
 			const addColumnCol = colDefs.value.find((col) => col.colId === 'add-column');
 			expect(addColumnCol).toBeDefined();
-			expect(addColumnCol?.headerComponentParams).toMatchObject({
-				disabled: true,
-			});
+			expect(addColumnCol?.headerComponentParams.disabled()).toBe(true);
 		});
 
 		it('should enable AddColumn button when readOnly is false', () => {
@@ -625,9 +592,7 @@ describe('useDataTableColumns', () => {
 
 			const addColumnCol = colDefs.value.find((col) => col.colId === 'add-column');
 			expect(addColumnCol).toBeDefined();
-			expect(addColumnCol?.headerComponentParams).toMatchObject({
-				disabled: false,
-			});
+			expect(addColumnCol?.headerComponentParams.disabled()).toBe(false);
 		});
 
 		it('should work without readOnly parameter (defaults to false)', () => {

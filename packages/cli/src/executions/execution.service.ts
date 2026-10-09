@@ -280,6 +280,8 @@ export class ExecutionService {
 			retryOf: executionId,
 			workflowData: execution.workflowData,
 			userId: user.id,
+			// The retry caller awaits the result below, so a worker must not park it.
+			callerAwaitsOutcome: 'completion',
 		};
 
 		const { lastNodeExecuted } = data.executionData!.resultData;
