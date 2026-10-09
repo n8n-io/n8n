@@ -57,16 +57,16 @@ describe('getCpuLimit', () => {
 
 	it('reads the cgroup v2 quota', () => {
 		mockFiles({ '/sys/fs/cgroup/cpu.max': '50000 100000\n' });
-		expect(getCpuLimit()).toBe(0.5);
+		expect(getCpuLimit()).toEqual({ limit: 0.5, source: 'cgroup_v2' });
 	});
 
-	it('returns null for a cgroup v2 file without a quota', () => {
+	it('reports a cgroup v2 file without a quota as null, not unreadable', () => {
 		mockFiles({
 			'/sys/fs/cgroup/cpu.max': 'max 100000\n',
 			'/sys/fs/cgroup/cpu/cpu.cfs_quota_us': '50000\n',
 			'/sys/fs/cgroup/cpu/cpu.cfs_period_us': '100000\n',
 		});
-		expect(getCpuLimit()).toBeNull();
+		expect(getCpuLimit()).toEqual({ limit: null, source: 'cgroup_v2' });
 	});
 
 	it('falls back to the cgroup v1 quota and period', () => {
@@ -74,11 +74,11 @@ describe('getCpuLimit', () => {
 			'/sys/fs/cgroup/cpu/cpu.cfs_quota_us': '200000\n',
 			'/sys/fs/cgroup/cpu/cpu.cfs_period_us': '100000\n',
 		});
-		expect(getCpuLimit()).toBe(2);
+		expect(getCpuLimit()).toEqual({ limit: 2, source: 'cgroup_v1' });
 	});
 
-	it('returns null when no cgroup files exist', () => {
+	it('reports unreadable when no cgroup files exist', () => {
 		mockFiles({});
-		expect(getCpuLimit()).toBeNull();
+		expect(getCpuLimit()).toEqual({ limit: null, source: 'unreadable' });
 	});
 });
