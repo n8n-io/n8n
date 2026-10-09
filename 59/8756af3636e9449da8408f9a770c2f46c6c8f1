@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Microsoft/Dynamics/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_33ff463fa79c8f 2,4
+  s_2e1fa95fc44f8f::t_37b10871fd80f2 20-50
+packages/nodes-base/nodes/Microsoft/Dynamics/test/workflow.json
+  s_2e1fa95fc44f8f::t_aeea992715e4be 1-135
+packages/nodes-base/nodes/Microsoft/Dynamics/test/workflow.test.ts
+  s_2e1fa95fc44f8f::t_edd2a934deb320 44-47
+  s_2e1fa95fc44f8f::t_e209de810b22fd 1-43,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "598756af3636e9449da8408f9a770c2f46c6c8f1",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
