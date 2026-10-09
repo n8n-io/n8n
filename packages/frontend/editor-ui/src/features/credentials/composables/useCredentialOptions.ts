@@ -1,4 +1,5 @@
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import isEqual from 'lodash/isEqual';
 import type {
 	ICredentialDataDecryptedObject,
@@ -24,6 +25,10 @@ export function useCredentialOptions(
 	const rootStore = useRootStore();
 	const options = ref<INodeListSearchItems[]>([]);
 	const loading = ref(false);
+	const errorMessage = ref('');
+	const filter = ref('');
+	const paginationToken = ref<string>();
+	const hasMore = computed(() => Boolean(paginationToken.value));
 	let revision = 0;
 	const destination = computed<CredentialOptionsDestination | undefined>(() => {
 		if (context.credentialId) return { kind: 'stored', credentialId: context.credentialId };
@@ -42,7 +47,7 @@ export function useCredentialOptions(
 		});
 	});
 
-	async function loadOptions() {
+	async function loadOptions(pageToken?: string) {
 		const target = destination.value;
 		if (!context.credentialType || !target || !canLoad.value) return;
 		const requestRevision = revision;
@@ -50,25 +55,42 @@ export function useCredentialOptions(
 			type: context.credentialType,
 			data: { ...context.credentialData },
 			propertyName: context.parameter.name,
+			filter: filter.value || undefined,
+			paginationToken: pageToken,
 		};
 		loading.value = true;
-		options.value = [];
+		errorMessage.value = '';
 		try {
-			let paginationToken: string | undefined;
-			do {
-				const response = await getCredentialOptions(rootStore.restApiContext, target, {
-					...request,
-					paginationToken,
-				});
-				if (requestRevision !== revision) return;
-				options.value.push(...response.results);
-				paginationToken = response.paginationToken;
-			} while (paginationToken);
-		} catch {
-			if (requestRevision === revision) options.value = [];
+			const response = await getCredentialOptions(rootStore.restApiContext, target, request);
+			if (requestRevision !== revision) return;
+			options.value.push(...response.results);
+			paginationToken.value = response.paginationToken;
+		} catch (error) {
+			if (requestRevision === revision) errorMessage.value = getErrorMessage(error);
 		} finally {
 			if (requestRevision === revision) loading.value = false;
 		}
+	}
+
+	function reloadOptions() {
+		revision++;
+		options.value = [];
+		paginationToken.value = undefined;
+		errorMessage.value = '';
+		loading.value = false;
+		void loadOptions();
+	}
+
+	function search(query: string) {
+		const nextFilter = query.trim();
+		if (nextFilter === filter.value) return;
+		filter.value = nextFilter;
+		reloadOptions();
+	}
+
+	function loadMore() {
+		if (loading.value || !paginationToken.value) return;
+		void loadOptions(paginationToken.value);
 	}
 
 	watch(
@@ -80,14 +102,11 @@ export function useCredentialOptions(
 		],
 		(current, previous) => {
 			if (isEqual(current, previous)) return;
-			revision++;
-			options.value = [];
-			loading.value = false;
-			void loadOptions();
+			reloadOptions();
 		},
 		{ flush: 'sync', immediate: true },
 	);
 	onScopeDispose(() => revision++);
 
-	return { options, loading };
+	return { options, loading, errorMessage, filter, hasMore, search, loadMore };
 }

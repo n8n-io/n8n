@@ -157,7 +157,7 @@ describe('credential project options', () => {
 	});
 
 	it.each([undefined, 'saved-credential'])(
-		'keeps manual entry available while loading all project pages for credential %s',
+		'loads pages on demand and keeps manual entry available for credential %s',
 		async (credentialId) => {
 			let resolveNextPage!: (result: INodeListSearchResult) => void;
 			lookup.mockResolvedValueOnce({
@@ -177,8 +177,19 @@ describe('credential project options', () => {
 			const view = renderOptions({ props: { credentialId, credentialData } });
 			const input = await view.findByLabelText('Project');
 			await waitFor(() => expect(input).toHaveValue('First project (first-project)'));
-			expect(view.getByRole('status')).toBeVisible();
+			expect(view.queryByRole('status')).toBeNull();
+			expect(lookup).toHaveBeenCalledTimes(1);
 			await userEvent.click(input);
+			expect(view.getByRole('option', { name: 'First project (first-project)' })).toBeVisible();
+			await userEvent.click(view.getByRole('button', { name: 'Load more' }));
+			expect(lookup).toHaveBeenLastCalledWith(
+				expect.anything(),
+				credentialId
+					? { kind: 'stored', credentialId }
+					: { kind: 'project', projectId: 'n8n-project' },
+				expect.objectContaining({ paginationToken: 'next-page' }),
+			);
+			expect(view.getByRole('status')).toBeVisible();
 			await userEvent.click(view.getByRole('option', { name: 'Custom' }));
 			expect(view.emitted('update')).toContainEqual([{ name: 'project', value: '__custom__' }]);
 			await view.rerender({
@@ -210,21 +221,25 @@ describe('credential project options', () => {
 			await userEvent.click(input);
 			expect(await view.findByText('First project (first-project)')).toBeVisible();
 			const updatesBeforeFiltering = view.emitted('update')?.slice();
-			await userEvent.type(input, 'Target');
-			expect(view.emitted('update')).toEqual(updatesBeforeFiltering);
-			await userEvent.click(await view.findByText('Target project (target-project)'));
-			expect(lookup).toHaveBeenLastCalledWith(
-				expect.anything(),
-				credentialId
-					? { kind: 'stored', credentialId }
-					: { kind: 'project', projectId: 'n8n-project' },
-				{
-					type: 'googleVertexAiApi',
-					data: credentialData,
-					propertyName: 'project',
-					paginationToken: 'next-page',
-				},
+			await userEvent.type(input, 'Target', { skipClick: true });
+			await waitFor(() =>
+				expect(lookup).toHaveBeenLastCalledWith(
+					expect.anything(),
+					credentialId
+						? { kind: 'stored', credentialId }
+						: { kind: 'project', projectId: 'n8n-project' },
+					{
+						type: 'googleVertexAiApi',
+						data: { ...credentialData, project: '__custom__' },
+						propertyName: 'project',
+						filter: 'Target',
+						paginationToken: undefined,
+					},
+				),
 			);
+			expect(view.emitted('update')).toEqual(updatesBeforeFiltering);
+			expect(view.queryByRole('option', { name: 'First project (first-project)' })).toBeNull();
+			await userEvent.keyboard('{Enter}');
 			expect(view.emitted('update')).toContainEqual([{ name: 'project', value: 'target-project' }]);
 		},
 	);
@@ -277,14 +292,72 @@ describe('credential project options', () => {
 		expect(view.emitted('update')).toBeUndefined();
 	});
 
-	it.each(['failure', 'empty'])('silently keeps Custom after %s discovery', async (result) => {
-		if (result === 'failure') lookup.mockRejectedValue(new Error('Permission denied'));
-		if (result === 'empty') lookup.mockResolvedValue({ results: [] });
+	it.each(['success', 'failure'])(
+		'ignores an old page %s after the search changes',
+		async (result) => {
+			let resolveOldPage!: (value: INodeListSearchResult) => void;
+			let rejectOldPage!: (error: Error) => void;
+			lookup.mockResolvedValueOnce({
+				results: [{ name: 'First project', value: 'first-project' }],
+				paginationToken: 'next-page',
+			});
+			lookup.mockReturnValueOnce(
+				new Promise((resolve, reject) => {
+					resolveOldPage = resolve;
+					rejectOldPage = reject;
+				}),
+			);
+			const view = renderOptions();
+			const input = await view.findByLabelText('Project');
+			await userEvent.click(input);
+			await userEvent.click(await view.findByRole('button', { name: 'Load more' }));
+			await userEvent.type(input, 'Target', { skipClick: true });
+			expect(await view.findByText('Target project (target-project)')).toBeVisible();
+			if (result === 'failure') {
+				rejectOldPage(new Error('Outdated error'));
+			} else {
+				resolveOldPage({
+					results: [{ name: 'Outdated project', value: 'old-project' }],
+					paginationToken: 'outdated-page',
+				});
+			}
+			await flushPromises();
+			expect(view.queryByText('Outdated project')).toBeNull();
+			expect(view.queryByRole('alert')).toBeNull();
+			expect(view.queryByRole('button', { name: 'Load more' })).toBeNull();
+			expect(view.getByRole('option', { name: 'Target project (target-project)' })).toBeVisible();
+		},
+	);
+
+	it('shows lookup errors with the Custom fallback and clears them after credentials change', async () => {
+		const message = 'Could not load the list. Try again or enter an ID.';
+		lookup.mockRejectedValueOnce(new Error(message));
+		const view = renderOptions();
+		const input = await view.findByLabelText('Project');
+		const alert = await view.findByRole('alert');
+		expect(alert).toHaveTextContent(message);
+		expect(alert).toHaveTextContent('Select Custom to enter an ID.');
+		expect(input).toHaveAttribute('aria-describedby', alert.id);
+		expect(input).toBeEnabled();
+		expect(input).toHaveValue('Custom');
+		expect(view.emitted('update')).toBeUndefined();
+		await userEvent.click(input);
+		await userEvent.click(view.getByRole('option', { name: 'Custom' }));
+		await view.rerender({ credentialData: { ...data, privateKey: 'updated-key' } });
+		await userEvent.click(input);
+		expect(await view.findByText('Target project (target-project)')).toBeVisible();
+		expect(view.queryByRole('alert')).toBeNull();
+		expect(input).not.toHaveAttribute('aria-describedby');
+	});
+
+	it('keeps Custom without an error when no projects are found', async () => {
+		lookup.mockResolvedValue({ results: [] });
 		const view = renderOptions();
 		const input = await view.findByLabelText('Project');
 		await waitFor(() => expect(input).toBeEnabled());
 		expect(input).toHaveValue('Custom');
 		expect(view.queryByRole('status')).toBeNull();
+		expect(view.queryByRole('alert')).toBeNull();
 		expect(view.emitted('update')).toBeUndefined();
 		await userEvent.click(input);
 		expect(view.getAllByRole('option')).toHaveLength(1);

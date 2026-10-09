@@ -1049,6 +1049,8 @@
 	"communityNodeFooter.manage": "Manage",
 	"communityNodeFooter.reportIssue": "Report issue",
 	"credentialEdit.options.empty": "No options found.",
+	"credentialEdit.options.error": "{message} Select Custom to enter an ID.",
+	"credentialEdit.options.loadMore": "Load more",
 	"credentialEdit.credentialConfig.accountConnected": "Account connected",
 	"credentialEdit.credentialConfig.accountNotConnected": "Connect your account to use this credential",
 	"credentialEdit.credentialConfig.accountNotConnected.endUser": "Connect your {service} account",
