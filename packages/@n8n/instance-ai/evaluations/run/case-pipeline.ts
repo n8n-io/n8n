@@ -28,6 +28,7 @@ import type { EvalLogger } from '../harness/logger';
 import { selectScenarioWorkflowId } from '../harness/scenario-execution';
 import {
 	scenariosRequireSerialSeeding,
+	workflowDataTableKeys,
 	workflowDeduplicates,
 	type ScenarioSeedContext,
 } from '../harness/seed-tables';
@@ -632,6 +633,8 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// resets them around every run, so a deduping scenario queues on the backend
 		// and the workflow it will actually run: a sibling entry point, or a prebuilt
 		// id that several iterations share. With no workflow JSON to read, it queues.
+		// The server empties and refills the workflow's Data Tables before each run,
+		// so runs that bind one table on a lane queue on that table, across cases too.
 		const targetWorkflowId = selectScenarioWorkflowId(
 			scenario,
 			workflowId,
@@ -642,13 +645,19 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		const dedupes = target
 			? workflowDeduplicates(target)
 			: build.workflowJsons.length === 0 || build.workflowJsons.some(workflowDeduplicates);
-		const runQueued = dedupes
-			? async () =>
-					await withSerialSeeding(
-						`${builtOnLane.runner.baseUrl}:${targetWorkflowId}`,
-						runWorkflowScenario,
-					)
-			: runWorkflowScenario;
+		const lane = builtOnLane.runner.baseUrl;
+		const tableKeys = target
+			? workflowDataTableKeys(target)
+			: build.workflowJsons.flatMap(workflowDataTableKeys);
+		// Sorted, so two runs always take shared keys in the same order.
+		const queueKeys = [
+			...(dedupes ? [`${lane}:workflow:${targetWorkflowId}`] : []),
+			...tableKeys.map((key) => `${lane}:data-table:${key}`),
+		].sort();
+		const runQueued = queueKeys.reduceRight<() => Promise<TargetOutput>>(
+			(run, key) => async () => await withSerialSeeding(key, run),
+			runWorkflowScenario,
+		);
 		return scenariosRequireSerialSeeding(authoredScenarios)
 			? await withSerialSeeding(cacheKey, runQueued)
 			: await runQueued();

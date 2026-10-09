@@ -12,6 +12,7 @@ import {
 	evictLeftoverSeedTables,
 	reseedScenarioTables,
 	scenariosRequireSerialSeeding,
+	workflowDataTableKeys,
 	uniquifySeedTableNames,
 } from '../harness/seed-tables';
 import type { ExecutionScenario } from '../types';
@@ -400,5 +401,39 @@ describe('executeScenario with seeded tables', () => {
 		).rejects.toThrow();
 
 		expect(executeWithLlmMock.mock.calls[0][4]).toEqual(['dt-real-1']);
+	});
+});
+
+describe('workflowDataTableKeys', () => {
+	const node = (dataTableId: unknown, type = 'n8n-nodes-base.dataTable', disabled = false) => ({
+		type,
+		disabled,
+		parameters: { dataTableId },
+	});
+
+	it('keys each bound table once, by id or by lower-cased name', () => {
+		expect(
+			workflowDataTableKeys({
+				nodes: [
+					node({ __rl: true, mode: 'id', value: 'dt-2' }),
+					node({ __rl: true, mode: 'name', value: 'Sent Posts' }),
+					node('dt-2', 'n8n-nodes-base.dataTableTool'),
+					node({ __rl: true, mode: 'list', value: 'dt-1' }),
+				],
+			}),
+		).toEqual(['id:dt-1', 'id:dt-2', 'name:sent posts']);
+	});
+
+	it('skips disabled nodes, other node types and unbound locators', () => {
+		expect(
+			workflowDataTableKeys({
+				nodes: [
+					node('dt-1', 'n8n-nodes-base.dataTable', true),
+					node('dt-2', 'n8n-nodes-base.removeDuplicates'),
+					node({ __rl: true, mode: 'id', value: '' }),
+				],
+			}),
+		).toEqual([]);
+		expect(workflowDataTableKeys(undefined)).toEqual([]);
 	});
 });

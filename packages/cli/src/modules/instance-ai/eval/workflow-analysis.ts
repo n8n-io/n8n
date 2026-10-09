@@ -102,50 +102,17 @@ const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector',
 ]);
 
-/** Data Table row-read operations. Their output is the scenario's "stored state" — left
- * unpinned they read the REAL eval-instance table, polluted by the builder's own
- * verification runs, so scenario outcomes become a coin flip on build-phase leftovers.
- * A table the harness reseeded for the scenario holds only its rows, so reads of it run live. */
-const DATA_TABLE_READ_OPERATIONS = new Set(['get', 'rowExists', 'rowNotExists']);
-
-/** Of the read operations, only `get` emits stored rows — `rowExists`/`rowNotExists`
- *  return the input item passed straight through, so the table's column contract
- *  does not describe their output. */
-const DATA_TABLE_ROW_EMITTING_OPERATIONS = new Set(['get']);
-
-export function isDataTableRead(node: INode): boolean {
-	if (node.type !== 'n8n-nodes-base.dataTable') return false;
-	const params = node.parameters as { resource?: string; operation?: string } | undefined;
-	// Node defaults: resource 'row', operation 'insert' (a write) — only pin explicit reads.
-	return (
-		(params?.resource ?? 'row') === 'row' &&
-		DATA_TABLE_READ_OPERATIONS.has(params?.operation ?? 'insert')
-	);
-}
-
-/** True for Data Table reads whose output IS stored rows — the only reads a real
- *  column contract applies to. Still pinned like any other read; they just get
- *  prompt-only generation instead of enforced column names. */
-export function emitsDataTableRows(node: INode): boolean {
-	if (!isDataTableRead(node)) return false;
-	const params = node.parameters as { operation?: string } | undefined;
-	return DATA_TABLE_ROW_EMITTING_OPERATIONS.has(params?.operation ?? 'insert');
-}
-
-/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`), bypass-protocol nodes, and Data Table reads (unless in `liveReads`). */
+/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`) and bypass-protocol nodes. */
 export function identifyNodesForPinData(
 	workflow: IWorkflowBase,
 	exclusionSet?: Set<string>,
-	liveReads?: Set<string>,
 ): INode[] {
 	const aiRootNodes = findAiRootNodeNames(workflow.connections);
 
 	return workflow.nodes.filter((node) => {
 		if (node.disabled) return false;
 		if (aiRootNodes.has(node.name) && !exclusionSet?.has(node.name)) return true;
-		if (BYPASS_NODE_TYPES.has(node.type)) return true;
-		if (isDataTableRead(node)) return !liveReads?.has(node.name);
-		return false;
+		return BYPASS_NODE_TYPES.has(node.type);
 	});
 }
 

@@ -281,7 +281,7 @@ async function runScenario(
 			logger,
 		);
 	}
-	// The server reads these tables live, so a read sees the rows and earlier writes.
+	// The server keeps these rows; it fills every other table the workflow uses.
 	const seededDataTableIds = seedContext
 		? (scenario.seedDataTables ?? []).map((table) => seedContext.tableIdsByName[table.name])
 		: undefined;

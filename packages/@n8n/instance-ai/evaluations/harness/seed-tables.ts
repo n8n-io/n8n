@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiEvalSeedDataTable } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 import {
 	freshSeedNameSuffix,
@@ -159,6 +160,30 @@ export function workflowDeduplicates(
 	workflow: { nodes?: Array<{ type: string }> } | undefined,
 ): boolean {
 	return workflow?.nodes?.some((node) => node.type === REMOVE_DUPLICATES_NODE_TYPE) ?? false;
+}
+
+const DATA_TABLE_NODE_TYPES = new Set(['n8n-nodes-base.dataTable', 'n8n-nodes-base.dataTableTool']);
+
+/** The Data Tables a workflow binds, as `id:<id>` or `name:<lower-cased name>`. The
+ *  server empties and refills these tables before every run, so two runs that bind
+ *  one table must not interleave. */
+// ponytail: one table bound by id in one workflow and by name in another gets two keys; resolve names to ids if that race shows up.
+export function workflowDataTableKeys(
+	workflow:
+		| { nodes?: Array<{ type: string; disabled?: boolean; parameters?: unknown }> }
+		| undefined,
+): string[] {
+	const keys = new Set<string>();
+	for (const node of workflow?.nodes ?? []) {
+		if (node.disabled || !DATA_TABLE_NODE_TYPES.has(node.type)) continue;
+		const locator = isRecord(node.parameters) ? node.parameters.dataTableId : undefined;
+		const value = isRecord(locator) ? locator.value : locator;
+		if (typeof value !== 'string' || value.length === 0) continue;
+		keys.add(
+			isRecord(locator) && locator.mode === 'name' ? `name:${value.toLowerCase()}` : `id:${value}`,
+		);
+	}
+	return [...keys].sort();
 }
 
 /**

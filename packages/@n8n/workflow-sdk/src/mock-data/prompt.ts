@@ -70,19 +70,6 @@ export function buildNodeSchemaSection(ctx: NodeSchemaContext): string[] {
 		);
 	}
 
-	// Real table columns are authoritative and supersede the static `__schema__`
-	// (which only knows the system columns).
-	if (ctx.dataTableColumns && ctx.dataTableColumns.length > 0) {
-		const columnList = ctx.dataTableColumns.map((c) => `${c.name} (${c.type})`).join(', ');
-		lines.push(
-			'- REAL Data Table columns — every pinned row MUST contain exactly these keys plus ' +
-				'`id` (a NUMBER, auto-incremented: 1, 2, 3…), `createdAt`, `updatedAt` (ISO ' +
-				'timestamps), and no others (values may be empty/null when the scenario calls ' +
-				`for it): ${columnList}`,
-		);
-		return lines;
-	}
-
 	if (ctx.schema) {
 		const schemaStr = JSON.stringify(ctx.schema, null, 2);
 		const truncated =

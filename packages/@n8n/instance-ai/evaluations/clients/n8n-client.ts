@@ -1322,8 +1322,8 @@ export class N8nClient {
 	 * sub-nodes actually run instead of being short-circuited by pin data;
 	 * pass `pinNodes` to keep specific roots on the pinned baseline (e.g. for
 	 * A/B comparison). Gated server-side behind the
-	 * `085_eval_vendor_sdk_interception` PostHog flag. Data Table reads of
-	 * `seededDataTableIds` run live instead of pinned.
+	 * `085_eval_vendor_sdk_interception` PostHog flag. The server keeps the rows of
+	 * `seededDataTableIds` and fills every other Data Table the workflow uses.
 	 */
 	async executeWithLlmMock(
 		workflowId: string,

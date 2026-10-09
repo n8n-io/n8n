@@ -199,12 +199,11 @@ describe('Data Table read parameters', () => {
 		).toBe('no filter (every row); ordered by `createdAt` DESC; the row limit is an expression');
 	});
 
-	it('keeps the read description when the real table columns are known', () => {
+	it('describes the read filter in the node section', () => {
 		const section = buildNodeSchemaSection({
 			nodeName: 'Zone Lookup',
 			nodeType: 'n8n-nodes-base.dataTable',
 			typeVersion: 1.1,
-			dataTableColumns: [{ name: 'country', type: 'string' }],
 			dataTableRead: {
 				matchType: 'allConditions',
 				conditions: [{ keyName: 'country', condition: 'eq', keyValue: 'FR' }],
@@ -216,7 +215,6 @@ describe('Data Table read parameters', () => {
 		expect(section).toContain(
 			'OUTPUTS only the table rows its filter selects — `country` eq "FR"; at most 1 row(s)',
 		);
-		expect(section).toContain('REAL Data Table columns');
 	});
 });
 
@@ -473,8 +471,6 @@ describe('information extractor own-schema enrichment', () => {
 		expect(ctx.declaredFields).toEqual({
 			keys: ['invoice_number', 'total_amount'],
 			envelopeKey: 'output',
-			exact: false,
-			source: 'declared-schema',
 		});
 	});
 
@@ -553,52 +549,8 @@ describe('information extractor own-schema enrichment', () => {
 	});
 });
 
-describe('data table column contracts', () => {
-	const dataTableNode = workflow.nodes[0]; // Get Rows
-
-	it('builds an exact contract including the system columns', () => {
-		const [ctx] = buildSchemaContexts([dataTableNode], undefined, undefined, {
-			'Get Rows': [
-				{ name: 'contact_email', type: 'string' },
-				{ name: 'contact_name', type: 'string' },
-			],
-		});
-
-		expect(ctx.declaredFields).toEqual({
-			keys: ['id', 'createdAt', 'updatedAt', 'contact_email', 'contact_name'],
-			exact: true,
-			source: 'data-table-columns',
-		});
-	});
-
-	it('renders the real columns as the authoritative row shape in the prompt', () => {
-		const [ctx] = buildSchemaContexts(
-			[dataTableNode],
-			() => ({ type: 'object', properties: { id: {} } }),
-			undefined,
-			{ 'Get Rows': [{ name: 'contact_email', type: 'string' }] },
-		);
-		const section = buildNodeSchemaSection(ctx).join('\n');
-
-		expect(section).toContain('REAL Data Table columns');
-		expect(section).toContain('contact_email (string)');
-		// The static `__schema__` (system columns only) is superseded, not embedded.
-		expect(section).not.toContain('Output JSON Schema');
-	});
-});
-
 describe('collectPinFieldViolations', () => {
 	const contexts = [
-		{
-			nodeName: 'Get Rows',
-			nodeType: 'n8n-nodes-base.dataTable',
-			typeVersion: 1,
-			declaredFields: {
-				keys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
-				exact: true,
-				source: 'data-table-columns',
-			},
-		},
 		{
 			nodeName: 'Extract',
 			nodeType: '@n8n/n8n-nodes-langchain.informationExtractor',
@@ -606,59 +558,21 @@ describe('collectPinFieldViolations', () => {
 			declaredFields: {
 				keys: ['total_amount', 'po_number'],
 				envelopeKey: 'output',
-				exact: false,
-				source: 'declared-schema',
 			},
 		},
 	] satisfies NodeSchemaContext[];
 
-	it('flags renamed and missing keys on exact contracts', () => {
-		const violations = collectPinFieldViolations(
-			{
-				'Get Rows': [{ json: { id: 1, createdAt: 'x', updatedAt: 'x', email: 'a@example.com' } }],
-			},
-			contexts,
-		);
-
-		expect(violations).toEqual([
-			{
-				nodeName: 'Get Rows',
-				unknownKeys: ['email'],
-				missingKeys: ['contact_email'],
-				declaredKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
-				envelopeKey: undefined,
-			},
-		]);
-	});
-
 	it('checks fields inside the declared envelope and allows subsets there', () => {
 		const drifted = { Extract: [{ json: { output: { invoice_amount: 5 } } }] };
 		expect(collectPinFieldViolations(drifted, contexts)).toMatchObject([
-			{ nodeName: 'Extract', unknownKeys: ['invoice_amount'], missingKeys: [] },
+			{ nodeName: 'Extract', unknownKeys: ['invoice_amount'] },
 		]);
 
 		const subset = { Extract: [{ json: { output: { total_amount: 5 } } }] };
 		expect(collectPinFieldViolations(subset, contexts)).toEqual([]);
 	});
 
-	it.each([
-		['a non-object json payload', 'not a row'],
-		['an array json payload', [] as unknown],
-	])('flags %s under an exact contract as missing every declared key', (_label, json) => {
-		// Skipping malformed items let the pin pass with rows no downstream column
-		// expression can resolve — it must take the correction/failure path instead.
-		expect(collectPinFieldViolations({ 'Get Rows': [{ json }] }, contexts)).toEqual([
-			{
-				nodeName: 'Get Rows',
-				unknownKeys: [],
-				missingKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
-				declaredKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
-				envelopeKey: undefined,
-			},
-		]);
-	});
-
-	it('leaves malformed items alone when the contract is not exact', () => {
+	it('leaves malformed items alone', () => {
 		// A plain-text agent answer is a legitimate non-object payload.
 		expect(collectPinFieldViolations({ Extract: [{ json: 'plain answer' }] }, contexts)).toEqual(
 			[],
@@ -680,7 +594,6 @@ describe('collectPinFieldViolations', () => {
 			{
 				nodeName: 'Get Rows',
 				unknownKeys: ['email'],
-				missingKeys: ['contact_email'],
 				declaredKeys: ['id', 'contact_email'],
 				envelopeKey: undefined,
 			},
@@ -688,7 +601,6 @@ describe('collectPinFieldViolations', () => {
 
 		expect(message).toContain('Get Rows');
 		expect(message).toContain('remove/rename these unknown fields: email');
-		expect(message).toContain('every item must also carry: contact_email');
 	});
 });
 

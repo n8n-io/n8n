@@ -642,16 +642,15 @@ nodes get LLM-generated pin data). So:
   state.
 - The strongest scenarios exercise **external-service responses** — that's what
   the harness reproduces most faithfully.
-- **Data Table *reads* are pinned to the scenario.** A read op (`get` /
-  `rowExists` / `rowNotExists`) is treated as the scenario's "stored state" and
-  pinned with data derived from your `dataSetup`, so change-detection / dedup /
-  "last seen" scenarios *can* be exercised — describe the stored rows in
-  `dataSetup`. Two caveats: the pinned rows are LLM-generated (steered, not
-  byte-exact — don't assert exact values off them), and *writes/inserts* aren't
-  pinned (they hit the real per-thread table, recreated schema-only with **no
-  rows**), so read-after-write within one run isn't faithful — the read reflects
-  `dataSetup`, not what the run just wrote. A third caveat: only Data Table
-  *reads* are seedable this way — **dedup / change-detection built on workflow
+- **Data Table nodes run for real against the scenario's stored rows.** Before
+  each scenario, the harness empties every Data Table the workflow uses and
+  inserts the starting rows that the mock model derives from your `dataSetup`.
+  Then every Data Table node runs for real, so change-detection / dedup /
+  "last seen" scenarios *can* be exercised, and a read sees what the same run
+  wrote before it — describe the stored rows in `dataSetup`. The generated rows
+  are steered, not byte-exact, so don't assert exact values off them. For exact
+  rows, declare the table in the scenario's `seedDataTables`: the harness inserts
+  those rows as written. One caveat: **dedup / change-detection built on workflow
   static data** (`removeItemsSeenInPreviousExecutions`, `$getWorkflowStaticData`)
   is **not** seedable, because static data starts empty every run, so such a
   scenario reds vacuously (it sees everything as "new"). To get a seedable
@@ -681,9 +680,9 @@ red is harness-caused (per "A red is signal", above):
   ("Sheet with ID __evalMockResource not found", or "Cannot read properties of
   undefined"). Any scenario whose success path runs *through* such a node
   hard-fails before anything downstream executes.
-- **Trigger and Data-Table-read pin data is *LLM-generated*, so not byte-exact.**
+- **Trigger pin data and Data Table starting rows are *LLM-generated*, so not byte-exact.**
   Both are steered by your `dataSetup` (see the mock-layer section above — you
-  *can* influence what a trigger emits or what a stored-row read returns), but
+  *can* influence what a trigger emits or what a table holds), but
   because the values are generated, a scenario that asserts exact values or counts
   off them is flaky. Assert shape/branch/relative facts, not exact figures. (The
   residual hard red here: polling / form triggers still occasionally fail to load
@@ -856,9 +855,9 @@ Two different things — keep them apart:
 - **Harness limitations (surface them, don't hide them).** Some paths hard-fail
   on a correct build regardless of `dataSetup` — empty resource-locator fields
   that crash Sheets/Drive/Calendar nodes, polling triggers failing to load (see
-  "Known harness limitations" above). (State-bearing Data Table *reads* are no
-  longer in this bucket — they're pinned from `dataSetup`; only the write path and
-  exact-value assertions stay unreliable.) The fix is to *document*, not to *work
+  "Known harness limitations" above). (State-bearing Data Table reads are no
+  longer in this bucket — the tables start from `dataSetup` and the nodes run for
+  real; only exact-value assertions stay unreliable.) The fix is to *document*, not to *work
   around*: note the limitation in `description` and keep a hard-failing scenario
   out of gated tiers.
   Only when a scenario flips **non-deterministically** run to run is it genuine
