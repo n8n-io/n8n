@@ -4,9 +4,6 @@ tags:
 summary: Update a community package
 description: Update an installed community package to a new version.
 x-required-scope: communityPackage:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

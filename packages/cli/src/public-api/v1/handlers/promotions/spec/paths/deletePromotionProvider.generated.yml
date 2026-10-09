@@ -4,9 +4,6 @@ tags:
 summary: Delete a promotion provider
 description: A provider used by a connection cannot be deleted.
 x-required-scope: gitConnection:delete
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

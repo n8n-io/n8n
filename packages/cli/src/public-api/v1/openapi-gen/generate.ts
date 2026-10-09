@@ -3,11 +3,8 @@ import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
 import { UnexpectedError } from 'n8n-workflow';
 import fs from 'node:fs';
 import path from 'node:path';
-import { isDeepStrictEqual } from 'node:util';
 import { stringify } from 'yaml';
 import type { z } from 'zod';
-
-import { HTTP_METHODS } from '@/public-api/public-api-route-resolver';
 
 import {
 	getDecoratorGeneratedOperations,
@@ -21,11 +18,12 @@ const COMPONENT_SCHEMA_REF = /^#\/components\/schemas\/(.+)$/;
 const SHARED_SCHEMA_DIR = 'shared/spec/schemas';
 const YAML_OPTS = { aliasDuplicateObjects: false, singleQuote: true, lineWidth: 0 } as const;
 
-// Generated root that registers every decorator-routed operation, sitting next to `openapi.yml` so
-// its `$ref`s to the fragment files resolve on the same relative basis.
+// Generated root that registers every operation. It sits next to `openapi.yml`, so its `$ref`s to
+// the fragment files resolve from the same directory. The build bundles it and assembles it into
+// the envelope (see `assembleSpec`).
 export const DECORATOR_ROOT_FILENAME = 'openapi.decorator-routes.generated.yml';
 
-/** The subset of an OpenAPI document this module reads/merges. Everything else passes through. */
+/** The subset of an OpenAPI document this module reads or assembles. Everything else passes through. */
 export interface OpenApiDocument {
 	paths?: Record<string, Record<string, unknown>>;
 	components?: Record<string, Record<string, unknown>>;
@@ -39,7 +37,7 @@ export interface GeneratedArtifact {
 }
 
 /**
- * Lower-cased first char matches the existing hand-written schema-file convention (`tag.yml`)
+ * Lower-cases the first character of the component name, e.g. `Tag` becomes `tag.generated.yml`.
  */
 function schemaFileName(componentName: string): string {
 	return `${componentName[0].toLowerCase()}${componentName.slice(1)}.generated.yml`;
@@ -148,8 +146,8 @@ export function registerSharedSchemas(
 }
 
 /**
- * The decorator-routes root: `paths` `$ref`ing each operation fragment by its file path. Bundling
- * this (see build.mjs) yields a resolved document whose paths are merged into the hand-written spec.
+ * The generated root: `paths` `$ref`ing each operation fragment by its file path. Bundling this
+ * (see build.mjs) yields a resolved document, which `assembleSpec` puts into the envelope.
  */
 function buildDecoratorRootDocument(
 	operations: Array<{ pathKey: string; method: string; outputPath: string }>,
@@ -165,6 +163,7 @@ function buildDecoratorRootDocument(
 		// `./<outputPath>` — the root sits at the v1 dir root and outputPath is relative to that dir.
 		pathItem[method] = { $ref: `./${outputPath}` };
 	});
+	assertConsistentPathParameterNames(paths);
 	return { openapi: '3.0.0', info: { title: 'decorator-routes', version: '0.0.0' }, paths };
 }
 
@@ -207,85 +206,46 @@ export function generateDocs(v1Dir: string): void {
 	});
 }
 
-function mergeComponents(
-	base: OpenApiDocument['components'],
-	extra: OpenApiDocument['components'],
-): OpenApiDocument['components'] {
-	if (!extra) return base;
-	const merged: NonNullable<OpenApiDocument['components']> = { ...base };
-	for (const [section, items] of Object.entries(extra)) {
-		const target = { ...(merged[section] ?? {}) };
-		for (const [name, definition] of Object.entries(items)) {
-			// A component may legitimately appear in both bundles (the same shared file hoisted
-			// independently) — that's a harmless duplicate. Only differing definitions are a clash.
-			if (name in target && !isDeepStrictEqual(target[name], definition)) {
-				throw new UnexpectedError(
-					`OpenAPI component components.${section}.${name} is defined differently by a hand-written ` +
-						'path and a @PublicApiController route — rename one so they no longer collide.',
-				);
-			}
-			target[name] = definition;
-		}
-		merged[section] = target;
-	}
-	return merged;
-}
-
-function assertConsistentPathParameterNames(
-	...pathCollections: Array<OpenApiDocument['paths']>
-): void {
+function assertConsistentPathParameterNames(paths: OpenApiDocument['paths']): void {
 	// Matches path parameters such as '{credentialId}'.
 	const PATH_PARAMETER_REGEX = /\{([^}]+)\}/g;
 	const pathByShape = new Map<string, string>();
 
-	for (const paths of pathCollections) {
-		for (const pathKey of Object.keys(paths ?? {})) {
-			const pathShape = pathKey.replace(PATH_PARAMETER_REGEX, '{}');
-			const equivalentPath = pathByShape.get(pathShape);
-			if (equivalentPath && equivalentPath !== pathKey) {
-				throw new UnexpectedError(
-					`Equivalent OpenAPI paths use different parameter names: '${equivalentPath}' and ` +
-						`'${pathKey}'. Use the same parameter name in both paths.`,
-				);
-			}
-			pathByShape.set(pathShape, pathKey);
+	for (const pathKey of Object.keys(paths ?? {})) {
+		const pathShape = pathKey.replace(PATH_PARAMETER_REGEX, '{}');
+		const equivalentPath = pathByShape.get(pathShape);
+		if (equivalentPath && equivalentPath !== pathKey) {
+			throw new UnexpectedError(
+				`Equivalent OpenAPI paths use different parameter names: '${equivalentPath}' and ` +
+					`'${pathKey}'. Use the same parameter name in both paths.`,
+			);
 		}
+		pathByShape.set(pathShape, pathKey);
 	}
 }
 
 /**
- * Merges the decorator-routed document into the hand-written (eov) one at *method* granularity, so a
- * path served partly by eov and partly by a controller (e.g. eov `POST /tags` + decorator `GET
- * /tags`) ends up whole. A path+method declared on both sides is a hard error — the same operation
- * can't have two definitions. Both inputs are expected to be already-bundled (all `$ref`s resolved),
- * so their `components` are merged too, deduping the shared files each side hoisted independently.
+ * Builds the published spec: the hand-written envelope (`openapi.yml`) with the paths and
+ * components of the bundled generated root.
  */
-export function mergeDecoratorDocument(
-	base: OpenApiDocument,
-	decorator: OpenApiDocument,
+export function assembleSpec(
+	envelope: OpenApiDocument,
+	generated: OpenApiDocument,
 ): OpenApiDocument {
-	assertConsistentPathParameterNames(base.paths, decorator.paths);
+	const components: Record<string, Record<string, unknown>> = { ...generated.components };
 
-	const paths: Record<string, Record<string, unknown>> = { ...(base.paths ?? {}) };
-
-	for (const [pathKey, methods] of Object.entries(decorator.paths ?? {})) {
-		const existing = paths[pathKey];
-		if (!existing) {
-			paths[pathKey] = methods;
-			continue;
-		}
-		const combined = { ...existing };
-		for (const [method, operation] of Object.entries(methods)) {
-			if (HTTP_METHODS.some((m) => m === method) && combined[method] !== undefined) {
+	for (const [section, items] of Object.entries(envelope.components ?? {})) {
+		const target = { ...(components[section] ?? {}) };
+		for (const name of Object.keys(items)) {
+			if (name in target) {
 				throw new UnexpectedError(
-					`Duplicate OpenAPI operation ${method.toUpperCase()} ${pathKey}: it is declared by both a ` +
-						'hand-written (eov) path and a @PublicApiController route — remove the hand-written one.',
+					`OpenAPI component components.${section}.${name} is defined by both the envelope and a ` +
+						'generated route. Remove one of them.',
 				);
 			}
-			combined[method] = operation;
 		}
-		paths[pathKey] = combined;
+		components[section] = { ...target, ...items };
 	}
 
-	return { ...base, paths, components: mergeComponents(base.components, decorator.components) };
+	return { ...envelope, paths: generated.paths ?? {}, components };
 }

@@ -78,14 +78,9 @@ tags:
   - name: Workflow
     description: Operations about workflows
 
+# Paths and components are generated from @PublicApiController routes. See openapi-gen/generate.ts.
 paths: {}
 components:
-  schemas:
-    $ref: './shared/spec/schemas/_index.yml'
-  responses:
-    $ref: './shared/spec/responses/_index.yml'
-  parameters:
-    $ref: './shared/spec/parameters/_index.yml'
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

@@ -4,9 +4,6 @@ tags:
 summary: Update a data table
 description: Update a data table's name.
 x-required-scope: dataTable:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

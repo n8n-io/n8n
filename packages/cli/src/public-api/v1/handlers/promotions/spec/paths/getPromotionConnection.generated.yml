@@ -4,9 +4,6 @@ tags:
 summary: Retrieve a promotion connection
 description: Returns the connection with its provider summary and its configurations.
 x-required-scope: gitConnection:read
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

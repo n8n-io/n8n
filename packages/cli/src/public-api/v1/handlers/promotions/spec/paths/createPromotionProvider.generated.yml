@@ -4,9 +4,6 @@ tags:
 summary: Create a promotion provider
 description: Creates a provider and its authentication material. An SSH provider returns the generated public key; add it to the remote as a deploy key.
 x-required-scope: gitConnection:create
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

@@ -4,9 +4,6 @@ tags:
 summary: Retry an execution
 description: Retry an execution from your instance.
 x-required-scope: execution:retry
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: integer

@@ -4,9 +4,6 @@ tags:
 summary: Create a custom role
 description: Creates a custom role. Set `roleType` to `global` for an instance-wide role or `project` for a project role.
 x-required-scope: role:manage,role:manageProject
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

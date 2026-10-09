@@ -4,9 +4,6 @@ tags:
 summary: Retrieves a tag
 description: Retrieves a tag.
 x-required-scope: tag:read
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

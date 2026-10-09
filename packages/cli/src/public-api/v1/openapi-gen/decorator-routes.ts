@@ -321,8 +321,7 @@ export interface GeneratedDecoratorOperation {
 
 /**
  * Builds one `RouteConfig` per route discovered on a `@PublicApiController` class.
- * A new `@PublicApiController` shows up here automatically; a legacy eov-routed endpoint (still hand-written YAML)
- * is untouched until it's migrated to the controller pattern.
+ * A new `@PublicApiController` shows up here automatically.
  *
  * Output path convention: `handlers/<first-path-segment>/spec/paths/<handlerName>.generated.yml`
  */
@@ -360,11 +359,6 @@ export function getDecoratorGeneratedOperations(
 					}
 				: {}),
 			responses: buildResponses(route, resolveSchema),
-			// Satisfies express-openapi-validator's operation-handler installer, which requires
-			// every operation in the spec to resolve to something.
-			'x-eov-operation-id': 'unreachable',
-			'x-eov-operation-handler': 'v1/handlers/decorator-routed.handler',
-			'x-decorator-routed': true,
 		};
 
 		return {

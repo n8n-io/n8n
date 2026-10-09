@@ -89,6 +89,23 @@ describe('PublicApiControllerRegistry', () => {
 		Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());
 	});
 
+	it('answers 405 for a known path that no controller serves with the method', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const app = activate();
+
+		await request(app).put('/api/v1/widgets').expect(405, { message: 'PUT method not allowed' });
+		await request(app).get('/api/v1/widgets').expect(200, { ok: true });
+	});
+
 	it('emits the Deprecation header for a route marked @Deprecated', async () => {
 		const since = new Date('2026-07-23T00:00:00Z');
 

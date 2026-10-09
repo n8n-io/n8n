@@ -4,9 +4,6 @@ tags:
 summary: Retrieve a project's node type policy
 description: "Returns the project's own composed policy, not the result of combining it with the instance policy. A project that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`."
 x-required-scope: nodeTypePolicy:manage
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

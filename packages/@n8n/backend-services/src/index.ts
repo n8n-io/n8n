@@ -30,7 +30,6 @@ export { UrlService } from './services/url.service';
 export {
 	classifyRestError,
 	isResponseError,
-	type RestErrorClassifierContext,
 	type RestErrorDescriptor,
 	RestErrorKind,
 } from './errors/rest-error-classifier';
