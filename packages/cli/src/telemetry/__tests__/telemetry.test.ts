@@ -15,6 +15,7 @@ import type { License } from '@/license';
 import { USER_CALLED_MCP_TOOL_EVENT } from '@/modules/mcp/mcp.constants';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { PostHogClient } from '@/posthog';
+import { InstanceRegistryProxyService } from '@/services/instance-registry-proxy.service';
 import { Telemetry } from '@/telemetry';
 
 vi.unmock('@/telemetry');
@@ -1373,6 +1374,13 @@ describe('Telemetry', () => {
 					'project:personalOwner': 0,
 					'project:viewer': 0,
 				},
+				main_count: 1,
+				worker_count: 1,
+				webhook_count: 0,
+				engine_count: 0,
+				cluster_cpu_limit: 2,
+				cluster_memory_limit: 2048,
+				unlimited_process_count: 1,
 			});
 		});
 
@@ -1415,6 +1423,34 @@ describe('Telemetry', () => {
 
 /** Registers the services the pulse packet reads its counters from. */
 const mockPulsePacketSources = () => {
+	mockInstance(InstanceRegistryProxyService, {
+		getAllInstances: async () => [
+			{
+				schemaVersion: 1,
+				instanceKey: 'k1',
+				hostId: 'main-1',
+				instanceType: 'main',
+				instanceRole: 'leader',
+				version: '1.0.0',
+				registeredAt: 0,
+				lastSeen: 0,
+				cpuLimit: 2,
+				memoryLimit: 2048 * 1024,
+			},
+			{
+				schemaVersion: 1,
+				instanceKey: 'k2',
+				hostId: 'worker-1',
+				instanceType: 'worker',
+				instanceRole: 'unset',
+				version: '1.0.0',
+				registeredAt: 0,
+				lastSeen: 0,
+				cpuLimit: null,
+				memoryLimit: null,
+			},
+		],
+	});
 	mockInstance(SourceControlPreferencesService, {
 		getPreferences: () => mock({ branchName: 'main', branchReadOnly: true }),
 		isSourceControlSetup: () => 'main',
