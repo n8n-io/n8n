@@ -36,7 +36,7 @@ export type CreateTrustedSourceInput = {
 };
 export type UpdateTrustedSourceInput = Partial<CreateTrustedSourceInput>;
 export type SeedSystemSourceInput = CreateTrustedSourceInput & { id: string };
-/** `conflict`: an admin row already holds the name or the issuer, so the system row is not written. */
+/** `conflict`: an admin row already holds the id, name or issuer, so the system row is not written. */
 export type SeedSystemSourceOutcome = 'inserted' | 'issuer-updated' | 'unchanged' | 'conflict';
 
 export class SystemTrustedSourceModificationError extends UserError {
@@ -236,11 +236,23 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			return 'inserted';
 		}
 
+		// Only a direct database write can put an admin row under the reserved id.
+		if (existing.managedBy !== 'system') return 'conflict';
 		if (existing.issuer === issuer) return 'unchanged';
-		// A pre-check, so the update does not need to catch a unique violation.
-		if (await this.trustedSourceRepository.findByIssuer(issuer)) return 'conflict';
 
-		await this.trustedSourceRepository.updateById(id, { issuer });
+		// Another seeder can move the issuer first; then the row holding it is this one.
+		const holder = await this.trustedSourceRepository.findByIssuer(issuer);
+		if (holder) return holder.id === id ? 'unchanged' : 'conflict';
+
+		try {
+			await this.trustedSourceRepository.updateById(id, { issuer });
+		} catch (error) {
+			// Another row can take the issuer between the check and the update. A conflict must not
+			// stop the boot, so classify it by reading the issuer again.
+			const winner = await this.trustedSourceRepository.findByIssuer(issuer);
+			if (!winner) throw error;
+			return winner.id === id ? 'unchanged' : 'conflict';
+		}
 		await this.invalidateCache(existing, issuer);
 		return 'issuer-updated';
 	}

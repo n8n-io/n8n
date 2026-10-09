@@ -71,7 +71,7 @@ export class SystemTrustedSourceSeeder {
 				break;
 			case 'conflict':
 				this.logger.error(
-					'Could not seed the system trusted source: another trusted source holds its name or issuer',
+					'Could not seed the system trusted source: another trusted source holds its id, name or issuer',
 					{ ...context, name: SYSTEM_TRUSTED_SOURCE_NAME },
 				);
 				break;
