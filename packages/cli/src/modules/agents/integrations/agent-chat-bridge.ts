@@ -781,7 +781,7 @@ export class AgentChatBridge {
 		message: Message,
 		options: InboundOptions,
 	): Promise<void> {
-		const inbound = await this.readInboundMessage(message);
+		const inbound = await this.readInboundMessage(thread, message);
 		if (!inbound) return;
 		if (isResetCommand(inbound)) {
 			if (options.allowReset !== false) await this.resetSession(thread);
@@ -790,16 +790,35 @@ export class AgentChatBridge {
 		await this.runTurn(thread, message, inbound, options);
 	}
 
-	private async readInboundMessage(message: Message): Promise<InboundMessage | null> {
+	private async readInboundMessage(
+		thread: Thread,
+		message: Message,
+	): Promise<InboundMessage | null> {
 		const platformAgentContext = this.getPlatformAgentContext();
 		const text = this.prepareInboundText(
 			await this.getInboundText(message),
 			platformAgentContext,
 		).trim();
 		// `?? []` guards rehydrated/serialized messages that predate the field.
-		const attachments = message.attachments ?? [];
+		const attachments = [
+			...(message.attachments ?? []),
+			...(await this.fetchInboundAttachments(thread, message)),
+		];
 		if (!text && attachments.length === 0) return null;
 		return { text, attachments };
+	}
+
+	/** A failed lookup leaves the message without the extra files, never unanswered. */
+	private async fetchInboundAttachments(thread: Thread, message: Message): Promise<Attachment[]> {
+		try {
+			return (await this.integrationImpl?.fetchInboundAttachments?.({ thread, message })) ?? [];
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to look up message attachments', {
+				agentId: this.agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return [];
+		}
 	}
 
 	private async runTurn(

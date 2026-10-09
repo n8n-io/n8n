@@ -5,7 +5,7 @@ import {
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Thread, Author, Message } from 'chat';
+import type { Attachment, Thread, Author, Message } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
@@ -533,6 +533,16 @@ export abstract class AgentChatIntegration {
 
 	/** Optional text normalization before the message is handed to the agent. */
 	prepareInboundText?(text: string, context: PlatformAgentContext): string;
+
+	/**
+	 * Optional files that the webhook leaves out and the platform API has. Teams
+	 * uses this for channel and group chat messages. They join the message's own
+	 * attachments.
+	 */
+	fetchInboundAttachments?(params: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+	}): Promise<Attachment[]>;
 
 	/**
 	 * Optional per-message reply policy (see `ReplyExpectation`).

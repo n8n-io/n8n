@@ -2008,6 +2008,53 @@ describe('AgentChatBridge — consumeStream', () => {
 			}
 		});
 
+		it('stores files the integration fetches from the platform API', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+			const integrationImpl = registry.get('test-streaming')!;
+			integrationImpl.fetchInboundAttachments = vi
+				.fn()
+				.mockResolvedValue([
+					{ type: 'file', name: 'shared.png', fetchData: vi.fn().mockResolvedValue(pngBytes) },
+				]);
+
+			try {
+				await handlers.mention!(thread, {
+					text: 'look at this',
+					author: { userId: 'u1', userName: 'user1' },
+				});
+
+				expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+					expect.objectContaining({ fileName: 'shared.png', mimeType: 'image/png' }),
+				);
+			} finally {
+				delete integrationImpl.fetchInboundAttachments;
+			}
+		});
+
+		it('still runs the turn when the platform file lookup fails', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+			const integrationImpl = registry.get('test-streaming')!;
+			integrationImpl.fetchInboundAttachments = vi.fn().mockRejectedValue(new Error('403'));
+
+			try {
+				await handlers.mention!(thread, {
+					text: 'look at this',
+					author: { userId: 'u1', userName: 'user1' },
+				});
+
+				expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+				expect(agentExecutor.executeForChatPublished).toHaveBeenCalled();
+			} finally {
+				delete integrationImpl.fetchInboundAttachments;
+			}
+		});
+
 		it('truncates a platform file name to the fileName column width', async () => {
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			const attachmentService = makeAttachmentService();

@@ -61,9 +61,10 @@ export interface BuildTeamsManifestOptions {
 const RSC_RESOURCE = 'https://RscBasedStoreApp';
 
 /**
- * Teams delivers only @mentions in a shared conversation unless the app asks to
- * read everything there. Each name is paired with the scope it depends on, so a
- * permission cannot be emitted without its surface. `conversationType` is the
+ * Each surface asks to read its messages, because Teams leaves files out of a
+ * shared conversation's activity and they are read through Graph instead. The
+ * permission also makes Teams deliver every message there, not only @mentions;
+ * `setting` decides whether the agent acts on them. `conversationType` is the
  * surface as Teams reports it on an activity.
  */
 export const READ_PERMISSIONS = [
@@ -177,7 +178,7 @@ export class TeamsManifestService {
 		availability: BuildTeamsManifestOptions['settings'],
 	): Partial<TeamsAgentAppManifest> {
 		const resourceSpecific = READ_PERMISSIONS.filter(
-			({ setting, requires }) => availability?.[setting] && availability?.[requires],
+			({ requires }) => availability?.[requires],
 		).map(({ name }) => ({ name, type: 'Application' as const }));
 
 		if (resourceSpecific.length === 0) return {};
