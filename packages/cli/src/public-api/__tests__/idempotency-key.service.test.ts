@@ -1,9 +1,7 @@
 import type { IdempotencyKeyRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
-
-const batchSize = 500;
+import { CLEANUP_BATCH_SIZE, IdempotencyKeyService } from '@/public-api/idempotency-key.service';
 
 describe('IdempotencyKeyService', () => {
 	const idempotencyKeyRepository = mock<IdempotencyKeyRepository>();
@@ -23,20 +21,23 @@ describe('IdempotencyKeyService', () => {
 			const deleted = await service.deleteOlderThan(cutoff, signal);
 
 			expect(idempotencyKeyRepository.deleteOlderThan).toHaveBeenCalledTimes(1);
-			expect(idempotencyKeyRepository.deleteOlderThan).toHaveBeenCalledWith(cutoff, batchSize);
+			expect(idempotencyKeyRepository.deleteOlderThan).toHaveBeenCalledWith(
+				cutoff,
+				CLEANUP_BATCH_SIZE,
+			);
 			expect(deleted).toBe(10);
 		});
 
 		it('keeps deleting while a statement removes a full batch', async () => {
 			idempotencyKeyRepository.deleteOlderThan
-				.mockResolvedValueOnce(batchSize)
-				.mockResolvedValueOnce(batchSize)
+				.mockResolvedValueOnce(CLEANUP_BATCH_SIZE)
+				.mockResolvedValueOnce(CLEANUP_BATCH_SIZE)
 				.mockResolvedValueOnce(3);
 
 			const deleted = await service.deleteOlderThan(cutoff, signal);
 
 			expect(idempotencyKeyRepository.deleteOlderThan).toHaveBeenCalledTimes(3);
-			expect(deleted).toBe(batchSize * 2 + 3);
+			expect(deleted).toBe(CLEANUP_BATCH_SIZE * 2 + 3);
 		});
 	});
 });

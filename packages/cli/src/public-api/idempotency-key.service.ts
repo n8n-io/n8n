@@ -1,7 +1,7 @@
 import { IdempotencyKeyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-const CLEANUP_BATCH_SIZE = 500;
+export const CLEANUP_BATCH_SIZE = 500;
 
 @Service()
 export class IdempotencyKeyService {
