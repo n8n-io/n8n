@@ -29,15 +29,15 @@ describe('IdempotencyKeyCleanupTask', () => {
 	describe('run', () => {
 		it('should delete keys older than 12 hours', async () => {
 			idempotencyKeyService.deleteOlderThan.mockResolvedValue(10);
-			const startedAt = Date.now();
 
 			await task.run(signal);
 
 			expect(idempotencyKeyService.deleteOlderThan).toHaveBeenCalledTimes(1);
 			const [cutoff, passedSignal] = idempotencyKeyService.deleteOlderThan.mock.calls[0];
 			expect(passedSignal).toBe(signal);
-			expect(startedAt - cutoff.getTime()).toBeGreaterThanOrEqual(idempotencyKeyTtlMs);
-			expect(Date.now() - cutoff.getTime()).toBeLessThan(idempotencyKeyTtlMs + 1_000);
+			const ageMs = Date.now() - cutoff.getTime();
+			expect(ageMs).toBeGreaterThanOrEqual(idempotencyKeyTtlMs);
+			expect(ageMs).toBeLessThan(idempotencyKeyTtlMs + 1_000);
 		});
 
 		it('should log the total when keys are deleted', async () => {
