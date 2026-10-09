@@ -8,6 +8,7 @@ import type {
 	RunnerMessage,
 	TaskResultData,
 } from '@n8n/task-runner';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
@@ -487,13 +488,29 @@ export class TaskBroker {
 	) {
 		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
-		await this.messageRunner(runner.id, {
-			type: 'broker:rpcresponse',
-			taskId,
-			callId,
-			status,
-			data,
-		});
+		try {
+			await this.messageRunner(runner.id, {
+				type: 'broker:rpcresponse',
+				taskId,
+				callId,
+				status,
+				data,
+			});
+		} catch (error) {
+			// Without a response, the runner waits until the task times out
+			const message = `Failed to send RPC response to task runner: ${ensureError(error).message}`;
+			try {
+				await this.messageRunner(runner.id, {
+					type: 'broker:rpcresponse',
+					taskId,
+					callId,
+					status: 'error',
+					data: message,
+				});
+			} catch (fallbackError) {
+				await this.failTask(taskId, new UnexpectedError(message, { cause: fallbackError }));
+			}
+		}
 	}
 
 	async handleRequesterDataResponse(taskId: Task['id'], requestId: string, data: unknown) {
