@@ -99,9 +99,9 @@ const modelRLC: INodeProperties = {
 	},
 	default: 'models/gemini-2.5-flash',
 	builderHint: {
-		// The dropdown loads through declarative routing, which explore-resources cannot call.
+		// The dropdown loads through declarative routing, which the builder's resource lookup cannot call.
 		propertyHint:
-			'This node declares no model-list lookup, so nodes(action="explore-resources") cannot list its models, even with a connected credential. For a new choice, call searchModels with provider "google" and use a Gemini 3.x or newer model ID with the "models/" prefix. Do not choose Gemini 2.x or older. ' +
+			'This node declares no model-list lookup, so its models cannot be listed, even with a connected credential. For a new choice, use current Google provider catalog information and choose a Gemini 3.x or newer model ID with the "models/" prefix. Do not choose Gemini 2.x or older. ' +
 			MODEL_SELECTION_HINT,
 	},
 };
