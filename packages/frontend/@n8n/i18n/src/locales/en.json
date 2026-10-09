@@ -7307,7 +7307,6 @@
 	"instanceAi.inputMenu.browser.connectedTitle": "Google Chrome",
 	"instanceAi.inputMenu.preferences.label": "Preferences",
 	"instanceAi.mcp.success.connect": "Connected successfully",
-	"instanceAi.mcp.success.changeCredential": "Credential changed successfully",
 	"instanceAi.mcp.error.fetchConnections": "Failed to load MCP connections",
 	"instanceAi.mcp.error.fetchCatalog": "Failed to load MCP server catalog",
 	"instanceAi.mcp.error.checkConnections": "Failed to check MCP server connections",
