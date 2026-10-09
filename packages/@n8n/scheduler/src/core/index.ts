@@ -64,6 +64,7 @@ export { createDispatchReporter, backoff } from './executor';
 export type {
 	ExecutorOptions,
 	TaskHandler,
+	TaskRun,
 	DispatchReporter,
 	DispatchDecision,
 	BackoffOptions,

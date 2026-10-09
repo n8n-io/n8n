@@ -433,7 +433,10 @@ export class Executor {
 			}
 		});
 		try {
-			await handler.execute(task, report, run.signal, deadline);
+			await handler.execute(task, report, {
+				signal: run.signal,
+				remainingMs: () => Math.max(0, deadline - performance.now()),
+			});
 		} finally {
 			timeout.cancel();
 			heartbeat.stop();
