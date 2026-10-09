@@ -58,7 +58,9 @@ export async function helpscoutApiRequestAllItems(
 	let uri: undefined | string = undefined;
 
 	do {
-		responseData = await helpscoutApiRequest.call(this, method, endpoint, body, query, uri);
+		// When using pagination URL (uri), don't pass query params as they're already in the URL
+		const requestQuery: IDataObject = uri ? {} : query;
+		responseData = await helpscoutApiRequest.call(this, method, endpoint, body, requestQuery, uri);
 		uri = get(responseData, '_links.next.href');
 		returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
 		const limit = query.limit as number | undefined;
