@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/HaloPSA/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_15405d1e9d9282 1-31
+packages/nodes-base/nodes/HaloPSA/GenericFunctions.ts
+  s_33a0e18a8ac61b::t_2f0bc55464efea 12-13,15,35-49,60,68,80,104,149,221,232-233
+packages/nodes-base/nodes/HaloPSA/HaloPSA.node.ts
+  s_0f34e61c0d2ecc::t_08a3222d683e47 15,107,128,148,183,250,267,278,299,310,333,363,374,385,406,417,440,472,483,494,515,526,549,580,591,602,623,634,657
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d067db4c6f7d28e1da89ae0d79bf7c5aa1f4f344",
+  "prompts": {},
+  "sessions": {
+    "s_0f34e61c0d2ecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6bbfaf0c713f71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_33a0e18a8ac61b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afd5b8a0a13edae2e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
