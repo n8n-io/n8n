@@ -24,6 +24,7 @@ vi.mock('./api', () => ({
 		botId: null,
 		deployToAzureUrl: null,
 		credentialClaimedBy: null,
+		provisionedByN8n: true,
 		defaultDisplayName: 'Agent',
 		defaultDescription: 'An agent',
 	}),
@@ -51,10 +52,14 @@ const buildRuntime = (
 		botSetupState: ref(null),
 		provisionedBot: ref(null),
 		subscriptions: ref([]),
-		provisionApp: vi.fn(),
+		catalogState: ref(null),
+		connectedCredentialId: ref(''),
+			provisionApp: vi.fn(),
 		loadSubscriptions: vi.fn(),
 		provisionBot: vi.fn(),
-	};
+		publishApp: vi.fn(),
+		refreshCatalogState: vi.fn(),
+		};
 };
 
 const props = (runtime: TeamsChannelRuntime, overrides: Record<string, unknown> = {}) => ({

@@ -1,4 +1,5 @@
 import type { CredentialsEntity, User } from '@n8n/db';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@n8n/backend-services';
@@ -354,6 +355,76 @@ describe('TeamsEntraProvisioningService', () => {
 				`/applications/${OBJECT_ID}/removePassword`,
 				{ keyId: 'live-1' },
 			);
+		});
+
+		/**
+		 * The publish records which app it put in the catalogue on this very
+		 * credential, and that note is the only answer the setup has while
+		 * Microsoft has not listed the app. A re-run must not lose it.
+		 */
+		it('keeps what the publish recorded on the credential', async () => {
+			credentialsService.decrypt.mockImplementation(
+				async (credential: { id: string }, includeRawData?: boolean) => {
+					if (credential.id !== 'bot-cred-1') return {} as never;
+					const data = {
+						entraAppObjectId: OBJECT_ID,
+						provisionedForAgentId: 'agent-1',
+						publishedTeamsAppId: 'teams-app-1',
+						publishedTeamsAppState: 'published',
+						privateKey: 'pem-1',
+					};
+					// The real `decrypt` blanks every password field unless the caller
+					// asks for the raw data, and this one is written straight back.
+					return (
+						includeRawData ? data : { ...data, privateKey: CREDENTIAL_BLANKING_VALUE }
+					) as never;
+				},
+			);
+
+			await service.provision(options);
+
+			expect(credentialsService.createEncryptedData).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: expect.objectContaining({
+						publishedTeamsAppId: 'teams-app-1',
+						publishedTeamsAppState: 'published',
+						privateKey: 'pem-1',
+					}),
+				}),
+			);
+		});
+
+		/**
+		 * A re-run against another directory keeps the credential but not what it
+		 * said about a catalogue the new tenant has never seen -- carrying that
+		 * across suppresses the publish that is actually due.
+		 */
+		it('drops the publish note when the app lands in another tenant', async () => {
+			credentialsService.decrypt.mockImplementation(
+				async (credential: { id: string }) =>
+					(credential.id === 'bot-cred-1'
+						? {
+								entraAppObjectId: OBJECT_ID,
+								provisionedForAgentId: 'agent-1',
+								tenantId: 'a-different-tenant',
+								clientId: APP_ID,
+								publishedTeamsAppId: 'teams-app-1',
+								publishedTeamsAppState: 'published',
+								publishedTeamsAppAt: '2026-10-01T00:00:00Z',
+							}
+						: {}) as never,
+			);
+
+			await service.provision(options);
+
+			const written = credentialsService.createEncryptedData.mock.calls[0][0].data as Record<
+				string,
+				unknown
+			>;
+			expect(written.publishedTeamsAppId).toBeUndefined();
+			expect(written.publishedTeamsAppState).toBeUndefined();
+			expect(written.publishedTeamsAppAt).toBeUndefined();
+			expect(written.tenantId).toBe(TENANT_ID);
 		});
 
 		it('reuses the app it registered, rather than registering a second one', async () => {
