@@ -847,6 +847,46 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			});
 		});
 
+		it('adds and revokes a mapped team-project relation continuously', async () => {
+			const team = await createTeamProject();
+			const source = await jitSource(
+				mapping('continuous', { projectRoleRules: [editorRule(team.id)] }),
+			);
+			const member = await createMember();
+			await bind(source, 'alice', member.id, { provenance: 'jit' });
+			const accessUpdates = () =>
+				emit.mock.calls.filter(([name]) => name === 'sso-user-project-access-updated');
+
+			expectOk(await service.identify(verified(source, claims('alice', member.email, ['team']))));
+
+			expect(await relationsOf(member.id)).toContainEqual({
+				projectId: team.id,
+				role: 'project:editor',
+			});
+			expect(emit).toHaveBeenCalledWith('sso-user-project-access-updated', {
+				projectsAdded: 1,
+				projectsRemoved: 0,
+				userId: member.id,
+			});
+
+			expectOk(await service.identify(verified(source, claims('alice', member.email, []))));
+
+			// Revocation touches team projects only; the personal project stays.
+			expect(await relationsOf(member.id)).toEqual([
+				expect.objectContaining({ role: 'project:personalOwner' }),
+			]);
+			expect(emit).toHaveBeenCalledWith('sso-user-project-access-updated', {
+				projectsAdded: 0,
+				projectsRemoved: 1,
+				userId: member.id,
+			});
+			expect(accessUpdates()).toHaveLength(2);
+
+			expectOk(await service.identify(verified(source, claims('alice', member.email, []))));
+
+			expect(accessUpdates()).toHaveLength(2);
+		});
+
 		it('never changes the role of the instance owner', async () => {
 			const source = await jitSource(mapping('continuous', { instanceRoleRules: [adminRule] }));
 			const owner = await createOwner();
