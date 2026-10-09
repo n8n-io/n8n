@@ -894,11 +894,13 @@ async function prepareWebhookAdditionalData({
 				: (await Container.get(ProtectedResourceRegistry).getByResourceUrl(resource))?.getGrant?.();
 
 		if (!grant) {
-			// Not fatal now, but this is the state a queued or parked run later fails in.
-			Container.get(Logger).warn(
-				'Established a trigger identity without a resource grant; this run will depend on the protected resource still resolving',
-				{ workflowId: workflow.id, resource },
-			);
+			// Every trigger resource builds its grant with `triggerResourceGate`, so only a bug
+			// gets here. A seal without a grant cannot re-take the admission decision later.
+			Container.get(Logger).error('Cannot establish a trigger identity without a resource grant', {
+				workflowId: workflow.id,
+				resource,
+			});
+			throw new UnexpectedError('Cannot establish a trigger identity without a resource grant');
 		}
 
 		additionalData.encryptedRunnerIdentity = await Container.get(
