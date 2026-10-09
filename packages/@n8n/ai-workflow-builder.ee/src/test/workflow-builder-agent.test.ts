@@ -89,6 +89,7 @@ describe('WorkflowBuilderAgent', () => {
 		mockCheckpointer = mock<MemorySaver>();
 		mockCheckpointer.getTuple = vi.fn();
 		mockCheckpointer.put = vi.fn();
+		mockCheckpointer.putWrites = vi.fn().mockResolvedValue(undefined);
 		mockCheckpointer.list = vi.fn();
 
 		parsedNodeTypes = [
