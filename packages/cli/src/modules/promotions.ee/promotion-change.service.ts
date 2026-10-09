@@ -7,6 +7,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
+	CredentialsRepository,
 	VariablesRepository,
 	WorkflowRepository,
 	type User,
@@ -84,6 +85,7 @@ export class PromotionChangeService {
 		private readonly packagesService: N8nPackagesService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly variablesRepository: VariablesRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -106,7 +108,7 @@ export class PromotionChangeService {
 		// Apply reads the branch manifest before the export, so an empty branch fails without one.
 		const branchDesired =
 			direction === 'apply' ? await this.readBranchDesired(branch, projectId) : null;
-		const [instance, destinationVariables] = await Promise.all([
+		const [instance, destinationVariables, destinationCredentialIds] = await Promise.all([
 			this.exportInstancePackage(user, projectId),
 			branchDesired === null
 				? null
@@ -114,12 +116,24 @@ export class PromotionChangeService {
 						branchDesired.manifest.requirements?.variables?.map(({ name }) => name) ?? [],
 						[projectId],
 					),
+			branchDesired === null
+				? null
+				: this.credentialsRepository.findExistingIds(
+						branchDesired.manifest.requirements?.credentials?.map(({ id }) => id) ?? [],
+					),
 		]);
 		const { base, desired } =
 			branchDesired === null
 				? { base: branch.files, desired: instance }
 				: { base: instance.files, desired: branchDesired };
-		const diff = this.diffPackages({ projectId, direction, base, desired, destinationVariables });
+		const diff = this.diffPackages({
+			projectId,
+			direction,
+			base,
+			desired,
+			destinationVariables,
+			destinationCredentialIds,
+		});
 		// Archive state separates "archived" from "modified", so the branch is read only for those rows.
 		const archiveState =
 			direction === 'promote'
@@ -155,12 +169,14 @@ export class PromotionChangeService {
 		base,
 		desired,
 		destinationVariables,
+		destinationCredentialIds,
 	}: {
 		projectId: string;
 		direction: PromotionDirection;
 		base: readonly PackageFile[];
 		desired: DesiredPackage;
 		destinationVariables: readonly VariableKeyScope[] | null;
+		destinationCredentialIds: readonly string[] | null;
 	}): PackageDiff {
 		const previewId = randomUUID();
 		const { manifest } = desired;
@@ -193,6 +209,7 @@ export class PromotionChangeService {
 			changedPaths,
 			projectId,
 			destinationVariables,
+			destinationCredentialIds,
 		});
 		for (const workflowId of affectedWorkflowIds) {
 			changedIds.add(workflowId);
@@ -369,12 +386,14 @@ function calculateDependencyImpact({
 	changedPaths,
 	projectId,
 	destinationVariables,
+	destinationCredentialIds,
 }: {
 	base: readonly PackageFile[];
 	manifest: PackageManifest;
 	changedPaths: ReadonlySet<string>;
 	projectId: string;
 	destinationVariables: readonly VariableKeyScope[] | null;
+	destinationCredentialIds: readonly string[] | null;
 }) {
 	const destinationVariableKeys =
 		destinationVariables &&
@@ -383,6 +402,7 @@ function calculateDependencyImpact({
 				variableKey(key, owner === null ? 'global' : 'project'),
 			),
 		);
+	const destinationCredentialKeys = destinationCredentialIds && new Set(destinationCredentialIds);
 	const baseDependencies = new Map<string, PackageFile[]>();
 	for (const file of base) {
 		const key = JSON.stringify([
@@ -427,6 +447,14 @@ function calculateDependencyImpact({
 					projectId,
 					destinationVariableKeys,
 				});
+			} else if (collection === 'credentials' && destinationCredentialKeys !== null) {
+				// Apply binds credentials by id (`id-only`, `must-preexist`) and never
+				// renames or rewrites an existing target credential, so a branch-side
+				// rename never converges with a file-path check and the dependent
+				// workflows would be flagged on every preview. The dependency is
+				// satisfied when the instance already has a credential with this id to
+				// bind to, so only a missing credential counts as a change.
+				dependencyChanged = !destinationCredentialKeys.has(key);
 			} else if (collection !== 'workflows') {
 				dependencyChanged =
 					previous.some(({ path }) => changedPaths.has(path)) ||
