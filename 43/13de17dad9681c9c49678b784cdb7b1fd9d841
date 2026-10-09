@@ -1,0 +1,28 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/auto-included-workflow.exporter.test.ts
+  s_3f7f044b6d8f8e::t_402393fda61ecd 11,60,170,184-189,196,198-199,201-203
+packages/cli/src/modules/n8n-packages/entities/project/project-shell.exporter.ts
+  s_3f7f044b6d8f8e::t_402393fda61ecd 1-35
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow.exporter.ts
+  s_3f7f044b6d8f8e::t_402393fda61ecd 1,20-23,53,68,142
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_3f7f044b6d8f8e::t_88562d98462ab5 160-168,222,242,259,265,295,301
+packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
+  s_3f7f044b6d8f8e::t_ee4ad553be3a37 101-103
+  s_3f7f044b6d8f8e::t_402393fda61ecd 3,23,38,78,99-100,106,110,193-194,196-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4313de17dad9681c9c49678b784cdb7b1fd9d841",
+  "prompts": {},
+  "sessions": {
+    "s_3f7f044b6d8f8e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11997-94af-7900-98d2-d1774ec5e82e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
