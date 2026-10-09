@@ -51,7 +51,7 @@ import type { StepSummary } from './step-store';
 
 export interface SuccessorDecisions {
 	/** Successor steps with a live input, to enqueue — in edge order. */
-	toRun: StepKey[];
+	toQueue: StepKey[];
 	/** Live successors whose outputs were seeded at start, to record as completed. */
 	toSeed: StepKey[];
 	/** Successor steps with settled but all-dead inputs, to record as skipped. */
@@ -73,8 +73,8 @@ export function decideSuccessors(
 	steps: Record<StepKeyId, StepSummary>,
 	terminalIterations: Map<string, number>,
 ): SuccessorDecisions {
-	const decisions: SuccessorDecisions = { toRun: [], toSeed: [], toSkip: [] };
-	const seededIds = new Set(graph.nodes.filter((node) => node.seeded).map((node) => node.id));
+	const decisions: SuccessorDecisions = { toQueue: [], toSeed: [], toSkip: [] };
+	const seededIds = new Set(graph.seeded);
 	const batchStep = loops.some((loop) => loop.batchNodeId === settled.nodeId)
 		? steps[stepKeyId(settled)]
 		: undefined;
@@ -94,7 +94,7 @@ export function decideSuccessors(
 
 		const fate = decideNodeFate(graph, loops, target, steps, terminalIterations);
 		if (fate === 'queued')
-			(seededIds.has(target.nodeId) ? decisions.toSeed : decisions.toRun).push(target);
+			(seededIds.has(target.nodeId) ? decisions.toSeed : decisions.toQueue).push(target);
 		else if (fate === 'skipped') decisions.toSkip.push(target);
 	}
 
