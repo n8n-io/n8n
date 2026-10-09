@@ -1,0 +1,24 @@
+packages/cli/src/services/pruning/executions-pruning.service.ts
+  s_68b6de0f101099::t_c8a28a9edc78c4 69-71
+  s_68b6de0f101099::t_67745f2c0d07f2 86,98
+packages/cli/src/services/pruning/__tests__/executions-pruning.service.test.ts
+  s_68b6de0f101099::t_25c00b3090699d 133-134,142,150-159,161-165,168
+  s_68b6de0f101099::t_de76d99355e373 19-20
+  s_68b6de0f101099::t_57cf7bbfb286e9 225,234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "187e768b7bc26cfa76cf162166dc087b4e6bbbf3",
+  "prompts": {},
+  "sessions": {
+    "s_68b6de0f101099": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d4c5996-3493-437e-b26f-8a1167254e1c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
