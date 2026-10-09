@@ -2,11 +2,11 @@ import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { calendarRLC, eventRLC } from '../../descriptions';
+import { calendarRLC, eventPermanentDelete, eventRLC } from '../../descriptions';
+import { executeDeletion } from '../../helpers/delete';
 import { decodeOutlookId } from '../../helpers/utils';
-import { microsoftApiRequest } from '../../transport';
 
-export const properties: INodeProperties[] = [calendarRLC, eventRLC];
+export const properties: INodeProperties[] = [calendarRLC, eventRLC, eventPermanentDelete];
 
 const displayOptions = {
 	show: {
@@ -24,7 +24,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		}) as string,
 	);
 
-	await microsoftApiRequest.call(this, 'DELETE', `/calendar/events/${eventId}`, index);
+	await executeDeletion.call(this, index, `/calendar/events/${eventId}`);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),
