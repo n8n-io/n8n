@@ -5,7 +5,7 @@ import { jsonParse } from 'n8n-workflow';
 import nock from 'nock';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { Readable } from 'node:stream';
+import type { Duplex, Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
@@ -432,16 +432,17 @@ describe('OutboundHttp.requests requestLegacy', () => {
 		});
 
 		it(
-			'rejects instead of hanging when the error-response body never terminates',
+			'rejects with the HTTP status instead of hanging when the error-response body never terminates',
 			{ timeout: 5000 },
 			async () => {
 				// No per-request `timeout`: axios then sets no socket timeout, so nothing
-				// tears the stalled body stream down — without the guard it hangs forever.
+				// tears the stalled body stream down. The body-read guard aborts the
+				// drain; we still surface the original 403 rather than the drain error.
 				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 				await expect(
 					client.requestLegacy({ url: `http://127.0.0.1:${port}/stall`, useStream: true }),
-				).rejects.toThrow(/timed out/i);
+				).rejects.toMatchObject({ statusCode: 403 });
 			},
 		);
 
@@ -451,7 +452,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			async () => {
 				// The HTTP Request node always sets a per-request timeout (default 300_000ms).
 				// The configured guard must still apply, so the read aborts at ~500ms here,
-				// not at the 30s request timeout.
+				// not at the 30s request timeout — and the caller still sees the 403.
 				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 				const start = Date.now();
 
@@ -461,8 +462,35 @@ describe('OutboundHttp.requests requestLegacy', () => {
 						useStream: true,
 						timeout: 30_000,
 					}),
-				).rejects.toThrow(/timed out/i);
+				).rejects.toMatchObject({ statusCode: 403 });
 				expect(Date.now() - start).toBeLessThan(3000);
+			},
+		);
+
+		it(
+			'preserves the original HTTP status when error-body drain times out',
+			{ timeout: 5000 },
+			async () => {
+				// When binaryToString fails on a stalled error body, the catch block
+				// in legacy-request.ts should return an empty string and still surface
+				// the original 403 status, not a drain timeout error.
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				const error = (await client
+					.requestLegacy({
+						url: `http://127.0.0.1:${port}/stall`,
+						useStream: true,
+						timeout: 30_000,
+					})
+					.catch((e: Error & { statusCode?: number; status?: number }) => e)) as Error & {
+					statusCode: number;
+					status: number;
+					message: string;
+				};
+
+				expect(error.statusCode).toBe(403);
+				expect(error.status).toBe(403);
+				expect(error.message).toContain('403');
 			},
 		);
 
@@ -483,6 +511,107 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 				await expect(binaryToString(body)).rejects.toThrow(/timed out/i);
 				expect(Date.now() - start).toBeLessThan(3000);
+			},
+		);
+	});
+
+	describe('HTTPS CONNECT proxy denial', () => {
+		let proxyServer: Server;
+		let proxyPort: number;
+		const hijackedSockets: Duplex[] = [];
+
+		beforeAll(async () => {
+			// Real sockets only — nock's net-connect gate interferes with tunneling
+			// agents (it sees the target host, not the proxy hop).
+			nock.cleanAll();
+			nock.restore();
+
+			proxyServer = createServer((_req, res) => {
+				res.writeHead(400).end('use CONNECT\n');
+			});
+			proxyServer.on('connect', (_req, clientSocket) => {
+				hijackedSockets.push(clientSocket);
+				clientSocket.write(
+					'HTTP/1.1 403 Forbidden\r\n' +
+						'Content-Type: text/html\r\n' +
+						'Content-Length: 100000\r\n' +
+						'\r\n' +
+						'<html><body><h1>Access Denied.</h1></body></html>\n',
+				);
+				// intentionally never end — mirrors a sticky forward proxy
+			});
+			await new Promise<void>((resolve) => proxyServer.listen(0, '127.0.0.1', resolve));
+			proxyPort = (proxyServer.address() as AddressInfo).port;
+		});
+
+		afterAll(async () => {
+			for (const socket of hijackedSockets) {
+				socket.destroy();
+			}
+			proxyServer.closeAllConnections();
+			await new Promise<void>((resolve) => proxyServer.close(() => resolve()));
+			nock.activate();
+			nock.disableNetConnect();
+		});
+
+		it(
+			'fails fast on Autodetect-style streaming when CONNECT is denied',
+			{ timeout: 5000 },
+			async () => {
+				Container.set(
+					HttpRequestConfig,
+					Object.assign(new HttpRequestConfig(), { responseBodyReadTimeout: 60_000 }),
+				);
+				try {
+					const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+					const start = Date.now();
+
+					await expect(
+						client.requestLegacy({
+							url: 'https://denied.example/',
+							proxy: `http://127.0.0.1:${proxyPort}`,
+							useStream: true,
+							timeout: 30_000,
+						}),
+					).rejects.toMatchObject({ statusCode: 403 });
+					expect(Date.now() - start).toBeLessThan(3000);
+				} finally {
+					Container.set(HttpRequestConfig, new HttpRequestConfig());
+				}
+			},
+		);
+
+		it(
+			'includes partial error body when CONNECT is denied with already-closed stream',
+			{ timeout: 5000 },
+			async () => {
+				// Verifies that when the proxy error body is buffered but the stream
+				// is already closed, we still surface the partial body in the error
+				Container.set(
+					HttpRequestConfig,
+					Object.assign(new HttpRequestConfig(), { responseBodyReadTimeout: 60_000 }),
+				);
+				try {
+					const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+					const error = (await client
+						.requestLegacy({
+							url: 'https://denied.example/',
+							proxy: `http://127.0.0.1:${proxyPort}`,
+							useStream: true,
+							timeout: 30_000,
+						})
+						.catch((e: Error & { statusCode?: number }) => e)) as Error & {
+						statusCode: number;
+						message: string;
+					};
+
+					expect(error.statusCode).toBe(403);
+					expect(error.message).toContain('403');
+					expect(error.message).toContain('Access Denied');
+				} finally {
+					Container.set(HttpRequestConfig, new HttpRequestConfig());
+				}
 			},
 		);
 	});
