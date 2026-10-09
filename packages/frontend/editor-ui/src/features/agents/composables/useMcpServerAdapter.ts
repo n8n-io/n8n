@@ -4,7 +4,7 @@ import type { INode, INodeCredentials, INodeParameters, INodeTypeDescription } f
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { AgentJsonMcpServerConfig } from '../types';
-import type { McpAuthenticationSchemaType } from '@n8n/api-types';
+import { AI_GATEWAY_MCP_CONNECTION_MODE, type McpAuthenticationSchemaType } from '@n8n/api-types';
 
 const MCP_REGISTRY_NODE_PREFIX = '@n8n/mcp-registry.';
 const HTTP_STREAMABLE_TRANSPORT = 'httpStreamable';
@@ -143,13 +143,17 @@ function isMcpClientNodeType(nodeTypeName: string): boolean {
 function resolveMetadata(
 	nodeTypeName: string,
 	original: AgentJsonMcpServerConfig | undefined,
+	connectionMode?: string,
 ): AgentJsonMcpServerConfig['metadata'] {
 	const metadata = { ...(original?.metadata ?? {}) };
 
 	if (isMcpRegistryNodeType(nodeTypeName)) {
 		metadata.nodeTypeName = nodeTypeName;
+		if (connectionMode) metadata.connectionMode = connectionMode;
+		else delete metadata.connectionMode;
 	} else {
 		delete metadata.nodeTypeName;
+		delete metadata.connectionMode;
 	}
 
 	return Object.keys(metadata).length > 0 ? metadata : undefined;
@@ -213,10 +217,25 @@ export function nodeTypeToNewMcpServer(nodeType: INodeTypeDescription): AgentJso
 	const endpointUrl =
 		toStringValue(defaults.endpointUrl) ?? toStringValue(defaults.sseEndpoint) ?? '';
 
-	const authentication = resolveDefaultAuthentication(nodeType, defaults);
+	const isAiGatewayOnly =
+		nodeType.credentials?.length === 1 &&
+		isMcpGatewayAuthentication(nodeType.credentials[0]?.name ?? '');
+	const connectionMode =
+		toStringValue(defaults.authentication) ??
+		(isAiGatewayOnly ? AI_GATEWAY_MCP_CONNECTION_MODE : undefined);
+	const selectedCredential = nodeType.credentials?.find((credential) =>
+		credential.displayOptions?.show?.authentication?.includes(connectionMode ?? ''),
+	);
+	const authentication =
+		connectionMode === AI_GATEWAY_MCP_CONNECTION_MODE
+			? 'none'
+			: (selectedCredential?.name ?? resolveDefaultAuthentication(nodeType, defaults));
 	const serverTransport = defaults.serverTransport;
 	const metadata = isMcpRegistryNodeType(nodeType.name)
-		? { nodeTypeName: nodeType.name }
+		? {
+				nodeTypeName: nodeType.name,
+				...(connectionMode && (selectedCredential || isAiGatewayOnly) ? { connectionMode } : {}),
+			}
 		: undefined;
 
 	return {
@@ -247,11 +266,8 @@ function resolveAuthenticationParameterFromCredentialType(
  * the round-tripped config carries no `credential`. Return the type so we can
  * rebuild the managed slot on the node.
  */
-function resolveGatewayCredentialType(nodeType: INodeTypeDescription): string | undefined {
-	const credentialType = nodeType.credentials?.[0]?.name;
-	return typeof credentialType === 'string' && isMcpGatewayAuthentication(credentialType)
-		? credentialType
-		: undefined;
+function resolveAiGatewayCredentialType(nodeType: INodeTypeDescription): string | undefined {
+	return nodeType.credentials?.find(({ name }) => isMcpGatewayAuthentication(name))?.name;
 }
 
 export function mcpServerToNode(
@@ -259,14 +275,18 @@ export function mcpServerToNode(
 	nodeTypeDescription: INodeTypeDescription,
 ): INode {
 	const credentialType = authenticationToCredentialType(server.authentication);
-	const gatewayCredentialType = resolveGatewayCredentialType(nodeTypeDescription);
+	const aiGatewayCredentialType = resolveAiGatewayCredentialType(nodeTypeDescription);
+	const isAiGatewaySelected =
+		server.metadata?.connectionMode === AI_GATEWAY_MCP_CONNECTION_MODE ||
+		(!server.metadata?.connectionMode &&
+			aiGatewayCredentialType &&
+			nodeTypeDescription.credentials?.length === 1 &&
+			!server.credential);
 	let credentials: INodeCredentials | undefined;
-	if (gatewayCredentialType && !server.credential) {
-		// Rebuild the managed slot so the config modal opens with the gateway
-		// credential already selected and does not auto-enable it (which would
-		// trigger a spurious workflow save).
+	if (aiGatewayCredentialType && isAiGatewaySelected) {
+		// Restore the managed slot so the modal keeps the n8n Connect selection.
 		credentials = {
-			[gatewayCredentialType]: { id: null, name: '', __aiGatewayManaged: true },
+			[aiGatewayCredentialType]: { id: null, name: '', __aiGatewayManaged: true },
 		};
 	} else if (credentialType && server.credential) {
 		credentials = {
@@ -276,7 +296,8 @@ export function mcpServerToNode(
 	const toolFilterParams = resolveNodeToolFilter(server.toolFilter);
 	const options = server.connectionTimeoutMs ? { timeout: server.connectionTimeoutMs } : {};
 	const authentication = isMcpRegistryNodeType(nodeTypeDescription.name)
-		? resolveAuthenticationParameterFromCredentialType(server.authentication, nodeTypeDescription)
+		? (server.metadata?.connectionMode ??
+			resolveAuthenticationParameterFromCredentialType(server.authentication, nodeTypeDescription))
 		: server.authentication;
 
 	return {
@@ -305,8 +326,22 @@ export function nodeToMcpServer(
 		toStringValue(node.parameters.sseEndpoint) ??
 		original?.url ??
 		'';
-	const credential = resolveCredentialId(node.credentials);
-	const authentication = resolveAuthenticationFromNode(node);
+	const hasAiGatewayCredential = Object.entries(node.credentials ?? {}).some(
+		([type, credential]) =>
+			isMcpGatewayAuthentication(type) && credential.__aiGatewayManaged === true,
+	);
+	const connectionMode = isMcpRegistryNodeType(node.type)
+		? (toStringValue(node.parameters.authentication) ??
+			(hasAiGatewayCredential ? AI_GATEWAY_MCP_CONNECTION_MODE : undefined))
+		: undefined;
+	const credential =
+		connectionMode === AI_GATEWAY_MCP_CONNECTION_MODE
+			? undefined
+			: resolveCredentialId(node.credentials);
+	const authentication =
+		connectionMode === AI_GATEWAY_MCP_CONNECTION_MODE
+			? 'none'
+			: resolveAuthenticationFromNode(node);
 	const timeout = toNumber((node.parameters.options as { timeout?: unknown } | undefined)?.timeout);
 
 	return {
@@ -319,6 +354,6 @@ export function nodeToMcpServer(
 		description: original?.description,
 		approval: original?.approval,
 		connectionTimeoutMs: timeout,
-		metadata: resolveMetadata(node.type, original),
+		metadata: resolveMetadata(node.type, original, connectionMode),
 	};
 }

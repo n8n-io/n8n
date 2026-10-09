@@ -16,6 +16,7 @@ import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
 import { McpRegistryCapabilities } from './mcp-registry-capabilities';
+import { linearMockServer } from './mock-servers';
 import {
 	listMcpRegistryServers,
 	searchMcpRegistryServers,
@@ -122,10 +123,13 @@ export class McpRegistryService {
 		return listMcpRegistryServers(servers.filter((server) => server.status === 'active'));
 	}
 
-	async getConnection(nodeTypeName: string): Promise<McpRegistryConnection | undefined> {
+	async getConnection(
+		nodeTypeName: string,
+		selector?: string,
+	): Promise<McpRegistryConnection | undefined> {
 		const loader = this.loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME];
 		if (!(loader instanceof McpRegistryNodeLoader)) return undefined;
-		return loader.getConnection(nodeTypeName);
+		return loader.getConnection(nodeTypeName, selector);
 	}
 
 	/**
@@ -170,7 +174,22 @@ export class McpRegistryService {
 			n8nConnectError = error;
 		}
 
-		const updatedServers = [...registryUpdates, ...n8nConnectUpdates];
+		// TODO: Delete this Firecrawl preview after the manual MCP picker check.
+		const firecrawlPreviewServer: McpRegistryServer = {
+			...linearMockServer,
+			slug: 'firecrawl',
+			title: 'Firecrawl',
+			description: 'MCP server for Firecrawl',
+			tagline: 'Connect to the Firecrawl MCP Server',
+			icons: [{ src: 'https://www.firecrawl.dev/favicon.ico' }],
+			websiteUrl: 'https://docs.firecrawl.dev/mcp-server',
+			tags: ['web-scraping', 'search'],
+		};
+		const updatedServers = [
+			...registryUpdates.filter(({ slug }) => slug !== firecrawlPreviewServer.slug),
+			...n8nConnectUpdates,
+			firecrawlPreviewServer,
+		];
 		if (updatedServers.length === 0) {
 			this.logger.debug('MCP registry is up to date');
 		} else {

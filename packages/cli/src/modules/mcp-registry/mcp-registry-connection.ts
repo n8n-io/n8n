@@ -1,4 +1,5 @@
 import { camelCase } from 'change-case';
+import { AI_GATEWAY_MCP_CONNECTION_MODE } from '@n8n/api-types';
 import {
 	getConfiguredEndpointUrl,
 	getMcpAuthHeaders,
@@ -51,7 +52,7 @@ export function getMcpRegistryCredentialOptions(
 			{
 				credentialType: getMcpRegistryGatewayCredentialTypeName(server),
 				name: 'Gateway credits',
-				value: 'gateway',
+				value: AI_GATEWAY_MCP_CONNECTION_MODE,
 			},
 		];
 	}

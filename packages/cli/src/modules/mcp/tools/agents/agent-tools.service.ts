@@ -1752,8 +1752,8 @@ export class McpAgentToolsService {
 					oauthService: this.oauthService,
 					projectId: input.projectId,
 					proxyFetch: createAiMcpFetch(this.outboundHttp),
-					resolveRegistryConnection: async (nodeTypeName) =>
-						await this.mcpRegistryService.getConnection(nodeTypeName),
+					resolveRegistryConnection: async (nodeTypeName, selector) =>
+						await this.mcpRegistryService.getConnection(nodeTypeName, selector),
 				},
 			);
 			return { ok: true, tools };

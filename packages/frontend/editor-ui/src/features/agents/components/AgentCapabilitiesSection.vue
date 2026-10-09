@@ -174,6 +174,23 @@ watch([() => props.projectId, selectedSubAgentIds], () => {
 	if (showSection('subAgents')) void ensureSubAgentNamesLoaded().catch(() => {});
 });
 
+// Load saved registry node types for MCP icons and editing after a page reload.
+watch(
+	[() => showSection('tools'), mcpServers],
+	([showTools, servers]) => {
+		if (
+			showTools &&
+			servers.some(
+				(server) =>
+					!nodeTypesStore.getNodeType(server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE),
+			)
+		) {
+			void nodeTypesStore.getNodeTypes().catch(() => {});
+		}
+	},
+	{ immediate: true },
+);
+
 type CapabilityToolEntry =
 	| {
 			kind: 'tool';
@@ -247,11 +264,7 @@ function toolIcon(entry: CapabilityToolEntry): IconName {
 function toolNodeType(entry: CapabilityToolEntry) {
 	if (entry.kind === 'mcpServer') {
 		const preferredTypeName = entry.server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
-		return (
-			nodeTypesStore.getNodeType(preferredTypeName) ??
-			nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE) ??
-			null
-		);
+		return nodeTypesStore.getNodeType(preferredTypeName);
 	}
 
 	const { tool } = entry;

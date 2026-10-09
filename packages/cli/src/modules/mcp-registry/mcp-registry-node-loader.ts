@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { AI_GATEWAY_MCP_CONNECTION_MODE } from '@n8n/api-types';
 import { camelCase } from 'change-case';
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -23,6 +24,7 @@ import {
 	LANGCHAIN_PACKAGE_NAME,
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
+	getMcpRegistryCredentialOptions,
 	serverToCredentialDescription,
 	serverToNodeDescription,
 	type IsKnownCredentialType,
@@ -33,6 +35,10 @@ import {
 	resolveMcpRegistryConnection,
 } from './mcp-registry-connection';
 import type { McpRegistryServer } from './registry/mcp-registry.types';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	N8N_CONNECT_MCP_SLUG_PREFIX,
+} from './registry/mcp-registry.types';
 
 type McpRegistryBaseNode = INodeType & {
 	setRegistryRuntime(runtime: McpRegistryRuntime): void;
@@ -42,6 +48,115 @@ function supportsRegistryRuntime(
 	node: INodeType | IVersionedNodeType,
 ): node is McpRegistryBaseNode {
 	return 'setRegistryRuntime' in node && typeof node.setRegistryRuntime === 'function';
+}
+
+type AiGatewayVariant = { credential: ICredentialType; connection: McpRegistryConnection };
+
+/** Keep the n8n Connect node separate when its registry counterpart cannot load. */
+function findAiGatewayVariants(
+	servers: McpRegistryServer[],
+	baseDescription: INodeTypeDescription,
+	isKnownCredentialType: IsKnownCredentialType,
+): Map<string, AiGatewayVariant> {
+	const loadableRegistrySlugs = new Set(
+		servers
+			.filter(
+				(server) =>
+					server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE &&
+					server.status === 'active' &&
+					serverToNodeDescription(server, baseDescription, isKnownCredentialType) !== null &&
+					(server.authType === 'usesCredentials' ||
+						serverToCredentialDescription(server, isKnownCredentialType) !== null),
+			)
+			.map((server) => server.slug),
+	);
+	const variants = servers.flatMap((server): Array<[string, AiGatewayVariant]> => {
+		if (
+			server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE ||
+			server.status !== 'active' ||
+			!server.slug.startsWith(N8N_CONNECT_MCP_SLUG_PREFIX)
+		) {
+			return [];
+		}
+		const registrySlug = server.slug.slice(N8N_CONNECT_MCP_SLUG_PREFIX.length);
+		if (!loadableRegistrySlugs.has(registrySlug)) return [];
+		const credential = serverToCredentialDescription(server, isKnownCredentialType);
+		const connection = resolveMcpRegistryConnection(server);
+		return credential && connection ? [[registrySlug, { credential, connection }]] : [];
+	});
+	return new Map(variants);
+}
+
+/** Add the n8n Connect choice to the registry node's credential selector. */
+function addAiGatewayAuthentication(
+	nodeDescription: INodeTypeDescription,
+	server: McpRegistryServer,
+	aiGatewayCredentialType: string,
+): void {
+	const credentials = nodeDescription.credentials ?? [];
+	const options = getMcpRegistryCredentialOptions(server).filter(({ credentialType }) =>
+		credentials.some(({ name }) => name === credentialType),
+	);
+	nodeDescription.credentials = [
+		...credentials.map((credential) => ({
+			...credential,
+			displayOptions: {
+				...credential.displayOptions,
+				show: {
+					...credential.displayOptions?.show,
+					authentication: [
+						options.find(({ credentialType }) => credentialType === credential.name)?.value ??
+							'oAuth2',
+					],
+				},
+			},
+		})),
+		{
+			name: aiGatewayCredentialType,
+			required: true,
+			displayOptions: {
+				show: { authentication: [AI_GATEWAY_MCP_CONNECTION_MODE] },
+			},
+		},
+	];
+	const authProperty = nodeDescription.properties.find(
+		(property) => property.name === 'authentication',
+	);
+	const authOptions = [
+		...options.map(({ name, value }) => ({ name, value })),
+		{ name: 'Gateway credits', value: AI_GATEWAY_MCP_CONNECTION_MODE },
+	];
+	if (authProperty?.type === 'options') {
+		authProperty.options = authOptions;
+	} else {
+		nodeDescription.properties.unshift({
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			noDataExpression: true,
+			options: authOptions,
+			default: options[0]?.value ?? AI_GATEWAY_MCP_CONNECTION_MODE,
+		});
+	}
+}
+
+/** Map each credential choice to the remote that accepts it. */
+function buildConnectionsByMode(
+	server: McpRegistryServer,
+	connection: McpRegistryConnection,
+	aiGatewayConnection: McpRegistryConnection,
+): Map<string, McpRegistryConnection> {
+	return new Map<string, McpRegistryConnection>([
+		...getMcpRegistryCredentialOptions(server)
+			.filter(({ credentialType }) =>
+				connection.credentialBindings.some((binding) => binding.credentialType === credentialType),
+			)
+			.map(({ value }): [string, McpRegistryConnection] => [value, connection]),
+		[
+			AI_GATEWAY_MCP_CONNECTION_MODE,
+			{ ...aiGatewayConnection, nodeTypeName: connection.nodeTypeName },
+		],
+	]);
 }
 
 /**
@@ -67,6 +182,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 	private servers: McpRegistryServer[] = [];
 
 	private connections = new Map<string, McpRegistryConnection>();
+	private connectionsByMode = new Map<string, Map<string, McpRegistryConnection>>();
 
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
@@ -90,8 +206,14 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		const credentialTypes = this.getCredentialTypes();
 		const isKnownCredentialType: IsKnownCredentialType = (name) =>
 			isSupportedMcpRegistryCredentialType(credentialTypes, name);
+		const aiGatewayByRegistrySlug = findAiGatewayVariants(
+			this.servers,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		for (const server of this.servers) {
+			const aiGatewayVariant = aiGatewayByRegistrySlug.get(server.slug);
 			const nodeDescription = serverToNodeDescription(
 				server,
 				baseDescription,
@@ -100,6 +222,15 @@ export class McpRegistryNodeLoader implements NodeLoader {
 			const credentialDescription = serverToCredentialDescription(server, isKnownCredentialType);
 			if (!nodeDescription) continue;
 			if (server.authType !== 'usesCredentials' && !credentialDescription) continue;
+			if (aiGatewayVariant) {
+				addAiGatewayAuthentication(nodeDescription, server, aiGatewayVariant.credential.name);
+			} else if (
+				server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE &&
+				aiGatewayByRegistrySlug.has(server.slug.slice(N8N_CONNECT_MCP_SLUG_PREFIX.length))
+			) {
+				// Keep the old node type available for saved workflows.
+				nodeDescription.hidden = true;
+			}
 
 			const bareName = camelCase(server.slug);
 			const connection = resolveMcpRegistryConnection(server);
@@ -113,6 +244,12 @@ export class McpRegistryNodeLoader implements NodeLoader {
 					supportedCredentialTypes.has(credentialType),
 				),
 			});
+			if (aiGatewayVariant) {
+				this.connectionsByMode.set(
+					connection.nodeTypeName,
+					buildConnectionsByMode(server, connection, aiGatewayVariant.connection),
+				);
+			}
 
 			this.types.nodes.push(nodeDescription);
 			const syntheticNode = Object.create(baseNode, {
@@ -134,7 +271,11 @@ export class McpRegistryNodeLoader implements NodeLoader {
 					className: 'McpRegistryApi',
 					sourcePath: '',
 					extends: credentialDescription.extends,
-					supportedNodes: [bareName],
+					supportedNodes:
+						server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE &&
+						aiGatewayByRegistrySlug.has(server.slug.slice(N8N_CONNECT_MCP_SLUG_PREFIX.length))
+							? [bareName, camelCase(server.slug.slice(N8N_CONNECT_MCP_SLUG_PREFIX.length))]
+							: [bareName],
 				};
 			}
 		}
@@ -142,7 +283,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		if (supportsRegistryRuntime(baseNode)) {
 			baseNode.setRegistryRuntime({
 				resolveConnection: (nodeTypeName, selector) => {
-					const connection = this.connections.get(nodeTypeName);
+					const connection = this.getConnection(nodeTypeName, selector);
 					if (!connection) return undefined;
 					const binding =
 						connection.credentialBindings.length === 1
@@ -155,8 +296,9 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		}
 	}
 
-	getConnection(nodeTypeName: string): McpRegistryConnection | undefined {
-		return this.connections.get(nodeTypeName);
+	getConnection(nodeTypeName: string, selector?: string): McpRegistryConnection | undefined {
+		const variants = this.connectionsByMode.get(nodeTypeName);
+		return variants && selector ? variants.get(selector) : this.connections.get(nodeTypeName);
 	}
 
 	getNode(nodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
@@ -177,6 +319,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		this.nodeTypes = {};
 		this.credentialTypes = {};
 		this.connections.clear();
+		this.connectionsByMode.clear();
 		this.typesReleased = true;
 	}
 

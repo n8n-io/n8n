@@ -7,7 +7,7 @@
 import { camelCase } from 'change-case';
 
 import type { McpRegistryServer } from './mcp-registry.types';
-import { AI_GATEWAY_MANAGED_AUTH_TYPE } from './mcp-registry.types';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE, N8N_CONNECT_MCP_SLUG_PREFIX } from './mcp-registry.types';
 import {
 	getConfiguredEndpointUrl,
 	resolveMcpRegistryConnection,
@@ -59,7 +59,19 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 
 /** Map registry servers to the config-ready shape, skipping entries without a usable remote. */
 export function listMcpRegistryServers(servers: McpRegistryServer[]): McpRegistrySearchResult[] {
+	const activeServersBySlug = new Map(
+		servers.filter(({ status }) => status === 'active').map((server) => [server.slug, server]),
+	);
 	return servers.flatMap((server) => {
+		const primary = activeServersBySlug.get(server.slug.slice(N8N_CONNECT_MCP_SLUG_PREFIX.length));
+		if (
+			server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE &&
+			server.slug.startsWith(N8N_CONNECT_MCP_SLUG_PREFIX) &&
+			primary &&
+			toSearchResult(primary) !== null
+		) {
+			return [];
+		}
 		const result = toSearchResult(server);
 		return result ? [result] : [];
 	});
@@ -91,6 +103,28 @@ function relevance(server: McpRegistryServer, normalizedQueries: string[]): numb
 	return 0;
 }
 
+/** Match both records while returning one result for the service. */
+function scoreSearchResult(
+	result: McpRegistrySearchResult,
+	serversBySlug: Map<string, McpRegistryServer>,
+	normalizedQueries: string[],
+): number | undefined {
+	const server = serversBySlug.get(result.slug);
+	if (!server) return undefined;
+	const aiGatewayServer = serversBySlug.get(`${N8N_CONNECT_MCP_SLUG_PREFIX}${result.slug}`);
+	const searchableServers =
+		aiGatewayServer?.authType === AI_GATEWAY_MANAGED_AUTH_TYPE &&
+		aiGatewayServer.status === 'active'
+			? [server, aiGatewayServer]
+			: [server];
+	const matches = searchableServers.filter((candidate) =>
+		matchesQuery(candidate, normalizedQueries),
+	);
+	return matches.length > 0
+		? Math.max(...matches.map((candidate) => relevance(candidate, normalizedQueries)))
+		: undefined;
+}
+
 /** Filter `servers` to those matching any query, most relevant first, mapped to
  *  the config-ready shape. */
 export function searchMcpRegistryServers(
@@ -99,11 +133,12 @@ export function searchMcpRegistryServers(
 ): McpRegistrySearchResult[] {
 	const normalized = normalizeQueries(queries);
 	if (normalized.length === 0) return [];
-	return listMcpRegistryServers(
-		servers
-			.filter((server) => matchesQuery(server, normalized))
-			.map((server) => ({ server, score: relevance(server, normalized) }))
-			.sort((left, right) => right.score - left.score)
-			.map(({ server }) => server),
-	);
+	const serversBySlug = new Map(servers.map((server) => [server.slug, server]));
+	return listMcpRegistryServers(servers)
+		.flatMap((result) => {
+			const score = scoreSearchResult(result, serversBySlug, normalized);
+			return score === undefined ? [] : [{ result, score }];
+		})
+		.sort((left, right) => right.score - left.score)
+		.map(({ result }) => result);
 }

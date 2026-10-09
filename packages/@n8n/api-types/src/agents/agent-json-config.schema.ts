@@ -18,6 +18,9 @@ import { jsonValueSchema } from '../schemas/json-value.schema';
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
+/** Stored mode for a registry MCP connection served by n8n Connect. */
+export const AI_GATEWAY_MCP_CONNECTION_MODE = 'gateway' as const;
+
 export const AgentModelSchema = z.string().min(1).regex(
 	/**
 	 * [a-z0-9-]+: Provider name (e.g. "anthropic")
@@ -254,6 +257,11 @@ export const McpServerConfigSchema = z
 			.describe('Credential id from ask_credential. Required when authentication is not "none"'),
 		metadata: z
 			.object({
+				connectionMode: z
+					.string()
+					.min(1)
+					.optional()
+					.describe('Credential option selected for a registry MCP server'),
 				nodeTypeName: z
 					.string()
 					.optional()

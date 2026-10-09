@@ -223,34 +223,51 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		const mcpServer = mcpServers[mcpServerIndex];
 		if (!mcpServer) return;
 
-		const preferredNodeTypeName = mcpServer.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
-		const nodeType =
-			nodeTypesStore.getNodeType(preferredNodeTypeName) ??
-			nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE);
-		if (!nodeType) return;
+		const targetAgentId = agentId.value;
+		const openMcpServer = () => {
+			if (agentId.value !== targetAgentId) return false;
+			const currentServers = localConfig.value?.mcpServers ?? [];
+			const currentIndex = currentServers.findIndex((server) => server.name === mcpServer.name);
+			const currentServer = currentServers[currentIndex];
+			if (!currentServer) return false;
+			const nodeType = nodeTypesStore.getNodeType(
+				currentServer.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE,
+			);
+			if (!nodeType) return false;
 
-		telemetry?.trackOpenedToolFromList?.('mcpServer');
-
-		uiStore.openModalWithData({
-			name: AGENT_TOOL_CONFIG_MODAL_KEY,
-			data: {
-				kind: 'mcpServer',
-				mcpServer,
-				initialNode: mcpServerToNode(mcpServer, nodeType),
-				projectId: projectId.value,
-				agentId: agentId.value,
-				supportsToolApproval,
-				existingToolNames: mcpServers
-					.filter((_, i) => i !== mcpServerIndex)
-					.map((server) => server.name),
-				onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
-					const nextMcpServers = [...(localConfig.value?.mcpServers ?? [])];
-					nextMcpServers[mcpServerIndex] = updatedServer;
-					scheduleConfigUpdate({ mcpServers: nextMcpServers });
+			telemetry?.trackOpenedToolFromList?.('mcpServer');
+			uiStore.openModalWithData({
+				name: AGENT_TOOL_CONFIG_MODAL_KEY,
+				data: {
+					kind: 'mcpServer',
+					mcpServer: currentServer,
+					initialNode: mcpServerToNode(currentServer, nodeType),
+					projectId: projectId.value,
+					agentId: targetAgentId,
+					supportsToolApproval,
+					existingToolNames: currentServers
+						.filter((_, i) => i !== currentIndex)
+						.map((server) => server.name),
+					onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
+						const nextMcpServers = [...(localConfig.value?.mcpServers ?? [])];
+						nextMcpServers[currentIndex] = updatedServer;
+						scheduleConfigUpdate({ mcpServers: nextMcpServers });
+					},
+					onRemove: () => onRemoveTool((localConfig.value?.tools ?? []).length + currentIndex),
 				},
-				onRemove: () => onRemoveTool((localConfig.value?.tools ?? []).length + mcpServerIndex),
-			},
-		});
+			});
+			return true;
+		};
+
+		if (openMcpServer()) return;
+		void nodeTypesStore
+			.getNodeTypes()
+			.then(() => {
+				if (agentId.value === targetAgentId && !openMcpServer()) {
+					showMessage({ type: 'error', title: locale.baseText('agents.builder.loadError') });
+				}
+			})
+			.catch((error: unknown) => showError(error, locale.baseText('agents.builder.loadError')));
 	}
 
 	const appliedSkills = computed<Array<{ id: string; skill: AgentSkill; enabled?: boolean }>>(
