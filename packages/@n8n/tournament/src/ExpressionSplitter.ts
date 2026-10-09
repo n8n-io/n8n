@@ -17,7 +17,7 @@ const OPEN_BRACKET = /(?<brackets>\{\{)/;
 const CLOSE_BRACKET = /(?<brackets>\}\})/;
 
 export const escapeCode = (text: string): string => {
-	return text.replace('\\}}', '}}');
+	return text.replace(/\\\}\}/g, '}}');
 };
 
 const normalizeBackslashes = (text: string): string => {
@@ -99,7 +99,7 @@ export const splitExpression = (expression: string): ExpressionChunk[] => {
 
 // Expressions only have closing brackets escaped
 const escapeTmplExpression = (part: string) => {
-	return part.replace('}}', '\\}}');
+	return part.replace(/\}\}/g, '\\}}');
 };
 
 export const joinExpression = (parts: ExpressionChunk[]): string => {
