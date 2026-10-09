@@ -164,15 +164,6 @@ export default defineConfig(
 		},
 	},
 	{
-		// Ratchet allowlist: legacy `export =` handler tuples pending migration to
-		// `@PublicApiController` classes (API-70). NEVER add to this list — a new tuple handler
-		// must fail CI. Entries are removed as each handler becomes a controller.
-		files: ['./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts'],
-		rules: {
-			'n8n-local-rules/require-public-api-controller': 'off',
-		},
-	},
-	{
 		files: ['./src/**/*.ts'],
 		ignores: ['./src/modules/engine-v2/**/*.ts'],
 		rules: {
