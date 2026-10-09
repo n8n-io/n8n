@@ -193,15 +193,6 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.WORKER_VIEW } },
 			},
 			{
-				id: 'settings-log-streaming',
-				order: 170,
-				icon: 'log-in',
-				label: i18n.baseText('settings.log-streaming'),
-				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS),
-				route: { to: { name: VIEWS.LOG_STREAMING_SETTINGS } },
-			},
-			{
 				id: 'settings-community-nodes',
 				order: 180,
 				icon: 'box',
