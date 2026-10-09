@@ -524,7 +524,7 @@ describe('AgentToolConfigModal', () => {
 			const { container, getByTestId } = renderModal({ valid: true });
 			await nextTick();
 
-			expect(getByTestId('agent-tool-config-restricted').textContent).toContain(
+			expect(getByTestId('restricted-tool-callout').textContent).toContain(
 				'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
 			);
 			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'true');
@@ -536,11 +536,11 @@ describe('AgentToolConfigModal', () => {
 		});
 
 		it('opens the contact admin dialog from the callout', async () => {
-			const { container, getByTestId, queryByTestId } = renderModal();
+			const { getByTestId, queryByTestId } = renderModal();
 			await nextTick();
 
 			expect(queryByTestId('contact-instance-admin-modal')).toBeNull();
-			await fireEvent.click(getNativeTestId(container, 'agent-tool-config-contact-admin'));
+			await fireEvent.click(getByTestId('restricted-tool-contact-admin'));
 
 			expect(getByTestId('contact-instance-admin-modal')).toBeInTheDocument();
 		});
@@ -561,7 +561,7 @@ describe('AgentToolConfigModal', () => {
 			const { container, getByTestId, queryByTestId } = renderModal({ valid: true });
 			await nextTick();
 
-			expect(queryByTestId('agent-tool-config-restricted')).toBeNull();
+			expect(queryByTestId('restricted-tool-callout')).toBeNull();
 			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'false');
 			expect(getByTestId('agent-tool-approval-toggle')).not.toBeDisabled();
 			expect(getNativeTestId(container, 'agent-modal-title-input')).toBeInTheDocument();

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import {
-	ContactInstanceAdminModal,
-	describeAgentToolRestriction,
+	RestrictedToolCallout,
+	useNodeTypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { extractFromAICalls, type INode } from 'n8n-workflow';
@@ -13,7 +13,6 @@ import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/const
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { getNodeItemRestriction } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import {
 	toolRefToNode,
 	updateToolRefFromNode,
@@ -121,19 +120,12 @@ const initialNode = computed<INode | null>(() =>
 				: null,
 );
 
-const restriction = computed(() =>
-	initialNode.value ? getNodeItemRestriction(initialNode.value.type) : undefined,
-);
-const isRestricted = computed(() => restriction.value !== undefined);
+const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => initialNode.value?.type);
 const restrictedToolName = computed(() =>
 	initialNode.value
 		? (nodeTypesStore.getNodeType(initialNode.value.type)?.displayName ?? initialNode.value.type)
 		: '',
 );
-const restrictedMessage = computed(() =>
-	describeAgentToolRestriction(restrictedToolName.value, restriction.value?.scope),
-);
-const isContactAdminOpen = ref(false);
 
 watch(isRestricted, (restricted) => emit('update:restricted', restricted), { immediate: true });
 
@@ -323,22 +315,10 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 
 <template>
 	<div :class="[$style.contentWrapper, isCustomTool && $style.codeContentWrapper]">
-		<N8nCallout v-if="isRestricted" theme="warning" data-test-id="agent-tool-config-restricted">
-			{{ restrictedMessage }}
-			<template #actions>
-				<N8nButton
-					variant="ghost"
-					size="small"
-					data-testid="agent-tool-config-contact-admin"
-					@click="isContactAdminOpen = true"
-				>
-					{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
-				</N8nButton>
-			</template>
-		</N8nCallout>
-		<ContactInstanceAdminModal
-			v-model:open="isContactAdminOpen"
+		<RestrictedToolCallout
+			v-if="isRestricted"
 			:node-type-name="restrictedToolName"
+			:scope="restrictionScope"
 		/>
 		<N8nText
 			v-if="submitCount && !canSave"
