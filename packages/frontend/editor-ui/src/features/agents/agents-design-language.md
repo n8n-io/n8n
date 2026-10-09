@@ -263,6 +263,7 @@ for this reply. Hide empty results entries in saved chats. Disable tools for thi
 reply. Keep Continue available. Composer Stop controls only the current response,
 including the acknowledgement. If a stop request fails, keep the action available
 for a retry. Do not show **Stopped** while the plan work is active.
+Discard queued messages when the user stops the plan.
 
 ## Extend this document
 

@@ -17,7 +17,6 @@ import {
 	N8nCallout,
 	N8nIcon,
 	N8nIconButton,
-	N8nInput,
 	N8nLink,
 	N8nText,
 	N8nTooltip,
@@ -160,8 +159,6 @@ const {
 	steeringQueueIds,
 	canSteer,
 	steerQueuedMessage,
-	sendHeldMessage,
-	updateQueuedMessage,
 	removeQueuedMessage,
 	reorderQueuedMessage,
 	isReorderingQueue,
@@ -258,22 +255,6 @@ const showPlanStop = computed(
 );
 
 const editingQueueId = ref<string>();
-const heldQueueEdit = ref<{ id: string; text: string; saving: boolean }>();
-function isHeldQueueItem(id: string) {
-	return queuedMessages.value.some((item) => item.id === id && item.held);
-}
-async function saveHeldQueueEdit() {
-	const edit = heldQueueEdit.value;
-	if (!edit || edit.saving) return;
-	edit.saving = true;
-	try {
-		const result = await updateQueuedMessage(edit.id, edit.text);
-		if (heldQueueEdit.value === edit && result === 'updated') heldQueueEdit.value = undefined;
-	} finally {
-		edit.saving = false;
-	}
-}
-
 provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
 	getChatAttachmentUrl(
 		rootStore.restApiContext,
@@ -340,11 +321,6 @@ async function loadChatAttachmentFile(attachment: ChatMessageAttachment): Promis
 }
 
 async function startQueueEdit(item: AgentChatQueueItem) {
-	if (item.held) {
-		if (isQueueItemBusy(item)) return;
-		heldQueueEdit.value = { id: item.id, text: item.message, saving: false };
-		return;
-	}
 	if (hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) return;
 	queueExpanded.value = true;
 	const target = {
@@ -551,22 +527,6 @@ watch(
 		stopFailed.value = false;
 	},
 );
-
-async function sendHeldQueueMessage(queueId: string, event: MouseEvent) {
-	const button = event.currentTarget;
-	const restore = button === document.activeElement;
-	const threadId = props.continueSessionId;
-	await sendHeldMessage(queueId);
-	await nextTick();
-	if (
-		restore &&
-		!disposed &&
-		props.visible &&
-		props.continueSessionId === threadId &&
-		(document.activeElement === document.body || document.activeElement === button)
-	)
-		focusInput({ preventScroll: true });
-}
 
 let taskStopFocus:
 	| { button: EventTarget | null; threadId?: string; projectId: string; agentId: string }
@@ -1178,7 +1138,6 @@ watch(
 		queuedExternalMessage = undefined;
 		handoffPreview = undefined;
 		editingQueueId.value = undefined;
-		heldQueueEdit.value = undefined;
 		queueExpanded.value = false;
 		queueOrder.value = undefined;
 		firstMessagePreview.value = undefined;
@@ -1685,68 +1644,7 @@ onBeforeUnmount(() => {
 							@steer="steerQueuedMessage"
 							@edit="editQueuedMessage"
 							@remove="removeQueuedMessage"
-						>
-							<template #message="{ item }">
-								<N8nInput
-									v-if="heldQueueEdit && heldQueueEdit.id === item.id"
-									v-model="heldQueueEdit.text"
-									type="textarea"
-									size="small"
-									:disabled="heldQueueEdit.saving"
-									:aria-label="locale.baseText('agents.chat.queue.edit')"
-									autofocus
-									@keydown.enter.exact.prevent="saveHeldQueueEdit"
-									@keydown.esc="heldQueueEdit = undefined"
-								/>
-							</template>
-							<template #actions="{ item }">
-								<template v-if="isHeldQueueItem(item.id)">
-									<template v-if="heldQueueEdit && heldQueueEdit.id === item.id">
-										<N8nButton
-											variant="ghost"
-											size="xsmall"
-											:disabled="heldQueueEdit.saving"
-											@click="saveHeldQueueEdit"
-											>{{ locale.baseText('generic.save') }}</N8nButton
-										>
-										<N8nButton
-											variant="ghost"
-											size="xsmall"
-											:disabled="heldQueueEdit.saving"
-											@click="heldQueueEdit = undefined"
-											>{{ locale.baseText('generic.cancel') }}</N8nButton
-										>
-									</template>
-									<template v-else>
-										<N8nButton
-											variant="ghost"
-											size="xsmall"
-											:disabled="isDisplayedQueueItemBusy(item) || isStopping"
-											@click="sendHeldQueueMessage(item.id, $event)"
-											>{{ locale.baseText('agents.chat.queue.send') }}</N8nButton
-										>
-										<N8nButton
-											variant="ghost"
-											size="xsmall"
-											icon="pencil"
-											icon-only
-											:aria-label="locale.baseText('generic.edit')"
-											:disabled="isDisplayedQueueItemBusy(item)"
-											@click="editQueuedMessage(item.id)"
-										/>
-										<N8nButton
-											variant="ghost"
-											size="xsmall"
-											icon="trash-2"
-											icon-only
-											:aria-label="locale.baseText('generic.delete')"
-											:disabled="isDisplayedQueueItemBusy(item)"
-											@click="removeQueuedMessage(item.id)"
-										/>
-									</template>
-								</template>
-							</template>
-						</ChatMessageQueue>
+						/>
 					</template>
 					<template v-if="attachedFiles.length > 0" #attachments>
 						<div :class="$style.attachmentsStrip">

@@ -1006,16 +1006,3 @@ export const cancelAgentTasks = async (
 		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/task-cancellation`,
 		payload,
 	);
-
-export const sendHeldAgentMessage = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	threadId: string,
-	queueId: string,
-): Promise<void> =>
-	await makeRestApiRequest(
-		context,
-		'POST',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/send`,
-	);
