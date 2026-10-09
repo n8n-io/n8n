@@ -51,7 +51,7 @@ export function assertDataTableWritesAllowed(
 	if (dataTablePlans.some((plan) => plan.creations.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['dataTable:create']);
 	}
-	if (dataTablePlans.some((plan) => plan.updates.length > 0)) {
+	if (dataTablePlans.some((plan) => plan.updates.length + plan.columnAlignments.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['dataTable:update']);
 	}
 }

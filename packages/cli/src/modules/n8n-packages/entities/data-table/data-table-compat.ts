@@ -1,10 +1,14 @@
 import type { DataTableColumnType } from 'n8n-workflow';
 
+import { pairDataTableColumns } from '@/modules/data-table/utils/pair-columns';
+
 import type { DataTableColumnTypeMismatch, DataTableSchemaOperation } from './data-table.types';
 import type {
 	SerializedDataTable,
 	SerializedDataTableColumn,
 } from '../../spec/serialized/data-table.schema';
+
+export type TargetColumn = { id?: string; name: string; type: DataTableColumnType; index: number };
 
 export interface SchemaIncompatibility {
 	missingColumns: string[];
@@ -46,43 +50,9 @@ export function findSchemaIncompatibility(
 
 export function diffDataTableSchema(
 	packageTable: SerializedDataTable,
-	target: {
-		name: string;
-		columns: Array<{ name: string; type: DataTableColumnType; index: number }>;
-	},
+	target: { name: string; columns: TargetColumn[] },
 ): DataTableSchemaOperation[] {
-	const packageColumnsByName = new Map(packageTable.columns.map((column) => [column.name, column]));
-	const targetColumns = [...target.columns].sort((a, b) => a.index - b.index);
-	const targetColumnsByName = new Map(targetColumns.map((column) => [column.name, column]));
-	const operations: DataTableSchemaOperation[] = [];
-
-	for (const { name, type } of targetColumns) {
-		if (!packageColumnsByName.has(name)) {
-			operations.push({ kind: 'remove-column', column: name, type, destructive: true });
-		}
-	}
-	for (const { name, type } of targetColumns) {
-		const packageType = packageColumnsByName.get(name)?.type;
-		if (packageType !== undefined && packageType !== type) {
-			operations.push({
-				kind: 'change-column-type',
-				column: name,
-				from: type,
-				to: packageType,
-				destructive: true,
-			});
-		}
-	}
-	for (const { name, type } of packageTable.columns) {
-		if (!targetColumnsByName.has(name)) {
-			operations.push({ kind: 'add-column', column: name, type, destructive: false });
-		}
-	}
-	const isReordered = packageTable.columns.some((column) => {
-		const targetIndex = targetColumnsByName.get(column.name)?.index;
-		return targetIndex !== undefined && targetIndex !== column.index;
-	});
-	if (isReordered) operations.push({ kind: 'reorder-columns', destructive: false });
+	const operations = diffDataTableColumns(packageTable.columns, target.columns);
 	if (target.name !== packageTable.name) {
 		operations.push({
 			kind: 'rename-table',
@@ -91,6 +61,53 @@ export function diffDataTableSchema(
 			destructive: false,
 		});
 	}
+	return operations;
+}
+
+/** A retyped column is dropped and added again, so a rename of that column is reported next to its type change. */
+export function diffDataTableColumns(
+	packageColumns: SerializedDataTableColumn[],
+	targetColumns: TargetColumn[],
+): DataTableSchemaOperation[] {
+	const { pairs, added, removed } = pairDataTableColumns(
+		packageColumns,
+		[...targetColumns].sort((a, b) => a.index - b.index),
+	);
+	const operations: DataTableSchemaOperation[] = removed.map(({ name, type }) => ({
+		kind: 'remove-column',
+		column: name,
+		type,
+		destructive: true,
+	}));
+
+	for (const { source, target } of pairs) {
+		if (source.type !== target.type) {
+			operations.push({
+				kind: 'change-column-type',
+				column: source.name,
+				from: target.type,
+				to: source.type,
+				destructive: true,
+			});
+		}
+	}
+	for (const { source, target } of pairs) {
+		if (source.name !== target.name) {
+			operations.push({
+				kind: 'rename-column',
+				from: target.name,
+				to: source.name,
+				destructive: false,
+			});
+		}
+	}
+	for (const { name, type } of added) {
+		operations.push({ kind: 'add-column', column: name, type, destructive: false });
+	}
+	const isReordered = pairs.some(
+		({ source }, position) => position > 0 && source.index <= pairs[position - 1].source.index,
+	);
+	if (isReordered) operations.push({ kind: 'reorder-columns', destructive: false });
 
 	return operations;
 }

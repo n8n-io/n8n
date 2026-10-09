@@ -19,7 +19,7 @@ export default class PromotionConnectionApplyContinue extends PromotionApplyComm
 		...expectedSourceFlags({ required: true }),
 		confirmDestructiveChanges: Flags.boolean({
 			description:
-				'Also apply data table changes that remove, rename, or retype columns. The values in those columns are removed.',
+				'Also apply data table changes that remove or retype columns. The values in those columns are removed.',
 			aliases: ['confirm-destructive-changes'],
 		}),
 	};

@@ -563,7 +563,10 @@ function toDataTableBlockingIssue(
 		const writtenIds = new Set(
 			failure.missingScope === 'dataTable:create'
 				? plan.creations.map(({ id }) => id)
-				: plan.updates.map(({ table }) => table.id),
+				: [
+						...plan.updates.map(({ table }) => table.id),
+						...plan.columnAlignments.map(({ id }) => id),
+					],
 		);
 		requirements = requirements.filter(({ id }) => writtenIds.has(id));
 	}

@@ -77,7 +77,7 @@ function blockedMessage(
 		`  ${continueCommand(result)}`,
 		...(preflight.conflicts.some(({ code }) => code === 'destructive-change')
 			? [
-					'To also apply data table changes that remove, rename, or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
+					'To also apply data table changes that remove or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
 				]
 			: []),
 	].join('\n');

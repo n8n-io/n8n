@@ -84,6 +84,7 @@ type DataTableSchemaChange = { destructive?: boolean } & (
 	| { kind: 'add-column'; column: string }
 	| { kind: 'remove-column'; column: string }
 	| { kind: 'change-column-type'; column: string; from: string; to: string }
+	| { kind: 'rename-column'; from: string; to: string }
 	| { kind: 'reorder-columns' }
 	| { kind: 'rename-table'; from: string; to: string }
 );
@@ -96,6 +97,8 @@ function describeSchemaChange(change: DataTableSchemaChange): string {
 			return `remove column ${change.column}`;
 		case 'change-column-type':
 			return `change column ${change.column} from ${change.from} to ${change.to}`;
+		case 'rename-column':
+			return `rename column ${change.from} to ${change.to}`;
 		case 'reorder-columns':
 			return 'reorder columns';
 		case 'rename-table':
@@ -190,7 +193,7 @@ function formatIssue(issue: unknown): string {
 				it.extraColumns?.length ? `extra columns: ${it.extraColumns.join(', ')}` : '',
 			].filter(Boolean);
 			const changes = it.overwriteChanges?.length
-				? `\n      --data-table-schema-conflict-policy=overwrite would: ${it.overwriteChanges.map((change) => (change.destructive ? `${describeSchemaChange(change)} (data lost)` : describeSchemaChange(change))).join(', ')}`
+				? `\n      --data-table-schema-conflict-policy=overwrite would: ${it.overwriteChanges.map((change) => (change.destructive ? `${describeSchemaChange(change)} (values removed)` : describeSchemaChange(change))).join(', ')}`
 				: '';
 			return `data table "${it.name}" (${it.sourceId}) does not match the package schema (${reasons.join('; ')}), used by ${usedBy}${changes}`;
 		}
