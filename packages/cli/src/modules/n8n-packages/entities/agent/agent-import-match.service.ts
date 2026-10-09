@@ -3,8 +3,8 @@ import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
-import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
-import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentTaskService } from '@/modules/agents/agent-task.service';
+import { AgentsService } from '@/modules/agents/agents.service';
 import { generateAgentResourceId } from '@/modules/agents/utils/agent-resource-id';
 
 import type {
@@ -29,8 +29,8 @@ interface TaskMapping {
 export class AgentImportMatchService {
 	constructor(
 		private readonly projectScopeService: ProjectScopeService,
-		private readonly agentRepository: AgentRepository,
-		private readonly taskRepository: AgentTaskRepository,
+		private readonly agentsService: AgentsService,
+		private readonly agentTaskService: AgentTaskService,
 	) {}
 
 	async findBySourceAgentIds(
@@ -53,7 +53,7 @@ export class AgentImportMatchService {
 				'You do not have permission to read Agents in the destination project.',
 			);
 		}
-		const candidates = await this.agentRepository.findImportCandidates(
+		const candidates = await this.agentsService.findImportCandidates(
 			context.projectId,
 			result.sourceAgentIds,
 		);
@@ -89,7 +89,7 @@ export class AgentImportMatchService {
 		);
 		const owners =
 			idPolicy === WorkflowIdPolicy.Source
-				? await this.agentRepository.findImportIdOwners(unmatched)
+				? await this.agentsService.findImportIdOwners(unmatched)
 				: [];
 		const ownersById = new Map(owners.map((owner) => [owner.id, owner]));
 
@@ -134,7 +134,7 @@ export class AgentImportMatchService {
 			identities.idPolicy === WorkflowIdPolicy.Source
 				? mappings.filter(({ matched }) => !matched).map(({ targetTaskId }) => targetTaskId)
 				: [];
-		const owners = await this.taskRepository.findImportIdOwners(sourceCreates);
+		const owners = await this.agentTaskService.findImportIdOwners(sourceCreates);
 		const ownersById = new Map(owners.map(({ id, agentId }) => [id, agentId]));
 		const available: TaskMapping[] = [];
 		for (const mapping of mappings) {
@@ -156,7 +156,10 @@ export class AgentImportMatchService {
 		result: AgentTaskImportMappings,
 	): Promise<TaskMapping[]> {
 		const { sourceAgentId, targetAgentId } = identity;
-		const candidates = await this.taskRepository.findImportCandidates(targetAgentId, sourceTaskIds);
+		const candidates = await this.agentTaskService.findImportCandidates(
+			targetAgentId,
+			sourceTaskIds,
+		);
 		const { matches, ambiguous } = matchSourceIds(
 			sourceTaskIds,
 			candidates,
