@@ -18,7 +18,7 @@ export const AGENT_MODEL_PROVIDERS = [
 ] as const;
 
 /** Canonical `provider/model-name` validation shared by API schemas and editor parsing. */
-export const AGENT_MODEL_STRING_REGEX = /^[a-z0-9-]+\/(?:[a-z0-9._:-]+\/)*[a-z0-9._:-]+$/i;
+export const AGENT_MODEL_STRING_REGEX = /^[a-z0-9-]+\/(?:[a-z0-9._:@-]+\/)*[a-z0-9._:@-]+$/i;
 
 export type AgentModelProvider = (typeof AGENT_MODEL_PROVIDERS)[number];
 
