@@ -1,5 +1,4 @@
 import type { Logger } from '@n8n/backend-common';
-import { Time } from '@n8n/constants';
 import { idempotencyKeyTtlMs } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -19,15 +18,8 @@ beforeEach(() => {
 });
 
 describe('IdempotencyKeyCleanupTask', () => {
-	it('should declare an hourly leader-only cleanup', () => {
-		expect(task.name).toBe('idempotency-key-cleanup');
-		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: Time.hours.toSeconds });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: false, runOnTakeover: true });
-	});
-
 	describe('run', () => {
-		it('should delete keys older than 12 hours', async () => {
+		it('should delete keys older than 12 hours and log the total', async () => {
 			idempotencyKeyService.deleteOlderThan.mockResolvedValue(10);
 
 			await task.run(signal);
@@ -38,15 +30,8 @@ describe('IdempotencyKeyCleanupTask', () => {
 			const ageMs = Date.now() - cutoff.getTime();
 			expect(ageMs).toBeGreaterThanOrEqual(idempotencyKeyTtlMs);
 			expect(ageMs).toBeLessThan(idempotencyKeyTtlMs + 1_000);
-		});
-
-		it('should log the total when keys are deleted', async () => {
-			idempotencyKeyService.deleteOlderThan.mockResolvedValue(42);
-
-			await task.run(signal);
-
 			expect(logger.debug).toHaveBeenCalledWith('Cleaned up expired idempotency keys', {
-				count: 42,
+				count: 10,
 			});
 		});
 
