@@ -33,7 +33,7 @@ function makeImporter() {
 
 function makeRequest(overrides: Partial<DataTableImportRequest> = {}): DataTableImportRequest {
 	return {
-		requirements: [{ id: 'dt1', name: 'Customers', usedByWorkflows: ['wf-1'] }],
+		requirements: [{ id: 'dt1', name: 'Customers', usedBy: [{ kind: 'workflow', id: 'wf-1' }] }],
 		packageDataTables: [
 			{ id: 'dt1', name: 'Customers', columns: [{ name: 'email', type: 'string', index: 0 }] },
 		],
@@ -55,7 +55,7 @@ describe('DataTableImporter.plan', () => {
 
 		const plan = await importer.plan(context, makeRequest({ requirements: undefined }));
 
-		expect(plan).toEqual({ creations: [], failures: [], matchedCount: 0 });
+		expect(plan).toEqual({ creations: [], updates: [], failures: [], matchedCount: 0 });
 		expect(moduleRegistry.isActive).not.toHaveBeenCalled();
 	});
 
@@ -66,7 +66,7 @@ describe('DataTableImporter.plan', () => {
 		const plan = await importer.plan(context, makeRequest());
 
 		expect(plan.creations).toEqual([]);
-		expect(plan.failures).toEqual([{ kind: 'module-disabled', usedByWorkflows: ['wf-1'] }]);
+		expect(plan.failures).toEqual([{ kind: 'module-disabled' }]);
 	});
 
 	it('fails with permission-denied when the user cannot create tables in the target project', async () => {
@@ -75,7 +75,9 @@ describe('DataTableImporter.plan', () => {
 
 		const plan = await importer.plan(context, makeRequest());
 
-		expect(plan.failures).toEqual([{ kind: 'permission-denied', usedByWorkflows: ['wf-1'] }]);
+		expect(plan.failures).toEqual([
+			{ kind: 'permission-denied', missingScope: 'dataTable:create' },
+		]);
 		expect(userHasScopesMock).toHaveBeenCalledWith(context.user, ['dataTable:create'], false, {
 			projectId: context.projectId,
 		});
@@ -86,7 +88,7 @@ describe('DataTableImporter.plan', () => {
 
 		const plan = await importer.plan(context, makeRequest({ missingMode: 'do-nothing' }));
 
-		expect(plan).toEqual({ creations: [], failures: [], matchedCount: 0 });
+		expect(plan).toEqual({ creations: [], updates: [], failures: [], matchedCount: 0 });
 		expect(userHasScopesMock).not.toHaveBeenCalled();
 	});
 

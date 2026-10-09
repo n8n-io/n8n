@@ -5,18 +5,21 @@ import type {
 	DeepPartial,
 	EntityManager,
 	FindOptionsWhere,
+	Repository,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
-import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
-import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { BaseRepository } from './base-repository';
 import { GLOBAL_OWNER_ROLE } from '../constants';
+import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 @Service()
-export class UserRepository extends Repository<User> {
-	constructor(dataSource: DataSource) {
-		super(User, dataSource.manager);
+export class UserRepository extends BaseRepository<User> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(User, dataSource.manager, transactionRunner);
 	}
 
 	async findManyByIds(
@@ -45,8 +48,17 @@ export class UserRepository extends Repository<User> {
 		});
 	}
 
-	async findByIdWithRole(id: string): Promise<User | null> {
-		return await this.findOne({
+	/**
+	 * Every user with the relations `isPending` needs: the role and the auth
+	 * identities. Without the identities, a user who signs in through SSO or LDAP
+	 * and so has no password would read as pending.
+	 */
+	async findAllWithRoleAndAuthIdentities(): Promise<User[]> {
+		return await this.find({ relations: ['role', 'authIdentities'], order: { id: 'ASC' } });
+	}
+
+	async findByIdWithRole(id: string, ctx: OperationContext = {}): Promise<User | null> {
+		return await this.managerFor(ctx).findOne(User, {
 			where: { id },
 			relations: ['role'],
 		});

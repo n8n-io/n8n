@@ -18,6 +18,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { DEBOUNCE_TIME, LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
@@ -38,11 +39,13 @@ import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgent
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW } from './constants';
 import { getDismissedContextKeys } from './instanceAi.handoffContext';
+import { getLatestCallAgentResult } from './canvasPreview.utils';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.vue';
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
+import InstanceAiTestAgentPreviewPanel from './components/InstanceAiTestAgentPreviewPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from './components/InstanceAiConversation.vue';
@@ -63,11 +66,13 @@ import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
+import { useTestAgentPreviewExperiment } from '@/experiments/testAgentPreview/useTestAgentPreviewExperiment';
 
 const props = defineProps<{ threadId: string }>();
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
+const appSettingsStore = useSettingsStore();
 const thread = provideThread(props.threadId);
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -120,6 +125,12 @@ const activeFixWithAiOffer = computed(() => {
 const isAgentEvalsEnabled = useAgentEvalsFlag();
 const agentEvalsStore = useAgentEvalsStore();
 
+// Operator override (`N8N_FORCE_AGENT_WORTH_TESTING`) that bypasses the
+// capability check below, e.g. for demos or support debugging.
+const forceAgentWorthTesting = computed(
+	() => appSettingsStore.settings.evaluation?.forceAgentWorthTesting === true,
+);
+
 // Passed the local runtime because this component provides the thread rather
 // than inheriting it, so the composable's own `useThread()` inject would fail.
 const isAgentWorking = useIsAgentWorking(thread);
@@ -166,9 +177,62 @@ const activeTestAgentOffer = computed(() => {
 		agentEvalsStore.getDatasets(target.agentId).length
 	)
 		return null;
-	if (!isAgentWorthTesting(offerAgentSummary.value)) return null;
+	if (!isAgentWorthTesting(offerAgentSummary.value, forceAgentWorthTesting.value)) return null;
 
 	return target;
+});
+
+// Latches the offer once it starts showing, so the preview panel's own commit
+// (which persists the dismissal and fills the dataset cache `activeTestAgentOffer`
+// checks) can't tear it down mid-flow.
+//
+// Scoped to one target: the latch moves to a different agent as soon as that
+// agent becomes the offer, and it drops when the offer is lost (the agent starts
+// working again, or datasets appear from the Evals tab) — except once the panel
+// has committed ("Looks good"), which is the only time it must outlive the offer.
+// Cleared by an explicit dismiss or open-evals action.
+const latchedTestAgentOffer = ref<typeof activeTestAgentOffer.value>(null);
+const isTestAgentOfferCommitted = ref(false);
+
+function clearTestAgentOfferLatch() {
+	latchedTestAgentOffer.value = null;
+	isTestAgentOfferCommitted.value = false;
+}
+
+watch(
+	activeTestAgentOffer,
+	(offer) => {
+		const latched = latchedTestAgentOffer.value;
+		if (offer) {
+			if (latched?.agentId === offer.agentId) return;
+			latchedTestAgentOffer.value = offer;
+			isTestAgentOfferCommitted.value = false;
+			return;
+		}
+		if (latched && !isTestAgentOfferCommitted.value) clearTestAgentOfferLatch();
+	},
+	{ immediate: true },
+);
+
+const { isFeatureEnabled: isTestAgentPreviewVariant } = useTestAgentPreviewExperiment();
+
+// The builder's own "Testing agent" step (the `call_agent` tool) already runs
+// a representative message against the draft agent — reused here so the
+// preview panel can show a real result immediately instead of generating and
+// running a case of its own. Scoped to the agent the panel is actually
+// offering to test, so a test run from an earlier agent built in this thread
+// is never shown as if it were this agent's.
+const latestCallAgentResult = computed(() => {
+	const targetAgentId = latchedTestAgentOffer.value?.agentId;
+	if (!targetAgentId) return null;
+	for (let i = thread.messages.length - 1; i >= 0; i--) {
+		const msg = thread.messages[i];
+		if (msg.agentTree) {
+			const result = getLatestCallAgentResult(msg.agentTree, targetAgentId);
+			if (result) return result;
+		}
+	}
+	return null;
 });
 
 // --- Header title ---
@@ -699,7 +763,10 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
  * would be a second call site for the same operation.
  */
 async function handleGenerateTestCasesFromOffer() {
-	const target = activeTestAgentOffer.value;
+	// Reads the latch, not activeTestAgentOffer: by the time this fires the
+	// generic offer flow doesn't trigger dataset generation itself, but the
+	// latch is still the authoritative "which target is this offer for" source.
+	const target = latchedTestAgentOffer.value;
 	if (!target) return;
 
 	// Raise the request before revealing the artifact: the builder consumes it on
@@ -707,12 +774,52 @@ async function handleGenerateTestCasesFromOffer() {
 	agentEvalsStore.requestEvalsFocus(target.agentId, true);
 	preview.openAgentPreview(target.agentId, target.projectId);
 	await persistTestAgentOfferDismissal(target.agentId);
+	clearTestAgentOfferLatch();
 }
 
 async function dismissTestAgentOffer() {
-	const target = activeTestAgentOffer.value;
+	const target = latchedTestAgentOffer.value;
 	if (!target) return;
 	await persistTestAgentOfferDismissal(target.agentId);
+	clearTestAgentOfferLatch();
+}
+
+/**
+ * The preview panel confirms as soon as the user says "Looks good", before it
+ * generates the rest of the suite — dismissal happens on that signal alone,
+ * matching the generic offer's CTA, which also persists immediately rather
+ * than waiting for generation to finish. The latch stays set: the flow
+ * continues (the panel keeps generating and offers "Open evals" next), so the
+ * panel must not unmount yet.
+ */
+async function handleConfirmTestAgentPreview() {
+	const target = latchedTestAgentOffer.value;
+	if (!target) return;
+	// Set before the await: persisting the dismissal is what makes the live offer
+	// disappear, and the latch has to already be committed by then.
+	isTestAgentOfferCommitted.value = true;
+	await persistTestAgentOfferDismissal(target.agentId);
+}
+
+/**
+ * The preview panel has already generated every case by the time this fires,
+ * so — unlike `handleGenerateTestCasesFromOffer` — this does not request
+ * generation on arrival. This is the end of the preview flow, so the latch
+ * clears here.
+ */
+function handleOpenEvalsFromPreview(resultId: string | null) {
+	const target = latchedTestAgentOffer.value;
+	if (!target) return;
+	agentEvalsStore.requestEvalsFocus(target.agentId, false, resultId ?? undefined);
+	preview.openAgentPreview(target.agentId, target.projectId);
+	// Opening a single case is a peek: the chat panel stays so the user can come back.
+	if (!resultId) clearTestAgentOfferLatch();
+}
+
+function handleTryAgentFromPreview() {
+	const target = latchedTestAgentOffer.value;
+	if (!target) return;
+	openAgentChatPreview(target.agentId, target.projectId);
 }
 
 // Persisted for the CTA as well as "Maybe later": once the user has acted on the
@@ -880,9 +987,21 @@ function handleNewThreadClick() {
 						</Transition>
 						<Transition name="confirmation-slide">
 							<InstanceAiTestAgentPanel
-								v-if="activeTestAgentOffer"
+								v-if="activeTestAgentOffer && !isTestAgentPreviewVariant"
 								@generate="handleGenerateTestCasesFromOffer"
 								@dismiss="dismissTestAgentOffer"
+							/>
+						</Transition>
+						<Transition name="confirmation-slide">
+							<InstanceAiTestAgentPreviewPanel
+								v-if="latchedTestAgentOffer && isTestAgentPreviewVariant"
+								:key="latchedTestAgentOffer.agentId"
+								:target="latchedTestAgentOffer"
+								:initial-case="latestCallAgentResult"
+								@confirm="handleConfirmTestAgentPreview"
+								@dismiss="dismissTestAgentOffer"
+								@open-evals="handleOpenEvalsFromPreview($event)"
+								@try-agent="handleTryAgentFromPreview"
 							/>
 						</Transition>
 					</template>

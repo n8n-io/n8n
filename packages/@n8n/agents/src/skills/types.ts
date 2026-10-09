@@ -68,7 +68,26 @@ export interface RuntimeSkillDependenciesContract {
 	mcpServers?: RuntimeSkillMcpServerDependency[];
 }
 
-export interface RuntimeSkill extends RuntimeSkillIndexEntry {
+/** Where a reference skill's file lives: a path relative to the owning skill's directory. */
+export interface RuntimeSkillReferenceLocation {
+	owner: string;
+	path: string;
+}
+
+/**
+ * A reference skill is a `references/*.md` file with skill frontmatter. It is
+ * hidden from the catalog and listed, with its description, when a parent
+ * skill loads. It activates like any other skill.
+ */
+export interface RuntimeSkillReferenceContract {
+	/** Skills that list this reference. The owner comes first. */
+	parents?: string[];
+	reference?: RuntimeSkillReferenceLocation;
+	/** Ids of references owned by other skills that this skill also lists. */
+	sharedReferences?: string[];
+}
+
+export interface RuntimeSkill extends RuntimeSkillIndexEntry, RuntimeSkillReferenceContract {
 	id: string;
 	instructions: string;
 	sourceName?: string;
@@ -89,7 +108,9 @@ export interface RuntimeSkill extends RuntimeSkillIndexEntry {
 	linkedFiles?: RuntimeSkillLinkedFiles;
 }
 
-export interface RuntimeSkillRegistryEntry extends RuntimeSkillIndexEntry {
+export interface RuntimeSkillRegistryEntry
+	extends RuntimeSkillIndexEntry,
+		RuntimeSkillReferenceContract {
 	id: string;
 	hash: string;
 	sourceName?: string;
@@ -116,7 +137,7 @@ export interface RuntimeSkillRegistry {
 	skills: RuntimeSkillRegistryEntry[];
 }
 
-export interface RuntimeSkillContent extends RuntimeSkillIndexEntry {
+export interface RuntimeSkillContent extends RuntimeSkillIndexEntry, RuntimeSkillReferenceContract {
 	id: string;
 	instructions: string;
 	sourceName?: string;

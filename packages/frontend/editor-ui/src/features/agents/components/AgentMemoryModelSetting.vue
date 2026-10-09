@@ -205,6 +205,7 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 }
 
 .rowLabel {
+	opacity: var(--agent-row-label-opacity, 1);
 	display: flex;
 	flex: 1 1 0;
 	flex-direction: column;

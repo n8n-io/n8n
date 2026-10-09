@@ -432,7 +432,7 @@ describe('WorkingCopyUpdater', () => {
 			);
 		});
 
-		it('keeps a renamed folder where the branch has it, so unselected workflows stay put', async () => {
+		it('renames the folder on the branch and rides unselected workflows along', async () => {
 			await apply(
 				{
 					manifest: makeManifest({
@@ -465,16 +465,17 @@ describe('WorkingCopyUpdater', () => {
 				{ workflowIds: ['w1'], deletedWorkflowIds: ['w3'] },
 			);
 
-			await expectAbsent('projects/alpha/folders/revenue');
-			await expectAbsent('projects/alpha/folders/sales/workflows/w3');
-			// The folder was renamed on the instance, but nobody selected that change.
-			expect(await readExported('projects/alpha/folders/sales/folder.json')).toBe(
-				folderFile('f1', 'Sales'),
+			// The old folder directory is gone; the rename rode along the selection.
+			await expectAbsent('projects/alpha/folders/sales');
+			await expectAbsent('projects/alpha/folders/revenue/workflows/w3');
+			expect(await readExported('projects/alpha/folders/revenue/folder.json')).toBe(
+				folderFile('f1', 'Revenue'),
 			);
-			expect(await readExported('projects/alpha/folders/sales/workflows/w1/workflow.json')).toBe(
+			expect(await readExported('projects/alpha/folders/revenue/workflows/w1/workflow.json')).toBe(
 				workflowFile('w1', { v: 2 }),
 			);
-			expect(await readExported('projects/alpha/folders/sales/workflows/w2/workflow.json')).toBe(
+			// w2 was not selected, but it moves to the new folder path unchanged.
+			expect(await readExported('projects/alpha/folders/revenue/workflows/w2/workflow.json')).toBe(
 				workflowFile('w2'),
 			);
 			expect((await readWrittenManifest()).workflows?.map((entry) => entry.id).sort()).toEqual([
@@ -482,13 +483,13 @@ describe('WorkingCopyUpdater', () => {
 				'w2',
 			]);
 			const branch = await updater.readBranchLayout(exportFolder);
-			expect(branch.folders).toEqual([folder('f1', 'Sales', 'sales')]);
+			expect(branch.folders).toEqual([folder('f1', 'Revenue', 'revenue')]);
 			expect(branch.workflows).toEqual(
-				expect.arrayContaining([inFolder('w2', 'sales'), inFolder('w1', 'sales')]),
+				expect.arrayContaining([inFolder('w2', 'revenue'), inFolder('w1', 'revenue')]),
 			);
 		});
 
-		it('keeps both folders where the branch has them when their names swap', async () => {
+		it('swaps two folder directories when their names swap', async () => {
 			// f1 is now named B (slug b) and f2 is named A (slug a); w1 and w3 are selected.
 			await apply(
 				{
@@ -532,15 +533,15 @@ describe('WorkingCopyUpdater', () => {
 				{ workflowIds: ['w1', 'w3'] },
 			);
 
-			// Each selected workflow lands in the directory its folder has on the
-			// branch, next to the siblings nobody selected.
+			// The folders swap: f1 (now B) takes slug b and f2 (now A) takes slug a.
+			// Each folder's unselected workflow rides along to the new path.
 			const tree: Record<string, string> = {
-				'projects/alpha/folders/a/folder.json': folderFile('f1', 'A'),
-				'projects/alpha/folders/b/folder.json': folderFile('f2', 'B'),
-				'projects/alpha/folders/a/workflows/w1/workflow.json': workflowFile('w1', { moved: true }),
-				'projects/alpha/folders/a/workflows/w2/workflow.json': workflowFile('w2'),
-				'projects/alpha/folders/b/workflows/w3/workflow.json': workflowFile('w3', { moved: true }),
-				'projects/alpha/folders/b/workflows/w4/workflow.json': workflowFile('w4'),
+				'projects/alpha/folders/b/folder.json': folderFile('f1', 'B'),
+				'projects/alpha/folders/a/folder.json': folderFile('f2', 'A'),
+				'projects/alpha/folders/b/workflows/w1/workflow.json': workflowFile('w1', { moved: true }),
+				'projects/alpha/folders/b/workflows/w2/workflow.json': workflowFile('w2'),
+				'projects/alpha/folders/a/workflows/w3/workflow.json': workflowFile('w3', { moved: true }),
+				'projects/alpha/folders/a/workflows/w4/workflow.json': workflowFile('w4'),
 			};
 			for (const [file, content] of Object.entries(tree)) {
 				expect(await readExported(file), file).toBe(content);
@@ -553,6 +554,167 @@ describe('WorkingCopyUpdater', () => {
 			]);
 		});
 
+		it('refuses a rename when a manually changed branch path occupies its target', async () => {
+			await expect(
+				apply(
+					{
+						manifest: makeManifest({
+							projects: [alpha],
+							folders: [folder('f1', 'A', 'a-f1'), folder('f2', 'B', 'b-f1')],
+							workflows: [inFolder('w1', 'a-f1'), inFolder('w2', 'b-f1')],
+						}),
+						files: {
+							'projects/alpha/project.json': projectFile,
+							'projects/alpha/folders/a-f1/folder.json': folderFile('f1', 'A'),
+							// f2 was manually moved to the path that a renamed f1 will use.
+							'projects/alpha/folders/b-f1/folder.json': folderFile('f2', 'B'),
+							'projects/alpha/folders/a-f1/workflows/w1/workflow.json': workflowFile('w1'),
+							'projects/alpha/folders/b-f1/workflows/w2/workflow.json': workflowFile('w2'),
+						},
+					},
+					{
+						manifest: makeManifest({
+							projects: [alpha],
+							folders: [folder('f1', 'B', 'b-f1')],
+							workflows: [inFolder('w1', 'b-f1')],
+						}),
+						files: {
+							'projects/alpha/folders/b-f1/folder.json': folderFile('f1', 'B'),
+							'projects/alpha/folders/b-f1/workflows/w1/workflow.json': workflowFile('w1'),
+						},
+					},
+					{ workflowIds: ['w1'] },
+				),
+			).rejects.toThrow(
+				'The branch path "projects/alpha/folders/b-f1" is already in use. Remove it and retry.',
+			);
+
+			expect(await readExported('projects/alpha/folders/a-f1/folder.json')).toBe(
+				folderFile('f1', 'A'),
+			);
+			expect(await readExported('projects/alpha/folders/b-f1/folder.json')).toBe(
+				folderFile('f2', 'B'),
+			);
+			expect(await readExported('projects/alpha/folders/a-f1/workflows/w1/workflow.json')).toBe(
+				workflowFile('w1'),
+			);
+			expect(await readExported('projects/alpha/folders/b-f1/workflows/w2/workflow.json')).toBe(
+				workflowFile('w2'),
+			);
+		});
+
+		it('keeps an unselected variable in the manifest after a project rename moves its file', async () => {
+			const renamed = { id: alpha.id, name: 'Renamed', target: 'projects/renamed' };
+			await apply(
+				{
+					manifest: makeManifest({
+						projects: [alpha],
+						workflows: [wf('w1'), wf('w2')],
+						variables: [{ id: 'v1', name: 'V1', target: 'projects/alpha/variables/v1' }],
+					}),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+						'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
+						'projects/alpha/variables/v1/variable.json': variableFile('v1', 'V1'),
+					},
+				},
+				{
+					manifest: makeManifest({
+						projects: [renamed],
+						workflows: [{ id: 'w1', name: 'W1', target: 'projects/renamed/workflows/w1' }],
+					}),
+					files: {
+						'projects/renamed/project.json': JSON.stringify({ id: alpha.id, name: 'Renamed' }),
+						'projects/renamed/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
+					},
+				},
+				{ workflowIds: ['w1'] },
+			);
+
+			expect(await readExported('projects/renamed/variables/v1/variable.json')).toBe(
+				variableFile('v1', 'V1'),
+			);
+			expect((await readWrittenManifest()).variables).toEqual([
+				{ id: 'v1', name: 'V1', target: 'projects/renamed/variables/v1' },
+			]);
+		});
+
+		it('refuses to pull a folder out of another project when only a new workflow is selected', async () => {
+			// f1 moved from beta to alpha on the instance and gained w-new. w-new is
+			// not on the branch, so the selected-workflow check cannot see the move.
+			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
+			await expect(
+				apply(
+					{
+						manifest: makeManifest({
+							projects: [alpha, beta],
+							folders: [{ id: 'f1', name: 'F1', target: 'projects/beta/folders/f1' }],
+							workflows: [
+								{
+									id: 'w-beta',
+									name: 'WBeta',
+									target: 'projects/beta/folders/f1/workflows/w-beta',
+								},
+							],
+						}),
+						files: {
+							'projects/alpha/project.json': projectFile,
+							'projects/beta/project.json': JSON.stringify({ id: beta.id, name: beta.name }),
+							'projects/beta/folders/f1/folder.json': folderFile('f1', 'F1'),
+							'projects/beta/folders/f1/workflows/w-beta/workflow.json': workflowFile('w-beta'),
+						},
+					},
+					{
+						manifest: makeManifest({
+							projects: [alpha],
+							folders: [folder('f1', 'F1', 'f1')],
+							workflows: [inFolder('w-new', 'f1')],
+						}),
+						files: {
+							'projects/alpha/folders/f1/folder.json': folderFile('f1', 'F1'),
+							'projects/alpha/folders/f1/workflows/w-new/workflow.json': workflowFile('w-new'),
+						},
+					},
+					{ workflowIds: ['w-new'] },
+				),
+			).rejects.toThrow('belongs to another project on the branch');
+
+			expect(await readExported('projects/beta/folders/f1/workflows/w-beta/workflow.json')).toBe(
+				workflowFile('w-beta'),
+			);
+		});
+
+		it('refuses to move a project whose entity file sits at the export root', async () => {
+			// A malformed branch scans the root project.json as target `.`.
+			await expect(
+				apply(
+					{
+						manifest: makeManifest({
+							projects: [{ ...alpha, target: '.' }],
+							workflows: [{ id: 'w1', name: 'W1', target: 'workflows/w1' }],
+						}),
+						files: {
+							'project.json': projectFile,
+							'workflows/w1/workflow.json': workflowFile('w1'),
+						},
+					},
+					{
+						manifest: makeManifest({ projects: [alpha], workflows: [wf('w2')] }),
+						files: {
+							'projects/alpha/project.json': projectFile,
+							'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
+						},
+					},
+					{ workflowIds: ['w2'] },
+				),
+			).rejects.toThrow('Container target "." is not a managed leaf directory');
+
+			expect(await readExported('project.json')).toBe(projectFile);
+			expect(await readExported('workflows/w1/workflow.json')).toBe(workflowFile('w1'));
+			await expectAbsent('projects/alpha');
+		});
+
 		it('does not write leftover requirements a selected workflow no longer uses', async () => {
 			await apply(
 				{
@@ -560,7 +722,7 @@ describe('WorkingCopyUpdater', () => {
 						projects: [alpha],
 						workflows: [wf('w1')],
 						requirements: {
-							tags: [{ id: 't-old', name: 'prod', usedByWorkflows: ['w1'] }],
+							tags: [{ id: 't-old', name: 'prod', usedBy: [{ kind: 'workflow', id: 'w1' }] }],
 						},
 					}),
 					files: {

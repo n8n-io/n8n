@@ -54,6 +54,30 @@ export class PrometheusDbPoolMetricsService implements PrometheusMetricsCollecto
 		});
 		maxGauge.set(this.maxPoolSize());
 
+		const { connectionState } = this.dbConnection;
+		new promClient.Gauge({
+			name: `${prefix}db_pool_connected`,
+			help: 'Whether n8n considers the database connected (1) or disconnected (0).',
+			collect() {
+				this.set(Number(connectionState.connected));
+			},
+		});
+
+		const disconnections = new promClient.Counter({
+			name: `${prefix}db_pool_disconnections_total`,
+			help: 'Number of transitions from a connected to a disconnected database.',
+		});
+		this.dbConnectionMetrics.disconnectionObserver = () => disconnections.inc();
+
+		const recoveryAttempts = new promClient.Counter({
+			name: `${prefix}db_pool_recovery_attempts_total`,
+			help: 'Number of completed database recovery attempts by result (Postgres only).',
+			labelNames: ['result'],
+		});
+		recoveryAttempts.inc({ result: 'success' }, 0);
+		recoveryAttempts.inc({ result: 'failure' }, 0);
+		this.dbConnectionMetrics.recoveryAttemptObserver = (result) => recoveryAttempts.inc({ result });
+
 		// Postgres only: the timing is fed by DbConnectionMonitor wrapping
 		// `obtainMasterConnection` (a Postgres-only chokepoint). SQLite acquires
 		// happen inside the `tarn` pool, which has no equivalent interception point.

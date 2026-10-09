@@ -242,6 +242,8 @@ function invalidTrialReason(trial: DiscoveryTrialFacts): string | undefined {
 		case 'errored':
 		case 'suspended':
 			return `Run did not complete (${trial.runError ? `${trial.streamStatus}: ${trial.runError}` : trial.streamStatus}).`;
+		case 'stopped-on-route':
+			return undefined;
 		case 'completed':
 			return trial.unmatchedConfirmations.length > 0
 				? `Scenario declared confirmation answers for [${trial.unmatchedConfirmations.join(', ')}] that no suspension asked for, so those decisions never ran.`
