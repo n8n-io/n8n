@@ -1,0 +1,83 @@
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_50b1b090121afc::t_2167558d69570c 57,94
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_50b1b090121afc::t_8fe3f1b478c6c8 32,190
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_50b1b090121afc::t_c052d14ebfbb01 89-90,96-98
+  s_50b1b090121afc::t_339a0c42f7a17b 99-100
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_50b1b090121afc::t_7020a169b16f9f 6-9,76-80,163-170,182,196-198,216,218,230-238,367,380,393,405-413,429
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_50b1b090121afc::t_a393a0dfb9d122 112
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_50b1b090121afc::t_a393a0dfb9d122 3157,3215
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_50b1b090121afc::t_3f65d3d2334972 5,77-86
+  s_50b1b090121afc::t_30a4df8d48fb08 87-89
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_50b1b090121afc::t_8fe3f1b478c6c8 56,208,231,260
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_50b1b090121afc::t_c15ae144631308 242-246
+  s_50b1b090121afc::t_2a3461425701db 2,4-6,10-14,18,131,167-241,247-271,286-296
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_50b1b090121afc::t_6df7778b9ffc9f 5,7,54-79
+  s_50b1b090121afc::t_533773acdb3510 80
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_50b1b090121afc::t_c052d14ebfbb01 429,695-696
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_50b1b090121afc::t_c24256a9f51723 147-152,156-157
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-conflict-policy.test.ts
+  s_50b1b090121afc::t_f16b858a16c88b 10,305-321
+  s_50b1b090121afc::t_d9410626accb2a 322
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_50b1b090121afc::t_8b494600b2f72b 1377
+packages/cli/src/modules/n8n-packages/entities/credential/credential-conflict-policy.ts
+  s_50b1b090121afc::t_3f65d3d2334972 59-63,172-187
+  s_50b1b090121afc::t_c4efd46340528c 188
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_50b1b090121afc::t_c15ae144631308 6-7,15-20,555-590,595-612,618-716
+  s_50b1b090121afc::t_50b67a65df4f05 591-594
+  s_50b1b090121afc::t_d45d3edd373480 613-617
+  s_50b1b090121afc::t_81669871d03fc9 717
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-orchestrator.credentials.test.ts
+  s_50b1b090121afc::t_75f43b42e5b942 1-3,5-85,88-147
+  s_50b1b090121afc::t_bafad2862f2b7d 4,86-87
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_50b1b090121afc::t_4bbe6eb2aaa78e 8,12,16,22,89,95-99,443-666,677-782,784
+  s_50b1b090121afc::t_d45d3edd373480 667-676
+  s_50b1b090121afc::t_0f8bc9f19324fe 783,785
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_50b1b090121afc::t_8cd8c5a2581fa7 260,519
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_50b1b090121afc::t_8b494600b2f72b 651
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_50b1b090121afc::t_af5d31827074d6 263,267,272
+  s_50b1b090121afc::t_a393a0dfb9d122 212-216,218,232,299,330,336,374,403
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_50b1b090121afc::t_d6187ffcfd483f 1287,1388,1459,1532,2222
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_50b1b090121afc::t_f16b858a16c88b 6,70-94
+  s_50b1b090121afc::t_0c1c58b3ce699f 95-96
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_50b1b090121afc::t_8b494600b2f72b 55-66,146,164
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_50b1b090121afc::t_010eff7ffb2e14 92-107
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_50b1b090121afc::t_064be4f3034c63 226-230,234-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "00683893b844a8cce566e1f96df4a5e5a127b1ed",
+  "prompts": {},
+  "sessions": {
+    "s_50b1b090121afc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88f5dc47-7526-4a2e-8300-2455990e4d9c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "John Doe <owner@example.com>"
+    }
+  }
+}
