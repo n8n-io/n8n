@@ -265,13 +265,14 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			expect(second.subjectClaim?.subject).toBe('alice-2');
 		});
 
-		it('refuses a subject without a binding and writes no row', async () => {
+		it('refuses a subject without a binding or an email and writes no row', async () => {
 			const source = await seedSource();
 			await createMember();
 
 			const result = await service.identify(verified(source, { sub: 'alice' }));
 
-			expect(rejectReason(result)).toBe('link-refused');
+			// Without an email there is nothing to link, so the request ends at provisioning.
+			expect(rejectReason(result)).toBe('provision-refused');
 			expect(await bindings.count()).toBe(0);
 		});
 
@@ -425,11 +426,13 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			const source = await seedSource({ linkByEmail: 'verified-only' });
 			const member = await createUser({ email });
 			const other = await createMember();
-			const repository = Container.get(UserRepository);
-			const original = repository.findByEmailWithRole.bind(repository);
-			vi.spyOn(repository, 'findByEmailWithRole').mockImplementationOnce(async (lookup) => {
-				await bind(source, 'alice', other.id);
-				return await original(lookup);
+			// The other request's row lands in the same transaction: SQLite allows one writer,
+			// so an out-of-band write would wait on the open transaction forever.
+			const repository = Container.get(TrustedSourceIdentityRepository);
+			const original = repository.insertIfAbsent.bind(repository);
+			vi.spyOn(repository, 'insertIfAbsent').mockImplementationOnce(async (row, ctx) => {
+				await original({ ...row, userId: other.id }, ctx);
+				await original(row, ctx);
 			});
 
 			const context = expectOk(
@@ -439,6 +442,10 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			expect(context.subject.id).toBe(other.id);
 			expect(context.subject.id).not.toBe(member.id);
 			expect(await bindings.countBy({ sourceId: source.id, subject: 'alice' })).toBe(1);
+			expect(emit).not.toHaveBeenCalledWith(
+				'trusted-source-identity-linked',
+				expect.objectContaining({ userId: member.id }),
+			);
 		});
 
 		it('keeps the first binding when insertIfAbsent runs twice for one subject', async () => {

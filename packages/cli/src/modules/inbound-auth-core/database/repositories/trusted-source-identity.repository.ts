@@ -1,7 +1,6 @@
 import { BaseRepository, OperationContext, TransactionRunner, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, type DeepPartial } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
 
 import {
 	TrustedSourceIdentityEntity,
@@ -17,6 +16,11 @@ class TrustedSourceIdentityStore extends BaseRepository<TrustedSourceIdentityEnt
 		return super.managerFor(ctx);
 	}
 }
+
+export type InsertTrustedSourceIdentityRow = Pick<
+	TrustedSourceIdentityEntity,
+	'sourceId' | 'subject' | 'userId' | 'provenance' | 'status'
+>;
 
 @Service()
 export class TrustedSourceIdentityRepository {
@@ -77,21 +81,38 @@ export class TrustedSourceIdentityRepository {
 
 	/** Writes the binding unless one exists for `(sourceId, subject)`; an existing row wins silently. */
 	async insertIfAbsent(
-		_row: Pick<
-			TrustedSourceIdentityEntity,
-			'sourceId' | 'subject' | 'userId' | 'provenance' | 'status'
-		>,
-		_ctx: OperationContext = {},
+		row: InsertTrustedSourceIdentityRow,
+		ctx: OperationContext = {},
 	): Promise<void> {
-		throw new UnexpectedError('not implemented');
+		await this.store
+			.managerFor(ctx)
+			.createQueryBuilder()
+			.insert()
+			.into(TrustedSourceIdentityEntity)
+			.values(row)
+			.orIgnore()
+			.execute();
 	}
 
-	/** Creates the user with its personal project and the binding in one unit of work. */
+	/**
+	 * Creates the user with its personal project and the binding in one unit of work.
+	 * If two concurrent first requests use one new email, the second request fails once on the
+	 * unique email index, and this is accepted.
+	 */
 	async createUserWithBinding(
-		_ctx: OperationContext,
-		_user: DeepPartial<User>,
-		_binding: Pick<TrustedSourceIdentityEntity, 'sourceId' | 'subject' | 'provenance' | 'status'>,
+		ctx: OperationContext,
+		user: DeepPartial<User>,
+		binding: Pick<InsertTrustedSourceIdentityRow, 'sourceId' | 'subject' | 'provenance' | 'status'>,
 	): Promise<User> {
-		throw new UnexpectedError('not implemented');
+		return await this.store.runInTransaction(ctx, async (tx) => {
+			const { user: createdUser } = await this.users.createUserWithProject(user, tx);
+
+			await tx.insert(TrustedSourceIdentityEntity, {
+				...binding,
+				userId: createdUser.id,
+			});
+
+			return createdUser;
+		});
 	}
 }
