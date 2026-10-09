@@ -1,9 +1,10 @@
 import { FakeChatModel } from '@langchain/core/utils/testing';
 import * as n8nUtilsSleep from '@n8n/utils/sleep';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { ClassificationResult } from '../classification';
 import { processItem } from '../processItem';
 import { TextClassifier } from '../TextClassifier.node';
 
@@ -14,6 +15,21 @@ vi.mock('../processItem', () => ({
 vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
 }));
+
+const fromZodSchema = vi.hoisted(() => vi.fn());
+vi.mock('@langchain/classic/output_parsers', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@langchain/classic/output_parsers')>();
+	return {
+		...actual,
+		StructuredOutputParser: {
+			...actual.StructuredOutputParser,
+			fromZodSchema: (schema: { shape: Record<string, unknown> }) => {
+				fromZodSchema(schema);
+				return actual.StructuredOutputParser.fromZodSchema(schema as never);
+			},
+		},
+	};
+});
 
 describe('TextClassifier Node', () => {
 	let node: TextClassifier;
@@ -51,14 +67,13 @@ describe('TextClassifier Node', () => {
 
 	describe('execute', () => {
 		it('should process items with correct parameters', async () => {
-			(processItem as Mock).mockResolvedValue({ test: true });
+			(processItem as Mock).mockResolvedValue({ matched: ['test'], fallback: false });
 
 			const result = await node.execute.call(mockExecuteFunction);
 
 			expect(processItem).toHaveBeenCalledWith(
 				mockExecuteFunction,
 				0,
-				{ json: { testValue: 'none' } },
 				expect.any(FakeChatModel),
 				expect.any(Object),
 				[{ category: 'test', description: 'test category' }],
@@ -66,7 +81,65 @@ describe('TextClassifier Node', () => {
 				'If there is not a very fitting category, select none of the categories.',
 			);
 
-			expect(result).toEqual([[{ json: { testValue: 'none' } }]]);
+			expect(result).toEqual([[{ json: { testValue: 'none' }, pairedItem: { item: 0 } }]]);
+		});
+
+		it('gives each branch its own copy of a multi-class item', async () => {
+			mockExecuteFunction.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
+				if (param === 'inputText') return 'Test input';
+				if (param === 'categories.categories')
+					return [
+						{ category: 'test1', description: 'first' },
+						{ category: 'test2', description: 'second' },
+					];
+				return defaultValue;
+			});
+			(processItem as Mock).mockResolvedValue({ matched: ['test1', 'test2'], fallback: false });
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			expect(result[0][0]).not.toBe(result[1][0]);
+			expect(result[0][0].json).not.toBe(result[1][0].json);
+			expect(result[0][0].json).toEqual(result[1][0].json);
+		});
+
+		it('routes only the categories the model matched', async () => {
+			mockExecuteFunction.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
+				if (param === 'inputText') return 'Test input';
+				if (param === 'categories.categories')
+					return [
+						{ category: 'test1', description: 'first' },
+						{ category: 'test2', description: 'second' },
+					];
+				return defaultValue;
+			});
+			(processItem as Mock).mockResolvedValue({ matched: ['test2'], fallback: false });
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			expect(result[0]).toHaveLength(0);
+			expect(result[1]).toHaveLength(1);
+		});
+
+		it('carries the rest of the item onto the branch', async () => {
+			mockExecuteFunction.getInputData.mockReturnValue([
+				{ json: { item: 1 }, binary: { file: { data: 'x', mimeType: 'text/plain' } } },
+			]);
+			(processItem as Mock).mockResolvedValue({ matched: ['test'], fallback: false });
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			expect(result[0][0].binary).toEqual({ file: { data: 'x', mimeType: 'text/plain' } });
+		});
+
+		it('leaves the input items alone', async () => {
+			const input = [{ json: { item: 1 } }];
+			mockExecuteFunction.getInputData.mockReturnValue(input);
+			(processItem as Mock).mockResolvedValue({ matched: ['test'], fallback: false });
+
+			await node.execute.call(mockExecuteFunction);
+
+			expect(input).toEqual([{ json: { item: 1 } }]);
 		});
 
 		it('should handle multiple input items', async () => {
@@ -85,8 +158,8 @@ describe('TextClassifier Node', () => {
 			]);
 
 			(processItem as Mock)
-				.mockResolvedValueOnce({ test1: true, test2: false })
-				.mockResolvedValueOnce({ test1: false, test2: true });
+				.mockResolvedValueOnce({ matched: ['test1'], fallback: false })
+				.mockResolvedValueOnce({ matched: ['test2'], fallback: false });
 
 			const result = await node.execute.call(mockExecuteFunction);
 
@@ -113,20 +186,43 @@ describe('TextClassifier Node', () => {
 			]);
 
 			(processItem as Mock)
-				.mockResolvedValueOnce({ test: true })
-				.mockResolvedValueOnce({ test: true })
-				.mockResolvedValueOnce({ test: true })
-				.mockResolvedValueOnce({ test: true });
+				.mockResolvedValueOnce({ matched: ['test'], fallback: false })
+				.mockResolvedValueOnce({ matched: ['test'], fallback: false })
+				.mockResolvedValueOnce({ matched: ['test'], fallback: false })
+				.mockResolvedValueOnce({ matched: ['test'], fallback: false });
 
 			const result = await node.execute.call(mockExecuteFunction);
 
 			expect(processItem).toHaveBeenCalledTimes(4);
 			expect(result[0]).toHaveLength(4);
 			expect(result[0]).toEqual([
+				{ json: { item: 1 }, pairedItem: { item: 0 } },
+				{ json: { item: 2 }, pairedItem: { item: 1 } },
+				{ json: { item: 3 }, pairedItem: { item: 2 } },
+				{ json: { item: 4 }, pairedItem: { item: 3 } },
+			]);
+		});
+
+		// Every other test here leaves batchSize at its default of 5, so they all take the batch path.
+		it('routes the same way with batching off', async () => {
+			mockExecuteFunction.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
+				if (param === 'inputText') return 'Test input';
+				if (param === 'categories.categories')
+					return [{ category: 'test', description: 'test category' }];
+				if (param === 'options.batching.batchSize') return 1;
+				return defaultValue;
+			});
+			mockExecuteFunction.getInputData.mockReturnValue([
 				{ json: { item: 1 } },
 				{ json: { item: 2 } },
-				{ json: { item: 3 } },
-				{ json: { item: 4 } },
+			]);
+			(processItem as Mock).mockResolvedValue({ matched: ['test'], fallback: false });
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			expect(result[0]).toEqual([
+				{ json: { item: 1 }, pairedItem: { item: 0 } },
+				{ json: { item: 2 }, pairedItem: { item: 1 } },
 			]);
 		});
 
@@ -149,7 +245,7 @@ describe('TextClassifier Node', () => {
 				{ json: { item: 6 } },
 			]);
 
-			(processItem as Mock).mockResolvedValue({ test: true });
+			(processItem as Mock).mockResolvedValue({ matched: ['test'], fallback: false });
 
 			await node.execute.call(mockExecuteFunction);
 
@@ -174,9 +270,9 @@ describe('TextClassifier Node', () => {
 			]);
 
 			(processItem as Mock)
-				.mockResolvedValueOnce({ test: true })
+				.mockResolvedValueOnce({ matched: ['test'], fallback: false })
 				.mockRejectedValueOnce(new Error('Batch error'))
-				.mockResolvedValueOnce({ test: true });
+				.mockResolvedValueOnce({ matched: ['test'], fallback: false });
 
 			mockExecuteFunction.continueOnFail.mockReturnValue(true);
 
@@ -184,6 +280,142 @@ describe('TextClassifier Node', () => {
 
 			expect(result[0]).toHaveLength(3);
 			expect(result[0][1].json).toHaveProperty('error', 'Batch error');
+		});
+
+		describe('confidence scores', () => {
+			const withCategories = (
+				categories: Array<{ category: string; description: string }>,
+				options: Record<string, unknown> = {},
+			) => {
+				mockExecuteFunction.getNodeParameter.mockImplementation(
+					(param, _itemIndex, defaultValue) => {
+						if (param === 'inputText') return 'Test input';
+						if (param === 'categories.categories') return categories;
+						if (param === 'options') return { includeConfidenceScores: true, ...options };
+						return defaultValue;
+					},
+				);
+			};
+			const twoCategories = [
+				{ category: 'Billing', description: 'first' },
+				{ category: 'Urgent', description: 'second' },
+			];
+
+			it.each([
+				['asks the model for scores when the option is on', true],
+				['leaves them out when it is off', false],
+			])('%s', async (_name, on) => {
+				withCategories(twoCategories, { includeConfidenceScores: on });
+				(processItem as Mock).mockResolvedValue({ matched: [], fallback: false });
+
+				await node.execute.call(mockExecuteFunction);
+
+				const schema = fromZodSchema.mock.calls.at(-1)?.[0] as { shape: Record<string, unknown> };
+				expect('confidence' in schema.shape).toBe(on);
+			});
+
+			it('adds nothing while the option is off', async () => {
+				(processItem as Mock).mockResolvedValue({
+					matched: ['test'],
+					fallback: false,
+					scores: { test: 0.9 },
+				});
+
+				const result = await node.execute.call(mockExecuteFunction);
+
+				expect(result[0][0].json).toEqual({ testValue: 'none' });
+			});
+
+			it.each<[string, Record<string, unknown>, ClassificationResult, number, IDataObject]>([
+				[
+					'the score for its own category',
+					{},
+					{
+						matched: ['Billing', 'Urgent'],
+						fallback: false,
+						scores: { Billing: 0.92, Urgent: 0.61 },
+					},
+					0,
+					{ category: 'Billing', confidence: 0.92, scores: { Billing: 0.92, Urgent: 0.61 } },
+				],
+				[
+					'the sibling branch a score of its own',
+					{},
+					{
+						matched: ['Billing', 'Urgent'],
+						fallback: false,
+						scores: { Billing: 0.92, Urgent: 0.61 },
+					},
+					1,
+					{ category: 'Urgent', confidence: 0.61, scores: { Billing: 0.92, Urgent: 0.61 } },
+				],
+				[
+					'the Other branch the fallback score, and no score of its own',
+					{ fallback: 'other' },
+					{ matched: [], fallback: true, scores: { Billing: 0.1, Urgent: 0.05, fallback: 0.8 } },
+					2,
+					{ category: 'Other', confidence: 0.8, scores: { Billing: 0.1, Urgent: 0.05 } },
+				],
+				[
+					'a score of zero, which is an answer and not a gap',
+					{},
+					{ matched: ['Billing'], fallback: false, scores: { Billing: 0, Urgent: 0 } },
+					0,
+					{ category: 'Billing', confidence: 0, scores: { Billing: 0, Urgent: 0 } },
+				],
+				[
+					'only the category when no score is usable',
+					{},
+					{ matched: ['Billing'], fallback: false },
+					0,
+					{ category: 'Billing' },
+				],
+				[
+					'only the category when every score belongs to the fallback',
+					{ fallback: 'other' },
+					{ matched: ['Billing'], fallback: false, scores: { fallback: 0.4 } },
+					0,
+					{ category: 'Billing' },
+				],
+			])('gives %s', async (_name, options, classified, branch, expected) => {
+				withCategories(twoCategories, options);
+				mockExecuteFunction.getInputData.mockReturnValue([{ json: { id: 7 } }]);
+				(processItem as Mock).mockResolvedValue(classified);
+
+				const result = await node.execute.call(mockExecuteFunction);
+				const { id, classification } = result[branch][0].json as {
+					id: number;
+					classification: IDataObject;
+				};
+
+				expect(id).toBe(7);
+				expect(classification).toEqual(expected);
+				// `toEqual` ignores a key set to undefined, so absence needs its own assertion.
+				expect(Object.keys(classification)).toEqual(Object.keys(expected));
+			});
+
+			it('refuses a category named after the key the scores use', async () => {
+				withCategories([{ category: 'confidence', description: 'clashes' }]);
+				(processItem as Mock).mockResolvedValue({ matched: [], fallback: false });
+
+				await expect(node.execute.call(mockExecuteFunction)).rejects.toThrow(
+					'The category name "confidence" is reserved when confidence scores are on',
+				);
+			});
+
+			it('allows that category while the option is off', async () => {
+				mockExecuteFunction.getNodeParameter.mockImplementation(
+					(param, _itemIndex, defaultValue) => {
+						if (param === 'inputText') return 'Test input';
+						if (param === 'categories.categories')
+							return [{ category: 'confidence', description: 'clashes' }];
+						return defaultValue;
+					},
+				);
+				(processItem as Mock).mockResolvedValue({ matched: ['confidence'], fallback: false });
+
+				await expect(node.execute.call(mockExecuteFunction)).resolves.toHaveLength(1);
+			});
 		});
 
 		it('should throw error when continueOnFail is false', async () => {

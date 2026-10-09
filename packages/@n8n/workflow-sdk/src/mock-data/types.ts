@@ -70,6 +70,7 @@ export interface NodeSchemaContext {
 	/** The filter a Data Table `get` node applies; the pinned rows are its output, not the table. */
 	dataTableRead?: DataTableReadParameters;
 	declaredFields?: DeclaredFieldContract;
+	classifierReportsConfidence?: boolean;
 }
 
 export interface PinDataGenerationInstructions {

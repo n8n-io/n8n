@@ -10,11 +10,17 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { z } from 'zod';
 
 import { getBatchingOptionFields } from '@n8n/ai-utilities';
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 
+import {
+	buildClassificationSchema,
+	findReservedCategory,
+	FALLBACK_KEY,
+	type Category,
+	type ClassificationResult,
+} from './classification';
 import { processItem } from './processItem';
 
 const SYSTEM_PROMPT_TEMPLATE =
@@ -29,6 +35,53 @@ const configuredOutputs = (parameters: INodeParameters) => {
 	if (fallback === 'other') ret.push({ type: 'main', displayName: 'Other' });
 	return ret;
 };
+
+const OTHER_LABEL = 'Other';
+
+/** One item can match several branches, and a shared object would carry one branch's writes onto the rest. */
+function routeItem(options: {
+	result: ClassificationResult;
+	item: INodeExecutionData;
+	itemIndex: number;
+	categories: Category[];
+	hasOtherBranch: boolean;
+	withConfidence: boolean;
+	returnData: INodeExecutionData[][];
+}): void {
+	const { result, item, itemIndex, categories, hasOtherBranch, withConfidence, returnData } =
+		options;
+
+	const scores = result.scores
+		? Object.fromEntries(
+				categories
+					.filter((category) => result.scores?.[category.category] !== undefined)
+					.map((category) => [category.category, result.scores?.[category.category]]),
+			)
+		: undefined;
+
+	const copy = (label: string, decisionKey: string): INodeExecutionData => {
+		const json = { ...item.json };
+
+		if (withConfidence) {
+			const confidence = result.scores?.[decisionKey];
+			json.classification = {
+				category: label,
+				...(confidence !== undefined && { confidence }),
+				...(scores && Object.keys(scores).length > 0 && { scores }),
+			};
+		}
+
+		return { ...item, json, pairedItem: { item: itemIndex } };
+	};
+
+	categories.forEach((category, index) => {
+		if (result.matched.includes(category.category))
+			returnData[index].push(copy(category.category, category.category));
+	});
+
+	if (hasOtherBranch && result.fallback)
+		returnData[returnData.length - 1].push(copy(OTHER_LABEL, FALLBACK_KEY));
+}
 
 export class TextClassifier implements INodeType {
 	description: INodeTypeDescription = {
@@ -118,6 +171,18 @@ export class TextClassifier implements INodeType {
 				],
 			},
 			{
+				displayName:
+					'Confidence scores are estimates from the model, not measured probabilities. They can change between runs, so treat them as a rough signal, not a threshold.',
+				name: 'confidenceScoresNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'/options.includeConfidenceScores': [true],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -148,6 +213,14 @@ export class TextClassifier implements INodeType {
 								description: "Create a separate output branch called 'Other'",
 							},
 						],
+					},
+					{
+						displayName: 'Include Confidence Scores',
+						name: 'includeConfidenceScores',
+						type: 'boolean',
+						default: false,
+						description:
+							"Whether to add a classification field to each item with the model's confidence score for every category",
 					},
 					{
 						displayName: 'System Prompt Template',
@@ -191,10 +264,7 @@ export class TextClassifier implements INodeType {
 			0,
 		)) as BaseLanguageModel;
 
-		const categories = this.getNodeParameter('categories.categories', 0, []) as Array<{
-			category: string;
-			description: string;
-		}>;
+		const categories = this.getNodeParameter('categories.categories', 0, []) as Category[];
 
 		if (categories.length === 0) {
 			throw new NodeOperationError(this.getNode(), 'At least one category must be defined');
@@ -205,24 +275,25 @@ export class TextClassifier implements INodeType {
 			fallback?: string;
 			systemPromptTemplate?: string;
 			enableAutoFixing: boolean;
+			includeConfidenceScores?: boolean;
 		};
 		const multiClass = options?.multiClass ?? false;
 		const fallback = options?.fallback ?? 'discard';
+		const withConfidence = options?.includeConfidenceScores ?? false;
 
-		const schemaEntries = categories.map((cat) => [
-			cat.category,
-			z
-				.boolean()
-				.describe(
-					`Should be true if the input has category "${cat.category}" (description: ${cat.description})`,
-				),
-		]);
-		if (fallback === 'other')
-			schemaEntries.push([
-				'fallback',
-				z.boolean().describe('Should be true if none of the other categories apply'),
-			]);
-		const schema = z.object(Object.fromEntries(schemaEntries));
+		const reserved = withConfidence ? findReservedCategory(categories) : undefined;
+		if (reserved) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`The category name "${reserved}" is reserved when confidence scores are on`,
+				{
+					description:
+						'The node reports the scores under that name. Rename the category, or turn off Include Confidence Scores.',
+				},
+			);
+		}
+
+		const schema = buildClassificationSchema(categories, fallback === 'other', withConfidence);
 
 		const structuredParser = StructuredOutputParser.fromZodSchema(schema);
 
@@ -249,12 +320,10 @@ export class TextClassifier implements INodeType {
 				const batch = items.slice(i, i + batchSize);
 				const batchPromises = batch.map(async (_item, batchItemIndex) => {
 					const itemIndex = i + batchItemIndex;
-					const item = items[itemIndex];
 
 					return await processItem(
 						this,
 						itemIndex,
-						item,
 						llm,
 						parser,
 						categories,
@@ -279,15 +348,15 @@ export class TextClassifier implements INodeType {
 							throw new NodeOperationError(this.getNode(), error);
 						}
 					} else {
-						const output = response.value;
-						const item = items[index];
-
-						categories.forEach((cat, idx) => {
-							if (output[cat.category]) returnData[idx].push(item);
+						routeItem({
+							result: response.value,
+							item: items[index],
+							itemIndex: index,
+							categories,
+							hasOtherBranch: fallback === 'other',
+							withConfidence,
+							returnData,
 						});
-
-						if (fallback === 'other' && output.fallback)
-							returnData[returnData.length - 1].push(item);
 					}
 				});
 
@@ -304,7 +373,6 @@ export class TextClassifier implements INodeType {
 					const output = await processItem(
 						this,
 						itemIndex,
-						item,
 						llm,
 						parser,
 						categories,
@@ -312,10 +380,15 @@ export class TextClassifier implements INodeType {
 						fallbackPrompt,
 					);
 
-					categories.forEach((cat, idx) => {
-						if (output[cat.category]) returnData[idx].push(item);
+					routeItem({
+						result: output,
+						item,
+						itemIndex,
+						categories,
+						hasOtherBranch: fallback === 'other',
+						withConfidence,
+						returnData,
 					});
-					if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(item);
 				} catch (error) {
 					const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex);
 					if (this.continueOnFail()) {

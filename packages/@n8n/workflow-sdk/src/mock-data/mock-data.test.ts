@@ -747,6 +747,38 @@ describe('ai-root shapes', () => {
 		);
 	});
 
+	it('describes the classifier by what its options ask for', async () => {
+		const { describeAiRootShape } = await import('./ai-root-shapes.js');
+		const classifier = '@n8n/n8n-nodes-langchain.textClassifier';
+
+		const on = describeAiRootShape(classifier, { classifierReportsConfidence: true });
+		const off = describeAiRootShape(classifier, { classifierReportsConfidence: false });
+
+		expect(on).not.toBe(off);
+		expect(off).toBe(describeAiRootShape(classifier));
+		expect(on).toContain('`classification` object');
+		expect(off).toContain('no classification wrapper key');
+	});
+
+	it('carries the classifier option into the rendered prompt section', async () => {
+		const { buildSchemaContexts } = await import('./context.js');
+		const { buildNodeSchemaSection } = await import('./prompt.js');
+		const node = (options: Record<string, unknown>) => ({
+			id: 'classifier-1',
+			name: 'Classifier',
+			type: '@n8n/n8n-nodes-langchain.textClassifier',
+			typeVersion: 1.1,
+			position: [0, 0] as [number, number],
+			parameters: { options },
+		});
+
+		const [on] = buildSchemaContexts([node({ includeConfidenceScores: true })]);
+		const [off] = buildSchemaContexts([node({})]);
+
+		expect(buildNodeSchemaSection(on).join('\n')).toContain('`classification` object');
+		expect(buildNodeSchemaSection(off).join('\n')).toContain('no classification wrapper key');
+	});
+
 	it('derives the structured envelope key from a with-parser schema', async () => {
 		const { findEnvelopeKey } = await import('./ai-root-shapes.js');
 
