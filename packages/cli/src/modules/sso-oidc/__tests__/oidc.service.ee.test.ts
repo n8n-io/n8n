@@ -6,7 +6,13 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
-import type { AuthIdentityRepository, SettingsRepository, User, UserRepository } from '@n8n/db';
+import type {
+	AuthIdentity,
+	AuthIdentityRepository,
+	SettingsRepository,
+	User,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { Cipher, InstanceSettings } from 'n8n-core';
@@ -773,6 +779,77 @@ describe('OidcService', () => {
 			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
 			expect(provisioningService.provisionExpressionMappedRolesForUser).not.toHaveBeenCalled();
 			expect(userRepository.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('callbacks without a UserInfo endpoint', () => {
+		const claims = {
+			sub: 'user-123',
+			email: 'user@example.com',
+			email_verified: true,
+			given_name: 'Alex',
+			family_name: 'Smith',
+		};
+		const metadata = {
+			issuer: 'https://example.com',
+			authorization_endpoint: 'https://example.com/auth',
+			token_endpoint: 'https://example.com/token',
+			jwks_uri: 'https://example.com/jwks',
+		};
+		const callbackUrl = new URL('https://example.com/callback');
+
+		beforeEach(async () => {
+			const actualClient = await vi.importActual<typeof import('openid-client')>('openid-client');
+			vi.mocked(client.discovery).mockResolvedValue(
+				new client.Configuration(metadata, mockOidcConfig.clientId),
+			);
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				id_token: 'valid-id-token',
+				claims: () => claims,
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			vi.mocked(client.fetchUserInfo).mockImplementation(actualClient.fetchUserInfo);
+			oidcService.verifyState = vi.fn().mockReturnValue({ state: 'valid-state' });
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
+		});
+
+		it('uses UserInfo in the test callback when the endpoint is available', async () => {
+			const userInfo = { sub: claims.sub, email: 'profile@example.com' };
+			vi.mocked(client.discovery).mockResolvedValue(
+				new client.Configuration(
+					{ ...metadata, userinfo_endpoint: 'https://example.com/userinfo' },
+					mockOidcConfig.clientId,
+				),
+			);
+			vi.mocked(client.fetchUserInfo).mockResolvedValue(userInfo);
+
+			const result = await oidcService.processTestCallback(callbackUrl, 'state', 'nonce');
+
+			expect(result).toEqual({ claims, userInfo });
+			expect(client.fetchUserInfo).toHaveBeenCalledWith(
+				expect.any(client.Configuration),
+				'valid-access-token',
+				claims.sub,
+			);
+		});
+
+		// IAM-1473: UserInfo is optional when the ID token contains the profile claims.
+		it('logs in with ID token profile claims when the endpoint is absent', async () => {
+			const user = mock<User>({ id: 'user-id', email: claims.email });
+			vi.mocked(authIdentityRepository.findOne).mockResolvedValue(mock<AuthIdentity>({ user }));
+
+			const result = await oidcService.loginUser(callbackUrl, 'state', 'nonce');
+
+			expect(result).toEqual({ user, idToken: 'valid-id-token' });
+			expect(client.fetchUserInfo).not.toHaveBeenCalled();
+		});
+
+		it('returns ID token profile claims in the test callback when the endpoint is absent', async () => {
+			const result = await oidcService.processTestCallback(callbackUrl, 'state', 'nonce');
+
+			expect(result).toEqual({ claims, userInfo: claims });
+			expect(client.fetchUserInfo).not.toHaveBeenCalled();
 		});
 	});
 
