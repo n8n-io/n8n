@@ -1,6 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import {
 	OutboundHttp,
+	SsrfBlockedHostnameError,
+	SsrfBlockedIpError,
 	retryabilityFromError,
 	type HttpRequestClient,
 	type TypedHttpFullResponse,
@@ -51,8 +53,7 @@ export class GitLabHostClient implements GitHostClient {
 		outboundHttp: OutboundHttp,
 		private readonly logger: Logger,
 	) {
-		// Self-managed GitLab can run on a private network.
-		this.http = outboundHttp.requests({ useDefaultSsrfPolicy: 'unsafe' });
+		this.http = outboundHttp.requests();
 	}
 
 	async validateAccess(access: GitHostAccess): Promise<void> {
@@ -93,9 +94,19 @@ export class GitLabHostClient implements GitHostClient {
 				disableFollowRedirect: true,
 			});
 		} catch (error) {
-			const codes = errorChain(error).flatMap(({ code }) =>
-				typeof code === 'string' ? [code] : [],
-			);
+			const chain = errorChain(error);
+			if (
+				chain.some(
+					(cause) =>
+						cause instanceof SsrfBlockedIpError || cause instanceof SsrfBlockedHostnameError,
+				)
+			) {
+				this.logger.warn('GitLab request blocked by instance network policy', { path });
+				throw new BadRequestError(
+					'The instance network policy blocks this GitLab URL. Ask an administrator to allow the GitLab hostname or IP address.',
+				);
+			}
+			const codes = chain.flatMap(({ code }) => (typeof code === 'string' ? [code] : []));
 			const code =
 				codes.find((value) => tlsErrorCodes.has(value)) ??
 				codes.find((value) => knownErrorCodes.has(value)) ??

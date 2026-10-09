@@ -1,18 +1,23 @@
 import { ApplyPackageResultDto, type ContinueApplyPackageDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { OutboundHttp, SsrfProtectionService, type DnsResolver } from '@n8n/backend-network';
 import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { Cipher } from 'n8n-core';
 import nock from 'nock';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@n8n/errors';
 import { PromotionConfigRepository } from '@/modules/promotions.ee/database/repositories/promotion-config.repository';
 import { PromotionConnectionProjectRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from '@/modules/promotions.ee/database/repositories/promotion-provider.repository';
+import { GitHostClients } from '@/modules/promotions.ee/git-hosts/git-host-clients';
+import { GitLabHostClient } from '@/modules/promotions.ee/git-hosts/gitlab-host.client';
 import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
@@ -168,6 +173,109 @@ describe('Promotions in Public API', () => {
 
 		beforeEach(() => vi.mocked(Container.get(Logger).warn).mockClear());
 		afterEach(() => nock.cleanAll());
+
+		describe('configured network policy', () => {
+			const dnsResolver = mock<DnsResolver>();
+			const internalBaseUrl = 'http://127.0.0.1:8929';
+
+			function useNetworkPolicy(config: SsrfProtectionConfig) {
+				dnsResolver.lookup.mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
+				const logger = Container.get(Logger);
+				const policy = new SsrfProtectionService(config, dnsResolver, logger);
+				const client = new GitLabHostClient(new OutboundHttp(policy, config, logger), logger);
+				return vi.spyOn(Container.get(GitHostClients), 'clientFor').mockReturnValue(client);
+			}
+
+			it.each([
+				{ enabled: false, allowed: false, expectedStatus: 201 },
+				{ enabled: true, allowed: false, expectedStatus: 400 },
+				{ enabled: true, allowed: true, expectedStatus: 201 },
+			])('applies configured IP rules: %j', async ({ enabled, allowed, expectedStatus }) => {
+				const config = new SsrfProtectionConfig();
+				config.enabled = enabled;
+				if (allowed) config.allowedIpRanges.push('127.0.0.1/32');
+				const clientFor = useNetworkPolicy(config);
+				const api = validAccess(internalBaseUrl);
+				try {
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.post('/promotions/providers')
+						.send({ ...payload, config: { ...payload.config, baseUrl: internalBaseUrl } });
+
+					expect(response.status, JSON.stringify(response.body)).toBe(expectedStatus);
+					if (expectedStatus === 201) {
+						expect(await Container.get(PromotionProviderRepository).count()).toBe(1);
+						api.done();
+					} else {
+						expect(response.body.message).toContain('instance network policy');
+						expect(response.body.message).toContain('Ask an administrator');
+						expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+						expect(api.pendingMocks()).toHaveLength(2);
+					}
+				} finally {
+					clientFor.mockRestore();
+				}
+			});
+
+			it.each([false, true])(
+				'applies configured hostname rules with allowed=%s',
+				async (allowed) => {
+					const config = new SsrfProtectionConfig();
+					config.enabled = true;
+					config.blockedHostnames.push('gitlab.example.com');
+					if (allowed) config.allowedHostnames.push('gitlab.example.com');
+					const clientFor = useNetworkPolicy(config);
+					const api = validAccess();
+					try {
+						const response = await testServer
+							.publicApiAgentFor(owner)
+							.post('/promotions/providers')
+							.send(payload);
+
+						expect(response.status, JSON.stringify(response.body)).toBe(allowed ? 201 : 400);
+						if (allowed) {
+							api.done();
+						} else {
+							expect(response.body.message).toContain('instance network policy');
+							expect(JSON.stringify(response.body)).not.toContain(payload.auth.password);
+							expect(
+								JSON.stringify(vi.mocked(Container.get(Logger).warn).mock.calls),
+							).not.toContain(payload.auth.password);
+							expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+							expect(api.pendingMocks()).toHaveLength(2);
+						}
+					} finally {
+						clientFor.mockRestore();
+					}
+				},
+			);
+
+			it('keeps stored settings when an edited host is not permitted', async () => {
+				validAccess();
+				const agent = testServer.publicApiAgentFor(owner);
+				const id = await createProvider(agent, payload);
+				const before = await Container.get(PromotionProviderRepository).findOneByOrFail({ id });
+				const config = new SsrfProtectionConfig();
+				config.enabled = true;
+				const clientFor = useNetworkPolicy(config);
+				const api = validAccess(internalBaseUrl);
+				try {
+					const response = await agent.put(`/promotions/providers/${id}`).send({
+						name: 'Changed',
+						config: { schemaVersion: 1, baseUrl: internalBaseUrl },
+					});
+
+					expect(response.status).toBe(400);
+					expect(response.body.message).toContain('instance network policy');
+					expect(await Container.get(PromotionProviderRepository).findOneByOrFail({ id })).toEqual(
+						before,
+					);
+					expect(api.pendingMocks()).toHaveLength(2);
+				} finally {
+					clientFor.mockRestore();
+				}
+			});
+		});
 
 		it('creates and renames a provider without exposing or replacing credentials', async () => {
 			const decrypt = vi.spyOn(Container.get(Cipher), 'decryptV2');

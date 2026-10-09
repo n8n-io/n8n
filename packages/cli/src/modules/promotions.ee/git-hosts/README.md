@@ -28,6 +28,10 @@ token for self-managed automation. A personal access token uses the same path.
 Grant `read_api` and `write_repository`. Protected branches can require the
 Maintainer role. API validation does not prove write permission on a repository.
 
+GitLab API requests follow the instance network policy. If enabled restrictions
+block an internal host, configure `N8N_SSRF_ALLOWED_HOSTNAMES` or
+`N8N_SSRF_ALLOWED_IP_RANGES` to permit it.
+
 The adapter checks the authenticated user and a one-project API page. An empty
 page is valid. Each HTTP read retries one transient transport or HTTP failure.
 Retries honor `Retry-After` waits up to one second. Longer waits return an
