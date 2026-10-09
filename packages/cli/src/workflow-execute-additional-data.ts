@@ -662,7 +662,12 @@ async function startExecution(
 			executionId,
 			workflowData,
 			additionalData.userId,
-			options.parentExecution,
+			{
+				parentExecution: options.parentExecution,
+				parentNode: options.node,
+				// The editor hides progress once the parent node finishes, which a non-waiting node does at once.
+				parentPushRef: options.doNotWaitToFinish ? undefined : additionalData.pushRef,
+			},
 		);
 		additionalDataIntegrated.executionId = executionId;
 		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
