@@ -1,0 +1,22 @@
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_d601bc3096fe4d::t_e1a098aaecacd6 255-260,265-270,295
+  s_d601bc3096fe4d::t_11d806574f55f7 261-264
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  s_d601bc3096fe4d::t_e1a098aaecacd6 104-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bdf5bbdb98a9ef1cd5d49154c1976b9480f01bf2",
+  "prompts": {},
+  "sessions": {
+    "s_d601bc3096fe4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48fbda43-86ad-4b54-b85a-036da5f1f528",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
