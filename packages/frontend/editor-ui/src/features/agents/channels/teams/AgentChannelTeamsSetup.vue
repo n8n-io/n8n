@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { saveAs } from 'file-saver';
-import { N8nButton, N8nCopyInput, N8nIcon, N8nStepper, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCopyInput, N8nIcon, N8nLink, N8nStepper, N8nText } from '@n8n/design-system';
 import type {
 	AgentJsonConfig,
 	AgentTeamsIntegrationSettings,
@@ -65,6 +65,7 @@ const emit = defineEmits<{
 	create: [];
 	edit: [];
 	connect: [];
+	done: [];
 }>();
 
 const i18n = useI18n();
@@ -72,6 +73,8 @@ const rootStore = useRootStore();
 const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 
+// The bot's subscription and resource group are picked in Azure, so this lists every Azure Bot.
+const AZURE_BOTS_URL = 'https://portal.azure.com/#browse/Microsoft.BotService%2FbotServices';
 const ENTRA_APP_REGISTRATION_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
 
@@ -265,8 +268,9 @@ onBeforeUnmount(() => (unmounted = true));
 
 // Set when the credential changed during a download, so the saved zip is for the old bot.
 const staleDownload = ref(false);
+// The credential the last package was built for. Done waits for one of the current credential.
+const downloadedFor = ref<string | null>(null);
 
-// Connecting closes the modal, so it waits for the package to be saved.
 async function downloadAndConnect() {
 	const id = credentialId.value;
 	staleDownload.value = false;
@@ -277,11 +281,38 @@ async function downloadAndConnect() {
 		staleDownload.value = true;
 		return;
 	}
+	downloadedFor.value = id;
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
 	});
 	if (!props.connected) emit('connect');
+}
+
+// The package fixes these settings, and connecting saves them, so they lock from the download on.
+// Channel settings is where they change after that.
+const availabilityLocked = computed(
+	() =>
+		!ready.value ||
+		props.connected ||
+		downloading.value ||
+		downloadedFor.value === credentialId.value,
+);
+
+const canFinish = computed(() => downloadedFor.value === credentialId.value && props.connected);
+
+function addToText(scopes?: { teamChannels?: boolean; groupChats?: boolean }) {
+	if (scopes?.teamChannels && scopes.groupChats)
+		return i18n.baseText('agents.channels.teams.setup.install.addTo.both');
+	if (scopes?.teamChannels) return i18n.baseText('agents.channels.teams.setup.install.addTo.teams');
+	if (scopes?.groupChats) return i18n.baseText('agents.channels.teams.setup.install.addTo.chats');
+	return null;
+}
+
+function uploadInstruction(scopes?: { teamChannels?: boolean; groupChats?: boolean }) {
+	const upload = i18n.baseText('agents.channels.teams.setup.install.description');
+	const addTo = addToText(scopes);
+	return addTo ? `${upload} ${addTo}` : upload;
 }
 
 // The modal clears the error when the credential changes. A conflict is about
@@ -372,9 +403,14 @@ const steps = computed(() => [
 		description: i18n.baseText('agents.channels.teams.setup.availability.description'),
 	},
 	{
+		id: 'download',
+		title: i18n.baseText('agents.channels.teams.setup.download.title'),
+		description: i18n.baseText('agents.channels.teams.setup.download.description'),
+	},
+	{
 		id: 'install',
 		title: i18n.baseText('agents.channels.teams.setup.install.title'),
-		description: i18n.baseText('agents.channels.teams.setup.install.description'),
+		description: uploadInstruction(availability.value),
 	},
 ]);
 
@@ -389,10 +425,12 @@ const currentSettings = computed<AgentTeamsIntegrationSettings>(() => {
 	return { ...rest, ...availability.value };
 });
 
+// Saving closes the modal, so after "Save and download" the toast is the only place left for the hint.
 function showDownloaded() {
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
+		message: i18n.baseText('agents.channels.teams.setup.install.hint'),
 	});
 }
 
@@ -442,6 +480,7 @@ defineExpose({
 	saveLabel,
 	beforeSave,
 	afterSave,
+	keepOpenAfterConnect: computed(() => props.mode === 'setup'),
 });
 </script>
 
@@ -613,8 +652,8 @@ defineExpose({
 
 					<div
 						v-else-if="step.id === 'availability'"
-						:class="[$style.stepStack, { [$style.locked]: !ready }]"
-						:inert="!ready || undefined"
+						:class="[$style.stepStack, { [$style.locked]: availabilityLocked }]"
+						:inert="availabilityLocked || undefined"
 						data-testid="teams-availability-step"
 					>
 						<AgentChannelTeamsAvailability
@@ -624,11 +663,7 @@ defineExpose({
 						/>
 					</div>
 
-					<div v-else-if="step.id === 'install'" :class="$style.stepStack">
-						<N8nText :class="$style.hint" size="small">
-							{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
-						</N8nText>
-
+					<div v-else-if="step.id === 'download'" :class="$style.stepStack">
 						<AgentChannelTeamsIdentityCard
 							:name="defaultDisplayName"
 							:description="defaultDescription"
@@ -656,7 +691,25 @@ defineExpose({
 						>
 							{{ i18n.baseText('agents.channels.teams.setup.install.needsReady') }}
 						</N8nText>
-						<!-- Connect errors otherwise land in step 2, far from this button. -->
+						<N8nText
+							v-if="downloadError"
+							size="small"
+							:class="$style.error"
+							data-testid="teams-download-error"
+						>
+							{{ downloadError }}
+						</N8nText>
+					</div>
+
+					<div
+						v-else-if="step.id === 'install'"
+						:class="$style.stepStack"
+						data-testid="teams-install-step"
+					>
+						<N8nText :class="$style.hint" size="small" data-testid="teams-upload-hint">
+							{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
+						</N8nText>
+						<!-- Connect errors otherwise land in step 2, far from this step. -->
 						<div v-if="showConnectError" :class="$style.actions">
 							<N8nText size="small" :class="$style.error" data-testid="teams-connect-error">
 								{{
@@ -677,14 +730,6 @@ defineExpose({
 							</N8nButton>
 						</div>
 						<N8nText
-							v-if="downloadError"
-							size="small"
-							:class="$style.error"
-							data-testid="teams-download-error"
-						>
-							{{ downloadError }}
-						</N8nText>
-						<N8nText
 							v-if="connected && !isPublished"
 							:class="$style.hint"
 							size="small"
@@ -692,6 +737,15 @@ defineExpose({
 						>
 							{{ i18n.baseText('agents.channels.teams.setup.publishNotice') }}
 						</N8nText>
+						<N8nButton
+							variant="solid"
+							size="medium"
+							:disabled="!canFinish"
+							data-testid="teams-done"
+							@click="emit('done')"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.install.done') }}
+						</N8nButton>
 					</div>
 				</div>
 			</template>
@@ -712,13 +766,7 @@ defineExpose({
 					:class="manifestChanged ? undefined : $style.hint"
 					data-testid="teams-update-notice"
 				>
-					{{
-						i18n.baseText(
-							manifestChanged
-								? 'agents.channels.teams.settings.updateNoticeChanged'
-								: 'agents.channels.teams.settings.updateNotice',
-						)
-					}}
+					{{ i18n.baseText('agents.channels.teams.settings.updateNotice') }}
 				</N8nText>
 			</div>
 
@@ -739,6 +787,9 @@ defineExpose({
 					:loading="downloading"
 					@download="downloadSaved"
 				/>
+				<N8nText :class="$style.hint" size="small" data-testid="teams-upload-instructions">
+					{{ i18n.baseText('agents.channels.teams.settings.uploadHint') }}
+				</N8nText>
 				<N8nText
 					v-if="downloadError"
 					size="small"
@@ -748,6 +799,19 @@ defineExpose({
 					{{ downloadError }}
 				</N8nText>
 			</div>
+			<N8nLink
+				:href="AZURE_BOTS_URL"
+				target="_blank"
+				rel="noopener noreferrer"
+				size="small"
+				:class="$style.azureLink"
+				data-testid="teams-azure-bot-link"
+			>
+				<span :class="$style.linkContent">
+					{{ i18n.baseText('agents.channels.teams.settings.findBot') }}
+					<N8nIcon icon="external-link" size="xsmall" />
+				</span>
+			</N8nLink>
 		</div>
 	</div>
 </template>
@@ -809,6 +873,16 @@ defineExpose({
 .locked {
 	opacity: 0.45;
 	pointer-events: none;
+}
+
+.azureLink {
+	align-self: flex-start;
+}
+
+.linkContent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .urlInput {
