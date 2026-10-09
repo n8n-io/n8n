@@ -163,6 +163,8 @@ packages/cli/src/services/static-auth-service.ts        @n8n-io/iam
 packages/cli/src/services/access.service.ts             @n8n-io/iam
 packages/cli/src/services/ai.service.ts                 @n8n-io/ai-assistant
 packages/cli/src/services/ai-usage.service.ts           @n8n-io/ai-assistant
+packages/cli/src/services/__tests__/ai-usage.service.test.ts @n8n-io/ai-assistant
+packages/cli/src/controllers/__tests__/ai.controller.test.ts @n8n-io/ai-assistant
 packages/cli/src/services/ai-workflow-builder.service.ts @n8n-io/ai-assistant
 packages/cli/src/services/annotation-tag.service.ee.ts  @n8n-io/ai
 packages/cli/src/services/folder.service.ts             @n8n-io/context
@@ -181,6 +183,7 @@ packages/frontend/editor-ui/                            @n8n-io/frontend
 packages/frontend/editor-ui/src/features/ai/            @n8n-io/ai
 packages/frontend/editor-ui/src/features/ai/assistant/  @n8n-io/ai-assistant
 packages/frontend/editor-ui/src/features/ai/chatHub/    @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/instanceAi/ @n8n-io/ai-assistant
 packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
 packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
 packages/frontend/editor-ui/src/features/integrations/  @n8n-io/ligo
