@@ -108,6 +108,7 @@ export class OtelLifecycleHandler {
 			executionId: ctx.executionId,
 			tracingContext,
 			savedIdentity,
+			emitStartSpan: this.otelSettingsService.getSettings().emitWorkflowStartSpan,
 			project: this.buildProjectContext(project),
 			workflow: {
 				id: ctx.workflow.id,
@@ -151,6 +152,7 @@ export class OtelLifecycleHandler {
 			tracingContext: previousWorkflowExecution,
 			linkTo: previousWorkflowExecution,
 			savedIdentity: toExecutionIdentity(previousWorkflowExecution?.identity),
+			emitStartSpan: this.otelSettingsService.getSettings().emitWorkflowStartSpan,
 			project: this.buildProjectContext(project),
 			workflow: {
 				id: ctx.workflow.id,
@@ -214,6 +216,7 @@ export class OtelLifecycleHandler {
 		this.tracer.startNode({
 			executionId: ctx.executionId,
 			node,
+			emitStartSpan: this.otelSettingsService.getSettings().emitNodeStartSpan,
 		});
 	}
 
