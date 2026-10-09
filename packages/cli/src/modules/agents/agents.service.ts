@@ -451,7 +451,9 @@ export class AgentsService {
 	): Promise<AgentListResult> {
 		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
 		const projectIds = projectRelations.map((pr) => pr.projectId);
-		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
+		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options, {
+			withProject: true,
+		});
 	}
 
 	/**

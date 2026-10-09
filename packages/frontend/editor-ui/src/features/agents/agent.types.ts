@@ -25,9 +25,9 @@ export type Agent = {
 	id: string;
 	name: string;
 	projectId: string;
-	// Narrow declaration of the eagerly-loaded home project relation — only
-	// the fields list consumers (e.g. the MCP agents table) read are typed.
-	project?: Pick<ProjectSharingData, 'id' | 'name' | 'type'> | null;
+	// Narrow declaration of the eagerly-loaded home project relation. Only
+	// fields that list consumers read are typed.
+	project?: Pick<ProjectSharingData, 'id' | 'name' | 'type' | 'icon'> | null;
 	availableInMCP?: boolean;
 	isCompiled: boolean;
 	isRunnable?: boolean;
