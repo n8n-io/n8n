@@ -27,6 +27,7 @@ const description = computed(() => describeAgentToolRestriction(nodeTypeName, sc
 				<N8nButton
 					variant="ghost"
 					size="small"
+					:class="$style.action"
 					data-test-id="restricted-tool-contact-admin"
 					@click="isContactAdminOpen = true"
 				>
@@ -37,3 +38,9 @@ const description = computed(() => describeAgentToolRestriction(nodeTypeName, sc
 		<ContactInstanceAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
 	</div>
 </template>
+
+<style lang="scss" module>
+.action {
+	margin-left: auto;
+}
+</style>
