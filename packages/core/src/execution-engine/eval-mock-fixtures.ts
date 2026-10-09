@@ -269,8 +269,8 @@ export function evalCanvasPng(): Buffer {
 const PDF_TEXT_MAX_LINES = 40;
 
 /**
- * Build a valid one-page PDF whose extractable text is `text` (ASCII-printable
- * subset; other characters become `?`). The xref offsets are computed, so
+ * Build a valid one-page PDF whose extractable text is `text` (WinAnsi subset:
+ * Latin-1 plus `€`; other characters become `?`). The xref offsets are computed, so
  * strict parsers (pdfjs-dist behind Extract From File) accept it — LLM-authored
  * "PDF bytes" never parse, so mock layers substitute these and keep the
  * scenario's document CONTENT model-authored as plaintext.
@@ -278,7 +278,12 @@ const PDF_TEXT_MAX_LINES = 40;
 export function buildPdfWithText(text: string): Buffer {
 	const lines = text
 		.split(/\r?\n/)
-		.map((line) => line.replace(/[^\x20-\x7e]/g, '?').trimEnd())
+		.map((line) =>
+			line
+				.replace(/€/g, '\x80')
+				.replace(/[^\x20-\x7e\x80\xa0-\xff]/g, '?')
+				.trimEnd(),
+		)
 		.filter((line) => line.length > 0)
 		.slice(0, PDF_TEXT_MAX_LINES);
 	if (lines.length === 0) lines.push('Mock PDF document');
@@ -297,7 +302,7 @@ export function buildPdfWithText(text: string): Buffer {
 		'<</Type/Catalog/Pages 2 0 R>>',
 		'<</Type/Pages/Kids[3 0 R]/Count 1>>',
 		'<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>',
-		'<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
+		'<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>',
 		`<</Length ${String(Buffer.byteLength(contentStream, 'latin1'))}>>\nstream\n${contentStream}\nendstream`,
 	];
 
@@ -504,10 +509,11 @@ export function synthesizeBinaryFixture(
 	const mime = (contentType || 'application/octet-stream').toLowerCase().split(';')[0].trim();
 	const hint: FixtureSizeHint = options.sizeHint ?? 'small';
 
-	if (options.text?.trim()) {
-		if (mime === 'application/pdf')
-			return applySizeHint(buildPdfWithText(options.text), hint, mime);
-		if (isTextMime(mime)) return applySizeHint(Buffer.from(options.text, 'utf8'), hint, mime);
+	if (options.text?.trim() && mime === 'application/pdf') {
+		return applySizeHint(buildPdfWithText(options.text), hint, mime);
+	}
+	if (options.text !== undefined && isTextMime(mime)) {
+		return applySizeHint(Buffer.from(options.text, 'utf8'), hint, mime);
 	}
 
 	const binary = pickBinaryFixture(mime, filename);
