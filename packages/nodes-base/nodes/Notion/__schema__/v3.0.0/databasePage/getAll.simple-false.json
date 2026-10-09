@@ -1,0 +1,196 @@
+{
+	"type": "object",
+	"properties": {
+		"object": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"created_time": {
+			"type": "string"
+		},
+		"last_edited_time": {
+			"type": "string"
+		},
+		"parent": {
+			"type": "object",
+			"properties": {
+				"type": {
+					"type": "string"
+				},
+				"database_id": {
+					"type": "string"
+				}
+			}
+		},
+		"archived": {
+			"type": "boolean"
+		},
+		"properties": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"title": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"plain_text": {
+									"type": "string"
+								}
+							}
+						}
+					},
+					"rich_text": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"plain_text": {
+									"type": "string"
+								}
+							}
+						}
+					},
+					"number": {
+						"type": ["number", "null"]
+					},
+					"select": {
+						"anyOf": [
+							{
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "string"
+									},
+									"name": {
+										"type": "string"
+									},
+									"color": {
+										"type": "string"
+									}
+								}
+							},
+							{
+								"type": "null"
+							}
+						]
+					},
+					"status": {
+						"anyOf": [
+							{
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "string"
+									},
+									"name": {
+										"type": "string"
+									},
+									"color": {
+										"type": "string"
+									}
+								}
+							},
+							{
+								"type": "null"
+							}
+						]
+					},
+					"multi_select": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								},
+								"color": {
+									"type": "string"
+								}
+							}
+						}
+					},
+					"date": {
+						"anyOf": [
+							{
+								"type": "object",
+								"properties": {
+									"start": {
+										"type": "string"
+									},
+									"end": {
+										"type": ["string", "null"]
+									},
+									"time_zone": {
+										"type": ["string", "null"]
+									}
+								}
+							},
+							{
+								"type": "null"
+							}
+						]
+					},
+					"people": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								},
+								"person": {
+									"type": "object",
+									"properties": {
+										"email": {
+											"type": "string"
+										}
+									}
+								}
+							}
+						}
+					},
+					"checkbox": {
+						"type": "boolean"
+					},
+					"url": {
+						"type": ["string", "null"]
+					},
+					"email": {
+						"type": ["string", "null"]
+					},
+					"relation": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"url": {
+			"type": "string"
+		}
+	},
+	"version": 1
+}

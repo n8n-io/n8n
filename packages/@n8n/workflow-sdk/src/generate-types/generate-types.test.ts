@@ -5798,6 +5798,61 @@ describe('generate-types', () => {
 		});
 	});
 
+	describe('jsonSchemaToTypeScript with additionalProperties', () => {
+		it('adds an index signature when an object has properties and an additionalProperties schema', () => {
+			const result = generateTypes.jsonSchemaToTypeScript({
+				type: 'object',
+				properties: { id: { type: 'string' } },
+				additionalProperties: { type: ['number', 'null'] },
+			});
+
+			expect(result).toContain('id?: string;');
+			expect(result).toContain('[key: string]: number | null | string | undefined;');
+		});
+
+		it('keeps the declared property types in the index signature union once', () => {
+			const result = generateTypes.jsonSchemaToTypeScript({
+				type: 'object',
+				properties: { id: { type: 'string' }, name: { type: 'string' } },
+				additionalProperties: { type: 'string' },
+			});
+
+			expect(result).toContain('[key: string]: string | undefined;');
+		});
+
+		it('keeps nested object types intact in the index signature union', () => {
+			const result = generateTypes.jsonSchemaToTypeScript({
+				type: 'object',
+				properties: { date: { type: 'object', properties: { end: { type: ['string', 'null'] } } } },
+				additionalProperties: { type: ['string', 'null'] },
+			});
+
+			expect(result).toContain('end?: string | null;');
+			expect(result).toMatch(
+				/\[key: string\]: string \| null \| \{[\s\S]*end\?: string \| null;[\s\S]*\} \| undefined;/,
+			);
+		});
+
+		it('does not add an index signature for additionalProperties: true', () => {
+			const result = generateTypes.jsonSchemaToTypeScript({
+				type: 'object',
+				properties: { id: { type: 'string' } },
+				additionalProperties: true,
+			});
+
+			expect(result).not.toContain('[key: string]');
+		});
+
+		it('still emits a Record when an object has only additionalProperties', () => {
+			const result = generateTypes.jsonSchemaToTypeScript({
+				type: 'object',
+				additionalProperties: { type: 'number' },
+			});
+
+			expect(result).toBe('Record<string, number>');
+		});
+	});
+
 	describe('discoverSchemasForNode', () => {
 		// Use real filesystem with temp directories under NODES_BASE_DIST
 		const NODES_BASE_DIST = path.resolve(__dirname, '../../../../nodes-base/dist/nodes');
