@@ -108,7 +108,7 @@ describe('SkillService', () => {
 	});
 
 	describe('conversions', () => {
-		it('writes allowed tools as the standard frontmatter key', () => {
+		it('ignores allowed tools on write', () => {
 			expect(
 				toSkillContent({
 					name: 'n',
@@ -121,28 +121,25 @@ describe('SkillService', () => {
 				name: 'n',
 				description: 'd',
 				instructions: 'i',
-				frontmatter: { 'allowed-tools': 'Read Grep' },
+				frontmatter: null,
 				files: [{ path: 'references/a.md', content: 'a' }],
 			});
 		});
 
-		it('reads allowed tools back from the frontmatter', () => {
+		it('keeps the frontmatter as given and reads no allowed tools from it', () => {
 			const row = versionRow(skillRow('skill_a'), 1, {
 				frontmatter: { 'allowed-tools': 'Read Grep', license: 'MIT' },
 			});
 
+			expect(toSkillContent(toAgentSkill(row), row.version.frontmatter).frontmatter).toEqual({
+				'allowed-tools': 'Read Grep',
+				license: 'MIT',
+			});
 			expect(toAgentSkill(row)).toEqual({
 				name: 'Brand voice',
 				description: 'Write in our voice',
 				instructions: 'Use short sentences.',
-				allowedTools: ['Read', 'Grep'],
 			});
-		});
-
-		it('ignores an allowed-tools value that is not a string', () => {
-			const row = versionRow(skillRow('skill_a'), 1, { frontmatter: { 'allowed-tools': 3 } });
-
-			expect(toAgentSkill(row).allowedTools).toBeUndefined();
 		});
 	});
 
@@ -286,17 +283,31 @@ describe('SkillService', () => {
 			);
 		});
 
-		it('removes allowed tools and references set to an empty list', async () => {
-			givenLatest(
-				versionRow(skill, 2, { frontmatter: { 'allowed-tools': 'Read' } }, [
-					{ path: 'references/a.md', content: 'a' },
-				]),
+		it('removes references set to an empty list', async () => {
+			givenLatest(versionRow(skill, 2, {}, [{ path: 'references/a.md', content: 'a' }]));
+
+			const result = await service.save('skill_a', { references: [] }, user.id);
+
+			expect(result.skill).not.toHaveProperty('references');
+		});
+
+		it('ignores allowed tools in the update', async () => {
+			givenLatest(versionRow(skill, 2, { frontmatter: { 'allowed-tools': 'Read' } }));
+
+			const result = await service.save(
+				'skill_a',
+				{ instructions: 'new', allowedTools: ['Bash'] },
+				user.id,
 			);
 
-			const result = await service.save('skill_a', { allowedTools: [], references: [] }, user.id);
-
 			expect(result.skill).not.toHaveProperty('allowedTools');
-			expect(result.skill).not.toHaveProperty('references');
+			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
+				'skill_a',
+				3,
+				expect.objectContaining({ frontmatter: { 'allowed-tools': 'Read' } }),
+				user.id,
+				TX_CTX,
+			);
 		});
 
 		it('keeps frontmatter keys the editor does not know', async () => {
