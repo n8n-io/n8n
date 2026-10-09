@@ -1,0 +1,106 @@
+packages/nodes-base/nodes/Mattermost/v1/actions/user/invite/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,16
+packages/nodes-base/nodes/Mattermost/v1/methods/loadOptions.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 2,8,50,93,129
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/statistics/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,15
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/addUser/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,15
+packages/nodes-base/nodes/WhatsApp/tests/node/loadOptions.test.ts
+  s_2e1fa95fc44f8f::t_c02225596cb783 2,36,46
+packages/nodes-base/nodes/WhatsApp/tests/node/sendAndWait.test.ts
+  s_2e1fa95fc44f8f::t_c02225596cb783 3,66
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/search/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,15
+packages/nodes-base/nodes/Mattermost/v1/actions/user/create/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,16
+packages/nodes-base/nodes/WhatsApp/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_bd1d1bb8aaf02f 10-11,13,51,58,66,84,94,105,116,131
+packages/nodes-base/nodes/WhatsApp/MessageFunctions.ts
+  s_2e1fa95fc44f8f::t_bd1d1bb8aaf02f 70-71
+  s_2e1fa95fc44f8f::t_fc46a6b278a674 10,12
+packages/nodes-base/nodes/Mattermost/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_f613ea9ac8001f 1,8
+  s_2e1fa95fc44f8f::t_eb838173fb6ff8 2-7,9-40
+packages/nodes-base/nodes/Mattermost/v1/actions/message/postEphemeral/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,12
+packages/nodes-base/nodes/Mattermost/v1/actions/user/getAll/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 3,16
+packages/nodes-base/nodes/Mattermost/v1/actions/message/post/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,11
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/create/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,13
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_2e1fa95fc44f8f::t_8eeae91c22a954 33,70
+packages/nodes-base/nodes/Mattermost/v1/actions/user/getByEmail/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,14
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/del/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,12
+packages/nodes-base/nodes/Mattermost/v1/actions/user/getById/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,12
+packages/nodes-base/nodes/Mattermost/v1/actions/reaction/create/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,12
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/members/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,18,39
+packages/nodes-base/nodes/Mattermost/v1/actions/reaction/del/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,13
+packages/nodes-base/nodes/WhatsApp/WhatsApp.node.ts
+  s_2e1fa95fc44f8f::t_fc46a6b278a674 10-14
+  s_2e1fa95fc44f8f::t_bd1d1bb8aaf02f 107,147-152,156
+  s_2e1fa95fc44f8f::t_949f6ef263067f 3,8
+  s_2e1fa95fc44f8f::t_c401f2e846345f 9
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/restore/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,15
+packages/nodes-base/nodes/Mattermost/v1/actions/reaction/getAll/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,15
+packages/nodes-base/nodes/Mattermost/v1/actions/user/deactive/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,13
+packages/nodes-base/eslint.config.mjs
+  s_2e1fa95fc44f8f::t_eb838173fb6ff8 156-160,168
+  s_2e1fa95fc44f8f::t_bdd4328de91933 155
+packages/nodes-base/nodes/Mattermost/v1/actions/message/del/execute.ts
+  s_2e1fa95fc44f8f::t_949f6ef263067f 1,12
+packages/nodes-base/nodes/Mattermost/v1/transport/index.ts
+  s_2e1fa95fc44f8f::t_83355e7da16360 9-10,12,20,27,31,44
+packages/nodes-base/nodes/WhatsApp/tests/utils.test.ts
+  s_2e1fa95fc44f8f::t_c246194685da41 1-2
+  s_2e1fa95fc44f8f::t_7a6782d8439223 52,62,77-87,102,112
+packages/@n8n/eslint-config/src/rules/no-unneeded-backticks.test.ts
+  s_2e1fa95fc44f8f::t_1b6445514c5b17 9
+packages/@n8n/eslint-config/src/rules/require-request-target.test.ts
+  s_2e1fa95fc44f8f::t_e16dcc2c09e9c3 1-202
+packages/@n8n/eslint-config/src/rules/require-request-target.ts
+  s_2e1fa95fc44f8f::t_bc04d6a87a74a4 1-227
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  s_2e1fa95fc44f8f::t_a39c0559364370 12,14,23,28,34,171,178
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/factory.ts
+  s_2e1fa95fc44f8f::t_ceaccb8a0275b5 14,17,28,72-75,109,150-155,203,206,223,227
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/request-target.ts
+  s_2e1fa95fc44f8f::t_67837845f77661 1-32
+packages/workflow/src/index.ts
+  s_2e1fa95fc44f8f::t_acecb62f8358bd 121-122
+packages/workflow/src/interfaces.ts
+  s_2e1fa95fc44f8f::t_762326c3679b5e 47,580-588,1028-1031,1033-1035,1037-1038,1040,1045,1057,1065,1076,1085
+packages/workflow/src/request-target.ts
+  s_2e1fa95fc44f8f::t_55815c1b303d26 1,4-5,7-8,10-34,37-38,41-58,60-67,69-88,90-117,119-123,125-130
+packages/workflow/test/request-target.test.ts
+  s_2e1fa95fc44f8f::t_ee1f6c74aaee4f 3-53,56-61,63-67,70-73,75-76,79-81,84-86,88,90-92,94-114,116-121,124-125,127-128,130-132,136-176
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/request-target.test.ts
+  s_2e1fa95fc44f8f::t_20a5e017c2a3ff 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e17ff82d47183f612c17d419b176e777c822d3c3",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
