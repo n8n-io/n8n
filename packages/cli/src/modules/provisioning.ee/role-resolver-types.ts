@@ -19,7 +19,7 @@ export interface RoleResolverContext {
 
 	// Future: $ldap?: { attributes: Record<string, unknown> }
 
-	$provider: 'oidc' | 'saml' | 'ldap';
+	$provider: 'oidc' | 'saml' | 'ldap' | 'oauth2';
 
 	/** Populated per-rule during project role evaluation */
 	$project?: ProjectInfo;
