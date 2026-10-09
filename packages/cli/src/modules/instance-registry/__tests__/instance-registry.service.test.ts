@@ -6,6 +6,8 @@ import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import { N8N_VERSION } from '@/constants';
+
 import { InstanceRegistryService } from '../instance-registry.service';
 import { REGISTRY_CONSTANTS } from '../instance-registry.types';
 import type { InstanceStorage } from '../storage/instance-storage.interface';
@@ -233,6 +235,83 @@ describe('InstanceRegistryService', () => {
 					backend: 'memory',
 					instanceType: 'main',
 				}),
+			);
+		});
+
+		it.each(['main', 'worker', 'webhook'] as const)(
+			'should log the aligned cluster version on a %s instance',
+			async (instanceType) => {
+				service = createService({ instanceType });
+
+				await service.init();
+
+				expect(logger.info).toHaveBeenCalledWith(`Cluster aligned on version ${N8N_VERSION}`, {
+					instances: [
+						expect.objectContaining({
+							hostId: 'main-abc123',
+							instanceType,
+							instanceRole: 'unset',
+							version: N8N_VERSION,
+						}),
+					],
+				});
+			},
+		);
+
+		it('should log both versions and all instances on a non-leader main', async () => {
+			const storage = new (RedisInstanceStorage as unknown as new () => RedisInstanceStorage)();
+			Container.set(RedisInstanceStorage, storage);
+			service = createService({ isMultiMain: true, instanceRole: 'follower' });
+			await storage.register({
+				...service.getLocalInstance(),
+				instanceKey: 'old-key',
+				hostId: 'old-main',
+				instanceRole: 'leader',
+				version: '2.27.4',
+			});
+			const read = vi.spyOn(storage, 'getAllRegistrations');
+
+			await service.init();
+
+			expect(logger.info).toHaveBeenCalledWith(
+				`Cluster is running multiple n8n versions: 2.27.4, ${N8N_VERSION}`,
+				{
+					instances: expect.arrayContaining([
+						{
+							hostId: 'old-main',
+							instanceType: 'main',
+							instanceRole: 'leader',
+							version: '2.27.4',
+						},
+						{
+							hostId: 'main-abc123',
+							instanceType: 'main',
+							instanceRole: 'follower',
+							version: N8N_VERSION,
+						},
+					]),
+				},
+			);
+			await service.heartbeat();
+			expect(read).toHaveBeenCalledTimes(1);
+		});
+
+		it('should continue startup when the cluster version read fails', async () => {
+			const storage = new (RedisInstanceStorage as unknown as new () => RedisInstanceStorage)();
+			Container.set(RedisInstanceStorage, storage);
+			service = createService({ isMultiMain: true });
+			const error = new Error('Redis down');
+			vi.spyOn(storage, 'getAllRegistrations').mockRejectedValueOnce(error);
+
+			await expect(service.init()).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to inspect cluster versions after registration',
+				{ error },
+			);
+			expect(logger.info).not.toHaveBeenCalledWith(
+				expect.stringContaining('Cluster aligned'),
+				expect.anything(),
 			);
 		});
 

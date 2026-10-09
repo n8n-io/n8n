@@ -45,6 +45,31 @@ export class InstanceRegistryService {
 			backend: this.storage.kind,
 			instanceType: this.instanceSettings.instanceType,
 		});
+
+		await this.logClusterVersions();
+	}
+
+	private async logClusterVersions(): Promise<void> {
+		try {
+			const registrations = await this.storage.getAllRegistrations();
+			const versions = [...new Set(registrations.map((instance) => instance.version))].sort();
+			const instances = registrations.map(({ hostId, instanceType, instanceRole, version }) => ({
+				hostId,
+				instanceType,
+				instanceRole,
+				version,
+			}));
+
+			if (versions.length > 1) {
+				this.logger.info(`Cluster is running multiple n8n versions: ${versions.join(', ')}`, {
+					instances,
+				});
+			} else if (versions.length === 1) {
+				this.logger.info(`Cluster aligned on version ${versions[0]}`, { instances });
+			}
+		} catch (error) {
+			this.logger.warn('Failed to inspect cluster versions after registration', { error });
+		}
 	}
 
 	async shutdown() {
