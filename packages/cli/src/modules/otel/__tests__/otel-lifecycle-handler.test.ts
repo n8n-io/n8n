@@ -376,6 +376,38 @@ describe('OtelLifecycleHandler', () => {
 			expect(traceContextService.get).toHaveBeenCalledWith('exec-sub');
 		});
 
+		it('should not ask for a workflow start span when the flag is off', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ emitStartSpan: false }),
+			);
+		});
+
+		it('should ask for a workflow start span when the flag is on', async () => {
+			otelSettingsService._settings.emitWorkflowStartSpan = true;
+			traceContextService.get.mockResolvedValueOnce(undefined);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ emitStartSpan: true }),
+			);
+		});
+
+		it('should ask for a workflow start span without a workflow instance (queue-mode main)', async () => {
+			otelSettingsService._settings.emitWorkflowStartSpan = true;
+			traceContextService.get.mockResolvedValueOnce(undefined);
+
+			await handler.onWorkflowStart({ ...baseCtx, workflowInstance: undefined });
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ emitStartSpan: true }),
+			);
+		});
+
 		it('should always persist generated spanContext', async () => {
 			traceContextService.get.mockResolvedValueOnce(parentTracingContext);
 
@@ -708,6 +740,23 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
+		it('should ask for a workflow start span on resume when the flag is on', async () => {
+			otelSettingsService._settings.emitWorkflowStartSpan = true;
+			traceContextService.get.mockResolvedValueOnce(prePauseContext);
+
+			await handler.onWorkflowResume({
+				type: 'workflowExecuteResume',
+				workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
+				workflowInstance: createWorkflowInstance(),
+				executionData: undefined as never,
+				executionId: 'exec-resume',
+			} as never);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ emitStartSpan: true }),
+			);
+		});
+
 		it('should start a root span when no pre-wait context is persisted', async () => {
 			traceContextService.get.mockResolvedValueOnce(undefined);
 
@@ -1032,7 +1081,21 @@ describe('OtelLifecycleHandler', () => {
 		it('should call tracer.startNode with the resolved node', () => {
 			handler.onNodeStart(makeStartCtx());
 
-			expect(tracer.startNode).toHaveBeenCalledWith({ executionId: 'exec-1', node });
+			expect(tracer.startNode).toHaveBeenCalledWith({
+				executionId: 'exec-1',
+				node,
+				emitStartSpan: false,
+			});
+		});
+
+		it('should ask for a node start span when the flag is on', () => {
+			otelSettingsService._settings.emitNodeStartSpan = true;
+
+			handler.onNodeStart(makeStartCtx());
+
+			expect(tracer.startNode).toHaveBeenCalledWith(
+				expect.objectContaining({ emitStartSpan: true }),
+			);
 		});
 
 		it('should not call tracer.startNode when node is not found in workflow', () => {
