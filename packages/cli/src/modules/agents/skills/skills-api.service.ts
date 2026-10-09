@@ -97,7 +97,11 @@ export class SkillsApiService {
 		payload: UpdateAgentSkillDto,
 	): Promise<SkillSaveResponse> {
 		await this.requireAccess(user, skillId, 'update');
-		const saved = await this.skillService.save(skillId, { ...payload }, user.id);
+		const { followingAgentIds: _following, ...saved } = await this.skillService.save(
+			skillId,
+			{ ...payload },
+			user.id,
+		);
 		return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
 	}
 

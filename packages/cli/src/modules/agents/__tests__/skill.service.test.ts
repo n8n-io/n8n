@@ -384,11 +384,34 @@ describe('SkillService', () => {
 
 			expect(clearRuntimes.mock.calls).toEqual([['agent-1'], ['agent-2']]);
 			expect(broadcaster.notify).toHaveBeenCalledTimes(2);
-			expect(broadcaster.notify).toHaveBeenCalledWith({
-				projectId: PROJECT,
-				agentId: 'agent-2',
-				source: 'user',
-			});
+			expect(broadcaster.notify).toHaveBeenCalledWith(
+				{ projectId: PROJECT, agentId: 'agent-2', source: 'user' },
+				undefined,
+			);
+		});
+
+		it('sends no update push to the tab that saved', async () => {
+			givenLatest(versionRow(skill, 2));
+			skills.findFollowingAgentIds.mockResolvedValue(['agent-1']);
+			agents.findProjectIdsByIds.mockResolvedValue([{ id: 'agent-1', projectId: PROJECT }]);
+
+			await service.save('skill_a', { instructions: 'new' }, user.id, {}, 'push-ref-1');
+
+			expect(broadcaster.notify).toHaveBeenCalledWith(
+				{ projectId: PROJECT, agentId: 'agent-1', source: 'user' },
+				'push-ref-1',
+			);
+		});
+
+		it("leaves the refresh to the caller when it runs in the caller's transaction", async () => {
+			givenLatest(versionRow(skill, 2));
+			skills.findFollowingAgentIds.mockResolvedValue(['agent-1']);
+
+			const result = await service.save('skill_a', { instructions: 'new' }, user.id, TX_CTX);
+
+			expect(result.followingAgentIds).toEqual(['agent-1']);
+			expect(clearRuntimes).not.toHaveBeenCalled();
+			expect(broadcaster.notify).not.toHaveBeenCalled();
 		});
 
 		it('rejects a rename that clashes on a following agent', async () => {

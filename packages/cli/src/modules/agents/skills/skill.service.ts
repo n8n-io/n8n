@@ -34,6 +34,8 @@ export type SkillSaveResult = {
 	created: boolean;
 	/** The content of the latest version after the save. */
 	skill: AgentSkill;
+	/** Agents that follow the skill. A save in a caller's transaction does not refresh them. */
+	followingAgentIds: string[];
 };
 
 /**
@@ -156,12 +158,16 @@ export class SkillService {
 	 * runs the new version, and each one that was in sync with its published version
 	 * shows unpublished changes. `baseSkillHash` is checked under the edit lock, so two
 	 * saves from the same base cannot both pass.
+	 *
+	 * When `ctx` has a transaction, the caller calls `refreshFollowingAgents` after its
+	 * commit. `pushRef` is the tab that saved: it gets no reload push.
 	 */
 	async save(
 		skillId: string,
 		update: SkillUpdate,
 		userId: string,
 		ctx: OperationContext = {},
+		pushRef?: string,
 	): Promise<SkillSaveResult> {
 		const { saved, following } = await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -180,7 +186,8 @@ export class SkillService {
 			const content = toSkillContent(skill, latest.version.frontmatter);
 			if (skillContentHash(content) === latest.version.contentHash) {
 				const unchanged = { versionId: latest.version.id, version: latest.version.version };
-				return { saved: { ...unchanged, created: false, skill: current }, following: [] };
+				const result = { ...unchanged, created: false, skill: current, followingAgentIds: [] };
+				return { saved: result, following: [] };
 			}
 			if (skill.name !== latest.version.name) {
 				await this.assertRenameKeepsNamesApart(skillId, latest.version.name, skill.name, txCtx);
@@ -195,9 +202,10 @@ export class SkillService {
 			);
 			const followingIds = await this.skillRepository.findFollowingAgentIds([skillId], txCtx);
 			await this.agentRepository.markDraftChangedIfInSync(followingIds, txCtx);
-			return { saved: { versionId, version, created: true, skill }, following: followingIds };
+			const result = { versionId, version, created: true, skill, followingAgentIds: followingIds };
+			return { saved: result, following: followingIds };
 		});
-		if (following.length > 0) await this.refreshAgents(following);
+		if (!ctx.trx) await this.refreshFollowingAgents(following, pushRef);
 		this.logger.debug('Saved skill', {
 			skillId,
 			version: saved.version,
@@ -207,18 +215,21 @@ export class SkillService {
 		return saved;
 	}
 
-	/** After a save: following agents drop their cached runtime and their editors reload. */
-	private async refreshAgents(agentIds: string[]): Promise<void> {
+	/**
+	 * After a save commits: following agents drop their cached runtime and their editors
+	 * reload, except the tab of `excludePushRef`.
+	 */
+	async refreshFollowingAgents(agentIds: string[], excludePushRef?: string): Promise<void> {
+		if (agentIds.length === 0) return;
 		// Imported on use: the runtime cache depends on services that will depend on this one.
 		const { AgentRuntimeCacheService } = await import('../agent-runtime-cache.service.js');
 		const cache = Container.get(AgentRuntimeCacheService);
 		for (const agentId of agentIds) cache.clearRuntimes(agentId);
 		for (const agent of await this.agentRepository.findProjectIdsByIds(agentIds)) {
-			this.agentUpdateBroadcaster.notify({
-				projectId: agent.projectId,
-				agentId: agent.id,
-				source: 'user',
-			});
+			this.agentUpdateBroadcaster.notify(
+				{ projectId: agent.projectId, agentId: agent.id, source: 'user' },
+				excludePushRef,
+			);
 		}
 	}
 
