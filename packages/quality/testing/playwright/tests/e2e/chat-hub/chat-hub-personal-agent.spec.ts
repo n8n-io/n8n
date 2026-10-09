@@ -5,7 +5,7 @@ test.use(chatHubTestConfig);
 test.describe(
 	'Personal agent',
 	{
-		annotation: [{ type: 'owner', description: 'Chat' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test('create personal agent and start conversation @auth:owner', async ({

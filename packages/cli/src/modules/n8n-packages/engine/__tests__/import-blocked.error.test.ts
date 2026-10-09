@@ -23,13 +23,13 @@ const credentialUnresolved: BlockingIssue = {
 	type: 'credential-unresolved',
 	kind: 'not_found',
 	sourceId: 'c1',
-	usedByWorkflows: ['w1'],
+	usedBy: [{ kind: 'workflow', id: 'w1' }],
 };
 
 const variableUnresolved: BlockingIssue = {
 	type: 'variable-unresolved',
 	name: 'API_URL',
-	usedByWorkflows: ['w1'],
+	usedBy: [{ kind: 'workflow', id: 'w1' }],
 };
 
 const workflowLineageConflict: BlockingIssue = {
@@ -47,7 +47,7 @@ const credentialPolicyViolation: BlockingIssue = {
 	sourceId: 'c1',
 	name: 'Prod GitHub',
 	credentialType: 'githubApi',
-	usedByWorkflows: ['w1'],
+	usedBy: [{ kind: 'workflow', id: 'w1' }],
 	violations: [{ kind: 'test-denial', checkId: 'test.check', message: 'Not allowed' }],
 };
 
@@ -58,7 +58,7 @@ const tagUnresolved = (
 	kind,
 	sourceId: 't1',
 	name: 'prod',
-	usedByWorkflows: ['w1'],
+	usedBy: [{ kind: 'workflow', id: 'w1' }],
 });
 
 describe('toImportBlockedError', () => {

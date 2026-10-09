@@ -13,6 +13,7 @@ import type {
 	CredentialResolutionFailure,
 } from '../../entities/credential/credential.types';
 import type { CredentialMissingMode } from '../../n8n-packages.types';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 import { CredentialSavePolicyGate } from '../credential-save-policy';
 
 const violation: PolicyViolation = {
@@ -31,12 +32,21 @@ const notFound = (
 	sourceId,
 	name: `Credential ${sourceId}`,
 	type: 'githubApi',
-	usedByWorkflows: ['wf-1'],
 	...overrides,
 });
 
-const request = (missingMode: CredentialMissingMode = 'create-stub'): CredentialBindingRequest => ({
-	requirements: [],
+const requirement = (id: string, workflowIds: string[]): PackageCredentialRequirement => ({
+	id,
+	name: `Credential ${id}`,
+	type: 'githubApi',
+	usedBy: workflowIds.map((workflowId) => ({ kind: 'workflow', id: workflowId })),
+});
+
+const request = (
+	missingMode: CredentialMissingMode = 'create-stub',
+	requirements: PackageCredentialRequirement[] = [],
+): CredentialBindingRequest => ({
+	requirements,
 	matchingMode: 'id-only',
 	missingMode,
 });
@@ -142,7 +152,7 @@ describe('CredentialSavePolicyGate', () => {
 
 		await gate.refusedStubs(
 			request(),
-			resolution(notFound('C1'), notFound('C1', { usedByWorkflows: ['wf-2'] })),
+			resolution(notFound('C1'), notFound('C1')),
 			'project-1',
 			actor,
 		);
@@ -171,11 +181,11 @@ describe('CredentialSavePolicyGate', () => {
 		);
 
 		const refused = await gate.refusedStubs(
-			request(),
-			resolution(
-				notFound('C1', { usedByWorkflows: ['wf-1', 'wf-2'] }),
-				notFound('C2', { name: undefined }),
-			),
+			request('create-stub', [
+				requirement('C1', ['wf-2', 'wf-1', 'wf-2']),
+				requirement('C2', ['wf-1']),
+			]),
+			resolution(notFound('C1'), notFound('C2', { name: undefined })),
 			'project-1',
 			actor,
 		);
@@ -186,14 +196,17 @@ describe('CredentialSavePolicyGate', () => {
 				sourceId: 'C1',
 				name: 'Credential C1',
 				credentialType: 'githubApi',
-				usedByWorkflows: ['wf-1', 'wf-2'],
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-2' },
+				],
 				violations: [violation],
 			},
 			{
 				type: 'credential-policy-violation',
 				sourceId: 'C2',
 				credentialType: 'githubApi',
-				usedByWorkflows: ['wf-1'],
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				violations: [violation],
 			},
 		]);

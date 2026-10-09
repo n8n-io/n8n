@@ -14,7 +14,7 @@ describe('credentialBlockingFailures', () => {
 
 		it('treats every unresolved reference as blocking', () => {
 			const failure = createFailure(
-				{ id: 'cred-1', name: 'X', type: 'githubApi', usedByWorkflows: ['wf-1'] },
+				{ id: 'cred-1', name: 'X', type: 'githubApi', usedBy: [{ kind: 'workflow', id: 'wf-1' }] },
 				'not_found',
 			);
 
@@ -27,7 +27,7 @@ describe('credentialBlockingFailures', () => {
 	describe('create-stub', () => {
 		it('treats not_found as non-blocking', () => {
 			const failure = createFailure(
-				{ id: 'cred-1', name: 'X', type: 'githubApi', usedByWorkflows: ['wf-1'] },
+				{ id: 'cred-1', name: 'X', type: 'githubApi', usedBy: [{ kind: 'workflow', id: 'wf-1' }] },
 				'not_found',
 			);
 
@@ -39,7 +39,12 @@ describe('credentialBlockingFailures', () => {
 		it('still blocks not_found when an explicit binding target is missing', () => {
 			const failure = {
 				...createFailure(
-					{ id: 'cred-1', name: 'X', type: 'githubApi', usedByWorkflows: ['wf-1'] },
+					{
+						id: 'cred-1',
+						name: 'X',
+						type: 'githubApi',
+						usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+					},
 					'not_found',
 				),
 				targetId: 'target-missing',
@@ -52,11 +57,11 @@ describe('credentialBlockingFailures', () => {
 
 		it('still blocks unknown_type and source_not_found failures', () => {
 			const unknownType = createFailure(
-				{ id: 'cred-1', name: 'X', type: 'bad', usedByWorkflows: ['wf-1'] },
+				{ id: 'cred-1', name: 'X', type: 'bad', usedBy: [{ kind: 'workflow', id: 'wf-1' }] },
 				'unknown_type',
 			);
 			const sourceNotFound = createFailure(
-				{ id: 'cred-2', name: 'Y', type: 'githubApi', usedByWorkflows: ['wf-2'] },
+				{ id: 'cred-2', name: 'Y', type: 'githubApi', usedBy: [{ kind: 'workflow', id: 'wf-2' }] },
 				'source_not_found',
 			);
 
@@ -71,8 +76,16 @@ describe('credentialBlockingFailures', () => {
 });
 
 describe('credentialsToStub', () => {
-	const notFound = (id: string, usedByWorkflows = ['wf-1']) =>
-		createFailure({ id, name: id, type: 'githubApi', usedByWorkflows }, 'not_found');
+	const notFound = (id: string, workflowIds = ['wf-1']) =>
+		createFailure(
+			{
+				id,
+				name: id,
+				type: 'githubApi',
+				usedBy: workflowIds.map((workflowId) => ({ kind: 'workflow', id: workflowId })),
+			},
+			'not_found',
+		);
 
 	it('stubs nothing under must-preexist', () => {
 		expect(
@@ -84,7 +97,7 @@ describe('credentialsToStub', () => {
 		const stubbable = notFound('cred-1');
 		const bound = { ...notFound('cred-2'), targetId: 'target-missing' };
 		const unknownType = createFailure(
-			{ id: 'cred-3', name: 'X', type: 'bad', usedByWorkflows: ['wf-1'] },
+			{ id: 'cred-3', name: 'X', type: 'bad', usedBy: [{ kind: 'workflow', id: 'wf-1' }] },
 			'unknown_type',
 		);
 

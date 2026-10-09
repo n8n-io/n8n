@@ -84,7 +84,8 @@ type ModuleName =
 	| 'token-exchange'
 	| 'policy-infrastructure'
 	| 'workflow-reviews'
-	| 'type-availability-policies';
+	| 'type-availability-policies'
+	| 'inbound-auth-core';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

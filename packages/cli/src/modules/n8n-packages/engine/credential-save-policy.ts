@@ -11,6 +11,7 @@ import type {
 	CredentialResolution,
 } from '../entities/credential/credential.types';
 import type { BlockingIssue } from '../n8n-packages.types';
+import { mergeRequirementConsumers } from '../spec/requirement-consumers';
 
 @Service()
 export class CredentialSavePolicyGate {
@@ -36,10 +37,7 @@ export class CredentialSavePolicyGate {
 
 		const refused: BlockingIssue[] = [];
 
-		for (const { sourceId, name, type, usedByWorkflows } of credentialsToStub(
-			request.missingMode,
-			resolution,
-		)) {
+		for (const { sourceId, name, type } of credentialsToStub(request.missingMode, resolution)) {
 			// Apply rejects a stub without a type before it reaches the policy, so there is no
 			// verdict to ask for.
 			if (type === undefined) continue;
@@ -64,7 +62,9 @@ export class CredentialSavePolicyGate {
 					sourceId,
 					...(name !== undefined ? { name } : {}),
 					credentialType: type,
-					usedByWorkflows,
+					usedBy: mergeRequirementConsumers(
+						request.requirements?.find(({ id }) => id === sourceId)?.usedBy ?? [],
+					),
 					violations: error.violations,
 				});
 			}

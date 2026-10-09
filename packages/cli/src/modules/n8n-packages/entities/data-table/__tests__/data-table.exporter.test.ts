@@ -100,7 +100,7 @@ describe('DataTableExporter', () => {
 				{
 					id: 'dt1',
 					name: 'Customers',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			]);
 
@@ -116,7 +116,7 @@ describe('DataTableExporter', () => {
 			});
 		});
 
-		it('dedupes by table id and aggregates usedByWorkflows when requirements come from multiple workflows', async () => {
+		it('dedupes by table id and aggregates workflow consumers when requirements come from multiple workflows', async () => {
 			const { exporter, dataTableService } = makeExporter();
 			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([makeDataTable()]);
 			const writer = new CapturingWriter();
@@ -140,7 +140,10 @@ describe('DataTableExporter', () => {
 				{
 					id: 'dt1',
 					name: 'Customers',
-					usedByWorkflows: ['wf-a', 'wf-b'],
+					usedBy: [
+						{ kind: 'workflow', id: 'wf-a' },
+						{ kind: 'workflow', id: 'wf-b' },
+					],
 				},
 			]);
 			expect(writer.files).toHaveLength(1);

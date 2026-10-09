@@ -339,7 +339,16 @@ describe('credentialSave on a package import that creates stubs', () => {
 			manifestExtras: {
 				requirements: {
 					credentials: credentialRequirementsFromWorkflows(stubbingWorkflows),
-					tags: [{ id: 'tag-prod', name: 'prod', usedByWorkflows: ['wf-github', 'wf-slack'] }],
+					tags: [
+						{
+							id: 'tag-prod',
+							name: 'prod',
+							usedBy: [
+								{ kind: 'workflow', id: 'wf-github' },
+								{ kind: 'workflow', id: 'wf-slack' },
+							],
+						},
+					],
 				},
 			},
 		});
@@ -362,7 +371,7 @@ describe('credentialSave on a package import that creates stubs', () => {
 			sourceId: 'cred-github',
 			name: 'Prod GitHub',
 			credentialType: 'githubApi',
-			usedByWorkflows: ['wf-github'],
+			usedBy: [{ kind: 'workflow', id: 'wf-github' }],
 			violations: [credentialDenial('githubApi')],
 		} satisfies BlockingIssue);
 		expect(issues).toContainEqual({
@@ -370,7 +379,7 @@ describe('credentialSave on a package import that creates stubs', () => {
 			sourceId: 'cred-slack',
 			name: 'Prod Slack',
 			credentialType: 'slackApi',
-			usedByWorkflows: ['wf-slack'],
+			usedBy: [{ kind: 'workflow', id: 'wf-slack' }],
 			violations: [credentialDenial('slackApi')],
 		} satisfies BlockingIssue);
 
