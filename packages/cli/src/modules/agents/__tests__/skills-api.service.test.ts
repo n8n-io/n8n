@@ -227,7 +227,12 @@ describe('SkillsApiService', () => {
 			const latest = row(visible[0], 3, { instructions: 'saved' });
 			repository.findLatestSaved.mockResolvedValue(new Map([['skill_a', latest]]));
 			repository.findLatestSummaries.mockResolvedValue(
-				new Map([['skill_a', { name: latest.version.name, description: '', version: 3 }]]),
+				new Map([
+					[
+						'skill_a',
+						{ name: latest.version.name, description: latest.version.description, version: 3 },
+					],
+				]),
 			);
 
 			const detail = await service.get(user, 'skill_a');
