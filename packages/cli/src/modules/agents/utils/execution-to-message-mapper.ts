@@ -5,6 +5,7 @@ import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { TimelineEvent } from '../execution-recorder';
 import { isFatalSessionOutcomeError } from './fatal-session-outcome';
 import {
+	isResultRecord,
 	isTerminalToolCallPart,
 	isToolCallWithId,
 	toolCallKey,
@@ -350,12 +351,14 @@ function cancelToolCall({ message, partIndex }: PartLocation): void {
 /**
  * Merges the result of a resumed tool call into the part that waited for it, and removes the
  * copy. A later part continues an earlier part only when both are the same call (same id and
- * same tool) and the earlier part still waits. A settled call does not settle again, so a later
- * part with the same identity is a new call and stays in the history.
+ * same tool), the earlier part still waits, and the later part is a result record.
  *
  * A resume records the result of the call only, never the call again: only the model starts a
- * call. So a later open part with the identity of a waiting part is a new call, and the earlier
- * call (for example a card that the user stopped) never gets a result.
+ * call, and it always sends the input. So a later part with the identity of a waiting part and
+ * with an input is a new call, also when it settled at once. The earlier call (for example a
+ * card that the user stopped, or a call of a run that ended before the result) never gets a
+ * result, so it is marked as cancelled. A settled call does not settle again, so a later part
+ * with its identity is a new call and stays in the history.
  */
 function settleResumedToolCalls(messages: AgentPersistedMessageDto[]): void {
 	const waitingByKey = new Map<string, PartLocation>();
@@ -366,9 +369,10 @@ function settleResumedToolCalls(messages: AgentPersistedMessageDto[]): void {
 			if (!isToolCallWithId(part)) continue;
 			const key = toolCallKey(part);
 			const waiting = waitingByKey.get(key);
-			if (!isTerminalToolCallPart(part)) {
+			if (!isResultRecord(part)) {
 				if (waiting) cancelToolCall(waiting);
-				waitingByKey.set(key, { message, partIndex });
+				if (isTerminalToolCallPart(part)) waitingByKey.delete(key);
+				else waitingByKey.set(key, { message, partIndex });
 				continue;
 			}
 			if (!waiting) continue;

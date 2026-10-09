@@ -1,4 +1,5 @@
 import { redactDeep, redactText, type SerializableAgentState } from '@n8n/agents';
+import { isDeepStrictEqual } from 'node:util';
 import type {
 	AgentBuilderOpenSuspension,
 	AgentChatMessagesResponse,
@@ -196,14 +197,25 @@ function matchOpenCalls(
 	return matches;
 }
 
-/** The checkpoint fills in the waiting call. The recorded input wins: it has sensitive values replaced. */
+/**
+ * The input to show for the waiting call. The recorded input stays when it is the input of the
+ * same call: it is complete, while the redaction of the checkpoint input withholds deep values.
+ * In a short window the persisted part can be an earlier open call with the identity of the
+ * waiting call and another input. The answer resumes the checkpoint call, so its input wins.
+ */
+function inputOfWaitingCall(recorded: unknown, checkpoint: unknown): unknown {
+	if (recorded === undefined) return checkpoint;
+	if (checkpoint === undefined) return recorded;
+	const sameCall = isDeepStrictEqual(redactDeep(recorded, REDACT_SENSITIVE).value, checkpoint);
+	return sameCall ? recorded : checkpoint;
+}
+
+/** The checkpoint fills in the waiting call. Its values have sensitive values replaced. */
 function mergeWaitingPart(part: MessageContentPart, waiting: WaitingCall): MessageContentPart {
 	if (isTerminalToolCallPart(part)) return part;
-	return {
-		...part,
-		...redactToolCallPart(waiting.part),
-		...(part.input !== undefined && { input: part.input }),
-	};
+	const checkpointPart = redactToolCallPart(waiting.part);
+	const input = inputOfWaitingCall(part.input, checkpointPart.input);
+	return { ...part, ...checkpointPart, ...(input !== undefined && { input }) };
 }
 
 /**

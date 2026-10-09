@@ -23,8 +23,10 @@ function execution(
 	} as unknown as AgentExecution;
 }
 
+type ToolCallEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
+
 /** A tool call as the recorder stores it. An end time of 0 means that it still waits. */
-function toolCall(name: string, toolCallId: string, endTime = 0, output?: unknown): TimelineEvent {
+function toolCall(name: string, toolCallId: string, endTime = 0, output?: unknown): ToolCallEvent {
 	return {
 		type: 'tool-call',
 		kind: 'tool',
@@ -39,8 +41,18 @@ function toolCall(name: string, toolCallId: string, endTime = 0, output?: unknow
 }
 
 /** The result of a resumed call. The recorder stores it without the input of the call. */
-function resumedResult(name: string, toolCallId: string, endTime: number, output: unknown) {
+function resumedResult(
+	name: string,
+	toolCallId: string,
+	endTime: number,
+	output: unknown,
+): ToolCallEvent {
 	return { ...toolCall(name, toolCallId, endTime, output), input: undefined };
+}
+
+/** A call of the model with its own input. */
+function callWithInput(call: ToolCallEvent, input: Record<string, unknown>): ToolCallEvent {
+	return { ...call, input };
 }
 
 function suspension(toolName: string, toolCallId: string): TimelineEvent {
@@ -185,10 +197,8 @@ describe('tool calls that share an id across turns', () => {
 	});
 
 	it('gives the answer and the result to the card that the user answered, not to a stopped card with its id', () => {
-		const card = (workflowId: string): TimelineEvent => ({
-			...toolCall('propose_automation', REUSED_ID),
-			input: { workflowId },
-		});
+		const card = (workflowId: string) =>
+			callWithInput(toolCall('propose_automation', REUSED_ID), { workflowId });
 		const parts = toolParts([
 			// The user stopped this card, so its call never got a result.
 			execution('stopped', [card('wf-A'), suspension('propose_automation', REUSED_ID)]),
@@ -243,6 +253,100 @@ describe('tool calls that share an id across turns', () => {
 
 		expect(parts).toHaveLength(1);
 		expect(parts[0]).not.toHaveProperty('approvedBy');
+	});
+
+	it('cancels a call that its run left open when a new call with its id and tool settles at once', () => {
+		const messages = executionsToMessagesDto([
+			// The run ended before the call got its result (for example after a restart).
+			execution('ended', [callWithInput(toolCall('lookup', REUSED_ID), { id: 1 })]),
+			execution('again', [
+				callWithInput(toolCall('lookup', REUSED_ID, 200, { found: 2 }), { id: 2 }),
+			]),
+		]);
+
+		const partsOf = (messageId: string) =>
+			messages
+				.find(({ id }) => id === messageId)
+				?.content.filter(({ type }) => type === 'tool-call');
+		expect(partsOf('ended:assistant')).toEqual([
+			{
+				type: 'tool-call',
+				toolName: 'lookup',
+				toolCallId: REUSED_ID,
+				input: { id: 1 },
+				startTime: 100,
+				canceled: true,
+			},
+		]);
+		expect(partsOf('again:assistant')).toEqual([
+			expect.objectContaining({
+				toolName: 'lookup',
+				input: { id: 2 },
+				state: 'resolved',
+				output: { found: 2 },
+			}),
+		]);
+	});
+
+	it('cancels a stopped card when a new call with its id and tool settles at once', () => {
+		const parts = toolParts([
+			execution('stopped', [
+				callWithInput(toolCall('propose_automation', REUSED_ID), { workflowId: 'wf-A' }),
+				suspension('propose_automation', REUSED_ID),
+			]),
+			execution('settled', [
+				callWithInput(toolCall('propose_automation', REUSED_ID, 300, 'kept'), {
+					workflowId: 'wf-B',
+				}),
+			]),
+		]);
+
+		expect(parts).toHaveLength(2);
+		expect(parts[0]).toMatchObject({ input: { workflowId: 'wf-A' }, canceled: true });
+		expect(parts[0]).not.toHaveProperty('output');
+		expect(parts[1]).toMatchObject({ input: { workflowId: 'wf-B' }, output: 'kept' });
+		expect(parts[1].canceled).toBeUndefined();
+	});
+
+	it('does not give a later result to a call that a new call with its id and tool replaced', () => {
+		const parts = toolParts([
+			execution('ended', [toolCall('ask', REUSED_ID)]),
+			execution('settled', [toolCall('ask', REUSED_ID, 200, 'first')]),
+			execution('resumed', [resumedResult('ask', REUSED_ID, 400, 'late')], null),
+		]);
+
+		expect(parts.map(({ output, canceled }) => ({ output, canceled }))).toEqual([
+			{ output: undefined, canceled: true },
+			{ output: 'first', canceled: undefined },
+			{ output: 'late', canceled: undefined },
+		]);
+	});
+
+	it('keeps a result record in its own turn when no call waits for it', () => {
+		const parts = toolParts([
+			execution('settled', [toolCall('ask', REUSED_ID, 200, 'first')]),
+			execution('resumed', [resumedResult('ask', REUSED_ID, 400, 'late')], null),
+		]);
+
+		expect(parts).toHaveLength(2);
+		expect(parts[1]).toMatchObject({ state: 'resolved', output: 'late' });
+		expect(parts[1].input).toBeUndefined();
+	});
+
+	it('keeps an open call without an input open until its result arrives', () => {
+		const withoutInput = { ...toolCall('ask', REUSED_ID), input: undefined };
+		const parts = toolParts([
+			execution('asked', [withoutInput, suspension('ask', REUSED_ID)]),
+			execution('resumed', [resumedResult('ask', REUSED_ID, 400, 'answer')], null),
+		]);
+
+		expect(parts).toHaveLength(1);
+		expect(parts[0]).toMatchObject({
+			state: 'resolved',
+			output: 'answer',
+			suspendPayload: proposal,
+		});
+		expect(parts[0].canceled).toBeUndefined();
 	});
 
 	it('keeps the answer author of a later answer to the same call only', () => {

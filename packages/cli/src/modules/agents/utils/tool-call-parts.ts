@@ -25,6 +25,15 @@ export function isTerminalToolCallPart(part: AgentPersistedMessageContentPart): 
 }
 
 /**
+ * Whether a settled part records only the result of a call that an earlier turn started. The
+ * recorder of a resumed turn gets the result without the call, so the part has no input. The
+ * model always sends an input with a call that it starts.
+ */
+export function isResultRecord(part: AgentPersistedMessageContentPart): boolean {
+	return isTerminalToolCallPart(part) && part.input === undefined;
+}
+
+/**
  * The identity of one tool call in a thread. A model can use a tool call id again in a later
  * turn (for example a model that counts its ids from 1 in each response), so the id alone
  * does not identify a call. The tool name is part of the identity.

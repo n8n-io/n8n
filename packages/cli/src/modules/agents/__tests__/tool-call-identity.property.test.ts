@@ -11,21 +11,45 @@ import { withOpenSuspensions } from '../utils/messages-envelope';
 const idArb = fc.constantFrom('toolu_1', 'toolu_2');
 const nameArb = fc.constantFrom('build-workflow', 'propose_automation', 'executions');
 
+/**
+ * `open`: the model started the call and it got no result in its turn. `settled`: the model
+ * started the call and it got its result in its turn. `result`: a resumed turn recorded only the
+ * result of a call, without its input.
+ */
+type CallKind = 'open' | 'settled' | 'result';
+
 interface Call {
 	id: string;
 	name: string;
-	settled: boolean;
+	kind: CallKind;
 }
 
-const callArb: fc.Arbitrary<Call> = fc.record({ id: idArb, name: nameArb, settled: fc.boolean() });
+const kindArb = fc.constantFrom<CallKind>('open', 'settled', 'result');
+const callArb: fc.Arbitrary<Call> = fc.record({ id: idArb, name: nameArb, kind: kindArb });
 const turnsArb = fc.array(fc.array(callArb, { maxLength: 3 }), { minLength: 1, maxLength: 6 });
 
 const keyOf = (id: string, name: string | undefined) => `${name ?? ''}/${id}`;
 const isSettled = (part: AgentPersistedMessageContentPart) =>
 	part.state === 'resolved' || part.output !== undefined;
+const outputOf = (turn: number, position: number) => `out-${turn}-${position}`;
+
+function toEvent(call: Call, turn: number, position: number): TimelineEvent {
+	const settled = call.kind !== 'open';
+	return {
+		type: 'tool-call',
+		kind: 'tool',
+		name: call.name,
+		toolCallId: call.id,
+		input: call.kind === 'result' ? undefined : { turn, position },
+		output: settled ? outputOf(turn, position) : undefined,
+		startTime: 100,
+		endTime: settled ? 200 + turn : 0,
+		success: settled,
+	};
+}
 
 /** One recorded turn per entry. A settled call has an output that names its turn and position. */
-function toExecutions(turns: Call[][], answers: Array<string | null> = []): AgentExecution[] {
+function toExecutions(turns: Call[][], answers: (string | null)[] = []): AgentExecution[] {
 	return turns.map((calls, turn) => {
 		const answer = answers[turn];
 		const timeline: TimelineEvent[] = [
@@ -40,17 +64,7 @@ function toExecutions(turns: Call[][], answers: Array<string | null> = []): Agen
 						},
 					]
 				: []),
-			...calls.map((call, position) => ({
-				type: 'tool-call' as const,
-				kind: 'tool' as const,
-				name: call.name,
-				toolCallId: call.id,
-				input: { turn, position },
-				output: call.settled ? `out-${turn}-${position}` : undefined,
-				startTime: 100,
-				endTime: call.settled ? 200 + turn : 0,
-				success: call.settled,
-			})),
+			...calls.map((call, position) => toEvent(call, turn, position)),
 		];
 		return {
 			id: `turn-${turn}`,
@@ -68,7 +82,62 @@ const outputToolParts = (executions: AgentExecution[]) =>
 			.map((part) => ({ part, executionId: message.executionId })),
 	);
 
+interface ModelPart {
+	key: string;
+	executionId: string;
+	input?: unknown;
+	output?: unknown;
+	canceled?: true;
+}
+
+/**
+ * A plain model of the history: a result record settles the open call with its tool and id. A
+ * call that the model starts replaces an open call with its tool and id, which gets no result.
+ */
+function modelHistory(turns: Call[][]): ModelPart[] {
+	const parts: ModelPart[] = [];
+	const open = new Map<string, ModelPart>();
+	turns.forEach((calls, turn) =>
+		calls.forEach((call, position) => {
+			const key = keyOf(call.id, call.name);
+			const waiting = open.get(key);
+			const output = call.kind === 'open' ? undefined : outputOf(turn, position);
+			open.delete(key);
+			if (call.kind === 'result' && waiting) {
+				waiting.output = output;
+				return;
+			}
+			if (waiting) waiting.canceled = true;
+			const part: ModelPart = {
+				key,
+				executionId: `turn-${turn}`,
+				...(call.kind !== 'result' && { input: { turn, position } }),
+				...(output !== undefined && { output }),
+			};
+			parts.push(part);
+			if (call.kind === 'open') open.set(key, part);
+		}),
+	);
+	return parts;
+}
+
 describe('history of tool calls that share ids (property)', () => {
+	it('matches a plain model: each call keeps its own turn, and a result record settles the open call', () => {
+		fc.assert(
+			fc.property(turnsArb, (turns) => {
+				const parts = outputToolParts(toExecutions(turns)).map(({ part, executionId }) => ({
+					key: keyOf(part.toolCallId ?? '', part.toolName),
+					executionId,
+					...(part.input !== undefined && { input: part.input }),
+					...(part.output !== undefined && { output: part.output }),
+					...(part.canceled === true && { canceled: true }),
+				}));
+
+				expect(parts).toEqual(modelHistory(turns));
+			}),
+		);
+	});
+
 	it('keeps at least one part for every tool and id pair', () => {
 		fc.assert(
 			fc.property(turnsArb, (turns) => {
@@ -92,28 +161,33 @@ describe('history of tool calls that share ids (property)', () => {
 					);
 				turns.forEach((calls, turn) =>
 					calls.forEach((call, position) => {
-						if (!call.settled) return;
-						expect(settled).toContain(`${keyOf(call.id, call.name)}=out-${turn}-${position}`);
+						if (call.kind === 'open') return;
+						expect(settled).toContain(`${keyOf(call.id, call.name)}=${outputOf(turn, position)}`);
 					}),
 				);
 			}),
 		);
 	});
 
-	it('keeps a call open when no later result has its tool and id', () => {
+	it('keeps a call that the model started in its own turn, with its own input', () => {
 		fc.assert(
 			fc.property(turnsArb, (turns) => {
-				const calls = turns.flat();
-				const open = outputToolParts(toExecutions(turns))
-					.filter(({ part }) => !isSettled(part))
-					.map(({ part }) => keyOf(part.toolCallId ?? '', part.toolName));
-				calls.forEach((call, index) => {
-					const key = keyOf(call.id, call.name);
-					const settledLater = calls
-						.slice(index + 1)
-						.some((later) => later.settled && keyOf(later.id, later.name) === key);
-					if (!call.settled && !settledLater) expect(open).toContain(key);
-				});
+				const parts = outputToolParts(toExecutions(turns));
+				turns.forEach((calls, turn) =>
+					calls.forEach((call, position) => {
+						if (call.kind === 'result') return;
+						const own = parts.filter(
+							({ part, executionId }) =>
+								executionId === `turn-${turn}` &&
+								keyOf(part.toolCallId ?? '', part.toolName) === keyOf(call.id, call.name) &&
+								JSON.stringify(part.input) === JSON.stringify({ turn, position }),
+						);
+						expect(own).toHaveLength(1);
+						if (call.kind === 'settled') {
+							expect(own[0].part.output).toBe(outputOf(turn, position));
+						}
+					}),
+				);
 			}),
 		);
 	});
@@ -126,8 +200,8 @@ describe('history of tool calls that share ids (property)', () => {
 				turns.forEach((calls, turn) =>
 					calls.forEach((call, position) => {
 						const key = keyOf(call.id, call.name);
-						if (call.settled) expected.delete(key);
-						else expected.set(key, { turn, position });
+						if (call.kind === 'open') expected.set(key, { turn, position });
+						else expected.delete(key);
 					}),
 				);
 
@@ -144,27 +218,32 @@ describe('history of tool calls that share ids (property)', () => {
 	it('merges a resumed result into the call that waited, after settled calls with the same id', () => {
 		const settledTurnsArb = fc.array(
 			fc.array(
-				callArb.map((call) => ({ ...call, settled: true })),
+				callArb.map((call): Call => ({ ...call, kind: 'settled' })),
 				{ maxLength: 3 },
 			),
 			{ maxLength: 4 },
 		);
 		fc.assert(
 			fc.property(settledTurnsArb, idArb, nameArb, (earlier, id, name) => {
-				const waiting = { id, name, settled: false };
-				const executions = toExecutions([...earlier, [waiting], [{ ...waiting, settled: true }]]);
+				const waiting: Call = { id, name, kind: 'open' };
+				const resumed: Call = { id, name, kind: 'result' };
+				const executions = toExecutions([...earlier, [waiting], [resumed]]);
 				const before = outputToolParts(toExecutions(earlier)).length;
 
 				const parts = outputToolParts(executions);
 
 				expect(parts).toHaveLength(before + 1);
-				expect(parts.at(-1)?.part).toMatchObject({
-					toolName: name,
-					toolCallId: id,
-					input: { turn: earlier.length, position: 0 },
-					state: 'resolved',
-					output: `out-${earlier.length + 1}-0`,
+				expect(parts.at(-1)).toEqual({
+					executionId: `turn-${earlier.length}`,
+					part: expect.objectContaining({
+						toolName: name,
+						toolCallId: id,
+						input: { turn: earlier.length, position: 0 },
+						state: 'resolved',
+						output: outputOf(earlier.length + 1, 0),
+					}),
 				});
+				expect(parts.at(-1)?.part.canceled).toBeUndefined();
 			}),
 		);
 	});
@@ -190,18 +269,26 @@ describe('open suspensions in a history with repeated ids (property)', () => {
 	const historyArb = fc.array(fc.array(callArb, { maxLength: 3 }), { maxLength: 5 });
 	const openKeyArb = fc.record({ openId: idArb, openName: nameArb });
 
-	const toPart = (call: Call, label: string): AgentPersistedMessageContentPart => ({
+	// Each recorded call has its own input, so an earlier call never has the input of the open call.
+	const toPart = (
+		call: Call,
+		turn: number,
+		position: number,
+	): AgentPersistedMessageContentPart => ({
 		type: 'tool-call',
 		toolName: call.name,
 		toolCallId: call.id,
-		...(call.settled ? { state: 'resolved', output: label } : { state: 'pending' }),
+		input: { turn, position },
+		...(call.kind === 'open'
+			? { state: 'pending' }
+			: { state: 'resolved', output: outputOf(turn, position) }),
 	});
 
 	const toHistory = (turns: Call[][]): AgentPersistedMessageDto[] =>
 		turns.map((calls, turn) => ({
 			id: `turn-${turn}:assistant`,
 			role: 'assistant',
-			content: calls.map((call, position) => toPart(call, `out-${turn}-${position}`)),
+			content: calls.map((call, position) => toPart(call, turn, position)),
 		}));
 
 	const waitingPartOf = (openId: string, openName: string): AgentPersistedMessageContentPart => ({

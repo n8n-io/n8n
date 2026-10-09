@@ -1,4 +1,7 @@
-import type { LinkedInstanceCredentialNeedingSetup, LinkedInstancePushResult } from '@n8n/api-types';
+import type {
+	LinkedInstanceCredentialNeedingSetup,
+	LinkedInstancePushResult,
+} from '@n8n/api-types';
 
 /** The state of the copy in the linked instance after the move. */
 export type RemoteCopyState = 'live' | 'earlierLive' | 'notLive';

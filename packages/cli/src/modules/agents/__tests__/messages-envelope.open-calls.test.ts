@@ -230,24 +230,48 @@ describe('withOpenSuspensions with an earlier call that never got its result', (
 });
 
 describe('withOpenSuspensions and the raw checkpoint values', () => {
-	it('keeps the recorded input of the waiting call in place of the raw checkpoint input', () => {
+	it('keeps the complete recorded input when it is the input of the checkpoint call', () => {
 		const apiKey = randomUUID();
+		// Deeper than the redaction walks: the redaction withholds the object at this depth.
+		const deep = { l1: { l2: { l3: { l4: { l5: { l6: { l7: { value: 'kept' } } } } } } } };
 		const history = [
 			message('e1:assistant', {
-				...waitingRun({ apiKey: '[REDACTED]', action: 'run' }),
+				...waitingRun({ apiKey: '[REDACTED]', action: 'run', deep }),
 				state: undefined,
 			}),
 		];
-		// The checkpoint has the input that the model sent, with a value that the recorder dropped.
 		const checkpoint = checkpointOf([
-			message('sdk-1', waitingRun({ apiKey, action: 'run', raw: true })),
+			message('sdk-1', waitingRun({ apiKey, action: 'run', deep: structuredClone(deep) })),
 		]);
 
 		const result = withOpenSuspensions(history, checkpoint);
 
 		expect(result.messages[0].content).toEqual([
-			waitingRun({ apiKey: '[REDACTED]', action: 'run' }),
+			waitingRun({ apiKey: '[REDACTED]', action: 'run', deep }),
 		]);
+		expect(JSON.stringify(result)).not.toContain(apiKey);
+	});
+
+	it('shows the checkpoint input when the persisted open call is an earlier call with another input', () => {
+		const apiKey = randomUUID();
+		// The user stopped the card for "A". The history does not hold the card for "B" yet.
+		const history = [
+			message('stopped:assistant', { ...waitingRun({ workflowId: 'A' }), state: undefined }),
+		];
+		const checkpoint = checkpointOf([
+			message('sdk-stopped', { ...rejectedRun, input: { workflowId: 'A' } }),
+			message('sdk-proposed', waitingRun({ workflowId: 'B', apiKey })),
+		]);
+
+		const result = withOpenSuspensions(history, checkpoint, {
+			appendInactiveCheckpointMessages: false,
+		});
+
+		const openParts = result.messages
+			.flatMap(({ content }) => content)
+			.filter((part) => part.toolCallId === REUSED_ID && part.canceled !== true);
+		expect(openParts).toEqual([waitingRun({ workflowId: 'B', apiKey: '[REDACTED]' })]);
+		expect(result.openSuspensions).toEqual([{ toolCallId: REUSED_ID, runId: 'run-open' }]);
 		expect(JSON.stringify(result)).not.toContain(apiKey);
 	});
 

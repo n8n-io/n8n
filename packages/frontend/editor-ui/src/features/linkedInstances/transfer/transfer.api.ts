@@ -40,7 +40,9 @@ const pushResultSchema = z.object({
 	created: z.boolean(),
 	published: z.boolean(),
 	publishFailed: z.boolean(),
-	credentialsNeedingSetup: z.array(z.object({ id: z.string(), name: z.string(), type: z.string() })),
+	credentialsNeedingSetup: z.array(
+		z.object({ id: z.string(), name: z.string(), type: z.string() }),
+	),
 	missingNodeTypes: z.array(z.string()),
 	localDeactivated: z.boolean(),
 	warnings: z.array(z.string()),

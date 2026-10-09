@@ -5,6 +5,16 @@ import type {
 	LinkedInstanceTransferSubWorkflow,
 } from '@n8n/api-types';
 
+/** The workflow here, as the opener of the dialog sees it. */
+export interface TransferWorkflow {
+	id: string;
+	name: string;
+	/** A version of the workflow is live here. */
+	liveHere: boolean;
+	/** The user can turn off the workflow here (`workflow:unpublish`). */
+	canUnpublish: boolean;
+}
+
 /** A credential that the user must look at in the linked instance after the move. */
 export type TransferSetUpItem = Omit<LinkedInstanceTransferCredential, 'status'> & {
 	/** `needs-set-up`: the move creates it empty. `unknown`: the linked instance did not tell. */
@@ -33,7 +43,9 @@ export interface TransferDialogState {
 }
 
 /** Builds the sections of the dialog from a preflight. */
-export function transferDialogState(preflight: LinkedInstanceTransferPreflight): TransferDialogState {
+export function transferDialogState(
+	preflight: LinkedInstanceTransferPreflight,
+): TransferDialogState {
 	const matchedCredentials: string[] = [];
 	const needsSetUp: TransferSetUpItem[] = [];
 	for (const { name, type, status } of preflight.credentials) {
