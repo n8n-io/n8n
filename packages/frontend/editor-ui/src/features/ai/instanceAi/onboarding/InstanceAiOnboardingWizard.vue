@@ -13,6 +13,7 @@ import {
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
+	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIcon,
 	N8nInput,
@@ -726,6 +727,20 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 	provider.label ?? i18n.baseText('instanceAi.onboarding.model.customProvider');
 const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 	`${credential.name} · ${credentialProviderLabel(credential)}`;
+
+const stepTitle = computed(() => {
+	if (props.step === 'model') return i18n.baseText('instanceAi.onboarding.model.title');
+	if (props.step === 'sandbox') return i18n.baseText('instanceAi.onboarding.sandbox.title');
+	if (props.step === 'search') return i18n.baseText('instanceAi.onboarding.search.title');
+	return '';
+});
+
+const stepLede = computed(() => {
+	if (props.step === 'model') return i18n.baseText('instanceAi.onboarding.model.lede');
+	if (props.step === 'sandbox') return i18n.baseText('instanceAi.onboarding.sandbox.lede');
+	if (props.step === 'search') return i18n.baseText('instanceAi.onboarding.search.lede');
+	return '';
+});
 </script>
 
 <template>
@@ -739,18 +754,17 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 		@update:open="handleOpenChange"
 		@open-auto-focus="focusDialogInsteadOfFirstField"
 	>
+		<N8nDialogHeader v-if="stepTitle">
+			<div :class="$style.heading">
+				<N8nDialogTitle>{{ stepTitle }}</N8nDialogTitle>
+				<N8nText v-if="stepLede" tag="p" :class="$style.description">
+					{{ stepLede }}
+				</N8nText>
+			</div>
+		</N8nDialogHeader>
 		<N8nDialogBody>
 			<div :class="$style.body">
 				<template v-if="step === 'model'">
-					<div>
-						<N8nDialogTitle>
-							{{ i18n.baseText('instanceAi.onboarding.model.title') }}
-						</N8nDialogTitle>
-						<N8nText tag="p" :class="$style.description">
-							{{ i18n.baseText('instanceAi.onboarding.model.lede') }}
-						</N8nText>
-					</div>
-
 					<N8nCallout v-if="modelConnectionLocked" theme="warning">
 						<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
 						{{ i18n.baseText('instanceAi.onboarding.env.description') }}
@@ -935,14 +949,6 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 				</template>
 
 				<template v-else-if="step === 'sandbox'">
-					<div>
-						<N8nDialogTitle>
-							{{ i18n.baseText('instanceAi.onboarding.sandbox.title') }}
-						</N8nDialogTitle>
-						<N8nText tag="p" :class="$style.description">
-							{{ i18n.baseText('instanceAi.onboarding.sandbox.lede') }}
-						</N8nText>
-					</div>
 					<N8nCallout v-if="sandboxEnvManaged" theme="warning">
 						<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
 						{{ i18n.baseText('instanceAi.onboarding.env.description') }}
@@ -1104,14 +1110,6 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 				</template>
 
 				<template v-else-if="step === 'search'">
-					<div>
-						<N8nDialogTitle>
-							{{ i18n.baseText('instanceAi.onboarding.search.title') }}
-						</N8nDialogTitle>
-						<N8nText tag="p" :class="$style.description">
-							{{ i18n.baseText('instanceAi.onboarding.search.lede') }}
-						</N8nText>
-					</div>
 					<N8nCallout v-if="searchEnvManaged" theme="warning">
 						<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
 						{{ i18n.baseText('instanceAi.onboarding.env.description') }}
@@ -1393,8 +1391,16 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 	overflow-y: auto;
 }
 
+.heading {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
 .description {
-	margin: var(--spacing--2xs) 0 0;
+	margin: 0;
 	line-height: var(--line-height--lg);
 }
 
