@@ -3,12 +3,8 @@ import * as LoggerProxy from './logger-proxy';
 const REGEX_TIMEOUT_MS = 250;
 const REGEX_TIMEOUT_ERROR_MESSAGE = 'Regular expression execution timed out';
 
-// `RegExpExecArray`/`RegExpMatchArray` type every capture group as `string`, but a
-// non-participating group is `undefined` at runtime. Kept here regardless, matching the
-// native types on purpose: these interfaces are public (re-exported from n8n-workflow),
-// and the accurate `string | undefined` element type is a breaking change for any
-// external consumer pinned to the native shapes. Code that dereferences a capture group
-// must still guard against `undefined` itself; the type won't catch a missing guard.
+// Results use the native `RegExp` types, as these interfaces are public. A capture group
+// that did not take part in the match is `undefined` at runtime despite its `string` type.
 export interface RegexEngine {
 	exec(pattern: string, input: string, flags?: string): RegExpExecArray | null;
 	test(pattern: string, input: string, flags?: string): boolean;
