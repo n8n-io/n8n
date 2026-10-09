@@ -9,7 +9,7 @@ export class GoogleVertexAiApi implements ICredentialType {
 
 	displayName = 'Google Vertex AI';
 
-	documentationUrl = 'google/service-account';
+	documentationUrl = 'googlevertexai';
 
 	icon: Icon = 'file:icons/google.svg';
 
