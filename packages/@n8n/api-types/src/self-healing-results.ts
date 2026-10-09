@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Scope } from '@n8n/permissions';
 
 import type { WorkflowSuggestionProposalDetail } from './workflow-suggestions';
 
@@ -51,4 +52,10 @@ export type SelfHealingResultDetail = SelfHealingResultContent & {
 export type SelfHealingResultActionResponse = SelfHealingResultDetail & {
 	/** This request error does not establish whether the saved version is live. */
 	publishError?: string;
+};
+
+/** Fields the result view reads from the normal workflow endpoint. */
+export type SelfHealingResultWorkflowMetadata = {
+	name: string;
+	scopes: Scope[];
 };

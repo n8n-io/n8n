@@ -106,3 +106,18 @@ it('preserves labels, first-publish text, and the fullscreen control', () => {
 	expect(getByText('Proposed version')).toBeInTheDocument();
 	expect(getByText('First publication')).toBeInTheDocument();
 });
+
+it('keeps graph-only snapshots in separate canvas documents without history metadata', () => {
+	const { nodes, connections } = snapshot();
+	renderComponent({
+		props: {
+			workflowId: 'workflow',
+			workflowName: 'Workflow',
+			sourceSnapshot: { nodes, connections },
+			targetSnapshot: { nodes: [], connections: {} },
+		},
+	});
+	expect(captured[0].sourceWorkflow?.versionId).not.toBe(captured[0].targetWorkflow?.versionId);
+	expect(captured[0].sourceWorkflow?.nodes).toEqual(nodes);
+	expect(captured[0].targetWorkflow?.nodes).toEqual([]);
+});

@@ -1799,6 +1799,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
  * - `agent_preview` — send a preview chat session to Instance AI
+ * - `self_healing_result` — continue from a saved Assistant report in the Inbox
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `onboarding` — seeded "Welcome to n8n" thread for a new user; the greeting is stored before the first user turn
  * - `evals` — Instance AI evaluation harness / offline eval runners
@@ -1818,6 +1819,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credentials_list',
 	'agent_builder_page',
 	'agent_preview',
+	'self_healing_result',
 	'assistant_page',
 	'onboarding',
 	// Experiment cleanup: remove with openWorkflowInAssistant.
@@ -1854,6 +1856,7 @@ export type InstanceAiThreadSourcePersisted =
  *   mid-thread rather than as a first message
  * - `handoff_agent_change_request` — agent builder hand-off: a fix request or a
  *   change request, dropped into the composer
+ * - `handoff_self_healing_result` — continue from a saved Assistant report
  * - `template_adjustment` — "start from this template and help me adapt it",
  *   from the in-app template preview or an n8n.io deep link
  * - `template_example` — a featured example card on the empty state
@@ -1873,6 +1876,7 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'handoff_fix_with_ai',
 	'handoff_setup_panel_execute',
 	'handoff_agent_change_request',
+	'handoff_self_healing_result',
 	'template_adjustment',
 	'template_example',
 	'suggestion_catalog',

@@ -8,6 +8,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
+import { useSelfHealingChatHandoff } from '@/features/ai/instanceAi/composables/useSelfHealingChatHandoff';
 
 /**
  * Shell actions that a module calls but cannot import — the counterpart to
@@ -58,4 +59,5 @@ export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.modalOpeners, modalOpeners);
 	capabilityRegistry.provide(capabilities.workflowMcpAccessSync, syncWorkflowMcpAccess);
 	capabilityRegistry.provide(capabilities.mcpExposeAllOffer, mcpExposeAllOffer);
+	capabilityRegistry.provide(capabilities.createSelfHealingChatHandoff, useSelfHealingChatHandoff);
 };
