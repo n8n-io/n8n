@@ -1,5 +1,5 @@
 import { UrlService } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import type { PublishHistoryScope, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
@@ -43,6 +43,7 @@ export type GetMcpWorkflowOptions = {
 	includeActiveVersion?: boolean;
 	includeTags?: boolean;
 	includeParentFolder?: boolean;
+	publishHistory?: PublishHistoryScope;
 };
 
 /** The editor opens the workflow settings modal when the `settings` query parameter is set. */

@@ -21,7 +21,9 @@ import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { importPackageRequest } from './fixtures/import-request';
+import { ImportOrchestrator, type ImportOrchestrationInput } from '../engine/import-orchestrator';
 import type { ImportPackageRequest } from '../n8n-packages.types';
+import type { PackageRequirementConsumer } from '../spec/requirements.schema';
 import { streamToBuffer } from './utils/tar-support';
 import { buildWorkflowReferencingVariables } from './utils/test-builders';
 
@@ -87,6 +89,114 @@ async function variablesInProject(projectId: string) {
 		relations: { project: true },
 	});
 }
+
+describe('variable error consumers', () => {
+	afterEach(() => {
+		licenseMocker.reset();
+	});
+
+	it.each<{ consumers: string; usedBy: PackageRequirementConsumer[] }>([
+		{ consumers: 'Agents', usedBy: [{ kind: 'agent', id: 'agent-1' }] },
+		{
+			consumers: 'Agents and workflows with the same ID',
+			usedBy: [
+				{ kind: 'agent', id: 'shared-id' },
+				{ kind: 'workflow', id: 'shared-id' },
+			],
+		},
+	])('keeps $consumers in missing, conflict, and quota errors', async ({ usedBy }) => {
+		licenseMocker.reset();
+		licenseMocker.enable('feat:variables');
+		licenseMocker.setQuota('quota:maxVariables', 2);
+		const owner = await createOwner();
+		const project = await createTeamProject('Target', owner);
+		await createProjectVariable('CONFLICT', 'target-value', project);
+		await createProjectVariable('MATCHED', 'same-value', project);
+		const orchestrator = Container.get(ImportOrchestrator);
+		const input: ImportOrchestrationInput = {
+			context: { user: owner, projectId: project.id, folderId: null },
+			folders: [],
+			workflows: [],
+			credentialRequest: {
+				requirements: [],
+				matchingMode: 'id-only',
+				missingMode: 'must-preexist',
+			},
+			dataTableRequest: {
+				requirements: [],
+				packageDataTables: [],
+				matchingMode: 'by-id',
+				missingMode: 'create',
+				schemaConflictPolicy: 'keep-existing',
+			},
+			tagRequest: { requirements: [], missingMode: 'create', conflictPolicy: 'skip' },
+			variableRequest: {
+				requirements: [
+					{ name: 'API_URL', globalPlacement: false, usedBy },
+					{
+						name: 'CONFLICT',
+						globalPlacement: false,
+						packageValue: 'package-value',
+						usedBy,
+					},
+					{
+						name: 'MATCHED',
+						globalPlacement: false,
+						packageValue: 'same-value',
+						usedBy: [{ kind: 'workflow', id: 'unrelated' }],
+					},
+				],
+				missingMode: 'must-preexist',
+				conflictPolicy: 'fail',
+			},
+			options: {
+				workflowConflictPolicy: 'fail',
+				workflowPublishingPolicy: 'preserve-published-state',
+				workflowIdPolicy: 'new',
+				missingNodeTypeMode: 'fail',
+				folderConflictPolicy: 'merge',
+				overwriteDeletionPolicy: 'archive',
+			},
+		};
+
+		const blockedPlan = await orchestrator.plan(input);
+		await expect(
+			orchestrator.assertNotBlocked([blockedPlan], { apiKeyScopes: undefined }),
+		).rejects.toMatchObject({
+			meta: {
+				issues: [
+					{ type: 'variable-unresolved', name: 'API_URL', usedBy },
+					{ type: 'variable-conflict', name: 'CONFLICT', projectId: project.id, usedBy },
+				],
+			},
+		});
+
+		const creationPlan = await orchestrator.plan({
+			...input,
+			variableRequest: {
+				...input.variableRequest,
+				missingMode: 'create-stub',
+				conflictPolicy: 'keep-existing',
+			},
+		});
+		await expect(
+			orchestrator.assertNotBlocked([creationPlan], { apiKeyScopes: undefined }),
+		).rejects.toMatchObject({
+			meta: {
+				issues: [
+					{
+						type: 'variable-limit-exceeded',
+						limit: 2,
+						remaining: 0,
+						requested: 1,
+						names: ['API_URL'],
+						usedBy,
+					},
+				],
+			},
+		});
+	});
+});
 
 describe('workflow package import — with variables', () => {
 	describe('do-nothing missing mode', () => {
@@ -712,7 +822,7 @@ describe('workflow package import — with variables', () => {
 							remaining: 0,
 							requested: 1,
 							names: ['API_URL'],
-							usedByWorkflows: [workflow.id],
+							usedBy: [{ kind: 'workflow', id: workflow.id }],
 						},
 					],
 				},
@@ -1341,7 +1451,7 @@ describe('workflow package import — with variables', () => {
 								type: 'variable-conflict',
 								name: 'API_URL',
 								projectId: targetProject.id,
-								usedByWorkflows: [workflow.id],
+								usedBy: [{ kind: 'workflow', id: workflow.id }],
 							},
 						],
 					},
@@ -1365,7 +1475,11 @@ describe('workflow package import — with variables', () => {
 				}).catch((e: unknown) => e);
 
 				expect((error as ConflictError).meta?.issues).toEqual([
-					{ type: 'variable-conflict', name: 'API_URL', usedByWorkflows: [workflow.id] },
+					{
+						type: 'variable-conflict',
+						name: 'API_URL',
+						usedBy: [{ kind: 'workflow', id: workflow.id }],
+					},
 				]);
 			});
 
@@ -1450,7 +1564,7 @@ describe('workflow package import — with variables', () => {
 						type: 'variable-conflict',
 						name: 'API_URL',
 						projectId: targetProject.id,
-						usedByWorkflows: [workflow.id],
+						usedBy: [{ kind: 'workflow', id: workflow.id }],
 					},
 				]);
 				expect((await variablesInProject(targetProject.id))[0].value).toBe('');

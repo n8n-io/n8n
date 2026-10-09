@@ -1,5 +1,5 @@
 import type { PolicyViolation } from '@n8n/decorators';
-import { UserError } from 'n8n-workflow';
+import { hasPolicyRefusalMarker, UserError } from 'n8n-workflow';
 
 /** `enforce*` only throws when something objected, so an empty list is a bug, not a case. */
 export type NonEmptyViolations = [PolicyViolation, ...PolicyViolation[]];
@@ -61,14 +61,5 @@ export class PolicyViolationError extends UserError {
  * is needed, e.g. to read {@link PolicyViolationError.violations}.
  */
 export function isPolicyRefusal(error: unknown): boolean {
-	if (error instanceof PolicyViolationError) return true;
-
-	// `hasOwn`, not `in`: the marker is an own property by contract, and an inherited
-	// one would let an unrelated error suppress cleanup and retries.
-	return (
-		typeof error === 'object' &&
-		error !== null &&
-		Object.hasOwn(error, 'isPolicyRefusal') &&
-		(error as { isPolicyRefusal?: unknown }).isPolicyRefusal === true
-	);
+	return error instanceof PolicyViolationError || hasPolicyRefusalMarker(error);
 }

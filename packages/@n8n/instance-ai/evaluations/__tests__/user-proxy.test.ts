@@ -907,6 +907,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			'httpTemplatedCustomAuth',
 			expect.objectContaining({ template: expect.stringContaining('Bearer') }),
 			undefined,
+			undefined,
 		);
 		// Filling the slot means the credential works, so its test is bypassed.
 		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
@@ -955,6 +956,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect.any(String),
 			'slackApi',
 			expect.any(Object),
+			undefined,
 			undefined,
 		);
 		// The allowlist call must include the pre-existing id, not just the new
@@ -1135,6 +1137,42 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		// An empty bypass list, which the client drops from the request body.
 		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh'], []);
 		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBeUndefined();
+	});
+
+	it("workflows(action='setup'): creates the credential in the build's project", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+		});
+		const { client, createCredential } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			credentialCreation: {
+				client,
+				threadId: 'thread-1',
+				allowlistedCredentialIds: [],
+				projectId: 'build-project',
+			},
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-build-project', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		expect(createCredential.mock.calls[0]?.[4]).toBe('build-project');
 	});
 
 	it("workflows(action='setup'): keeps the seeded credentials bypassed when it creates another", async () => {
@@ -1526,6 +1564,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect.any(String),
 			'slackApi',
 			expect.any(Object),
+			undefined,
 			undefined,
 		);
 		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh'], []);

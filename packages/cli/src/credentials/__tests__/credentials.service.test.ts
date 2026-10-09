@@ -1239,6 +1239,82 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	const credentialUseRefusal = () =>
+		new PolicyViolationError([
+			{ kind: 'test', checkId: 'test', message: 'Credential type "githubApi" is blocked' },
+		]);
+
+	describe('decryptForUse', () => {
+		const storedCredential = mock<CredentialsEntity>({ id: 'cred-id', type: 'githubApi' });
+
+		it('checks the policy against the owning project, then returns the raw data', async () => {
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
+			vi.spyOn(service, 'decrypt').mockResolvedValue({ accessToken: 'secret' });
+
+			await expect(service.decryptForUse(storedCredential, ownerActor)).resolves.toEqual({
+				accessToken: 'secret',
+			});
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+				{
+					credentialType: 'githubApi',
+					credentialId: 'cred-id',
+					consumer: null,
+					projectId: 'project-1',
+				},
+				ownerActor,
+			);
+			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
+		});
+
+		it('judges on the given project without looking up the owner', async () => {
+			vi.spyOn(service, 'decrypt').mockResolvedValue({});
+
+			await service.decryptForUse(storedCredential, ownerActor, 'project-2');
+
+			expect(sharedCredentialsRepository.findCredentialOwningProject).not.toHaveBeenCalled();
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'project-2' }),
+				ownerActor,
+			);
+		});
+
+		it('skips the owner lookup when the caller already found no owner', async () => {
+			vi.spyOn(service, 'decrypt').mockResolvedValue({});
+
+			await service.decryptForUse(storedCredential, ownerActor, null);
+
+			expect(sharedCredentialsRepository.findCredentialOwningProject).not.toHaveBeenCalled();
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: null }),
+				ownerActor,
+			);
+		});
+
+		it('judges on instance policy only when the credential has no owning project', async () => {
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
+			vi.spyOn(service, 'decrypt').mockResolvedValue({});
+
+			await service.decryptForUse(storedCredential, ownerActor);
+
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: null }),
+				ownerActor,
+			);
+		});
+
+		it('does not decrypt when the policy refuses', async () => {
+			policyEnforcementService.enforceCredentialDecrypt.mockRejectedValue(credentialUseRefusal());
+			const decrypt = vi.spyOn(service, 'decrypt');
+
+			await expect(
+				service.decryptForUse(storedCredential, ownerActor, 'project-1'),
+			).rejects.toThrow(PolicyViolationError);
+			expect(decrypt).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('testById', () => {
 		it('throws CredentialNotFoundError when the user cannot use the credential', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
@@ -1297,6 +1373,18 @@ describe('CredentialsService', () => {
 				},
 			);
 			expect(result).toEqual(testResult);
+		});
+
+		it('refuses a blocked credential before the tester runs', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'credential-id', type: 'githubApi', usageScope: 'project' }),
+			);
+			policyEnforcementService.enforceCredentialDecrypt.mockRejectedValue(credentialUseRefusal());
+
+			await expect(service.testById(ownerUser, 'credential-id')).rejects.toThrow(
+				PolicyViolationError,
+			);
+			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1437,7 +1525,7 @@ describe('CredentialsService', () => {
 		it('does not opt generic callers into instance credential access', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-			await service.delete(ownerUser, 'credential-id');
+			await expect(service.delete(ownerUser, 'credential-id')).resolves.toBe(false);
 
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 				'credential-id',
@@ -1461,7 +1549,9 @@ describe('CredentialsService', () => {
 				status: 'deleted',
 			});
 
-			await service.delete(ownerUser, credential.id, { includeInstanceCredentials: true });
+			await expect(
+				service.delete(ownerUser, credential.id, { includeInstanceCredentials: true }),
+			).resolves.toBe(true);
 
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 				credential.id,
@@ -1513,7 +1603,9 @@ describe('CredentialsService', () => {
 				status: 'notFound',
 			});
 
-			await service.delete(ownerUser, credential.id, { includeInstanceCredentials: true });
+			await expect(
+				service.delete(ownerUser, credential.id, { includeInstanceCredentials: true }),
+			).resolves.toBe(false);
 
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
@@ -1562,7 +1654,7 @@ describe('CredentialsService', () => {
 				new Error('db is gone'),
 			);
 
-			await expect(service.delete(ownerUser, credential.id)).resolves.not.toThrow();
+			await expect(service.delete(ownerUser, credential.id)).resolves.toBe(true);
 
 			expect(credentialsRepository.remove).toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith(
@@ -1592,6 +1684,94 @@ describe('CredentialsService', () => {
 			});
 			const emittedEventNames = eventService.emit.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-deleted');
+		});
+	});
+
+	describe('deleteUnowned', () => {
+		it('deletes a credential without an owner and reports the deletion', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'unowned-credential',
+				name: 'Unowned',
+				type: 'openAiApi',
+				isResolvable: false,
+			});
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(credential);
+
+			await service.deleteUnowned(ownerUser, credential.id);
+
+			expect(credentialsRepository.delete).toHaveBeenCalledWith({ id: credential.id });
+			expect(externalHooks.run).toHaveBeenCalledWith('credentials.delete', [credential.id]);
+			expect(eventService.emit).toHaveBeenCalledWith('credentials-deleted', {
+				user: ownerUser,
+				credentialType: credential.type,
+				credentialId: credential.id,
+				credentialName: credential.name,
+				projectId: undefined,
+			});
+			const emittedEventNames = eventService.emit.mock.calls.map((call) => call[0]);
+			expect(emittedEventNames).not.toContain('private-credential-deleted');
+		});
+
+		it('runs the external hook before it deletes the credential', async () => {
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'unowned-credential' }),
+			);
+
+			await service.deleteUnowned(ownerUser, 'unowned-credential');
+
+			expect(externalHooks.run.mock.invocationCallOrder[0]).toBeLessThan(
+				credentialsRepository.delete.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the credential when the external hook throws', async () => {
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'unowned-credential' }),
+			);
+			externalHooks.run.mockRejectedValueOnce(new Error('Hook failed'));
+
+			await expect(service.deleteUnowned(ownerUser, 'unowned-credential')).rejects.toThrow(
+				'Hook failed',
+			);
+
+			expect(credentialsRepository.delete).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('reports the deletion of an end-user credential', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'unowned-credential',
+				type: 'openAiApi',
+				isResolvable: true,
+			});
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(credential);
+
+			await service.deleteUnowned(ownerUser, credential.id);
+
+			expect(eventService.emit).toHaveBeenCalledWith('private-credential-deleted', {
+				user: ownerUser,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		});
+
+		it('does nothing when the credential does not exist or still has an owner', async () => {
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(null);
+
+			await service.deleteUnowned(ownerUser, 'credential-id');
+
+			expect(externalHooks.run).not.toHaveBeenCalled();
+			expect(credentialsRepository.delete).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('rejects a user without instance-wide credential:delete', async () => {
+			await expect(service.deleteUnowned(memberUser, 'credential-id')).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			expect(credentialsRepository.findProjectCredentialWithoutOwner).not.toHaveBeenCalled();
+			expect(credentialsRepository.delete).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2079,6 +2259,60 @@ describe('CredentialsService', () => {
 	});
 
 	describe('testWithCredentials', () => {
+		it('refuses a stored credential of a blocked type before the tester runs', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'credential-id', type: 'githubApi', isManaged: false }),
+			);
+			policyEnforcementService.enforceCredentialDecrypt.mockRejectedValue(credentialUseRefusal());
+
+			await expect(
+				service.testWithCredentials(ownerUser, {
+					id: 'credential-id',
+					name: 'GitHub account',
+					type: 'githubApi',
+					data: {},
+				}),
+			).rejects.toThrow(PolicyViolationError);
+			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
+		});
+
+		it('rejects a posted type that differs from the stored one before decrypting', async () => {
+			// A managed credential ignores the posted payload, so this needs an unmanaged one.
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'credential-id', type: 'githubApi', isManaged: false }),
+			);
+
+			await expect(
+				service.testWithCredentials(ownerUser, {
+					id: 'credential-id',
+					name: 'GitHub account',
+					type: 'slackApi',
+					data: {},
+				}),
+			).rejects.toThrow(BadRequestError);
+			expect(policyEnforcementService.enforceCredentialDecrypt).not.toHaveBeenCalled();
+			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
+		});
+
+		it('refuses an unsaved provider connection of a blocked type on instance policy', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+			policyEnforcementService.enforceCredentialDecrypt.mockRejectedValue(credentialUseRefusal());
+
+			await expect(
+				service.testWithCredentials(ownerUser, {
+					id: '',
+					name: 'n8n Assistant model',
+					type: 'openAiApi',
+					data: { apiKey: 'key' },
+				}),
+			).rejects.toThrow(PolicyViolationError);
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledWith(
+				{ credentialType: 'openAiApi', credentialId: '', consumer: null, projectId: null },
+				{ kind: 'user', user: ownerUser },
+			);
+			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
+		});
+
 		it('tests an unsaved provider connection for an instance credential manager', async () => {
 			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
@@ -4927,6 +5161,14 @@ describe('CredentialsService', () => {
 				memberUser,
 				['credential:read'],
 			);
+		});
+
+		it('should refuse a blocked credential before probing it', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			policyEnforcementService.enforceCredentialDecrypt.mockRejectedValue(credentialUseRefusal());
+
+			await expect(service.probeById(ownerUser, 'cred-id')).rejects.toThrow(PolicyViolationError);
+			expect(credentialsTester.probeCredentialAuth).not.toHaveBeenCalled();
 		});
 
 		it('should throw when the credential has no test URL', async () => {

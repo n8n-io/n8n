@@ -55,6 +55,34 @@ export const agentEvalResultStatusSchema = z.enum([
 ]);
 export type AgentEvalResultStatus = z.infer<typeof agentEvalResultStatusSchema>;
 
+/**
+ * LLM-as-judge verdict on a case's output against its rule (`criteria`) or
+ * gold answer (`expectedOutput`). Set only after a successful execution —
+ * `status: 'skipped'` means the case had neither to judge against, not that
+ * judging failed. `'error'` means the judge call itself failed (timeout, bad
+ * provider response); the case's own `status: 'success'` is unaffected, since
+ * grading is best-effort on top of an already-successful run.
+ */
+export const agentEvalVerdictStatusSchema = z.enum(['skipped', 'completed', 'error']);
+export type AgentEvalVerdictStatus = z.infer<typeof agentEvalVerdictStatusSchema>;
+
+// The judge's pass/fail call — named `outcome` (not `verdict`) on the object
+// below to avoid `AgentEvalVerdict.verdict`, a field self-referencing its own
+// container's name.
+export const agentEvalVerdictOutcomeSchema = z.enum(['pass', 'fail']);
+export type AgentEvalVerdictOutcome = z.infer<typeof agentEvalVerdictOutcomeSchema>;
+
+export const agentEvalVerdictSchema = z.object({
+	status: agentEvalVerdictStatusSchema,
+	/** Only set when `status` is `'completed'`. */
+	outcome: agentEvalVerdictOutcomeSchema.nullable(),
+	/** The judge's explanation, or the error message when `status` is `'error'`. */
+	reasoning: z.string().nullable(),
+	/** One instruction that would fix a failed rule. Only set on a `fail` outcome, and absent on older rows. */
+	suggestion: z.string().nullable().optional(),
+});
+export type AgentEvalVerdict = z.infer<typeof agentEvalVerdictSchema>;
+
 export const agentEvalVoteSchema = z.enum(['up', 'down']);
 export type AgentEvalVote = z.infer<typeof agentEvalVoteSchema>;
 
@@ -187,6 +215,7 @@ export type AgentEvalResultRecord = {
 	output: JsonObject | null;
 	toolCalls: JsonObject | null;
 	metrics: IDataObject | null;
+	verdict: AgentEvalVerdict | null;
 	runAt: string | null;
 	completedAt: string | null;
 	errorCode: string | null;
@@ -239,21 +268,151 @@ export type AgentEvalRunSummary = {
 export const agentEvalDraftCaseSchema = z.object({
 	input: z.string().min(1),
 	whatToCheck: z.string().min(1),
+	/** One or two words naming the kind of scenario the case exercises, e.g. "Vague", "Sensitive data", "Upset". */
+	scenario: z.string().min(1),
 });
 export type AgentEvalDraftCase = z.infer<typeof agentEvalDraftCaseSchema>;
 
 // Request body for the generate-cases endpoint. `count` is a positive int; the
 // service clamps it to its supported maximum rather than rejecting.
+//
+// `suggestion`/`previousInput`/`previousOutput` ask for a single replacement
+// case instead of fresh ones: feedback on a case that already ran, plus what it
+// ran with. The service only treats this as a revision when `suggestion` and
+// `previousInput` are set — `previousOutput` may be empty, since a case that
+// errored or never finished has no output to show.
+//
+// `exampleInput`/`exampleOutput` are a known-good pair — one the user already
+// approved — grounding fresh generations in that same style and scope. The
+// service only uses this when both are set.
+//
+// `rule` is a rule the agent must follow, written by the user. It asks for one
+// case: a user message that tests that rule. The count is ignored, like a
+// revision's.
+//
+// `save` defaults to true (persist a dataset, as this endpoint always has).
+// `save: false` skips persistence entirely — no Data Table, no dataset row —
+// so a caller can preview drafts (e.g. before the user has committed to any
+// of them) without leaving an empty, never-run dataset behind on a refresh.
 const generateDraftCasesOptionsShape = {
 	count: z.number().int().min(1).optional(),
 	datasetName: z.string().min(1).optional(),
+	suggestion: z.string().min(1).optional(),
+	previousInput: z.string().min(1).optional(),
+	previousOutput: z.string().optional(),
+	exampleInput: z.string().min(1).optional(),
+	exampleOutput: z.string().min(1).optional(),
+	rule: z.string().trim().min(1).optional(),
+	save: z.boolean().optional(),
 };
 export const generateDraftCasesOptionsSchema = z.object(generateDraftCasesOptionsShape);
 export type GenerateDraftCasesOptions = z.infer<typeof generateDraftCasesOptionsSchema>;
 export class GenerateDraftCasesOptionsDto extends Z.class(generateDraftCasesOptionsShape) {}
 
+/** `datasetId`/`dataTableId` are absent when called with `save: false`. */
 export type GenerateDraftCasesResult = {
+	datasetId?: string;
+	dataTableId?: string;
+	cases: AgentEvalDraftCase[];
+};
+
+// Request body for the draft-dataset endpoint: creates an empty dataset (a
+// Data Table with the same columns case generation writes, plus its pointer
+// row) and nothing else — no LLM call, no rows. Lets a caller turn a `save:
+// false` preview into a real, run-able dataset once the user commits to it,
+// without regenerating or guessing the column names.
+const createDraftDatasetOptionsShape = {
+	datasetName: z.string().min(1).optional(),
+};
+export const createDraftDatasetOptionsSchema = z.object(createDraftDatasetOptionsShape);
+export type CreateDraftDatasetOptions = z.infer<typeof createDraftDatasetOptionsSchema>;
+export class CreateDraftDatasetOptionsDto extends Z.class(createDraftDatasetOptionsShape) {}
+
+export type CreateDraftDatasetResult = {
 	datasetId: string;
 	dataTableId: string;
-	cases: AgentEvalDraftCase[];
+	/** Lets the caller resolve a writable `CaseSource` straight from this result,
+	 *  instead of re-reading the dataset list to find the row it just created. */
+	columnMapping: AgentEvalColumnMapping;
+};
+
+// Request body for the preview-run endpoint: drafts exactly one case (the
+// same way `generateDraftCases` would with `count: 1, save: false`) and
+// immediately executes it against the agent through the same path Preview
+// Chat uses — no Data Table, no dataset, no eval-run row. Lets "try it once"
+// (and its "needs work" retries) run freely without leaving anything behind.
+const previewRunOptionsShape = {
+	suggestion: z.string().min(1).optional(),
+	previousInput: z.string().min(1).optional(),
+	previousOutput: z.string().optional(),
+};
+export const previewRunOptionsSchema = z.object(previewRunOptionsShape);
+export type PreviewRunOptions = z.infer<typeof previewRunOptionsSchema>;
+export class PreviewRunOptionsDto extends Z.class(previewRunOptionsShape) {}
+
+/**
+ * `failed` covers every non-completed outcome (a suspended tool approval, a
+ * misconfigured agent, an empty draft) — the preview has no UI for resuming
+ * an approval or surfacing missing config, so all of them read the same way
+ * the eval-run version did: a generic "didn't complete" failure.
+ */
+export type PreviewRunResult =
+	| {
+			status: 'completed';
+			input: string;
+			whatToCheck: string;
+			scenario: string;
+			response: string;
+			/** The judge's call on the response against `whatToCheck`. A judge failure is an `error` verdict, never a `failed` preview. */
+			verdict: AgentEvalVerdict;
+	  }
+	| { status: 'failed' };
+
+// Request body for rerunning one already-seeded result in place. `whatToCheck`
+// is optional: a plain "Run check" repeats the case as-is, while editing the
+// rule from the checks view (which has no editable case row of its own, only
+// the result's own snapshot) bundles the new text into the same request —
+// persisted onto the result's snapshot before it re-executes.
+const rerunResultOptionsShape = {
+	whatToCheck: z.string().trim().min(1).optional(),
+};
+export const rerunResultOptionsSchema = z.object(rerunResultOptionsShape);
+export type RerunResultOptions = z.infer<typeof rerunResultOptionsSchema>;
+export class RerunResultOptionsDto extends Z.class(rerunResultOptionsShape) {}
+
+// Applies the fix suggestions stored on failed results: the backend rewrites the
+// agent's instructions once to include all of them, then reruns only these results.
+export const MAX_APPLY_SUGGESTIONS = 10;
+const applyAgentEvalSuggestionsShape = {
+	resultIds: z.array(z.string().min(1)).min(1).max(MAX_APPLY_SUGGESTIONS),
+};
+export const applyAgentEvalSuggestionsSchema = z.object(applyAgentEvalSuggestionsShape);
+export type ApplyAgentEvalSuggestionsOptions = z.infer<typeof applyAgentEvalSuggestionsSchema>;
+export class ApplyAgentEvalSuggestionsDto extends Z.class(applyAgentEvalSuggestionsShape) {}
+
+export type ApplyAgentEvalSuggestionsResult = {
+	/** Hash of the saved agent config, so the editor can adopt it without a conflict. */
+	configHash: string;
+	/** The reran results, in the order they were requested. */
+	results: AgentEvalResultRecord[];
+};
+
+// Applies the suggestion on a preview run's failed first check. A preview run
+// saves nothing, so the case travels in the body instead of a result id: the
+// backend rewrites the agent's instructions with the suggestion, then runs the
+// same case again.
+const applyPreviewSuggestionShape = {
+	input: z.string().trim().min(1).max(10_000),
+	whatToCheck: z.string().trim().min(1).max(10_000),
+	suggestion: z.string().trim().min(1).max(10_000),
+};
+export const applyPreviewSuggestionSchema = z.object(applyPreviewSuggestionShape);
+export type ApplyPreviewSuggestionOptions = z.infer<typeof applyPreviewSuggestionSchema>;
+export class ApplyPreviewSuggestionDto extends Z.class(applyPreviewSuggestionShape) {}
+
+export type ApplyPreviewSuggestionResult = {
+	/** Hash of the saved agent config, so the editor can adopt it without a conflict. */
+	configHash: string;
+	/** The same case, run again against the rewritten instructions. */
+	preview: PreviewRunResult;
 };

@@ -11,6 +11,7 @@ type TargetColumns = Array<{ name: string; type: string; index: number }>;
  * additional columns of its own; `fail` is the strict drift-detection choice
  * and rejects any difference, including a harmless superset. Neither alters
  * the matched target table. `overwrite` never blocks on schema.
+ * `overwrite-non-destructive` blocks with the `fail` result only when a change deletes data.
  */
 /* eslint-disable @typescript-eslint/naming-convention -- API data table schema conflict policy keys */
 const SCHEMA_CONFLICTS: Record<
@@ -34,6 +35,12 @@ const SCHEMA_CONFLICTS: Record<
 		return { missingColumns: [], typeMismatches: [], ...incompatibility, extraColumns };
 	},
 	overwrite: () => null,
+	// Must match the `destructive` operations of `diffDataTableSchema`. Revisit with column ids (LIGO-1233).
+	'overwrite-non-destructive': (packageColumns, targetColumns) => {
+		const conflict = SCHEMA_CONFLICTS.fail(packageColumns, targetColumns);
+		if (!conflict) return null;
+		return conflict.typeMismatches.length > 0 || conflict.extraColumns ? conflict : null;
+	},
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 

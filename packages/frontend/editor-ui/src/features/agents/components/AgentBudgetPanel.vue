@@ -321,6 +321,7 @@ const sessionValue = computed(() => {
 }
 
 .rowLabel {
+	opacity: var(--agent-row-label-opacity, 1);
 	display: flex;
 	flex: 1 1 auto;
 	flex-direction: column;

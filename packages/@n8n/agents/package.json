@@ -112,6 +112,7 @@
     "@daytona/sdk": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/ai-utilities": "workspace:*",
+    "@n8n/client-oauth2": "workspace:*",
     "@n8n/sandbox-client": "0.1.1",
     "@n8n/utils": "workspace:*",
     "@openrouter/ai-sdk-provider": "catalog:",

@@ -30,6 +30,8 @@ import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
+import { getAgentConfigHash } from './utils/agent-config-hash';
+import { composeJsonConfig } from './json-config/agent-config-composition';
 import {
 	type AgentTaskRunLockHandle,
 	AgentTaskRunLockRepository,
@@ -98,8 +100,8 @@ export class AgentTaskService {
 		dto: CreateAgentTaskDto,
 		context: AgentMutationTelemetryContext,
 	): Promise<AgentTaskDto> {
-		const [task] = await this.createTasksBatch(agentId, projectId, [dto], context);
-		return task;
+		const { tasks } = await this.createTasksBatch(agentId, projectId, [dto], context);
+		return tasks[0];
 	}
 
 	/**
@@ -113,8 +115,9 @@ export class AgentTaskService {
 		projectId: string,
 		dtos: CreateAgentTaskDto[],
 		context: AgentMutationTelemetryContext,
-	): Promise<AgentTaskDto[]> {
-		return await this.createTasksBatch(agentId, projectId, dtos, context);
+	): Promise<{ tasks: AgentTaskDto[]; configHash: string | null }> {
+		const { tasks, agent } = await this.createTasksBatch(agentId, projectId, dtos, context);
+		return { tasks, configHash: getAgentConfigHash(composeJsonConfig(agent)) };
 	}
 
 	/**
@@ -129,7 +132,7 @@ export class AgentTaskService {
 		projectId: string,
 		dtos: CreateAgentTaskDto[],
 		context: AgentMutationTelemetryContext,
-	): Promise<AgentTaskDto[]> {
+	): Promise<{ tasks: AgentTaskDto[]; agent: Agent }> {
 		if (dtos.length === 0) {
 			throw new BadRequestError('At least one task is required');
 		}
@@ -175,7 +178,7 @@ export class AgentTaskService {
 			agentId,
 			taskIds: tasks.map((task) => task.id),
 		});
-		return tasks.map((task) => this.toDto(task));
+		return { tasks: tasks.map((task) => this.toDto(task)), agent };
 	}
 
 	/**

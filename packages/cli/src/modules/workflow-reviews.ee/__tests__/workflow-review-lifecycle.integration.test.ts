@@ -641,6 +641,7 @@ describe('auto-close on source-control pull', () => {
 			mock(), // workflowPublishGuard
 			Container.get(WorkflowMutationHooksProxy),
 			Container.get(WorkflowFinderService),
+			mock(),
 		);
 	});
 

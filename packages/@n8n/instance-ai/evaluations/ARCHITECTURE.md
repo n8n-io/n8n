@@ -130,8 +130,10 @@ the cursor instead.
   n8n — it targets a long-lived container per slot, `restart: unless-stopped`,
   booted once for the whole sweep and never reset between cases. The nightly
   runs ~12 of them (runners x slots), so one n8n process serves dozens of cases
-  back to back. Isolation is per-case *user* (`run/lane-users.ts`
-  `provisionCaseBuildUser`), not per-case instance. Assume anything the backend
+  back to back. Isolation is per build, not per instance (`run/lane-users.ts`):
+  an MCP build acts as a fresh member (`provisionCaseBuildUser`), an
+  orchestrator build runs in a fresh member's personal project
+  (`provisionBuildProject`). Assume anything the backend
   holds in memory outlives the case that created it, and size it for a
   multi-hour process rather than one run.
 - **`eval-pr-comment.md`** is posted verbatim by CI. The comment uses an

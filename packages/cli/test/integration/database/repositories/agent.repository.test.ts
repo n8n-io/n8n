@@ -11,6 +11,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
+import type { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import type { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
 import type { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import type { AgentSkillsService } from '@/modules/agents/agent-skills.service';
@@ -117,6 +118,7 @@ describe('AgentRepository', () => {
 				setup,
 				transactionRunner,
 				completion,
+				mock<AgentPolicyService>(),
 			);
 			const deleteTasks = taskRepo.deleteForAgent.bind(taskRepo);
 			vi.spyOn(taskRepo, 'deleteForAgent').mockImplementationOnce(async (id, ids, ctx) => {
@@ -722,6 +724,37 @@ describe('AgentRepository', () => {
 			await createPublishedAgent();
 
 			await expect(agentRepo.findPublishedIds([])).resolves.toEqual(new Set());
+		});
+	});
+
+	describe('findByProjectIdsPaginated - ids filter', () => {
+		it('returns only the requested agents', async () => {
+			const first = await createAgent();
+			const second = await createAgent();
+			await createAgent();
+
+			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
+				skip: 0,
+				take: 10,
+				filter: { ids: [first.id, second.id] },
+			});
+
+			expect(count).toBe(2);
+			expect(data.map((agent) => agent.id).sort()).toEqual([first.id, second.id].sort());
+		});
+
+		it('excludes a requested agent in another project', async () => {
+			const otherProject = await createTeamProject();
+			const outside = await createAgent({ projectId: otherProject.id });
+
+			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
+				skip: 0,
+				take: 10,
+				filter: { ids: [outside.id] },
+			});
+
+			expect(count).toBe(0);
+			expect(data).toEqual([]);
 		});
 	});
 

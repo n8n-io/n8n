@@ -9,7 +9,7 @@ import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
+import { ExternalSecretsProxy, StorageConfig, WorkflowExecute } from 'n8n-core';
 import type {
 	AiEvent,
 	EnvProviderState,
@@ -77,6 +77,7 @@ import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
@@ -157,6 +158,11 @@ async function fetchWorkflowData(
 	} else {
 		const workflowData = workflowInfo.code;
 		if (workflowData) {
+			// The save-time check does not see inline JSON, so it runs here.
+			Container.get(DeprecatedNodesValidationService).validateOnCreate(
+				workflowData.nodes ?? [],
+				parentWorkflowId,
+			);
 			// An inline sub-workflow is part of the parent that embeds it, not a
 			// workflow of its own, so it runs under the parent workflow's id.
 			workflowData.id = parentWorkflowId;
@@ -696,6 +702,7 @@ async function startExecution(
 			additionalDataIntegrated,
 			runData.executionMode,
 			runExecutionData,
+			Container.get(StorageConfig).modeTag,
 		);
 		const execution = workflowExecute.processRunExecutionData(workflow);
 		activeExecutions.attachWorkflowExecution(executionId, execution);
