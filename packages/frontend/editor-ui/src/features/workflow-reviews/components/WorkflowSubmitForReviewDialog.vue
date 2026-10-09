@@ -250,17 +250,21 @@ const submit = async () => {
 		@update:open="close"
 	>
 		<N8nDialogHeader>
-			<N8nText
-				:class="$style.step"
-				size="xsmall"
-				color="text-light"
-				bold
-				tag="p"
-				data-test-id="workflow-review-dialog-step"
-			>
-				{{ stepLabel }}
-			</N8nText>
-			<N8nDialogTitle>{{ i18n.baseText('workflowReviews.submitForReview.title') }}</N8nDialogTitle>
+			<div :class="$style.heading">
+				<N8nText
+					:class="$style.step"
+					size="xsmall"
+					color="text-light"
+					bold
+					tag="p"
+					data-test-id="workflow-review-dialog-step"
+				>
+					{{ stepLabel }}
+				</N8nText>
+				<N8nDialogTitle>{{
+					i18n.baseText('workflowReviews.submitForReview.title')
+				}}</N8nDialogTitle>
+			</div>
 		</N8nDialogHeader>
 		<N8nDialogBody>
 			<form
@@ -391,6 +395,14 @@ const submit = async () => {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	margin-top: var(--spacing--xs);
+}
+
+.heading {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-width: 0;
+	gap: var(--spacing--2xs);
 }
 
 .step {
