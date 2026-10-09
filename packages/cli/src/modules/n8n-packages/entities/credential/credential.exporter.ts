@@ -85,7 +85,12 @@ export class CredentialExporter {
 				);
 			}
 
-			requirements.push({ id, name, type, usedByWorkflows });
+			requirements.push({
+				id,
+				name,
+				type,
+				usedBy: usedByWorkflows.map((workflowId) => ({ kind: 'workflow', id: workflowId })),
+			});
 		}
 
 		return { entries, requirements };

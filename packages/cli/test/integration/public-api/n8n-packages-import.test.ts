@@ -80,7 +80,7 @@ async function buildImportPackage(
 				? {
 						variables: [{ id: 'var-http-source', name: variable.name, target: variable.target }],
 						requirements: {
-							variables: [{ name: variable.name, usedByWorkflows: [wfId] }],
+							variables: [{ name: variable.name, usedBy: [{ kind: 'workflow', id: wfId }] }],
 						},
 					}
 				: {}),
@@ -467,7 +467,7 @@ describe('POST /n8n-packages/import', () => {
 					type: 'missing-node-type',
 					nodeType: 'n8n-nodes-community.chatBot',
 					typeVersion: 1,
-					usedByWorkflows: ['wf-unknown-node'],
+					usedBy: [{ kind: 'workflow', id: 'wf-unknown-node' }],
 				},
 			],
 		});
