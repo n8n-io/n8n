@@ -14,6 +14,7 @@ packages/cli/src/modules/agents/agent-validation.service.ts
   s_7c67b2f5561b1e::t_e343af153c5db0 291,481-486
 packages/cli/src/modules/agents/agent-custom-tools.service.ts
   s_7c67b2f5561b1e::t_e343af153c5db0 6,22,47,62-72,79-80,83-91
+  s_7c67b2f5561b1e::t_334c9772bacd35 73
 packages/cli/src/modules/agents/agent-config-preparation.service.ts
   s_7c67b2f5561b1e::t_e343af153c5db0 16,35-40,56,78,91
 packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
