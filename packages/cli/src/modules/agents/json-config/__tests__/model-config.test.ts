@@ -9,16 +9,27 @@ import {
 
 describe('resolveCredentialAwareModelConfig', () => {
 	it.each([
-		{ project: undefined, projectId: 'custom-project', expectedProject: 'custom-project' },
-		{ project: '__custom__', projectId: 'custom-project', expectedProject: 'custom-project' },
 		{
+			model: 'google-vertex/gemini-2.5-pro',
+			project: undefined,
+			projectId: 'custom-project',
+			expectedProject: 'custom-project',
+		},
+		{
+			model: 'google-vertex/gemini-flash-latest',
+			project: '__custom__',
+			projectId: 'custom-project',
+			expectedProject: 'custom-project',
+		},
+		{
+			model: 'google-vertex/gemini-3-flash-preview',
 			project: 'listed-project',
 			projectId: 'old-custom-project',
 			expectedProject: 'listed-project',
 		},
 	])(
-		'uses the Vertex credential project $expectedProject and region',
-		async ({ project, projectId, expectedProject }) => {
+		'uses the Vertex credential project $expectedProject and region for $model',
+		async ({ model, project, projectId, expectedProject }) => {
 			const credentialProvider = mock<CredentialProvider>();
 			credentialProvider.list.mockResolvedValue([
 				{ id: 'vertex', name: 'Vertex', type: 'googleVertexAiApi' },
@@ -31,13 +42,9 @@ describe('resolveCredentialAwareModelConfig', () => {
 				projectId,
 			});
 			await expect(
-				resolveCredentialAwareModelConfig(
-					'google-vertex/gemini-3-flash-preview',
-					'vertex',
-					credentialProvider,
-				),
+				resolveCredentialAwareModelConfig(model, 'vertex', credentialProvider),
 			).resolves.toEqual({
-				id: 'google-vertex/gemini-3-flash-preview',
+				id: model,
 				project: expectedProject,
 				location: 'europe-west4',
 				clientEmail: 'agent@example.iam.gserviceaccount.com',
@@ -46,30 +53,18 @@ describe('resolveCredentialAwareModelConfig', () => {
 		},
 	);
 
-	it.each([
-		{
-			model: 'google-vertex/gemini-2.5-pro',
-			type: 'googleVertexAiApi',
-			error: 'Gemini 3',
-		},
-		{
-			model: 'google-vertex/gemini-3-flash-preview',
-			type: 'googleApi',
-			error: 'Google Vertex AI credential',
-		},
-		{
-			model: 'google-vertex/gemini-3-flash-preview',
-			type: 'googlePalmApi',
-			error: 'Google Vertex AI credential',
-		},
-	])(
-		'rejects an incompatible Vertex model or credential: $model, $type',
-		async ({ model, type, error }) => {
+	it.each(['googleApi', 'googlePalmApi'])(
+		'rejects an incompatible Vertex credential: %s',
+		async (type) => {
 			const credentialProvider = mock<CredentialProvider>();
 			credentialProvider.list.mockResolvedValue([{ id: 'gcp', name: 'GCP', type }]);
 			await expect(
-				resolveCredentialAwareModelConfig(model, 'gcp', credentialProvider),
-			).rejects.toThrow(error);
+				resolveCredentialAwareModelConfig(
+					'google-vertex/gemini-2.5-pro',
+					'gcp',
+					credentialProvider,
+				),
+			).rejects.toThrow('Google Vertex AI credential');
 			expect(credentialProvider.resolve).not.toHaveBeenCalled();
 		},
 	);

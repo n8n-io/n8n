@@ -1,6 +1,6 @@
 import type { CredentialProvider, ModelConfig, ResolvedCredential } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
-import { AI_GATEWAY_MANAGED_TAG, isVertexGeminiModel } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
@@ -29,9 +29,6 @@ export async function resolveCredentialAwareModelConfig(
 ): Promise<ModelConfig> {
 	const provider = getProviderPrefix(model);
 	if (provider === 'google-vertex') {
-		if (!isVertexGeminiModel(model)) {
-			throw new UserError('Select a versioned Gemini 3 or newer model for Google Vertex AI.');
-		}
 		const selected = (await credentialProvider.list()).find((entry) => entry.id === credential);
 		if (selected?.type !== 'googleVertexAiApi') {
 			throw new UserError(

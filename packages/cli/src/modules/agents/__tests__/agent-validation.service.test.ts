@@ -309,7 +309,7 @@ describe('AgentValidationService — structured issues', () => {
 		async (scope) => {
 			const { service, agentRepository } = makeService();
 			const model = {
-				model: 'google-vertex/gemini-3-flash-preview',
+				model: 'google-vertex/gemini-2.5-pro',
 				credential: 'vertex',
 			};
 			const config: AgentJsonConfig = {

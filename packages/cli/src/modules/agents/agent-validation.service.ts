@@ -10,7 +10,6 @@ import {
 	getWorkflowToolIncompatibilityReason,
 	isDraftAgentConfig,
 	isDraftIntegration,
-	isVertexGeminiModel,
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
@@ -443,9 +442,6 @@ export class AgentValidationService {
 		}
 		for (const [path, model] of slots) {
 			if (!model || getProviderPrefix(model.model) !== 'google-vertex') continue;
-			if (!isVertexGeminiModel(model.model)) {
-				issues.push(agentIssue('invalid_value', `${path}model`));
-			}
 			if (!model.credential?.trim()) {
 				issues.push(agentIssue('missing_credential', `${path}credential`));
 				continue;
