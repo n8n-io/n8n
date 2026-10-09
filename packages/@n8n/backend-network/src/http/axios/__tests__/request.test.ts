@@ -4,11 +4,14 @@ import FormData from 'form-data';
 import type { Agent as HttpsAgent } from 'https';
 import type { IHttpRequestMethods, IHttpRequestOptions, IRequestOptions } from 'n8n-workflow';
 import nock from 'nock';
+import { gzipSync } from 'node:zlib';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge } from '../../../ssrf';
 import { configureGlobalAxiosDefaults } from '../config';
 import { convertN8nRequestToAxios, httpRequest, removeEmptyBody } from '../request';
+import { HttpResponseSizeLimitError } from '../../response-size-limit.error';
+import { retryabilityFromError } from '../../retryability';
 
 // Sets axios defaults and registers the vendor-header interceptor.
 configureGlobalAxiosDefaults();
@@ -269,6 +272,30 @@ describe('httpRequest', () => {
 
 	beforeEach(() => {
 		nock.cleanAll();
+	});
+
+	test('keeps response sizes unlimited when no limit is configured', async () => {
+		const body = { data: 'x'.repeat(4096) };
+		const scope = nock(baseUrl).get('/data').reply(200, body);
+
+		await expect(httpRequest({ url: `${baseUrl}/data`, json: true })).resolves.toEqual(body);
+		scope.done();
+	});
+
+	test.each([false, true])('limits decoded response bytes with gzip: %s', async (compressed) => {
+		const body = JSON.stringify({ data: 'x'.repeat(4096) });
+		const scope = nock(baseUrl)
+			.get('/data')
+			.reply(200, compressed ? gzipSync(body) : body, {
+				'Content-Type': 'application/json',
+				...(compressed && { 'Content-Encoding': 'gzip' }),
+			});
+		const request = httpRequest({ url: `${baseUrl}/data`, json: true, maxResponseBodyBytes: 128 });
+
+		await expect(request).rejects.toThrow(HttpResponseSizeLimitError);
+		await expect(request).rejects.toMatchObject({ code: 'ERR_RESPONSE_TOO_LARGE' });
+		await expect(request.catch(retryabilityFromError)).resolves.toMatchObject({ retryable: 'no' });
+		scope.done();
 	});
 
 	test('should make a simple GET request', async () => {

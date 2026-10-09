@@ -76,6 +76,7 @@ responses:
                         type: string
                         enum:
                           - git
+                          - gitlab
                       authType:
                         type: string
                         enum:

@@ -7,6 +7,7 @@ import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
 import type { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
 import type { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
+import type { GitHostClients } from '../git-hosts/git-host-clients';
 import { PromotionProvidersService } from '../promotion-providers.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 
@@ -21,6 +22,7 @@ describe('PromotionProvidersService', () => {
 		connectionRepository,
 		gitService,
 		cipher,
+		mock<GitHostClients>(),
 	);
 
 	const sshProvider = (): PromotionProvider =>

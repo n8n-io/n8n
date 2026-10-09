@@ -159,3 +159,23 @@ describe('provider responses', () => {
 		expect(JSON.stringify(result.data)).not.toContain('AAAAKEY');
 	});
 });
+
+describe('Git host configuration', () => {
+	const gitlab = { name: 'GitLab', type: 'gitlab', auth: tokenAuth };
+
+	it.each([
+		'gitlab.com',
+		'ssh://gitlab.com',
+		'file:///etc',
+		'https://user:password@gitlab.com',
+		'https://gitlab.com?token=example',
+		'https://gitlab.com/#top',
+		'https://git\nlab.com',
+		'https://gitlab.com/\u0000',
+	])('rejects an invalid host URL: %s', (baseUrl) => {
+		expect(
+			CreatePromotionProviderDto.safeParse({ ...gitlab, config: { schemaVersion: 1, baseUrl } })
+				.success,
+		).toBe(false);
+	});
+});

@@ -89,7 +89,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a promotion provider')
 	@ApiDescription(
-		'Creates a provider and its authentication material. An SSH provider returns the generated public key; add it to the remote as a deploy key.',
+		'Creates a provider and its authentication material. A Git host provider validates authenticated API access before it saves. An SSH provider returns the generated public key; add it to the remote as a deploy key.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(201, PromotionProviderCreatedPublicDto)
@@ -107,7 +107,9 @@ export class PromotionsPublicController {
 	@ApiKeyScope('gitConnection:list')
 	@GlobalScope('gitConnection:list')
 	@ApiSummary('List promotion providers')
-	@ApiDescription('Returns a cursor-paginated list of providers, without their public keys.')
+	@ApiDescription(
+		'Returns a cursor-paginated list of providers, without their public configuration.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionProviderListPublicDto)
 	@ApiErrorResponse(503)
@@ -150,7 +152,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:update')
 	@ApiSummary('Update a promotion provider')
 	@ApiDescription(
-		'Renames the provider, and replaces its credentials when `auth` is sent. New credentials apply to every connection that uses this provider. The authentication method cannot change.',
+		'Renames the provider, and replaces its credentials when `auth` is sent. A Git host provider can also update its base URL. A different API destination requires `auth` in the same request. Changed credentials and host settings are validated before they save. New credentials apply to every connection that uses this provider. The authentication method cannot change.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionProviderPublicDto)
