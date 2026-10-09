@@ -1721,6 +1721,54 @@ describe('createInstanceAiTraceContext', () => {
 		expect(spanNames.some((name) => name.startsWith('instance-ai.tool.'))).toBe(false);
 	});
 
+	it.each(['product-trace', 'record'] as const)(
+		'passes the suspend options of a tool through the %s wrapper',
+		async (wrapper) => {
+			let tracing: Awaited<ReturnType<typeof createInstanceAiTraceContext>>;
+			if (wrapper === 'record') {
+				tracing = createTraceReplayOnlyContext();
+				tracing.replayMode = 'record';
+				tracing.traceWriter = new TraceWriter('record-suspend-options');
+			} else {
+				tracing = await createInstanceAiTraceContext({
+					threadId: 'thread-1',
+					messageId: 'message-1',
+					runId: 'run-1',
+					userId: 'user-1',
+					input: { message: 'Publish my node' },
+				});
+				await startForegroundActor(tracing!);
+			}
+			const options = { continuation: { bundleHash: 'abc' } };
+			const interruptibleTool: BuiltTool = {
+				name: 'approval-tool',
+				description: 'Requests approval.',
+				suspendSchema: {},
+				handler: async (_input, context) => {
+					if (!('suspend' in context) || typeof context.suspend !== 'function') {
+						throw new Error('Expected interruptible tool context');
+					}
+					return await context.suspend({ requestId: 'request-1' }, options);
+				},
+			};
+			const wrappedTool = tracing!
+				.wrapTools(createToolRegistry([['approval-tool', interruptibleTool]]), {
+					agentRole: 'orchestrator',
+				})
+				.get('approval-tool');
+			if (!isExecutableTool(wrappedTool)) {
+				throw new Error('Wrapped approval-tool is not executable');
+			}
+			const suspend = vi.fn(async () => await Promise.resolve(undefined as never));
+
+			await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
+				await executeTool(wrappedTool, {}, { resumeData: undefined, suspend });
+			});
+
+			expect(suspend).toHaveBeenCalledWith({ requestId: 'request-1' }, options);
+		},
+	);
+
 	it('records actual suspend calls with the suspend payload', async () => {
 		const writer = new TraceWriter('record-suspend');
 		const tracing = createTraceReplayOnlyContext();

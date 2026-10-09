@@ -9,6 +9,7 @@ import {
 	type InterruptibleToolContext,
 	type ScopedMemoryTaskEvent,
 	type ToolContext,
+	type ToolSuspendOptions,
 } from '@n8n/agents';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
@@ -1177,7 +1178,7 @@ async function traceProductSuspendableToolExecute(
 		typeof originalSuspend === 'function'
 			? {
 					...context,
-					suspend: async (suspendPayload: unknown) => {
+					suspend: async (suspendPayload: unknown, options?: ToolSuspendOptions) => {
 						await startAndFinishProductChildSpan(currentTrace, {
 							name: 'hitl: suspend',
 							canonicalName: 'instance-ai.hitl.suspend',
@@ -1190,7 +1191,7 @@ async function traceProductSuspendableToolExecute(
 							outputs: suspendPayload,
 							forceFlush: true,
 						});
-						return await originalSuspend(suspendPayload);
+						return await originalSuspend(suspendPayload, options);
 					},
 				}
 			: context;
@@ -1502,7 +1503,7 @@ function recordWrapTool(
 			const wrappedContext: NativeToolContext = isInterruptibleToolContext(context)
 				? {
 						...context,
-						suspend: async (suspendPayload: unknown) => {
+						suspend: async (suspendPayload: unknown, options?: ToolSuspendOptions) => {
 							capturedSuspendPayload = isRecord(suspendPayload) ? suspendPayload : {};
 							traceWriter.recordToolSuspend(
 								agentRole,
@@ -1512,7 +1513,7 @@ function recordWrapTool(
 								capturedSuspendPayload,
 							);
 							recordedSuspend = true;
-							return await context.suspend(suspendPayload);
+							return await context.suspend(suspendPayload, options);
 						},
 					}
 				: context;
