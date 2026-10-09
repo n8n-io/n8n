@@ -759,6 +759,73 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		});
 	});
 
+	it('saves a connection while a draft of another server failed', async () => {
+		mcpStoreMock.catalog.push({
+			...mcpStoreMock.catalog[0],
+			slug: 'slack',
+			title: 'Slack',
+		});
+		const slackConnection = {
+			id: 'conn-2',
+			serverSlug: 'slack',
+			credentialId: 'cred-slack',
+			status: 'connected' as const,
+			toolPermissions: toolSettings,
+		};
+		mcpStoreMock.connections = [slackConnection];
+		discoverMcpConnectionMock.mockResolvedValue({
+			status: 'disconnected',
+			failureReason: 'unknown',
+			tools: [],
+		} satisfies McpRegistryDiscoveryResponse);
+		renderComponent();
+
+		emitSelectCredential();
+		await flushPromises();
+		emitModalEvent('onSave', { ...connectedLinearItem, id: 'conn-2' }, toolSettings);
+		await flushPromises();
+
+		expect(mockSaveConnection).toHaveBeenCalledWith({
+			serverSlug: 'slack',
+			credentialId: 'cred-slack',
+			toolPermissions: toolSettings,
+		});
+	});
+
+	it('drops the draft of a connection that was removed', async () => {
+		const connection = {
+			id: 'conn-1',
+			serverSlug: 'linear',
+			credentialId: 'cred-old',
+			credentialType: 'mcpOAuth2Api',
+			status: 'connected' as const,
+			toolPermissions: toolSettings,
+		};
+		mcpStoreMock.connections = [connection];
+		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);
+		renderComponent();
+		const savedItem = (modalProps.items as McpServerConnectionItem[]).find(
+			(item) => item.id === 'conn-1',
+		);
+		emitModalEvent('onSelectCredential', savedItem, 'mcpOAuth2Api', 'cred-1');
+		await flushPromises();
+
+		mockDisconnect.mockImplementation(async () => {
+			mcpStoreMock.connections = [];
+			return await Promise.resolve(true);
+		});
+		emitModalEvent('onDisconnect', savedItem);
+		await flushPromises();
+		// The same connection comes back, as after a new connect
+		mcpStoreMock.connections = [connection];
+		await nextTick();
+
+		const restoredItem = (modalProps.items as McpServerConnectionItem[]).find(
+			(item) => item.id === 'conn-1',
+		);
+		expect(restoredItem?.credentials?.[0]?.credentialId).toBe('cred-old');
+	});
+
 	it('tracks new credential connection start', () => {
 		renderComponent();
 

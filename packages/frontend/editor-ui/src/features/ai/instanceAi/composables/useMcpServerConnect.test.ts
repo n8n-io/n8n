@@ -583,6 +583,37 @@ describe('useMcpServerConnect', () => {
 			await expect(connecting).resolves.toBe('conn-new');
 		});
 
+		it('hands the created credential to a custom handler without saving it', async () => {
+			const onCredentialSelected = vi.fn().mockResolvedValue('linear');
+			const connecting = useMcpServerConnect().connectServer(linear, onCredentialSelected);
+			await flushPromises();
+
+			emitCredentialCreated('cred-new');
+			await closeCredentialModal();
+
+			expect(onCredentialSelected).toHaveBeenCalledWith('linear', 'cred-new', 'linearMcpOAuth2Api');
+			expect(mcpStore.connect).not.toHaveBeenCalled();
+			expect(mcpStore.updateConnection).not.toHaveBeenCalled();
+			await expect(connecting).resolves.toBe('linear');
+		});
+
+		it('hands the credential to the handler of the latest caller', async () => {
+			const staleHandler = vi.fn().mockResolvedValue('stale');
+			const latestHandler = vi.fn().mockResolvedValue('latest');
+			const { connectServer } = useMcpServerConnect();
+			const first = connectServer(linear, staleHandler);
+			await flushPromises();
+			const reopened = connectServer(linear, latestHandler);
+
+			emitCredentialCreated('cred-new');
+			await closeCredentialModal();
+
+			expect(staleHandler).not.toHaveBeenCalled();
+			expect(latestHandler).toHaveBeenCalledWith('linear', 'cred-new', 'linearMcpOAuth2Api');
+			await expect(first).resolves.toBe('latest');
+			await expect(reopened).resolves.toBe('latest');
+		});
+
 		it('ignores a credential created for another type', async () => {
 			const { connecting } = await startConnect();
 

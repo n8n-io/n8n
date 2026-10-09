@@ -37,6 +37,7 @@ export type McpCredentialSelectionHandler = (
 ) => Promise<string | null>;
 
 interface McpConnectAttemptState {
+	onCredentialSelected: McpCredentialSelectionHandler;
 	acceptCredential: boolean;
 	reopen: (() => void) | undefined;
 	unlockTimer: ReturnType<typeof setTimeout> | undefined;
@@ -138,6 +139,7 @@ export function useMcpServerConnect() {
 	): Promise<string | null> {
 		const activeAttempt = connectAttemptsByServerSlug.get(server.slug);
 		if (activeAttempt) {
+			activeAttempt.state.onCredentialSelected = onCredentialSelected;
 			if (!isConnectLocked(server.slug) && activeAttempt.state.reopen) {
 				activeAttempt.state.acceptCredential = true;
 				activeAttempt.state.reopen();
@@ -149,14 +151,15 @@ export function useMcpServerConnect() {
 		const hasOneOption = (server.credentialTypes?.length ?? 0) <= 1;
 		const isQuickConnect = hasOneOption && canOAuthCredentialQuickConnect(server.credentialType);
 		const state: McpConnectAttemptState = {
+			onCredentialSelected,
 			acceptCredential: true,
 			reopen: undefined,
 			unlockTimer: undefined,
 		};
 
 		const connecting = isQuickConnect
-			? connectViaOAuth(server, state, onCredentialSelected)
-			: connectViaCredentialModal(server, onCredentialSelected);
+			? connectViaOAuth(server, state)
+			: connectViaCredentialModal(server, state);
 		const promise = connecting.finally(() => {
 			if (state.unlockTimer) clearTimeout(state.unlockTimer);
 			connectAttemptsByServerSlug.delete(server.slug);
@@ -186,7 +189,6 @@ export function useMcpServerConnect() {
 	async function connectViaOAuth(
 		server: McpConnectTarget,
 		state: McpConnectAttemptState,
-		onCredentialSelected: McpCredentialSelectionHandler,
 	): Promise<string | null> {
 		const credential = await createAndAuthorize(server.credentialType, undefined, {
 			onAuthorizationStarted: (reopen) => {
@@ -196,7 +198,7 @@ export function useMcpServerConnect() {
 			state.reopen = undefined;
 		});
 		if (!credential || !state.acceptCredential) return null;
-		return await onCredentialSelected(server.slug, credential.id, credential.type);
+		return await state.onCredentialSelected(server.slug, credential.id, credential.type);
 	}
 
 	function isConnectLocked(serverSlug: string): boolean {
@@ -233,7 +235,7 @@ export function useMcpServerConnect() {
 	 */
 	async function connectViaCredentialModal(
 		server: McpConnectTarget,
-		onCredentialSelected: McpCredentialSelectionHandler,
+		state: McpConnectAttemptState,
 	): Promise<string | null> {
 		return await new Promise<string | null>((settle) => {
 			let createdCredential: { id: string; type: string } | null = null;
@@ -263,7 +265,8 @@ export function useMcpServerConnect() {
 							return;
 						}
 						// A failed selection settles the attempt rather than leaving it hanging.
-						void onCredentialSelected(server.slug, createdCredential.id, createdCredential.type)
+						void state
+							.onCredentialSelected(server.slug, createdCredential.id, createdCredential.type)
 							.catch(() => null)
 							.then(settle);
 					},

@@ -179,6 +179,7 @@ if (settingsStore.isMcpAvailable) {
 	void mcpStore.fetchCatalogLazy();
 	void mcpStore.fetchConnectionsLazy();
 	void credentialsStore.fetchAllCredentials();
+	void credentialsStore.fetchCredentialTypes(false);
 }
 
 // Clear the state on close so the next open starts
@@ -421,7 +422,9 @@ async function handleSelectCredential(
 
 async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSettings) {
 	if (!settings || item.kind !== 'mcp-server') return;
-	const draft = draftConnection.value;
+	// A draft of another server must not block or change the save of this item.
+	const draft =
+		draftConnection.value?.serverSlug === serverSlugForItem(item) ? draftConnection.value : null;
 	if (draft && draft.status !== 'connected') return;
 	// Without a draft, the item is a saved connection that keeps its credential.
 	// A draft of a new connection has no saved one.
@@ -439,6 +442,8 @@ async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSet
 }
 
 async function handleDisconnect(item: ToolConnectionItem) {
+	// Read before the disconnect: the slug comes from the saved connection.
+	const disconnectedSlug = item.kind === 'mcp-server' ? serverSlugForItem(item) : undefined;
 	if (item.kind === 'mcp-server') {
 		const confirmed = await message.confirm(
 			i18n.baseText('tools.connection.settings.removeConfirm.description', {
@@ -459,6 +464,10 @@ async function handleDisconnect(item: ToolConnectionItem) {
 	}
 	const disconnected = await mcpStore.disconnect(item.id);
 	if (!disconnected) return;
+	if (disconnectedSlug && draftConnection.value?.serverSlug === disconnectedSlug) {
+		invalidateDiscovery();
+		draftConnection.value = null;
+	}
 	activeItemId.value = null;
 }
 
