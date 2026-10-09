@@ -1,4 +1,4 @@
-import { reactive, watch } from 'vue';
+import { reactive, shallowRef, watch } from 'vue';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
@@ -25,6 +25,18 @@ export type ResourceEntry = {
 	 * it from a local default config and persists on the first real edit.
 	 */
 	pending?: boolean;
+};
+
+/**
+ * A name the user saved for an agent in the agent builder. Events never carry
+ * it, so it applies only while the latest event name is still the one it
+ * replaced. A later rename by the chat then wins again.
+ */
+export type AgentNameOverride = {
+	agentId: string;
+	name: string;
+	/** The latest event-derived name when the user saved; absent when no event named the agent. */
+	replaces?: string;
 };
 
 export interface TransientWorkflowArtifactReference {
@@ -58,8 +70,8 @@ interface Collections {
 	origins: Map<string, ArtifactOrigin>;
 	/** Origin the current collection phase stamps on resources it records for the first time. */
 	intake: ArtifactOrigin;
-	/** Every name recorded for each agent id, to tell a stale metadata name from a user rename. */
-	agentNames: Map<string, Set<string>>;
+	/** Latest event-derived name of each agent, keyed by agent ID. */
+	agentEventNames: Map<string, string>;
 }
 
 /**
@@ -118,11 +130,6 @@ function recordProduced(
 			}
 		: entry;
 	col.produced.set(entry.id, merged);
-	if (merged.type === 'agent') {
-		const names = col.agentNames.get(merged.id) ?? new Set<string>();
-		names.add(merged.name);
-		col.agentNames.set(merged.id, names);
-	}
 	if (!col.origins.has(entry.id)) col.origins.set(entry.id, col.intake);
 	if (existing && existing.name.toLowerCase() !== merged.name.toLowerCase()) {
 		col.byName.delete(existing.name.toLowerCase());
@@ -449,26 +456,38 @@ function enrichAgentFromBuilderTarget(
 	if (!target) return;
 	const existing = col.produced.get(target.agentId);
 	if (existing && existing.type !== 'agent') return;
-	// The metadata name lags behind the events during a run, so a name that an
-	// earlier event carried is stale. A name no event carried is a rename the
-	// user saved in the agent builder, which only the metadata records. The
-	// 'Untitled' placeholder is not a real name.
+	// Event-derived names are canonical; the persisted metadata name only fills
+	// in when no run event carried one (e.g. historical threads whose events
+	// aren't loaded). The 'Untitled' placeholder is not a real name.
 	const eventName =
 		existing && !existing.pending && existing.name !== 'Untitled' ? existing.name : undefined;
-	const isUserRename =
-		target.name !== undefined &&
-		eventName !== undefined &&
-		!col.agentNames.get(target.agentId)?.has(target.name);
 	recordProduced(
 		col,
 		{
 			type: 'agent',
 			id: target.agentId,
-			name: (isUserRename ? target.name : eventName) ?? target.name ?? 'Untitled',
+			name: eventName ?? target.name ?? 'Untitled',
 			projectId: target.projectId,
 		},
 		{ linkable: existing !== undefined },
 	);
+}
+
+function collectAgentEventNames(col: Collections): void {
+	for (const entry of col.produced.values()) {
+		if (entry.type === 'agent' && !entry.pending && entry.name !== 'Untitled') {
+			col.agentEventNames.set(entry.id, entry.name);
+		}
+	}
+}
+
+function applyAgentNameOverrides(col: Collections, overrides: AgentNameOverride[]): void {
+	for (const override of overrides) {
+		const existing = col.produced.get(override.agentId);
+		if (existing?.type !== 'agent' || existing.pending) continue;
+		if (col.agentEventNames.get(override.agentId) !== override.replaces) continue;
+		recordProduced(col, { ...existing, name: override.name }, { linkable: false });
+	}
 }
 
 function enrichWorkflowNames(
@@ -599,6 +618,7 @@ export function useResourceRegistry(
 	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined,
 	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
 	agentBuilderTargets?: () => AgentBuilderTargetMetadata[],
+	agentNameOverrides?: () => AgentNameOverride[],
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -606,6 +626,8 @@ export function useResourceRegistry(
 	const resourceNameIndex = reactive(new Map<string, ResourceEntry>());
 	const linkableResourceNameIndex = reactive(new Map<string, ResourceEntry>());
 	const producedArtifactOrigins = reactive(new Map<string, ArtifactOrigin>());
+	// Read only on demand, so a replaced map per rebuild is cheap.
+	const agentEventNames = shallowRef<ReadonlyMap<string, string>>(new Map());
 
 	// Derived from `messages` so every state-arrival path (hydration, run-sync
 	// replacement, rollback, reset) self-heals on the next derivation. Must
@@ -619,7 +641,7 @@ export function useResourceRegistry(
 				linkableByName: new Map<string, ResourceEntry>(),
 				origins: new Map<string, ArtifactOrigin>(),
 				intake: 'attached',
-				agentNames: new Map<string, Set<string>>(),
+				agentEventNames: new Map<string, string>(),
 			};
 
 			// Messages run in order, and within one turn the user's attachments
@@ -630,6 +652,7 @@ export function useResourceRegistry(
 				collectFromMessageAttachments(msg, col);
 				if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
 			}
+			collectAgentEventNames(col);
 			col.intake = 'attached';
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);
@@ -639,6 +662,7 @@ export function useResourceRegistry(
 					recordProduced(col, { ...existing, projectId: target.projectId }, { linkable: false });
 				}
 			}
+			applyAgentNameOverrides(col, agentNameOverrides?.() ?? []);
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
 			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
 			col.intake = 'mentioned';
@@ -664,6 +688,7 @@ export function useResourceRegistry(
 			reconcileMap(resourceNameIndex, col.byName);
 			reconcileMap(linkableResourceNameIndex, col.linkableByName);
 			reconcileOrigins(producedArtifactOrigins, col.origins);
+			agentEventNames.value = col.agentEventNames;
 		},
 		{ immediate: true },
 	);
@@ -680,6 +705,7 @@ export function useResourceRegistry(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
+		getAgentEventName: (agentId: string) => agentEventNames.value.get(agentId),
 	};
 }
 

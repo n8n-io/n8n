@@ -6,6 +6,7 @@ import type { AgentResource } from '@/features/agents/types';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
+	getAgentNameOverridesFromThreadMetadata,
 	getPendingAgentTargetFromThreadMetadata,
 } from '../instanceAi.threadRuntime';
 
@@ -15,6 +16,7 @@ const threadState = reactive({
 	activeArtifactId: undefined as string | undefined,
 	isSendingMessage: false,
 	isStreaming: false,
+	getAgentEventName: (_agentId: string): string | undefined => undefined,
 });
 const metadataState = ref<Record<string, unknown>>();
 const updateThreadMetadataMock = vi.fn(
@@ -106,6 +108,7 @@ describe('InstanceAiAgentPreview', () => {
 		threadState.activeArtifactId = undefined;
 		threadState.isSendingMessage = false;
 		threadState.isStreaming = false;
+		threadState.getAgentEventName = () => undefined;
 		updateThreadMetadataMock.mockClear();
 		persistPendingAgentMock.mockReset();
 	});
@@ -245,5 +248,54 @@ describe('InstanceAiAgentPreview', () => {
 		expect(getAgentBuilderTargetFromThreadMetadata(metadataState.value)?.name).toBe(
 			'Renamed Support Agent',
 		);
+	});
+
+	describe('saved agent names', () => {
+		function mountBoundPreview() {
+			const wrapper = mount(InstanceAiAgentPreview, {
+				props: { agentId: 'agent-1', projectId: 'project-1', previewOpen: false },
+				global: { stubs: { AgentBuilderView: AgentBuilderViewStub } },
+			});
+			return wrapper.findComponent({ name: 'AgentBuilderView' });
+		}
+
+		it('records a saved name against the latest event name of the agent', async () => {
+			threadState.getAgentEventName = (agentId) =>
+				agentId === 'agent-1' ? 'Support Bot' : undefined;
+			metadataState.value = {
+				instanceAiAgentBuilderTarget: {
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					name: 'Support Agent',
+				},
+				instanceAiAgentNameOverrides: { 'agent-2': { name: 'Other Agent' } },
+			};
+			const builder = mountBoundPreview();
+
+			builder.vm.$emit('name-saved', 'Support Agent');
+			await flushPromises();
+
+			expect(getAgentNameOverridesFromThreadMetadata(metadataState.value)).toEqual([
+				{ agentId: 'agent-2', name: 'Other Agent' },
+				{ agentId: 'agent-1', name: 'Support Agent', replaces: 'Support Bot' },
+			]);
+		});
+
+		it('does not write metadata when a save keeps the event name', async () => {
+			threadState.getAgentEventName = () => 'Support Bot';
+			metadataState.value = {
+				instanceAiAgentBuilderTarget: {
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					name: 'Support Bot',
+				},
+			};
+			const builder = mountBoundPreview();
+
+			builder.vm.$emit('name-saved', 'Support Bot');
+			await flushPromises();
+
+			expect(updateThreadMetadataMock).not.toHaveBeenCalled();
+		});
 	});
 });

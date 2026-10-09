@@ -66,6 +66,7 @@ import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import {
 	useResourceRegistry,
+	type AgentNameOverride,
 	type TransientWorkflowArtifactReference,
 } from './useResourceRegistry';
 import { buildThreadArtifactsContext, type OpenThreadTab } from './threadArtifacts';
@@ -75,6 +76,7 @@ import {
 	INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_AGENT_NAME_OVERRIDES_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	NEW_CONVERSATION_TITLE,
 } from './constants';
@@ -237,6 +239,23 @@ export function getAgentBuilderTargetsFromThreadMetadata(
 		)
 			return [];
 		return [{ agentId: value.agentId, projectId: value.projectId }];
+	});
+}
+
+export function getAgentNameOverridesFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+): AgentNameOverride[] {
+	const overrides = metadata?.[INSTANCE_AI_AGENT_NAME_OVERRIDES_METADATA_KEY];
+	if (!isRecord(overrides)) return [];
+	return Object.entries(overrides).flatMap(([agentId, value]) => {
+		if (!isRecord(value) || typeof value.name !== 'string') return [];
+		return [
+			{
+				agentId,
+				name: value.name,
+				...(typeof value.replaces === 'string' ? { replaces: value.replaces } : {}),
+			},
+		];
 	});
 }
 
@@ -646,6 +665,7 @@ export function createThreadRuntime(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
+		getAgentEventName,
 	} = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
@@ -658,6 +678,7 @@ export function createThreadRuntime(
 		() => pendingWorkflowAttachment.value ?? undefined,
 		() => [...transientWorkflowReferences.values()],
 		() => getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		() => getAgentNameOverridesFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -1964,6 +1985,7 @@ export function createThreadRuntime(
 		resourceNameIndex,
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
+		getAgentEventName,
 		activeArtifactId,
 		setActiveArtifactId,
 		setOpenTabs,

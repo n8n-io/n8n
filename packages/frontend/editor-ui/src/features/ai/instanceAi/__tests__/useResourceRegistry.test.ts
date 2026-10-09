@@ -6,7 +6,11 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useResourceRegistry } from '../useResourceRegistry';
-import type { ResourceEntry, TransientWorkflowArtifactReference } from '../useResourceRegistry';
+import type {
+	AgentNameOverride,
+	ResourceEntry,
+	TransientWorkflowArtifactReference,
+} from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -55,6 +59,7 @@ function setup(
 		| undefined,
 	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
 	agentBuilderTargets?: () => Array<{ agentId: string; projectId: string; name?: string }>,
+	agentNameOverrides?: () => AgentNameOverride[],
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const {
@@ -63,6 +68,7 @@ function setup(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
+		getAgentEventName,
 	} = useResourceRegistry(
 		() => messages.value,
 		workflowNameLookup,
@@ -72,9 +78,11 @@ function setup(
 		pendingWorkflowAttachment,
 		transientWorkflowReferences,
 		agentBuilderTargets,
+		agentNameOverrides,
 	);
 	return {
 		messages,
+		getAgentEventName,
 		producedArtifacts,
 		resourceNameIndex,
 		linkableResourceNameIndex,
@@ -1019,11 +1027,11 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
-		test('event-derived names win over a metadata name that an earlier event carried', async () => {
+		test('event-derived names win over metadata: unnamed spawn, then named tool result, then metadata enrichment', async () => {
 			const { messages, producedArtifacts } = setup(undefined, () => ({
 				agentId: 'agent-1',
 				projectId: 'project-1',
-				name: 'Support Agent',
+				name: 'Stale Metadata Name',
 			}));
 
 			messages.value = [
@@ -1032,12 +1040,6 @@ describe('useResourceRegistry', () => {
 						targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 						toolCalls: [
 							makeToolCall({
-								toolCallId: 'tc-1',
-								toolName: 'build-agent',
-								result: { ok: true, agentId: 'agent-1', agentName: 'Support Agent' },
-							}),
-							makeToolCall({
-								toolCallId: 'tc-2',
 								toolName: 'build-agent',
 								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
 							}),
@@ -1054,31 +1056,142 @@ describe('useResourceRegistry', () => {
 				projectId: 'project-1',
 			});
 		});
+	});
 
-		test('a name the user saved in the agent builder wins over the event-derived name', async () => {
-			const target = ref({ agentId: 'agent-1', projectId: 'project-1', name: 'Support Bot' });
-			const { messages, producedArtifacts } = setup(undefined, () => target.value);
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-						toolCalls: [
-							makeToolCall({
-								toolName: 'build-agent',
-								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
-							}),
-						],
-					}),
+	describe('agent names the user saved', () => {
+		function buildAgentMessage(...agentNames: string[]): InstanceAiMessage {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+					toolCalls: agentNames.map((agentName, index) =>
+						makeToolCall({
+							toolCallId: `tc-${index}`,
+							toolName: 'build-agent',
+							result: { ok: true, agentId: 'agent-1', agentName },
+						}),
+					),
 				}),
-			];
+			});
+		}
+
+		test('a saved name wins over the event name it replaced', async () => {
+			const overrides = ref<AgentNameOverride[]>([]);
+			const { messages, producedArtifacts } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => overrides.value,
+			);
+
+			messages.value = [buildAgentMessage('Support Bot')];
 			await nextTick();
 			expect(producedArtifacts.get('agent-1')?.name).toBe('Support Bot');
 
-			target.value = { ...target.value, name: 'Helpdesk Bot' };
+			overrides.value = [{ agentId: 'agent-1', name: 'Helpdesk Bot', replaces: 'Support Bot' }];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Helpdesk Bot',
+				projectId: 'project-1',
+			});
+		});
+
+		test('a saved name wins when it is a name that an earlier event carried', async () => {
+			const { messages, producedArtifacts } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => [{ agentId: 'agent-1', name: 'Support Agent', replaces: 'Support Bot' }],
+			);
+
+			messages.value = [buildAgentMessage('Support Agent', 'Support Bot')];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.name).toBe('Support Agent');
+		});
+
+		test('a saved name wins for an agent that is no longer the active target', async () => {
+			const { messages, producedArtifacts } = setup(
+				undefined,
+				() => ({ agentId: 'agent-2', projectId: 'project-1', name: 'Other Agent' }),
+				undefined,
+				undefined,
+				undefined,
+				() => [
+					{ agentId: 'agent-1', projectId: 'project-1', name: 'Support Bot' },
+					{ agentId: 'agent-2', projectId: 'project-1', name: 'Other Agent' },
+				],
+				() => [{ agentId: 'agent-1', name: 'Helpdesk Bot', replaces: 'Support Bot' }],
+			);
+
+			messages.value = [buildAgentMessage('Support Bot')];
 			await nextTick();
 
 			expect(producedArtifacts.get('agent-1')?.name).toBe('Helpdesk Bot');
+		});
+
+		test('a later event name wins over a saved name', async () => {
+			const { messages, producedArtifacts } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => [{ agentId: 'agent-1', name: 'Helpdesk Bot', replaces: 'Support Bot' }],
+			);
+
+			messages.value = [buildAgentMessage('Support Bot', 'Triage Bot')];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.name).toBe('Triage Bot');
+		});
+
+		test('a saved name applies when no event carried a name', async () => {
+			const { messages, producedArtifacts } = setup(
+				undefined,
+				() => ({ agentId: 'agent-1', projectId: 'project-1', name: 'Support Bot' }),
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => [{ agentId: 'agent-1', name: 'Helpdesk Bot' }],
+			);
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({ targetResource: { type: 'agent', id: 'agent-1' } }),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.name).toBe('Helpdesk Bot');
+		});
+
+		test('reports the latest event name of an agent, not the saved name', async () => {
+			const { messages, getAgentEventName } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => [{ agentId: 'agent-1', name: 'Helpdesk Bot', replaces: 'Triage Bot' }],
+			);
+
+			messages.value = [buildAgentMessage('Support Bot', 'Triage Bot')];
+			await nextTick();
+
+			expect(getAgentEventName('agent-1')).toBe('Triage Bot');
+			expect(getAgentEventName('agent-2')).toBeUndefined();
 		});
 	});
 

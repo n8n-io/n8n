@@ -18,6 +18,7 @@ import {
 	createThreadRuntime,
 	getAgentBuilderTargetFromThreadMetadata,
 	getAgentBuilderTargetsFromThreadMetadata,
+	getAgentNameOverridesFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 	type ThreadRuntime,
@@ -3394,6 +3395,28 @@ describe('getAgentBuilderTargetsFromThreadMetadata', () => {
 			{ agentId: 'agent-1', projectId: 'project-1' },
 			{ agentId: 'agent-2', projectId: 'project-2' },
 		]);
+	});
+});
+
+describe('getAgentNameOverridesFromThreadMetadata', () => {
+	test('reads all valid saved agent names', () => {
+		expect(
+			getAgentNameOverridesFromThreadMetadata({
+				instanceAiAgentNameOverrides: {
+					'agent-1': { name: 'Helpdesk Bot', replaces: 'Support Bot' },
+					'agent-2': { name: 'Triage Bot' },
+					'agent-3': { replaces: 'Support Bot' },
+					'agent-4': 'Helpdesk Bot',
+				},
+			}),
+		).toEqual([
+			{ agentId: 'agent-1', name: 'Helpdesk Bot', replaces: 'Support Bot' },
+			{ agentId: 'agent-2', name: 'Triage Bot' },
+		]);
+	});
+
+	test('returns no saved names when the metadata has none', () => {
+		expect(getAgentNameOverridesFromThreadMetadata(undefined)).toEqual([]);
 	});
 });
 
