@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
+	automationLinkedProblemSchema,
 	automationTriggerKindSchema,
+	type AutomationLinkedProblem,
 	type AutomationProposalCard as Proposal,
 } from '@n8n/api-types';
 
@@ -17,6 +19,7 @@ import {
 	resolvedLink,
 	resolvedStatus,
 	toolOutcome,
+	type AnsweredPlace,
 	type AutomationToolOutcome,
 } from '../automationResolved';
 import { makeManualProposal, makeProposal } from './automationProposalFixtures';
@@ -40,6 +43,12 @@ const kept = (active: boolean, failed = false): AutomationToolOutcome => ({
 });
 
 const ACTIONS: AutomationAction[] = ['activate', 'save', 'decline'];
+
+const HERE: AnsweredPlace = { linked: false, ownLink: false };
+/** A linked place of the viewer's own: the owner of the chat. */
+const OWN_LINK: AnsweredPlace = { linked: true, ownLink: true };
+/** A linked place that the viewer does not have: a teammate in a shared chat. */
+const OTHERS_LINK: AnsweredPlace = { linked: true, ownLink: false };
 
 describe('actionOf', () => {
 	it.each([
@@ -310,12 +319,18 @@ const outcomeArb: fc.Arbitrary<AutomationToolOutcome | undefined> = fc.oneof(
 	fc.constant(WAITING),
 	fc.constant(REFUSED),
 	fc.constant(FAILED),
-	fc.record({
-		kind: fc.constant('kept' as const),
-		active: fc.boolean(),
-		failed: fc.boolean(),
-		url: fc.constantFrom(RESULT.url, 'https://cloud.example.test/workflow/remote-9'),
-	}),
+	fc.record(
+		{
+			kind: fc.constant('kept' as const),
+			active: fc.boolean(),
+			failed: fc.boolean(),
+			url: fc.constantFrom(RESULT.url, 'https://cloud.example.test/workflow/remote-9'),
+			problems: fc.uniqueArray(fc.constantFrom(...automationLinkedProblemSchema.options), {
+				minLength: 1,
+			}),
+		},
+		{ requiredKeys: ['kind', 'active', 'failed', 'url'] },
+	),
 );
 
 const decisionArb = fc
@@ -347,7 +362,7 @@ describe('resolvedStatus and resolvedLink for a linked instance', () => {
 			kind: 'saved',
 			messageKey: 'instanceAi.automation.resolved.savedIn',
 		});
-		expect(resolvedLink(status, keptThere(false), true)).toEqual({
+		expect(resolvedLink(status, keptThere(false), OWN_LINK)).toEqual({
 			kind: 'remote',
 			url: REMOTE_URL,
 		});
@@ -375,14 +390,14 @@ describe('resolvedStatus and resolvedLink for a linked instance', () => {
 			messageKey: 'instanceAi.automation.resolved.turningOnIn',
 			tone: 'pending',
 		});
-		expect(resolvedLink(waiting, WAITING, true)).toBeUndefined();
-		expect(resolvedLink(waiting, undefined, true)).toBeUndefined();
+		expect(resolvedLink(waiting, WAITING, OWN_LINK)).toBeUndefined();
+		expect(resolvedLink(waiting, undefined, OWN_LINK)).toBeUndefined();
 		expect(failed).toMatchObject({
 			kind: 'failed',
 			messageKey: 'instanceAi.automation.resolved.failedIn',
 			showsLink: false,
 		});
-		expect(resolvedLink(failed, FAILED, true)).toBeUndefined();
+		expect(resolvedLink(failed, FAILED, OWN_LINK)).toBeUndefined();
 	});
 
 	it('says that a live copy is on there, not that changes are live, for a workflow live here', () => {
@@ -400,33 +415,160 @@ describe('resolvedStatus and resolvedLink for a linked instance', () => {
 		).toBe('instanceAi.automation.resolved.onNoTriggerIn');
 	});
 
-	it('names each problem of a live copy: not on, not ready there, or still on here too', () => {
-		const failedThere = (active: boolean, localStillOn?: true): AutomationToolOutcome => ({
-			kind: 'kept',
-			active,
-			failed: true,
-			url: REMOTE_URL,
-			...(localStillOn && { localStillOn }),
-		});
-		const stillOn = resolvedStatus('activate', makeProposal(), failedThere(true, true), true);
+	const withProblems = (
+		active: boolean,
+		problems: AutomationLinkedProblem[],
+	): AutomationToolOutcome => ({
+		kind: 'kept',
+		active,
+		failed: true,
+		url: REMOTE_URL,
+		problems,
+	});
 
-		expect(resolvedStatus('activate', makeProposal(), failedThere(false), true)).toMatchObject({
+	interface ProblemCase {
+		label: string;
+		active: boolean;
+		problems: AutomationLinkedProblem[];
+		kind: string;
+		key: string;
+	}
+
+	it.each<ProblemCase>([
+		{
+			label: 'a copy that is off there',
+			active: false,
+			problems: ['not-on'],
 			kind: 'not-on',
-			messageKey: 'instanceAi.automation.resolved.notOnIn',
-			tone: 'warning',
-		});
-		expect(resolvedStatus('activate', makeProposal(), failedThere(true), true)).toMatchObject({
+			key: 'notOnIn',
+		},
+		{
+			label: 'an earlier version that stays live there',
+			active: true,
+			problems: ['not-on'],
 			kind: 'not-live',
-			messageKey: 'instanceAi.automation.resolved.notReadyIn',
+			key: 'notLiveIn',
+		},
+		{
+			label: 'a live copy that needs set-up there',
+			active: true,
+			problems: ['not-ready'],
+			kind: 'not-ready',
+			key: 'notReadyIn',
+		},
+		{
+			label: 'a copy that runs there and here',
+			active: true,
+			problems: ['still-on-here'],
+			kind: 'still-on-here',
+			key: 'stillOnHere',
+		},
+		{
+			label: 'a copy that is off there, with the workflow here kept on',
+			active: false,
+			problems: ['not-on', 'kept-on-here'],
+			kind: 'not-on',
+			key: 'notOnKeptHere',
+		},
+		{
+			label: 'an earlier version live there, with the workflow here kept on',
+			active: true,
+			problems: ['not-on', 'kept-on-here'],
+			kind: 'not-live',
+			key: 'notLiveKeptHere',
+		},
+		{
+			label: 'a live copy that needs set-up, with the workflow here kept on until then',
+			active: true,
+			problems: ['not-ready', 'kept-on-here'],
+			kind: 'not-ready',
+			key: 'notReadyKeptHere',
+		},
+	])('names the problem of "Turn it on" for $label', ({ active, problems, kind, key }) => {
+		const status = resolvedStatus('activate', makeProposal(), withProblems(active, problems), true);
+
+		expect(status).toMatchObject({
+			kind,
+			messageKey: `instanceAi.automation.resolved.${key}`,
 			tone: 'warning',
 		});
-		expect(stillOn).toMatchObject({
+		expect(status).not.toHaveProperty('noteKey');
+	});
+
+	it('links here for a copy that runs there and here, so that the user can turn this one off', () => {
+		const outcome = withProblems(true, ['still-on-here']);
+		const status = resolvedStatus('activate', makeProposal(), outcome, true);
+
+		expect(resolvedLink(status, outcome, OWN_LINK)).toEqual({ kind: 'local' });
+	});
+
+	it('opens the copy there while the workflow here keeps running until the copy is ready', () => {
+		const outcome = withProblems(true, ['not-ready', 'kept-on-here']);
+		const status = resolvedStatus('activate', makeProposal(), outcome, true);
+
+		expect(resolvedLink(status, outcome, OWN_LINK)).toEqual({ kind: 'remote', url: REMOTE_URL });
+	});
+
+	it('says what the copy did and adds that n8n could not keep the workflow here', () => {
+		const on = resolvedStatus('activate', makeProposal(), withProblems(true, ['not-kept-here']), true);
+		const notOn = resolvedStatus(
+			'activate',
+			makeProposal(),
+			withProblems(false, ['not-on', 'not-kept-here']),
+			true,
+		);
+		const saved = resolvedStatus('save', makeProposal(), withProblems(false, ['not-kept-here']), true);
+
+		expect(on).toMatchObject({
+			kind: 'on',
+			messageKey: 'instanceAi.automation.resolved.on',
+			tone: 'warning',
+			noteKey: 'instanceAi.automation.resolved.notKeptHere',
+		});
+		expect(notOn).toMatchObject({
+			kind: 'not-on',
+			noteKey: 'instanceAi.automation.resolved.notKeptHere',
+		});
+		expect(saved).toMatchObject({
+			kind: 'saved',
+			messageKey: 'instanceAi.automation.resolved.savedIn',
+			tone: 'warning',
+			noteKey: 'instanceAi.automation.resolved.notKeptHere',
+		});
+	});
+
+	it('reads a failed live copy without problem kinds as one that needs a check there', () => {
+		const failed: AutomationToolOutcome = { kind: 'kept', active: true, failed: true, url: REMOTE_URL };
+
+		expect(resolvedStatus('activate', makeProposal(), failed, true).kind).toBe('not-ready');
+		expect(resolvedStatus('save', makeProposal(), failed, true).kind).toBe('not-ready');
+	});
+
+	it('warns after a save that finds a copy there that runs, or that needs set-up', () => {
+		const live = makeProposal({ active: true });
+
+		expect(
+			resolvedStatus('save', live, withProblems(true, ['still-on-here']), true),
+		).toMatchObject({
 			kind: 'still-on-here',
 			messageKey: 'instanceAi.automation.resolved.stillOnHere',
 			tone: 'warning',
 		});
-		// The user must turn it off here, so the link opens the workflow here.
-		expect(resolvedLink(stillOn, failedThere(true, true), true)).toEqual({ kind: 'local' });
+		expect(resolvedStatus('save', makeProposal(), withProblems(true, ['not-ready']), true)).toMatchObject({
+			kind: 'not-ready',
+			messageKey: 'instanceAi.automation.resolved.notReadyIn',
+			tone: 'warning',
+		});
+	});
+
+	it('gives a teammate no link to the copy, because the address names the owner\'s link', () => {
+		const status = resolvedStatus('activate', makeProposal(), keptThere(true), true);
+
+		expect(resolvedLink(status, keptThere(true), OTHERS_LINK)).toBeUndefined();
+		expect(resolvedLink(status, keptThere(true), OWN_LINK)).toEqual({
+			kind: 'remote',
+			url: REMOTE_URL,
+		});
 	});
 
 	it('bases a linked save on the copy there, not on the workflow here', () => {
@@ -457,16 +599,16 @@ describe('resolvedStatus and resolvedLink for a linked instance', () => {
 		const declined = resolvedStatus('decline', makeProposal(), undefined, true);
 
 		expect(
-			resolvedLink(resolvedStatus('activate', makeProposal(), unsafe, true), unsafe, true),
+			resolvedLink(resolvedStatus('activate', makeProposal(), unsafe, true), unsafe, OWN_LINK),
 		).toBe(undefined);
-		expect(resolvedLink(declined, undefined, true)).toBeUndefined();
+		expect(resolvedLink(declined, undefined, OWN_LINK)).toBeUndefined();
 	});
 
 	it('opens a workflow here in the editor, as before', () => {
 		const status = resolvedStatus('activate', makeProposal(), kept(true));
 
 		expect(status.messageKey).toBe('instanceAi.automation.resolved.on');
-		expect(resolvedLink(status, kept(true), false)).toEqual({ kind: 'local' });
+		expect(resolvedLink(status, kept(true), HERE)).toEqual({ kind: 'local' });
 		expect(resolvedStatus('save', makeProposal(), kept(false)).messageKey).toBe(
 			'instanceAi.automation.resolved.saved',
 		);
@@ -539,24 +681,46 @@ describe('answered card properties', () => {
 		);
 	});
 
+	it('never reports a linked problem in the tone of a success', () => {
+		fc.assert(
+			fc.property(
+				fc.constantFrom<AutomationAction>('activate', 'save'),
+				proposalArb,
+				outcomeArb,
+				(action, p, outcome) => {
+					const status = resolvedStatus(action, p, outcome, true);
+					const problems: readonly AutomationLinkedProblem[] =
+						outcome?.kind === 'kept' ? (outcome.problems ?? []) : [];
+					// "kept-on-here" comes only with "not-on" or "not-ready", which name the problem.
+					const flagged = problems.some((problem) => problem !== 'kept-on-here');
+
+					if (flagged) expect(status.tone).toBe('warning');
+					expect(status.noteKey !== undefined).toBe(problems.includes('not-kept-here'));
+				},
+			),
+		);
+	});
+
 	it('opens a linked copy only at the http(s) address of a kept result, and nothing it did not keep', () => {
 		fc.assert(
 			fc.property(
 				fc.constantFrom(...ACTIONS),
 				proposalArb,
 				outcomeArb,
-				fc.boolean(),
-				(action, p, outcome, linked) => {
+				fc.record({ linked: fc.boolean(), ownLink: fc.boolean() }),
+				(action, p, outcome, place) => {
+					const { linked, ownLink } = place;
 					const status = resolvedStatus(action, p, outcome, linked);
-					const link = resolvedLink(status, outcome, linked);
+					const link = resolvedLink(status, outcome, place);
 
 					if (!status.showsLink) expect(link).toBeUndefined();
 					if (link?.kind === 'remote') {
-						expect(linked).toBe(true);
+						expect(linked && ownLink).toBe(true);
 						expect(outcome?.kind === 'kept' && outcome.url).toBe(link.url);
 						expect(link.url).toMatch(/^https?:\/\//);
 					}
-					if (link?.kind === 'local' && linked) expect(outcome?.kind).toBe('failed');
+					// Only a workflow that still runs here sends a linked answer to the workflow here.
+					if (link?.kind === 'local' && linked) expect(status.kind).toBe('still-on-here');
 					if (status.showsLink && !linked) expect(link).toEqual({ kind: 'local' });
 				},
 			),

@@ -114,9 +114,9 @@ describe('automationProposalCardSchema', () => {
 
 	it('drops the name and the address of a link, so that a stored card does not keep them', () => {
 		const target = { id: 'instance-7', kind: 'linked', status: 'online' } as const;
-		const card = makeCard({
-			targets: [{ ...target, label: 'Team cloud', baseUrl: 'https://cloud.example.test' }],
-		} as Partial<AutomationProposalCard>);
+		// A card that an earlier version stored, with the name and the address of the link.
+		const stored = { ...target, label: 'Team cloud', baseUrl: 'https://cloud.example.test' };
+		const card = makeCard({ targets: [stored] });
 
 		expect(automationProposalCardSchema.parse(card).targets).toEqual([target]);
 	});
@@ -309,10 +309,35 @@ describe('automationProposalResultSchema', () => {
 			kept: true,
 			error: 'It still runs on this computer too.',
 			place: { targetId: 'instance-7', kind: 'linked' },
-			localStillOn: true,
+			problems: ['still-on-here', 'not-kept-here'],
 		};
 
 		expect(automationProposalResultSchema.parse(result)).toEqual(result);
+	});
+
+	it.each(['not-on', 'not-ready', 'kept-on-here', 'still-on-here', 'not-kept-here'] as const)(
+		'accepts the problem %s of a move',
+		(problem) => {
+			const parsed = automationProposalResultSchema.parse({
+				workflowId: 'remote-wf-9',
+				url: 'u',
+				active: false,
+				kept: true,
+				problems: [problem],
+			});
+
+			expect(parsed.problems).toEqual([problem]);
+		},
+	);
+
+	it.each([
+		['an unknown problem', ['runs-twice']],
+		['a problem that is not text', [1]],
+		['problems that are not a list', 'not-on'],
+	])('rejects %s', (_label, problems) => {
+		const result = { workflowId: 'wf-1', url: 'u', active: true, kept: true, problems };
+
+		expect(automationProposalResultSchema.safeParse(result).success).toBe(false);
 	});
 
 	it.each([

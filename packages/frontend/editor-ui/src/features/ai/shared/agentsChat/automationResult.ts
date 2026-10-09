@@ -1,4 +1,8 @@
-import { automationProposalResultSchema, type AutomationPlace } from '@n8n/api-types';
+import {
+	automationProposalResultSchema,
+	type AutomationLinkedProblem,
+	type AutomationPlace,
+} from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -19,8 +23,8 @@ export type AutomationResult =
 			url: string;
 			/** Set when the workflow went to a linked instance. */
 			place?: AutomationPlace;
-			/** The copy is live there and the workflow here still runs too. */
-			localStillOn?: true;
+			/** What went other than asked in a move to a linked instance. Absent: nothing. */
+			problems?: AutomationLinkedProblem[];
 	  }
 	/** Declined, or blocked by an admin before the first change: nothing was kept. */
 	| { kind: 'refused' };
@@ -35,14 +39,14 @@ export function automationResultOf(output: unknown): AutomationResult | undefine
 	if (isDenied(output)) return { kind: 'refused' };
 	const parsed = automationProposalResultSchema.safeParse(output);
 	if (!parsed.success) return undefined;
-	const { active, error, url, place, localStillOn } = parsed.data;
+	const { active, error, url, place, problems } = parsed.data;
 	return {
 		kind: 'kept',
 		active,
 		failed: error !== undefined,
 		url,
 		...(place && { place }),
-		...(localStillOn === true && { localStillOn: true }),
+		...(problems && problems.length > 0 && { problems }),
 	};
 }
 
@@ -54,14 +58,25 @@ export function summariseAutomationResult(output: unknown): BaseTextKey | undefi
 	const result = automationResultOf(output);
 	if (result === undefined) return undefined;
 	if (result.kind === 'refused') return 'instanceAi.automation.summary.declined';
+	if (result.failed && result.place?.kind === 'linked') return linkedProblemSummary(result);
 	if (result.failed) {
-		// A live copy in a linked instance with a problem is new there, so no "changes" are late.
-		if (result.active && result.place?.kind === 'linked') {
-			return 'instanceAi.automation.summary.needsCheck';
-		}
 		return result.active
 			? 'instanceAi.automation.summary.notLive'
 			: 'instanceAi.automation.summary.notOn';
 	}
 	return result.active ? 'instanceAi.automation.summary.on' : 'instanceAi.automation.summary.off';
+}
+
+/**
+ * A copy in a linked instance with a problem. A live copy is new there, so no "changes" are late.
+ * A copy that is off is "not on" only when the move asked to turn it on: a save can also report
+ * a problem, for example a workflow here that n8n could not keep.
+ */
+function linkedProblemSummary(result: Extract<AutomationResult, { kind: 'kept' }>): BaseTextKey {
+	if (result.active) return 'instanceAi.automation.summary.needsCheck';
+	// A result without problem kinds has only `error`, which this instance sets for a failed turn-on.
+	const askedToTurnOn = result.problems === undefined || result.problems.includes('not-on');
+	return askedToTurnOn
+		? 'instanceAi.automation.summary.notOn'
+		: 'instanceAi.automation.summary.savedNeedsCheck';
 }

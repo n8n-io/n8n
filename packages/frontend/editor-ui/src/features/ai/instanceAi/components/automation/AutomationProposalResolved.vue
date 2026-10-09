@@ -3,7 +3,7 @@
  * An answered automation card: one line that says what happened, and a link to the workflow
  * unless nothing was kept ("Not now", or a refusal of the server). The answer gives the first
  * state. The result of the tool step, when it arrives, says if the workflow is really on. A copy
- * in a linked instance opens there, in a new tab.
+ * in a linked instance opens there, in a new tab, for a viewer who has that link.
  */
 import { computed, onMounted, useId, useTemplateRef } from 'vue';
 import { I18nT } from 'vue-i18n';
@@ -27,6 +27,7 @@ import {
 	resolvedStatus,
 	type AutomationResolvedTone,
 } from './automationResolved';
+import { isViewerLinkAnswer } from './automationTargets';
 import { placeName, triggerText } from './automationText';
 import type { ViewedProposal } from './automationViewerLinks';
 
@@ -68,7 +69,15 @@ const placeOfAnswer = computed(() => placeOf(props.proposal, props.targetId));
 const status = computed(() =>
 	resolvedStatus(props.action, props.proposal, outcome.value, placeOfAnswer.value.linked),
 );
-const link = computed(() => resolvedLink(status.value, outcome.value, placeOfAnswer.value.linked));
+const link = computed(() =>
+	resolvedLink(status.value, outcome.value, {
+		linked: placeOfAnswer.value.linked,
+		ownLink: isViewerLinkAnswer(props.proposal, props.targetId),
+	}),
+);
+const note = computed(() =>
+	status.value.noteKey === undefined ? undefined : i18n.baseText(status.value.noteKey),
+);
 const place = computed(() => placeName(placeOfAnswer.value));
 const trigger = computed(() =>
 	triggerText(
@@ -125,6 +134,8 @@ onMounted(() => {
 						<N8nBadge variant="outline" :class="$style.chip" :title="place">{{ place }}</N8nBadge>
 					</template>
 				</I18nT>
+				<!-- The compiler drops a leading space of a text node, so the space is in the expression. -->
+				<template v-if="note">{{ ` ${note}` }}</template>
 			</N8nText>
 			<N8nExternalLink
 				v-if="link?.kind === 'remote'"

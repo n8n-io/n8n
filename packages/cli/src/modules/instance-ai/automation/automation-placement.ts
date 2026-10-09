@@ -7,9 +7,11 @@ import { UserError } from 'n8n-workflow';
 
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import type { CapabilityContext } from '@/services/capabilities/capability';
+import type { FoundWorkflow } from '@/services/capabilities/capability-workflow';
 
 import { isExpectedFailure } from './automation-errors';
 import {
+	asksToTurnOffHere,
 	linkedAutomationResult,
 	linkedMoveError,
 	type LinkedMove,
@@ -74,10 +76,22 @@ export class AutomationPlacement {
 	}
 
 	/**
-	 * Copies the workflow to the linked instance, turns the copy on when asked, and turns off the
-	 * workflow here when asked and the copy went live there. Then it keeps the workflow here with
-	 * `keepHere`. The copy is there by then, so a failed keep is in the result, not an error.
-	 * @throws UserError with fenced text of the linked instance when the copy is refused or fails
+	 * True when the workflow calls other workflows by a fixed ID. A move copies one workflow only,
+	 * so the move refuses such a workflow before any request to the linked instance.
+	 */
+	async callsSubWorkflows(workflow: Pick<FoundWorkflow, 'id' | 'nodes'>): Promise<boolean> {
+		const { staticSubWorkflowIds } = await import(
+			'../../n8n-packages/capabilities/package-requirements.js'
+		);
+		return staticSubWorkflowIds(workflow).length > 0;
+	}
+
+	/**
+	 * Copies the workflow to the linked instance and turns the copy on when asked. "Turn it on" of
+	 * a live workflow also turns off the workflow here once the new version runs there. Then it
+	 * keeps the workflow here with `keepHere`. The copy is there by then, so a failed keep is in
+	 * the result, not an error.
+	 * @throws UserError when the copy is refused or fails. Text of the linked instance is fenced.
 	 */
 	async copyToLink(
 		user: User,
@@ -93,7 +107,7 @@ export class AutomationPlacement {
 				{
 					workflowId: copy.workflowId,
 					publish: copy.publish,
-					deactivateLocal: copy.deactivateLocal,
+					deactivateLocal: asksToTurnOffHere(copy),
 				},
 				{ source: copy.source },
 			);

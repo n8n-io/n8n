@@ -62,6 +62,12 @@ const ACTION_SOURCE: Record<CapabilitySurface, WorkflowActionSource> = {
 /** A move reads and exports the workflow here. */
 const MOVE_SCOPES: Scope[] = ['workflow:read', 'workflow:export'];
 
+/**
+ * "Turn it on" of a live workflow in a linked place also turns it off here, so the card lists
+ * the links for a live workflow only when the user can turn it off.
+ */
+const LIVE_MOVE_SCOPES: Scope[] = [...MOVE_SCOPES, 'workflow:unpublish'];
+
 /** Recommends where the workflow runs: this instance or an online link of the card. */
 async function recommendPlace(
 	nodeTypes: string[],
@@ -206,8 +212,9 @@ export class AutomationProposalService {
 
 	/**
 	 * Copies the workflow to the user's link, turns the copy on there when asked, then keeps the
-	 * workflow here. The copy comes first, so that a refused or failed copy keeps nothing. A move
-	 * of a live workflow turns it off here when the copy went live there.
+	 * workflow here. The copy comes first, so that a refused or failed copy keeps nothing. "Turn it
+	 * on" of a live workflow turns it off here once the new version runs there. "Save" keeps it on
+	 * here, and the result says when the copy there runs too.
 	 */
 	private async applyOnLink(
 		request: AutomationRequest,
@@ -239,7 +246,7 @@ export class AutomationProposalService {
 			workflowId: workflow.id,
 			workflowName: workflow.name,
 			publish: wantsOn,
-			deactivateLocal: wantsOn && liveHere,
+			liveHere,
 			source: ACTION_SOURCE[context.surface],
 			warnings: warning ? [warning] : [],
 		};
@@ -253,7 +260,8 @@ export class AutomationProposalService {
 	/**
 	 * The places of the card. Only a workflow that the user can move lists the links. The import
 	 * there keeps a live copy live, so a save of a live workflow can put the new version live
-	 * there: only a user who can turn the workflow on gets the links for a live workflow.
+	 * there: only a user who can turn the workflow on, and off here, gets the links for a live
+	 * workflow.
 	 */
 	private async placesFor(
 		workflow: FoundWorkflow,
@@ -262,11 +270,15 @@ export class AutomationProposalService {
 	): Promise<Readonly<CardPlaces>> {
 		// A move refuses an archived workflow, and keeping it here restores it first.
 		if (workflow.isArchived) return LOCAL_PLACES;
-		if (workflow.activeVersionId !== null && !canActivate) return LOCAL_PLACES;
+		const liveHere = workflow.activeVersionId !== null;
+		if (liveHere && !canActivate) return LOCAL_PLACES;
 		const links = await this.placement.linksFor(context);
 		if (links.length === 0) return LOCAL_PLACES;
+		// The move refuses a workflow that calls others by ID, so the card keeps it here.
+		if (await this.placement.callsSubWorkflows(workflow)) return LOCAL_PLACES;
 		// A move exports the workflow, so it needs the export scope as well.
-		const canMove = await this.reader.hasScope(workflow.id, context.user, MOVE_SCOPES);
+		const scopes = liveHere ? LIVE_MOVE_SCOPES : MOVE_SCOPES;
+		const canMove = await this.reader.hasScope(workflow.id, context.user, scopes);
 		return canMove ? cardPlaces(links) : LOCAL_PLACES;
 	}
 

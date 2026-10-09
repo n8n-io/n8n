@@ -24,6 +24,7 @@ import {
 	automationGate,
 	credentialsUrl,
 	initialTargetId,
+	isViewerLinkAnswer,
 	linkedProjectOf,
 	linkedTargetOf,
 	offersTargetChoice,
@@ -196,12 +197,50 @@ describe('linkedProjectOf', () => {
 		expect(linkedProjectOf(transferDialogState(preflight()))).toEqual({ kind: 'personal' });
 	});
 
-	it.each(['idle', 'checking', 'failed'] as const)(
-		'knows no project while the check is %s',
-		(check) => {
-			expect(linkedProjectOf(check)).toBeUndefined();
-		},
-	);
+	it.each(['idle', 'checking'] as const)('knows no project while the check is %s', (check) => {
+		expect(linkedProjectOf(check)).toBeUndefined();
+	});
+
+	it('names the project of the link in words after a failed check, which the move decides', () => {
+		expect(linkedProjectOf('failed')).toEqual({ kind: 'unknown' });
+	});
+
+	it.each([
+		['calls other workflows by ID', { subWorkflowCalls: [{ id: 'wf-2', name: null }] }],
+		['uses node types that the linked instance does not have', { missingNodeTypes: ['acme@1'] }],
+	])('names no project for a workflow that cannot go there, because it %s', (_label, found) => {
+		const state = transferDialogState(
+			preflight({ targetProject: { id: 'rp-1', name: 'Sales' }, ...found }),
+		);
+
+		expect(state.canMove).toBe(false);
+		expect(linkedProjectOf(state)).toBeUndefined();
+	});
+});
+
+describe('isViewerLinkAnswer', () => {
+	it('is true for an answer that went to a link of the viewer', () => {
+		expect(isViewerLinkAnswer(makeLinkedProposal(), CLOUD_LINK_ID)).toBe(true);
+	});
+
+	it('is false for a link that the viewer does not have, for example in a shared chat', () => {
+		// The card from the server names no link: only the viewer's own list adds the address.
+		const teammateView = makeLinkedProposal({
+			targets: [
+				{ id: 'local', kind: 'local', status: 'online' },
+				{ id: CLOUD_LINK_ID, kind: 'linked', status: 'online' },
+			],
+		});
+
+		expect(isViewerLinkAnswer(teammateView, CLOUD_LINK_ID)).toBe(false);
+	});
+
+	it('is false for this computer, and reads the default answer target without a target', () => {
+		expect(isViewerLinkAnswer(makeLinkedProposal(), 'local')).toBe(false);
+		// The card recommends the cloud, so an answer without a target goes there.
+		expect(isViewerLinkAnswer(makeLinkedProposal())).toBe(true);
+		expect(isViewerLinkAnswer(makeProposal())).toBe(false);
+	});
 });
 
 describe('targetOptions', () => {

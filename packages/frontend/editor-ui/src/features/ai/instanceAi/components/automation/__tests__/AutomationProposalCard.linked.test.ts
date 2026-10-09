@@ -472,6 +472,41 @@ describe('AutomationProposalCard with linked instances', () => {
 			expect(document.body).not.toHaveTextContent('Team cloud');
 		});
 
+		it("gives a teammate no link to the owner's copy, whose address names the owner's link", async () => {
+			linksMock.mockResolvedValue([]);
+			const { getByTestId, queryByRole } = renderCard({
+				teammate: true,
+				answer: {
+					kind: 'capabilityDecision',
+					approved: true,
+					values: { target: CLOUD_LINK_ID, activate: true },
+				},
+				call: {
+					value: {
+						toolCallId: 'tc-1',
+						toolName: 'propose_automation',
+						args: {},
+						isLoading: false,
+						result: {
+							workflowId: 'remote-9',
+							url: REMOTE_URL,
+							active: true,
+							kept: true,
+							place: { targetId: CLOUD_LINK_ID, kind: 'linked', name: 'Team cloud' },
+						},
+					} as unknown as InstanceAiToolCallState,
+				},
+			});
+			await waitFor(() => expect(linksMock).toHaveBeenCalled());
+
+			await expectText(
+				() => getByTestId('automation-proposal-resolved-status'),
+				/^It's on\. "Morning digest" runs .* on Another n8n instance\.$/,
+			);
+			expect(queryByRole('link')).not.toBeInTheDocument();
+			expect(document.body.innerHTML).not.toContain('cloud.example.test');
+		});
+
 		it('keeps the automation here for the owner of a chat that was shared after the card', async () => {
 			useExperience('power');
 			mockedStore(useInstanceAiStore).threads = [
@@ -617,7 +652,7 @@ describe('AutomationProposalCard with linked instances', () => {
 			const { getByTestId, getByRole } = renderCard({
 				proposal: makeLinkedProposal({ active: true }),
 				answer: turnOnThere,
-				call: toolCall(remoteResult({ error: 'still runs here', localStillOn: true })),
+				call: toolCall(remoteResult({ error: 'still runs here', problems: ['still-on-here'] })),
 			});
 
 			await expectText(
@@ -628,6 +663,41 @@ describe('AutomationProposalCard with linked instances', () => {
 				'href',
 				'/workflow/wf-1',
 			);
+		});
+
+		it('says that the workflow here keeps running until the copy there is set up, and opens the copy', async () => {
+			const { getByTestId, findByRole } = renderCard({
+				proposal: makeLinkedProposal({ active: true }),
+				answer: turnOnThere,
+				call: toolCall(
+					remoteResult({ error: 'needs set-up there', problems: ['not-ready', 'kept-on-here'] }),
+				),
+			});
+
+			await expectText(
+				() => getByTestId('automation-proposal-resolved-status'),
+				'"Morning digest" is on in Team cloud, but it needs setting up there before it can run, so it keeps running on this computer. Set it up there, then turn it off here.',
+			);
+			expect(getByTestId('automation-proposal-resolved-status')).toHaveAttribute(
+				'data-status',
+				'not-ready',
+			);
+			expect(
+				await findByRole('link', { name: /Team cloud \(opens in a new tab\)/ }),
+			).toHaveAttribute('href', REMOTE_URL);
+		});
+
+		it('adds that n8n could not keep the workflow here, also after a copy that went well', async () => {
+			const { getByTestId } = renderCard({
+				answer: turnOnThere,
+				call: toolCall(remoteResult({ error: 'not kept here', problems: ['not-kept-here'] })),
+			});
+
+			await expectText(
+				() => getByTestId('automation-proposal-resolved-status'),
+				`It's on. "Morning digest" runs at 08:00, Monday through Friday (United Kingdom Time) on Team cloud. n8n couldn't keep it on this computer, so it may be archived here when this run ends.`,
+			);
+			expect(getByTestId('automation-proposal-resolved')).toHaveClass(/warning/);
 		});
 
 		it('says that a failed copy changed nothing here, and links nowhere', async () => {
@@ -745,6 +815,29 @@ describe('AutomationProposalCard with linked instances', () => {
 				() => getByTestId('automation-proposal-visible-to'),
 				'Visible to: Personal in Team cloud',
 			);
+		});
+
+		it('names the project of the link in words when the check fails', async () => {
+			preflightMock.mockRejectedValue(new Error('offline'));
+			const { getByTestId } = renderCard({});
+
+			await expectText(
+				() => getByTestId('automation-proposal-visible-to'),
+				'Visible to: the project for new automations in Team cloud',
+			);
+		});
+
+		it('names no project for a workflow that cannot go to the cloud', async () => {
+			preflightMock.mockResolvedValue(
+				preflight({
+					targetProject: { id: 'rp-1', name: 'Sales' },
+					subWorkflowCalls: [{ id: 'wf-2', name: null }],
+				}),
+			);
+			const { findByTestId, queryByTestId } = renderCard({});
+
+			await findByTestId('automation-proposal-preflight-blocked');
+			expect(queryByTestId('automation-proposal-visible-to')).not.toBeInTheDocument();
 		});
 
 		it('names the projects here again when the user picks this computer', async () => {

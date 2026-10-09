@@ -2,7 +2,8 @@
 /**
  * Where an automation proposal runs, and who can see the workflow. The `change` slot holds the
  * control that picks another place. In a linked place, the copy goes to a project there, so the
- * line names that project, not the projects that can see the workflow here.
+ * line names that project, not the projects that can see the workflow here. When the check of
+ * the linked place failed, the line names the project of the link in words.
  */
 import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
@@ -18,7 +19,10 @@ const props = defineProps<{
 	proposal: ViewedProposal;
 	/** The place that the answer sends. Without it, the default answer target. */
 	targetId?: string;
-	/** The project that the copy goes to in a linked place. Unknown until the check answers. */
+	/**
+	 * The project that the copy goes to in a linked place. Absent until the check answers, and
+	 * when the copy cannot go there.
+	 */
 	linkedProject?: LinkedProject;
 }>();
 
@@ -35,12 +39,16 @@ const placeKey = computed(() =>
 
 const placeName = computed(() => nameOfPlace(place.value));
 
-// A linked place shows its project once the check names it. Until then the line waits, because
+// A linked place shows its project once the check answers. Until then the line waits, because
 // the projects here say nothing about who can see the copy there.
 const showsVisibility = computed(() => !place.value.linked || props.linkedProject !== undefined);
 
 const visibleToKey = computed(() => {
-	if (place.value.linked) return 'instanceAi.automation.visibleToIn';
+	if (place.value.linked) {
+		return props.linkedProject?.kind === 'unknown'
+			? 'instanceAi.automation.visibleToUnknownIn'
+			: 'instanceAi.automation.visibleToIn';
+	}
 	return sharedCount.value > 0
 		? 'instanceAi.automation.visibleToShared'
 		: 'instanceAi.automation.visibleTo';

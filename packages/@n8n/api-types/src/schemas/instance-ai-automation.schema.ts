@@ -165,6 +165,24 @@ export const automationPlaceSchema = z.object({
 });
 export type AutomationPlace = z.infer<typeof automationPlaceSchema>;
 
+/**
+ * What went other than the user asked when the workflow went to a linked instance. `error` says
+ * the same in words, for the model. The frontend reads these values, never the words.
+ * - `not-on`: the move asked to turn on the copy there, and the new version did not go live.
+ * - `not-ready`: a version of the copy is live there, but it cannot run as set up there.
+ * - `kept-on-here`: the workflow here stays on until the new version runs there as set up.
+ * - `still-on-here`: the copy runs there and the workflow here still runs too, so it runs twice.
+ * - `not-kept-here`: the copy is there, but n8n could not keep the workflow here.
+ */
+export const automationLinkedProblemSchema = z.enum([
+	'not-on',
+	'not-ready',
+	'kept-on-here',
+	'still-on-here',
+	'not-kept-here',
+]);
+export type AutomationLinkedProblem = z.infer<typeof automationLinkedProblemSchema>;
+
 /** The result of `propose_automation` after the workflow was kept. */
 export const automationProposalResultSchema = z.object({
 	/** The workflow here, or the copy in the linked instance of `place`. */
@@ -177,9 +195,8 @@ export const automationProposalResultSchema = z.object({
 	/** Input that the tool ignored, for example a cron expression that is not valid. */
 	warnings: z.array(z.string()).optional(),
 	/**
-	 * Set when the workflow was kept, but could not be turned on. For a linked instance, also when
-	 * the copy there needs set-up, or when the workflow here still runs although the move asked to
-	 * turn it off.
+	 * Set when the workflow was kept, but could not be turned on. For a linked instance, set for
+	 * each problem in `problems`.
 	 */
 	error: z.string().optional(),
 	/**
@@ -187,10 +204,7 @@ export const automationProposalResultSchema = z.object({
 	 * so that MCP clients of this instance get the same result as before.
 	 */
 	place: automationPlaceSchema.optional(),
-	/**
-	 * True when a version of the copy is live in the linked instance and the workflow here is
-	 * still live too, although the move asked to turn it off here. The automation then runs twice.
-	 */
-	localStillOn: z.boolean().optional(),
+	/** The problems of a move to a linked instance, in the order of `error`. Absent: none. */
+	problems: z.array(automationLinkedProblemSchema).optional(),
 });
 export type AutomationProposalResult = z.infer<typeof automationProposalResultSchema>;

@@ -1,4 +1,4 @@
-import type { AutomationProposalCard } from '@n8n/api-types';
+import type { AutomationLinkedProblem, AutomationProposalCard } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 
 import {
@@ -34,6 +34,7 @@ export type AutomationResolvedKind =
 	| 'making-live'
 	| 'not-on'
 	| 'not-live'
+	| 'not-ready'
 	| 'still-on-here'
 	| 'copying'
 	| 'saved'
@@ -54,9 +55,14 @@ export interface AutomationResolvedStatus {
 	tone: AutomationResolvedTone;
 	/** True when the workflow can be there to open, so "Open workflow" leads to it. */
 	showsLink: boolean;
+	/** A second sentence about the workflow here, for example that n8n could not keep it. */
+	noteKey?: BaseTextKey;
 }
 
-type ResolvedView = Omit<AutomationResolvedStatus, 'kind'>;
+type ResolvedView = Omit<AutomationResolvedStatus, 'kind' | 'noteKey'>;
+
+/** A result that says what happened to the workflow. */
+type KeptOutcome = Extract<AutomationToolOutcome, { kind: 'kept' }>;
 
 const RESOLVED_VIEWS: Record<AutomationResolvedKind, ResolvedView> = {
 	on: { messageKey: 'instanceAi.automation.resolved.on', tone: 'success', showsLink: true },
@@ -82,6 +88,12 @@ const RESOLVED_VIEWS: Record<AutomationResolvedKind, ResolvedView> = {
 	},
 	'not-live': {
 		messageKey: 'instanceAi.automation.resolved.notLive',
+		tone: 'warning',
+		showsLink: true,
+	},
+	// Only a copy in a linked instance can be live without its set-up.
+	'not-ready': {
+		messageKey: 'instanceAi.automation.resolved.notReadyIn',
 		tone: 'warning',
 		showsLink: true,
 	},
@@ -139,7 +151,7 @@ const NO_TRIGGER_KEYS: Partial<Record<AutomationResolvedKind, BaseTextKey>> = {
 const LINKED_VIEWS: Partial<Record<AutomationResolvedKind, Partial<ResolvedView>>> = {
 	'turning-on': { messageKey: 'instanceAi.automation.resolved.turningOnIn' },
 	'not-on': { messageKey: 'instanceAi.automation.resolved.notOnIn' },
-	'not-live': { messageKey: 'instanceAi.automation.resolved.notReadyIn' },
+	'not-live': { messageKey: 'instanceAi.automation.resolved.notLiveIn' },
 	saved: { messageKey: 'instanceAi.automation.resolved.savedIn' },
 	'saved-live': { messageKey: 'instanceAi.automation.resolved.savedLiveIn' },
 	'saved-manual': { messageKey: 'instanceAi.automation.resolved.savedManualIn' },
@@ -152,6 +164,18 @@ const LINKED_VIEWS: Partial<Record<AutomationResolvedKind, Partial<ResolvedView>
 const LINKED_NO_TRIGGER_KEYS: Partial<Record<AutomationResolvedKind, BaseTextKey>> = {
 	on: 'instanceAi.automation.resolved.onNoTriggerIn',
 };
+
+/**
+ * The copy there does not run as set up, so the workflow here keeps running until it does. The
+ * line says so, because the user asked to turn it off here.
+ */
+const KEPT_ON_HERE_KEYS: Partial<Record<AutomationResolvedKind, BaseTextKey>> = {
+	'not-on': 'instanceAi.automation.resolved.notOnKeptHere',
+	'not-live': 'instanceAi.automation.resolved.notLiveKeptHere',
+	'not-ready': 'instanceAi.automation.resolved.notReadyKeptHere',
+};
+
+const NOT_KEPT_HERE_KEY: BaseTextKey = 'instanceAi.automation.resolved.notKeptHere';
 
 /** What the link of an answered card opens: the copy in the linked instance, or the workflow here. */
 export type AutomationResolvedLink = { kind: 'remote'; url: string } | { kind: 'local' };
@@ -224,29 +248,45 @@ function offKind(proposal: AutomationProposalCard): AutomationResolvedKind {
 }
 
 /**
+ * What went wrong with the copy in the linked instance, from the problem kinds of the result.
+ * The new version did not go live (an earlier one can be), it needs set-up there, or the
+ * workflow here still runs too. A problem of the workflow here alone is a note, not a kind.
+ */
+function copyProblemKind(outcome: KeptOutcome): AutomationResolvedKind | undefined {
+	const { problems } = outcome;
+	// A result without problem kinds has only `error`. A live copy then needs a check there.
+	if (problems === undefined) return outcome.failed && outcome.active ? 'not-ready' : undefined;
+	if (problems.includes('not-on')) return outcome.active ? 'not-live' : 'not-on';
+	if (problems.includes('not-ready')) return 'not-ready';
+	if (problems.includes('still-on-here')) return 'still-on-here';
+	return undefined;
+}
+
+/**
  * "Turn it on" in a linked instance. The copy there is new to the user, so a success is "on",
- * never "changes live". A live copy with a problem either still runs here too, or may not run
- * as set up there (an earlier version, or credentials without a value).
+ * never "changes live".
  */
 function linkedActivateKind(outcome: OpenOutcome | undefined): AutomationResolvedKind {
 	if (outcome === undefined) return 'on';
 	if (outcome.kind === 'waiting') return 'turning-on';
-	if (!outcome.active) return 'not-on';
-	if (!outcome.failed) return 'on';
-	return outcome.localStillOn ? 'still-on-here' : 'not-live';
+	return copyProblemKind(outcome) ?? (outcome.active ? 'on' : 'not-on');
 }
 
 /**
  * "Save" in a linked instance. `active` of the card is about the workflow here, so the state
  * waits for the result, which says if the copy there is on. A workflow that is live here keeps
- * running here.
+ * running here. A copy there can be live from before, so a save can report its problems too.
  */
 function linkedSaveKind(
 	proposal: AutomationProposalCard,
 	outcome: OpenOutcome | undefined,
 ): AutomationResolvedKind {
 	if (outcome?.kind === 'waiting') return 'copying';
-	if (outcome?.kind === 'kept' && outcome.active) return 'saved-live';
+	if (outcome?.kind === 'kept') {
+		const problem = copyProblemKind(outcome);
+		if (problem !== undefined) return problem;
+		if (outcome.active) return 'saved-live';
+	}
 	return proposal.active ? 'saved-copy' : offKind(proposal);
 }
 
@@ -280,10 +320,34 @@ function viewOf(kind: AutomationResolvedKind, linked: boolean): ResolvedView {
 	return linked ? { ...view, ...LINKED_VIEWS[kind] } : view;
 }
 
+/** The problem kinds of a linked result, or none. */
+function linkedProblems(
+	outcome: AutomationToolOutcome | undefined,
+	linked: boolean,
+): readonly AutomationLinkedProblem[] {
+	return linked && outcome?.kind === 'kept' ? (outcome.problems ?? []) : [];
+}
+
+/** The line for the kind: the one that says that the workflow here keeps running, if it does. */
+function messageKeyOf(
+	kind: AutomationResolvedKind,
+	proposal: AutomationProposalCard,
+	keptOnHere: boolean,
+	linked: boolean,
+): BaseTextKey | undefined {
+	const keptKey = keptOnHere ? KEPT_ON_HERE_KEYS[kind] : undefined;
+	if (keptKey !== undefined) return keptKey;
+	const noTriggerKey = (linked ? LINKED_NO_TRIGGER_KEYS : NO_TRIGGER_KEYS)[kind];
+	return noTriggerKey !== undefined && triggerLineKey(proposal.trigger) === undefined
+		? noTriggerKey
+		: undefined;
+}
+
 /**
  * The state of an answered card. `outcome` is undefined when the card cannot read its tool
  * step; then the card shows what the answer asked for. `linked` is true when the answer put the
- * workflow on a linked instance.
+ * workflow on a linked instance. When n8n could not keep the workflow here after the copy, a
+ * note says so, whatever the copy did.
  */
 export function resolvedStatus(
 	action: AutomationAction,
@@ -293,25 +357,35 @@ export function resolvedStatus(
 ): AutomationResolvedStatus {
 	const kind = resolvedKind(action, proposal, outcome, linked);
 	const view = viewOf(kind, linked);
-	const noTriggerKey = (linked ? LINKED_NO_TRIGGER_KEYS : NO_TRIGGER_KEYS)[kind];
-	if (noTriggerKey !== undefined && triggerLineKey(proposal.trigger) === undefined) {
-		return { kind, ...view, messageKey: noTriggerKey };
-	}
-	return { kind, ...view };
+	const problems = linkedProblems(outcome, linked);
+	const messageKey = messageKeyOf(kind, proposal, problems.includes('kept-on-here'), linked);
+	const status = { kind, ...view, ...(messageKey !== undefined && { messageKey }) };
+	if (!problems.includes('not-kept-here')) return status;
+	return { ...status, tone: 'warning', noteKey: NOT_KEPT_HERE_KEY };
+}
+
+/** Where the answer put the workflow, as the viewer of the card sees it. */
+export interface AnsweredPlace {
+	/** True when the answer put the workflow on a linked instance. */
+	linked: boolean;
+	/** True when the viewer has the link that the answer chose. */
+	ownLink: boolean;
 }
 
 /**
  * The link of an answered card. A copy in a linked instance opens there, from the address in the
  * result. Until that result arrives, the card links nowhere. A workflow that still runs here
- * needs the user here, to turn it off.
+ * needs the user here, to turn it off. The address is the owner's link, so a teammate who reads a
+ * shared chat gets no link to it: only a viewer who has the link opens the copy.
  */
 export function resolvedLink(
 	status: AutomationResolvedStatus,
 	outcome: AutomationToolOutcome | undefined,
-	linked: boolean,
+	place: AnsweredPlace,
 ): AutomationResolvedLink | undefined {
 	if (!status.showsLink) return undefined;
-	if (!linked || status.kind === 'still-on-here') return { kind: 'local' };
+	if (!place.linked || status.kind === 'still-on-here') return { kind: 'local' };
+	if (!place.ownLink) return undefined;
 	const url = outcome?.kind === 'kept' ? safeHttpUrl(outcome.url) : undefined;
 	return url === undefined ? undefined : { kind: 'remote', url };
 }

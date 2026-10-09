@@ -3,7 +3,7 @@ import type { AutomationRecommendationReason } from '@n8n/api-types';
 import type { TransferDialogState } from '@/features/linkedInstances/transfer/transferDialogState';
 import { safeHttpUrl } from '@/features/linkedInstances/transfer/transferResult';
 import { UNAVAILABLE_LINK, type RunTargetTranslate } from '../../runTarget/runTargetOptions';
-import { answerTargetId } from './automationProposal';
+import { answerTargetId, chosenTargetId } from './automationProposal';
 import type { CardTarget, ViewedProposal } from './automationViewerLinks';
 
 /**
@@ -120,6 +120,15 @@ export function linkedTargetOf(
 }
 
 /**
+ * True when the answer for `targetId` put the workflow on a link of the viewer. Only then is the
+ * address of the copy the viewer's to open: a teammate who reads a shared chat does not have the
+ * owner's links, so the card names no address for them.
+ */
+export function isViewerLinkAnswer(proposal: Proposal, targetId?: string): boolean {
+	return linkedTargetOf(proposal, chosenTargetId(proposal, targetId))?.baseUrl !== undefined;
+}
+
+/**
  * Opens the credentials of the linked instance. The check names no credential ids, so the link
  * opens the list. `undefined` when the address is not http(s), or when the viewer has no link
  * with this id.
@@ -131,15 +140,24 @@ export function credentialsUrl(target: CardTarget): string | undefined {
 
 const OPEN_GATE: AutomationGate = { needsSetUp: [], unchecked: [], canTurnOn: true, canSave: true };
 
-/** The project that the copy goes to: one with a name, or the personal project there. */
-export type LinkedProject = { kind: 'project'; name: string } | { kind: 'personal' };
+/**
+ * The project that the copy goes to: one with a name, the personal project there, or the
+ * project of the link for new automations when the check could not name it.
+ */
+export type LinkedProject =
+	| { kind: 'project'; name: string }
+	| { kind: 'personal' }
+	| { kind: 'unknown' };
 
 /**
- * Where the check says the copy goes, or `undefined` until the check answers. The move can still
- * put it in the personal project when the linked instance refuses the default project.
+ * Where the check says the copy goes. `undefined` while nothing is known yet, and when the copy
+ * cannot go there at all. After a failed check, the server still decides at the move, so the
+ * card names the project of the link in words. The move can still put the copy in the personal
+ * project when the linked instance refuses the default project.
  */
 export function linkedProjectOf(check: AutomationCheck): LinkedProject | undefined {
-	if (typeof check === 'string') return undefined;
+	if (check === 'failed') return { kind: 'unknown' };
+	if (typeof check === 'string' || !check.canMove) return undefined;
 	const name = check.targetProjectName;
 	return name === null ? { kind: 'personal' } : { kind: 'project', name };
 }
