@@ -27,7 +27,7 @@ import {
 } from '../component-mapper';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
-import { deriveWhatsAppVerifyToken, stringValue } from '../integration-helpers';
+import { deriveWhatsAppVerifyToken, stringProperty, stringValue } from '../integration-helpers';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 import { buildIntegrationConnectionId } from '../integration-tool-factory';
 
@@ -262,6 +262,23 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 					{ guard: channelRateLimitGuard, connectionId, recipient },
 				);
 			}
+
+			// The adapter returns null for `contacts`, which drops the message.
+			// Summarize shared contact cards as text so the agent still gets them.
+			protected override extractTextContent(message: WhatsAppRawMessage['message']) {
+				if (message.type === 'contacts') return formatSharedContacts(message);
+				return super.extractTextContent(message);
+			}
+
+			// The adapter adds a location as a URL-only pseudo-file (a Maps link with
+			// no bytes). The bridge cannot download it, and the text summary already
+			// carries the location, so drop it.
+			protected override buildAttachments(inbound: WhatsAppRawMessage['message']) {
+				const attachments = super.buildAttachments(inbound);
+				return inbound.type === 'location'
+					? attachments.filter((attachment) => attachment.fetchData !== undefined)
+					: attachments;
+			}
 		}
 
 		return new ConversationWindowGuardedAdapter(config);
@@ -393,6 +410,26 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		if (typeof value === 'string' && value.trim()) return value.trim();
 		throw new UserError(message);
 	}
+}
+
+/**
+ * Summarize a `contacts` message in the same bracketed style the adapter uses
+ * for other non-text types (e.g. `[Location: ...]`). The adapter's inbound
+ * type does not declare the `contacts` field, so read it defensively.
+ * @see https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples#contacts-messages
+ */
+function formatSharedContacts(message: unknown): string {
+	const contacts = isRecord(message) && Array.isArray(message.contacts) ? message.contacts : [];
+	const lines = contacts.map((contact: unknown) => {
+		const name = isRecord(contact) ? stringProperty(contact.name, 'formatted_name') : undefined;
+		const phones = isRecord(contact) && Array.isArray(contact.phones) ? contact.phones : [];
+		const phoneNumbers = phones
+			.map((phone: unknown) => stringProperty(phone, 'phone'))
+			.filter((phone): phone is string => phone !== undefined);
+		const parts = name ? [name, ...phoneNumbers] : phoneNumbers;
+		return parts.length > 0 ? `[Contact: ${parts.join(' - ')}]` : '[Contact]';
+	});
+	return lines.length > 0 ? lines.join('\n') : '[Contact]';
 }
 
 /**

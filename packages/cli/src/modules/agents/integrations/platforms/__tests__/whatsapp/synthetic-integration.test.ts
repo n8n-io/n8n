@@ -8,10 +8,19 @@ import {
 	createWhatsAppIntegration,
 	createWhatsAppReplayContext,
 	whatsAppThreadId,
+	type WhatsAppInboundMessageFixture,
 } from '../../../__tests__/helpers/whatsapp/replay-test-context';
 import {
 	whatsAppContact,
+	whatsAppInboundAudioMessage,
+	whatsAppInboundContactsMessage,
+	whatsAppInboundDocumentMessage,
+	whatsAppInboundImageMessage,
+	whatsAppInboundLocationMessage,
+	whatsAppInboundStickerMessage,
 	whatsAppInboundTextMessage,
+	whatsAppInboundVideoMessage,
+	whatsAppInboundVoiceMessage,
 	whatsAppReplayFixtures,
 	whatsAppWebhook,
 } from '../../../__tests__/helpers/whatsapp/synthetic-fixtures';
@@ -82,6 +91,184 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		} finally {
 			await ctx.shutdown();
 		}
+	});
+
+	describe('inbound media', () => {
+		it.each([
+			['image', whatsAppInboundImageMessage, 'image/jpeg'],
+			['document', whatsAppInboundDocumentMessage, 'application/pdf'],
+			['audio', whatsAppInboundAudioMessage, 'audio/mpeg'],
+			// Real voice-note shape: `type: "audio"` with `audio.voice: true`. The
+			// MIME type is sniffed from the Opus/OGG bytes in WHATSAPP_MEDIA_CONTENT.
+			['voice', whatsAppInboundVoiceMessage, 'audio/ogg; codecs=opus'],
+			['video', whatsAppInboundVideoMessage, 'video/mp4'],
+			['sticker', whatsAppInboundStickerMessage, 'image/webp'],
+		] as const)(
+			'stores a %s attachment and passes it to the agent executor',
+			async (_label, buildMessage, expectedMimeType) => {
+				const fixtures = whatsAppReplayFixtures();
+				const ctx = await createWhatsAppReplayContext(fixtures);
+				try {
+					await ctx.sendWebhook(
+						whatsAppWebhook({
+							phoneNumberId: fixtures.phoneNumberId,
+							contact: fixtures.contact,
+							message: buildMessage({ from: fixtures.contact.wa_id }),
+						}),
+					);
+
+					expect(ctx.attachmentService.storeInbound).toHaveBeenCalledExactlyOnceWith(
+						expect.objectContaining({
+							source: 'whatsapp',
+							mimeType: expectedMimeType,
+							data: expect.any(Buffer),
+						}),
+					);
+					expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+						expect.objectContaining({
+							attachments: [expect.objectContaining({ mimeType: expectedMimeType })],
+						}),
+					);
+				} finally {
+					await ctx.shutdown();
+				}
+			},
+		);
+
+		it('degrades to a text note instead of storing an attachment over the size cap', async () => {
+			// WhatsApp's inbound media messages never carry a declared size (see
+			// `WhatsAppInboundMessage`), unlike some other platforms — so this can
+			// only ever be caught after downloading, never pre-empted upfront.
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: whatsAppInboundDocumentMessage({
+							from: fixtures.contact.wa_id,
+							document: {
+								id: 'media-oversized-1',
+								mime_type: 'application/pdf',
+								sha256: 'test-sha256-oversized',
+								filename: 'big.pdf',
+							},
+						}),
+					}),
+				);
+
+				expect(ctx.attachmentService.storeInbound).not.toHaveBeenCalled();
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ message: expect.stringContaining('MB') }),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('passes a location to the agent as a text summary only', async () => {
+			// The adapter also adds the location as a URL-only pseudo-file (a Google
+			// Maps link with no bytes). The bridge cannot download it, so the
+			// integration drops it. Otherwise the agent gets a misleading
+			// "could not be downloaded" note next to the summary.
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: whatsAppInboundLocationMessage({ from: fixtures.contact.wa_id }),
+					}),
+				);
+
+				expect(ctx.attachmentService.storeInbound).not.toHaveBeenCalled();
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ message: '[Location: London]' }),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('passes a shared contact to the agent as a text summary', async () => {
+			// The adapter has no handling for `contacts` and drops the message, so
+			// the integration's adapter subclass summarizes it as text instead.
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: whatsAppInboundContactsMessage({ from: fixtures.contact.wa_id }),
+					}),
+				);
+
+				expect(ctx.attachmentService.storeInbound).not.toHaveBeenCalled();
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ message: '[Contact: Jane Doe - +44 7700 900123]' }),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it.each([
+			[
+				'a contact with no name',
+				[{ phones: [{ phone: '+44 7700 900123' }] }],
+				'[Contact: +44 7700 900123]',
+			],
+			[
+				'a contact with no phone numbers',
+				[{ name: { formatted_name: 'Jane Doe' } }],
+				'[Contact: Jane Doe]',
+			],
+			[
+				'a contact with several phone numbers',
+				[
+					{
+						name: { formatted_name: 'Jane Doe' },
+						phones: [{ phone: '+44 7700 900123' }, { phone: '+44 20 7946 0000' }],
+					},
+				],
+				'[Contact: Jane Doe - +44 7700 900123 - +44 20 7946 0000]',
+			],
+			[
+				'several contacts',
+				[
+					{ name: { formatted_name: 'Jane Doe' }, phones: [{ phone: '+44 7700 900123' }] },
+					{ name: { formatted_name: 'John Smith' } },
+				],
+				'[Contact: Jane Doe - +44 7700 900123]\n[Contact: John Smith]',
+			],
+			['a contact with no name or phone numbers', [{}], '[Contact]'],
+			['an empty contacts list', [], '[Contact]'],
+			['no contacts field', undefined, '[Contact]'],
+		] as const)('summarizes %s', async (_label, contacts, expectedMessage) => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: whatsAppInboundContactsMessage({
+							from: fixtures.contact.wa_id,
+							contacts: contacts as WhatsAppInboundMessageFixture['contacts'],
+						}),
+					}),
+				);
+
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ message: expectedMessage }),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
 	});
 
 	it('persists current message context for the integration context tool', async () => {
