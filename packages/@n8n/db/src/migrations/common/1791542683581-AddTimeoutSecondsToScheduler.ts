@@ -14,7 +14,7 @@ const maxTimeoutSeconds = 2147483;
  * takes of it to `scheduled_task`. Both are NOT NULL with a default, so existing
  * rows need no backfill.
  */
-export class AddTimeoutSecondsToScheduler1791452632250 implements ReversibleMigration {
+export class AddTimeoutSecondsToScheduler1791542683581 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		for (const table of tables) {
 			await this.addTimeoutColumn(context, table);

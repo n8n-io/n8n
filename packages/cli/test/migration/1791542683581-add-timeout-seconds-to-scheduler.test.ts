@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, TableCheck } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddTimeoutSecondsToScheduler1791452632250';
+const MIGRATION_NAME = 'AddTimeoutSecondsToScheduler1791542683581';
 const isSqlite = (process.env.DB_TYPE ?? 'sqlite') === 'sqlite';
 
 describe('AddTimeoutSecondsToScheduler Migration', () => {
