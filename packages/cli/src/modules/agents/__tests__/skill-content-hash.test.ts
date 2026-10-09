@@ -44,6 +44,20 @@ describe('skillContentHash', () => {
 		);
 	});
 
+	it('ignores the key order of nested frontmatter maps', () => {
+		expect(
+			skillContentHash({ ...content, frontmatter: { metadata: { b: 2, a: [{ y: 1, x: 2 }] } } }),
+		).toBe(
+			skillContentHash({ ...content, frontmatter: { metadata: { a: [{ x: 2, y: 1 }], b: 2 } } }),
+		);
+	});
+
+	it('keeps the order of frontmatter lists', () => {
+		expect(skillContentHash({ ...content, frontmatter: { tags: ['a', 'b'] } })).not.toBe(
+			skillContentHash({ ...content, frontmatter: { tags: ['b', 'a'] } }),
+		);
+	});
+
 	it('changes when the name changes', () => {
 		expect(skillContentHash({ ...content, name: 'Brand tone' })).not.toBe(
 			skillContentHash(content),
