@@ -15,7 +15,7 @@ import {
 	type WorkflowExportSeed,
 } from '../auto-included-workflow-resolver';
 import type { WorkflowSubWorkflowRequirement } from '../workflow.types';
-import { WorkflowVersionPolicy } from '../../../n8n-packages.types';
+import { ExportVersionPolicy } from '../../../n8n-packages.types';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -107,7 +107,7 @@ function resolveInput(options: {
 		workflowSeeds: options.workflowSeeds,
 		requirements: options.requirements,
 		includeTags: true,
-		workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+		versionPolicy: ExportVersionPolicy.Latest,
 	};
 }
 
@@ -363,7 +363,7 @@ describe('AutoIncludedWorkflowResolver', () => {
 					workflowSeeds: [{ workflowId: 'seed', origin: 'top-level' }],
 					requirements: [requirement('seed', 'b')],
 				}),
-				workflowVersionPolicy: WorkflowVersionPolicy.IgnoreUnpublished,
+				versionPolicy: ExportVersionPolicy.IgnoreUnpublished,
 			}),
 		).rejects.toThrow('1 sub-workflow dependency has no published version. Export aborted.');
 	});
