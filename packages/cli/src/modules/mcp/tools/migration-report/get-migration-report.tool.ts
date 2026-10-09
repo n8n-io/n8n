@@ -13,6 +13,8 @@ import { trackAndRethrowToolError } from '../tool-error.utils';
 import {
 	byImpact,
 	getReportUrl,
+	INCOMPLETE_REPORT_NOTE,
+	incompleteReportShape,
 	ruleOutputShape,
 	toRuleOutput,
 	workflowRuleResolution,
@@ -66,6 +68,8 @@ const outputSchema = {
 		.describe(
 			'Configuration, environment, or deployment changes, most severe first. No workflow edit fixes these.',
 		),
+	...incompleteReportShape,
+	note: z.string().optional(),
 } satisfies z.ZodRawShape;
 
 export const createGetMigrationReportTool = (
@@ -101,7 +105,8 @@ export const createGetMigrationReportTool = (
 		try {
 			const scope = await resolveReportScope(user, deps.workflowSharingService);
 			// A first read, or a rule set that changed with an update, runs a full scan first.
-			await deps.syncService.syncIfStale(deps.targetVersion);
+			// A partial scan is not recorded, so the next read scans again.
+			const complete = await deps.syncService.syncIfStale(deps.targetVersion);
 			const { report, totalWorkflows, totalAffectedWorkflows } =
 				await deps.queryService.getLightReport(deps.targetVersion, scope);
 
@@ -127,6 +132,7 @@ export const createGetMigrationReportTool = (
 						issues: rule.instanceIssues,
 					}))
 					.sort(byImpact),
+				...(complete ? {} : { incomplete: true, note: INCOMPLETE_REPORT_NOTE }),
 			};
 
 			telemetryPayload.results = {

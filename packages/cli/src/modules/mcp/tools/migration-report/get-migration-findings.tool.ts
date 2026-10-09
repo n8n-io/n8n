@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 import z from 'zod';
 
 import { resolveReportScope } from '@/modules/breaking-changes/query/report-scope';
@@ -23,6 +23,8 @@ import {
 	ruleOutputShape,
 	toRuleOutput,
 	workflowRuleResolution,
+	INCOMPLETE_REPORT_NOTE,
+	incompleteReportShape,
 	type MigrationReportToolDeps,
 } from './migration-report.utils';
 
@@ -82,6 +84,7 @@ const outputSchema = {
 			}),
 		)
 		.describe('The rules with findings, most severe first, each with the workflows it flags'),
+	...incompleteReportShape,
 	note: z.string().optional(),
 } satisfies z.ZodRawShape;
 
@@ -100,6 +103,7 @@ type RuleFindings = ReturnType<typeof toRuleOutput> & {
 type Output = {
 	reportUrl: string;
 	rules: RuleFindings[];
+	incomplete?: true;
 	note?: string;
 };
 
@@ -119,7 +123,8 @@ export const createGetMigrationFindingsTool = (
 	/** Every workflow one rule flags, within what the user may read. */
 	const findingsOfRule = async (ruleId: string, limit: number): Promise<Output> => {
 		const scope = await resolveReportScope(user, deps.workflowSharingService);
-		await deps.syncService.syncIfStale(deps.targetVersion);
+		// A partial scan is not recorded, so the next read scans again.
+		const complete = await deps.syncService.syncIfStale(deps.targetVersion);
 		const detail = await deps.queryService.getRuleFindings(deps.targetVersion, ruleId, scope);
 
 		// Open findings first: they are the ones left to fix.
@@ -158,6 +163,14 @@ export const createGetMigrationFindingsTool = (
 		});
 
 		const unavailableCount = workflows.filter((workflow) => !workflow.availableInMCP).length;
+		const notes = [
+			...(complete ? [] : [INCOMPLETE_REPORT_NOTE]),
+			...(unavailableCount > 0
+				? [
+						`${unavailableCount} of these workflows are not available in MCP, so their issues are hidden and MCP tools cannot edit them. Ask the user to turn on MCP access for them in the workflow settings, or to fix them in the n8n editor.`,
+					]
+				: []),
+		];
 		return {
 			reportUrl: getReportUrl(deps.urlService, ruleId),
 			rules: [
@@ -168,11 +181,8 @@ export const createGetMigrationFindingsTool = (
 					...(findings.length > shown.length ? { truncated: true as const } : {}),
 				},
 			],
-			...(unavailableCount > 0
-				? {
-						note: `${unavailableCount} of these workflows are not available in MCP, so their issues are hidden and MCP tools cannot edit them. Ask the user to turn on MCP access for them in the workflow settings, or to fix them in the n8n editor.`,
-					}
-				: {}),
+			...(complete ? {} : { incomplete: true as const }),
+			...(notes.length > 0 ? { note: notes.join(' ') } : {}),
 		};
 	};
 
@@ -186,7 +196,12 @@ export const createGetMigrationFindingsTool = (
 			['workflow:update'],
 			deps.workflowFinderService,
 		);
-		await deps.syncService.syncWorkflow(workflowId);
+		// A failed re-check leaves the table stale for this workflow, so it must not be reported.
+		if (!(await deps.syncService.syncWorkflow(workflowId))) {
+			throw new OperationalError(
+				'Could not re-check this workflow against the migration report. Try again.',
+			);
+		}
 		const findings = (await deps.queryService.getWorkflowFindings(deps.targetVersion, workflowId))
 			.filter((finding) => ruleId === undefined || finding.ruleId === ruleId)
 			.map((finding) => ({

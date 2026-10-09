@@ -6,6 +6,7 @@ import type {
 import type { Logger } from '@n8n/backend-common';
 import type { UrlService, WorkflowSharingService } from '@n8n/backend-services';
 import type { WorkflowRepository } from '@n8n/db';
+import { OperationalError } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -132,7 +133,7 @@ export const workflowMigrationFindingsSchema = z
 			.describe('Findings a user accepted, which count as resolved'),
 	})
 	.describe(
-		'The migration report findings of this workflow after the save, so a fix needs no extra check. Present only for a workflow the migration report flags or flagged.',
+		'The migration report findings of this workflow after the save, so a fix needs no extra check. Present only for a workflow the migration report flags or flagged. If it is missing after a fix, the re-check failed: call get_migration_findings with the workflowId.',
 	);
 
 export type WorkflowMigrationFindings = z.infer<typeof workflowMigrationFindingsSchema>;
@@ -154,9 +155,11 @@ export async function readWorkflowMigrationFindings(
 	>,
 	workflowId: string,
 ): Promise<WorkflowMigrationFindings | undefined> {
-	// The save listener runs the same re-check. The sync service runs the two one
-	// after the other, so the read below sees the result of the latest save.
-	await deps.syncService.syncWorkflow(workflowId);
+	// Joins the re-check that the save listener queued instead of running the rules again.
+	// A failed re-check leaves the table stale, so it must not be reported as current.
+	if (!(await deps.syncService.awaitWorkflowSync(workflowId))) {
+		throw new OperationalError('Could not re-check the workflow against the migration report');
+	}
 	const findings = await deps.queryService.getWorkflowFindings(deps.targetVersion, workflowId);
 	if (
 		findings.length === 0 &&
@@ -180,6 +183,19 @@ export async function readWorkflowMigrationFindings(
 		wontFixFindings: findings.length - open.length,
 	};
 }
+
+/** Set on report reads whose sync was partial: the table can miss findings until the next sync. */
+export const incompleteReportShape = {
+	incomplete: z
+		.boolean()
+		.optional()
+		.describe(
+			'True when some workflows could not be checked, so the report can miss findings. Calling the tool again checks them again.',
+		),
+} satisfies z.ZodRawShape;
+
+export const INCOMPLETE_REPORT_NOTE =
+	'Some workflows could not be checked, so this report can miss findings. Call the tool again to check them again before you tell the user the instance is ready.';
 
 export const getWorkflowUrl = (urlService: UrlService, workflowId: string) =>
 	`${urlService.getInstanceBaseUrl()}/workflow/${encodeURIComponent(workflowId)}`;

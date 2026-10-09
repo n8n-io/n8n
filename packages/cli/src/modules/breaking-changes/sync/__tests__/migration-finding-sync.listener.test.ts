@@ -37,6 +37,12 @@ describe('MigrationFindingSyncListener', () => {
 		expect(syncService.syncWorkflow).toHaveBeenCalledWith('wf-1');
 	});
 
+	it('queues the re-check before the emit returns, so the caller of the save can join it', () => {
+		emitWorkflowEvent('workflow-saved');
+
+		expect(syncService.syncWorkflow).toHaveBeenCalledWith('wf-1');
+	});
+
 	it('reports a failing sync and does not propagate it', async () => {
 		syncService.syncWorkflow.mockRejectedValueOnce(new Error('db down'));
 

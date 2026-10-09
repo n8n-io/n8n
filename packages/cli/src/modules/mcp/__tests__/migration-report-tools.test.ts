@@ -59,11 +59,17 @@ const makeDeps = () => {
 	// The MCP access gate builds its settings link through the container.
 	Container.set(UrlService, urlService);
 
+	// Every sync and re-check succeeds unless a test says otherwise.
+	const syncService = mock<MigrationFindingSyncService>();
+	syncService.syncIfStale.mockResolvedValue(true);
+	syncService.syncWorkflow.mockResolvedValue(true);
+	syncService.awaitWorkflowSync.mockResolvedValue(true);
+
 	return {
 		targetVersion: 'v3',
 		ruleRegistry: mock<RuleRegistry>(),
 		migrationRegistry: mock<MigrationRegistry>(),
-		syncService: mock<MigrationFindingSyncService>(),
+		syncService,
 		queryService: mock<MigrationFindingQueryService>(),
 		triageService: mock<MigrationFindingTriageService>(),
 		migrationService: mock<BreakingChangeMigrationService>(),
@@ -227,6 +233,22 @@ describe('get_migration_report', () => {
 				{ ruleId: 'task-runner-timeout', resolution: 'instanceConfiguration' },
 			],
 		});
+		expect(result.structuredContent).not.toHaveProperty('incomplete');
+		expect(result.structuredContent).not.toHaveProperty('note');
+	});
+
+	it('flags the report as incomplete when some workflows could not be checked', async () => {
+		const deps = makeDeps();
+		deps.syncService.syncIfStale.mockResolvedValue(false);
+		deps.queryService.getLightReport.mockResolvedValue(lightReport());
+
+		const result = await createGetMigrationReportTool(owner, deps).handler({});
+
+		expect(result.structuredContent).toMatchObject({
+			affectedWorkflows: 4,
+			incomplete: true,
+			note: expect.stringContaining('can miss findings'),
+		});
 	});
 
 	it('reads only the workflows a member can edit, once each', async () => {
@@ -379,7 +401,29 @@ describe('get_migration_findings', () => {
 				issues: [{ nodeId: 'n1', nodeName: 'Old' }],
 			});
 			expect(output.note).toContain('1 of these workflows are not available in MCP');
+			expect(output).not.toHaveProperty('incomplete');
 			expect(JSON.stringify(output)).not.toContain('Secret');
+		});
+
+		it('flags the list as incomplete when some workflows could not be checked', async () => {
+			const deps = makeDeps();
+			withRules(deps, workflowRule('removed-node'));
+			deps.syncService.syncIfStale.mockResolvedValue(false);
+			deps.queryService.getRuleFindings.mockResolvedValue(ruleDetail());
+			deps.workflowRepository.findByIds.mockResolvedValue([
+				mcpWorkflow('wf-1', true),
+				mcpWorkflow('wf-2', true),
+			]);
+
+			const result = await createGetMigrationFindingsTool(owner, deps).handler({
+				ruleId: 'removed-node',
+			});
+
+			expect(result.structuredContent).toMatchObject({
+				rules: [{ ruleId: 'removed-node', totalWorkflows: 2 }],
+				incomplete: true,
+				note: expect.stringContaining('can miss findings'),
+			});
 		});
 
 		it('cuts the list at the limit and says so', async () => {
@@ -500,6 +544,22 @@ describe('get_migration_findings', () => {
 			expect(deps.syncService.syncWorkflow).not.toHaveBeenCalled();
 			expect(deps.queryService.getWorkflowFindings).not.toHaveBeenCalled();
 		});
+
+		it('returns an error instead of stale findings when the re-check fails', async () => {
+			const deps = makeDeps();
+			deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(mcpWorkflow('wf-1', true));
+			deps.syncService.syncWorkflow.mockResolvedValue(false);
+
+			const result = await createGetMigrationFindingsTool(owner, deps).handler({
+				workflowId: 'wf-1',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: expect.stringContaining('Could not re-check this workflow'),
+			});
+			expect(deps.queryService.getWorkflowFindings).not.toHaveBeenCalled();
+		});
 	});
 });
 
@@ -510,7 +570,19 @@ describe('readWorkflowMigrationFindings', () => {
 		deps.queryService.hasWorkflowFindings.mockResolvedValue(false);
 
 		expect(await readWorkflowMigrationFindings(deps, 'wf-1')).toBeUndefined();
-		expect(deps.syncService.syncWorkflow).toHaveBeenCalledWith('wf-1');
+		expect(deps.syncService.awaitWorkflowSync).toHaveBeenCalledWith('wf-1');
+		// Joining the re-check the save queued means the rules do not run a second time.
+		expect(deps.syncService.syncWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('throws instead of reporting stale findings when the re-check failed', async () => {
+		const deps = makeDeps();
+		deps.syncService.awaitWorkflowSync.mockResolvedValue(false);
+
+		await expect(readWorkflowMigrationFindings(deps, 'wf-1')).rejects.toThrow(
+			'Could not re-check the workflow',
+		);
+		expect(deps.queryService.getWorkflowFindings).not.toHaveBeenCalled();
 	});
 
 	it('reports an empty list once every finding of the workflow is fixed', async () => {
@@ -537,7 +609,7 @@ describe('readWorkflowMigrationFindings', () => {
 		const result = await readWorkflowMigrationFindings(deps, 'wf-1');
 
 		// The re-check has to land before the read, or a fix just saved still shows as open.
-		expect(deps.syncService.syncWorkflow).toHaveBeenCalledBefore(
+		expect(deps.syncService.awaitWorkflowSync).toHaveBeenCalledBefore(
 			deps.queryService.getWorkflowFindings,
 		);
 		expect(result).toEqual({
@@ -668,6 +740,22 @@ describe('migrate_workflow', () => {
 			...migrationResult,
 			url: `${BASE_URL}/workflow/wf-1`,
 		});
+		expect(deps.logger.warn).toHaveBeenCalled();
+	});
+
+	it('leaves the findings out when the re-check of the saved workflow failed', async () => {
+		const deps = readyToMigrate();
+		deps.syncService.awaitWorkflowSync.mockResolvedValue(false);
+
+		const result = await createMigrateWorkflowTool(owner, deps).handler({
+			ruleId: 'ai-transform-deprecated',
+			workflowId: 'wf-1',
+		});
+
+		expect(result.isError).toBeUndefined();
+		expect(result.structuredContent).toMatchObject({ success: true, workflowId: 'wf-1' });
+		expect(result.structuredContent).not.toHaveProperty('migrationFindings');
+		expect(deps.queryService.getWorkflowFindings).not.toHaveBeenCalled();
 		expect(deps.logger.warn).toHaveBeenCalled();
 	});
 
