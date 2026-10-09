@@ -325,8 +325,8 @@ describe('MigrationFindingRepository', () => {
 		});
 	});
 
-	describe('listRuleIdsWithWontFix', () => {
-		test('returns each rule with a wont_fix finding for the requested version once', async () => {
+	describe('countWontFixByRule', () => {
+		test('counts wont_fix findings per rule for the requested version', async () => {
 			const [first, second, third] = await Promise.all([
 				createWorkflow(),
 				createWorkflow(),
@@ -350,8 +350,8 @@ describe('MigrationFindingRepository', () => {
 				{ status: 'wont_fix' },
 			);
 
-			expect(await findingRepository.listRuleIdsWithWontFix('v3', undefined, ctx)).toEqual([
-				'rule-a',
+			expect(await findingRepository.countWontFixByRule('v3', undefined, ctx)).toEqual([
+				{ ruleId: 'rule-a', count: 2 },
 			]);
 		});
 	});
@@ -468,11 +468,13 @@ describe('MigrationFindingRepository', () => {
 				],
 				ctx,
 			);
+			await setStatus(first.id, 'rule-b', 'wont_fix');
+			await setStatus(second.id, 'rule-a', 'wont_fix');
 			const inScope = [first.id, third.id];
 
 			const counts = await findingRepository.countOpenByRule('v3', inScope, ctx);
-			expect(counts.sort((a, b) => a.ruleId.localeCompare(b.ruleId))).toEqual([
-				{ ruleId: 'rule-a', count: 2 },
+			expect(counts).toEqual([{ ruleId: 'rule-a', count: 2 }]);
+			expect(await findingRepository.countWontFixByRule('v3', inScope, ctx)).toEqual([
 				{ ruleId: 'rule-b', count: 1 },
 			]);
 			expect(await findingRepository.countDistinctOpenWorkflows('v3', inScope, ctx)).toBe(2);
@@ -485,6 +487,7 @@ describe('MigrationFindingRepository', () => {
 			await findingRepository.insertMany([finding(workflow.id, 'rule-a')], ctx);
 
 			expect(await findingRepository.countOpenByRule('v3', [], ctx)).toEqual([]);
+			expect(await findingRepository.countWontFixByRule('v3', [], ctx)).toEqual([]);
 			expect(await findingRepository.countDistinctOpenWorkflows('v3', [], ctx)).toBe(0);
 			expect(await findingRepository.listTriageableForRule('v3', 'rule-a', [], ctx)).toEqual([]);
 		});

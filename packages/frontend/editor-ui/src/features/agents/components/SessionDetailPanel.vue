@@ -20,6 +20,9 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import { parseIntegrationActionCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
+import { getThinkingDurationSec } from '@/features/ai/shared/agentsChat/thinking';
+import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
+import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
@@ -465,6 +468,20 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						/>
 						<VueMarkdown :source="item.content ?? ''" :class="$style.markdown" />
 					</template>
+					<AiThinkingBlock
+						v-if="item.kind === 'agent' && item.thinkingSegments?.length"
+						:key="`${item.executionId}:${item.timestamp}`"
+						:segments="item.thinkingSegments"
+						:active="false"
+						:duration-sec="getThinkingDurationSec(item.thinkingSegments)"
+						test-id="session-agent-thinking"
+					>
+						<AiReasoningBlock
+							v-for="segment in item.thinkingSegments"
+							:key="segment.id"
+							:entry="segment"
+						/>
+					</AiThinkingBlock>
 				</div>
 			</div>
 		</template>

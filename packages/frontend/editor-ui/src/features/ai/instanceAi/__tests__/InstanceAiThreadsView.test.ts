@@ -22,7 +22,12 @@ const store = reactive({
 	deleteThread: vi.fn(),
 });
 
+const agentThreadsStore = reactive({ deletedThreadIds: new Set<string>(), deleteThread: vi.fn() });
+
 vi.mock('../instanceAi.store', () => ({ useInstanceAiStore: () => store }));
+vi.mock('@/features/agents/n8nChatPage/n8nChatThreads.store', () => ({
+	useAgentN8nChatThreadsStore: () => agentThreadsStore,
+}));
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 // Flag off by default, matching production until the 125_agents_n8n_chat experiment
@@ -69,6 +74,8 @@ describe('InstanceAiThreadsView', () => {
 		n8nChatFlag.value = false;
 		vi.clearAllMocks();
 		listN8nChatThreadsMock.mockResolvedValue({ data: [], nextCursor: null });
+		agentThreadsStore.deleteThread.mockReset();
+		agentThreadsStore.deletedThreadIds.clear();
 	});
 
 	afterEach(() => {
@@ -193,7 +200,7 @@ describe('InstanceAiThreadsView', () => {
 			n8nChatFlag.value = true;
 		});
 
-		it('merges agent threads into the list by updatedAt, with no actions menu for them', async () => {
+		it('merges agent threads into the list by updatedAt, each with its own actions menu', async () => {
 			store.threadHistory.threads = [
 				{ id: 'a', title: 'Assistant chat', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
 			];
@@ -217,8 +224,44 @@ describe('InstanceAiThreadsView', () => {
 				expect.stringContaining('Agent chat'),
 				expect.stringContaining('Assistant chat'),
 			]);
-			// Only the assistant row gets a rename/delete menu.
-			expect(wrapper.findAllComponents({ name: 'ActionDropdown' })).toHaveLength(1);
+			// Both rows get their own actions menu now (the agent row: delete only).
+			expect(wrapper.findAllComponents({ name: 'ActionDropdown' })).toHaveLength(2);
+		});
+
+		it('deletes an agent thread through the agent threads store and drops it from the list', async () => {
+			const agentThread = {
+				id: 'g1',
+				title: 'Agent chat',
+				updatedAt: '2026-01-03T00:00:00.000Z',
+				agent: { id: 'agent-1', name: 'Support', projectId: 'project-1' },
+			};
+			store.threadHistory.threads = [
+				{ id: 'a', title: 'Assistant chat', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+			];
+			store.threadHistory.hasMore = false;
+			listN8nChatThreadsMock.mockResolvedValueOnce({ data: [agentThread], nextCursor: null });
+			// The pager drops a row by watching `deletedThreadIds`, so the mock must fill it
+			// in, same as the real action does.
+			agentThreadsStore.deleteThread.mockImplementation(async (thread: { id: string }) => {
+				agentThreadsStore.deletedThreadIds.add(thread.id);
+				return true;
+			});
+			const wrapper = mountView();
+			await vi.advanceTimersByTimeAsync(0);
+
+			const [agentDropdown] = wrapper.findAllComponents({ name: 'ActionDropdown' });
+			agentDropdown.vm.$emit('select', 'delete');
+			await nextTick();
+			await nextTick();
+
+			expect(agentThreadsStore.deleteThread).toHaveBeenCalledWith(agentThread);
+			expect(store.deleteThread).not.toHaveBeenCalled();
+			await vi.waitFor(() => {
+				const remainingRows = wrapper.findAll('[data-test-id="instance-ai-history-thread"]');
+				expect(remainingRows.map((row) => row.text())).toEqual([
+					expect.stringContaining('Assistant chat'),
+				]);
+			});
 		});
 
 		it('shows the error and a retry when only the agent fetch fails', async () => {

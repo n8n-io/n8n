@@ -37,6 +37,29 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
+	it('trackClickedNewAgent records an empty-state template id', () => {
+		useAgentTelemetry().trackClickedNewAgent(
+			'empty_state_template',
+			'aBcDeFgHiJkLmNoP',
+			'morning-news-brief',
+		);
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
+			source: 'empty_state_template',
+			agent_id: 'aBcDeFgHiJkLmNoP',
+			template_id: 'morning-news-brief',
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackClickedNewAgent records create blank without a template id', () => {
+		useAgentTelemetry().trackClickedNewAgent('empty_state_blank', 'aBcDeFgHiJkLmNoP');
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
+			source: 'empty_state_blank',
+			agent_id: 'aBcDeFgHiJkLmNoP',
+			session_id: 'session-xyz',
+		});
+	});
+
 	it('trackSubmittedMessage includes mode, status, agent_config (no raw message)', () => {
 		const fingerprint = {
 			instructions: 'hello',

@@ -21,7 +21,10 @@ vi.mock('ai', async () => {
 	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
-		generateText: async (...args: unknown[]) => await mockGenerateText(...args),
+		generateText: async (...args: unknown[]) => {
+			const result = await mockGenerateText(...args);
+			return { ...result, finalStep: { providerMetadata: result.providerMetadata } };
+		},
 	};
 });
 
