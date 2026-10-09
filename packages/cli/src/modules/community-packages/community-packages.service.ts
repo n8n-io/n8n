@@ -304,14 +304,17 @@ export class CommunityPackagesService {
 		const check = checkNodesApiVersion(packageJson);
 		if (check.compatible) return;
 
-		const isMalformed = check.reason === 'malformed';
+		if (check.reason === 'malformed') {
+			throw new IncompatibleNodesApiVersionError(
+				`This community node declares an invalid n8n node API version (${JSON.stringify(check.declared)}). Install a version of the package with valid metadata or contact the package author.`,
+				{ requiredNodesApiVersion: null, supportedNodesApiVersion: N8N_NODES_API_VERSION },
+			);
+		}
 
 		throw new IncompatibleNodesApiVersionError(
-			isMalformed
-				? `This community node declares an invalid n8n node API version (${JSON.stringify(check.declared)}). Install a version of the package with valid metadata or contact the package author.`
-				: "This community node isn't compatible with your version of n8n. Update n8n to use it.",
+			"This community node isn't compatible with your version of n8n. Update n8n to use it.",
 			{
-				requiredNodesApiVersion: isMalformed ? null : Number(check.declared),
+				requiredNodesApiVersion: check.required,
 				supportedNodesApiVersion: N8N_NODES_API_VERSION,
 			},
 		);
@@ -370,7 +373,7 @@ export class CommunityPackagesService {
 				const requirement =
 					apiVersionCheck.reason === 'malformed'
 						? `an invalid n8nNodesApiVersion (${JSON.stringify(apiVersionCheck.declared)})`
-						: `node API version ${String(apiVersionCheck.declared)}, but this n8n version supports up to ${N8N_NODES_API_VERSION}`;
+						: `node API version ${apiVersionCheck.required}, but this n8n version supports up to ${N8N_NODES_API_VERSION}`;
 				this.logger.warn(
 					`Not reinstalling package "${installedPackage.packageName}": it requires ${requirement}. Upgrade n8n to use this package, or uninstall it in Settings > Community nodes.`,
 				);
