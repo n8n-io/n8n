@@ -53,6 +53,8 @@ const KEPT_UNTIL_SET_UP =
 	'"Digest builder" keeps running on this n8n instance until the copy in Team cloud is set up. Set it up there, then turn it off here.';
 const NOT_READY =
 	'"Digest builder" is live in Team cloud, but it cannot run as set up there: it uses credentials without a value or node types that Team cloud does not have.';
+const SAVED_NOT_READY =
+	'A version of "Digest builder" is live in Team cloud. The new version uses credentials without a value or node types that Team cloud does not have, so it needs set-up there before it can run.';
 const SLACK = { id: 'c-1', name: 'Slack account', type: 'slackApi' };
 
 /** The text between the fence tags of a warning, or undefined without a fence. */
@@ -175,14 +177,31 @@ describe('linkedAutomationResult', () => {
 		expect(result).not.toHaveProperty('problems');
 	});
 
-	it('reports a saved copy that is live there but not set up, without asking to turn off the workflow here', () => {
+	it('reports a saved copy with a live version there and a new version that needs set-up, without saying that the live one cannot run', () => {
+		// A save does not tell which version is live there: the import can keep an earlier
+		// version live when the new one needs set-up.
 		const result = linkedAutomationResult(
 			pushed({ credentialsNeedingSetup: [SLACK] }),
+			move({ publish: false }),
+		);
+
+		expect(result.active).toBe(true);
+		expect(result.problems).toEqual(['not-ready']);
+		expect(result.error).toBe(`${SAVED_NOT_READY} The notes in the warnings say why.`);
+		expect(result.error).not.toContain('cannot run as set up');
+	});
+
+	it('asks to set up the saved copy before the live workflow here is turned off', () => {
+		const result = linkedAutomationResult(
+			pushed({ missingNodeTypes: ['acme.widget@2'] }),
 			move({ publish: false, liveHere: true }),
 		);
 
 		expect(result.problems).toEqual(['not-ready']);
-		expect(result.error).toBe(`${NOT_READY} The notes in the warnings say why.`);
+		expect(result.error).toBe(
+			`${SAVED_NOT_READY} "Digest builder" still runs on this n8n instance too. Set up the copy in Team cloud before you turn it off here. The notes in the warnings say why.`,
+		);
+		expect(result.error).not.toContain('so that it does not run twice');
 	});
 
 	it('does not report an error for a failed publish that the move did not ask for', () => {
@@ -288,7 +307,16 @@ describe('linkedAutomationResult', () => {
 					expect(result.problems ?? []).toHaveLength(
 						[notOn, notReady, keptOnHere, stillOn].filter(Boolean).length,
 					);
-					expect(moveStateOf(push, move(asked))).toEqual({ notOn, notReady, keptOnHere, stillOn });
+					expect(moveStateOf(push, move(asked), shape.needsSetUp)).toEqual({
+						notOn,
+						notReady,
+						keptOnHere,
+						stillOn,
+					});
+					// Only "Turn it on" says that the live copy there cannot run as set up.
+					expect(result.error?.includes('cannot run as set up') === true).toBe(
+						notReady && asked.publish,
+					);
 					expect(automationProposalResultSchema.safeParse(result).success).toBe(true);
 				},
 			),
@@ -309,11 +337,13 @@ describe('linkedAutomationResult', () => {
 				({ needsSetUp, ...flags }, asked) => {
 					const push = pushed({ ...flags, credentialsNeedingSetup: needsSetUp ? [SLACK] : [] });
 
-					const state = moveStateOf(push, move(asked));
+					const state = moveStateOf(push, move(asked), needsSetUp);
 
 					// The copy there is the only one that works only when it runs as set up.
 					if (state.notOn || state.notReady) expect(state.stillOn).toBe(false);
 					expect(state.keptOnHere && state.stillOn).toBe(false);
+					// Only a move that asked to turn off the workflow here can keep it on here.
+					if (state.keptOnHere) expect(asksToTurnOffHere(asked)).toBe(true);
 				},
 			),
 			{ numRuns: 300 },

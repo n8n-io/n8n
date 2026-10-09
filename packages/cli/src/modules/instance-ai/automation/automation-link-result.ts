@@ -61,7 +61,11 @@ function remoteNotes(push: LinkedInstancePushResult): string[] {
 export type MoveState = {
 	/** The move asked to turn on the copy, and the new version did not go live there. */
 	notOn: boolean;
-	/** A version of the copy is live there, but it needs set-up: it cannot run as set up. */
+	/**
+	 * A version of the copy is live there, and the new version needs set-up there. After "Turn it
+	 * on" the live version is the new one, so it cannot run as set up. After a save it can be an
+	 * earlier version, because the push result does not say which version is live.
+	 */
 	notReady: boolean;
 	/**
 	 * The move asked to turn off the workflow here, and the linked instance kept it on, because the
@@ -80,8 +84,12 @@ function needsSetUpThere(push: LinkedInstancePushResult): boolean {
 	return push.credentialsNeedingSetup.length > 0 || push.missingNodeTypes.length > 0;
 }
 
-export function moveStateOf(push: LinkedInstancePushResult, move: LinkedMove): MoveState {
-	const needsSetUp = needsSetUpThere(push);
+/** `needsSetUp`: the value of `needsSetUpThere(push)`. The caller reads it once for all rules. */
+export function moveStateOf(
+	push: LinkedInstancePushResult,
+	move: LinkedMove,
+	needsSetUp: boolean,
+): MoveState {
 	// A version is live there, and the move did not fail to put the new one live.
 	const liveThere = push.published && !push.publishFailed;
 	const notOn = move.publish && push.publishFailed;
@@ -90,7 +98,8 @@ export function moveStateOf(push: LinkedInstancePushResult, move: LinkedMove): M
 	return {
 		notOn,
 		notReady,
-		keptOnHere: asksToTurnOffHere(move) && onHere && (notOn || notReady),
+		// `onHere` includes `liveHere`, so `publish` completes the rule of `asksToTurnOffHere`.
+		keptOnHere: move.publish && onHere && (notOn || notReady),
 		stillOn: onHere && liveThere && !needsSetUp,
 	};
 }
@@ -105,19 +114,13 @@ function problemKinds(state: MoveState): AutomationLinkedProblem[] {
 	return kinds;
 }
 
-/** Why the workflow here keeps running: the new version is not live there, or not set up. */
-function keptOnHereText(state: MoveState, move: LinkedMove): string {
-	const { link, workflowName } = move;
-	return state.notOn
-		? `"${workflowName}" keeps running on this n8n instance, because the new version is not live in ${link.name}.`
-		: `"${workflowName}" keeps running on this n8n instance until the copy in ${link.name} is set up. Set it up there, then turn it off here.`;
-}
-
 /**
- * The problems in the words of this instance, for `error`. The model reads them there, and the
- * frontend reads `problems`. The notes of the linked instance stay fenced in the warnings.
+ * The problems of the copy there, in the words of this instance, for `error`. The model reads
+ * them there, and the frontend reads `problems`. The notes of the linked instance stay fenced in
+ * the warnings. After a save, the live version there can be an earlier one, so the text does not
+ * say that the live copy cannot run.
  */
-function moveProblems(
+function copyProblems(
 	push: LinkedInstancePushResult,
 	move: LinkedMove,
 	state: MoveState,
@@ -130,12 +133,32 @@ function moveProblems(
 			`Copied "${workflowName}" to ${link.name}, but could not turn it on there.${earlier}`,
 		);
 	}
-	if (state.notReady) {
+	if (state.notReady && move.publish) {
 		problems.push(
 			`"${workflowName}" is live in ${link.name}, but it cannot run as set up there: it uses credentials without a value or node types that ${link.name} does not have.`,
 		);
+	} else if (state.notReady) {
+		const here = move.liveHere
+			? ` "${workflowName}" still runs on this n8n instance too. Set up the copy in ${link.name} before you turn it off here.`
+			: '';
+		problems.push(
+			`A version of "${workflowName}" is live in ${link.name}. The new version uses credentials without a value or node types that ${link.name} does not have, so it needs set-up there before it can run.${here}`,
+		);
 	}
-	if (state.keptOnHere) problems.push(keptOnHereText(state, move));
+	return problems;
+}
+
+/** The problems of the workflow here, in the words of this instance, for `error`. */
+function hereProblems(move: LinkedMove, state: MoveState): string[] {
+	const { link, workflowName } = move;
+	const problems: string[] = [];
+	if (state.keptOnHere) {
+		problems.push(
+			state.notOn
+				? `"${workflowName}" keeps running on this n8n instance, because the new version is not live in ${link.name}.`
+				: `"${workflowName}" keeps running on this n8n instance until the copy in ${link.name} is set up. Set it up there, then turn it off here.`,
+		);
+	}
 	if (state.stillOn) {
 		problems.push(
 			`"${workflowName}" runs in ${link.name} and still runs on this n8n instance too. Turn it off here, so that it does not run twice.`,
@@ -153,7 +176,7 @@ function liveCopyWarning(push: LinkedInstancePushResult, move: LinkedMove): stri
 /**
  * The result names the copy in the linked instance. `active` says if a version of the copy is
  * live there. It can be an earlier version, so `error` says when the new one did not go live,
- * when the copy cannot run as set up, and when the workflow here still runs too.
+ * when the copy needs set-up there, and when the workflow here still runs too.
  */
 export function linkedAutomationResult(
 	push: LinkedInstancePushResult,
@@ -167,8 +190,8 @@ export function linkedAutomationResult(
 		const fenced = fenceLinkedText(notes.join('\n'), move.link);
 		warnings.push(`Notes about the copy in ${move.link.name}: ${fenced}`);
 	}
-	const state = moveStateOf(push, move);
-	const problemTexts = moveProblems(push, move, state);
+	const state = moveStateOf(push, move, needsSetUpThere(push));
+	const problemTexts = [...copyProblems(push, move, state), ...hereProblems(move, state)];
 	if (problemTexts.length > 0 && notes.length > 0) {
 		problemTexts.push('The notes in the warnings say why.');
 	}

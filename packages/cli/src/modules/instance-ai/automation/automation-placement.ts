@@ -7,7 +7,6 @@ import { UserError } from 'n8n-workflow';
 
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import type { CapabilityContext } from '@/services/capabilities/capability';
-import type { FoundWorkflow } from '@/services/capabilities/capability-workflow';
 
 import { isExpectedFailure } from './automation-errors';
 import {
@@ -76,14 +75,25 @@ export class AutomationPlacement {
 	}
 
 	/**
-	 * True when the workflow calls other workflows by a fixed ID. A move copies one workflow only,
-	 * so the move refuses such a workflow before any request to the linked instance.
+	 * True when the move would take the workflow: the user can read and export it, it is not
+	 * archived, and it calls no other workflow by a fixed ID. "Turn it on" of a live workflow also
+	 * turns it off here, so a live workflow needs that right too. These are the checks of the move
+	 * itself, so the card offers no link that the move then refuses. Reads only.
 	 */
-	async callsSubWorkflows(workflow: Pick<FoundWorkflow, 'id' | 'nodes'>): Promise<boolean> {
-		const { staticSubWorkflowIds } = await import(
-			'../../n8n-packages/capabilities/package-requirements.js'
+	async canMove(user: User, workflowId: string, { liveHere }: { liveHere: boolean }) {
+		const { TransferLocalWorkflows } = await import(
+			'../../linked-instances/transfer/transfer-local-workflows.js'
 		);
-		return staticSubWorkflowIds(workflow).length > 0;
+		const local = Container.get(TransferLocalWorkflows);
+		try {
+			const workflow = await local.findMovable(user, workflowId);
+			await local.assertNoSubWorkflowCalls(user, workflow);
+			if (liveHere) await local.assertCanTurnOff(user, workflowId);
+			return true;
+		} catch (error) {
+			if (isExpectedFailure(error)) return false;
+			throw error;
+		}
 	}
 
 	/**
@@ -134,7 +144,8 @@ export class AutomationPlacement {
 		if (context.surface === 'mcp') {
 			return 'The "target" must be "local": MCP clients keep automations on this n8n instance. Nothing was changed.';
 		}
-		if (context.sharedThread === true) {
+		// A context that does not say counts as shared, so that a new caller keeps the workflow here.
+		if (context.sharedThread !== false) {
 			return 'This chat is shared, so its automations stay on this n8n instance. Nothing was changed.';
 		}
 		if (!this.moduleRegistry.isActive(LINKED_INSTANCES_MODULE)) {

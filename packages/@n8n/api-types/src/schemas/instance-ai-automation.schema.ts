@@ -169,7 +169,8 @@ export type AutomationPlace = z.infer<typeof automationPlaceSchema>;
  * What went other than the user asked when the workflow went to a linked instance. `error` says
  * the same in words, for the model. The frontend reads these values, never the words.
  * - `not-on`: the move asked to turn on the copy there, and the new version did not go live.
- * - `not-ready`: a version of the copy is live there, but it cannot run as set up there.
+ * - `not-ready`: a version of the copy is live there, and the new version needs set-up there.
+ *   After "Turn it on" the live version is the new one. After a save it can be an earlier one.
  * - `kept-on-here`: the workflow here stays on until the new version runs there as set up.
  * - `still-on-here`: the copy runs there and the workflow here still runs too, so it runs twice.
  * - `not-kept-here`: the copy is there, but n8n could not keep the workflow here.
