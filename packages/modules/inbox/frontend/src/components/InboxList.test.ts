@@ -148,30 +148,31 @@ it('loads Closed at the bottom without group headers or a Load more button', () 
 	expect(queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
 	expect(queryByTestId('inbox-section-header')).not.toBeInTheDocument();
 });
-it.each([
-	{ loading: true },
-	{ loadingMore: true },
-	{ hasMore: false },
-	{ error: new Error('Request failed') },
-])('does not automatically load Closed with %o', (props) => {
-	const { emitted } = renderComponent({
-		props: { activeTab: 'closed', sections: [section('closed', { hasMore: true, ...props })] },
-	});
-	intersect();
-	expect(emitted('loadMore')).toBeUndefined();
-});
-it('rearms the Closed sentinel after loading and removes it on Open', async () => {
+it.each([{ loading: true }, { loadingMore: true }, { hasMore: false }])(
+	'does not automatically load Closed with %o',
+	(props) => {
+		const { emitted } = renderComponent({
+			props: { activeTab: 'closed', sections: [section('closed', { hasMore: true, ...props })] },
+		});
+		intersect();
+		expect(emitted('loadMore')).toBeUndefined();
+	},
+);
+it('rearms the Closed sentinel after a failed page and removes it on Open', async () => {
+	const closed = section('closed', { hasMore: true, items: [{ ...review(), state: 'closed' }] });
 	const { rerender, emitted } = renderComponent({
-		props: { activeTab: 'closed', sections: [section('closed', { hasMore: true })] },
+		props: { activeTab: 'closed', sections: [closed] },
 	});
 	const target = vi.mocked(useIntersectionObserver).mock.calls.at(-1)![0];
 	expect(target).not.toHaveProperty('value', null);
 	intersect();
-	await rerender({ sections: [section('closed', { hasMore: true, loadingMore: true })] });
+	await rerender({ sections: [{ ...closed, loadingMore: true }] });
 	expect(target).toHaveProperty('value', null);
 	intersect();
 	expect(emitted('loadMore')).toHaveLength(1);
-	await rerender({ sections: [section('closed', { hasMore: true })] });
+	await rerender({
+		sections: [{ ...closed, error: new Error('Page failed') }],
+	});
 	expect(target).not.toHaveProperty('value', null);
 	intersect();
 	expect(emitted('loadMore')).toHaveLength(2);

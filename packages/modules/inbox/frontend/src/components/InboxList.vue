@@ -48,13 +48,7 @@ const listRef = useTemplateRef<HTMLElement>('list');
 const loadMoreSentinel = useTemplateRef<HTMLElement>('loadMoreSentinel');
 const canAutoLoad = computed(() => {
 	const closed = props.sections.find((section) => section.key === 'closed');
-	return (
-		props.activeTab === 'closed' &&
-		closed?.hasMore &&
-		!loading.value &&
-		!closed.loadingMore &&
-		!closed.error
-	);
+	return props.activeTab === 'closed' && closed?.hasMore && !loading.value && !closed.loadingMore;
 });
 useIntersectionObserver(
 	loadMoreSentinel,
