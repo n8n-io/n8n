@@ -23,6 +23,8 @@ const DEFAULT_SANDBOX_SERVICE_PORT = 5798;
 // time than the defaults of the e2e project (10 s navigation, 60 s test).
 const NAVIGATION_TIMEOUT_MS = 30_000;
 const TEST_TIMEOUT_MS = 120_000;
+// An unpublish runs in the background. It must finish before the next reset.
+const UNPUBLISH_TIMEOUT_MS = 30_000;
 
 export const LINKED_INSTANCES_SKIP_REASON =
 	'Needs the two n8n instances of `pnpm test:future-poc` (CLOUD_BASE_URL is not set)';
@@ -79,8 +81,9 @@ async function withApi(baseURL: string, run: (api: ApiHelpers) => Promise<void>)
 }
 
 /**
- * Deactivates the active workflows of "This computer". A published workflow cannot be
- * deleted, so the database reset fails while one is active.
+ * Deactivates the active workflows of "This computer" and waits until they are unpublished.
+ * The database reset cannot delete a workflow that still has a published version, and the
+ * unpublish removes that version in the background.
  */
 async function deactivateActiveWorkflows(api: ApiHelpers): Promise<void> {
 	try {
@@ -90,8 +93,17 @@ async function deactivateActiveWorkflows(api: ApiHelpers): Promise<void> {
 		return;
 	}
 	const workflows: Array<{ id: string; active: boolean }> = await api.workflows.getWorkflows();
-	for (const workflow of workflows.filter((candidate) => candidate.active)) {
+	const active = workflows.filter((candidate) => candidate.active);
+	for (const workflow of active) {
 		await api.workflows.deactivate(workflow.id);
+	}
+	// A workflow is not_published once its unpublish has completed, not while it is in progress.
+	for (const workflow of active) {
+		await expect
+			.poll(async () => (await api.workflows.getPublicationStatus(workflow.id)).status, {
+				timeout: UNPUBLISH_TIMEOUT_MS,
+			})
+			.toBe('not_published');
 	}
 }
 

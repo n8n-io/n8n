@@ -447,7 +447,7 @@ describe('software factory agents', () => {
 		expect(await validateNodeToolConfigs(config.tools)).toBeNull();
 	});
 
-	it('gives the critic read-only tools and no memory', () => {
+	it('gives the critic read-only tools and no memory across reviews', () => {
 		const critic = readAgent('agents/critic.agent.json');
 
 		expect(findWriteAccess(critic)).toEqual([]);
@@ -455,8 +455,28 @@ describe('software factory agents', () => {
 			'get_file_contents',
 			'search_code',
 		]);
-		expect(critic.memory?.enabled ?? false).toBe(false);
+		// The agent editor turns session memory on at each save, so the file says so too. Each review
+		// has a new session key, and episodic memory, which recalls other sessions, stays off.
+		expect(critic.memory).toEqual({
+			enabled: true,
+			storage: 'n8n',
+			observationalMemory: { enabled: false },
+			episodicMemory: { enabled: false },
+		});
 	});
+
+	it.each(['agents/planner.agent.json', 'agents/implementer.agent.json'] as const)(
+		'%s turns on session memory, so that a session keeps its conversation',
+		(file) => {
+			// Without memory, a stored agent loads no history. "Change the plan" and the repair rounds
+			// continue a session, so the file turns memory on itself.
+			expect(readAgent(file).memory).toMatchObject({
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: { enabled: false },
+			});
+		},
+	);
 
 	it('keeps the planner read-only', () => {
 		expect(findWriteAccess(readAgent('agents/planner.agent.json'))).toEqual([]);

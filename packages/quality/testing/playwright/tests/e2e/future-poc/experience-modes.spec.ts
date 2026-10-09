@@ -2,12 +2,17 @@ import type { InstanceAiThreadInfo } from '@n8n/api-types';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { INSTANCE_OWNER_CREDENTIALS } from '../../../config/test-users';
-import type { A11yChecker, A11yViolation } from '../../../fixtures/a11y';
+import type { A11yChecker } from '../../../fixtures/a11y';
 import type { n8nPage } from '../../../pages/n8nPage';
 import type { ApiHelpers } from '../../../services/api-helper';
 import type { ScriptedLlm } from '../../../services/scripted-llm/scripted-llm.server';
 import type { ScriptInput } from '../../../services/scripted-llm/scripted-llm.types';
 import { TestError } from '../../../Types';
+import {
+	blockingNodes,
+	describeNode,
+	isDesignSystemMenuItem,
+} from '../../../utils/a11y-blocking-nodes';
 import { expect, requireLinkedInstances, test } from './fixtures';
 
 type Mode = 'simple' | 'power';
@@ -20,9 +25,9 @@ const AGENT_PROMPT = 'n8n Instance Agent';
 const ASSISTANT_AGENT_ID = 'n8n-assistant';
 const TEAM_PROJECT_NAME = 'Simple mode team';
 const AUTOMATION_WORKFLOW_NAME = 'Simple mode daily digest';
+const LIVE_CHAT_TITLE = 'Live digest chat';
 // The target that the proposal offers: this n8n instance (AUTOMATION_LOCAL_TARGET_ID).
 const AUTOMATION_TARGET = 'local';
-const BLOCKING_IMPACTS = ['serious', 'critical'];
 // The a11y bucket of the Simple sidebar parts and the Power groups (fixtures/a11y.ts).
 const EXPERIENCE_MODES_BUCKET = 'experience-modes';
 // The blocking elements of the sidebar that exist today, outside the parts above. Each entry
@@ -310,53 +315,6 @@ async function turnOnFromCard(n8n: n8nPage, digestId: string): Promise<void> {
 	);
 }
 
-/** One axe node with a serious or critical impact, with the rule that reports it. */
-type BlockingNode = { rule: string; impact: string; html: string };
-
-function blockingNodes(violations: A11yViolation[]): BlockingNode[] {
-	return violations.flatMap((violation) =>
-		BLOCKING_IMPACTS.includes(violation.impact ?? '')
-			? violation.nodes.map((node) => ({
-					rule: violation.id,
-					impact: violation.impact ?? '',
-					html: node.html,
-				}))
-			: [],
-	);
-}
-
-/** The opening tag of an axe node, for example `<a href="/home" class="logo">`. */
-function openingTag(html: string): string {
-	return html.match(/^<[^>]*>/)?.[0] ?? html;
-}
-
-/**
- * The N8nMenuItem links of the design system: a menu item with no menu parent. The design
- * system owns this pattern, so the lists above do not name it. Other blocking nodes of these
- * links still fail.
- */
-function isDesignSystemMenuItem(node: BlockingNode): boolean {
-	return node.rule === 'aria-required-parent' && /^<a\s[^>]*\brole="menuitem"/.test(node.html);
-}
-
-// N8nMenuItem sets this test id on every item, so it does not name one element.
-const GENERIC_TEST_IDS = ['menu-item'];
-
-/**
- * Names the element of a node by its test id. Without one, the name is the opening tag
- * without its class, id and label, which change with the build and with the data.
- */
-function elementName(html: string): string {
-	const tag = openingTag(html);
-	const testId = tag.match(/\sdata-test-id="([^"]+)"/)?.[1];
-	if (testId && !GENERIC_TEST_IDS.includes(testId)) return testId;
-	return tag.replace(/\s(?:class|id|aria-label)="[^"]*"/g, '');
-}
-
-function describeNode(node: BlockingNode): string {
-	return `${node.rule} (${node.impact}): ${elementName(node.html)}`;
-}
-
 /** Fails when a blocking element of the sidebar is not on the known list. */
 async function expectKnownSidebarViolations(a11y: A11yChecker): Promise<void> {
 	const violations = await a11y.check('sidebar');
@@ -630,17 +588,21 @@ test.describe(
 			startLlm,
 			backendUrl,
 		}) => {
-			const chat = await createNamedChat(n8n.api, 'Live digest chat');
+			const chat = await createNamedChat(n8n.api, LIVE_CHAT_TITLE);
 			const digestId = await buildDigestInChat(n8n, startLlm, backendUrl, chat.id);
 			const proposeLlm = await startLlm(proposeDigestScript(digestId));
 
-			// The live stream of the turn has no card either (BACKLOG Q03).
+			// The card shows while the turn streams, but it is gone when the turn ends (BACKLOG Q03).
+			// Check it once the row says that the chat waits for the user.
 			await n8n.start.fromInstanceAiThread(chat.id);
 			await n8n.instanceAi.sendMessage('Turn it into an automation');
 			await expect(n8n.instanceAi.getPanelText(PROPOSAL_REPLY)).toBeVisible({
 				timeout: CHAT_TIMEOUT_MS,
 			});
 			expect(proposeLlm.requests().map((request) => request.ruleId)).toContain('propose-digest');
+			await expect(
+				n8n.experienceModes.getSidebarMenuItem(`${LIVE_CHAT_TITLE}, Waiting for you`),
+			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
 			await expectProposalCard(n8n);
 			await turnOnFromCard(n8n, digestId);
 		});

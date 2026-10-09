@@ -13,7 +13,6 @@ import {
 	failingTestOutput,
 	FAILING_TEST_FILE,
 	runtime,
-	settingsOutput,
 	ticketOutput,
 	workflow,
 } from './factory-pack-fixtures';
@@ -157,130 +156,6 @@ describe('software factory gates', () => {
 		expect(decide({ decision: 'Reject the ticket' })).toBe('fallback');
 		// The wait time ran out: Slack resumes without a decision.
 		expect(decide()).toBe('fallback');
-	});
-
-	describe('Prep ready?', () => {
-		const prep = (workspace: IDataObject, test: IDataObject) =>
-			configured.passesIf('Prep ready?', {
-				nodes: {
-					'Factory settings': settingsOutput,
-					'Prepare workspace': workspace,
-					'Draft failing test': test,
-				},
-				json: test,
-			});
-		const workspaceOn = (repositoryUrl: GenericValue) => ({
-			structuredContent: { phase: 'ready', repositoryUrl },
-		});
-		const ready = workspaceOn('https://github.com/acme/factory');
-		const testWith = (fields: IDataObject) => ({
-			structuredOutput: { ...failingTestOutput.structuredOutput, ...fields },
-		});
-
-		it('starts the implementation when the workspace and the failing test are ready', () => {
-			expect(prep(ready, failingTestOutput)).toBe(true);
-		});
-
-		it.each([
-			'https://github.com/Acme/Factory',
-			'https://github.com/acme/factory.git',
-			'https://github.com/acme/factory/',
-		])('accepts the repository of the pull request as %s', (repositoryUrl) => {
-			expect(prep(workspaceOn(repositoryUrl), failingTestOutput)).toBe(true);
-		});
-
-		it.each([
-			['the file name of the test', 'pnpm test a.test.ts'],
-			['the path of the test', 'pnpm test pkg/a.test.ts --run'],
-			['the path quoted', "pnpm test 'pkg/a.test.ts'"],
-			['a chain that runs the test first, with &&', 'pnpm test pkg/a.test.ts && echo done'],
-			['a change of directory before the test', 'cd packages/cli && pnpm test pkg/a.test.ts'],
-		])('accepts a command that names the test file as %s', (_case, runCommand) => {
-			expect(prep(ready, testWith({ testPath: 'pkg/a.test.ts', runCommand }))).toBe(true);
-		});
-
-		it.each([
-			['the workspace is in error', { structuredContent: { phase: 'error' } }, failingTestOutput],
-			['the workspace step failed', { error: { message: 'No tool' } }, failingTestOutput],
-			[
-				'the workspace is on another repository',
-				workspaceOn('https://github.com/n8n-io/n8n'),
-				failingTestOutput,
-			],
-			[
-				'the workspace repository only starts the same',
-				workspaceOn('https://github.com/acme/factory-old'),
-				failingTestOutput,
-			],
-			['the workspace names no repository', workspaceOn(undefined), failingTestOutput],
-			['the test has no path', ready, testWith({ testPath: '' })],
-			[
-				'the test path names no file',
-				ready,
-				testWith({ testPath: 'packages/cli/test/', runCommand: 'pnpm test packages/cli/test/' }),
-			],
-			['the test path is blank', ready, testWith({ testPath: '  ', runCommand: 'pnpm test  ' })],
-			['the command does not name the test file', ready, testWith({ runCommand: 'pnpm test' })],
-			[
-				'the command names another file that ends with the same letters',
-				ready,
-				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/ba.test.ts' }),
-			],
-			[
-				'the command only mentions the file name in another word',
-				ready,
-				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'true # xa.test.ts' }),
-			],
-			[
-				'the file name sits in a shell comment',
-				ready,
-				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'true # pkg/a.test.ts' }),
-			],
-			[
-				'a command that succeeds after the test',
-				ready,
-				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts ; true' }),
-			],
-			[
-				'a fallback after the test',
-				ready,
-				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts || true' }),
-			],
-			[
-				'a pipe, whose exit code is the one of its last command',
-				ready,
-				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts | tee log' }),
-			],
-			[
-				'a test that runs in the background',
-				ready,
-				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts &' }),
-			],
-			[
-				'a second line after the test',
-				ready,
-				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/a.test.ts\ntrue' }),
-			],
-			[
-				'a negation of the test, which passes when the test fails',
-				ready,
-				testWith({ testPath: 'pkg/a.test.ts', runCommand: '! pnpm test pkg/a.test.ts' }),
-			],
-			[
-				'a negation after a chain',
-				ready,
-				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'true && ! pnpm test pkg/a.test.ts' }),
-			],
-			[
-				'a command that exits before the test',
-				ready,
-				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'exit 0 && pnpm test pkg/a.test.ts' }),
-			],
-			['the planner failed', ready, { error: 'The agent stopped.' }],
-			['the planner returned no test', ready, { structuredOutput: null }],
-		])('stops when %s', (_case, workspace, test) => {
-			expect(prep(workspace, test)).toBe(false);
-		});
 	});
 
 	describe('Check result', () => {
@@ -755,30 +630,10 @@ describe('software factory gates', () => {
 		// n8n then sends the input item of the step to its success output. The gate after the step
 		// gets that item and must stop. Implement and Minimise have no gate of their own: the
 		// deterministic check after them decides on the code, not on the answer of the agent.
-		// "Ready for PR?" has its own cases above.
-		const approval = { data: { decision: 'Approve the plan' } };
-		const workspace = {
-			structuredContent: { phase: 'ready', repositoryUrl: 'https://github.com/acme/factory' },
-		};
+		// "Ready for PR?" has its own cases above, and "Prep ready?" has its own test file.
 
 		it.each([
 			['Plan', 'Plan ready?', { json: ticketOutput }],
-			[
-				'Prepare workspace',
-				'Prep ready?',
-				{ nodes: { ...earlierNodes, 'Prepare workspace': approval } },
-			],
-			[
-				'Draft failing test',
-				'Prep ready?',
-				{
-					nodes: {
-						...earlierNodes,
-						'Prepare workspace': workspace,
-						'Draft failing test': approval,
-					},
-				},
-			],
 			['Verify', 'Check result', { json: { structuredOutput: { summary: 'Done.' } } }],
 			// "Check the diff" failed as a whole: its input, the result of Get diff, has no problems list.
 			['Check the diff', 'Has a diff?', { json: checkResult() }],
@@ -801,9 +656,6 @@ describe('software factory gates', () => {
 	describe('a field of the wrong type', () => {
 		// A strict filter throws on a value of another type, and the execution then ends without an
 		// outcome. So each gate compares typed values and only stops the run.
-		const withSettings = (nodes: Record<string, IDataObject>) => ({
-			nodes: { 'Factory settings': settingsOutput, ...nodes },
-		});
 
 		it.each([
 			[
@@ -811,13 +663,6 @@ describe('software factory gates', () => {
 				{ json: { structuredOutput: { ...plan, summary: 5, steps: 'Add a counter.' } } },
 			],
 			['Plan decision', { json: { data: { decision: ['Approve the plan'] } } }],
-			[
-				'Prep ready?',
-				withSettings({
-					'Prepare workspace': { structuredContent: { phase: ['ready'], repositoryUrl: 7 } },
-					'Draft failing test': { structuredOutput: { testPath: 7, runCommand: 7 } },
-				}),
-			],
 			['Check result', { json: checkResult({ check: ['passed'], test: 1 }) }],
 			['Has a diff?', { json: { structuredContent: { diff: 42 } } }],
 			[

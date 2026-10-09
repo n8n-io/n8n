@@ -72,6 +72,21 @@ describe('useRunTargetPicker', () => {
 		expect(current().links.value).toEqual([link(OFFICE_ID, 'Office')]);
 	});
 
+	it('sends the chosen target only while the picker shows, so Simple mode starts here', async () => {
+		useExperience(['instance-ai', 'linked-instances'], 'power');
+		const current = setup();
+		await flushPromises();
+		current().runTarget.value = { kind: 'linked', instanceId: OFFICE_ID };
+		expect(current().chosenRunTarget.value).toEqual({ kind: 'linked', instanceId: OFFICE_ID });
+
+		resetExperienceModeState();
+		useExperience(['instance-ai', 'linked-instances'], 'simple');
+		await nextTick();
+
+		expect(current().showRunTargetPicker.value).toBe(false);
+		expect(current().chosenRunTarget.value).toBeUndefined();
+	});
+
 	it('hides the picker and loads nothing when linked instances are off', async () => {
 		useExperience(['instance-ai'], 'power');
 

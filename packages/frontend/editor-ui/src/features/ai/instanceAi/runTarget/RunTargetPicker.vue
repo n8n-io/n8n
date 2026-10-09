@@ -119,12 +119,7 @@ function openLinkedInstances() {
 		</template>
 
 		<template #item-trailing="{ item }">
-			<N8nIcon
-				v-if="item.checked"
-				icon="check"
-				size="small"
-				data-test-id="run-target-selected"
-			/>
+			<N8nIcon v-if="item.checked" icon="check" size="small" data-test-id="run-target-selected" />
 		</template>
 	</N8nDropdownMenu>
 </template>

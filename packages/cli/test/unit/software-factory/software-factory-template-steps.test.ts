@@ -1,18 +1,18 @@
 import fc from 'fast-check';
-import type { GenericValue, IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { nodeByName, readPackText } from './factory-pack-files';
+import { readPackText } from './factory-pack-files';
 import {
 	FAILING_TEST_PATH,
+	assignmentOf,
 	configured,
 	earlierNodes,
 	failingTestOutput,
 	parameterOf,
 	runtime,
-	settingsOutput,
+	textOf,
 	ticketOutput,
-	workflow,
 } from './factory-pack-fixtures';
 import type { TemplateRun } from './factory-pack-runtime';
 
@@ -48,23 +48,6 @@ const finding = { path: 'src/a.ts', line: 12, severity: 'minor', body: 'Handle n
 const review = (fields: IDataObject = {}) => ({
 	structuredOutput: { verdict: 'approve', findings: [], scopeCreep: [], ...fields },
 });
-
-/** The value of one field of a Set node. */
-function assignmentOf(nodeName: string, field: string): unknown {
-	const assignments = z
-		.object({
-			assignments: z.object({
-				assignments: z.array(z.object({ name: z.string(), value: z.unknown() })),
-			}),
-		})
-		.parse(nodeByName(workflow, nodeName).parameters).assignments.assignments;
-	const match = assignments.find((assignment) => assignment.name === field);
-	if (!match) throw new Error(`"${nodeName}" sets no field "${field}"`);
-	return match.value;
-}
-
-const textOf = (nodeName: string, value: unknown, run: TemplateRun) =>
-	z.string().parse(configured.evaluate(nodeName, value, run));
 
 describe('Read factory ticket', () => {
 	const factoryLabel = { id: 'label-factory', name: 'factory' };
@@ -330,6 +313,7 @@ describe('messages', () => {
 					findings: [{ ...finding, severity: 'major' }],
 					scopeCreep: ['Renamed b.ts'],
 				}),
+				nodes: earlierNodes,
 			},
 		);
 
@@ -390,6 +374,81 @@ describe('messages', () => {
 		});
 
 		expect(text).toContain('The change now has 0 changed lines.');
+	});
+
+	describe('follow-up requests', () => {
+		// Each follow-up request holds what the agent needs. So a run also works when the agent has
+		// no memory of the session, for example after a person created it without memory.
+		const criteria = ['The card shows the number of runs.', 'The number is 0 without runs.'];
+		const numbered = '1. The card shows the number of runs.\n2. The number is 0 without runs.';
+		const nodes = {
+			...earlierNodes,
+			'Read factory ticket': { ...ticketOutput, acceptanceCriteria: criteria },
+		};
+		const { testPath, runCommand } = failingTestOutput.structuredOutput;
+
+		it('gives the planner its last plan and the feedback when a person asks for changes', () => {
+			const lastPlan = { summary: 'Count the runs.', steps: ['Add a counter.'], files: ['a.ts'] };
+			const decision = { data: { decision: 'Change the plan', feedback: 'Reuse helper X.' } };
+			const revisionRun = { nodes: { Plan: { structuredOutput: lastPlan } }, json: decision };
+			const revision = {
+				feedback: textOf('Revise plan', assignmentOf('Revise plan', 'feedback'), revisionRun),
+				lastPlan: textOf('Revise plan', assignmentOf('Revise plan', 'lastPlan'), revisionRun),
+			};
+			const messageFor = (json: IDataObject) =>
+				textOf('Plan', parameterOf('Plan', 'message'), { nodes, json });
+
+			const revised = messageFor(revision);
+
+			expect(revised).toContain(numbered);
+			expect(revised).toContain(`Your last plan:\n${JSON.stringify(lastPlan, null, 2)}`);
+			expect(revised).toContain('Feedback of the reviewer:\nReuse helper X.');
+			expect(revised).toContain('Change the plan to address the feedback and keep the rest.');
+			expect(messageFor(nodes['Read factory ticket'])).not.toContain('Your last plan');
+		});
+
+		it.each([
+			['Minimise', () => parameterOf('Minimise', 'message'), { 'Get diff': checkResult() }, {}],
+			[
+				'Fix the failing check',
+				() => assignmentOf('Fix the failing check', 'request'),
+				{},
+				checkResult({ test: 'failed', testExitCode: 1, logTail: 'Expected 1, got 0' }),
+			],
+			[
+				'Address critic findings',
+				() => assignmentOf('Address critic findings', 'request'),
+				{},
+				review({ verdict: 'request_changes', findings: [finding] }),
+			],
+		])(
+			'gives the implementer the ticket, the criteria and the failing test in "%s"',
+			(nodeName, valueOf, extraNodes, json) => {
+				const text = textOf(nodeName, valueOf(), {
+					nodes: { ...nodes, 'Fresh critic': review(), ...extraNodes },
+					json,
+				});
+
+				expect(text).toContain('Ticket ENG-42: Show the run count');
+				expect(text).toContain(numbered);
+				expect(text).toContain(testPath);
+				expect(text).toContain(`\`${runCommand}\``);
+			},
+		);
+
+		it('keeps the end of the log last in the request after a failed check', () => {
+			const text = textOf(
+				'Fix the failing check',
+				assignmentOf('Fix the failing check', 'request'),
+				{
+					json: checkResult({ test: 'failed', logTail: 'Expected 1, got 0' }),
+					nodes,
+				},
+			);
+
+			expect(text.indexOf('Expected 1, got 0')).toBeGreaterThan(text.indexOf(numbered));
+			expect(text.trimEnd().endsWith('Expected 1, got 0\n```')).toBe(true);
+		});
 	});
 
 	describe('pull request body', () => {
@@ -468,157 +527,6 @@ describe('outcomes', () => {
 		expect(
 			summary('Outcome: step failed', { json: checkResult(), previousNode: 'Branch pushed?' }),
 		).toBe('The gate "Branch pushed?" found no usable result of the step before it.');
-	});
-
-	describe('Outcome: prep failed', () => {
-		const repository = 'https://github.com/acme/factory';
-		const prepRun = (workspace: IDataObject, test: IDataObject) => ({
-			nodes: {
-				'Factory settings': settingsOutput,
-				'Prepare workspace': workspace,
-				'Draft failing test': test,
-			},
-		});
-		const workspaceOn = (repositoryUrl: GenericValue, phase: GenericValue = 'ready') => ({
-			structuredContent: { phase, repositoryUrl },
-		});
-		const testWith = (fields: IDataObject) => ({
-			structuredOutput: { ...failingTestOutput.structuredOutput, ...fields },
-		});
-
-		it.each([
-			[
-				'the error of the workspace step',
-				{ error: { message: 'Unknown tool: coding_prepare' } },
-				failingTestOutput,
-				'Workspace: Unknown tool: coding_prepare. Failing test: ready.',
-			],
-			[
-				'the phase of the workspace and a missing test',
-				{ structuredContent: { phase: 'error' } },
-				{ structuredOutput: null },
-				'Workspace: phase error. Failing test: no test.',
-			],
-			[
-				'the error of the planner',
-				workspaceOn(repository),
-				{ error: 'The agent stopped.' },
-				'Workspace: ready. Failing test: The agent stopped.',
-			],
-			[
-				'a workspace on another repository',
-				workspaceOn('https://github.com/n8n-io/n8n'),
-				failingTestOutput,
-				`Workspace: the repository is https://github.com/n8n-io/n8n, not ${repository}.`,
-			],
-			[
-				'a run command that does not name the test',
-				workspaceOn(repository),
-				testWith({ runCommand: 'pnpm test' }),
-				'Failing test: the run command does not name packages/cli/test/unit/run-count.test.ts.',
-			],
-			[
-				'a test path without a file name',
-				workspaceOn(repository),
-				testWith({ testPath: 'packages/cli/test/', runCommand: 'pnpm test' }),
-				'Failing test: the test path packages/cli/test/ names no file.',
-			],
-			[
-				'a run command that names a file with the same end',
-				workspaceOn(repository),
-				testWith({
-					testPath: 'packages/cli/test/unit/run-count.test.ts',
-					runCommand: 'pnpm test packages/cli/test/unit/rerun-count.test.ts',
-				}),
-				'Failing test: the run command does not name packages/cli/test/unit/run-count.test.ts.',
-			],
-			[
-				'a run command with a pipe after the test',
-				workspaceOn(repository),
-				testWith({ runCommand: 'pnpm test packages/cli/test/unit/run-count.test.ts | tee log' }),
-				'Failing test: the run command has a shell operator other than &&, which can hide a failure.',
-			],
-			[
-				'a run command that starts with a negation',
-				workspaceOn(repository),
-				testWith({ runCommand: '! pnpm test packages/cli/test/unit/run-count.test.ts' }),
-				'Failing test: the run command can hide a failure: it starts with !, or it runs exit.',
-			],
-			[
-				'a run command that exits before the test',
-				workspaceOn(repository),
-				testWith({ runCommand: 'exit 0 && pnpm test packages/cli/test/unit/run-count.test.ts' }),
-				'Failing test: the run command can hide a failure: it starts with !, or it runs exit.',
-			],
-		])('explains a failed preparation with %s', (_case, workspace, test, expected) => {
-			const text = summary('Outcome: prep failed', prepRun(workspace, test));
-
-			expect(text).toMatch(/^The preparation did not finish\. /);
-			expect(text).toContain(expected);
-		});
-
-		it('says "ready" for both parts exactly when the gate "Prep ready?" passes', () => {
-			const workspace = fc.oneof(
-				fc.record({ error: fc.constantFrom('No tool', { message: 'Timeout' }) }),
-				fc
-					.tuple(
-						fc.constantFrom<GenericValue>('ready', 'error', undefined, ['ready']),
-						fc.constantFrom<GenericValue>(
-							repository,
-							'https://github.com/ACME/factory.git/',
-							'https://github.com/acme/factory-old',
-							undefined,
-							7,
-							[repository],
-						),
-					)
-					.map(([phase, repositoryUrl]) => workspaceOn(repositoryUrl, phase)),
-			);
-			const test = fc.oneof(
-				fc.record({ error: fc.constantFrom('The agent stopped.', { message: 'Rate limit' }) }),
-				fc.constant({ structuredOutput: null }),
-				fc
-					.tuple(
-						fc.constantFrom<GenericValue>(
-							'a/run.test.ts',
-							' a/run.test.ts',
-							'a/',
-							'  ',
-							'',
-							7,
-							undefined,
-						),
-						fc.constantFrom<GenericValue>(
-							'pnpm test a/run.test.ts',
-							'pnpm test a/run.test.ts && true',
-							'pnpm test a/run.test.ts ; true',
-							'pnpm test a/run.test.ts | tee log',
-							'pnpm test a/run.test.ts &',
-							'! pnpm test a/run.test.ts',
-							'true && ! pnpm test a/run.test.ts',
-							'exit 0 && pnpm test a/run.test.ts',
-							'true # a/run.test.ts',
-							'pnpm test',
-							'pnpm test 7',
-							7,
-							undefined,
-						),
-					)
-					.map(([testPath, runCommand]) => ({ structuredOutput: { testPath, runCommand } })),
-			);
-
-			fc.assert(
-				fc.property(workspace, test, (workspaceJson, testJson) => {
-					const run = prepRun(workspaceJson, testJson);
-					const text = summary('Outcome: prep failed', run);
-
-					expect(text.endsWith('Workspace: ready. Failing test: ready.')).toBe(
-						configured.passesIf('Prep ready?', run),
-					);
-				}),
-				{ numRuns: 150 },
-			);
-		});
 	});
 
 	it('names the diff that does not show every changed file, and an empty diff', () => {

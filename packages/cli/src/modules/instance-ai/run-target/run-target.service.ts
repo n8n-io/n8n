@@ -22,7 +22,10 @@ type LinkedRunTarget = Extract<InstanceAiThreadRunTarget, { kind: 'linked' }>;
 /** The part of a chat message request that the run target reads. */
 type ChatRequest = { runTarget?: RunTarget };
 /** The turn fields that a notice needs to reach the chat history. */
-export type RunTargetNoticeScope = Pick<SystemAgentStartTurn, 'thread' | 'resourceId' | 'executionId'>;
+export type RunTargetNoticeScope = Pick<
+	SystemAgentStartTurn,
+	'thread' | 'resourceId' | 'executionId'
+>;
 
 const LINKED_INSTANCES_MODULE = 'linked-instances';
 

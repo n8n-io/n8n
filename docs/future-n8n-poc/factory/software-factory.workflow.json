@@ -162,7 +162,7 @@
 					"mode": "list",
 					"value": ""
 				},
-				"message": "=Plan the change for Linear ticket {{ $('Read factory ticket').first().json.ticket }}: {{ $('Read factory ticket').first().json.title }}\n\nRepository: {{ $('Factory settings').first().json.repositoryOwner }}/{{ $('Factory settings').first().json.repositoryName }} on GitHub. Read the code on the branch {{ $('Factory settings').first().json.baseBranch }}.\n\n{{ $('Read factory ticket').first().json.description }}\n\nAcceptance criteria:\n{{ $('Read factory ticket').first().json.acceptanceCriteria.map((item, index) => (index + 1) + '. ' + item).join('\\n') }}\n\nDiff budget: {{ $('Read factory ticket').first().json.diffBudget }} changed lines.\n{{ $json.feedback ? 'The reviewer asked for changes to your last plan:\\n' + $json.feedback : '' }}",
+				"message": "=Plan the change for Linear ticket {{ $('Read factory ticket').first().json.ticket }}: {{ $('Read factory ticket').first().json.title }}\n\nRepository: {{ $('Factory settings').first().json.repositoryOwner }}/{{ $('Factory settings').first().json.repositoryName }} on GitHub. Read the code on the branch {{ $('Factory settings').first().json.baseBranch }}.\n\n{{ $('Read factory ticket').first().json.description }}\n\nAcceptance criteria:\n{{ $('Read factory ticket').first().json.acceptanceCriteria.map((item, index) => (index + 1) + '. ' + item).join('\\n') }}\n\nDiff budget: {{ $('Read factory ticket').first().json.diffBudget }} changed lines.\n{{ $json.feedback ? '\\nA reviewer asked for changes to your last plan. Change the plan to address the feedback and keep the rest.\\n\\nYour last plan:\\n' + $json.lastPlan + '\\n\\nFeedback of the reviewer:\\n' + $json.feedback : '' }}",
 				"useStructuredOutput": true,
 				"schemaType": "manual",
 				"outputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"summary\": {\n      \"type\": \"string\",\n      \"description\": \"Two or three sentences: what changes and why\"\n    },\n    \"steps\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Ordered implementation steps\"\n    },\n    \"files\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Repository-relative paths that the change touches\"\n    },\n    \"tests\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"One test for each acceptance criterion\"\n    },\n    \"risks\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Risks and open questions\"\n    },\n    \"estimatedChangedLines\": {\n      \"type\": \"integer\",\n      \"description\": \"Estimated added plus deleted lines\"\n    }\n  },\n  \"required\": [\n    \"summary\",\n    \"steps\",\n    \"files\",\n    \"tests\",\n    \"risks\",\n    \"estimatedChangedLines\"\n  ],\n  \"additionalProperties\": false\n}",
@@ -370,6 +370,12 @@
 							"name": "feedback",
 							"value": "={{ $json.data?.feedback || 'Improve the plan.' }}",
 							"type": "string"
+						},
+						{
+							"id": "1983d6d2-0d3e-4e6e-9fc1-5c2b6c29a186",
+							"name": "lastPlan",
+							"value": "={{ JSON.stringify($('Plan').last().json.structuredOutput ?? {}, null, 2) }}",
+							"type": "string"
 						}
 					]
 				},
@@ -455,6 +461,19 @@
 		},
 		{
 			"parameters": {
+				"jsCode": "// Facts for the gate \"Prep ready?\" and the outcome \"prep failed\". The rules are only here, so\n// the gate and the text of the outcome always agree. An empty problem means \"ready\".\nconst settings = $('Factory settings').first().json;\nconst workspace = $('Prepare workspace').first().json;\nconst draft = $('Draft failing test').first().json;\nconst expected = 'https://github.com/' + settings.repositoryOwner + '/' + settings.repositoryName;\n\n// The error of a step that failed as a whole, or undefined when the step has no error.\nconst errorOf = (json) => {\n\tif (json?.error === undefined || json.error === null) return undefined;\n\tconst message = typeof json.error === 'string' ? json.error : json.error.message;\n\treturn typeof message === 'string' && message.trim() !== '' ? message : 'the step failed';\n};\n\n// The workspace must be ready and hold the repository of the pull request.\nconst workspaceProblem = () => {\n\tconst error = errorOf(workspace);\n\tif (error !== undefined) return error;\n\tconst phase = workspace.structuredContent?.phase;\n\tif (phase !== 'ready') return 'phase ' + (typeof phase === 'string' ? phase : 'unknown');\n\tconst url = workspace.structuredContent?.repositoryUrl;\n\tconst normalised = typeof url === 'string' ? url.trim().toLowerCase().replace(/(\\.git)?\\/*$/, '') : '';\n\treturn normalised === expected.toLowerCase()\n\t\t? ''\n\t\t: 'the repository is ' + (typeof url === 'string' && url ? url : 'unknown') + ', not ' + expected;\n};\n\n// The run command must name the test file. Only && may join commands: the other shell operators,\n// a leading ! and exit can hide the exit code of the test.\nconst testProblem = () => {\n\tconst error = errorOf(draft);\n\tif (error !== undefined) return error;\n\tconst testPath = draft.structuredOutput?.testPath;\n\tif (typeof testPath !== 'string' || testPath.trim() === '') return 'no test';\n\tconst file = /[^\\/\\s]+$/.exec(testPath.trim())?.[0];\n\tif (file === undefined) return 'the test path ' + testPath + ' names no file';\n\tconst command = draft.structuredOutput.runCommand;\n\tconst words = typeof command === 'string' ? command.split(/[\\s'\"]+/) : [];\n\tif (!words.some((word) => word === file || word.endsWith('/' + file))) {\n\t\treturn 'the run command does not name ' + testPath;\n\t}\n\tif (/[;|#&\\r\\n]/.test(command.replace(/&&/g, ''))) {\n\t\treturn 'the run command has a shell operator other than &&, which can hide a failure';\n\t}\n\tif (/(^|&&)\\s*!/.test(command) || words.includes('exit')) {\n\t\treturn 'the run command can hide a failure: it starts with !, or it runs exit';\n\t}\n\treturn '';\n};\n\nreturn [{ json: { workspaceProblem: workspaceProblem(), testProblem: testProblem() } }];"
+			},
+			"id": "7846e6f0-c16c-437f-9e86-7a470ce763ea",
+			"name": "Check prep",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [2500, 0],
+			"notes": "Checks the workspace and the run command of the failing test.",
+			"notesInFlow": true,
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {
 				"conditions": {
 					"options": {
 						"caseSensitive": true,
@@ -465,27 +484,7 @@
 					"conditions": [
 						{
 							"id": "90077a98-de2e-452e-af16-f99dc07b4927",
-							"leftValue": "={{ $('Prepare workspace').first().json.structuredContent?.phase === 'ready' }}",
-							"rightValue": "",
-							"operator": {
-								"type": "boolean",
-								"operation": "true",
-								"singleValue": true
-							}
-						},
-						{
-							"id": "251451a5-e0d1-460a-a2c5-3887e921618b",
-							"leftValue": "={{ ((url, expected) => typeof url === 'string' && url.trim().toLowerCase().replace(/(\\.git)?\\/*$/, '') === expected.toLowerCase())($('Prepare workspace').first().json.structuredContent?.repositoryUrl, 'https://github.com/' + $('Factory settings').first().json.repositoryOwner + '/' + $('Factory settings').first().json.repositoryName) }}",
-							"rightValue": "",
-							"operator": {
-								"type": "boolean",
-								"operation": "true",
-								"singleValue": true
-							}
-						},
-						{
-							"id": "a93d7cde-bde4-4fc4-ae91-a5602e75d865",
-							"leftValue": "={{ ((file, command) => Boolean(file) && typeof command === 'string' && !/[;|#&\\r\\n]/.test(command.replace(/&&/g, '')) && !/(^|&&)\\s*!/.test(command) && !command.split(/[\\s'\"]+/).includes('exit') && command.split(/[\\s'\"]+/).some((token) => token === file || token.endsWith('/' + file)))(/[^\\/\\s]+$/.exec(String($('Draft failing test').first().json.structuredOutput?.testPath ?? '').trim())?.[0], $('Draft failing test').first().json.structuredOutput?.runCommand) }}",
+							"leftValue": "={{ $json.workspaceProblem === '' && $json.testProblem === '' }}",
 							"rightValue": "",
 							"operator": {
 								"type": "boolean",
@@ -502,7 +501,7 @@
 			"name": "Prep ready?",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
-			"position": [2500, 0]
+			"position": [2720, 0]
 		},
 		{
 			"parameters": {
@@ -522,7 +521,7 @@
 			"name": "Implementation request",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [2720, 0]
+			"position": [2940, 0]
 		},
 		{
 			"parameters": {
@@ -549,7 +548,7 @@
 			"name": "Implement",
 			"type": "n8n-nodes-base.messageAnAgent",
 			"typeVersion": 3.1,
-			"position": [2960, 0],
+			"position": [3180, 0],
 			"notes": "Choose the agent that you imported from agents/implementer.agent.json.",
 			"notesInFlow": true,
 			"onError": "continueErrorOutput"
@@ -573,7 +572,7 @@
 			"name": "Verify",
 			"type": "@n8n/n8n-nodes-langchain.mcpClient",
 			"typeVersion": 1.1,
-			"position": [3200, 0],
+			"position": [3420, 0],
 			"credentials": {
 				"httpBearerAuth": {
 					"id": null,
@@ -694,7 +693,7 @@
 			"name": "Check result",
 			"type": "n8n-nodes-base.switch",
 			"typeVersion": 3.4,
-			"position": [3420, 0],
+			"position": [3640, 0],
 			"notes": "Only the first 3 checks of a run can get a retry. Checks that pass and checks after critic rounds also count.",
 			"notesInFlow": true
 		},
@@ -705,7 +704,7 @@
 						{
 							"id": "cbc695ba-5cb7-4338-ac9e-850e7583b459",
 							"name": "request",
-							"value": "=The deterministic check did not pass. Check command: {{ $json.structuredContent.check }} (exit code {{ $json.structuredContent.checkExitCode ?? 'none' }}). Failing test `{{ $('Draft failing test').first().json.structuredOutput.runCommand }}`: {{ $json.structuredContent.test }} (exit code {{ $json.structuredContent.testExitCode ?? 'none' }}).\nFix the cause and keep the change minimal. Do not weaken, skip or delete tests.\n\nEnd of the log:\n```\n{{ $json.structuredContent.logTail ?? '' }}\n```",
+							"value": "=The deterministic check did not pass. Check command: {{ $json.structuredContent.check }} (exit code {{ $json.structuredContent.checkExitCode ?? 'none' }}). Failing test `{{ $('Draft failing test').first().json.structuredOutput.runCommand }}`: {{ $json.structuredContent.test }} (exit code {{ $json.structuredContent.testExitCode ?? 'none' }}).\nFix the cause and keep the change minimal. Do not weaken, skip or delete tests.\n\nTicket {{ $('Read factory ticket').first().json.ticket }}: {{ $('Read factory ticket').first().json.title }}\nKeep the failing test {{ $('Draft failing test').first().json.structuredOutput.testPath }}. The change must meet these acceptance criteria:\n{{ $('Read factory ticket').first().json.acceptanceCriteria.map((item, index) => (index + 1) + '. ' + item).join('\\n') }}\n\nEnd of the log:\n```\n{{ $json.structuredContent.logTail ?? '' }}\n```",
 							"type": "string"
 						}
 					]
@@ -716,7 +715,7 @@
 			"name": "Fix the failing check",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [3200, -260]
+			"position": [3420, -260]
 		},
 		{
 			"parameters": {
@@ -737,7 +736,7 @@
 			"name": "Get diff",
 			"type": "@n8n/n8n-nodes-langchain.mcpClient",
 			"typeVersion": 1.1,
-			"position": [3660, 0],
+			"position": [3880, 0],
 			"credentials": {
 				"httpBearerAuth": {
 					"id": null,
@@ -750,13 +749,13 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "// The added and deleted lines of each file of a unified diff, with the path of each file.\nconst fileCounts = (diff) => {\n\tconst files = [];\n\tlet current;\n\tlet inHunk = false;\n\tfor (const line of diff.split('\\n')) {\n\t\tif (line.startsWith('diff --git ')) {\n\t\t\t// A file without hunks (a binary file or a mode change) has no +++ line. Its header\n\t\t\t// gives the path, which is exact unless a path contains \" b/\".\n\t\t\tconst rest = line.slice('diff --git a/'.length);\n\t\t\tconst split = rest.lastIndexOf(' b/');\n\t\t\tcurrent = { path: split === -1 ? rest : rest.slice(split + 3), additions: 0, deletions: 0 };\n\t\t\tfiles.push(current);\n\t\t\tinHunk = false;\n\t\t} else if (current !== undefined) {\n\t\t\tif (inHunk) {\n\t\t\t\tif (line.startsWith('+')) current.additions += 1;\n\t\t\t\telse if (line.startsWith('-')) current.deletions += 1;\n\t\t\t} else if (line.startsWith('@@')) {\n\t\t\t\tinHunk = true;\n\t\t\t} else {\n\t\t\t\t// The +++ line names the new path. A deleted file has /dev/null there.\n\t\t\t\t// git adds a tab after a name with a space. A quoted name matches no listed change.\n\t\t\t\tconst name = /^(?:---|\\+\\+\\+) (?:[ab]\\/)?(.+?)\\t?$/.exec(line)?.[1];\n\t\t\t\tif (name !== undefined && name !== '/dev/null') current.path = name;\n\t\t\t}\n\t\t}\n\t}\n\treturn files;\n};\n\n// Each reason why a diff does not show exactly the listed changes. The diff must hold each listed\n// file with the same added and deleted line counts, and no other file.\nconst diffProblems = (content) => {\n\tconst changes = Array.isArray(content?.changes) ? content.changes : [];\n\tconst problems = content?.truncated === true ? ['the diff is truncated'] : [];\n\tconst files = fileCounts(String(content?.diff ?? ''));\n\tconst counted = new Map();\n\tfor (const file of files) {\n\t\tif (counted.has(file.path)) problems.push(file.path + ': appears twice in the diff');\n\t\tcounted.set(file.path, file);\n\t}\n\tconst listed = new Map();\n\tfor (const change of changes) {\n\t\tconst path = String(change?.path);\n\t\tif (listed.has(path)) problems.push(path + ': listed twice');\n\t\tlisted.set(path, change);\n\t}\n\tfor (const path of counted.keys()) {\n\t\tif (!listed.has(path)) problems.push(path + ': not in the list of changed files');\n\t}\n\tfor (const [path, change] of listed) {\n\t\tconst file = counted.get(path);\n\t\tconst additions = Number(change?.additions);\n\t\tconst deletions = Number(change?.deletions);\n\t\tif (!file) problems.push(path + ': missing from the diff');\n\t\telse if (file.additions !== additions || file.deletions !== deletions) {\n\t\t\tproblems.push(\n\t\t\t\tpath + ': the diff has ' + file.additions + ' added and ' + file.deletions +\n\t\t\t\t\t' deleted lines, the list has ' + additions + ' and ' + deletions,\n\t\t\t);\n\t\t}\n\t}\n\treturn problems;\n};\n\n// Facts for the gate \"Has a diff?\". The critic reviews only a diff that shows every changed file\n// and the failing test, so that the check and the test describe the same change.\nconst item = $input.first().json;\nconst testPath = String($('Draft failing test').first().json.structuredOutput?.testPath ?? '');\nconst listed = Array.isArray(item.structuredContent?.changes) ? item.structuredContent.changes : [];\nreturn [\n\t{\n\t\tjson: {\n\t\t\t...item,\n\t\t\tdiffProblems: diffProblems(item.structuredContent),\n\t\t\ttestListed: listed.some((change) => String(change?.path) === testPath),\n\t\t},\n\t},\n];"
+				"jsCode": "// The added and deleted lines of each file of a unified diff, with the path of each file.\nconst fileCounts = (diff) => {\n\tconst files = [];\n\tlet current;\n\tlet inHunk = false;\n\tfor (const line of diff.split('\\n')) {\n\t\tif (line.startsWith('diff --git ')) {\n\t\t\t// A file without hunks (a binary file or a mode change) has no +++ line. Its header\n\t\t\t// gives the path, which is exact unless a path contains \" b/\".\n\t\t\tconst rest = line.slice('diff --git a/'.length);\n\t\t\tconst split = rest.lastIndexOf(' b/');\n\t\t\tcurrent = { path: split === -1 ? rest : rest.slice(split + 3), additions: 0, deletions: 0 };\n\t\t\tfiles.push(current);\n\t\t\tinHunk = false;\n\t\t} else if (current !== undefined) {\n\t\t\tif (inHunk) {\n\t\t\t\tif (line.startsWith('+')) current.additions += 1;\n\t\t\t\telse if (line.startsWith('-')) current.deletions += 1;\n\t\t\t} else if (line.startsWith('@@')) {\n\t\t\t\tinHunk = true;\n\t\t\t} else {\n\t\t\t\t// The +++ line names the new path. A deleted file has /dev/null there.\n\t\t\t\t// git adds a tab after a name with a space. A quoted name matches no listed change.\n\t\t\t\tconst name = /^(?:---|\\+\\+\\+) (?:[ab]\\/)?(.+?)\\t?$/.exec(line)?.[1];\n\t\t\t\tif (name !== undefined && name !== '/dev/null') current.path = name;\n\t\t\t}\n\t\t}\n\t}\n\treturn files;\n};\n\n// Each reason why a diff does not show exactly the listed changes. The diff must hold each listed\n// file with the same added and deleted line counts, and no other file.\nconst diffProblems = (content) => {\n\tconst changes = Array.isArray(content?.changes) ? content.changes : [];\n\tconst problems = content?.truncated === true ? ['the diff is truncated'] : [];\n\tconst files = fileCounts(String(content?.diff ?? ''));\n\tconst counted = new Map();\n\tfor (const file of files) {\n\t\tif (counted.has(file.path)) problems.push(file.path + ': appears twice in the diff');\n\t\tcounted.set(file.path, file);\n\t}\n\tconst listed = new Map();\n\tfor (const change of changes) {\n\t\tconst path = String(change?.path);\n\t\tif (listed.has(path)) problems.push(path + ': listed twice');\n\t\tlisted.set(path, change);\n\t}\n\tfor (const path of counted.keys()) {\n\t\tif (!listed.has(path)) problems.push(path + ': not in the list of changed files');\n\t}\n\tfor (const [path, change] of listed) {\n\t\tconst file = counted.get(path);\n\t\tconst additions = Number(change?.additions);\n\t\tconst deletions = Number(change?.deletions);\n\t\tif (!file) problems.push(path + ': missing from the diff');\n\t\telse if (file.additions !== additions || file.deletions !== deletions) {\n\t\t\tproblems.push(\n\t\t\t\tpath + ': the diff has ' + file.additions + ' added and ' + file.deletions +\n\t\t\t\t\t' deleted lines, the list has ' + additions + ' and ' + deletions,\n\t\t\t);\n\t\t}\n\t}\n\treturn problems;\n};\n\n// Facts for the gate \"Has a diff?\". The critic reviews only a diff that shows every changed file\n// and the failing test, so that the check and the test describe the same change.\nconst item = $input.first().json;\nconst testPath = String($('Draft failing test').first().json.structuredOutput?.testPath ?? '');\nconst listed = Array.isArray(item.structuredContent?.changes) ? item.structuredContent.changes : [];\n// The change holds the failing test only when it adds lines to the test file. A deleted test file,\n// or a change that only removes lines from it, does not count.\nconst holdsTest = (change) =>\n\tString(change?.path) === testPath && String(change?.status) !== 'D' && Number(change?.additions) > 0;\nreturn [\n\t{\n\t\tjson: {\n\t\t\t...item,\n\t\t\tdiffProblems: diffProblems(item.structuredContent),\n\t\t\ttestListed: listed.some(holdsTest),\n\t\t},\n\t},\n];"
 			},
 			"id": "e56d67ec-ea7b-468f-8118-d9ff343ee01f",
 			"name": "Check the diff",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [3880, 0],
+			"position": [4100, 0],
 			"notes": "The critic reviews only a diff that shows every changed file.",
 			"notesInFlow": true,
 			"onError": "continueErrorOutput"
@@ -810,7 +809,7 @@
 			"name": "Has a diff?",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
-			"position": [4100, 0]
+			"position": [4320, 0]
 		},
 		{
 			"parameters": {
@@ -872,7 +871,7 @@
 			"name": "Critic input",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [4320, 0],
+			"position": [4540, 0],
 			"notes": "The critic gets only these fields. It never sees the implementer conversation.",
 			"notesInFlow": true
 		},
@@ -903,7 +902,7 @@
 			"name": "Fresh critic",
 			"type": "n8n-nodes-base.messageAnAgent",
 			"typeVersion": 3.1,
-			"position": [4560, 0],
+			"position": [4780, 0],
 			"notes": "Choose the agent that you imported from agents/critic.agent.json.",
 			"notesInFlow": true,
 			"onError": "continueErrorOutput"
@@ -1003,7 +1002,7 @@
 			"name": "Critic verdict",
 			"type": "n8n-nodes-base.switch",
 			"typeVersion": 3.4,
-			"position": [4800, 0]
+			"position": [5020, 0]
 		},
 		{
 			"parameters": {
@@ -1012,7 +1011,7 @@
 						{
 							"id": "266b69e1-7261-46d7-a13a-f119acf8c589",
 							"name": "request",
-							"value": "=A fresh critic reviewed your change and asked for changes. Fix each finding and keep the rest of the change.\n\n{{ ($json.structuredOutput.findings ?? []).map((finding) => finding.path + ':' + finding.line + ' (new version)\\n[' + finding.severity + '] ' + finding.body).join('\\n\\n') }}\n\n{{ ($json.structuredOutput.scopeCreep ?? []).length ? 'Remove this scope creep:\\n- ' + ($json.structuredOutput.scopeCreep ?? []).join('\\n- ') : '' }}",
+							"value": "=A fresh critic reviewed your change and asked for changes. Fix each finding and keep the rest of the change.\n\n{{ ($json.structuredOutput.findings ?? []).map((finding) => finding.path + ':' + finding.line + ' (new version)\\n[' + finding.severity + '] ' + finding.body).join('\\n\\n') }}\n\n{{ ($json.structuredOutput.scopeCreep ?? []).length ? 'Remove this scope creep:\\n- ' + ($json.structuredOutput.scopeCreep ?? []).join('\\n- ') : '' }}\n\nTicket {{ $('Read factory ticket').first().json.ticket }}: {{ $('Read factory ticket').first().json.title }}\nKeep the failing test {{ $('Draft failing test').first().json.structuredOutput.testPath }}. The change must still meet these acceptance criteria:\n{{ $('Read factory ticket').first().json.acceptanceCriteria.map((item, index) => (index + 1) + '. ' + item).join('\\n') }}\n\nAfter your turn, the factory runs `{{ $('Draft failing test').first().json.structuredOutput.runCommand }}` and the check command again.",
 							"type": "string"
 						}
 					]
@@ -1023,7 +1022,7 @@
 			"name": "Address critic findings",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [4560, -260]
+			"position": [4780, -260]
 		},
 		{
 			"parameters": {
@@ -1033,7 +1032,7 @@
 					"mode": "list",
 					"value": ""
 				},
-				"message": "=Minimise the change before people review it. A fresh critic approved the change, and nobody reviews it again. So you can only remove changes.\nThe diff budget is {{ $('Read factory ticket').first().json.diffBudget }} changed lines. The change now has {{ ((changes) => (Array.isArray(changes) ? changes : []).reduce((total, change) => total + (Number(change?.additions) || 0) + (Number(change?.deletions) || 0), 0))($('Get diff').last().json.structuredContent?.changes) }} changed lines.\n- Remove every change that the acceptance criteria do not need.\n- Keep the failing test and the tests that prove the acceptance criteria.\n- Do not add, rewrite or move code. Do not fix findings. The pull request lists them for the person who reviews it.\n- After your turn, the factory compares the change with the change that the critic approved. A file or a line that the critic did not review stops the run.\n{{ ($('Fresh critic').last().json.structuredOutput?.scopeCreep ?? []).length ? '- Remove this scope creep: ' + $('Fresh critic').last().json.structuredOutput.scopeCreep.join('; ') : '' }}",
+				"message": "=Minimise the change before people review it. A fresh critic approved the change, and nobody reviews it again. So you can only remove changes.\n\nTicket {{ $('Read factory ticket').first().json.ticket }}: {{ $('Read factory ticket').first().json.title }}\n\nAcceptance criteria:\n{{ $('Read factory ticket').first().json.acceptanceCriteria.map((item, index) => (index + 1) + '. ' + item).join('\\n') }}\n\nThe failing test is {{ $('Draft failing test').first().json.structuredOutput.testPath }}. After your turn, the factory runs `{{ $('Draft failing test').first().json.structuredOutput.runCommand }}` and the check command again.\n\nThe diff budget is {{ $('Read factory ticket').first().json.diffBudget }} changed lines. The change now has {{ ((changes) => (Array.isArray(changes) ? changes : []).reduce((total, change) => total + (Number(change?.additions) || 0) + (Number(change?.deletions) || 0), 0))($('Get diff').last().json.structuredContent?.changes) }} changed lines.\n- Remove every change that the acceptance criteria above do not need.\n- Keep the failing test and the tests that prove the acceptance criteria.\n- Do not add, rewrite or move code. Do not fix findings. The pull request lists them for the person who reviews it.\n- After your turn, the factory compares the change with the change that the critic approved. A file or a line that the critic did not review stops the run.\n{{ ($('Fresh critic').last().json.structuredOutput?.scopeCreep ?? []).length ? '- Remove this scope creep: ' + $('Fresh critic').last().json.structuredOutput.scopeCreep.join('; ') : '' }}",
 				"useStructuredOutput": true,
 				"schemaType": "manual",
 				"outputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"summary\": {\n      \"type\": \"string\",\n      \"description\": \"What the change does after minimising\"\n    },\n    \"removed\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Changes that you removed\"\n    }\n  },\n  \"required\": [\n    \"summary\",\n    \"removed\"\n  ],\n  \"additionalProperties\": false\n}",
@@ -1050,7 +1049,7 @@
 			"name": "Minimise",
 			"type": "n8n-nodes-base.messageAnAgent",
 			"typeVersion": 3.1,
-			"position": [5040, 0],
+			"position": [5260, 0],
 			"notes": "Choose the agent that you imported from agents/implementer.agent.json.",
 			"notesInFlow": true,
 			"onError": "continueErrorOutput"
@@ -1074,7 +1073,7 @@
 			"name": "Re-verify",
 			"type": "@n8n/n8n-nodes-langchain.mcpClient",
 			"typeVersion": 1.1,
-			"position": [5280, 0],
+			"position": [5500, 0],
 			"credentials": {
 				"httpBearerAuth": {
 					"id": null,
@@ -1104,7 +1103,7 @@
 			"name": "Get minimised diff",
 			"type": "@n8n/n8n-nodes-langchain.mcpClient",
 			"typeVersion": 1.1,
-			"position": [5500, 0],
+			"position": [5720, 0],
 			"credentials": {
 				"httpBearerAuth": {
 					"id": null,
@@ -1117,13 +1116,13 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "// Facts for the gate \"Ready for PR?\". Minimise may only remove changes. So each file and each\n// changed line after Minimise must also be in the change that the critic approved.\nconst checked = $('Re-verify').last().json.structuredContent;\nconst minimised = $('Get minimised diff').last().json.structuredContent;\nconst approved = $('Get diff').last().json.structuredContent;\n\nconst changesOf = (content) => (Array.isArray(content?.changes) ? content.changes : []);\nconst countOf = (value) => Number(value) || 0;\nconst linesOf = (changes) =>\n\tchanges.reduce((total, change) => total + countOf(change?.additions) + countOf(change?.deletions), 0);\n\n// Git writes these lines before the hunks of a file. A change of them is a change of the file.\nconst MODE_LINE = /^(?:old mode |new mode |new file mode |deleted file mode |rename from |rename to )/;\n\n// Each added or deleted line of a unified diff, as \"path: +line\" or \"path: -line\". A file without\n// hunks (a binary file, a mode change or a rename) is one change: its header lines. A file with\n// hunks still counts its mode and rename lines.\nconst changedLinesOf = (diff) => {\n\tconst result = [];\n\tlet header = [];\n\tlet path = '';\n\tlet inHunk = false;\n\tconst endFile = () => {\n\t\tif (header.length === 0) return;\n\t\tif (!inHunk) result.push(header.join(' '));\n\t\telse result.push(...header.filter((line) => MODE_LINE.test(line)).map((line) => path + ': ' + line));\n\t};\n\tfor (const line of String(diff ?? '').split('\\n')) {\n\t\tif (line.startsWith('diff --git ')) {\n\t\t\tendFile();\n\t\t\theader = [line];\n\t\t\tpath = '';\n\t\t\tinHunk = false;\n\t\t} else if (inHunk) {\n\t\t\tif (/^[+-]/.test(line)) result.push(path + ': ' + line);\n\t\t} else if (line.startsWith('@@')) {\n\t\t\tinHunk = true;\n\t\t} else if (line !== '') {\n\t\t\theader.push(line);\n\t\t\t// git adds a tab after a name with a space. A quoted name matches no listed change.\n\t\t\tconst name = /^(?:---|\\+\\+\\+) (?:[ab]\\/)?(.+?)\\t?$/.exec(line)?.[1];\n\t\t\tif (name !== undefined && name !== '/dev/null') path = name;\n\t\t}\n\t}\n\tendFile();\n\treturn result;\n};\n\n// The entries of `entries` that `reviewed` does not hold. A repeated entry needs as many copies.\nconst notReviewed = (entries, reviewed) => {\n\tconst left = new Map();\n\tfor (const entry of reviewed) left.set(entry, (left.get(entry) ?? 0) + 1);\n\treturn entries.filter((entry) => {\n\t\tconst count = left.get(entry) ?? 0;\n\t\tleft.set(entry, count - 1);\n\t\treturn count < 1;\n\t});\n};\n\n// The added and deleted lines of each file of a unified diff, with the path of each file.\nconst fileCounts = (diff) => {\n\tconst files = [];\n\tlet current;\n\tlet inHunk = false;\n\tfor (const line of diff.split('\\n')) {\n\t\tif (line.startsWith('diff --git ')) {\n\t\t\t// A file without hunks (a binary file or a mode change) has no +++ line. Its header\n\t\t\t// gives the path, which is exact unless a path contains \" b/\".\n\t\t\tconst rest = line.slice('diff --git a/'.length);\n\t\t\tconst split = rest.lastIndexOf(' b/');\n\t\t\tcurrent = { path: split === -1 ? rest : rest.slice(split + 3), additions: 0, deletions: 0 };\n\t\t\tfiles.push(current);\n\t\t\tinHunk = false;\n\t\t} else if (current !== undefined) {\n\t\t\tif (inHunk) {\n\t\t\t\tif (line.startsWith('+')) current.additions += 1;\n\t\t\t\telse if (line.startsWith('-')) current.deletions += 1;\n\t\t\t} else if (line.startsWith('@@')) {\n\t\t\t\tinHunk = true;\n\t\t\t} else {\n\t\t\t\t// The +++ line names the new path. A deleted file has /dev/null there.\n\t\t\t\t// git adds a tab after a name with a space. A quoted name matches no listed change.\n\t\t\t\tconst name = /^(?:---|\\+\\+\\+) (?:[ab]\\/)?(.+?)\\t?$/.exec(line)?.[1];\n\t\t\t\tif (name !== undefined && name !== '/dev/null') current.path = name;\n\t\t\t}\n\t\t}\n\t}\n\treturn files;\n};\n\n// Each reason why a diff does not show exactly the listed changes. The diff must hold each listed\n// file with the same added and deleted line counts, and no other file.\nconst diffProblems = (content) => {\n\tconst changes = Array.isArray(content?.changes) ? content.changes : [];\n\tconst problems = content?.truncated === true ? ['the diff is truncated'] : [];\n\tconst files = fileCounts(String(content?.diff ?? ''));\n\tconst counted = new Map();\n\tfor (const file of files) {\n\t\tif (counted.has(file.path)) problems.push(file.path + ': appears twice in the diff');\n\t\tcounted.set(file.path, file);\n\t}\n\tconst listed = new Map();\n\tfor (const change of changes) {\n\t\tconst path = String(change?.path);\n\t\tif (listed.has(path)) problems.push(path + ': listed twice');\n\t\tlisted.set(path, change);\n\t}\n\tfor (const path of counted.keys()) {\n\t\tif (!listed.has(path)) problems.push(path + ': not in the list of changed files');\n\t}\n\tfor (const [path, change] of listed) {\n\t\tconst file = counted.get(path);\n\t\tconst additions = Number(change?.additions);\n\t\tconst deletions = Number(change?.deletions);\n\t\tif (!file) problems.push(path + ': missing from the diff');\n\t\telse if (file.additions !== additions || file.deletions !== deletions) {\n\t\t\tproblems.push(\n\t\t\t\tpath + ': the diff has ' + file.additions + ' added and ' + file.deletions +\n\t\t\t\t\t' deleted lines, the list has ' + additions + ' and ' + deletions,\n\t\t\t);\n\t\t}\n\t}\n\treturn problems;\n};\n\nconst approvedFiles = new Map(changesOf(approved).map((change) => [String(change?.path), change]));\n// The budget and the file checks use the changes of the minimised diff, which diffProblems checks.\n// The check after Minimise must list the same changes. Otherwise its list is stale or incomplete.\nconst minimisedChanges = changesOf(minimised);\n// A final result is \"passed\" or \"failed\". Another state is no result, as in \"Check result\".\nconst isFinal = (state) => state === 'passed' || state === 'failed';\n// The hash that \"Push branch\" sends. Without it, a change could be pushed unchecked.\nconst SHA256_HEX = /^[0-9a-f]{64}$/;\n// Minimise must keep the failing test. Without it, the run proves nothing.\nconst testPath = String($('Draft failing test').first().json.structuredOutput?.testPath ?? '');\nconst testListed = minimisedChanges.some((change) => String(change?.path) === testPath);\nconst keyOf = (change) =>\n\tJSON.stringify([\n\t\tString(change?.path),\n\t\tString(change?.status),\n\t\tcountOf(change?.additions),\n\t\tcountOf(change?.deletions),\n\t]);\nconst sameChanges = (left, right) => {\n\tconst keys = (list) => list.map(keyOf).sort().join('\\n');\n\treturn keys(left) === keys(right);\n};\nconst checkProblems =\n\tArray.isArray(checked?.changes) && sameChanges(checked.changes, minimisedChanges)\n\t\t? []\n\t\t: ['the check after Minimise lists other changes than the minimised diff'];\nconst fileProblems = minimisedChanges.flatMap((change) => {\n\tconst path = String(change?.path);\n\tconst before = approvedFiles.get(path);\n\tif (!before) return [path + ': a file that the critic did not review'];\n\tconst grew =\n\t\tcountOf(change.additions) > countOf(before.additions) ||\n\t\tcountOf(change.deletions) > countOf(before.deletions);\n\treturn grew ? [path + ': more changed lines than the critic reviewed'] : [];\n});\n\nreturn [\n\t{\n\t\tjson: {\n\t\t\thasResult:\n\t\t\t\tisFinal(checked?.check) &&\n\t\t\t\tisFinal(checked?.test) &&\n\t\t\t\ttypeof minimised?.diff === 'string' &&\n\t\t\t\tSHA256_HEX.test(String(minimised?.diffSha256)),\n\t\t\tcheck: typeof checked?.check === 'string' ? checked.check : '',\n\t\t\ttest: typeof checked?.test === 'string' ? checked.test : '',\n\t\t\tchangedLines: linesOf(minimisedChanges),\n\t\t\tapprovedLines: linesOf(changesOf(approved)),\n\t\t\tdiffBudget: Number($('Read factory ticket').first().json.diffBudget),\n\t\t\ttestListed,\n\t\t\tunreviewed: [\n\t\t\t\t...checkProblems,\n\t\t\t\t...fileProblems,\n\t\t\t\t...notReviewed(changedLinesOf(minimised?.diff), changedLinesOf(approved?.diff)),\n\t\t\t\t...diffProblems(minimised),\n\t\t\t],\n\t\t},\n\t},\n];"
+				"jsCode": "// Facts for the gate \"Ready for PR?\". Minimise may only remove changes. So each file and each\n// changed line after Minimise must also be in the change that the critic approved.\nconst checked = $('Re-verify').last().json.structuredContent;\nconst minimised = $('Get minimised diff').last().json.structuredContent;\nconst approved = $('Get diff').last().json.structuredContent;\n\nconst changesOf = (content) => (Array.isArray(content?.changes) ? content.changes : []);\nconst countOf = (value) => Number(value) || 0;\nconst linesOf = (changes) =>\n\tchanges.reduce((total, change) => total + countOf(change?.additions) + countOf(change?.deletions), 0);\n\n// Git writes these lines before the hunks of a file. A change of them is a change of the file.\nconst MODE_LINE = /^(?:old mode |new mode |new file mode |deleted file mode |rename from |rename to )/;\n\n// Each added or deleted line of a unified diff, as \"path: +line\" or \"path: -line\". A file without\n// hunks (a binary file, a mode change or a rename) is one change: its header lines. A file with\n// hunks still counts its mode and rename lines.\nconst changedLinesOf = (diff) => {\n\tconst result = [];\n\tlet header = [];\n\tlet path = '';\n\tlet inHunk = false;\n\tconst endFile = () => {\n\t\tif (header.length === 0) return;\n\t\tif (!inHunk) result.push(header.join(' '));\n\t\telse result.push(...header.filter((line) => MODE_LINE.test(line)).map((line) => path + ': ' + line));\n\t};\n\tfor (const line of String(diff ?? '').split('\\n')) {\n\t\tif (line.startsWith('diff --git ')) {\n\t\t\tendFile();\n\t\t\theader = [line];\n\t\t\tpath = '';\n\t\t\tinHunk = false;\n\t\t} else if (inHunk) {\n\t\t\tif (/^[+-]/.test(line)) result.push(path + ': ' + line);\n\t\t} else if (line.startsWith('@@')) {\n\t\t\tinHunk = true;\n\t\t} else if (line !== '') {\n\t\t\theader.push(line);\n\t\t\t// git adds a tab after a name with a space. A quoted name matches no listed change.\n\t\t\tconst name = /^(?:---|\\+\\+\\+) (?:[ab]\\/)?(.+?)\\t?$/.exec(line)?.[1];\n\t\t\tif (name !== undefined && name !== '/dev/null') path = name;\n\t\t}\n\t}\n\tendFile();\n\treturn result;\n};\n\n// The entries of `entries` that `reviewed` does not hold. A repeated entry needs as many copies.\nconst notReviewed = (entries, reviewed) => {\n\tconst left = new Map();\n\tfor (const entry of reviewed) left.set(entry, (left.get(entry) ?? 0) + 1);\n\treturn entries.filter((entry) => {\n\t\tconst count = left.get(entry) ?? 0;\n\t\tleft.set(entry, count - 1);\n\t\treturn count < 1;\n\t});\n};\n\n// The added and deleted lines of each file of a unified diff, with the path of each file.\nconst fileCounts = (diff) => {\n\tconst files = [];\n\tlet current;\n\tlet inHunk = false;\n\tfor (const line of diff.split('\\n')) {\n\t\tif (line.startsWith('diff --git ')) {\n\t\t\t// A file without hunks (a binary file or a mode change) has no +++ line. Its header\n\t\t\t// gives the path, which is exact unless a path contains \" b/\".\n\t\t\tconst rest = line.slice('diff --git a/'.length);\n\t\t\tconst split = rest.lastIndexOf(' b/');\n\t\t\tcurrent = { path: split === -1 ? rest : rest.slice(split + 3), additions: 0, deletions: 0 };\n\t\t\tfiles.push(current);\n\t\t\tinHunk = false;\n\t\t} else if (current !== undefined) {\n\t\t\tif (inHunk) {\n\t\t\t\tif (line.startsWith('+')) current.additions += 1;\n\t\t\t\telse if (line.startsWith('-')) current.deletions += 1;\n\t\t\t} else if (line.startsWith('@@')) {\n\t\t\t\tinHunk = true;\n\t\t\t} else {\n\t\t\t\t// The +++ line names the new path. A deleted file has /dev/null there.\n\t\t\t\t// git adds a tab after a name with a space. A quoted name matches no listed change.\n\t\t\t\tconst name = /^(?:---|\\+\\+\\+) (?:[ab]\\/)?(.+?)\\t?$/.exec(line)?.[1];\n\t\t\t\tif (name !== undefined && name !== '/dev/null') current.path = name;\n\t\t\t}\n\t\t}\n\t}\n\treturn files;\n};\n\n// Each reason why a diff does not show exactly the listed changes. The diff must hold each listed\n// file with the same added and deleted line counts, and no other file.\nconst diffProblems = (content) => {\n\tconst changes = Array.isArray(content?.changes) ? content.changes : [];\n\tconst problems = content?.truncated === true ? ['the diff is truncated'] : [];\n\tconst files = fileCounts(String(content?.diff ?? ''));\n\tconst counted = new Map();\n\tfor (const file of files) {\n\t\tif (counted.has(file.path)) problems.push(file.path + ': appears twice in the diff');\n\t\tcounted.set(file.path, file);\n\t}\n\tconst listed = new Map();\n\tfor (const change of changes) {\n\t\tconst path = String(change?.path);\n\t\tif (listed.has(path)) problems.push(path + ': listed twice');\n\t\tlisted.set(path, change);\n\t}\n\tfor (const path of counted.keys()) {\n\t\tif (!listed.has(path)) problems.push(path + ': not in the list of changed files');\n\t}\n\tfor (const [path, change] of listed) {\n\t\tconst file = counted.get(path);\n\t\tconst additions = Number(change?.additions);\n\t\tconst deletions = Number(change?.deletions);\n\t\tif (!file) problems.push(path + ': missing from the diff');\n\t\telse if (file.additions !== additions || file.deletions !== deletions) {\n\t\t\tproblems.push(\n\t\t\t\tpath + ': the diff has ' + file.additions + ' added and ' + file.deletions +\n\t\t\t\t\t' deleted lines, the list has ' + additions + ' and ' + deletions,\n\t\t\t);\n\t\t}\n\t}\n\treturn problems;\n};\n\nconst approvedFiles = new Map(changesOf(approved).map((change) => [String(change?.path), change]));\n// The budget and the file checks use the changes of the minimised diff, which diffProblems checks.\n// The check after Minimise must list the same changes. Otherwise its list is stale or incomplete.\nconst minimisedChanges = changesOf(minimised);\n// A final result is \"passed\" or \"failed\". Another state is no result, as in \"Check result\".\nconst isFinal = (state) => state === 'passed' || state === 'failed';\n// The hash that \"Push branch\" sends. Without it, a change could be pushed unchecked.\nconst SHA256_HEX = /^[0-9a-f]{64}$/;\n// Minimise must keep the failing test. Without it, the run proves nothing. The change holds the\n// test only when it adds lines to the test file: a deleted test file does not count.\nconst testPath = String($('Draft failing test').first().json.structuredOutput?.testPath ?? '');\nconst testListed = minimisedChanges.some(\n\t(change) =>\n\t\tString(change?.path) === testPath && String(change?.status) !== 'D' && countOf(change?.additions) > 0,\n);\nconst keyOf = (change) =>\n\tJSON.stringify([\n\t\tString(change?.path),\n\t\tString(change?.status),\n\t\tcountOf(change?.additions),\n\t\tcountOf(change?.deletions),\n\t]);\nconst sameChanges = (left, right) => {\n\tconst keys = (list) => list.map(keyOf).sort().join('\\n');\n\treturn keys(left) === keys(right);\n};\nconst checkProblems =\n\tArray.isArray(checked?.changes) && sameChanges(checked.changes, minimisedChanges)\n\t\t? []\n\t\t: ['the check after Minimise lists other changes than the minimised diff'];\nconst fileProblems = minimisedChanges.flatMap((change) => {\n\tconst path = String(change?.path);\n\tconst before = approvedFiles.get(path);\n\tif (!before) return [path + ': a file that the critic did not review'];\n\tconst grew =\n\t\tcountOf(change.additions) > countOf(before.additions) ||\n\t\tcountOf(change.deletions) > countOf(before.deletions);\n\treturn grew ? [path + ': more changed lines than the critic reviewed'] : [];\n});\n\nreturn [\n\t{\n\t\tjson: {\n\t\t\thasResult:\n\t\t\t\tisFinal(checked?.check) &&\n\t\t\t\tisFinal(checked?.test) &&\n\t\t\t\ttypeof minimised?.diff === 'string' &&\n\t\t\t\tSHA256_HEX.test(String(minimised?.diffSha256)),\n\t\t\tcheck: typeof checked?.check === 'string' ? checked.check : '',\n\t\t\ttest: typeof checked?.test === 'string' ? checked.test : '',\n\t\t\tchangedLines: linesOf(minimisedChanges),\n\t\t\tapprovedLines: linesOf(changesOf(approved)),\n\t\t\tdiffBudget: Number($('Read factory ticket').first().json.diffBudget),\n\t\t\ttestListed,\n\t\t\tunreviewed: [\n\t\t\t\t...checkProblems,\n\t\t\t\t...fileProblems,\n\t\t\t\t...notReviewed(changedLinesOf(minimised?.diff), changedLinesOf(approved?.diff)),\n\t\t\t\t...diffProblems(minimised),\n\t\t\t],\n\t\t},\n\t},\n];"
 			},
 			"id": "7af4dab4-c2a4-4217-9892-db4962f0d90e",
 			"name": "Compare with approved change",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [5720, 0],
+			"position": [5940, 0],
 			"notes": "Minimise may only remove changes. This node lists each file and line that the critic did not review, and each change that the minimised diff does not show.",
 			"notesInFlow": true,
 			"onError": "continueErrorOutput"
@@ -1249,7 +1248,7 @@
 			"name": "Ready for PR?",
 			"type": "n8n-nodes-base.switch",
 			"typeVersion": 3.4,
-			"position": [5940, 0],
+			"position": [6160, 0],
 			"notes": "Continues only when the change passes, fits the budget and holds only lines that the critic reviewed.",
 			"notesInFlow": true
 		},
@@ -1272,7 +1271,7 @@
 			"name": "Push branch",
 			"type": "@n8n/n8n-nodes-langchain.mcpClient",
 			"typeVersion": 1.1,
-			"position": [6160, 0],
+			"position": [6380, 0],
 			"credentials": {
 				"httpBearerAuth": {
 					"id": null,
@@ -1332,7 +1331,7 @@
 			"name": "Branch pushed?",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
-			"position": [6380, 0],
+			"position": [6600, 0],
 			"notes": "When a node fails as a whole, n8n sends its input to the success output. So this gate reads the result of Push branch.",
 			"notesInFlow": true
 		},
@@ -1361,7 +1360,7 @@
 			"name": "Open draft PR",
 			"type": "n8n-nodes-base.github",
 			"typeVersion": 1.1,
-			"position": [6600, 0],
+			"position": [6820, 0],
 			"credentials": {
 				"githubApi": {
 					"id": null,
@@ -1399,7 +1398,7 @@
 			"name": "PR opened?",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
-			"position": [6820, 0]
+			"position": [7040, 0]
 		},
 		{
 			"parameters": {
@@ -1492,7 +1491,7 @@
 						{
 							"id": "c99fd32e-4185-497b-af08-07a87210ac73",
 							"name": "summary",
-							"value": "={{ 'The preparation did not finish. Workspace: ' + ((workspace, expected) => (typeof workspace.error === 'string' ? workspace.error : workspace.error?.message) ?? (workspace.structuredContent?.phase !== 'ready' ? 'phase ' + (workspace.structuredContent?.phase ?? 'unknown') : !(typeof workspace.structuredContent?.repositoryUrl === 'string' && workspace.structuredContent.repositoryUrl.trim().toLowerCase().replace(/(\\.git)?\\/*$/, '') === expected.toLowerCase()) ? 'the repository is ' + (workspace.structuredContent?.repositoryUrl || 'unknown') + ', not ' + expected : 'ready'))($('Prepare workspace').first().json, 'https://github.com/' + $('Factory settings').first().json.repositoryOwner + '/' + $('Factory settings').first().json.repositoryName) + '. Failing test: ' + ((draft, file) => (typeof draft.error === 'string' ? draft.error : draft.error?.message) ?? (!draft.structuredOutput?.testPath ? 'no test' : !file ? 'the test path ' + draft.structuredOutput.testPath + ' names no file' : !(typeof draft.structuredOutput.runCommand === 'string' && draft.structuredOutput.runCommand.split(/[\\s'\"]+/).some((token) => token === file || token.endsWith('/' + file))) ? 'the run command does not name ' + draft.structuredOutput.testPath : /[;|#&\\r\\n]/.test(draft.structuredOutput.runCommand.replace(/&&/g, '')) ? 'the run command has a shell operator other than &&, which can hide a failure' : /(^|&&)\\s*!/.test(draft.structuredOutput.runCommand) || draft.structuredOutput.runCommand.split(/[\\s'\"]+/).includes('exit') ? 'the run command can hide a failure: it starts with !, or it runs exit' : 'ready'))($('Draft failing test').first().json, /[^\\/\\s]+$/.exec(String($('Draft failing test').first().json.structuredOutput?.testPath ?? '').trim())?.[0]) + '.' }}",
+							"value": "={{ 'The preparation did not finish. Workspace: ' + (typeof $json.workspaceProblem === 'string' ? $json.workspaceProblem || 'ready' : 'unknown') + '. Failing test: ' + (typeof $json.testProblem === 'string' ? $json.testProblem || 'ready' : 'unknown') + '.' }}",
 							"type": "string"
 						}
 					]
@@ -1503,7 +1502,7 @@
 			"name": "Outcome: prep failed",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [2500, 420]
+			"position": [2720, 420]
 		},
 		{
 			"parameters": {
@@ -1529,7 +1528,7 @@
 			"name": "Outcome: step failed",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [2960, 420]
+			"position": [3180, 420]
 		},
 		{
 			"parameters": {
@@ -1555,7 +1554,7 @@
 			"name": "Outcome: check failed",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [3660, 420]
+			"position": [3880, 420]
 		},
 		{
 			"parameters": {
@@ -1581,7 +1580,7 @@
 			"name": "Outcome: critic blocked",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [4800, 420]
+			"position": [5020, 420]
 		},
 		{
 			"parameters": {
@@ -1607,7 +1606,7 @@
 			"name": "Outcome: not ready for PR",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [5940, 420]
+			"position": [6160, 420]
 		},
 		{
 			"parameters": {
@@ -1639,7 +1638,7 @@
 			"name": "Outcome: draft PR opened",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [7040, 0]
+			"position": [7260, 0]
 		},
 		{
 			"parameters": {
@@ -1649,7 +1648,7 @@
 			"name": "Run record",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [2960, 700]
+			"position": [3180, 700]
 		},
 		{
 			"parameters": {
@@ -1664,7 +1663,7 @@
 			"name": "Report on ticket",
 			"type": "n8n-nodes-base.linear",
 			"typeVersion": 1.1,
-			"position": [3180, 700],
+			"position": [3400, 700],
 			"credentials": {
 				"linearApi": {
 					"id": null,
@@ -1726,7 +1725,7 @@
 			"name": "Ensure factory_runs table",
 			"type": "n8n-nodes-base.dataTable",
 			"typeVersion": 1.1,
-			"position": [3400, 700]
+			"position": [3620, 700]
 		},
 		{
 			"parameters": {
@@ -1852,7 +1851,7 @@
 			"name": "Record run",
 			"type": "n8n-nodes-base.dataTable",
 			"typeVersion": 1.1,
-			"position": [3620, 700]
+			"position": [3840, 700]
 		},
 		{
 			"parameters": {
@@ -1893,9 +1892,9 @@
 		},
 		{
 			"parameters": {
-				"content": "## 3. Prep\nThe planner drafts a failing test. The coding_prepare tool prepares the workspace on the repository of the pull request. n8n runs the two branches one after the other.",
+				"content": "## 3. Prep\nThe planner drafts a failing test. The coding_prepare tool prepares the workspace on the repository of the pull request. n8n runs the two branches one after the other. \"Check prep\" holds the rules for the workspace and the run command of the test.",
 				"height": 560,
-				"width": 680
+				"width": 900
 			},
 			"id": "f19bcea9-a569-4cc4-a605-72b9014f4e0d",
 			"name": "Note: prep",
@@ -1913,7 +1912,7 @@
 			"name": "Note: implement",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [2660, -360]
+			"position": [2880, -360]
 		},
 		{
 			"parameters": {
@@ -1925,7 +1924,7 @@
 			"name": "Note: critic",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [3580, -360]
+			"position": [3800, -360]
 		},
 		{
 			"parameters": {
@@ -1937,7 +1936,7 @@
 			"name": "Note: minimise",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [4960, -360]
+			"position": [5180, -360]
 		},
 		{
 			"parameters": {
@@ -1949,7 +1948,7 @@
 			"name": "Note: pr",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [6100, -360]
+			"position": [6320, -360]
 		},
 		{
 			"parameters": {
@@ -1961,7 +1960,7 @@
 			"name": "Note: report",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [2940, 600]
+			"position": [3160, 600]
 		}
 	],
 	"connections": {
@@ -2155,7 +2154,7 @@
 			"main": [
 				[
 					{
-						"node": "Prep ready?",
+						"node": "Check prep",
 						"type": "main",
 						"index": 0
 					}
@@ -2677,6 +2676,24 @@
 				[
 					{
 						"node": "Has a diff?",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Outcome: step failed",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check prep": {
+			"main": [
+				[
+					{
+						"node": "Prep ready?",
 						"type": "main",
 						"index": 0
 					}

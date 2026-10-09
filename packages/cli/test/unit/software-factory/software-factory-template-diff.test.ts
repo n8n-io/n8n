@@ -2,11 +2,19 @@ import fc from 'fast-check';
 import type { IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { binaryDiff, changesOf, sha256Of, unifiedDiff, type DiffFile } from './factory-pack-diffs';
+import {
+	binaryDiff,
+	changesOf,
+	deletedFile,
+	sha256Of,
+	unifiedDiff,
+	type DiffFile,
+} from './factory-pack-diffs';
 import {
 	configured,
 	earlierNodes,
 	FAILING_TEST_FILE,
+	FAILING_TEST_PATH,
 	ticketOutput,
 	workflow,
 } from './factory-pack-fixtures';
@@ -118,6 +126,30 @@ describe('software factory diff gates', () => {
 			expect(testOf(withTest)).toBe(true);
 			expect(testOf(files)).toBe(false);
 			expect(testOf([{ path: `${FAILING_TEST_FILE.path}.bak`, lines: ['+x();'] }])).toBe(false);
+		});
+
+		it('does not count a deleted test file, or a test file that only loses lines, as the failing test', () => {
+			const deleted = deletedFile(FAILING_TEST_PATH, [
+				"it('counts runs', () => {});",
+				'expect(1).toBe(1);',
+			]);
+			const shrunk: DiffFile = {
+				path: FAILING_TEST_PATH,
+				lines: ["-it('old', () => {});", ' x();'],
+			};
+			const deletedFacts = checkedDiffOf({
+				diff: unifiedDiff(files) + deleted.diff,
+				changes: [...changesOf(files), deleted.change],
+			});
+
+			// The diff itself shows the deletion, so only the test rule stops it.
+			expect(deletedFacts).toMatchObject({ diffProblems: [], testListed: false });
+			expect(
+				checkedDiffOf({
+					diff: unifiedDiff([...files, shrunk]),
+					changes: changesOf([...files, shrunk]),
+				}).testListed,
+			).toBe(false);
 		});
 
 		it('lists each listed file that the diff leaves out', () => {
@@ -411,6 +443,19 @@ describe('software factory diff gates', () => {
 			});
 
 			expect(result.facts.testListed).toBe(false);
+			expect(result.unreviewed).toEqual([]);
+			expect(result.route).toBe(NOT_READY);
+		});
+
+		it('stops when the approved change deletes the file of the failing test', () => {
+			const deleted = deletedFile(FAILING_TEST_PATH, ["it('counts runs', () => {});"]);
+			const change = {
+				diff: unifiedDiff(approved) + deleted.diff,
+				changes: [...changesOf(approved), deleted.change],
+			};
+			const result = compare({ approved: change, minimised: change });
+
+			expect(result.facts).toMatchObject({ check: 'passed', test: 'passed', testListed: false });
 			expect(result.unreviewed).toEqual([]);
 			expect(result.route).toBe(NOT_READY);
 		});

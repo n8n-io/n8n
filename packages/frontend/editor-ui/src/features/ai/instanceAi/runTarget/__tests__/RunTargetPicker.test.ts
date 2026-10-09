@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 import type { LinkedInstanceSummary, RunTarget } from '@n8n/api-types';
 
 import { renderComponent } from '@/__tests__/render';
@@ -90,12 +91,41 @@ describe('RunTargetPicker', () => {
 		expect(onUpdate).not.toHaveBeenCalled();
 	});
 
-	it('opens the linked instances settings from the footer', async () => {
+	it('opens the linked instances settings from the menu', async () => {
 		const { getByRole, findByRole } = renderPicker();
 
 		await openMenu(getByRole);
-		await userEvent.click(await findByRole('button', { name: 'Link a cloud instance…' }));
+		await userEvent.click(await findByRole('menuitem', { name: 'Link a cloud instance…' }));
 
 		expect(pushRoute).toHaveBeenCalledWith({ name: 'LinkedInstancesSettings' });
+	});
+
+	it('reaches the link to the linked instances settings with the keyboard', async () => {
+		const { getByRole, findByRole, queryByRole } = renderPicker();
+
+		getByRole('button', { name: /Runs on:/ }).focus();
+		await userEvent.keyboard('{Enter}');
+		const linkItem = await findByRole('menuitem', { name: 'Link a cloud instance…' });
+		// Disabled items are skipped, so the link is reached within the menu's few items.
+		for (let step = 0; step < 6 && document.activeElement !== linkItem; step++) {
+			await userEvent.keyboard('{ArrowDown}');
+		}
+		expect(linkItem).toHaveFocus();
+
+		await userEvent.keyboard('{Enter}');
+
+		expect(pushRoute).toHaveBeenCalledWith({ name: 'LinkedInstancesSettings' });
+		expect(queryByRole('menuitem', { name: 'Link a cloud instance…' })).not.toBeInTheDocument();
+	});
+
+	it('marks the target that the chat runs on with a check', async () => {
+		const { getByRole, findByRole } = renderPicker({ kind: 'linked', instanceId: OFFICE_ID });
+
+		await openMenu(getByRole);
+		const office = await findByRole('menuitemcheckbox', { name: /^Office/ });
+		const thisComputer = getByRole('menuitemcheckbox', { name: /This computer/ });
+
+		expect(within(office).getByTestId('run-target-selected')).toBeInTheDocument();
+		expect(within(thisComputer).queryByTestId('run-target-selected')).not.toBeInTheDocument();
 	});
 });

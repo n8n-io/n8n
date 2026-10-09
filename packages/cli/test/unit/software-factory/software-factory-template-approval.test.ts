@@ -2,8 +2,11 @@ import { isRecord } from '@n8n/utils/is-record';
 import Handlebars from 'handlebars';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode, NodeParameterValueType } from 'n8n-workflow';
+// n8n-nodes-base has no public export of this helper. The import follows the source file of the
+// Slack node, and its built type declarations link it to the code, so a rename breaks this test.
 import { createSendAndWaitMessageBody } from 'n8n-nodes-base/dist/nodes/Slack/V2/GenericFunctions';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { nodeByName } from './factory-pack-files';
@@ -11,6 +14,7 @@ import {
 	configured,
 	earlierNodes,
 	parameterOf,
+	textOf,
 	ticketOutput,
 	workflow,
 } from './factory-pack-fixtures';
@@ -24,9 +28,6 @@ import type { TemplateRun } from './factory-pack-runtime';
 const APPROVAL = 'Ask for plan approval';
 const FORM_TEMPLATE = path.resolve(__dirname, '../../../templates/form-trigger.handlebars');
 
-const textOf = (nodeName: string, value: unknown, run: TemplateRun) =>
-	z.string().parse(configured.evaluate(nodeName, value, run));
-
 /**
  * The context that the Slack node gets for the approval: each parameter with its expressions
  * evaluated, as the workflow engine gives them to the node.
@@ -38,22 +39,19 @@ function slackContextOf(run: TemplateRun): IExecuteFunctions {
 			.split('.')
 			.reduce<unknown>((value, key) => (isRecord(value) ? value[key] : undefined), parameters);
 
-	return {
-		getNodeParameter: (
-			name: string,
-			_itemIndex: number,
-			fallback?: unknown,
-			options?: { extractValue?: boolean },
-		) => {
-			const raw = parameterNamed(name);
-			if (raw === undefined) return fallback;
-			const value = configured.evaluate(APPROVAL, raw, run);
-			return options?.extractValue && isRecord(value) ? value.value : value;
-		},
-		getNode: () => ({ typeVersion: nodeByName(workflow, APPROVAL).typeVersion }),
+	const context = mock<IExecuteFunctions>({
+		getNode: () => mock<INode>({ typeVersion: nodeByName(workflow, APPROVAL).typeVersion }),
 		getExecutionId: () => '1',
 		getSignedResumeUrl: () => 'https://n8n.example.com/resume',
-	} as unknown as IExecuteFunctions;
+	});
+	context.getNodeParameter.mockImplementation((name, _itemIndex, fallback, options) => {
+		const raw = parameterNamed(name);
+		if (raw === undefined) return fallback;
+		const value = configured.evaluate(APPROVAL, raw, run);
+		const extracted = options?.extractValue && isRecord(value) ? value.value : value;
+		return extracted as NodeParameterValueType;
+	});
+	return context;
 }
 
 /** The text of the plan section that Slack receives for the approval message. */

@@ -188,6 +188,27 @@ describe('useInstanceAiStore - runtime registry', () => {
 		expect(store.threads[0]).toMatchObject({ title: 'Refined', metadata: { key: 'value' } });
 	});
 
+	it('refreshThread keeps the run target of a chat, as it is added and when it changes', async () => {
+		const store = useInstanceAiStore();
+		const linked = {
+			kind: 'linked' as const,
+			instanceId: '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c',
+			name: 'Office',
+		};
+		vi.mocked(fetchThread).mockResolvedValueOnce({
+			thread: { ...historyThread('t'), runTarget: linked },
+		});
+		await store.refreshThread('t');
+		expect(store.threads[0]).toMatchObject({ runTarget: linked });
+
+		vi.mocked(fetchThread).mockResolvedValueOnce({
+			thread: { ...historyThread('t'), runTarget: { kind: 'local' } },
+		});
+		await store.refreshThread('t');
+		expect(store.threads).toHaveLength(1);
+		expect(store.threads[0]).toMatchObject({ runTarget: { kind: 'local' } });
+	});
+
 	it('keeps who shared a thread and with which project, also when the share happens later', async () => {
 		const store = useInstanceAiStore();
 		const sharing = {

@@ -2,7 +2,9 @@ import type { LinkedInstanceStatus, LinkedInstanceSummary } from '@n8n/api-types
 import { describe, expect, it } from 'vitest';
 
 import {
+	LINK_CLOUD_MENU_ID,
 	LOCAL_RUN_TARGET_ID,
+	optionalRunTarget,
 	runTargetChipName,
 	runTargetOptions,
 	runTargetPlace,
@@ -130,5 +132,31 @@ describe('runTargetChipName', () => {
 
 	it('shows no chip for a shared chat, which always runs here', () => {
 		expect(runTargetChipName(linked, true)).toBeUndefined();
+	});
+});
+
+describe('optionalRunTarget', () => {
+	it('sends no run target when the user chose none', () => {
+		expect(optionalRunTarget(undefined)).toEqual({});
+		expect(Object.keys(optionalRunTarget(undefined))).toEqual([]);
+	});
+
+	it('sends the chosen run target as it is', () => {
+		const target = { kind: 'linked', instanceId: OFFICE_ID } as const;
+
+		expect(optionalRunTarget(target)).toEqual({ runTarget: target });
+	});
+
+	it('sends this computer as a choice, since it is a target too', () => {
+		expect(optionalRunTarget({ kind: 'local' })).toEqual({ runTarget: { kind: 'local' } });
+	});
+});
+
+describe('menu ids', () => {
+	it('keeps the id of the link item apart from this computer and every link id', () => {
+		expect(LINK_CLOUD_MENU_ID).not.toBe(LOCAL_RUN_TARGET_ID);
+		expect(
+			runTargetOptions([link(OFFICE_ID, 'Office')], translate).map(({ id }) => id),
+		).not.toContain(LINK_CLOUD_MENU_ID);
 	});
 });

@@ -38,7 +38,9 @@ import { SharedThreadPolicy } from './sharing/shared-thread-policy';
 type ChatRequest = z.infer<typeof InstanceAiSendMessageRequest>;
 
 /** The client's chat request, or `undefined` when it does not parse. */
-function parseChatRequest(hostContext: Record<string, unknown> | undefined): ChatRequest | undefined {
+function parseChatRequest(
+	hostContext: Record<string, unknown> | undefined,
+): ChatRequest | undefined {
 	const parsed = InstanceAiSendMessageRequest.safeParse({ message: '', ...(hostContext ?? {}) });
 	return parsed.success ? parsed.data : undefined;
 }

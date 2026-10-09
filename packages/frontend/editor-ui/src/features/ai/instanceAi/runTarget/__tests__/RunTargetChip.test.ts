@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 
 import { renderComponent } from '@/__tests__/render';
@@ -57,6 +58,35 @@ describe('RunTargetChip', () => {
 		const { queryByTestId } = renderComponent(RunTargetChip);
 
 		expect(queryByTestId('instance-ai-run-target-chip')).not.toBeInTheDocument();
+	});
+
+	it('lets the keyboard reach the chip and shows its explanation on focus', async () => {
+		mockedStore(useInstanceAiStore).threads = [
+			summary({ runTarget: { kind: 'linked', instanceId: OFFICE_ID, name: 'Office' } }),
+		];
+
+		const { getByTestId, findByTestId } = renderComponent(RunTargetChip);
+		const chip = getByTestId('instance-ai-run-target-chip');
+		expect(chip).toHaveAttribute('tabindex', '0');
+
+		await userEvent.tab();
+
+		expect(chip).toHaveFocus();
+		expect(await findByTestId('tooltip-content', {}, { timeout: 3000 })).toHaveTextContent(
+			'Chosen when this chat started. To run a workflow somewhere else, move it.',
+		);
+	});
+
+	it('gives screen readers the explanation with the name of the chip', () => {
+		mockedStore(useInstanceAiStore).threads = [
+			summary({ runTarget: { kind: 'linked', instanceId: OFFICE_ID, name: 'Office' } }),
+		];
+
+		const { getByTestId } = renderComponent(RunTargetChip);
+
+		expect(getByTestId('instance-ai-run-target-chip').textContent).toBe(
+			'Runs in OfficeChosen when this chat started. To run a workflow somewhere else, move it.',
+		);
 	});
 
 	it('reads the chat from the history when the sidebar does not hold it', () => {

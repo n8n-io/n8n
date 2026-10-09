@@ -6,22 +6,18 @@ import { readPackText } from './factory-pack-files';
 import {
 	AGENT_IDS,
 	MCP_CLIENT,
-	configured,
 	earlierNodes,
 	failingTestOutput,
 	parameterOf,
+	textOf,
 	ticketOutput,
 	workflow,
 } from './factory-pack-fixtures';
-import type { TemplateRun } from './factory-pack-runtime';
 
 /** The MCP tool calls of the template: the input that each one sends and the results it reads. */
 
 const DIFF_SHA256 = 'c'.repeat(64);
 const STICKY_NOTE = 'n8n-nodes-base.stickyNote';
-
-const textOf = (nodeName: string, value: unknown, run: TemplateRun) =>
-	z.string().parse(configured.evaluate(nodeName, value, run));
 
 /** The rows of the tool table in the README: name, input fields and result text. */
 const toolTable = new Map(

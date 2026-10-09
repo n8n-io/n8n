@@ -6,6 +6,7 @@ import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { AgentResumeFailure } from '@/features/agents/utils/chat-rejection';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+import { USER_TYPED_MESSAGE } from '../../prefills';
 import InstanceAiAgentsConversation from '../InstanceAiAgentsConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
 import { fetchThread } from '../../instanceAi.memory.api';
@@ -122,6 +123,8 @@ const threadInfo = (title: string, metadata?: Record<string, unknown>) => ({
 		...(metadata ? { metadata } : {}),
 	},
 });
+
+const OFFICE_ID = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
 
 let runtime: ThreadRuntime;
 
@@ -287,6 +290,45 @@ describe('InstanceAiAgentsConversation', () => {
 		expect(hostContext?.attachments).toEqual([{ type: 'workflow', id: 'wf-1', name: 'Orders' }]);
 		// The one-shot context does not leak into the next message.
 		expect(chatState.hostContext?.()).not.toHaveProperty('context');
+	});
+
+	it('should send the run target of a stashed opener and read the thread back after it', async () => {
+		const runTarget = { kind: 'linked' as const, instanceId: OFFICE_ID };
+		stashPendingFirstMessage('thread-1', {
+			message: 'Build a report',
+			authorship: USER_TYPED_MESSAGE,
+			runTarget,
+		});
+		const refresh = vi.spyOn(useInstanceAiStore(), 'refreshThread');
+
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+
+		expect(chatState.sendMessageFromOutside.mock.calls[0]?.[0]).toBe('Build a report');
+		expect(chatState.hostContext?.()).toEqual(expect.objectContaining({ runTarget }));
+		// The one-shot run target does not leak into the next message.
+		expect(chatState.hostContext?.()).not.toHaveProperty('runTarget');
+		// The mount reads the thread once. The stored run target adds one more read.
+		expect(refresh).toHaveBeenCalledTimes(2);
+		expect(refresh).toHaveBeenLastCalledWith('thread-1');
+	});
+
+	it('should not read the thread back when the opener has no run target', async () => {
+		stashPendingFirstMessage('thread-1', {
+			message: 'Build a report',
+			authorship: USER_TYPED_MESSAGE,
+		});
+		const refresh = vi.spyOn(useInstanceAiStore(), 'refreshThread');
+
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+
+		expect(chatState.sendMessageFromOutside.mock.calls[0]?.[0]).toBe('Build a report');
+		expect(chatState.hostContext?.()).not.toHaveProperty('runTarget');
+		// Only the mount reads the thread.
+		expect(refresh).toHaveBeenCalledTimes(1);
 	});
 
 	it('should route programmatic sends through the mounted chat', async () => {
