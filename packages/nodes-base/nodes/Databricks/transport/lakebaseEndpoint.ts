@@ -73,6 +73,7 @@ async function fetchLakebaseRestBase(
 		throw new NodeOperationError(
 			context.getNode(),
 			'Databricks returned an unexpected Lakebase endpoint host',
+			{ description: 'The endpoint host is not a plain hostname. Check the branch in Databricks.' },
 		);
 	}
 
@@ -82,6 +83,10 @@ async function fetchLakebaseRestBase(
 		throw new NodeOperationError(
 			context.getNode(),
 			'Could not read the workspace ID from Databricks',
+			{
+				description:
+					'The response had no x-databricks-org-id header. Check that the credential points at a Databricks workspace.',
+			},
 		);
 	}
 
