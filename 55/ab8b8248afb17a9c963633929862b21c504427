@@ -1,0 +1,100 @@
+packages/nodes-base/nodes/Google/Sheet/test/workflow/sheet.workflow.test.ts
+  s_2e1fa95fc44f8f::t_8ca503c5b8ef38 1-3,29-30,83-94
+  s_2e1fa95fc44f8f::t_2b1169d8a9d326 4-28,31-82
+packages/nodes-base/nodes/Google/Sheet/test/workflow/sheet.workflow.json
+  s_2e1fa95fc44f8f::t_c60025f332f9ff 1-377
+  s_2e1fa95fc44f8f::t_78ac13e8954f5a 378-380
+  s_07471f89218761::t_39aed91cc2b65d 381-458
+packages/nodes-base/nodes/Google/Sheet/test/v2/helpers/GoogleSheet.test.ts
+  s_2e1fa95fc44f8f::t_568cc6d8ad1dbb 1045-1053
+  s_31cebdf9d3ffe1::t_23d9534aa947f7 7-8,35,59,339,390,424,450,524,548,571,611,625,641,658,678,840,865,869-872,1029,1041
+packages/nodes-base/nodes/Google/Sheet/GoogleSheetsTrigger.node.ts
+  s_4f3504813bf8cd::t_fe213be9eb7a29 9,464,471
+packages/nodes-base/nodes/Google/Sheet/GoogleSheetsTrigger.utils.ts
+  s_4f3504813bf8cd::t_40b154987846ce 4,25
+packages/nodes-base/nodes/Google/Sheet/test/GoogleSheetsTrigger.utils.test.ts
+  s_07471f89218761::t_f52146f2666fd3 3,58
+packages/nodes-base/nodes/Google/Sheet/test/v2/actions/spreadsheet/create.operation.test.ts
+  s_31cebdf9d3ffe1::t_5b4e8bcb889e90 2,47,84,119,173,192-202,204
+packages/nodes-base/nodes/Google/Sheet/test/v2/actions/spreadsheet/delete.operation.test.ts
+  s_07471f89218761::t_8ec7b751651f1b 2,31,41
+packages/nodes-base/nodes/Google/Sheet/test/v2/methods/listSearch.test.ts
+  s_4f3504813bf8cd::t_32b131312ece5a 2,44,53,80,89,108,113,125,130,142,147,164,169,223
+packages/nodes-base/nodes/Google/Sheet/test/v2/node/create.test.ts
+  s_31cebdf9d3ffe1::t_52f36b26c37ea0 2,64-74,77-79
+packages/nodes-base/nodes/Google/Sheet/test/v2/node/remove.test.ts
+  s_31cebdf9d3ffe1::t_ceb4723341d2ae 2,47-55,57-59,92,106
+packages/nodes-base/nodes/Google/Sheet/test/v2/transport/index.test.ts
+  s_07471f89218761::t_2adcf847a0a80e 2,38,65,92,110,124,144,157,172,205
+packages/nodes-base/nodes/Google/Sheet/v2/actions/sheet/create.operation.ts
+  s_4f3504813bf8cd::t_454e6c439ebe5c 2,116
+packages/nodes-base/nodes/Google/Sheet/v2/actions/sheet/remove.operation.ts
+  s_4f3504813bf8cd::t_226f7b0fa241b6 2,28
+packages/nodes-base/nodes/Google/Sheet/v2/actions/spreadsheet/create.operation.ts
+  s_4f3504813bf8cd::t_951d0c6b30ee2b 2,150
+packages/nodes-base/nodes/Google/Sheet/v2/actions/spreadsheet/delete.operation.ts
+  s_4f3504813bf8cd::t_febcb0160b4b3b 2,81,84
+packages/nodes-base/nodes/Google/Sheet/v2/helpers/GoogleSheet.ts
+  s_31cebdf9d3ffe1::t_cbfbeaacce6a79 10,83,106,125,144,173,194,213,254,313,321
+packages/nodes-base/nodes/Google/Sheet/v2/methods/listSearch.ts
+  s_4f3504813bf8cd::t_33ad40db0b2c1b 7,38,41,72
+packages/nodes-base/nodes/Google/Sheet/v2/transport/index.ts
+  s_31cebdf9d3ffe1::t_8c56de8f4d68ca 10-11,13,21,24,41,90,93,100
+packages/nodes-base/nodes/Google/Sheet/test/workflow/sheet-v1.workflow.test.ts
+  s_2e1fa95fc44f8f::t_00671279697fce 1-3,11-13,65-76
+  s_2e1fa95fc44f8f::t_ddca3c7d0d3b0f 4-10,14-64
+packages/nodes-base/nodes/Google/Sheet/test/workflow/sheet-v1.workflow.json
+  s_16204bc5c53227::t_84eb03c94b8e4d 1-360
+packages/nodes-base/nodes/Google/Sheet/test/v1/GoogleSheet.test.ts
+  s_2e1fa95fc44f8f::t_a0e0724a870f5c 1-19
+packages/nodes-base/nodes/Google/Sheet/v2/helpers/GoogleSheets.utils.ts
+  s_31cebdf9d3ffe1::t_655f790596d41a 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55ab8b8248afb17a9c963633929862b21c504427",
+  "prompts": {},
+  "sessions": {
+    "s_07471f89218761": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6bf88bb756ab931c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_16204bc5c53227": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaf0bdea6f1d472d9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_31cebdf9d3ffe1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a29c3b63139d7fbed",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4f3504813bf8cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa919897bbe5abc49",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
