@@ -183,6 +183,7 @@ packages/frontend/editor-ui/                            @n8n-io/frontend
 packages/frontend/editor-ui/src/features/ai/            @n8n-io/ai
 packages/frontend/editor-ui/src/features/ai/assistant/  @n8n-io/ai-assistant
 packages/frontend/editor-ui/src/features/ai/chatHub/    @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/instanceAi/ @n8n-io/ai-assistant
 packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
 packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
 packages/frontend/editor-ui/src/features/integrations/  @n8n-io/ligo
