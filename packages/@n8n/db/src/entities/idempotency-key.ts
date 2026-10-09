@@ -6,7 +6,6 @@ import type { User } from './user';
 
 export const idempotencyKeyStatuses = ['processing', 'completed'] as const;
 
-/** Changing this TTL applies to rows that already exist. */
 export const IDEMPOTENCY_KEY_TTL_MS = 12 * Time.hours.toMilliseconds;
 
 export type IdempotencyKeyStatus = (typeof idempotencyKeyStatuses)[number];
