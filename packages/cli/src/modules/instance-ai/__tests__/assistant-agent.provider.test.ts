@@ -25,7 +25,7 @@ function createProvider() {
 	const settings = mock<InstanceAiSettingsService>();
 	settings.isInstanceAiEnabled.mockReturnValue(true);
 	const runTargets = mock<RunTargetService>();
-	runTargets.forChatTurn.mockResolvedValue({ runTarget: { kind: 'local' } });
+	runTargets.forChatTurn.mockResolvedValue({ kind: 'local' });
 	Container.set(RunTargetService, runTargets);
 	const provider = new AssistantAgentProvider(instanceAiService, memory, mock(), settings);
 	return { provider, instanceAiService, memory, getThread, settings, runTargets };
@@ -120,32 +120,6 @@ describe('AssistantAgentProvider', () => {
 			expect(await provider.prepareTurn(turn)).toBe(handle);
 			expect(instanceAiService.prepareAssistantTurn).toHaveBeenCalledWith(turn);
 		});
-
-		it('posts the run target notice of the turn before the turn is built', async () => {
-			const { provider, instanceAiService, runTargets } = createProvider();
-			instanceAiService.prepareAssistantTurn.mockResolvedValue({ agent: {} } as never);
-			const turn = {
-				type: 'start',
-				attachments: [],
-				options: { runTargetNotice: 'This chat runs in Office.' },
-			} as never;
-
-			await provider.prepareTurn(turn);
-
-			expect(runTargets.postTurnNotice).toHaveBeenCalledWith(turn, 'This chat runs in Office.');
-			expect(runTargets.postTurnNotice.mock.invocationCallOrder[0]).toBeLessThan(
-				instanceAiService.prepareAssistantTurn.mock.invocationCallOrder[0],
-			);
-		});
-
-		it('posts no notice for a turn that carries none', async () => {
-			const { provider, instanceAiService, runTargets } = createProvider();
-			instanceAiService.prepareAssistantTurn.mockResolvedValue({ agent: {} } as never);
-
-			await provider.prepareTurn({ type: 'start', attachments: [], options: {} } as never);
-
-			expect(runTargets.postTurnNotice).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('chatTurnOptions', () => {
@@ -185,7 +159,7 @@ describe('AssistantAgentProvider', () => {
 
 			expect(runTargets.forChatTurn).toHaveBeenCalledWith(
 				thread,
-				stored,
+				{ assistantTurnDefaults: stored },
 				expect.objectContaining({ runTarget: requested }),
 			);
 		});
@@ -204,24 +178,21 @@ describe('AssistantAgentProvider', () => {
 			expect(request?.runTarget).toBeUndefined();
 		});
 
-		it('carries the notice of a turn that found its link gone', async () => {
+		it('runs the chat turn on the target that the run target service resolves', async () => {
 			const { provider, getThread, runTargets } = createProvider();
 			getThread.mockResolvedValue(null);
-			runTargets.forChatTurn.mockResolvedValue({
-				runTarget: { kind: 'local' },
-				notice: 'This chat runs in Office.',
-			});
+			const resolved = {
+				kind: 'linked',
+				instanceId: '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c',
+				name: 'Office',
+			} as const;
+			runTargets.forChatTurn.mockResolvedValue(resolved);
 
 			const options = await provider.chatTurnOptions(mock<User>(), {
 				id: 'thread-1',
 			} as AgentExecutionThread);
 
-			expect(options).toEqual(
-				expect.objectContaining({
-					runTarget: { kind: 'local' },
-					runTargetNotice: 'This chat runs in Office.',
-				}),
-			);
+			expect(options).toEqual(expect.objectContaining({ runTarget: resolved }));
 		});
 
 		it('returns only the ids when the thread has no stored defaults', async () => {

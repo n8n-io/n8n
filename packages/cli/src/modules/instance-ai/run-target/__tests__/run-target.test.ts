@@ -4,8 +4,10 @@ import fc from 'fast-check';
 import {
 	keepFirstRunTarget,
 	LOCAL_RUN_TARGET,
-	lostLinkNotice,
+	lostRunTargetOf,
 	storedRunTargetOf,
+	turnDefaultsKeepingRunTarget,
+	withoutLostRunTarget,
 	withoutServerMetadata,
 } from '../run-target';
 
@@ -143,10 +145,64 @@ describe('withoutServerMetadata', () => {
 	});
 });
 
-describe('lostLinkNotice', () => {
-	it('names the linked instance in the en-GB copy', () => {
-		expect(lostLinkNotice('Office')).toBe(
-			"This chat runs in Office, which isn't linked any more. Link it again in Settings, or start a new chat.",
+describe('turnDefaultsKeepingRunTarget', () => {
+	const stored: InstanceAiThreadRunTarget = { kind: 'linked', instanceId: LINK_ID, name: 'Office' };
+
+	it('keeps the stored run target over the target of the new turn', () => {
+		const result = turnDefaultsKeepingRunTarget(
+			{ runTarget: stored },
+			{ timeZone: 'Europe/Helsinki', runTarget: LOCAL_RUN_TARGET },
 		);
+
+		expect(result).toEqual({ timeZone: 'Europe/Helsinki', runTarget: stored });
+	});
+
+	it('takes the target of the new turn when none is stored', () => {
+		const result = turnDefaultsKeepingRunTarget(
+			{ timeZone: 'UTC' },
+			{ timeZone: 'Europe/Helsinki', runTarget: { kind: 'local' } },
+		);
+
+		expect(result).toEqual({ timeZone: 'Europe/Helsinki', runTarget: { kind: 'local' } });
+	});
+
+	it('stores local when neither the stored defaults nor the turn has a target', () => {
+		expect(turnDefaultsKeepingRunTarget(undefined, { timeZone: 'UTC' })).toEqual({
+			timeZone: 'UTC',
+			runTarget: LOCAL_RUN_TARGET,
+		});
+	});
+});
+
+describe('lostRunTargetOf', () => {
+	it('reads the name of the link that the chat lost', () => {
+		expect(lostRunTargetOf({ assistantRunTargetLost: { name: 'Office' } })).toEqual({
+			name: 'Office',
+		});
+	});
+
+	it.each([
+		['no metadata', undefined],
+		['no marker', { assistantTurnDefaults: { runTarget: LOCAL_RUN_TARGET } }],
+		['a marker without a name', { assistantRunTargetLost: {} }],
+		['a marker with an empty name', { assistantRunTargetLost: { name: '' } }],
+		['a marker that is not an object', { assistantRunTargetLost: 'Office' }],
+	])('returns undefined for %s', (_label, metadata) => {
+		expect(lostRunTargetOf(metadata)).toBeUndefined();
+	});
+});
+
+describe('withoutLostRunTarget', () => {
+	it('removes the lost link marker and keeps every other key', () => {
+		const metadata = {
+			title: 'Chat',
+			assistantRunTargetLost: { name: 'Office' },
+			assistantTurnDefaults: { runTarget: LOCAL_RUN_TARGET },
+		};
+
+		expect(withoutLostRunTarget(metadata)).toEqual({
+			title: 'Chat',
+			assistantTurnDefaults: { runTarget: LOCAL_RUN_TARGET },
+		});
 	});
 });

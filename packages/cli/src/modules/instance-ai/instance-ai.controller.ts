@@ -448,6 +448,20 @@ export class InstanceAiController {
 		return { thread: await this.threadSharing.withSharingFields(req.user, thread) };
 	}
 
+	/** The owner has seen that the linked instance of the chat is gone. The notice is shown once. */
+	@Post('/threads/:threadId/lost-run-target/acknowledge')
+	@GlobalScope('instanceAi:message')
+	async acknowledgeLostRunTarget(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		await this.memoryService.acknowledgeLostRunTarget(threadId);
+		return { ok: true };
+	}
+
 	@Get('/threads/:threadId/tabs')
 	@GlobalScope('instanceAi:message')
 	async getThreadTabs(

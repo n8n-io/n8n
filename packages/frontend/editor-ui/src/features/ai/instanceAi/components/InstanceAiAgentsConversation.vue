@@ -75,6 +75,7 @@ import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
+import RunTargetLostNotice from '../runTarget/RunTargetLostNotice.vue';
 import SharedThreadNotice from '../sharing/SharedThreadNotice.vue';
 import { provideThreadSharing } from '../sharing/useThreadSharing';
 
@@ -527,18 +528,13 @@ function sendPendingFirstMessage() {
 		useOpenWorkflowInAssistantStore().handleRedirectLanding(thread.id);
 	}
 	if (!pending) return;
-	void thread
-		.sendMessage(pending.message, {
-			authorship: pending.authorship,
-			attachments: pending.attachments,
-			files,
-			handoffContext: pending.context,
-			...optionalRunTarget(pending.runTarget),
-		})
-		.then((sent) => {
-			// The server stores the run target with the first message. Read it back for the header.
-			if (sent && pending.runTarget) void store.refreshThread(thread.id).catch(() => {});
-		});
+	void thread.sendMessage(pending.message, {
+		authorship: pending.authorship,
+		attachments: pending.attachments,
+		files,
+		handoffContext: pending.context,
+		...optionalRunTarget(pending.runTarget),
+	});
 }
 
 /** Apply a stashed composer draft once the chat can take it. */
@@ -672,6 +668,7 @@ onBeforeUnmount(() => {
 				</div>
 			</template>
 			<template v-if="!isTeammate" #above-input>
+				<RunTargetLostNotice />
 				<slot name="above-input" />
 			</template>
 			<template v-if="isTeammate" #composer>

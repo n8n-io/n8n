@@ -35,8 +35,6 @@ export interface AssistantTurnOptions {
 	observerThresholdTokens?: number;
 	/** Where the chat runs. A shared chat runs locally, whatever this says. */
 	runTarget?: InstanceAiThreadRunTarget;
-	/** Posted into the chat with this turn. Set once, when the linked instance is gone. */
-	runTargetNotice?: string;
 	attachments?: InstanceAiAttachment[];
 	handoffContext?: InstanceAiHandoffContext;
 	threadArtifacts?: InstanceAiThreadArtifactsContext;
@@ -54,6 +52,12 @@ export const LIVE_RUN_METADATA_KEY = 'assistantLiveRun';
 
 /** Thread-level defaults that machine follow-ups reuse from the last user turn. */
 export const ASSISTANT_TURN_DEFAULTS_KEY = 'assistantTurnDefaults';
+
+/**
+ * Thread metadata key for a lost link, at the top level. The turn defaults are replaced on
+ * every turn, so the key sits outside them.
+ */
+export const ASSISTANT_RUN_TARGET_LOST_KEY = 'assistantRunTargetLost';
 
 export type AssistantTurnDefaults = Pick<
 	AssistantTurnOptions,

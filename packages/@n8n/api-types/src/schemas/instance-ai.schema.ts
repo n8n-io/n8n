@@ -1773,6 +1773,20 @@ export const runTargetSchema = z.discriminatedUnion('kind', [
 ]);
 export type RunTarget = z.infer<typeof runTargetSchema>;
 
+/**
+ * Where a chat runs, as the server stores it. `name` is the name of the linked instance when
+ * the chat started. A teammate never gets this value, because it names the owner's link.
+ */
+export const instanceAiThreadRunTargetSchema = z.discriminatedUnion('kind', [
+	z.object({ kind: z.literal('local') }),
+	z.object({
+		kind: z.literal('linked'),
+		instanceId: z.string().uuid(),
+		name: z.string().min(1),
+	}),
+]);
+export type InstanceAiThreadRunTarget = z.infer<typeof instanceAiThreadRunTargetSchema>;
+
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z
@@ -2184,6 +2198,8 @@ export interface InstanceAiThreadSummary extends InstanceAiThreadOverview {
 	owner?: InstanceAiThreadOwner;
 	/** Read-only. See `InstanceAiThreadInfo.runTarget`. */
 	runTarget?: InstanceAiThreadRunTarget;
+	/** Read-only, owner only. See `InstanceAiThreadInfo.lostRunTarget`. */
+	lostRunTarget?: { name: string };
 }
 
 export type InstanceAiSSEConnectionState =
@@ -2208,14 +2224,6 @@ export interface InstanceAiThreadOwner {
 	name: string;
 }
 
-/**
- * Where a chat runs. `name` is the name of the linked instance when the chat started. A
- * teammate never gets this field, because it names the owner's link.
- */
-export type InstanceAiThreadRunTarget =
-	| { kind: 'local' }
-	| { kind: 'linked'; instanceId: string; name: string };
-
 export interface InstanceAiThreadInfo extends InstanceAiThreadOverview {
 	id: string;
 	title?: string;
@@ -2230,6 +2238,11 @@ export interface InstanceAiThreadInfo extends InstanceAiThreadOverview {
 	owner?: InstanceAiThreadOwner;
 	/** Read-only. Absent until the first message. A shared thread runs locally, whatever this holds. */
 	runTarget?: InstanceAiThreadRunTarget;
+	/**
+	 * Read-only, owner only. Set once, when the linked instance of the chat is no longer linked.
+	 * The chat runs locally from then on. The owner's next message clears it.
+	 */
+	lostRunTarget?: { name: string };
 }
 
 /** Response of `POST /instance-ai/threads/:threadId/share`. */

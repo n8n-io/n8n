@@ -1,6 +1,26 @@
-import { InstanceAiSendMessageRequest, runTargetSchema } from '../instance-ai.schema';
+import {
+	instanceAiThreadRunTargetSchema,
+	InstanceAiSendMessageRequest,
+	runTargetSchema,
+} from '../instance-ai.schema';
 
 const LINK_ID = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
+
+describe('instanceAiThreadRunTargetSchema', () => {
+	it('keeps the name of a stored linked target', () => {
+		expect(
+			instanceAiThreadRunTargetSchema.parse({ kind: 'linked', instanceId: LINK_ID, name: 'Office' }),
+		).toEqual({ kind: 'linked', instanceId: LINK_ID, name: 'Office' });
+	});
+
+	it.each([
+		['a linked target without a name', { kind: 'linked', instanceId: LINK_ID }],
+		['a linked target with an empty name', { kind: 'linked', instanceId: LINK_ID, name: '' }],
+		['a linked target whose id is not a uuid', { kind: 'linked', instanceId: 'office', name: 'x' }],
+	])('rejects %s', (_label, value) => {
+		expect(instanceAiThreadRunTargetSchema.safeParse(value).success).toBe(false);
+	});
+});
 
 describe('runTargetSchema', () => {
 	it('accepts a local target', () => {

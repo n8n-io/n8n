@@ -2,15 +2,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { LINKED_INSTANCES_MODULE_ID } from '@/features/linkedInstances/linkedInstances.constants';
 
 import { useInstanceAiStore } from '../../instanceAi.store';
 import RunTargetChip from '../RunTargetChip.vue';
 
 const THREAD_ID = 'thread-1';
 const OFFICE_ID = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
+
+/** Turns the linked-instances module on or off for the chip. */
+function setLinkedInstancesModule(active: boolean) {
+	const settingsStore = useSettingsStore();
+	settingsStore.settings = {
+		...settingsStore.settings,
+		activeModules: active ? [LINKED_INSTANCES_MODULE_ID] : [],
+	} as typeof settingsStore.settings;
+}
 
 vi.mock('../../instanceAi.store', async (importOriginal) => ({
 	...(await importOriginal<typeof import('../../instanceAi.store')>()),
@@ -29,7 +40,9 @@ function summary(overrides: Partial<InstanceAiThreadSummary> = {}): InstanceAiTh
 
 describe('RunTargetChip', () => {
 	beforeEach(() => {
-		createTestingPinia();
+		// The module check is a store function, which the default testing Pinia would stub.
+		createTestingPinia({ stubActions: false });
+		setLinkedInstancesModule(true);
 	});
 
 	it('names the linked instance of a chat that runs there', () => {
@@ -40,6 +53,17 @@ describe('RunTargetChip', () => {
 		const { getByTestId } = renderComponent(RunTargetChip);
 
 		expect(getByTestId('instance-ai-run-target-chip')).toHaveTextContent('Runs in Office');
+	});
+
+	it('shows no chip while the linked-instances module is off, although the chat keeps its link', () => {
+		setLinkedInstancesModule(false);
+		mockedStore(useInstanceAiStore).threads = [
+			summary({ runTarget: { kind: 'linked', instanceId: OFFICE_ID, name: 'Office' } }),
+		];
+
+		const { queryByTestId } = renderComponent(RunTargetChip);
+
+		expect(queryByTestId('instance-ai-run-target-chip')).not.toBeInTheDocument();
 	});
 
 	it.each([

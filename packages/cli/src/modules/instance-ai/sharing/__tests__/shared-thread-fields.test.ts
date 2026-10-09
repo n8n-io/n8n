@@ -154,4 +154,20 @@ describe('SharedThreadFields.addTo run target', () => {
 		expect(result.metadata).toEqual({ source: 'assistant_page' });
 		expect(result.owner).toEqual({ id: 'ada', name: 'Ada Lovelace' });
 	});
+
+	it('shows the lost link to the owner only, and hides its marker from a teammate', async () => {
+		const { fields } = setup([sharedRow('a', finance.id, ada.id)]);
+		const thread = {
+			...info('a'),
+			lostRunTarget: { name: 'Cloud' },
+			metadata: { assistantRunTargetLost: { name: 'Cloud' }, source: 'assistant_page' },
+		};
+
+		const [forOwner] = await fields.addTo(ada, [thread]);
+		const [forTeammate] = await fields.addTo(grace, [thread]);
+
+		expect(forOwner.lostRunTarget).toEqual({ name: 'Cloud' });
+		expect(forTeammate).not.toHaveProperty('lostRunTarget');
+		expect(forTeammate.metadata).toEqual({ source: 'assistant_page' });
+	});
 });

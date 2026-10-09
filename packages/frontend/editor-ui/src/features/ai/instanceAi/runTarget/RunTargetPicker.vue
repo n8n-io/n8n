@@ -134,7 +134,8 @@ function openLinkedInstances() {
 	padding-inline: var(--spacing--3xs);
 	height: var(--spacing--lg);
 	gap: var(--spacing--4xs);
-	margin-inline-start: calc(var(--spacing--5xs) * -1);
+	// Sits apart from ProjectSelect, so the two ghost buttons do not overlap on hover or focus.
+	margin-inline-start: var(--spacing--4xs);
 }
 
 .triggerLabel {

@@ -9,7 +9,6 @@ import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmati
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { hasGlobalScope } from '@n8n/permissions';
-import type { z } from 'zod';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -35,7 +34,7 @@ import { InstanceAiService } from './instance-ai.service';
 import { RunTargetService } from './run-target/run-target.service';
 import { SharedThreadPolicy } from './sharing/shared-thread-policy';
 
-type ChatRequest = z.infer<typeof InstanceAiSendMessageRequest>;
+type ChatRequest = InstanceAiSendMessageRequest;
 
 /** The client's chat request, or `undefined` when it does not parse. */
 function parseChatRequest(
@@ -107,7 +106,6 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 	}
 
 	async prepareTurn(turn: SystemAgentTurn): Promise<SystemAgentTurnHandle> {
-		if (turn.type === 'start') await this.postRunTargetNotice(turn);
 		if (turn.type === 'start' && turn.attachments.length > 0) {
 			// The model input refers to the stored files; the Agents runtime loads
 			// their bytes per model call. The bytes loaded here stay in memory for
@@ -121,12 +119,6 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 			};
 		}
 		return await this.instanceAiService.prepareAssistantTurn(turn);
-	}
-
-	/** The notice of a turn is posted before the turn runs, so the model and the chat both see it. */
-	private async postRunTargetNotice(turn: Extract<SystemAgentTurn, { type: 'start' }>) {
-		const notice = turn.options.runTargetNotice;
-		if (typeof notice === 'string') await this.runTargets.postTurnNotice(turn, notice);
 	}
 
 	private async loadFileAttachments(turn: Extract<SystemAgentTurn, { type: 'start' }>) {
@@ -169,13 +161,12 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 		const stored = memoryThread?.metadata?.[ASSISTANT_TURN_DEFAULTS_KEY];
 		const defaults = isRecord(stored) ? (stored as AssistantTurnDefaults) : {};
 		const context = parseChatRequest(hostContext);
-		const chatRunTarget = await this.runTargets.forChatTurn(thread, stored, context);
+		const runTarget = await this.runTargets.forChatTurn(thread, memoryThread?.metadata, context);
 		return toJsonObject({
 			runId: `run_${nanoid()}`,
 			messageGroupId: `mg_${nanoid()}`,
 			...chatSettings(context, defaults),
-			runTarget: chatRunTarget.runTarget,
-			...(chatRunTarget.notice ? { runTargetNotice: chatRunTarget.notice } : {}),
+			runTarget,
 			...chatContextFields(context),
 		});
 	}

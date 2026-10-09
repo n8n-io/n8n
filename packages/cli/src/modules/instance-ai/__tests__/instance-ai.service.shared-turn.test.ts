@@ -35,7 +35,9 @@ function createService(sharedThread: boolean) {
 		block: PREFERENCES,
 		payload: { preferences: [], renderedLength: PREFERENCES.length, injectedThisTurn: true },
 	}));
-	const saveTurnDefaults = vi.fn(async () => {});
+	const saveTurnDefaults = vi.fn(
+		async (_threadId: string, _defaults: { runTarget?: InstanceAiThreadRunTarget }) => {},
+	);
 	Object.assign(service, {
 		adapterService: { resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })) },
 		createProxyRunConfig: vi.fn(async () => ({})),

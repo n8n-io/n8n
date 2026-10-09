@@ -3,23 +3,22 @@
 import { computed } from 'vue';
 import { N8nBadge, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
-import { useInstanceAiStore, useThread } from '../instanceAi.store';
+import { LINKED_INSTANCES_MODULE_ID } from '@/features/linkedInstances/linkedInstances.constants';
 
+import { useOpenThreadSummary } from './useOpenThreadSummary';
 import { runTargetChipName } from './runTargetOptions';
 
-const thread = useThread();
-const store = useInstanceAiStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
+const summary = useOpenThreadSummary();
 
-const summary = computed(
-	() =>
-		store.threads.find(({ id }) => id === thread.id) ??
-		store.threadHistory.threads.find(({ id }) => id === thread.id),
-);
-
+// With the module off the chat still stores its link, but it runs here, so the chip stays hidden.
 const name = computed(() =>
-	runTargetChipName(summary.value?.runTarget, summary.value?.sharedWith !== undefined),
+	settingsStore.isModuleActive(LINKED_INSTANCES_MODULE_ID) === true
+		? runTargetChipName(summary.value?.runTarget, summary.value?.sharedWith !== undefined)
+		: undefined,
 );
 
 // The tooltip shows on focus, and the hidden copy gives screen readers the same explanation.

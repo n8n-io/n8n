@@ -33,6 +33,7 @@ import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadHistory,
 	fetchThread,
+	acknowledgeLostRunTarget as acknowledgeLostRunTargetApi,
 	deleteThread as deleteThreadApi,
 	renameThread as renameThreadApi,
 	updateThreadMetadata as updateThreadMetadataApi,
@@ -209,6 +210,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			sharedWith: thread.sharedWith,
 			owner: thread.owner,
 			runTarget: thread.runTarget,
+			lostRunTarget: thread.lostRunTarget,
 		};
 	}
 
@@ -264,6 +266,18 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return thread;
 	}
 
+	/**
+	 * The owner has seen the lost link notice. The server drops it, so the next read omits it.
+	 * The local copy keeps it for now, so the notice does not vanish under the owner's eyes.
+	 */
+	async function acknowledgeLostRunTarget(threadId: string): Promise<void> {
+		try {
+			await acknowledgeLostRunTargetApi(rootStore.restApiContext, threadId);
+		} catch {
+			// The notice stays on screen. The chat acknowledges it again the next time it shows it.
+		}
+	}
+
 	/** Put a server copy of a thread (for example the answer to a share) into every local copy. */
 	function applyThread(thread: InstanceAiThreadInfo): void {
 		persistedThreadIds.add(thread.id);
@@ -279,6 +293,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			entry.sharedWith = thread.sharedWith;
 			entry.owner = thread.owner;
 			entry.runTarget = thread.runTarget;
+			entry.lostRunTarget = thread.lostRunTarget;
 		}
 	}
 
@@ -532,6 +547,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		loadThreads,
 		loadThread,
 		refreshThread,
+		acknowledgeLostRunTarget,
 		applyThread,
 		threadHistory,
 		resetThreadHistory,

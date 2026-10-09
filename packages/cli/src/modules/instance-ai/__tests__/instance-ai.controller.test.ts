@@ -1289,6 +1289,7 @@ describe('InstanceAiController', () => {
 						runTarget: { kind: 'linked', instanceId: LINK_ID, name: 'Cloud' },
 					},
 					assistantLiveRun: { runId: 'run-1' },
+					assistantRunTargetLost: { name: 'Cloud' },
 					source: 'assistant_page',
 				},
 			} as InstanceAiRenameThreadRequestDto);
@@ -1311,6 +1312,36 @@ describe('InstanceAiController', () => {
 				title: 'New Title',
 				metadata: undefined,
 			});
+		});
+	});
+
+	describe('acknowledgeLostRunTarget', () => {
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('acknowledgeLostRunTarget')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it('should drop the lost link notice of an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+
+			const result = await controller.acknowledgeLostRunTarget(req, res, THREAD_ID);
+
+			expect(result).toEqual({ ok: true });
+			expect(memoryService.acknowledgeLostRunTarget).toHaveBeenCalledWith(THREAD_ID);
+		});
+
+		it.each([
+			['other_user', ForbiddenError],
+			['not_found', NotFoundError],
+		] as const)('should refuse a %s thread and drop nothing', async (ownership, expected) => {
+			memoryService.checkThreadOwnership.mockResolvedValue(ownership);
+
+			await expect(controller.acknowledgeLostRunTarget(req, res, THREAD_ID)).rejects.toThrow(
+				expected,
+			);
+			expect(memoryService.acknowledgeLostRunTarget).not.toHaveBeenCalled();
 		});
 	});
 

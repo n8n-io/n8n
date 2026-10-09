@@ -54,6 +54,18 @@ export async function updateThreadMetadata(
 	});
 }
 
+/** The owner has seen that the linked instance of the chat is gone. The server drops the notice. */
+export async function acknowledgeLostRunTarget(
+	context: IRestApiContext,
+	threadId: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/threads/${threadId}/lost-run-target/acknowledge`,
+	);
+}
+
 export async function fetchThreadTabs(
 	context: IRestApiContext,
 	threadId: string,

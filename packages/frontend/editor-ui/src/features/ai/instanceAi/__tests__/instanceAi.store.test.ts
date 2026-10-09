@@ -3,6 +3,7 @@ import { effectScope, nextTick } from 'vue';
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureThread } from '../instanceAi.api';
 import {
+	acknowledgeLostRunTarget as acknowledgeLostRunTargetApi,
 	deleteThread as deleteThreadApi,
 	fetchThreadHistory,
 	fetchThread,
@@ -72,6 +73,7 @@ vi.mock('../instanceAi.memory.api', () => ({
 		.mockResolvedValue({ hasActiveRun: false, isSuspended: false, backgroundTasks: [] }),
 	deleteThread: vi.fn().mockResolvedValue(undefined),
 	renameThread: vi.fn().mockResolvedValue({ thread: {} }),
+	acknowledgeLostRunTarget: vi.fn().mockResolvedValue(undefined),
 	updateThreadMetadata: vi.fn().mockResolvedValue({ thread: {} }),
 }));
 
@@ -207,6 +209,46 @@ describe('useInstanceAiStore - runtime registry', () => {
 		await store.refreshThread('t');
 		expect(store.threads).toHaveLength(1);
 		expect(store.threads[0]).toMatchObject({ runTarget: { kind: 'local' } });
+	});
+
+	it('refreshThread shows the lost link of a chat until the server no longer reports it', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThread).mockResolvedValueOnce({
+			thread: {
+				...historyThread('t'),
+				runTarget: { kind: 'local' },
+				lostRunTarget: { name: 'Office' },
+			},
+		});
+		await store.refreshThread('t');
+		expect(store.threads[0]).toMatchObject({ lostRunTarget: { name: 'Office' } });
+
+		vi.mocked(fetchThread).mockResolvedValueOnce({
+			thread: { ...historyThread('t'), runTarget: { kind: 'local' } },
+		});
+		await store.refreshThread('t');
+		expect(store.threads[0].lostRunTarget).toBeUndefined();
+	});
+
+	it('acknowledgeLostRunTarget tells the server that the owner has seen the notice', async () => {
+		const store = useInstanceAiStore();
+
+		await store.acknowledgeLostRunTarget('thread-1');
+
+		expect(acknowledgeLostRunTargetApi).toHaveBeenCalledWith(expect.anything(), 'thread-1');
+	});
+
+	it('acknowledgeLostRunTarget keeps the notice on screen when the request fails', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThread).mockResolvedValueOnce({
+			thread: { ...historyThread('t'), lostRunTarget: { name: 'Office' } },
+		});
+		await store.refreshThread('t');
+		vi.mocked(acknowledgeLostRunTargetApi).mockRejectedValueOnce(new Error('network down'));
+
+		await expect(store.acknowledgeLostRunTarget('t')).resolves.toBeUndefined();
+
+		expect(store.threads[0]).toMatchObject({ lostRunTarget: { name: 'Office' } });
 	});
 
 	it('keeps who shared a thread and with which project, also when the share happens later', async () => {

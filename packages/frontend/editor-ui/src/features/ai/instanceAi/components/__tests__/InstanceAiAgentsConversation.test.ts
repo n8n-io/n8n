@@ -292,7 +292,7 @@ describe('InstanceAiAgentsConversation', () => {
 		expect(chatState.hostContext?.()).not.toHaveProperty('context');
 	});
 
-	it('should send the run target of a stashed opener and read the thread back after it', async () => {
+	it('should send the run target of a stashed opener', async () => {
 		const runTarget = { kind: 'linked' as const, instanceId: OFFICE_ID };
 		stashPendingFirstMessage('thread-1', {
 			message: 'Build a report',
@@ -309,9 +309,8 @@ describe('InstanceAiAgentsConversation', () => {
 		expect(chatState.hostContext?.()).toEqual(expect.objectContaining({ runTarget }));
 		// The one-shot run target does not leak into the next message.
 		expect(chatState.hostContext?.()).not.toHaveProperty('runTarget');
-		// The mount reads the thread once. The stored run target adds one more read.
-		expect(refresh).toHaveBeenCalledTimes(2);
-		expect(refresh).toHaveBeenLastCalledWith('thread-1');
+		// Only the mount reads the thread. The end of the turn refreshes it, so the send does not.
+		expect(refresh).toHaveBeenCalledTimes(1);
 	});
 
 	it('should not read the thread back when the opener has no run target', async () => {

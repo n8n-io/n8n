@@ -26,7 +26,7 @@ import { AgentExecutionThreadRepository } from '../agents/repositories/agent-exe
 import { SystemAgentExecutionService } from '../agents/system-agents/system-agent-execution.service';
 import { draftChatMemoryResourceId } from '../agents/utils/agent-memory-scope';
 import { ASSISTANT_AGENT_ID, ASSISTANT_TURN_DEFAULTS_KEY } from './assistant-turn-options';
-import { storedRunTargetOf } from './run-target/run-target';
+import { lostRunTargetOf, storedRunTargetOf, withoutLostRunTarget } from './run-target/run-target';
 import { toRestorableMessage } from './instance-ai-restorable-message';
 import { ThreadFactsService } from './thread-overview/thread-facts.service';
 
@@ -396,6 +396,20 @@ export class InstanceAiMemoryService {
 		return await this.getThreadInfo(updated.id);
 	}
 
+	/**
+	 * The owner has seen the lost link notice of a chat. The notice is shown once, so its marker
+	 * goes. A thread without the marker is left alone.
+	 */
+	async acknowledgeLostRunTarget(threadId: string): Promise<void> {
+		await patchThread(this.agentMemory, {
+			threadId,
+			update: ({ metadata }) => {
+				if (!metadata || !lostRunTargetOf(metadata)) return null;
+				return { metadata: withoutLostRunTarget(metadata) };
+			},
+		});
+	}
+
 	async getThreadMetadata(
 		userId: string,
 		threadId: string,
@@ -474,6 +488,7 @@ export class InstanceAiMemoryService {
 		updatedAt: Date;
 	}): InstanceAiThreadInfo {
 		const runTarget = storedRunTargetOf(thread.metadata?.[ASSISTANT_TURN_DEFAULTS_KEY]);
+		const lostRunTarget = lostRunTargetOf(thread.metadata);
 		return {
 			id: thread.id,
 			title: thread.title,
@@ -483,6 +498,7 @@ export class InstanceAiMemoryService {
 			updatedAt: thread.updatedAt.toISOString(),
 			metadata: thread.metadata,
 			...(runTarget ? { runTarget } : {}),
+			...(lostRunTarget ? { lostRunTarget } : {}),
 		};
 	}
 
