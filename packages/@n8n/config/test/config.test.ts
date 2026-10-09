@@ -445,6 +445,7 @@ describe('GlobalConfig', () => {
 			maxPayload: 1024 * 1024 * 1024,
 			port: 5679,
 			maxOldSpaceSize: '',
+			maxOldSpaceSizePercentage: null,
 			maxConcurrency: 10,
 			taskTimeout: 300,
 			taskRequestTimeout: 60,
