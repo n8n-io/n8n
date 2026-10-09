@@ -5,7 +5,7 @@ test.use(chatHubTestConfig);
 test.describe(
 	'Basic conversation',
 	{
-		annotation: [{ type: 'owner', description: 'Chat' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test('new chat with pre-configured credentials', async ({ n8n, anthropicCredential: _ }) => {
