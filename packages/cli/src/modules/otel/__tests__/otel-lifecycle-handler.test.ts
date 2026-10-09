@@ -47,6 +47,8 @@ function makeOtelSettingsService(
 		enabled: true,
 		productionExecutionsOnly: false,
 		includeNodeSpans: true,
+		emitWorkflowStartSpan: false,
+		emitNodeStartSpan: false,
 		exporterProtocol: 'http/protobuf',
 		exporterEndpoint: 'http://localhost:4318',
 		exporterTracingPath: '/v1/traces',
