@@ -2001,6 +2001,62 @@ describe('EvalExecutionService', () => {
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
+		it('passes dropped-column warnings on to the verification hints', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						dataTableNode('Read', { __rl: true, mode: 'id', value: 'dt-1' }),
+					],
+				}) as never,
+			);
+			dataTableService.findDataTablesByIds.mockResolvedValue([table('dt-1', 'Posts')] as never);
+			generateDataTableRowsMock.mockResolvedValue({
+				rowsByTable: {},
+				warnings: ['Data table rows for "Posts" named unknown columns, dropped: url'],
+			});
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.hints?.warnings).toContain(
+				'Data table rows for "Posts" named unknown columns, dropped: url',
+			);
+		});
+
+		it('finishes filling the tables before it reports a pin data failure', async () => {
+			const bypass = {
+				id: 'pg',
+				name: 'Read Orders',
+				type: 'n8n-nodes-base.postgres',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						bypass,
+						dataTableNode('Read', { __rl: true, mode: 'id', value: 'dt-1' }),
+					],
+				}) as never,
+			);
+			identifyNodesForPinDataMock.mockReturnValue([bypass]);
+			generatePinDataMock.mockRejectedValue(new Error('pin generator down'));
+			dataTableService.findDataTablesByIds.mockResolvedValue([table('dt-1', 'Posts')] as never);
+			generateDataTableRowsMock.mockImplementation(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 20));
+				return { rowsByTable: {}, warnings: [] };
+			});
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.errors).toEqual([
+				'FRAMEWORK ISSUE: Phase 1.5 pin data generation failed: pin generator down',
+			]);
+			expect(dataTableService.clearRows).toHaveBeenCalledWith('dt-1', 'proj-1');
+		});
+
 		it('skips the preparation for a workflow without Data Table nodes', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
 

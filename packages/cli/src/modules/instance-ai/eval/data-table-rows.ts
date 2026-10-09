@@ -74,6 +74,23 @@ function buildUserPrompt(options: GenerateDataTableRowsOptions): string {
 	return sections.join('\n\n');
 }
 
+function fitsColumnType(cell: string | number | boolean | null, type: string): boolean {
+	if (cell === null) return true;
+	switch (type) {
+		case 'number':
+			return (
+				typeof cell === 'number' ||
+				(typeof cell === 'string' && cell.trim() !== '' && !Number.isNaN(Number(cell)))
+			);
+		case 'boolean':
+			return typeof cell === 'boolean';
+		case 'date':
+			return typeof cell === 'string' && !Number.isNaN(Date.parse(cell));
+		default:
+			return true;
+	}
+}
+
 function parseRows(text: string, tables: ScenarioDataTable[]): GeneratedDataTableRows {
 	const parsed: unknown = jsonParse(extractJsonCandidate(text));
 	if (!isRecord(parsed))
@@ -83,23 +100,31 @@ function parseRows(text: string, tables: ScenarioDataTable[]): GeneratedDataTabl
 	const warnings: string[] = [];
 	for (const table of tables) {
 		const rows = parsed[table.name];
-		if (rows === undefined) continue;
+		if (rows === undefined || rows === null) continue;
 		if (!Array.isArray(rows)) {
 			throw new OperationalError(`Data table rows for "${table.name}" are not an array`);
 		}
-		const columns = new Set(table.columns.map((column) => column.name));
+		const typeByColumn = new Map(table.columns.map((column) => [column.name, column.type]));
 		const dropped = new Set<string>();
 		rowsByTable[table.name] = rows.filter(isRecord).map((row) => {
 			const kept: DataTableRows[number] = {};
 			for (const [key, value] of Object.entries(row)) {
-				if (!columns.has(key)) {
+				const type = typeByColumn.get(key);
+				if (type === undefined) {
 					dropped.add(key);
 					continue;
 				}
-				kept[key] =
+				const cell =
 					typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
 						? value
 						: null;
+				// A wrong type would fail the insert, after this call's retry.
+				if (!fitsColumnType(cell, type)) {
+					throw new OperationalError(
+						`Data table rows for "${table.name}" put ${JSON.stringify(cell)} in ${type} column "${key}"`,
+					);
+				}
+				kept[key] = cell;
 			}
 			return kept;
 		});

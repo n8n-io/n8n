@@ -649,10 +649,13 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		const tableKeys = target
 			? workflowDataTableKeys(target)
 			: build.workflowJsons.flatMap(workflowDataTableKeys);
-		// Sorted, so two runs always take shared keys in the same order.
+		// Unique, or a run would wait on itself; sorted, so two runs take shared keys
+		// in the same order.
 		const queueKeys = [
-			...(dedupes ? [`${lane}:workflow:${targetWorkflowId}`] : []),
-			...tableKeys.map((key) => `${lane}:data-table:${key}`),
+			...new Set([
+				...(dedupes ? [`${lane}:workflow:${targetWorkflowId}`] : []),
+				...tableKeys.map((key) => `${lane}:data-table:${key}`),
+			]),
 		].sort();
 		const runQueued = queueKeys.reduceRight<() => Promise<TargetOutput>>(
 			(run, key) => async () => await withSerialSeeding(key, run),

@@ -39,6 +39,7 @@ import {
 	fileTypeFromMimeType,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NodeHelpers,
+	OperationalError,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
 	UserError,
@@ -340,7 +341,9 @@ export class EvalExecutionService {
 				`[EvalMock] Generating pin data for ${bypassNodeNames.length} bypass nodes: ${bypassNodeNames.join(', ')}`,
 			);
 		}
-		const [bypassPinData] = await Promise.all([
+		// Both settle before a failure surfaces: a table fill still running after the
+		// request ends would reset rows under the next queued scenario.
+		const [pinResult, tablesResult] = await Promise.allSettled([
 			this.generateBypassPinData(
 				workflowEntity,
 				bypassNodeNames,
@@ -350,6 +353,9 @@ export class EvalExecutionService {
 			),
 			this.prepareDataTables(workflowEntity, hints, timings, scenarioHints, seededDataTableIds),
 		]);
+		if (pinResult.status === 'rejected') throw pinResult.reason;
+		if (tablesResult.status === 'rejected') throw tablesResult.reason;
+		const bypassPinData = pinResult.value;
 		if (bypassNodeNames.length > 0) {
 			hints.bypassPinData = bypassPinData;
 			this.logger.debug(
@@ -471,6 +477,7 @@ export class EvalExecutionService {
 					}),
 			);
 			for (const warning of warnings) this.logger.warn(`[EvalMock] ${warning}`);
+			hints.warnings.push(...warnings);
 
 			for (const table of tables) {
 				const rows = rowsByTable[table.name] ?? [];
@@ -482,7 +489,9 @@ export class EvalExecutionService {
 			}
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
-			throw new Error(`FRAMEWORK ISSUE: Data Table preparation failed: ${errorMsg}`);
+			throw new OperationalError(`FRAMEWORK ISSUE: Data Table preparation failed: ${errorMsg}`, {
+				cause: error,
+			});
 		}
 	}
 

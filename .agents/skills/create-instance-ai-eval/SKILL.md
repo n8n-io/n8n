@@ -638,8 +638,9 @@ let you set a node's output directly, and it does **not** mock n8n internals
 nodes get LLM-generated pin data). So:
 
 - Write `dataSetup` as **what each external service returns** ("the GitHub
-  request returns three issues labelled bug"), not as node outputs or internal
-  state.
+  request returns three issues labelled bug") and **what the workflow's Data
+  Tables hold before the run** ("the orders table already has order #42"), not as
+  node outputs or other internal state.
 - The strongest scenarios exercise **external-service responses** — that's what
   the harness reproduces most faithfully.
 - **Data Table nodes run for real against the scenario's stored rows.** Before

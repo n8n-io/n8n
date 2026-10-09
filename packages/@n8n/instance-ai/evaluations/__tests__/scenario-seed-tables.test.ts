@@ -424,6 +424,17 @@ describe('workflowDataTableKeys', () => {
 		).toEqual(['id:dt-1', 'id:dt-2', 'name:sent posts']);
 	});
 
+	it('keys an id-mode node by its cached table name, so both modes share one key', () => {
+		expect(
+			workflowDataTableKeys({
+				nodes: [
+					node({ __rl: true, mode: 'id', value: 'dt-7', cachedResultName: 'Sent Posts' }),
+					node({ __rl: true, mode: 'name', value: 'sent posts' }),
+				],
+			}),
+		).toEqual(['name:sent posts']);
+	});
+
 	it('skips disabled nodes, other node types and unbound locators', () => {
 		expect(
 			workflowDataTableKeys({

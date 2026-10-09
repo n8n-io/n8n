@@ -91,6 +91,25 @@ describe('generateDataTableRows', () => {
 		).rejects.toThrow('Data table rows for "Log" are not an array');
 	});
 
+	it('leaves a null table out, so it starts empty', async () => {
+		extractTextMock.mockReturnValue('{ "Sent Posts": null, "Log": [] }');
+
+		const result = await generateDataTableRows({ tables, globalContext: '', nodeHints: {} });
+
+		expect(result.rowsByTable).toEqual({ Log: [] });
+	});
+
+	it('retries a value of the wrong column type instead of failing the insert', async () => {
+		extractTextMock
+			.mockReturnValueOnce('{ "Sent Posts": [{ "title": "Post A", "sent": "yes" }] }')
+			.mockReturnValueOnce('{ "Sent Posts": [{ "title": "Post A", "sent": true }] }');
+
+		const result = await generateDataTableRows({ tables, globalContext: '', nodeHints: {} });
+
+		expect(result.rowsByTable['Sent Posts']).toEqual([{ title: 'Post A', sent: true }]);
+		expect(generateMock).toHaveBeenCalledTimes(2);
+	});
+
 	it('does not call the model without tables', async () => {
 		const result = await generateDataTableRows({ tables: [], globalContext: '', nodeHints: {} });
 
