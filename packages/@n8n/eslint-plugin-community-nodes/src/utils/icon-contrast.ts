@@ -3,6 +3,11 @@ import { XMLParser, XMLValidator } from 'fast-xml-parser';
 
 const toRgb = converter('rgb');
 const paintProperties = new Set(['fill', 'stroke', 'stop-color']);
+const opacityForPaint: Record<string, string> = {
+	fill: 'fill-opacity',
+	stroke: 'stroke-opacity',
+	'stop-color': 'stop-opacity',
+};
 const black: Rgb = { mode: 'rgb', r: 0, g: 0, b: 0 };
 
 export function parseIconColor(value: string): Rgb | undefined {
@@ -42,47 +47,121 @@ export function getSvgPaintColors(svg: string): Rgb[] | null {
 	if (XMLValidator.validate(svg) !== true) return null;
 
 	const colors: Rgb[] = [];
+	const gradients = new Map<string, Rgb[]>();
+	const references = new Set<string>();
 	let hasFill = false;
-	let hasUrlPaint = false;
-	let hasStops = false;
+	let hasUnresolvedPaint = false;
 	let hasImage = false;
 
-	const addPaint = (property: string, value: string) => {
-		if (!paintProperties.has(property.toLowerCase())) return;
-		if (property.toLowerCase() === 'fill') hasFill = true;
-		if (/url\(/i.test(value)) hasUrlPaint = true;
+	const addPaint = (
+		property: string,
+		value: string,
+		opacity: number,
+		gradientId: string | null,
+	) => {
+		if (!paintProperties.has(property)) return;
+		if (property === 'fill') hasFill = true;
+		if (/url\(/i.test(value)) {
+			const reference = /^url\(\s*(['"]?)#([^'"\s)]+)\1\s*\)$/i.exec(value.trim());
+			if (reference?.[2]) references.add(reference[2]);
+			else hasUnresolvedPaint = true;
+			return;
+		}
 		const color = parseIconColor(value);
-		if (color) colors.push(color);
+		if (!color) return;
+		const paint = { ...color, alpha: (color.alpha ?? 1) * opacity };
+		if (property === 'stop-color' && gradientId !== null) {
+			gradients.get(gradientId)?.push(paint);
+		} else {
+			colors.push(paint);
+		}
+	};
+
+	const parseDeclarations = (style: string) => {
+		const declarations = new Map<string, string>();
+		for (const match of style.matchAll(
+			/(?:^|;)\s*(fill|stroke|stop-color|fill-opacity|stroke-opacity|stop-opacity)\s*:\s*([^;]+)/gi,
+		)) {
+			if (match[1] && match[2]) declarations.set(match[1].toLowerCase(), match[2].trim());
+		}
+		return declarations;
+	};
+
+	const parseOpacity = (value: string | undefined) => {
+		if (value === undefined) return undefined;
+		const parsed = Number.parseFloat(value);
+		if (!Number.isFinite(parsed)) return undefined;
+		return Math.max(0, Math.min(1, value.trim().endsWith('%') ? parsed / 100 : parsed));
+	};
+
+	const addDeclarations = (
+		declarations: Map<string, string>,
+		inherited: Record<string, number>,
+		gradientId: string | null,
+	) => {
+		const opacity = { ...inherited };
+		for (const property of Object.values(opacityForPaint)) {
+			opacity[property] = parseOpacity(declarations.get(property)) ?? opacity[property] ?? 1;
+		}
+		for (const [property, paint] of declarations) {
+			if (paintProperties.has(property)) {
+				addPaint(property, paint, opacity[opacityForPaint[property] ?? ''] ?? 1, gradientId);
+			}
+		}
+		return opacity;
 	};
 
 	const addStyle = (style: string) => {
-		for (const match of style.matchAll(/(?:^|[;{])\s*(fill|stroke|stop-color)\s*:\s*([^;}]+)/gi)) {
-			if (match[1] && match[2]) addPaint(match[1], match[2].trim());
+		const blocks = [...style.matchAll(/\{([^{}]*)\}/g)];
+		if (!blocks.length) addDeclarations(parseDeclarations(style), {}, null);
+		for (const block of blocks) {
+			if (block[1]) addDeclarations(parseDeclarations(block[1]), {}, null);
 		}
 	};
 
-	const visit = (value: unknown, inStyle = false) => {
-		if (Array.isArray(value)) {
-			for (const item of value) visit(item, inStyle);
-			return;
-		}
-		if (typeof value !== 'object' || value === null) return;
-
-		for (const [key, child] of Object.entries(value)) {
-			if (key === ':@' && typeof child === 'object' && child !== null) {
-				for (const [attribute, attributeValue] of Object.entries(child)) {
+	const visit = (
+		value: unknown,
+		inherited: Record<string, number> = {},
+		gradientId: string | null = null,
+		inStyle = false,
+	) => {
+		if (!Array.isArray(value)) return;
+		for (const element of value) {
+			if (typeof element !== 'object' || element === null) continue;
+			const entries = Object.entries(element);
+			const attributes = entries.find(([key]) => key === ':@')?.[1];
+			const declarations = new Map<string, string>();
+			let id: string | undefined;
+			if (typeof attributes === 'object' && attributes !== null) {
+				for (const [attribute, attributeValue] of Object.entries(attributes)) {
 					if (typeof attributeValue !== 'string') continue;
 					const name = attribute.replace(/^@_/, '').toLowerCase();
-					if (name === 'style') addStyle(attributeValue);
-					else addPaint(name, attributeValue);
+					if (name === 'id') id = attributeValue;
+					else if (name === 'style') continue;
+					else declarations.set(name, attributeValue);
 				}
-			} else if (key === '#text' && inStyle && typeof child === 'string') {
-				addStyle(child);
-			} else {
+				const style = Object.entries(attributes).find(([key]) => key === '@_style')?.[1];
+				if (typeof style === 'string') {
+					for (const [property, paint] of parseDeclarations(style))
+						declarations.set(property, paint);
+				}
+			}
+
+			for (const [key, child] of entries) {
+				if (key === ':@') continue;
+				if (key === '#text') {
+					if (inStyle && typeof child === 'string') addStyle(child);
+					continue;
+				}
 				const tag = key.split(':').pop()?.toLowerCase();
 				if (tag === 'image') hasImage = true;
-				if (tag === 'stop') hasStops = true;
-				visit(child, inStyle || tag === 'style');
+				const currentGradient =
+					tag === 'lineargradient' || tag === 'radialgradient' ? id : gradientId;
+				if ((tag === 'lineargradient' || tag === 'radialgradient') && id) {
+					gradients.set(id, []);
+				}
+				const opacity = addDeclarations(declarations, inherited, currentGradient ?? null);
+				visit(child, opacity, currentGradient ?? null, inStyle || tag === 'style');
 			}
 		}
 	};
@@ -95,7 +174,12 @@ export function getSvgPaintColors(svg: string): Rgb[] | null {
 	}).parse(svg);
 	visit(document);
 
-	if (hasImage || (hasUrlPaint && !hasStops)) return null;
+	if (hasImage || hasUnresolvedPaint) return null;
+	for (const reference of references) {
+		const stops = gradients.get(reference);
+		if (!stops?.length) return null;
+		colors.push(...stops);
+	}
 	if (!hasFill) colors.push(black);
 	return colors.length ? colors : null;
 }

@@ -13,6 +13,7 @@ The backgrounds are white for the light theme and `#2b2b2b` for the dark theme.
 
 The rule checks the best contrast ratio among `fill`, `stroke`, and `stop-color` declarations.
 It reads these declarations from SVG attributes, `style` attributes, and `<style>` blocks.
+It applies paint opacity and uses stops from referenced gradients.
 It uses the WCAG contrast formula and warns below **1.5:1** by default.
 
 ## Options
@@ -28,7 +29,7 @@ rules: {
 An SVG used as an image does not inherit the page color.
 The rule treats `currentColor` as black and `var()` as its fallback, or black if it has no fallback.
 It treats an SVG without a fill declaration as black.
-It skips embedded images and `url()` paint without gradient stops.
+It skips embedded images and `url()` paint with no matching gradient stops.
 It does not check PNG files or the placement of SVG shapes.
 
 ## Examples

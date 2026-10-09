@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import {
 	createRule,
 	findClassProperty,
+	findNodeDescriptionObject,
 	findObjectProperty,
 	getStringLiteralValue,
 	isCredentialTypeClass,
@@ -92,9 +93,9 @@ export const IconContrastRule = createRule({
 		return {
 			ClassDeclaration(node) {
 				if (isNodeTypeClass(node)) {
-					const description = findClassProperty(node, 'description');
-					if (description?.value?.type !== TSESTree.AST_NODE_TYPES.ObjectExpression) return;
-					const icon = findObjectProperty(description.value, 'icon');
+					const description = findNodeDescriptionObject(node);
+					if (!description) return;
+					const icon = findObjectProperty(description, 'icon');
 					if (icon) checkIconValue(icon.value);
 				} else if (isCredentialTypeClass(node)) {
 					const icon = findClassProperty(node, 'icon');

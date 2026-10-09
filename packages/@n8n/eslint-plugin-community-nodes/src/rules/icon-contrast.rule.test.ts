@@ -23,6 +23,7 @@ const gradient = icon(
 );
 const image = icon('image', '<svg><image href="data:image/png;base64,a" /></svg>');
 const missingStops = icon('missing-stops', '<svg><path fill="url(#g)" /></svg>');
+const faded = icon('faded', '<svg><path fill="#000" fill-opacity="0.05" /></svg>');
 const png = 'file:picture.png';
 
 const node = (value: string) =>
@@ -77,6 +78,21 @@ new RuleTester().run('icon-contrast', IconContrastRule, {
 			filename: join(dir, 'Test.node.ts'),
 			code: node(`'${black}'`),
 			errors: [warning('dark', '1.48')],
+		},
+		{
+			name: 'checks icons in constructor-assigned node descriptions',
+			filename: join(dir, 'Test.node.ts'),
+			code: `export class TestNode extends Node {
+				description;
+				constructor() { super(); this.description = { icon: '${black}' }; }
+			}`,
+			errors: [warning('dark', '1.48')],
+		},
+		{
+			name: 'checks paint with SVG opacity',
+			filename: join(dir, 'Test.node.ts'),
+			code: node(`'${faded}'`),
+			errors: [warning('light', '1.12'), warning('dark', '1.03')],
 		},
 		{
 			name: 'single icon checks the light theme',

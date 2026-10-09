@@ -441,7 +441,7 @@ overrides:
   yaml@<=2.8.3: 2.8.3
   axios: 'catalog:'
   fast-xml-builder: 1.2.1
-  fast-xml-parser: 5.7.2
+  fast-xml-parser: 'catalog:'
   postcss@<=8.5.22: 8.5.23
   '@anthropic-ai/sdk@<=0.91.1': 0.91.1
   uuid@<=13.0.1: 13.0.1
