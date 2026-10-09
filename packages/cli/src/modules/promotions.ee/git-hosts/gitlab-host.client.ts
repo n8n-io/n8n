@@ -17,6 +17,7 @@ import type { GitHostAccess, GitHostClient } from './git-host.types';
 
 const requestTimeoutMs = 15_000;
 const retryDelayMs = 200;
+const maxRetryDelayMs = 1_000;
 const maxResponseBodyBytes = 1024 * 1024;
 const tlsErrorCodes = new Set([
 	'CERT_HAS_EXPIRED',
@@ -140,6 +141,13 @@ export class GitLabHostClient implements GitHostClient {
 			);
 		}
 		if (response.statusCode >= 200 && response.statusCode < 300) return response;
+		const { retryable, retryAfterMs } = retryabilityFromError(response);
+		const delayMs = retryAfterMs ?? retryDelayMs;
+		// Do not retry early or keep validation open for a long server-requested wait.
+		if (attempt === 0 && retryable === 'yes' && delayMs <= maxRetryDelayMs) {
+			await sleep(delayMs);
+			return await this.get(access, path, qs, 1);
+		}
 		this.logger.warn('GitLab request failed', { path, status: response.statusCode });
 		throw statusError(response.statusCode);
 	}
@@ -150,6 +158,10 @@ function unexpectedResponse() {
 }
 
 function statusError(status: number) {
+	if (status === 408)
+		return new ServiceUnavailableError(
+			'The GitLab request timed out. Check that GitLab is available and try again.',
+		);
 	if (status >= 300 && status < 400)
 		return new BadRequestError('GitLab redirected the request. Use the final GitLab URL.');
 	if (status === 401)

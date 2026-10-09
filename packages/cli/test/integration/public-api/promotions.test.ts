@@ -246,16 +246,18 @@ describe('Promotions in Public API', () => {
 		});
 
 		it.each([
-			[401, 400, 'GitLab rejected the access token'],
-			[404, 400, 'No GitLab API was found'],
-			[429, 503, 'GitLab is not available'],
-			[502, 503, 'GitLab is not available'],
-			[418, 400, 'GitLab returned status 418'],
+			[401, 1, 400, 'GitLab rejected the access token'],
+			[404, 1, 400, 'No GitLab API was found'],
+			[408, 2, 503, 'The GitLab request timed out'],
+			[429, 2, 503, 'GitLab is not available'],
+			[502, 2, 503, 'GitLab is not available'],
+			[418, 1, 400, 'GitLab returned status 418'],
 		])(
 			'reports GitLab HTTP %i without saving or exposing secrets',
-			async (status, expectedStatus, message) => {
+			async (status, attempts, expectedStatus, message) => {
 				const api = nock(payload.config.baseUrl)
 					.get('/api/v4/user')
+					.times(attempts)
 					.reply(status, { message: payload.auth.password });
 
 				const response = await testServer
@@ -273,6 +275,76 @@ describe('Promotions in Public API', () => {
 				api.done();
 			},
 		);
+
+		it.each(
+			[408, 429, 500, 502].flatMap((status) =>
+				['user', 'projects'].map((path) => ({ status, path })),
+			),
+		)('saves the provider after HTTP $status on $path recovers', async ({ status, path }) => {
+			const api = nock(payload.config.baseUrl).matchHeader('PRIVATE-TOKEN', payload.auth.password);
+			if (path === 'projects') api.get('/api/v4/user').reply(200, { id: 1 });
+			api
+				.get(`/api/v4/${path}`)
+				.query(true)
+				.reply(status, { message: payload.auth.password })
+				.get(`/api/v4/${path}`)
+				.query(true)
+				.reply(200, path === 'user' ? { id: 1 } : []);
+			if (path === 'user') api.get('/api/v4/projects').query(true).reply(200, []);
+
+			await createProvider(testServer.publicApiAgentFor(owner), payload);
+
+			expect(await Container.get(PromotionProviderRepository).count()).toBe(1);
+			api.done();
+		});
+
+		it('retries after a short Retry-After delay', async () => {
+			const limited = nock(payload.config.baseUrl)
+				.get('/api/v4/user')
+				.reply(429, {}, { 'Retry-After': '1' });
+			const api = validAccess();
+
+			await createProvider(testServer.publicApiAgentFor(owner), payload);
+
+			limited.done();
+			api.done();
+		});
+
+		it('returns promptly when Retry-After exceeds the validation retry budget', async () => {
+			const limited = nock(payload.config.baseUrl)
+				.get('/api/v4/user')
+				.reply(429, {}, { 'Retry-After': '60' });
+			const retry = validAccess();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/promotions/providers')
+				.send(payload);
+
+			expect(response.status).toBe(503);
+			expect(response.body.message).toContain('GitLab is not available');
+			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+			expect(retry.isDone()).toBe(false);
+			limited.done();
+		});
+
+		it('shares one retry budget across HTTP and transport failures', async () => {
+			const api = nock(payload.config.baseUrl)
+				.get('/api/v4/user')
+				.reply(503)
+				.get('/api/v4/user')
+				.replyWithError(Object.assign(new Error('socket closed'), { code: 'ECONNRESET' }));
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/promotions/providers')
+				.send(payload);
+
+			expect(response.status).toBe(503);
+			expect(response.body.message).toContain('Could not reach GitLab');
+			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+			api.done();
+		});
 
 		it('reports a missing API read scope rather than saving the provider', async () => {
 			const api = nock(payload.config.baseUrl)

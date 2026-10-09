@@ -29,8 +29,10 @@ Grant `read_api` and `write_repository`. Protected branches can require the
 Maintainer role. API validation does not prove write permission on a repository.
 
 The adapter checks the authenticated user and a one-project API page. An empty
-page is valid. HTTP reads retry one transient failure. Redirects do not forward
-tokens. Logs include fixed error codes, never request secrets or response bodies.
+page is valid. Each HTTP read retries one transient transport or HTTP failure.
+Retries honor `Retry-After` waits up to one second. Longer waits return an
+availability error without a retry. Redirects do not forward tokens. Logs include
+fixed error codes, never request secrets or response bodies.
 
 Validation responses have a 1 MiB decoded-body limit.
 Fresh credentials validate before encryption. URL-only edits decrypt the stored token.
