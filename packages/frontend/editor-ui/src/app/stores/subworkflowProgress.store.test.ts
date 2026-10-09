@@ -4,158 +4,56 @@ import { useSubworkflowProgressStore } from './subworkflowProgress.store';
 describe('subworkflowProgress.store', () => {
 	let store: ReturnType<typeof useSubworkflowProgressStore>;
 
+	const snapshot = (parentNodeName: string, executionId: string, currentNodeIndex = 1) => ({
+		parentExecutionId: 'p1',
+		parentNodeName,
+		executionId,
+		currentNodeName: `Node ${currentNodeIndex}`,
+		currentNodeIndex,
+		totalNodes: 5,
+	});
+
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		store = useSubworkflowProgressStore();
 	});
 
-	it('records a started sub-execution at index 0', () => {
-		store.setStarted({
-			parentExecutionId: 'p1',
-			parentNodeName: 'Sub',
-			executionId: 'c1',
-			totalNodes: 5,
-		});
+	it('records the latest snapshot for a parent node', () => {
+		store.updateProgress(snapshot('Sub', 'c1', 1));
+		store.updateProgress(snapshot('Sub', 'c1', 2));
 
 		expect(store.getFor('p1', 'Sub')).toEqual({
 			executionId: 'c1',
-			currentNodeIndex: 0,
-			totalNodes: 5,
-			phase: 'running',
-		});
-	});
-
-	it('updates progress with phase and node identity', () => {
-		store.setStarted({
-			parentExecutionId: 'p1',
-			parentNodeName: 'Sub',
-			executionId: 'c1',
-			totalNodes: 5,
-		});
-
-		store.updateProgress({
-			parentExecutionId: 'p1',
-			parentNodeName: 'Sub',
-			executionId: 'c1',
-			currentNodeName: 'Wait',
+			currentNodeName: 'Node 2',
 			currentNodeIndex: 2,
 			totalNodes: 5,
-			phase: 'running',
-		});
-
-		expect(store.getFor('p1', 'Sub')).toMatchObject({
-			currentNodeName: 'Wait',
-			currentNodeIndex: 2,
-			phase: 'running',
 		});
 	});
 
-	it('ignores progress updates from a stale child execution', () => {
-		store.setStarted({
-			parentExecutionId: 'p1',
-			parentNodeName: 'Sub',
-			executionId: 'c2',
-			totalNodes: 5,
-		});
+	it('lets a newer child of the same node replace the previous one', () => {
+		store.updateProgress(snapshot('Sub', 'c1', 4));
+		store.updateProgress(snapshot('Sub', 'c2', 1));
 
-		store.updateProgress({
-			parentExecutionId: 'p1',
-			parentNodeName: 'Sub',
-			executionId: 'c1', // older
-			currentNodeName: 'Old',
-			currentNodeIndex: 9,
-			totalNodes: 5,
-			phase: 'running',
-		});
-
-		expect(store.getFor('p1', 'Sub')).toMatchObject({
-			executionId: 'c2',
-			currentNodeIndex: 0,
-		});
+		expect(store.getFor('p1', 'Sub')).toMatchObject({ executionId: 'c2', currentNodeIndex: 1 });
 	});
 
-	it('clears progress for a specific parent node', () => {
-		store.setStarted({
-			parentExecutionId: 'p1',
-			parentNodeName: 'A',
-			executionId: 'cA',
-			totalNodes: 1,
-		});
-		store.setStarted({
-			parentExecutionId: 'p1',
-			parentNodeName: 'B',
-			executionId: 'cB',
-			totalNodes: 1,
-		});
+	it('clears progress for one parent node only', () => {
+		store.updateProgress(snapshot('A', 'cA'));
+		store.updateProgress(snapshot('B', 'cB'));
 
-		store.clear({ parentExecutionId: 'p1', parentNodeName: 'A' });
+		store.clear('p1', 'A');
 
 		expect(store.getFor('p1', 'A')).toBeUndefined();
 		expect(store.getFor('p1', 'B')).toBeDefined();
 	});
 
-	it('ignores a clear from a stale child execution', () => {
-		store.setStarted({
-			parentExecutionId: 'p1',
-			parentNodeName: 'A',
-			executionId: 'c2',
-			totalNodes: 1,
-		});
-
-		// A late "finished" from the previous child must not wipe the live entry.
-		store.clear({ parentExecutionId: 'p1', parentNodeName: 'A', executionId: 'c1' });
-		expect(store.getFor('p1', 'A')).toMatchObject({ executionId: 'c2' });
-
-		// The matching child's "finished" clears it.
-		store.clear({ parentExecutionId: 'p1', parentNodeName: 'A', executionId: 'c2' });
-		expect(store.getFor('p1', 'A')).toBeUndefined();
-	});
-
 	it('reset wipes all entries', () => {
-		store.setStarted({
-			parentExecutionId: 'p1',
-			parentNodeName: 'A',
-			executionId: 'cA',
-			totalNodes: 1,
-		});
-		store.setStarted({
-			parentExecutionId: 'p2',
-			parentNodeName: 'A',
-			executionId: 'cA',
-			totalNodes: 1,
-		});
+		store.updateProgress(snapshot('A', 'cA'));
+		store.updateProgress({ ...snapshot('A', 'cA'), parentExecutionId: 'p2' });
 
 		store.reset();
 
 		expect(store.getFor('p1', 'A')).toBeUndefined();
 		expect(store.getFor('p2', 'A')).toBeUndefined();
-	});
-
-	it('keys are independent per parent node so parallel sub-workflows do not collide', () => {
-		store.setStarted({
-			parentExecutionId: 'p1',
-			parentNodeName: 'A',
-			executionId: 'cA',
-			totalNodes: 2,
-		});
-		store.setStarted({
-			parentExecutionId: 'p1',
-			parentNodeName: 'B',
-			executionId: 'cB',
-			totalNodes: 8,
-		});
-
-		store.updateProgress({
-			parentExecutionId: 'p1',
-			parentNodeName: 'B',
-			executionId: 'cB',
-			currentNodeName: 'X',
-			currentNodeIndex: 4,
-			totalNodes: 8,
-			phase: 'running',
-		});
-
-		expect(store.getFor('p1', 'A')).toMatchObject({ executionId: 'cA', currentNodeIndex: 0 });
-		expect(store.getFor('p1', 'B')).toMatchObject({ executionId: 'cB', currentNodeIndex: 4 });
 	});
 });

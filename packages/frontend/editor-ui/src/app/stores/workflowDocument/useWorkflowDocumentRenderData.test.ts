@@ -442,7 +442,6 @@ describe('useWorkflowDocumentRenderData — subworkflowProgressByNodeId', () => 
 			currentNodeName: 'Child Node',
 			currentNodeIndex: 2,
 			totalNodes: 5,
-			phase: 'running',
 		});
 
 		expect(renderData.subworkflowProgressByNodeId.get('a')?.value).toEqual({
@@ -452,7 +451,7 @@ describe('useWorkflowDocumentRenderData — subworkflowProgressByNodeId', () => 
 		});
 	});
 
-	it('returns a stable reference when only the phase changes', () => {
+	it('returns a stable reference when a snapshot repeats the same values', () => {
 		const { docId } = setupWorkflow('wf-subwf-stable', [{ id: 'a', name: 'Alpha' }]);
 		setActiveExecution(docId, [alpha()], {});
 		const { renderData } = createRenderData(docId);
@@ -466,12 +465,11 @@ describe('useWorkflowDocumentRenderData — subworkflowProgressByNodeId', () => 
 			currentNodeIndex: 2,
 			totalNodes: 5,
 		};
-		store.updateProgress({ ...payload, phase: 'running' });
+		store.updateProgress(payload);
 		const first = renderData.subworkflowProgressByNodeId.get('a')?.value;
 
-		// A running -> success flip on the same node must not yield a new object,
-		// otherwise every push re-maps the whole canvas (and the label flickers).
-		store.updateProgress({ ...payload, phase: 'success' });
+		// A repeat must not yield a new object, or every push re-maps the whole canvas.
+		store.updateProgress({ ...payload });
 		const second = renderData.subworkflowProgressByNodeId.get('a')?.value;
 
 		expect(first).toBeDefined();

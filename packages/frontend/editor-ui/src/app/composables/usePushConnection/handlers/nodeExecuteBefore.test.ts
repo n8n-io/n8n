@@ -6,6 +6,7 @@ import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useSubworkflowProgressStore } from '@/app/stores/subworkflowProgress.store';
 import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import type { PushHandlerOptions } from './types';
 
@@ -53,5 +54,27 @@ describe('nodeExecuteBefore', () => {
 		await nodeExecuteBefore(makeEvent('other-exec'), options);
 
 		expect(workflowExecutionStateStore.executingNode.addExecutingNode).not.toHaveBeenCalled();
+	});
+
+	it("clears the node's sub-workflow progress so a new run starts clean", async () => {
+		const progressStore = useSubworkflowProgressStore();
+		const progress = { executionId: 'child-1', currentNodeIndex: 3, totalNodes: 5 };
+		progressStore.updateProgress({
+			parentExecutionId: 'exec-1',
+			parentNodeName: 'Test Node',
+			currentNodeName: 'Last',
+			...progress,
+		});
+		progressStore.updateProgress({
+			parentExecutionId: 'exec-1',
+			parentNodeName: 'Other Node',
+			currentNodeName: 'Last',
+			...progress,
+		});
+
+		await nodeExecuteBefore(makeEvent('exec-1'), options);
+
+		expect(progressStore.getFor('exec-1', 'Test Node')).toBeUndefined();
+		expect(progressStore.getFor('exec-1', 'Other Node')).toBeDefined();
 	});
 });
