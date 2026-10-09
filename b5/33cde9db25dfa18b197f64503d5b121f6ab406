@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/__tests__/agent-configuration.test.ts
+  s_dd171702c7a424::t_d394207c187235 23-32
+packages/@n8n/agents/src/sdk/agent.ts
+  s_dd171702c7a424::t_82079654d0978c 748-750
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/provider-tool-executes-without-interruption-while-a-mixed-in-interruptible-tool-suspends.json
+  s_dd171702c7a424::t_b7b922c2189132 55,60,63,66,69,72,77-78,81,120,123,128,131-134,138-141,147-148,152-160,162,166-169,173-176,180-183,187-190,194-195,197,200-203,207,211,214,227,262,267,270,273,276,279,284-285,288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b533cde9db25dfa18b197f64503d5b121f6ab406",
+  "prompts": {},
+  "sessions": {
+    "s_dd171702c7a424": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11a3d-30e8-73a3-9e06-925aae6a1701",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
