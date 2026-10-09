@@ -29,6 +29,10 @@ export type NodeTypePolicyRule = Omit<PolicyRule, 'selector'> & {
 	readonly selector: NodeTypePolicySelector;
 };
 
+export function isNodeTypePolicyRule(rule: PolicyRule): rule is NodeTypePolicyRule {
+	return rule.selector.kind !== 'extends';
+}
+
 /**
  * The actions a project scope accepts. `delegate` defers to a narrower scope, and none exists
  * below project, so project-scope writes never accept it.

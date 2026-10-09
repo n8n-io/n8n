@@ -11,6 +11,7 @@ import {
 	PutProjectPolicyDto,
 	ReplaceAttachmentsDto,
 	UpdatePolicyDocumentDto,
+	isNodeTypePolicyRule,
 	nodeTypePolicyIdParamSchema,
 	type NodeTypePolicyRule,
 	type PolicyRule,
@@ -55,14 +56,10 @@ const tags = ['NodeTypePolicy'];
 
 /** Every write rejects an `extends` rule for this kind, so meeting one here is a bug. */
 function toNodeTypeRules(rules: readonly PolicyRule[]): NodeTypePolicyRule[] {
-	return rules.map((rule) => {
-		if (rule.selector.kind === 'extends') {
-			throw new UnexpectedError('A node type policy holds an extends rule', {
-				extra: { ruleId: rule.id },
-			});
-		}
-		return { ...rule, selector: rule.selector };
-	});
+	if (!rules.every(isNodeTypePolicyRule)) {
+		throw new UnexpectedError('A node type policy holds an extends rule');
+	}
+	return [...rules];
 }
 
 function toPublicDocument(policy: TypeAvailabilityPolicy): PolicyDocumentPublicDto {
