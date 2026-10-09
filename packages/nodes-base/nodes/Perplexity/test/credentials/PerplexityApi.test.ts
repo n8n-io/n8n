@@ -39,6 +39,13 @@ describe('Perplexity API Credentials', () => {
 
 			expect(authProperty.type).toBe('generic');
 		});
+
+		it('should send the n8n source and integration headers', () => {
+			expect(perplexityApi.authenticate.properties.headers).toMatchObject({
+				'X-Source': 'n8n',
+				'X-Pplx-Integration': 'n8n',
+			});
+		});
 	});
 
 	describe('test', () => {
