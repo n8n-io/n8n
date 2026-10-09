@@ -349,7 +349,7 @@ function onTabChange(tab: string) {
 .descriptionCard {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border: var(--border);
 	border-radius: var(--radius--2xs);
@@ -365,12 +365,54 @@ function onTabChange(tab: string) {
 	margin-bottom: var(--spacing--4xs);
 }
 
-.report {
+.report:global(.n8n-markdown) {
+	--markdown--spacing: var(--spacing--4xs);
+
 	white-space: normal;
 	overflow-wrap: anywhere;
 	min-width: 0;
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 
-	:deep(pre) {
+	p,
+	ul,
+	ol,
+	li,
+	strong,
+	em,
+	a,
+	span,
+	code,
+	pre,
+	blockquote {
+		font-size: inherit;
+		line-height: inherit;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		margin-block: var(--spacing--sm) var(--spacing--2xs);
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--lg);
+	}
+
+	h1 {
+		font-size: var(--font-size--md);
+	}
+
+	> div > :first-child {
+		margin-top: 0;
+	}
+
+	> div > :last-child {
+		margin-bottom: 0;
+	}
+
+	pre {
 		white-space: pre-wrap;
 	}
 }
