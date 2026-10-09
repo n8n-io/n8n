@@ -8,12 +8,13 @@ import { RuntimeContextBuilder } from '../../loop/runtime-context';
 import { InMemoryMemory } from '../../memory/memory-store';
 import { AgentMessageList } from '../message-list';
 import { fromAiMessages } from '../messages';
-import {
-	applyNativeToolDeferral,
-	resolveNativeToolDeferralProvider,
-} from '../native-tool-deferral';
+import { resolveNativeToolDeferral } from '../model-factory';
+import { applyNativeToolDeferral } from '../native-tool-deferral';
+import { anthropicToolDeferral } from '../native-tool-deferral/anthropic';
+import { openAiToolDeferral } from '../native-tool-deferral/openai';
 import { toAiSdkProviderTools, toAiSdkTools } from '../../tools/tool-adapter';
 
+const providers = { openai: openAiToolDeferral, anthropic: anthropicToolDeferral };
 const policy = { eagerToolNames: ['workspace_read_file'] };
 const input = z.object({ query: z.string() });
 
@@ -48,7 +49,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe('native tool deferral compatibility', () => {
-	it.each<[ModelConfig, string | undefined]>([
+	it.each<[ModelConfig, keyof typeof providers | undefined]>([
 		['openai/gpt-5.4', 'openai'],
 		['openai/gpt-5.4-mini', 'openai'],
 		['openai/gpt-5.4-nano', undefined],
@@ -93,19 +94,19 @@ describe('native tool deferral compatibility', () => {
 		['vercel/openai/gpt-5.4', undefined],
 		['minimax/MiniMax-M2.7', undefined],
 	])('selects support for %j', (model, expected) => {
-		expect(resolveNativeToolDeferralProvider(model)).toBe(expected);
+		expect(resolveNativeToolDeferral(model)).toBe(expected ? providers[expected] : undefined);
 	});
 
 	it.each(['openai', 'anthropic'] as const)('uses the effective %s endpoint', (provider) => {
 		const model = provider === 'openai' ? 'gpt-5.4' : 'claude-sonnet-4-6';
 		vi.stubEnv(`${provider.toUpperCase()}_BASE_URL`, 'https://proxy.example/v1');
-		expect(resolveNativeToolDeferralProvider(`${provider}/${model}`)).toBeUndefined();
+		expect(resolveNativeToolDeferral(`${provider}/${model}`)).toBeUndefined();
 		expect(
-			resolveNativeToolDeferralProvider({
+			resolveNativeToolDeferral({
 				id: `${provider}/${model}`,
 				baseURL: `https://api.${provider}.com/v1`,
 			}),
-		).toBe(provider);
+		).toBe(providers[provider]);
 	});
 
 	it('keeps a pre-built model eager because its endpoint is unknown', () => {
@@ -114,7 +115,7 @@ describe('native tool deferral compatibility', () => {
 			modelId: 'gpt-5.4',
 			doGenerate: vi.fn(),
 		} as unknown as ModelConfig;
-		expect(resolveNativeToolDeferralProvider(model)).toBeUndefined();
+		expect(resolveNativeToolDeferral(model)).toBeUndefined();
 	});
 });
 
@@ -189,7 +190,7 @@ describe('native tool catalog', () => {
 				.build(),
 			makeTool('lookup'),
 		]);
-		const native = await applyNativeToolDeferral(tools, 'anthropic', policy);
+		const native = await applyNativeToolDeferral(tools, anthropicToolDeferral, policy);
 		expect(native.cached.providerOptions?.anthropic).toEqual({
 			...tools.cached.providerOptions?.anthropic,
 			deferLoading: false,
@@ -202,10 +203,10 @@ describe('native tool catalog', () => {
 	it.each(['openai', 'anthropic'] as const)(
 		'adds no %s search for an empty or eager catalog',
 		async (provider) => {
-			expect(await applyNativeToolDeferral({}, provider, policy)).toEqual({});
+			expect(await applyNativeToolDeferral({}, providers[provider], policy)).toEqual({});
 			const eager = await applyNativeToolDeferral(
 				toAiSdkTools([makeTool('workspace_read_file')]),
-				provider,
+				providers[provider],
 				policy,
 			);
 			expect(Object.keys(eager)).toEqual(['workspace_read_file']);
@@ -221,7 +222,7 @@ describe('native tool catalog', () => {
 			...toAiSdkTools([makeTool('lookup')]),
 			...toAiSdkProviderTools([{ name: id, args: {} }]),
 		};
-		const native = await applyNativeToolDeferral(tools, provider, policy);
+		const native = await applyNativeToolDeferral(tools, providers[provider], policy);
 		expect(Object.keys(native)).toEqual(Object.keys(tools));
 		expect(native[id]).toMatchObject({ type: 'provider', id, args: {} });
 		expect(native[id].outputSchema).toBeDefined();
@@ -229,7 +230,7 @@ describe('native tool catalog', () => {
 
 	it('keeps user tools when the generated search name is occupied', async () => {
 		const tools = toAiSdkTools([makeTool('openai.tool_search')]);
-		const native = await applyNativeToolDeferral(tools, 'openai', policy);
+		const native = await applyNativeToolDeferral(tools, openAiToolDeferral, policy);
 		expect(native['openai.tool_search'].type).not.toBe('provider');
 		expect(native['openai.tool_search_2']).toMatchObject({
 			type: 'provider',
@@ -249,7 +250,7 @@ describe('native tool catalog', () => {
 			]),
 			...toAiSdkProviderTools([{ name: 'openai.tool_search', args: { execution: 'client' } }]),
 		};
-		const native = await applyNativeToolDeferral(tools, 'openai', policy);
+		const native = await applyNativeToolDeferral(tools, openAiToolDeferral, policy);
 		expect(native.lookup.providerOptions?.openai?.deferLoading).toBe(false);
 		expect(native['openai.tool_search']).toEqual(tools['openai.tool_search']);
 		expect(Object.keys(native)).toEqual(Object.keys(tools));

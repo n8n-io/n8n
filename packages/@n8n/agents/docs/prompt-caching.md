@@ -65,6 +65,13 @@ not change the catalog, tool order, instructions, or execution handlers.
 Provider-native tools stay eager. Local tools with explicit cache markers or
 `deferLoading: false` also stay eager.
 
+Providers register deferral through the runtime model registry. Each implementation
+supplies `supports` and `prepareTools`. The [OpenAI](../src/runtime/model/native-tool-deferral/openai.ts)
+and [Anthropic](../src/runtime/model/native-tool-deferral/anthropic.ts) implementations
+keep their compatibility checks and search setup in separate files. The
+[shared code](../src/runtime/model/native-tool-deferral.ts) selects eager tools,
+applies the fallback, and adapts provider schemas.
+
 The runtime uses numeric version rules instead of a model allowlist:
 
 - OpenAI Responses uses hosted `tool_search` for GPT-5.4 and later versions.

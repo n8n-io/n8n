@@ -23,12 +23,12 @@ import {
 } from '../memory/episodic-memory-capture';
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
-import { createModel, supportsSplitSystemMessages } from '../model/model-factory';
 import {
-	applyNativeToolDeferral,
-	resolveNativeToolDeferralProvider,
-	type NativeToolDeferralProvider,
-} from '../model/native-tool-deferral';
+	createModel,
+	resolveNativeToolDeferral,
+	supportsSplitSystemMessages,
+} from '../model/model-factory';
+import { applyNativeToolDeferral, type NativeToolDeferral } from '../model/native-tool-deferral';
 import {
 	applyRuntimeCacheBreakpoints,
 	isAnthropicToolDeferred,
@@ -75,7 +75,7 @@ export interface StaticLoopContext {
  * mapped to AI SDK shapes). Keeps tool/model assembly out of the loop body.
  */
 export class RuntimeContextBuilder {
-	private nativeToolDeferralProvider?: NativeToolDeferralProvider;
+	private nativeToolDeferral?: NativeToolDeferral;
 
 	constructor(
 		private readonly config: AgentRuntimeConfig,
@@ -93,8 +93,8 @@ export class RuntimeContextBuilder {
 		const ai = loadAi();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(this.config.model, this.config.modelFetch);
-		this.nativeToolDeferralProvider = this.config.nativeToolDeferral
-			? resolveNativeToolDeferralProvider(this.config.model)
+		this.nativeToolDeferral = this.config.nativeToolDeferral
+			? resolveNativeToolDeferral(this.config.model)
 			: undefined;
 		const outputSchema = this.config.structuredOutput;
 		const isRawJsonSchemaOutput = outputSchema !== undefined && !isZodSchema(outputSchema);
@@ -148,7 +148,7 @@ export class RuntimeContextBuilder {
 		const allTools = this.config.nativeToolDeferral
 			? await applyNativeToolDeferral(
 					catalog,
-					this.nativeToolDeferralProvider,
+					this.nativeToolDeferral,
 					this.config.nativeToolDeferral,
 				)
 			: catalog;
