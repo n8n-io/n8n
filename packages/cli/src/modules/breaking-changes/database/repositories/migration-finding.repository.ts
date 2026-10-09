@@ -209,13 +209,16 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		ctx: OperationContext,
 	): Promise<void> {
 		const otherTriageStatuses = TRIAGE_STATUSES.filter((triageStatus) => triageStatus !== status);
-		for (const chunk of chunkIds(workflowIds)) {
-			await this.managerFor(ctx).update(
-				MigrationFinding,
-				{ targetVersion, ruleId, workflowId: In(chunk), status: In(otherTriageStatuses) },
-				{ status, statusChangedAt: new Date() },
-			);
-		}
+		// One transaction, so a failed chunk does not leave the earlier chunks changed.
+		await this.runInTransaction(ctx, async (manager) => {
+			for (const chunk of chunkIds(workflowIds)) {
+				await manager.update(
+					MigrationFinding,
+					{ targetVersion, ruleId, workflowId: In(chunk), status: In(otherTriageStatuses) },
+					{ status, statusChangedAt: new Date() },
+				);
+			}
+		});
 	}
 
 	/**

@@ -372,7 +372,11 @@ async function onBulkStatusChange(status: MigrationFindingTriageStatus) {
 			workflowIds,
 			status,
 		);
-		selectedWorkflowIds.value = [];
+		// Keep the rows that the user selected while the request was in flight.
+		const changed = new Set(workflowIds);
+		selectedWorkflowIds.value = selectedWorkflowIds.value.filter(
+			(workflowId) => !changed.has(workflowId),
+		);
 	} catch (error) {
 		setFindingStatuses(new Map(workflows.map((workflow) => [workflow.id, workflow.status])));
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));

@@ -406,6 +406,26 @@ describe('MigrationRuleDetail', () => {
 			expect(status).toBe('wont_fix');
 		});
 
+		it('should keep a row that the user selects while the request is in flight', async () => {
+			let finishSave = () => {};
+			vi.mocked(breakingChangesApi.updateFindingStatuses).mockImplementation(
+				async () => await new Promise<void>((resolve) => (finishSave = resolve)),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			await userEvent.click(screen.getByTestId('migration-bulk-wont-fix-button'));
+			await userEvent.click(getRowCheckbox('Test Workflow 2'));
+			finishSave();
+
+			await waitFor(() =>
+				expect(screen.getByTestId('selected-items-info')).toHaveTextContent('1 row selected'),
+			);
+			expect(getRowCheckbox('Test Workflow 2')).toBeChecked();
+			expect(getRowCheckbox('Test Workflow 1')).not.toBeChecked();
+		});
+
 		it('should reopen only the selected rows that are not open', async () => {
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({
