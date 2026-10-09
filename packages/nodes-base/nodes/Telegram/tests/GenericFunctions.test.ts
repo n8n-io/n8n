@@ -13,6 +13,7 @@ import {
 	apiRequest,
 	getPropertyName,
 	getSecretToken,
+	materializeRichMessageLineBreaks,
 } from '../GenericFunctions';
 import type { Mock } from 'vitest';
 
@@ -309,6 +310,82 @@ describe('Telegram > GenericFunctions', () => {
 			expect(getPropertyName('')).toBe('');
 		});
 	});
+	describe('materializeRichMessageLineBreaks', () => {
+		it('converts a single line break into a hard break, for both formats', () => {
+			expect(materializeRichMessageLineBreaks('string1\nstring2', 'markdown')).toBe(
+				'string1<br>\nstring2',
+			);
+			expect(materializeRichMessageLineBreaks('string1\nstring2', 'html')).toBe(
+				'string1<br>\nstring2',
+			);
+		});
+
+		it('leaves an existing paragraph break (blank line) untouched', () => {
+			const content = 'string1\nstring2\n\nstring3';
+			expect(materializeRichMessageLineBreaks(content, 'markdown')).toBe(
+				'string1<br>\nstring2\n\nstring3',
+			);
+		});
+
+		it('reproduces the reported bug scenario end to end', () => {
+			// https://github.com/n8n-io/n8n/issues/37361
+			const content = '{{ $json.text}}\n\nstring4\nstring5\n\nline 6';
+			expect(materializeRichMessageLineBreaks(content, 'markdown')).toBe(
+				'{{ $json.text}}\n\nstring4<br>\nstring5\n\nline 6',
+			);
+		});
+
+		it('does not touch line breaks inside a fenced code block', () => {
+			const content = 'before\n```\ncode1\ncode2\n```\nafter';
+			expect(materializeRichMessageLineBreaks(content, 'markdown')).toBe(
+				'before<br>\n```\ncode1\ncode2\n```\nafter',
+			);
+		});
+
+		it('does not close a longer fence on a shorter, same-character delimiter inside it', () => {
+			// A line of three backticks inside a four-backtick-fenced block is fence
+			// content, not a closer - only a run of four or more backticks closes it.
+			const content = 'before\n````\ncode1\n```\ncode2\n````\nafter';
+			expect(materializeRichMessageLineBreaks(content, 'markdown')).toBe(
+				'before<br>\n````\ncode1\n```\ncode2\n````\nafter',
+			);
+		});
+
+		it('does not touch line breaks inside markdown table rows', () => {
+			const content = 'text\n| A | B |\n|---|---|\n| 1 | 2 |\nmore text';
+			expect(materializeRichMessageLineBreaks(content, 'markdown')).toBe(
+				'text\n| A | B |\n|---|---|\n| 1 | 2 |\nmore text',
+			);
+		});
+
+		it('does not touch line breaks inside an HTML <pre> block', () => {
+			// The lines *inside* <pre>...</pre> stay untouched. A <br> after the closing
+			// tag is fine: it lands in the outer flow, once the block has already closed.
+			const content = 'before\n<pre>\ncode1\ncode2\n</pre>\nafter';
+			expect(materializeRichMessageLineBreaks(content, 'html')).toBe(
+				'before<br>\n<pre>\ncode1\ncode2\n</pre><br>\nafter',
+			);
+		});
+
+		it('does not add a second break after an existing Markdown hard break', () => {
+			// A trailing, unescaped backslash is Markdown's own hard-break syntax.
+			expect(materializeRichMessageLineBreaks('string1\\\nstring2', 'markdown')).toBe(
+				'string1\\\nstring2',
+			);
+		});
+
+		it('still breaks a line ending in an escaped backslash', () => {
+			// Two trailing backslashes is one escaped backslash, not a hard break.
+			expect(materializeRichMessageLineBreaks('string1\\\\\nstring2', 'markdown')).toBe(
+				'string1\\\\<br>\nstring2',
+			);
+		});
+
+		it('returns content with no line breaks unchanged', () => {
+			expect(materializeRichMessageLineBreaks('<b>Hello</b>', 'html')).toBe('<b>Hello</b>');
+		});
+	});
+
 	describe('getSecretToken', () => {
 		const mockThis = {
 			getWorkflow: vi.fn().mockReturnValue({ id: 'workflow123' }),
