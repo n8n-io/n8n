@@ -10,38 +10,35 @@ const ROOT = '/home/daytona/workspace';
 
 const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never;
 
-function createSandboxWorkspace(files: Map<string, string>): {
-	workspace: SandboxWorkspace;
-	writes: Map<string, string>;
-} {
+function createSandboxWorkspace(files: Map<string, string>) {
 	const writes = new Map<string, string>();
+	const writeFile = vi.fn(async (path: string, content: string | Buffer) => {
+		writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
+		await Promise.resolve();
+	});
+	const executeCommand = vi.fn(async (command: string) => {
+		const readMatch = /^cat '([^']+)' 2>\/dev\/null$/.exec(command);
+		if (readMatch) {
+			const content = files.get(readMatch[1]);
+			return await Promise.resolve(
+				content === undefined
+					? { exitCode: 1, stdout: '', stderr: 'missing' }
+					: { exitCode: 0, stdout: content, stderr: '' },
+			);
+		}
+
+		return await Promise.resolve({ exitCode: 0, stdout: '', stderr: '' });
+	});
 	const workspace: SandboxWorkspace = {
 		filesystem: {
 			provider: 'local',
-			writeFile: vi.fn(async (path: string, content: string | Buffer) => {
-				writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
-				await Promise.resolve();
-			}),
+			writeFile,
 			mkdir: vi.fn(async () => await Promise.resolve()),
 		},
-		sandbox: {
-			executeCommand: vi.fn(async (command: string) => {
-				const readMatch = /^cat '([^']+)' 2>\/dev\/null$/.exec(command);
-				if (readMatch) {
-					const content = files.get(readMatch[1]);
-					return await Promise.resolve(
-						content === undefined
-							? { exitCode: 1, stdout: '', stderr: 'missing' }
-							: { exitCode: 0, stdout: content, stderr: '' },
-					);
-				}
-
-				return await Promise.resolve({ exitCode: 0, stdout: '', stderr: '' });
-			}),
-		},
+		sandbox: { executeCommand },
 	};
 
-	return { workspace, writes };
+	return { workspace, writes, writeFile, executeCommand };
 }
 
 describe('loadPrebakedWorkspaceBundle', () => {
@@ -254,10 +251,9 @@ describe('prebaked bundle checks with sandbox bundle state', () => {
 		return { trustManifest, verifiedBundles: new Map() };
 	}
 
-	function readPaths(workspace: SandboxWorkspace): string[] {
-		const executeCommand = workspace.sandbox?.executeCommand as ReturnType<typeof vi.fn>;
+	function readPaths(executeCommand: ReturnType<typeof createSandboxWorkspace>['executeCommand']) {
 		return executeCommand.mock.calls.flatMap(([command]) => {
-			const match = /^cat '([^']+)' 2>\/dev\/null$/.exec(String(command));
+			const match = /^cat '([^']+)' 2>\/dev\/null$/.exec(command);
 			return match ? [match[1]] : [];
 		});
 	}
@@ -293,45 +289,45 @@ describe('prebaked bundle checks with sandbox bundle state', () => {
 	}
 
 	it('reads only the manifest when the sandbox trusts a matching manifest', async () => {
-		const { workspace, writes } = createSandboxWorkspace(new Map(bundle.files));
+		const { workspace, writes, executeCommand } = createSandboxWorkspace(new Map(bundle.files));
 		const bundleState = createBundleState(true);
 
 		await expect(materialize(workspace, bundleState)).resolves.toBe(bundle);
 
-		expect(readPaths(workspace)).toEqual([manifestPath]);
+		expect(readPaths(executeCommand)).toEqual([manifestPath]);
 		expect(writes.size).toBe(0);
 		expect(bundleState.verifiedBundles.get(manifestPath)).toBe(bundle.contentHash);
 	});
 
 	it('reads every bundle file when the sandbox does not trust the manifest', async () => {
-		const { workspace, writes } = createSandboxWorkspace(new Map(bundle.files));
+		const { workspace, writes, executeCommand } = createSandboxWorkspace(new Map(bundle.files));
 		const bundleState = createBundleState(false);
 
 		await expect(materialize(workspace, bundleState)).resolves.toBe(bundle);
 
-		expect(readPaths(workspace).sort()).toEqual([manifestPath, ...filePaths].sort());
+		expect(readPaths(executeCommand).sort()).toEqual([manifestPath, ...filePaths].sort());
 		expect(writes.size).toBe(0);
 	});
 
 	it('makes no sandbox reads after the bundle is verified for the sandbox', async () => {
-		const { workspace } = createSandboxWorkspace(new Map(bundle.files));
+		const { workspace, executeCommand } = createSandboxWorkspace(new Map(bundle.files));
 		const bundleState = createBundleState(false);
 		await materialize(workspace, bundleState);
-		(workspace.sandbox?.executeCommand as ReturnType<typeof vi.fn>).mockClear();
+		executeCommand.mockClear();
 
 		await expect(materialize(workspace, bundleState)).resolves.toBe(bundle);
 
-		expect(readPaths(workspace)).toEqual([]);
+		expect(readPaths(executeCommand)).toEqual([]);
 	});
 
 	it('checks the sandbox again when the expected hash changes', async () => {
-		const { workspace, writes } = createSandboxWorkspace(new Map(bundle.files));
+		const { workspace, writes, executeCommand } = createSandboxWorkspace(new Map(bundle.files));
 		const bundleState = createBundleState(true);
 		bundleState.verifiedBundles.set(manifestPath, 'older-hash');
 
 		await materialize(workspace, bundleState);
 
-		expect(readPaths(workspace)).toEqual([manifestPath]);
+		expect(readPaths(executeCommand)).toEqual([manifestPath]);
 		expect(writes.size).toBe(0);
 		expect(bundleState.verifiedBundles.get(manifestPath)).toBe(bundle.contentHash);
 	});
@@ -377,10 +373,9 @@ describe('prebaked bundle checks with sandbox bundle state', () => {
 	});
 
 	it('does not record the bundle when a write fails', async () => {
-		const { workspace } = createSandboxWorkspace(new Map());
-		const writeFile = workspace.filesystem?.writeFile as ReturnType<typeof vi.fn>;
+		const { workspace, writeFile, executeCommand } = createSandboxWorkspace(new Map());
 		writeFile.mockRejectedValue(new Error('disk full'));
-		(workspace.sandbox?.executeCommand as ReturnType<typeof vi.fn>).mockResolvedValue({
+		executeCommand.mockResolvedValue({
 			exitCode: 1,
 			stdout: '',
 			stderr: 'disk full',
