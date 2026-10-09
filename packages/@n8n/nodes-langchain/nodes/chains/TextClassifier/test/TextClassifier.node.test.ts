@@ -58,7 +58,6 @@ describe('TextClassifier Node', () => {
 			expect(processItem).toHaveBeenCalledWith(
 				mockExecuteFunction,
 				0,
-				{ json: { testValue: 'none' } },
 				expect.any(FakeChatModel),
 				expect.any(Object),
 				[{ category: 'test', description: 'test category' }],
@@ -258,6 +257,118 @@ describe('TextClassifier Node', () => {
 
 			expect(result[0]).toHaveLength(3);
 			expect(result[0][1].json).toHaveProperty('error', 'Batch error');
+		});
+
+		describe('confidence scores', () => {
+			const withCategories = (
+				categories: Array<{ category: string; description: string }>,
+				options: Record<string, unknown> = {},
+			) => {
+				mockExecuteFunction.getNodeParameter.mockImplementation(
+					(param, _itemIndex, defaultValue) => {
+						if (param === 'inputText') return 'Test input';
+						if (param === 'categories.categories') return categories;
+						if (param === 'options') return { includeConfidenceScores: true, ...options };
+						return defaultValue;
+					},
+				);
+			};
+			const twoCategories = [
+				{ category: 'Billing', description: 'first' },
+				{ category: 'Urgent', description: 'second' },
+			];
+
+			it('adds nothing while the option is off', async () => {
+				(processItem as Mock).mockResolvedValue({
+					matched: ['test'],
+					fallback: false,
+					scores: { test: 0.9 },
+				});
+
+				const result = await node.execute.call(mockExecuteFunction);
+
+				expect(result[0][0].json).toEqual({ testValue: 'none' });
+			});
+
+			it('gives each branch the score for its own category', async () => {
+				withCategories(twoCategories);
+				mockExecuteFunction.getInputData.mockReturnValue([{ json: { id: 7 } }]);
+				(processItem as Mock).mockResolvedValue({
+					matched: ['Billing', 'Urgent'],
+					fallback: false,
+					scores: { Billing: 0.92, Urgent: 0.61 },
+				});
+
+				const result = await node.execute.call(mockExecuteFunction);
+
+				expect(result[0][0].json).toEqual({
+					id: 7,
+					classification: {
+						category: 'Billing',
+						confidence: 0.92,
+						scores: { Billing: 0.92, Urgent: 0.61 },
+					},
+				});
+				expect(result[1][0].json).toEqual({
+					id: 7,
+					classification: {
+						category: 'Urgent',
+						confidence: 0.61,
+						scores: { Billing: 0.92, Urgent: 0.61 },
+					},
+				});
+			});
+
+			it('labels the Other branch and scores it from the fallback answer', async () => {
+				withCategories(twoCategories, { fallback: 'other' });
+				mockExecuteFunction.getInputData.mockReturnValue([{ json: { id: 7 } }]);
+				(processItem as Mock).mockResolvedValue({
+					matched: [],
+					fallback: true,
+					scores: { Billing: 0.1, Urgent: 0.05, fallback: 0.8 },
+				});
+
+				const result = await node.execute.call(mockExecuteFunction);
+
+				expect(result[2][0].json.classification).toEqual({
+					category: 'Other',
+					confidence: 0.8,
+					// The Other branch is the absence of a category, so it is not scored here
+					scores: { Billing: 0.1, Urgent: 0.05 },
+				});
+			});
+
+			it('still reports the category when the model gave no usable score', async () => {
+				withCategories(twoCategories);
+				(processItem as Mock).mockResolvedValue({ matched: ['Billing'], fallback: false });
+
+				const result = await node.execute.call(mockExecuteFunction);
+
+				expect(result[0][0].json.classification).toEqual({ category: 'Billing' });
+			});
+
+			it('refuses a category named after the key the scores use', async () => {
+				withCategories([{ category: 'confidence', description: 'clashes' }]);
+				(processItem as Mock).mockResolvedValue({ matched: [], fallback: false });
+
+				await expect(node.execute.call(mockExecuteFunction)).rejects.toThrow(
+					'The category name "confidence" is reserved when confidence scores are on',
+				);
+			});
+
+			it('allows that category while the option is off', async () => {
+				mockExecuteFunction.getNodeParameter.mockImplementation(
+					(param, _itemIndex, defaultValue) => {
+						if (param === 'inputText') return 'Test input';
+						if (param === 'categories.categories')
+							return [{ category: 'confidence', description: 'clashes' }];
+						return defaultValue;
+					},
+				);
+				(processItem as Mock).mockResolvedValue({ matched: ['confidence'], fallback: false });
+
+				await expect(node.execute.call(mockExecuteFunction)).resolves.toHaveLength(1);
+			});
 		});
 
 		it('should throw error when continueOnFail is false', async () => {

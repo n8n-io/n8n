@@ -51,7 +51,6 @@ describe('processItem', () => {
 			processItem(
 				mockContext,
 				0,
-				{ json: {} },
 				fakeLLM,
 				{ getFormatInstructions: () => 'format instructions' } as any,
 				[{ category: 'test', description: 'test category' }],
@@ -87,7 +86,6 @@ describe('processItem', () => {
 		const result = await processItem(
 			mockContext,
 			0,
-			{ json: {} },
 			fakeLLM,
 			mockParser as any,
 			[{ category: 'test', description: 'test category' }],
@@ -135,7 +133,6 @@ describe('processItem', () => {
 		await processItem(
 			mockContext,
 			0,
-			{ json: {} },
 			fakeLLM,
 			mockParser as any,
 			[{ category: 'test', description: 'test category' }],
@@ -177,7 +174,6 @@ describe('processItem', () => {
 		await processItem(
 			mockContext,
 			0,
-			{ json: {} },
 			fakeLLM,
 			mockParser as any,
 			[{ category: 'test', description: 'test category' }],

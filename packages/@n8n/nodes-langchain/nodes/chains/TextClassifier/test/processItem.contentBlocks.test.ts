@@ -55,7 +55,6 @@ describe('processItem with content-block model output', () => {
 		const output = await processItem(
 			ctx,
 			0,
-			{ json: {} },
 			llm,
 			parser,
 			categories,

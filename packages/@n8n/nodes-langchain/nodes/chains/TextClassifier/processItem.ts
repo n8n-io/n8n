@@ -2,7 +2,7 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import type { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
-import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
 
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { toParserInputText } from '@utils/output_parsers/parserInput';
@@ -14,7 +14,6 @@ import { SYSTEM_PROMPT_TEMPLATE } from './constants';
 export async function processItem(
 	ctx: IExecuteFunctions,
 	itemIndex: number,
-	item: INodeExecutionData,
 	llm: BaseLanguageModel,
 	parser: StructuredOutputParser<any> | OutputFixingParser<any>,
 	categories: Category[],
