@@ -225,6 +225,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 				'disabled',
 				'maxLength',
 				'showAttach',
+				'showAttachButton',
 				'acceptedMimeTypes',
 			],
 			emits: ['submit', 'stop', 'update:modelValue', 'files-selected'],
@@ -1038,6 +1039,12 @@ describe('AgentChatPanel', () => {
 		const wrapper = mountPanel();
 
 		expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(true);
+	});
+
+	it('hides the built-in composer attach button in favor of its own footer button', () => {
+		const wrapper = mountPanel();
+
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('showAttachButton')).toBe(false);
 	});
 
 	it('hides the attach button when the model accepts no attachments', () => {
