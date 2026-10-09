@@ -57,15 +57,20 @@ export type SkillListResponse = {
 	data: SkillListItem[];
 };
 
+/** The agents that use a skill, limited to the agents the caller may read. */
 export type SkillUsage = {
+	/** Agents whose draft references the skill. */
 	drafts: Array<{ agentId: string; agentName: string; projectId: string }>;
+	/** Agents with a published version that pins the skill, one row each. */
 	pins: Array<{
 		agentId: string;
 		agentName: string;
-		agentVersionId: string;
-		version: number;
-		isActive: boolean;
+		projectId: string;
+		/** The skill version the current published version runs. Null when only older ones pin it. */
+		version: number | null;
 	}>;
+	/** Agents in projects the caller may not read. */
+	hiddenAgents: number;
 };
 
 /** One skill with the content of its latest version. */

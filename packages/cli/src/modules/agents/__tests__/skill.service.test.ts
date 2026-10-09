@@ -715,10 +715,11 @@ describe('SkillService', () => {
 	describe('deleteSkill', () => {
 		it('deletes a skill nobody uses, under an edit lock', async () => {
 			skills.findByIds.mockResolvedValue([skillRow('skill_a')]);
-			skills.findUsage.mockResolvedValue({ drafts: [], pins: [] });
+			skills.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 0 });
 
 			await service.deleteSkill('skill_a');
 
+			expect(skills.findUsage).toHaveBeenCalledWith('skill_a', 'all', TX_CTX);
 			expect(skills.lockForEdit).toHaveBeenCalledWith(['skill_a'], TX_CTX);
 			expect(skills.deleteSkill).toHaveBeenCalledWith('skill_a', TX_CTX);
 		});
@@ -731,27 +732,16 @@ describe('SkillService', () => {
 			skills.findUsage.mockResolvedValue({
 				drafts: [{ agentId: 'agent-1', agentName: 'Support bot', projectId: PROJECT }],
 				pins: [
-					{
-						agentId: 'agent-2',
-						agentName: 'Sales bot',
-						agentVersionId: 'v-a',
-						version: 2,
-						isActive: true,
-					},
-					{
-						agentId: 'agent-2',
-						agentName: 'Sales bot',
-						agentVersionId: 'v-b',
-						version: 1,
-						isActive: false,
-					},
+					{ agentId: 'agent-2', agentName: 'Sales bot', projectId: PROJECT, version: 2 },
+					{ agentId: 'agent-3', agentName: 'Old bot', projectId: PROJECT, version: null },
 				],
+				hiddenAgents: 0,
 			});
 
 			await expectError(
 				service.deleteSkill('skill_a'),
 				ConflictError,
-				'Skill "Brand voice" is used by Support bot (draft), Sales bot (published v2, current), Sales bot (published v1) and cannot be deleted.',
+				'Skill "Brand voice" is used by Support bot (draft), Sales bot (published v2), Old bot (older published version) and cannot be deleted.',
 			);
 			expect(skills.deleteSkill).not.toHaveBeenCalled();
 		});

@@ -425,14 +425,14 @@ export class SkillService {
 			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 			if (!skill) throw new NotFoundError('Skill not found');
 			await this.skillRepository.lockForEdit([skillId], txCtx);
-			const usage = await this.skillRepository.findUsage(skillId, txCtx);
+			const usage = await this.skillRepository.findUsage(skillId, 'all', txCtx);
 			if (usage.drafts.length > 0 || usage.pins.length > 0) {
 				const name = (await this.latestNames([skillId], txCtx)).get(skillId) ?? skillId;
 				const users = [
 					...usage.drafts.map((draft) => `${draft.agentName} (draft)`),
 					...usage.pins.map(
 						(pin) =>
-							`${pin.agentName} (published v${pin.version}${pin.isActive ? ', current' : ''})`,
+							`${pin.agentName} (${pin.version === null ? 'older published version' : `published v${pin.version}`})`,
 					),
 				];
 				throw new ConflictError(
