@@ -107,3 +107,11 @@ export const appPreviewStatusSchema = z.discriminatedUnion('status', [
 ]);
 
 export type AppPreviewStatus = z.infer<typeof appPreviewStatusSchema>;
+
+/** User details returned by the authenticated app runtime. */
+export interface AppUser {
+	id: string;
+	firstName: string | null;
+	lastName: string | null;
+	email: string;
+}

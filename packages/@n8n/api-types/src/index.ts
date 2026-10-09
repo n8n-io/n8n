@@ -250,6 +250,7 @@ export {
 	type AppRoute,
 	appPreviewStatusSchema,
 	type AppPreviewStatus,
+	type AppUser,
 } from './schemas/app.schema';
 export {
 	appBindingSchema,

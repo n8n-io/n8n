@@ -24,8 +24,16 @@ type AnyAgents = Record<string, unknown>;
 type Agents = Bindings extends { agents: infer A extends AnyAgents } ? A : AnyAgents;
 type AgentKey = Extract<keyof Agents, string>;
 
-/** Every app is public, so the visitor is anonymous. Reserved for a signed-in visitor later. */
+/** Workflow results omit user details. Use `getUser()` for the signed-in user. */
 export type Principal = null;
+
+/** Matches `AppUser` in `@n8n/api-types`. The SDK ships without dependencies. */
+export interface AppUser {
+	id: string;
+	firstName: string | null;
+	lastName: string | null;
+	email: string;
+}
 
 export interface RunResult<T> {
 	executionId: string;
@@ -242,6 +250,7 @@ export class N8nAppError extends Error {
 }
 
 export interface N8nAppClient {
+	getUser(opts?: { signal?: AbortSignal }): Promise<AppUser>;
 	workflows: {
 		run<K extends WorkflowKey>(
 			key: K,
@@ -255,6 +264,16 @@ export interface N8nAppClient {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isAppUser(value: unknown): value is AppUser {
+	return (
+		isRecord(value) &&
+		typeof value.id === 'string' &&
+		(value.firstName === null || typeof value.firstName === 'string') &&
+		(value.lastName === null || typeof value.lastName === 'string') &&
+		typeof value.email === 'string'
+	);
 }
 
 function isRunResult<T>(value: unknown): value is RunResult<T> {
@@ -615,6 +634,15 @@ export function createClient(opts: { baseUrl?: string } = {}): N8nAppClient {
 	// One client per agent key, so the unstored session fallback survives property access.
 	const agentClients = new Map<string, AgentClient>();
 	return {
+		async getUser(userOpts) {
+			const { status, body } = await call(
+				'/me',
+				{ method: 'GET', signal: userOpts?.signal },
+				opts.baseUrl,
+			);
+			if (!isAppUser(body)) throw invalidResponse(status);
+			return body;
+		},
 		workflows: {
 			async run(key, input, runOpts) {
 				const { status, body } = await call(

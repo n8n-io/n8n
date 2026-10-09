@@ -1,6 +1,15 @@
+import type { AppUser } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { createIpRateLimit, Middleware, Options, Post, RootLevelController } from '@n8n/decorators';
+import { AuthenticatedRequest } from '@n8n/db';
+import {
+	createIpRateLimit,
+	Get,
+	Middleware,
+	Options,
+	Post,
+	RootLevelController,
+} from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { NextFunction, Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
@@ -53,6 +62,18 @@ export class AppRuntimeController {
 	preflight(req: Request, res: Response) {
 		if (!this.applyCors(req, res)) return;
 		res.status(204).end();
+	}
+
+	@Get('/:namespace/api/me', { skipAuth: true, ipRateLimit: rateLimit, usesTemplates: true })
+	getUser(req: AuthenticatedRequest, res: Response) {
+		if (!this.applyCors(req, res)) return;
+		const user: AppUser = {
+			id: req.user.id,
+			firstName: req.user.firstName ?? null,
+			lastName: req.user.lastName ?? null,
+			email: req.user.email,
+		};
+		res.json(user);
 	}
 
 	@Post('/:namespace/api/workflows/:key', { skipAuth: true, ipRateLimit: rateLimit })

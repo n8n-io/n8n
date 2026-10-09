@@ -15,6 +15,7 @@ export function isAppRequestAllowed(requestPath: string, method: string): boolea
 	if (!match) return false;
 	const appPath = match[1] ?? '';
 	if (!/^api(?:\/|$)/i.test(appPath)) return read;
+	if (/^api\/me\/?$/i.test(appPath)) return read || method === 'OPTIONS';
 	if (/^api\/workflows\/[^/]+\/?$/i.test(appPath)) return method === 'POST' || method === 'OPTIONS';
 	if (/^api\/tables\/[^/]+\/rows\/?$/i.test(appPath)) {
 		return ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'].includes(method);
