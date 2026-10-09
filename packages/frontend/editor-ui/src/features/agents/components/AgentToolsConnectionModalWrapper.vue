@@ -329,6 +329,7 @@ onMounted(() => {
 	if (!isWorkflow.value) {
 		void loadRegistryCatalog();
 		void preloadCredentials();
+		void nodeTypesStore.loadNodeTypesIfNotLoaded();
 	}
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
