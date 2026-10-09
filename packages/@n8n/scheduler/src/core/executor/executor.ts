@@ -330,7 +330,7 @@ export class Executor {
 			await dispatchMark;
 			return await this.recordHandlerFailure(task, claim, error, {
 				dispatchWasReported: dispatchMark !== undefined,
-				timedOut: run.signal.reason instanceof TaskTimeoutError,
+				abortReason: run.signal.reason,
 			});
 		}
 
@@ -349,9 +349,10 @@ export class Executor {
 		task: ClaimedTask,
 		claim: ClaimedTaskRef,
 		error: unknown,
-		{ dispatchWasReported, timedOut }: { dispatchWasReported: boolean; timedOut: boolean },
+		{ dispatchWasReported, abortReason }: { dispatchWasReported: boolean; abortReason: unknown },
 	): Promise<FireResult> {
 		const errorMessage = ensureError(error).message;
+		const timedOut = abortReason instanceof TaskTimeoutError;
 		const nextAttempts = task.attempts + 1;
 		// A dispatched run that timed out is completed, as the reaper completes it
 		// when the handler ignores its signal.
