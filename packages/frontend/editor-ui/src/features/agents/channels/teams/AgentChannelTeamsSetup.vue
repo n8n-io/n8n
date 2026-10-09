@@ -303,7 +303,13 @@ function addToText(scopes?: { teamChannels?: boolean; groupChats?: boolean }) {
 function uploadInstruction(scopes?: { teamChannels?: boolean; groupChats?: boolean }) {
 	const upload = i18n.baseText('agents.channels.teams.setup.install.description');
 	const addTo = addToText(scopes);
-	return addTo ? `${upload} ${addTo}` : upload;
+	// Composed through a key rather than joined here, so a locale owns both the
+	// separator and the order of the two sentences.
+	return addTo
+		? i18n.baseText('agents.channels.teams.setup.install.descriptionWithScope', {
+				interpolate: { upload, addTo },
+			})
+		: upload;
 }
 
 // The modal clears the error when the credential changes. A conflict is about

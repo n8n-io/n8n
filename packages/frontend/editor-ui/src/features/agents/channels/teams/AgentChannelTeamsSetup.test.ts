@@ -633,7 +633,13 @@ describe('AgentChannelTeamsSetup', () => {
 
 			for (const scope of scopes) await fireEvent.click(getByTestId(scope));
 
-			await waitFor(() => expect(getByText(`${UPLOAD} ${addTo}`)).toBeVisible());
+			// Composed through a key, so the locale owns the separator: the stub
+			// renders that key followed by the two sentences it was given.
+			await waitFor(() =>
+				expect(
+					getByText(`agents.channels.teams.setup.install.descriptionWithScope ${UPLOAD} ${addTo}`),
+				).toBeVisible(),
+			);
 		});
 
 		it('adds nothing about teams or chats for direct chat only', async () => {

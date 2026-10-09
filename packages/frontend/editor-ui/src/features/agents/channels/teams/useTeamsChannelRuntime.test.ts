@@ -162,9 +162,25 @@ describe('useTeamsChannelRuntime', () => {
 		it('clears a credential the helper never saw', async () => {
 			vi.mocked(createTeamsManagerCredential).mockResolvedValue({ id: 'missing' } as never);
 
-			await expect(buildRuntime().connectManagerCredential()).rejects.toThrow();
+			await expect(buildRuntime().connectManagerCredential()).rejects.toThrow(
+				/could not be loaded/,
+			);
 
 			expect(deleteCredential).toHaveBeenCalledWith({ id: 'missing' });
+		});
+
+		/**
+		 * The tidy-up runs in a `finally`, while the real error is on its way out.
+		 * Without the catch it would take that error's place and the user would
+		 * be told the delete failed rather than why the sign-in did.
+		 */
+		it('keeps the original error when the tidy-up fails too', async () => {
+			vi.mocked(createTeamsManagerCredential).mockResolvedValue({ id: 'missing' } as never);
+			deleteCredential.mockRejectedValue(new Error('Could not delete the credential'));
+
+			await expect(buildRuntime().connectManagerCredential()).rejects.toThrow(
+				/could not be loaded/,
+			);
 		});
 
 		it('signs in an existing credential rather than making another', async () => {
