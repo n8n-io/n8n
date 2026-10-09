@@ -292,8 +292,8 @@ to these routes, so you don't need to list it. Route views must be lazy loaders.
 the view or the placeholder once, on the first load of the route.
 
 If the module is licensed but inactive, for example turned off with `N8N_DISABLED_MODULES`, it
-stays hidden. A module that is unlicensed and turned off still shows the page. The frontend can't
-tell these two cases apart.
+stays hidden. A module that is unlicensed and also turned off still shows the page, because the
+frontend can't tell it apart from a module that is only unlicensed.
 
 ## Import-light descriptors
 
