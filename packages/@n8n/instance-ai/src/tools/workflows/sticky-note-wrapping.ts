@@ -18,7 +18,8 @@ export interface StickyNoteWrap {
 }
 
 function boxOf(node: WorkflowNode, sizes: NodeSizes): Box | undefined {
-	const size = node.name === undefined ? undefined : sizes.get(node.name);
+	// The layout keys a node without a name by its ID.
+	const size = sizes.get(node.name ?? node.id);
 	if (!size || !Array.isArray(node.position)) return undefined;
 	return { x: node.position[0], y: node.position[1], ...size };
 }

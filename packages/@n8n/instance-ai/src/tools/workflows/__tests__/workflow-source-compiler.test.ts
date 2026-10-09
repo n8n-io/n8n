@@ -671,6 +671,22 @@ describe('compileWorkflowSource > node positions in TypeScript sources', () => {
 		});
 	});
 
+	it('keeps an unnamed sticky note around the nodes it wrapped', async () => {
+		const nodes = await compileWithWriterInputs(['main', 'ai_tool'], {
+			id: 'g',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [200, -80],
+			parameters: { width: 368, height: 200 },
+		});
+
+		const email = nodes.get('Email');
+		const group = [...nodes.values()].find((node) => node.id === 'g');
+		expect(group?.parameters?.width).toBe(
+			(email?.position[0] ?? 0) + 96 + 24 - (group?.position[0] ?? 0),
+		);
+	});
+
 	it('keeps the sandbox layout when the node types give the same sizes', async () => {
 		const nodes = await compileWithWriterInputs(['main']);
 
