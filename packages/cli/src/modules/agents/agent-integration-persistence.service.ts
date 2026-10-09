@@ -20,7 +20,7 @@ import {
 } from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
-import type { Agent } from './entities/agent.entity';
+import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
@@ -41,7 +41,7 @@ export interface IntegrationDelta {
 }
 
 export interface IntegrationDeltaResult {
-	agent: Agent;
+	agent: ProjectAgent;
 	/** False when the delta was already satisfied — nothing was written. */
 	changed: boolean;
 	/** The entry that was actually removed, for the caller's runtime teardown. */
@@ -129,7 +129,7 @@ export class AgentIntegrationPersistenceService {
 	 * Leave runtime connections to the caller. Emit effects after the write.
 	 */
 	async applyIntegrationDelta(
-		agent: Agent,
+		agent: ProjectAgent,
 		delta: IntegrationDelta,
 		context: CredentialIntegrationMutationContext,
 	): Promise<IntegrationDeltaResult> {
@@ -177,7 +177,7 @@ export class AgentIntegrationPersistenceService {
 	}
 
 	private recordIntegrationMutation(
-		agent: Agent,
+		agent: ProjectAgent,
 		previousIntegrations: AgentIntegrationConfig[],
 		context: CredentialIntegrationMutationContext,
 	): void {
@@ -198,7 +198,7 @@ export class AgentIntegrationPersistenceService {
 		});
 	}
 	private async applyIntegrationAttempt(
-		agent: Agent,
+		agent: ProjectAgent,
 		{ add, remove }: IntegrationDelta,
 		context: CredentialIntegrationMutationContext,
 		credentialProvider: ReturnType<typeof createAgentCredentialProvider>,
@@ -239,7 +239,7 @@ export class AgentIntegrationPersistenceService {
 	}
 
 	private async persistIntegrations(
-		agent: Agent,
+		agent: ProjectAgent,
 		integrations: AgentIntegrationConfig[],
 		state: Pick<Agent, 'revision' | 'versionId' | 'activeVersionId'>,
 		context: CredentialIntegrationMutationContext,

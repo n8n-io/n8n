@@ -10,9 +10,10 @@
 | id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_channel_status](public.agent_channel_status.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) [public.agent_checkpoints](public.agent_checkpoints.md) [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_files](public.agent_files.md) [public.agent_history](public.agent_history.md) [public.agent_task_definition](public.agent_task_definition.md) [public.agent_task_run_lock](public.agent_task_run_lock.md) [public.agent_workflow_dependency](public.agent_workflow_dependency.md) [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) |  |  |
 | integrations | json | '[]'::json | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
-| projectId | varchar(255) |  | false |  | [public.project](public.project.md) |  |
+| projectId | varchar(255) |  | true |  | [public.project](public.project.md) |  |
 | revision | integer | 0 | false |  |  |  |
 | schema | json |  | true |  |  |  |
+| scope | varchar(16) | 'project'::character varying | false |  |  | project: belongs to projectId; instance: code-defined, belongs to no project (projectId is null) |
 | setupCompletedAt | timestamp(3) with time zone |  | true |  |  | When this agent first reached a complete, publishable setup |
 | skills | json | '{}'::json | false |  |  |  |
 | tools | json | '{}'::json | false |  |  |  |
@@ -23,6 +24,8 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_agents_scope | CHECK | CHECK (((scope)::text = ANY ((ARRAY['project'::character varying, 'instance'::character varying])::text[]))) |
+| CHK_agents_scope_project | CHECK | CHECK ((((scope)::text = 'instance'::text) = ("projectId" IS NULL))) |
 | FK_940597dfe9753375309ce6aeea0 | FOREIGN KEY | FOREIGN KEY ("activeVersionId") REFERENCES agent_history("versionId") ON DELETE SET NULL |
 | FK_a30d560207c4071d98aa03c179c | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_9c653f28ae19c5884d5baf6a1d9 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -31,8 +34,8 @@
 | agents_id_not_null | n | NOT NULL id |
 | agents_integrations_not_null | n | NOT NULL integrations |
 | agents_name_not_null | n | NOT NULL name |
-| agents_projectId_not_null | n | NOT NULL "projectId" |
 | agents_revision_not_null | n | NOT NULL revision |
+| agents_scope_not_null | n | NOT NULL scope |
 | agents_skills_not_null | n | NOT NULL skills |
 | agents_tools_not_null | n | NOT NULL tools |
 | agents_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -71,7 +74,7 @@ erDiagram
 "public.agents_observation_cursors" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_observation_locks" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_observations" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
-"public.agents" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.agents" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.agents" {
   varchar_36_ activeVersionId FK
@@ -83,6 +86,7 @@ erDiagram
   varchar_255_ projectId FK
   integer revision
   json schema
+  varchar_16_ scope
   timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools

@@ -44,7 +44,7 @@ import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentValidationService } from './agent-validation.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
-import type { Agent } from './entities/agent.entity';
+import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
@@ -93,7 +93,7 @@ function draftSchemaFromVersion(schema: AgentJsonConfig | null): AgentJsonConfig
 }
 
 export interface PublishAgentResult {
-	agent: Agent;
+	agent: ProjectAgent;
 	/**
 	 * The draft validation `assertPublishable` already computed while
 	 * guarding this publish call — only present when the current draft (not
@@ -193,7 +193,7 @@ export class AgentPublishService {
 	 * The n8n Chat entry is saved in the published schema.
 	 */
 	private async assertPublishable(
-		agent: Agent,
+		agent: ProjectAgent,
 		projectId: string,
 		user: User,
 		tasks: ReadonlyMap<string, AgentTask>,
@@ -249,7 +249,7 @@ export class AgentPublishService {
 	 * them by this point, and skipping them keeps that the single place that owns
 	 * the rule.
 	 */
-	private async assertChannelsStartable(agent: Agent, projectId: string): Promise<void> {
+	private async assertChannelsStartable(agent: ProjectAgent, projectId: string): Promise<void> {
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {
 			if (!isCredentialAgentIntegration(integration)) continue;
@@ -264,7 +264,7 @@ export class AgentPublishService {
 		user: User,
 		by: AgentActor,
 		pushRef?: string,
-	): Promise<Agent> {
+	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		// Same optimistic revision fence as publish: a concurrent edit that bumped
@@ -305,7 +305,7 @@ export class AgentPublishService {
 	 * a lookup map would widen the event to a union its payload cannot satisfy.
 	 */
 	private trackPublished(
-		agent: Agent,
+		agent: ProjectAgent,
 		projectId: string,
 		user: User,
 		emitter: AgentPublishEmitter,
@@ -378,7 +378,7 @@ export class AgentPublishService {
 		user: User,
 		modifiedBy: AgentActor,
 		pushRef?: string,
-	): Promise<Agent> {
+	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const activeVersion = agent.activeVersion;
@@ -403,7 +403,7 @@ export class AgentPublishService {
 		user: User,
 		modifiedBy: AgentActor,
 		pushRef?: string,
-	): Promise<Agent> {
+	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
@@ -419,7 +419,7 @@ export class AgentPublishService {
 	}
 
 	/** A revert writes an old version back as the draft, so it is policed as a save. */
-	private async enforceRevertPolicy(agent: Agent, user: User, schema: Agent['schema']) {
+	private async enforceRevertPolicy(agent: ProjectAgent, user: User, schema: Agent['schema']) {
 		if (!schema) return;
 		await this.agentPolicyService.enforceSave(agent.projectId, agent.id, schema, agent.schema, {
 			kind: 'user',
@@ -429,7 +429,7 @@ export class AgentPublishService {
 
 	/** Restore versioned content and keep current credential-backed integrations. */
 	private async restoreVersion(
-		agent: Agent,
+		agent: ProjectAgent,
 		version: AgentHistory,
 		nextVersionId: string,
 		context: AgentMutationTelemetryContext,
@@ -486,7 +486,7 @@ export class AgentPublishService {
 		agentId: string,
 		projectId: string,
 		versionId: string,
-	): Promise<{ agent: Agent; version: AgentHistory; definition: AgentDefinition }> {
+	): Promise<{ agent: ProjectAgent; version: AgentHistory; definition: AgentDefinition }> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
@@ -580,7 +580,7 @@ export class AgentPublishService {
 		return snapshot;
 	}
 
-	private async startPublishedServices(agent: Agent): Promise<void> {
+	private async startPublishedServices(agent: ProjectAgent): Promise<void> {
 		const agentId = agent.id;
 		const credentialIntegrations = (agent.integrations ?? []).filter(isCredentialAgentIntegration);
 		if (credentialIntegrations.length > 0) {
@@ -602,7 +602,7 @@ export class AgentPublishService {
 			);
 	}
 
-	private async commitUnpublication(agent: Agent, expectedRevision: number): Promise<void> {
+	private async commitUnpublication(agent: ProjectAgent, expectedRevision: number): Promise<void> {
 		await this.transactionRunner.run({}, async (ctx) => {
 			const nextVersionId = uuid();
 
@@ -637,7 +637,7 @@ export class AgentPublishService {
 	}
 
 	private async commitPublication(
-		agent: Agent,
+		agent: ProjectAgent,
 		expectedRevision: number,
 		user: User,
 		tasks: ReadonlyMap<string, AgentTask>,
@@ -663,7 +663,7 @@ export class AgentPublishService {
 
 	private async preparePublishedVersion(
 		ctx: OperationContext,
-		agent: Agent,
+		agent: ProjectAgent,
 		user: User,
 		tasks: ReadonlyMap<string, AgentTask>,
 		targetHistory?: AgentHistory,
@@ -683,7 +683,7 @@ export class AgentPublishService {
 
 	private async saveDraftHistory(
 		ctx: OperationContext,
-		agent: Agent,
+		agent: ProjectAgent,
 		user: User,
 		versionId: string,
 	) {

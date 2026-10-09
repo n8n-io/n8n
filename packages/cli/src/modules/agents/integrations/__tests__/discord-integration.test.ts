@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ConflictError } from '@n8n/errors';
 
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type {
 	AgentChatIntegrationContext,
@@ -350,7 +350,7 @@ describe('DiscordIntegration', () => {
 
 		it('rejects repository ownership before calling Discord', async () => {
 			agentRepository.findByIntegrationCredential.mockResolvedValue([
-				{ id: 'agent-other', name: 'Other Agent' } as Agent,
+				{ id: 'agent-other', name: 'Other Agent' } as ProjectAgent,
 			]);
 
 			const promise = integration.onBeforeConnect(connectionContext());

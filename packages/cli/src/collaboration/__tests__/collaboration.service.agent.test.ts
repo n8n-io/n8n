@@ -1,9 +1,10 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { User } from '@n8n/db';
+import { ForbiddenError } from '@n8n/errors';
 
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 
 import { CollaborationService } from '../collaboration.service';
 import type {
@@ -46,7 +47,7 @@ describe('CollaborationService — agent messages', () => {
 			toIUser: () => ({ id: 'user-1' }),
 		} as unknown as User);
 
-		agentRepository.findById.mockResolvedValue({ projectId: 'project-1' } as Agent);
+		agentRepository.findById.mockResolvedValue({ projectId: 'project-1' } as ProjectAgent);
 		agentRepository.getProjectIdById.mockResolvedValue('project-1');
 		agentRepository.existsByIdAndProjectId.mockResolvedValue(true);
 
@@ -260,6 +261,18 @@ describe('CollaborationService — agent messages', () => {
 				service.validateAgentWriteLock(userId, 'client-1', 'other-project', 'agent-1', 'update'),
 			).rejects.toThrow(/Agent not found/);
 			agentRepository.existsByIdAndProjectId.mockResolvedValue(true);
+		});
+
+		it('refuses an instance agent as read-only before it checks the lock', async () => {
+			agentRepository.existsByIdAndProjectId.mockResolvedValue(false);
+			agentRepository.isInstanceAgent.mockResolvedValue(true);
+
+			await expect(
+				service.validateAgentWriteLock(userId, 'client-1', 'project-1', 'agent-1', 'update'),
+			).rejects.toThrow(ForbiddenError);
+			expect(state.getAgentWriteLock).not.toHaveBeenCalled();
+			agentRepository.existsByIdAndProjectId.mockResolvedValue(true);
+			agentRepository.isInstanceAgent.mockResolvedValue(false);
 		});
 	});
 

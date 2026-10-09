@@ -13,7 +13,7 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentRepository } from '../repositories/agent.repository';
 
@@ -68,7 +68,7 @@ function setup(options: SetupOptions = {}) {
 		activeVersionId: options.activeVersionId === undefined ? 'version-1' : options.activeVersionId,
 		setupCompletedAt: null,
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
-	} as Agent;
+	} as ProjectAgent;
 
 	agentRepository.findById.mockImplementation(async () => ({
 		...row,

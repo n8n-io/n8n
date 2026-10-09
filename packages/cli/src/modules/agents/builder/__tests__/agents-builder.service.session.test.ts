@@ -9,7 +9,7 @@ import type { NodeCatalogService } from '@/node-catalog';
 
 import type { InstanceAiCreditService } from '../../../instance-ai/instance-ai-credit.service';
 import type { AgentsService } from '../../agents.service';
-import type { Agent as AgentEntity } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
 import type { AgentsBuilderToolsService } from '../agents-builder-tools.service';
@@ -195,7 +195,7 @@ function setup(
 	memoryImplementation.getMessages.mockResolvedValue([]);
 	n8nMemory.getImplementation.mockReturnValue(memoryImplementation);
 
-	const agent = mock<AgentEntity>({
+	const agent = mock<ProjectAgent>({
 		id: 'agent-1',
 		schema: null,
 		integrations: [],

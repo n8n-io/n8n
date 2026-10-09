@@ -15,6 +15,7 @@ export function registerFavoriteResolver() {
 					{ name, projectId },
 				]),
 			),
-		exists: async (id) => await agentRepository.existsBy({ id }),
+		// Instance agents have no project, so they cannot be favorites.
+		exists: async (id) => (await agentRepository.getProjectIdById(id)) !== null,
 	});
 }

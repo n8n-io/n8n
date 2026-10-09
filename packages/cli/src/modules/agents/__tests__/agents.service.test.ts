@@ -9,7 +9,7 @@ import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -19,7 +19,7 @@ import { AgentTaskService } from '../agent-task.service';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentsService } from '../agents.service';
 import type { AgentTask } from '../entities/agent-task.entity';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -31,7 +31,7 @@ const agentId = 'agent-1';
 const actor = { kind: 'user', user: { id: 'user-1' } } as const;
 const projectId = 'project-1';
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 	return {
 		id: agentId,
 		name: 'Agent',
@@ -45,7 +45,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		skills: {},
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeService() {
@@ -638,6 +638,16 @@ describe('AgentsService', () => {
 		expect(agentRepository.remove).not.toHaveBeenCalled();
 	});
 
+	it('refuses to delete an instance agent', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		agentRepository.isInstanceAgent.mockResolvedValue(true);
+
+		await expect(service.delete(agentId, projectId)).rejects.toThrow(ForbiddenError);
+		expect(agentRepository.isInstanceAgent).toHaveBeenCalledWith(agentId);
+		expect(agentRepository.remove).not.toHaveBeenCalled();
+	});
+
 	describe('findByIdForUser', () => {
 		const makeUser = (scopeSlugs: string[]): User =>
 			({ id: 'user-9', role: { scopes: scopeSlugs.map((slug) => ({ slug })) } }) as unknown as User;
@@ -1151,7 +1161,7 @@ describe('AgentsService', () => {
 					],
 					tools: { c1: { code: '', descriptor: { name: 'Refund tool' } } },
 					skills: { s1: { name: 'Triage', description: '', instructions: '' } },
-				} as unknown as Partial<Agent>),
+				} as unknown as Partial<ProjectAgent>),
 			);
 			agentTaskRepository.findByAgentId.mockResolvedValue([
 				{ id: 't1', name: 'Daily digest' } as AgentTask,
@@ -1218,7 +1228,7 @@ describe('AgentsService', () => {
 						skills: [{ type: 'skill', id: 's-missing' }],
 						tasks: [{ type: 'task', id: 't-missing', enabled: false }],
 					},
-				} as unknown as Partial<Agent>),
+				} as unknown as Partial<ProjectAgent>),
 			);
 			agentTaskRepository.findByAgentId.mockResolvedValue([]);
 

@@ -24,6 +24,7 @@ import type {
 import { CollaborationState, type WriteLock } from '@/collaboration/collaboration.state';
 import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { assertNotInstanceAgent } from '@/modules/agents/utils/get-agent-or-throw';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -638,6 +639,7 @@ export class CollaborationService {
 		// expected 404 from the downstream project-boundary check.
 		const exists = await this.agentRepository.existsByIdAndProjectId(agentId, projectId);
 		if (!exists) {
+			await assertNotInstanceAgent(this.agentRepository, agentId);
 			throw new NotFoundError('Agent not found');
 		}
 

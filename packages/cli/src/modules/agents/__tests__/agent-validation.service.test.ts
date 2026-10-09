@@ -9,7 +9,7 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentDefinitionService } from '../agent-definition.service';
 import { AgentValidationService } from '../agent-validation.service';
-import type { Agent } from '../entities/agent.entity';
+import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -39,8 +39,8 @@ const executeWorkflowTriggerNode = {
 function makeAgent(
 	config: AgentJsonConfig | null = runnableConfig,
 	skills = {},
-	overrides: Partial<Agent> = {},
-): Agent {
+	overrides: Partial<ProjectAgent> = {},
+): ProjectAgent {
 	return {
 		id: agentId,
 		projectId,
@@ -50,7 +50,7 @@ function makeAgent(
 		integrations: [],
 		revision: 0,
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeCredentialProvider(

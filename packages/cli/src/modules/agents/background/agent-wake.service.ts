@@ -22,7 +22,7 @@ import {
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
 	formatWakeMessage,
 } from './background-job-messages';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
@@ -327,7 +327,7 @@ export class AgentWakeService {
 	}
 
 	private async runWake(
-		agent: Agent,
+		agent: ProjectAgent,
 		identity: ExecuteForWakeConfig['identity'],
 		jobs: AgentBackgroundJob[],
 		threadId: string,

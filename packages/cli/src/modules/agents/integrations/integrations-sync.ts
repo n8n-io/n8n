@@ -2,7 +2,7 @@ import { type AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 
 /**
  * Reconcile chat platform connections after the builder writes a new
@@ -16,7 +16,7 @@ import type { Agent } from '../entities/agent.entity';
  * persistence and the chat integration runtime.
  */
 export async function syncAgentIntegrations(
-	agent: Agent,
+	agent: ProjectAgent,
 	previous: AgentIntegrationConfig[],
 	next: AgentIntegrationConfig[],
 	logger: Logger,

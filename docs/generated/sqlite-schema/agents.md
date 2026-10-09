@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "projectId" varchar(255) NOT NULL, "integrations" text NOT NULL DEFAULT ('[]'), "schema" text, "tools" text NOT NULL DEFAULT ('{}'), "skills" text NOT NULL DEFAULT ('{}'), "versionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), "availableInMCP" boolean NOT NULL DEFAULT (false), "setupCompletedAt" datetime(3), "revision" integer NOT NULL DEFAULT 0, CONSTRAINT "FK_940597dfe9753375309ce6aeea0" FOREIGN KEY ("activeVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_a30d560207c4071d98aa03c179c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "projectId" varchar(255), "integrations" text NOT NULL DEFAULT ('[]'), "schema" text, "tools" text NOT NULL DEFAULT ('{}'), "skills" text NOT NULL DEFAULT ('{}'), "versionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), "availableInMCP" boolean NOT NULL DEFAULT (false), "setupCompletedAt" datetime(3), "revision" integer NOT NULL DEFAULT (0), "scope" varchar(16) NOT NULL DEFAULT ('project'), CONSTRAINT "CHK_agents_scope" CHECK (("scope" IN ('project', 'instance'))), CONSTRAINT "CHK_agents_scope_project" CHECK (("scope" = 'instance') = ("projectId" IS NULL)), CONSTRAINT "FK_940597dfe9753375309ce6aeea0" FOREIGN KEY ("activeVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_a30d560207c4071d98aa03c179c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -21,9 +21,10 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 | id | varchar(36) |  | false | [agent_background_job](agent_background_job.md) [agent_channel_status](agent_channel_status.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_chat_subscriptions](agent_chat_subscriptions.md) [agent_checkpoints](agent_checkpoints.md) [agent_credential_dependency](agent_credential_dependency.md) [agent_eval_dataset](agent_eval_dataset.md) [agent_execution_threads](agent_execution_threads.md) [agent_files](agent_files.md) [agent_history](agent_history.md) [agent_task_definition](agent_task_definition.md) [agent_task_run_lock](agent_task_run_lock.md) [agent_workflow_dependency](agent_workflow_dependency.md) [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_candidates](agents_memory_entry_candidates.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_observations](agents_observations.md) |  |  |
 | integrations | TEXT | '[]' | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
-| projectId | varchar(255) |  | false |  | [project](project.md) |  |
+| projectId | varchar(255) |  | true |  | [project](project.md) |  |
 | revision | INTEGER | 0 | false |  |  |  |
 | schema | TEXT |  | true |  |  |  |
+| scope | varchar(16) | 'project' | false |  |  |  |
 | setupCompletedAt | datetime(3) |  | true |  |  |  |
 | skills | TEXT | '{}' | false |  |  |  |
 | tools | TEXT | '{}' | false |  |  |  |
@@ -34,6 +35,8 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK (("scope" IN ('project', 'instance'))) |
+| - | CHECK | CHECK (("scope" = 'instance') = ("projectId" IS NULL)) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
@@ -73,7 +76,7 @@ erDiagram
 "agents_observation_cursors" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observation_locks" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observations" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agents" {
   varchar_36_ activeVersionId FK
@@ -85,6 +88,7 @@ erDiagram
   varchar_255_ projectId FK
   INTEGER revision
   TEXT schema
+  varchar_16_ scope
   datetime_3_ setupCompletedAt
   TEXT skills
   TEXT tools
