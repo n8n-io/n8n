@@ -18,12 +18,16 @@ COPY --from=fonts /usr/share/fonts/truetype/msttcorefonts /usr/share/fonts/truet
 
 # git, openssl and ca-certificates come with the DHI base. No `apt-get
 # upgrade`: patched packages come from a bump of the pinned DHI digest.
+# libaio is the kernel AIO shim that vendor database clients (Oracle Instant
+# Client) load; they look for the pre-time64 name, so give it that symlink.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        libaio1t64 \
         openssh-client \
         graphicsmagick \
         tini \
         tzdata && \
+    for f in /usr/lib/*-linux-gnu/libaio.so.1t64; do ln -s "$(basename "$f")" "${f%t64}"; done && \
     # Drop what n8n does not use: yarn, corepack, and the full perl that only
     # optional git subcommands need (perl-base stays for c_rehash). Then drop
     # the package manager, like the Alpine base; dpkg cannot purge apt and

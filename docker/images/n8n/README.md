@@ -165,14 +165,13 @@ This example adds Oracle Instant Client:
 ```dockerfile
 FROM debian:trixie-slim AS oracle
 ARG TARGETARCH
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip libaio1t64 && \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip && \
     case "$TARGETARCH" in \
-      amd64) zip=instantclient-basiclite-linuxx64.zip; lib=x86_64-linux-gnu ;; \
-      arm64) zip=instantclient-basiclite-linux-arm64.zip; lib=aarch64-linux-gnu ;; \
+      amd64) zip=instantclient-basiclite-linuxx64.zip ;; \
+      arm64) zip=instantclient-basiclite-linux-arm64.zip ;; \
     esac && \
     curl -fsSL -o /tmp/ic.zip "https://download.oracle.com/otn_software/linux/instantclient/$zip" && \
-    unzip -q /tmp/ic.zip -d /opt/oracle && mv /opt/oracle/instantclient_* /opt/oracle/instantclient && \
-    cp -L "/usr/lib/$lib/libaio.so.1t64" /opt/oracle/instantclient/libaio.so.1
+    unzip -q /tmp/ic.zip -d /opt/oracle && mv /opt/oracle/instantclient_* /opt/oracle/instantclient
 
 FROM n8nio/n8n:2.41.0-debian
 COPY --from=oracle /opt/oracle/instantclient /opt/oracle/instantclient
