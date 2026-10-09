@@ -269,6 +269,16 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 				if (message.type === 'contacts') return formatSharedContacts(message);
 				return super.extractTextContent(message);
 			}
+
+			// The adapter adds a location as a URL-only pseudo-file (a Maps link with
+			// no bytes). The bridge cannot download it, and the text summary already
+			// carries the location, so drop it.
+			protected override buildAttachments(inbound: WhatsAppRawMessage['message']) {
+				const attachments = super.buildAttachments(inbound);
+				return inbound.type === 'location'
+					? attachments.filter((attachment) => attachment.fetchData !== undefined)
+					: attachments;
+			}
 		}
 
 		return new ConversationWindowGuardedAdapter(config);
@@ -416,7 +426,8 @@ function formatSharedContacts(message: unknown): string {
 		const phoneNumbers = phones
 			.map((phone: unknown) => stringProperty(phone, 'phone'))
 			.filter((phone): phone is string => phone !== undefined);
-		return `[Contact: ${[name ?? 'Unknown', ...phoneNumbers].join(' - ')}]`;
+		const parts = name ? [name, ...phoneNumbers] : phoneNumbers;
+		return parts.length > 0 ? `[Contact: ${parts.join(' - ')}]` : '[Contact]';
 	});
 	return lines.length > 0 ? lines.join('\n') : '[Contact]';
 }

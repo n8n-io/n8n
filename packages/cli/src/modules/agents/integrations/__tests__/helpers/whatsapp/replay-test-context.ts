@@ -71,7 +71,7 @@ export interface WhatsAppInboundMessageFixture {
 	sticker?: { id: string; mime_type: string; sha256: string; animated: boolean };
 	location?: { latitude: number; longitude: number; name?: string; address?: string; url?: string };
 	contacts?: Array<{
-		name: { formatted_name: string; first_name?: string; last_name?: string };
+		name?: { formatted_name: string; first_name?: string; last_name?: string };
 		phones?: Array<{ phone: string; wa_id?: string; type?: string }>;
 	}>;
 }
