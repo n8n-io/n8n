@@ -267,14 +267,14 @@ const onSubmit = async () => {
 <template>
 	<N8nDialog
 		:open="open"
-		size="2xlarge"
+		size="xlarge"
 		:show-close-button="true"
 		:header="i18n.baseText('evaluation.setup.title')"
 		@update:open="emit('update:open', $event)"
 	>
 		<N8nDialogBody>
 			<div :class="$style.body" data-test-id="setup-collection-wizard">
-				<N8nDialogDescription>
+				<N8nDialogDescription :class="$style.description">
 					{{ i18n.baseText('evaluation.setup.subtitle') }}
 				</N8nDialogDescription>
 				<div :class="$style.field">
@@ -418,7 +418,7 @@ const onSubmit = async () => {
 			</div>
 			<div :class="$style.footerActions">
 				<N8nButton
-					variant="ghost"
+					variant="outline"
 					:label="i18n.baseText('evaluation.setup.footer.cancel')"
 					data-test-id="setup-collection-wizard-cancel"
 					@click="close"
@@ -437,14 +437,15 @@ const onSubmit = async () => {
 </template>
 
 <style module lang="scss">
+.description {
+	// The body gap already separates this from the fields below.
+	margin-bottom: 0;
+}
+
 .body {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	// N8nDialog has no intrinsic max-height, so a tall table pushes the footer off-screen.
-	// Cap and scroll the body, leaving room for the dialog chrome so the CTA stays visible.
-	max-height: calc(100dvh - 16rem);
-	overflow-y: auto;
 }
 
 .field {
@@ -516,7 +517,6 @@ const onSubmit = async () => {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--md);
-	border-top: var(--border);
 }
 
 .footerSummary {
