@@ -269,7 +269,10 @@ export class SkillService {
 		return { skills: toRecord(rows), versionByRef };
 	}
 
-	/** Publish, step 2: after the `agent_history` row exists. */
+	/**
+	 * Publish, step 2: after the `agent_history` row exists. The pins keep the order of
+	 * `versionByRef`, which is the order of the draft refs.
+	 */
 	async pinForPublish(
 		agentVersionId: string,
 		versionByRef: Map<string, string>,

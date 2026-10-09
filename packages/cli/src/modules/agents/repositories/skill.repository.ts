@@ -122,12 +122,18 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return new Map(rows.map((row) => [row.version.id, row]));
 	}
 
-	/** The pinned version of each skill of one published agent version, keyed by skill id. */
+	/**
+	 * The pinned version of each skill of one published agent version, keyed by skill id,
+	 * in the order of the draft refs at publish.
+	 */
 	async findPinned(
 		agentVersionId: string,
 		ctx: OperationContext = {},
 	): Promise<Map<string, ResolvedSkillRow>> {
-		const pins = await this.managerFor(ctx).find(AgentHistorySkill, { where: { agentVersionId } });
+		const pins = await this.managerFor(ctx).find(AgentHistorySkill, {
+			where: { agentVersionId },
+			order: { createdAt: 'ASC' },
+		});
 		const versions = await this.findVersionsByIds(
 			pins.map((pin) => pin.skillVersionId),
 			ctx,
@@ -183,12 +189,20 @@ export class SkillRepository extends BaseRepository<Skill> {
 		});
 	}
 
+	/**
+	 * Inserts the pins of one publish in the given order. `createdAt` orders the skills of
+	 * a published version, so each pin gets its own timestamp, like `replaceDependencies`.
+	 */
 	async insertPins(
 		pins: Array<{ agentVersionId: string; skillId: string; skillVersionId: string }>,
 		ctx: OperationContext = {},
 	): Promise<void> {
 		if (pins.length === 0) return;
-		await this.managerFor(ctx).insert(AgentHistorySkill, pins);
+		const first = Date.now();
+		await this.managerFor(ctx).insert(
+			AgentHistorySkill,
+			pins.map((pin, index) => ({ ...pin, createdAt: new Date(first + index) })),
+		);
 	}
 
 	/**
