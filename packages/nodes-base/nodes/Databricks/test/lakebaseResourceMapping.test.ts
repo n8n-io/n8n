@@ -97,6 +97,28 @@ describe('Lakebase -> column mapping', () => {
 	});
 
 	it.each([
+		['a primary key', { isPrimaryKey: true }, true],
+		['any other column', {}, false],
+	])('defaults the match on %s to %s', async (_name, overrides, expected) => {
+		vi.mocked(fetchLakebaseColumns).mockResolvedValue([column(overrides)]);
+
+		const { fields } = await getLakebaseMappingColumns.call(setup());
+
+		expect(fields[0].defaultMatch).toBe(expected);
+	});
+
+	it('offers every column for matching, so update mode renders its fields', async () => {
+		vi.mocked(fetchLakebaseColumns).mockResolvedValue([
+			column({ name: 'id', isPrimaryKey: true }),
+			column({ name: 'sku' }),
+		]);
+
+		const { fields } = await getLakebaseMappingColumns.call(setup());
+
+		expect(fields.map((field) => field.canBeUsedToMatch)).toEqual([true, true]);
+	});
+
+	it.each([
 		['integer', { type: 'integer' }, 'number'],
 		['number', { type: 'number' }, 'number'],
 		['boolean', { type: 'boolean' }, 'boolean'],

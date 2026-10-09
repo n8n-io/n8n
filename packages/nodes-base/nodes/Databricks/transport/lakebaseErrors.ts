@@ -40,8 +40,10 @@ export const LAKEBASE_ERROR_HINTS = new Map<string, string>([
 		'23503',
 		'If you insert or update a row, the row it points at must exist. If you delete a row, delete the rows that point at it first, or set the foreign key to cascade.',
 	],
+	['22P02', "A value does not fit the column's type."],
 	['23505', 'A row with the same key already exists.'],
 	['23502', 'A column that cannot be null has no value.'],
+	['23514', "A value breaks a rule the table enforces. Check the column's allowed values."],
 ]);
 
 /**

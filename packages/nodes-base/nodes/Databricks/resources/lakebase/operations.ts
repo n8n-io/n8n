@@ -29,6 +29,12 @@ export const lakebaseOperations: INodeProperties = {
 			description: 'Insert a row into a table',
 			action: 'Insert a row',
 		},
+		{
+			name: 'Update',
+			value: 'update',
+			description: 'Update the rows that match a column',
+			action: 'Update rows',
+		},
 	],
 	default: 'getAll',
 };

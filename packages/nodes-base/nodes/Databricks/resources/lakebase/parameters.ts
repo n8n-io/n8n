@@ -360,6 +360,7 @@ export const lakebaseParameters: INodeProperties[] = [
 				'lakebaseDatabase.value',
 				'lakebaseSchema.value',
 				'lakebaseTable.value',
+				'operation',
 			],
 			resourceMapper: {
 				resourceMapperMethod: 'getLakebaseMappingColumns',
@@ -376,6 +377,43 @@ export const lakebaseParameters: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: { resource: ['lakebase'], operation: ['insert'] },
+		},
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		required: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+				'lakebaseTable.value',
+				'operation',
+			],
+			resourceMapper: {
+				resourceMapperMethod: 'getLakebaseMappingColumns',
+				mode: 'update',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				// A composite primary key needs every component selected, or the filter
+				// picks up more rows than the one the user means
+				multiKeyMatch: true,
+				refreshStaleSchemaOnOpen: true,
+			},
+		},
+		displayOptions: {
+			show: { resource: ['lakebase'], operation: ['update'] },
 		},
 	},
 ];
