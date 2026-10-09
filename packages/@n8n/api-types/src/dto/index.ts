@@ -756,5 +756,27 @@ export {
 	promotePackageResultSchema,
 	promotionGitResultSchema,
 } from './promotions/promotion-operations.dto';
+export {
+	ListPromotionReviewsQueryDto,
+	PromotionReviewDetailDto,
+	PromotionReviewListPublicDto,
+	PromotionReviewWorkflowDiffDto,
+	promotionMergeRequestResultSchema,
+	promotionReviewChangeKindSchema,
+	promotionReviewDetailSchema,
+	promotionReviewListPublicSchema,
+	promotionReviewStateSchema,
+	promotionReviewSummarySchema,
+	promotionReviewTabSchema,
+	promotionReviewWorkflowChangeSchema,
+	promotionReviewWorkflowDiffSchema,
+	type PromotionMergeRequestResult,
+	type PromotionReviewChangeKind,
+	type PromotionReviewRemote,
+	type PromotionReviewState,
+	type PromotionReviewSummary,
+	type PromotionReviewTab,
+	type PromotionReviewWorkflowChange,
+} from './promotions/promotion-review.dto';
 
 export { ScimConfigPatchDto } from './scim';
