@@ -729,6 +729,429 @@ describe('Promotions in Public API', () => {
 		});
 	});
 
+	describe('GitLab discovery', () => {
+		const payload = {
+			name: 'GitLab discovery',
+			type: 'gitlab',
+			auth: { authType: 'token', username: 'n8n', password: 'discovery-token' },
+			config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+		};
+		const project = {
+			id: 42,
+			name: 'Workflows',
+			path_with_namespace: 'platform/workflows',
+			http_url_to_repo: 'https://gitlab.example.com/platform/workflows.git',
+			default_branch: 'main',
+		};
+		const repositoryQuery = {
+			simple: 'true',
+			order_by: 'id',
+			sort: 'asc',
+			per_page: '50',
+			page: '1',
+		};
+		const routes = ['repositories', 'repositories/42/branches'];
+
+		async function savedProvider(baseUrl = payload.config.baseUrl) {
+			const url = new URL(baseUrl);
+			const apiPath = `${url.pathname.replace(/\/$/, '')}/api/v4`;
+			const api = nock(url.origin)
+				.matchHeader('PRIVATE-TOKEN', payload.auth.password)
+				.get(`${apiPath}/user`)
+				.reply(200, { id: 1 })
+				.get(`${apiPath}/projects`)
+				.query({ membership: 'true', simple: 'true', per_page: '1', page: '1' })
+				.reply(200, []);
+			const id = await createProvider(testServer.publicApiAgentFor(owner), {
+				...payload,
+				config: { ...payload.config, baseUrl },
+			});
+			api.done();
+			return id;
+		}
+
+		function discoveryApi(
+			path = '/api/v4/projects',
+			query: Record<string, string> = repositoryQuery,
+		) {
+			return nock(payload.config.baseUrl)
+				.matchHeader('PRIVATE-TOKEN', payload.auth.password)
+				.get(path)
+				.query(query);
+		}
+
+		afterEach(() => nock.cleanAll());
+
+		it('discovers accessible repositories without membership or a connection and preserves credentials', async () => {
+			const id = await savedProvider();
+			const stored = await Container.get(PromotionProviderRepository).findById(id);
+			const decrypt = vi.spyOn(Container.get(Cipher), 'decryptV2');
+			const api = discoveryApi().reply(
+				200,
+				[
+					{ ...project, access_token: 'not-public' },
+					{
+						...project,
+						id: 43,
+						path_with_namespace: 'shared/workflows',
+						http_url_to_repo: 'https://gitlab.example.com/shared/workflows.git',
+						visibility: 'public',
+						permissions: { project_access: null, group_access: null },
+					},
+				],
+				{ 'X-Next-Page': '' },
+			);
+			try {
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.get(`/promotions/providers/${id}/repositories`);
+				expect(response.status, JSON.stringify(response.body)).toBe(200);
+				expect(response.body).toEqual({
+					data: [
+						{
+							id: '42',
+							name: 'Workflows',
+							fullPath: 'platform/workflows',
+							remoteUrl: project.http_url_to_repo,
+							defaultBranch: 'main',
+						},
+						{
+							id: '43',
+							name: 'Workflows',
+							fullPath: 'shared/workflows',
+							remoteUrl: 'https://gitlab.example.com/shared/workflows.git',
+							defaultBranch: 'main',
+						},
+					],
+					nextCursor: null,
+				});
+				expect(JSON.stringify(response.body)).not.toContain(payload.auth.password);
+				expect(decrypt).toHaveBeenCalledTimes(1);
+				expect(await Container.get(PromotionProviderRepository).findById(id)).toEqual(stored);
+				expect(await Container.get(PromotionConnectionRepository).count()).toBe(0);
+				api.done();
+			} finally {
+				decrypt.mockRestore();
+			}
+		});
+
+		it('lists branch names and identifies the default without returning commit details', async () => {
+			const id = await savedProvider();
+			const api = discoveryApi('/api/v4/projects/42/repository/branches', {
+				per_page: '50',
+				page: '1',
+			}).reply(
+				200,
+				[
+					{ name: 'main', default: true, commit: { author_email: 'not-public' } },
+					{ name: 'feature/workflows', default: false },
+				],
+				{ 'X-Next-Page': '' },
+			);
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/promotions/providers/${id}/repositories/42/branches`);
+			expect(response.status, JSON.stringify(response.body)).toBe(200);
+			expect(response.body).toEqual({
+				data: [
+					{ name: 'main', isDefault: true },
+					{ name: 'feature/workflows', isDefault: false },
+				],
+				nextCursor: null,
+			});
+			api.done();
+		});
+
+		it.each([false, true])(
+			'recovers an oversized branch page with a smaller limit afterRetry=%s',
+			async (afterRetry) => {
+				const id = await savedProvider();
+				const stored = await Container.get(PromotionProviderRepository).findById(id);
+				const path = '/api/v4/projects/42/repository/branches';
+				const query = { per_page: '50', page: '1' };
+				const branches = Array.from({ length: 50 }, (_, index) => ({
+					name: `release/${index}`,
+					default: index === 0,
+					commit: { message: 'x'.repeat(24 * 1024) },
+				}));
+				const transient = afterRetry ? discoveryApi(path, query).reply(503) : undefined;
+				const large = discoveryApi(path, query).reply(200, branches);
+				const agent = testServer.publicApiAgentFor(owner);
+				const root = `/promotions/providers/${id}/repositories/42/branches`;
+				const response = await agent.get(root);
+				expect(response.status, JSON.stringify(response.body)).toBe(400);
+				expect(response.body.message).toBe(
+					'The results are too large to load. Start again with fewer items.',
+				);
+				expect(response.body.message).not.toContain('Check the GitLab URL');
+				expect(JSON.stringify(response.body)).not.toContain(payload.auth.password);
+				expect(await Container.get(PromotionProviderRepository).findById(id)).toEqual(stored);
+				transient?.done();
+				large.done();
+
+				const firstApi = discoveryApi(path, { per_page: '1', page: '1' }).reply(
+					200,
+					branches.slice(0, 1),
+					{ 'X-Next-Page': '2' },
+				);
+				const nextApi = discoveryApi(path, { per_page: '1', page: '2' }).reply(
+					200,
+					branches.slice(1, 2),
+					{ 'X-Next-Page': '3' },
+				);
+				const first = await agent.get(root).query({ limit: 1 });
+				expect(first.status, JSON.stringify(first.body)).toBe(200);
+				expect(first.body.data).toEqual([{ name: 'release/0', isDefault: true }]);
+				expect(first.body.nextCursor).not.toBeNull();
+				const next = await agent.get(root).query({ cursor: first.body.nextCursor });
+				expect(next.status, JSON.stringify(next.body)).toBe(200);
+				expect(next.body.data).toEqual([{ name: 'release/1', isDefault: false }]);
+				expect(next.body.nextCursor).not.toBeNull();
+				firstApi.done();
+				nextApi.done();
+			},
+		);
+
+		it.each(routes)('pages and searches %s using the cursor page size', async (route) => {
+			const id = await savedProvider();
+			const repositories = route === 'repositories';
+			const path = repositories ? '/api/v4/projects' : '/api/v4/projects/42/repository/branches';
+			const query = repositories ? { ...repositoryQuery, search_namespaces: 'true' } : {};
+			const firstData = repositories
+				? [project, { ...project, id: 43, path_with_namespace: 'other/workflows' }]
+				: [
+						{ name: 'main', default: true },
+						{ name: 'release', default: false },
+					];
+			const lastData = repositories
+				? [{ ...project, id: 44 }]
+				: [{ name: 'release/next', default: false }];
+			const firstApi = discoveryApi(path, {
+				...query,
+				per_page: '2',
+				page: '1',
+				search: 'workflows',
+			}).reply(200, firstData, { 'X-Next-Page': '2' });
+			const nextApi = discoveryApi(path, {
+				...query,
+				per_page: '2',
+				page: '2',
+				search: 'workflows',
+			}).reply(200, lastData, { 'X-Next-Page': '' });
+			const agent = testServer.publicApiAgentFor(owner);
+			const first = await agent
+				.get(`/promotions/providers/${id}/${route}`)
+				.query({ limit: 2, search: ' workflows ' });
+			expect(first.status, JSON.stringify(first.body)).toBe(200);
+			expect(first.body.data).toHaveLength(2);
+			expect(typeof first.body.nextCursor).toBe('string');
+			const next = await agent
+				.get(`/promotions/providers/${id}/${route}`)
+				.query({ cursor: first.body.nextCursor, limit: 100, search: 'workflows' });
+			expect(next.status, JSON.stringify(next.body)).toBe(200);
+			expect(next.body.data).toHaveLength(1);
+			expect(next.body.nextCursor).toBeNull();
+			firstApi.done();
+			nextApi.done();
+		});
+
+		it('keeps the self-hosted installation path and caps the GitLab page size', async () => {
+			const id = await savedProvider(`${payload.config.baseUrl}/gitlab/`);
+			const api = discoveryApi('/gitlab/api/v4/projects').reply(200, [
+				{ ...project, default_branch: null },
+			]);
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/promotions/providers/${id}/repositories?limit=250`);
+			expect(response.status, JSON.stringify(response.body)).toBe(200);
+			expect(response.body.data[0].defaultBranch).toBeNull();
+			api.done();
+		});
+
+		it.each(routes)('returns an empty %s list for valid credentials', async (route) => {
+			const id = await savedProvider();
+			const path =
+				route === 'repositories' ? '/api/v4/projects' : '/api/v4/projects/42/repository/branches';
+			const api = discoveryApi(
+				path,
+				route === 'repositories' ? repositoryQuery : { per_page: '50', page: '1' },
+			).reply(200, []);
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/promotions/providers/${id}/${route}`);
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({ data: [], nextCursor: null });
+			api.done();
+		});
+
+		it.each([
+			{ route: 'repositories', status: 401, message: 'rejected the access token' },
+			{ route: 'repositories', status: 403, message: 'read_api scope' },
+			{ route: 'repositories', status: 503, message: 'not available' },
+			{ route: 'repositories/42/branches', status: 403, message: 'repository access' },
+		])(
+			'reports a GitLab $status error for $route without returning an empty list or token',
+			async ({ route, status, message }) => {
+				const id = await savedProvider();
+				const stored = await Container.get(PromotionProviderRepository).findById(id);
+				const repositories = route === 'repositories';
+				const api = discoveryApi(
+					repositories ? '/api/v4/projects' : '/api/v4/projects/42/repository/branches',
+					repositories ? repositoryQuery : { per_page: '50', page: '1' },
+				)
+					.times(status === 503 ? 2 : 1)
+					.reply(status, { message: payload.auth.password });
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.get(`/promotions/providers/${id}/${route}`);
+				expect(response.status).toBe(status === 503 ? 503 : 400);
+				expect(response.body).not.toHaveProperty('data');
+				expect(response.body.message).toContain(message);
+				expect(JSON.stringify(response.body)).not.toContain(payload.auth.password);
+				expect(await Container.get(PromotionProviderRepository).findById(id)).toEqual(stored);
+				api.done();
+			},
+		);
+
+		it('reports an inaccessible repository instead of an empty branch list', async () => {
+			const id = await savedProvider();
+			const api = discoveryApi('/api/v4/projects/42/repository/branches', {
+				per_page: '50',
+				page: '1',
+			}).reply(404);
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/promotions/providers/${id}/repositories/42/branches`);
+			expect(response.status).toBe(404);
+			expect(response.body.message).toContain('token can access this repository');
+			api.done();
+		});
+
+		it('encodes a repository path as one GitLab project identifier', async () => {
+			const id = await savedProvider();
+			const api = discoveryApi('/api/v4/projects/platform%2Fworkflows/repository/branches', {
+				per_page: '50',
+				page: '1',
+			}).reply(200, [{ name: 'main', default: true }]);
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/promotions/providers/${id}/repositories/platform%2Fworkflows/branches`);
+			expect(response.status, JSON.stringify(response.body)).toBe(200);
+			api.done();
+		});
+
+		it('rejects invalid queries before it reads the provider', async () => {
+			for (const route of routes) {
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.get(`/promotions/providers/not-needed/${route}`)
+					.query({ offset: 1 });
+				expect(response.status).toBe(400);
+			}
+		});
+
+		it('rejects unexpected pagination metadata without following its URL', async () => {
+			const id = await savedProvider();
+			const api = discoveryApi().reply(200, [project], {
+				'X-Next-Page': 'https://other.example.com',
+			});
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/promotions/providers/${id}/repositories`);
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('unexpected response');
+			api.done();
+		});
+
+		it.each(routes)('rejects malformed %s responses', async (route) => {
+			const id = await savedProvider();
+			const repositories = route === 'repositories';
+			const api = discoveryApi(
+				repositories ? '/api/v4/projects' : '/api/v4/projects/42/repository/branches',
+				repositories ? repositoryQuery : { per_page: '50', page: '1' },
+			).reply(
+				200,
+				repositories
+					? [{ ...project, http_url_to_repo: 'https://user:secret@example.com/repo.git' }]
+					: [{ name: 'main' }],
+			);
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/promotions/providers/${id}/${route}`);
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('unexpected response');
+			api.done();
+		});
+
+		it('continues a full page when a proxy omits pagination headers', async () => {
+			const id = await savedProvider();
+			const api = discoveryApi('/api/v4/projects', { ...repositoryQuery, per_page: '1' }).reply(
+				200,
+				[project],
+			);
+			const nextApi = discoveryApi('/api/v4/projects', {
+				...repositoryQuery,
+				per_page: '1',
+				page: '2',
+			}).reply(200, []);
+			const agent = testServer.publicApiAgentFor(owner);
+			const first = await agent.get(`/promotions/providers/${id}/repositories?limit=1`);
+			expect(first.status).toBe(200);
+			expect(first.body.nextCursor).not.toBeNull();
+			const next = await agent
+				.get(`/promotions/providers/${id}/repositories`)
+				.query({ cursor: first.body.nextCursor });
+			expect(next.status).toBe(200);
+			expect(next.body).toEqual({ data: [], nextCursor: null });
+			api.done();
+			nextApi.done();
+		});
+
+		it('returns an input error for a cursor that does not start a page', async () => {
+			const cursor = Buffer.from(JSON.stringify({ offset: 1, limit: 2 })).toString('base64');
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/promotions/providers/not-needed/repositories')
+				.query({ cursor });
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('invalid cursor');
+		});
+
+		it.each(routes)('requires the API-key read scope and user permission for %s', async (route) => {
+			const id = await savedProvider();
+			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:list'] });
+			const member = await createMemberWithApiKey({ scopes: ['gitConnection:read'] });
+			for (const user of [restrictedOwner, member]) {
+				const response = await testServer
+					.publicApiAgentFor(user)
+					.get(`/promotions/providers/${id}/${route}`);
+				expect(response.status).toBe(403);
+			}
+		});
+
+		it.each(routes)('requires an active, licensed promotions module for %s', async (route) => {
+			const agent = testServer.publicApiAgentFor(owner);
+			testServer.license.disable('feat:gitConnections');
+			expect((await agent.get(`/promotions/providers/not-needed/${route}`)).status).toBe(403);
+			testServer.license.reset();
+			const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
+			try {
+				expect((await agent.get(`/promotions/providers/not-needed/${route}`)).status).toBe(503);
+			} finally {
+				active.mockRestore();
+			}
+		});
+
+		it.each(routes)('reports missing and plain Git providers for %s', async (route) => {
+			const agent = testServer.publicApiAgentFor(owner);
+			expect((await agent.get(`/promotions/providers/missing/${route}`)).status).toBe(404);
+			const id = await createProvider(agent);
+			const response = await agent.get(`/promotions/providers/${id}/${route}`);
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('no Git host API');
+		});
+	});
+
 	it('rejects a key that has no promotion scope', async () => {
 		const unscopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
 		const agent = testServer.publicApiAgentFor(unscopedOwner);

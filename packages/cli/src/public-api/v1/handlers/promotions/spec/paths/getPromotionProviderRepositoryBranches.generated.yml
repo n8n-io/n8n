@@ -1,0 +1,67 @@
+operationId: getPromotionProviderRepositoryBranches
+tags:
+  - Promotions
+summary: List branches of a promotion repository
+description: Lists branches of the selected GitLab repository and identifies its default branch. Use the repository ID from repository discovery. Supports branch search and cursor pagination, with at most 50 items per page. A saved connection is not required. Invalid credentials and inaccessible repositories return errors, not empty lists. If a response is too large, restart the list with a smaller limit and no cursor.
+x-required-scope: gitConnection:read
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+    required: true
+    description: The ID of the promotion provider.
+    name: promotionProviderId
+    in: path
+  - schema:
+      type: string
+      minLength: 1
+      maxLength: 256
+    required: true
+    name: repositoryId
+    in: path
+  - schema:
+      type: string
+      maxLength: 255
+    required: false
+    name: search
+    in: query
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  isDefault:
+                    type: boolean
+                required:
+                  - name
+                  - isDefault
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

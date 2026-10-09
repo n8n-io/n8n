@@ -26,6 +26,7 @@ import type { PromotionProvider } from './database/entities/promotion-provider.e
 import { PromotionConnectionRepository } from './database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from './database/repositories/promotion-provider.repository';
 import { GitHostClients } from './git-hosts/git-host-clients';
+import type { GitHostDiscoveryQuery } from './git-hosts/git-host.types';
 import { mapPromotionConflicts } from './promotion-conflicts';
 import { PromotionsGitService } from './promotions-git.service';
 import {
@@ -74,6 +75,41 @@ export class PromotionProvidersService {
 	async list(offset: number, limit: number) {
 		const { data, count } = await this.providerRepository.listProviders({ offset, limit });
 		return { count, data: data.map((provider) => this.toSummary(provider)) };
+	}
+
+	async listRepositories(id: string, query: GitHostDiscoveryQuery) {
+		const { client, access } = await this.discoveryAccess(id);
+		return await client.listRepositories(access, query);
+	}
+
+	async listBranches(id: string, repositoryId: string, query: GitHostDiscoveryQuery) {
+		const { client, access } = await this.discoveryAccess(id);
+		return await client.listBranches(access, repositoryId, query);
+	}
+
+	private async discoveryAccess(id: string) {
+		const provider = await this.getEntity(id);
+		if (!isPromotionGitHostType(provider.type)) {
+			throw new BadRequestError(
+				'This provider has no Git host API. Use a GitLab provider to list repositories and branches.',
+			);
+		}
+		const config = promotionGitHostConfigSchema.safeParse(provider.config);
+		if (!config.success) {
+			throw new BadRequestError(
+				'The stored provider config cannot be read. Update the provider to replace it.',
+			);
+		}
+		const credentials = await this.decryptCredentials(provider);
+		if (credentials.authType !== 'token') throw unreadableCredentialsError();
+		return {
+			client: this.gitHosts.clientFor(provider.type),
+			access: {
+				baseUrl: config.data.baseUrl,
+				username: credentials.username,
+				accessToken: credentials.password,
+			},
+		};
 	}
 
 	/**
