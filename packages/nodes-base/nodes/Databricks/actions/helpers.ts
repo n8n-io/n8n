@@ -81,6 +81,23 @@ export async function getHost(
 	return credentials.host.replace(/\/$/, '');
 }
 
+/** Adds the Genie UI link for a space or a conversation. `?o=` carries the workspace id; Azure workspaces need it. */
+export function withGenieDeepLink(
+	response: { body: IDataObject; headers: IDataObject },
+	host: string,
+	spaceId: string,
+	conversationId?: string,
+): IDataObject {
+	const workspaceId = response.headers['x-databricks-org-id'];
+	const query =
+		typeof workspaceId === 'string' && /^\d+$/.test(workspaceId) ? `?o=${workspaceId}` : '';
+	const chat = conversationId ? `/chats/${encodeURIComponent(conversationId)}` : '';
+	return {
+		...response.body,
+		deep_link: `${host}/genie/rooms/${encodeURIComponent(spaceId)}${chat}${query}`,
+	};
+}
+
 // Body text comes from whatever server `host` points at
 export function sanitizeApiMessage(message: string): string {
 	// eslint-disable-next-line no-control-regex
