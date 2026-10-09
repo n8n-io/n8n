@@ -954,6 +954,7 @@ describe('ActiveWorkflowManager', () => {
 					mode,
 					undefined,
 					undefined,
+					'none',
 				);
 
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
@@ -997,6 +998,7 @@ describe('ActiveWorkflowManager', () => {
 					mode,
 					undefined,
 					'wf-1:node-1:1700000000000',
+					'none',
 				);
 			});
 

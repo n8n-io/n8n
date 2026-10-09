@@ -186,6 +186,9 @@ export class AgentRepository extends BaseRepository<Agent> {
 		if (filter?.query) {
 			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${filter.query}%` });
 		}
+		if (filter?.ids) {
+			query.andWhere('agent.id IN (:...ids)', { ids: filter.ids });
+		}
 		if (filter?.availableInMCP !== undefined) {
 			query.andWhere('agent.availableInMCP = :availableInMCP', {
 				availableInMCP: filter.availableInMCP,
@@ -369,10 +372,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findByIdsAndProjectId(
 		ids: string[],
 		projectId: string,
-	): Promise<Array<Pick<Agent, 'id' | 'activeVersionId'>>> {
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'activeVersionId'>>> {
 		if (ids.length === 0) return [];
 		return await this.find({
-			select: ['id', 'activeVersionId'],
+			select: ['id', 'name', 'activeVersionId'],
 			where: { id: In(ids), projectId },
 		});
 	}

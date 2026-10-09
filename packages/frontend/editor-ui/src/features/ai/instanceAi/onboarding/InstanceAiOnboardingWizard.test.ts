@@ -28,7 +28,7 @@ const renderWizard = createComponentRenderer(InstanceAiOnboardingWizard, {
 		step: 'model',
 		editMode: false,
 		sequence: ['model', 'sandbox', 'search', 'done'],
-		modelValue: 'anthropic/claude-opus-5',
+		modelValue: 'anthropic/claude-opus-5-5',
 		sandboxValue: 'n8n Sandbox',
 		searchValue: 'Disabled',
 		composeFastPath: false,
@@ -87,7 +87,7 @@ describe('InstanceAiOnboardingWizard', () => {
 
 	it('does not auto-focus or auto-open the model dropdown when the wizard opens', async () => {
 		const { pinia } = setupStore({
-			modelName: 'claude-opus-5',
+			modelName: 'claude-opus-5-5',
 			modelEnvConfigured: true,
 			envManaged: {
 				model: { provider: true, apiKey: true, baseUrl: false, model: false },
@@ -123,12 +123,12 @@ describe('InstanceAiOnboardingWizard', () => {
 
 		await waitFor(() => expect(store.loadModelCatalog).toHaveBeenCalledOnce());
 		await fireEvent.click(inputFor(await findByTestId('assistant-model-name')));
-		expect(await findByText('claude-opus-5 · instanceAi.onboarding.recommended')).toBeVisible();
+		expect(await findByText('claude-opus-5-5 · instanceAi.onboarding.recommended')).toBeVisible();
 
 		store.$patch({
 			modelCatalog: {
 				anthropic: [
-					{ id: 'claude-opus-5', name: 'Claude Opus 5' },
+					{ id: 'claude-opus-5-5', name: 'Claude Opus 5.5' },
 					{ id: 'claude-haiku-5', name: 'Claude Haiku 5' },
 				],
 				openai: [],
@@ -136,7 +136,7 @@ describe('InstanceAiOnboardingWizard', () => {
 			},
 		});
 
-		expect(await findByText('Claude Opus 5 · instanceAi.onboarding.recommended')).toBeVisible();
+		expect(await findByText('Claude Opus 5.5 · instanceAi.onboarding.recommended')).toBeVisible();
 		expect(await findByText('Claude Haiku 5')).toBeVisible();
 
 		await fireEvent.update(inputFor(await findByTestId('assistant-model-api-key')), 'model-key');
@@ -144,7 +144,7 @@ describe('InstanceAiOnboardingWizard', () => {
 		await fireEvent.click(await findByTestId('wizard-primary'));
 		await waitFor(() =>
 			expect(store.verifyModel).toHaveBeenCalledWith(
-				expect.objectContaining({ modelName: 'claude-opus-5' }),
+				expect.objectContaining({ modelName: 'claude-opus-5-5' }),
 			),
 		);
 	});
@@ -157,13 +157,13 @@ describe('InstanceAiOnboardingWizard', () => {
 		await fireEvent.click(inputFor(await findByTestId('assistant-model-provider')));
 		await fireEvent.click(await findByText('OpenAI'));
 		await fireEvent.click(inputFor(await findByTestId('assistant-model-name')));
-		await fireEvent.click(await findByText('gpt-5.6-terra'));
+		await fireEvent.click(await findByText('gpt-6-astra'));
 
 		store.$patch({
 			modelCatalog: {
 				anthropic: [],
 				openai: [
-					{ id: 'gpt-5.6-terra', name: 'GPT 5.6 Terra' },
+					{ id: 'gpt-6-astra', name: 'GPT-6 Astra' },
 					{ id: 'gpt-dynamic', name: 'GPT Dynamic' },
 				],
 				openrouter: [],
@@ -174,7 +174,7 @@ describe('InstanceAiOnboardingWizard', () => {
 
 		await waitFor(() =>
 			expect(store.verifyModel).toHaveBeenCalledWith(
-				expect.objectContaining({ modelName: 'gpt-5.6-terra' }),
+				expect.objectContaining({ modelName: 'gpt-6-astra' }),
 			),
 		);
 	});
@@ -214,14 +214,14 @@ describe('InstanceAiOnboardingWizard', () => {
 		await waitFor(() =>
 			expect(store.verifyModel).toHaveBeenCalledWith({
 				connection: { type: 'anthropicApi', data: { apiKey: 'model-key' } },
-				modelName: 'claude-opus-5',
+				modelName: 'claude-opus-5-5',
 			}),
 		);
 		expect(store.setField).toHaveBeenCalledWith('modelConnection', {
 			type: 'anthropicApi',
 			data: { apiKey: 'model-key' },
 		});
-		expect(store.setField).toHaveBeenCalledWith('modelName', 'claude-opus-5');
+		expect(store.setField).toHaveBeenCalledWith('modelName', 'claude-opus-5-5');
 		expect(store.save).toHaveBeenCalledWith(false);
 		expect(store.refreshInstanceModelCredentials).toHaveBeenCalled();
 		expect(await findByText('instanceAi.onboarding.model.success')).toBeVisible();
@@ -252,7 +252,7 @@ describe('InstanceAiOnboardingWizard', () => {
 
 	it('verifies an environment-managed model without sending a connection', async () => {
 		const { pinia, store } = setupStore({
-			modelName: 'claude-opus-5',
+			modelName: 'claude-opus-5-5',
 			modelEnvConfigured: true,
 			sandboxEnvConfigured: true,
 			envManaged: {
@@ -268,9 +268,9 @@ describe('InstanceAiOnboardingWizard', () => {
 		await fireEvent.click(getByTestId('wizard-primary'));
 
 		await waitFor(() =>
-			expect(store.verifyModel).toHaveBeenCalledWith({ modelName: 'claude-opus-5' }),
+			expect(store.verifyModel).toHaveBeenCalledWith({ modelName: 'claude-opus-5-5' }),
 		);
-		expect(store.setField).toHaveBeenCalledWith('modelName', 'claude-opus-5');
+		expect(store.setField).toHaveBeenCalledWith('modelName', 'claude-opus-5-5');
 		expect(store.setField).toHaveBeenCalledWith('sandboxEnabled', true);
 		await waitFor(() => expect(emitted().advance).toEqual([[]]), { timeout: 2500 });
 	});
@@ -642,7 +642,7 @@ describe('InstanceAiOnboardingWizard', () => {
 			props: { step: 'done', composeFastPath: true },
 		});
 
-		expect(queryByText('anthropic/claude-opus-5')).toBeNull();
+		expect(queryByText('anthropic/claude-opus-5-5')).toBeNull();
 		await fireEvent.click(await findByTestId('wizard-primary'));
 		expect(emitted().completed).toEqual([[]]);
 	});

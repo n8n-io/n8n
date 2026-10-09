@@ -3,7 +3,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { backoff } from './backoff';
 import { LeaseLostError, TaskTimeoutError } from '../errors';
-import { LONG_RUN_THRESHOLD_IN_LEASES, MIN_RENEWAL_INTERVAL_MS } from './lease-constants';
+import { MIN_RENEWAL_INTERVAL_MS } from './lease-constants';
 import { LeaseHeartbeat } from './lease-heartbeat';
 import type { LeaseRenewalResult } from './lease-heartbeat';
 import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
@@ -64,12 +64,6 @@ export interface ExecutorHooks {
 
 	/** A lease renewal write failed; the next renewal tries again. */
 	onLeaseRenewalError?: (task: ClaimedTask, error: unknown) => void;
-
-	/**
-	 * A handler is still running after many leases, so it may be stuck. Fires once a
-	 * run, and only for a run whose timeout comes later.
-	 */
-	onLongRunningTask?: (task: ClaimedTask, runningSeconds: number) => void;
 
 	/**
 	 * A run reached the timeout of its occurrence. Its signal is aborted and its
@@ -336,7 +330,7 @@ export class Executor {
 			await dispatchMark;
 			return await this.recordHandlerFailure(task, claim, error, {
 				dispatchWasReported: dispatchMark !== undefined,
-				timedOut: run.signal.reason instanceof TaskTimeoutError,
+				abortReason: run.signal.reason,
 			});
 		}
 
@@ -355,9 +349,10 @@ export class Executor {
 		task: ClaimedTask,
 		claim: ClaimedTaskRef,
 		error: unknown,
-		{ dispatchWasReported, timedOut }: { dispatchWasReported: boolean; timedOut: boolean },
+		{ dispatchWasReported, abortReason }: { dispatchWasReported: boolean; abortReason: unknown },
 	): Promise<FireResult> {
 		const errorMessage = ensureError(error).message;
+		const timedOut = abortReason instanceof TaskTimeoutError;
 		const nextAttempts = task.attempts + 1;
 		// A dispatched run that timed out is completed, as the reaper completes it
 		// when the handler ignores its signal.
@@ -427,14 +422,6 @@ export class Executor {
 			},
 		);
 		const timeoutMs = task.timeoutSeconds * Time.seconds.toMilliseconds;
-		// A run whose timeout comes first gets the timeout warning instead.
-		const longRunMs = LONG_RUN_THRESHOLD_IN_LEASES * this.leaseMs;
-		const longRun = new Alarm(() => performance.now());
-		if (longRunMs < timeoutMs) {
-			longRun.set(leaseSetAt + longRunMs, () =>
-				this.hooks.onLongRunningTask?.(task, longRunMs / Time.seconds.toMilliseconds),
-			);
-		}
 		const deadline = leaseSetAt + timeoutMs;
 		const timeout = new Alarm(() => performance.now());
 		timeout.set(deadline, () => {
@@ -447,9 +434,11 @@ export class Executor {
 			}
 		});
 		try {
-			await handler.execute(task, report, run.signal, deadline);
+			await handler.execute(task, report, {
+				signal: run.signal,
+				remainingMs: () => Math.max(0, deadline - performance.now()),
+			});
 		} finally {
-			longRun.cancel();
 			timeout.cancel();
 			heartbeat.stop();
 		}

@@ -16,6 +16,7 @@ import {
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nStatusDot,
 	N8nSwitch,
 	N8nText,
 	type DropdownMenuItemProps,
@@ -520,12 +521,10 @@ function openAiUsageSettings() {
 										:aria-label="i18n.baseText('settings.n8nAgent.status.manage')"
 									>
 										<span :class="$style.statusLabel">
-											<span
-												:class="[
-													$style.statusDot,
-													isSetupRequired ? $style.statusDotWarning : $style.statusDotSuccess,
-												]"
-												aria-hidden="true"
+											<N8nStatusDot
+												:variant="isSetupRequired ? 'warning' : 'success'"
+												:pulse="!isSetupRequired"
+												data-test-id="n8n-agent-status-dot"
 											/>
 											{{
 												isSetupRequired
@@ -828,20 +827,6 @@ function openAiUsageSettings() {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-}
-
-.statusDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: var(--radius--full);
-}
-
-.statusDotSuccess {
-	background: var(--text-color--success);
-}
-
-.statusDotWarning {
-	background: var(--text-color--warning);
 }
 
 .danger {

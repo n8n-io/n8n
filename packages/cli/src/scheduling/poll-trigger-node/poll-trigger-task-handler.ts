@@ -4,7 +4,13 @@ import type { PollerFailureState } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TaskTimeoutError } from '@n8n/scheduler';
-import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
+import type {
+	ClaimedTask,
+	DispatchDecision,
+	DispatchReporter,
+	TaskHandler,
+	TaskRun,
+} from '@n8n/scheduler';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	commitStagedCursor,
@@ -59,8 +65,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 	async execute(
 		task: ClaimedTask,
 		report: DispatchReporter,
-		leaseSignal: AbortSignal,
-		deadline: number,
+		{ signal: leaseSignal, remainingMs }: TaskRun,
 	): Promise<DispatchDecision> {
 		// A setup failure here retries to N8N_SCHEDULER_MAX_ATTEMPTS then dead-letters,
 		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
@@ -114,7 +119,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				{
 					fence: { taskId: task.id, leaseEpoch: task.leaseEpoch },
 					timeoutSeconds: task.timeoutSeconds,
-					deadline,
+					remainingMs,
 				},
 				state?.cursor,
 			);

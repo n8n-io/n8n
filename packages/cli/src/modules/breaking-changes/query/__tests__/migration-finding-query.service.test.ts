@@ -154,7 +154,7 @@ describe('MigrationFindingQueryService', () => {
 		workflowRepository.findByIds.mockResolvedValue([]);
 		workflowStatisticsRepository.findByWorkflowIds.mockResolvedValue([]);
 		findingRepository.countOpenByRule.mockResolvedValue([]);
-		findingRepository.listRuleIdsWithWontFix.mockResolvedValue([]);
+		findingRepository.countWontFixByRule.mockResolvedValue([]);
 		findingRepository.countDistinctOpenWorkflows.mockResolvedValue(0);
 		findingRepository.listTriageableForRule.mockResolvedValue([]);
 		syncRepository.getForVersion.mockResolvedValue(null);
@@ -195,6 +195,7 @@ describe('MigrationFindingQueryService', () => {
 					recommendations: [{ action: 'Fix rule-a', description: 'How to fix rule-a' }],
 					migratable: false,
 					nbAffectedWorkflows: 3,
+					nbWontFixWorkflows: 0,
 				},
 			]);
 			// rule-b has no open findings, so it is left out, as in today's scan.
@@ -203,25 +204,31 @@ describe('MigrationFindingQueryService', () => {
 			expect(result.shouldCache).toBe(false);
 		});
 
-		it('lists a rule with only wont_fix findings with a count of zero', async () => {
+		it('lists each rule with its wont_fix count, and a rule with only wont_fix findings with an open count of zero', async () => {
 			findingRepository.countOpenByRule.mockResolvedValue([{ ruleId: 'rule-a', count: 3 }]);
-			findingRepository.listRuleIdsWithWontFix.mockResolvedValue(['rule-a', 'rule-b']);
+			findingRepository.countWontFixByRule.mockResolvedValue([
+				{ ruleId: 'rule-a', count: 1 },
+				{ ruleId: 'rule-b', count: 2 },
+			]);
 
 			const result = await service.getLightReport(TARGET_VERSION, INSTANCE);
 
-			expect(findingRepository.listRuleIdsWithWontFix).toHaveBeenCalledWith(
+			expect(findingRepository.countWontFixByRule).toHaveBeenCalledWith(
 				TARGET_VERSION,
 				undefined,
 				expect.anything(),
 			);
 			expect(
-				result.report.workflowResults.map(({ ruleId, nbAffectedWorkflows }) => ({
-					ruleId,
-					nbAffectedWorkflows,
-				})),
+				result.report.workflowResults.map(
+					({ ruleId, nbAffectedWorkflows, nbWontFixWorkflows }) => ({
+						ruleId,
+						nbAffectedWorkflows,
+						nbWontFixWorkflows,
+					}),
+				),
 			).toEqual([
-				{ ruleId: 'rule-a', nbAffectedWorkflows: 3 },
-				{ ruleId: 'rule-b', nbAffectedWorkflows: 0 },
+				{ ruleId: 'rule-a', nbAffectedWorkflows: 3, nbWontFixWorkflows: 1 },
+				{ ruleId: 'rule-b', nbAffectedWorkflows: 0, nbWontFixWorkflows: 2 },
 			]);
 		});
 
@@ -278,6 +285,11 @@ describe('MigrationFindingQueryService', () => {
 			const result = await service.getLightReport(TARGET_VERSION, scope);
 
 			expect(findingRepository.countOpenByRule).toHaveBeenCalledWith(
+				TARGET_VERSION,
+				scope.workflowIds,
+				expect.anything(),
+			);
+			expect(findingRepository.countWontFixByRule).toHaveBeenCalledWith(
 				TARGET_VERSION,
 				scope.workflowIds,
 				expect.anything(),

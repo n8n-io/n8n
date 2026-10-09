@@ -145,6 +145,22 @@ describe('AgentsListController', () => {
 				expect.objectContaining({ agentId: 'agent-1' }),
 			);
 		});
+
+		it('forwards a search filter', async () => {
+			const { controller, agentsService } = makeController();
+			const res = mock<Response>();
+			agentsService.findN8nChatThreadsForUser.mockResolvedValue({
+				data: [],
+				nextCursor: null,
+			} as never);
+
+			await controller.listN8nChatThreads(req, res, { search: 'refund' } as never);
+
+			expect(agentsService.findN8nChatThreadsForUser).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ search: 'refund' }),
+			);
+		});
 	});
 
 	describe('getN8nChatThread', () => {

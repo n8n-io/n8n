@@ -1,11 +1,20 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
-import { validateExecutableGraph, type WorkflowGraph } from '../graph';
+import {
+	deriveLoops,
+	findTriggerNode,
+	getDescendantNodeIds,
+	GraphValidationError,
+	validateExecutableGraph,
+	type StoredWorkflowGraph,
+	type WorkflowGraph,
+} from '../graph';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ResponseExpectation } from '../response-channel';
 import type { ExecutionStore } from './execution-store';
 import type {
 	CallerContext,
 	ExecutionMode,
+	SeededSteps,
 	TriggerOutputs,
 	WorkflowDocument,
 } from './execution.types';
@@ -20,6 +29,8 @@ export interface StartExecutionRequest {
 	workflow: WorkflowDocument;
 	/** Trigger step's output slots, one entry per output. */
 	triggerOutputs?: TriggerOutputs | null;
+	/** Steps to record as completed at start, with the outputs the caller holds. */
+	seededSteps?: SeededSteps;
 	mode?: ExecutionMode;
 	/** Stored with the execution and handed to every step executor. */
 	callerContext: CallerContext;
@@ -48,6 +59,7 @@ export class StartExecutionService {
 		// Rejected before admittance: a graph that can never run shouldn't spend
 		// admittance capacity, and nothing is persisted for it.
 		this.validateGraph(request.graph);
+		validateSeededSteps(request.graph, request.seededSteps ?? {});
 
 		const decision = await this.admittance.evaluate({ workflowId: request.workflowId });
 		if (!decision.accept) {
@@ -64,9 +76,10 @@ export class StartExecutionService {
 			// admitted; a worker flips this to 'running' when it starts
 			status: 'queued',
 			mode: request.mode ?? 'production',
-			graph: request.graph,
+			graph: toStoredGraph(request.graph, request.seededSteps ?? {}),
 			workflow: request.workflow,
 			triggerOutputs: request.triggerOutputs ?? null,
+			seededSteps: request.seededSteps,
 			callerContext: request.callerContext,
 			responseExpectation: request.responseExpectation ?? { kind: 'none' },
 		});
@@ -80,5 +93,58 @@ export class StartExecutionService {
 		});
 
 		return { executionId };
+	}
+}
+
+/**
+ * Records which nodes are seeded on the stored graph, so we know to use the
+ * seeded data during execution.
+ */
+function toStoredGraph(graph: WorkflowGraph, seededSteps: SeededSteps): StoredWorkflowGraph {
+	return { ...graph, seeded: Object.keys(seededSteps) };
+}
+
+/**
+ * Rejects seeded steps that a settlement could not record correctly.
+ *
+ * When the run reaches a seeded node, the settlement that would have queued it
+ * records it as completed with the seeded outputs for that pass instead. That
+ * only works for a node that:
+ *
+ * - is not the trigger: its outputs arrive as `triggerOutputs`.
+ * - the trigger can reach: no settlement ever reaches any other node, so its
+ *   outputs would never be used.
+ * - is not in a loop, and so has exactly one pass. TODO(CAT-4875): accept a
+ *   loop's passes.
+ */
+function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): void {
+	// The graph was validated first, so the trigger exists.
+	const trigger = findTriggerNode(graph);
+	const reachable = new Set(trigger ? getDescendantNodeIds(graph, trigger.id) : []);
+	const loopByMember = new Map(
+		deriveLoops(graph).flatMap((loop) => [...loop.memberIds].map((id) => [id, loop] as const)),
+	);
+	for (const [nodeId, passes] of Object.entries(seededSteps)) {
+		if (nodeId === trigger?.id) {
+			throw new GraphValidationError(
+				'The trigger cannot be seeded; send its payload as triggerOutputs',
+			);
+		}
+		if (!reachable.has(nodeId)) {
+			throw new GraphValidationError(
+				`Seeded step names node ${nodeId}, which the trigger does not reach`,
+			);
+		}
+		const loop = loopByMember.get(nodeId);
+		if (loop) {
+			throw new GraphValidationError(
+				`Seeded step names node ${nodeId}, which is inside the loop of ${loop.batchNodeId}; a loop member runs once per pass and cannot be seeded`,
+			);
+		}
+		if (passes.length !== 1) {
+			throw new GraphValidationError(
+				`Node ${nodeId} is seeded with ${passes.length} passes, and a node outside a loop has one`,
+			);
+		}
 	}
 }

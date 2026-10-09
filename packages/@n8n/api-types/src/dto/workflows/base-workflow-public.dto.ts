@@ -156,6 +156,7 @@ export const workflowWritePublicShape = {
 	id: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.id),
 	name: z.string().openapi(workflowCreateFieldDocs.name),
 	active: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.active),
+	activeVersionId: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.activeVersionId),
 	createdAt: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.createdAt),
 	updatedAt: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.updatedAt),
 	isArchived: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.isArchived),

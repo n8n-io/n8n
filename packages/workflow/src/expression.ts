@@ -19,13 +19,7 @@ import type {
 	IWorkflowDataProxyData,
 	NodeParameterValue,
 } from './interfaces';
-const IS_FRONTEND_IN_DEV_MODE =
-	typeof process === 'object' &&
-	Object.keys(process).length === 1 &&
-	'env' in process &&
-	Object.keys(process.env).length === 0;
-
-const IS_FRONTEND = typeof process === 'undefined' || IS_FRONTEND_IN_DEV_MODE;
+import { IS_FRONTEND } from './runtime-environment';
 
 const isSyntaxError = (error: unknown): error is SyntaxError =>
 	error instanceof SyntaxError || (error instanceof Error && error.name === 'SyntaxError');

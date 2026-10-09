@@ -58,6 +58,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import {
 	buildAgentTreeFromEvents,
 	clearedAgentBuilderTargetMetadata,
+	meterEvalUsage,
 	seedAgentBuilderTargetMetadata,
 } from '@n8n/instance-ai';
 import {
@@ -1160,7 +1161,11 @@ export class InstanceAiController {
 		@Param('workflowId') workflowId: string,
 		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
-		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
+		// The mocks run on the eval model; the caller adds their usage to the case's cost.
+		const { result, usage } = await meterEvalUsage(
+			async () => await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload),
+		);
+		return { ...result, llmUsage: usage };
 	}
 
 	// Runs for minutes; same client timeout handling as the workflow variant.
@@ -1172,7 +1177,11 @@ export class InstanceAiController {
 		@Param('agentId') agentId: string,
 		@Body payload: InstanceAiEvalAgentExecutionRequest,
 	) {
-		return await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload);
+		const { result, usage } = await meterEvalUsage(
+			async () =>
+				await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload),
+		);
+		return { ...result, llmUsage: usage };
 	}
 
 	/**

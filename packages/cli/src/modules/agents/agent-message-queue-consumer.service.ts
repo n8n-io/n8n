@@ -14,7 +14,7 @@ import { AgentExecutionOrchestratorService } from './agent-execution-orchestrato
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentMessageQueueService, type ClaimedAgentMessage } from './agent-message-queue.service';
 import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
-import { emitChunkEvents } from './agent-sse-stream';
+import { emitChunkEvents, toChatErrorEvent } from './agent-sse-stream';
 import { AgentTestRunService } from './agent-test-run.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
@@ -166,10 +166,7 @@ export class AgentMessageQueueConsumer {
 			}
 		} catch (error) {
 			await this.queue.recordFailure(claim, error, controller.signal);
-			sender?.send({
-				type: 'error',
-				message: error instanceof Error ? error.message : 'Chat failed',
-			});
+			sender?.send(toChatErrorEvent(error, 'Chat failed'));
 			this.logger.warn('Queued agent message failed', {
 				queueId: item.id,
 				executionId: admission.executionId,
