@@ -104,9 +104,12 @@ export async function microsoftApiRequest(
 		apiUrl = `${baseUrl}/v1.0/me${resource}`;
 	}
 
+	const useImmutableId = getUseImmutableId(this);
+
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
+			...(useImmutableId ? { Prefer: 'IdType="ImmutableId"' } : {}),
 		},
 		method,
 		body,
@@ -144,6 +147,26 @@ export async function microsoftApiRequest(
 		}
 
 		throw error;
+	}
+}
+
+export function getUseImmutableId(
+	context: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+) {
+	// For list-search/load-options calls, this value is available via getCurrentNodeParameter.
+	if (
+		'getCurrentNodeParameter' in context &&
+		typeof context.getCurrentNodeParameter === 'function'
+	) {
+		try {
+			return context.getCurrentNodeParameter('useImmutableId') as boolean;
+		} catch {}
+	}
+
+	try {
+		return context.getNodeParameter('useImmutableId', 0, false) as boolean;
+	} catch {
+		return false;
 	}
 }
 
