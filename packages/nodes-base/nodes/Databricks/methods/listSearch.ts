@@ -572,7 +572,7 @@ export async function getRuns(
 	return { results, paginationToken: pageToken };
 }
 
-const LAKEBASE_PAGE_SIZE = 100;
+const LAKEBASE_SEARCH_PAGE_SIZE = 100;
 const LAKEBASE_SEARCH_MAX_PAGES = 10;
 // Internal tables the Data API lists under Ignore privileges; a user table named databricks_* is still reachable By ID
 const INTERNAL_TABLE_PREFIX = /^databricks_/;
@@ -612,7 +612,7 @@ async function listLakebase<P, T>(
 			credentialType,
 			host,
 			path,
-			{ page_size: LAKEBASE_PAGE_SIZE },
+			{ page_size: LAKEBASE_SEARCH_PAGE_SIZE },
 			pageToken,
 		);
 		return toPage(entries(page), page.next_page_token);

@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
-import { FavoriteResourceResolverRegistry } from '@/modules/favorites/favorite-resource-resolver.registry';
+import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
 
