@@ -215,6 +215,44 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 		expect(buildMcpClientForServerMock.mock.calls[1][0]).toMatchObject({ name: 'fs' });
 	});
 
+	it.each([
+		['inline', true],
+		['top-level', false],
+		['sub-agent', false],
+	] as const)(
+		'marks MCP tool permissions as non-interrupting only for %s runtimes: %s',
+		async (runtimeProfile, nonInterrupting) => {
+			const { service, credentialProvider } = setup();
+
+			await service.reconstructFromResolvedSource({
+				config: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help',
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://api.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'none',
+						},
+					],
+				},
+				memoryOwnerAgentId: 'agent-1',
+				projectId: 'project-1',
+				credentialProvider,
+				toolDescriptors: {},
+				toolCodeByName: {},
+				skills: {},
+				runtimeProfile,
+				runType: 'production',
+			});
+
+			const deps = buildMcpClientForServerMock.mock.calls[0][1] as { nonInterrupting?: boolean };
+			expect(deps.nonInterrupting).toBe(nonInterrupting);
+		},
+	);
+
 	it('forwards resolved MCP tool names through eval instrumentation', async () => {
 		const { service, credentialProvider } = setup();
 		const onMcpToolCallSettled = vi.fn();

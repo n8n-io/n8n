@@ -6,11 +6,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import type { OauthService } from '@/oauth/oauth.service';
 
-import {
-	buildMcpClientForServer,
-	listMcpServerTools,
-	mapApprovalToSdk,
-} from '../mcp-client-factory';
+import { buildMcpClientForServer, listMcpServerTools } from '../mcp-client-factory';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -67,24 +63,6 @@ function makeOk(): Response {
 function make401(): Response {
 	return new Response('unauthorized', { status: 401 });
 }
-
-// ---------------------------------------------------------------------------
-// mapApprovalToSdk
-// ---------------------------------------------------------------------------
-
-describe('mapApprovalToSdk', () => {
-	it('returns undefined when approval is absent', () => {
-		expect(mapApprovalToSdk(undefined)).toBeUndefined();
-	});
-
-	it('maps mode "global" to literal true (all tools require approval)', () => {
-		expect(mapApprovalToSdk({ mode: 'global' })).toBe(true);
-	});
-
-	it('maps mode "selected" to the literal tools list', () => {
-		expect(mapApprovalToSdk({ mode: 'selected', tools: ['a', 'b'] })).toEqual(['a', 'b']);
-	});
-});
 
 // ---------------------------------------------------------------------------
 // buildMcpClientForServer — header derivation per auth type
@@ -314,8 +292,10 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 		await buildMcpClientForServer(
 			makeServer({
 				transport: 'sse',
-				toolFilter: { mode: 'allow', tools: ['echo'] },
-				approval: { mode: 'selected', tools: ['create'] },
+				toolPermissions: {
+					categories: { read: 'blocked', write: 'blocked' },
+					tools: { echo: 'always_allow', create: 'require_approval' },
+				},
 				connectionTimeoutMs: 5_000,
 			}),
 			{
@@ -333,12 +313,54 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 			name: 'srv',
 			url: 'https://example.test/mcp',
 			transport: 'sse',
-			toolFilter: { mode: 'allow', tools: ['echo'] },
-			requireApproval: ['create'],
 			connectionTimeoutMs: 5_000,
 			onToolCallSettled,
 		});
 		expect(typeof configs[0].fetch).toBe('function');
+		const configureTools = configs[0].configureTools;
+		expect(configureTools).toBeTypeOf('function');
+		expect(
+			(configureTools as (tools: Array<{ name: string }>) => unknown)([
+				{ name: 'echo' },
+				{ name: 'create' },
+				{ name: 'other' },
+			]),
+		).toEqual({
+			toolFilter: { mode: 'exclude', tools: ['other'] },
+			requireApproval: ['create'],
+		});
+	});
+
+	it('omits configureTools from the SDK config when tool permissions are not provided', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(makeServer(), {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+			proxyFetch,
+		});
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		expect(configs[0]).not.toHaveProperty('configureTools');
+	});
+
+	it('marks tool configuration as non-interrupting only when the runtime cannot suspend', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+		const server = makeServer({
+			toolPermissions: { categories: { read: 'always_allow', write: 'always_allow' } },
+		});
+		const deps = { credentialProvider, oauthService, projectId: 'proj-1', proxyFetch };
+
+		await buildMcpClientForServer(server, { ...deps, nonInterrupting: true });
+		await buildMcpClientForServer(server, deps);
+
+		const [inlineConfigs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		const [defaultConfigs] = mcpClientCtor.mock.calls[1] as [Array<Record<string, unknown>>];
+		expect(inlineConfigs[0]).toMatchObject({ configureToolsNonInterrupting: true });
+		expect(defaultConfigs[0]).not.toHaveProperty('configureToolsNonInterrupting');
 	});
 
 	it('omits connectionTimeoutMs from the SDK config when not provided', async () => {
@@ -594,11 +616,10 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 		expect(proxyFetchMock).not.toHaveBeenCalled();
 	});
 
-	it('falls back to the MCP hostname for native OAuth2 credentials in none mode', async () => {
+	it('falls back to the MCP hostname for native OAuth2 credentials with no domain mode', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		credentialProvider.resolve.mockResolvedValue({
 			oauthTokenData: { access_token: 'github-token' },
-			allowedHttpRequestDomains: 'none',
 		} as never);
 		const oauthService = mock<OauthService>();
 
@@ -613,6 +634,8 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
 		await expect(configs[0].fetch('https://api.githubcopilot.com/mcp/')).resolves.toBeDefined();
+		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
+		await expect(configs[0].fetch('https://other.example.test/mcp/')).rejects.toThrow(UserError);
 		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
 	});
 

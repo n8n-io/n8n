@@ -43,6 +43,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -227,6 +228,7 @@ const agentEvalsStore = useAgentEvalsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
 const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
 const mcp = useMcp();
@@ -2742,6 +2744,10 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			if (probedAgent) void adoptExistingPendingRow(probedAgent);
 		}
 		if (!isCurrentInitialization()) return;
+		// The tools picker and tool icons read the node types store, which stays
+		// empty when this page is the first one loaded. Not awaited: the page does
+		// not need it to render.
+		void nodeTypesStore.loadNodeTypesIfNotLoaded().catch(() => undefined);
 		// Keep agent credential pickers aligned with the workflow editor: load only
 		// credentials the current user can use in this project context.
 		credentialsStore.setCredentials([]);

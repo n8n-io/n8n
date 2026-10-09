@@ -43,6 +43,49 @@ describe('InlineAgentJsonConfigSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts MCP permissions that do not suspend workflow execution', () => {
+		const result = InlineAgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			mcpServers: [
+				{
+					name: 'docs',
+					url: 'https://mcp.example.com',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'blocked' },
+						tools: { publish: 'always_allow', search: 'blocked' },
+					},
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{
+			categories: { read: 'require_approval', write: 'blocked' },
+		},
+		{
+			categories: { read: 'always_allow', write: 'require_approval' },
+		},
+		{
+			categories: { read: 'always_allow', write: 'blocked' },
+			tools: { search: 'require_approval' },
+		},
+	])('rejects MCP approval because workflow execution cannot resume: %o', (toolPermissions) => {
+		const result = InlineAgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			mcpServers: [{ name: 'docs', url: 'https://mcp.example.com', toolPermissions }],
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0]?.message).toBe(
+				'MCP tool approval is not available for inline agents',
+			);
+		}
+	});
+
 	it('rejects custom (code) tools — their bodies live on saved agents', () => {
 		const result = InlineAgentJsonConfigSchema.safeParse({
 			...baseConfig,

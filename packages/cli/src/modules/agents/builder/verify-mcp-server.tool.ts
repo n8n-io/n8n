@@ -1,5 +1,6 @@
 import type { BuiltTool, CredentialProvider, McpClient, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
+import { classifyMcpTool } from '@n8n/ai-utilities/agent-config';
 import {
 	type AgentJsonConfig,
 	McpAuthenticationSchemaTypes,
@@ -81,9 +82,9 @@ async function listToolsWithinDeadline(
  * builder can have in hand before writing the config. The credential field is
  * optional here so the tool can also be used to test unauthenticated servers.
  *
- * `toolFilter` and `approval` are intentionally excluded — they have no bearing
- * on whether the underlying transport connects, and simplifying the input keeps
- * the LLM context small.
+ * Tool permissions are intentionally excluded. They have no bearing on whether
+ * the underlying transport connects, and simplifying the input keeps the LLM
+ * context small.
  */
 const verifyMcpServerInputSchema = z.object({
 	name: z
@@ -126,7 +127,7 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 		.description(
 			'Test connectivity to an MCP server before adding it to the agent config. ' +
 				'Establishes a temporary connection, lists the available tools, then closes the connection. ' +
-				'Returns { ok: true, tools: [{ name, description }] } on success, or ' +
+				'Returns { ok: true, tools: [{ name, description, category }] } on success, or ' +
 				'{ ok: false, error: string } on failure. ' +
 				'Tool names are the original MCP names without the model-facing server prefix. ' +
 				'When a credential is provided and a matching mcpServers entry already exists, ' +
@@ -149,6 +150,9 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 						authentication: input.authentication,
 						credential: input.credential,
 						metadata: input.metadata,
+						toolPermissions: {
+							categories: { read: 'always_allow', write: 'always_allow' },
+						},
 						connectionTimeoutMs: timeoutMs,
 					},
 					deps,
@@ -168,6 +172,10 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 				const mappedTools = tools.map((t) => ({
 					name: t.mcpToolName ?? t.name,
 					description: t.description ?? '',
+					category: classifyMcpTool({
+						name: t.mcpToolName ?? t.name,
+						annotations: t.mcpAnnotations,
+					}),
 				}));
 
 				if (input.credential && deps.applyCredentialToMcpServer) {

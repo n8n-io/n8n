@@ -2078,38 +2078,27 @@ describe('AgentJsonConfigSchema', () => {
 			expect(() => AgentJsonConfigSchema.parse({ ...base, mcpServers: servers })).toThrow();
 		});
 
-		it('parses an allow-mode toolFilter', () => {
+		it('parses MCP tool permissions', () => {
 			const parsed = AgentJsonConfigSchema.parse({
 				...base,
 				mcpServers: [
 					{
 						name: 'github',
 						url: 'https://a.example.test/mcp',
-						toolFilter: { mode: 'allow', tools: ['search_repositories'] },
+						toolPermissions: {
+							categories: { read: 'always_allow', write: 'require_approval' },
+							tools: { delete_repository: 'blocked' },
+						},
 					},
 				],
 			});
-			expect(parsed.mcpServers?.[0].toolFilter).toEqual({
-				mode: 'allow',
-				tools: ['search_repositories'],
+			expect(parsed.mcpServers?.[0].toolPermissions).toEqual({
+				categories: { read: 'always_allow', write: 'require_approval' },
+				tools: { delete_repository: 'blocked' },
 			});
 		});
 
-		it('parses approval mode "global"', () => {
-			const parsed = AgentJsonConfigSchema.parse({
-				...base,
-				mcpServers: [
-					{
-						name: 'github',
-						url: 'https://a.example.test/mcp',
-						approval: { mode: 'global' },
-					},
-				],
-			});
-			expect(parsed.mcpServers?.[0].approval).toEqual({ mode: 'global' });
-		});
-
-		it('rejects approval mode "selected" with an empty tools array', () => {
+		it('rejects an unknown MCP tool permission', () => {
 			expect(() =>
 				AgentJsonConfigSchema.parse({
 					...base,
@@ -2117,7 +2106,9 @@ describe('AgentJsonConfigSchema', () => {
 						{
 							name: 'github',
 							url: 'https://a.example.test/mcp',
-							approval: { mode: 'selected', tools: [] },
+							toolPermissions: {
+								categories: { read: 'always_allow', write: 'ask' },
+							},
 						},
 					],
 				}),

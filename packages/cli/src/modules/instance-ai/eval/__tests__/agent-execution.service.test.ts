@@ -107,13 +107,23 @@ const makeGenerateResult = (overrides: Partial<GenerateResult> = {}): GenerateRe
 		...overrides,
 	}) as unknown as GenerateResult;
 
-function buildService(overrides: { queueMode?: boolean; agentsActive?: boolean } = {}) {
+function buildService(
+	overrides: {
+		queueMode?: boolean;
+		agentsActive?: boolean;
+		mcpRegistryActive?: boolean;
+	} = {},
+) {
 	const executionsConfig = mock<ExecutionsConfig>();
 	Object.defineProperty(executionsConfig, 'mode', {
 		get: () => (overrides.queueMode ? 'queue' : 'regular'),
 	});
 	const moduleRegistry = mock<ModuleRegistry>();
-	moduleRegistry.isActive.mockReturnValue(overrides.agentsActive ?? true);
+	moduleRegistry.isActive.mockImplementation((moduleName) => {
+		if (moduleName === 'agents') return overrides.agentsActive ?? true;
+		if (moduleName === 'mcp-registry') return overrides.mcpRegistryActive ?? true;
+		return true;
+	});
 	return new EvalAgentExecutionService(
 		logger,
 		executionsConfig,
@@ -457,6 +467,46 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 				interceptedRequests: [expect.objectContaining({ requestBody: secondArgs })],
 			}),
 		]);
+	});
+
+	it('uses explicit non-blocked tools as the canonical catalog when both categories are blocked', async () => {
+		const config = {
+			...baseConfig,
+			mcpServers: [
+				{
+					name: 'Restricted MCP',
+					url: 'https://custom.example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+					toolPermissions: {
+						categories: { read: 'blocked', write: 'blocked' },
+						tools: {
+							search: 'always_allow',
+							update: 'require_approval',
+							delete: 'blocked',
+						},
+					},
+				},
+			],
+		} as unknown as AgentJsonConfig;
+		findByIdAndProjectId.mockResolvedValue(makeEntity(config));
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate: vi.fn().mockResolvedValue(makeGenerateResult()), close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		await buildService({ mcpRegistryActive: false }).executeWithLlmMock('agent-1', user, request);
+
+		expect(createMcpMockFetch).toHaveBeenCalledWith(
+			expect.objectContaining({
+				knownToolsByServer: {
+					'Restricted MCP': [
+						{ name: 'search', description: 'search' },
+						{ name: 'update', description: 'update' },
+					],
+				},
+			}),
+		);
 	});
 
 	it('prunes unmockable features and reports them', async () => {

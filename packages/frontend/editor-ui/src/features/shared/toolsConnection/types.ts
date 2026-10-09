@@ -91,7 +91,9 @@ export interface PublisherInfo {
 	url?: string;
 }
 
-export type McpToolSettings = McpToolPermissions;
+export type McpToolSettings = McpToolPermissions & {
+	connectionTimeoutMs?: number;
+};
 
 export type ToolConnectionSettings = McpToolSettings;
 
