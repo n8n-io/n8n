@@ -192,6 +192,18 @@ vi.mock('../composables/useModelCatalog', () => ({
 }));
 
 const modelsByProvider: AgentModelsByProvider = {
+	'google-vertex': {
+		models: [
+			{
+				provider: 'google-vertex',
+				model: 'gemini-3-flash-preview',
+				name: 'Gemini 3 Flash Preview',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+		],
+	},
 	anthropic: {
 		models: [
 			{
@@ -693,6 +705,32 @@ describe('AgentModelSelector', () => {
 		expect(connectHeader?.label).toBe('Connect to Anthropic');
 		expect(modelsHeader?.header).toBe(true);
 		expect(modelsHeader?.label).toBe('Models');
+	});
+
+	it('offers only Vertex AI credentials and selects a model without a separate project', async () => {
+		credentialsByType.value = {
+			googleApi: [{ id: 'service-account', name: 'Service account', type: 'googleApi' }],
+			googlePalmApi: [{ id: 'gemini', name: 'Gemini', type: 'googlePalmApi' }],
+			googleVertexAiApi: [{ id: 'vertex', name: 'Vertex', type: 'googleVertexAiApi' }],
+		};
+		const wrapper = await mountSelector({ 'google-vertex': 'vertex' }, { selectedModel: null });
+		const children = getProviderItem(wrapper, 'google-vertex')?.children ?? [];
+
+		expect(
+			children.filter((item) => item.id.includes('::select::')).map((item) => item.id),
+		).toEqual(['google-vertex::select::vertex']);
+		expect(children.filter((item) => item.header).map((item) => item.label)).toEqual([
+			'Connect to Google Vertex AI',
+			'Models',
+		]);
+		expect(children.some((item) => item.id === 'google-vertex::configure::googleVertexAiApi')).toBe(
+			true,
+		);
+
+		getDropdown(wrapper).vm.$emit('select', 'google-vertex::model::gemini-3-flash-preview');
+		expect(wrapper.emitted('change')).toEqual([
+			[{ provider: 'google-vertex', model: 'gemini-3-flash-preview' }],
+		]);
 	});
 
 	it('checks the active credential row', async () => {

@@ -85,6 +85,15 @@ vi.mock('@ai-sdk/google', () => ({
 	}),
 }));
 
+vi.mock('@ai-sdk/google-vertex', () => ({
+	createGoogleVertex: (opts: Record<string, unknown>) => (model: string) => ({
+		...opts,
+		provider: 'google-vertex',
+		modelId: model,
+		specificationVersion: 'v4',
+	}),
+}));
+
 vi.mock('@ai-sdk/xai', () => ({
 	createXai: (opts?: ProviderOpts) => ({
 		chat: (model: string) => ({
@@ -914,6 +923,50 @@ describe('createModel', () => {
 				}),
 			).toThrow(/Invalid credentials for provider "aws-bedrock"/);
 		});
+	});
+
+	describe('google-vertex', () => {
+		const credentials = {
+			id: 'google-vertex/gemini-3-flash-preview',
+			project: 'selected-project',
+			location: 'europe-west4',
+			clientEmail: 'agent@selected-project.iam.gserviceaccount.com',
+			privateKey: '-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----\\n',
+		};
+
+		it('uses the selected service account, project, region, and guarded transport', () => {
+			vi.stubEnv('GOOGLE_VERTEX_API_KEY', 'ambient-key');
+			vi.stubEnv('GOOGLE_VERTEX_PROJECT', 'ambient-project');
+			vi.stubEnv('GOOGLE_VERTEX_LOCATION', 'ambient-region');
+			const guardedFetch = vi.fn<typeof globalThis.fetch>();
+			try {
+				const model = createModel(credentials, guardedFetch);
+				expect(model).toMatchObject({
+					modelId: 'gemini-3-flash-preview',
+					apiKey: '',
+					project: 'selected-project',
+					location: 'europe-west4',
+					fetch: guardedFetch,
+					googleAuthOptions: {
+						credentials: {
+							client_email: credentials.clientEmail,
+							private_key: '-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----\n',
+						},
+					},
+				});
+			} finally {
+				vi.unstubAllEnvs();
+			}
+		});
+
+		it.each(['project', 'location', 'clientEmail', 'privateKey'])(
+			'requires an explicit %s before model execution',
+			(field) => {
+				expect(() => createModel({ ...credentials, [field]: '' })).toThrow(
+					'Invalid credentials for provider "google-vertex"',
+				);
+			},
+		);
 	});
 
 	describe('google-vertex-anthropic', () => {

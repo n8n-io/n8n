@@ -41,6 +41,7 @@ export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 	openai: { displayName: 'OpenAI' },
 	anthropic: { displayName: 'Anthropic' },
 	google: { displayName: 'Google' },
+	'google-vertex': { displayName: 'Google Vertex AI' },
 	'azure-openai': { displayName: 'Microsoft Foundry' },
 	'aws-bedrock': { displayName: 'AWS Bedrock', isAggregator: true },
 	xai: { displayName: 'xAI' },

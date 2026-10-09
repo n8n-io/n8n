@@ -1206,22 +1206,35 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.titleGeneration?.sync).toBe(true);
 	});
 
-	it('configures observational memory worker models with their own credentials', async () => {
+	it('configures agent and memory worker models with their own credentials and projects', async () => {
+		const modelSpy = vi.spyOn(AgentsRuntime.Agent.prototype, 'model');
 		const observeSpy = vi.spyOn(AgentsRuntime, 'createObservationLogObserveFn');
 		const reflectSpy = vi.spyOn(AgentsRuntime, 'createObservationLogReflectFn');
 		const credentialProvider = {
 			resolve: vi.fn(async (credentialId: string) => ({
 				apiKey: `${credentialId}-api-key`,
 				url: `https://${credentialId}.example/v1`,
+				email: `${credentialId}@example.iam.gserviceaccount.com`,
+				privateKey: `${credentialId}-private-key`,
+				region: 'europe-west4',
+				projectId: `${credentialId}-project`,
 			})),
-			list: vi.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue([
+				{ id: 'main-key', name: 'Main', type: 'googleVertexAiApi' },
+				{ id: 'observer-key', name: 'Observer', type: 'googleVertexAiApi' },
+			]),
 		};
 		const config = makeConfig({
+			model: 'google-vertex/gemini-3.1-pro-preview',
+			credential: 'main-key',
 			memory: {
 				enabled: true,
 				storage: 'n8n',
 				observationalMemory: {
-					observerModel: { model: 'openai/gpt-4o-mini', credential: 'observer-key' },
+					observerModel: {
+						model: 'google-vertex/gemini-3-flash-preview',
+						credential: 'observer-key',
+					},
 					reflectorModel: {
 						model: 'anthropic/claude-sonnet-4-5',
 						credential: 'reflector-key',
@@ -1240,10 +1253,19 @@ describe('buildFromJson()', () => {
 			},
 		);
 
+		expect(modelSpy).toHaveBeenCalledWith({
+			id: 'google-vertex/gemini-3.1-pro-preview',
+			project: 'main-key-project',
+			clientEmail: 'main-key@example.iam.gserviceaccount.com',
+			privateKey: 'main-key-private-key',
+			location: 'europe-west4',
+		});
 		expect(observeSpy).toHaveBeenCalledWith({
-			id: 'openai/gpt-4o-mini',
-			apiKey: 'observer-key-api-key',
-			baseURL: 'https://observer-key.example/v1',
+			id: 'google-vertex/gemini-3-flash-preview',
+			project: 'observer-key-project',
+			clientEmail: 'observer-key@example.iam.gserviceaccount.com',
+			privateKey: 'observer-key-private-key',
+			location: 'europe-west4',
 		});
 		expect(reflectSpy).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-5',

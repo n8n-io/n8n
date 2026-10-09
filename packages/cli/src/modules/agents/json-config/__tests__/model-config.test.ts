@@ -8,6 +8,67 @@ import {
 } from '../model-config';
 
 describe('resolveCredentialAwareModelConfig', () => {
+	it.each([
+		{
+			model: 'google-vertex/gemini-2.5-pro',
+			project: undefined,
+			projectId: 'custom-project',
+			expectedProject: 'custom-project',
+		},
+		{
+			model: 'google-vertex/gemini-flash-latest',
+			project: '__custom__',
+			projectId: 'custom-project',
+			expectedProject: 'custom-project',
+		},
+		{
+			model: 'google-vertex/gemini-3-flash-preview',
+			project: 'listed-project',
+			projectId: 'old-custom-project',
+			expectedProject: 'listed-project',
+		},
+	])(
+		'uses the Vertex credential project $expectedProject and region for $model',
+		async ({ model, project, projectId, expectedProject }) => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.list.mockResolvedValue([
+				{ id: 'vertex', name: 'Vertex', type: 'googleVertexAiApi' },
+			]);
+			credentialProvider.resolve.mockResolvedValue({
+				email: 'agent@example.iam.gserviceaccount.com',
+				privateKey: 'private-key',
+				region: 'europe-west4',
+				project,
+				projectId,
+			});
+			await expect(
+				resolveCredentialAwareModelConfig(model, 'vertex', credentialProvider),
+			).resolves.toEqual({
+				id: model,
+				project: expectedProject,
+				location: 'europe-west4',
+				clientEmail: 'agent@example.iam.gserviceaccount.com',
+				privateKey: 'private-key',
+			});
+		},
+	);
+
+	it.each(['googleApi', 'googlePalmApi'])(
+		'rejects an incompatible Vertex credential: %s',
+		async (type) => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.list.mockResolvedValue([{ id: 'gcp', name: 'GCP', type }]);
+			await expect(
+				resolveCredentialAwareModelConfig(
+					'google-vertex/gemini-2.5-pro',
+					'gcp',
+					credentialProvider,
+				),
+			).rejects.toThrow('Google Vertex AI credential');
+			expect(credentialProvider.resolve).not.toHaveBeenCalled();
+		},
+	);
+
 	it('resolves a real credential via the credential provider (unchanged path)', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		credentialProvider.resolve.mockResolvedValue({

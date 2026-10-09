@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
@@ -274,6 +275,25 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				? ensureUrlPathSuffix(creds.baseURL, '/v1beta')
 				: creds.baseURL;
 			return createGoogle({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
+		},
+	},
+	'google-vertex': {
+		build: (creds, model, fetch) => {
+			const { createGoogleVertex } =
+				require('@ai-sdk/google-vertex') as typeof import('@ai-sdk/google-vertex');
+			return createGoogleVertex({
+				// An empty key prevents GOOGLE_VERTEX_API_KEY from selecting Express mode.
+				apiKey: '',
+				project: creds.project,
+				location: creds.location,
+				googleAuthOptions: {
+					credentials: {
+						client_email: creds.clientEmail,
+						private_key: formatPemBlock(creds.privateKey),
+					},
+				},
+				fetch,
+			})(model);
 		},
 	},
 	xai: {

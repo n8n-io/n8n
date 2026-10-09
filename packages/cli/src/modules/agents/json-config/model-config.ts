@@ -28,6 +28,14 @@ export async function resolveCredentialAwareModelConfig(
 	deploymentName?: string,
 ): Promise<ModelConfig> {
 	const provider = getProviderPrefix(model);
+	if (provider === 'google-vertex') {
+		const selected = (await credentialProvider.list()).find((entry) => entry.id === credential);
+		if (selected?.type !== 'googleVertexAiApi') {
+			throw new UserError(
+				'This model requires a Google Vertex AI credential. Select a compatible credential.',
+			);
+		}
+	}
 
 	if (credential === AI_GATEWAY_MANAGED_TAG) {
 		if (!credentialProvider.resolveAiGatewayModelCredential) {
