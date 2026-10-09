@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	PROMOTIONS_CONTAINER_TARGET_IN_USE_CODE,
 	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
 	type PromotableResource,
 } from '@n8n/api-types';
@@ -35,6 +36,24 @@ describe('getPromoteErrorMessage', () => {
 			i18n.baseText('promotions.modal.promoteError.workflowsMovedCrossProject', {
 				interpolate: { workflows: 'Slack trigger flow' },
 			}),
+		);
+	});
+
+	it.each([
+		['folders', 'promotions.modal.promoteError.folderTargetInUse'],
+		['projects', 'promotions.modal.promoteError.projectTargetInUse'],
+	] as const)('names the occupied %s path from the container-in-use meta', (kind, key) => {
+		const error = new ResponseError('Container path in use', {
+			httpStatusCode: 400,
+			meta: {
+				code: PROMOTIONS_CONTAINER_TARGET_IN_USE_CODE,
+				kind,
+				target: 'projects/alpha/folders/b',
+			},
+		});
+
+		expect(getPromoteErrorMessage(error, changes, i18n)).toBe(
+			i18n.baseText(key, { interpolate: { target: 'projects/alpha/folders/b' } }),
 		);
 	});
 
