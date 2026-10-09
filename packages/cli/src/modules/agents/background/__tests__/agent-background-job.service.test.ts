@@ -47,7 +47,6 @@ function makeJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJo
 	return {
 		id: 'job-1',
 		kind: 'subagent',
-		detached: true,
 		status: 'running',
 		parentAgentId: 'agent-1',
 		parentThreadId: 'thread-1',
@@ -229,19 +228,6 @@ describe('user pause', () => {
 		expect(executionService.stop).toHaveBeenCalledTimes(3);
 		expect(executionService.stop).toHaveBeenLastCalledWith('exec-1', ['workflow-1']);
 		expect(first.status).toBe('cancelled');
-	});
-
-	it('leaves foreground workflows running when background tasks stop', async () => {
-		const { service, jobRepository } = setup();
-		const foreground = makeWorkflowJob({ detached: false, pauseRequestId: 'old-stop' });
-		jobRepository.findByParentThread.mockResolvedValue([foreground]);
-		const executionService = mock<ExecutionService>();
-		Container.set(ExecutionService, executionService);
-
-		await service.requestPause('agent-1', 'thread-1', 'draft-chat:user-1');
-
-		expect(executionService.stop).not.toHaveBeenCalled();
-		expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
 	});
 
 	it.each(['success', 'error'] as const)(
@@ -1308,10 +1294,29 @@ describe('registerWorkflowJob', () => {
 	it('stops a workflow registered after its source was canceled without waking the parent', async () => {
 		const { service, cancellation } = setup();
 		cancellation.isCancelled.mockResolvedValue(true);
-		const stop = vi.spyOn(service, 'cancelPermanently').mockResolvedValue();
+		const stop = vi.spyOn(service, 'cancel').mockResolvedValue('cancelled');
 		await service.registerWorkflowJob({ ...workflowParams, sourceExecutionId: 'old-response' });
 		expect(cancellation.isCancelled).toHaveBeenCalledWith('thread-1', 'old-response');
 		expect(stop).toHaveBeenCalledExactlyOnceWith('thread-1', 'wf-job-1');
+	});
+
+	it('preserves the result of a late workflow that finished before its stop', async () => {
+		const { service, cancellation, jobRepository, executionPersistence } = setup();
+		cancellation.isCancelled.mockResolvedValue(true);
+		jobRepository.findByParentThread.mockResolvedValue([makeWorkflowJob()]);
+		vi.spyOn(service, 'cancel').mockResolvedValue('already-settled');
+		executionPersistence.findStatusesByIds.mockResolvedValue([{ id: 'exec-1', status: 'success' }]);
+		executionPersistence.findSingleExecution.mockResolvedValue({
+			data: {
+				resultData: { runData: { Result: [{ data: { main: [[{ json: { saved: true } }]] } }] } },
+			},
+		} as never);
+		await service.registerWorkflowJob({ ...workflowParams, sourceExecutionId: 'old-response' });
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+			'wf-job-1',
+			expect.objectContaining({ status: 'completed', result: expect.stringContaining('saved') }),
+			undefined,
+		);
 	});
 
 	it('registers a running workflow job keyed to its execution', async () => {

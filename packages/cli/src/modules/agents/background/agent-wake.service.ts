@@ -178,15 +178,9 @@ export class AgentWakeService {
 
 	private async deliverInsideLease(threadId: string, signal: AbortSignal): Promise<void> {
 		const stop = await this.cancellations.latest(threadId);
-		if (stop?.pause && !stop.pause.resumedAt) {
+		if (stop && !stop.pause.resumedAt) {
 			await this.deliverPlanStopReport(stop, signal);
 			return;
-		}
-		if (stop && !stop.pause) {
-			await this.cancellations.consumeTargetedMail(
-				(await this.cancellations.targetedJobs(stop)).map((job) => job.id),
-				{},
-			);
 		}
 		if (!this.agentsConfig.backgroundTasksEnabled) return;
 		if (
@@ -258,7 +252,7 @@ export class AgentWakeService {
 		stop: AgentTaskStop & { threadId: string },
 		signal: AbortSignal,
 	) {
-		if (!stop.pause || stop.pause.reportedAt || signal.aborted) return;
+		if (stop.pause.reportedAt || signal.aborted) return;
 		if (stop.pause.reportExecutionId) {
 			await this.cancellations.finishPauseReport(stop.threadId, stop.pause.id);
 			const thread = await this.cancellations.pauseReportTarget(stop.threadId);

@@ -9,7 +9,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [activity_event](activity_event.md) | 11 |  | table |
-| [agent_background_job](agent_background_job.md) | 22 |  | table |
+| [agent_background_job](agent_background_job.md) | 21 |  | table |
 | [agent_budget_applied_call](agent_budget_applied_call.md) | 2 |  | table |
 | [agent_budget_spend](agent_budget_spend.md) | 4 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
@@ -26,7 +26,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_execution_threads](agent_execution_threads.md) | 20 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
-| [agent_message_queue](agent_message_queue.md) | 11 |  | table |
+| [agent_message_queue](agent_message_queue.md) | 10 |  | table |
 | [agent_plan](agent_plan.md) | 8 |  | table |
 | [agent_plan_history](agent_plan_history.md) | 6 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 8 |  | table |
@@ -425,7 +425,6 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   datetime_3_ createdAt
-  boolean detached
   TEXT error
   varchar_36_ id PK
   varchar_16_ kind
@@ -640,7 +639,6 @@ erDiagram
 "agent_message_queue" {
   datetime_3_ createdAt
   varchar_36_ executionId FK
-  boolean held
   INTEGER id
   varchar_36_ messageId FK
   TEXT payload

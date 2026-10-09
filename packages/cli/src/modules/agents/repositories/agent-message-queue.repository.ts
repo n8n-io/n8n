@@ -27,7 +27,6 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 				threadId,
 				messageId,
 				position: (last?.position ?? -1) + 1,
-				held: false,
 				payload,
 				executionId: null,
 				steeringExecutionId: null,
@@ -116,26 +115,9 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		);
 	}
 
-	async holdPending(threadId: string, ctx: OperationContext) {
-		await this.managerFor(ctx).update(
-			AgentMessageQueue,
-			{ threadId, executionId: IsNull() },
-			{ held: true, steeringExecutionId: null, steeringOrder: null },
-		);
-	}
-
-	async releaseHeld(threadId: string, id: string, ctx: OperationContext) {
-		const result = await this.managerFor(ctx).update(
-			AgentMessageQueue,
-			{ threadId, id, held: true, executionId: IsNull() },
-			{ held: false },
-		);
-		return result.affected === 1;
-	}
-
 	async findHead(threadId: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).findOne(AgentMessageQueue, {
-			where: { threadId, held: false },
+			where: { threadId },
 			relations: { message: true },
 			order: { position: 'ASC', id: 'ASC' },
 		});
@@ -148,7 +130,7 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		});
 		const result = await this.managerFor(ctx).update(
 			AgentMessageQueue,
-			{ threadId, id, held: false, executionId: IsNull(), steeringExecutionId: IsNull() },
+			{ threadId, id, executionId: IsNull(), steeringExecutionId: IsNull() },
 			{ steeringExecutionId: executionId, steeringOrder: (last?.steeringOrder ?? 0) + 1 },
 		);
 		return result.affected === 1;

@@ -33,13 +33,6 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@JoinColumn({ name: 'sourceExecutionId' })
 	sourceExecution: Relation<AgentExecution> | null;
 
-	@Column({
-		type: 'boolean',
-		default: true,
-		comment: 'Deliver results through background wake messages',
-	})
-	detached: boolean;
-
 	@Column({ type: 'varchar', length: 16 })
 	kind: AgentBackgroundJobKind;
 

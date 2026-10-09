@@ -35,7 +35,5 @@ export interface AgentTaskCancellationState {
 	reportFailed?: boolean;
 	requestedAt: string;
 	failures: AgentTaskStopFailure[];
-	summary: { completed: number; canceled: number };
 	plan: AgentPlanSnapshotDto | null;
-	heldQueueIds: string[];
 }

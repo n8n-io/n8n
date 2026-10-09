@@ -203,7 +203,6 @@ export class AgentMessageQueueService {
 				)
 				.map((item) => ({
 					id: item.id,
-					held: item.held,
 					...readInboundUserMessage(item.message.content),
 					steeringExecutionId: item.steeringExecutionId,
 					createdAt: item.createdAt.toISOString(),
@@ -286,24 +285,6 @@ export class AgentMessageQueueService {
 			}
 		});
 		this.updates.notifyQueueUpdated(input.threadId);
-	}
-
-	async sendHeld(input: PendingMessageScope & { queueId: string }): Promise<void> {
-		await this.txRunner.run({}, async (ctx) => {
-			const thread = await this.threadRepository.lockById(input.threadId, ctx);
-			if (!thread) throw new NotFoundError('Session not found');
-			await this.assertUserChatAccess(thread, input, ctx);
-			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
-			if (
-				!item ||
-				item.payload.kind !== 'preview' ||
-				!(await this.repository.releaseHeld(thread.id, item.id, ctx))
-			) {
-				throw new ConflictError('This message is no longer held');
-			}
-		});
-		this.updates.notifyQueueUpdated(input.threadId);
-		this.onAvailable?.(input.threadId);
 	}
 
 	async steer(input: {

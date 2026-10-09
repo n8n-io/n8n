@@ -104,7 +104,6 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
-  boolean detached
   text error
   varchar_36_ id
   varchar_16_ kind

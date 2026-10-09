@@ -198,7 +198,7 @@ export class AgentBackgroundJobService {
 			kind: 'workflow',
 			childExecutionId: executionId,
 		});
-		if (outcome.inserted && params.detached !== false) {
+		if (outcome.inserted) {
 			this.updateBroadcaster.notifyBackgroundJobsUpdated(
 				params.parentAgentId,
 				params.parentThreadId,
@@ -206,7 +206,7 @@ export class AgentBackgroundJobService {
 		}
 
 		const pause = await this.cancellations.pausedScope(params.parentThreadId);
-		if (pause?.pause) {
+		if (pause) {
 			await this.requestPause(
 				params.parentAgentId,
 				params.parentThreadId,
@@ -216,10 +216,11 @@ export class AgentBackgroundJobService {
 		} else if (
 			await this.cancellations.isCancelled(params.parentThreadId, params.sourceExecutionId)
 		) {
-			await this.cancelPermanently(
-				params.parentThreadId,
-				outcome.inserted ? params.id : outcome.existing.id,
-			);
+			const jobId = outcome.inserted ? params.id : outcome.existing.id;
+			await this.cancel(params.parentThreadId, jobId);
+			// Keep a confirmed result if the workflow finished before the stop reached it.
+			const jobs = await this.jobRepository.findByParentThread(params.parentThreadId, [jobId]);
+			await this.settleFinishedWorkflowJobs(jobs);
 		}
 		return { status: 'started', jobId: outcome.inserted ? params.id : outcome.existing.id };
 	}
@@ -334,7 +335,6 @@ export class AgentBackgroundJobService {
 		const jobs = await this.jobRepository.findByParentThread(parentThreadId);
 		const selected = jobs.filter(
 			(job) =>
-				job.detached &&
 				job.parentAgentId === parentAgentId &&
 				job.parentResourceId === parentResourceId &&
 				job.pauseRequestId &&
@@ -387,7 +387,7 @@ export class AgentBackgroundJobService {
 		);
 		const planStop = await this.cancellations.latest(parentThreadId);
 		const newPlanRequest = Boolean(
-			planStop?.pause?.reportedAt && !planStop.generation.executionIds.includes(executionId),
+			planStop?.pause.reportedAt && !planStop.generation.executionIds.includes(executionId),
 		);
 		const jobs = (await this.jobRepository.findByParentThread(parentThreadId)).filter(
 			(job) =>
@@ -593,17 +593,13 @@ export class AgentBackgroundJobService {
 		return resumed;
 	}
 
-	private async clearChildCheckpoint(
-		job: AgentBackgroundJob,
-		requireConfirmation = false,
-	): Promise<void> {
+	private async clearChildCheckpoint(job: AgentBackgroundJob): Promise<void> {
 		if (job.kind !== 'subagent' || !job.subAgentId || !job.childThreadId) return;
 		try {
 			await this.checkpointStorage.deleteDelegatedForThread(job.subAgentId, job.childThreadId);
 		} catch (error) {
 			// Reconciliation retries while the terminal job retains a checkpoint.
 			this.logger.warn('Failed to clear background child checkpoints', { jobId: job.id, error });
-			if (requireConfirmation) throw error;
 		}
 	}
 
@@ -798,22 +794,6 @@ export class AgentBackgroundJobService {
 		await this.clearChildCheckpoint(job);
 		await this.consumeCancelledMail(parentThreadId, jobId);
 		return 'cancelled';
-	}
-
-	async cancelPermanently(parentThreadId: string, jobId: string): Promise<void> {
-		await this.cancel(parentThreadId, jobId);
-		const [job] = await this.jobRepository.findByParentThread(parentThreadId, [jobId]);
-		if (job?.kind === 'workflow') {
-			await this.settleFinishedWorkflowJobs([job]);
-			return;
-		}
-		if (job?.kind !== 'subagent' || job.status !== 'cancelled') return;
-		// Retry coordination and checkpoint cleanup even if the terminal row was saved first.
-		await this.publisher.publishCommand({
-			command: 'cancel-agent-background-job',
-			payload: { jobId },
-		});
-		await this.clearChildCheckpoint(job, true);
 	}
 
 	async cancelForParent(

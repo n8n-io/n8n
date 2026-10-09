@@ -238,22 +238,6 @@ describe('AgentWakeService', () => {
 		expect(cancellations.finishPauseReport).toHaveBeenCalledWith('thread-1', 'stop-1');
 	});
 
-	it('consumes old background notifications without an agent acknowledgement', async () => {
-		const { service, cancellations, jobRepository, orchestrator } = setup();
-		cancellations.latest.mockResolvedValue({
-			threadId: 'thread-1',
-			planId: null,
-			requestedAt: new Date().toISOString(),
-			generation: { executionIds: [], jobIds: ['job-1'], threadIds: [] },
-			failures: [],
-		});
-		cancellations.targetedJobs.mockResolvedValue([makeJob()]);
-		jobRepository.findWakeableUnconsumed.mockResolvedValue([]);
-		await service.attemptWake('thread-1');
-		expect(cancellations.consumeTargetedMail).toHaveBeenCalledWith(['job-1'], {});
-		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
-	});
-
 	it('delivers a stopped group once and marks it only after the report finishes', async () => {
 		const { service, backgroundJobService, jobRepository, orchestrator } = setup();
 		const report = createDeferredPromise();

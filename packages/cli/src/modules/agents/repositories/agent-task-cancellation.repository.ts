@@ -71,8 +71,7 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentExecuti
 
 	async blocksQueue(threadId: string, ctx: OperationContext) {
 		const stop = await this.latest(threadId, ctx);
-		if (stop?.pause) return !stop.pause.reportedAt;
-		return !!stop && (await this.unfinishedWork(stop, ctx)).length > 0;
+		return Boolean(stop && !stop.pause.reportedAt);
 	}
 
 	/** Lock ancestors first so dispatch and cancellation use the same admission boundary. */
@@ -89,7 +88,7 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentExecuti
 		const pause = await this.latest(threadId, ctx);
 		if (wake.planStopId) {
 			if (
-				!pause?.pause ||
+				!pause ||
 				pause.pause.id !== wake.planStopId ||
 				pause.pause.reportExecutionId ||
 				pause.pause.reportedAt ||
@@ -100,21 +99,8 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentExecuti
 			}
 			return;
 		}
-		if (pause?.pause) {
-			if (pause.pause.resumedAt) return;
+		if (await this.hasPausedAncestor(threadId, ctx)) {
 			throw new UserError('The plan is stopped. Wait for a new user request.');
-		}
-		if (
-			(await this.isCancelled(threadId, undefined, ctx)) ||
-			(await this.hasPausedAncestor(threadId, ctx))
-		)
-			throw new UserError('These background tasks were canceled');
-		const request = await this.latest(threadId, ctx);
-		if (!request) return;
-
-		const targeted = new Set((await this.targetedJobs(request, ctx)).map((job) => job.id));
-		if (!wake.jobIds.length || wake.jobIds.some((id) => targeted.has(id))) {
-			throw new UserError('These background tasks were canceled');
 		}
 	}
 
@@ -128,33 +114,15 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentExecuti
 	}
 
 	async isCancelled(threadId: string, executionId?: string, ctx: OperationContext = {}) {
-		const manager = this.managerFor(ctx);
-		const lineage = await this.lineage(threadId, ctx);
-		for (const thread of lineage) {
-			const request = await this.latest(thread.id, ctx);
-			if (!request) continue;
-			if (thread.id !== threadId) {
-				if (request.pause) continue;
-				const child = lineage[lineage.indexOf(thread) - 1];
-				const job = await manager.findOneBy(AgentBackgroundJob, { childThreadId: child.id });
-				if (
-					request.generation.threadIds.includes(child.id) ||
-					(job && request.generation.jobIds.includes(job.id)) ||
-					(job?.sourceExecutionId &&
-						request.generation.executionIds.includes(job.sourceExecutionId))
-				)
-					return true;
-				continue;
-			}
-			const execution = executionId
-				? await manager.findOneBy(AgentExecution, { id: executionId, threadId })
-				: await manager.findOne(AgentExecution, {
-						where: { threadId, status: 'running' },
-						order: { createdAt: 'DESC' },
-					});
-			if (execution && request.generation.executionIds.includes(execution.id)) return true;
-		}
-		return false;
+		const request = await this.latest(threadId, ctx);
+		if (!request) return false;
+		const execution = executionId
+			? await this.managerFor(ctx).findOneBy(AgentExecution, { id: executionId, threadId })
+			: await this.managerFor(ctx).findOne(AgentExecution, {
+					where: { threadId, status: 'running' },
+					order: { createdAt: 'DESC' },
+				});
+		return Boolean(execution && request.generation.executionIds.includes(execution.id));
 	}
 
 	async targetedJobs(request: TaskStopScope, ctx: OperationContext = {}) {
@@ -223,7 +191,7 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentExecuti
 		});
 		const checkpoints = await manager.find(AgentCheckpoint, {
 			where: {
-				threadId: In(request.pause ? [request.threadId] : [request.threadId, ...childIds]),
+				threadId: request.threadId,
 				state: Not(IsNull()),
 				expired: false,
 				updatedAt: MoreThanOrEqual(
@@ -235,29 +203,8 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentExecuti
 		});
 		const jobs = await this.targetedJobs(request, ctx);
 		return [
-			...request.failures.filter((failure) => {
-				const job = jobs.find((item) => item.id === failure.jobId);
-				return request.pause
-					? jobs.some(
-							(item) => item.id === failure.jobId && ['running', 'suspended'].includes(item.status),
-						) ||
-							executions.some((item) => item.id === failure.jobId) ||
-							checkpoints.some((checkpoint) => {
-								const state = jsonParse<SerializableAgentState | null>(checkpoint.state ?? '', {
-									fallbackValue: null,
-								});
-								return (
-									state?.status === 'suspended' && checkpointExecutionId(state) === failure.jobId
-								);
-							})
-					: job?.status !== 'completed' && job?.status !== 'failed';
-			}),
 			...jobs
-				.filter((job) =>
-					(request.pause ? ['running', 'suspended'] : ['running', 'suspended', 'paused']).includes(
-						job.status,
-					),
-				)
+				.filter((job) => ['running', 'suspended'].includes(job.status))
 				.map((job) => ({ jobId: job.id, title: job.title })),
 			...executions.map((execution) => ({
 				jobId: execution.id,
@@ -265,43 +212,21 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentExecuti
 					children.find((child) => child.id === execution.threadId)?.agentName ??
 					'Current response',
 			})),
-			...checkpoints
-				.filter((checkpoint) => {
-					if (checkpoint.threadId !== request.threadId) return true;
-					const state = jsonParse<SerializableAgentState | null>(checkpoint.state ?? '', {
-						fallbackValue: null,
-					});
-					if (state?.status !== 'suspended') return false;
-					const executionId = checkpointExecutionId(state);
-					return !executionId || request.generation.executionIds.includes(executionId);
-				})
-				.flatMap((checkpoint) =>
-					checkpoint.threadId
-						? [
-								{
-									jobId: checkpoint.threadId,
-									title:
-										children.find((child) => child.id === checkpoint.threadId)?.agentName ??
-										'Current response',
-								},
-							]
-						: [],
-				),
+			...checkpoints.flatMap((checkpoint) => {
+				const state = jsonParse<SerializableAgentState | null>(checkpoint.state ?? '', {
+					fallbackValue: null,
+				});
+				if (state?.status !== 'suspended') return [];
+				const executionId = checkpointExecutionId(state);
+				if (executionId && !request.generation.executionIds.includes(executionId)) return [];
+				return [{ jobId: executionId ?? request.threadId, title: 'Current response' }];
+			}),
 		];
-	}
-
-	async consumeTargetedMail(ids: string[], ctx: OperationContext) {
-		if (!ids.length) return;
-		await this.managerFor(ctx).update(
-			AgentBackgroundJob,
-			{ id: In(ids), status: In(['completed', 'failed', 'cancelled']) },
-			{ notifiedAt: new Date() },
-		);
 	}
 
 	async pausedScope(threadId: string, ctx: OperationContext = {}) {
 		const thread = (await this.lineage(threadId, ctx)).find(
-			(item) => item.taskStop?.pause && !item.taskStop.pause.resumedAt,
+			(item) => item.taskStop && !item.taskStop.pause.resumedAt,
 		);
 		return thread?.taskStop ? { ...thread.taskStop, threadId: thread.id } : null;
 	}
@@ -320,7 +245,7 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentExecuti
 		ctx: OperationContext,
 	) {
 		const stop = await this.latest(threadId, ctx);
-		if (!stop?.pause) return;
+		if (!stop) return;
 		if (input.planStopId) {
 			stop.pause.reportExecutionId = executionId;
 		} else if (input.userInitiated && !stop.pause.resumedAt) {
@@ -333,7 +258,7 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentExecuti
 	async pendingPauseReports() {
 		const threads = await this.find({ where: { taskStop: Not(IsNull()) } });
 		return threads
-			.filter((thread) => thread.taskStop?.pause && !thread.taskStop.pause.reportedAt)
+			.filter((thread) => thread.taskStop && !thread.taskStop.pause.reportedAt)
 			.map((thread) => thread.id);
 	}
 
@@ -354,7 +279,7 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentExecuti
 		return await this.runInTransaction({}, async (manager, ctx) => {
 			await this.threads.lockById(threadId, ctx);
 			const stop = await this.latest(threadId, ctx);
-			if (!stop?.pause || stop.pause.id !== stopId || stop.pause.reportedAt) return;
+			if (!stop || stop.pause.id !== stopId || stop.pause.reportedAt) return;
 			const execution = stop.pause.reportExecutionId
 				? await manager.findOneBy(AgentExecution, { id: stop.pause.reportExecutionId })
 				: null;

@@ -94,7 +94,6 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
-  boolean detached
   text error
   varchar_36_ id
   varchar_16_ kind
@@ -124,7 +123,6 @@ erDiagram
 "public.agent_message_queue" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId FK
-  boolean held
   bigint id
   varchar_36_ messageId FK
   json payload

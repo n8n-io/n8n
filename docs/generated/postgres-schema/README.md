@@ -9,7 +9,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
-| [public.agent_background_job](public.agent_background_job.md) | 22 |  | BASE TABLE |
+| [public.agent_background_job](public.agent_background_job.md) | 21 |  | BASE TABLE |
 | [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
 | [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
@@ -26,7 +26,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 20 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
-| [public.agent_message_queue](public.agent_message_queue.md) | 11 |  | BASE TABLE |
+| [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
 | [public.agent_plan](public.agent_plan.md) | 8 |  | BASE TABLE |
 | [public.agent_plan_history](public.agent_plan_history.md) | 6 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
@@ -439,7 +439,6 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
-  boolean detached
   text error
   varchar_36_ id
   varchar_16_ kind
@@ -654,7 +653,6 @@ erDiagram
 "public.agent_message_queue" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId FK
-  boolean held
   bigint id
   varchar_36_ messageId FK
   json payload

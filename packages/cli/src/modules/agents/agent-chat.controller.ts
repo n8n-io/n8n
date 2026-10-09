@@ -987,21 +987,6 @@ export class AgentChatController {
 		return await this.taskCancellation.state(req.params.threadId);
 	}
 
-	@Post('/:agentId/chat/:threadId/queue/:queueId/send')
-	@ProjectScope('agent:execute')
-	async sendHeldMessage(
-		req: AuthenticatedRequest<{
-			projectId: string;
-			agentId: string;
-			threadId: string;
-			queueId: string;
-		}>,
-	): Promise<void> {
-		this.assertQueueId(req.params.queueId);
-		await this.assertTaskCancellationAccess(req);
-		await this.messageQueue.sendHeld({ ...req.params, userId: req.user.id, kind: 'preview' });
-	}
-
 	@Post('/:agentId/chat/:threadId/background-tasks/stop')
 	@ProjectScope('agent:execute')
 	async stopBackgroundJobs(

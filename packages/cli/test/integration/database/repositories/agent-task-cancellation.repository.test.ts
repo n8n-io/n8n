@@ -1,5 +1,4 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
@@ -67,6 +66,7 @@ describe('Task cancellation persistence', () => {
 				requestedAt: cutoffAt.toISOString(),
 				generation: await repository.captureGeneration(thread.id, {}),
 				failures: [],
+				pause: { id: randomUUID() },
 			},
 			{},
 		);
@@ -83,11 +83,6 @@ describe('Task cancellation persistence', () => {
 			{},
 		);
 		return await queue.enqueue(thread.id, input.id, { kind: 'preview' }, {});
-	}
-
-	async function pauseRequest() {
-		const stop = { ...(await request()), pause: { id: randomUUID() } };
-		return await repository.saveStop(stop, {});
 	}
 
 	it('discards pending and steering messages while preserving later input', async () => {
@@ -107,8 +102,8 @@ describe('Task cancellation persistence', () => {
 		const old = await db
 			.getRepository(AgentExecution)
 			.save({ id: randomUUID(), threadId: thread.id, status: 'cancelled' });
-		const stop = await pauseRequest();
-		const report = { jobIds: [], planStopId: stop.pause!.id };
+		const stop = await request();
+		const report = { jobIds: [], planStopId: stop.pause.id };
 		expect(await repository.pendingPauseReports()).toContain(thread.id);
 		expect(await repository.blocksQueue(thread.id, {})).toBe(true);
 		await expect(repository.assertWakeAdmission(thread.id, { jobIds: [] }, {})).rejects.toThrow(
@@ -121,20 +116,20 @@ describe('Task cancellation persistence', () => {
 		await repository.recordAdmission(
 			thread.id,
 			execution.id,
-			{ planStopId: stop.pause!.id, userInitiated: false },
+			{ planStopId: stop.pause.id, userInitiated: false },
 			{},
 		);
 		await expect(repository.assertWakeAdmission(thread.id, report, {})).rejects.toThrow(
 			'no longer available',
 		);
-		await repository.finishPauseReport(thread.id, stop.pause!.id);
+		await repository.finishPauseReport(thread.id, stop.pause.id);
 		expect(await repository.blocksQueue(thread.id, {})).toBe(true);
 		await db.getRepository(AgentExecution).update(execution.id, { status: 'success' });
-		await repository.finishPauseReport(thread.id, stop.pause!.id);
+		await repository.finishPauseReport(thread.id, stop.pause.id);
 		expect(await repository.blocksQueue(thread.id, {})).toBe(false);
 		expect(await repository.pendingPauseReports()).not.toContain(thread.id);
 		await repository.recordAdmission(thread.id, randomUUID(), { userInitiated: true }, {});
-		expect((await repository.latest(thread.id))?.pause?.resumedAt).toBeDefined();
+		expect((await repository.latest(thread.id))?.pause.resumedAt).toBeDefined();
 		expect(await repository.isCancelled(thread.id, old.id)).toBe(true);
 		await expect(
 			repository.assertWakeAdmission(thread.id, { jobIds: [] }, {}),
@@ -161,7 +156,7 @@ describe('Task cancellation persistence', () => {
 			status: 'paused',
 			childThreadId: child.id,
 		});
-		const stop = await pauseRequest();
+		const stop = await request();
 		await db
 			.getRepository(AgentCheckpoint)
 			.save({ runId: randomUUID(), agentId, threadId: child.id, state: '{}', expired: false });
@@ -169,9 +164,9 @@ describe('Task cancellation persistence', () => {
 		expect(await repository.isCancelled(child.id)).toBe(false);
 		expect(await repository.hasPausedAncestor(child.id, {})).toBe(true);
 		await expect(repository.assertAdmission(child.id, undefined, {})).rejects.toThrow();
-		await repository.finishPauseReport(thread.id, stop.pause!.id, true);
+		await repository.finishPauseReport(thread.id, stop.pause.id, true);
 		await expect(
-			repository.assertWakeAdmission(thread.id, { jobIds: [], planStopId: stop.pause!.id }, {}),
+			repository.assertWakeAdmission(thread.id, { jobIds: [], planStopId: stop.pause.id }, {}),
 		).rejects.toThrow('no longer available');
 		expect((await repository.latest(thread.id))?.pause).toMatchObject({
 			reportFailed: true,
@@ -211,23 +206,6 @@ describe('Task cancellation persistence', () => {
 		} finally {
 			await runner.release();
 		}
-	});
-
-	it('keeps holds across fresh reads and releases only the selected message', async () => {
-		const first = await enqueue('First');
-		const second = await enqueue('Second');
-		await queue.holdPending(thread.id, {});
-		const third = await enqueue('New request');
-		expect((await queue.listPending(thread.id)).map(({ held }) => held)).toEqual([
-			true,
-			true,
-			false,
-		]);
-		expect((await queue.findHead(thread.id, {}))?.id).toBe(third.id);
-		expect(await queue.reserveSteering(thread.id, first.id, randomUUID(), {})).toBe(false);
-		await queue.releaseHeld(thread.id, second.id, {});
-		expect((await queue.findHead(thread.id, {}))?.id).toBe(second.id);
-		expect((await queue.findItem(thread.id, first.id, {}))?.held).toBe(true);
 	});
 
 	it('blocks old executions after cancellation and permits new work', async () => {
@@ -297,14 +275,14 @@ describe('Task cancellation persistence', () => {
 		expect(await repository.isCancelled(child.id)).toBe(false);
 	});
 
-	it.each([false, true])('checks a live foreground checkpoint for pause=%s', async (pause) => {
+	it('waits for a live foreground checkpoint to stop', async () => {
 		const execution = await db.getRepository(AgentExecution).save({
 			id: randomUUID(),
 			threadId: thread.id,
 			status: 'success',
 			hitlStatus: 'suspended',
 		});
-		const stop = pause ? await pauseRequest() : await request();
+		const stop = await request();
 		const runId = randomUUID();
 		await db.getRepository(AgentCheckpoint).save({
 			runId,
@@ -320,7 +298,7 @@ describe('Task cancellation persistence', () => {
 			}),
 		});
 		expect(await repository.unfinishedWork(stop)).toEqual([
-			{ jobId: thread.id, title: 'Current response' },
+			{ jobId: execution.id, title: 'Current response' },
 		]);
 		await db
 			.getRepository(AgentCheckpoint)
@@ -331,7 +309,7 @@ describe('Task cancellation persistence', () => {
 		expect(await repository.unfinishedWork(stop)).toEqual([]);
 	});
 
-	it('blocks a child admitted before cancellation even if its thread starts later', async () => {
+	it('pauses a child admitted before Stop even if its thread starts later', async () => {
 		const child = await db.getRepository(AgentExecutionThread).save({
 			id: randomUUID(),
 			agentId,
@@ -354,10 +332,10 @@ describe('Task cancellation persistence', () => {
 			createdAt: beforeStop,
 		});
 		await request();
-		expect(await repository.isCancelled(child.id)).toBe(true);
+		expect(await repository.hasPausedAncestor(child.id, {})).toBe(true);
 	});
 
-	it('waits for a descendant checkpoint saved during cancellation cleanup', async () => {
+	it('preserves a descendant checkpoint saved while stopping', async () => {
 		const child = await db.getRepository(AgentExecutionThread).save({
 			id: randomUUID(),
 			agentId,
@@ -372,7 +350,8 @@ describe('Task cancellation persistence', () => {
 		await db
 			.getRepository(AgentCheckpoint)
 			.save({ runId, agentId, threadId: child.id, state: '{}', expired: false });
-		expect(await repository.unfinishedWork(cancellation, {})).not.toEqual([]);
+		expect(await repository.unfinishedWork(cancellation, {})).toEqual([]);
+		expect(await db.getRepository(AgentCheckpoint).findOneBy({ runId })).not.toBeNull();
 		await db.getRepository(AgentCheckpoint).update({ runId }, { state: null });
 		expect(await repository.unfinishedWork(cancellation, {})).toEqual([]);
 	});
@@ -439,29 +418,12 @@ describe('Task cancellation persistence', () => {
 				{},
 			),
 		).rejects.toThrow('These tasks were canceled');
-		await Container.get(TransactionRunner).run({}, async (ctx) => {
-			await plans.cancelPlan(
-				{
-					threadId: thread.id,
-					planId: plan.id,
-					expectedRevision: 1,
-					formatVersion: 1,
-					data: { result: 'Saved', canceled: true },
-				},
-				ctx,
-			);
-		});
 		const current = await plans.findPlan(thread.id, plan.id, {});
-		const history = await plans.findRevision(thread.id, plan.id, 2, {});
-		expect(current?.closedAt).toBeInstanceOf(Date);
-		expect(history).toMatchObject({
-			data: current?.data,
-			closedAt: current?.closedAt,
-			revision: 2,
-		});
+		expect(current).toMatchObject({ closedAt: null, revision: 1, data: { result: 'Saved' } });
 		expect((await plans.findRevision(thread.id, plan.id, 1, {}))?.data).toEqual({
 			result: 'Saved',
 		});
+		expect(await plans.findRevision(thread.id, plan.id, 2, {})).toBeNull();
 	});
 
 	it('blocks an old wake even if the job finished before Stop', async () => {
@@ -477,15 +439,12 @@ describe('Task cancellation persistence', () => {
 			result: 'Saved output',
 		});
 		const stop = await request();
-		await repository.consumeTargetedMail(
-			(await repository.targetedJobs(stop)).map((item) => item.id),
-			{},
-		);
+		await repository.finishPauseReport(thread.id, stop.pause.id, true);
 		await expect(
 			repository.assertWakeAdmission(thread.id, { jobIds: [job.id] }, {}),
-		).rejects.toThrow('These background tasks were canceled');
+		).rejects.toThrow('The plan is stopped');
 		await expect(repository.assertWakeAdmission(thread.id, { jobIds: [] }, {})).rejects.toThrow(
-			'These background tasks were canceled',
+			'The plan is stopped',
 		);
 		expect(
 			await db.getRepository(AgentBackgroundJob).findOneByOrFail({ id: job.id }),

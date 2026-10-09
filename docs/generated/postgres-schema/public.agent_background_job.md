@@ -7,7 +7,6 @@
 | childExecutionId | varchar(36) |  | true |  |  | Workflow jobs only |
 | childThreadId | varchar(128) |  | true |  |  | Sub-agent jobs only; minted at dispatch, links to agent_execution_threads |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| detached | boolean | true | false |  |  | Deliver results through background wake messages |
 | error | text |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(16) |  | false |  |  | What the job tracks: a detached sub-agent run or a workflow execution |
@@ -37,7 +36,6 @@
 | FK_d46c6f00730c2ef8bcb6ee24b67 | FOREIGN KEY | FOREIGN KEY ("parentAgentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_6e0db58281aa2b4c956dc0d58e9 | PRIMARY KEY | PRIMARY KEY (id) |
 | agent_background_job_createdAt_not_null | n | NOT NULL "createdAt" |
-| agent_background_job_detached_not_null | n | NOT NULL detached |
 | agent_background_job_id_not_null | n | NOT NULL id |
 | agent_background_job_kind_not_null | n | NOT NULL kind |
 | agent_background_job_parentAgentId_not_null | n | NOT NULL "parentAgentId" |
@@ -72,7 +70,6 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
-  boolean detached
   text error
   varchar_36_ id
   varchar_16_ kind

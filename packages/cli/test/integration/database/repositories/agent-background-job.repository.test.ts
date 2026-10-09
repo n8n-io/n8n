@@ -460,7 +460,6 @@ describe('AgentBackgroundJobRepository', () => {
 		const workflow = uuid();
 		const otherThread = uuid();
 		const otherResource = uuid();
-		const foregroundWorkflow = uuid();
 		const pauseRequestId = uuid();
 		await insertJob({ id: first, parentThreadId: 'parent', status: 'running', settledAt: null });
 		await insertJob({ id: second, parentThreadId: 'parent', status: 'suspended', settledAt: null });
@@ -486,14 +485,7 @@ describe('AgentBackgroundJobRepository', () => {
 			status: 'running',
 			settledAt: null,
 		});
-		await insertJob({
-			id: foregroundWorkflow,
-			parentThreadId: 'parent',
-			kind: 'workflow',
-			detached: false,
-			status: 'running',
-			settledAt: null,
-		});
+
 		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', pauseRequestId);
 		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', uuid());
 		expect(
@@ -504,10 +496,7 @@ describe('AgentBackgroundJobRepository', () => {
 		).toEqual([first, second, workflow].sort());
 		expect((await repository.findById(otherResource))?.pauseRequestId).toBeNull();
 		expect((await repository.findById(otherThread))?.pauseRequestId).toBeNull();
-		expect(await repository.findById(foregroundWorkflow)).toMatchObject({
-			status: 'running',
-			pauseRequestId: null,
-		});
+
 		expect(await repository.resumeIfSuspended(second, new Date())).toBe(false);
 		expect(await repository.findById(second)).toMatchObject({
 			status: 'suspended',

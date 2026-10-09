@@ -39,7 +39,6 @@ function setup() {
 			parentThreadId: 'thread',
 			status: 'completed',
 			result: 'Saved result',
-			detached: true,
 		}),
 	];
 	repository.captureGeneration.mockResolvedValue({ executionIds: [], jobIds: [], threadIds: [] });
@@ -87,7 +86,7 @@ function setup() {
 }
 
 it('saves a stop between tasks and requests an acknowledgement without changing the plan', async () => {
-	const { service, repository, queue, jobs, plans, wake, work } = setup();
+	const { service, repository, queue, jobs, wake, work } = setup();
 	const state = await service.request('thread', null);
 	expect(repository.saveStop.mock.invocationCallOrder[0]).toBeLessThan(
 		jobs.requestPause.mock.invocationCallOrder[0],
@@ -95,10 +94,8 @@ it('saves a stop between tasks and requests an acknowledgement without changing 
 	expect(queue.discardPending.mock.invocationCallOrder[0]).toBeLessThan(
 		jobs.requestPause.mock.invocationCallOrder[0],
 	);
-	expect(queue.holdPending).not.toHaveBeenCalled();
-	expect(plans.cancelPlan).not.toHaveBeenCalled();
 	expect(work[0]).toMatchObject({ status: 'completed', result: 'Saved result' });
-	expect(state).toMatchObject({ status: 'stopped', summary: { completed: 1, canceled: 0 } });
+	expect(state).toMatchObject({ status: 'stopped' });
 	expect(wake.requestWake).toHaveBeenCalledWith('thread');
 });
 
@@ -161,20 +158,18 @@ it('orders a new stop after the previous stop when work resumes', async () => {
 });
 
 it('shows Stopping until active work has settled and preserves paused checkpoints', async () => {
-	const { service, jobs, work } = setup();
+	const { service, work } = setup();
 	work.push(
 		mock<AgentBackgroundJob>({
 			id: 'working',
 			title: 'Research',
 			status: 'running',
-			detached: true,
 			parentThreadId: 'thread',
 		}),
 	);
 	expect((await service.request('thread', null)).status).toBe('stopping');
 	work[1].status = 'paused';
 	expect((await service.state('thread'))?.status).toBe('stopped');
-	expect(jobs.cancelPermanently).not.toHaveBeenCalled();
 });
 
 it('keeps a failed stop retryable and reconciles work that has since finished', async () => {
@@ -184,7 +179,6 @@ it('keeps a failed stop retryable and reconciles work that has since finished', 
 			id: 'workflow',
 			title: 'Workflow',
 			status: 'running',
-			detached: true,
 			parentThreadId: 'thread',
 		}),
 	);
@@ -208,7 +202,6 @@ it('offers Retry if a stop was saved before the server could pause its jobs', as
 			pauseRequestId: null,
 			title: 'Research',
 			status: 'running',
-			detached: true,
 			parentThreadId: 'thread',
 		}),
 	);
@@ -216,4 +209,24 @@ it('offers Retry if a stop was saved before the server could pause its jobs', as
 		status: 'failed',
 		failures: [{ jobId: 'unpaused', title: 'Research' }],
 	});
+});
+
+it('keeps a failed foreground checkpoint stop retryable', async () => {
+	const { service, repository, executions, chat } = setup();
+	repository.captureGeneration.mockResolvedValue({
+		executionIds: ['response'],
+		jobIds: [],
+		threadIds: [],
+	});
+	executions.findLatestByThreadId.mockResolvedValue(
+		mock<AgentExecution>({ id: 'response', status: 'success', hitlStatus: 'suspended' }),
+	);
+	repository.unfinishedWork.mockResolvedValue([{ jobId: 'response', title: 'Current response' }]);
+	chat.requestCancel.mockRejectedValueOnce(new Error('Stop failed'));
+	expect(await service.request('thread', null)).toMatchObject({
+		status: 'failed',
+		failures: [{ jobId: 'response', title: 'Current response' }],
+	});
+	repository.unfinishedWork.mockResolvedValue([]);
+	expect(await service.request('thread', null)).toMatchObject({ status: 'stopped', failures: [] });
 });

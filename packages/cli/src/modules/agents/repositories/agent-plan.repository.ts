@@ -178,30 +178,16 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 		return await this.writeRevision(input, null, ctx);
 	}
 
-	async cancelPlan(
-		input: PlanWrite & PlanDocument,
-		ctx: AgentPlanOperationContext,
-	): Promise<AgentPlanRecord> {
-		return await this.writeRevision(
-			input,
-			{ ...input, data: this.serializeData(input.data) },
-			ctx,
-			true,
-		);
-	}
-
 	private async writeRevision(
 		input: PlanWrite,
 		document: { formatVersion: number; data: string } | null,
 		ctx: AgentPlanOperationContext,
-		cancelled = false,
 	): Promise<AgentPlanRecord> {
 		this.validateVersion(input.expectedRevision);
 
 		return await this.runInTransaction(ctx, async (manager, tx) => {
 			await this.cancellations.lockScope(input.threadId, tx);
-			if (!cancelled)
-				await this.cancellations.assertAdmission(input.threadId, ctx.sourceExecutionId, tx);
+			await this.cancellations.assertAdmission(input.threadId, ctx.sourceExecutionId, tx);
 			const now = new Date();
 			const query = manager
 				.createQueryBuilder()
@@ -209,7 +195,6 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 				.set({
 					revision: () => 'revision + 1',
 					updatedAt: now,
-					...(cancelled ? { closedAt: now } : {}),
 					...(document
 						? { formatVersion: document.formatVersion, data: () => ':planData' }
 						: { closedAt: now }),

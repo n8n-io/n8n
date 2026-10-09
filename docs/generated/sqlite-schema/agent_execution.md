@@ -98,7 +98,6 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   datetime_3_ createdAt
-  boolean detached
   TEXT error
   varchar_36_ id PK
   varchar_16_ kind
@@ -128,7 +127,6 @@ erDiagram
 "agent_message_queue" {
   datetime_3_ createdAt
   varchar_36_ executionId FK
-  boolean held
   INTEGER id
   varchar_36_ messageId FK
   TEXT payload

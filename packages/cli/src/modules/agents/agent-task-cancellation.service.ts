@@ -12,7 +12,6 @@ import { AgentBackgroundJobService } from './background/agent-background-job.ser
 import { AgentWakeService } from './background/agent-wake.service';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { v7 as uuidv7 } from 'uuid';
-import { parseAgentPlan } from './plans/agent-plan.schema';
 import { presentPlan } from './plans/agent-plan-tools';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
@@ -50,7 +49,7 @@ export class AgentTaskCancellationService {
 						throw new ConflictError('The plan has changed. Refresh it and try again.');
 					const previous = await this.repository.latest(threadId, ctx);
 					const stop =
-						previous?.pause && !previous.pause.resumedAt && previous.planId === planId
+						previous && !previous.pause.resumedAt && previous.planId === planId
 							? previous
 							: await this.repository.saveStop(
 									{
@@ -91,15 +90,13 @@ export class AgentTaskCancellationService {
 				}
 				const jobs = await this.repository.targetedJobs(stop);
 				const scopes = new Map(
-					jobs
-						.filter((job) => job.detached)
-						.map((job) => [
-							job.parentThreadId,
-							{
-								agentId: job.parentAgentId,
-								resourceId: job.parentResourceId,
-							},
-						]),
+					jobs.map((job) => [
+						job.parentThreadId,
+						{
+							agentId: job.parentAgentId,
+							resourceId: job.parentResourceId,
+						},
+					]),
 				);
 				if (thread.ownerId)
 					scopes.set(threadId, {
@@ -112,7 +109,7 @@ export class AgentTaskCancellationService {
 							scope.agentId,
 							parentThreadId,
 							scope.resourceId,
-							stop.pause?.id,
+							stop.pause.id,
 						);
 					} catch {
 						failures.push(
@@ -130,7 +127,7 @@ export class AgentTaskCancellationService {
 					await this.threads.lockById(threadId, ctx);
 					const jobs = await this.repository.targetedJobs(stop, ctx);
 					const latest = await this.repository.latest(threadId, ctx);
-					if (!latest || latest.pause?.id !== stop.pause?.id) return;
+					if (!latest || latest.pause.id !== stop.pause.id) return;
 					latest.failures = failures.filter((failure) => {
 						const job = jobs.find((item) => item.id === failure.jobId);
 						return !job || ['running', 'suspended'].includes(job.status);
@@ -161,43 +158,24 @@ export class AgentTaskCancellationService {
 				[
 					...stop.failures,
 					...jobs
-						.filter(
-							(job) =>
-								stop.pause &&
-								job.detached &&
-								!job.pauseRequestId &&
-								['running', 'suspended'].includes(job.status),
-						)
+						.filter((job) => !job.pauseRequestId && ['running', 'suspended'].includes(job.status))
 						.map((job) => ({ jobId: job.id, title: job.title })),
 				].map((failure) => [failure.jobId, failure]),
 			).values(),
 		].filter((failure) => outstanding.has(failure.jobId));
-		const data = plan ? parseAgentPlan(plan.data, plan.formatVersion) : null;
-		const tasks = data?.items.flatMap((item) => (item.kind === 'group' ? item.tasks : [item]));
 		return {
 			planId: stop.planId,
 			requestedAt: stop.requestedAt,
-			status: stop.pause?.resumedAt
+			status: stop.pause.resumedAt
 				? 'resumed'
 				: failures.length
 					? 'failed'
 					: outstanding.size
 						? 'stopping'
 						: 'stopped',
-			reportFailed: stop.pause?.reportFailed,
+			reportFailed: stop.pause.reportFailed,
 			failures: failures.map((failure) => outstanding.get(failure.jobId)!),
-			summary: {
-				completed: tasks
-					? tasks.filter((task) => task.status === 'done').length
-					: jobs.filter((job) => job.status === 'completed').length,
-				canceled: tasks
-					? tasks.filter((task) => task.status === 'cancelled').length
-					: jobs.filter((job) => job.status === 'cancelled').length,
-			},
 			plan: plan ? presentPlan(plan) : null,
-			heldQueueIds: (await this.queue.listPending(threadId))
-				.filter((item) => item.held)
-				.map((item) => item.id),
 		};
 	}
 }

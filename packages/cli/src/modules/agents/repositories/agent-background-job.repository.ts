@@ -31,7 +31,6 @@ export type NewSubAgentJob = NewAgentBackgroundJobBase & {
 };
 
 export type NewWorkflowJob = NewAgentBackgroundJobBase & {
-	detached?: boolean;
 	kind: 'workflow';
 	workflowId: string;
 	childExecutionId: string;
@@ -92,11 +91,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				.createQueryBuilder()
 				.insert()
 				.into(AgentBackgroundJob)
-				.values({
-					...job,
-					status: 'running',
-					...(job.detached === false ? { notifiedAt: new Date() } : {}),
-				})
+				.values({ ...job, status: 'running' })
 				.orIgnore()
 				.execute();
 			// The service stops late workflow receipts before returning them to the caller.
@@ -106,14 +101,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		if (inserted) return { inserted: true };
 
 		const existing = await this.findOne({ where: { childExecutionId: job.childExecutionId } });
-		if (existing) {
-			if (job.detached !== false)
-				await this.update(
-					{ id: existing.id, status: 'running' },
-					{ detached: true, notifiedAt: null },
-				);
-			return { inserted: false, existing };
-		}
+		if (existing) return { inserted: false, existing };
 
 		throw new OperationalError('Failed to register workflow background job');
 	}
@@ -140,7 +128,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		parentThreadId: string,
 	): Promise<BackgroundJobGroupItem[]> {
 		return await this.find({
-			where: { parentAgentId, parentThreadId, detached: true },
+			where: { parentAgentId, parentThreadId },
 			select: [
 				'id',
 				'kind',
@@ -345,7 +333,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				.createQueryBuilder()
 				.update(AgentBackgroundJob)
 				.set({ pauseRequestId, notifiedAt: null })
-				.where({ parentAgentId, parentThreadId, parentResourceId, detached: true })
+				.where({ parentAgentId, parentThreadId, parentResourceId })
 				.andWhere("status IN ('running', 'suspended')")
 				.andWhere('(pauseRequestId IS NULL OR notifiedAt IS NOT NULL)')
 				.execute();
@@ -535,8 +523,8 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				notifiedAt:
 					settlement.status === 'cancelled' || expected?.status === 'paused'
 						? () =>
-								'CASE WHEN "status" = \'paused\' OR "pauseRequestId" IS NOT NULL OR "detached" = false THEN "notifiedAt" ELSE NULL END'
-						: () => 'CASE WHEN "detached" = false THEN "notifiedAt" ELSE NULL END',
+								'CASE WHEN "status" = \'paused\' OR "pauseRequestId" IS NOT NULL THEN "notifiedAt" ELSE NULL END'
+						: null,
 			},
 		);
 		return result.affected === 1;
