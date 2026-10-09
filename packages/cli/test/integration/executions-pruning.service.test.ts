@@ -501,5 +501,24 @@ describe('softDeleteOnPruningCycle()', () => {
 
 			expect(refs.map(({ executionId }) => executionId)).toEqual([expired.id]);
 		});
+
+		test('leaves out the excluded executions', async () => {
+			const twoHoursAgo = new Date(realNow - 2 * Time.hours.toMilliseconds);
+			const excluded = await createExecution(
+				{ status: 'success', finished: true, stoppedAt: yesterday, deletedAt: twoHoursAgo },
+				workflow,
+			);
+			const expired = await createExecution(
+				{ status: 'success', finished: true, stoppedAt: yesterday, deletedAt: twoHoursAgo },
+				workflow,
+			);
+			moveInstanceClockAhead();
+
+			const refs = await Container.get(ExecutionRepository).findSoftDeletedExecutions([
+				excluded.id,
+			]);
+
+			expect(refs.map(({ executionId }) => executionId)).toEqual([expired.id]);
+		});
 	});
 });
