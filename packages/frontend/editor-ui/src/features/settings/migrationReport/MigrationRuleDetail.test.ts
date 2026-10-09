@@ -6,6 +6,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import * as usersApi from '@n8n/rest-api-client/api/users';
@@ -939,83 +940,156 @@ describe('MigrationRuleDetail', () => {
 		});
 	});
 
-	describe('status filter', () => {
-		it('should render filter dropdown button', async () => {
-			renderComponent({
-				props: {
-					migrationRuleId: 'rule-1',
-				},
-			});
+	describe('quick filters', () => {
+		const wontFixUnassigned = {
+			...mockWorkflowWithMultipleNodes,
+			id: 'workflow-3',
+			name: 'Test Workflow 3',
+			status: 'wont_fix' as const,
+		};
+
+		beforeEach(() => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						mockWorkflowWithIssue,
+						mockWorkflowWithMultipleNodes,
+						wontFixUnassigned,
+					],
+				}),
+			);
+		});
+
+		const rowNames = () =>
+			screen
+				.getAllByRole('row')
+				.slice(1)
+				.map((row) => row.textContent ?? '')
+				.map((text) => /Test Workflow \d/.exec(text)?.[0]);
+
+		it('should show the count of each finding state and of unassigned workflows', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
 			await waitFor(() => {
-				const filterButton = screen.getByTestId('migration-rule-filters');
-				expect(filterButton).toBeInTheDocument();
+				expect(screen.getByTestId('migration-rule-quick-filter-open')).toHaveTextContent('Open 2');
+			});
+			expect(screen.getByTestId('migration-rule-quick-filter-wont-fix')).toHaveTextContent(
+				"Won't fix 1",
+			);
+			expect(screen.getByTestId('migration-rule-quick-filter-unassigned')).toHaveTextContent(
+				'Unassigned 2',
+			);
+		});
+
+		it('should filter by finding state and clear the filter on a second click', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(rowNames()).toHaveLength(3));
+
+			const wontFix = screen.getByTestId('migration-rule-quick-filter-wont-fix');
+			await userEvent.click(wontFix);
+			await waitFor(() => expect(rowNames()).toEqual(['Test Workflow 3']));
+			expect(wontFix).toHaveAttribute('aria-pressed', 'true');
+
+			await userEvent.click(wontFix);
+			await waitFor(() => expect(rowNames()).toHaveLength(3));
+		});
+
+		it('should filter the workflows without an owner', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(rowNames()).toHaveLength(3));
+
+			await userEvent.click(screen.getByTestId('migration-rule-quick-filter-unassigned'));
+			await waitFor(() => expect(rowNames()).toEqual(['Test Workflow 2', 'Test Workflow 3']));
+		});
+
+		it('should filter the workflows assigned to the current user', async () => {
+			mockedStore(useUsersStore).currentUserId = 'user-1';
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(rowNames()).toHaveLength(3));
+
+			await userEvent.click(screen.getByTestId('migration-rule-quick-filter-mine'));
+			await waitFor(() => expect(rowNames()).toEqual(['Test Workflow 1']));
+		});
+	});
+
+	describe('sort menu', () => {
+		it('should show the current sort and sort by the picked field', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const trigger = await screen.findByTestId('migration-rule-sort-trigger');
+			expect(trigger).toHaveTextContent('Sort: Executions ↓');
+
+			await userEvent.click(trigger);
+			await userEvent.click(await screen.findByRole('menuitem', { name: /Name/ }));
+
+			await waitFor(() => {
+				expect(trigger).toHaveTextContent('Sort: Name ↑');
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
+			});
+
+			// Picking the same field again flips the direction.
+			await userEvent.click(trigger);
+			await userEvent.click(await screen.findByRole('menuitem', { name: /Name/ }));
+
+			await waitFor(() => {
+				expect(trigger).toHaveTextContent('Sort: Name ↓');
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 2');
 			});
 		});
 
-		it('should open filter dropdown when clicked', async () => {
-			const user = userEvent.setup({ delay: null });
-			renderComponent({
-				props: {
-					migrationRuleId: 'rule-1',
-				},
-			});
+		it('should sort a workflow that never ran last when the latest run comes first', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const trigger = await screen.findByTestId('migration-rule-sort-trigger');
+			await userEvent.click(trigger);
+			await userEvent.click(await screen.findByRole('menuitem', { name: /Last run/ }));
 
 			await waitFor(() => {
-				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
-			});
-
-			// Open filter dropdown - click the actual trigger button inside ResourceFiltersDropdown
-			const filterButton = screen.getByTestId('resources-list-filters-trigger');
-			await user.click(filterButton);
-
-			await waitFor(() => {
-				const dropdown = screen.getByTestId('resources-list-filters-dropdown');
-				expect(dropdown).toBeInTheDocument();
-				// Check that the status filter label is visible. Ignore 'th' elements to avoid confusion with table headers.
-				expect(screen.getByText('Status', { ignore: 'th' })).toBeInTheDocument();
+				expect(trigger).toHaveTextContent('Sort: Last run ↓');
+				expect(screen.getAllByRole('row')[2].textContent).toContain('Test Workflow 2');
 			});
 		});
+	});
 
-		it('should filter workflows by status', async () => {
-			const user = userEvent.setup({ delay: null });
-			renderComponent({
-				props: {
-					migrationRuleId: 'rule-1',
-				},
-			});
+	describe('filters popover', () => {
+		const openFilters = async () => {
+			await userEvent.click(await screen.findByTestId('migration-rule-filters'));
+			return await screen.findByTestId('migration-rule-filters-content');
+		};
+
+		it('should filter workflows by publish state and show the number of active filters', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(screen.getByText('Test Workflow 2')).toBeInTheDocument());
+
+			const content = await openFilters();
+			const status = within(content).getByTestId('migration-rule-filter-status');
+			await userEvent.click(within(status).getByRole('radio', { name: 'Published' }));
 
 			await waitFor(() => {
 				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
+				expect(screen.queryByText('Test Workflow 2')).not.toBeInTheDocument();
+			});
+			expect(screen.getByTestId('migration-rule-filters')).toHaveTextContent('Filters (1)');
+		});
+
+		it('should filter workflows by executions and clear every filter', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(screen.getByText('Test Workflow 2')).toBeInTheDocument());
+
+			const content = await openFilters();
+			const executions = within(content).getByTestId('migration-rule-filter-executions');
+			await userEvent.click(within(executions).getByRole('radio', { name: '< 100' }));
+
+			await waitFor(() => {
+				expect(screen.queryByText('Test Workflow 1')).not.toBeInTheDocument();
 				expect(screen.getByText('Test Workflow 2')).toBeInTheDocument();
 			});
 
-			// Open filter dropdown - click the actual trigger button inside ResourceFiltersDropdown
-			const filterButton = screen.getByTestId('resources-list-filters-trigger');
-			await user.click(filterButton);
+			await userEvent.click(within(content).getByTestId('migration-rule-filters-clear'));
 
 			await waitFor(() => {
-				expect(screen.getByTestId('resources-list-filters-dropdown')).toBeInTheDocument();
-			});
-
-			// Select "Active" status
-			// Find the select combobox input and click it to open the dropdown
-			const statusSelectWrapper = screen.getByTestId('migration-rule-status-filter');
-			const statusSelectInput = statusSelectWrapper.querySelector('input[role="combobox"]');
-			if (!statusSelectInput) throw new Error('Select input not found');
-			await user.click(statusSelectInput);
-
-			// Wait for options to appear and click Active
-			await waitFor(() => {
-				expect(screen.getByRole('option', { name: 'Active' })).toBeInTheDocument();
-			});
-			const activeOption = screen.getByRole('option', { name: 'Active' });
-			await user.click(activeOption);
-
-			await waitFor(() => {
-				// Only active workflow should be visible
 				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
-				expect(screen.queryByText('Test Workflow 2')).not.toBeInTheDocument();
+				expect(screen.getByTestId('migration-rule-filters')).toHaveTextContent(/^Filters$/);
 			});
 		});
 	});
