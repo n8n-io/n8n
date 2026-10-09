@@ -39,7 +39,12 @@ availability error without a retry. Redirects do not forward tokens. Logs includ
 fixed error codes, never request secrets or response bodies.
 
 Validation responses have a 1 MiB decoded-body limit.
-Fresh credentials validate before encryption. URL-only edits decrypt the stored token.
+Fresh credentials validate before encryption. A different API destination requires
+token authentication and host configuration in the same update. The supplied token
+can be the same as the saved token. Equivalent URL-only edits decrypt the stored
+token once. Hostname case, default-port notation, and a trailing slash do not
+change the API destination. Changes to the protocol, hostname, port, or
+installation path do.
 
 Certificate verification stays enabled. Configure the Node trust store for an
 internal certificate authority. Git uses `GIT_SSL_CAINFO` or `GIT_SSL_CAPATH`.

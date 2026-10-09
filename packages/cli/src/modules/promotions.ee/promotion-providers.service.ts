@@ -123,6 +123,11 @@ export class PromotionProvidersService {
 		if (input.name !== undefined) changes.name = input.name;
 		if (input.config !== undefined) {
 			changes.config = this.resolveHostConfig(current.type, current.authType, input.config);
+			if (!input.auth && !this.isSameHostUrl(current.config, input.config)) {
+				throw new BadRequestError(
+					'Changing the Git host URL requires token authentication. Send auth and config in the same request.',
+				);
+			}
 		}
 		const config = changes.config ?? current.config;
 		if (!input.auth) return { changes, config, credentials: undefined };
@@ -144,6 +149,14 @@ export class PromotionProvidersService {
 		);
 		if (!isGitHost) changes.config = authentication.config;
 		return { changes, ...authentication };
+	}
+
+	private isSameHostUrl(current: PromotionProviderConfig, next: PromotionGitHostConfig) {
+		const parsed = promotionGitHostConfigSchema.safeParse(current);
+		if (!parsed.success) return false;
+		const currentUrl = new URL(parsed.data.baseUrl).href.replace(/\/$/, '');
+		const nextUrl = new URL(next.baseUrl).href.replace(/\/$/, '');
+		return currentUrl === nextUrl;
 	}
 
 	private async validateHostAccess(

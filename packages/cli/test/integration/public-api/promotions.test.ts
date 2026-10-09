@@ -263,6 +263,7 @@ describe('Promotions in Public API', () => {
 					const response = await agent.put(`/promotions/providers/${id}`).send({
 						name: 'Changed',
 						config: { schemaVersion: 1, baseUrl: internalBaseUrl },
+						auth: payload.auth,
 					});
 
 					expect(response.status).toBe(400);
@@ -576,17 +577,78 @@ describe('Promotions in Public API', () => {
 		});
 
 		it.each([
+			'http://gitlab.example.com',
+			'https://gitlab-updated.example.com',
+			'https://gitlab.example.com:8443',
+			'https://gitlab.example.com/gitlab',
+		])('requires token authentication for a different API destination: %s', async (baseUrl) => {
+			validAccess();
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createProvider(agent, payload);
+			const before = await Container.get(PromotionProviderRepository).findOneByOrFail({ id });
+			const api = validAccess(baseUrl);
+			const decrypt = vi.spyOn(Container.get(Cipher), 'decryptV2');
+			try {
+				const response = await agent.put(`/promotions/providers/${id}`).send({
+					name: 'Changed',
+					config: { schemaVersion: 1, baseUrl },
+				});
+
+				expect(response.status).toBe(400);
+				expect(response.body.message).toContain('token authentication');
+				expect(decrypt).not.toHaveBeenCalled();
+				expect(api.pendingMocks()).toHaveLength(2);
+				expect(await Container.get(PromotionProviderRepository).findOneByOrFail({ id })).toEqual(
+					before,
+				);
+			} finally {
+				decrypt.mockRestore();
+			}
+		});
+
+		it.each(['https://GITLAB.EXAMPLE.COM:443/', '  https://gitlab.example.com/  '])(
+			'keeps stored credentials for an equivalent API URL: %s',
+			async (baseUrl) => {
+				validAccess();
+				const agent = testServer.publicApiAgentFor(owner);
+				const id = await createProvider(agent, payload);
+				const before = await Container.get(PromotionProviderRepository).findOneByOrFail({ id });
+				const api = validAccess(baseUrl);
+				const decrypt = vi.spyOn(Container.get(Cipher), 'decryptV2');
+				try {
+					const response = await agent.put(`/promotions/providers/${id}`).send({
+						config: { schemaVersion: 1, baseUrl },
+					});
+
+					expect(response.status, JSON.stringify(response.body)).toBe(200);
+					expect(response.body.config.baseUrl).toBe(baseUrl.trim());
+					expect(decrypt).toHaveBeenCalledTimes(1);
+					expect(
+						(await Container.get(PromotionProviderRepository).findOneByOrFail({ id })).auth,
+					).toBe(before.auth);
+					api.done();
+				} finally {
+					decrypt.mockRestore();
+				}
+			},
+		);
+
+		it.each([
 			{
 				auth: { authType: 'token', username: 'ignored', password: 'replacement-token' },
 				config: undefined,
 			},
 			{
 				auth: undefined,
-				config: { schemaVersion: 1, baseUrl: 'http://gitlab.internal:8929/gitlab/' },
+				config: { schemaVersion: 1, baseUrl: `${payload.config.baseUrl}/` },
 			},
 			{
 				auth: { authType: 'token', username: 'ignored', password: 'replacement-token' },
 				config: { schemaVersion: 1, baseUrl: 'https://gitlab.internal' },
+			},
+			{
+				auth: payload.auth,
+				config: { schemaVersion: 1, baseUrl: 'http://gitlab.internal:8929/gitlab/' },
 			},
 		])('validates partial and combined provider updates: %j', async (input) => {
 			validAccess();
