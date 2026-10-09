@@ -2,6 +2,8 @@ import type { PromotionConnectionTarget, PromotionSshKeyType } from '@n8n/api-ty
 import { resolveProxyUrl } from '@n8n/backend-network';
 import { generateKeyPairSync } from 'node:crypto';
 
+import { quoteShellArg } from '@/utils/quote-shell-arg';
+
 import {
 	HTTP_LOW_SPEED_LIMIT_BYTES,
 	HTTP_LOW_SPEED_TIME_SECONDS,
