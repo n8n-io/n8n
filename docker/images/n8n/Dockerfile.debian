@@ -1,10 +1,9 @@
-ARG NODE_VERSION=26.11.0
+ARG NODE_VERSION=26.11.1
 ARG N8N_VERSION=snapshot
 
 # glibc variant of ./Dockerfile. See the README for the use case. The builder
 # is Debian 13, the same release and glibc as the base. Change the tag and the
-# digest together. Node 26.11.1 has no runtime change over the base's 26.11.0;
-# the official image skipped 26.11.0.
+# digest together.
 ARG BUILDER_IMAGE=node:26.11.1-trixie-slim@sha256:193fe51b64e77981119c98c2002c9e32a70e2f006fb4d25068ce0558998917f0
 ARG RUNTIME_IMAGE=n8nio/base:26.11.0-debian@sha256:50d7a4921d2d6715f84e2e55c4d05cd1f7610dd2afda086c698cb4133eba693d
 

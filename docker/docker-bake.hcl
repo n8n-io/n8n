@@ -3,7 +3,7 @@
 
 variable "NODE_VERSION" { default = "26.10.0" }
 # The Debian track pins its own Node version; see docker/images/n8n/Dockerfile.debian.
-variable "NODE_DEBIAN_VERSION" { default = "26.11.0" }
+variable "NODE_DEBIAN_VERSION" { default = "26.11.1" }
 variable "N8N_VERSION" { default = "snapshot" }
 variable "N8N_RELEASE_TYPE" { default = "dev" }
 
