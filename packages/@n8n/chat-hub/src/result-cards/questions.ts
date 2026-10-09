@@ -19,6 +19,7 @@ export const ARCHETYPE_DESCRIPTIONS: Record<ResultCardArchetype, string> = {
 	metric: 'one headline number, optionally with a breakdown or trend',
 	list: 'a short list of things, each with a title',
 	keyValue: 'a handful of labelled values about one thing',
+	weather: 'current weather for one place, with a temperature headline and forecast',
 };
 
 export const MIN_ARCHETYPE_CONFIDENCE = 0.35;
