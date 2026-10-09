@@ -1,4 +1,5 @@
 import {
+	resultCardSchema,
 	richMessageSchema,
 	type AgentApproval,
 	type RichCardComponent,
@@ -154,6 +155,20 @@ const respondActionInputSchema = z.object({
 		.strict(),
 });
 
+/**
+ * A result card: the same finite catalog the Chat Hub renders for workflow
+ * agents (`@n8n/api-types/chat-hub-result-card.ts`). Display-only — it never
+ * suspends the run, and the chat UI renders it from the tool-call input.
+ */
+const showCardActionInputSchema = z.object({
+	action: z.literal('show_card'),
+	input: z
+		.object({
+			card: resultCardSchema,
+		})
+		.strict(),
+});
+
 const sendDmActionInputSchema = z.object({
 	action: z.literal('send_dm'),
 	input: z
@@ -285,6 +300,16 @@ export const GENERIC_ACTION_TOOL_DEFINITIONS = [
 	},
 ] satisfies IntegrationActionDefinition[];
 
+/** Only the built-in n8n chat declares this action (see `N8nChatIntegration`). */
+export const SHOW_CARD_ACTION_TOOL_DEFINITIONS = [
+	{
+		name: 'show_card',
+		inputSchema: showCardActionInputSchema,
+		description:
+			'show_card: input.card is required. Renders one result card below your reply — a designed, glanceable view of data you already have. input.card.type is one of metric (one number + label, optional delta, breakdown ≤5, trend ≤30), records (target, operation, columns ≤4, rows ≤5 of strings, total), list (items ≤5 with title/subtitle/meta/https href, total), keyValue (pairs ≤6), email (direction, to, subject, preview), message (channel, to, text). Every card needs a short title; eyebrow, status (success|error|pending|info), statusLabel, tone and actions (≤2 https links) are optional. Numbers go in as display strings ("12.4k", "€8,200").',
+	},
+] satisfies IntegrationActionDefinition[];
+
 const EDIT_MESSAGE_ACTION_TOOL_DEFINITIONS = [
 	{
 		name: 'edit_message',
@@ -321,6 +346,7 @@ const ALL_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 
 const ALL_ACTION_TOOL_DEFINITIONS = [
 	...GENERIC_ACTION_TOOL_DEFINITIONS,
+	...SHOW_CARD_ACTION_TOOL_DEFINITIONS,
 	...EDIT_MESSAGE_ACTION_TOOL_DEFINITIONS,
 	...OPT_IN_ACTION_TOOL_DEFINITIONS,
 	...LINEAR_ACTION_TOOL_DEFINITIONS,

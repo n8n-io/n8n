@@ -14,9 +14,44 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MAX,
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from './sub-agent.schema';
+import { resultCardArchetypes, resultCardTones } from '../chat-hub-result-card';
 import { jsonValueSchema } from '../schemas/json-value.schema';
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
+
+export const AGENT_CARD_PRESETS_MAX = 6;
+
+/**
+ * A named card the agent reaches for in a known situation ("Pipeline total"
+ * → metric). Presets are guidance, not templates: the agent still fills the
+ * card from real data and may use any allowed archetype when none fits.
+ */
+export const AgentCardPresetSchema = z.object({
+	name: z.string().trim().min(1).max(60),
+	type: z.enum(resultCardArchetypes),
+	tone: z.enum(resultCardTones).optional(),
+	/** When to show this card, in plain words ("the user asks how the pipeline is doing"). */
+	useWhen: z.string().trim().min(1).max(240),
+	/** What the slots should carry ("value: open pipeline total in USD; breakdown: per stage"). */
+	fields: z.string().trim().max(400).optional(),
+});
+
+/**
+ * Result cards an agent may render in the n8n chat. Absent = cards on, every
+ * archetype allowed, tone chosen per card. The same catalog the Chat Hub
+ * renders for workflow agents, so a card looks the same wherever it appears.
+ */
+export const AgentCardsConfigSchema = z.object({
+	enabled: z.boolean().optional(),
+	/** Default surface tone for this agent's cards; a preset or a card can override it. */
+	tone: z.enum(resultCardTones).optional(),
+	/** Archetypes the agent may use. Absent = all. */
+	types: z.array(z.enum(resultCardArchetypes)).max(resultCardArchetypes.length).optional(),
+	presets: z.array(AgentCardPresetSchema).max(AGENT_CARD_PRESETS_MAX).optional(),
+});
+
+export type AgentCardPreset = z.infer<typeof AgentCardPresetSchema>;
+export type AgentCardsConfig = z.infer<typeof AgentCardsConfigSchema>;
 
 export const AgentModelSchema = z.string().min(1).regex(
 	/**
@@ -483,6 +518,7 @@ export const AgentJsonConfigBaseSchema = z.object({
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	integrations: z.array(AgentIntegrationConfigSchema).optional(),
+	cards: AgentCardsConfigSchema.optional(),
 	mcpServers: z
 		.array(McpServerConfigSchema)
 		.max(20)

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
+import { N8N_CHAT_RESULT_CARD_INTERACTION } from '@/features/ai/shared/agentsChat/constants';
 import type { AgentsChatInteractionRenderer } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import InteractionRenderer from '@/features/ai/shared/agentsChat/components/InteractionRenderer.vue';
 import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import ApprovalCard from './ApprovalCard.vue';
 import N8nChatActionCard from './N8nChatActionCard.vue';
+import N8nChatResultCard from './N8nChatResultCard.vue';
 
 /**
  * Single dispatch point for the interactive cards. `approval`, `chat_action`
@@ -52,6 +54,16 @@ const interactiveRenderers = [
 				input: payload.input,
 				resolvedValue: payload.resolvedValue,
 			};
+		},
+	},
+	{
+		// `chat_action` → `show_card`: a display-only result card.
+		key: 'result_card',
+		component: N8nChatResultCard,
+		matches: (payload) => payload.toolName === N8N_CHAT_RESULT_CARD_INTERACTION,
+		getProps: (payload) => {
+			if (payload.toolName !== N8N_CHAT_RESULT_CARD_INTERACTION) return {};
+			return { input: payload.input };
 		},
 	},
 	{

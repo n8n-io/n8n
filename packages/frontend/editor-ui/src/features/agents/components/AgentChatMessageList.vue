@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import { N8N_CHAT_RESULT_CARD_INTERACTION } from '@/features/ai/shared/agentsChat/constants';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
 import { useSessionStorage } from '@vueuse/core';
@@ -96,6 +97,8 @@ function externalWaitPlatform(tc: ToolCall): string | undefined {
  */
 function shouldRenderInteractive(payload: InteractivePayload): boolean {
 	if (!payload.resolvedAt) return !!payload.runId;
+	// Result cards are content too: born resolved, always shown.
+	if (payload.toolName === N8N_CHAT_RESULT_CARD_INTERACTION) return true;
 	return payload.toolName === N8N_CHAT_ACTION_TOOL_NAME && !isAwaitingCard(payload.input.card);
 }
 

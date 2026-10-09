@@ -6,9 +6,17 @@ import {
 	type WAIT_TOOL_NAME,
 } from '@n8n/api-types';
 
-import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
+import type {
+	N8nChatInteractionInput,
+	N8nChatResultCardInput,
+	N8nChatResumeValue,
+} from './n8nChatInteraction';
 
-import type { ChatMessageStatus, ToolCallState } from './constants';
+import type {
+	ChatMessageStatus,
+	N8N_CHAT_RESULT_CARD_INTERACTION,
+	ToolCallState,
+} from './constants';
 
 export type { ChatMessageStatus, ToolCallState };
 
@@ -107,6 +115,16 @@ export type InteractivePayload =
 			toolName: typeof WAIT_TOOL_NAME;
 			input: N8nChatInteractionInput;
 			resolvedValue?: N8nChatResumeValue;
+	  })
+	/**
+	 * A result card the agent showed through `chat_action` → `show_card`.
+	 * Always resolved (it never suspends); rendered with the same design-system
+	 * card the Chat Hub uses for workflow agents.
+	 */
+	| (InteractivePayloadBase & {
+			toolName: typeof N8N_CHAT_RESULT_CARD_INTERACTION;
+			input: N8nChatResultCardInput;
+			resolvedValue?: never;
 	  });
 
 export type AgentsChatInteraction = InteractivePayload;

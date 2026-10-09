@@ -110,6 +110,7 @@ export type IntegrationContextQuery =
 
 export type IntegrationAction =
 	| 'respond'
+	| 'show_card'
 	| 'do_not_respond'
 	| 'send_dm'
 	| 'send_channel_message'

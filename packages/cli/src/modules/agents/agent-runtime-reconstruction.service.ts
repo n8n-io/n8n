@@ -14,6 +14,7 @@ import {
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	buildProxyHeaders,
+	type AgentCardsConfig,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonMcpServerConfig,
@@ -67,6 +68,10 @@ import {
 } from './integrations/integration-tools';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
+import {
+	buildResultCardGuidance,
+	resolveN8nChatActions,
+} from './integrations/platforms/n8n-chat-result-cards';
 import {
 	buildFromJson,
 	buildProviderToolsForModel,
@@ -927,7 +932,9 @@ export class AgentRuntimeReconstructionService {
 		);
 
 		if (includeN8nChat) {
-			descriptors.push(this.createN8nChatDescriptor(agentId, integrationRegistry));
+			descriptors.push(
+				this.createN8nChatDescriptor(agentId, integrationRegistry, params.config.cards),
+			);
 		}
 
 		for (const descriptor of descriptors) {
@@ -958,14 +965,20 @@ export class AgentRuntimeReconstructionService {
 		);
 	}
 
+	/**
+	 * The agent's `cards` config shapes the chat tool: `enabled: false` drops
+	 * `show_card`, and tone / allowed types / presets become tool guidance.
+	 */
 	private createN8nChatDescriptor(
 		agentId: string,
 		integrationRegistry: ChatIntegrationRegistry,
+		cards: AgentCardsConfig | undefined,
 	): IntegrationToolConnectionDescriptor {
 		const n8nChat = integrationRegistry.require(N8N_CHAT_INTEGRATION_TYPE);
 		const n8nChatIntegration = {
 			type: N8N_CHAT_INTEGRATION_TYPE,
 		} as unknown as IntegrationToolConnectionDescriptor['integration'];
+		const actions = resolveN8nChatActions(cards);
 		return {
 			agentId,
 			integration: n8nChatIntegration,
@@ -973,11 +986,13 @@ export class AgentRuntimeReconstructionService {
 			contextToolName: N8N_CHAT_CONTEXT_TOOL_NAME,
 			actionToolName: N8N_CHAT_ACTION_TOOL_NAME,
 			contextQueries: [...n8nChat.contextQueries],
-			actions: [...n8nChat.actions],
+			actions,
 			contextToolDefinitions: [...n8nChat.contextToolDefinitions],
-			actionToolDefinitions: [...n8nChat.actionToolDefinitions],
+			actionToolDefinitions: n8nChat.actionToolDefinitions.filter((definition) =>
+				actions.includes(definition.name),
+			),
 			contextToolGuidance: n8nChat.contextToolGuidance,
-			actionToolGuidance: n8nChat.actionToolGuidance,
+			actionToolGuidance: [...(n8nChat.actionToolGuidance ?? []), ...buildResultCardGuidance(cards)],
 		};
 	}
 

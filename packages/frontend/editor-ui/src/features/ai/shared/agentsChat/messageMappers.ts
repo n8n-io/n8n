@@ -10,10 +10,11 @@ import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
 	parseN8nChatActionInput,
+	parseN8nChatResultCardInput,
 	parseWaitSuspendPayload,
 } from './n8nChatInteraction';
 
-import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
+import { CHAT_MESSAGE_STATUS, N8N_CHAT_RESULT_CARD_INTERACTION, TOOL_CALL_STATE } from './constants';
 import type { ToolCallState } from './constants';
 import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import { summariseToolCall } from './interactiveSummary';
@@ -206,6 +207,19 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 	}
 
 	if (tc.tool === N8N_CHAT_ACTION_TOOL_NAME) {
+		// A result card is display-only: it renders once the tool call settled
+		// successfully and is never "open" (nothing to answer, nothing to resume).
+		const resultCard = parseN8nChatResultCardInput(tc.input);
+		if (resultCard) {
+			if (tc.output === undefined || tc.state === TOOL_CALL_STATE.ERROR) return undefined;
+			return {
+				toolCallId: tc.toolCallId,
+				resolvedAt: 1,
+				toolName: N8N_CHAT_RESULT_CARD_INTERACTION,
+				input: resultCard,
+			};
+		}
+
 		const input = parseN8nChatActionInput(tc.input);
 		if (!input) return undefined;
 		// Display-only cards never suspend: only resolved ones render a card here.

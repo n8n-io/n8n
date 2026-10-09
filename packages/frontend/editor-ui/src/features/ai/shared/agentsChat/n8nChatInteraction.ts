@@ -1,9 +1,15 @@
 import {
+	resultCardSchema,
 	richCardComponentSchema,
 	richMessageSchema,
 	WORKFLOW_WAIT_SUSPEND_TYPE,
 } from '@n8n/api-types';
-import type { RichCard, RichCardComponent, RichCardComponentType } from '@n8n/api-types';
+import type {
+	ResultCard,
+	RichCard,
+	RichCardComponent,
+	RichCardComponentType,
+} from '@n8n/api-types';
 import { z } from 'zod';
 
 /**
@@ -75,6 +81,30 @@ export function parseIntegrationActionCard(input: unknown): N8nChatInteractionIn
 /** Parse a persisted/live chat_action tool input into a renderable card, or undefined. */
 export function parseN8nChatActionInput(input: unknown): N8nChatInteractionInput | undefined {
 	return parseIntegrationActionCard(input);
+}
+
+/**
+ * `chat_action` → `show_card`: a result card (the Chat Hub catalog — metric,
+ * records, list, keyValue, email, message) validated with the SAME
+ * `resultCardSchema` the backend tool boundary uses. Display-only: it never
+ * suspends and carries no resume value.
+ */
+const showCardToolInputSchema = z
+	.object({
+		action: z.literal('show_card'),
+		input: z.object({ card: resultCardSchema }).passthrough(),
+	})
+	.passthrough();
+
+export interface N8nChatResultCardInput {
+	card: ResultCard;
+}
+
+/** Parse a persisted/live `show_card` tool input into a renderable result card, or undefined. */
+export function parseN8nChatResultCardInput(input: unknown): N8nChatResultCardInput | undefined {
+	const parsed = showCardToolInputSchema.safeParse(input);
+	if (!parsed.success) return undefined;
+	return { card: parsed.data.input.card };
 }
 
 /**

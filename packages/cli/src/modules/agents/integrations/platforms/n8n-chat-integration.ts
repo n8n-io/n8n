@@ -1,4 +1,4 @@
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, resultCardSchema } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -58,10 +58,15 @@ export class N8nChatIntegration extends AgentChatIntegration {
 		'get_current_user',
 	]);
 
-	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond']);
+	/**
+	 * `show_card` is declared here so the generic tool schema accepts it; the
+	 * per-agent descriptor (agent-runtime-reconstruction.service.ts) drops it
+	 * again when the agent's `cards.enabled` is false.
+	 */
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond', 'show_card']);
 
 	readonly actionToolGuidance = [
-		'This is the built-in n8n chat: your normal assistant reply already reaches the user. NEVER call respond with only message.text — write that text directly in your reply instead. Call this tool only with message.card, to render a rich card or collect structured input.',
+		'This is the built-in n8n chat: your normal assistant reply already reaches the user. NEVER call respond with only message.text — write that text directly in your reply instead. Call respond only with message.card, to collect structured input (buttons, selects); call show_card to render a result card.',
 	];
 
 	constructor(private readonly userRepository: UserRepository) {
@@ -73,6 +78,7 @@ export class N8nChatIntegration extends AgentChatIntegration {
 	}
 
 	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {
+		if (params.action === 'show_card') return this.showCard(params);
 		if (params.action !== 'respond') return undefined;
 		const parsed = respondInputSchema.safeParse(params.input);
 		if (!parsed.success) {
@@ -106,6 +112,29 @@ export class N8nChatIntegration extends AgentChatIntegration {
 				messageId: undefined,
 				updatedAt: new Date().toISOString(),
 			},
+		};
+	}
+
+	/**
+	 * A result card never posts anywhere and never suspends: like `respond`
+	 * cards, the chat UI renders it from the recorded tool-call input. The tool
+	 * boundary already validated the card; this parse guards direct calls.
+	 */
+	private showCard(params: PlatformActionParams): IntegrationActionResult {
+		const parsed = resultCardSchema.safeParse(params.input.card);
+		if (!parsed.success) {
+			return integrationError(INTEGRATION_ERROR_CODES.ACTION_FAILED, parsed.error.message);
+		}
+		return {
+			ok: true,
+			rendered: { type: parsed.data.type, title: parsed.data.title },
+			...(params.currentMessageContext && {
+				messageContext: {
+					...params.currentMessageContext,
+					messageId: undefined,
+					updatedAt: new Date().toISOString(),
+				},
+			}),
 		};
 	}
 
