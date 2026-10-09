@@ -1,7 +1,6 @@
-import { CacheService, EventService } from '@n8n/backend-services';
+import { EventService } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { ScheduledJobOwnerType, Time } from '@n8n/constants';
-import { ScheduledJobRepository } from '@n8n/db';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
@@ -11,18 +10,9 @@ import {
 } from '@/events/maps/system-task-metrics.event-map';
 
 import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQuery } from './cached-metric-query';
+import type { CachedMetricQuery } from './cached-metric-query';
 import { DURATION_BUCKETS_SECONDS, LAG_BUCKETS_SECONDS } from './constant';
-
-const DURABLE_JOBS_CACHE_KEY = 'metrics:system-tasks:durable-jobs:v1';
-
-/** The stored schedule of one durable system task, as JSON so the cache can hold it. */
-type DurableJobState = {
-	task: string;
-	/** Enabled and not quarantined, so the scheduler will claim it. */
-	runnable: boolean;
-	nextRunAtSeconds: number | null;
-};
+import { DatabaseMetricQueryService, type DurableJobState } from './database-metric-query.service';
 
 /**
  * Collects Prometheus metrics for system tasks, on all of their paths: the
@@ -52,8 +42,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
 		private readonly eventService: EventService,
-		private readonly cacheService: CacheService,
-		private readonly scheduledJobRepository: ScheduledJobRepository,
+		private readonly databaseQueries: DatabaseMetricQueryService,
 	) {}
 
 	get enabled(): boolean {
@@ -101,12 +90,9 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		});
 
 		const durableTasks = new Set<string>();
-		const durableJobs = new CachedMetricQuery<DurableJobState[]>({
-			cacheService: this.cacheService,
-			cacheKey: DURABLE_JOBS_CACHE_KEY,
-			ttlMs: this.config.schedulerMetricsInterval * Time.seconds.toMilliseconds,
-			query: async () => await this.findDurableJobStates(),
-		});
+		const durableJobs = this.databaseQueries.durableSystemTaskJobs(
+			this.config.schedulerMetricsInterval * Time.seconds.toMilliseconds,
+		);
 		const collectDurableJobs = async () => {
 			if (durableTasks.size > 0) {
 				await this.applyDurableJobStates(durableJobs, durableTasks, scheduled, nextRun);
@@ -244,18 +230,6 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		});
 	}
 
-	private async findDurableJobStates(): Promise<DurableJobState[]> {
-		const jobs = await this.scheduledJobRepository.findScheduleStatesByOwnerType(
-			ScheduledJobOwnerType.SystemTask,
-		);
-		return jobs.map(({ ownerId, runnable, nextRunAt }) => ({
-			task: ownerId,
-			runnable,
-			nextRunAtSeconds:
-				nextRunAt === null ? null : nextRunAt.getTime() / Time.seconds.toMilliseconds,
-		}));
-	}
-
 	/**
 	 * Set the scheduled and next-run series of every durable task from its stored
 	 * job. A failed read keeps the last values, so one database error does not
@@ -267,10 +241,13 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		scheduled: promClient.Gauge<'task' | 'mode'>,
 		nextRun: promClient.Gauge<'task'>,
 	): Promise<void> {
-		let states: DurableJobState[];
+		let states: DurableJobState[] | undefined;
 		try {
 			states = await durableJobs.get();
 		} catch {
+			return;
+		}
+		if (states === undefined) {
 			return;
 		}
 		const stateByTask = new Map(states.map((state) => [state.task, state]));

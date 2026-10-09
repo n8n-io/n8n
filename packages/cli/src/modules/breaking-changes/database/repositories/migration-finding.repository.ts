@@ -33,7 +33,7 @@ function hasTriageStatus(
 	return migrationFindingTriageStatusSchema.safeParse(finding.status).success;
 }
 
-export interface OpenFindingCount {
+export interface RuleFindingCount {
 	ruleId: string;
 	count: number;
 }
@@ -74,25 +74,20 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		targetVersion: BreakingChangeVersion,
 		workflowIds: string[] | undefined,
 		ctx: OperationContext,
-	): Promise<OpenFindingCount[]> {
-		const countByRule = new Map<string, number>();
-		for (const chunk of chunksOrAll(workflowIds)) {
-			const query = this.managerFor(ctx)
-				.createQueryBuilder(MigrationFinding, 'finding')
-				.select('finding.ruleId', 'ruleId')
-				.addSelect('COUNT(finding.id)', 'count')
-				.where('finding.targetVersion = :targetVersion', { targetVersion })
-				.andWhere('finding.status = :status', { status: 'open' })
-				.groupBy('finding.ruleId');
-			if (chunk) query.andWhere('finding.workflowId IN (:...workflowIds)', { workflowIds: chunk });
-			const rows = await query.getRawMany<{ ruleId: string; count: number | string }>();
+	): Promise<RuleFindingCount[]> {
+		return await this.countByRuleWithStatus(targetVersion, 'open', workflowIds, ctx);
+	}
 
-			// Postgres returns COUNT as a bigint string, SQLite as a number.
-			for (const row of rows) {
-				countByRule.set(row.ruleId, (countByRule.get(row.ruleId) ?? 0) + Number(row.count));
-			}
-		}
-		return [...countByRule].map(([ruleId, count]) => ({ ruleId, count }));
+	/**
+	 * Number of won't fix findings per rule for the version. Rules without them
+	 * are absent. `workflowIds` limits the count to those workflows; `undefined` counts all.
+	 */
+	async countWontFixByRule(
+		targetVersion: BreakingChangeVersion,
+		workflowIds: string[] | undefined,
+		ctx: OperationContext,
+	): Promise<RuleFindingCount[]> {
+		return await this.countByRuleWithStatus(targetVersion, 'wont_fix', workflowIds, ctx);
 	}
 
 	/**
@@ -119,29 +114,6 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 			total += Number(row?.count ?? 0);
 		}
 		return total;
-	}
-
-	/**
-	 * Rules with at least one won't fix finding for the version. `workflowIds`
-	 * limits the search to those workflows; `undefined` searches all.
-	 */
-	async listRuleIdsWithWontFix(
-		targetVersion: BreakingChangeVersion,
-		workflowIds: string[] | undefined,
-		ctx: OperationContext,
-	): Promise<string[]> {
-		const ruleIds = new Set<string>();
-		for (const chunk of chunksOrAll(workflowIds)) {
-			const query = this.managerFor(ctx)
-				.createQueryBuilder(MigrationFinding, 'finding')
-				.select('DISTINCT finding.ruleId', 'ruleId')
-				.where('finding.targetVersion = :targetVersion', { targetVersion })
-				.andWhere('finding.status = :status', { status: 'wont_fix' });
-			if (chunk) query.andWhere('finding.workflowId IN (:...workflowIds)', { workflowIds: chunk });
-			const rows = await query.getRawMany<{ ruleId: string }>();
-			for (const row of rows) ruleIds.add(row.ruleId);
-		}
-		return [...ruleIds];
 	}
 
 	/**
@@ -246,6 +218,32 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		if (note !== undefined) {
 			await manager.update(MigrationFinding, { id: In(ids) }, { note });
 		}
+	}
+
+	private async countByRuleWithStatus(
+		targetVersion: BreakingChangeVersion,
+		status: MigrationFindingStatus,
+		workflowIds: string[] | undefined,
+		ctx: OperationContext,
+	): Promise<RuleFindingCount[]> {
+		const countByRule = new Map<string, number>();
+		for (const chunk of chunksOrAll(workflowIds)) {
+			const query = this.managerFor(ctx)
+				.createQueryBuilder(MigrationFinding, 'finding')
+				.select('finding.ruleId', 'ruleId')
+				.addSelect('COUNT(finding.id)', 'count')
+				.where('finding.targetVersion = :targetVersion', { targetVersion })
+				.andWhere('finding.status = :status', { status })
+				.groupBy('finding.ruleId');
+			if (chunk) query.andWhere('finding.workflowId IN (:...workflowIds)', { workflowIds: chunk });
+			const rows = await query.getRawMany<{ ruleId: string; count: number | string }>();
+
+			// Postgres returns COUNT as a bigint string, SQLite as a number.
+			for (const row of rows) {
+				countByRule.set(row.ruleId, (countByRule.get(row.ruleId) ?? 0) + Number(row.count));
+			}
+		}
+		return [...countByRule].map(([ruleId, count]) => ({ ruleId, count }));
 	}
 
 	/** Updates only the rows not already in `status`, so `statusChangedAt` marks a real transition. */

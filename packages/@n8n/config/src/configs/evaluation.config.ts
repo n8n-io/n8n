@@ -53,6 +53,17 @@ export class EvaluationConfig {
 	agentEvalsEnabled: boolean = false;
 
 	/**
+	 * Force `isAgentWorthTesting()` to always resolve `true`, skipping the
+	 * model/tools/skills check, so the "Test your agent" offer appears
+	 * regardless of what the agent has configured.
+	 *
+	 * Useful for local development and QA environments that need to exercise
+	 * the offer without building out a fully-equipped agent first.
+	 */
+	@Env('N8N_FORCE_AGENT_WORTH_TESTING')
+	forceAgentWorthTesting: boolean = false;
+
+	/**
 	 * Wall-clock ceiling on one agent-eval run, in minutes; non-positive disables.
 	 * Stops further cases starting — an in-flight one runs out its own timeout.
 	 */

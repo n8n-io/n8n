@@ -250,7 +250,7 @@ describe('AutoIncludedWorkflowExporter', () => {
 
 	it('extracts credential, data-table, and variable requirements from each workflow', async () => {
 		const credentialExtractor = mock<CredentialRequirementsExtractor>();
-		credentialExtractor.extract.mockReturnValue([
+		credentialExtractor.extractFromWorkflow.mockReturnValue([
 			{
 				workflowId: 'wf_1',
 				credentialId: 'cred-1',
@@ -308,7 +308,7 @@ describe('AutoIncludedWorkflowExporter', () => {
 
 	it('does not extract requirements from a skipped (already-exported) workflow', async () => {
 		const credentialExtractor = mock<CredentialRequirementsExtractor>();
-		credentialExtractor.extract.mockReturnValue([]);
+		credentialExtractor.extractFromWorkflow.mockReturnValue([]);
 		const exporter = makeExporter(credentialExtractor);
 		const writer = new CapturingWriter();
 		const workflow = makeWorkflow({ id: 'wf_dup', name: 'Already Here' });
@@ -320,7 +320,7 @@ describe('AutoIncludedWorkflowExporter', () => {
 			],
 		});
 
-		expect(credentialExtractor.extract).not.toHaveBeenCalled();
+		expect(credentialExtractor.extractFromWorkflow).not.toHaveBeenCalled();
 		expect(result.requirements.nodeTypes).toEqual([]);
 	});
 

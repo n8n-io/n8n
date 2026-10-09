@@ -141,6 +141,10 @@ export class LoadNodesAndCredentials {
 	}
 
 	releaseTypes() {
+		void this.enqueueRebuild(() => this.releaseTypesNow());
+	}
+
+	private releaseTypesNow() {
 		this.types = { nodes: [], credentials: [] };
 		for (const loader of Object.values(this.loaders)) {
 			loader.releaseTypes();
@@ -149,26 +153,40 @@ export class LoadNodesAndCredentials {
 
 	/**
 	 * Returns the current node and credential types.
-	 * If types have been released from memory, re-runs postProcessLoaders to
-	 * repopulate them first, then releases after snapshotting.
+	 * If types have been released from memory, rebuilds them first, then
+	 * releases them after snapshotting.
 	 *
 	 * WARNING: Holding types in memory is very consuming. Use sparingly and only
 	 * where the caller genuinely needs its own copy (e.g. the AI workflow builder
 	 * service or the frontend service writing static JSON files).
 	 */
 	async collectTypes(): Promise<Types> {
-		const needsReload = this.types.nodes.length === 0 && this.types.credentials.length === 0;
-		if (needsReload) {
-			await this.postProcessLoaders();
-		}
-		const types: Types = {
-			nodes: this.types.nodes,
-			credentials: this.types.credentials,
-		};
-		if (needsReload) {
-			this.releaseTypes();
-		}
-		return types;
+		if (this.hasTypes()) return this.snapshotTypes();
+
+		return await this.enqueueRebuild(async () => {
+			if (this.hasTypes()) return this.snapshotTypes();
+
+			await this.rebuildRegistry();
+			const types = this.snapshotTypes();
+			this.releaseTypesNow();
+			return types;
+		});
+	}
+
+	private hasTypes() {
+		return this.types.nodes.length > 0 || this.types.credentials.length > 0;
+	}
+
+	private snapshotTypes(): Types {
+		return { nodes: this.types.nodes, credentials: this.types.credentials };
+	}
+
+	private rebuildQueue: Promise<unknown> = Promise.resolve();
+
+	private async enqueueRebuild<T>(task: () => Promise<T> | T): Promise<T> {
+		const run = this.rebuildQueue.then(task);
+		this.rebuildQueue = run.catch(() => {});
+		return await run;
 	}
 
 	isKnownNode(type: string) {
@@ -561,6 +579,10 @@ export class LoadNodesAndCredentials {
 	}
 
 	async postProcessLoaders() {
+		await this.enqueueRebuild(async () => await this.rebuildRegistry());
+	}
+
+	private async rebuildRegistry() {
 		const known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 		const loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
 		const types: Types = { nodes: [], credentials: [] };

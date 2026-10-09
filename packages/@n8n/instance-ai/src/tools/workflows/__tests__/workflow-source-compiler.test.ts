@@ -577,6 +577,125 @@ describe('compileWorkflowSource > node positions in JSON sources', () => {
 	});
 });
 
+describe('compileWorkflowSource > node positions in TypeScript sources', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	// The sandbox lays this row out as if Writer were a plain node, because no tool is wired.
+	const sandboxWorkflow = (): WorkflowJSON => ({
+		name: 'Briefing',
+		nodes: [
+			{
+				id: 's',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+			},
+			{ id: 'w', name: 'Writer', type: 'test.writer', typeVersion: 1, position: [224, 0] },
+			{ id: 'e', name: 'Email', type: 'n8n-nodes-base.noOp', typeVersion: 1, position: [448, 0] },
+			{
+				id: 'n',
+				name: 'Note',
+				type: 'n8n-nodes-base.stickyNote',
+				typeVersion: 1,
+				position: [0, -200],
+			},
+		],
+		connections: {
+			Start: { main: [[{ node: 'Writer', type: 'main', index: 0 }]] },
+			Writer: { main: [[{ node: 'Email', type: 'main', index: 0 }]] },
+		},
+	});
+	const compileWithWriterInputs = async (
+		inputs: string[],
+		extraNode?: WorkflowJSON['nodes'][number],
+	) => {
+		const workflow = sandboxWorkflow();
+		if (extraNode) workflow.nodes.push(extraNode);
+		vi.mocked(runInSandbox).mockResolvedValue({
+			exitCode: 0,
+			stdout: JSON.stringify({ success: true, workflow, warnings: [] }),
+			stderr: '',
+		});
+		const nodeTypesProvider = {
+			getByNameAndVersion: (type: string) => {
+				if (type === 'test.writer')
+					return { description: { properties: [], inputs, outputs: ['main'] } };
+				throw new Error(`Unknown node type: ${type}`);
+			},
+		};
+		const result = await compileWorkflowSource(
+			makeContext({ nodeTypesProvider } as unknown as Partial<InstanceAiContext>),
+			'src/workflows/main.workflow.ts',
+			'workflow source',
+		);
+		if (!result.success) throw new Error('compile failed');
+		return new Map(result.workflow.nodes.map((node) => [node.name, node]));
+	};
+
+	it('lays the nodes out again when a node type declares an unwired port', async () => {
+		// The Tools port makes the canvas draw Writer 224 wide.
+		const nodes = await compileWithWriterInputs(['main', 'ai_tool']);
+
+		expect(nodes.get('Email')?.position[0]).toBeGreaterThan(
+			(nodes.get('Writer')?.position[0] ?? 0) + 224,
+		);
+		expect(nodes.get('Note')?.position).toEqual([0, -200]);
+	});
+
+	it('keeps a sticky note around the nodes it wrapped when the nodes move', async () => {
+		// The note wraps Writer and Email in the sandbox layout, with a 24 px margin.
+		const nodes = await compileWithWriterInputs(['main', 'ai_tool'], {
+			id: 'g',
+			name: 'Group',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [200, -80],
+			parameters: { width: 368, height: 200 },
+		});
+
+		const group = nodes.get('Group');
+		const writer = nodes.get('Writer');
+		const email = nodes.get('Email');
+		expect(group?.position).toEqual([
+			(writer?.position[0] ?? 0) - 24,
+			(writer?.position[1] ?? 0) - 80,
+		]);
+		// Writer is drawn 224 wide and Email 96 wide, so the note grows to keep the margin.
+		expect(group?.parameters).toEqual({
+			width: (email?.position[0] ?? 0) + 96 + 24 - (group?.position[0] ?? 0),
+			height: 200,
+		});
+	});
+
+	it('keeps an unnamed sticky note around the nodes it wrapped', async () => {
+		const nodes = await compileWithWriterInputs(['main', 'ai_tool'], {
+			id: 'g',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [200, -80],
+			parameters: { width: 368, height: 200 },
+		});
+
+		const email = nodes.get('Email');
+		const group = [...nodes.values()].find((node) => node.id === 'g');
+		expect(group?.parameters?.width).toBe(
+			(email?.position[0] ?? 0) + 96 + 24 - (group?.position[0] ?? 0),
+		);
+	});
+
+	it('keeps the sandbox layout when the node types give the same sizes', async () => {
+		const nodes = await compileWithWriterInputs(['main']);
+
+		expect([...nodes.values()].map((node) => node.position)).toEqual(
+			sandboxWorkflow().nodes.map((node) => node.position),
+		);
+	});
+});
+
 describe('compileWorkflowSource credential resolution', () => {
 	const hosts = [
 		{ type: 'stripeApi', hosts: ['api.stripe.com'] },
