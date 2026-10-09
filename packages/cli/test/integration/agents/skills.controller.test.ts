@@ -1,3 +1,4 @@
+import { SKILLS_FLAG } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -5,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
+import { PostHogClient } from '@/posthog';
 
 import { createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -42,6 +44,14 @@ describe('SkillsController', () => {
 		await linkUserToProject(viewerUser, project, 'project:viewer');
 	});
 
+	// The test server replaces PostHogClient with a mock.
+	const setFlag = (value: boolean) =>
+		vi
+			.mocked(Container.get(PostHogClient).getFeatureFlags)
+			.mockResolvedValue({ [SKILLS_FLAG]: value });
+
+	beforeEach(() => setFlag(true));
+
 	afterEach(async () => {
 		await Container.get(AgentRepository).delete({});
 		await Container.get(SkillRepository).delete({});
@@ -51,6 +61,19 @@ describe('SkillsController', () => {
 		const response = await agent.post('/skills').send(payload).expect(status);
 		return response.body.data as { id: string; skillHash: string };
 	}
+
+	describe('rollout flag', () => {
+		it('answers 404 on every route while the flag is off', async () => {
+			const { id } = await create(owner, { scope: 'instance', skill: body });
+			setFlag(false);
+
+			await owner.get('/skills').expect(404);
+			await owner.get(`/skills/${id}`).expect(404);
+			await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);
+			await owner.patch(`/skills/${id}`).send({ instructions: 'x' }).expect(404);
+			await owner.delete(`/skills/${id}`).expect(404);
+		});
+	});
 
 	describe('"Just you" skills', () => {
 		it('lets any user create one and keeps it from other members', async () => {
