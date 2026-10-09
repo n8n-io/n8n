@@ -61,12 +61,6 @@ export function getAgentModelProviderCredentialTypes(provider: string): readonly
 	return isAgentModelProvider(provider) ? AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES[provider] : [];
 }
 
-/** Vertex Agents require a versioned Gemini 3 or newer model. */
-export function isVertexGeminiModel(model: string): boolean {
-	const version = /^google-vertex\/gemini-(\d+)(?:\.\d+)?-/.exec(model)?.[1];
-	return version !== undefined && Number(version) >= 3;
-}
-
 /** A model offered in the agent model picker. Mirrors the catalog's `ModelInfo` shape. */
 export interface AgentCatalogModel {
 	id: string;
