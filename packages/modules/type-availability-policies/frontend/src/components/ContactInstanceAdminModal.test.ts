@@ -61,6 +61,21 @@ describe('ContactInstanceAdminModal', () => {
 		expect(getByText(/request access to 'Slack'/)).toBeInTheDocument();
 	});
 
+	it('builds the credential type copy', async () => {
+		setup([owner]);
+		const { findByTestId, getByText } = renderComponent({
+			props: { open: true, nodeTypeName: 'Anthropic credentials', kind: 'credential' },
+		});
+
+		await findByTestId('contact-instance-admin-list');
+
+		expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
+			'href',
+			'mailto:ada@example.com?subject=Access%20request%20for%20Anthropic%20credentials',
+		);
+		expect(getByText(/request access to Anthropic credentials/)).toBeInTheDocument();
+	});
+
 	it('keeps loading until the latest owner lookup resolves after a reopen', async () => {
 		const lookups: Array<() => void> = [];
 		setup(

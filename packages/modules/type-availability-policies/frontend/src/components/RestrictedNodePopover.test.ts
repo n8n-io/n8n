@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 
 import RestrictedNodePopover from './RestrictedNodePopover.vue';
 
@@ -193,5 +193,40 @@ describe('RestrictedNodePopover', () => {
 		);
 
 		expect(screen.getByTestId('contact-instance-admin-modal')).toHaveTextContent('Gmail');
+	});
+
+	it('uses the credential type copy', async () => {
+		renderPopover({ active: true, kind: 'credential', scope: undefined });
+
+		expect(await screen.findByText('This credential type is restricted')).toBeInTheDocument();
+		expect(
+			screen.getByText(
+				"An administrator blocked this credential type. Workflows can't use credentials of this type until an instance administrator grants access.",
+			),
+		).toBeInTheDocument();
+	});
+
+	it('hands the contact-admin request to a listening parent instead of opening its own dialog', async () => {
+		const onContactAdmin = vi.fn();
+		renderComponent({ props: { active: true }, attrs: { onContactAdmin } });
+
+		await userEvent.click(await screen.findByTestId('node-restricted-contact-admin'));
+
+		expect(onContactAdmin).toHaveBeenCalledOnce();
+		expect(screen.queryByTestId('contact-instance-admin-modal')).not.toBeInTheDocument();
+	});
+
+	it('keeps a pointer-down inside the popover from reaching the document', async () => {
+		const onDocumentPointerDown = vi.fn();
+		document.addEventListener('pointerdown', onDocumentPointerDown);
+		renderPopover({ active: true });
+
+		await userEvent.pointer({
+			keys: '[MouseLeft>]',
+			target: await screen.findByTestId('node-restricted-contact-admin'),
+		});
+
+		expect(onDocumentPointerDown).not.toHaveBeenCalled();
+		document.removeEventListener('pointerdown', onDocumentPointerDown);
 	});
 });
