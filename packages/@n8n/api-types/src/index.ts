@@ -545,6 +545,8 @@ export {
 	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
 	INSTANCE_AI_THREAD_SERVER_STATES,
+	instanceAiThreadRunTargetSchema,
+	runTargetSchema,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -567,6 +569,8 @@ export type {
 	InstanceAiRunLimitReason,
 	InstanceAiRunLimitMeta,
 	ComputerUseChannel,
+	RunTarget,
+	InstanceAiThreadRunTarget,
 } from './schemas/instance-ai.schema';
 
 export type {

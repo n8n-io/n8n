@@ -6,9 +6,10 @@ import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { AgentResumeFailure } from '@/features/agents/utils/chat-rejection';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+import { USER_TYPED_MESSAGE } from '../../prefills';
 import InstanceAiAgentsConversation from '../InstanceAiAgentsConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
-import { fetchThread } from '../../instanceAi.memory.api';
+import { acknowledgeLostRunTarget, fetchThread } from '../../instanceAi.memory.api';
 import { OWNER, TEAMMATE, setUpSharing } from '../../sharing/__tests__/sharingFixtures';
 import {
 	stashPendingFirstMessage,
@@ -109,6 +110,7 @@ vi.mock('@/features/agents/composables/useAgentExecutionUpdates', () => ({
 vi.mock('../../instanceAi.memory.api', async (importOriginal) => ({
 	...(await importOriginal<typeof import('../../instanceAi.memory.api')>()),
 	fetchThread: vi.fn(),
+	acknowledgeLostRunTarget: vi.fn().mockResolvedValue(undefined),
 }));
 
 const threadInfo = (title: string, metadata?: Record<string, unknown>) => ({
@@ -122,6 +124,8 @@ const threadInfo = (title: string, metadata?: Record<string, unknown>) => ({
 		...(metadata ? { metadata } : {}),
 	},
 });
+
+const OFFICE_ID = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
 
 let runtime: ThreadRuntime;
 
@@ -289,6 +293,109 @@ describe('InstanceAiAgentsConversation', () => {
 		expect(chatState.hostContext?.()).not.toHaveProperty('context');
 	});
 
+	it('should send the run target of a stashed opener', async () => {
+		const runTarget = { kind: 'linked' as const, instanceId: OFFICE_ID };
+		stashPendingFirstMessage('thread-1', {
+			message: 'Build a report',
+			authorship: USER_TYPED_MESSAGE,
+			runTarget,
+		});
+		const refresh = vi.spyOn(useInstanceAiStore(), 'refreshThread');
+
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+
+		expect(chatState.sendMessageFromOutside.mock.calls[0]?.[0]).toBe('Build a report');
+		expect(chatState.hostContext?.()).toEqual(expect.objectContaining({ runTarget }));
+		// Only the mount reads the thread. The chat reads it again when it accepts the message.
+		expect(refresh).toHaveBeenCalledTimes(1);
+	});
+
+	it('should send the run target of an opener again from the composer until a message is accepted', async () => {
+		const runTarget = { kind: 'linked' as const, instanceId: OFFICE_ID };
+		stashPendingFirstMessage('thread-1', {
+			message: 'Build a report',
+			authorship: USER_TYPED_MESSAGE,
+			runTarget,
+		});
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+		expect(chatState.hostContext?.()).toEqual(expect.objectContaining({ runTarget }));
+
+		// The opener failed to send, so the user sends the text again from the composer.
+		const retry = chatState.hostContext?.();
+		expect(retry).toEqual(expect.objectContaining({ runTarget }));
+
+		chatState.emitAccepted?.({ text: 'Build a report', files: [], hostContext: retry });
+		await flushPromises();
+
+		expect(chatState.hostContext?.()).not.toHaveProperty('runTarget');
+	});
+
+	it('should read the thread when the chat accepts a message that chose a linked instance', async () => {
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+		const refresh = vi.spyOn(useInstanceAiStore(), 'refreshThread');
+		const readsBefore = refresh.mock.calls.length;
+
+		chatState.emitAccepted?.({
+			text: 'Build a report',
+			files: [],
+			hostContext: { runTarget: { kind: 'linked', instanceId: OFFICE_ID } },
+		});
+		await flushPromises();
+
+		// The server stored the target, so the chip shows while the first turn runs.
+		expect(refresh.mock.calls.length).toBe(readsBefore + 1);
+		expect(refresh).toHaveBeenLastCalledWith('thread-1');
+	});
+
+	it('should keep the lost link notice until the owner dismisses it, then focus the composer', async () => {
+		vi.mocked(fetchThread).mockResolvedValue({
+			thread: {
+				...threadInfo('First title').thread,
+				runTarget: { kind: 'local' },
+				lostRunTarget: { name: 'Office' },
+			},
+		});
+		const { findByTestId, queryByTestId, getByRole } = renderComponent();
+		await findByTestId('instance-ai-run-target-lost-notice');
+
+		// Later reads of the chat, for example at the end of a turn, keep the notice.
+		await useInstanceAiStore().refreshThread('thread-1');
+		await flushPromises();
+		expect(queryByTestId('instance-ai-run-target-lost-notice')).toBeInTheDocument();
+		expect(acknowledgeLostRunTarget).not.toHaveBeenCalled();
+		chatState.focusInput.mockClear();
+
+		getByRole('button', { name: 'Dismiss' }).click();
+		await flushPromises();
+
+		expect(acknowledgeLostRunTarget).toHaveBeenCalledWith(expect.anything(), 'thread-1');
+		expect(queryByTestId('instance-ai-run-target-lost-notice')).not.toBeInTheDocument();
+		expect(chatState.focusInput).toHaveBeenCalledOnce();
+	});
+
+	it('should not read the thread back when the opener has no run target', async () => {
+		stashPendingFirstMessage('thread-1', {
+			message: 'Build a report',
+			authorship: USER_TYPED_MESSAGE,
+		});
+		const refresh = vi.spyOn(useInstanceAiStore(), 'refreshThread');
+
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+
+		expect(chatState.sendMessageFromOutside.mock.calls[0]?.[0]).toBe('Build a report');
+		expect(chatState.hostContext?.()).not.toHaveProperty('runTarget');
+		// Only the mount reads the thread.
+		expect(refresh).toHaveBeenCalledTimes(1);
+	});
+
 	it('should route programmatic sends through the mounted chat', async () => {
 		const { findByTestId } = renderComponent();
 		await findByTestId('chat-panel');
@@ -332,6 +439,40 @@ describe('InstanceAiAgentsConversation', () => {
 		await flushPromises();
 
 		expect(chatState.hostContext?.()).not.toHaveProperty('context');
+	});
+
+	it('should read the thread when a message is accepted in a chat on a linked instance', async () => {
+		vi.mocked(fetchThread).mockResolvedValue({
+			thread: {
+				...threadInfo('First title').thread,
+				runTarget: { kind: 'linked', instanceId: OFFICE_ID, name: 'Office' },
+			},
+		});
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+		const refresh = vi.spyOn(useInstanceAiStore(), 'refreshThread');
+		const readsBefore = refresh.mock.calls.length;
+
+		chatState.emitAccepted?.({ text: 'Build the report', files: [] });
+		await flushPromises();
+
+		// The message can drop the link, so the notice is read when the message is accepted.
+		expect(refresh.mock.calls.length).toBe(readsBefore + 1);
+		expect(refresh).toHaveBeenLastCalledWith('thread-1');
+	});
+
+	it('should not read the thread again when a message is accepted in a chat that runs here', async () => {
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+		const refresh = vi.spyOn(useInstanceAiStore(), 'refreshThread');
+		const readsBefore = refresh.mock.calls.length;
+
+		chatState.emitAccepted?.({ text: 'Build the report', files: [] });
+		await flushPromises();
+
+		expect(refresh.mock.calls.length).toBe(readsBefore);
 	});
 
 	it('should report a missing thread', async () => {

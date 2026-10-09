@@ -4,6 +4,7 @@ import type {
 	InstanceAiBuildMode,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifactsContext,
+	InstanceAiThreadRunTarget,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -32,6 +33,8 @@ export interface AssistantTurnOptions {
 	promptVersion?: string;
 	computerUseChannels?: ComputerUseChannel[];
 	observerThresholdTokens?: number;
+	/** Where the chat runs. A shared chat runs locally, whatever this says. */
+	runTarget?: InstanceAiThreadRunTarget;
 	attachments?: InstanceAiAttachment[];
 	handoffContext?: InstanceAiHandoffContext;
 	threadArtifacts?: InstanceAiThreadArtifactsContext;
@@ -50,9 +53,15 @@ export const LIVE_RUN_METADATA_KEY = 'assistantLiveRun';
 /** Thread-level defaults that machine follow-ups reuse from the last user turn. */
 export const ASSISTANT_TURN_DEFAULTS_KEY = 'assistantTurnDefaults';
 
+/**
+ * Thread metadata key for a lost link, at the top level. The turn defaults are replaced on
+ * every turn, so the key sits outside them.
+ */
+export const ASSISTANT_RUN_TARGET_LOST_KEY = 'assistantRunTargetLost';
+
 export type AssistantTurnDefaults = Pick<
 	AssistantTurnOptions,
-	'timeZone' | 'pushRef' | 'computerUseChannels' | 'buildMode' | 'promptVersion'
+	'timeZone' | 'pushRef' | 'computerUseChannels' | 'buildMode' | 'promptVersion' | 'runTarget'
 >;
 
 export function readAssistantTurnOptions(value: unknown): AssistantTurnOptions {
@@ -61,6 +70,15 @@ export function readAssistantTurnOptions(value: unknown): AssistantTurnOptions {
 	}
 	// Written only by this module. JSON round trips keep the shape.
 	return value as unknown as AssistantTurnOptions;
+}
+
+/**
+ * The options of a resumed turn, from its checkpoint. A resume carries no run target: the
+ * chat can be shared, or its link deleted, after the checkpoint. Only a chat message resolves one.
+ */
+export function readResumedTurnOptions(value: unknown): AssistantTurnOptions {
+	const { runTarget: _runTarget, ...options } = readAssistantTurnOptions(value);
+	return options;
 }
 
 export function toJsonObject(options: AssistantTurnOptions): Record<string, unknown> {

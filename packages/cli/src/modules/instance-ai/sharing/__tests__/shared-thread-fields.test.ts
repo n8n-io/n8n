@@ -124,3 +124,50 @@ describe('SharedThreadFields.addTo', () => {
 		expect(forAda.metadata).toEqual(info('a').metadata);
 	});
 });
+
+describe('SharedThreadFields.addTo run target', () => {
+	const LINK_ID = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
+	const linkedTarget = { kind: 'linked' as const, instanceId: LINK_ID, name: 'Cloud' };
+
+	it('keeps the run target for the owner of a shared thread', async () => {
+		const { fields } = setup([sharedRow('a', finance.id, ada.id)]);
+
+		const [result] = await fields.addTo(ada, [{ ...info('a'), runTarget: linkedTarget }]);
+
+		expect(result.runTarget).toEqual(linkedTarget);
+	});
+
+	it('drops the run target and the owner-only defaults for a teammate', async () => {
+		const { fields } = setup([sharedRow('a', finance.id, ada.id)]);
+		const thread = {
+			...info('a'),
+			runTarget: linkedTarget,
+			metadata: {
+				assistantTurnDefaults: { pushRef: 'push-1', runTarget: linkedTarget },
+				source: 'assistant_page',
+			},
+		};
+
+		const [result] = await fields.addTo(grace, [thread]);
+
+		expect(result).not.toHaveProperty('runTarget');
+		expect(result.metadata).toEqual({ source: 'assistant_page' });
+		expect(result.owner).toEqual({ id: 'ada', name: 'Ada Lovelace' });
+	});
+
+	it('shows the lost link to the owner only, and hides its marker from a teammate', async () => {
+		const { fields } = setup([sharedRow('a', finance.id, ada.id)]);
+		const thread = {
+			...info('a'),
+			lostRunTarget: { name: 'Cloud' },
+			metadata: { assistantRunTargetLost: { name: 'Cloud' }, source: 'assistant_page' },
+		};
+
+		const [forOwner] = await fields.addTo(ada, [thread]);
+		const [forTeammate] = await fields.addTo(grace, [thread]);
+
+		expect(forOwner.lostRunTarget).toEqual({ name: 'Cloud' });
+		expect(forTeammate).not.toHaveProperty('lostRunTarget');
+		expect(forTeammate.metadata).toEqual({ source: 'assistant_page' });
+	});
+});

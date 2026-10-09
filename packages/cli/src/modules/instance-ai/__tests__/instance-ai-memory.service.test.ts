@@ -392,6 +392,85 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		expect(result.thread.title).toBe('Existing');
 	});
 
+	it('exposes the stored run target of an existing chat, and none when the chat has no target', async () => {
+		const linkId = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
+		const stored = { kind: 'linked', instanceId: linkId, name: 'Cloud' };
+		const options = { source: 'assistant_page', origin: 'internal' } as const;
+		mockThreads.findOneBy.mockResolvedValueOnce(
+			makeSession('thread-linked', '2026-01-02T00:00:00.000Z'),
+		);
+		mockGetThread.mockResolvedValueOnce({
+			id: 'thread-linked',
+			title: 'Linked',
+			resourceId: 'user-1',
+			metadata: { assistantTurnDefaults: { pushRef: 'push-1', runTarget: stored } },
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+		});
+		mockThreads.findOneBy.mockResolvedValueOnce(
+			makeSession('thread-plain', '2026-01-02T00:00:00.000Z'),
+		);
+		mockGetThread.mockResolvedValueOnce({
+			id: 'thread-plain',
+			title: 'Plain',
+			resourceId: 'user-1',
+			metadata: { assistantTurnDefaults: { pushRef: 'push-1' } },
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+		});
+
+		const linked = await createService().ensureThread(
+			'user-1',
+			'thread-linked',
+			'project-1',
+			options,
+		);
+		const plain = await createService().ensureThread(
+			'user-1',
+			'thread-plain',
+			'project-1',
+			options,
+		);
+
+		expect(linked.thread.runTarget).toEqual(stored);
+		expect(plain.thread).not.toHaveProperty('runTarget');
+	});
+
+	it('exposes the lost link name of a chat whose link is gone, and none for a chat that kept its link', async () => {
+		const options = { source: 'assistant_page', origin: 'internal' } as const;
+		mockThreads.findOneBy.mockResolvedValueOnce(
+			makeSession('thread-lost', '2026-01-02T00:00:00.000Z'),
+		);
+		mockGetThread.mockResolvedValueOnce({
+			id: 'thread-lost',
+			title: 'Lost',
+			resourceId: 'user-1',
+			metadata: {
+				assistantTurnDefaults: { runTarget: { kind: 'local' } },
+				assistantRunTargetLost: { name: 'Cloud' },
+			},
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+		});
+		mockThreads.findOneBy.mockResolvedValueOnce(
+			makeSession('thread-kept', '2026-01-02T00:00:00.000Z'),
+		);
+		mockGetThread.mockResolvedValueOnce({
+			id: 'thread-kept',
+			title: 'Kept',
+			resourceId: 'user-1',
+			metadata: { assistantTurnDefaults: { runTarget: { kind: 'local' } } },
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+		});
+
+		const lost = await createService().ensureThread('user-1', 'thread-lost', 'project-1', options);
+		const kept = await createService().ensureThread('user-1', 'thread-kept', 'project-1', options);
+
+		expect(lost.thread.lostRunTarget).toEqual({ name: 'Cloud' });
+		expect(kept.thread).not.toHaveProperty('lostRunTarget');
+	});
+
 	it('refuses a thread owned by another user', async () => {
 		mockThreads.findOneBy.mockResolvedValueOnce(
 			makeSession('thread-other', '2026-01-02T00:00:00.000Z', 'user-2'),
@@ -623,6 +702,75 @@ describe('InstanceAiMemoryService.cleanupExpiredThreads', () => {
 	});
 });
 
+/** Same contract as `N8nMemoryImpl.patchThread`: read, update, replace. */
+async function patchThreadLikeStore(args: {
+	threadId: string;
+	update: (thread: Record<string, unknown>) => Record<string, unknown> | null;
+}) {
+	const thread = (await mockGetThread(args.threadId)) as Record<string, unknown> | null;
+	if (!thread) return null;
+	const patch = args.update({ ...thread });
+	if (!patch) return thread;
+	const updated = { ...thread, ...patch };
+	await mockSaveThread(updated);
+	return updated;
+}
+
+describe('acknowledgeLostRunTarget', () => {
+	function seedThread(metadata: Record<string, unknown>) {
+		let stored: unknown = {
+			id: 'thread-1',
+			title: 'Chat',
+			resourceId: 'user-1',
+			metadata,
+			createdAt: new Date('2026-10-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-10-01T00:00:00.000Z'),
+		};
+		mockGetThread.mockImplementation(async () => stored);
+		mockSaveThread.mockImplementation(async (thread: unknown) => {
+			stored = thread;
+			return thread;
+		});
+	}
+
+	beforeEach(() => {
+		mockGetThread.mockReset();
+		mockSaveThread.mockReset();
+		mockPatchThread.mockImplementation(patchThreadLikeStore);
+	});
+
+	it('drops the lost link marker and keeps the rest of the thread metadata', async () => {
+		seedThread({
+			assistantRunTargetLost: { name: 'Cloud' },
+			assistantTurnDefaults: { runTarget: { kind: 'local' } },
+			source: 'assistant_page',
+		});
+
+		await createService().acknowledgeLostRunTarget('thread-1');
+
+		expect(mockSaveThread).toHaveBeenCalledTimes(1);
+		expect(mockSaveThread.mock.calls[0][0].metadata).toEqual({
+			assistantTurnDefaults: { runTarget: { kind: 'local' } },
+			source: 'assistant_page',
+		});
+	});
+
+	it('writes nothing for a thread that has no lost link marker', async () => {
+		seedThread({ assistantTurnDefaults: { runTarget: { kind: 'local' } } });
+
+		await createService().acknowledgeLostRunTarget('thread-1');
+
+		expect(mockSaveThread).not.toHaveBeenCalled();
+	});
+
+	it('does not fail for a thread that is gone', async () => {
+		mockGetThread.mockResolvedValue(null);
+
+		await expect(createService().acknowledgeLostRunTarget('thread-1')).resolves.toBeUndefined();
+		expect(mockSaveThread).not.toHaveBeenCalled();
+	});
+});
+
 describe('bindAgentBuilderTarget', () => {
 	const target = { agentId: 'aBcDeFgHiJkLmNoP', projectId: 'project-1', name: 'Support Triage' };
 
@@ -646,21 +794,7 @@ describe('bindAgentBuilderTarget', () => {
 	beforeEach(() => {
 		mockGetThread.mockReset();
 		mockSaveThread.mockReset();
-		// Same contract as `N8nMemoryImpl.patchThread`: read, update, replace.
-		mockPatchThread.mockImplementation(
-			async (args: {
-				threadId: string;
-				update: (thread: Record<string, unknown>) => Record<string, unknown> | null;
-			}) => {
-				const thread = (await mockGetThread(args.threadId)) as Record<string, unknown> | null;
-				if (!thread) return null;
-				const patch = args.update({ ...thread });
-				if (!patch) return thread;
-				const updated = { ...thread, ...patch };
-				await mockSaveThread(updated);
-				return updated;
-			},
-		);
+		mockPatchThread.mockImplementation(patchThreadLikeStore);
 	});
 
 	// A merge-style update cannot delete a key, and a thread carrying both makes a

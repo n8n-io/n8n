@@ -42,6 +42,7 @@ import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import InstanceAiAgentsConversation from './components/InstanceAiAgentsConversation.vue';
 import ShareThreadButton from './sharing/ShareThreadButton.vue';
 import SharedThreadChip from './sharing/SharedThreadChip.vue';
+import RunTargetChip from './runTarget/RunTargetChip.vue';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
@@ -753,7 +754,7 @@ function handleNewThreadClick() {
 				data-test-id="instance-ai-builder-chat-header"
 			>
 				<InstanceAiViewHeader :title="currentThreadTitle">
-					<template #status><SharedThreadChip ref="sharedChip" /></template>
+					<template #status><SharedThreadChip ref="sharedChip" /><RunTargetChip /></template>
 					<template #actions>
 						<ShareThreadButton @shared="sharedChip?.focus()" />
 						<N8nTooltip

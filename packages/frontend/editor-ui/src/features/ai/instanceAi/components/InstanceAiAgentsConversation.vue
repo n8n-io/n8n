@@ -35,6 +35,8 @@ import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
+import { optionalRunTarget } from '../runTarget/runTargetOptions';
+import { useMessageRunTarget } from '../runTarget/useMessageRunTarget';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
@@ -74,6 +76,7 @@ import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
+import RunTargetLostNotice from '../runTarget/RunTargetLostNotice.vue';
 import SharedThreadNotice from '../sharing/SharedThreadNotice.vue';
 import { provideThreadSharing } from '../sharing/useThreadSharing';
 
@@ -177,6 +180,8 @@ async function refreshThreadInfo(): Promise<void> {
 		// Non-critical: the header and the panels keep their current state.
 	}
 }
+
+const messageRunTarget = useMessageRunTarget(refreshThreadInfo);
 
 /**
  * A turn sets the heuristic title, the builder metadata, the planned tasks and
@@ -417,6 +422,7 @@ function buildHostContext(): Record<string, unknown> {
 		...(threadArtifacts ? { threadArtifacts } : {}),
 		...(context ? { context } : {}),
 		...(attachments.length ? { attachments } : {}),
+		...optionalRunTarget(messageRunTarget.forNextMessage()),
 	};
 	// A programmatic send leaves the composer state alone when it is accepted.
 	if (message) programmaticHostContexts.add(hostContext);
@@ -437,6 +443,7 @@ function onMessageAccepted(payload: {
 	hostContext?: Record<string, unknown>;
 }) {
 	const hostContext = payload.hostContext ?? {};
+	messageRunTarget.accepted(hostContext);
 	const attachments = readHostAttachments(hostContext);
 	thread.recordSentAttachments(attachments);
 	if (programmaticHostContexts.has(hostContext)) return;
@@ -484,6 +491,7 @@ async function sendThroughChat(message: ThreadChatMessage): Promise<boolean> {
 		...(message.attachments ? { attachments: message.attachments } : {}),
 		...(message.handoffContext ? { handoffContext: message.handoffContext } : {}),
 	};
+	messageRunTarget.remember(message.runTarget);
 	const sent = await panel.sendMessageFromOutside(message.message, message.files);
 	if (!sent) oneShotMessage = null;
 	return sent;
@@ -511,6 +519,7 @@ function sendPendingFirstMessage() {
 		attachments: pending.attachments,
 		files,
 		handoffContext: pending.context,
+		...optionalRunTarget(pending.runTarget),
 	});
 }
 
@@ -645,6 +654,7 @@ onBeforeUnmount(() => {
 				</div>
 			</template>
 			<template v-if="!isTeammate" #above-input>
+				<RunTargetLostNotice @dismissed="chatPanel?.focusInput()" />
 				<slot name="above-input" />
 			</template>
 			<template v-if="isTeammate" #composer>

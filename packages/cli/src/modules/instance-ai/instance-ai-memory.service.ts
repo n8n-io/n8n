@@ -25,7 +25,9 @@ import { N8nMemory, type N8nMemoryImpl } from '../agents/integrations/n8n-memory
 import { AgentExecutionThreadRepository } from '../agents/repositories/agent-execution-thread.repository';
 import { SystemAgentExecutionService } from '../agents/system-agents/system-agent-execution.service';
 import { draftChatMemoryResourceId } from '../agents/utils/agent-memory-scope';
-import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
+import { ASSISTANT_AGENT_ID, ASSISTANT_TURN_DEFAULTS_KEY } from './assistant-turn-options';
+import { lostRunTargetOf, storedRunTargetOf, withoutLostRunTarget } from './run-target/run-target';
+import { toRestorableMessage } from './instance-ai-restorable-message';
 import { ThreadFactsService } from './thread-overview/thread-facts.service';
 
 /** Write-path launch attribution. `unknown` is reserved for legacy rows on read. */
@@ -33,29 +35,6 @@ export interface InstanceAiThreadLaunchMetadata {
 	source: InstanceAiThreadSource;
 	origin: InstanceAiThreadOrigin;
 	sourceContext?: Record<string, unknown>;
-}
-
-function isRestorableMessage(
-	value: Record<string, unknown> & { createdAt: Date },
-): value is AgentDbMessage & Record<string, unknown> {
-	if (typeof value.id !== 'string' || value.id.length === 0) return false;
-	if (value.type === 'custom') return typeof value.data === 'object' && value.data !== null;
-	return typeof value.role === 'string' && Array.isArray(value.content);
-}
-
-/** Coerce a wire-format seed message (ISO `createdAt`) into a persistable
- *  AgentDbMessage, or undefined if it fails the structural contract. */
-function toRestorableMessage(value: Record<string, unknown>): AgentDbMessage | undefined {
-	const rawCreatedAt = value.createdAt;
-	const createdAt =
-		rawCreatedAt instanceof Date
-			? rawCreatedAt
-			: typeof rawCreatedAt === 'string'
-				? new Date(rawCreatedAt)
-				: undefined;
-	if (!createdAt || Number.isNaN(createdAt.getTime())) return undefined;
-	const candidate = { ...value, createdAt };
-	return isRestorableMessage(candidate) ? candidate : undefined;
 }
 
 /** Span of a returned message page — the only trees a read needs to hydrate.
@@ -417,6 +396,20 @@ export class InstanceAiMemoryService {
 		return await this.getThreadInfo(updated.id);
 	}
 
+	/**
+	 * The owner has seen the lost link notice of a chat. The notice is shown once, so its marker
+	 * goes. A thread without the marker is left alone.
+	 */
+	async acknowledgeLostRunTarget(threadId: string): Promise<void> {
+		await patchThread(this.agentMemory, {
+			threadId,
+			update: ({ metadata }) => {
+				if (!metadata || !lostRunTargetOf(metadata)) return null;
+				return { metadata: withoutLostRunTarget(metadata) };
+			},
+		});
+	}
+
 	async getThreadMetadata(
 		userId: string,
 		threadId: string,
@@ -494,6 +487,8 @@ export class InstanceAiMemoryService {
 		createdAt: Date;
 		updatedAt: Date;
 	}): InstanceAiThreadInfo {
+		const runTarget = storedRunTargetOf(thread.metadata?.[ASSISTANT_TURN_DEFAULTS_KEY]);
+		const lostRunTarget = lostRunTargetOf(thread.metadata);
 		return {
 			id: thread.id,
 			title: thread.title,
@@ -502,6 +497,8 @@ export class InstanceAiMemoryService {
 			createdAt: thread.createdAt.toISOString(),
 			updatedAt: thread.updatedAt.toISOString(),
 			metadata: thread.metadata,
+			...(runTarget ? { runTarget } : {}),
+			...(lostRunTarget ? { lostRunTarget } : {}),
 		};
 	}
 

@@ -33,6 +33,7 @@ import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadHistory,
 	fetchThread,
+	acknowledgeLostRunTarget as acknowledgeLostRunTargetApi,
 	deleteThread as deleteThreadApi,
 	renameThread as renameThreadApi,
 	updateThreadMetadata as updateThreadMetadataApi,
@@ -44,6 +45,7 @@ import {
 	type ThreadRuntime,
 } from './instanceAi.threadRuntime';
 import { mergeNodeSets } from './utils/buildNodesAttachment';
+import { createLostRunTargetDismissals } from './runTarget/lostRunTargetDismissals';
 
 export type { ThreadRuntime } from './instanceAi.threadRuntime';
 
@@ -65,6 +67,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const persistedThreadIds = new Set<string>();
+	const lostRunTargets = createLostRunTargetDismissals(localThreadEntries, async (threadId) => {
+		await acknowledgeLostRunTargetApi(rootStore.restApiContext, threadId);
+	});
 
 	// --- Instance-level state ---
 	const threads = ref<InstanceAiThreadSummary[]>([]);
@@ -208,6 +213,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			lastActivityAt: thread.lastActivityAt,
 			sharedWith: thread.sharedWith,
 			owner: thread.owner,
+			runTarget: thread.runTarget,
+			lostRunTarget: lostRunTargets.visible(thread),
 		};
 	}
 
@@ -263,6 +270,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return thread;
 	}
 
+	/** The owner dismissed the lost link notice of a chat. See `createLostRunTargetDismissals`. */
+	const acknowledgeLostRunTarget = lostRunTargets.dismiss;
+
 	/** Put a server copy of a thread (for example the answer to a share) into every local copy. */
 	function applyThread(thread: InstanceAiThreadInfo): void {
 		persistedThreadIds.add(thread.id);
@@ -277,6 +287,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			entry.metadata = thread.metadata ?? undefined;
 			entry.sharedWith = thread.sharedWith;
 			entry.owner = thread.owner;
+			entry.runTarget = thread.runTarget;
+			entry.lostRunTarget = lostRunTargets.visible(thread);
 		}
 	}
 
@@ -530,6 +542,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		loadThreads,
 		loadThread,
 		refreshThread,
+		acknowledgeLostRunTarget,
 		applyThread,
 		threadHistory,
 		resetThreadHistory,

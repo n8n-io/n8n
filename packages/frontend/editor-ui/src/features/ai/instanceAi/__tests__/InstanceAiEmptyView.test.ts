@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, reactive, ref } from 'vue';
+import { defineComponent, h, reactive, ref, type Ref } from 'vue';
+import type { RunTarget } from '@n8n/api-types';
 import { USER_TYPED_MESSAGE, type InstanceAiPrefillType } from '../prefills';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
@@ -17,6 +18,24 @@ import type { Project, ProjectListItem } from '@/features/collaboration/projects
 import { defaultModuleSettings } from './createThreadComponentRenderer';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
+const OFFICE_ID = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
+
+// The picker's state, which each test sets. The mock below fills it when the view loads.
+const runTargetPicker = vi.hoisted(() => ({
+	state: undefined as undefined | { showRunTargetPicker: Ref<boolean>; runTarget: Ref<RunTarget> },
+}));
+
+vi.mock('../runTarget/useRunTargetPicker', async () => {
+	const { computed, ref: refOf } = await import('vue');
+	const showRunTargetPicker = refOf(false);
+	const runTarget = refOf<RunTarget>({ kind: 'local' });
+	const links = refOf([]);
+	const chosenRunTarget = computed(() => (showRunTargetPicker.value ? runTarget.value : undefined));
+	runTargetPicker.state = { showRunTargetPicker, runTarget };
+	return {
+		useRunTargetPicker: () => ({ showRunTargetPicker, runTarget, links, chosenRunTarget }),
+	};
+});
 
 // Reactive so the component's `watch(() => route.query[...])` fires on mutation,
 // matching vue-router's real reactive `route.query` behavior.
@@ -80,6 +99,8 @@ const {
 	appSettingsStoreMock: {
 		isCloudDeployment: false,
 		settings: { releaseChannel: 'stable' },
+		// The run target picker asks this in Power mode. No module is on unless a test says so.
+		isModuleActive: (_moduleName: string) => false,
 	},
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({
 		type: 'prompt',
@@ -487,6 +508,9 @@ describe('InstanceAiEmptyView', () => {
 		vi.useRealTimers();
 		vi.clearAllMocks();
 		vi.unstubAllGlobals();
+		const picker = runTargetPicker.state!;
+		picker.showRunTargetPicker.value = false;
+		picker.runTarget.value = { kind: 'local' };
 	});
 
 	it('resets the browser tab title left behind by the previous thread', () => {
@@ -1074,6 +1098,40 @@ describe('InstanceAiEmptyView', () => {
 			name: INSTANCE_AI_THREAD_VIEW,
 			params: { threadId: 'thread-placeholder' },
 		});
+	});
+
+	it('stashes the run target that the user chose in Power mode with the opener', async () => {
+		const picker = runTargetPicker.state!;
+		picker.showRunTargetPicker.value = true;
+		picker.runTarget.value = { kind: 'linked', instanceId: OFFICE_ID };
+		store.syncThread.mockResolvedValue(undefined);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(localStorage.setItem).toHaveBeenCalledWith(
+			expect.stringContaining('thread-placeholder'),
+			expect.stringContaining(`"runTarget":{"kind":"linked","instanceId":"${OFFICE_ID}"}`),
+		);
+	});
+
+	it('stashes no run target while the picker is hidden, as in Simple mode', async () => {
+		runTargetPicker.state!.runTarget.value = { kind: 'linked', instanceId: OFFICE_ID };
+		store.syncThread.mockResolvedValue(undefined);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(localStorage.setItem).toHaveBeenCalledWith(
+			expect.stringContaining('thread-placeholder'),
+			expect.stringContaining('"message":"hello"'),
+		);
+		expect(localStorage.setItem).not.toHaveBeenCalledWith(
+			expect.any(String),
+			expect.stringContaining('runTarget'),
+		);
 	});
 
 	it('keeps the provisional thread when the send is accepted', async () => {

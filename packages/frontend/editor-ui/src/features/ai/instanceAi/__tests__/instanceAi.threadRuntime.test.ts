@@ -310,6 +310,43 @@ describe('createThreadRuntime - sendMessage', () => {
 		expect(sender).toHaveBeenCalledTimes(1);
 	});
 
+	it('passes the run target of the first message to the chat', async () => {
+		const runtime = createRuntime();
+		const sender = vi.fn().mockResolvedValue(true);
+		runtime.registerChatSender(sender);
+		const runTarget = {
+			kind: 'linked' as const,
+			instanceId: '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c',
+		};
+
+		await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE, runTarget });
+
+		expect(sender).toHaveBeenCalledWith(expect.objectContaining({ runTarget }));
+	});
+
+	it('sends no run target when the message names none', async () => {
+		const runtime = createRuntime();
+		const sender = vi.fn().mockResolvedValue(true);
+		runtime.registerChatSender(sender);
+
+		await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
+
+		expect(sender.mock.calls[0][0]).not.toHaveProperty('runTarget');
+	});
+
+	it('stashes the run target with the pending first message', async () => {
+		const runtime = createRuntime();
+
+		await runtime.sendMessage('hello', {
+			authorship: USER_TYPED_MESSAGE,
+			runTarget: { kind: 'local' },
+		});
+
+		expect(consumePendingFirstMessage('thread-1')).toEqual(
+			expect.objectContaining({ runTarget: { kind: 'local' } }),
+		);
+	});
+
 	it('does not track a message the chat refused', async () => {
 		const runtime = createRuntime();
 		runtime.registerChatSender(vi.fn().mockResolvedValue(false));
@@ -431,4 +468,3 @@ describe('getAgentPreviewSessionFromThreadMetadata', () => {
 		).toBeUndefined();
 	});
 });
-

@@ -196,6 +196,7 @@ import { loadOnboardingSkill } from './onboarding';
 import { ONBOARDING_OPENING } from './onboarding-opening';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { runMetricsModelLabel } from './observability';
+import { withTurnDefaults } from './run-target/run-target';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -213,6 +214,7 @@ import {
 	ASSISTANT_TURN_METADATA_KEY,
 	LIVE_RUN_METADATA_KEY,
 	readAssistantTurnOptions,
+	readResumedTurnOptions,
 	toJsonObject,
 	type AssistantTurnDefaults,
 	type AssistantTurnOptions,
@@ -2407,6 +2409,8 @@ export class InstanceAiService {
 			runId: `run_${nanoid()}`,
 			messageGroupId,
 			...defaults,
+			// Only a chat message resolves a run target. A stored one is not replayed here.
+			runTarget: undefined,
 			timeZone: defaults.timeZone ?? this.defaultTimeZone,
 			resumeReason,
 			isReplanFollowUp,
@@ -2756,9 +2760,7 @@ export class InstanceAiService {
 	private async saveTurnDefaults(threadId: string, defaults: AssistantTurnDefaults): Promise<void> {
 		await patchThread(this.assistantMemory, {
 			threadId,
-			update: ({ metadata }) => ({
-				metadata: { ...metadata, [ASSISTANT_TURN_DEFAULTS_KEY]: defaults },
-			}),
+			update: ({ metadata }) => ({ metadata: withTurnDefaults(metadata, defaults) }),
 		});
 	}
 
@@ -2794,7 +2796,7 @@ export class InstanceAiService {
 		const options =
 			turn.type === 'start'
 				? readAssistantTurnOptions(turn.options)
-				: readAssistantTurnOptions(turn.checkpointHostMetadata[ASSISTANT_TURN_METADATA_KEY]);
+				: readResumedTurnOptions(turn.checkpointHostMetadata[ASSISTANT_TURN_METADATA_KEY]);
 		if (!options.runId) options.runId = `run_${nanoid()}`;
 		const threadId = turn.thread.id;
 		await this.ensureMemoryThread(threadId, turn.resourceId);
@@ -3167,6 +3169,7 @@ export class InstanceAiService {
 				computerUseChannels: options.computerUseChannels,
 				buildMode: options.buildMode,
 				promptVersion: options.promptVersion,
+				runTarget: options.runTarget,
 			});
 		}
 

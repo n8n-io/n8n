@@ -61,6 +61,7 @@ import { EvalThreadRestoreService } from './eval/thread-restore.service';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { withoutServerMetadata } from './run-target/run-target';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -441,9 +442,24 @@ export class InstanceAiController {
 		await this.assertThreadAccess(req.user.id, threadId);
 		const thread = await this.memoryService.updateThread(threadId, {
 			title: payload.title,
-			metadata: payload.metadata,
+			// The server owns the `assistant*` metadata keys, for example the run target.
+			metadata: withoutServerMetadata(payload.metadata),
 		});
 		return { thread: await this.threadSharing.withSharingFields(req.user, thread) };
+	}
+
+	/** The owner has seen that the linked instance of the chat is gone. The notice is shown once. */
+	@Post('/threads/:threadId/lost-run-target/acknowledge')
+	@GlobalScope('instanceAi:message')
+	async acknowledgeLostRunTarget(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		await this.memoryService.acknowledgeLostRunTarget(threadId);
+		return { ok: true };
 	}
 
 	@Get('/threads/:threadId/tabs')

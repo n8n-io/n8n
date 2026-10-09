@@ -1,4 +1,9 @@
-import type { InstanceAiResourceAttachment, InstanceAiHandoffContext } from '@n8n/api-types';
+import {
+	runTargetSchema,
+	type InstanceAiResourceAttachment,
+	type InstanceAiHandoffContext,
+	type RunTarget,
+} from '@n8n/api-types';
 import {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	isMessageAuthorship,
@@ -12,10 +17,15 @@ import {
 
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
 
+// The stash lives in localStorage, so a stored target is parsed again before use.
+const storedRunTargetSchema = runTargetSchema.optional().catch(undefined);
+
 export interface PendingFirstMessage {
 	message: string;
 	attachments?: InstanceAiResourceAttachment[];
 	context?: InstanceAiHandoffContext;
+	/** Where the chat runs. Set by the Power mode picker, on the first message only. */
+	runTarget?: RunTarget;
 	responseStartedAtEpochMs?: number;
 	/**
 	 * Required so a new hand-off cannot stash an opener that reports as
@@ -48,6 +58,7 @@ export function consumePendingFirstMessage(threadId: string): PendingFirstMessag
 		return {
 			...parsed,
 			message: parsed.message,
+			runTarget: storedRunTargetSchema.parse(parsed.runTarget),
 			// A stash written before openers were typed still has to replay: dropping it
 			// would lose a message the user sent from another tab across a deploy. Every
 			// stash comes from a hand-off, so an absent authorship is a pre-fill of an

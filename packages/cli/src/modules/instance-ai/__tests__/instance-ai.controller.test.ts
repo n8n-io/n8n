@@ -78,6 +78,7 @@ import type { ThreadSharingService } from '../sharing/thread-sharing.service';
 
 const USER_ID = 'user-1';
 const THREAD_ID = 'thread-1';
+const LINK_ID = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
 
 const routeMetadata = Container.get(ControllerRegistryMetadata);
 
@@ -1275,6 +1276,72 @@ describe('InstanceAiController', () => {
 
 			expect(result.thread).toEqual({ ...renamed, ...sharingFields });
 			expect(threadSharing.withSharingFields).toHaveBeenCalledWith(req.user, renamed);
+		});
+
+		it('drops client writes to the server-owned assistant metadata keys', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.updateThread.mockResolvedValue(threadInfo(THREAD_ID));
+
+			await controller.renameThread(req, res, THREAD_ID, {
+				title: 'New Title',
+				metadata: {
+					assistantTurnDefaults: {
+						runTarget: { kind: 'linked', instanceId: LINK_ID, name: 'Cloud' },
+					},
+					assistantLiveRun: { runId: 'run-1' },
+					assistantRunTargetLost: { name: 'Cloud' },
+					source: 'assistant_page',
+				},
+			} as InstanceAiRenameThreadRequestDto);
+
+			expect(memoryService.updateThread).toHaveBeenCalledWith(THREAD_ID, {
+				title: 'New Title',
+				metadata: { source: 'assistant_page' },
+			});
+		});
+
+		it('renames a thread without metadata in the request', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.updateThread.mockResolvedValue(threadInfo(THREAD_ID));
+
+			await controller.renameThread(req, res, THREAD_ID, {
+				title: 'New Title',
+			} as InstanceAiRenameThreadRequestDto);
+
+			expect(memoryService.updateThread).toHaveBeenCalledWith(THREAD_ID, {
+				title: 'New Title',
+				metadata: undefined,
+			});
+		});
+	});
+
+	describe('acknowledgeLostRunTarget', () => {
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('acknowledgeLostRunTarget')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it('should drop the lost link notice of an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+
+			const result = await controller.acknowledgeLostRunTarget(req, res, THREAD_ID);
+
+			expect(result).toEqual({ ok: true });
+			expect(memoryService.acknowledgeLostRunTarget).toHaveBeenCalledWith(THREAD_ID);
+		});
+
+		it.each([
+			['other_user', ForbiddenError],
+			['not_found', NotFoundError],
+		] as const)('should refuse a %s thread and drop nothing', async (ownership, expected) => {
+			memoryService.checkThreadOwnership.mockResolvedValue(ownership);
+
+			await expect(controller.acknowledgeLostRunTarget(req, res, THREAD_ID)).rejects.toThrow(
+				expected,
+			);
+			expect(memoryService.acknowledgeLostRunTarget).not.toHaveBeenCalled();
 		});
 	});
 

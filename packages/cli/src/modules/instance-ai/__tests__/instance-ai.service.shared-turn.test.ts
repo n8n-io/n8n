@@ -4,6 +4,7 @@ vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	createOrchestratorRunControl: vi.fn(() => ({})),
 }));
 
+import type { InstanceAiThreadRunTarget } from '@n8n/api-types';
 import { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -14,10 +15,23 @@ import { InstanceAiService } from '../instance-ai.service';
 const THREAD_ID = 'thread-1';
 const PREFERENCES = '<ai-preferences>\nKeep replies short.\n</ai-preferences>';
 
+type FollowUpInternals = {
+	startInternalFollowUpRun(user: User, threadId: string, message: string): Promise<string>;
+};
+
+type ResumeInternals = {
+	prepareAssistantTurn(turn: {
+		type: 'resume';
+		thread: { id: string };
+		resourceId: string;
+		checkpointHostMetadata: Record<string, unknown>;
+	}): Promise<unknown>;
+};
+
 type TurnInternals = {
 	prepareStartTurn(
 		turn: { user: User; message: string; thread: { id: string } },
-		options: { runId: string },
+		options: { runId: string; runTarget?: InstanceAiThreadRunTarget },
 	): Promise<{ input: unknown }>;
 };
 
@@ -30,6 +44,9 @@ function createService(sharedThread: boolean) {
 		block: PREFERENCES,
 		payload: { preferences: [], renderedLength: PREFERENCES.length, injectedThisTurn: true },
 	}));
+	const saveTurnDefaults = vi.fn(
+		async (_threadId: string, _defaults: { runTarget?: InstanceAiThreadRunTarget }) => {},
+	);
 	Object.assign(service, {
 		adapterService: { resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })) },
 		createProxyRunConfig: vi.fn(async () => ({})),
@@ -61,17 +78,22 @@ function createService(sharedThread: boolean) {
 		formBaseUrl: 'http://localhost:5678/form',
 		defaultTimeZone: 'UTC',
 		createAgentFromEnvironment: vi.fn(async () => ({})),
-		saveTurnDefaults: vi.fn(async () => {}),
+		saveTurnDefaults,
 		createTurnHandle: vi.fn((params: { input: unknown }) => params),
 	});
 	const internals = service as unknown as TurnInternals;
-	const send = async (message: string) =>
-		await internals.prepareStartTurn(
-			{ user, message, thread: { id: THREAD_ID } },
-			{ runId: 'run-1' },
-		);
-	return { send, resolveAiPreferencesTurn };
+	const send = async (
+		message: string,
+		options: { runId: string; runTarget?: InstanceAiThreadRunTarget } = { runId: 'run-1' },
+	) => await internals.prepareStartTurn({ user, message, thread: { id: THREAD_ID } }, options);
+	return { send, resolveAiPreferencesTurn, saveTurnDefaults };
 }
+
+const LINKED_TARGET: InstanceAiThreadRunTarget = {
+	kind: 'linked',
+	instanceId: '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c',
+	name: 'Office',
+};
 
 describe('InstanceAiService — AI preferences in a shared chat', () => {
 	beforeEach(() => {
@@ -107,5 +129,89 @@ describe('InstanceAiService — AI preferences in a shared chat', () => {
 		expect(input).toEqual(expect.stringContaining('Build the invoice flow'));
 		expect(input).not.toEqual(expect.stringContaining('<ai-preferences>'));
 		expect(resolveAiPreferencesTurn).not.toHaveBeenCalled();
+	});
+});
+
+describe('InstanceAiService — run target of a chat turn', () => {
+	beforeEach(() => {
+		vi.resetAllMocks();
+		const nudge = mock<RepeatableWorkNudgeService>();
+		nudge.forTurn.mockResolvedValue(undefined);
+		Container.set(RepeatableWorkNudgeService, nudge);
+	});
+
+	afterAll(() => {
+		Container.reset();
+	});
+
+	it('saves the run target of the first turn with the thread defaults', async () => {
+		const { send, saveTurnDefaults } = createService(false);
+
+		await send('Build the invoice flow', { runId: 'run-1', runTarget: LINKED_TARGET });
+
+		expect(saveTurnDefaults).toHaveBeenCalledWith(
+			THREAD_ID,
+			expect.objectContaining({ runTarget: LINKED_TARGET }),
+		);
+	});
+
+	it('saves no run target when the turn has none', async () => {
+		const { send, saveTurnDefaults } = createService(false);
+
+		await send('Build the invoice flow');
+
+		expect(saveTurnDefaults.mock.calls[0]?.[1].runTarget).toBeUndefined();
+	});
+
+	it('does not replay the stored run target into a machine follow-up turn', async () => {
+		const service = Object.create(InstanceAiService.prototype) as Record<string, unknown>;
+		const enqueueAssistantTurn = vi.fn(async () => ({ runId: 'run-2', steered: false }));
+		Object.assign(service, {
+			failedInternalFollowUpStreaks: new Map<string, number>(),
+			defaultTimeZone: 'UTC',
+			readTurnDefaults: vi.fn(async () => ({
+				runTarget: LINKED_TARGET,
+				timeZone: 'Europe/Helsinki',
+			})),
+			enqueueAssistantTurn,
+		});
+
+		await (service as unknown as FollowUpInternals).startInternalFollowUpRun(
+			user,
+			THREAD_ID,
+			'Continue the report',
+		);
+
+		const [, , , options] = enqueueAssistantTurn.mock.calls[0] as unknown as [
+			unknown,
+			unknown,
+			unknown,
+			{ runTarget?: InstanceAiThreadRunTarget; timeZone?: string },
+		];
+		expect(options.runTarget).toBeUndefined();
+		expect(options.timeZone).toBe('Europe/Helsinki');
+	});
+
+	it('does not replay the run target of a checkpoint into a resumed turn', async () => {
+		const service = Object.create(InstanceAiService.prototype) as Record<string, unknown>;
+		const prepareResumeTurn = vi.fn(async (_turn: unknown, _options: unknown) => ({}));
+		Object.assign(service, {
+			ensureMemoryThread: vi.fn(async () => {}),
+			recordLiveRun: vi.fn(async () => {}),
+			prepareResumeTurn,
+		});
+
+		await (service as unknown as ResumeInternals).prepareAssistantTurn({
+			type: 'resume',
+			thread: { id: THREAD_ID },
+			resourceId: 'owner-1',
+			checkpointHostMetadata: {
+				instanceAiTurn: { runId: 'run-1', runTarget: LINKED_TARGET, timeZone: 'Europe/Helsinki' },
+			},
+		});
+
+		const options = prepareResumeTurn.mock.calls[0]?.[1];
+		expect(options).not.toHaveProperty('runTarget');
+		expect(options).toEqual({ runId: 'run-1', timeZone: 'Europe/Helsinki' });
 	});
 });

@@ -3,6 +3,7 @@ import { effectScope, nextTick } from 'vue';
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureThread } from '../instanceAi.api';
 import {
+	acknowledgeLostRunTarget as acknowledgeLostRunTargetApi,
 	deleteThread as deleteThreadApi,
 	fetchThreadHistory,
 	fetchThread,
@@ -72,6 +73,7 @@ vi.mock('../instanceAi.memory.api', () => ({
 		.mockResolvedValue({ hasActiveRun: false, isSuspended: false, backgroundTasks: [] }),
 	deleteThread: vi.fn().mockResolvedValue(undefined),
 	renameThread: vi.fn().mockResolvedValue({ thread: {} }),
+	acknowledgeLostRunTarget: vi.fn().mockResolvedValue(undefined),
 	updateThreadMetadata: vi.fn().mockResolvedValue({ thread: {} }),
 }));
 
@@ -186,6 +188,93 @@ describe('useInstanceAiStore - runtime registry', () => {
 		await store.refreshThread('t');
 		expect(store.threads).toHaveLength(1);
 		expect(store.threads[0]).toMatchObject({ title: 'Refined', metadata: { key: 'value' } });
+	});
+
+	it('refreshThread keeps the run target of a chat, as it is added and when it changes', async () => {
+		const store = useInstanceAiStore();
+		const linked = {
+			kind: 'linked' as const,
+			instanceId: '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c',
+			name: 'Office',
+		};
+		vi.mocked(fetchThread).mockResolvedValueOnce({
+			thread: { ...historyThread('t'), runTarget: linked },
+		});
+		await store.refreshThread('t');
+		expect(store.threads[0]).toMatchObject({ runTarget: linked });
+
+		vi.mocked(fetchThread).mockResolvedValueOnce({
+			thread: { ...historyThread('t'), runTarget: { kind: 'local' } },
+		});
+		await store.refreshThread('t');
+		expect(store.threads).toHaveLength(1);
+		expect(store.threads[0]).toMatchObject({ runTarget: { kind: 'local' } });
+	});
+
+	it('refreshThread shows the lost link of a chat until the server no longer reports it', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThread).mockResolvedValueOnce({
+			thread: {
+				...historyThread('t'),
+				runTarget: { kind: 'local' },
+				lostRunTarget: { name: 'Office' },
+			},
+		});
+		await store.refreshThread('t');
+		expect(store.threads[0]).toMatchObject({ lostRunTarget: { name: 'Office' } });
+
+		vi.mocked(fetchThread).mockResolvedValueOnce({
+			thread: { ...historyThread('t'), runTarget: { kind: 'local' } },
+		});
+		await store.refreshThread('t');
+		expect(store.threads[0].lostRunTarget).toBeUndefined();
+	});
+
+	it('acknowledgeLostRunTarget hides the notice at once and tells the server', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThread).mockResolvedValueOnce({
+			thread: { ...historyThread('t'), lostRunTarget: { name: 'Office' } },
+		});
+		await store.refreshThread('t');
+
+		await store.acknowledgeLostRunTarget('t');
+
+		expect(acknowledgeLostRunTargetApi).toHaveBeenCalledWith(expect.anything(), 't');
+		expect(store.threads[0].lostRunTarget).toBeUndefined();
+	});
+
+	it('acknowledgeLostRunTarget keeps the notice hidden from a read that started before the dismissal', async () => {
+		const store = useInstanceAiStore();
+		const lostThread = { thread: { ...historyThread('t'), lostRunTarget: { name: 'Office' } } };
+		vi.mocked(fetchThread).mockResolvedValue(lostThread);
+		await store.refreshThread('t');
+
+		await store.acknowledgeLostRunTarget('t');
+		await store.refreshThread('t');
+
+		expect(store.threads[0].lostRunTarget).toBeUndefined();
+
+		// A fresh copy of the chat, for example after the list dropped it, stays without it too.
+		store.threads = [];
+		await store.loadThread('t');
+		expect(store.threads).toHaveLength(1);
+		expect(store.threads[0].lostRunTarget).toBeUndefined();
+	});
+
+	it('acknowledgeLostRunTarget brings the notice back when the request fails, so the owner can retry', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThread).mockResolvedValue({
+			thread: { ...historyThread('t'), lostRunTarget: { name: 'Office' } },
+		});
+		await store.refreshThread('t');
+		vi.mocked(acknowledgeLostRunTargetApi).mockRejectedValueOnce(new Error('network down'));
+
+		await expect(store.acknowledgeLostRunTarget('t')).resolves.toBeUndefined();
+
+		expect(store.threads[0]).toMatchObject({ lostRunTarget: { name: 'Office' } });
+		// The next read shows it as well, because the server still holds it.
+		await store.refreshThread('t');
+		expect(store.threads[0]).toMatchObject({ lostRunTarget: { name: 'Office' } });
 	});
 
 	it('keeps who shared a thread and with which project, also when the share happens later', async () => {

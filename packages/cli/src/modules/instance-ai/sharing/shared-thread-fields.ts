@@ -7,20 +7,37 @@ import { ProjectService } from '@/services/project.service.ee';
 import type { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
 import { AgentExecutionThreadRepository } from '../../agents/repositories/agent-execution-thread.repository';
 import { userDisplayName } from '../../agents/utils/user-display-name';
-import { ASSISTANT_AGENT_ID, ASSISTANT_TURN_DEFAULTS_KEY } from '../assistant-turn-options';
+import {
+	ASSISTANT_AGENT_ID,
+	ASSISTANT_RUN_TARGET_LOST_KEY,
+	ASSISTANT_TURN_DEFAULTS_KEY,
+} from '../assistant-turn-options';
 
 type SharingFields = Pick<InstanceAiThreadInfo, 'sharedWith' | 'owner'>;
 
-/** Thread metadata that only the owner gets. The turn defaults hold the owner's push connection. */
-const OWNER_ONLY_METADATA_KEYS: readonly string[] = [ASSISTANT_TURN_DEFAULTS_KEY];
+/**
+ * Thread metadata that only the owner gets. The turn defaults hold the owner's push connection,
+ * and the lost link marker names the owner's link.
+ */
+const OWNER_ONLY_METADATA_KEYS: readonly string[] = [
+	ASSISTANT_TURN_DEFAULTS_KEY,
+	ASSISTANT_RUN_TARGET_LOST_KEY,
+];
 
-/** The thread as `viewer` may see it: without the owner-only metadata of another user's thread. */
+/**
+ * The thread as `viewer` may see it: without the owner-only metadata, run target and lost link
+ * of another user's thread. Both name the owner's link.
+ */
 function forViewer(viewer: User, thread: InstanceAiThreadInfo): InstanceAiThreadInfo {
-	if (thread.resourceId === viewer.id || !thread.metadata) return thread;
+	if (thread.resourceId === viewer.id) return thread;
+	const { runTarget: _runTarget, lostRunTarget: _lostRunTarget, ...teammateView } = thread;
+	if (!teammateView.metadata) return teammateView;
 	const metadata = Object.fromEntries(
-		Object.entries(thread.metadata).filter(([key]) => !OWNER_ONLY_METADATA_KEYS.includes(key)),
+		Object.entries(teammateView.metadata).filter(
+			([key]) => !OWNER_ONLY_METADATA_KEYS.includes(key),
+		),
 	);
-	return { ...thread, metadata };
+	return { ...teammateView, metadata };
 }
 
 /** Marks the shared threads of a thread list with the project and the owner. */

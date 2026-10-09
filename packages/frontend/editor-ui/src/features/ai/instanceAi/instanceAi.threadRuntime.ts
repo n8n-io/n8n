@@ -10,6 +10,7 @@ import {
 	type InstanceAiSetupItem,
 	type InstanceAiThreadSourcePersisted,
 	type InstanceAiThreadSummary,
+	type RunTarget,
 	type InstanceAiToolCallState,
 	type InstanceAiWorkflowAttachment,
 	type TaskList,
@@ -23,6 +24,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { InstanceAiMessageAuthorship } from './prefills';
+import { optionalRunTarget } from './runTarget/runTargetOptions';
 import {
 	EMPTY_ASSISTANT_MENTION_COUNTS,
 	type AssistantMentionCounts,
@@ -87,6 +89,8 @@ export interface ThreadChatMessage {
 	attachments?: InstanceAiResourceAttachment[];
 	files?: File[];
 	handoffContext?: InstanceAiHandoffContext;
+	/** Read on the first message of a chat only. */
+	runTarget?: RunTarget;
 }
 
 /** Sends through the mounted Agents chat. Resolves to `false` when nothing was sent. */
@@ -401,12 +405,11 @@ export function createThreadRuntime(
 
 	/** The planned-task checklist from thread metadata, else the agent's own checklist. */
 	const currentTasks = computed(
-		() => getTasksFromThreadMetadata(threadMetadata()) ?? findLatestTasksFromMessages(messages.value),
+		() =>
+			getTasksFromThreadMetadata(threadMetadata()) ?? findLatestTasksFromMessages(messages.value),
 	);
 
-	const setupItemsByWorkflowId = computed(() =>
-		getSetupItemsFromThreadMetadata(threadMetadata()),
-	);
+	const setupItemsByWorkflowId = computed(() => getSetupItemsFromThreadMetadata(threadMetadata()));
 	const latestSetupWorkflowId = computed(() => Object.keys(setupItemsByWorkflowId.value).at(-1));
 
 	// --- Telemetry: 'User viewed new builder workflow' ---
@@ -568,6 +571,7 @@ export function createThreadRuntime(
 			attachments?: InstanceAiAttachment[];
 			files?: File[];
 			handoffContext?: InstanceAiHandoffContext;
+			runTarget?: RunTarget;
 			mentionCounts?: AssistantMentionCounts;
 			mentionedWorkflowIds?: readonly string[];
 			/** Accepted for call-site compatibility; the chat reads the push ref itself. */
@@ -582,6 +586,7 @@ export function createThreadRuntime(
 			...(references.length ? { attachments: references } : {}),
 			...(opts.files?.length ? { files: opts.files } : {}),
 			...(opts.handoffContext ? { handoffContext: opts.handoffContext } : {}),
+			...optionalRunTarget(opts.runTarget),
 		};
 		seedArtifactOrigins(opts.mentionedWorkflowIds ?? [], 'mentioned');
 
@@ -591,6 +596,7 @@ export function createThreadRuntime(
 				authorship: opts.authorship,
 				...(references.length ? { attachments: references } : {}),
 				...(opts.handoffContext ? { context: opts.handoffContext } : {}),
+				...optionalRunTarget(opts.runTarget),
 			});
 			stashPendingFirstMessageFiles(threadId, opts.files ?? []);
 			return true;
