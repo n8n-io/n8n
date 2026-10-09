@@ -42,4 +42,31 @@ export class TrustedSourceIdentityRepository {
 			.managerFor(ctx)
 			.delete(TrustedSourceIdentityEntity, { sourceId: trustedSourceId });
 	}
+
+	/** Loads the binding with its user and the user's role, so the caller can build a principal. */
+	async findBySubject(
+		sourceId: string,
+		subject: string,
+		ctx: OperationContext = {},
+	): Promise<TrustedSourceIdentityEntity | null> {
+		return await this.store.managerFor(ctx).findOne(TrustedSourceIdentityEntity, {
+			where: { sourceId, subject },
+			relations: {
+				user: {
+					role: true,
+				},
+			},
+		});
+	}
+
+	async touchLastSeen(
+		sourceId: string,
+		subject: string,
+		seenAt: Date,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.store
+			.managerFor(ctx)
+			.update(TrustedSourceIdentityEntity, { sourceId, subject }, { lastSeenAt: seenAt });
+	}
 }
