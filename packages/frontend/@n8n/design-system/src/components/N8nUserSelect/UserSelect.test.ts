@@ -451,6 +451,18 @@ describe('UserSelect', () => {
 		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('AS'));
 	});
 
+	it('should take the avatar initials from the full name when the user has no first or last name', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				users: [{ id: 'u9', email: 'nina@example.com', fullName: 'Nina Park' }],
+				modelValue: 'u9',
+				showAvatar: true,
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('NP'));
+	});
+
 	it('should not show an avatar by default', () => {
 		const { queryByTestId } = renderComponent({
 			props: { users: sampleUsers, modelValue: 'u1' },

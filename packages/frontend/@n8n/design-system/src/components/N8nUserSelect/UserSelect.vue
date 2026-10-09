@@ -103,6 +103,16 @@ const onFocus = () => emit('focus');
 
 const selectedUser = computed(() => props.users.find((user) => user.id === props.modelValue));
 
+// A user can have only a full name. The avatar then takes its initials from it.
+const avatarNames = computed(() => {
+	const user = selectedUser.value;
+	if (!user) return {};
+	if (user.firstName || user.lastName) {
+		return { firstName: user.firstName, lastName: user.lastName };
+	}
+	return { firstName: user.fullName };
+});
+
 const getLabel = (user: IUser) => {
 	if (!user.fullName) return user.email ?? '';
 	return props.hideEmailInLabel ? user.fullName : `${user.fullName} (${user.email})`;
@@ -132,8 +142,8 @@ const getLabel = (user: IUser) => {
 			<N8nAvatar
 				v-if="showAvatar"
 				size="xsmall"
-				:first-name="selectedUser?.firstName"
-				:last-name="selectedUser?.lastName"
+				:first-name="avatarNames.firstName"
+				:last-name="avatarNames.lastName"
 				data-test-id="user-select-avatar"
 			/>
 			<slot v-else name="prefix" />
