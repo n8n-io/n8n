@@ -19,9 +19,8 @@ describe('QuickBooks customer listing', () => {
 			.get('/v3/company/123/query')
 			.query({
 				query:
-					'SELECT * FROM customer WHERE Active = true ORDERBY Id MAXRESULTS 1000 STARTPOSITION 1001',
+					'SELECT * FROM customer WHERE Active = true ORDERBY Id MAXRESULTS 1000 STARTPOSITION 3',
 			})
-			.optionally()
 			.reply(200, { QueryResponse: {} });
 	});
 

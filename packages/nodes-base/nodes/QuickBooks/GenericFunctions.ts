@@ -114,8 +114,8 @@ export async function quickBooksApiRequestAllItems(
 		page = responseData.QueryResponse[propertyName] ?? [];
 		returnData.push(...page);
 
-		startPosition += maxResults;
-	} while (page.length === maxResults);
+		startPosition += page.length;
+	} while (page.length > 0);
 
 	return returnData;
 }

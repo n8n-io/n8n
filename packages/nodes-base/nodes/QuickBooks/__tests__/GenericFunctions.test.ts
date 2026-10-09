@@ -95,10 +95,12 @@ describe('QuickBooks listings', () => {
 	const endpoint = '/v3/company/123/query';
 	const filter = 'WHERE Active = true ORDERBY Id';
 	const query = `SELECT * FROM customer ${filter}`;
+	const requestQueries: string[] = [];
 	let parameters: IDataObject;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		requestQueries.length = 0;
 		parameters = {
 			resource: 'customer',
 			operation: 'getAll',
@@ -121,6 +123,7 @@ describe('QuickBooks listings', () => {
 	function mockQueryResponses(responses: Record<string, IDataObject>) {
 		mockExecuteFunctions.helpers.requestOAuth2.mockImplementation(async (_, options) => {
 			const requestQuery = options.qs?.query as string;
+			requestQueries.push(requestQuery);
 			if (requestQuery.startsWith('SELECT COUNT(*)')) {
 				return { QueryResponse: { totalCount: 3000 } };
 			}
@@ -137,13 +140,10 @@ describe('QuickBooks listings', () => {
 		const result = await handleListing.call(mockExecuteFunctions, 0, endpoint, 'customer');
 
 		expect(result).toEqual(customers);
-		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledTimes(1);
-		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
-			'quickBooksOAuth2Api',
-			expect.objectContaining({
-				qs: { query: `${query} MAXRESULTS 1000 STARTPOSITION 1` },
-			}),
-		);
+		expect(requestQueries).toEqual([
+			`${query} MAXRESULTS 1000 STARTPOSITION 1`,
+			`${query} MAXRESULTS 1000 STARTPOSITION 3`,
+		]);
 	});
 
 	it('should preserve the filter and sort order on each page', async () => {
@@ -157,7 +157,11 @@ describe('QuickBooks listings', () => {
 		const result = await handleListing.call(mockExecuteFunctions, 0, endpoint, 'customer');
 
 		expect(result).toEqual([...firstPage, ...secondPage]);
-		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledTimes(2);
+		expect(requestQueries).toEqual([
+			`${query} MAXRESULTS 1000 STARTPOSITION 1`,
+			`${query} MAXRESULTS 1000 STARTPOSITION 1001`,
+			`${query} MAXRESULTS 1000 STARTPOSITION 1003`,
+		]);
 	});
 
 	it('should retain a full page when the next page has no matches', async () => {
@@ -170,6 +174,21 @@ describe('QuickBooks listings', () => {
 
 		expect(result).toEqual(customers);
 		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledTimes(2);
+	});
+
+	it('should continue after short pages without skipping matching rows', async () => {
+		const firstPage = [{ Id: '1' }, { Id: '2' }];
+		const secondPage = [{ Id: '3' }];
+		mockQueryResponses({
+			[`${query} MAXRESULTS 1000 STARTPOSITION 1`]: { Customer: firstPage },
+			[`${query} MAXRESULTS 1000 STARTPOSITION 3`]: { Customer: secondPage },
+			[`${query} MAXRESULTS 1000 STARTPOSITION 4`]: { Customer: [] },
+		});
+
+		const result = await handleListing.call(mockExecuteFunctions, 0, endpoint, 'customer');
+
+		expect(result).toEqual([...firstPage, ...secondPage]);
+		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledTimes(3);
 	});
 
 	it.each([{}, { Customer: [] }])('should return an empty listing for %j', async (response) => {
@@ -200,7 +219,7 @@ describe('QuickBooks listings', () => {
 			);
 
 			expect(result).toEqual(items);
-			expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledTimes(1);
+			expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledTimes(2);
 		},
 	);
 
