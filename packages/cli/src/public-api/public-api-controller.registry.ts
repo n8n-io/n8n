@@ -20,7 +20,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError, UnsupportedMediaTypeError } from '@n8n/errors';
 import { License } from '@/license';
 import { assertContentType } from '@/public-api/media-types/content-type';
-import { runBinaryResponseRoute } from '@/public-api/media-types/binary-response';
+import { sendBinaryResponse } from '@/public-api/media-types/binary-response';
 import type { RequestBodyHandler } from '@/public-api/media-types/request-body';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
@@ -122,12 +122,13 @@ export class PublicApiControllerRegistry {
 				}
 
 				if (route.binaryResponse) {
-					await runBinaryResponseRoute(
+					const result = await controller[handlerName](...args);
+					await sendBinaryResponse(
 						res,
 						route.binaryResponse,
 						successStatus,
 						`${controllerClass.name}.${handlerName}`,
-						async () => await controller[handlerName](...args),
+						result,
 					);
 					return;
 				}

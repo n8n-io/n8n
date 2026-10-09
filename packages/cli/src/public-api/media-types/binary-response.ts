@@ -1,104 +1,86 @@
-import type { BinaryResponse, SuccessStatus } from '@n8n/decorators';
+import type { BinaryResponse, BinaryResult, SuccessStatus } from '@n8n/decorators';
 import { UnexpectedError } from '@n8n/errors';
 import type { Response } from 'express';
-import { type OutgoingHttpHeaders } from 'http';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 
-function getMissingHeaders(res: Response, declaredHeaders: string[]) {
-	return declaredHeaders.filter((name) => !res.hasHeader(name));
-}
-
-function restoreHeaders(res: Response, headers: OutgoingHttpHeaders) {
-	// Clear existing headers
-	for (const name of res.getHeaderNames()) {
-		if (headers[name] === undefined) {
-			res.removeHeader(name);
-		}
-	}
-
-	// Restore original headers
-	for (const [name, value] of Object.entries(headers)) {
-		if (value !== undefined) {
-			res.setHeader(name, value);
-		}
-	}
-}
-
-const missingHeaderError = (routeName: string, names: string[]) =>
-	new UnexpectedError(
-		`${routeName} did not set the declared response header(s): ${names.join(', ')}`,
+function isBinaryResult(result: unknown): result is BinaryResult {
+	return (
+		typeof result === 'object' &&
+		result !== null &&
+		'body' in result &&
+		(Buffer.isBuffer(result.body) || result.body instanceof Readable)
 	);
+}
+
+function sendHeaders(
+	res: Response,
+	successStatus: SuccessStatus,
+	mediaType: BinaryResponse['mediaType'],
+	headers: BinaryResult['headers'],
+) {
+	for (const [name, value] of Object.entries(headers ?? {})) {
+		res.setHeader(name, value);
+	}
+	// Set last, so a result header cannot replace the declared media type.
+	res.status(successStatus).setHeader('Content-Type', mediaType);
+}
 
 /**
- * Runs a route whose controller method writes a binary body to `res` itself.
- *
- * Every declared header must be set before the body starts. The check runs at the first write, so
- * it also covers a stream. A missing header aborts the response, and the request fails with the
- * missing-header error, not the premature-close error a stream reports. If the method returns
- * before it writes anything, the missing header fails the request with a 500.
+ * Sends the result of a route whose success body is binary.
  */
-export async function runBinaryResponseRoute(
+export async function sendBinaryResponse(
 	res: Response,
 	binaryResponse: BinaryResponse,
 	successStatus: SuccessStatus,
 	routeName: string,
-	invoke: () => Promise<unknown>,
+	result: unknown,
 ): Promise<void> {
-	const headers = res.getHeaders();
-	const declaredHeaders = Object.keys(binaryResponse.headers ?? {});
-
-	const writeCheck: { failure?: UnexpectedError } = {};
-
-	res.status(successStatus).setHeader('Content-Type', binaryResponse.mediaType);
-
-	// Node calls `writeHead` on the first write, so the check runs before any header is sent.
-	const originalWriteHead = res.writeHead;
-	res.writeHead = ((...args: Parameters<Response['writeHead']>) => {
-		const absent = getMissingHeaders(res, declaredHeaders);
-		if (absent.length) {
-			writeCheck.failure = missingHeaderError(routeName, absent);
-			res.destroy();
-			return res;
-		}
-		return originalWriteHead.apply(res, args);
-	}) as Response['writeHead'];
-
-	// The check ends with the route. Otherwise it would also block the JSON error response below.
-	const release = () => {
-		res.writeHead = originalWriteHead;
-	};
-
-	let invokeFailure: { error: unknown } | undefined;
-	try {
-		await invoke();
-	} catch (error) {
-		invokeFailure = { error };
-	}
-	release();
-
-	if (writeCheck.failure) {
-		if (!res.headersSent) {
-			restoreHeaders(res, headers);
-		}
-		throw writeCheck.failure;
+	if (!isBinaryResult(result)) {
+		throw new UnexpectedError(`${routeName} declares a binary @ApiResponse but returned no body`);
 	}
 
-	if (invokeFailure) {
-		if (!res.headersSent) {
-			restoreHeaders(res, headers);
-		}
-		throw invokeFailure.error;
-	}
-
-	if (!res.headersSent) {
-		const absent = getMissingHeaders(res, declaredHeaders);
-		restoreHeaders(res, headers);
-
-		if (absent.length) {
-			throw missingHeaderError(routeName, absent);
-		}
-
+	const setHeaderNames = new Set(
+		Object.keys(result.headers ?? {}).map((name) => name.toLowerCase()),
+	);
+	const missing = Object.keys(binaryResponse.headers ?? {}).filter(
+		(name) => !setHeaderNames.has(name.toLowerCase()),
+	);
+	if (missing.length) {
 		throw new UnexpectedError(
-			`${routeName} declares a binary @ApiResponse but returned without sending a response`,
+			`${routeName} did not set the declared response header(s): ${missing.join(', ')}`,
 		);
+	}
+
+	const { body } = result;
+
+	// A buffer is already in memory, so send it in one write.
+	if (Buffer.isBuffer(body)) {
+		sendHeaders(res, successStatus, binaryResponse.mediaType, result.headers);
+		res.end(body);
+		return;
+	}
+
+	// Handle a stream. The first chunk is read to ensure the stream is not empty, the rest of the chunks are piped to the response.
+	const iterator = body[Symbol.asyncIterator]();
+	const first = await iterator.next();
+	sendHeaders(res, successStatus, binaryResponse.mediaType, result.headers);
+	if (first.done) {
+		res.end();
+		return;
+	}
+	res.write(first.value);
+
+	try {
+		// Pass the rest of the same iterator to the pipeline, so the first chunk is not read twice.
+		const rest = { [Symbol.asyncIterator]: () => iterator };
+		await pipeline(Readable.from(rest), res);
+	} catch (error) {
+		// The client disconnected.
+		if (
+			!(error instanceof Error && 'code' in error && error.code === 'ERR_STREAM_PREMATURE_CLOSE')
+		) {
+			throw error;
+		}
 	}
 }

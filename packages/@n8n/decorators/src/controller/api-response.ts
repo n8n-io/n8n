@@ -28,7 +28,7 @@ function isResponseDto(body: unknown): body is ResponseDtoClass {
 
 /**
  * Declares what a route returns on success: its HTTP status, and either its public output DTO or a
- * binary body that the controller method writes to `res` itself.
+ * binary body that the controller method returns.
  *
  * Only one @ApiResponse decorator should be present per endpoint otherwise an error will be thrown.
  */

@@ -2,6 +2,7 @@ import type { ZodClass } from '@n8n/api-types';
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { Constructable } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
+import type { Readable } from 'node:stream';
 import type { RequestHandler, Router } from 'express';
 import type { ZodTypeAny } from 'zod';
 
@@ -24,8 +25,14 @@ export interface ResponseHeader {
 export interface BinaryResponse {
 	mediaType: BinaryResponseMediaType;
 	description?: string;
-	/** Headers the method must set before the body starts. The framework checks each one. */
+	/** Headers the method must return in its result. The framework checks each one. */
 	headers?: Record<string, ResponseHeader>;
+}
+
+/** What a binary route's method returns: the body, and the headers it sets. */
+export interface BinaryResult {
+	body: Buffer | Readable;
+	headers?: Record<string, string | number | readonly string[]>;
 }
 
 export type SuccessStatus = 200 | 201 | 202 | 204;

@@ -21,6 +21,7 @@ export type {
 	Arg,
 	BinaryResponse,
 	BinaryResponseMediaType,
+	BinaryResult,
 	Controller,
 	CorsOptions,
 	DeprecationInfo,

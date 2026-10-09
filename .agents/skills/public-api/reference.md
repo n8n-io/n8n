@@ -149,36 +149,30 @@ need no change, since they all read the handler, not the media type.
 ## Binary response bodies
 
 `@ApiResponse(status, { mediaType, description?, headers? })` declares a
-success body that the controller method writes to `res` itself, for example
-an `application/gzip` stream. The framework treats options whose `mediaType` is in
-`BINARY_RESPONSE_MEDIA_TYPES` as a binary response. `mediaType` accepts only
-those types.
+success body that the controller method returns as `{ body, headers? }`, for
+example an `application/gzip` stream. The framework treats options whose
+`mediaType` is in `BINARY_RESPONSE_MEDIA_TYPES` as a binary response.
+`mediaType` accepts only those types.
 
-- The registry sets the declared status and `Content-Type: <mediaType>`
-  before it calls the method. It does not call `res.json(...)`, and it
-  ignores the method's return value.
-- The method must start the response before it resolves. For a stream, use
-  `await pipeline(source, res)` from `node:stream/promises`. Do not wait for
-  the `finish` event: if the framework aborts the response, `finish` never
-  fires, and the method never settles. A method that returns before the
-  response starts fails with a `500`.
-- If the method throws, or returns, before the response starts, the registry
-  restores the headers to their values from before the method ran. It removes
-  headers the method added, and puts back any value the method overwrote. The
-  JSON error then has no binary `Content-Type`, and no `Content-Disposition`
-  unless an earlier middleware set one. Headers from earlier middleware (for
-  example `Deprecation`) stay.
-- After the response starts, an error goes to `next(error)`, as for a JSON
-  route.
-- Every header in `headers` must be set before the body starts. The
-  framework checks this at the first write. A missing header aborts the
-  response. If the method returns without writing, the request fails with a
-  `500`. Declare only headers the method always sets.
+- `body` is a `Buffer` or a `Readable`. The method returns the result and never
+  writes to `res`.
+- `headers` holds the response headers. Every header declared in `headers` must
+  be in the result. A missing header fails the request with a `500`. Matching is
+  case-insensitive.
+- The registry checks the headers, then sets the declared status, the headers,
+  and `Content-Type: <mediaType>`. A header in the result cannot replace the
+  `Content-Type`.
+- A stream's first chunk is read before any header is set. So a stream that
+  fails before its first chunk gives the normal JSON error response, with no
+  binary `Content-Type`. A method that throws before it returns does the same.
+- After the first chunk is sent, an error ends the response. A client that
+  disconnects is not an error.
+- A method that returns no binary body fails with a `500`.
 - The generator documents the body as `{ type: string, format: binary }`
   under the `mediaType` content key, with the description and headers.
   The description defaults to `Operation successful.`.
 
-The runtime part is `runBinaryResponseRoute` in
+The runtime part is `sendBinaryResponse` in
 `packages/cli/src/public-api/media-types/binary-response.ts`.
 
 ## Migrating legacy EOV endpoints
