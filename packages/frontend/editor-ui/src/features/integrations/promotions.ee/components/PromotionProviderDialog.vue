@@ -283,6 +283,7 @@ async function onDelete() {
 			<N8nInputLabel :label="i18n.baseText('settings.promotions.provider.publicKey.label')">
 				<N8nCopyInput
 					:value="generatedPublicKey"
+					:label="i18n.baseText('settings.promotions.provider.publicKey.label')"
 					:copy-label="i18n.baseText('settings.promotions.provider.publicKey.copy')"
 					:copied-label="i18n.baseText('generic.copiedToClipboard')"
 					data-test-id="promotion-provider-public-key"
@@ -376,6 +377,7 @@ async function onDelete() {
 				>
 					<N8nCopyInput
 						:value="storedPublicKey"
+						:label="i18n.baseText('settings.promotions.provider.publicKey.label')"
 						:copy-label="i18n.baseText('settings.promotions.provider.publicKey.copy')"
 						:copied-label="i18n.baseText('generic.copiedToClipboard')"
 						data-test-id="promotion-provider-public-key"
