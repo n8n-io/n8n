@@ -585,7 +585,7 @@ jobs:
       packages: write
       actions: read
     # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0 # zizmor: ignore[unpinned-uses]
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.n8n_debian_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_debian_digest }}
@@ -702,11 +702,14 @@ jobs:
 
       - name: Attest VEX to n8n-debian image
         if: needs.create_multi_arch_manifest.outputs.n8n_debian_digest != ''
+        env:
+          IMAGE: ${{ needs.create_multi_arch_manifest.outputs.n8n_debian_image }}
+          DIGEST: ${{ needs.create_multi_arch_manifest.outputs.n8n_debian_digest }}
         run: |
           cosign attest --yes \
             --type openvex \
             --predicate security/vex.openvex.json \
-            ${{ needs.create_multi_arch_manifest.outputs.n8n_debian_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_debian_digest }}
+            "$IMAGE@$DIGEST"
 
       - name: Attest VEX to runners image
         if: needs.create_multi_arch_manifest.outputs.runners_digest != ''
@@ -845,10 +848,11 @@ jobs:
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'nightly' ||
        needs.determine-build-context.outputs.release_type == 'rc')
+    permissions:
+      contents: read
     uses: ./.github/workflows/security-trivy-scan-callable.yml
     with:
       image_ref: ${{ needs.build-and-push-docker.outputs.n8n_debian_primary_ghcr_manifest_tag }}
-    secrets: inherit
 
   security-scan-runners:
     name: Security Scan (runners)
