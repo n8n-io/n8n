@@ -45,7 +45,8 @@ const NEEDS_THIS_COMPUTER: ReadonlySet<AutomationRecommendationReason> = new Set
 
 function linkName(target: CardTarget, translate: RunTargetTranslate): string {
 	const label = target.label?.trim();
-	return label ? label : translate('instanceAi.automation.place.otherInstance');
+	if (label) return label;
+	return translate('instanceAi.automation.place.otherInstance');
 }
 
 function targetOption(

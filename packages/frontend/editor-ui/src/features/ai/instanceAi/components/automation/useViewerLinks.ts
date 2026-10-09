@@ -13,9 +13,7 @@ import type { ViewerLink } from './automationViewerLinks';
 export function useViewerLinks(wanted: () => boolean) {
 	const settingsStore = useSettingsStore();
 	const store = useLinkedInstancesStore();
-	const isActive = computed(
-		() => settingsStore.isModuleActive(LINKED_INSTANCES_MODULE_ID) === true,
-	);
+	const isActive = computed(() => settingsStore.isModuleActive(LINKED_INSTANCES_MODULE_ID));
 
 	watch(
 		() => wanted() && isActive.value,

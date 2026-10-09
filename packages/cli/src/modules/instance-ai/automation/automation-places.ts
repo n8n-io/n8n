@@ -45,7 +45,7 @@ function linkedCardTarget(link: Pick<LinkedInstanceSummary, 'id' | 'status'>): A
  * the card does not wait for a request to each instance. Only an online link is offered.
  */
 export function cardPlaces(
-	links: ReadonlyArray<Pick<LinkedInstanceSummary, 'id' | 'status'>>,
+	links: readonly Pick<LinkedInstanceSummary, 'id' | 'status'>[],
 ): CardPlaces {
 	const online = links.filter((link) => link.status === 'online').map((link) => link.id);
 	return {

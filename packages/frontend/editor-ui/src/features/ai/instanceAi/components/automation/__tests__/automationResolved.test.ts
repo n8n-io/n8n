@@ -402,8 +402,10 @@ describe('resolvedStatus and resolvedLink for a linked instance', () => {
 
 	it('names each problem of a live copy: not on, not ready there, or still on here too', () => {
 		const failedThere = (active: boolean, localStillOn?: true): AutomationToolOutcome => ({
-			...keptThere(active),
+			kind: 'kept',
+			active,
 			failed: true,
+			url: REMOTE_URL,
 			...(localStillOn && { localStillOn }),
 		});
 		const stillOn = resolvedStatus('activate', makeProposal(), failedThere(true, true), true);
