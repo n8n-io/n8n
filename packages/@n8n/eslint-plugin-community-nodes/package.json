@@ -30,11 +30,14 @@
   "dependencies": {
     "@typescript-eslint/typescript-estree": "catalog:",
     "@typescript-eslint/utils": "catalog:",
+    "culori": "catalog:",
+    "fast-xml-parser": "catalog:",
     "fastest-levenshtein": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/culori": "catalog:",
     "@types/node": "catalog:",
     "n8n-workflow": "workspace:*",
     "@typescript-eslint/rule-tester": "catalog:",

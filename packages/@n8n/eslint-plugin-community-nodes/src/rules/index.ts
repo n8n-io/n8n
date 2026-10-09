@@ -7,6 +7,7 @@ import { CredentialDocumentationUrlRule } from './credential-documentation-url.j
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
 import { CredentialUnnecessaryPasswordRule } from './credential-unnecessary-password.js';
+import { IconContrastRule } from './icon-contrast.js';
 import { IconPreferThemedVariantsRule } from './icon-prefer-themed-variants.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
@@ -68,6 +69,7 @@ export const rules = {
 	'no-silent-error-swallowing': NoSilentErrorSwallowingRule,
 	'no-template-placeholders': NoTemplatePlaceholdersRule,
 	'no-unsafe-connection-type-cast': NoUnsafeConnectionTypeCastRule,
+	'icon-contrast': IconContrastRule,
 	'icon-validation': IconValidationRule,
 	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
