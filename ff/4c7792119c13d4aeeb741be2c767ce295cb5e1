@@ -1,0 +1,28 @@
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_ec3a17488104de::t_77eb623394d222 1779,1801-1802
+packages/@n8n/telemetry/src/events/instance.ts
+  s_ec3a17488104de::t_5ea1fffb10a9f6 55-60
+packages/cli/src/utils/container-limits.ts
+  s_ec3a17488104de::t_77eb623394d222 33-40,48,52,54
+  s_ec3a17488104de::t_5ea1fffb10a9f6 42-45
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_ec3a17488104de::t_5ea1fffb10a9f6 51,3552,3559-3563,3632
+packages/cli/src/utils/__tests__/container-limits.test.ts
+  s_ec3a17488104de::t_5ea1fffb10a9f6 60,63,69,77,80,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ff4c7792119c13d4aeeb741be2c767ce295cb5e1",
+  "prompts": {},
+  "sessions": {
+    "s_ec3a17488104de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e85f3596-80d0-47ee-92ad-8b347ad82b76",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
