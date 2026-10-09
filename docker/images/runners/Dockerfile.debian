@@ -3,9 +3,11 @@ ARG PNPM_VERSION=12.4.2
 ARG PYTHON_VERSION=3.13
 
 # glibc variant of ./Dockerfile, for Code nodes that load a vendor library that
-# needs glibc (Oracle Instant Client, IBM Db2) on an external runner. Same
-# contract: a shell, no package manager, no vendor libraries. Users add them in
-# a derived image; see the README of the n8n image.
+# needs glibc (Oracle Instant Client, IBM Db2) on an external runner. The runtime
+# is the Debian base of the n8n image, so the contract (shell, no package
+# manager, libaio, no vendor libraries) is defined once. Repin it with the n8n
+# Debian image.
+ARG RUNTIME_IMAGE=n8nio/base:26.11.1-debian@sha256:7d47309ba2fa6f9a9306720fb011fe1e1ead6b33ecac9cfca9afa7afef03a37e
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
@@ -92,6 +94,9 @@ RUN uv sync \
 # Install the python runner package itself into site packages. We can remove the src directory then
 RUN uv pip install . && rm -rf /app/task-runner-python/src
 
+# The runtime copies this interpreter, so upgrade its pip here.
+RUN pip install --no-cache-dir "pip>=26.0"
+
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
@@ -115,16 +120,10 @@ RUN set -e; \
     cd / && rm -rf /launcher-temp
 
 # ==============================================================================
-# STAGE 4: Node for the JS task runner
+# STAGE 4: Runtime
 # ==============================================================================
-FROM node:${NODE_VERSION}-trixie-slim AS node-debian
-ARG PNPM_VERSION
-RUN npm i -g "pnpm@${PNPM_VERSION}"
-
-# ==============================================================================
-# STAGE 5: Runtime
-# ==============================================================================
-FROM python:${PYTHON_VERSION}-slim-trixie AS runtime
+FROM ${RUNTIME_IMAGE} AS runtime
+ARG PYTHON_VERSION
 ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
 
@@ -135,29 +134,20 @@ ENV NODE_ENV=production \
 # Bring `uv` over from python-runner-builder, to make the image easier to extend
 COPY --from=python-runner-builder /usr/local/bin/uv /usr/local/bin/uv
 
-# Bring node over from node-debian
-COPY --from=node-debian /usr/local/bin/node /usr/local/bin/node
-
-# libstdc++ and libatomic are required by Node. libaio is the kernel AIO shim
-# that vendor database clients (Oracle Instant Client) load; they look for the
-# pre-time64 name, so give it that symlink. Then drop the package manager, like
-# the Alpine image drops apk-tools; dpkg cannot purge apt and itself in one call.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates tini libstdc++6 libatomic1 libaio1t64 && \
-    apt-get upgrade -y && \
-    for f in /usr/lib/*-linux-gnu/libaio.so.1t64; do ln -s "$(basename "$f")" "${f%t64}"; done && \
-    pip install --no-cache-dir "pip>=26.0" && \
-    dpkg --purge --force-remove-essential --force-depends \
-        apt debian-archive-keyring $(dpkg-query -W -f='${Package} ' 'libapt-pkg*') && \
-    dpkg --purge --force-remove-essential --force-depends dpkg && \
-    rm -rf /var/lib/apt /var/cache/apt /etc/apt /root/.cache
+# Bring Python over from python-runner-builder, at the same paths, so the venv
+# built there stays valid. The base has every library its modules load except
+# readline and curses, which the runner does not use.
+COPY --from=python-runner-builder /usr/local/bin/python${PYTHON_VERSION} /usr/local/bin/
+COPY --from=python-runner-builder /usr/local/lib/python${PYTHON_VERSION} /usr/local/lib/python${PYTHON_VERSION}
+COPY --from=python-runner-builder /usr/local/lib/libpython${PYTHON_VERSION}.so.1.0 /usr/local/lib/
+RUN ldconfig && ln -s "python${PYTHON_VERSION}" /usr/local/bin/python3
 
 # Bring pnpm over, to make the image easier to extend. pnpm 12 installs a
 # standalone native executable, so the runtime does not need npm or Corepack.
-COPY --from=node-debian /usr/local/lib/node_modules/pnpm/pnpm /usr/local/bin/pnpm
+COPY --from=javascript-runner-builder /usr/local/lib/node_modules/pnpm/pnpm /usr/local/bin/pnpm
 
-RUN groupadd -g 1000 runner && \
-    useradd -u 1000 -g runner -d /home/runner -m -s /bin/sh runner
+# The base ships uid 1000 as `node`; the runners images call it `runner`.
+RUN usermod -l runner -d /home/runner -m node && groupmod -n runner node
 
 WORKDIR /home/runner
 
