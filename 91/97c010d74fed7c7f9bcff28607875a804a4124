@@ -1,0 +1,33 @@
+packages/@n8n/decorators/src/controller/api-response.ts
+  s_8631ec10eb1199::t_e22b46d9b2963c 12-15,18,23-28,67-72,74,76-83
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_8631ec10eb1199::t_e22b46d9b2963c 24,42-54,786,915-935
+  s_8631ec10eb1199::t_79ebc87e86aed1 936-937
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_8631ec10eb1199::t_e22b46d9b2963c 206-209,214
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_8631ec10eb1199::t_e22b46d9b2963c 398
+packages/@n8n/decorators/src/controller/__tests__/api-response.test.ts
+  s_8631ec10eb1199::t_e22b46d9b2963c 92-113
+.agents/skills/public-api/reference.md
+  s_8631ec10eb1199::t_e22b46d9b2963c 160-163
+packages/cli/src/public-api/media-types/binary-response.ts
+  s_8631ec10eb1199::t_e22b46d9b2963c 35-37,49-50,58-59,70,74-78,82-85,87-89
+  s_8631ec10eb1199::t_89884f171c764f 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9197c010d74fed7c7f9bcff28607875a804a4124",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
