@@ -31,11 +31,10 @@ const scopes = computed(() => props.apiKey?.scopes ?? []);
 		:open="open"
 		:header="title"
 		size="medium"
-		:container-class="$style.dialog"
 		data-test-id="api-key-scopes-modal"
 		@update:open="emit('update:open', $event)"
 	>
-		<N8nDialogBody :class="$style.scroll">
+		<N8nDialogBody :class="$style.body">
 			<N8nText v-if="!scopes.length" size="small" color="text-light">
 				{{ i18n.baseText('settings.api.scopes.modal.empty') }}
 			</N8nText>
@@ -49,13 +48,8 @@ const scopes = computed(() => props.apiKey?.scopes ?? []);
 </template>
 
 <style lang="scss" module>
-.dialog {
+.body {
 	max-height: 50vh;
-	overflow: hidden;
-}
-
-.scroll {
-	overflow-y: auto;
 }
 
 .pills {
