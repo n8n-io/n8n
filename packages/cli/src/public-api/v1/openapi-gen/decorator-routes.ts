@@ -201,21 +201,40 @@ export function buildRequestBodyJsonSchema(
 
 /** Documents a success body the controller method writes itself, with its declared headers. */
 export function buildBinarySuccessResponse({ mediaType, description, headers }: BinaryResponse) {
+	const responseHeaders: Record<string, { description: string; schema: { type: 'string' } }> = {};
+
+	for (const [name, header] of Object.entries(headers ?? {})) {
+		responseHeaders[name] = {
+			description: header.description,
+			schema: { type: 'string' },
+		};
+	}
+
 	return {
 		description: description ?? 'Operation successful.',
-		...(headers
-			? {
-					headers: Object.fromEntries(
-						Object.entries(headers).map(([name, header]) => [
-							name,
-							{ description: header.description, schema: { type: 'string' as const } },
-						]),
-					),
-				}
-			: {}),
+		headers: Object.keys(responseHeaders).length ? responseHeaders : undefined,
 		content: {
 			[mediaType]: { schema: { type: 'string' as const, format: 'binary' } },
 		},
+	};
+}
+
+/** Documents a JSON success body from the route's response DTO, or a bare success when it has none. */
+export function buildJsonSuccessResponse(
+	responseDto: ResponseDtoClass | undefined,
+	resolveSchema: SchemaResolver,
+) {
+	const hasResponseContent = responseDto && hasNamedSchema(responseDto);
+
+	return {
+		description: 'Operation successful.',
+		content: hasResponseContent
+			? {
+					'application/json': {
+						schema: resolveSchema(responseDto, responseDto.schema),
+					},
+				}
+			: undefined,
 	};
 }
 
@@ -234,18 +253,7 @@ function buildResponses(
 	const responses: RouteConfig['responses'] = {
 		[route.successStatus]: route.binaryResponse
 			? buildBinarySuccessResponse(route.binaryResponse)
-			: {
-					description: 'Operation successful.',
-					...(route.responseDto && hasNamedSchema(route.responseDto)
-						? {
-								content: {
-									'application/json': {
-										schema: resolveSchema(route.responseDto, route.responseDto.schema),
-									},
-								},
-							}
-						: {}),
-				},
+			: buildJsonSuccessResponse(route.responseDto, resolveSchema),
 	};
 
 	// If the route has a request body or query, we add an HTTP 400 as a possible response
