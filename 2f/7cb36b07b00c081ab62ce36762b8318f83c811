@@ -1,0 +1,91 @@
+packages/nodes-base/nodes/Gumroad/GumroadTrigger.node.ts
+  s_2e1fa95fc44f8f::t_7c22d85c949539 124
+  s_2e1fa95fc44f8f::t_7c99c43b3d64e4 139
+  s_2e1fa95fc44f8f::t_182200d563e266 9
+  s_2e1fa95fc44f8f::t_144aa997b0c0ed 152-156
+packages/nodes-base/nodes/Harvest/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_dd26ddf0c1488c 9-11,13,19,21,23,31
+  s_2e1fa95fc44f8f::t_6b95c5463290dd 90
+  s_2e1fa95fc44f8f::t_bcbfb7c72c930d 65,74
+packages/nodes-base/nodes/Harvest/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_eb6bff6ea2441a 1-27
+packages/nodes-base/nodes/HelpScout/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_380569fbb888bf 56
+  s_2e1fa95fc44f8f::t_13b2beea6ddc20 10,12,17,22,24,40-46
+packages/nodes-base/nodes/HackerNews/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_f5f08d5a6679b7 1-23
+packages/nodes-base/nodes/HelpScout/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_5065595a1e4918 1-28
+packages/nodes-base/nodes/Gumroad/__test__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b24a89b665984b 2
+  s_2e1fa95fc44f8f::t_17e5a1c6f3fc81 109-125,134
+  s_2e1fa95fc44f8f::t_0105d49a356c9b 132-133
+  s_0c8ab979236670::t_4603154db729da 34,40,53,59,73,101
+packages/nodes-base/nodes/HumanticAI/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_06a9fd3021db53 1-24
+packages/nodes-base/nodes/Harvest/Harvest.node.ts
+  s_2e1fa95fc44f8f::t_dade0bd5e8f40d 10,12
+  s_2e1fa95fc44f8f::t_c27a49bae649e0 178,180
+  s_0c8ab979236670::t_3b9f13759d676c 202,221,247,275,305,322,339,356,373,408,437,465,491,517,546,578,604,630,660,676,706,732,758,787,816,842,866,892,921,949,975,1001,1030,1058,1084,1110,1139,1169,1195,1221,1250,1278,1304
+packages/nodes-base/nodes/HackerNews/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_d4d91da502e6f3 9-10,12,21,24,27
+  s_2e1fa95fc44f8f::t_826f94e9cf1abf 47
+packages/nodes-base/nodes/HackerNews/HackerNews.node.ts
+  s_2e1fa95fc44f8f::t_895f289051612d 296
+  s_2e1fa95fc44f8f::t_eb350ef3212659 318
+  s_2e1fa95fc44f8f::t_f98da5760104cf 276
+  s_2e1fa95fc44f8f::t_e39f78719b25f8 306
+  s_2e1fa95fc44f8f::t_a3810622d8df16 7,9
+packages/nodes-base/nodes/HelpScout/HelpScout.node.ts
+  s_2e1fa95fc44f8f::t_13d3583353c33f 10
+  s_0c8ab979236670::t_572855b3e015a8 105,124,202,211-218,232,242,260,270,327,336-343,357,368,381,391,415,431,444,454,542,556,564
+packages/nodes-base/nodes/HelpScout/HelpScoutTrigger.node.ts
+  s_2e1fa95fc44f8f::t_745ee00d5d8898 10
+  s_2e1fa95fc44f8f::t_4c2eb2a1bbd2d2 170-174
+  s_93035ae9b819fc::t_63c04ba82ed5d9 111,139
+packages/nodes-base/nodes/Gumroad/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_6c3ed4066c583f 10-11,13,18,27,31
+packages/nodes-base/nodes/HumanticAI/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_eaa305056109f8 9-10,12,17,21
+  s_2e1fa95fc44f8f::t_6ce0335a3496da 32,34
+packages/nodes-base/nodes/Harvest/test/Harvest.node.test.ts
+  s_2e1fa95fc44f8f::t_cde838a36711d4 109-113
+packages/nodes-base/nodes/HumanticAI/HumanticAi.node.ts
+  s_2e1fa95fc44f8f::t_90c2f8a61251d4 8
+  s_2e1fa95fc44f8f::t_eae4222c9ecbdb 118-124
+  s_2e1fa95fc44f8f::t_adde7362c46409 78,96,140,166
+packages/nodes-base/nodes/HelpScout/HelpScout.node.test.ts
+  s_93035ae9b819fc::t_879cc9bd9b3a9e 103,172,368,428
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f7cb36b07b00c081ab62ce36762b8318f83c811",
+  "prompts": {},
+  "sessions": {
+    "s_0c8ab979236670": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5725a58c20a2e923",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_93035ae9b819fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac3698ad351421391",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
