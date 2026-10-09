@@ -132,9 +132,13 @@ oneOf:
               created:
                 type: integer
                 minimum: 0
+              updated:
+                type: integer
+                minimum: 0
             required:
               - matched
               - created
+              - updated
           variables:
             type: object
             properties:
@@ -450,6 +454,7 @@ oneOf:
                           required:
                             - kind
                             - project
+                      type: object
                     sourceValue:
                       type: string
                       maxLength: 1000
@@ -492,6 +497,7 @@ oneOf:
                     - name
                     - scope
                     - consumers
+              type: object
           accessRequirements:
             type: array
             items:
@@ -1084,6 +1090,181 @@ oneOf:
                     - project
                     - filePath
                     - workflows
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - data-table
+                    code:
+                      type: string
+                      enum:
+                        - destructive-change
+                    id:
+                      type: string
+                      minLength: 1
+                    name:
+                      type: string
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                    changes:
+                      type: array
+                      items:
+                        oneOf:
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - add-column
+                              column:
+                                type: string
+                              type:
+                                type: string
+                                enum:
+                                  - string
+                                  - number
+                                  - boolean
+                                  - date
+                              destructive:
+                                type: boolean
+                                enum:
+                                  - false
+                            required:
+                              - kind
+                              - column
+                              - type
+                              - destructive
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - remove-column
+                              column:
+                                type: string
+                              type:
+                                type: string
+                                enum:
+                                  - string
+                                  - number
+                                  - boolean
+                                  - date
+                              destructive:
+                                type: boolean
+                                enum:
+                                  - true
+                            required:
+                              - kind
+                              - column
+                              - type
+                              - destructive
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - change-column-type
+                              column:
+                                type: string
+                              from:
+                                type: string
+                                enum:
+                                  - string
+                                  - number
+                                  - boolean
+                                  - date
+                              to:
+                                type: string
+                                enum:
+                                  - string
+                                  - number
+                                  - boolean
+                                  - date
+                              destructive:
+                                type: boolean
+                                enum:
+                                  - true
+                            required:
+                              - kind
+                              - column
+                              - from
+                              - to
+                              - destructive
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - reorder-columns
+                              destructive:
+                                type: boolean
+                                enum:
+                                  - false
+                            required:
+                              - kind
+                              - destructive
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - rename-table
+                              from:
+                                type: string
+                              to:
+                                type: string
+                              destructive:
+                                type: boolean
+                                enum:
+                                  - false
+                            required:
+                              - kind
+                              - from
+                              - to
+                              - destructive
+                        type: object
+                      minItems: 1
+                  required:
+                    - kind
+                    - code
+                    - id
+                    - name
+                    - consumers
+                    - changes
+              type: object
           warnings:
             type: array
             items:
@@ -1190,3 +1371,4 @@ oneOf:
       - configId
       - git
       - status
+type: object

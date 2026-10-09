@@ -3,10 +3,11 @@ import type {
 	BreakingChangeReportQueryDto,
 	BreakingChangeRuleDetailResult,
 } from '@n8n/api-types';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { EventService, WorkflowSharingService } from '@n8n/backend-services';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
@@ -18,8 +19,16 @@ import type { MigrationFindingQueryService } from '../query/migration-finding-qu
 import type { MigrationFindingSyncService } from '../sync/migration-finding-sync.service';
 import type { MigrationFindingTriageService } from '../triage/migration-finding-triage.service';
 
-const req = mock<AuthenticatedRequest>();
+const req = mock<AuthenticatedRequest>({ user: { id: 'user-1' } });
 const res = mock<Response>();
+
+/** A user whose global role grants the given scopes. */
+function userWithScopes(...scopes: string[]): User {
+	return { id: 'user-1', role: { scopes: scopes.map((slug) => ({ slug })) } } as unknown as User;
+}
+const admin = userWithScopes('breakingChanges:list', 'workflow:update');
+const member = userWithScopes('breakingChanges:list');
+const INSTANCE = { kind: 'instance' } as const;
 
 function lightReport(generatedAt: Date): BreakingChangeLightReportResult {
 	return {
@@ -55,6 +64,8 @@ describe('BreakingChangesController', () => {
 	let queryService: MockProxy<MigrationFindingQueryService>;
 	let ruleRegistry: MockProxy<RuleRegistry>;
 	let triageService: MockProxy<MigrationFindingTriageService>;
+	let workflowSharingService: MockProxy<WorkflowSharingService>;
+	let eventService: MockProxy<EventService>;
 	let controller: BreakingChangesController;
 
 	beforeEach(() => {
@@ -63,12 +74,18 @@ describe('BreakingChangesController', () => {
 		queryService = mock<MigrationFindingQueryService>();
 		ruleRegistry = mock<RuleRegistry>();
 		triageService = mock<MigrationFindingTriageService>();
+		workflowSharingService = mock<WorkflowSharingService>();
+		workflowSharingService.getSharedWorkflowIdsForScopes.mockResolvedValue(['wf-1', 'wf-2']);
+		req.user = admin;
+		eventService = mock<EventService>();
 		controller = new BreakingChangesController(
 			migrationService,
 			syncService,
 			queryService,
 			ruleRegistry,
 			triageService,
+			workflowSharingService,
+			eventService,
 		);
 	});
 
@@ -89,9 +106,56 @@ describe('BreakingChangesController', () => {
 
 			expect(result).toBe(expected);
 			expect(syncService.syncIfStale).toHaveBeenCalledWith('v3');
-			expect(queryService.getLightReport).toHaveBeenCalledWith('v3');
+			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', INSTANCE);
 			expect(callOrder).toEqual(['syncIfStale', 'getLightReport']);
 			expect(syncService.sync).not.toHaveBeenCalled();
+			expect(workflowSharingService.getSharedWorkflowIdsForScopes).not.toHaveBeenCalled();
+		});
+
+		it("lists each workflow once in the scope, even when it is shared into several of the user's projects", async () => {
+			req.user = member;
+			workflowSharingService.getSharedWorkflowIdsForScopes.mockResolvedValue([
+				'wf-1',
+				'wf-2',
+				'wf-1',
+			]);
+			queryService.getLightReport.mockResolvedValue(lightReport(new Date()));
+
+			await controller.getDetectionReport(req, res, { version: 'v3' });
+
+			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', {
+				kind: 'workflows',
+				workflowIds: ['wf-1', 'wf-2'],
+			});
+		});
+
+		it('scopes the overview to the workflows a user without global edit access can edit', async () => {
+			req.user = member;
+			queryService.getLightReport.mockResolvedValue(lightReport(new Date()));
+
+			await controller.getDetectionReport(req, res, { version: 'v3' });
+
+			expect(workflowSharingService.getSharedWorkflowIdsForScopes).toHaveBeenCalledWith(member, [
+				'workflow:update',
+			]);
+			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', {
+				kind: 'workflows',
+				workflowIds: ['wf-1', 'wf-2'],
+			});
+		});
+
+		it('announces the served overview for telemetry, as a plain view', async () => {
+			const expected = lightReport(new Date('2026-01-01T00:00:00Z'));
+			queryService.getLightReport.mockResolvedValue(expected);
+
+			await controller.getDetectionReport(req, res, { version: 'v3' });
+
+			expect(eventService.emit).toHaveBeenCalledWith('migration-report-viewed', {
+				user: req.user,
+				targetVersion: 'v3',
+				refreshed: false,
+				report: expected,
+			});
 		});
 
 		it('defaults the target version to v2', async () => {
@@ -100,11 +164,21 @@ describe('BreakingChangesController', () => {
 			await controller.getDetectionReport(req, res, {});
 
 			expect(syncService.syncIfStale).toHaveBeenCalledWith('v2');
-			expect(queryService.getLightReport).toHaveBeenCalledWith('v2');
+			expect(queryService.getLightReport).toHaveBeenCalledWith('v2', INSTANCE);
 		});
 	});
 
 	describe('POST /report/refresh', () => {
+		it('rejects a user without global edit access before syncing', async () => {
+			req.user = member;
+
+			await expect(controller.regenerate(req, res, { version: 'v3' })).rejects.toBeInstanceOf(
+				ForbiddenError,
+			);
+			expect(syncService.sync).not.toHaveBeenCalled();
+			expect(queryService.getLightReport).not.toHaveBeenCalled();
+		});
+
 		it('runs a full sync, then returns the fresh overview', async () => {
 			const expected = lightReport(new Date('2026-02-01T00:00:00Z'));
 			const callOrder: string[] = [];
@@ -120,9 +194,23 @@ describe('BreakingChangesController', () => {
 
 			expect(result).toBe(expected);
 			expect(syncService.sync).toHaveBeenCalledWith('v3');
-			expect(queryService.getLightReport).toHaveBeenCalledWith('v3');
+			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', INSTANCE);
 			expect(callOrder).toEqual(['sync', 'getLightReport']);
 			expect(syncService.syncIfStale).not.toHaveBeenCalled();
+		});
+
+		it('announces the served overview for telemetry, as a refresh', async () => {
+			const expected = lightReport(new Date('2026-02-01T00:00:00Z'));
+			queryService.getLightReport.mockResolvedValue(expected);
+
+			await controller.regenerate(req, res, { version: 'v3' });
+
+			expect(eventService.emit).toHaveBeenCalledWith('migration-report-viewed', {
+				user: req.user,
+				targetVersion: 'v3',
+				refreshed: true,
+				report: expected,
+			});
 		});
 
 		it('defaults the target version to v2', async () => {
@@ -131,7 +219,7 @@ describe('BreakingChangesController', () => {
 			await controller.regenerate(req, res, {});
 
 			expect(syncService.sync).toHaveBeenCalledWith('v2');
-			expect(queryService.getLightReport).toHaveBeenCalledWith('v2');
+			expect(queryService.getLightReport).toHaveBeenCalledWith('v2', INSTANCE);
 		});
 	});
 
@@ -164,9 +252,22 @@ describe('BreakingChangesController', () => {
 
 			expect(result).toBe(expected);
 			expect(syncService.syncIfStale).toHaveBeenCalledWith('v3');
-			expect(queryService.getRuleFindings).toHaveBeenCalledWith('v3', 'removed-nodes-v3');
+			expect(queryService.getRuleFindings).toHaveBeenCalledWith('v3', 'removed-nodes-v3', INSTANCE);
 			expect(callOrder).toEqual(['syncIfStale', 'getRuleFindings']);
 			expect(syncService.sync).not.toHaveBeenCalled();
+		});
+
+		it('scopes the detail to the workflows a user without global edit access can edit', async () => {
+			req.user = member;
+			registerRule('removed-nodes-v3', 'v3', 'workflow');
+			queryService.getRuleFindings.mockResolvedValue(ruleResult('removed-nodes-v3'));
+
+			await controller.getDetectionReportForRule(req, res, 'removed-nodes-v3');
+
+			expect(queryService.getRuleFindings).toHaveBeenCalledWith('v3', 'removed-nodes-v3', {
+				kind: 'workflows',
+				workflowIds: ['wf-1', 'wf-2'],
+			});
 		});
 
 		it('uses v2 for a v2 rule', async () => {
@@ -176,7 +277,7 @@ describe('BreakingChangesController', () => {
 			await controller.getDetectionReportForRule(req, res, 'removed-nodes-v2');
 
 			expect(syncService.syncIfStale).toHaveBeenCalledWith('v2');
-			expect(queryService.getRuleFindings).toHaveBeenCalledWith('v2', 'removed-nodes-v2');
+			expect(queryService.getRuleFindings).toHaveBeenCalledWith('v2', 'removed-nodes-v2', INSTANCE);
 		});
 
 		it('rejects an instance rule with not-found before syncing or reading', async () => {

@@ -23,7 +23,7 @@ export const configEvalHandler: ArtifactHandler<ConfigEvalArtifact> = {
 		let dataTable: ConfigEvalArtifact['dataTable'];
 		if (dtConfig?.datasetSource === 'data_table') {
 			// re-check narrows the discriminated union -- .find() alone doesn't
-			const projectId = await client.getPersonalProjectId();
+			const projectId = ref.projectId ?? (await client.getPersonalProjectId());
 			const dataTableId = dtConfig.datasetRef.dataTableId;
 			const [columns, rows] = await Promise.all([
 				client.getDataTableColumns(projectId, dataTableId),

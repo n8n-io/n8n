@@ -170,6 +170,8 @@ export async function executeAgentScenario(
 	buildTrace?: BuildTrace,
 	outputDir?: string,
 	seedContext?: ScenarioSeedContext,
+	/** The build's project. Absent: the client's personal project. */
+	projectId?: string,
 ): Promise<ExecutionScenarioResult> {
 	if (seedContext) {
 		await reseedScenarioTables(
@@ -182,10 +184,10 @@ export async function executeAgentScenario(
 	}
 
 	const execStart = Date.now();
-	const projectId = await client.getPersonalProjectId();
+	const agentProjectId = projectId ?? (await client.getPersonalProjectId());
 	let evalResult = await client.executeAgentWithLlmMock(
 		agentId,
-		projectId,
+		agentProjectId,
 		scenario.dataSetup,
 		timeoutMs,
 	);
@@ -203,7 +205,7 @@ export async function executeAgentScenario(
 		await delay(500 * attempt);
 		evalResult = await client.executeAgentWithLlmMock(
 			agentId,
-			projectId,
+			agentProjectId,
 			scenario.dataSetup,
 			timeoutMs,
 		);

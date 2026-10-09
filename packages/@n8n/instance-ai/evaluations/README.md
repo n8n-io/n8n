@@ -565,6 +565,72 @@ For data-table routing, look for `load_skill(skillId="data-table-manager")`
 and `data-tables(action="list")`, and verify there are no planning,
 workflow-builder, or spawned-agent entries in the spawned-agent section.
 
+### Routing mode
+
+Routing mode measures which route the orchestrator takes for a request: build
+an Agent, build a workflow, do the task once, debug, answer, ask a question,
+do many tasks, or decline. Before each tool call that is not read-only, a judge
+reads what the Assistant did so far and stops the trial when it has picked a
+route. Read-only calls (loading a skill, reading nodes, credentials or docs,
+searching the web) skip the judge. A trial takes seconds, not minutes.
+
+```bash
+pnpm eval:discovery --cases-dir <dir> --timeout 120000
+```
+
+The runner reads each `route-<slug>.json` file in `<dir>`. A case is in the
+format that LangTracer exports. The tags give the expected route:
+
+- `routing` marks the file as a routing case.
+- `bucket:<route>` is the main expected route. The summary groups cases by it.
+- `accepts:<token>` is another route that passes. A case can have more than
+  one. The bucket always passes, except `bucket:clarify`: a clarify case must
+  list the questions that pass, for example `accepts:clarify:open`. A token
+  can add a steer: `<route>:agent` passes a steer toward an Agent, and
+  `<route>:open` passes any steer except workflow only. This works for
+  `clarify` and `answer`.
+
+A case can add a second user turn with only `[stage directions]`: the facts
+that a user proxy uses to answer a question, for example
+`[Customers message the shop all day and want answers.]`. The proxy answers
+up to 2 accepted questions, and the trial passes only on the route after the
+last answer. If the proxy finds no question to answer in a text reply, the
+trial is graded on that question. `after:<route>` gives the routes that pass
+after an answer.
+Without it, the accepted routes without a steer pass. A further question passes
+when it steers to an `after` artifact.
+A `bucket:clarify` case with stage directions needs an `after:<route>` tag.
+
+A case can start with state. The stub instance and the thread then hold it
+before the turn:
+
+```json
+{
+	"complexity": "simple",
+	"tags": ["routing", "bucket:debug"],
+	"seed": {
+		"mode": "inline",
+		"workflows": [{ "id": "wf-1", "name": "Sync orders", "nodes": [], "connections": {} }],
+		"priorRuns": [{ "workflow": "wf-1", "hints": "The HTTP Request node returned 401." }]
+	},
+	"credentials": [{ "type": "slackApi" }],
+	"conversation": [{ "role": "user", "text": "It failed again.", "attach": { "workflow": "wf-1" } }],
+	"processExpectations": ["Routes to debug"]
+}
+```
+
+- `seed.messages` are earlier messages in the thread.
+- `seed.workflows` and `seed.dataTables` are on the instance.
+- `seed.priorRuns` are failed runs. `hints` is the error of the run.
+- `attach` is the workflow or Agent (from `seed.agents`) the user has open. The
+  turn sends it in the same `<thread-context>` block as production.
+- `credentials` are accounts. Each account passes its connection test, unless
+  it is `blank` or `valid: false`.
+
+The stub instance cannot replay a LangSmith thread, sign in to a browser, or
+hold folders or projects. The runner skips cases that need them and prints
+their ids.
+
 ## Pairwise evals
 
 Pairwise evals score a built workflow against the dataset's `dos` / `donts`
@@ -789,6 +855,10 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 - `happy-path` — everything works as expected
 - Edge cases — empty data, missing fields, single vs multiple items
 - Error scenarios only if the workflow is expected to handle them gracefully. Most agent-built workflows don't include error handling, so "the workflow crashes on invalid input" is a legitimate finding, not a test-case failure.
+
+### Build isolation
+
+Each orchestrator build runs in its own empty project: the personal project of a freshly invited member, named like the lane owner. The owner still drives the build; the member only owns the project. An unlicensed instance cannot create team projects, so a new user is the only way to get a new project. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there; under `--keep-workflows` the members stay, with their projects. Like the MCP lane, this needs a lane without SMTP, so invites return their accept token.
 
 ### Credentials
 
