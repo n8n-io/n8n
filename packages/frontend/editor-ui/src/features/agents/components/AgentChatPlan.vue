@@ -2,13 +2,31 @@
 import { computed, ref, watch } from 'vue';
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import type { RouteLocationRaw } from 'vue-router';
-import { N8nAiActivityStepGroup, N8nIcon, N8nLink } from '@n8n/design-system';
+import { N8nAiActivityStepGroup, N8nIcon, N8nLink, N8nButton } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { AgentPlanItemStatus, AgentPlanView } from '../utils/agent-plan';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import { TIME } from '@/app/constants/durations';
 
-const props = defineProps<{ plan: AgentPlanView; traceRoute?: RouteLocationRaw }>();
+const props = defineProps<{
+	plan: AgentPlanView;
+	traceRoute?: RouteLocationRaw;
+	showStop?: boolean;
+	canStop?: boolean;
+	stopping?: boolean;
+	stopped?: boolean;
+	stoppedAt?: string;
+	reportFailed?: boolean;
+	stopFailed?: boolean;
+}>();
+const expanded = defineModel<boolean>('expanded', { default: false });
+watch(
+	() => props.plan.planId,
+	() => {
+		expanded.value = false;
+	},
+);
+const emit = defineEmits<{ stop: [event: MouseEvent] }>();
 const i18n = useI18n();
 const now = ref(Date.now());
 const documentVisibility = useDocumentVisibility();
@@ -24,6 +42,7 @@ watch(
 	() =>
 		Number.isFinite(startTime.value) &&
 		!props.plan.closed &&
+		!props.stopped &&
 		documentVisibility.value === 'visible',
 	(active) => {
 		if (active) {
@@ -34,33 +53,46 @@ watch(
 	{ immediate: true },
 );
 const elapsed = computed(() => {
-	const endTime = props.plan.closed ? Date.parse(props.plan.closedAt ?? '') : now.value;
+	const endTime = props.plan.closed
+		? Date.parse(props.plan.closedAt ?? '')
+		: props.stopped
+			? Date.parse(props.stoppedAt ?? '') || now.value
+			: now.value;
 	if (!Number.isFinite(startTime.value) || !Number.isFinite(endTime)) return null;
 	return formatAgentElapsedTime(endTime - startTime.value);
 });
-const label = computed(() =>
-	props.plan.closed
+const label = computed(() => {
+	if (props.stopping) return i18n.baseText('agents.chat.tasks.stopping');
+	if (props.stopFailed) return i18n.baseText('agents.chat.tasks.stopFailedTitle');
+	if (props.stopped) return i18n.baseText('agents.chat.tasks.stopped');
+	return props.plan.closed
 		? (props.plan.document.presentation?.detail ?? props.plan.document.title)
 		: (props.plan.document.presentation?.label ??
-			i18n.baseText('agents.chat.plan.title', {
-				interpolate: { title: props.plan.document.title },
-			})),
-);
+				i18n.baseText('agents.chat.plan.title', {
+					interpolate: { title: props.plan.document.title },
+				}));
+});
 const isRunning = computed(
 	() =>
 		!props.plan.closed &&
+		!props.stopped &&
 		props.plan.document.items.some(
 			(item) =>
 				item.status === 'in_progress' ||
 				(item.kind === 'group' && item.tasks.some((task) => task.status === 'in_progress')),
 		),
 );
-const statusLabels: Record<AgentPlanItemStatus, BaseTextKey> = {
+type DisplayStatus = AgentPlanItemStatus | 'stopped';
+function displayStatus(status: AgentPlanItemStatus): DisplayStatus {
+	return props.stopped && (status === 'pending' || status === 'in_progress') ? 'stopped' : status;
+}
+const statusLabels: Record<DisplayStatus, BaseTextKey> = {
 	pending: 'agents.chat.plan.status.pending',
 	in_progress: 'agents.chat.plan.status.inProgress',
 	done: 'agents.chat.plan.status.done',
 	failed: 'agents.chat.plan.status.failed',
 	cancelled: 'agents.chat.plan.status.canceled',
+	stopped: 'agents.chat.tasks.stopped',
 };
 const statusIcons = {
 	pending: 'circle',
@@ -68,10 +100,11 @@ const statusIcons = {
 	done: 'check',
 	failed: 'x',
 	cancelled: 'x',
+	stopped: 'circle-pause',
 } as const;
 const summary = computed(() => {
 	const tasks = props.plan.document.items.flatMap((item) =>
-		item.kind === 'group' ? item.tasks : [item],
+		item.kind === 'group' && item.tasks.length > 0 ? item.tasks : [item],
 	);
 	return i18n.baseText('agents.chat.plan.progress', {
 		adjustToNumber: tasks.length,
@@ -86,15 +119,20 @@ const summary = computed(() => {
 <template>
 	<div :class="$style.plan" data-testid="agent-chat-plan">
 		<N8nAiActivityStepGroup
+			v-model:open="expanded"
 			:key="plan.planId"
 			:label="label"
-			:title="plan.closed || plan.document.presentation ? label : plan.document.title"
+			:title="
+				stopping || stopped || stopFailed || plan.closed || plan.document.presentation
+					? label
+					: plan.document.title
+			"
 			full-width
 			content-position="below"
 		>
 			<template #prefix>
 				<N8nIcon
-					:icon="isRunning ? 'loader-circle' : 'list-checks'"
+					:icon="stopped ? 'circle-pause' : isRunning ? 'loader-circle' : 'list-checks'"
 					:spin="isRunning"
 					:class="{ [$style.running]: isRunning }"
 					size="small"
@@ -123,44 +161,58 @@ const summary = computed(() => {
 						<div :class="[$style.row, { [$style.group]: item.kind === 'group' }]">
 							<span
 								role="img"
-								:aria-label="i18n.baseText(statusLabels[item.status])"
-								:title="i18n.baseText(statusLabels[item.status])"
-								:data-status="item.status"
+								:aria-label="i18n.baseText(statusLabels[displayStatus(item.status)])"
+								:title="i18n.baseText(statusLabels[displayStatus(item.status)])"
+								:data-status="displayStatus(item.status)"
 								:class="$style.status"
 							>
 								<N8nIcon
-									:icon="statusIcons[item.status]"
-									:spin="item.status === 'in_progress'"
+									:icon="statusIcons[displayStatus(item.status)]"
+									:spin="displayStatus(item.status) === 'in_progress'"
 									size="small"
 									aria-hidden="true"
 								/>
 							</span>
 							<span :class="$style.itemTitle" :title="item.title">{{ item.title }}</span>
+							<span
+								v-if="displayStatus(item.status) === 'stopped'"
+								:class="$style.stoppedLabel"
+								aria-hidden="true"
+							>
+								{{ i18n.baseText('agents.chat.tasks.stopped') }}
+							</span>
 						</div>
 						<ul v-if="item.kind === 'group'" :class="$style.children">
 							<li v-for="task in item.tasks" :key="task.id" :class="$style.row">
 								<span
 									role="img"
-									:aria-label="i18n.baseText(statusLabels[task.status])"
-									:title="i18n.baseText(statusLabels[task.status])"
-									:data-status="task.status"
+									:aria-label="i18n.baseText(statusLabels[displayStatus(task.status)])"
+									:title="i18n.baseText(statusLabels[displayStatus(task.status)])"
+									:data-status="displayStatus(task.status)"
 									:class="$style.status"
 								>
 									<N8nIcon
-										:icon="statusIcons[task.status]"
-										:spin="task.status === 'in_progress'"
+										:icon="statusIcons[displayStatus(task.status)]"
+										:spin="displayStatus(task.status) === 'in_progress'"
 										size="small"
 										aria-hidden="true"
 									/>
 								</span>
 								<span :class="$style.itemTitle" :title="task.title">{{ task.title }}</span>
+								<span
+									v-if="displayStatus(task.status) === 'stopped'"
+									:class="$style.stoppedLabel"
+									aria-hidden="true"
+								>
+									{{ i18n.baseText('agents.chat.tasks.stopped') }}
+								</span>
 							</li>
 						</ul>
 					</li>
 				</ul>
 			</div>
 			<p
-				v-if="!plan.closed && plan.document.presentation?.detail"
+				v-if="!plan.closed && !stopping && !stopped && plan.document.presentation?.detail"
 				:class="$style.detail"
 				:title="plan.document.presentation.detail"
 			>
@@ -180,8 +232,32 @@ const summary = computed(() => {
 						{{ i18n.baseText('agents.chat.plan.viewTrace') }}
 					</span>
 				</N8nLink>
+				<N8nButton
+					v-if="showStop || canStop || stopping"
+					variant="ghost"
+					size="small"
+					:disabled="stopping || !canStop"
+					data-testid="agent-chat-plan-stop"
+					@click="emit('stop', $event)"
+				>
+					{{
+						i18n.baseText(
+							stopping
+								? 'agents.chat.tasks.stopping'
+								: stopFailed
+									? 'agents.chat.tasks.retry'
+									: 'agents.chat.tasks.stopAll',
+						)
+					}}
+				</N8nButton>
 				<span :class="$style.summary" data-testid="agent-chat-plan-summary">{{ summary }}</span>
 			</div>
+			<p v-if="stopFailed" :class="$style.detail" role="status">
+				{{ i18n.baseText('agents.chat.backgroundTasks.stopError') }}
+			</p>
+			<p v-if="reportFailed" :class="$style.detail" role="status">
+				{{ i18n.baseText('agents.chat.tasks.reportFailed') }}
+			</p>
 		</N8nAiActivityStepGroup>
 	</div>
 </template>
@@ -252,7 +328,15 @@ const summary = computed(() => {
 	text-overflow: ellipsis;
 }
 
+.stoppedLabel {
+	margin-inline-start: auto;
+	flex-shrink: 0;
+	font-weight: var(--font-weight--regular);
+	color: var(--text-color--subtler);
+}
+
 .footer {
+	flex-wrap: wrap;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);

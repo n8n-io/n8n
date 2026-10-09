@@ -173,9 +173,11 @@ watch(
 									:class="$style.queueIcon"
 								/>
 								<div :class="$style.queuePreview" :title="item.message">
-									<N8nText v-if="item.message" bold step="xs" color="text-light">{{
-										item.message
-									}}</N8nText>
+									<slot name="message" :item="item"
+										><N8nText v-if="item.message" bold step="xs" color="text-light">{{
+											item.message
+										}}</N8nText></slot
+									>
 								</div>
 								<N8nHoverCard v-if="item.attachmentNames?.length" side="top">
 									<template #trigger>
@@ -208,54 +210,56 @@ watch(
 										:tabindex="item.notice ? 0 : undefined"
 										role="group"
 									>
-										<N8nTooltip
-											v-if="steerAction && !item.notice"
-											:content="steerAction.tooltip"
-											:disabled="!canSteer || isQueueItemBusy(item)"
-											placement="left"
-										>
-											<N8nButton
-												variant="ghost"
-												size="xsmall"
-												:icon="steerAction.icon"
-												icon-size="medium"
+										<slot name="actions" :item="item"
+											><N8nTooltip
+												v-if="steerAction && !item.notice"
+												:content="steerAction.tooltip"
 												:disabled="!canSteer || isQueueItemBusy(item)"
-												:aria-label="steerAction.label"
-												@click="emit('steer', item.id)"
+												placement="left"
 											>
-												{{ steerAction.label }}
-											</N8nButton>
-										</N8nTooltip>
-										<N8nTooltip
-											:content="locale.baseText('generic.edit')"
-											:disabled="!canEdit || isQueueItemBusy(item)"
-											placement="left"
-										>
-											<N8nIconButton
-												icon="pencil"
-												variant="ghost"
-												size="xsmall"
-												icon-size="medium"
+												<N8nButton
+													variant="ghost"
+													size="xsmall"
+													:icon="steerAction.icon"
+													icon-size="medium"
+													:disabled="!canSteer || isQueueItemBusy(item)"
+													:aria-label="steerAction.label"
+													@click="emit('steer', item.id)"
+												>
+													{{ steerAction.label }}
+												</N8nButton>
+											</N8nTooltip>
+											<N8nTooltip
+												:content="locale.baseText('generic.edit')"
 												:disabled="!canEdit || isQueueItemBusy(item)"
-												:aria-label="locale.baseText('generic.edit')"
-												@click="emit('edit', item.id)"
-											/>
-										</N8nTooltip>
-										<N8nTooltip
-											:content="locale.baseText('generic.delete')"
-											:disabled="isQueueItemBusy(item)"
-											placement="left"
-										>
-											<N8nIconButton
-												icon="trash-2"
-												variant="ghost"
-												size="xsmall"
-												icon-size="medium"
+												placement="left"
+											>
+												<N8nIconButton
+													icon="pencil"
+													variant="ghost"
+													size="xsmall"
+													icon-size="medium"
+													:disabled="!canEdit || isQueueItemBusy(item)"
+													:aria-label="locale.baseText('generic.edit')"
+													@click="emit('edit', item.id)"
+												/>
+											</N8nTooltip>
+											<N8nTooltip
+												:content="locale.baseText('generic.delete')"
 												:disabled="isQueueItemBusy(item)"
-												:aria-label="locale.baseText('generic.delete')"
-												@click="emit('remove', item.id)"
-											/>
-										</N8nTooltip>
+												placement="left"
+											>
+												<N8nIconButton
+													icon="trash-2"
+													variant="ghost"
+													size="xsmall"
+													icon-size="medium"
+													:disabled="isQueueItemBusy(item)"
+													:aria-label="locale.baseText('generic.delete')"
+													@click="emit('remove', item.id)"
+												/>
+											</N8nTooltip>
+										</slot>
 									</div>
 								</N8nTooltip>
 							</li>
