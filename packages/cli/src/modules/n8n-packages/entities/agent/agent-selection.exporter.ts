@@ -1,6 +1,6 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
-import type { Project, User } from '@n8n/db';
+import type { Project } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -20,6 +20,7 @@ import {
 	assertEveryRequestedEntityAccessible,
 	PackageExportBlockedError,
 } from '../package-export.errors';
+import { findExportableProjects } from '../project/project-export-access';
 import { ProjectShellExporter } from '../project/project-shell.exporter';
 import { addRequirementUsage } from '../requirement-source';
 import { mergeRequirements } from '../requirements.types';
@@ -77,7 +78,8 @@ export class AgentSelectionExporter {
 		}
 
 		// Existing project targets have already passed project export authorization.
-		const selectedProjects = await this.findAccessibleProjects(
+		const selectedProjects = await findExportableProjects(
+			this.projectService,
 			request.user,
 			projectIds.filter((id) => !result.projectTargetsById.has(id)),
 		);
@@ -101,20 +103,6 @@ export class AgentSelectionExporter {
 		result.agentIds = result.agentEntries.map(({ id }) => id);
 		result.counts.agents = result.agentEntries.length;
 		return result;
-	}
-
-	private async findAccessibleProjects(user: User, projectIds: string[]): Promise<Project[]> {
-		if (projectIds.length === 0) return [];
-		const projects = await this.projectService.findProjectsByIdsForUser(user, projectIds, [
-			'project:export',
-		]);
-		await assertEveryRequestedEntityAccessible(
-			'project',
-			projectIds,
-			projects,
-			async (ids) => await this.projectService.findExistingProjectIds(ids),
-		);
-		return projects;
 	}
 
 	private async prepareSelection(
@@ -203,7 +191,8 @@ export class AgentSelectionExporter {
 		);
 		if (projectIds.size === 0) return;
 		const selectedProjectIds = new Set(selectedProjects.map(({ id }) => id));
-		const dependencyProjects = await this.findAccessibleProjects(
+		const dependencyProjects = await findExportableProjects(
+			this.projectService,
 			request.user,
 			[...projectIds].filter((id) => !selectedProjectIds.has(id)),
 		);

@@ -10,6 +10,7 @@ import {
 	PackageExportBlockedError,
 	assertEveryRequestedEntityAccessible,
 } from '../package-export.errors';
+import { findExportableProjects } from '../project/project-export-access';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
 import type {
 	WorkflowDependencyRequirement,
@@ -203,7 +204,12 @@ export class AutoIncludedWorkflowResolver {
 					.filter((projectId): projectId is string => projectId !== undefined),
 			),
 		];
-		const accessibleProjectsById = await this.findAccessibleProjects(options.user, projectIds);
+		const accessibleProjects = await findExportableProjects(
+			this.projectService,
+			options.user,
+			projectIds,
+		);
+		const accessibleProjectIds = new Set(accessibleProjects.map(({ id }) => id));
 
 		return options.workflowIds.map((workflowId) => {
 			const workflow = workflowsById.get(workflowId);
@@ -219,7 +225,7 @@ export class AutoIncludedWorkflowResolver {
 				placement = 'top-level';
 			}
 
-			if (placement === 'project' && !accessibleProjectsById.has(ownerProject.id)) {
+			if (placement === 'project' && !accessibleProjectIds.has(ownerProject.id)) {
 				throw new PackageExportBlockedError(
 					'Static sub-workflow dependency project metadata is not accessible. Export aborted.',
 				);
@@ -313,23 +319,5 @@ export class AutoIncludedWorkflowResolver {
 		);
 
 		return folderChainsByFolderId;
-	}
-
-	private async findAccessibleProjects(
-		user: User,
-		projectIds: string[],
-	): Promise<Map<string, Project>> {
-		const projects = await this.projectService.findProjectsByIdsForUser(user, projectIds, [
-			'project:export',
-		]);
-
-		await assertEveryRequestedEntityAccessible(
-			'project',
-			projectIds,
-			projects,
-			async (ids) => await this.projectService.findExistingProjectIds(ids),
-		);
-
-		return new Map(projects.map((project) => [project.id, project]));
 	}
 }

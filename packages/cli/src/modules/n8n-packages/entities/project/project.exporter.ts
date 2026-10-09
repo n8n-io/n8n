@@ -5,6 +5,7 @@ import { FolderFinderService } from '@n8n/backend-services';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { findExportableProjects } from './project-export-access';
 import { ProjectSerializer } from './project.serializer';
 import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
@@ -12,10 +13,7 @@ import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { FolderExporter } from '../folder/folder.exporter';
 import type { FolderExportResult } from '../folder/folder.exporter';
-import {
-	assertEveryRequestedEntityAccessible,
-	PackageEntityNotFoundError,
-} from '../package-export.errors';
+import { PackageEntityNotFoundError } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
 import type { ExportRequirements } from '../requirements.types';
 import { WorkflowExporter } from '../workflow/workflow.exporter';
@@ -56,17 +54,10 @@ export class ProjectExporter {
 	) {}
 
 	async export(request: ProjectExportRequest): Promise<ProjectExportResult> {
-		const projects = await this.projectService.findProjectsByIdsForUser(
+		const projects = await findExportableProjects(
+			this.projectService,
 			request.user,
 			request.projectIds,
-			['project:export'],
-		);
-
-		await assertEveryRequestedEntityAccessible(
-			'project',
-			request.projectIds,
-			projects,
-			async (ids) => await this.projectService.findExistingProjectIds(ids),
 		);
 
 		const selectedWorkflowIds = request.workflowIds ? new Set(request.workflowIds) : undefined;
