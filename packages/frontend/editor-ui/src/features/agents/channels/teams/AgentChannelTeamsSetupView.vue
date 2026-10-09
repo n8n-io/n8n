@@ -138,6 +138,7 @@ defineExpose({
 			:loading="loading"
 			:credential-permissions="credentialPermissions"
 			:saved-settings="savedSettings"
+			:channel-connected="connected"
 			:project-id="projectId"
 			:agent-id="agentId"
 			@provisioned="credentialId = $event"

@@ -37,7 +37,6 @@ const DEFAULT_MANAGER_CREDENTIAL_NAME = 'Microsoft organization';
  */
 export const REQUIRED_MANAGER_SCOPES = [
 	'https://graph.microsoft.com/Application.ReadWrite.All',
-	'https://graph.microsoft.com/TeamsAppInstallation.ReadForUser',
 ] as const;
 
 export interface TeamsManagedSetupScope {

@@ -13,7 +13,6 @@ import {
 } from './test-utils/controller-route-metadata';
 import type { TeamsCredentialCheckService } from '../integrations/platforms/teams/teams-credential-check.service';
 import type { TeamsBotProvisioningService } from '../integrations/platforms/teams/teams-bot-provisioning.service';
-import type { TeamsCatalogService } from '../integrations/platforms/teams/teams-catalog.service';
 import type { TeamsEntraProvisioningService } from '../integrations/platforms/teams/teams-entra-provisioning.service';
 import type { TeamsSetupTelemetryService } from '../integrations/platforms/teams/teams-setup-telemetry.service';
 import type { TeamsManagedSetupService } from '../integrations/platforms/teams/teams-managed-setup.service';
@@ -35,7 +34,6 @@ describe('AgentTeamsIntegrationsController', () => {
 		['getSetupState', 'agent:update'],
 		['downloadPackage', 'agent:update'],
 		['checkCredential', 'agent:update'],
-		['checkInstalledApp', 'agent:update'],
 		['listAzureSubscriptions', 'agent:update'],
 		['provisionBot', 'agent:update'],
 		['provisionApp', 'agent:update'],
@@ -57,7 +55,6 @@ describe('AgentTeamsIntegrationsController', () => {
 					mock<TeamsManagedSetupService>(),
 					mock<TeamsEntraProvisioningService>(),
 					mock<TeamsBotProvisioningService>(),
-					mock<TeamsCatalogService>(),
 					mock<TeamsSetupTelemetryService>(),
 				),
 			};
@@ -146,7 +143,6 @@ describe('AgentTeamsIntegrationsController', () => {
 					mock<TeamsManagedSetupService>(),
 					mock<TeamsEntraProvisioningService>(),
 					botProvisioningService,
-					mock<TeamsCatalogService>(),
 					setupTelemetry,
 				),
 			};

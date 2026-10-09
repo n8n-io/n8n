@@ -51,11 +51,9 @@ const buildRuntime = (
 		botSetupState: ref(null),
 		provisionedBot: ref(null),
 		subscriptions: ref([]),
-		installed: ref(false),
 		provisionApp: vi.fn(),
 		loadSubscriptions: vi.fn(),
 		provisionBot: vi.fn(),
-		checkInstalled: vi.fn().mockResolvedValue(false),
 	};
 };
 

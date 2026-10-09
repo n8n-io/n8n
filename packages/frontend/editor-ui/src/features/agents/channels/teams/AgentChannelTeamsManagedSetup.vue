@@ -2,7 +2,6 @@
 import type { AgentTeamsIntegrationSettings, TeamsManagedSetupState } from '@n8n/api-types';
 import {
 	N8nButton,
-	N8nCallout,
 	N8nIconButton,
 	N8nInputLabel,
 	N8nOption,
@@ -36,6 +35,12 @@ const props = defineProps<{
 	loading: boolean;
 	credentialPermissions: PermissionsRecord['credential'];
 	savedSettings?: AgentTeamsIntegrationSettings;
+	/**
+	 * Whether the channel is already on the agent. A setup reopened over one
+	 * still has the upload to do, and the step holding those instructions would
+	 * otherwise only ever show them in the session that downloaded.
+	 */
+	channelConnected?: boolean;
 	projectId: string;
 	agentId: string;
 }>();
@@ -108,21 +113,10 @@ const identityDescription = computed(
 		props.savedSettings?.description || props.runtime.botSetupState.value?.defaultDescription || '',
 );
 
-/**
- * What the install step offers, and what it is reporting. Held as two values
- * rather than a flag each, because most combinations of the flags described a
- * step that cannot exist -- waiting on an upload while also saying the app
- * is already there.
- */
+/** Whether the package has been handed over yet. */
 type InstallRoute = 'choose' | 'downloaded';
-type InstallOutcome = 'none' | 'waiting' | 'waitingSlow' | 'skipped';
 
 const installRoute = ref<InstallRoute>('choose');
-const installOutcome = ref<InstallOutcome>('none');
-
-const waiting = computed(
-	() => installOutcome.value === 'waiting' || installOutcome.value === 'waitingSlow',
-);
 
 /** What is running, for the status row the step shows in place of the menu. */
 const installProgress = computed(() => {
@@ -130,13 +124,6 @@ const installProgress = computed(() => {
 		return i18n.baseText('agents.channels.teams.managed.install.preparing');
 	return '';
 });
-
-/**
- * Publishing and installing are separate: publishing puts the app in the
- * organisation catalogue, installing adds it to your own Teams. Only the add
- * finishes the step, because only it proves the agent is reachable.
- */
-const installDone = computed(() => props.runtime.installed.value);
 
 const connectSummary = computed(() =>
 	selectedCredential.value?.organizationName
@@ -166,7 +153,15 @@ const statusOf = computed<Record<string, 'complete' | 'active' | 'locked'>>(() =
 		'create-app': status(appDone, connected.value),
 		'create-bot': status(botReady.value, appDone && connected.value),
 		availability: botReady.value && connected.value ? ('active' as const) : ('locked' as const),
-		install: status(installDone.value, botReady.value && connected.value),
+		install: botReady.value && connected.value ? ('active' as const) : ('locked' as const),
+		// The upload happens in the Teams client, so this step never reports
+		// itself finished -- the user says when it is. Gated on the sign-in like
+		// the steps above: one that has to be redone locks them, and leaving
+		// this one actionable would read as the odd one out.
+		finish:
+			connected.value && (installRoute.value === 'downloaded' || props.channelConnected === true)
+				? ('active' as const)
+				: ('locked' as const),
 	};
 });
 
@@ -203,12 +198,13 @@ const steps = computed(() => {
 		},
 		{
 			id: 'install',
-			title: i18n.baseText(
-				status.install !== 'complete'
-					? 'agents.channels.teams.managed.install.title'
-					: 'agents.channels.teams.managed.install.titleDone',
-			),
+			title: i18n.baseText('agents.channels.teams.managed.install.title'),
 			description: i18n.baseText('agents.channels.teams.managed.install.description'),
+		},
+		{
+			id: 'finish',
+			title: i18n.baseText('agents.channels.teams.managed.finish.title'),
+			description: i18n.baseText('agents.channels.teams.managed.finish.description'),
 		},
 	];
 });
@@ -224,6 +220,7 @@ const lockedHints = computed<Record<string, string>>(() => {
 			'create-bot': signIn,
 			availability: signIn,
 			install: signIn,
+			finish: signIn,
 		};
 	}
 	return {
@@ -231,6 +228,7 @@ const lockedHints = computed<Record<string, string>>(() => {
 		'create-bot': i18n.baseText('agents.channels.teams.managed.createBot.locked'),
 		availability: i18n.baseText('agents.channels.teams.managed.availability.locked'),
 		install: i18n.baseText('agents.channels.teams.managed.install.locked'),
+		finish: i18n.baseText('agents.channels.teams.managed.finish.locked'),
 	};
 });
 
@@ -276,13 +274,10 @@ watch(
 			props.runtime.subscriptions.value = [];
 			props.runtime.provisionedApp.value = null;
 			props.runtime.provisionedBot.value = null;
-			props.runtime.installed.value = false;
-			// The install step and the channel it wrote belonged to the old
-			// account too: leaving them would offer Done for a bot credential this
-			// account has nothing to do with.
-			stopWaiting();
+			// The install step and the channel it wrote belonged to the old account
+			// too: leaving them would offer Done for a bot credential this account
+			// has nothing to do with.
 			installRoute.value = 'choose';
-			installOutcome.value = 'none';
 			persisted.value = false;
 		}
 		if (isConnected && !subscriptionsChecked.value) void checkSubscriptions();
@@ -400,10 +395,9 @@ function persistChannel() {
 }
 
 /**
- * The credential is announced as soon as it exists, not only on the routes
- * that save straight away. Done saves what the view holds, so a step finished
- * some other way -- an app already published, an upload the poll noticed --
- * would otherwise leave it with no credential to bind.
+ * The credential is announced as soon as it exists, not only on the route that
+ * saves straight away. Done saves what the view holds, so a setup the user
+ * leaves without downloading would otherwise leave it nothing to bind.
  */
 watch(
 	() => provisionedApp.value?.credentialId,
@@ -415,85 +409,20 @@ watch(
 
 // Read by the channel modal when it saves, so the availability chosen here is
 // what gets stored rather than the defaults.
-// The steps past the connect -- publishing and adding -- happen here, and
-// some of them wait on Microsoft for hours. The modal stays until the user
-// says otherwise.
 /**
- * Leaving is allowed once the step is finished, however it got there. Only
- * publishing and handing over the package ran through here, so a setup
- * reopened onto an app Microsoft already lists had nothing left to do and no
- * way to save it.
+ * Leaving is allowed once the channel is written, which handing the package
+ * over does. The upload happens in the Teams client, so there is nothing
+ * further for n8n to wait on.
  */
-const canFinish = computed(() => persisted.value || installDone.value);
+const canFinish = computed(() => persisted.value);
 
 defineExpose({ currentSettings, keepOpenAfterConnect: true, canFinish });
 
-/**
- * The upload happens in Teams, so nothing reaches n8n when it does. Microsoft
- * is asked on a timer instead, and the app turning up in the user's installed
- * apps is what closes the step.
- */
-const POLL_MS = 3000;
-/** After this the wait stops looking normal, so a way out is offered. */
-const SLOW_AFTER_MS = 20000;
-/**
- * Every tick costs a token mint, a credential write and a Graph call, and
- * what it waits for is an upload in another application that may never happen.
- * So it asks for a couple of minutes and then leaves the button to ask again,
- * rather than polling a dialog somebody left open overnight.
- */
-const POLL_GIVE_UP_AFTER_MS = 120_000;
-
-let pollTimer: ReturnType<typeof setTimeout> | undefined;
-let slowTimer: ReturnType<typeof setTimeout> | undefined;
-let pollUntil = 0;
-
-function stopWaiting() {
-	clearTimeout(pollTimer);
-	clearTimeout(slowTimer);
-	pollTimer = undefined;
-	slowTimer = undefined;
-	if (waiting.value) installOutcome.value = 'none';
-}
-
-async function pollInstalled() {
-	try {
-		if (await props.runtime.checkInstalled()) {
-			stopWaiting();
-			return;
-		}
-	} catch {
-		// A failed poll is not a failed install: Teams may simply not have it yet.
-	}
-	if (!waiting.value) return;
-	if (Date.now() >= pollUntil) {
-		stopWaiting();
-		installOutcome.value = 'skipped';
-		return;
-	}
-	pollTimer = setTimeout(pollInstalled, POLL_MS);
-}
-
-function startWaiting() {
-	stopWaiting();
-	installOutcome.value = 'waiting';
-	pollUntil = Date.now() + POLL_GIVE_UP_AFTER_MS;
-	slowTimer = setTimeout(() => {
-		if (installOutcome.value === 'waiting') installOutcome.value = 'waitingSlow';
-	}, SLOW_AFTER_MS);
-	pollTimer = setTimeout(pollInstalled, POLL_MS);
-}
-
-/** Stops asking, and says the step was left unverified rather than failed. */
-function skipWaiting() {
-	stopWaiting();
-	installOutcome.value = 'skipped';
-}
-
+// The package request can outlive the step, and a continuation that persisted
+// the channel afterwards would bind one the user had walked away from.
 let unmounted = false;
 onBeforeUnmount(() => {
 	unmounted = true;
-	stopWaiting();
 });
 
 /**
@@ -515,14 +444,10 @@ const downloadPackage = async () =>
 			provisionedApp.value?.credentialId,
 			currentSettings.value,
 		);
-		// The request can outlive the step. Starting a poll now would leave a
-		// timer nothing clears, and persisting would bind a channel the user has
-		// already walked away from.
 		if (unmounted) return;
 		saveAs(blob, TEAMS_PACKAGE_FILENAME);
 		installRoute.value = 'downloaded';
 		persistChannel();
-		startWaiting();
 	});
 </script>
 
@@ -601,20 +526,6 @@ const downloadPackage = async () =>
 							})
 						}}
 					</N8nText>
-				</div>
-
-				<div
-					v-else-if="step.id === 'install' && statusOf[step.id] === 'complete'"
-					:class="$style.stepContent"
-				>
-					<!--
-						The design system's own success surface, rather than a border
-						and a text colour chosen here: those two resolve to the same
-						light green in dark mode, which left the row unreadable.
-					-->
-					<N8nCallout theme="success" :class="$style.doneCallout" data-testid="teams-install-done">
-						{{ i18n.baseText('agents.channels.teams.managed.install.done') }}
-					</N8nCallout>
 				</div>
 
 				<div v-else-if="step.id === 'connect'" :class="$style.stepContent">
@@ -828,24 +739,6 @@ const downloadPackage = async () =>
 					:class="$style.stepContent"
 				>
 					<N8nText
-						v-if="installRoute === 'downloaded'"
-						size="small"
-						color="text-light"
-						data-testid="teams-install-yourself-hint"
-					>
-						{{ i18n.baseText('agents.channels.teams.managed.install.downloaded') }}
-					</N8nText>
-					<!-- Only worth raising once the upload is the thing being attempted. -->
-					<N8nText
-						v-if="installRoute === 'downloaded'"
-						size="small"
-						color="text-light"
-						data-testid="teams-install-upload-blocked"
-					>
-						{{ i18n.baseText('agents.channels.teams.managed.install.noUploadOption') }}
-					</N8nText>
-
-					<N8nText
 						v-if="installProgress"
 						size="small"
 						color="text-light"
@@ -854,111 +747,58 @@ const downloadPackage = async () =>
 						{{ installProgress }}
 					</N8nText>
 
-					<!--
-						The card goes while the wait runs. It offers a download that has
-						already happened, beside a row saying the upload it produced is being
-						watched for. The hints above stay: they are what to do during the wait.
-					-->
-					<template v-if="!waiting">
-						<AgentChannelTeamsIdentityCard
-							:name="identityName"
-							:description="identityDescription"
-							:tooltip="i18n.baseText('agents.channels.teams.managed.install.identityTooltip')"
-							ready
-						>
-							<template #action>
-								<N8nSpinner
-									v-if="installProgress"
-									size="medium"
-									data-testid="teams-install-spinner"
-								/>
-								<N8nButton
-									v-else-if="installRoute === 'downloaded'"
-									variant="outline"
-									size="medium"
-									:loading="busy === 'download'"
-									:disabled="busy !== null"
-									data-testid="teams-install-download-package"
-									@click="downloadPackage"
-								>
-									{{ i18n.baseText('agents.channels.teams.managed.install.downloadAgain') }}
-								</N8nButton>
-								<N8nButton
-									v-else
-									variant="solid"
-									size="medium"
-									:loading="busy === 'download'"
-									:disabled="busy !== null"
-									data-testid="teams-install-download-package"
-									@click="downloadPackage"
-								>
-									{{ i18n.baseText('agents.channels.teams.managed.install.forMe') }}
-								</N8nButton>
-							</template>
-						</AgentChannelTeamsIdentityCard>
-					</template>
-
-					<!--
-						The wait is its own row, as the design draws it: what is being
-						waited for on the left, the way out on the right. Retry and skip
-						only appear once it has gone on long enough to look stuck.
-					-->
-					<template v-if="waiting">
-						<div :class="$style.waitRow">
-							<N8nSpinner size="small" />
-							<N8nText size="small" color="text-light" data-testid="teams-install-waiting">
-								{{
-									i18n.baseText('agents.channels.teams.managed.install.waitingUpload', {
-										interpolate: { app: identityName },
-									})
-								}}
-							</N8nText>
-							<N8nButton
-								variant="ghost"
-								size="small"
-								:class="$style.waitAction"
-								data-testid="teams-install-cancel-wait"
-								@click="stopWaiting"
-							>
-								{{ i18n.baseText('agents.channels.teams.managed.install.cancel') }}
-							</N8nButton>
-						</div>
-						<div v-if="installOutcome === 'waitingSlow'" :class="$style.buttonRow">
-							<N8nText size="small" color="text-light" data-testid="teams-install-slow">
-								{{ i18n.baseText('agents.channels.teams.managed.install.slow') }}
-							</N8nText>
-							<N8nButton
-								variant="ghost"
-								size="small"
-								data-testid="teams-install-retry"
-								@click="startWaiting"
-							>
-								{{ i18n.baseText('agents.channels.teams.managed.install.retry') }}
-							</N8nButton>
-							<N8nButton
-								variant="ghost"
-								size="small"
-								data-testid="teams-install-skip"
-								@click="skipWaiting"
-							>
-								{{ i18n.baseText('agents.channels.teams.managed.install.skip') }}
-							</N8nButton>
-						</div>
-						<N8nText v-else size="small" color="text-light">
-							{{ i18n.baseText('agents.channels.teams.managed.install.waitingUsual') }}
-						</N8nText>
-					</template>
-					<N8nText
-						v-else-if="installOutcome === 'skipped'"
-						size="small"
-						color="text-light"
-						data-testid="teams-install-skipped"
+					<AgentChannelTeamsIdentityCard
+						:name="identityName"
+						:description="identityDescription"
+						:tooltip="i18n.baseText('agents.channels.teams.managed.install.identityTooltip')"
+						ready
 					>
-						{{
-							i18n.baseText('agents.channels.teams.managed.install.skipped', {
-								interpolate: { app: identityName },
-							})
-						}}
+						<template #action>
+							<N8nSpinner
+								v-if="installProgress"
+								size="medium"
+								data-testid="teams-install-spinner"
+							/>
+							<N8nButton
+								v-else-if="installRoute === 'downloaded'"
+								variant="outline"
+								size="medium"
+								:loading="busy === 'download'"
+								:disabled="busy !== null"
+								data-testid="teams-install-download-package"
+								@click="downloadPackage"
+							>
+								{{ i18n.baseText('agents.channels.teams.managed.install.downloadAgain') }}
+							</N8nButton>
+							<N8nButton
+								v-else
+								variant="solid"
+								size="medium"
+								:loading="busy === 'download'"
+								:disabled="busy !== null"
+								data-testid="teams-install-download-package"
+								@click="downloadPackage"
+							>
+								{{ i18n.baseText('agents.channels.teams.managed.install.forMe') }}
+							</N8nButton>
+						</template>
+					</AgentChannelTeamsIdentityCard>
+				</div>
+
+				<!--
+					The upload happens in the Teams client, so this step is what the
+					user does there and then says they are finished with. n8n cannot
+					see the upload, so nothing here claims it happened.
+				-->
+				<div
+					v-else-if="step.id === 'finish' && statusOf[step.id] === 'active'"
+					:class="$style.stepContent"
+				>
+					<N8nText size="small" color="text-light" data-testid="teams-finish-instructions">
+						{{ i18n.baseText('agents.channels.teams.managed.install.downloaded') }}
+					</N8nText>
+					<N8nText size="small" color="text-light" data-testid="teams-finish-upload-blocked">
+						{{ i18n.baseText('agents.channels.teams.managed.install.noUploadOption') }}
 					</N8nText>
 				</div>
 
@@ -1041,37 +881,6 @@ const downloadPackage = async () =>
 	align-items: baseline;
 	flex-wrap: wrap;
 	gap: var(--spacing--4xs);
-}
-
-.buttonRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	flex-wrap: wrap;
-}
-
-.waitRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border: var(--border-width, 1px) dashed var(--border-color--subtle);
-	border-radius: var(--radius--xs);
-}
-
-.waitAction {
-	margin-left: auto;
-}
-
-/*
- * The step content aligns to the start, so a callout would sit at its own
- * width beside the full-width card below it. Shorter too: one line of text
- * does not need the padding a paragraph of it would.
- */
-.doneCallout {
-	width: 100%;
-	padding-block: var(--spacing--2xs);
 }
 
 .field {

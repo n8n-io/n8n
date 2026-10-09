@@ -61,11 +61,9 @@ const buildRuntime = (overrides: Partial<TeamsChannelRuntime> = {}): TeamsChanne
 	botSetupState: ref(null),
 	provisionedBot: ref(null),
 	subscriptions: ref([]),
-	installed: ref(false),
 	provisionApp: vi.fn(),
 	loadSubscriptions: vi.fn(),
 	provisionBot: vi.fn(),
-	checkInstalled: vi.fn().mockResolvedValue(false),
 	...overrides,
 });
 
@@ -111,7 +109,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		vi.useRealTimers();
 	});
 
-	it('shows all five steps of the recommended flow', () => {
+	it('shows all six steps of the recommended flow', () => {
 		const { getByText } = render();
 
 		expect(getByText('agents.channels.teams.managed.connect.title')).toBeVisible();
@@ -119,6 +117,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		expect(getByText('agents.channels.teams.managed.createBot.title')).toBeVisible();
 		expect(getByText('agents.channels.teams.setup.availability.title')).toBeVisible();
 		expect(getByText('agents.channels.teams.managed.install.title')).toBeVisible();
+		expect(getByText('agents.channels.teams.managed.finish.title')).toBeVisible();
 	});
 
 	it('offers a Microsoft sign-in when nothing is connected yet', () => {
@@ -154,6 +153,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		expect(getByTestId('teams-managed-locked-create-bot')).toBeVisible();
 		expect(getByTestId('teams-managed-locked-availability')).toBeVisible();
 		expect(getByTestId('teams-managed-locked-install')).toBeVisible();
+		expect(getByTestId('teams-managed-locked-finish')).toBeVisible();
 	});
 
 	it('collapses the Connect step to the organisation once signed in', async () => {
@@ -328,7 +328,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 					}),
 				}),
 			);
-			const { getByTestId, queryByTestId } = createComponentRenderer(Host, {
+			const { getByTestId } = createComponentRenderer(Host, {
 				global: { stubs },
 			})({ props: { hostProps }, pinia: createTestingPinia() });
 
@@ -336,56 +336,6 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 			// Handing over the package is what persists the channel here.
 			await fireEvent.click(getByTestId('teams-install-download-package'));
-
-			await waitFor(() => expect(getByTestId('can-finish')).toHaveTextContent('true'));
-			// The stepper never draws one itself, at any point.
-			expect(queryByTestId('teams-managed-done')).not.toBeInTheDocument();
-		});
-
-		/**
-		 * A failure reported at the foot of the stepper sits below the fold, so the
-		 * step just looked like a spinner that stopped.
-		 */
-		/**
-		 * Running the setup again over an app Microsoft already lists finishes
-		 * the step without this component publishing or handing over anything.
-		 * Without a Done button there was no way to bind the credential, so the
-		 * channel could not be saved to the agent at all.
-		 */
-		it('offers Done when the step was already finished elsewhere', async () => {
-			const Host = defineComponent({
-				components: { AgentChannelTeamsManagedSetup },
-				props: { hostProps: { type: Object, required: true } },
-				setup: () => ({ view: ref<{ canFinish?: boolean }>() }),
-				template: `
-					<div>
-						<AgentChannelTeamsManagedSetup ref="view" v-bind="hostProps" />
-						<span data-testid="can-finish">{{ String(view?.canFinish) }}</span>
-					</div>
-				`,
-			});
-			const hostProps = props(
-				signedIn({
-					provisionedApp: ref({
-						credentialId: 'bot-cred-1',
-						appId: 'app-1',
-						appName: 'Support Bot (n8n)',
-						organizationName: 'Acme Corp',
-						entraAppUrl: 'https://entra.microsoft.com/app-1',
-						secretExpiresAt: '2028-09-17T00:00:00Z',
-					}),
-					provisionedBot: ref({
-						botName: 'support-bot-1',
-						resourceGroup: 'n8n-agents',
-						subscriptionId: 'sub-1',
-					}),
-					installed: ref(true),
-				}),
-			);
-			const { getByTestId } = createComponentRenderer(Host, { global: { stubs } })({
-				props: { hostProps },
-				pinia: createTestingPinia(),
-			});
 
 			await waitFor(() => expect(getByTestId('can-finish')).toHaveTextContent('true'));
 		});
@@ -407,7 +357,6 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						resourceGroup: 'n8n-agents',
 						subscriptionId: 'sub-1',
 					}),
-					installed: ref(true),
 				}),
 			);
 
@@ -667,6 +616,81 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			expect(queryByTestId('teams-install-download-package')).not.toBeInTheDocument();
 		});
 
+		/**
+		 * n8n cannot see the upload, so the last step is the instructions and the
+		 * user saying they are finished -- not a claim that it worked.
+		 */
+		it('moves the upload instructions to the last step once the package is out', async () => {
+			const { getByTestId, queryByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+				}),
+			);
+
+			// Locked until there is something to upload.
+			await waitFor(() => expect(getByTestId('teams-managed-locked-finish')).toBeVisible());
+			expect(queryByTestId('teams-finish-instructions')).not.toBeInTheDocument();
+
+			await fireEvent.click(getByTestId('teams-install-download-package'));
+
+			await waitFor(() => expect(getByTestId('teams-finish-instructions')).toBeVisible());
+			expect(getByTestId('teams-finish-upload-blocked')).toBeVisible();
+		});
+
+		/**
+		 * The upload is what is left to do on a channel that was saved and left,
+		 * so the step holding those instructions has to show them on a revisit --
+		 * not only in the session that downloaded.
+		 */
+		it('shows the upload instructions again on a setup reopened over a saved channel', async () => {
+			const { getByTestId, queryByTestId } = render({
+				...signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+				}),
+				channelConnected: true,
+			});
+
+			await waitFor(() => expect(getByTestId('teams-finish-instructions')).toBeVisible());
+			expect(queryByTestId('teams-managed-locked-finish')).not.toBeInTheDocument();
+		});
+
+		/** A sign-in that has to be redone locks the steps above it, and this one. */
+		it('locks the last step behind a sign-in that has to be redone', async () => {
+			const { getByTestId } = render({
+				modelValue: 'cred-1',
+				setup: setupState({
+					managerCredentials: [{ ...connectedCredential, reconnectRequired: true }],
+				}),
+				channelConnected: true,
+			});
+
+			await waitFor(() => expect(getByTestId('teams-managed-locked-finish')).toBeVisible());
+		});
+
 		it('warns that an administrator may have blocked custom uploads', async () => {
 			const { getByTestId } = render(
 				signedIn({
@@ -690,7 +714,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			await waitFor(() => expect(getByTestId('teams-install-download-package')).toBeVisible());
 			await fireEvent.click(getByTestId('teams-install-download-package'));
 
-			await waitFor(() => expect(getByTestId('teams-install-upload-blocked')).toBeVisible());
+			await waitFor(() => expect(getByTestId('teams-finish-upload-blocked')).toBeVisible());
 		});
 
 		/** Nothing else asserts the button actually provisions what was chosen. */
@@ -827,89 +851,6 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
 			expect(getByTestId('teams-scope-groups')).toBeVisible();
-		});
-
-		/**
-		 * The upload happens in the Teams client, so nothing reaches n8n when it
-		 * does. Asking Microsoft is the only way the step can close honestly.
-		 */
-		it('closes the step on an upload it confirms with Microsoft', async () => {
-			const installed = ref(false);
-			const checkInstalled = vi.fn(async () => {
-				installed.value = true;
-				return true;
-			});
-			const { getByTestId, queryByTestId } = render(
-				signedIn({
-					provisionedApp: ref({
-						credentialId: 'bot-cred-1',
-						appId: 'app-1',
-						appName: 'Support Bot (n8n)',
-						organizationName: 'Acme Corp',
-						entraAppUrl: 'https://entra.microsoft.com/app-1',
-						secretExpiresAt: '2028-09-17T00:00:00Z',
-					}),
-					provisionedBot: ref({
-						botName: 'support-bot-1',
-						resourceGroup: 'n8n-agents',
-						subscriptionId: 'sub-1',
-					}),
-					installed,
-					checkInstalled,
-				}),
-			);
-
-			vi.useFakeTimers({ shouldAdvanceTime: true });
-			// Downloading starts the wait; the install Microsoft reports closes it.
-			await waitFor(() => expect(getByTestId('teams-install-download-package')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-install-download-package'));
-			await waitFor(() => expect(getByTestId('teams-install-waiting')).toBeVisible());
-
-			// The wait is the whole step while it runs: a card still offering the
-			// download argues with a row saying the upload is being watched for.
-			expect(queryByTestId('teams-identity')).not.toBeInTheDocument();
-			// The hints stay: they are what to do while it is being waited for.
-			expect(getByTestId('teams-install-upload-blocked')).toBeVisible();
-
-			// Driven by the poll alone: setting `installed` here would show the done
-			// state even if the wait stopped without ever asking Microsoft.
-			await vi.advanceTimersByTimeAsync(3000);
-
-			await waitFor(() => expect(getByTestId('teams-install-done')).toBeVisible());
-			expect(queryByTestId('teams-install-waiting')).not.toBeInTheDocument();
-		});
-
-		it('offers a way out when the app never turns up', async () => {
-			const { getByTestId } = render(
-				signedIn({
-					provisionedApp: ref({
-						credentialId: 'bot-cred-1',
-						appId: 'app-1',
-						appName: 'Support Bot (n8n)',
-						organizationName: 'Acme Corp',
-						entraAppUrl: 'https://entra.microsoft.com/app-1',
-						secretExpiresAt: '2028-09-17T00:00:00Z',
-					}),
-					provisionedBot: ref({
-						botName: 'support-bot-1',
-						resourceGroup: 'n8n-agents',
-						subscriptionId: 'sub-1',
-					}),
-					checkInstalled: vi.fn().mockResolvedValue(false),
-				}),
-			);
-
-			vi.useFakeTimers({ shouldAdvanceTime: true });
-			await waitFor(() => expect(getByTestId('teams-install-download-package')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-install-download-package'));
-			await waitFor(() => expect(getByTestId('teams-install-waiting')).toBeVisible());
-
-			// Nothing arrives, so the wait eventually says so and offers a way out.
-			await vi.advanceTimersByTimeAsync(20000);
-			await waitFor(() => expect(getByTestId('teams-install-skip')).toBeVisible());
-
-			await fireEvent.click(getByTestId('teams-install-skip'));
-			await waitFor(() => expect(getByTestId('teams-install-skipped')).toBeVisible());
 		});
 
 		/**

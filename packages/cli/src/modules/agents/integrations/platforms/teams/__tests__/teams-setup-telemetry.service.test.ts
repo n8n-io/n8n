@@ -35,12 +35,6 @@ describe('TeamsSetupTelemetryService', () => {
 		});
 	});
 
-	it('records which install route the account actually got', () => {
-		service.succeeded({ ...report, step: 'install', installRoute: 'upload' });
-
-		expect(tracked()).toMatchObject({ step: 'install', install_route: 'upload' });
-	});
-
 	/**
 	 * The wall is named where it is hit, so rewording the sentence the user
 	 * reads cannot quietly change what is counted.

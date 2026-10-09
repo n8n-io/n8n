@@ -19,7 +19,6 @@ import {
 	getTeamsAzureSubscriptions,
 	getTeamsManagedSetup,
 	getTeamsSetupState,
-	checkTeamsAppInstalled,
 	provisionTeamsApp,
 	provisionTeamsBot,
 } from './api';
@@ -41,12 +40,9 @@ export interface TeamsChannelRuntime extends AgentChannelRuntime {
 	botSetupState: Ref<TeamsAgentSetupState | null>;
 	provisionedBot: Ref<TeamsProvisionedBotSummary | null>;
 	subscriptions: Ref<TeamsAzureSubscription[]>;
-	/** Whether Microsoft reports the app installed for the signed-in user. */
-	installed: Ref<boolean>;
 	provisionApp: () => Promise<void>;
 	loadSubscriptions: () => Promise<void>;
 	provisionBot: (subscriptionId: string) => Promise<void>;
-	checkInstalled: () => Promise<boolean>;
 }
 
 export function isTeamsChannelRuntime(
@@ -80,7 +76,6 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 	const botSetupState = ref<TeamsAgentSetupState | null>(null);
 	const provisionedBot = ref<TeamsProvisionedBotSummary | null>(null);
 	const subscriptions = ref<TeamsAzureSubscription[]>([]);
-	const installed = ref(false);
 
 	/** Every provisioning call needs a finished sign-in to act with. */
 	function requireManagerCredential(): string {
@@ -258,23 +253,6 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		provisionedBot.value = bot;
 	}
 
-	/**
-	 * For the app the user uploaded in Teams themselves. n8n never saw it happen,
-	 * so Microsoft is asked instead of guessed at.
-	 */
-	async function checkInstalled() {
-		const requestedFor = contextKey();
-		const result = await checkTeamsAppInstalled(
-			rootStore.restApiContext,
-			context.projectId.value,
-			context.agentId.value,
-			{ managerCredentialId: requireManagerCredential() },
-		);
-		if (requestedFor !== contextKey()) return false;
-		installed.value = result.installed;
-		return result.installed;
-	}
-
 	function editManagerCredential(credentialId: string) {
 		uiStore.openExistingCredential(credentialId, {
 			hideAskAssistant: true,
@@ -298,10 +276,8 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		botSetupState,
 		provisionedBot,
 		subscriptions,
-		installed,
 		provisionApp,
 		loadSubscriptions,
 		provisionBot,
-		checkInstalled,
 	};
 }

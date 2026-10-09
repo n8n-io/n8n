@@ -103,27 +103,6 @@ describe('TeamsGraphService', () => {
 		);
 	});
 
-	describe('postZip', () => {
-		it('sends the archive unencoded, with the zip content type', async () => {
-			const archive = Buffer.from('PK');
-
-			await service.postZip('a-token', '/appCatalogs/teamsApps', archive);
-
-			expect(sent()).toMatchObject({
-				method: 'POST',
-				url: 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps',
-				headers: expect.objectContaining({ 'content-type': 'application/zip' }),
-				body: archive,
-			});
-		});
-
-		it('refuses to send the package off Graph', async () => {
-			await expect(
-				service.postZip('a-token', '@elsewhere.example/', Buffer.from('PK')),
-			).rejects.toThrow(/Refusing/);
-		});
-	});
-
 	describe('error parsers', () => {
 		const refusal = {
 			error: {

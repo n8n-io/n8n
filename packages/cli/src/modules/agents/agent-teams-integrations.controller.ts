@@ -1,5 +1,4 @@
 import {
-	AgentTeamsInstallDto,
 	AgentTeamsPackageDto,
 	AgentTeamsProvisionAppDto,
 	AgentTeamsProvisionBotDto,
@@ -22,7 +21,6 @@ import type { Request, Response } from 'express';
 
 import { TeamsCredentialCheckService } from './integrations/platforms/teams/teams-credential-check.service';
 import { TeamsBotProvisioningService } from './integrations/platforms/teams/teams-bot-provisioning.service';
-import { TeamsCatalogService } from './integrations/platforms/teams/teams-catalog.service';
 import { TeamsEntraProvisioningService } from './integrations/platforms/teams/teams-entra-provisioning.service';
 import { TeamsSetupTelemetryService } from './integrations/platforms/teams/teams-setup-telemetry.service';
 import { TeamsManagedSetupService } from './integrations/platforms/teams/teams-managed-setup.service';
@@ -48,41 +46,8 @@ export class AgentTeamsIntegrationsController {
 		private readonly managedSetupService: TeamsManagedSetupService,
 		private readonly entraProvisioningService: TeamsEntraProvisioningService,
 		private readonly botProvisioningService: TeamsBotProvisioningService,
-		private readonly catalogService: TeamsCatalogService,
 		private readonly setupTelemetry: TeamsSetupTelemetryService,
 	) {}
-
-	/**
-	 * Confirms an upload n8n did not perform. Adding the app for yourself happens
-	 * in the Teams client, so the only way to know it worked is to ask Microsoft
-	 * what the user has.
-	 */
-	@Post('/:agentId/integrations/teams/installed-check')
-	@ProjectScope('agent:update')
-	async checkInstalledApp(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-		@Body payload: AgentTeamsInstallDto,
-	): Promise<{ installed: boolean }> {
-		const projectId = req.params.projectId;
-		const installed = await this.catalogService.findUserInstall({
-			user: req.user,
-			projectId,
-			agentId,
-			managerCredentialId: payload.managerCredentialId,
-		});
-		if (!installed) return { installed: false };
-
-		this.setupTelemetry.succeeded({
-			agentId,
-			projectId,
-			userId: req.user.id,
-			step: 'install',
-			installRoute: 'upload',
-		});
-		return { installed };
-	}
 
 	/**
 	 * An empty list is the ordinary answer for a Microsoft 365 tenant, which
