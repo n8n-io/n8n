@@ -1859,6 +1859,54 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(hook.messages.value[1].content).toBe('hello');
 	});
 
+	it('keeps host events on the streaming turn in arrival order', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.prepared', payload: { step: 1 } },
+			{ type: 'text-delta', id: 't-1', delta: 'hello' },
+			{ type: 'host-event', name: 'test.unknown', payload: null },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value).toHaveLength(2);
+		const assistant = hook.messages.value[1];
+		expect(assistant.content).toBe('hello');
+		expect(assistant.hostEvents?.map(({ name, payload }) => ({ name, payload }))).toEqual([
+			{ name: 'test.prepared', payload: { step: 1 } },
+			{ name: 'test.unknown', payload: null },
+		]);
+	});
+
+	it('replaces a keyed host event in its position and appends unkeyed ones', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 0 } },
+			{ type: 'host-event', name: 'test.notice', payload: 1 },
+			{ type: 'host-event', name: 'test.progress', key: 'other', payload: { done: 0 } },
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+			{ type: 'host-event', name: 'test.notice', payload: 2 },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const hostEvents = hook.messages.value[1].hostEvents ?? [];
+		expect(hostEvents.map(({ name, key, payload }) => ({ name, key, payload }))).toEqual([
+			{ name: 'test.progress', key: 'build', payload: { done: 1 } },
+			{ name: 'test.notice', key: undefined, payload: 1 },
+			{ name: 'test.progress', key: 'other', payload: { done: 0 } },
+			{ name: 'test.notice', key: undefined, payload: 2 },
+		]);
+	});
+
 	it('clears prior warnings on the next send', async () => {
 		const withWarning: AgentSseEvent[] = [
 			{ type: 'warning', message: 'boom', source: 'mcp', server: 'dead' },
@@ -2646,6 +2694,31 @@ describe('useAgentChatStream — loadHistory', () => {
 		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
 		expect(msg.interactive?.runId).toBe('run-9');
 		expect(msg.status).toBe('awaitingUser');
+	});
+
+	it('restores host events of a turn from history', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'm1',
+					role: 'assistant',
+					content: [
+						{ type: 'host-event', name: 'test.prepared', payload: { step: 1 } },
+						{ type: 'text', text: 'hello' },
+					],
+				},
+			],
+			openSuspensions: [],
+		});
+
+		const hook = buildHook();
+		await hook.loadHistory();
+
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.content).toBe('hello');
+		expect(msg.hostEvents).toEqual([
+			{ id: 'm1:host-event:0', name: 'test.prepared', payload: { step: 1 } },
+		]);
 	});
 
 	it('re-arms a suspended n8n_chat_action card from continued session history', async () => {

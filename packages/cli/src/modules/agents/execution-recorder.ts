@@ -264,6 +264,15 @@ export type TimelineEvent =
 			toolCallId: string;
 			response: unknown;
 			timestamp: number;
+	  }
+	| {
+			/** A custom event that a system-agent provider emitted during the turn. */
+			type: 'host-event';
+			name: string;
+			/** A later event with the same name and key replaces this one. */
+			key?: string;
+			payload: unknown;
+			timestamp: number;
 	  };
 
 /**
@@ -364,6 +373,45 @@ export class ExecutionRecorder {
 			response: sanitizeExecutionLogValue(response),
 			timestamp: Date.now(),
 		});
+	}
+
+	/**
+	 * Record a custom host event at its position in the turn. The payload is
+	 * sanitized like other recorded values, because history returns it to the
+	 * client as it is stored. When the turn already has an event with the same
+	 * name and key, the new payload replaces the old one in its position.
+	 * Returns the recorded event, so that the live stream can send the same
+	 * payload.
+	 */
+	recordHostEvent(
+		name: string,
+		payload: unknown,
+		key?: string,
+	): Extract<TimelineEvent, { type: 'host-event' }> {
+		const sanitized = sanitizeExecutionLogValue(payload);
+		if (key !== undefined) {
+			const index = this.timeline.findIndex(
+				(item) => item.type === 'host-event' && item.name === name && item.key === key,
+			);
+			const existing = this.timeline[index];
+			if (existing?.type === 'host-event') {
+				const replaced = { ...existing, payload: sanitized };
+				this.timeline[index] = replaced;
+				this.emitTimelineSnapshot();
+				return replaced;
+			}
+		}
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		const event: Extract<TimelineEvent, { type: 'host-event' }> = {
+			type: 'host-event',
+			name,
+			...(key !== undefined ? { key } : {}),
+			payload: sanitized,
+			timestamp: Date.now(),
+		};
+		this.appendCompletedEvent(event);
+		return event;
 	}
 
 	/** Feed a stream chunk into the recorder. */

@@ -356,6 +356,12 @@ export interface AgentPersistedMessageContentPart {
 	sizeBytes?: number;
 	/** Live trace of a delegated child, present only on `delegate_subagent` parts. */
 	childTrace?: PersistedChildTrace;
+	/** Event name of a `host-event` part. See the `host-event` SSE event. */
+	name?: string;
+	/** Update key of a `host-event` part. A turn keeps one event for each name and key. */
+	key?: string;
+	/** Event payload of a `host-event` part. */
+	payload?: unknown;
 }
 
 /** Platform user who wrote a turn in a shared integration thread. */

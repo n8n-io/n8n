@@ -1,3 +1,4 @@
+import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
 import { ConflictError, NotFoundError } from '@n8n/errors';
@@ -16,11 +17,13 @@ import type {
 	AgentTurnRequest,
 } from '../../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
+import { ExecutionRecorder, type TimelineEvent } from '../../execution-recorder';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
+import { executionToMessagesDto } from '../../utils/execution-to-message-mapper';
 import { SystemAgentExecutionService } from '../system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
 import type {
@@ -248,6 +251,221 @@ describe('SystemAgentExecutionService', () => {
 				service.sendMessage({ agentId: AGENT_ID, user, threadId: 'thread-1', message: 'hello' }),
 			).rejects.toThrow(NotFoundError);
 			expect(messageQueue.enqueue).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('host events', () => {
+		/**
+		 * Run the turn with a real recorder, the way the Agents runtime records
+		 * it. Like the runtime, call the finalize hook before the record is
+		 * stored, and keep the stored timeline.
+		 */
+		function setupWithRecorder(chunks: AgentExecutionStreamChunk[] = [textChunk]) {
+			const context = setup(chunks);
+			const recorders: ExecutionRecorder[] = [];
+			const stored: TimelineEvent[][] = [];
+			context.turnExecutionService.execute.mockImplementation(async function* (config) {
+				const recorder = new ExecutionRecorder();
+				recorders.push(recorder);
+				config.onRecorderCreated?.(recorder);
+				context.prepared.push(await config.prepare());
+				try {
+					for (const chunk of chunks) {
+						if (chunk.type !== 'message-steered') recorder.record(chunk);
+						yield chunk;
+					}
+				} finally {
+					await config.onBeforeFinalize?.({ executionId: 'exec-1', status: 'completed' });
+					stored.push(structuredClone(recorder.getMessageRecord().timeline));
+				}
+			});
+			return { ...context, recorders, stored };
+		}
+
+		function historyOf(timeline: TimelineEvent[]) {
+			return executionToMessagesDto({
+				id: 'exec-1',
+				userMessage: 'Build me a workflow',
+				author: null,
+				timeline,
+				attachments: null,
+				status: 'success',
+				error: null,
+				createdAt: new Date(),
+			} as Parameters<typeof executionToMessagesDto>[0]).find(({ role }) => role === 'assistant')
+				?.content;
+		}
+
+		it('streams events from prepareTurn and from the turn, and records them in order', async () => {
+			const { service, provider, handle, onChunk, recorders } = setupWithRecorder();
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				turn.emitHostEvent('test.prepared', { step: 1 });
+				onChunk.mockImplementation(() => turn.emitHostEvent('test.after-text', { step: 2 }));
+				return handle;
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			const events = send.mock.calls.map(([event]: [AgentSseEvent]) => event);
+			expect(events.map((event) => event.type)).toEqual([
+				'host-event',
+				'text-delta',
+				'host-event',
+				'done',
+			]);
+			expect(events[0]).toEqual({
+				type: 'host-event',
+				name: 'test.prepared',
+				payload: { step: 1 },
+			});
+			expect(events[2]).toEqual({
+				type: 'host-event',
+				name: 'test.after-text',
+				payload: { step: 2 },
+			});
+
+			const { timeline } = recorders[0].getMessageRecord();
+			expect(timeline.map((event) => event.type)).toEqual(['host-event', 'text', 'host-event']);
+
+			// The same events come back from history after a reload.
+			expect(historyOf(timeline)).toEqual([
+				{ type: 'host-event', name: 'test.prepared', payload: { step: 1 } },
+				{ type: 'text', text: 'Hello' },
+				{ type: 'host-event', name: 'test.after-text', payload: { step: 2 } },
+			]);
+		});
+
+		it('streams events of a resume turn to the resume stream', async () => {
+			const { service, provider, handle, checkpointStorage } = setupWithRecorder();
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				turn.emitHostEvent('test.resumed');
+				return handle;
+			});
+			const send = vi.fn();
+
+			const { done } = await service.resume({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				resumeData: { approved: true },
+				send,
+			});
+			await done;
+
+			expect(send).toHaveBeenCalledWith({
+				type: 'host-event',
+				name: 'test.resumed',
+				payload: null,
+			});
+		});
+
+		it('replaces a keyed event in place, in the stream and in the record', async () => {
+			const { service, provider, handle, onChunk, stored } = setupWithRecorder();
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				turn.emitHostEvent('test.progress', { done: 0 }, { key: 'build' });
+				onChunk.mockImplementation(() =>
+					turn.emitHostEvent('test.progress', { done: 1 }, { key: 'build' }),
+				);
+				return handle;
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			const events = send.mock.calls.map(([event]: [AgentSseEvent]) => event);
+			expect(events.filter((event) => event.type === 'host-event')).toEqual([
+				{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 0 } },
+				{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+			]);
+			expect(historyOf(stored[0])).toEqual([
+				{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+				{ type: 'text', text: 'Hello' },
+			]);
+		});
+
+		it('sends and stores an event from onSettled before done', async () => {
+			const { service, provider, handle, onSettled, stored } = setupWithRecorder();
+			let emit: SystemAgentTurn['emitHostEvent'] | undefined;
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				emit = turn.emitHostEvent;
+				return handle;
+			});
+			onSettled.mockImplementation(async () => emit?.('test.summary', { ok: true }));
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(onSettled).toHaveBeenCalledWith({ executionId: 'exec-1', status: 'completed' });
+			const events = send.mock.calls.map(([event]: [AgentSseEvent]) => event);
+			expect(events.map((event) => event.type)).toEqual(['text-delta', 'host-event', 'done']);
+			expect(historyOf(stored[0])).toEqual([
+				{ type: 'text', text: 'Hello' },
+				{ type: 'host-event', name: 'test.summary', payload: { ok: true } },
+			]);
+		});
+
+		it('calls onSettled once and uses its outcome for the workspace and done', async () => {
+			const { source } = workspaceSource();
+			const context = setup([textChunk], source);
+			context.turnExecutionService.execute.mockImplementation(async function* (config) {
+				context.prepared.push(await config.prepare());
+				yield textChunk;
+				await config.onBeforeFinalize?.({ executionId: 'exec-1', status: 'cancelled' });
+			});
+			const send = vi.fn();
+
+			await context.service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(context.onSettled).toHaveBeenCalledTimes(1);
+			expect(source.release).toHaveBeenCalledWith(
+				workspaceScope,
+				expect.anything(),
+				expect.objectContaining({ status: 'cancelled' }),
+			);
+			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+			expect(context.executionRepository.findExecution).not.toHaveBeenCalled();
+		});
+
+		it('drops an event that comes after onSettled returned', async () => {
+			const { service, provider, handle, logger, stored } = setupWithRecorder();
+			let emit: SystemAgentTurn['emitHostEvent'] | undefined;
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				emit = turn.emitHostEvent;
+				return handle;
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+			emit?.('test.late');
+
+			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'host-event' }));
+			expect(stored[0]).not.toContainEqual(expect.objectContaining({ type: 'host-event' }));
+			expect(logger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('dropped'),
+				expect.objectContaining({ name: 'test.late' }),
+			);
+		});
+
+		it('drops an event from onSettled when the turn has no execution record', async () => {
+			const { service, provider, handle, onSettled, logger } = setup([textChunk]);
+			let emit: SystemAgentTurn['emitHostEvent'] | undefined;
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				emit = turn.emitHostEvent;
+				return handle;
+			});
+			onSettled.mockImplementation(async () => emit?.('test.late'));
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(onSettled).toHaveBeenCalledTimes(1);
+			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'host-event' }));
+			expect(logger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('dropped'),
+				expect.objectContaining({ name: 'test.late' }),
+			);
 		});
 	});
 

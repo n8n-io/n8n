@@ -12,6 +12,7 @@ import type { AgentExecutionThread } from '../entities/agent-execution-thread.en
 import type { ToolRegistry } from '../tool-registry';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
+import type { SystemAgentHostEventEmitter } from './system-agent-host-events';
 
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
@@ -23,6 +24,15 @@ interface SystemAgentTurnBase<TLease> {
 	abortSignal: AbortSignal;
 	/** The lease from the provider's workspace source. It is not set when the provider has no source. */
 	workspace?: TLease;
+	/**
+	 * Send a custom event to the chat during this turn. The runtime streams it
+	 * as a `host-event` SSE event and records it with the turn, so history
+	 * shows it again after a reload. Pass a `key` to update an earlier event
+	 * with the same name. The provider can keep the callback for its tools
+	 * and hooks, `onSettled` included. Events after `onSettled` returns are
+	 * dropped.
+	 */
+	emitHostEvent: SystemAgentHostEventEmitter;
 }
 
 export interface SystemAgentStartTurn<TLease = unknown> extends SystemAgentTurnBase<TLease> {
@@ -69,6 +79,12 @@ export interface SystemAgentTurnHandle {
 	/** Hide the user message from the transcript (machine turns). */
 	hideUserMessage?: boolean;
 	onChunk?: (chunk: AgentExecutionStreamChunk) => void;
+	/**
+	 * Called once when the turn settles. When the turn has an execution
+	 * record, the hook runs before the runtime stores it: host events that the
+	 * hook emits reach the stream before `done` and are kept in history. Do
+	 * not read the stored execution here, because it is not final yet.
+	 */
 	onSettled?: (outcome: SystemAgentTurnOutcome) => Promise<void>;
 }
 

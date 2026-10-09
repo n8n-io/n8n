@@ -24,6 +24,7 @@ import type { AgentExecutionAdmission } from '../types/agent-queued-message';
 import { draftChatMemoryResourceId } from '../utils/agent-memory-scope';
 import { buildInboundUserMessage } from '../utils/inbound-attachments';
 import { canUseSystemAgent } from './system-agent-access';
+import { SystemAgentHostEventChannel } from './system-agent-host-events';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
 	SystemAgentProvider,
@@ -340,8 +341,9 @@ export class SystemAgentExecutionService {
 		signal.throwIfAborted();
 		const { resourceId } = payload;
 		const attachments = payload.attachments ?? [];
+		const hostEvents = this.createHostEventChannel(thread, send);
 		const workspace = await this.acquireWorkspace(provider, thread, user);
-		const handle = await this.prepareOrRelease(workspace, signal, async () => {
+		const handle = await this.prepareOrRelease(workspace, hostEvents, signal, async () => {
 			const prepared = await provider.prepareTurn({
 				type: 'start',
 				user,
@@ -349,6 +351,7 @@ export class SystemAgentExecutionService {
 				resourceId,
 				abortSignal: signal,
 				...(workspace ? { workspace: workspace.lease } : {}),
+				emitHostEvent: hostEvents.emit,
 				executionId: admission.executionId,
 				message: payload.message,
 				attachments,
@@ -376,6 +379,7 @@ export class SystemAgentExecutionService {
 			thread,
 			handle,
 			workspace,
+			hostEvents,
 			send,
 			abortSignal,
 			admission,
@@ -424,9 +428,12 @@ export class SystemAgentExecutionService {
 		}
 		const checkpointHostMetadata = checkpoint.persistence.hostMetadata ?? {};
 		const controller = new AbortController();
+		const send = params.send ?? (() => {});
+		const hostEvents = this.createHostEventChannel(thread, send);
 		const workspace = await this.acquireWorkspace(provider, thread, params.user);
 		const handle = await this.prepareOrRelease(
 			workspace,
+			hostEvents,
 			controller.signal,
 			async () =>
 				await provider.prepareTurn({
@@ -436,6 +443,7 @@ export class SystemAgentExecutionService {
 					resourceId,
 					abortSignal: controller.signal,
 					...(workspace ? { workspace: workspace.lease } : {}),
+					emitHostEvent: hostEvents.emit,
 					runId,
 					toolCallId: pending.toolCallId,
 					checkpointHostMetadata,
@@ -459,7 +467,8 @@ export class SystemAgentExecutionService {
 			thread,
 			handle,
 			workspace,
-			params.send ?? (() => {}),
+			hostEvents,
+			send,
 			abortSignal,
 			undefined,
 			async () => ({
@@ -622,15 +631,33 @@ export class SystemAgentExecutionService {
 	 */
 	private async prepareOrRelease(
 		workspace: TurnWorkspace | undefined,
+		hostEvents: SystemAgentHostEventChannel,
 		signal: AbortSignal,
 		prepare: () => Promise<SystemAgentTurnHandle>,
 	): Promise<SystemAgentTurnHandle> {
 		try {
 			return await prepare();
 		} catch (error) {
+			hostEvents.close();
 			await workspace?.release({ status: signal.aborted ? 'cancelled' : 'errored', error });
 			throw error;
 		}
+	}
+
+	/**
+	 * The host event channel of one turn. It sends to the same stream as the
+	 * turn, and the turn recorder records its events.
+	 */
+	private createHostEventChannel(
+		thread: AgentExecutionThread,
+		send: (event: AgentSseEvent) => void,
+	): SystemAgentHostEventChannel {
+		return new SystemAgentHostEventChannel(send, (name) => {
+			this.logger.debug('System agent host event after the turn settled was dropped', {
+				threadId: thread.id,
+				name,
+			});
+		});
 	}
 
 	private async runTurn(
@@ -638,6 +665,7 @@ export class SystemAgentExecutionService {
 		thread: AgentExecutionThread,
 		handle: SystemAgentTurnHandle,
 		workspace: TurnWorkspace | undefined,
+		hostEvents: SystemAgentHostEventChannel,
 		send: (event: AgentSseEvent) => void,
 		abortSignal: AbortSignal,
 		admission: AgentExecutionAdmission | undefined,
@@ -646,6 +674,19 @@ export class SystemAgentExecutionService {
 		let status: SystemAgentTurnStatus = 'completed';
 		let executionId = admission?.executionId;
 		let error: unknown;
+		/** Set when the settle hook ran. Its outcome is the stored outcome. */
+		const settled: { outcome?: SystemAgentTurnOutcome } = {};
+		const settle = async (outcome: SystemAgentTurnOutcome) => {
+			settled.outcome = outcome;
+			try {
+				await handle.onSettled?.(outcome);
+			} catch (settleError) {
+				this.logger.warn('System agent turn settle hook failed', {
+					threadId: thread.id,
+					error: settleError,
+				});
+			}
+		};
 		try {
 			const stream = this.turnExecutionService.execute({
 				admittedExecution: admission,
@@ -656,6 +697,13 @@ export class SystemAgentExecutionService {
 				chatSurface: 'preview',
 				onExecutionStarted: (id) => {
 					executionId = id;
+				},
+				onRecorderCreated: (recorder) => hostEvents.attach(recorder),
+				// The settle hook runs before the record is final, so that the
+				// events it emits are stored with the turn.
+				onBeforeFinalize: async (outcome) => {
+					await settle(outcome);
+					hostEvents.close();
 				},
 				prepare,
 			});
@@ -673,21 +721,21 @@ export class SystemAgentExecutionService {
 			status = abortSignal.aborted ? 'cancelled' : 'errored';
 			throw caught;
 		} finally {
-			const execution = executionId
-				? await this.executionRepository.findExecution(executionId)
-				: null;
-			if (execution?.status === 'cancelled') status = 'cancelled';
-			try {
-				await handle.onSettled?.({ status, executionId, error });
-			} catch (settleError) {
-				this.logger.warn('System agent turn settle hook failed', {
-					threadId: thread.id,
-					error: settleError,
-				});
+			// The turn record is final here. A later event cannot be stored.
+			hostEvents.close();
+			if (!settled.outcome) {
+				// The turn has no execution record, so the runtime did not call
+				// the settle hook. Its events are dropped.
+				const execution = executionId
+					? await this.executionRepository.findExecution(executionId)
+					: null;
+				if (execution?.status === 'cancelled') status = 'cancelled';
+				await settle({ status, executionId, error });
 			}
-			await workspace?.release({ status, executionId, error });
-			if (status !== 'suspended' && status !== 'cancelled') {
-				send({ type: 'done', sessionId: thread.id, executionId: executionId ?? '' });
+			const outcome = settled.outcome ?? { status, executionId, error };
+			await workspace?.release(outcome);
+			if (outcome.status !== 'suspended' && outcome.status !== 'cancelled') {
+				send({ type: 'done', sessionId: thread.id, executionId: outcome.executionId ?? '' });
 			}
 		}
 	}

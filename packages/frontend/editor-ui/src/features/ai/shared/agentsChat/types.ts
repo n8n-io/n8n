@@ -125,6 +125,19 @@ export interface ChatMessageAttachment {
 	file?: File;
 }
 
+/**
+ * A custom event that a system-agent provider emitted during the turn. The
+ * host renders it through an extension keyed by `name`. The chat does not
+ * render it by itself, so a name without an extension shows nothing.
+ */
+export interface AgentsChatHostEvent {
+	id: string;
+	name: string;
+	/** Set when the event can update. A later event with the same name and key replaces it. */
+	key?: string;
+	payload: unknown;
+}
+
 export interface AgentsChatMessage {
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	id: string;
@@ -145,6 +158,8 @@ export interface AgentsChatMessage {
 	executionId?: string;
 	/** Epoch ms when this turn was sent. Drives the chat's timestamp dividers. */
 	createdAt?: number;
+	/** Host events of this turn, in the order they arrived (live SSE or history). */
+	hostEvents?: AgentsChatHostEvent[];
 	/** Live preview only. Budget stop or alert cards for this turn. */
 	budgetNotices?: Array<{ id: string; code: 'budget.monthly' | 'budget.session' | 'budget.alert' }>;
 }

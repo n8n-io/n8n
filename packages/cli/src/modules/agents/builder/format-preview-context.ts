@@ -66,6 +66,9 @@ function formatTimelineEvent(event: TimelineEvent, execution: AgentExecution): s
 	if (event.type === 'hitl-response') {
 		return `Human response: ${stringifyToolValue(event.response)}`;
 	}
+	if (event.type === 'host-event') {
+		return `Host event ${event.name}: ${stringifyToolValue(event.payload)}`;
+	}
 	const durationMs = event.endTime > 0 ? event.endTime - event.startTime : null;
 	const headerParts = [
 		`Tool call: ${event.name}`,

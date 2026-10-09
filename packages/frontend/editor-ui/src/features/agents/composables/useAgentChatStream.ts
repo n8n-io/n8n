@@ -1191,6 +1191,35 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				applyForwardedChildChunk(found.tc.childProgress, event.chunk);
 				break;
 			}
+			case 'host-event': {
+				// Keep the event on the turn. The host renders it by name; the chat
+				// renders nothing for it by itself. A keyed event replaces the
+				// earlier event with the same name and key, in its position.
+				const msg = ensureCurrent(session);
+				const hostEvents = msg.hostEvents ?? [];
+				const index =
+					event.key === undefined
+						? -1
+						: hostEvents.findIndex(
+								(existing) => existing.name === event.name && existing.key === event.key,
+							);
+				if (index === -1) {
+					msg.hostEvents = [
+						...hostEvents,
+						{
+							id: crypto.randomUUID(),
+							name: event.name,
+							...(event.key !== undefined ? { key: event.key } : {}),
+							payload: event.payload,
+						},
+					];
+				} else {
+					msg.hostEvents = hostEvents.map((existing, i) =>
+						i === index ? { ...existing, payload: event.payload } : existing,
+					);
+				}
+				break;
+			}
 			case 'message':
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.

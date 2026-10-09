@@ -202,9 +202,30 @@ function appendInteractivePayloads(
 	return merged;
 }
 
+/**
+ * A settled assistant message that carries only host events. The chat does
+ * not render host events by itself, so the message would show as an empty
+ * bubble.
+ */
+function isHostEventOnlyMessage(message: AgentsChatMessage): boolean {
+	return (
+		message.role === 'assistant' &&
+		!!message.hostEvents?.length &&
+		message.status !== 'streaming' &&
+		!message.content.trim() &&
+		!message.toolCalls?.length &&
+		!getMessageThinkingSegments(message).length &&
+		!getMessageInteractives(message).length &&
+		!message.attachments?.length &&
+		!message.budgetNotices?.length &&
+		!message.backgroundJobSignal
+	);
+}
+
 export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[] {
 	const groups: DisplayGroup[] = [];
 	for (const message of messages) {
+		if (isHostEventOnlyMessage(message)) continue;
 		if (message.role === 'assistant' && message.backgroundJobSignal) {
 			// Keep the signal key stable when the same turn gains text or tool calls.
 			groups.push({
