@@ -118,7 +118,7 @@ function onTabChange(tab: string) {
 					<N8nButton
 						variant="outline"
 						size="medium"
-						:label="i18n.baseText('inbox.selfHealing.action.openInEditor')"
+						:label="i18n.baseText('inbox.selfHealing.action.applyAndOpenInEditor')"
 						:disabled="pending"
 						:loading="pendingAction === 'apply'"
 						@click="emit('action', 'apply')"

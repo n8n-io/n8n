@@ -86,7 +86,7 @@ describe('SelfHealingResultContent', () => {
 		const { getByRole, emitted } = renderContent();
 
 		await user.click(getByRole('button', { name: 'Approve and publish' }));
-		await user.click(getByRole('button', { name: 'Open in editor' }));
+		await user.click(getByRole('button', { name: 'Apply and open in editor' }));
 		await user.click(getByRole('button', { name: 'Discard' }));
 
 		expect(emitted('action')).toEqual([['approve-and-publish'], ['apply'], ['dismiss']]);
@@ -98,14 +98,14 @@ describe('SelfHealingResultContent', () => {
 
 		expect(getByRole('button', { name: 'Approve and publish' })).toBeDisabled();
 		expect(getByText('Publish permission is required')).toBeInTheDocument();
-		await user.click(getByRole('button', { name: 'Open in editor' }));
+		await user.click(getByRole('button', { name: 'Apply and open in editor' }));
 		expect(emitted('action')).toEqual([['apply']]);
 	});
 
 	it('disables every fix decision while a decision is pending', async () => {
 		const { getByRole, emitted } = renderContent({ pendingAction: 'apply' });
 
-		for (const name of ['Approve and publish', 'Open in editor', 'Discard']) {
+		for (const name of ['Approve and publish', 'Apply and open in editor', 'Discard']) {
 			expect(getByRole('button', { name })).toBeDisabled();
 		}
 		await userEvent.click(getByRole('button', { name: 'Discard' }));
