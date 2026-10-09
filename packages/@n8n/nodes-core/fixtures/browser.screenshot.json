@@ -3,7 +3,36 @@
 		{
 			"name": "takes a screenshot of a solid page",
 			"params": {
-				"html": "<body style=\"margin:0;background:#2a9d8f\"></body>",
+				"url": "https://page.test/solid",
+				"width": 64,
+				"height": 48
+			},
+			"routes": [
+				{
+					"path": "/solid",
+					"reply": {
+						"binary": {
+							"data": "PGJvZHkgc3R5bGU9Im1hcmdpbjowO2JhY2tncm91bmQ6IzJhOWQ4ZiI+PC9ib2R5Pg==",
+							"mimeType": "text/html"
+						}
+					}
+				}
+			],
+			"output": [{}],
+			"outputBinary": [
+				{
+					"data": {
+						"data": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAATklEQVR4nOzPAQkAIADAMBHTWNYEdjXGEbYGW/ue8bM5PidQE6gJ1ARqAjWBmkBNoCZQE6gJ1ARqAjWBmkBNoCZQE6gJ1ARqAjWBmkDtAQAA//9TtoMTAAAABklEQVQDALIIAbmkrIauAAAAAElFTkSuQmCC",
+						"mimeType": "image/png",
+						"fileName": "screenshot.png"
+					}
+				}
+			]
+		},
+		{
+			"name": "takes a screenshot of a data URL without a request",
+			"params": {
+				"url": "data:text/html;charset=utf-8,%3Cbody%20style%3D%22margin%3A0%3Bbackground%3A%232a9d8f%22%3E%3C%2Fbody%3E",
 				"width": 64,
 				"height": 48
 			},
@@ -17,6 +46,30 @@
 					}
 				}
 			]
+		}
+	],
+	"migrations": [
+		{
+			"fromMajor": 1,
+			"params": {
+				"html": "<body style=\"margin:0;background:#2a9d8f\"></body>",
+				"width": 64,
+				"height": 48
+			},
+			"expected": {
+				"url": "data:text/html;charset=utf-8,%3Cbody%20style%3D%22margin%3A0%3Bbackground%3A%232a9d8f%22%3E%3C%2Fbody%3E",
+				"width": 64,
+				"height": 48
+			}
+		},
+		{
+			"fromMajor": 1,
+			"params": {
+				"html": "=<h1>{{ $json.title }}</h1>"
+			},
+			"expected": {
+				"url": "={{ 'data:text/html;charset=utf-8,' + encodeURIComponent(\"<h1>\" + ($json.title) + \"</h1>\") }}"
+			}
 		}
 	]
 }
