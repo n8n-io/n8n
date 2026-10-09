@@ -13,7 +13,7 @@ import {
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 } from '@n8n/api-types';
-import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
+import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -53,7 +53,6 @@ export class DataTableController {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableAccessService: DataTableAccessService,
-		private readonly projectRepository: ProjectRepository,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
@@ -93,7 +92,10 @@ export class DataTableController {
 	) {
 		try {
 			const { projectId } = req.params;
-			await this.projectRepository.findOneOrFail({ where: { id: projectId } });
+			if (!(await this.dataTableAccessService.projectExists(projectId))) {
+				res.status(404).send('Project not found');
+				return;
+			}
 			next();
 		} catch (e) {
 			res.status(404).send('Project not found');

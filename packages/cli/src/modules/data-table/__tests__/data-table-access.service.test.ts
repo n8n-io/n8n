@@ -56,6 +56,15 @@ describe('DataTableAccessService', () => {
 		});
 	});
 
+	describe('projectExists', () => {
+		it('returns the repository result', async () => {
+			projectRepository.existsById.mockResolvedValue(true);
+
+			await expect(service.projectExists(projectId)).resolves.toBe(true);
+			expect(projectRepository.existsById).toHaveBeenCalledWith(projectId);
+		});
+	});
+
 	describe('resolveOwningProjectId', () => {
 		it('returns the personal project when no project ID is given', async () => {
 			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
@@ -66,14 +75,14 @@ describe('DataTableAccessService', () => {
 		});
 
 		it('returns an accessible project', async () => {
-			projectRepository.findOne.mockResolvedValue({ id: projectId } as never);
+			projectRepository.existsById.mockResolvedValue(true);
 			projectScopeService.getProjectIds.mockResolvedValue([projectId]);
 
 			await expect(service.resolveOwningProjectId(user, projectId)).resolves.toBe(projectId);
 		});
 
 		it('returns a project for global access', async () => {
-			projectRepository.findOne.mockResolvedValue({ id: projectId } as never);
+			projectRepository.existsById.mockResolvedValue(true);
 			projectScopeService.getProjectIds.mockResolvedValue(null);
 
 			await expect(service.resolveOwningProjectId(user, projectId)).resolves.toBe(projectId);
@@ -81,7 +90,7 @@ describe('DataTableAccessService', () => {
 
 		it('throws when the project does not exist', async () => {
 			projectScopeService.getProjectIds.mockResolvedValue(null);
-			projectRepository.findOne.mockResolvedValue(null);
+			projectRepository.existsById.mockResolvedValue(false);
 
 			await expect(service.resolveOwningProjectId(user, projectId)).rejects.toThrow(
 				DataTableProjectNotFoundError,
@@ -94,7 +103,7 @@ describe('DataTableAccessService', () => {
 			await expect(service.resolveOwningProjectId(user, projectId)).rejects.toThrow(
 				DataTableAccessDeniedError,
 			);
-			expect(projectRepository.findOne).not.toHaveBeenCalled();
+			expect(projectRepository.existsById).not.toHaveBeenCalled();
 		});
 	});
 

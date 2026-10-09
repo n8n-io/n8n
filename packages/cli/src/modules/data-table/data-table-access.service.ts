@@ -24,6 +24,10 @@ export class DataTableAccessService {
 		return accessibleProjectIds === null || accessibleProjectIds.includes(projectId);
 	}
 
+	async projectExists(projectId: string): Promise<boolean> {
+		return await this.projectRepository.existsById(projectId);
+	}
+
 	async resolveOwningProjectId(user: User, projectId?: string): Promise<string> {
 		if (!projectId) {
 			const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
@@ -34,12 +38,11 @@ export class DataTableAccessService {
 			throw new DataTableAccessDeniedError('create');
 		}
 
-		const existingProject = await this.projectRepository.findOne({ where: { id: projectId } });
-		if (!existingProject) {
+		if (!(await this.projectExists(projectId))) {
 			throw new DataTableProjectNotFoundError(projectId);
 		}
 
-		return existingProject.id;
+		return projectId;
 	}
 
 	/** A dry run returns rows even when the caller did not request `returnData`. */

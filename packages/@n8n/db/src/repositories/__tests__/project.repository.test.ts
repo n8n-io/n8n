@@ -13,6 +13,15 @@ describe('ProjectRepository', () => {
 		vi.resetAllMocks();
 	});
 
+	describe('existsById', () => {
+		it('checks for a project with the matching ID', async () => {
+			entityManager.existsBy.mockResolvedValue(true);
+
+			await expect(projectRepository.existsById('proj-1')).resolves.toBe(true);
+			expect(entityManager.existsBy).toHaveBeenCalledWith(Project, { id: 'proj-1' });
+		});
+	});
+
 	describe('deleteByIds', () => {
 		it('does not query when there are no ids', async () => {
 			await projectRepository.deleteByIds([]);

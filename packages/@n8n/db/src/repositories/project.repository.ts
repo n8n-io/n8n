@@ -25,6 +25,10 @@ export class ProjectRepository extends BaseRepository<Project> {
 		super(Project, dataSource.manager, txRunner);
 	}
 
+	async existsById(projectId: string): Promise<boolean> {
+		return await this.existsBy({ id: projectId });
+	}
+
 	/** Returns null when the team project quota is full. */
 	async insertTeamProjectWithAdmin(
 		data: Pick<Project, 'name'> &
