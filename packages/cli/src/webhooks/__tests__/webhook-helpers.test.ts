@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -1634,6 +1634,7 @@ describe('executeWebhook credential-status gate', () => {
 		gateResult?: CredentialCheckResult;
 		webhookResult?: IWebhookResponseData;
 		responseMode?: WebhookResponseMode;
+		startNodeType?: string;
 	}) => {
 		const checkCredentialStatus = vi.fn().mockResolvedValue(options.gateResult);
 
@@ -1651,7 +1652,7 @@ describe('executeWebhook credential-status gate', () => {
 
 		const workflowStartNode = mock<INode>({
 			name: 'Webhook',
-			type: WEBHOOK_NODE_TYPE,
+			type: options.startNodeType ?? WEBHOOK_NODE_TYPE,
 			typeVersion: 2,
 			parameters: { authentication: options.authentication },
 		});
@@ -1760,6 +1761,30 @@ describe('executeWebhook credential-status gate', () => {
 			expect(runData.callerAwaitsOutcome).toBe('none');
 		},
 	);
+
+	describe('in queue mode', () => {
+		const executionsConfig = Container.get(ExecutionsConfig);
+
+		beforeEach(() => {
+			executionsConfig.mode = 'queue';
+		});
+
+		afterEach(() => {
+			executionsConfig.mode = 'regular';
+		});
+
+		it('marks an MCP Trigger run as awaited to completion, since the worker relays the MCP response', async () => {
+			void runGate({
+				authentication: 'none',
+				gateResult: missingGateResult,
+				startNodeType: MCP_TRIGGER_NODE_TYPE,
+			});
+			await vi.waitFor(() => expect(workflowRunner.run).toHaveBeenCalled());
+
+			const [runData] = vi.mocked(workflowRunner.run).mock.calls[0];
+			expect(runData.callerAwaitsOutcome).toBe('completion');
+		});
+	});
 
 	it('marks a lastNode run as owing a webhook response', async () => {
 		void runGate({

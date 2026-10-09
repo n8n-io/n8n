@@ -228,6 +228,8 @@ async function prepareMcpQueueExecution(
 
 	runData.isMcpExecution = true;
 	runData.mcpType = 'trigger';
+	// The worker relays the MCP response when the run ends, so a paused segment would be taken for the result.
+	runData.callerAwaitsOutcome = 'completion';
 	runData.mcpSessionId = mcpSessionId;
 	runData.mcpMessageId = mcpMessageId;
 
