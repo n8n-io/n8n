@@ -4470,6 +4470,95 @@ describe('generate-types', () => {
 				expect(content).toContain('output?: Items<FreshserviceV1TicketGetOutput>');
 			});
 
+			describe('parameter variants', () => {
+				const combo = { resource: 'ticket', operation: 'get' };
+				const plainSchema = { type: 'object', properties: { From: { type: 'string' } } };
+				const rawVariant = {
+					resource: 'ticket',
+					operation: 'get',
+					variant: 'simple-false',
+					schema: { type: 'object', properties: { text: { type: 'string' } } },
+				};
+				const nodeWithSimple: NodeTypeDescription = {
+					...mockFreshserviceNode,
+					properties: [
+						...mockFreshserviceNode.properties,
+						{
+							displayName: 'Simplify',
+							name: 'simple',
+							type: 'boolean',
+							default: true,
+							displayOptions: { show: { resource: ['ticket'], operation: ['get'] } },
+						},
+					],
+				};
+
+				const generate = (variants: Array<typeof rawVariant>, node = nodeWithSimple) =>
+					generateTypes.generateDiscriminatorFile(
+						node,
+						1,
+						combo,
+						generateTypes.getPropertiesForCombination(node, combo),
+						plainSchema,
+						6,
+						variants,
+					);
+
+				it('emits an output type for each variant and keeps the plain one for the default', () => {
+					const content = generate([rawVariant]);
+
+					expect(content).toContain('export type FreshserviceV1TicketGetOutput = {');
+					expect(content).toContain('From?: string;');
+					expect(content).toContain('export type FreshserviceV1TicketGetSimpleFalseOutput = {');
+					expect(content).toContain('text?: string;');
+				});
+
+				it('emits one node type for each parameter value, narrowing the parameter', () => {
+					const content = generate([rawVariant]);
+
+					expect(content).toContain('export type FreshserviceV1TicketGetSimpleTrueNode = {');
+					expect(content).toContain(
+						'config: NodeConfig<FreshserviceV1TicketGetParams & { simple?: true }>',
+					);
+					expect(content).toContain('output?: Items<FreshserviceV1TicketGetOutput>;');
+					expect(content).toContain('export type FreshserviceV1TicketGetSimpleFalseNode = {');
+					expect(content).toContain(
+						'config: NodeConfig<FreshserviceV1TicketGetParams & { simple: false }>',
+					);
+					expect(content).toContain('output?: Items<FreshserviceV1TicketGetSimpleFalseOutput>;');
+				});
+
+				it('returns either output when the parameter is an expression', () => {
+					const content = generate([rawVariant]);
+
+					expect(content).toContain('export type FreshserviceV1TicketGetSimpleExpressionNode = {');
+					expect(content).toContain(
+						'config: NodeConfig<FreshserviceV1TicketGetParams & { simple: Expression<boolean> }>',
+					);
+					expect(content).toContain(
+						'output?: Items<FreshserviceV1TicketGetOutput | FreshserviceV1TicketGetSimpleFalseOutput>;',
+					);
+				});
+
+				it('exports the node type as a union of the parameter variants', () => {
+					const content = generate([rawVariant]);
+
+					expect(content).toMatch(
+						/export type FreshserviceV1TicketGetNode =\s+\| FreshserviceV1TicketGetSimpleTrueNode\s+\| FreshserviceV1TicketGetSimpleFalseNode\s+\| FreshserviceV1TicketGetSimpleExpressionNode;/,
+					);
+				});
+
+				it('ignores a variant whose parameter the node does not have', () => {
+					const content = generate(
+						[{ ...rawVariant, variant: 'unknown-false' }],
+						mockFreshserviceNode,
+					);
+
+					expect(content).toContain('export type FreshserviceV1TicketGetNode = {');
+					expect(content).not.toContain('SimpleFalse');
+				});
+			});
+
 			it('should inline credentials interface when node has credentials', () => {
 				const combo = { resource: 'ticket', operation: 'get' };
 				const props = generateTypes.getPropertiesForCombination(mockFreshserviceNode, combo);
@@ -5673,6 +5762,39 @@ describe('generate-types', () => {
 					operation: 'output',
 					schema: mockSchema,
 				});
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
+		it('discovers <operation>.<param>-<value>.json files as variants, not as operations', () => {
+			const nodeName = '__TestParameterVariants__';
+			const plain = { type: 'object', properties: { From: { type: 'string' } } };
+			const raw = { type: 'object', properties: { text: { type: 'string' } } };
+
+			try {
+				createTestSchemaDir(nodeName, 'v1.0.0', {
+					'message/get.json': JSON.stringify(plain),
+					'message/get.simple-false.json': JSON.stringify(raw),
+				});
+
+				const result = generateTypes.discoverSchemasForNode(
+					`n8n-nodes-base.${nodeName}`,
+					1,
+					nodeName,
+				);
+
+				expect(result).toHaveLength(2);
+				expect(result).toContainEqual({ resource: 'message', operation: 'get', schema: plain });
+				expect(result).toContainEqual({
+					resource: 'message',
+					operation: 'get',
+					variant: 'simple-false',
+					schema: raw,
+				});
+				expect(generateTypes.findSchemaForOperation(result, 'message', 'get')?.schema).toEqual(
+					plain,
+				);
 			} finally {
 				cleanupTestDir(nodeName);
 			}

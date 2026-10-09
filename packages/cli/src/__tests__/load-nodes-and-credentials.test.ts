@@ -10,6 +10,7 @@ import { CUSTOM_NODES_PACKAGE_NAME, CustomDirectoryLoader, DirectoryLoader } fro
 import type {
 	ICredentialType,
 	INodeProperties,
+	INodeType,
 	INodeTypeDescription,
 	KnownNodesAndCredentials,
 	NodeLoader,
@@ -288,6 +289,110 @@ describe('LoadNodesAndCredentials', () => {
 					operation: 'get',
 				}),
 			).toEqual({ type: 'object' });
+		});
+
+		describe('parameter variants', () => {
+			const rawSchema = { type: 'object', title: 'raw' };
+			const plainSchema = { type: 'object' };
+			const lookupRef = {
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				resource: 'account',
+				operation: 'get',
+			};
+
+			const provideNode = (nodeType: Partial<INodeType>) => {
+				const type = { description: { properties: [] }, ...nodeType } as INodeType;
+				vi.spyOn(instance, 'getNode').mockReturnValue({ sourcePath: 'Test.node.js', type });
+			};
+
+			beforeEach(() => {
+				const accountDir = join(nodesDir, 'Test', '__schema__', 'v1.0.0', 'account');
+				writeFileSync(join(accountDir, 'get.simple-false.json'), JSON.stringify(rawSchema));
+				writeFileSync(
+					join(accountDir, 'get.custom.json'),
+					JSON.stringify({ type: 'object', title: 'custom' }),
+				);
+			});
+
+			it('should pick the variant file that matches the node parameters', () => {
+				provideNode({});
+
+				expect(
+					instance.createOutputSchemaLookup()({ ...lookupRef, parameters: { simple: false } }),
+				).toEqual(rawSchema);
+			});
+
+			it('should use the property default when the parameter is absent', () => {
+				provideNode({
+					description: {
+						properties: [
+							{
+								name: 'simple',
+								type: 'boolean',
+								default: false,
+								displayOptions: { show: { resource: ['account'], operation: ['get'] } },
+							},
+						],
+					} as unknown as INodeTypeDescription,
+				});
+
+				expect(instance.createOutputSchemaLookup()({ ...lookupRef, parameters: {} })).toEqual(
+					rawSchema,
+				);
+			});
+
+			it('should use the plain file when the parameter keeps its default', () => {
+				provideNode({
+					description: {
+						properties: [{ name: 'simple', type: 'boolean', default: true }],
+					} as unknown as INodeTypeDescription,
+				});
+
+				expect(instance.createOutputSchemaLookup()({ ...lookupRef, parameters: {} })).toEqual(
+					plainSchema,
+				);
+			});
+
+			it('should let the node hook choose the variant', () => {
+				const getOutputSchemaVariant = vi.fn().mockReturnValue('custom');
+				provideNode({ getOutputSchemaVariant });
+
+				expect(
+					instance.createOutputSchemaLookup()({ ...lookupRef, parameters: { simple: false } }),
+				).toEqual({ type: 'object', title: 'custom' });
+				expect(getOutputSchemaVariant).toHaveBeenCalledWith({ simple: false });
+			});
+
+			it('should use the parameter convention when the hook returns nothing', () => {
+				provideNode({ getOutputSchemaVariant: () => undefined });
+
+				expect(
+					instance.createOutputSchemaLookup()({ ...lookupRef, parameters: { simple: false } }),
+				).toEqual(rawSchema);
+			});
+
+			it('should ignore a hook that throws', () => {
+				provideNode({
+					getOutputSchemaVariant: () => {
+						throw new Error('boom');
+					},
+				});
+
+				expect(instance.createOutputSchemaLookup()({ ...lookupRef, parameters: {} })).toEqual(
+					plainSchema,
+				);
+			});
+
+			it('should still resolve the plain schema when the node cannot be loaded', () => {
+				vi.spyOn(instance, 'getNode').mockImplementation(() => {
+					throw new Error('not loadable');
+				});
+
+				expect(
+					instance.createOutputSchemaLookup()({ ...lookupRef, parameters: { simple: true } }),
+				).toEqual(plainSchema);
+			});
 		});
 
 		it('should return undefined for unknown nodes or missing schemas', () => {

@@ -202,6 +202,90 @@ describe('output-schema-resolver', () => {
 			).toBe(plain);
 		});
 
+		describe('parameter variants', () => {
+			const ref = { version: 2, resource: 'message', operation: 'get', versionFallback: true };
+
+			it('picks the <operation>.<param>-<value>.json file that matches the parameters', () => {
+				writeSchema('v2.0.0/message/get.json');
+				const raw = writeSchema('v2.0.0/message/get.simple-false.json');
+
+				expect(resolveOutputSchemaPath({ nodeDir, ...ref, parameters: { simple: false } })).toBe(
+					raw,
+				);
+			});
+
+			it('uses the plain file when the parameters do not match a variant', () => {
+				const plain = writeSchema('v2.0.0/message/get.json');
+				writeSchema('v2.0.0/message/get.simple-false.json');
+
+				expect(resolveOutputSchemaPath({ nodeDir, ...ref, parameters: { simple: true } })).toBe(
+					plain,
+				);
+				expect(resolveOutputSchemaPath({ nodeDir, ...ref })).toBe(plain);
+			});
+
+			it('applies the parameter default when the parameter is absent', () => {
+				const plain = writeSchema('v2.0.0/message/get.json');
+				const raw = writeSchema('v2.0.0/message/get.simple-false.json');
+
+				expect(
+					resolveOutputSchemaPath({
+						nodeDir,
+						...ref,
+						parameters: {},
+						parameterDefaults: { simple: true },
+					}),
+				).toBe(plain);
+				expect(
+					resolveOutputSchemaPath({
+						nodeDir,
+						...ref,
+						parameters: {},
+						parameterDefaults: { simple: false },
+					}),
+				).toBe(raw);
+			});
+
+			it('prefers an explicit variant over the parameters', () => {
+				writeSchema('v2.0.0/message/get.json');
+				writeSchema('v2.0.0/message/get.simple-false.json');
+				const custom = writeSchema('v2.0.0/message/get.custom.json');
+
+				expect(
+					resolveOutputSchemaPath({
+						nodeDir,
+						...ref,
+						variant: 'custom',
+						parameters: { simple: false },
+					}),
+				).toBe(custom);
+			});
+
+			it('falls through to the plain file when the explicit variant file is missing', () => {
+				const plain = writeSchema('v2.0.0/message/get.json');
+
+				expect(resolveOutputSchemaPath({ nodeDir, ...ref, variant: 'missing' })).toBe(plain);
+			});
+
+			it('checks each version directory for the variant before using an older version', () => {
+				writeSchema('v1.0.0/message/get.simple-false.json');
+				const plain = writeSchema('v2.0.0/message/get.json');
+
+				expect(resolveOutputSchemaPath({ nodeDir, ...ref, parameters: { simple: false } })).toBe(
+					plain,
+				);
+			});
+
+			it('does not let a variant escape the __schema__ directory', () => {
+				const plain = writeSchema('v2.0.0/message/get.json');
+				writeFileSync(path.join(nodeDir, 'leak.json'), '{}');
+
+				expect(resolveOutputSchemaPath({ nodeDir, ...ref, variant: '../../../../leak' })).toBe(
+					plain,
+				);
+			});
+		});
+
 		it('returns undefined when __schema__ does not exist', () => {
 			expect(
 				resolveOutputSchemaPath({
