@@ -16,7 +16,6 @@
 					"id": 1
 				}
 			],
-
 			"output": [
 				{
 					"id": 1,
@@ -24,6 +23,25 @@
 						"name": "Ada"
 					},
 					"count": 2
+				}
+			]
+		},
+		{
+			"name": "keeps a dotted field name as one key with dot notation off",
+			"params": {
+				"fields": {
+					"user.name": "Ada"
+				},
+				"dotNotation": false
+			},
+			"items": [
+				{
+					"id": 1
+				}
+			],
+			"output": [
+				{
+					"user.name": "Ada"
 				}
 			]
 		}

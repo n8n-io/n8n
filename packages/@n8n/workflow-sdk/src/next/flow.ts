@@ -857,7 +857,7 @@ const isProviderKind = (kind: string): kind is ProviderKind =>
 export const MANUAL_NODE = { type: 'n8n-nodes-base.manualTrigger', version: 1 };
 /** The IF and Edit Fields contracts of `@n8n/nodes-core` (`condition.if`, `items.set`). */
 export const BRANCH_NODE = { type: '@n8n/nodes-core.conditionIf', version: 1 };
-export const SET_NODE = { type: '@n8n/nodes-core.itemsSet', version: 1 };
+export const SET_NODE = { type: '@n8n/nodes-core.itemsSet', version: 2 };
 /**
  * The first-party contract packages that n8n ships, in catalog order. Each name is the node type
  * prefix of its contracts.

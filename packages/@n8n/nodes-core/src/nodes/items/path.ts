@@ -12,6 +12,12 @@ export function pathOf(field: string): string[] {
 	return keys;
 }
 
+/** A field name as one key: `a.b` stays the key `a.b`. */
+export function keyPathOf(field: string): string[] {
+	if (RESERVED.has(field)) throw new UserError(`The field "${field}" is a reserved name`);
+	return [field];
+}
+
 export const getPath = (value: unknown, path: readonly string[]): unknown =>
 	path.reduce<unknown>(
 		(node, key) => (isRecord(node) || Array.isArray(node) ? Reflect.get(node, key) : undefined),

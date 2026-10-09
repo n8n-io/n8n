@@ -1,13 +1,16 @@
 import { t } from '@n8n/node-sdk';
 
 import { itemsNode } from '../items.node';
-import { getPath, pathOf, setPath, unsetPath } from '../path';
+import { getPath, keyPathOf, pathOf, setPath, unsetPath } from '../path';
 
 const names = { fields: t.arr(t.str()).title('Fields') };
 
 export const editFields = itemsNode.action('set', {
+	// Major 2: the dot notation of field names can be turned off.
+	version: '2.0.0',
 	action: 'Edit fields',
-	summary: 'Set fields on each item. A field name is a dot path; a value keeps its JSON type.',
+	summary:
+		'Set fields on each item. A field name is a dot path, unless dot notation is off; a value keeps its JSON type.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: {
 		fields: t
@@ -19,11 +22,17 @@ export const editFields = itemsNode.action('set', {
 			.default({ mode: 'none' })
 			.title('Input Fields to Include')
 			.hint('Input fields to keep beside the set fields'),
+		dotNotation: t
+			.bool()
+			.default(true)
+			.title('Support Dot Notation')
+			.hint('Off: a field name with a dot is one key, e.g. "user.name"'),
 	},
 	ui: { fields: { fields: { widget: 'assignments' } } },
 	output: t.json(),
 	async run({ input, item }) {
 		const { include } = input;
+		const fieldPathOf = input.dotNotation ? pathOf : keyPathOf;
 		const kept =
 			include.mode === 'all'
 				? item.json
@@ -38,7 +47,7 @@ export const editFields = itemsNode.action('set', {
 						: {};
 		return await Promise.resolve(
 			Object.entries(input.fields).reduce(
-				(result, [field, value]) => setPath(result, pathOf(field), value),
+				(result, [field, value]) => setPath(result, fieldPathOf(field), value),
 				kept,
 			),
 		);
