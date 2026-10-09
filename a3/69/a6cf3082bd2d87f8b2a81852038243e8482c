@@ -1,0 +1,27 @@
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreMongoDBAtlas/VectorStoreMongoDBAtlas.node.test.ts
+  s_94a28f1ec66c13::t_1dcb27bfbbf465 3,148-170
+  s_94a28f1ec66c13::t_c21566dd02ad7a 171
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreMongoDBAtlas/VectorStoreMongoDBAtlas.node.ts
+  s_94a28f1ec66c13::t_1dcb27bfbbf465 14-17,175-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a369a6cf3082bd2d87f8b2a81852038243e8482c",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_94a28f1ec66c13": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2ba6da5-c04b-4950-b362-bb0b894cc7f4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

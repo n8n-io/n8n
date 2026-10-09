@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/pagination/pagination.dto.ts
+  s_fb233da4d2661f::t_ba3161b5020880 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f44645965c4abf3d9eb1e7c1cf440e6b1fd3932",
+  "prompts": {},
+  "sessions": {
+    "s_fb233da4d2661f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "834d9625-7bf9-4f98-ba91-093137034fb5",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/cli/test/integration/workflows/teams-trigger-subscription-refused.test.ts
+  s_eaf07a577bcc8d::t_6436eee3c56fde 112
+packages/cli/test/integration/active-workflows.api.test.ts
+  s_eaf07a577bcc8d::t_6436eee3c56fde 104
+packages/cli/src/services/active-workflows.service.ts
+  s_eaf07a577bcc8d::t_6436eee3c56fde 61-62,74-75
+packages/cli/src/services/__tests__/active-workflows.service.test.ts
+  s_eaf07a577bcc8d::t_6436eee3c56fde 64,85-88,133,145,159,194,204,215
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_eaf07a577bcc8d::t_6436eee3c56fde 130-134,225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a49e3f8130557b6d6349082ccfbcbae4fed96c2",
+  "prompts": {},
+  "sessions": {
+    "s_eaf07a577bcc8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53afa069-bfb3-439b-93d4-161825d80123",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

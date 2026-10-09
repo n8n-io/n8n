@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
+  s_71ad2034164515::t_23965341cd0c8b 45-61,64-65,108
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_71ad2034164515::t_0d3eb273f19504 16-22,24-26,28-38,41-42,44,52-54,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96203e9e7409242fba33e6706743c801c91c7243",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

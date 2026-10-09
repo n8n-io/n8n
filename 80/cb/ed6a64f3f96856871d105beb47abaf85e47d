@@ -1,0 +1,36 @@
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_8987b8017e49de::t_1b3c6644327124 468
+  s_8987b8017e49de::t_3c7459637d619d 562-564,566-573,575-576,579
+  s_8987b8017e49de::t_addd340508c2b8 516,526,534
+  s_8987b8017e49de::t_b5395af5f12c68 14,397-398,584-586,588-592,602-607,610-617,627-630
+  s_8987b8017e49de::t_b86c75a6c63134 392
+  s_8987b8017e49de::t_dfaa2b427ee21c 400
+packages/cli/src/modules/promotions.ee/branch-placement.ts
+  s_8987b8017e49de::t_b5395af5f12c68 1,22-25,31-32
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_8987b8017e49de::t_fb84e48515005c 1894-1899
+  s_8987b8017e49de::t_3df11549338741 1855
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_8987b8017e49de::t_b5395af5f12c68 251-253
+packages/cli/src/modules/promotions.ee/__tests__/branch-placement.test.ts
+  s_8987b8017e49de::t_b5395af5f12c68 3,48-52
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_8987b8017e49de::t_b5395af5f12c68 557-589,596-597
+  ai_agent 590-595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "80cbed6a64f3f96856871d105beb47abaf85e47d",
+  "prompts": {},
+  "sessions": {
+    "s_8987b8017e49de": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ce582f0f-6915-4be7-93ac-a2ac38c09dc8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

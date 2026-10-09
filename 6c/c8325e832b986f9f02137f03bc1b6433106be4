@@ -1,0 +1,32 @@
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/__tests__/transport.test.ts
+  s_e3165c863402e2::t_f9f5fff8f8b649 4
+  s_e3165c863402e2::t_f99e1f72282c88 2,38-41,50,54-61,63,66,75-76,78-81,85,94-95,141-146,148,150-151,175,180
+  s_e3165c863402e2::t_2ff5a0b80497db 98-103,105-108,111-117,132-133,136-138
+  s_e3165c863402e2::t_503e797b5c3b19 96-97
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/transport.ts
+  s_e3165c863402e2::t_0e8e3bcf2c0398 5
+  s_e3165c863402e2::t_b2e82373126594 57-73,75
+  s_e3165c863402e2::t_b481d724b33c02 2-4,6-9,12-15,35-38,49-53
+  s_e3165c863402e2::t_f97116bf966000 17,22-32
+  s_e3165c863402e2::t_e76c6a080d8fff 91-93
+  s_e3165c863402e2::t_a17e3128f4529a 74
+  s_e3165c863402e2::t_b44932194fe848 33-34
+  s_e3165c863402e2::t_f54b340816e1a9 54-56
+  s_e3165c863402e2::t_a57d7a35252cd4 76-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6cc8325e832b986f9f02137f03bc1b6433106be4",
+  "prompts": {},
+  "sessions": {
+    "s_e3165c863402e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5e1478d-485b-47e5-9f38-ab6fe27c5ade",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/quality/testing/playwright/tests/e2e/ai/workflow-builder-smoke.spec.ts
+  s_3d80d2cb43e65e::t_b7c3b8c59919c3 1-30
+packages/quality/testing/playwright/config/ai-builder-fixtures.ts
+  s_3d80d2cb43e65e::t_b7c3b8c59919c3 5-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "67f09c7ca486456bdca3a977938e74fc2c82bbfb",
+  "prompts": {},
+  "sessions": {
+    "s_3d80d2cb43e65e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a116b8-8dd0-7540-a590-7106775ff02c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/decorators/src/system-task/__tests__/system-task.test.ts
+  ai_agent 3,5,27,50,70
+packages/@n8n/decorators/src/system-task/index.ts
+  ai_agent 8,12,14-16,18,20
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  ai_agent 5,10,12,14,17-24,29-30,37,41-50,54,56-57,61-70,72,75-93,96,101,103,106,109-112,115-118,121-123,131,141-148,151,160-163,177-180
+packages/@n8n/decorators/src/system-task/__tests__/types.test.ts
+  ai_agent 1,3-18,20,23-24,26,29-37,39-40,44-62,65-67,69,72,74,76,79-81,84,87,90-92,95,98
+packages/@n8n/decorators/src/system-task/system-task.ts
+  ai_agent 12-16,18,34-37,40-43,45-52,55-62,66-67,71,89,95-100,114,116,171-173,176
+packages/@n8n/decorators/src/system-task/__tests__/resolve-schedule.test.ts
+  ai_agent 7,11,15,49,51-54
+packages/@n8n/decorators/src/system-task/types.ts
+  ai_agent 1-29,32,34-37,39,42,44-45,47-57,62-68,70-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe89dacbc297d7363d759c71e5febb47b273512e",
+  "prompts": {}
+}

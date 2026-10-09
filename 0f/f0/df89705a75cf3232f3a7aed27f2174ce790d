@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_db74c72b258827::t_d2183be9161f2a 52,1461,1582
+packages/frontend/editor-ui/src/features/agents/utils/agentChatPath.ts
+  s_db74c72b258827::t_d2183be9161f2a 1-25
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_db74c72b258827::t_d2183be9161f2a 35,574,588,602,615,630,646,661,676,690,702,714,727,741
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ff0df89705a75cf3232f3a7aed27f2174ce790d",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

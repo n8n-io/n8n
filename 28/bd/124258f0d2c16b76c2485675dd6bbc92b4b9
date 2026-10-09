@@ -1,32 +1,12 @@
-packages/cli/test/integration/inbound-auth-core/trusted-source.store.integration.test.ts
-  s_f8cb8d8b517ca9::t_d8b9a71947136d 133
-  s_f8cb8d8b517ca9::t_9644fc5648350e 5-9,33
-  s_f8cb8d8b517ca9::t_4a4ad0a0050f1a 97-99
-  s_f8cb8d8b517ca9::t_e024c6a54d9480 236-237
-packages/@n8n/inbound-auth/src/trusted-source-config.ts
-  s_f8cb8d8b517ca9::t_a99815d9e07ef4 153
-packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
-  s_f8cb8d8b517ca9::t_2b557b8fe38d29 120
-  s_f8cb8d8b517ca9::t_91be328cad2fc5 48-53
-  s_f8cb8d8b517ca9::t_25aef87e2dd7d2 8
-  s_f8cb8d8b517ca9::t_7dfe6144c79605 105-107
-  s_f8cb8d8b517ca9::t_d5c1e99442a209 133-135
-packages/@n8n/backend-services/src/services/cache/__tests__/cache.service.test.ts
-  s_f8cb8d8b517ca9::t_10091f51bffd33 165-173
 ---
 {
   "schema_version": "authorship/3.0.0",
-  "git_ai_version": "1.7.5",
+  "git_ai_version": "1.7.4",
   "base_commit_sha": "28bd124258f0d2c16b76c2485675dd6bbc92b4b9",
   "prompts": {},
-  "sessions": {
-    "s_f8cb8d8b517ca9": {
-      "agent_id": {
-        "tool": "claude",
-        "id": "17c2e625-bf80-47f8-a09b-3dd8e07f5a0b",
-        "model": "claude-fable-5-1"
-      },
-      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+  "humans": {
+    "h_b49cecddc99496": {
+      "author": "Danny Martini <danny@n8n.io>"
     }
   }
 }

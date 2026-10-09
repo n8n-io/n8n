@@ -1,0 +1,33 @@
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/testLogStreamingDestination.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/updateLogStreamingDestination.generated.yml
+  ai_agent 15
+packages/cli/test/integration/public-api/log-streaming.test.ts
+  s_f237da1bec2829::t_d99571f0258185 173,397,455,490
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 176,183
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_f237da1bec2829::t_d99571f0258185 325,328,331,334
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/deleteLogStreamingDestination.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getLogStreamingDestination.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/controllers/log-streaming.public.controller.ts
+  s_f237da1bec2829::t_d99571f0258185 86,99,101,126,140,144,147-150,153,166,168,177,183,197,200-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d9403307a5dcd4e35a22b25e73f61d138933e5e1",
+  "prompts": {},
+  "sessions": {
+    "s_f237da1bec2829": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0032cd37-e885-4ea6-b9bc-63715d721b55",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

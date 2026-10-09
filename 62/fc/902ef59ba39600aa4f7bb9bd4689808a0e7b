@@ -1,0 +1,22 @@
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-deprecated-workflow-functions.ts
+  s_9cb461f0de1a6b::t_ea0ca19864d13f 56-74,76-77,79
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-deprecated-workflow-functions.test.ts
+  s_9cb461f0de1a6b::t_8651d0d760147c 355-380
+  s_9cb461f0de1a6b::t_5eddb2a7ada834 354
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62fc902ef59ba39600aa4f7bb9bd4689808a0e7b",
+  "prompts": {},
+  "sessions": {
+    "s_9cb461f0de1a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5dce542-f9b4-4846-8912-8530ad8a315b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

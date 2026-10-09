@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_bd9a9f9537e7ee::t_7116c9a03cbc51 57
+  s_bd9a9f9537e7ee::t_33856af25caf19 816
+packages/frontend/editor-ui/src/features/agents/utils/errors.ts
+  s_bd9a9f9537e7ee::t_33856af25caf19 1-18
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_bd9a9f9537e7ee::t_7116c9a03cbc51 27,35,158-161,505-513,515,628-637
+packages/frontend/editor-ui/src/features/agents/components/AgentChatRetryError.vue
+  s_bd9a9f9537e7ee::t_33856af25caf19 1-56
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_bd9a9f9537e7ee::t_a1222cf6710c90 54
+  s_bd9a9f9537e7ee::t_0fc33a507017a7 136-152,155-158,164-166,172-208
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_bd9a9f9537e7ee::t_0fc33a507017a7 389-394,535-541,544-563
+  s_bd9a9f9537e7ee::t_f579c82d9e5cb8 542-543
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_bd9a9f9537e7ee::t_7116c9a03cbc51 301-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bccc086fbb21daf8e175232ea2f7eea9ef2bf35c",
+  "prompts": {},
+  "sessions": {
+    "s_bd9a9f9537e7ee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11711-f8dc-7740-a69c-93ebe2b74c2f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

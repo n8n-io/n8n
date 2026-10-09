@@ -1,0 +1,19 @@
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_cf9a3ba4489632::t_7067cea80f0642 961,976,987
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5a2a875bf8bc94e0ef84a51a1323fa298fd06662",
+  "prompts": {},
+  "sessions": {
+    "s_cf9a3ba4489632": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec7db76b-ffac-4a7f-b6ff-2a90b39f2c6a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_a3b72b596cb83d::t_8abbed2dda0797 4256,4258,4283-4284,4286,4288
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_a3b72b596cb83d::t_8abbed2dda0797 396,405,409,419,421
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d928f493d4abba86fed6040fabe3734e00e7c688",
+  "prompts": {},
+  "sessions": {
+    "s_a3b72b596cb83d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ea2e23f-33e3-47c1-bc34-733808eb9ed6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+packages/cli/src/errors/uninspectable-subworkflow-source.error.ts
+  s_e744e6b8855b97::t_9ca04473014897 1-16
+packages/cli/test/integration/shared/utils/index.ts
+  s_e744e6b8855b97::t_920743d2931221 113
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_e744e6b8855b97::t_44ded25008f236 144
+  s_e744e6b8855b97::t_0d2fbfff2e06ba 391,411-422,426-431,435-448,452-455,460
+  s_e744e6b8855b97::t_8afdfd99e8a8f0 449-451,456-459
+  s_e744e6b8855b97::t_8afca29b807473 334
+  s_e744e6b8855b97::t_7b455285ea7171 13,19
+  s_e744e6b8855b97::t_6cf16602924172 423-425,432-434
+  s_e744e6b8855b97::t_306442c8d9207c 86
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_e744e6b8855b97::t_66b46609a879d2 513-537
+  s_e744e6b8855b97::t_83cc8b1ac42d6b 47
+  s_e744e6b8855b97::t_e9eab6e2bae7fa 20
+  s_e744e6b8855b97::t_620c7bc1f0e258 51
+  s_e744e6b8855b97::t_8f858e585d0919 403-456,462-512,538-579
+  s_e744e6b8855b97::t_3ea869688d4090 69
+  s_e744e6b8855b97::t_424c0b20276164 457-461
+  s_e744e6b8855b97::t_7582602e26a6a0 580-581
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_e744e6b8855b97::t_12fde1bcab6a7a 1369-1372
+  s_e744e6b8855b97::t_e079639648d6bf 105-110
+  s_e744e6b8855b97::t_faa97c29aa3bea 1299-1309,1311-1338,1388-1431
+  s_e744e6b8855b97::t_768cafe9cd3c24 39
+  s_e744e6b8855b97::t_c8407f5b383e78 1339-1368,1373-1387
+  s_e744e6b8855b97::t_2108ebd893a87a 1310
+packages/cli/test/integration/shared/workflow.ts
+  s_e744e6b8855b97::t_221a4a41a00919 263-266
+  s_e744e6b8855b97::t_429b36dfd5064e 200-214,224
+packages/cli/test/integration/workflows/workflow.service.ee.test.ts
+  s_e744e6b8855b97::t_b8ee5ec18f0808 297-314
+  s_e744e6b8855b97::t_fbe5b0c1f0685e 46
+  s_e744e6b8855b97::t_1aef5e981c1285 146-163
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_e744e6b8855b97::t_13a8a525f01c4e 21
+  s_e744e6b8855b97::t_9f0bc2929f218d 240-244
+  s_e744e6b8855b97::t_34bb293656db84 274-277,280-282
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_e744e6b8855b97::t_cac15804638b46 445-447,449-460,466,468-470,475-485,495,497,594
+  s_e744e6b8855b97::t_85f57ce707d96e 402,405
+  s_e744e6b8855b97::t_741183a7b1b6f2 66,69,79
+  s_e744e6b8855b97::t_052c4c5698bde1 77
+  s_e744e6b8855b97::t_4417e16d649848 117
+  s_e744e6b8855b97::t_c9ce5801d0bc24 338-339,347,354-356,361
+  s_e744e6b8855b97::t_8be982ca58bb75 23
+  s_e744e6b8855b97::t_356bc021c45c54 441-444,448
+  s_e744e6b8855b97::t_fb08f60e9b57d5 386,388-390,392-396,403-404,406-407,414,418,424-440,486-488,490,492-494
+  s_e744e6b8855b97::t_545561f3f3e5d8 461-465,467,471-474
+  s_e744e6b8855b97::t_1b42ad39d7fcc7 284,288,298,310-314
+  s_e744e6b8855b97::t_6225559058f307 357-360
+  s_e744e6b8855b97::t_ff0f218983f324 49,53
+  s_e744e6b8855b97::t_84e8e09b34c2a5 232,240-244,246-249,267-269
+  s_e744e6b8855b97::t_2778c78d7fba28 24-25,29
+  s_e744e6b8855b97::t_00d26c45287961 67-68,70-76,78
+  s_e744e6b8855b97::t_c88cfdfa39f8b3 58-65,80-98
+  s_e744e6b8855b97::t_172e663461bfce 44
+  s_e744e6b8855b97::t_604c9c0bc26952 362-363,496,498-501,511-516,527,530,549-550,561,593,595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f8a8defc48c383177f3cc1854cd4502472c1e3d6",
+  "prompts": {},
+  "sessions": {
+    "s_e744e6b8855b97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ff3b229-100e-4701-a81d-80afc2a9f472",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
