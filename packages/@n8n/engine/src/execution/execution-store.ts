@@ -33,7 +33,7 @@ interface BaseExecutionRecord {
  * A new execution to persist. Timestamps are assigned by the store. The seeded
  * outputs are stored beside the row, in their own table, and read back by key.
  */
-export type NewExecutionRecord = BaseExecutionRecord & { seededSteps?: SeededSteps | null };
+export type NewExecutionRecord = BaseExecutionRecord & { seededSteps?: SeededSteps };
 
 /**
  * What running an execution needs of its row. The execution path decides on

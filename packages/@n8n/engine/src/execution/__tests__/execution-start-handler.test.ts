@@ -68,7 +68,7 @@ function record(graph: WorkflowGraph, overrides: Partial<ExecutionRecord> = {}):
 		workflowId: 'wf-1',
 		status: 'running',
 		mode: 'production',
-		graph,
+		graph: { ...graph, seeded: [] },
 		workflow: {},
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
