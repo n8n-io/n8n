@@ -11,7 +11,7 @@ import type {
 	ProviderAttachmentCapabilities,
 } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { ChatMessage, InteractivePayload } from '@/features/ai/shared/agentsChat/types';
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
@@ -375,7 +375,6 @@ describe('AgentChatPanel', () => {
 			clientContext: () => Record<string, unknown> | undefined;
 			placeholder: string;
 			showAttachButton: boolean;
-			composerResumeData: (payload: InteractivePayload, text: string) => unknown;
 		}> = {},
 		attachTo?: HTMLElement,
 		slots?: Record<string, string>,
@@ -3322,87 +3321,6 @@ describe('AgentChatPanel', () => {
 				const wrapper = mountPanel({ showAttachButton: false });
 
 				expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(false);
-			});
-
-			it('answers the open card with the resume data from composerResumeData', async () => {
-				messagesMock.value = [openInteractiveMessage()];
-				resumeMock.mockResolvedValueOnce('sent');
-				const composerResumeData = vi.fn((_payload: InteractivePayload, text: string) => ({
-					approved: false,
-					feedback: text,
-				}));
-				const wrapper = mountPanel({ composerResumeData });
-				const input = composer(wrapper);
-
-				input.vm.$emit('update:modelValue', 'use Teams instead');
-				input.vm.$emit('submit');
-				await flushPromises();
-
-				expect(composerResumeData).toHaveBeenCalledWith(
-					expect.objectContaining({ toolCallId: 'tc-1', runId: 'run-1' }),
-					'use Teams instead',
-				);
-				expect(resumeMock).toHaveBeenCalledWith(
-					{
-						runId: 'run-1',
-						toolCallId: 'tc-1',
-						resumeData: { approved: false, feedback: 'use Teams instead' },
-					},
-					expect.any(Function),
-				);
-				expect(cancelAndSteerMock).not.toHaveBeenCalled();
-				expect(sendMessageMock).not.toHaveBeenCalled();
-
-				resumeMock.mock.lastCall?.[1]?.();
-				await nextTick();
-				expect(input.props('modelValue')).toBe('');
-			});
-
-			it('keeps cancel-and-steer when composerResumeData returns undefined', async () => {
-				messagesMock.value = [openInteractiveMessage()];
-				const composerResumeData = vi.fn(() => undefined);
-				const wrapper = mountPanel({ composerResumeData });
-
-				hostVm(wrapper).sendMessageFromOutside('go another direction');
-				await flushPromises();
-
-				expect(composerResumeData).toHaveBeenCalledOnce();
-				expect(resumeMock).not.toHaveBeenCalled();
-				expect(cancelAndSteerMock).toHaveBeenCalledWith(
-					'go another direction',
-					expect.any(Function),
-				);
-			});
-
-			it('does not answer a waiting card with composerResumeData', async () => {
-				messagesMock.value = [openWaitMessage()];
-				sendMessageMock.mockResolvedValueOnce('sent');
-				const composerResumeData = vi.fn(() => ({ approved: false }));
-				const wrapper = mountPanel({ composerResumeData });
-
-				hostVm(wrapper).sendMessageFromOutside('still there?');
-				await flushPromises();
-
-				expect(composerResumeData).not.toHaveBeenCalled();
-				expect(resumeMock).not.toHaveBeenCalled();
-				expect(sendMessageMock).toHaveBeenCalledOnce();
-			});
-
-			it('keeps a busy card answer as a draft and does not retry it', async () => {
-				messagesMock.value = [openInteractiveMessage()];
-				isCancellingMock.value = true;
-				resumeMock.mockResolvedValueOnce('busy');
-				const composerResumeData = vi.fn(() => ({ approved: false }));
-				const wrapper = mountPanel({ composerResumeData });
-
-				hostVm(wrapper).sendMessageFromOutside('use Teams');
-				await flushPromises();
-
-				isCancellingMock.value = false;
-				await flushPromises();
-
-				expect(resumeMock).toHaveBeenCalledOnce();
-				expect(composer(wrapper).props('modelValue')).toBe('use Teams');
 			});
 		});
 

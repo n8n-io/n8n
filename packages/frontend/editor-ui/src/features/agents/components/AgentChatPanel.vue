@@ -53,11 +53,7 @@ import {
 	parseApprovalInput,
 } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
-import type {
-	ChatMessage,
-	ChatMessageAttachment,
-	InteractivePayload,
-} from '@/features/ai/shared/agentsChat/types';
+import type { ChatMessage, ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
 import { resolveFileMimeType } from '@/app/utils/fileUtils';
 import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 import AgentChatMessageList from './AgentChatMessageList.vue';
@@ -132,14 +128,6 @@ const props = withDefaults(
 		 * the exposed `openFilePicker`.
 		 */
 		showAttachButton?: boolean;
-		/**
-		 * Lets the host answer the open card on the last turn with the composer
-		 * text, instead of the default cancel-and-steer. For example, a review
-		 * card where typed text means "request changes" can return
-		 * `{ approved: false, feedback: text }`. Return `undefined` to keep the
-		 * default behavior. Staged files stay in the composer.
-		 */
-		composerResumeData?: (payload: InteractivePayload, text: string) => unknown;
 	}>(),
 	{
 		visible: true,
@@ -158,7 +146,6 @@ const props = withDefaults(
 		clientContext: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
-		composerResumeData: undefined,
 	},
 );
 
@@ -1085,29 +1072,6 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		props.projectId === target.projectId &&
 		props.agentId === target.agentId &&
 		props.continueSessionId === target.continueSessionId;
-
-	// A waiting card resumes only from the workflow, so the host cannot answer it with text.
-	const tailInteractive = hasOpenWaitCard.value ? undefined : openInteractive.value;
-	const composerResume =
-		text && tailInteractive?.runId && props.composerResumeData
-			? props.composerResumeData(tailInteractive, text)
-			: undefined;
-	if (tailInteractive?.runId && composerResume !== undefined) {
-		const result = await resume(
-			{
-				runId: tailInteractive.runId,
-				toolCallId: tailInteractive.toolCallId,
-				resumeData: composerResume,
-			},
-			() => {
-				if (!isCurrentTarget()) return;
-				if (inputText.value.trim() === text) inputText.value = '';
-				consumeQueuedExternalMessage(text);
-				trackSentToN8nChat(hadNoMessagesBeforeSend);
-			},
-		);
-		return result === 'busy' ? 'busy' : 'sent';
-	}
 
 	if (hasOpenInteractiveQuestion.value) {
 		if (!text) return 'rejected';
