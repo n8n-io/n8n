@@ -1,0 +1,21 @@
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_8631ec10eb1199::t_196047a1f96359 224-235,237-238,240-242,258
+  s_8631ec10eb1199::t_4e178f1fa88d36 236
+  s_8631ec10eb1199::t_184b486535df3d 239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "455cc54aada02f5df76582f8c397e27d72426915",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

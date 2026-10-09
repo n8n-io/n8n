@@ -1,0 +1,21 @@
+packages/@n8n/eslint-config/src/rules/no-unneeded-backticks.test.ts
+  s_3b16d2c391be1c::t_90c1a89e5b0067 1-21
+packages/@n8n/eslint-config/src/rules/no-unneeded-backticks.ts
+  s_3b16d2c391be1c::t_90c1a89e5b0067 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3f7169a8bb645d2f8691b3a923a63465af0832e6",
+  "prompts": {},
+  "sessions": {
+    "s_3b16d2c391be1c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f04930ee9ffeEOYbuJffoydzzi",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
