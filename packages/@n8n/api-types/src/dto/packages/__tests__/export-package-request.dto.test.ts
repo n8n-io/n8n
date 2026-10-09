@@ -237,6 +237,13 @@ describe('ExportPackageRequestDto', () => {
 		});
 	});
 
+	describe('unknown fields', () => {
+		it('rejects a key the DTO does not declare', () => {
+			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['a'], evil: 'x' });
+			expect(result.success).toBe(false);
+		});
+	});
+
 	describe('includeArchivedWorkflows', () => {
 		it.each([true, false])('accepts %s', (includeArchivedWorkflows) => {
 			const result = ExportPackageRequestDto.safeParse({

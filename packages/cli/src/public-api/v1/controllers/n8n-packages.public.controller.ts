@@ -1,4 +1,5 @@
 import {
+	ExportPackageRequestDto,
 	ImportBlockedErrorDto,
 	ImportPackageRequestDto,
 	ImportPackageSelectionRequestDto,
@@ -19,8 +20,15 @@ import {
 	Post,
 	PublicApiController,
 } from '@n8n/decorators';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { Response } from 'express';
+import { UserError } from 'n8n-workflow';
+import { pipeline } from 'node:stream/promises';
 
+import {
+	PackageEntityAccessDeniedError,
+	PackageEntityNotFoundError,
+} from '@/modules/n8n-packages/entities/package-export.errors';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import type { ImportResult } from '@/modules/n8n-packages/n8n-packages.types';
 import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-classifier';
@@ -31,6 +39,10 @@ import {
 } from '@/modules/n8n-packages/utils/import-package-upload';
 
 import {
+	EXPORT_200_DESCRIPTION,
+	EXPORT_COUNTS_HEADER_DESCRIPTION,
+	EXPORT_DESCRIPTION,
+	EXPORT_SUMMARY,
 	IMPORT_409_DESCRIPTION,
 	IMPORT_422_DESCRIPTION,
 	IMPORT_DESCRIPTION,
@@ -39,8 +51,11 @@ import {
 	IMPORT_SELECTION_DESCRIPTION,
 	IMPORT_SELECTION_SUMMARY,
 	IMPORT_SUMMARY,
-	IMPORT_TAGS,
+	PACKAGE_TAGS,
 } from './openapi/n8n-packages.openapi';
+
+/** Header carrying the JSON-serialized true per-entity counts of the exported package. */
+const EXPORT_COUNTS_HEADER = 'X-N8n-Export-Counts';
 
 function uploadLimits(maxParts: number) {
 	const maxFileSizeBytes = Container.get(GlobalConfig).endpoints.payloadSizeMax * 1024 * 1024;
@@ -50,6 +65,38 @@ function uploadLimits(maxParts: number) {
 		parts: maxParts,
 		fieldSize: IMPORT_PACKAGE_FIELD_SIZE_BYTES,
 	};
+}
+
+function assertPackageExportApiKeyScopes(
+	apiKeyScopes: string[] | undefined,
+	workflowIds: string[],
+	folderIds: string[],
+	projectIds: string[],
+): string[] {
+	if (!apiKeyScopes) {
+		throw new ForbiddenError('Forbidden');
+	}
+
+	const requiredScopes: string[] = [];
+	// Folders are exported as a workflow-organization concern, so they share the workflow:export scope.
+	if (workflowIds.length > 0 || folderIds.length > 0) {
+		requiredScopes.push('workflow:export');
+	}
+	if (projectIds.length > 0) {
+		requiredScopes.push('project:export');
+	}
+
+	for (const scope of requiredScopes) {
+		if (!apiKeyScopes.includes(scope)) {
+			throw new ForbiddenError('Forbidden');
+		}
+	}
+
+	return apiKeyScopes;
+}
+
+function isPrematureClose(error: unknown): boolean {
+	return error instanceof Error && 'code' in error && error.code === 'ERR_STREAM_PREMATURE_CLOSE';
 }
 
 @PublicApiController('/n8n-packages')
@@ -63,7 +110,7 @@ export class N8nPackagesPublicController {
 	@ApiKeyScope('workflow:import')
 	@ApiSummary(IMPORT_SUMMARY)
 	@ApiDescription(IMPORT_DESCRIPTION)
-	@ApiTags(IMPORT_TAGS)
+	@ApiTags(PACKAGE_TAGS)
 	@ApiResponse(200, ImportResultDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409, { dto: ImportBlockedErrorDto, description: IMPORT_409_DESCRIPTION })
@@ -106,7 +153,7 @@ export class N8nPackagesPublicController {
 	@ApiKeyScope('workflow:import')
 	@ApiSummary(IMPORT_SELECTION_SUMMARY)
 	@ApiDescription(IMPORT_SELECTION_DESCRIPTION)
-	@ApiTags(IMPORT_TAGS)
+	@ApiTags(PACKAGE_TAGS)
 	@ApiResponse(200, ImportResultDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409, {
@@ -153,6 +200,83 @@ export class N8nPackagesPublicController {
 				user: req.user,
 				reason: classifyPackageFailure(error),
 			});
+			throw error;
+		}
+	}
+
+	@Post('/export')
+	@ApiKeyScope({ anyOf: ['project:export', 'workflow:export'] })
+	@ApiSummary(EXPORT_SUMMARY)
+	@ApiDescription(EXPORT_DESCRIPTION)
+	@ApiTags(PACKAGE_TAGS)
+	@ApiResponse(200, {
+		mediaType: 'application/gzip',
+		description: EXPORT_200_DESCRIPTION,
+		headers: { [EXPORT_COUNTS_HEADER]: { description: EXPORT_COUNTS_HEADER_DESCRIPTION } },
+	})
+	@ApiErrorResponse(404)
+	async exportPackage(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body({ required: true }) body: ExportPackageRequestDto,
+	): Promise<void> {
+		const { workflowIds = [], folderIds = [], projectIds = [] } = body;
+
+		try {
+			// A package is either a set of loose workflows/folders or a set of whole projects, not both.
+			if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
+				throw new BadRequestError('Provide either workflowIds/folderIds or projectIds, not both');
+			}
+
+			if (workflowIds.length === 0 && folderIds.length === 0 && projectIds.length === 0) {
+				throw new BadRequestError('At least one workflowId, folderId, or projectId is required');
+			}
+
+			const apiKeyScopes = assertPackageExportApiKeyScopes(
+				req.tokenGrant?.apiKeyScopes,
+				workflowIds,
+				folderIds,
+				projectIds,
+			);
+
+			const { stream, counts } = await this.n8nPackagesService.exportPackage({
+				user: req.user,
+				workflowIds,
+				folderIds,
+				projectIds,
+				includeVariableValues: body.includeVariableValues,
+				canExportVariableValues: apiKeyScopes.includes('variable:list'),
+				includeTags: body.includeTags,
+				missingWorkflowDependencyPolicy: body.missingWorkflowDependencyPolicy,
+				workflowVersionPolicy: body.workflowVersionPolicy,
+				credentialExportPolicy: body.credentialExportPolicy,
+				includeArchivedWorkflows: body.includeArchivedWorkflows,
+			});
+
+			res.setHeader('Content-Disposition', 'attachment; filename="export.n8np"');
+			res.setHeader(EXPORT_COUNTS_HEADER, JSON.stringify(counts));
+			// Cross-origin browser clients can only read the counts header if it is exposed.
+			res.setHeader('Access-Control-Expose-Headers', EXPORT_COUNTS_HEADER);
+
+			await pipeline(stream, res);
+		} catch (error) {
+			// The client closed the connection mid-stream. The export did not fail.
+			if (isPrematureClose(error)) return;
+
+			this.eventService.emit('n8n-package-export-failed', {
+				user: req.user,
+				reason: classifyPackageFailure(error),
+				...(workflowIds.length ? { workflowIds } : {}),
+				...(folderIds.length ? { folderIds } : {}),
+				...(projectIds.length ? { projectIds } : {}),
+			});
+
+			if (
+				error instanceof PackageEntityAccessDeniedError ||
+				error instanceof PackageEntityNotFoundError
+			) {
+				throw new UserError(error.message, { description: error.description });
+			}
 			throw error;
 		}
 	}
