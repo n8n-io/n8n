@@ -13,13 +13,17 @@ function isBinaryResult(result: unknown): result is BinaryResult {
 	);
 }
 
-function sendHeaders(
+function isPrematureClose(error: unknown): boolean {
+	return error instanceof Error && 'code' in error && error.code === 'ERR_STREAM_PREMATURE_CLOSE';
+}
+
+function setResponseHeaders(
 	res: Response,
 	successStatus: SuccessStatus,
 	mediaType: BinaryResponse['mediaType'],
-	headers: BinaryResult['headers'],
+	headers: NonNullable<BinaryResult['headers']>,
 ) {
-	for (const [name, value] of Object.entries(headers ?? {})) {
+	for (const [name, value] of Object.entries(headers)) {
 		res.setHeader(name, value);
 	}
 	// Set last, so a result header cannot replace the declared media type.
@@ -40,10 +44,11 @@ export async function sendBinaryResponse(
 		throw new UnexpectedError(`${routeName} declares a binary @ApiResponse but returned no body`);
 	}
 
-	const setHeaderNames = new Set(
-		Object.keys(result.headers ?? {}).map((name) => name.toLowerCase()),
-	);
-	const missing = Object.keys(binaryResponse.headers ?? {}).filter(
+	const declaredHeaders = binaryResponse.headers ?? {};
+	const resultHeaders = result.headers ?? {};
+
+	const setHeaderNames = new Set(Object.keys(resultHeaders).map((name) => name.toLowerCase()));
+	const missing = Object.keys(declaredHeaders).filter(
 		(name) => !setHeaderNames.has(name.toLowerCase()),
 	);
 	if (missing.length) {
@@ -56,15 +61,16 @@ export async function sendBinaryResponse(
 
 	// A buffer is already in memory, so send it in one write.
 	if (Buffer.isBuffer(body)) {
-		sendHeaders(res, successStatus, binaryResponse.mediaType, result.headers);
+		setResponseHeaders(res, successStatus, binaryResponse.mediaType, resultHeaders);
 		res.end(body);
 		return;
 	}
 
-	// Handle a stream. The first chunk is read to ensure the stream is not empty, the rest of the chunks are piped to the response.
+	// A stream: read the first chunk before any header is set. A stream that fails at once then
+	// gets a JSON error, not a 200 with no body.
 	const iterator = body[Symbol.asyncIterator]();
 	const first = await iterator.next();
-	sendHeaders(res, successStatus, binaryResponse.mediaType, result.headers);
+	setResponseHeaders(res, successStatus, binaryResponse.mediaType, resultHeaders);
 	if (first.done) {
 		res.end();
 		return;
@@ -77,9 +83,7 @@ export async function sendBinaryResponse(
 		await pipeline(Readable.from(rest), res);
 	} catch (error) {
 		// The client disconnected.
-		if (
-			!(error instanceof Error && 'code' in error && error.code === 'ERR_STREAM_PREMATURE_CLOSE')
-		) {
+		if (!isPrematureClose(error)) {
 			throw error;
 		}
 	}
