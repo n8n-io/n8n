@@ -9,7 +9,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migration = 'NormalizeAgentSkillIds1791454646995';
+const migration = 'NormalizeAgentSkillIds1791549337362';
 const agentId = 'Agent00000000001';
 const projectId = 'Project000000001';
 const skillId = 'skill_1111111111111111';

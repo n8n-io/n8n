@@ -292,7 +292,7 @@ async function collectSkillIds(ctx: MigrationContext): Promise<IdMap> {
  * The migration discards the skill ID mapping, so it cannot reverse normalization or random collision replacements.
  * Keep existing task IDs because they also identify retained sandboxes.
  */
-export class NormalizeAgentSkillIds1791454646995 implements IrreversibleMigration {
+export class NormalizeAgentSkillIds1791549337362 implements IrreversibleMigration {
 	async up(ctx: MigrationContext) {
 		const skills = await collectSkillIds(ctx);
 		if (skills.size === 0) return;
