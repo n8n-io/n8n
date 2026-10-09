@@ -8,6 +8,8 @@ import {
 	isBase64,
 	validateJSON,
 	validateSecretName,
+	encryptSecret,
+	getRepositoryPublicKey,
 } from '../GenericFunctions';
 import type { Mock } from 'vitest';
 
@@ -208,5 +210,97 @@ describe('GenericFunctions', () => {
 				expect(validateSecretName(secretName)).toContain('GITHUB_');
 			},
 		);
+	});
+
+	describe('encryptSecret', () => {
+		// crypto_box_SEALBYTES: a 32-byte ephemeral public key plus a 16-byte MAC
+		const SEALED_BOX_OVERHEAD = 48;
+		const testPublicKey = Buffer.from(new Uint8Array(32).fill(1)).toString('base64');
+
+		it('should seal to the given public key so the matching secret key opens it', async () => {
+			const { default: naclFactory } = await import('js-nacl');
+			const nacl = await naclFactory.instantiate(() => {});
+			const keyPair = nacl.crypto_box_keypair();
+			const secretValue = 'my-secret-value';
+
+			const encrypted = await encryptSecret(
+				secretValue,
+				Buffer.from(keyPair.boxPk).toString('base64'),
+			);
+
+			const opened = nacl.crypto_box_seal_open(
+				new Uint8Array(Buffer.from(encrypted, 'base64')),
+				keyPair.boxPk,
+				keyPair.boxSk,
+			);
+			expect(nacl.decode_utf8(opened)).toBe(secretValue);
+		});
+
+		it('should return canonical base64 with the sealed-box overhead', async () => {
+			const secretValue = 'my-secret-value';
+
+			const encrypted = await encryptSecret(secretValue, testPublicKey);
+
+			expect(encrypted).toMatch(/^[A-Za-z0-9+/]+={0,2}$/);
+			expect(Buffer.from(encrypted, 'base64').toString('base64')).toBe(encrypted);
+			expect(Buffer.from(encrypted, 'base64')).toHaveLength(
+				Buffer.byteLength(secretValue, 'utf8') + SEALED_BOX_OVERHEAD,
+			);
+		});
+
+		it('should produce different encrypted values for the same input', async () => {
+			const encrypted1 = await encryptSecret('my-secret-value', testPublicKey);
+			const encrypted2 = await encryptSecret('my-secret-value', testPublicKey);
+
+			// The sealed box uses an ephemeral key pair, so the output is never repeated
+			expect(encrypted1).not.toBe(encrypted2);
+		});
+
+		it.each([
+			['an empty value', ''],
+			['unicode characters', 'secret-with-unicode-🔐-chars'],
+			['special characters', '!@#$%^&*()_+-=[]{}|;:\'",.<>?/\\`~'],
+			['a long value', 'a'.repeat(10000)],
+		])('should encrypt %s', async (_label, secretValue) => {
+			const encrypted = await encryptSecret(secretValue, testPublicKey);
+
+			// Length is derived from the UTF-8 byte count, not the JS string length
+			expect(Buffer.from(encrypted, 'base64')).toHaveLength(
+				Buffer.byteLength(secretValue, 'utf8') + SEALED_BOX_OVERHEAD,
+			);
+		});
+	});
+
+	describe('getRepositoryPublicKey', () => {
+		it('should fetch the public key of the repository', async () => {
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValueOnce({
+				key_id: '012345678912345678',
+				key: 'base64-public-key',
+			});
+
+			const result = await getRepositoryPublicKey.call(mockExecuteHookFunctions, 'owner', 'repo');
+
+			expect(result).toEqual({ key_id: '012345678912345678', key: 'base64-public-key' });
+			expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubApi',
+				expect.objectContaining({
+					method: 'GET',
+					uri: 'https://api.github.com/repos/owner/repo/actions/secrets/public-key',
+				}),
+			);
+		});
+
+		it.each([
+			['key_id', { key: 'base64-public-key' }],
+			['key', { key_id: '012345678912345678' }],
+		])('should throw when the response has no %s', async (_field, response) => {
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValueOnce(
+				response,
+			);
+
+			await expect(
+				getRepositoryPublicKey.call(mockExecuteHookFunctions, 'owner', 'repo'),
+			).rejects.toThrow(NodeOperationError);
+		});
 	});
 });
