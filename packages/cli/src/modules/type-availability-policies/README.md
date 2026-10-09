@@ -188,7 +188,8 @@ A policy lives in three tables:
 - **attachments**, which bind a document to a scope with a priority and a floor flag.
 
 `projectId: null` is the instance scope. An unwritten scope has no row: it allows everything and
-reports version `0`, so a first write sends `expectedVersion: 0`.
+reports version `0`, so a first write sends `expectedVersion: 0`. One accepted write moves the
+version by exactly one, whatever it changed.
 
 Evaluation is `instance ∩ project`, and a project can only restrict further. `delegate` is the
 one exception: an instance `delegate` is satisfied only by an explicit project `allow` rule,

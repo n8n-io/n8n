@@ -901,6 +901,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(policyRepository.findByIdAndKind.mock.invocationCallOrder[0]).toBeLessThan(
 				attachmentRepository.listScopeIdsAttachedToPolicy.mock.invocationCallOrder[0],
 			);
+			expect(scopeRepository.bumpVersion).toHaveBeenCalledWith(scope.id, ROOT);
 		});
 
 		it('rejects a delegate defaultAction at project scope before opening a transaction', async () => {
@@ -945,7 +946,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			});
 			policyRepository.createPolicy.mockResolvedValue(makePolicy({ rules: [], version: 1 }));
 			scopeRepository.findScopeById.mockResolvedValue(
-				makeScope({ defaultAction: 'delegate', version: 2 }),
+				makeScope({ defaultAction: 'delegate', version: 1 }),
 			);
 
 			await expect(
@@ -1014,7 +1015,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			const createdPolicy = makePolicy({ rules: [RULE], version: 1 });
 			policyRepository.createPolicy.mockResolvedValue(createdPolicy);
 			scopeRepository.findScopeById.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 2 }),
+				makeScope({ defaultAction: 'deny', version: 1 }),
 			);
 
 			const result = await service.setEffectivePolicy(
@@ -1025,8 +1026,9 @@ describe('TypeAvailabilityPolicyService', () => {
 				'user-1',
 			);
 
-			expect(result.version).toBe(2);
+			expect(result.version).toBe(1);
 			expect(result.rules).toEqual([RULE]);
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
 			expect(attachmentRepository.replaceAttachmentsForScope).toHaveBeenCalledWith(
 				createdScope.id,
 				[{ policyId: createdPolicy.id, priority: 0, isFloor: false }],
@@ -1047,7 +1049,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				projectId: null,
 				scopeId: createdScope.id,
 				before: null,
-				after: { defaultAction: 'deny', version: 2 },
+				after: { defaultAction: 'deny', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [RULE],
 				warningCount: 0,
@@ -1065,7 +1067,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			const updatedPolicy = makePolicy({ rules: [RULE], version: 2 });
 			policyRepository.updateRules.mockResolvedValue(updatedPolicy);
 			scopeRepository.findScopeById.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 3 }),
+				makeScope({ defaultAction: 'deny', version: 2 }),
 			);
 
 			await service.setEffectivePolicy(
@@ -1082,6 +1084,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				'user-2',
 				ROOT,
 			);
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledTimes(3);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-document-updated',
@@ -1097,7 +1100,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				projectId: null,
 				scopeId: scope.id,
 				before: { defaultAction: 'allow', version: 1 },
-				after: { defaultAction: 'deny', version: 3 },
+				after: { defaultAction: 'deny', version: 2 },
 				rulesBefore: [],
 				rulesAfter: [RULE],
 				warningCount: 0,
@@ -1170,6 +1173,31 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			expect(result.defaultAction).toBe('deny');
 			expect(result.version).toBe(1);
+		});
+
+		it('moves the version once when neither the rules nor the default action change', async () => {
+			const scope = makeScope({ defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(scope);
+			const existingPolicy = makePolicy({ rules: [RULE], version: 1 });
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: existingPolicy.id, rules: [RULE], priority: 0, isFloor: false },
+			]);
+			policyRepository.findByIdAndKind.mockResolvedValue(existingPolicy);
+			policyRepository.updateRules.mockResolvedValue(existingPolicy);
+			scopeRepository.findScopeById.mockResolvedValue(
+				makeScope({ defaultAction: 'allow', version: 2 }),
+			);
+
+			await service.setEffectivePolicy(
+				KIND,
+				null,
+				{ rules: [RULE], defaultAction: 'allow' },
+				1,
+				'user-2',
+			);
+
+			expect(scopeRepository.updateDefaultAction).not.toHaveBeenCalled();
+			expect(scopeRepository.bumpVersion).toHaveBeenCalledTimes(1);
 		});
 	});
 

@@ -111,6 +111,44 @@ describe('credential type availability policy instance controller admin happy pa
 		expect(persisted.body.data.rules).toEqual(response.body.data.rules);
 	});
 
+	test('each accepted PUT /instance moves the version by exactly one', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const rule = (id: string, value: string) => ({
+			id,
+			action: 'deny' as const,
+			selector: { kind: 'name' as const, value },
+		});
+
+		const unwritten = await agent.get('/credential-type-policies/instance');
+		expect(unwritten.body.data.version).toBe(0);
+
+		const created = await agent
+			.put('/credential-type-policies/instance')
+			.send({ rules: [rule('r1', 'slackApi')], defaultAction: 'allow', version: 0 });
+		expect(created.statusCode).toBe(200);
+		expect(created.body.data.version).toBe(1);
+
+		const rulesOnly = await agent.put('/credential-type-policies/instance').send({
+			rules: [rule('r2', 'githubApi')],
+			defaultAction: 'allow',
+			version: created.body.data.version,
+		});
+		expect(rulesOnly.statusCode).toBe(200);
+		expect(rulesOnly.body.data.version).toBe(2);
+
+		const actionOnly = await agent.put('/credential-type-policies/instance').send({
+			rules: [rule('r2', 'githubApi')],
+			defaultAction: 'deny',
+			version: rulesOnly.body.data.version,
+		});
+		expect(actionOnly.statusCode).toBe(200);
+		expect(actionOnly.body.data.version).toBe(3);
+
+		const persisted = await agent.get('/credential-type-policies/instance');
+		expect(persisted.body.data.version).toBe(3);
+		expect(persisted.body.data.defaultAction).toBe('deny');
+	});
+
 	test('policy document CRUD persists, distinctly from node type policy documents', async () => {
 		const created = await testServer
 			.authAgentFor(owner)
