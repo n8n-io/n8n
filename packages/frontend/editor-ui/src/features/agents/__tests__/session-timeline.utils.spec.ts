@@ -1035,6 +1035,39 @@ describe('timelineItemErrorMessage', () => {
 		).toBe('Selector not found');
 	});
 
+	it('extracts the message of an error object in an MCP JSON text envelope', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [
+							{ type: 'text', text: '' },
+							{ type: 'text', text: JSON.stringify({ error: { message: 'Rate limited' } }) },
+						],
+					},
+				}),
+			),
+		).toBe('Rate limited');
+	});
+
+	it('reads the top-level error before the MCP fields', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						error: { message: 'Top-level failure' },
+						structuredContent: { error: 'Structured failure' },
+					},
+				}),
+			),
+		).toBe('Top-level failure');
+	});
+
 	it('returns empty string when no error message is present', () => {
 		expect(
 			timelineItemErrorMessage(item({ kind: 'tool', toolSuccess: false, toolOutput: {} })),

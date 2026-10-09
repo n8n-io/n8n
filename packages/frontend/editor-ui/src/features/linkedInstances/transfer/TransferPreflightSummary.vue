@@ -83,11 +83,7 @@ function subWorkflowLabel({ id, name }: { id: string; name: string | null }): st
 			</ul>
 		</section>
 
-		<section
-			v-if="state.needsSetUp.length > 0"
-			:class="$style.section"
-			aria-labelledby="transfer-set-up-heading"
-		>
+		<section v-if="state.needsSetUp.length > 0" :class="$style.section">
 			<N8nText tag="h3" size="small" bold>
 				{{ i18n.baseText('linkedInstances.transfer.setUp.heading') }}
 			</N8nText>
@@ -103,30 +99,30 @@ function subWorkflowLabel({ id, name }: { id: string; name: string | null }): st
 			</ul>
 		</section>
 
-		<section v-if="cannotMove" :class="$style.section">
+		<section v-if="cannotMove" :class="$style.section" data-test-id="transfer-cannot-move">
 			<N8nText tag="h3" size="small" bold>
 				{{ i18n.baseText('linkedInstances.transfer.cannotMove.heading') }}
 			</N8nText>
-			<N8nNotice theme="warning" :class="$style.notice" data-test-id="transfer-cannot-move">
-				<template v-if="state.subWorkflowCalls.length > 0">
-					<p>{{ i18n.baseText('linkedInstances.transfer.cannotMove.subWorkflows') }}</p>
-					<ul :class="$style.list">
-						<li v-for="call in state.subWorkflowCalls" :key="call.id">
-							{{ subWorkflowLabel(call) }}
-						</li>
-					</ul>
-				</template>
-				<template v-if="state.missingNodeTypes.length > 0">
-					<p>
-						{{ i18n.baseText('linkedInstances.transfer.cannotMove.nodeTypes', { interpolate }) }}
-					</p>
-					<ul :class="$style.list">
-						<li v-for="nodeType in state.missingNodeTypes" :key="nodeType">
-							<code :class="$style.code">{{ nodeType }}</code>
-						</li>
-					</ul>
-				</template>
-			</N8nNotice>
+			<template v-if="state.subWorkflowCalls.length > 0">
+				<N8nNotice theme="warning" :class="$style.notice">
+					{{ i18n.baseText('linkedInstances.transfer.cannotMove.subWorkflows') }}
+				</N8nNotice>
+				<ul :class="$style.list">
+					<li v-for="call in state.subWorkflowCalls" :key="call.id">
+						<N8nText size="small">{{ subWorkflowLabel(call) }}</N8nText>
+					</li>
+				</ul>
+			</template>
+			<template v-if="state.missingNodeTypes.length > 0">
+				<N8nNotice theme="warning" :class="$style.notice">
+					{{ i18n.baseText('linkedInstances.transfer.cannotMove.nodeTypes', { interpolate }) }}
+				</N8nNotice>
+				<ul :class="$style.list">
+					<li v-for="nodeType in state.missingNodeTypes" :key="nodeType">
+						<code :class="$style.code">{{ nodeType }}</code>
+					</li>
+				</ul>
+			</template>
 		</section>
 
 		<ul
@@ -177,13 +173,14 @@ function subWorkflowLabel({ id, name }: { id: string; name: string | null }): st
 }
 
 .list {
-	margin: var(--spacing--4xs) 0 0;
-	padding-left: var(--spacing--sm);
+	margin: 0;
+	padding-left: var(--spacing--md);
 	list-style: disc;
 }
 
 .code {
 	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--2xs);
 }
 
 .warnings {

@@ -82,9 +82,9 @@ export class McpProtectedResource implements ProtectedResource {
 	 *
 	 * The consent screen uses `getGrantableScopes`, which removes the scopes that
 	 * the signed-in user cannot use. So the consent screen can offer fewer scopes
-	 * than discovery advertises. For example, with the agent scopes on: 16 here,
-	 * and 14 on consent for a user outside the preferences experiment (no
-	 * `aiPreference:read` and `aiPreference:write`).
+	 * than discovery advertises: it drops the `aiPreference:*` scopes for a user
+	 * outside the preferences experiment, and `communityPackage:install` when
+	 * that user cannot install community packages.
 	 */
 	get scopes(): string[] {
 		if (areAgentToolsAvailable(this.globalConfig, this.moduleRegistry)) return SUPPORTED_SCOPES;

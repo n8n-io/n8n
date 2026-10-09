@@ -3357,6 +3357,32 @@ describe('AgentBuilderView — three-column shell', () => {
 			},
 		);
 
+		it.each([
+			{ where: 'the standalone preview route', route: AGENT_PREVIEW_VIEW, props: undefined },
+			{
+				where: 'artifact mode',
+				route: undefined,
+				props: { artifactMode: true, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+			},
+		])(
+			'leaves the shortcut to the browser on $where, which has no AI dock',
+			async function ({ route, props }) {
+				// Windows uses Ctrl, so the same key press toggles the panel on the builder route.
+				vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Windows');
+				if (route) routeState.name = route;
+				const wrapper = await renderView({ props });
+				trackMock.mockClear();
+
+				expect(pressToggle('ctrlKey').defaultPrevented).toBe(false);
+				await nextTick();
+
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+				expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBeNull();
+				expect(routerPush).not.toHaveBeenCalled();
+				expect(trackMock).not.toHaveBeenCalled();
+			},
+		);
+
 		it.each(platforms)(
 			'routes $modifier to unfinished setup without opening',
 			async function ({ userAgent, modifier }) {

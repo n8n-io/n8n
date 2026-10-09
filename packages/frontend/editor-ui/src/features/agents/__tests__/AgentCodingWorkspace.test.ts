@@ -222,6 +222,46 @@ it('explains in the panel that this sandbox cannot show a preview, without an er
 	expect(api.preview).toHaveBeenCalledOnce();
 });
 
+it('checks again for an unavailable preview and shows it once the sandbox can', async () => {
+	api.preview.mockResolvedValueOnce({ available: false });
+	const { user, panel } = await openPreviewTab();
+	const state = await within(panel).findByRole('status');
+	await waitFor(() => expect(state).toHaveAttribute('data-state', 'unavailable'));
+
+	await user.click(within(state).getByRole('button', { name: 'Check again' }));
+
+	expect(await within(panel).findByTitle('Preview')).toHaveAttribute(
+		'src',
+		'https://preview.example.test',
+	);
+	expect(api.preview).toHaveBeenCalledTimes(2);
+	expect(showError).not.toHaveBeenCalled();
+});
+
+it('opens the app in a new window, or explains in the panel why it cannot', async () => {
+	const popup = { opener: {}, location: { href: '' }, close: vi.fn() };
+	vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window);
+	const user = userEvent.setup({ delay: null });
+	renderWorkspace();
+	const openApp = await screen.findByRole('button', { name: 'Open in browser' });
+	await waitFor(() => expect(openApp).toBeEnabled());
+
+	await user.click(openApp);
+	await waitFor(() => expect(popup.location.href).toBe('https://preview.example.test'));
+	expect(popup.opener).toBeNull();
+	expect(screen.queryByRole('tabpanel', { name: 'Preview' })).toBeNull();
+
+	api.preview.mockResolvedValueOnce({ available: false });
+	await user.click(openApp);
+
+	const panel = await screen.findByRole('tabpanel', { name: 'Preview' });
+	await waitFor(() =>
+		expect(within(panel).getByRole('status')).toHaveAttribute('data-state', 'unavailable'),
+	);
+	expect(popup.close).toHaveBeenCalledOnce();
+	expect(showError).not.toHaveBeenCalled();
+});
+
 it('shows a failed preview request in the panel and lets the user try again', async () => {
 	api.preview.mockRejectedValueOnce(new Error('The sandbox did not answer'));
 	const { user, panel } = await openPreviewTab();

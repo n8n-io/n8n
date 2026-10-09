@@ -562,9 +562,9 @@ describe('McpProtectedResource', () => {
 				expect(resource.scopes).toContain('aiPreference:write');
 			});
 
-			it('lists 16 scopes in discovery and offers 14 on consent outside the experiment', async () => {
+			it('lists every scope in discovery and drops only the preference scopes on consent outside the experiment', async () => {
 				// Discovery (`scopes_supported`) reads `scopes`. The consent screen
-				// reads the grantable scopes, so the two counts differ on purpose.
+				// reads the grantable scopes, so the two lists differ on purpose.
 				postHogClient.getFeatureFlags.mockResolvedValue({
 					[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
 				});
@@ -572,8 +572,6 @@ describe('McpProtectedResource', () => {
 				const grantable = await resource.getGrantableScopes(user);
 
 				expect(resource.scopes).toEqual([...MCP_INSTANCE_SCOPES]);
-				expect(resource.scopes).toHaveLength(16);
-				expect(grantable).toHaveLength(14);
 				expect(resource.scopes.filter((scope) => !grantable.includes(scope))).toEqual([
 					'aiPreference:read',
 					'aiPreference:write',

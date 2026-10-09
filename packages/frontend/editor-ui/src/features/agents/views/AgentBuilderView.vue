@@ -2864,8 +2864,10 @@ function onSwitchAgent(nextAgentId: string) {
 
 useKeybindings({
 	ctrl_j: {
+		// The shortcut toggles the docked panel. Where the dock never shows, a toggle
+		// would only change the saved state that the builder reads later.
 		disabled: function isAiPanelShortcutDisabled() {
-			return !instanceAiAvailable.value;
+			return !instanceAiAvailable.value || isArtifactMode.value || isStandalonePreview.value;
 		},
 		run: toggleAiPanel,
 		/** Enables closing with command whilst panel input is focused */

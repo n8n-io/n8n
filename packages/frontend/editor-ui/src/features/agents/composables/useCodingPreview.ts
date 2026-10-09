@@ -21,7 +21,7 @@ export interface CodingPreviewOptions {
 export function useCodingPreview(options: CodingPreviewOptions) {
 	const url = ref('');
 	const request = ref<CodingPreviewRequest>('idle');
-	// Each load or clear starts a new generation, so a late answer cannot replace newer state.
+	// Each load, clear or window answer starts a new generation, so a late answer cannot replace newer state.
 	let generation = 0;
 	let disposed = false;
 	onScopeDispose(() => {
@@ -59,7 +59,7 @@ export function useCodingPreview(options: CodingPreviewOptions) {
 	}
 
 	async function load() {
-		// An unavailable preview stays so until `clear`, for example when the app stops.
+		// An unavailable preview stays so until `clear` (for example, the app stops) or `checkAgain`.
 		const settled = request.value === 'loading' || request.value === 'unavailable';
 		if (settled || url.value || !canLoad()) return;
 		const id = ++generation;
@@ -74,10 +74,26 @@ export function useCodingPreview(options: CodingPreviewOptions) {
 		}
 	}
 
-	function markUnavailable() {
-		generation++;
-		request.value = 'unavailable';
+	/** Asks again for a preview that was unavailable, for example after a sandbox upgrade. */
+	async function checkAgain() {
+		clear();
+		await load();
 	}
 
-	return { url, state, load, clear, markUnavailable };
+	/**
+	 * Asks for the preview URL to show the app outside the panel, for example
+	 * in a new window. The caller handles a failed request. An unavailable answer
+	 * also changes the panel, but only when no load or clear came after the request.
+	 */
+	async function fetchForWindow(): Promise<AgentCodingPreview> {
+		const id = generation;
+		const preview = await options.fetchPreview();
+		if (!preview.available && isCurrent(id)) {
+			generation++;
+			request.value = 'unavailable';
+		}
+		return preview;
+	}
+
+	return { url, state, load, clear, checkAgain, fetchForWindow };
 }

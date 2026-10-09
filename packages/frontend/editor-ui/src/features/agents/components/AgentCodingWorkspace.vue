@@ -204,7 +204,8 @@ const {
 	state: previewState,
 	load: loadPreview,
 	clear: clearPreview,
-	markUnavailable: markPreviewUnavailable,
+	checkAgain: checkPreviewAgain,
+	fetchForWindow: fetchPreviewForWindow,
 } = useCodingPreview({
 	fetchPreview: async () => await api.value.preview(),
 	isOpen: () => previewOpen.value,
@@ -442,11 +443,10 @@ async function openApp() {
 	// Open the window before the request, so that the browser does not block it.
 	const popup = window.open('', '_blank');
 	try {
-		const preview = await api.value.preview();
+		const preview = await fetchPreviewForWindow();
 		if (!preview.available) {
 			// The preview panel explains this expected state. It is not an error.
 			popup?.close();
-			markPreviewUnavailable();
 			openPreview();
 			return;
 		}
@@ -782,15 +782,19 @@ onBeforeUnmount(() => {
 							@click="act({ action: 'start' })"
 							>{{ runLabel }}</N8nButton
 						>
-						<N8nButton
-							v-else-if="previewState === 'unavailable'"
-							variant="outline"
-							@click="
-								logStream = 'app';
-								logsOpen = true;
-							"
-							>{{ i18n.baseText('agents.coding.app.showLogs') }}</N8nButton
-						>
+						<div v-else-if="previewState === 'unavailable'" :class="$style.emptyActions">
+							<N8nButton
+								variant="outline"
+								@click="
+									logStream = 'app';
+									logsOpen = true;
+								"
+								>{{ i18n.baseText('agents.coding.app.showLogs') }}</N8nButton
+							>
+							<N8nButton variant="ghost" :disabled="!canExecute" @click="checkPreviewAgain">{{
+								i18n.baseText('agents.coding.app.checkAgain')
+							}}</N8nButton>
+						</div>
 						<N8nButton
 							v-else-if="previewState === 'failed' || previewState === 'running'"
 							variant="outline"
@@ -1322,6 +1326,12 @@ onBeforeUnmount(() => {
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg);
 	flex: 1;
+}
+.emptyActions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--spacing--2xs);
 }
 .fileListResize {
 	flex-shrink: 0;

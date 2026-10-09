@@ -169,6 +169,7 @@
 	"agents.coding.app.unavailable": "Preview is not available for this sandbox yet.",
 	"agents.coding.app.unavailableHint": "The app still runs. You can follow its output in the app logs.",
 	"agents.coding.app.showLogs": "Show app logs",
+	"agents.coding.app.checkAgain": "Check again",
 	"agents.coding.app.failed": "Could not open the preview",
 	"agents.coding.app.failedHint": "Check the app logs, then try again.",
 	"agents.coding.app.noAccess": "You cannot open the preview",

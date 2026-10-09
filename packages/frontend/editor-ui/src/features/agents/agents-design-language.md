@@ -242,7 +242,10 @@ give the whole label to `N8nAiActivityStep` as `fullLabel`.
 
 The preview panel says `Opening the preview…` only while a request for the
 preview URL is open. A user who cannot run the agent sees
-`You cannot open the preview` and the reason, not a loading state.
+`You cannot open the preview` and the reason, not a loading state. A sandbox
+that cannot show a preview is a state of the panel, not an error toast. The
+panel offers `Show app logs` (outline) and `Check again` (ghost), because the
+sandbox can get preview support later.
 
 ## Recoverable plan errors
 

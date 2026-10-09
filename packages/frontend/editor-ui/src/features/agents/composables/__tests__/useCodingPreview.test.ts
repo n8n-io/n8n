@@ -7,7 +7,7 @@ import { useCodingPreview } from '../useCodingPreview';
 const READY: AgentCodingPreview = { available: true, url: '/sandbox-preview/token/' };
 
 function setup(fetchPreview: () => Promise<AgentCodingPreview>) {
-	const app = ref<AgentCodingStatus['app']>('running');
+	const app = ref<AgentCodingStatus['app'] | undefined>('running');
 	const isOpen = ref(true);
 	const canExecute = ref(true);
 	const onError = vi.fn();
@@ -139,11 +139,88 @@ describe('useCodingPreview', () => {
 		expect(preview.state.value).toBe('ready');
 	});
 
-	it('marks the preview unavailable when another request finds out', () => {
-		const { preview } = setup(async () => READY);
-
-		preview.markUnavailable();
-
+	it('checks again after an unavailable answer, and shows the preview once it is there', async () => {
+		const { preview, fetch } = setup(async () => ({ available: false }));
+		await preview.load();
 		expect(preview.state.value).toBe('unavailable');
+
+		fetch.mockResolvedValueOnce(READY);
+		await preview.checkAgain();
+
+		expect(fetch).toHaveBeenCalledTimes(2);
+		expect(preview.state.value).toBe('ready');
+		expect(preview.url.value).toBe('/sandbox-preview/token/');
+	});
+
+	it('stays unavailable when a new check gives the same answer', async () => {
+		const { preview, fetch } = setup(async () => ({ available: false }));
+		await preview.load();
+
+		await preview.checkAgain();
+
+		expect(fetch).toHaveBeenCalledTimes(2);
+		expect(preview.state.value).toBe('unavailable');
+	});
+
+	describe('fetchForWindow', () => {
+		it('marks the panel unavailable when the window request finds out', async () => {
+			const { preview, fetch } = setup(async () => ({ available: false }));
+
+			await expect(preview.fetchForWindow()).resolves.toEqual({ available: false });
+
+			expect(preview.state.value).toBe('unavailable');
+			// The panel keeps the answer, so it does not ask again.
+			await preview.load();
+			expect(fetch).toHaveBeenCalledOnce();
+		});
+
+		it('gives a ready URL to the caller and keeps the panel as it was', async () => {
+			const { preview } = setup(async () => READY);
+
+			await expect(preview.fetchForWindow()).resolves.toEqual(READY);
+
+			expect(preview.url.value).toBe('');
+			expect(preview.state.value).toBe('running');
+		});
+
+		it('ignores an unavailable answer that arrives after the app stopped', async () => {
+			const answer = Promise.withResolvers<AgentCodingPreview>();
+			const { preview, app, fetch } = setup(async () => await answer.promise);
+
+			const opening = preview.fetchForWindow();
+			app.value = 'stopped';
+			preview.clear();
+			answer.resolve({ available: false });
+			await opening;
+
+			app.value = 'running';
+			expect(preview.state.value).toBe('running');
+			fetch.mockResolvedValueOnce(READY);
+			await preview.load();
+			expect(preview.state.value).toBe('ready');
+		});
+
+		it('ignores an unavailable answer when a newer panel load is open', async () => {
+			const windowAnswer = Promise.withResolvers<AgentCodingPreview>();
+			const { preview, fetch } = setup(async () => await windowAnswer.promise);
+
+			const opening = preview.fetchForWindow();
+			fetch.mockResolvedValueOnce(READY);
+			await preview.load();
+			windowAnswer.resolve({ available: false });
+			await opening;
+
+			expect(preview.state.value).toBe('ready');
+		});
+
+		it('passes a failed request to the caller and leaves the panel state', async () => {
+			const failure = new Error('No answer');
+			const { preview, onError } = setup(async () => await Promise.reject(failure));
+
+			await expect(preview.fetchForWindow()).rejects.toBe(failure);
+
+			expect(onError).not.toHaveBeenCalled();
+			expect(preview.state.value).toBe('running');
+		});
 	});
 });

@@ -49,6 +49,11 @@ function byTestId(container: Element, id: string): HTMLElement | null {
 	return container.querySelector<HTMLElement>(`[data-testid="${id}"]`);
 }
 
+/** The open tooltip, which Reka UI renders outside the component. */
+function openTooltip() {
+	return document.querySelector('[data-dismissable-layer]');
+}
+
 describe('AgentCodingToolDetails', () => {
 	it('starts the details with the path, which opens the file', async () => {
 		const { openFile } = renderDetails(
@@ -57,12 +62,24 @@ describe('AgentCodingToolDetails', () => {
 
 		const path = screen.getByRole('button', { name: 'Open src/lib/dates.ts' });
 		expect(path).toHaveTextContent('src/lib/dates.ts');
-		expect(path).toHaveAttribute('title', 'src/lib/dates.ts');
+		expect(path).not.toHaveAttribute('title');
 		await userEvent.click(path);
 
 		expect(openFile).toHaveBeenCalledWith('src/lib/dates.ts');
 		expect(screen.getByText('File content')).toBeVisible();
 		expect(await screen.findByText('export {}')).toBeVisible();
+	});
+
+	it('shows the full path in a tooltip when the path gets keyboard focus', async () => {
+		const longPath =
+			'packages/frontend/editor-ui/src/features/agents/components/AgentCodingDiff.vue';
+		renderDetails(toolCall('workspace_read_file', { path: longPath }, { content: 'export {}' }));
+		expect(openTooltip()).toBeNull();
+
+		await userEvent.tab();
+
+		expect(screen.getByRole('button', { name: `Open ${longPath}` })).toHaveFocus();
+		await waitFor(() => expect(openTooltip()).toHaveTextContent(longPath));
 	});
 
 	it('says that long written content is shortened', async () => {
@@ -225,6 +242,21 @@ describe('AgentCodingToolDetails', () => {
 		);
 		expect(byTestId(container, 'agent-coding-tool-exit-code')).toBeNull();
 		expect(screen.getByText('$ pnpm test')).toBeVisible();
+	});
+
+	it('treats an exit code that is not a whole number as no exit code, as the step label does', () => {
+		const { container } = renderDetails(
+			toolCall(
+				'workspace_execute_command',
+				{ command: 'pnpm test' },
+				{ success: false, exitCode: 1.5, error: 'The sandbox stopped.' },
+			),
+		);
+
+		expect(byTestId(container, 'agent-coding-tool-exit-code')).toBeNull();
+		expect(byTestId(container, 'agent-coding-tool-failure')).toHaveTextContent(
+			'The sandbox stopped.',
+		);
 	});
 
 	it('opens long command output at its end', async () => {

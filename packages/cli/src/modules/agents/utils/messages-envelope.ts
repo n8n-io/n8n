@@ -7,6 +7,7 @@ import type {
 } from '@n8n/api-types';
 
 import { messagesToDto } from '../agent-message-mapper';
+import { sanitizeExecutionLogValue } from '../execution-recorder';
 import { isApprovalSuspendPayload } from '../integrations/agent-chat-suspension-cards';
 import {
 	isTerminalToolCallPart,
@@ -198,23 +199,31 @@ function matchOpenCalls(
 }
 
 /**
+ * Whether the recorded input is the raw checkpoint input as the history stores it. The memory
+ * stores raw values. The execution recorder stores the sanitised form. The redaction of this
+ * response withholds more (deep values, secret-shaped text), so it cannot tell two inputs apart.
+ */
+function isRecordedFormOf(recorded: unknown, raw: unknown): boolean {
+	return isDeepStrictEqual(recorded, raw) || isDeepStrictEqual(recorded, sanitizeExecutionLogValue(raw));
+}
+
+/**
  * The input to show for the waiting call. The recorded input stays when it is the input of the
  * same call: it is complete, while the redaction of the checkpoint input withholds deep values.
  * In a short window the persisted part can be an earlier open call with the identity of the
  * waiting call and another input. The answer resumes the checkpoint call, so its input wins.
  */
-function inputOfWaitingCall(recorded: unknown, checkpoint: unknown): unknown {
-	if (recorded === undefined) return checkpoint;
-	if (checkpoint === undefined) return recorded;
-	const sameCall = isDeepStrictEqual(redactDeep(recorded, REDACT_SENSITIVE).value, checkpoint);
-	return sameCall ? recorded : checkpoint;
+function inputOfWaitingCall(recorded: unknown, raw: unknown, redacted: unknown): unknown {
+	if (recorded === undefined) return redacted;
+	if (raw === undefined) return recorded;
+	return isRecordedFormOf(recorded, raw) ? recorded : redacted;
 }
 
 /** The checkpoint fills in the waiting call. Its values have sensitive values replaced. */
 function mergeWaitingPart(part: MessageContentPart, waiting: WaitingCall): MessageContentPart {
 	if (isTerminalToolCallPart(part)) return part;
 	const checkpointPart = redactToolCallPart(waiting.part);
-	const input = inputOfWaitingCall(part.input, checkpointPart.input);
+	const input = inputOfWaitingCall(part.input, waiting.part.input, checkpointPart.input);
 	return { ...part, ...checkpointPart, ...(input !== undefined && { input }) };
 }
 

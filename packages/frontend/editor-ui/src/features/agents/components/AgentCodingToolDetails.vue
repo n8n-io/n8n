@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nBadge, N8nButton, N8nCallout, type BadgeVariant } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nCallout, N8nTooltip, type BadgeVariant } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import { computed, defineAsyncComponent, inject, ref } from 'vue';
@@ -7,6 +7,7 @@ import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useFollowScroll } from '../composables/useFollowScroll';
 import { CODING_OPEN_FILE } from '../utils/coding-review';
 import {
+	codingCommandExitCode,
 	codingStepFailureText,
 	codingStepOutcome,
 	parseCodingEdit,
@@ -39,9 +40,8 @@ const edit = computed(() =>
 		? parseCodingEdit(props.toolCall.input)
 		: undefined,
 );
-const exitCode = computed(() =>
-	typeof output.value.exitCode === 'number' ? output.value.exitCode : undefined,
-);
+// The step label reads the same exit code, so the badge and the label agree.
+const exitCode = computed(() => codingCommandExitCode(props.toolCall.output));
 // The exit code badge tells how a command ended, so it needs no failure text too.
 const failure = computed(() =>
 	exitCode.value === undefined ? codingStepFailureText(i18n, props.toolCall) : undefined,
@@ -82,18 +82,21 @@ useFollowScroll(outputElement, commandOutput);
 
 <template>
 	<div :class="$style.details">
-		<N8nButton
-			v-if="path"
-			variant="ghost"
-			size="xsmall"
-			:class="$style.file"
-			:title="path"
-			:aria-label="i18n.baseText('agents.coding.tools.openFile', { interpolate: { path } })"
-			data-testid="agent-coding-tool-path"
-			@click="openFile?.(path)"
-		>
-			<span :class="$style.fileName">{{ path }}</span>
-		</N8nButton>
+		<!-- The tooltip shows a long path in full, also on keyboard focus. The slot keeps
+		     the path as text, because the `content` prop renders HTML. -->
+		<N8nTooltip v-if="path" placement="top-start" as-child>
+			<template #content>{{ path }}</template>
+			<N8nButton
+				variant="ghost"
+				size="xsmall"
+				:class="$style.file"
+				:aria-label="i18n.baseText('agents.coding.tools.openFile', { interpolate: { path } })"
+				data-testid="agent-coding-tool-path"
+				@click="openFile?.(path)"
+			>
+				<span :class="$style.fileName">{{ path }}</span>
+			</N8nButton>
+		</N8nTooltip>
 		<N8nCallout v-if="failure" theme="danger" data-testid="agent-coding-tool-failure">
 			{{ failure }}
 			<template v-if="editFailure">

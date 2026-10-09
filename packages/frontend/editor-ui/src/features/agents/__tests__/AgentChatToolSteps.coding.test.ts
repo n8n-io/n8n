@@ -133,7 +133,8 @@ describe('AgentChatToolSteps in the coding view', () => {
 			),
 		);
 		// The details show the failure, so the step does not repeat it.
-		expect(within(container).getAllByText(/String replacement failed/)).toHaveLength(1);
+		const steps = within(container as HTMLElement);
+		expect(steps.getAllByText(/String replacement failed/)).toHaveLength(1);
 		expect(screen.getByText('No exact match found for str_replace.')).toBeVisible();
 		expect(byTestId('agent-coding-tool-stats')).toBeNull();
 	});
@@ -188,7 +189,8 @@ describe('AgentChatToolSteps in the coding view', () => {
 			expect(byTestId('agent-coding-tool-exit-code')).toHaveTextContent('Exit code: 1'),
 		);
 		// The badge tells the exit code, so the step adds no callout with the same text.
-		expect(within(container).getAllByText('Exit code: 1')).toHaveLength(1);
+		const steps = within(container as HTMLElement);
+		expect(steps.getAllByText('Exit code: 1')).toHaveLength(1);
 	});
 
 	it('keeps an open step open when it finishes', async () => {
