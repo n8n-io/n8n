@@ -1,7 +1,12 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { processLines, quickBooksApiRequest } from '../GenericFunctions';
+import {
+	handleListing,
+	processLines,
+	quickBooksApiRequest,
+	quickBooksApiRequestAllItems,
+} from '../GenericFunctions';
 
 describe('quickBooksApiRequest', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -79,6 +84,164 @@ describe('quickBooksApiRequest', () => {
 				headers: expect.objectContaining({
 					Accept: 'application/pdf',
 				}),
+			}),
+		);
+	});
+});
+
+describe('quickBooksApiRequestAllItems', () => {
+	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		mockExecuteFunctions.getNodeParameter.mockReturnValue('customer');
+		mockExecuteFunctions.getCredentials.mockResolvedValue({ environment: 'production' });
+	});
+
+	it('keeps filtered matches when a later page is empty', async () => {
+		mockExecuteFunctions.helpers.requestOAuth2.mockImplementation(
+			async (_credentialType, options) => {
+				const query = options.qs?.query;
+				if (query === 'SELECT COUNT(*) FROM customer') {
+					return { QueryResponse: { totalCount: 3000 } };
+				}
+				if (typeof query === 'string' && query.endsWith('STARTPOSITION 1')) {
+					return {
+						QueryResponse: { Customer: [{ Id: '1' }, { Id: '2' }], maxResults: 2 },
+					};
+				}
+				return { QueryResponse: {} };
+			},
+		);
+
+		const result = await quickBooksApiRequestAllItems.call(
+			mockExecuteFunctions,
+			'GET',
+			'/query',
+			{ query: "SELECT * FROM customer WHERE DisplayName = 'match'" },
+			{},
+			'customer',
+		);
+
+		expect(result).toEqual([{ Id: '1' }, { Id: '2' }]);
+		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledTimes(1);
+		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
+			'quickBooksOAuth2Api',
+			expect.objectContaining({
+				qs: {
+					query:
+						"SELECT * FROM customer WHERE DisplayName = 'match' MAXRESULTS 1000 STARTPOSITION 1",
+				},
+			}),
+		);
+	});
+
+	it('returns all full pages followed by a partial page', async () => {
+		const firstPage = Array.from({ length: 1000 }, (_, index) => ({ Id: `${index + 1}` }));
+		const secondPage = [{ Id: '1001' }, { Id: '1002' }];
+		mockExecuteFunctions.helpers.requestOAuth2
+			.mockResolvedValueOnce({ QueryResponse: { Customer: firstPage } })
+			.mockResolvedValueOnce({ QueryResponse: { Customer: secondPage } });
+
+		const result = await quickBooksApiRequestAllItems.call(
+			mockExecuteFunctions,
+			'GET',
+			'/query',
+			{ query: 'SELECT * FROM customer' },
+			{},
+			'customer',
+		);
+
+		expect(result).toEqual([...firstPage, ...secondPage]);
+		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenNthCalledWith(
+			2,
+			'quickBooksOAuth2Api',
+			expect.objectContaining({
+				qs: { query: 'SELECT * FROM customer MAXRESULTS 1000 STARTPOSITION 1001' },
+			}),
+		);
+	});
+
+	it('keeps a full final page when the following page has no entity array', async () => {
+		const firstPage = Array.from({ length: 1000 }, (_, index) => ({ Id: `${index + 1}` }));
+		mockExecuteFunctions.helpers.requestOAuth2
+			.mockResolvedValueOnce({ QueryResponse: { Customer: firstPage } })
+			.mockResolvedValueOnce({ QueryResponse: {} });
+
+		const result = await quickBooksApiRequestAllItems.call(
+			mockExecuteFunctions,
+			'GET',
+			'/query',
+			{ query: 'SELECT * FROM customer' },
+			{},
+			'customer',
+		);
+
+		expect(result).toEqual(firstPage);
+		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledTimes(2);
+	});
+
+	it('returns an empty result when the first page has no matches', async () => {
+		mockExecuteFunctions.helpers.requestOAuth2.mockResolvedValueOnce({
+			QueryResponse: { Customer: [] },
+		});
+
+		await expect(
+			quickBooksApiRequestAllItems.call(
+				mockExecuteFunctions,
+				'GET',
+				'/query',
+				{ query: 'SELECT * FROM customer' },
+				{},
+				'customer',
+			),
+		).resolves.toEqual([]);
+	});
+
+	it.each(['CreditMemo', 'Term', 'TaxCode'])('reads the %s response key', async (resource) => {
+		const items = [{ Id: '1' }];
+		mockExecuteFunctions.helpers.requestOAuth2.mockResolvedValueOnce({
+			QueryResponse: { [resource]: items },
+		});
+
+		const result = await quickBooksApiRequestAllItems.call(
+			mockExecuteFunctions,
+			'GET',
+			'/query',
+			{ query: `SELECT * FROM ${resource}` },
+			{},
+			resource,
+		);
+
+		expect(result).toEqual(items);
+	});
+});
+
+describe('handleListing', () => {
+	it('returns filtered matches through the Return All path', async () => {
+		const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+		mockExecuteFunctions.getNodeParameter.mockImplementation((name) => {
+			if (name === 'resource') return 'customer';
+			if (name === 'operation') return 'getAll';
+			if (name === 'returnAll') return true;
+			if (name === 'filters') return { query: "WHERE DisplayName = 'match'" };
+			return undefined;
+		});
+		mockExecuteFunctions.getCredentials.mockResolvedValue({ environment: 'production' });
+		mockExecuteFunctions.helpers.requestOAuth2.mockResolvedValueOnce({
+			QueryResponse: { Customer: [{ Id: '1' }, { Id: '2' }] },
+		});
+
+		const result = await handleListing.call(mockExecuteFunctions, 0, '/query', 'customer');
+
+		expect(result).toEqual([{ Id: '1' }, { Id: '2' }]);
+		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
+			'quickBooksOAuth2Api',
+			expect.objectContaining({
+				qs: {
+					query:
+						"SELECT * FROM customer WHERE DisplayName = 'match' MAXRESULTS 1000 STARTPOSITION 1",
+				},
 			}),
 		);
 	});
