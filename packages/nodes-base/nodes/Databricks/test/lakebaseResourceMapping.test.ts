@@ -12,6 +12,13 @@ vi.mock('../actions/lakebase/schema', async (importOriginal) => ({
 	fetchLakebaseColumns: vi.fn(async () => []),
 }));
 
+// The real resolver reads the branch's compute host from the management API,
+// which these tests have no reason to stand up.
+vi.mock('../transport', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../transport')>()),
+	resolveLakebaseRestBase: vi.fn(async () => 'https://host.example/api/2.0/workspace/7/rest'),
+}));
+
 const node: INode = {
 	id: '1',
 	name: 'Databricks',
