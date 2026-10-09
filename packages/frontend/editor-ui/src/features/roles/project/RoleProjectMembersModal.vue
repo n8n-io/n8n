@@ -86,20 +86,18 @@ function navigateToProjectSettings() {
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 
-		<N8nDialogBody>
-			<div :class="$style.content">
-				<N8nLoading v-if="isLoading" :rows="3" />
-				<div v-else :class="$style.memberList">
-					<div v-for="member in membersData.members" :key="member.userId" :class="$style.memberRow">
-						<N8nUserInfo
-							:first-name="member.firstName"
-							:last-name="member.lastName"
-							:email="member.email"
-						/>
-						<N8nText :class="$style.roleLabel" color="text-light" size="small">
-							{{ getRoleDisplayName(member.role) }}
-						</N8nText>
-					</div>
+		<N8nDialogBody :class="$style.body">
+			<N8nLoading v-if="isLoading" :rows="3" />
+			<div v-else :class="$style.memberList">
+				<div v-for="member in membersData.members" :key="member.userId" :class="$style.memberRow">
+					<N8nUserInfo
+						:first-name="member.firstName"
+						:last-name="member.lastName"
+						:email="member.email"
+					/>
+					<N8nText :class="$style.roleLabel" color="text-light" size="small">
+						{{ getRoleDisplayName(member.role) }}
+					</N8nText>
 				</div>
 			</div>
 		</N8nDialogBody>
@@ -116,9 +114,8 @@ function navigateToProjectSettings() {
 </template>
 
 <style lang="css" module>
-.content {
+.body {
 	max-height: 400px;
-	overflow-y: auto;
 }
 
 .memberList {
