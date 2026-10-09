@@ -13,7 +13,7 @@ import {
 import { findExportableProjects } from '../project/project-export-access';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
 import type { WorkflowSubWorkflowRequirement } from './workflow.types';
-import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
+import type { ExportVersionPolicy } from '../../n8n-packages.types';
 
 export type WorkflowExportOrigin = 'top-level' | 'folder' | 'project';
 
@@ -48,7 +48,7 @@ export class AutoIncludedWorkflowResolver {
 		workflowSeeds: WorkflowExportSeed[];
 		requirements: WorkflowSubWorkflowRequirement[];
 		includeTags: boolean;
-		workflowVersionPolicy: WorkflowVersionPolicy;
+		versionPolicy: ExportVersionPolicy;
 	}): Promise<AutoIncludedWorkflowResolution> {
 		const exportedWorkflowIds = new Set(options.exportedWorkflowIds);
 		const originsByWorkflowId = this.seedOrigins(options.workflowSeeds);
@@ -64,7 +64,7 @@ export class AutoIncludedWorkflowResolver {
 			workflowIds: autoIncludedWorkflowIds,
 			originsByWorkflowId,
 			includeTags: options.includeTags,
-			workflowVersionPolicy: options.workflowVersionPolicy,
+			versionPolicy: options.versionPolicy,
 		});
 
 		return { autoIncludedWorkflows };
@@ -138,7 +138,7 @@ export class AutoIncludedWorkflowResolver {
 		workflowIds: string[];
 		originsByWorkflowId: Map<string, Set<WorkflowExportOrigin>>;
 		includeTags: boolean;
-		workflowVersionPolicy: WorkflowVersionPolicy;
+		versionPolicy: ExportVersionPolicy;
 	}): Promise<AutoIncludedWorkflow[]> {
 		if (options.workflowIds.length === 0) return [];
 
@@ -146,7 +146,7 @@ export class AutoIncludedWorkflowResolver {
 			options.user,
 			options.workflowIds,
 			options.includeTags,
-			options.workflowVersionPolicy,
+			options.versionPolicy,
 		);
 		const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
 		const ownersByWorkflowId = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
@@ -226,7 +226,7 @@ export class AutoIncludedWorkflowResolver {
 		user: User,
 		workflowIds: string[],
 		includeTags: boolean,
-		workflowVersionPolicy: WorkflowVersionPolicy,
+		versionPolicy: ExportVersionPolicy,
 	): Promise<WorkflowEntity[]> {
 		const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(
 			workflowIds,
@@ -235,7 +235,7 @@ export class AutoIncludedWorkflowResolver {
 			{
 				includeParentFolder: true,
 				includeTags,
-				includeActiveVersion: needsActiveVersion(workflowVersionPolicy),
+				includeActiveVersion: needsActiveVersion(versionPolicy),
 			},
 		);
 
@@ -246,7 +246,7 @@ export class AutoIncludedWorkflowResolver {
 			async (ids) => await this.workflowFinder.findExistingWorkflowIds(ids),
 		);
 
-		const exportableWorkflows = applyWorkflowVersionPolicy(workflows, workflowVersionPolicy);
+		const exportableWorkflows = applyWorkflowVersionPolicy(workflows, versionPolicy);
 
 		// `ignore-unpublished` skips top-level workflows silently, but a dependency
 		// it drops is one the package cannot ship without — abort, naming the cause.

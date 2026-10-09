@@ -14,7 +14,7 @@ import type {
 } from './agent-export.types';
 import { AgentRequirementsExtractor } from './agent-requirements.extractor';
 import type { AgentExporter } from './agent.exporter';
-import { MissingWorkflowDependencyPolicy, WorkflowVersionPolicy } from '../../n8n-packages.types';
+import { ExportDependencyPolicy, ExportVersionPolicy } from '../../n8n-packages.types';
 import type { PackageAgentRequirement } from '../../spec/requirements.schema';
 import {
 	assertEveryRequestedEntityAccessible,
@@ -110,7 +110,7 @@ export class AgentSelectionExporter {
 		const exportableProjects = await this.projectScopeService.getProjectIds(request.user, [
 			'agent:export',
 		]);
-		const policy = request.agentVersionPolicy ?? WorkflowVersionPolicy.Latest;
+		const policy = request.versionPolicy ?? ExportVersionPolicy.Latest;
 		while (pending.length > 0) {
 			const ids = pending.splice(0);
 			const agents = await repository.findForExport(ids, exportableProjects, {
@@ -133,10 +133,7 @@ export class AgentSelectionExporter {
 					projectIds.length > 0 ? 'project' : 'top-level',
 				);
 				prepared.push({ snapshot, requirements });
-				if (
-					request.missingAgentDependencyPolicy !== MissingWorkflowDependencyPolicy.IncludeInPackage
-				)
-					continue;
+				if (request.dependencyPolicy !== ExportDependencyPolicy.IncludeInPackage) continue;
 				this.enqueueDependencies(requirements.agentIds, seen, pending);
 			}
 		}
@@ -155,8 +152,7 @@ export class AgentSelectionExporter {
 		request: AgentSelectionExportRequest,
 		prepared: PreparedSelection[],
 	): void {
-		if (request.missingAgentDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly)
-			return;
+		if (request.dependencyPolicy === ExportDependencyPolicy.ReferenceOnly) return;
 		const included = new Set(prepared.map(({ snapshot }) => snapshot.content.id));
 		for (const { snapshot, requirements } of prepared) {
 			const missing = requirements.agentIds.filter((id) => !included.has(id));

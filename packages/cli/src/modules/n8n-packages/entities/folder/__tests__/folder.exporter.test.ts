@@ -50,7 +50,7 @@ describe('FolderExporter', () => {
 			folderIds: ['fld_1'],
 			writer: new CapturingWriter(),
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 			basePrefix: 'projects/team-ligo',
 		});
@@ -69,7 +69,7 @@ describe('FolderExporter', () => {
 			folderIds: ['fld_1'],
 			writer: new CapturingWriter(),
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: true,
 		});
 
@@ -104,7 +104,7 @@ describe('FolderExporter', () => {
 			folderIds: ['fld_1'],
 			writer: new CapturingWriter(),
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 
@@ -152,7 +152,7 @@ describe('FolderExporter', () => {
 			selectedWorkflowIds: new Set(['w-n2']),
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 
@@ -195,7 +195,7 @@ describe('FolderExporter', () => {
 			selectedWorkflowIds: new Set(['w-selected']),
 			writer: new CapturingWriter(),
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 
@@ -218,7 +218,7 @@ describe('FolderExporter', () => {
 				folderIds: ['fld_1'],
 				writer: new CapturingWriter(),
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 				includeArchivedWorkflows: false,
 			}),
 		).rejects.toThrow(/not found or not accessible/);
