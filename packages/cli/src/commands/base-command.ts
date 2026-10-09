@@ -217,6 +217,8 @@ export abstract class BaseCommand<F = never> {
 			// anything encrypts or decrypts. This must run for every entrypoint —
 			// servers and one-off commands — since the cipher has no fallback path.
 			await Container.get(EncryptionBootstrapService).run();
+
+			await Container.get(LoadNodesAndCredentials).loadStoredContracts();
 		}
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);

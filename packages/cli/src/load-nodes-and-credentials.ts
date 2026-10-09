@@ -830,10 +830,7 @@ export class LoadNodesAndCredentials {
 		const run = this.reloadQueue.then(async () => {
 			if (!isNeeded()) return;
 			const released = this.types.nodes.length === 0 && this.types.credentials.length === 0;
-			await Promise.all(
-				[...this.contractPackages].map(async (name) => await this.loaders[name]?.loadAll()),
-			);
-			await this.postProcessLoaders();
+			await this.reloadContracts();
 			if (released) this.releaseTypes();
 			if (this.instanceSettings.instanceType !== 'main') return;
 			const { Push } = await import('@/push/index.js');
@@ -841,6 +838,24 @@ export class LoadNodesAndCredentials {
 		});
 		this.reloadQueue = run.catch(() => {});
 		await run;
+	}
+
+	/**
+	 * The first load runs before the DB is up, so the contract loaders miss the stored versions,
+	 * e.g. an older major that a saved workflow pins. The commands call this once the DB is up.
+	 */
+	async loadStoredContracts() {
+		if (this.contractPackages.size === 0) return;
+		const run = this.reloadQueue.then(async () => await this.reloadContracts());
+		this.reloadQueue = run.catch(() => {});
+		await run;
+	}
+
+	private async reloadContracts() {
+		await Promise.all(
+			[...this.contractPackages].map(async (name) => await this.loaders[name]?.loadAll()),
+		);
+		await this.postProcessLoaders();
 	}
 
 	/**

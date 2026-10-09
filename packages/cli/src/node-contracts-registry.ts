@@ -3,6 +3,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, NodesConfig, type NodePermissionClass } from '@n8n/config';
 import {
+	DbConnection,
 	NodeContractStatusRepository,
 	NodeContractVersionRepository,
 	type NodeContractManifestRow,
@@ -276,8 +277,16 @@ function publishedDateOf(published: string | undefined) {
 type StoredContracts = Pick<ContractStore, 'versions' | 'credentials'> &
 	Partial<Pick<ContractStore, 'withdrawal' | 'credentialCodeOf'>>;
 
+const EMPTY_STORE: StoredContracts = {
+	versions: async () => await Promise.resolve(new Map()),
+	credentials: async () => await Promise.resolve(new Map()),
+};
+
+/** Empty before the DB is migrated. `loadStoredContracts` loads again after that. */
 const openContractStore = async (): Promise<StoredContracts> =>
-	await Container.get(NodeContractsStore).open();
+	Container.get(DbConnection).connectionState.migrated
+		? await Container.get(NodeContractsStore).open()
+		: EMPTY_STORE;
 
 /** Whether a package other than the node contracts has a credential type of this name. */
 const hasOtherCredentialTypeInN8n = (name: string) =>

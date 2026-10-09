@@ -384,6 +384,56 @@ describe('ContractNodeLoader', () => {
 		expect(result).toEqual([[{ json: { a: 1 }, pairedItem: { item: 0 } }]]);
 	});
 
+	it('lists the stored versions after loadStoredContracts, when the store was not readable at the first load', async () => {
+		const id = 'noOp.pass';
+		const [head] = versionsOf(id);
+		if (!head) throw new Error(`${id} has no bundled HEAD`);
+		const stored: PackedVersion = {
+			...head,
+			manifest: { ...head.manifest, contract: { ...head.manifest.contract, version: 2 } },
+		};
+		const readable = storeOf(new Map([[id, [stored]]]));
+		const dbReady = { value: false };
+		const store = async () => {
+			if (!dbReady.value) throw new Error('No metadata for "NodeContractVersion" was found.');
+			return await readable();
+		};
+		const core = new ContractNodeLoader(
+			hostRuntime(),
+			[],
+			[],
+			store,
+			[],
+			undefined,
+			undefined,
+			nodesCore,
+		);
+		const instance = new LoadNodesAndCredentials(
+			mock(),
+			mock(),
+			mock(),
+			mock<GlobalConfig>({
+				instanceAi: { nodeContractsEnabled: true },
+				nodes: { exclude: [], include: [] },
+			}),
+			mock(),
+			mock(),
+		);
+		await core.loadAll();
+		instance.loaders = { [nodesCore.name]: core };
+		await instance.postProcessLoaders();
+		const versions = () =>
+			instance.types.nodes
+				.filter(({ name }) => name === '@n8n/nodes-core.noOpPass')
+				.map(({ version }) => version);
+		expect(versions()).toEqual([1]);
+
+		dbReady.value = true;
+		await instance.loadStoredContracts();
+
+		expect(versions()).toEqual([2, 1]);
+	});
+
 	it('gives the loader of each first-party package the one host runtime, and runs both with it', async () => {
 		mockInstance(NodeContractsStore).open.mockResolvedValue({
 			versions: async () => new Map(),
