@@ -1139,6 +1139,32 @@ describe('generateMockHints', () => {
 		expect(result.warnings).toEqual([]);
 	});
 
+	it('should unwrap trigger content that comes back as an n8n item', async () => {
+		const binary = { CV_0: { mimeType: 'application/pdf', fileName: 'cv.pdf' } };
+		mockAgentResponses(
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { json: { 'Full Name': 'Ada Lovelace' }, binary },
+				nodeHints: { Slack: 'post a message' },
+			}),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(result.triggerContent).toEqual({ 'Full Name': 'Ada Lovelace', binary });
+	});
+
+	it('should keep trigger content whose json field sits next to other fields', async () => {
+		const triggerContent = { json: { id: 1 }, headers: {}, body: {} };
+		mockAgentResponses(
+			JSON.stringify({ globalContext: '', triggerContent, nodeHints: { Slack: 'post' } }),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(result.triggerContent).toEqual(triggerContent);
+	});
+
 	it('should retry when the first attempt returns empty triggerContent, then succeed', async () => {
 		const generate = mockAgentResponses(
 			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
