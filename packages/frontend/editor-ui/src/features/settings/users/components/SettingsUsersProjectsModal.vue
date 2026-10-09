@@ -53,15 +53,18 @@ const projectsToShow = computed(() => {
 </script>
 
 <template>
-	<N8nDialog :open="open" size="medium" @update:open="emit('update:open', $event)">
-		<N8nDialogHeader>
-			<N8nDialogTitle>
+	<N8nDialog
+		:open="open"
+		size="medium"
+		style="max-height: 50vh"
+		@update:open="emit('update:open', $event)"
+	>
+		<N8nDialogHeader :class="$style.header">
+			<N8nDialogTitle :class="$style.title">
 				{{
 					i18n.baseText('settings.users.projectsModal.title', { interpolate: { user: userName } })
 				}}
 			</N8nDialogTitle>
-		</N8nDialogHeader>
-		<N8nDialogBody>
 			<N8nInput
 				v-model="projectNameFilter"
 				:placeholder="i18n.baseText('settings.users.projectsModal.searchPlaceholder')"
@@ -72,6 +75,8 @@ const projectsToShow = computed(() => {
 					<N8nIcon icon="search" />
 				</template>
 			</N8nInput>
+		</N8nDialogHeader>
+		<N8nDialogBody :class="$style.body">
 			<div :class="$style.list">
 				<N8nText
 					v-if="projectsToShow.length === 0"
@@ -96,10 +101,24 @@ const projectsToShow = computed(() => {
 </template>
 
 <style lang="scss" module>
+.header {
+	flex-direction: column;
+	align-items: stretch;
+	padding-inline-end: var(--n8n-dialog-region--padding, var(--spacing--md));
+	gap: var(--spacing--sm);
+}
+
+.body {
+	padding: 0;
+}
+
+.title {
+	padding-inline-end: calc(var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs));
+}
+
 .list {
-	margin-top: var(--spacing--sm);
-	max-height: 400px;
-	overflow-y: auto;
+	padding-inline: var(--n8n-dialog-region--padding, var(--spacing--md));
+	padding-block-end: var(--n8n-dialog-region--padding, var(--spacing--md));
 }
 
 .empty {
