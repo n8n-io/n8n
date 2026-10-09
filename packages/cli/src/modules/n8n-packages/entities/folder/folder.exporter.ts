@@ -11,7 +11,7 @@ import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
-import type { WorkflowExportRequirements } from '../requirements.types';
+import type { ExportRequirements } from '../requirements.types';
 import { WorkflowExporter } from '../workflow/workflow.exporter';
 import type { WorkflowExportResult } from '../workflow/workflow.exporter';
 
@@ -42,7 +42,7 @@ export interface FolderExportResult {
 	/** Workflows contained in the exported folders → `manifest.workflows[]`. */
 	workflowEntries: ManifestEntry[];
 	/** What the contained workflows need, gathered at the package top level (credentials today). */
-	requirements: WorkflowExportRequirements;
+	requirements: ExportRequirements;
 }
 
 interface FolderWriteContext {
