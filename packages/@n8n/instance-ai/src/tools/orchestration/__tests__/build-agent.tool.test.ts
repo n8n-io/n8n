@@ -2116,23 +2116,38 @@ describe('build-agent tool', () => {
 		});
 
 		it('ORs carried configUpdated with the resumed pass when finishing', async () => {
-			const { context, delegate } = makeContext();
-			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
-			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
-				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
-			]);
-			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Done.'));
+			vi.useFakeTimers({ now: 100_000 });
+			try {
+				const { context, delegate } = makeContext();
+				context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+				vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+					{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+				]);
+				vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Done.'));
 
-			const result = await runToolWithCtx(
-				context,
-				{ message: 'Build it', name: 'New Agent' },
-				{
-					resumeData: { approved: true },
-					suspendPayload: suspendPayloadWithCheckpoint({ configUpdated: true }),
-				},
-			);
+				const result = await runToolWithCtx(
+					context,
+					{ message: 'Build it', name: 'New Agent' },
+					{
+						resumeData: { approved: true },
+						suspendPayload: suspendPayloadWithCheckpoint({
+							configUpdated: true,
+							suspendedAt: 70_000,
+						}),
+					},
+				);
 
-			expect(result.configUpdated).toBe(true);
+				expect(result.configUpdated).toBe(true);
+				expect(emitAgentBuildMetrics).toHaveBeenCalledWith(
+					expect.objectContaining({
+						outcome: 'completed',
+						configUpdated: true,
+						userWaitMs: 30_000,
+					}),
+				);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('reports carried configUpdated when the resumed pass errors', async () => {

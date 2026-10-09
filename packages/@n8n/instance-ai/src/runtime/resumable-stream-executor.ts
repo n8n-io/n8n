@@ -23,6 +23,8 @@ const RESPONSE_CHUNK_TYPES: ReadonlyArray<InstanceAiEvent['type']> = [
 	'text-delta',
 	'reasoning-delta',
 	'tool-input-start',
+	// Some providers send a complete tool call without a `tool-input-start`.
+	'tool-call',
 ];
 
 export interface ResumableStreamSource {
@@ -45,7 +47,7 @@ export interface ResumableStreamContext {
 	signal: AbortSignal;
 	logger: Logger;
 	onActivity?: () => void;
-	/** Called for each response chunk (text, reasoning, tool start), just before its event is published. */
+	/** Called for each response chunk (text, reasoning, tool call), just before its event is published. */
 	onResponseChunk?: () => void;
 	/** Stop consuming after the current chunk has been mapped and published. */
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
