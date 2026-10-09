@@ -12,13 +12,15 @@ import {
 } from '../package-export.errors';
 import { findExportableProjects } from '../project/project-export-access';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
-import type {
-	WorkflowDependencyRequirement,
-	WorkflowSubWorkflowRequirement,
-} from './workflow.types';
+import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 
 export type WorkflowExportOrigin = 'top-level' | 'folder' | 'project';
+
+export interface WorkflowExportSeed {
+	workflowId: string;
+	origin: WorkflowExportOrigin;
+}
 
 export interface AutoIncludedWorkflow {
 	workflow: WorkflowEntity;
@@ -42,28 +44,14 @@ export class AutoIncludedWorkflowResolver {
 
 	async resolve(options: {
 		user: User;
-		requirements: WorkflowDependencyRequirement[];
-		topLevelWorkflowIds: string[];
-		folderWorkflowIds: string[];
-		projectWorkflowIds: string[];
+		exportedWorkflowIds: string[];
+		workflowSeeds: WorkflowExportSeed[];
+		requirements: WorkflowSubWorkflowRequirement[];
 		includeTags: boolean;
 		workflowVersionPolicy: WorkflowVersionPolicy;
 	}): Promise<AutoIncludedWorkflowResolution> {
-		const originsByWorkflowId = this.seedExportedOrigins({
-			topLevelWorkflowIds: options.topLevelWorkflowIds,
-			folderWorkflowIds: options.folderWorkflowIds,
-			projectWorkflowIds: options.projectWorkflowIds,
-		});
-		const exportedWorkflowIds = new Set(originsByWorkflowId.keys());
-		// Agent references seed inclusion without marking the workflows as already exported.
-		for (const requirement of options.requirements) {
-			if ('workflowId' in requirement) continue;
-			const origins =
-				originsByWorkflowId.get(requirement.referencedWorkflowId) ??
-				new Set<WorkflowExportOrigin>();
-			origins.add(requirement.origin);
-			originsByWorkflowId.set(requirement.referencedWorkflowId, origins);
-		}
+		const exportedWorkflowIds = new Set(options.exportedWorkflowIds);
+		const originsByWorkflowId = this.seedOrigins(options.workflowSeeds);
 
 		this.propagateOrigins(originsByWorkflowId, options.requirements);
 
@@ -82,29 +70,14 @@ export class AutoIncludedWorkflowResolver {
 		return { autoIncludedWorkflows };
 	}
 
-	/**
-	 * Seed origin sets from the export buckets in one pass. The same workflow can
-	 * appear in more than one bucket when export options overlap; origins are merged
-	 * so placement can pick the richest context later.
-	 */
-	private seedExportedOrigins(options: {
-		topLevelWorkflowIds: string[];
-		folderWorkflowIds: string[];
-		projectWorkflowIds: string[];
-	}): Map<string, Set<WorkflowExportOrigin>> {
+	private seedOrigins(seeds: WorkflowExportSeed[]): Map<string, Set<WorkflowExportOrigin>> {
 		const originsByWorkflowId = new Map<string, Set<WorkflowExportOrigin>>();
 
-		const add = (workflowIds: string[], origin: WorkflowExportOrigin) => {
-			for (const workflowId of workflowIds) {
-				const origins = originsByWorkflowId.get(workflowId) ?? new Set<WorkflowExportOrigin>();
-				origins.add(origin);
-				originsByWorkflowId.set(workflowId, origins);
-			}
-		};
-
-		add(options.topLevelWorkflowIds, 'top-level');
-		add(options.folderWorkflowIds, 'folder');
-		add(options.projectWorkflowIds, 'project');
+		for (const { workflowId, origin } of seeds) {
+			const origins = originsByWorkflowId.get(workflowId) ?? new Set<WorkflowExportOrigin>();
+			origins.add(origin);
+			originsByWorkflowId.set(workflowId, origins);
+		}
 
 		return originsByWorkflowId;
 	}
@@ -118,12 +91,11 @@ export class AutoIncludedWorkflowResolver {
 	 */
 	private propagateOrigins(
 		originsByWorkflowId: Map<string, Set<WorkflowExportOrigin>>,
-		requirements: WorkflowDependencyRequirement[],
+		requirements: WorkflowSubWorkflowRequirement[],
 	): void {
 		const requirementsByWorkflowId = new Map<string, WorkflowSubWorkflowRequirement[]>();
 
 		for (const requirement of requirements) {
-			if (!('workflowId' in requirement)) continue;
 			const current = requirementsByWorkflowId.get(requirement.workflowId) ?? [];
 			current.push(requirement);
 			requirementsByWorkflowId.set(requirement.workflowId, current);

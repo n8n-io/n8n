@@ -174,12 +174,15 @@ it.each(['loose', 'project', 'existing project'] as const)(
 			const prefix = wholeProjects ? `${result.projectTargetsById.get(projectId)}/` : '';
 			expect(entry.target.startsWith(`${prefix}agents/`)).toBe(true);
 		}
-		const requirements = await Container.get(WorkflowDependencyResolver).resolve({
+		const workflowRequirements = await Container.get(WorkflowDependencyResolver).resolve({
 			user,
-			workflowIds: [nested.id],
-			agentRequirements: result.workflowRequirements,
+			workflowIds: [
+				nested.id,
+				...result.workflowRequirements.map(({ referencedWorkflowId }) => referencedWorkflowId),
+			],
 			workflowVersionPolicy: 'latest',
 		});
+		const requirements = [...result.workflowRequirements, ...workflowRequirements];
 		expect(requirements).toEqual([
 			{
 				agentId: parent.id,
@@ -190,6 +193,22 @@ it.each(['loose', 'project', 'existing project'] as const)(
 			{ workflowId: nested.id, referencedWorkflowId: parent.id },
 			{ workflowId: parent.id, referencedWorkflowId: nested.id },
 		]);
+		const { autoIncludedWorkflows } = await Container.get(AutoIncludedWorkflowResolver).resolve({
+			user,
+			exportedWorkflowIds: [nested.id],
+			workflowSeeds: [
+				{ workflowId: nested.id, origin: wholeProjects ? 'project' : 'top-level' },
+				...result.workflowRequirements.map(({ referencedWorkflowId, origin }) => ({
+					workflowId: referencedWorkflowId,
+					origin,
+				})),
+			],
+			requirements: workflowRequirements,
+			includeTags: false,
+			workflowVersionPolicy: 'latest',
+		});
+		expect(autoIncludedWorkflows.map(({ workflow }) => workflow.id)).toEqual([parent.id]);
+		expect(autoIncludedWorkflows[0].placement).toBe(wholeProjects ? 'project' : 'top-level');
 	},
 );
 
@@ -350,7 +369,11 @@ it('writes and resolves the prepared snapshot when the draft changes during expo
 it.each(['fail', 'reference-only', 'include-in-package'] as const)(
 	'applies workflow policy %s independently of reference-only Agents',
 	async (policy) => {
-		const workflow = await createWorkflow({ name: 'Required workflow', nodes: [] }, otherProject);
+		const nested = await createWorkflow({ name: 'Nested workflow', nodes: [] }, otherProject);
+		const workflow = await createWorkflow(
+			{ name: 'Required workflow', nodes: [executeWorkflowNode(nested.id)] },
+			otherProject,
+		);
 		await setConfig(parent, {
 			subAgents: { agents: [{ agentId: child.id }] },
 			tools: [{ type: 'workflow', workflowId: workflow.id, workflow: 'Display' }],
@@ -362,13 +385,16 @@ it.each(['fail', 'reference-only', 'include-in-package'] as const)(
 			missingAgentDependencyPolicy: 'reference-only',
 		});
 		expect(agents.agentIds).toEqual([parent.id]);
-		const requirements = await Container.get(WorkflowDependencyResolver).resolve({
+		const workflowRequirements = await Container.get(WorkflowDependencyResolver).resolve({
 			user: owner,
-			workflowIds: [],
-			agentRequirements: agents.workflowRequirements,
+			workflowIds:
+				policy === 'reference-only'
+					? []
+					: agents.workflowRequirements.map(({ referencedWorkflowId }) => referencedWorkflowId),
 			traversal: policy === 'reference-only' ? 'direct' : 'transitive',
 			workflowVersionPolicy: 'latest',
 		});
+		const requirements = [...agents.workflowRequirements, ...workflowRequirements];
 		if (policy === 'fail') {
 			expect(() => assertStaticSubWorkflowsIncluded(requirements, new Set())).toThrow(
 				PackageExportBlockedError,
@@ -388,14 +414,19 @@ it.each(['fail', 'reference-only', 'include-in-package'] as const)(
 		}
 		const result = await Container.get(AutoIncludedWorkflowResolver).resolve({
 			user: owner,
-			requirements,
-			topLevelWorkflowIds: [],
-			folderWorkflowIds: [],
-			projectWorkflowIds: [],
+			exportedWorkflowIds: [],
+			workflowSeeds: agents.workflowRequirements.map(({ referencedWorkflowId, origin }) => ({
+				workflowId: referencedWorkflowId,
+				origin,
+			})),
+			requirements: workflowRequirements,
 			includeTags: false,
 			workflowVersionPolicy: 'latest',
 		});
-		expect(result.autoIncludedWorkflows.map(({ workflow }) => workflow.id)).toEqual([workflow.id]);
+		expect(result.autoIncludedWorkflows.map(({ workflow }) => workflow.id)).toEqual([
+			workflow.id,
+			nested.id,
+		]);
 	},
 );
 

@@ -5,13 +5,12 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { extractWorkflowRequirements } from './references/extract-workflow-requirements';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
-import type { AgentWorkflowRequirement, WorkflowDependencyRequirement } from './workflow.types';
+import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 
 export interface WorkflowDependencyResolveRequest {
 	user: User;
 	workflowIds: string[];
-	agentRequirements?: AgentWorkflowRequirement[];
 	/**
 	 * How far to follow static sub-workflow references: `transitive` (default)
 	 * walks the whole reference graph, `direct` stops after the requested
@@ -27,16 +26,12 @@ export class WorkflowDependencyResolver {
 
 	async resolve(
 		request: WorkflowDependencyResolveRequest,
-	): Promise<WorkflowDependencyRequirement[]> {
+	): Promise<WorkflowSubWorkflowRequirement[]> {
 		const traverse = (request.traversal ?? 'transitive') === 'transitive';
 		const policy = request.workflowVersionPolicy;
-		const agentRequirements = request.agentRequirements ?? [];
-		const dependencyIds = traverse
-			? agentRequirements.map(({ referencedWorkflowId }) => referencedWorkflowId)
-			: [];
-		const queue = [...new Set([...request.workflowIds, ...dependencyIds])];
+		const queue = [...new Set(request.workflowIds)];
 		const seenWorkflowIds = new Set(queue);
-		const requirements: WorkflowDependencyRequirement[] = [...agentRequirements];
+		const requirements: WorkflowSubWorkflowRequirement[] = [];
 
 		while (queue.length > 0) {
 			const workflowIds = queue.splice(0);
