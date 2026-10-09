@@ -67,6 +67,12 @@ on:
       runners_distroless_digest:
         description: 'Multi-arch manifest digest of the distroless runners image'
         value: ${{ jobs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
+      runners_debian_image:
+        description: 'GHCR repo for the Debian runners image (no tag; same repo as runners)'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.runners_debian_image }}
+      runners_debian_digest:
+        description: 'Multi-arch manifest digest of the Debian runners image'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.runners_debian_digest }}
 
   workflow_dispatch:
     inputs:
@@ -189,6 +195,9 @@ jobs:
       n8n_date_manifest_tag: ${{ steps.determine-tags.outputs.n8n_date_primary_tag }}
       runners_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_date_primary_tag }}
       runners_distroless_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_date_primary_tag }}
+      runners_debian_primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.runners_debian_primary_tag }}
+      runners_debian_sha_manifest_tag: ${{ steps.determine-tags.outputs.runners_debian_sha_primary_tag }}
+      runners_debian_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_debian_date_primary_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -255,6 +264,7 @@ jobs:
           N8N_DEBIAN_TAGS: ${{ steps.determine-tags.outputs.n8n_debian_tags }}
           RUNNERS_TAGS: ${{ steps.determine-tags.outputs.runners_tags }}
           RUNNERS_DISTROLESS_TAGS: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+          RUNNERS_DEBIAN_TAGS: ${{ steps.determine-tags.outputs.runners_debian_tags }}
           PUSH_ENABLED: ${{ needs.determine-build-context.outputs.push_enabled }}
         run: |
           TARGETS=(n8n runners runners-distroless)
@@ -262,7 +272,7 @@ jobs:
             TARGETS+=(n8n-pc)
           fi
           if [ -n "$N8N_DEBIAN_TAGS" ] && [ "$PUSH_ENABLED" = 'true' ]; then
-            TARGETS+=(n8n-debian)
+            TARGETS+=(n8n-debian runners-debian)
           fi
 
           # oci-mediatypes keeps the merged manifest an OCI image index. Older
@@ -301,6 +311,8 @@ jobs:
       runners_image: ${{ steps.get-digests.outputs.runners_image }}
       runners_distroless_digest: ${{ steps.get-digests.outputs.runners_distroless_digest }}
       runners_distroless_image: ${{ steps.get-digests.outputs.runners_distroless_image }}
+      runners_debian_digest: ${{ steps.get-digests.outputs.runners_debian_digest }}
+      runners_debian_image: ${{ steps.get-digests.outputs.runners_debian_image }}
     steps:
       - name: Checkout CI helpers
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -334,6 +346,9 @@ jobs:
           RUNNERS_DISTROLESS_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
           RUNNERS_DISTROLESS_SHA_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_sha_manifest_tag }}
           RUNNERS_DISTROLESS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_date_manifest_tag }}
+          RUNNERS_DEBIAN_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_debian_primary_ghcr_manifest_tag }}
+          RUNNERS_DEBIAN_SHA_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_debian_sha_manifest_tag }}
+          RUNNERS_DEBIAN_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_debian_date_manifest_tag }}
         run: |
           set -euo pipefail
           HAS_ARM64="$(node -e "const matrix = JSON.parse(process.env.BUILD_MATRIX); process.stdout.write(String(matrix.platform.includes('arm64')))")"
@@ -376,6 +391,10 @@ jobs:
           PIDS+=("$!")
           create_manifest "runners-distroless" "$RUNNERS_DISTROLESS_SHA_MANIFEST_TAG" "$RUNNERS_DISTROLESS_MANIFEST_TAG" "$RUNNERS_DISTROLESS_DATE_MANIFEST_TAG" &
           PIDS+=("$!")
+          if [[ -n "$RUNNERS_DEBIAN_MANIFEST_TAG" ]]; then
+            create_manifest "runners-debian" "$RUNNERS_DEBIAN_SHA_MANIFEST_TAG" "$RUNNERS_DEBIAN_MANIFEST_TAG" "$RUNNERS_DEBIAN_DATE_MANIFEST_TAG" &
+            PIDS+=("$!")
+          fi
 
           FAILED=0
           for PID in "${PIDS[@]}"; do
@@ -396,11 +415,12 @@ jobs:
           N8N_DEBIAN_TAG: ${{ needs.build-and-push-docker.outputs.n8n_debian_primary_ghcr_manifest_tag }}
           RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
           RUNNERS_DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
+          RUNNERS_DEBIAN_TAG: ${{ needs.build-and-push-docker.outputs.runners_debian_primary_ghcr_manifest_tag }}
         run: |
           set -euo pipefail
           EXPECT="$(node -e "const matrix = JSON.parse(process.env.BUILD_MATRIX); process.stdout.write(String(matrix.platform.length))")"
 
-          for TAG in "$N8N_TAG" "$N8N_PC_TAG" "$N8N_DEBIAN_TAG" "$RUNNERS_TAG" "$RUNNERS_DISTROLESS_TAG"; do
+          for TAG in "$N8N_TAG" "$N8N_PC_TAG" "$N8N_DEBIAN_TAG" "$RUNNERS_TAG" "$RUNNERS_DISTROLESS_TAG" "$RUNNERS_DEBIAN_TAG"; do
             [[ -n "$TAG" ]] || continue
             node .github/scripts/docker/assert-manifest-format.mjs "$TAG" --expect-platforms "$EXPECT"
           done
@@ -413,6 +433,7 @@ jobs:
           SHORT_SHA: ${{ needs.determine-build-context.outputs.short_sha }}
           N8N_PC_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag }}
           N8N_DEBIAN_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_debian_primary_ghcr_manifest_tag }}
+          RUNNERS_DEBIAN_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_debian_primary_ghcr_manifest_tag }}
         run: |
           set -euo pipefail
           VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
@@ -429,6 +450,9 @@ jobs:
           fi
           if [[ -n "$N8N_DEBIAN_MANIFEST_TAG" ]]; then
             images["n8n-debian"]="${VERSION}-debian"
+          fi
+          if [[ -n "$RUNNERS_DEBIAN_MANIFEST_TAG" ]]; then
+            images["runners-debian"]="${VERSION}-debian"
           fi
 
           create_docker_manifest() {
@@ -498,6 +522,7 @@ jobs:
           N8N_DEBIAN_TAG: ${{ needs.build-and-push-docker.outputs.n8n_debian_primary_ghcr_manifest_tag }}
           RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
           DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
+          RUNNERS_DEBIAN_TAG: ${{ needs.build-and-push-docker.outputs.runners_debian_primary_ghcr_manifest_tag }}
         run: node .github/scripts/docker/get-manifest-digests.mjs
 
   call-success-url:
@@ -636,6 +661,28 @@ jobs:
       registry-password: ${{ secrets.GITHUB_TOKEN }}
 
   # VEX Attestation - Documents which CVEs affect us (security/vex.openvex.json)
+  provenance-runners-debian:
+    name: SLSA Provenance (runners-debian)
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      inputs.create_attestations &&
+      needs.create_multi_arch_manifest.result == 'success' &&
+      needs.create_multi_arch_manifest.outputs.runners_debian_digest != ''
+    permissions:
+      id-token: write
+      packages: write
+      actions: read
+    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs: the
+    # generator verifies its own ref and rejects a SHA, so unpinned-uses is a
+    # known false positive here.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0 # zizmor: ignore[unpinned-uses]
+    with:
+      image: ${{ needs.create_multi_arch_manifest.outputs.runners_debian_image }}
+      digest: ${{ needs.create_multi_arch_manifest.outputs.runners_debian_digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
   vex-attestation:
     name: VEX Attestation
     needs:
@@ -648,6 +695,7 @@ jobs:
         provenance-n8n-debian,
         provenance-runners,
         provenance-runners-distroless,
+        provenance-runners-debian,
       ]
     if: |
       always() &&
@@ -721,6 +769,17 @@ jobs:
             --predicate security/vex.openvex.json \
             ${{ needs.create_multi_arch_manifest.outputs.runners_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
 
+      - name: Attest VEX to runners-debian image
+        if: needs.create_multi_arch_manifest.outputs.runners_debian_digest != ''
+        env:
+          IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_debian_image }}
+          DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_debian_digest }}
+        run: |
+          cosign attest --yes \
+            --type openvex \
+            --predicate security/vex.openvex.json \
+            "$IMAGE@$DIGEST"
+
       - name: Attest VEX to runners-distroless image
         if: needs.create_multi_arch_manifest.outputs.runners_distroless_digest != ''
         run: |
@@ -747,6 +806,7 @@ jobs:
         provenance-n8n-debian,
         provenance-runners,
         provenance-runners-distroless,
+        provenance-runners-debian,
       ]
     if: |
       always() &&
@@ -812,6 +872,8 @@ jobs:
           RUNNERS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
           DISTROLESS_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
           DISTROLESS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
+          RUNNERS_DEBIAN_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_debian_image }}
+          RUNNERS_DEBIAN_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_debian_digest }}
         run: node .github/scripts/attest-image-sbom.mjs
 
   security-scan:
@@ -856,6 +918,21 @@ jobs:
     with:
       image_ref: ${{ needs.build-and-push-docker.outputs.n8n_debian_primary_ghcr_manifest_tag }}
 
+  security-scan-runners-debian:
+    name: Security Scan (runners-debian)
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      success() &&
+      needs.build-and-push-docker.outputs.runners_debian_primary_ghcr_manifest_tag != '' &&
+      (needs.determine-build-context.outputs.release_type == 'stable' ||
+       needs.determine-build-context.outputs.release_type == 'nightly' ||
+       needs.determine-build-context.outputs.release_type == 'rc')
+    permissions:
+      contents: read
+    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    with:
+      image_ref: ${{ needs.build-and-push-docker.outputs.runners_debian_primary_ghcr_manifest_tag }}
+
   security-scan-runners:
     name: Security Scan (runners)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
@@ -882,6 +959,7 @@ jobs:
         security-scan-pc,
         security-scan-debian,
         security-scan-runners,
+        security-scan-runners-debian,
       ]
     if: |
       always() && github.event_name == 'schedule' &&
