@@ -1443,6 +1443,52 @@ describe('buildSteps', () => {
 				name: 'hitl_tool',
 			});
 		});
+
+		it('should mark a step that still carries HITL metadata as denied', () => {
+			const hitlAction = {
+				actionType: 'ExecutionNodeAction' as const,
+				nodeName: 'HITL Node',
+				input: { id: 'call_123', input: { query: 'test' } },
+				type: NodeConnectionTypes.AiTool,
+				id: 'call_123',
+				metadata: {
+					itemIndex: 0,
+					hitl: {
+						toolName: 'hitl_tool',
+						gatedToolNodeName: 'Gated Tool',
+						originalInput: { query: 'test' },
+					},
+				},
+			};
+			const plainAction = {
+				actionType: 'ExecutionNodeAction' as const,
+				nodeName: 'Calculator',
+				input: { id: 'call_456', input: '1+1' },
+				type: NodeConnectionTypes.AiTool,
+				id: 'call_456',
+				metadata: { itemIndex: 0 },
+			};
+			const data = {
+				data: { ai_tool: [[{ json: { output: 'done' } }]] },
+				executionTime: 0,
+				startTime: 0,
+				executionIndex: 0,
+				source: [],
+			};
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{ action: hitlAction, data },
+					{ action: plainAction, data },
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.hitlDenied).toBe(true);
+			expect(result[1].action).not.toHaveProperty('hitlDenied');
+		});
 	});
 
 	describe('Tool input extraction', () => {

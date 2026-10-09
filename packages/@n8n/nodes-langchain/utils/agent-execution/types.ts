@@ -35,6 +35,8 @@ export type ToolCallData = {
 		messageLog?: AIMessage[];
 		toolCallId: IDataObject | GenericValue | GenericValue[] | IDataObject[];
 		type: string | number | true | object;
+		/** True when the user denied this call in a Human-in-the-Loop node, so the tool never ran */
+		hitlDenied?: boolean;
 	};
 	observation: string;
 };

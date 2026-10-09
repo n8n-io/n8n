@@ -591,8 +591,8 @@ describe('appendToolAttributions', () => {
 	const plain = mock<Tool>();
 	plain.name = 'Calculator';
 	plain.metadata = { sourceNodeName: 'Calculator' };
-	const step = (tool: string): ToolCallData => ({
-		action: { tool, toolInput: {}, log: '', toolCallId: 'c1', type: 'tool_call' },
+	const step = (tool: string, hitlDenied?: boolean): ToolCallData => ({
+		action: { tool, toolInput: {}, log: '', toolCallId: 'c1', type: 'tool_call', hitlDenied },
 		observation: '',
 	});
 
@@ -610,6 +610,12 @@ describe('appendToolAttributions', () => {
 	it('does not repeat an attribution the model already included', () => {
 		const output = 'See link\n\n(Powered by Genie)';
 		expect(appendToolAttributions(output, [step('Genie_ask')], [genie])).toBe(output);
+	});
+
+	it('does not label a reply for a call the user denied in a Human-in-the-Loop node', () => {
+		expect(appendToolAttributions('Not approved', [step('Genie_ask', true)], [genie])).toBe(
+			'Not approved',
+		);
 	});
 
 	it('leaves a reply without text alone, so the label never shows up on its own', () => {
