@@ -1,11 +1,14 @@
+import { BLOCK_ACCESS_ASSIGNMENT } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
 import { CacheService, EventService } from '@n8n/backend-services';
-import { testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRepository, UserRepository } from '@n8n/db';
+import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	trustedSourceConfigSchemaFor,
 	type ManagedBy,
 	type Result,
+	type RoleMappingRule,
 	type TrustedSource,
 	type TrustedSourceIdentity,
 	type Verified,
@@ -20,8 +23,11 @@ import { TrustedSourceEntity } from '@/modules/inbound-auth-core/database/entiti
 import { TrustedSourceIdentityRepository } from '@/modules/inbound-auth-core/database/repositories/trusted-source-identity.repository';
 import { TrustedSourceIdentityService } from '@/modules/inbound-auth-core/identity/trusted-source-identity.service';
 import { TrustedSourceDbStore } from '@/modules/inbound-auth-core/trusted-source.store';
+import { RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
+import { UserService } from '@/services/user.service';
 
-import { createMember, createOwner, createUser } from '../shared/db/users';
+import { createAdmin, createMember, createOwner, createUser } from '../shared/db/users';
+import { LicenseMocker } from '../shared/license';
 
 const RESOURCE = 'https://n8n.example/mcp';
 
@@ -125,6 +131,11 @@ const secondsAgo = (seconds: number) => new Date(Math.floor(Date.now() / 1000 - 
 beforeAll(async () => {
 	await testModules.loadModules(['inbound-auth-core']);
 	await testDb.init();
+
+	// Role licensing reads the license state, which only boot installs.
+	const license = new LicenseMocker();
+	license.mockLicenseState(Container.get(LicenseState));
+	license.enable('feat:advancedPermissions');
 
 	cipher = Container.get(Cipher);
 	cacheService = Container.get(CacheService);
@@ -594,6 +605,277 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			const user = await users.findOneByOrFail({ email: 'bob@example.com' });
 			expect(context.subject.id).toBe(user.id);
 			expect((await readBinding(source, 'bob')).provenance).toBe('jit');
+		});
+	});
+	describe('role mapping', () => {
+		const adminRule: RoleMappingRule = {
+			id: 'r1',
+			expression: '{{ $claims.groups.includes("admins") }}',
+			role: 'global:admin',
+			enabled: true,
+		};
+		const editorRule = (projectId: string): RoleMappingRule => ({
+			id: 'r2',
+			expression: '{{ $claims.groups.includes("team") }}',
+			role: 'project:editor',
+			projectId,
+			enabled: true,
+		});
+		const mapping = (
+			mode: TrustedSourceIdentity['roleMapping']['mode'],
+			rules: Partial<
+				Pick<TrustedSourceIdentity['roleMapping'], 'instanceRoleRules' | 'projectRoleRules'>
+			> = {},
+		): TrustedSourceIdentity['roleMapping'] => ({
+			mode,
+			fallbackInstanceRole: 'global:member',
+			instanceRoleRules: [],
+			projectRoleRules: [],
+			...rules,
+		});
+		const jitSource = async (roleMapping: TrustedSourceIdentity['roleMapping']) =>
+			await seedSource({
+				linkByEmail: 'verified-only',
+				provision: { human: 'jit' },
+				roleMapping,
+			});
+		const claims = (sub: string, email: string, groups: string[]) => ({
+			sub,
+			email,
+			email_verified: true,
+			groups,
+		});
+
+		const roleOf = async (userId: string) => (await users.findByIdWithRole(userId))?.role.slug;
+		const relationsOf = async (userId: string) =>
+			(
+				await Container.get(ProjectRelationRepository).find({
+					where: { userId },
+					relations: { role: true },
+				})
+			).map(({ projectId, role }) => ({ projectId, role: role.slug }));
+		const roleUpdates = () =>
+			emit.mock.calls.filter(([name]) => name === 'sso-user-instance-role-updated');
+		const spyOnResolve = () => vi.spyOn(Container.get(RoleResolverService), 'resolveRoles');
+
+		it('writes nothing and evaluates no rule when the mode is off', async () => {
+			const source = await seedSource({
+				roleMapping: { mode: 'off', instanceRoleRules: [adminRule], projectRoleRules: [] },
+			});
+			const member = await createMember();
+			await bind(source, 'alice', member.id, { provenance: 'jit' });
+			const resolve = spyOnResolve();
+
+			expectOk(await service.identify(verified(source, claims('alice', member.email, ['admins']))));
+
+			expect(await roleOf(member.id)).toBe('global:member');
+			expect(resolve).not.toHaveBeenCalled();
+			expect(roleUpdates()).toHaveLength(0);
+		});
+
+		it('provisions the new user with the mapped instance role and project relation', async () => {
+			const team = await createTeamProject();
+			const source = await jitSource(
+				mapping('on-provision', {
+					instanceRoleRules: [adminRule],
+					projectRoleRules: [editorRule(team.id)],
+				}),
+			);
+
+			const context = expectOk(
+				await service.identify(
+					verified(source, claims('bob', 'bob@example.com', ['admins', 'team'])),
+				),
+			);
+
+			expect(await roleOf(context.subject.id)).toBe('global:admin');
+			expect(await relationsOf(context.subject.id)).toEqual(
+				expect.arrayContaining([
+					{ projectId: team.id, role: 'project:editor' },
+					expect.objectContaining({ role: 'project:personalOwner' }),
+				]),
+			);
+			expect(await relationsOf(context.subject.id)).toHaveLength(2);
+			expect(emit).toHaveBeenCalledWith(
+				'trusted-source-user-provisioned',
+				expect.objectContaining({ userId: context.subject.id, role: 'global:admin' }),
+			);
+		});
+
+		it('leaves the roles of a provisioned user alone when later claims differ', async () => {
+			const team = await createTeamProject();
+			const source = await jitSource(
+				mapping('on-provision', {
+					instanceRoleRules: [adminRule],
+					projectRoleRules: [editorRule(team.id)],
+				}),
+			);
+			const first = expectOk(
+				await service.identify(
+					verified(source, claims('bob', 'bob@example.com', ['admins', 'team'])),
+				),
+			);
+
+			const second = expectOk(
+				await service.identify(verified(source, claims('bob', 'bob@example.com', []))),
+			);
+
+			expect(second.subject.id).toBe(first.subject.id);
+			expect(await roleOf(first.subject.id)).toBe('global:admin');
+			expect(await relationsOf(first.subject.id)).toContainEqual({
+				projectId: team.id,
+				role: 'project:editor',
+			});
+			expect(roleUpdates()).toHaveLength(0);
+		});
+
+		it('provisions with the fallback role when no instance rule matches', async () => {
+			const source = await jitSource(mapping('on-provision', { instanceRoleRules: [adminRule] }));
+			const resolve = spyOnResolve();
+
+			const context = expectOk(
+				await service.identify(verified(source, claims('bob', 'bob@example.com', ['guests']))),
+			);
+
+			expect(resolve).toHaveBeenCalledTimes(1);
+			expect(await roleOf(context.subject.id)).toBe('global:member');
+			expect(emit).toHaveBeenCalledWith(
+				'trusted-source-user-provisioned',
+				expect.objectContaining({ role: 'global:member' }),
+			);
+		});
+
+		it('updates the instance role of a jit user continuously and only on change', async () => {
+			const source = await jitSource(mapping('continuous', { instanceRoleRules: [adminRule] }));
+			const member = await createMember();
+			await bind(source, 'alice', member.id, { provenance: 'jit' });
+			const input = verified(source, claims('alice', member.email, ['admins']));
+
+			const context = expectOk(await service.identify(input));
+
+			// The request that changes the role must already run with the new role.
+			expect(context.subject.role.slug).toBe('global:admin');
+			expect(await roleOf(member.id)).toBe('global:admin');
+			expect(emit).toHaveBeenCalledWith('sso-user-instance-role-updated', {
+				role: 'global:admin',
+				userId: member.id,
+			});
+
+			const changeUserRole = vi.spyOn(Container.get(UserService), 'changeUserRole');
+
+			expectOk(await service.identify(input));
+
+			expect(changeUserRole).not.toHaveBeenCalled();
+			expect(roleUpdates()).toHaveLength(1);
+		});
+
+		it('evaluates the rules for a claim-match binding but writes nothing', async () => {
+			const source = await jitSource(mapping('continuous', { instanceRoleRules: [adminRule] }));
+			const member = await createMember();
+			await bind(source, 'alice', member.id, { provenance: 'claim-match' });
+			const resolve = spyOnResolve();
+
+			expectOk(await service.identify(verified(source, claims('alice', member.email, ['admins']))));
+
+			expect(resolve).toHaveBeenCalledTimes(1);
+			expect(await roleOf(member.id)).toBe('global:member');
+			expect(roleUpdates()).toHaveLength(0);
+		});
+
+		it('rejects a block-access result before it stamps lastSeenAt', async () => {
+			const source = await jitSource(
+				mapping('continuous', {
+					instanceRoleRules: [{ ...adminRule, role: BLOCK_ACCESS_ASSIGNMENT }],
+				}),
+			);
+			const member = await createMember();
+			const lastSeenAt = secondsAgo(7 * 86400);
+			await bind(source, 'alice', member.id, { provenance: 'jit', lastSeenAt });
+
+			const result = await service.identify(
+				verified(source, claims('alice', member.email, ['admins'])),
+			);
+
+			expect(rejectReason(result)).toBe('no-role');
+			expect((await readBinding(source, 'alice')).lastSeenAt?.getTime()).toBe(lastSeenAt.getTime());
+			expect(await roleOf(member.id)).toBe('global:member');
+		});
+
+		it('rejects an instance rule that names a role that does not exist and writes nothing', async () => {
+			const source = await jitSource(
+				mapping('continuous', { instanceRoleRules: [{ ...adminRule, role: 'global:nope' }] }),
+			);
+			const member = await createMember();
+			await bind(source, 'alice', member.id, { provenance: 'jit' });
+
+			const result = await service.identify(
+				verified(source, claims('alice', member.email, ['admins'])),
+			);
+
+			expect(rejectReason(result)).toBe('no-role');
+			expect((await readBinding(source, 'alice')).lastSeenAt).toBeNull();
+			expect(await roleOf(member.id)).toBe('global:member');
+			expect(roleUpdates()).toHaveLength(0);
+		});
+
+		it('keeps existing team-project relations when no project rule is enabled', async () => {
+			const source = await jitSource(mapping('continuous', { instanceRoleRules: [adminRule] }));
+			const member = await createMember();
+			const team = await createTeamProject();
+			await linkUserToProject(member, team, 'project:editor');
+			await bind(source, 'alice', member.id, { provenance: 'jit' });
+
+			expectOk(await service.identify(verified(source, claims('alice', member.email, ['admins']))));
+
+			expect(await roleOf(member.id)).toBe('global:admin');
+			expect(await relationsOf(member.id)).toContainEqual({
+				projectId: team.id,
+				role: 'project:editor',
+			});
+		});
+
+		it('never changes the role of the instance owner', async () => {
+			const source = await jitSource(mapping('continuous', { instanceRoleRules: [adminRule] }));
+			const owner = await createOwner();
+			await bind(source, 'alice', owner.id, { provenance: 'jit' });
+			const resolve = spyOnResolve();
+
+			expectOk(await service.identify(verified(source, claims('alice', owner.email, ['admins']))));
+
+			expect(resolve).toHaveBeenCalledTimes(1);
+			expect(await roleOf(owner.id)).toBe('global:owner');
+			expect(roleUpdates()).toHaveLength(0);
+		});
+
+		it('rejects a project rule that names a non-project role and provisions nothing', async () => {
+			const team = await createTeamProject();
+			const source = await jitSource(
+				mapping('on-provision', {
+					projectRoleRules: [{ ...editorRule(team.id), role: 'global:admin' }],
+				}),
+			);
+
+			const result = await service.identify(
+				verified(source, claims('bob', 'bob@example.com', ['team'])),
+			);
+
+			expect(rejectReason(result)).toBe('no-role');
+			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
+			expect(await bindings.count()).toBe(0);
+		});
+
+		it('treats a rule whose expression throws as no match and applies the fallback', async () => {
+			const source = await jitSource(
+				mapping('continuous', {
+					instanceRoleRules: [{ ...adminRule, expression: '{{ $claims.x.y.z }}' }],
+				}),
+			);
+			const admin = await createAdmin();
+			await bind(source, 'alice', admin.id, { provenance: 'jit' });
+
+			expectOk(await service.identify(verified(source, claims('alice', admin.email, ['admins']))));
+
+			expect(await roleOf(admin.id)).toBe('global:member');
 		});
 	});
 });
