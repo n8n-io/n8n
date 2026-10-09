@@ -416,4 +416,41 @@ export const lakebaseParameters: INodeProperties[] = [
 			show: { resource: ['lakebase'], operation: ['update'] },
 		},
 	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		required: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+				'lakebaseTable.value',
+				'operation',
+			],
+			resourceMapper: {
+				resourceMapperMethod: 'getLakebaseMappingColumns',
+				mode: 'upsert',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				// ON CONFLICT takes the whole key, so a table with a composite primary
+				// key needs every part of it selected
+				multiKeyMatch: true,
+				refreshStaleSchemaOnOpen: true,
+			},
+		},
+		displayOptions: {
+			show: { resource: ['lakebase'], operation: ['upsert'] },
+		},
+	},
 ];
