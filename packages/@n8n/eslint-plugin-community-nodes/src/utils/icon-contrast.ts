@@ -129,6 +129,17 @@ export function getSvgPaintColors(svg: string): Rgb[] | null {
 		for (const element of value) {
 			if (typeof element !== 'object' || element === null) continue;
 			const entries = Object.entries(element);
+			const [key, child] = entries.find(([entry]) => entry !== ':@') ?? [];
+			if (key === '#text') {
+				if (inStyle && typeof child === 'string') addStyle(child);
+				continue;
+			}
+			if (key === '#cdata') {
+				visit(child, inherited, gradientId, inStyle);
+				continue;
+			}
+			if (!key) continue;
+
 			const attributes = entries.find(([key]) => key === ':@')?.[1];
 			const declarations = new Map<string, string>();
 			let id: string | undefined;
@@ -147,22 +158,15 @@ export function getSvgPaintColors(svg: string): Rgb[] | null {
 				}
 			}
 
-			for (const [key, child] of entries) {
-				if (key === ':@') continue;
-				if (key === '#text') {
-					if (inStyle && typeof child === 'string') addStyle(child);
-					continue;
-				}
-				const tag = key.split(':').pop()?.toLowerCase();
-				if (tag === 'image') hasImage = true;
-				const currentGradient =
-					tag === 'lineargradient' || tag === 'radialgradient' ? id : gradientId;
-				if ((tag === 'lineargradient' || tag === 'radialgradient') && id) {
-					gradients.set(id, []);
-				}
-				const opacity = addDeclarations(declarations, inherited, currentGradient ?? null);
-				visit(child, opacity, currentGradient ?? null, inStyle || tag === 'style');
+			const tag = key.split(':').pop()?.toLowerCase();
+			if (tag === 'image') hasImage = true;
+			const currentGradient =
+				tag === 'lineargradient' || tag === 'radialgradient' ? id : gradientId;
+			if ((tag === 'lineargradient' || tag === 'radialgradient') && id) {
+				gradients.set(id, []);
 			}
+			const opacity = addDeclarations(declarations, inherited, currentGradient ?? null);
+			visit(child, opacity, currentGradient ?? null, inStyle || tag === 'style');
 		}
 	};
 
