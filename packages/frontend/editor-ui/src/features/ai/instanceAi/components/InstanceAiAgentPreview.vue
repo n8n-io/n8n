@@ -7,16 +7,13 @@ import { persistPendingAgent } from '../instanceAi.memory.api';
 import { isAgentEditingAgent } from '../canvasPreview.utils';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
-	getAgentNameOverridesFromThreadMetadata,
 	getPendingAgentTargetFromThreadMetadata,
 } from '../instanceAi.threadRuntime';
 import { useThread, useInstanceAiStore } from '../instanceAi.store';
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
-	INSTANCE_AI_AGENT_NAME_OVERRIDES_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 } from '../constants';
-import type { AgentNameOverride } from '../useResourceRegistry';
 import type { AgentPreviewHandoffParams } from '../composables/useInstanceAiAgentPreviewHandoff';
 import AgentBuildingIndicator from './AgentBuildingIndicator.vue';
 
@@ -71,41 +68,15 @@ const showBuildingIndicator = computed(
 		(thread.activeArtifactId === props.agentId && (thread.isSendingMessage || thread.isStreaming)),
 );
 
-/**
- * The saved agent names to persist, or undefined when nothing changes. Events
- * never carry a name the user saved, so the record names the event name it
- * replaces. The artifact tab shows the saved name until an event renames the
- * agent again.
- */
-function savedAgentNamesUpdate(
-	metadata: Record<string, unknown> | undefined,
-	name: string,
-): Record<string, Omit<AgentNameOverride, 'agentId'>> | undefined {
-	const overrides = getAgentNameOverridesFromThreadMetadata(metadata);
-	const replaces = thread.getAgentEventName(props.agentId);
-	const current = overrides.find((override) => override.agentId === props.agentId);
-	const unchanged = current
-		? current.name === name && current.replaces === replaces
-		: name === replaces;
-	if (unchanged) return undefined;
-
-	const saved: Record<string, Omit<AgentNameOverride, 'agentId'>> = {};
-	for (const { agentId, ...override } of overrides) saved[agentId] = override;
-	saved[props.agentId] = { name, ...(replaces !== undefined ? { replaces } : {}) };
-	return saved;
-}
-
 async function syncAgentTarget(name: string) {
 	const metadata = instanceAiStore.getThreadMetadata(thread.id);
 	const target = getAgentBuilderTargetFromThreadMetadata(metadata);
 	const pendingTarget = getPendingAgentTargetFromThreadMetadata(metadata);
-	const savedNames = savedAgentNamesUpdate(metadata, name);
 	if (
 		target?.agentId === props.agentId &&
 		target.projectId === props.projectId &&
 		target.name === name &&
-		!pendingTarget &&
-		!savedNames
+		!pendingTarget
 	) {
 		return;
 	}
@@ -117,7 +88,6 @@ async function syncAgentTarget(name: string) {
 			projectId: props.projectId,
 			name,
 		},
-		...(savedNames ? { [INSTANCE_AI_AGENT_NAME_OVERRIDES_METADATA_KEY]: savedNames } : {}),
 	});
 }
 
