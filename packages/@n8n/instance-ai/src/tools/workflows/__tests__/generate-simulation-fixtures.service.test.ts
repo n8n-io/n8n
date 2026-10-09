@@ -678,8 +678,6 @@ describe('withPassThroughFloor', () => {
 		expect(result.Hold).toEqual([{ email: 'ada@example.com' }]);
 	});
 
-	// Same node, the other way round: with confidence scores on it adds one key,
-	// so the floor has to keep that key and drop everything else the model invented.
 	it('keeps the classification object when the classifier was asked for scores', () => {
 		const workflow = chain('@n8n/n8n-nodes-langchain.textClassifier');
 		const classifier = workflow.nodes.find((node) => node.name === 'Hold');

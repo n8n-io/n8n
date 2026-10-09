@@ -747,8 +747,6 @@ describe('ai-root shapes', () => {
 		);
 	});
 
-	// The classifier adds a key only when it was asked for confidence scores, and
-	// the prompt has to say which of the two it is.
 	it('describes the classifier by what its options ask for', async () => {
 		const { describeAiRootShape } = await import('./ai-root-shapes.js');
 		const classifier = '@n8n/n8n-nodes-langchain.textClassifier';
@@ -756,16 +754,12 @@ describe('ai-root shapes', () => {
 		const on = describeAiRootShape(classifier, { classifierReportsConfidence: true });
 		const off = describeAiRootShape(classifier, { classifierReportsConfidence: false });
 
-		// The OFF prose says "no classification wrapper key", so the word alone
-		// proves nothing: the two have to disagree.
 		expect(on).not.toBe(off);
 		expect(off).toBe(describeAiRootShape(classifier));
 		expect(on).toContain('`classification` object');
 		expect(off).toContain('no classification wrapper key');
 	});
 
-	// context.ts reads the parameter and ai-root-shapes.ts turns it into prose.
-	// Without this, the flag can stop reaching the prompt with both halves green.
 	it('carries the classifier option into the rendered prompt section', async () => {
 		const { buildSchemaContexts } = await import('./context.js');
 		const { buildNodeSchemaSection } = await import('./prompt.js');
@@ -783,24 +777,6 @@ describe('ai-root shapes', () => {
 
 		expect(buildNodeSchemaSection(on).join('\n')).toContain('`classification` object');
 		expect(buildNodeSchemaSection(off).join('\n')).toContain('no classification wrapper key');
-	});
-
-	it('reads the confidence option off the classifier node', async () => {
-		const { buildSchemaContexts } = await import('./context.js');
-		const node = (options: Record<string, unknown>) => ({
-			id: 'classifier-1',
-			name: 'Classifier',
-			type: '@n8n/n8n-nodes-langchain.textClassifier',
-			typeVersion: 1.1,
-			position: [0, 0] as [number, number],
-			parameters: { options },
-		});
-
-		const [on] = buildSchemaContexts([node({ includeConfidenceScores: true })]);
-		const [off] = buildSchemaContexts([node({})]);
-
-		expect(on.classifierReportsConfidence).toBe(true);
-		expect(off.classifierReportsConfidence).toBe(false);
 	});
 
 	it('derives the structured envelope key from a with-parser schema', async () => {

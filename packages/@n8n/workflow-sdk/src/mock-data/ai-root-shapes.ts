@@ -41,7 +41,6 @@ export function isAiRootNodeType(nodeType: string): boolean {
 }
 
 export interface AiRootShapeOptions {
-	/** The classifier was asked for confidence scores, so it adds one key. */
 	classifierReportsConfidence?: boolean;
 }
 

@@ -39,8 +39,6 @@ describe('buildClassificationSchema', () => {
 		);
 	});
 
-	// zod drops a key the schema did not ask for, so the score surviving the parse
-	// is what proves the fallback answer was asked about
 	it('asks for a score on the fallback answer too', () => {
 		const parsed = buildClassificationSchema(CATEGORIES, true, true).parse({
 			Billing: false,
@@ -52,8 +50,7 @@ describe('buildClassificationSchema', () => {
 		expect(parsed.confidence).toEqual({ Billing: 0.1, Technical: 0.1, fallback: 0.8 });
 	});
 
-	// A score the model mangles must never fail the parse. Auto-fixing is on by
-	// default, so a failure costs a repair call and can lose the classification.
+	// Auto-fixing is on by default, so a failed parse costs a repair call.
 	it.each([
 		['a word', { Billing: true, Technical: false, confidence: { Billing: 'high' } }],
 		['the wrong type', { Billing: true, Technical: false, confidence: 'high' }],
@@ -62,8 +59,6 @@ describe('buildClassificationSchema', () => {
 		expect(() => buildClassificationSchema(CATEGORIES, false, true).parse(answer)).not.toThrow();
 	});
 
-	// One unusable score must not take the others with it, which is what the
-	// per-key catch buys over the one on the whole map.
 	it('keeps the scores either side of one it cannot read', () => {
 		const parsed = buildClassificationSchema(CATEGORIES, false, true).parse({
 			Billing: true,
@@ -74,8 +69,6 @@ describe('buildClassificationSchema', () => {
 		expect(parsed.confidence).toEqual({ Technical: 0.2 });
 	});
 
-	// `z.coerce` would read the boolean above as 1 and report certainty the model
-	// never gave. A string that reads as a number is still worth keeping.
 	it.each([
 		['a number as a string', '0.8', 0.8],
 		['a mirrored boolean', true, undefined],
@@ -131,8 +124,6 @@ describe('toClassificationResult', () => {
 		).toBe(true);
 	});
 
-	// A schema that made each category an object would make every value truthy, and
-	// every item would route to every branch.
 	it.each([
 		['an object', { matched: true, confidence: 0.9 }],
 		['a string', 'true'],
@@ -166,7 +157,6 @@ describe('toClassificationResult', () => {
 		expect(result).toEqual({ matched: [], fallback: false, scores: { Billing: 0.2 } });
 	});
 
-	// Over 1 still says "very sure". Only a value that is not a number is nothing.
 	it.each([
 		['above the range', 1.4, 1],
 		['below the range', -2, 0],
@@ -185,8 +175,6 @@ describe('toClassificationResult', () => {
 		expect(toClassificationResult({ confidence }, CATEGORIES).scores).toBeUndefined();
 	});
 
-	// The wording tells the model to answer 0, so every guard between here and the
-	// output has to test for absence rather than truthiness.
 	it('keeps a score of zero', () => {
 		expect(toClassificationResult({ confidence: { Billing: 0 } }, CATEGORIES).scores).toEqual({
 			Billing: 0,

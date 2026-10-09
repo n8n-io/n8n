@@ -187,8 +187,6 @@ const TEXT_CLASSIFIER_NODE_TYPE = '@n8n/n8n-nodes-langchain.textClassifier';
 function passThroughAddedKeys(node: NamedNode): readonly string[] | undefined {
 	const params = isRecord(node.parameters) ? node.parameters : {};
 
-	// The classifier adds a `classification` object only when it was asked for
-	// confidence scores. Off by default, so an absent option means pure pass-through.
 	if (node.type === TEXT_CLASSIFIER_NODE_TYPE) {
 		const options = isRecord(params.options) ? params.options : {};
 		return options.includeConfidenceScores === true ? ['classification'] : [];

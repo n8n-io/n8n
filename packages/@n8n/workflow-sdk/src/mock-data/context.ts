@@ -67,7 +67,6 @@ export function buildSchemaContexts(
 	});
 }
 
-/** The option is off by default, so an absent parameter means no added key. */
 function classifierReportsConfidence(
 	nodeType: string,
 	params: Record<string, unknown> | undefined,

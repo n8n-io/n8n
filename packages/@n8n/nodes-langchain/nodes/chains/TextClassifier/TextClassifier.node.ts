@@ -36,16 +36,9 @@ const configuredOutputs = (parameters: INodeParameters) => {
 	return ret;
 };
 
-/** The label the Other branch reports, where there is no category to name. */
 const OTHER_LABEL = 'Other';
 
-/**
- * Sends one classified item to the branches it matched.
- *
- * Every branch gets its own copy. In multi-class mode one item routes to
- * several branches, and a shared object would carry one branch's changes onto
- * the rest.
- */
+/** One item can match several branches, and a shared object would carry one branch's writes onto the rest. */
 function routeItem(options: {
 	result: ClassificationResult;
 	item: INodeExecutionData;
@@ -58,8 +51,6 @@ function routeItem(options: {
 	const { result, item, itemIndex, categories, hasOtherBranch, withConfidence, returnData } =
 		options;
 
-	// The same map on every branch. An absolute score from a model is a weak
-	// signal, but the order between the categories still tells the reader something.
 	const scores = result.scores
 		? Object.fromEntries(
 				categories
@@ -290,8 +281,6 @@ export class TextClassifier implements INodeType {
 		const fallback = options?.fallback ?? 'discard';
 		const withConfidence = options?.includeConfidenceScores ?? false;
 
-		// Only with the option on, so a workflow that already has such a category
-		// keeps running
 		const reserved = withConfidence ? findReservedCategory(categories) : undefined;
 		if (reserved) {
 			throw new NodeOperationError(
