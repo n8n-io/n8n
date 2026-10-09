@@ -64,14 +64,15 @@ export function ApiResponse(
 
 		routeMetadata.successStatus = status;
 
-		if (hasMediaType(body)) {
-			if (!BINARY_RESPONSE_MEDIA_TYPES.includes(body.mediaType)) {
-				throw new Error(
-					`${String(handlerName)} declares an unsupported binary media type "${String(body.mediaType)}" - supported: ${BINARY_RESPONSE_MEDIA_TYPES.join(', ')}`,
-				);
-			}
+		if (isBinaryResponse(body)) {
 			routeMetadata.binaryResponse = body;
 			return;
+		}
+
+		if (hasMediaType(body)) {
+			throw new Error(
+				`${String(handlerName)} declares an unsupported binary media type "${String(body.mediaType)}" - supported: ${BINARY_RESPONSE_MEDIA_TYPES.join(', ')}`,
+			);
 		}
 
 		if (body !== undefined && !isResponseDto(body)) {
