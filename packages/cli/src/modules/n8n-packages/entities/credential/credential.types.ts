@@ -5,6 +5,12 @@ import type {
 } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
+export interface AgentCredentialRequirement {
+	credentialId: string;
+	credentialName?: string;
+	credentialType?: string;
+}
+
 export interface WorkflowCredentialRequirement {
 	workflowId: string;
 	credentialId: string;

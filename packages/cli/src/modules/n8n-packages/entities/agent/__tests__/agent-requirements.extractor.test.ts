@@ -7,11 +7,12 @@ import {
 
 import { looseAgentsFixture } from '../../../__tests__/fixtures/agent-package-fixtures';
 import { serializedAgentSchema } from '../../../spec/serialized/agent.schema';
+import { CredentialRequirementsExtractor } from '../../credential/credential-requirements.extractor';
 import type { PreparedAgentExport } from '../agent-export.types';
 import { AgentRequirementsExtractor } from '../agent-requirements.extractor';
 import { AgentSerializer } from '../agent.serializer';
 
-const extractor = new AgentRequirementsExtractor();
+const extractor = new AgentRequirementsExtractor(new CredentialRequirementsExtractor());
 
 function prepare(config: AgentJsonConfig | null): PreparedAgentExport {
 	const source = serializedAgentSchema.parse(
