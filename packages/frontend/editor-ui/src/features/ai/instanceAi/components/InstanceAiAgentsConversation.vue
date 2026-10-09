@@ -535,9 +535,9 @@ function sendPendingFirstMessage() {
 			handoffContext: pending.context,
 			...optionalRunTarget(pending.runTarget),
 		})
-		.then(() => {
+		.then((sent) => {
 			// The server stores the run target with the first message. Read it back for the header.
-			if (pending.runTarget) void store.refreshThread(thread.id).catch(() => {});
+			if (sent && pending.runTarget) void store.refreshThread(thread.id).catch(() => {});
 		});
 }
 

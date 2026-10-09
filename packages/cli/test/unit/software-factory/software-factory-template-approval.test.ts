@@ -44,12 +44,11 @@ function slackContextOf(run: TemplateRun): IExecuteFunctions {
 		getExecutionId: () => '1',
 		getSignedResumeUrl: () => 'https://n8n.example.com/resume',
 	});
-	context.getNodeParameter.mockImplementation((name, _itemIndex, fallback, options) => {
+	context.getNodeParameter.mockImplementation((name, _itemIndex, fallback: unknown, options) => {
 		const raw = parameterNamed(name);
-		if (raw === undefined) return fallback;
-		const value = configured.evaluate(APPROVAL, raw, run);
-		const extracted = options?.extractValue && isRecord(value) ? value.value : value;
-		return extracted as NodeParameterValueType;
+		const value = raw === undefined ? fallback : configured.evaluate(APPROVAL, raw, run);
+		const extract = raw !== undefined && options?.extractValue === true && isRecord(value);
+		return (extract ? value.value : value) as NodeParameterValueType;
 	});
 	return context;
 }

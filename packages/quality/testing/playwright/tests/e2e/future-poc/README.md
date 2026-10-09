@@ -137,9 +137,9 @@ context also starts with the sidebar expanded: the sidebar experiment has no
 PostHog variant in e2e, and its control group starts collapsed. A test that
 stores a choice in `sidebar.collapsed` keeps it.
 
-A published workflow cannot be deleted by a database reset. The fixtures
-deactivate the active workflows first, so a test that stops early cannot make the
-next reset fail.
+A published workflow cannot be deleted by a database reset. Before each reset, the
+fixtures deactivate the active workflows and wait until they are unpublished. A
+test that stops early therefore cannot make the next reset fail.
 
 | Fixture | Purpose |
 |---|---|
