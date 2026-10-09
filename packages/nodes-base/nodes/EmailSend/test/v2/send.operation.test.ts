@@ -644,5 +644,70 @@ describe('Test EmailSendV2, send operation', () => {
 				}),
 			);
 		});
+
+		it('should set the message ID in the reply headers when only inReplyTo is set', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+			mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+			});
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('html')
+				.mockReturnValueOnce({
+					appendAttribution: false,
+					inReplyTo: '<msg-123@email.example.com>',
+				})
+				.mockReturnValueOnce('<p>Test HTML</p>');
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await sendOperation.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					inReplyTo: '<msg-123@email.example.com>',
+					references: '<msg-123@email.example.com>',
+				}),
+			);
+		});
+
+		it('should normalize and join multiple references', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+			mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+			});
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('html')
+				.mockReturnValueOnce({
+					appendAttribution: false,
+					inReplyTo: '<msg-123@email.example.com>',
+					references: '<msg-123@email.example.com>, <msg-456@email.example.com>',
+				})
+				.mockReturnValueOnce('<p>Test HTML</p>');
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await sendOperation.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					inReplyTo: '<msg-123@email.example.com>',
+					references: '<msg-123@email.example.com> <msg-456@email.example.com>',
+				}),
+			);
+		});
 	});
 });
