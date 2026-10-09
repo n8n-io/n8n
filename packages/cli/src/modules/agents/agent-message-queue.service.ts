@@ -26,6 +26,7 @@ import {
 import { AgentRepository } from './repositories/agent.repository';
 import {
 	acceptsSteering,
+	isInteractiveChatKind,
 	type AgentExecutionAdmission,
 	type AgentQueuedMessage,
 	type AgentQueueDispatch,
@@ -172,7 +173,11 @@ export class AgentMessageQueueService {
 				platformThreadId,
 			};
 		} else {
-			queueDispatch = { kind: dispatch.kind };
+			queueDispatch = {
+				kind: dispatch.kind,
+				...(dispatch.options ? { options: dispatch.options } : {}),
+			};
+			if (dispatch.hidden) origin = { source, hidden: true };
 		}
 		const input = await this.messages.createInput(
 			{ id: messageId, threadId, resourceId, content, modelContent, author, origin },
@@ -192,7 +197,8 @@ export class AgentMessageQueueService {
 		return {
 			steerableExecutionId: steerable?.id ?? null,
 			items: items
-				.filter((item) => item.payload.kind === kind)
+				// Hidden machine turns are not user messages.
+				.filter((item) => item.payload.kind === kind && !isHidden(item))
 				// Show accepted steers first. Keep future turns in their saved queue order.
 				.sort(
 					(a, b) =>
@@ -214,7 +220,7 @@ export class AgentMessageQueueService {
 			if (!thread) throw new NotFoundError('Session not found');
 			await this.assertUserChatAccess(thread, input, ctx);
 			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
-			if (!item || item.payload.kind !== input.kind)
+			if (!item || item.payload.kind !== input.kind || isHidden(item))
 				throw new NotFoundError('Queued message not found');
 			if (
 				item.executionId !== null ||
@@ -241,7 +247,7 @@ export class AgentMessageQueueService {
 			if (!thread) throw new NotFoundError('Session not found');
 			await this.assertUserChatAccess(thread, input, ctx);
 			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
-			if (!item || item.payload.kind !== input.kind)
+			if (!item || item.payload.kind !== input.kind || isHidden(item))
 				throw new NotFoundError('Queued message not found');
 			if (item.executionId !== null) throw new ConflictError('This message has already started');
 			if (item.steeringExecutionId !== null)
@@ -299,7 +305,7 @@ export class AgentMessageQueueService {
 			if (!thread) throw new NotFoundError('Session not found');
 			await this.assertUserChatAccess(thread, input, ctx);
 			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
-			if (!item || item.payload.kind !== input.kind)
+			if (!item || item.payload.kind !== input.kind || isHidden(item))
 				throw new ConflictError('This message is no longer available');
 			const execution = await this.steering.findEligible(thread, ctx);
 			if (
@@ -447,7 +453,7 @@ export class AgentMessageQueueService {
 			access: { accessScope: thread.accessScope, ownerId: thread.ownerId },
 			sessionMode: 'existing',
 			queueItemId: item.id,
-			previewChat: item.payload.kind === 'preview',
+			previewChat: isInteractiveChatKind(item.payload.kind),
 			acceptsSteering: acceptsSteering(item.payload.kind),
 			userMessage: payload.message,
 			resourceId: payload.resourceId,
@@ -462,7 +468,8 @@ export class AgentMessageQueueService {
 			...readInboundUserMessage(item.message.content),
 			resourceId: item.message.resourceId,
 		};
-		if (item.payload.kind !== 'integration') return { ...item.payload, ...input };
+		if (item.payload.kind !== 'integration')
+			return { ...item.payload, ...input, ...(isHidden(item) ? { hidden: true } : {}) };
 		if (!item.message.author) throw new UnexpectedError('Queued integration input has no author');
 		const { origin } = item.message;
 		if (!origin?.source || !origin.integrationConnectionId || !origin.platformThreadId)
@@ -482,4 +489,8 @@ export class AgentMessageQueueService {
 				.message,
 		};
 	}
+}
+
+function isHidden(item: AgentMessageQueue): boolean {
+	return item.message.origin?.hidden === true;
 }
