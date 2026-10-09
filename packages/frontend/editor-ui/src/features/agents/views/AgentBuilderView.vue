@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeUnmount, provide, useTemplateRef } from 'vue';
 import {
 	StorageSerializers,
 	useElementSize,
@@ -124,6 +124,10 @@ import {
 	type AgentStarter,
 	type AgentTemplate,
 } from '../agentTemplates';
+import {
+	AGENT_CONFIG_WRITE_KEY,
+	type AgentConfigWrite,
+} from '../components/agentBuilderInjectionKeys';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
@@ -592,15 +596,19 @@ const {
 	canDelete: canDeleteAgent,
 	canExecute: canExecuteAgent,
 } = useAgentPermissions(projectId);
+// True while an eval suggestion is being applied, see `runConfigWrite`.
+const configWriteInFlight = ref(false);
 // True while writes from this tab must not reach the backend: the AI is
-// mutating this agent (artifact build lock or the embedded assistant), or
-// another client holds the collaboration write lock (multi-tab / multi-user).
+// mutating this agent (artifact build lock or the embedded assistant), an eval
+// suggestion is being applied to the saved config, or another client holds the
+// collaboration write lock (multi-tab / multi-user).
 // Every write path — the editor, the header actions, and the autosave loops —
 // keys off this.
 const isEditingLocked = computed(
 	() =>
 		props.artifactEditingLocked ||
 		embeddedAiBuilding.value ||
+		configWriteInFlight.value ||
 		agentCollaborationStore.shouldBeReadOnly,
 );
 // Combines permission with the lock: while locked, editing is disabled even
@@ -1713,6 +1721,29 @@ async function flushAutosaveLoops(isolateSideSaveErrors = false): Promise<Autosa
 	]);
 	return configResult;
 }
+
+// Evals can rewrite the agent's instructions on the server. That reads the saved config, so
+// pending local edits land first. Editing stays locked until the write is done and the config
+// is reloaded; an edit made in between would be saved against the old config hash and hit a
+// conflict. The reload runs even when the write threw, since the server may have saved first.
+// A locked editor has nothing of its own to save: the server rejects the write on its own
+// lock check.
+const runConfigWrite: AgentConfigWrite = async (write) => {
+	if (!isEditingLocked.value) await flushAutosaveLoops();
+	configWriteInFlight.value = true;
+	try {
+		return await write();
+	} finally {
+		try {
+			await onConfigUpdated();
+		} catch (error) {
+			handleArtifactRefreshError(error);
+		} finally {
+			configWriteInFlight.value = false;
+		}
+	}
+};
+provide(AGENT_CONFIG_WRITE_KEY, runConfigWrite);
 
 async function flushAutosave(): Promise<AutosaveResult> {
 	return await flushAutosaveLoops();

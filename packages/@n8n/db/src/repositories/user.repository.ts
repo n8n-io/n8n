@@ -48,6 +48,15 @@ export class UserRepository extends BaseRepository<User> {
 		});
 	}
 
+	/**
+	 * Every user with the relations `isPending` needs: the role and the auth
+	 * identities. Without the identities, a user who signs in through SSO or LDAP
+	 * and so has no password would read as pending.
+	 */
+	async findAllWithRoleAndAuthIdentities(): Promise<User[]> {
+		return await this.find({ relations: ['role', 'authIdentities'], order: { id: 'ASC' } });
+	}
+
 	async findByIdWithRole(id: string, ctx: OperationContext = {}): Promise<User | null> {
 		return await this.managerFor(ctx).findOne(User, {
 			where: { id },

@@ -136,6 +136,11 @@ export class DeferredToolManager {
 		return [this.searchTool, this.loadTool];
 	}
 
+	/** A registered deferred tool, loaded or not. */
+	getTool(name: string): BuiltTool | undefined {
+		return this.toolsByName.get(name);
+	}
+
 	getLoadedTools(): BuiltTool[] {
 		return Array.from(this.loadedToolNames)
 			.map((name) => this.toolsByName.get(name))

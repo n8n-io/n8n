@@ -330,7 +330,7 @@ describe('WorkflowExporter', () => {
 		const a = makeWorkflow({ id: 'wf_a' });
 		const b = makeWorkflow({ id: 'wf_b' });
 		const extractor = mock<CredentialRequirementsExtractor>();
-		extractor.extract.mockImplementation((workflow) => [
+		extractor.extractFromWorkflow.mockImplementation((workflow) => [
 			{
 				workflowId: workflow.id,
 				credentialId: `cred-from-${workflow.id}`,
@@ -349,7 +349,7 @@ describe('WorkflowExporter', () => {
 			workflowVersionPolicy: 'latest',
 		});
 
-		expect(extractor.extract).toHaveBeenCalledTimes(2);
+		expect(extractor.extractFromWorkflow).toHaveBeenCalledTimes(2);
 		expect(requirements.credentials).toEqual<WorkflowCredentialRequirement[]>([
 			{
 				workflowId: 'wf_a',

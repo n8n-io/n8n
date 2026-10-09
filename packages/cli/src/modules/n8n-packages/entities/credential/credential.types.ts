@@ -4,13 +4,21 @@ import type {
 	CredentialMissingMode,
 } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+import type { AgentRequirementSource } from '../requirement-source';
 
-export interface WorkflowCredentialRequirement {
-	workflowId: string;
+export interface CredentialReference {
 	credentialId: string;
-	credentialName: string;
-	credentialType: string;
+	credentialName?: string;
+	credentialType?: string;
 }
+
+export interface WorkflowCredentialRequirement extends Required<CredentialReference> {
+	workflowId: string;
+}
+
+export type CredentialRequirement =
+	| WorkflowCredentialRequirement
+	| (AgentRequirementSource & CredentialReference);
 
 export type CredentialResolutionFailureKind =
 	| 'not_found'
