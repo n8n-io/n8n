@@ -24,6 +24,7 @@ import { telemetry } from '@/app/plugins/telemetry';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 import * as moduleInitializer from '@/app/moduleInitializer/moduleInitializer';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
+import { flushPromises } from '@vue/test-utils';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
@@ -318,6 +319,25 @@ describe('Init', () => {
 			expect(sourceControlSpy).not.toHaveBeenCalled();
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
 			expect(versionsSpy).not.toHaveBeenCalled();
+			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).not.toHaveBeenCalled();
+		});
+
+		it('loads node types before authenticated pages render', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockReturnValueOnce(promise);
+			let initialized = false;
+			const initializing = initializeAuthenticatedFeatures(false).then(() => {
+				initialized = true;
+			});
+
+			await flushPromises();
+			expect(initialized).toBe(false);
+
+			resolve();
+			await initializing;
+			expect(initialized).toBe(true);
 		});
 
 		it('should init authenticated features only once if user is logged in', async () => {
