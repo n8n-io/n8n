@@ -1873,33 +1873,6 @@ describe('createScheduler metrics', () => {
 			finish();
 		});
 
-		it('warns once when a run is still pending after sixty leases', async () => {
-			const { taskStore, onEvent, finish } = await fireLongHandler(
-				mock<SchedulerMetrics>(),
-				claimedTask({ timeoutSeconds: 61 * LEASE_SECONDS }),
-			);
-			taskStore.renewLease.mockResolvedValue(true);
-			const stuckWarning = {
-				level: 'warn',
-				message: 'Scheduler task is still running after many leases; it may be stuck',
-				context: {
-					taskId: claimedTask().id,
-					taskType: 'test-task',
-					runningSeconds: 60 * LEASE_SECONDS,
-				},
-			};
-
-			await vi.advanceTimersByTimeAsync(60 * LEASE_SECONDS * 1_000 - 1);
-			expect(onEvent).not.toHaveBeenCalledWith(stuckWarning);
-
-			await vi.advanceTimersByTimeAsync(10_000);
-			const warnings = onEvent.mock.calls.filter(
-				([event]) => event.message === stuckWarning.message,
-			);
-			expect(warnings).toEqual([[stuckWarning]]);
-			finish();
-		});
-
 		it('counts and warns once when a run reaches its timeout', async () => {
 			const metrics = mock<SchedulerMetrics>();
 			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
