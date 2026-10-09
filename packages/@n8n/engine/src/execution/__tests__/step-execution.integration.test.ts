@@ -635,7 +635,7 @@ describe('step execution (integration)', () => {
 			workflowId: 'wf-2',
 			status: 'running',
 			mode: 'production',
-			graph,
+			graph: { ...graph, seeded: [] },
 			workflow: {},
 			triggerOutputs: null,
 			callerContext: { hostMode: 'trigger' },
