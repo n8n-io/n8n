@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { UrlService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import type { TrustedSourceConfigInput } from '@n8n/inbound-auth';
-import { InstanceSettings } from 'n8n-core';
 
 import { TrustedSourceDbStore } from './trusted-source.store';
 
@@ -35,16 +34,15 @@ export const SYSTEM_TRUSTED_SOURCE_CONFIG = {
  * Every process seeds, not only the leader: a webhook process can serve requests before any main
  * has booted. The insert is idempotent, so concurrent seeders need no leader check.
  *
- * Only main moves the issuer of an existing row. Main serves the OAuth server and mints its
- * tokens, so its base URL is the issuer. A webhook or worker process can resolve a different base
- * URL, for example without `N8N_EDITOR_BASE_URL`, and must not move the issuer away from main's.
+ * Each process sets the issuer to its own instance base URL. That URL is also the `iss` of the
+ * tokens that a main or webhook process mints. So every process must resolve the same base URL: a
+ * process that resolves another one moves the issuer away from the tokens of the others.
  */
 @Service()
 export class SystemTrustedSourceSeeder {
 	constructor(
 		private readonly store: TrustedSourceDbStore,
 		private readonly urlService: UrlService,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('inbound-auth');
@@ -58,7 +56,6 @@ export class SystemTrustedSourceSeeder {
 			name: SYSTEM_TRUSTED_SOURCE_NAME,
 			issuer,
 			config: SYSTEM_TRUSTED_SOURCE_CONFIG,
-			updateIssuer: this.instanceSettings.instanceType === 'main',
 		});
 		const context = { id: SYSTEM_TRUSTED_SOURCE_ID, issuer };
 
@@ -71,12 +68,6 @@ export class SystemTrustedSourceSeeder {
 				break;
 			case 'unchanged':
 				this.logger.debug('System trusted source is up to date', context);
-				break;
-			case 'issuer-kept':
-				this.logger.debug(
-					'System trusted source names another issuer; only a main instance moves it',
-					context,
-				);
 				break;
 			case 'conflict':
 				this.logger.error(

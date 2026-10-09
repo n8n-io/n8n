@@ -35,21 +35,9 @@ export type CreateTrustedSourceInput = {
 	config: TrustedSourceConfigInput;
 };
 export type UpdateTrustedSourceInput = Partial<CreateTrustedSourceInput>;
-export type SeedSystemSourceInput = CreateTrustedSourceInput & {
-	id: string;
-	/** Whether an existing row may move to `issuer`; otherwise the row is only inserted. */
-	updateIssuer: boolean;
-};
-/**
- * `issuer-kept`: the row names another issuer and the caller may not move it.
- * `conflict`: an admin row already holds the name or the issuer, so the system row is not written.
- */
-export type SeedSystemSourceOutcome =
-	| 'inserted'
-	| 'issuer-updated'
-	| 'issuer-kept'
-	| 'unchanged'
-	| 'conflict';
+export type SeedSystemSourceInput = CreateTrustedSourceInput & { id: string };
+/** `conflict`: an admin row already holds the name or the issuer, so the system row is not written. */
+export type SeedSystemSourceOutcome = 'inserted' | 'issuer-updated' | 'unchanged' | 'conflict';
 
 export class SystemTrustedSourceModificationError extends UserError {
 	constructor(action: 'update' | 'delete') {
@@ -220,9 +208,8 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 
 	/**
 	 * The only write path to a system row, and only the seeder calls it. It inserts the row once and
-	 * afterwards follows the issuer when `updateIssuer` is set, because the instance base URL can
-	 * change between boots. It never rewrites the config: a later change to the seeded config needs
-	 * a config migration.
+	 * afterwards follows the issuer, because the instance base URL can change between boots. It
+	 * never rewrites the config: a later change to the seeded config needs a config migration.
 	 */
 	async seedSystemSource(input: SeedSystemSourceInput): Promise<SeedSystemSourceOutcome> {
 		const { id, name, issuer } = input;
@@ -250,7 +237,6 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		}
 
 		if (existing.issuer === issuer) return 'unchanged';
-		if (!input.updateIssuer) return 'issuer-kept';
 		// A pre-check, so the update does not need to catch a unique violation.
 		if (await this.trustedSourceRepository.findByIssuer(issuer)) return 'conflict';
 
