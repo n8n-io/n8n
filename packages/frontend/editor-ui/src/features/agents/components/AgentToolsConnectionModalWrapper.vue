@@ -213,6 +213,7 @@ const configForm = ref<InstanceType<typeof AgentToolConfigForm> | null>(null);
 const configTitle = ref('');
 const configSession = ref(0);
 const isCredentialModalOpen = ref(false);
+const configIsRestricted = ref(false);
 
 const isOpen = computed({
 	get: () => uiStore.modalsById[props.modalName]?.open === true,
@@ -864,8 +865,9 @@ function handleRowActivate(item: ToolConnectionItem) {
 	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
 	// the row's own tooltip already explains why, so activating does nothing.
 	if (item.disabled) return;
-	if (item.kind === 'node' && item.restriction) return;
 	if (item.status === 'connecting') return;
+	const isRestricted = item.kind === 'node' && Boolean(item.restriction);
+	if (isRestricted && !hasToolConnection(item.status)) return;
 	if (hasToolConnection(item.status)) {
 		if (item.id.startsWith('mcp:')) {
 			const localId = item.id.slice('mcp:'.length);
@@ -883,7 +885,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 			// n8n Connect managed tool must keep its managed-credential
 			// preselection, so route it through the same managed add path.
 			const { ref } = entry;
-			if (ref.type === 'node') {
+			if (ref.type === 'node' && !isRestricted) {
 				const nodeType =
 					[...availableToolTypes.value, ...communitySearchToolTypes.value].find(
 						(nt) => nt.name === ref.node.nodeType,
@@ -934,7 +936,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 		:open="isOpen"
 		:step="currentStep"
 		:title="modalTitle"
-		:editable-title="Boolean(configData) && !configIsCustom"
+		:editable-title="Boolean(configData) && !configIsCustom && !configIsRestricted"
 		:show-back="Boolean(configData)"
 		:show-footer="Boolean(configData)"
 		:busy="isCredentialModalOpen || isCreatingWorkflow"
@@ -995,6 +997,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 			:data="configData"
 			@update:title="configTitle = $event"
 			@update:credential-modal-open="isCredentialModalOpen = $event"
+			@update:restricted="configIsRestricted = $event"
 		/>
 
 		<template v-if="configData?.onRemove" #footerLeft>
@@ -1006,7 +1009,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 		<template v-if="configData" #footerActions>
 			<N8nButton
 				variant="solid"
-				:disabled="isCredentialModalOpen"
+				:disabled="isCredentialModalOpen || configIsRestricted"
 				data-testid="agent-tool-config-save"
 				@click="saveConfig"
 			>
