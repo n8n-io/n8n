@@ -175,15 +175,14 @@ export function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage
 			changed = true;
 		}
 
-		// Remove AIMessages with tool_calls if they don't have following ToolMessages
+		// Remove leading AIMessages with tool_calls (they lack a preceding human message)
 		if (result.length > 0) {
 			const firstMessage = result[0];
-			const hasOrphanedAIMessage =
+			const isLeadingAIMessageWithToolCalls =
 				firstMessage instanceof AIMessage &&
-				(firstMessage.tool_calls?.length ?? 0) > 0 &&
-				!(result[1] instanceof ToolMessage);
+				(firstMessage.tool_calls?.length ?? 0) > 0;
 
-			if (hasOrphanedAIMessage) {
+			if (isLeadingAIMessageWithToolCalls) {
 				result.shift();
 				changed = true;
 			}
@@ -249,6 +248,36 @@ export async function loadMemory(
 	}
 	const memoryVariables = await memory.loadMemoryVariables({});
 	let chatHistory = (memoryVariables['chat_history'] as BaseMessage[]) || [];
+
+	// Filter out completely empty or blank string messages (e.g. from malformed DB rows)
+	chatHistory = chatHistory.filter((msg) => {
+		if (msg instanceof HumanMessage || msg instanceof AIMessage) {
+			const hasToolCalls = 'tool_calls' in msg && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0;
+			if (hasToolCalls) return true;
+
+			if (typeof msg.content === 'string') {
+				return msg.content.trim() !== '';
+			}
+			if (Array.isArray(msg.content)) {
+				if (msg.content.length === 0) return false;
+				// An array is only valid if it contains at least one non-empty text block
+				// or any non-text block (like image_url).
+				return msg.content.some((block) => {
+					if (typeof block === 'string') {
+						return block.trim() !== '';
+					}
+					if (block && typeof block === 'object' && 'type' in block && block.type === 'text') {
+						return typeof block.text === 'string' && block.text.trim() !== '';
+					}
+					return true;
+				});
+			}
+			if (msg.content === null || msg.content === undefined) {
+				return false;
+			}
+		}
+		return true;
+	});
 
 	// Clean up any orphaned messages from previous trimming operations
 	chatHistory = cleanupOrphanedMessages(chatHistory);
