@@ -177,6 +177,57 @@ describe('lintRulesForShadowing', () => {
 		]);
 	});
 
+	describe('extends selector', () => {
+		/** `googleSheetsOAuth2Api` is built on `googleOAuth2Api`, which is built on `oAuth2Api`. */
+		const credentialType = (name: string) => ({
+			name,
+			baseName: name,
+			ancestors:
+				{
+					googleSheetsOAuth2Api: ['googleOAuth2Api', 'oAuth2Api'],
+					googleOAuth2Api: ['oAuth2Api'],
+				}[name] ?? [],
+		});
+		const lint = (rules: PolicyRule[]) => lintRulesForShadowing(rules, () => null, credentialType);
+		const family = (id: string, value: string) =>
+			rule({ id, selector: { kind: 'extends', value } });
+		const name = (id: string, value: string) => rule({ id, selector: { kind: 'name', value } });
+
+		it('flags a later name rule for a type built on an earlier family rule', () => {
+			expect(
+				lint([family('oauth2', 'oAuth2Api'), name('sheets', 'googleSheetsOAuth2Api')]),
+			).toEqual([{ ruleId: 'sheets', shadowedByRuleId: 'oauth2' }]);
+		});
+
+		it('flags a later name rule for the family base itself', () => {
+			expect(lint([family('oauth2', 'oAuth2Api'), name('generic', 'oAuth2Api')])).toEqual([
+				{ ruleId: 'generic', shadowedByRuleId: 'oauth2' },
+			]);
+		});
+
+		it('flags a later family rule nested inside an earlier one', () => {
+			expect(lint([family('oauth2', 'oAuth2Api'), family('google', 'googleOAuth2Api')])).toEqual([
+				{ ruleId: 'google', shadowedByRuleId: 'oauth2' },
+			]);
+		});
+
+		it('does not flag a family rule after a name rule for its base, which matches one type only', () => {
+			expect(lint([name('generic', 'oAuth2Api'), family('oauth2', 'oAuth2Api')])).toEqual([]);
+		});
+
+		it('does not flag a wider family rule after a narrower one', () => {
+			expect(lint([family('google', 'googleOAuth2Api'), family('oauth2', 'oAuth2Api')])).toEqual(
+				[],
+			);
+		});
+
+		it('does not flag a derived-type allow placed before the family rule', () => {
+			expect(
+				lint([name('sheets', 'googleSheetsOAuth2Api'), family('oauth2', 'oAuth2Api')]),
+			).toEqual([]);
+		});
+	});
+
 	it('returns no warnings for an empty or single-rule list', () => {
 		expect(lintRulesForShadowing([])).toEqual([]);
 		expect(

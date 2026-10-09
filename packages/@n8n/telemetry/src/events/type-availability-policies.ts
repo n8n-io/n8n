@@ -65,6 +65,9 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 			...ruleCounts,
 			name_selector_count: z.number().describe('Rules that target one exact type name'),
 			package_selector_count: z.number().describe('Rules that target a whole package'),
+			extends_selector_count: z
+				.number()
+				.describe('Rules that target a credential type and every type built on it'),
 			evaluated_type_count: z
 				.number()
 				.describe(

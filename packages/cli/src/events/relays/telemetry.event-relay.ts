@@ -160,6 +160,7 @@ function countSelectorKinds(rules: readonly PolicyRule[]) {
 	return {
 		name_selector_count: rules.filter((rule) => rule.selector.kind === 'name').length,
 		package_selector_count: rules.filter((rule) => rule.selector.kind === 'package').length,
+		extends_selector_count: rules.filter((rule) => rule.selector.kind === 'extends').length,
 	};
 }
 
@@ -586,7 +587,7 @@ export class TelemetryEventRelay extends EventRelay {
 			kind === CREDENTIAL_TYPES_KIND
 				? Object.keys(this.loadNodesAndCredentials.knownCredentials)
 				: Object.keys(this.nodeTypes.getKnownTypes());
-		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes));
+		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials));
 		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
 
 		this.telemetry.track(

@@ -354,12 +354,15 @@ export {
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 
 export type {
+	NodeTypePolicyRule,
+	NodeTypePolicySelector,
 	NonDelegatingPolicyAction,
 	NonDelegatingPolicyRule,
 	PolicyAction,
 	PolicyRule,
 	PolicySelector,
 } from './type-availability-policies/policy-rule.types';
+export { isNodeTypePolicyRule } from './type-availability-policies/policy-rule.types';
 export {
 	credentialTypePolicySelectorSchema,
 	nodeTypePolicySelectorSchema,

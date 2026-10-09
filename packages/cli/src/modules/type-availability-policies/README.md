@@ -206,6 +206,14 @@ lint warns about it. The verdict names the variant the user placed and the rule 
 Grandfathering compares literal type names, so adding `gmailTool` to a workflow that already
 stores `gmail` is a new type and is judged.
 
+A credential type policy has a third selector, `extends`. It matches the named type and every
+type built on it through the credential's `extends` list, at any depth: `extends oAuth2Api`
+covers `googleOAuth2Api` and `googleSheetsOAuth2Api`. A `name` rule stays exact, so
+`name oAuth2Api` blocks only the generic OAuth2 credential. Rule order decides as usual: an
+`allow name googleSheetsOAuth2Api` placed before `deny extends oAuth2Api` keeps Sheets usable,
+and placed after it, the shadow lint warns that it can never match. A write rejects an `extends`
+rule in a node type policy, and one that names a credential type that is not installed.
+
 ### Reading it on the execution path
 
 `workflowStart` runs for every execution and every sub-execution, under a 250 ms deadline it

@@ -27,3 +27,15 @@ describe.each([
 		expect(schema.safeParse({ kind: 'name' }).success).toBe(false);
 	});
 });
+
+describe('extends selector', () => {
+	const selector = { kind: 'extends', value: 'oAuth2Api' };
+
+	it('is rejected by the node type schema', () => {
+		expect(nodeTypePolicySelectorSchema.safeParse(selector).success).toBe(false);
+	});
+
+	it('is accepted by the credential type schema', () => {
+		expect(credentialTypePolicySelectorSchema.safeParse(selector).success).toBe(true);
+	});
+});
