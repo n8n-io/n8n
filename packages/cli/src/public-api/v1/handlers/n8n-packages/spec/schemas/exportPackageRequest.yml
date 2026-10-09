@@ -87,8 +87,10 @@ properties:
       exports the current draft. `published-strict` requires a published version.
       `prefer-published` uses the published version when available and the draft
       otherwise. `ignore-unpublished` skips unpublished selections.
-      Required dependencies that cannot be included still cause the export to
-      fail. The selected version supplies the definition and its references.
+      Dependencies that cannot be included cause the export to fail only when
+      `dependencyPolicy` is `fail` or `include-in-package`. With `reference-only`,
+      the export records them as external requirements.
+      The selected version supplies the definition and its references.
       Workflow names, settings, and tags always use their current values.
       Agent IDs, names, and MCP availability always use their current values.
     example: latest

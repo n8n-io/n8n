@@ -41,8 +41,10 @@ the API key to hold `workflow:export` when exporting workflows or folders, or
 project export. The selected version supplies the definition and its references.
 Workflow names, settings (including `errorWorkflow`), and tags always use their
 current values. Agent IDs, names, and MCP availability also use their current
-values. Required dependencies that cannot be included still cause the export to
-fail under `ignore-unpublished`.
+values. Under `ignore-unpublished`, dependencies that cannot be included cause
+the export to fail only when `--dependency-policy` is `fail` or
+`include-in-package`. With `reference-only`, the export records them as external
+requirements.
 
 `--dependency-policy` also applies to workflows and agents. Dependencies include
 static workflow references and disabled agent references. With `fail`, include
