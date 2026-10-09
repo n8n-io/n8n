@@ -453,16 +453,20 @@ describe('Kafka (versioned entry point)', () => {
 		expect(kafka.nodeVersions[1].methods?.credentialTest).toHaveProperty('kafkaConnectionTest');
 	});
 
-	it('should resolve v1 by default', () => {
-		expect(kafka.getNodeType()).toBeInstanceOf(KafkaV1);
+	it('should resolve v2 by default', () => {
+		expect(kafka.getNodeType()).toBeInstanceOf(KafkaV2);
+	});
+
+	it('should still resolve v1 when a workflow pins it', () => {
+		expect(kafka.getNodeType(1)).toBeInstanceOf(KafkaV1);
 	});
 
 	it('should resolve v2 when requested', () => {
 		expect(kafka.getNodeType(2)).toBeInstanceOf(KafkaV2);
 	});
 
-	it('should have defaultVersion set to 1', () => {
-		expect(kafka.description.defaultVersion).toBe(1);
+	it('should have defaultVersion set to 2', () => {
+		expect(kafka.description.defaultVersion).toBe(2);
 	});
 
 	it('should have the correct displayName', () => {
