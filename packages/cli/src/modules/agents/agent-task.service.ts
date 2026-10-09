@@ -148,10 +148,7 @@ export class AgentTaskService {
 		const previous = captureAgentMutation(agent);
 
 		const tasks = dtos.map((dto) => {
-			const taskId = generateAgentResourceId(
-				undefined,
-				(agent.schema?.tasks ?? []).map((ref) => ref.id),
-			);
+			const taskId = generateAgentResourceId((agent.schema?.tasks ?? []).map((ref) => ref.id));
 			this.attachTaskRef(agent, taskId, dto.enabled ?? true);
 			return this.taskRepository.create({
 				id: taskId,

@@ -44,7 +44,7 @@ export function createDefaultInlineAgent(): InlineAgentConfig {
 }
 
 /**
- * Mirror of the backend's `generateAgentResourceId(undefined, …)` for inline
+ * Mirror of the backend's `generateAgentResourceId(…)` for inline
  * agents, whose skill ids are minted client-side (there is no entity to POST
  * to). Use the same NanoID format and collision retry.
  */
