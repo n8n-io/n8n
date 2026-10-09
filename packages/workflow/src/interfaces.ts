@@ -438,6 +438,15 @@ export interface ICredentialType {
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
+	methods?: {
+		loadOptions?: {
+			[method: string]: (
+				credentials: ICredentialDataDecryptedObject,
+				filter?: string,
+				paginationToken?: string,
+			) => Promise<INodeListSearchResult>;
+		};
+	};
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
 	__showManagedOAuthScopes?: boolean;
