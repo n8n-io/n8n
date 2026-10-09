@@ -1,0 +1,87 @@
+packages/nodes-base/nodes/ActiveCampaign/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3b19a29a7eca02 1-39
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/update.json
+  s_ef81e649384351::t_29d48adc26a695 2-157
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/tag/getAll.json
+  s_ef81e649384351::t_fadeae61a0321f 2-40
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/getAll.json
+  s_ef81e649384351::t_be153ab763e2bd 2-142
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/get.json
+  s_ef81e649384351::t_d6e27bf6aff2ec 2-659
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/getAll.json
+  s_ef81e649384351::t_27f2dd21341f5a 2-100
+packages/nodes-base/nodes/ActiveCampaign/ActiveCampaign.node.ts
+  s_2e1fa95fc44f8f::t_7dcbe1fdc16f2b 10,12
+  s_b36cb1be174a94::t_cc3af1a754d02b 239,260,281,311,322,336,338,357,366,393,402,425,443,452,470,482,505,524,540,556,572,588,604,639,649,668,677,695,704,727,761,775,784,802,814,827,843,860,874,883,901,917,960,974,983,1001,1017,1042,1063,1072,1090,1107,1118,1136
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contactList/add.json
+  s_ef81e649384351::t_fc2f9ed83795ad 2-8
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/update.json
+  s_ef81e649384351::t_f39e79b4292cc7 2-151
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/create.json
+  s_ef81e649384351::t_387911dd2439a6 2-145
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/tag/get.json
+  s_ef81e649384351::t_5817f9015ebf33 2-45
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contactTag/add.json
+  s_ef81e649384351::t_aad846c3ccbc27 2-34
+packages/nodes-base/nodes/ActiveCampaign/ActiveCampaignTrigger.node.ts
+  s_2e1fa95fc44f8f::t_b85ed53af85eb8 11
+  s_3e99e189766603::t_5a7ee6328b7bc5 95,120,144,156
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/list/getAll.json
+  s_ef81e649384351::t_88411a73a082b2 2-145
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/get.json
+  s_ef81e649384351::t_ceadcaa5654664 2-105
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/create.json
+  s_ef81e649384351::t_0ddf0ea31cccb3 2-372
+packages/nodes-base/nodes/ActiveCampaign/GenericFunctions.ts
+  s_05559abf24e2df::t_4d93764c682782 10-11,13,28,39,43,81
+packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/account/getAll.json
+  s_ef81e649384351::t_e2aec77d531fb7 2-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da13c3497f2af4f28470ead2e86160d3774b909f",
+  "prompts": {},
+  "sessions": {
+    "s_05559abf24e2df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9129d9169435392b",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_3e99e189766603": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a04fda06e16eb887b",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_b36cb1be174a94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab0ca59030f03bf1c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_ef81e649384351": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afaa7157ce1e90815",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
