@@ -620,7 +620,9 @@ describe('EngineV2Dispatcher', () => {
 				workflow: workflow(),
 				triggerName: MANUAL_TRIGGER.name,
 				triggerOutputs: [[{ json: { from: 'runData' } }]],
-				seeded: [{ nodeId: SET_NODE.id, outputs: [[{ json: { reused: true } }], []] }],
+				seeded: [
+					{ nodeId: SET_NODE.id, iteration: 0, outputs: [[{ json: { reused: true } }], []] },
+				],
 			};
 
 			beforeEach(() => {

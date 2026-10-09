@@ -116,8 +116,8 @@ export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
  * completed with these outputs instead, so everything before it has settled
  * first, as it would have had the node run. Same opacity as `TriggerOutputs`.
  *
- * Each node maps to its outputs per pass, iteration 0 first. A node outside a
- * loop has one entry. TODO(CAT-4875): accept a loop's passes.
+ * Each node maps to its outputs per pass, iteration 0 first: one entry outside
+ * a loop, one per pass for a loop member.
  */
 export type SeededSteps = Record<string, StepSlots[]>;
 

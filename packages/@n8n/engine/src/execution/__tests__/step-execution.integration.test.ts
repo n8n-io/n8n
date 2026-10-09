@@ -515,6 +515,70 @@ describe('step execution (integration)', () => {
 		expect(b!.createdAt.getTime()).toBeGreaterThanOrEqual(a!.updatedAt.getTime());
 	});
 
+	it('runs what follows a loop seeded whole, and none of the loop itself', async () => {
+		// trigger -> loop(batch) -> x -> loop (back-edge); loop's done slot -> d
+		const loopGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'loop', name: 'Loop', type: 'batch', config: { batchSize: 1 } },
+				{ id: 'x', name: 'X', type: 'v1-node' },
+				{ id: 'd', name: 'D', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'loop', outputIndex: 0, inputIndex: 0 },
+				{ from: 'loop', to: 'x', outputIndex: 1, inputIndex: 0 },
+				{ from: 'x', to: 'loop', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+				{ from: 'loop', to: 'd', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		// Two passes over two items, then the done pass carrying what came back.
+		const seededSteps: SeededSteps = {
+			loop: [
+				[null, [{ json: { item: 1 } }]],
+				[null, [{ json: { item: 2 } }]],
+				[[{ json: { x: 1 } }, { json: { x: 2 } }], null],
+			],
+			x: [[[{ json: { x: 1 } }]], [[{ json: { x: 2 } }]]],
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(
+			executor,
+			[[{ json: { item: 1 } }, { json: { item: 2 } }]],
+			{
+				workflowId: 'wf-seeded-loop',
+				graph: loopGraph,
+				seededSteps,
+			},
+		);
+
+		// Only d ran, on the done pass the caller supplied.
+		expect(requests.map(({ node }) => node.id)).toEqual(['d']);
+		expect(requests[0].inputs).toEqual([[{ json: { x: 1 } }, { json: { x: 2 } }]]);
+
+		expect(execution.status).toBe('completed');
+		// The seeded rows are the loop's complete ledger: no pass was planned again.
+		const rows = steps.map(({ nodeId, iteration, status }) => ({ nodeId, iteration, status }));
+		expect(rows).toEqual(
+			expect.arrayContaining([
+				{ nodeId: 'loop', iteration: 0, status: 'completed' },
+				{ nodeId: 'loop', iteration: 1, status: 'completed' },
+				{ nodeId: 'loop', iteration: 2, status: 'completed' },
+				{ nodeId: 'x', iteration: 0, status: 'completed' },
+				{ nodeId: 'x', iteration: 1, status: 'completed' },
+				{ nodeId: 'd', iteration: 0, status: 'completed' },
+			]),
+		);
+		expect(rows).toHaveLength(7);
+	});
+
 	it('runs a fan-in once, with each input slot fed by its branch', async () => {
 		const diamondGraph: WorkflowGraph = {
 			nodes: [
