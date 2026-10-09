@@ -54,7 +54,6 @@ const StartExecutionBody = z.object({
 	/** Steps the caller holds the outputs of, by node id: slots like `triggerOutputs`, once per pass. */
 	seededSteps: z
 		.record(z.string().min(1), z.array(z.array(jsonValueSchema).max(MAX_TRIGGER_SLOTS)).min(1))
-		.nullable()
 		.optional(),
 	mode: z.enum(['production', 'manual']).optional(),
 	// `strict`, so a misspelled key fails loudly instead of running the step
