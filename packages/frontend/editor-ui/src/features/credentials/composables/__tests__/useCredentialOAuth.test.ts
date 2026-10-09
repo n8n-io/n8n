@@ -278,6 +278,29 @@ describe('useCredentialOAuth', () => {
 			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
 		});
 
+		// Jira's shape: the instance supplies the OAuth app, but the Site URL stays
+		// the user's to fill, so only the one-click path is lost.
+		it('should return false when a required property beyond the client pair is not overwritten', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.slackOAuth2Api = {
+				...slackOAuth2Api,
+				properties: [
+					...slackOAuth2Api.properties,
+					{
+						displayName: 'Site URL',
+						name: 'domain',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+				],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
+		});
+
 		it('should return true when all required properties are overwritten', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.state.credentialTypes.slackOAuth2Api = {
