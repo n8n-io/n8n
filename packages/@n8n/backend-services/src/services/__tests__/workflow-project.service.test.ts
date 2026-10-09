@@ -34,4 +34,37 @@ describe('WorkflowProjectService', () => {
 			'workflow-1': project,
 		});
 	});
+
+	it('loads the owner project when the cached value is malformed', async () => {
+		const project = { id: 'project-1' } as Project;
+		cacheService.getHashValue.mockResolvedValue('invalid' as never);
+		sharedWorkflowRepository.findOneOrFail.mockResolvedValue({ project } as never);
+
+		await expect(service.getWorkflowProjectCached('workflow-1')).resolves.toBe(project);
+		expect(sharedWorkflowRepository.findOneOrFail).toHaveBeenCalledOnce();
+	});
+
+	it('sets the cached owner project', async () => {
+		const project = { id: 'project-1' } as Project;
+
+		await expect(service.setWorkflowProjectCacheEntry('workflow-1', project)).resolves.toBe(
+			project,
+		);
+		expect(cacheService.setHash).toHaveBeenCalledWith('workflow-project', {
+			'workflow-1': project,
+		});
+	});
+
+	it('invalidates cached workflows owned by a project', async () => {
+		sharedWorkflowRepository.find.mockResolvedValue([
+			{ workflowId: 'workflow-1' },
+			{ workflowId: 'workflow-2' },
+		] as never);
+
+		await service.invalidateWorkflowProjectCacheForProject('project-1');
+
+		expect(cacheService.deleteFromHash).toHaveBeenCalledTimes(2);
+		expect(cacheService.deleteFromHash).toHaveBeenCalledWith('workflow-project', 'workflow-1');
+		expect(cacheService.deleteFromHash).toHaveBeenCalledWith('workflow-project', 'workflow-2');
+	});
 });

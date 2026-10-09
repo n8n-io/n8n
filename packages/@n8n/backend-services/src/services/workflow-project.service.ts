@@ -9,6 +9,11 @@ export class WorkflowProjectService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
+	private reconstructProject(project: Partial<Project>): Project | undefined {
+		if (typeof project !== 'object' || project === null) return undefined;
+		return Object.assign(new Project(), project);
+	}
+
 	async getWorkflowProjectCached(workflowId: string): Promise<Project> {
 		const cachedValue = await this.cacheService.getHashValue<Partial<Project>>(
 			'workflow-project',
@@ -16,7 +21,8 @@ export class WorkflowProjectService {
 		);
 
 		if (cachedValue) {
-			return Object.assign(new Project(), cachedValue);
+			const project = this.reconstructProject(cachedValue);
+			if (project) return project;
 		}
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
@@ -29,5 +35,30 @@ export class WorkflowProjectService {
 		});
 
 		return sharedWorkflow.project;
+	}
+
+	async setWorkflowProjectCacheEntry(workflowId: string, project: Project): Promise<Project> {
+		void this.cacheService.setHash('workflow-project', {
+			[workflowId]: { ...project },
+		});
+
+		return project;
+	}
+
+	async invalidateWorkflowProjectCacheForProject(projectId: string): Promise<void> {
+		const rows = await this.sharedWorkflowRepository.find({
+			where: { projectId, role: 'workflow:owner' },
+			select: ['workflowId'],
+		});
+		await this.invalidateWorkflowProjectCacheByIds(rows.map(({ workflowId }) => workflowId));
+	}
+
+	async invalidateWorkflowProjectCacheByIds(workflowIds: string[]): Promise<void> {
+		await Promise.all(
+			workflowIds.map(
+				async (workflowId) =>
+					await this.cacheService.deleteFromHash('workflow-project', workflowId),
+			),
+		);
 	}
 }
