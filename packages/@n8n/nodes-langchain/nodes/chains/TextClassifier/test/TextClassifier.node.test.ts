@@ -69,6 +69,35 @@ describe('TextClassifier Node', () => {
 			expect(result).toEqual([[{ json: { testValue: 'none' } }]]);
 		});
 
+		it('gives each branch its own copy of a multi-class item', async () => {
+			mockExecuteFunction.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
+				if (param === 'inputText') return 'Test input';
+				if (param === 'categories.categories')
+					return [
+						{ category: 'test1', description: 'first' },
+						{ category: 'test2', description: 'second' },
+					];
+				return defaultValue;
+			});
+			(processItem as Mock).mockResolvedValue({ test1: true, test2: true });
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			expect(result[0][0]).not.toBe(result[1][0]);
+			expect(result[0][0].json).not.toBe(result[1][0].json);
+			expect(result[0][0].json).toEqual(result[1][0].json);
+		});
+
+		it('leaves the input items alone', async () => {
+			const input = [{ json: { item: 1 } }];
+			mockExecuteFunction.getInputData.mockReturnValue(input);
+			(processItem as Mock).mockResolvedValue({ test: true });
+
+			await node.execute.call(mockExecuteFunction);
+
+			expect(input).toEqual([{ json: { item: 1 } }]);
+		});
+
 		it('should handle multiple input items', async () => {
 			mockExecuteFunction.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
 				if (param === 'inputText') return 'Test input';

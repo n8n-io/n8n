@@ -30,6 +30,15 @@ const configuredOutputs = (parameters: INodeParameters) => {
 	return ret;
 };
 
+/**
+ * A branch gets its own copy. In multi-class mode one item routes to several
+ * branches, and a shared object would carry one branch's changes onto the rest.
+ */
+const copyOf = (item: INodeExecutionData): INodeExecutionData => ({
+	...item,
+	json: { ...item.json },
+});
+
 export class TextClassifier implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Text Classifier',
@@ -283,11 +292,11 @@ export class TextClassifier implements INodeType {
 						const item = items[index];
 
 						categories.forEach((cat, idx) => {
-							if (output[cat.category]) returnData[idx].push(item);
+							if (output[cat.category]) returnData[idx].push(copyOf(item));
 						});
 
 						if (fallback === 'other' && output.fallback)
-							returnData[returnData.length - 1].push(item);
+							returnData[returnData.length - 1].push(copyOf(item));
 					}
 				});
 
@@ -313,9 +322,10 @@ export class TextClassifier implements INodeType {
 					);
 
 					categories.forEach((cat, idx) => {
-						if (output[cat.category]) returnData[idx].push(item);
+						if (output[cat.category]) returnData[idx].push(copyOf(item));
 					});
-					if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(item);
+					if (fallback === 'other' && output.fallback)
+						returnData[returnData.length - 1].push(copyOf(item));
 				} catch (error) {
 					const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex);
 					if (this.continueOnFail()) {
