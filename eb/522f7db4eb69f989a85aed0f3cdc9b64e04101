@@ -1,0 +1,83 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/addTable.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 7,94,111
+packages/nodes-base/nodes/Microsoft/Excel/v2/test/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_4f1a7a3c35b32c 13
+  s_2e1fa95fc44f8f::t_202047a1f25340 4-5
+  s_2e1fa95fc44f8f::t_d569ba830d9d94 68,80,99,111,129,141,160,172,191,203,222,234,253,265,284,296,317,338,359,377,394,406,485,546,577,599,623,635,689,696,717,753,777,790
+  s_2e1fa95fc44f8f::t_2a31e3fcabfc99 839,881,883-899
+  s_2e1fa95fc44f8f::t_4ef11524dbde8b 882
+  s_2e1fa95fc44f8f::t_0db5b486706bea 798,804,838,840,844,865-867,900-904
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/methods/listSearch.test.ts
+  s_2e1fa95fc44f8f::t_e5d7f19d32a934 2,30,75,92
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/append.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 8,163,262
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/deleteWorkbook.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 2,36
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/getAll.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 7,92,102
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/upsert.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 7,227,246,266,364,383
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/listSearch.ts
+  s_2e1fa95fc44f8f::t_b33f7aaf8f45c0 7
+  s_2e1fa95fc44f8f::t_c625b208fc63d2 69
+  s_16204bc5c53227::t_b48e04a42f4c8a 114,155,172
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/loadOptions.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 2,28,44,91
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/getAll.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 7,101,111
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/methods/loadOptions.test.ts
+  s_2e1fa95fc44f8f::t_e5d7f19d32a934 3,49,84
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/deleteTable.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 2,44
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/addWorksheet.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 7,66,76,86
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/getColumns.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 7,131,141
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/lookup.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 8,96,108
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/clear.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 2,91,103
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/convertToRange.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 7,49
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/update.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 7,275,294,314,374
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/deleteWorksheet.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 2,40
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/readRows.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 7,161,172
+packages/nodes-base/nodes/Microsoft/Excel/v2/transport/index.ts
+  s_2e1fa95fc44f8f::t_341f5a5aac19c0 72,77,80,85-86
+  s_2e1fa95fc44f8f::t_a59acb0f28dedf 177,213
+  s_2e1fa95fc44f8f::t_956bf251607c74 99
+  s_2e1fa95fc44f8f::t_ab76ff413df3f3 132,148,155
+  s_2e1fa95fc44f8f::t_c6ac5c5316dfcd 9-11,13
+  s_2e1fa95fc44f8f::t_3772b2b21e37e0 112-124
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/append.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 7,182,249,259,269
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/getRows.operation.ts
+  s_2e1fa95fc44f8f::t_afb1a2c0a231f1 7,149,160,177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb522f7db4eb69f989a85aed0f3cdc9b64e04101",
+  "prompts": {},
+  "sessions": {
+    "s_16204bc5c53227": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaf0bdea6f1d472d9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
