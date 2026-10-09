@@ -727,6 +727,37 @@ describe('AgentRepository', () => {
 		});
 	});
 
+	describe('findByProjectIdsPaginated - ids filter', () => {
+		it('returns only the requested agents', async () => {
+			const first = await createAgent();
+			const second = await createAgent();
+			await createAgent();
+
+			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
+				skip: 0,
+				take: 10,
+				filter: { ids: [first.id, second.id] },
+			});
+
+			expect(count).toBe(2);
+			expect(data.map((agent) => agent.id).sort()).toEqual([first.id, second.id].sort());
+		});
+
+		it('excludes a requested agent in another project', async () => {
+			const otherProject = await createTeamProject();
+			const outside = await createAgent({ projectId: otherProject.id });
+
+			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
+				skip: 0,
+				take: 10,
+				filter: { ids: [outside.id] },
+			});
+
+			expect(count).toBe(0);
+			expect(data).toEqual([]);
+		});
+	});
+
 	describe('findByProjectIdsPaginated - availableInChat filter', () => {
 		// Reachability lives in the **published** snapshot, not the draft column:
 		// AGENT-963 writes the channel into `agent_history.schema.integrations` on

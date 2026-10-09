@@ -2,22 +2,32 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
-import { ZodError } from 'zod';
+import { ZodError, type ZodType, type ZodTypeDef } from 'zod';
 
 import { BadRequestError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
+import type { PreparedAgent } from '../entities/agent/agent-import.types';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
 import { derivePublishedState } from '../entities/workflow/workflow-published-state';
 import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
-import { entityFilePath, workflowMetadataFilePath } from '../io/manifest-entry';
+import {
+	agentMetadataFilePath,
+	entityFilePath,
+	workflowMetadataFilePath,
+} from '../io/manifest-entry';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
+import {
+	serializedAgentSchema,
+	serializedAgentMetadataSchema,
+	type SerializedAgent,
+} from '../spec/serialized/agent.schema';
 import { serializedDataTableSchema } from '../spec/serialized/data-table.schema';
 import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
 import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
@@ -69,6 +79,16 @@ export class N8nPackageParser {
 		return workflows;
 	}
 
+	async getAgents(reader: PackageReader, basePrefix = ''): Promise<PreparedAgent[]> {
+		const manifest = await this.getManifest(reader);
+		const agents: PreparedAgent[] = [];
+		for (const entry of manifest.agents ?? []) {
+			if (!entry.target.startsWith(`${basePrefix}agents/`)) continue;
+			agents.push(await this.readAgent(reader, entry));
+		}
+		return agents;
+	}
+
 	async getFolders(reader: PackageReader, basePrefix = ''): Promise<PreparedFolder[]> {
 		const manifest = await this.getManifest(reader);
 
@@ -111,6 +131,85 @@ export class N8nPackageParser {
 		}
 
 		return variables;
+	}
+
+	private async readAgent(reader: PackageReader, entry: ManifestEntry): Promise<PreparedAgent> {
+		const path = entityFilePath('agents', entry.target);
+		const agent = await this.readAgentFile(reader, path, serializedAgentSchema);
+		if (agent.id !== entry.id) {
+			throw new UserError(
+				`Package Agent at ${path} declares id "${agent.id}" but the manifest lists "${entry.id}".`,
+			);
+		}
+		this.assertAgentBodiesPresent(agent, path);
+
+		const metadata = await this.readAgentFile(
+			reader,
+			agentMetadataFilePath(entry.target),
+			serializedAgentMetadataSchema,
+		);
+		await this.validateAgentTaskCrons(agent.id, agent.tasks);
+
+		return {
+			sourceAgentId: agent.id,
+			name: agent.name,
+			config: agent.config,
+			availableInMCP: agent.availableInMCP,
+			metadata,
+			skills: agent.skills,
+			tools: agent.tools,
+			tasks: agent.tasks,
+		};
+	}
+
+	private async validateAgentTaskCrons(
+		agentId: string,
+		tasks: SerializedAgent['tasks'],
+	): Promise<void> {
+		if (Object.keys(tasks).length === 0) return;
+		const { isValidCronExpression } = await import(
+			'@/modules/agents/integrations/cron-validation.js'
+		);
+		for (const [taskId, task] of Object.entries(tasks)) {
+			if (!isValidCronExpression(task.cronExpression)) {
+				throw new UserError(
+					`Package Agent "${agentId}" task "${taskId}" has an invalid cron expression.`,
+				);
+			}
+		}
+	}
+
+	private assertAgentBodiesPresent(agent: SerializedAgent, path: string): void {
+		const references = {
+			skills: agent.config?.skills ?? [],
+			tools: agent.config?.tools?.filter((tool) => tool.type === 'custom') ?? [],
+			tasks: agent.config?.tasks ?? [],
+		};
+		for (const collection of ['skills', 'tools', 'tasks'] as const) {
+			const missing = references[collection].find(
+				({ id }) => !Object.hasOwn(agent[collection], id),
+			);
+			if (missing) {
+				throw new UserError(
+					`Package Agent at ${path} references ${collection} asset "${missing.id}" without a body.`,
+				);
+			}
+		}
+	}
+
+	private async readAgentFile<T>(
+		reader: PackageReader,
+		path: string,
+		schema: ZodType<T, ZodTypeDef, unknown>,
+	): Promise<T> {
+		const wire = await this.readJson(reader, path, 'Agent');
+		const result = schema.safeParse(wire);
+		if (!result.success) {
+			throw new UserError(`Package Agent file at ${path} failed schema validation.`, {
+				cause: result.error,
+			});
+		}
+		return result.data;
 	}
 
 	private async readWorkflow(

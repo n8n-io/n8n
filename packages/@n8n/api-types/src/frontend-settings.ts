@@ -308,6 +308,12 @@ export interface FrontendSettings {
 		 * `101_agent_evals` flag would otherwise never resolve.
 		 */
 		agentEvalsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_FORCE_AGENT_WORTH_TESTING`) that forces the
+		 * "Test your agent" offer's capability check to pass regardless of the
+		 * agent's actual model/tools/skills.
+		 */
+		forceAgentWorthTesting: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */

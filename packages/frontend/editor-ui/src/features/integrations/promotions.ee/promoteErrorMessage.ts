@@ -20,14 +20,14 @@ export function getPromoteErrorMessage(
 		return undefined;
 	}
 
-	const meta = parsePromotionsWorkflowsMovedCrossProjectMeta(error.meta);
-	if (!meta) {
-		return undefined;
+	const movedMeta = parsePromotionsWorkflowsMovedCrossProjectMeta(error.meta);
+	if (movedMeta) {
+		return i18n.baseText('promotions.modal.promoteError.workflowsMovedCrossProject', {
+			interpolate: {
+				workflows: resolveWorkflowTitles(movedMeta.workflowIds, changes),
+			},
+		});
 	}
 
-	return i18n.baseText('promotions.modal.promoteError.workflowsMovedCrossProject', {
-		interpolate: {
-			workflows: resolveWorkflowTitles(meta.workflowIds, changes),
-		},
-	});
+	return undefined;
 }
