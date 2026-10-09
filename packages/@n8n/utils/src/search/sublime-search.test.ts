@@ -38,7 +38,7 @@ describe('sublimeSearch', () => {
 		);
 	});
 
-	// The Azure node is labelled 'Azure AI Foundry Chat Model' but was called 'Azure OpenAI Chat
+	// The Azure node is labelled 'Microsoft Foundry Chat Model' but was called 'Azure OpenAI Chat
 	// Model' until ENT-470. Its codex alias is what keeps the old name working, so search for the
 	// node rather than for the string to prove the rename costs no one their muscle memory.
 	describe('the renamed Azure node stays findable', () => {

@@ -28,6 +28,14 @@ import { reactive } from 'vue';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '../../templatedAuth.utils';
 
+const { isAgentUi, getAgentCredentialHelp } = vi.hoisted(() => ({
+	isAgentUi: { value: false },
+	getAgentCredentialHelp: vi.fn(),
+}));
+vi.mock('@/features/agents/composables/useAgentAssistantCredentialHelp', () => ({
+	useAgentAssistantCredentialHelp: () => ({ isAgentUi, getCredentialHelp: getAgentCredentialHelp }),
+}));
+
 const { confirmMock, routerCurrentRouteMock, routerReplaceMock } = vi.hoisted(() => ({
 	confirmMock: vi.fn(),
 	routerCurrentRouteMock: { value: { query: {} } },
@@ -359,6 +367,8 @@ const createCredentialResponse = (
 describe('CredentialEdit', () => {
 	beforeEach(() => {
 		broadcastMessageListener = undefined;
+		isAgentUi.value = false;
+		getAgentCredentialHelp.mockReset();
 		routerCurrentRouteMock.value = { query: {} };
 		aiGatewayBalance.value = 1;
 		aiGatewayEnabled.value = false;
@@ -1307,6 +1317,46 @@ describe('CredentialEdit', () => {
 
 			return { credentialsStore, pinia, uiStore };
 		};
+
+		it.each([
+			{ agentUi: true, accepted: true },
+			{ agentUi: true, accepted: false },
+			{ agentUi: false, accepted: true },
+		])(
+			'uses the credential help for its surface (Agent UI: $agentUi, accepted: $accepted)',
+			async ({ agentUi, accepted }) => {
+				isAgentUi.value = agentUi;
+				const panelHelp = vi.fn().mockResolvedValue(accepted);
+				getAgentCredentialHelp.mockReturnValue(panelHelp);
+				const chatHelp = vi.fn().mockResolvedValue(true);
+				const credentialType: ICredentialType = {
+					name: 'testApi',
+					displayName: 'Test API',
+					properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+				};
+				const { pinia, uiStore } = setupNewCredential(credentialType, {
+					instanceAiCredentialHelp: chatHelp,
+				});
+				const view = renderComponent({
+					props: { activeId: 'testApi', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+					pinia,
+				});
+				const helpButton = await view.findByTestId('credential-edit-instance-ai-help-button');
+				await userEvent.click(within(helpButton).getByRole('button'));
+
+				await waitFor(() => {
+					expect(agentUi ? panelHelp : chatHelp).toHaveBeenCalledWith(
+						expect.objectContaining({ credentialType: 'testApi', displayName: 'Test API' }),
+					);
+				});
+				expect(agentUi ? chatHelp : panelHelp).not.toHaveBeenCalled();
+				if (accepted || !agentUi) {
+					expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
+				} else {
+					expect(uiStore.closeModal).not.toHaveBeenCalled();
+				}
+			},
+		);
 
 		const setupGatewayCredentialError = async ({
 			contextNode = {

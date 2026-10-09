@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -36,7 +36,6 @@ import { ForbiddenError } from '@n8n/errors';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
-import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -320,6 +319,50 @@ describe('WorkflowExecutionService', () => {
 				responsePromise,
 			);
 		});
+
+		test('marks a fire-and-forget polled run as suspendable', async () => {
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+			);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ callerAwaitsOutcome: 'none' }),
+				false,
+				undefined,
+				{ executionId: 'exec-9', expectedStatus: 'new' },
+				undefined,
+			);
+		});
+
+		test.each(['response', 'completion'] as const)(
+			'forwards the %s caller state for a polled run',
+			async (callerAwaitsOutcome) => {
+				await workflowExecutionService.runPolledWorkflow(
+					workflow,
+					node,
+					pollItems,
+					additionalData,
+					'trigger',
+					cursor,
+					responsePromise,
+					undefined,
+					callerAwaitsOutcome,
+				);
+
+				expect(workflowRunner.run).toHaveBeenCalledWith(
+					expect.objectContaining({ callerAwaitsOutcome }),
+					false,
+					undefined,
+					{ executionId: 'exec-9', expectedStatus: 'new' },
+					responsePromise,
+				);
+			},
+		);
 
 		test('prepares the new execution before commit, then starts the run without reloading static data', async () => {
 			const callOrder: string[] = [];

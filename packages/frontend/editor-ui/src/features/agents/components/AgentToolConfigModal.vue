@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
@@ -20,9 +22,12 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const content = ref<InstanceType<typeof AgentToolConfigContent> | null>(null);
 const credentialPicker = ref<InstanceType<typeof AgentToolConfigCredentialPicker> | null>(null);
 const formTitle = ref(initialTitle());
+const isRestricted = ref(false);
 const isOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const isCustomTool = computed(
@@ -37,6 +42,7 @@ const credentialModalOpen = computed(
 const saveDisabled = computed(
 	() =>
 		credentialModalOpen.value ||
+		isRestricted.value ||
 		(props.data.kind === 'registryMcpServer' && (content.value?.saveDisabled ?? true)),
 );
 const canRender = computed(() => {
@@ -45,6 +51,16 @@ const canRender = computed(() => {
 	if (props.data.toolRef.type === 'custom' || props.data.toolRef.type === 'workflow') return true;
 	return toolRefToNode(props.data.toolRef) !== null;
 });
+
+void nodeTypesStore.loadNodeTypesIfNotLoaded();
+
+watch(
+	() => props.data.projectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
 
 function initialTitle(): string {
 	if (props.data.kind === 'mcpServer' || props.data.kind === 'registryMcpServer') {
@@ -88,7 +104,7 @@ async function handleRemove() {
 		:open="isOpen"
 		:title="formTitle"
 		:title-error="content?.titleError"
-		:editable-title="!isCustomTool"
+		:editable-title="!isCustomTool && !isRestricted"
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
 		data-testid="agent-tool-config-modal"
@@ -117,6 +133,7 @@ async function handleRemove() {
 			:data="data"
 			@credential-deleted="closeDialog"
 			@update:title="formTitle = $event"
+			@update:restricted="isRestricted = $event"
 			@request-credential-picker="credentialPicker?.open()"
 		/>
 

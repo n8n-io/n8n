@@ -153,6 +153,24 @@ export function buildInstructionPromptCacheOptions(
 	return buildAnthropicCacheControl(config);
 }
 
+/**
+ * Cache options for the recovered-skills system message. It reuses the
+ * instruction breakpoint, so it is cached only when the instructions are.
+ * Undefined when the extra breakpoint would leave no slot for the
+ * conversation breakpoint next to the caller's tool and message breakpoints.
+ */
+export function buildSkillInstructionCacheOptions(
+	instructionProviderOptions: ProviderOptions | undefined,
+	aiTools: ToolSet,
+	messages: ModelMessage[],
+): ProviderOptions | undefined {
+	if (!hasAnthropicCacheControl(instructionProviderOptions)) return undefined;
+	const callerBreakpoints = countAnthropicBreakpoints([], aiTools, messages);
+	// Instructions + skills + conversation breakpoint.
+	if (callerBreakpoints + 3 > MAX_ANTHROPIC_CACHE_BREAKPOINTS) return undefined;
+	return instructionProviderOptions;
+}
+
 /** OpenAI call-level cache options (routing key + retention). Undefined for non-OpenAI models or when disabled. */
 export function buildCallPromptCacheOptions(
 	config: PromptCachingConfig | undefined,

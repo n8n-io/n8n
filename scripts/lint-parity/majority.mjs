@@ -11,7 +11,7 @@
  * `--threshold N` (default 10) is the count at which a rule moves into `base`.
  * `--layer <name>` restricts the report to one layer.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -49,10 +49,17 @@ const get = (id) => {
 	return stats.get(id);
 };
 
+const skipped = [];
+
 for (const [pkg, layer] of layerOf) {
 	if (layer === 'exempt') continue;
 	if (onlyLayer && layer !== onlyLayer) continue;
-	for (const block of readConfigBlocks(join(root, pkg, 'eslint.config.mjs'))) {
+	const configPath = join(root, pkg, 'eslint.config.mjs');
+	if (!existsSync(configPath)) {
+		skipped.push(pkg);
+		continue;
+	}
+	for (const block of readConfigBlocks(configPath)) {
 		for (const rule of block.rules) {
 			const s = get(rule.id);
 			(rule.severity === 'error' ? s.on : s.down).add(pkg);
@@ -101,4 +108,9 @@ const neverOn = rows.filter((r) => r.on === 0 && r.down >= 2);
 if (neverOn.length) {
 	console.log(`\nnever enabled in any package (${neverOn.length}):`);
 	for (const r of neverOn) console.log(`  ${r.id} (down ${r.down})`);
+}
+
+if (skipped.length > 0) {
+	console.log(`\nskipped ${skipped.length} package(s) without an ESLint policy config:`);
+	for (const pkg of skipped) console.log(`  ${pkg}`);
 }

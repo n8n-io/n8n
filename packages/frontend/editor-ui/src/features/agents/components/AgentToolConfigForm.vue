@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
+import {
+	RestrictedToolCallout,
+	useNodeTypeRestriction,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { extractFromAICalls, type INode } from 'n8n-workflow';
 import { computed, effectScope, onBeforeUnmount, ref, watch } from 'vue';
 
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	listenForCredentialChanges,
 	useCredentialsStore,
@@ -64,10 +69,12 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:title': [title: string];
 	'credential-deleted': [];
+	'update:restricted': [restricted: boolean];
 }>();
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
+const nodeTypesStore = useNodeTypesStore();
 const httpRequestUrlErrorKey =
 	'agents.builder.validation.issue.httpRequestUrlFromAi' as BaseTextKey;
 
@@ -94,7 +101,7 @@ const nodeContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | nul
 const mcpContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null>(null);
 const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowContent> | null>(null);
 const isValid = ref(false);
-const submitted = ref(false);
+const submitCount = ref(0);
 const approvalRequired = ref(false);
 const mcpPermissions = ref<AgentJsonMcpServerConfig['toolPermissions']>();
 const mcpApprovalValid = ref(true);
@@ -109,6 +116,15 @@ const initialNode = computed<INode | null>(() =>
 				? toolRefToNode(toolModalData.value.toolRef)
 				: null,
 );
+
+const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => initialNode.value?.type);
+const restrictedToolName = computed(() =>
+	initialNode.value
+		? (nodeTypesStore.getNodeType(initialNode.value.type)?.displayName ?? initialNode.value.type)
+		: '',
+);
+
+watch(isRestricted, (restricted) => emit('update:restricted', restricted), { immediate: true });
 
 const workflowInitialRef = computed<WorkflowToolRef | null>(() =>
 	isWorkflowTool.value && toolModalData.value?.toolRef.type === 'workflow'
@@ -230,7 +246,7 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 }
 
 function confirm(): boolean {
-	submitted.value = true;
+	submitCount.value += 1;
 	if (!canSave.value) return false;
 
 	if (isCustomTool.value) {
@@ -313,13 +329,18 @@ credentialListeners.run(() => {
 });
 onBeforeUnmount(() => credentialListeners.stop());
 
-defineExpose({ confirm, remove, changeTitle });
+defineExpose({ canSave, confirm, remove, changeTitle });
 </script>
 
 <template>
 	<div :class="[$style.contentWrapper, isCustomTool && $style.codeContentWrapper]">
+		<RestrictedToolCallout
+			v-if="isRestricted"
+			:node-type-name="restrictedToolName"
+			:scope="restrictionScope"
+		/>
 		<N8nText
-			v-if="submitted && !canSave"
+			v-if="submitCount && !canSave"
 			size="small"
 			color="danger"
 			data-testid="agent-tool-config-validation-error"
@@ -340,6 +361,7 @@ defineExpose({ confirm, remove, changeTitle });
 				v-if="workflowInitialRef"
 				ref="workflowContentRef"
 				:initial-ref="workflowInitialRef"
+				:submit-count="submitCount"
 				:project-id="data.projectId"
 				:show-approval-setting="showApprovalSetting"
 				:approval-required="approvalRequired"
@@ -354,6 +376,7 @@ defineExpose({ confirm, remove, changeTitle });
 				:existing-tool-names="data.existingToolNames"
 				:project-id="data.projectId"
 				:hidden-parameters="['include', 'includeTools', 'excludeTools']"
+				:read-only="isRestricted"
 				content-test-id="agent-tool-config-mcp-content"
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"
@@ -367,6 +390,7 @@ defineExpose({ confirm, remove, changeTitle });
 				:project-id="data.projectId"
 				:from-ai-disabled-parameters="fromAiDisabledParameters"
 				:parameter-issues="nodeParameterIssues"
+				:read-only="isRestricted"
 				content-test-id="node-tool-settings-content"
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"
@@ -375,11 +399,13 @@ defineExpose({ confirm, remove, changeTitle });
 			<AgentToolConfigApprovalSetting
 				v-if="!isMcpTool && initialNode && showApprovalSetting"
 				v-model="approvalRequired"
+				:disabled="isRestricted"
 			/>
 			<AgentToolConfigMcpApprovalSetting
 				v-if="isMcpTool && mcpPermissions && supportsApproval && currentNode"
 				v-model="mcpPermissions"
 				:node="currentNode"
+				:disabled="isRestricted"
 				:project-id="data.projectId"
 				@update:valid="mcpApprovalValid = $event"
 			/>

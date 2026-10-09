@@ -83,6 +83,7 @@ export class FormTriggerResourceResolver implements ProtectedResourceResolver {
 			return {
 				id: 'workflow-form:' + workflow.id,
 				isFirstParty: true,
+				surface: 'trigger' as const,
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => audiences,
 				getAllowedRedirectUris: async () => [resourceUrl],

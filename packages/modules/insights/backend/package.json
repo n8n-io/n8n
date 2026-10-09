@@ -1,0 +1,97 @@
+{
+  "name": "@n8n/backend-module-insights",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./module": {
+      "types": "./dist/insights.module.d.ts",
+      "import": "./dist/insights.module.js",
+      "require": "./dist/insights.module.js"
+    },
+    "./config": {
+      "types": "./dist/insights.config.d.ts",
+      "import": "./dist/insights.config.js",
+      "require": "./dist/insights.config.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "require": "./dist/testing.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "config": [
+        "dist/insights.config.d.ts"
+      ],
+      "module": [
+        "dist/insights.module.d.ts"
+      ],
+      "testing": [
+        "dist/testing.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "oxlint --type-aware . --quiet",
+    "lint:fix": "oxlint --type-aware . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "vitest run",
+    "test:postgres": "N8N_LOG_LEVEL=silent vitest run --config vitest.config.postgres.ts",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
+  },
+  "dependencies": {
+    "@n8n/api-types": "workspace:*",
+    "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-services": "workspace:*",
+    "@n8n/config": "workspace:*",
+    "@n8n/constants": "workspace:*",
+    "@n8n/db": "workspace:*",
+    "@n8n/decorators": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
+    "@n8n/typeorm": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "luxon": "catalog:",
+    "n8n-core": "workspace:*",
+    "n8n-workflow": "workspace:*"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/backend-test-utils": "workspace:*",
+    "@n8n/oxlint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/luxon": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "n8n-containers": "workspace:*",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:typescript",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

@@ -68,6 +68,11 @@ export class WaitTracker {
 		return this.waitingExecutions[executionId] !== undefined;
 	}
 
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return { waitingExecutions: Object.keys(this.waitingExecutions).length };
+	}
+
 	init() {
 		if (this.instanceSettings.isLeader) this.startTracking();
 	}
@@ -150,6 +155,7 @@ export class WaitTracker {
 		if (!fullExecutionData) {
 			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
 		}
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (fullExecutionData.finished) {
 			throw new UnexpectedError('The execution did succeed and can so not be started again.');
 		}
@@ -168,6 +174,9 @@ export class WaitTracker {
 			projectId: project.id,
 			pushRef: fullExecutionData.data.pushRef,
 			startedAt: fullExecutionData.startedAt,
+			// Whatever awaited this run on main was answered when the run paused, so
+			// a resumed segment owes nothing and may be suspended again.
+			callerAwaitsOutcome: 'none',
 			// Not a stored field, so a resume has to derive it again — otherwise the
 			// run comes back without an identity and a credential only its publisher
 			// may use is refused halfway through.
@@ -178,6 +187,7 @@ export class WaitTracker {
 		await this.workflowRunner.run(data, false, false, {
 			executionId,
 			expectedStatus: 'waiting',
+			storedAt: fullExecutionData.storedAt,
 		});
 
 		const { parentExecution } = fullExecutionData.data;
@@ -373,6 +383,7 @@ export class WaitTracker {
 			startedAt: child.startedAt,
 			stoppedAt: child.stoppedAt,
 			status: child.status,
+			// oxlint-disable-next-line typescript/no-deprecated
 			finished: child.finished,
 			storedAt: child.storedAt,
 		};

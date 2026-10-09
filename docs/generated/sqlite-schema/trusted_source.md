@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "trusted_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "type" varchar(32) NOT NULL, "issuer" varchar NOT NULL, "managedBy" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "lastError" text, "lastCheckedAt" datetime(3), "configVersion" integer NOT NULL, "config" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
+CREATE TABLE "trusted_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "type" varchar(32) NOT NULL, "issuer" varchar NOT NULL, "managedBy" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "lastError" text, "lastCheckedAt" datetime(3), "configVersion" integer NOT NULL, "config" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "metadata" text, "discoveryClaimedAt" datetime(3), "discoveryClaimToken" varchar(36))
 ```
 
 </details>
@@ -18,11 +18,14 @@ CREATE TABLE "trusted_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" var
 | config | TEXT |  | false |  |  |  |
 | configVersion | INTEGER |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| discoveryClaimToken | varchar(36) |  | true |  |  |  |
+| discoveryClaimedAt | datetime(3) |  | true |  |  |  |
 | id | varchar(36) |  | false | [trusted_source_identity](trusted_source_identity.md) |  |  |
 | issuer | varchar |  | false |  |  |  |
 | lastCheckedAt | datetime(3) |  | true |  |  |  |
 | lastError | TEXT |  | true |  |  |  |
 | managedBy | varchar(16) |  | false |  |  |  |
+| metadata | TEXT |  | true |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
 | type | varchar(32) |  | false |  |  |  |
@@ -54,11 +57,14 @@ erDiagram
   TEXT config
   INTEGER configVersion
   datetime_3_ createdAt
+  varchar_36_ discoveryClaimToken
+  datetime_3_ discoveryClaimedAt
   varchar_36_ id PK
   varchar issuer
   datetime_3_ lastCheckedAt
   TEXT lastError
   varchar_16_ managedBy
+  TEXT metadata
   varchar_128_ name
   varchar_16_ status
   varchar_32_ type

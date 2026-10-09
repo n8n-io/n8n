@@ -8,6 +8,7 @@ import { ConflictError, BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
@@ -23,24 +24,38 @@ import {
 	AgentMessageRepository,
 } from './repositories/agent-message.repository';
 import { AgentRepository } from './repositories/agent.repository';
-import type {
-	AgentExecutionAdmission,
-	AgentQueuedMessage,
-	AgentQueueDispatch,
-	QueuedIntegrationMessage,
-	QueuedPreviewMessage,
+import {
+	acceptsSteering,
+	type AgentExecutionAdmission,
+	type AgentQueuedMessage,
+	type AgentQueueDispatch,
+	type QueuedIntegrationMessage,
+	type QueuedUserChatMessage,
 } from './types/agent-queued-message';
-import { canContinueThreadInPreview, type AgentSessionMode } from './utils/agent-thread-access';
+import {
+	canContinueThreadInN8nChat,
+	canContinueThreadInPreview,
+	type AgentSessionMode,
+} from './utils/agent-thread-access';
 import { buildInboundUserMessage, readInboundUserMessage } from './utils/inbound-attachments';
 import { queuedMessageId } from './utils/queued-message-id';
 
 export interface ClaimedAgentMessage {
 	item: AgentMessageQueue;
-	payload: Omit<QueuedPreviewMessage, 'userId' | 'messageId'> | QueuedIntegrationMessage;
+	payload: Omit<QueuedUserChatMessage, 'userId' | 'messageId'> | QueuedIntegrationMessage;
 	thread: AgentExecutionThread;
 	/** Admission identifies the committed execution that the turn pipeline must reuse. */
 	admission: AgentExecutionAdmission;
 	recording: StartExecutionParams;
+}
+
+interface PendingMessageScope {
+	projectId: string;
+	agentId: string;
+	threadId: string;
+	userId: string;
+	/** The chat surface that owns the session. */
+	kind: QueuedUserChatMessage['kind'];
 }
 
 @Service()
@@ -60,6 +75,7 @@ export class AgentMessageQueueService {
 		private readonly updates: AgentExecutionUpdateBroadcaster,
 		private readonly messages: AgentMessageRepository,
 		private readonly steering: AgentMessageSteeringService,
+		private readonly settingsService: AgentsSettingsService,
 	) {}
 
 	/** Save a pending message. It is durably accepted when the transaction commits. */
@@ -74,6 +90,7 @@ export class AgentMessageQueueService {
 		},
 		onInserted?: (queueId: string) => void,
 	): Promise<{ status: 'accepted'; item: AgentMessageQueue } | { status: 'duplicate' }> {
+		await this.settingsService.assertEnabled();
 		const agent = await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
 		if (!agent) throw new UserError('Agent not found');
 		const { payload } = input;
@@ -81,6 +98,7 @@ export class AgentMessageQueueService {
 		let item: AgentMessageQueue;
 		try {
 			item = await this.txRunner.run({}, async (ctx) => {
+				await this.settingsService.assertEnabled(ctx);
 				await this.executionService.prepareThread(
 					{
 						...input,
@@ -88,9 +106,9 @@ export class AgentMessageQueueService {
 						userMessage: payload.message,
 						resourceId: payload.resourceId,
 						access:
-							payload.kind === 'preview'
-								? { accessScope: 'user', ownerId: payload.userId }
-								: { accessScope: 'project', ownerId: null },
+							payload.kind === 'integration'
+								? { accessScope: 'project', ownerId: null }
+								: { accessScope: 'user', ownerId: payload.userId },
 					},
 					ctx,
 				);
@@ -112,7 +130,7 @@ export class AgentMessageQueueService {
 			}
 			throw error;
 		}
-		if (payload.kind === 'preview') this.updates.notifyQueueUpdated(item.threadId);
+		if (payload.kind !== 'integration') this.updates.notifyQueueUpdated(item.threadId);
 		this.onAvailable?.(item.threadId);
 		return { status: 'accepted', item };
 	}
@@ -126,7 +144,7 @@ export class AgentMessageQueueService {
 	): Promise<AgentMessageQueue> {
 		const { message, resourceId, attachments = [], ...dispatch } = payload;
 		const [content] = buildInboundUserMessage(message, attachments);
-		let queueDispatch: AgentQueueDispatch = { kind: 'preview' };
+		let queueDispatch: AgentQueueDispatch;
 		let modelContent: Message | undefined;
 		let author: AgentMessageAuthor | undefined;
 		let origin: AgentMessageOrigin = { source };
@@ -153,6 +171,8 @@ export class AgentMessageQueueService {
 				platformMessageId,
 				platformThreadId,
 			};
+		} else {
+			queueDispatch = { kind: dispatch.kind };
 		}
 		const input = await this.messages.createInput(
 			{ id: messageId, threadId, resourceId, content, modelContent, author, origin },
@@ -161,23 +181,19 @@ export class AgentMessageQueueService {
 		return await this.repository.enqueue(threadId, input.id, queueDispatch, ctx);
 	}
 
-	async listPending(input: {
-		projectId: string;
-		agentId: string;
-		threadId: string;
-		userId: string;
-	}): Promise<AgentChatQueueResponse> {
+	async listPending(input: PendingMessageScope): Promise<AgentChatQueueResponse> {
+		const { kind } = input;
 		const thread = await this.threadRepository.findOneBy({ id: input.threadId });
-		// A client-created Preview session can have no accepted messages yet.
+		// A client-created session can have no accepted messages yet.
 		if (!thread) return { items: [], steerableExecutionId: null };
-		await this.assertPreviewAccess(thread, input);
+		await this.assertUserChatAccess(thread, input);
 		const items = await this.repository.listPending(thread.id);
-		const steerable = await this.steering.findEligible(thread);
+		const steerable = acceptsSteering(kind) ? await this.steering.findEligible(thread) : null;
 		return {
 			steerableExecutionId: steerable?.id ?? null,
 			items: items
-				.filter((item) => item.payload.kind === 'preview')
-				// Show the next inputs first. Keep unreserved messages in their original FIFO order.
+				.filter((item) => item.payload.kind === kind)
+				// Show accepted steers first. Keep future turns in their saved queue order.
 				.sort(
 					(a, b) =>
 						(a.steeringOrder ?? Number.MAX_SAFE_INTEGER) -
@@ -192,19 +208,13 @@ export class AgentMessageQueueService {
 		};
 	}
 
-	async removePending(input: {
-		projectId: string;
-		agentId: string;
-		threadId: string;
-		userId: string;
-		queueId: string;
-	}): Promise<void> {
+	async removePending(input: PendingMessageScope & { queueId: string }): Promise<void> {
 		const removed = await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(input.threadId, ctx);
 			if (!thread) throw new NotFoundError('Session not found');
-			await this.assertPreviewAccess(thread, input, ctx);
+			await this.assertUserChatAccess(thread, input, ctx);
 			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
-			if (!item || item.payload.kind !== 'preview')
+			if (!item || item.payload.kind !== input.kind)
 				throw new NotFoundError('Queued message not found');
 			if (
 				item.executionId !== null ||
@@ -223,20 +233,15 @@ export class AgentMessageQueueService {
 		await this.attachments.deleteByIds(removed.attachmentIds);
 	}
 
-	async updatePending(input: {
-		projectId: string;
-		agentId: string;
-		threadId: string;
-		userId: string;
-		queueId: string;
-		message: string;
-	}): Promise<void> {
+	async updatePending(
+		input: PendingMessageScope & { queueId: string; message: string },
+	): Promise<void> {
 		await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(input.threadId, ctx);
 			if (!thread) throw new NotFoundError('Session not found');
-			await this.assertPreviewAccess(thread, input, ctx);
+			await this.assertUserChatAccess(thread, input, ctx);
 			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
-			if (!item || item.payload.kind !== 'preview')
+			if (!item || item.payload.kind !== input.kind)
 				throw new NotFoundError('Queued message not found');
 			if (item.executionId !== null) throw new ConflictError('This message has already started');
 			if (item.steeringExecutionId !== null)
@@ -251,6 +256,35 @@ export class AgentMessageQueueService {
 		this.updates.notifyQueueUpdated(input.threadId);
 	}
 
+	async reorderPending(input: {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		userId: string;
+		queueId: string;
+		targetQueueId: string;
+		expectedQueueIds: string[];
+		kind: QueuedUserChatMessage['kind'];
+	}): Promise<void> {
+		await this.txRunner.run({}, async (ctx) => {
+			const thread = await this.threadRepository.lockById(input.threadId, ctx);
+			if (!thread) throw new NotFoundError('Session not found');
+			await this.assertUserChatAccess(thread, input, ctx);
+			const moved = await this.repository.movePending(
+				thread.id,
+				input.queueId,
+				input.targetQueueId,
+				input.expectedQueueIds,
+				input.kind,
+				ctx,
+			);
+			if (!moved) {
+				throw new ConflictError('The queue has changed. Refresh it and try again.');
+			}
+		});
+		this.updates.notifyQueueUpdated(input.threadId);
+	}
+
 	async steer(input: {
 		projectId: string;
 		agentId: string;
@@ -258,13 +292,14 @@ export class AgentMessageQueueService {
 		userId: string;
 		queueId: string;
 		executionId: string;
+		kind: QueuedUserChatMessage['kind'];
 	}): Promise<void> {
 		await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(input.threadId, ctx);
 			if (!thread) throw new NotFoundError('Session not found');
-			await this.assertPreviewAccess(thread, input, ctx);
+			await this.assertUserChatAccess(thread, input, ctx);
 			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
-			if (!item || item.payload.kind !== 'preview')
+			if (!item || item.payload.kind !== input.kind)
 				throw new ConflictError('This message is no longer available');
 			const execution = await this.steering.findEligible(thread, ctx);
 			if (
@@ -281,23 +316,26 @@ export class AgentMessageQueueService {
 		this.updates.notifyQueueUpdated(input.threadId);
 	}
 
-	private async assertPreviewAccess(
+	private async assertUserChatAccess(
 		thread: AgentExecutionThread,
-		input: { projectId: string; agentId: string; userId: string },
+		input: Omit<PendingMessageScope, 'threadId'>,
 		ctx: OperationContext = {},
 	): Promise<void> {
 		const sources = await this.executionRepository.findFirstSourceByThreadIds([thread.id], ctx);
+		const source = sources.get(thread.id);
 		if (
 			thread.projectId !== input.projectId ||
 			thread.agentId !== input.agentId ||
-			!canContinueThreadInPreview(thread, input.userId, sources.get(thread.id))
+			!(input.kind === 'n8n_chat'
+				? canContinueThreadInN8nChat(thread, input.userId, source)
+				: canContinueThreadInPreview(thread, input.userId, source))
 		) {
 			throw new NotFoundError('Session not found');
 		}
 	}
 
 	/**
-	 * Give the oldest pending message exclusive use of the session for its execution.
+	 * Give the next pending message exclusive use of the session for its execution.
 	 * Running work and valid suspended checkpoints block a claim.
 	 */
 	async claimNext(
@@ -310,6 +348,7 @@ export class AgentMessageQueueService {
 	): Promise<ClaimedAgentMessage | null> {
 		let steeringChanged = false;
 		const claimed = await this.txRunner.run({}, async (ctx) => {
+			if (!(await this.settingsService.getEnabled(ctx))) return null;
 			const thread = await this.threadRepository.lockById(threadId, ctx);
 			if (!thread) return null;
 			steeringChanged = await this.steering.releaseInactive(thread, ctx);
@@ -409,6 +448,7 @@ export class AgentMessageQueueService {
 			sessionMode: 'existing',
 			queueItemId: item.id,
 			previewChat: item.payload.kind === 'preview',
+			acceptsSteering: acceptsSteering(item.payload.kind),
 			userMessage: payload.message,
 			resourceId: payload.resourceId,
 			source: item.message.origin?.source ?? undefined,
@@ -422,7 +462,7 @@ export class AgentMessageQueueService {
 			...readInboundUserMessage(item.message.content),
 			resourceId: item.message.resourceId,
 		};
-		if (item.payload.kind === 'preview') return { ...item.payload, ...input };
+		if (item.payload.kind !== 'integration') return { ...item.payload, ...input };
 		if (!item.message.author) throw new UnexpectedError('Queued integration input has no author');
 		const { origin } = item.message;
 		if (!origin?.source || !origin.integrationConnectionId || !origin.platformThreadId)

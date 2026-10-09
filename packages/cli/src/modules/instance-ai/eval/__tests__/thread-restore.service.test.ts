@@ -624,15 +624,17 @@ describe('EvalThreadRestoreService', () => {
 
 		beforeEach(() => {
 			moduleRegistry.isActive.calledWith('agents').mockReturnValue(true);
+			credentialsRepo.findByTypesInProject.mockResolvedValue([]);
 		});
 
 		it('creates the agent at its seeded id, carrying its config and skill bodies', async () => {
 			const agent = seedAgent();
 
-			const created = await service.restoreAgents([agent], 'project-1');
+			const created = await service.restoreAgents([agent], 'project-1', evalUser);
 
 			expect(created).toEqual(['agent-original']);
 			expect(agentsService.create).toHaveBeenCalledExactlyOnceWith('project-1', 'Support Triage', {
+				actor: { kind: 'user', user: evalUser },
 				id: 'agent-original',
 				schema: agent.config,
 				skills: agent.skills,
@@ -662,6 +664,7 @@ describe('EvalThreadRestoreService', () => {
 			await service.restoreAgents(
 				[{ ...agent, config }],
 				'project-1',
+				evalUser,
 				new Map([['dt-authored-01', 'dt-new-99']]),
 			);
 
@@ -692,6 +695,7 @@ describe('EvalThreadRestoreService', () => {
 			await service.restoreAgents(
 				[{ ...agent, config }],
 				'project-1',
+				evalUser,
 				new Map([
 					['dt1234567', 'SHORT-NEW'],
 					['dt12345678', 'LONG-NEW'],
@@ -708,7 +712,7 @@ describe('EvalThreadRestoreService', () => {
 		it('leaves the config untouched when the seed created no data tables', async () => {
 			const agent = seedAgent();
 
-			await service.restoreAgents([agent], 'project-1');
+			await service.restoreAgents([agent], 'project-1', evalUser);
 
 			const [, , options] = agentsService.create.mock.calls[0];
 			expect(options?.schema).toEqual(agent.config);
@@ -737,7 +741,7 @@ describe('EvalThreadRestoreService', () => {
 				integrations: [{ type: 'slack' as const, credentialId: 'cred-slack' }],
 			};
 
-			await service.restoreAgents([{ ...agent, config }], 'project-1');
+			await service.restoreAgents([{ ...agent, config }], 'project-1', evalUser);
 
 			const [, , options] = agentsService.create.mock.calls[0];
 			expect(options?.schema).toMatchObject({
@@ -753,6 +757,107 @@ describe('EvalThreadRestoreService', () => {
 			});
 		});
 
+		describe('model credential', () => {
+			const credential = (id: string) => mock<CredentialsEntity>({ id, name: `cred ${id}` });
+			const openAiAgent = () => {
+				const agent = seedAgent();
+				return {
+					...agent,
+					config: {
+						...agent.config,
+						model: 'openai/gpt-4.1-mini',
+						credential: 'cred-from-source-instance',
+						subAgents: {
+							modelsByDifficulty: {
+								low: { model: 'openai/gpt-4.1-nano', credential: 'cred-source-low' },
+								high: { model: 'google/gemini-2.5-pro', credential: 'cred-source-high' },
+							},
+						},
+					},
+				};
+			};
+
+			it("binds each model to the project's one allowed credential of its provider's type", async () => {
+				// The workflow counterpart is `resolveNodeCredentials`. Without it the
+				// restored agent has no model credential and no scenario can run it.
+				credentialsRepo.findByTypesInProject.mockImplementation(async (types) => {
+					if (types.includes('openAiApi')) return [credential('cred-openai')];
+					if (types.includes('googlePalmApi')) return [credential('cred-gemini')];
+					return [];
+				});
+
+				await service.restoreAgents(
+					[openAiAgent()],
+					'project-1',
+					evalUser,
+					new Map(),
+					new Set(['cred-openai', 'cred-gemini']),
+				);
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({
+					credential: 'cred-openai',
+					subAgents: {
+						modelsByDifficulty: {
+							low: { credential: 'cred-openai' },
+							high: { credential: 'cred-gemini' },
+						},
+					},
+				});
+			});
+
+			it('keeps the blank when the allowlist admits none of the candidates', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([credential('cred-openai')]);
+
+				await service.restoreAgents(
+					[openAiAgent()],
+					'project-1',
+					evalUser,
+					new Map(),
+					new Set(['other']),
+				);
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({ credential: '' });
+			});
+
+			it('keeps the blank under an empty allowlist, the pin of a case that declares none', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([credential('cred-openai')]);
+
+				await service.restoreAgents([openAiAgent()], 'project-1', evalUser, new Map(), new Set());
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({ credential: '' });
+			});
+
+			it('keeps the blank when two credentials match, rather than picking one', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([
+					credential('cred-a'),
+					credential('cred-b'),
+				]);
+
+				await service.restoreAgents([openAiAgent()], 'project-1', evalUser);
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({ credential: '' });
+			});
+
+			it('leaves a draft agent with no model unbound', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([credential('cred-openai')]);
+				const agent = seedAgent();
+
+				await service.restoreAgents(
+					[{ ...agent, config: { ...agent.config, model: '' } }],
+					'project-1',
+					evalUser,
+				);
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).not.toHaveProperty('credential');
+				expect(credentialsRepo.findByTypesInProject).not.toHaveBeenCalled();
+			});
+		});
+
 		it('rolls back agents already created when a later one fails', async () => {
 			// A partial restore would leak an agent into the shared eval project, and the
 			// build fails anyway — the thread never gets the history that references it.
@@ -764,6 +869,7 @@ describe('EvalThreadRestoreService', () => {
 				service.restoreAgents(
 					[seedAgent({ id: 'agent-1' }), seedAgent({ id: 'agent-2', name: 'Other' })],
 					'project-1',
+					evalUser,
 				),
 			).rejects.toThrow('already exists');
 
@@ -773,7 +879,7 @@ describe('EvalThreadRestoreService', () => {
 		it('fails loudly when the agents module is disabled, rather than seeding nothing', async () => {
 			moduleRegistry.isActive.calledWith('agents').mockReturnValue(false);
 
-			await expect(service.restoreAgents([seedAgent()], 'project-1')).rejects.toThrow(
+			await expect(service.restoreAgents([seedAgent()], 'project-1', evalUser)).rejects.toThrow(
 				BadRequestError,
 			);
 			expect(agentsService.create).not.toHaveBeenCalled();
@@ -782,7 +888,7 @@ describe('EvalThreadRestoreService', () => {
 		it('does not touch the agents module for a seed that declares no agents', async () => {
 			moduleRegistry.isActive.calledWith('agents').mockReturnValue(false);
 
-			await expect(service.restoreAgents([], 'project-1')).resolves.toEqual([]);
+			await expect(service.restoreAgents([], 'project-1', evalUser)).resolves.toEqual([]);
 		});
 	});
 	describe('folders', () => {

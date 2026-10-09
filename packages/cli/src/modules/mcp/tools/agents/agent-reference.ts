@@ -58,9 +58,10 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
 
 call_agent verifies the draft Agent's behavior through built-in Preview chat, not configured channel
 triggers, platform context, message delivery, or replies. Real tools and credentials are used, so
-side effects are possible. If the test exposes errors, report them and ask whether to fix them rather
-than mutating the Agent automatically. Every approval decision must come from the human; resume each
-returned approval individually.
+side effects are possible. Omit sessionId to start a new test conversation. To continue one, pass the
+exact sessionId from an earlier call_agent result; never make one up. If the test exposes errors,
+report them and ask whether to fix them rather than mutating the Agent automatically. Every approval
+decision must come from the human; resume each returned approval individually.
 
 ## Publication approval
 

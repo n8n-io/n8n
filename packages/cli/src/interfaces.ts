@@ -23,6 +23,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IExecutionContext,
 	WorkflowExecutionSource,
+	ExecutionStorageLocation,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -141,6 +142,8 @@ export interface ResumableExecution {
 	executionId: string;
 	/** `waiting` for a row being resumed, `new` for one enqueued before a restart. */
 	expectedStatus: Extract<ExecutionStatus, 'new' | 'waiting'>;
+	/** Store recorded on the row. A resume keeps writing there, whatever the configured mode. */
+	storedAt?: ExecutionStorageLocation;
 }
 
 export interface IExecutingWorkflowData {
@@ -153,6 +156,7 @@ export interface IExecutingWorkflowData {
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;
+	isQueueJob?: boolean;
 }
 
 export interface IActiveDirectorySettings {

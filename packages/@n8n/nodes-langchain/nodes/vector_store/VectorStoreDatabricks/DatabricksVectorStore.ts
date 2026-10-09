@@ -299,7 +299,7 @@ export class DatabricksVectorStore extends VectorStore {
 		options?: { ids?: string[] },
 	): Promise<string[]> {
 		if (documents.length === 0) return [];
-		this.assertDirectAccess();
+		this.assertWritableContentColumn();
 		const vectors = await this.embeddings.embedDocuments(documents.map((doc) => doc.pageContent));
 		return await this.addVectors(vectors, documents, options);
 	}
@@ -309,14 +309,8 @@ export class DatabricksVectorStore extends VectorStore {
 		documents: DocumentInterface[],
 		options?: { ids?: string[] },
 	): Promise<string[]> {
-		const vectorColumn = this.assertDirectAccess();
+		const vectorColumn = this.assertWritableContentColumn();
 		const { primaryKey, name } = this.index;
-		// The row below would write the document text over its own primary key
-		if (this.contentColumn === primaryKey) {
-			throw new UserError(
-				`Column ${primaryKey} is the primary key of ${name}. Select another content column`,
-			);
-		}
 		const schemaColumns = new Set(this.index.schemaColumns ?? []);
 		const ids = documents.map((doc, i) => options?.ids?.[i] ?? doc.id ?? randomUUID());
 
@@ -345,6 +339,33 @@ export class DatabricksVectorStore extends VectorStore {
 			);
 		}
 		return ids;
+	}
+
+	/** Both writes below would land on a column the row already fills from somewhere else. */
+	private assertWritableContentColumn(): string {
+		const vectorColumn = this.assertDirectAccess();
+		const { primaryKey, name, schemaColumns } = this.index;
+		if (this.contentColumn === primaryKey) {
+			throw new UserError(
+				`Column ${primaryKey} is the primary key of ${name}. Select another Content Column`,
+			);
+		}
+		if (this.contentColumn === vectorColumn) {
+			throw new UserError(
+				`Column ${vectorColumn} holds the embedding vector of ${name}. Select another Content Column`,
+			);
+		}
+		// An index that declares an empty schema is known, not unknown: letting it
+		// through trades this message for a raw Databricks schema error.
+		if (schemaColumns !== undefined && !schemaColumns.includes(this.contentColumn)) {
+			const selectable = schemaColumns.filter((column) => !this.reserved.has(column));
+			throw new UserError(
+				selectable.length > 0
+					? `Index ${name} has no column ${this.contentColumn}. Select a Content Column from: ${selectable.join(', ')}`
+					: `Index ${name} has no column ${this.contentColumn}, and declares no other column to select`,
+			);
+		}
+		return vectorColumn;
 	}
 
 	// Databricks enforces `index_type` here; a Delta Sync index rejects upsert-data even when it holds its own vectors

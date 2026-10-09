@@ -67,6 +67,20 @@ export const splitName = (
 	return { name: name.trim() || undefined, email };
 };
 
+/**
+ * Order for a list of who something is shared with: people (their personal
+ * projects) first, then team projects, each by name.
+ */
+export const compareSharingEntries = (
+	entryA: { type?: string | null; name?: string | null },
+	entryB: { type?: string | null; name?: string | null },
+): number => {
+	const isPerson = (entry: { type?: string | null }) => (entry.type === 'personal' ? 0 : 1);
+	return (
+		isPerson(entryA) - isPerson(entryB) || (entryA.name ?? '').localeCompare(entryB.name ?? '')
+	);
+};
+
 export const MAX_NAME_LENGTH = 25;
 
 export const getTruncatedProjectName = (projectName: string | null | undefined): string => {

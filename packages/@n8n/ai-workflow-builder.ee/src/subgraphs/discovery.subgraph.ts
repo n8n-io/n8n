@@ -6,7 +6,7 @@
  */
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage, AIMessage } from '@langchain/core/messages';
-import { HumanMessage, ToolMessage, isAIMessage } from '@langchain/core/messages';
+import { HumanMessage, ToolMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable, RunnableConfig } from '@langchain/core/runnables';
 import { tool, type StructuredTool } from '@langchain/core/tools';
@@ -32,6 +32,7 @@ import {
 import { createNodeSearchTool } from '@/tools/node-search.tool';
 import { submitQuestionsTool } from '@/tools/submit-questions.tool';
 import { createPassthroughSsrfGuard, type SsrfGuard } from '@/tools/utils/ssrf-guard';
+import { isAIMessage } from '@/types/langchain';
 import {
 	createLangGraphSecurityManagerFactory,
 	createMutableSecurityManagerFactory,
@@ -529,7 +530,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 				'[Discovery] No submit_discovery_results tool call found - agent may have stopped early',
 				{
 					messageCount: state.messages.length,
-					lastMessageType: lastMessage?.getType(),
+					lastMessageType: lastMessage?.type,
 				},
 			);
 			return {

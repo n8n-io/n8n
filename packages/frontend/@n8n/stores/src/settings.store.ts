@@ -141,6 +141,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
+	const isAgentsEnabled = computed(
+		() => isModuleActive('agents') && moduleSettings.value.agents?.enabled !== false,
+	);
+
 	/**
 	 * Checks whether an agents-module sub-feature token (listed in
 	 * `N8N_AGENTS_MODULES` on the backend) is enabled. Returns `false`
@@ -150,9 +154,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	 * Known tokens: see `AGENTS_MODULE_NAMES` in `agents.config.ts`.
 	 */
 	const isAgentModuleActive = (name: string): boolean => {
-		return (
-			isModuleActive('agents') && moduleSettings.value.agents?.modules?.includes(name) === true
-		);
+		return isAgentsEnabled.value && moduleSettings.value.agents?.modules?.includes(name) === true;
 	};
 
 	const isAiCreditsEnabled = computed(
@@ -216,7 +218,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	// Opt-in flag controlled by the backend's N8N_AGENTS_AI_SANDBOX_ENABLED setting.
 	const isAgentsKnowledgeBaseFeatureEnabled = computed(
-		() => isModuleActive('agents') && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
+		() => isAgentsEnabled.value && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
 	);
 
 	const isPublicChatTriggerDisabled = computed(
@@ -528,6 +530,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
+		isAgentsEnabled,
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,

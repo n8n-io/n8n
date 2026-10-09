@@ -71,6 +71,8 @@ export type PromotionOperationInput = Readonly<{
  * repository path, so the listing and the contents never describe two commits.
  */
 export type BranchPackage = Readonly<{
+	configId: string;
+	branchName: string;
 	commitSha: string | null;
 	files: PackageFile[];
 	readFiles: (paths: readonly string[]) => Promise<Map<string, string>>;

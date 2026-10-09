@@ -89,6 +89,30 @@ vi.mock('vue-router', () => ({
 	onBeforeRouteLeave: vi.fn(),
 }));
 
+const mockRunEntireWorkflow = vi.hoisted(() => vi.fn());
+const mockShowMessage = vi.hoisted(() => vi.fn());
+
+// Only the entry point the canvas shortcut reaches is replaced; the rest of
+// the composable stays real so the view still wires itself up.
+vi.mock('@/app/composables/useRunWorkflow', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/app/composables/useRunWorkflow')>();
+	return {
+		...original,
+		useRunWorkflow: (...args: Parameters<typeof original.useRunWorkflow>) => ({
+			...original.useRunWorkflow(...args),
+			runEntireWorkflow: mockRunEntireWorkflow,
+		}),
+	};
+});
+
+vi.mock('@n8n/composables/useToast', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@n8n/composables/useToast')>();
+	return {
+		...original,
+		useToast: () => ({ ...original.useToast(), showMessage: mockShowMessage }),
+	};
+});
+
 // Route actions open the NDV. The real NDV needs `route.meta` and `<dialog>`
 // APIs that this mock and jsdom lack; these tests only assert canvas state.
 vi.mock('@/features/ndv/shared/views/NodeDetailsView.vue', () => ({
@@ -180,7 +204,7 @@ describe('NodeView', () => {
 					}),
 					LazySetupWorkflowCredentialsButton: { render: () => null },
 					WorkflowCanvas: defineComponent({
-						emits: ['copy:nodes', 'replace:node', 'viewport:change'],
+						emits: ['copy:nodes', 'replace:node', 'viewport:change', 'run:workflow'],
 						setup(_, { emit, expose }) {
 							const canvasStore = useCanvasStore();
 							expose({ ensureNodesAreVisible });
@@ -203,6 +227,10 @@ describe('NodeView', () => {
 							<button
 								data-test-id="canvas-stub-set-viewport"
 								@click="$emit('viewport:change', { x: 0, y: 0, zoom: 1 }, { width: 1000, height: 1000 })"
+							/>
+							<button
+								data-test-id="canvas-stub-run-workflow"
+								@click="$emit('run:workflow')"
 							/>
 							<slot />
 						</div>`,
@@ -1175,6 +1203,75 @@ describe('NodeView', () => {
 			await deferred?.();
 
 			expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Existing']);
+		});
+	});
+
+	describe('Execute gating on an unusable credential', () => {
+		const trigger = createTestNode({
+			type: MANUAL_TRIGGER_NODE_TYPE,
+			name: 'trigger',
+			credentials: { gmailOAuth2: { id: 'c1', name: "Alice's Gmail" } },
+		});
+
+		const unusableCredential = {
+			id: 'c1',
+			name: "Alice's Gmail",
+			credentialType: 'gmailOAuth2',
+			currentUserCanUse: false,
+			homeProject: {
+				id: 'p1',
+				name: 'Alice Chen <alice@acme.io>',
+				type: 'personal' as const,
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+			},
+		};
+
+		beforeEach(() => {
+			useSettingsStore().settings.granularCredentialSharing = true;
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
+			]);
+			workflowDocumentStore.setNodes([trigger]);
+		});
+
+		// The shortcut bypasses the button, so it has to ask the same question.
+		it('stops the run shortcut and says which credential and whose', async () => {
+			workflowDocumentStore.setUsedCredentials([unusableCredential]);
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-run-workflow'));
+
+			expect(mockRunEntireWorkflow).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: expect.stringContaining("Alice's Gmail"),
+					type: 'warning',
+				}),
+			);
+			expect(mockShowMessage.mock.calls[0][0].title).toContain('Alice Chen');
+		});
+
+		it('runs from the shortcut when every credential is usable', async () => {
+			workflowDocumentStore.setUsedCredentials([
+				{ ...unusableCredential, currentUserCanUse: true },
+			]);
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-run-workflow'));
+
+			expect(mockRunEntireWorkflow).toHaveBeenCalledWith('main');
+		});
+
+		it('runs from the shortcut while the feature flag is off', async () => {
+			useSettingsStore().settings.granularCredentialSharing = false;
+			workflowDocumentStore.setUsedCredentials([unusableCredential]);
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-run-workflow'));
+
+			expect(mockRunEntireWorkflow).toHaveBeenCalledWith('main');
 		});
 	});
 });

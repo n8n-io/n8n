@@ -1,9 +1,13 @@
-import type { WorkflowGraph } from '../graph';
+import type { StoredWorkflowGraph } from '../graph';
 import type { ResponseExpectation } from '../response-channel';
 import type {
 	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
+	SeededSteps,
+	StepKey,
+	StepKeyId,
+	StepSlots,
 	TriggerOutputs,
 	WorkflowDocument,
 } from './execution.types';
@@ -15,7 +19,8 @@ interface BaseExecutionRecord {
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
-	graph: WorkflowGraph;
+	/** As stored: the engine's own marks on top of what the caller sent. */
+	graph: StoredWorkflowGraph;
 	/** Stored for the read path only. Nothing on the execution path reads it. */
 	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
@@ -24,15 +29,22 @@ interface BaseExecutionRecord {
 	responseExpectation: ResponseExpectation;
 }
 
-/** A new execution to persist. Timestamps are assigned by the store. */
-export type NewExecutionRecord = BaseExecutionRecord;
+/**
+ * A new execution to persist. Timestamps are assigned by the store. The seeded
+ * outputs are stored beside the row, in their own table, and read back by key.
+ */
+export type NewExecutionRecord = BaseExecutionRecord & { seededSteps?: SeededSteps };
 
 /**
- * What running an execution needs of its row. No timing: the execution path
- * decides on `status`, never on when anything happened. The read path has its
+ * What running an execution needs of its row. The execution path decides on
+ * `status`, never on when anything happened, so the only time it carries is
+ * `finishedAt`, which it reports but never decides on. The read path has its
  * own view (`ExecutionView`).
  */
-export type ExecutionRecord = BaseExecutionRecord;
+export type ExecutionRecord = BaseExecutionRecord & {
+	/** When the execution ended, or `null` while it has not. */
+	finishedAt: Date | null;
+};
 
 /** Thrown by `loadExecution` when no execution exists for the given id. */
 export class ExecutionNotFoundError extends Error {
@@ -51,6 +63,12 @@ export interface ExecutionStore {
 	loadExecution(id: string): Promise<ExecutionRecord>;
 
 	/**
+	 * The outputs the caller seeded for the given steps, by step key id. A key
+	 * with no seeded outputs is absent from the result.
+	 */
+	loadSeededOutputs(executionId: string, keys: StepKey[]): Promise<Map<StepKeyId, StepSlots>>;
+
+	/**
 	 * Compare-and-set status transition. Returns `true` iff this call performed
 	 * the transition, so duplicate/redelivered events are handled idempotently.
 	 */
@@ -59,12 +77,17 @@ export interface ExecutionStore {
 	/**
 	 * Record an execution's outcome: writes the final status and the finish time
 	 * together, as a compare-and-set on the live statuses, so they can't be
-	 * observed apart.
+	 * observed apart. Returns the finish time it wrote, so the caller reports the
+	 * time the row records, or `null` when the compare-and-set lost.
 	 */
-	finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean>;
+	finishExecution(id: string, status: 'completed' | 'failed'): Promise<{ finishedAt: Date } | null>;
 
-	/** End an execution on request, from any status that has not ended. */
-	cancelExecution(id: string): Promise<boolean>;
+	/**
+	 * End an execution on request, from any status that has not ended. Returns
+	 * the finish time it wrote, so the caller reports the time the row records,
+	 * or `null` when the execution had already ended.
+	 */
+	cancelExecution(id: string): Promise<{ finishedAt: Date } | null>;
 
 	/**
 	 * Sets a live execution's status from the state of its steps: `waiting` when

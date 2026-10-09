@@ -424,11 +424,6 @@
 	// Node error
 	--node--error-output--color--text: var(--color--danger);
 
-	// MFA Recovery codes
-	--mfa--recovery-code--color--background: var(--color--background);
-	--mfa--recovery-code--color: var(--color--neutral-500);
-	--mfa--lose-access--color--text: var(--color--danger);
-
 	// Text highlight
 	--text-highlight--color--background: var(--color--yellow-200);
 
@@ -640,10 +635,7 @@
 	--grid--row--color--background--selected: var(--color--purple-200);
 	--grid--cell--border-color--editing: 2px solid var(--color--secondary);
 
-	--command-bar-item--color--background--hover: var(--color--background);
 	--command-bar-item--height: 40px;
-	--command-bar--shadow:
-		0 15px 45px 0 var(--color--black-alpha-200), 0 5px 10px 0 var(--color--black-alpha-200);
 
 	// Animation
 	--animation--duration: var(--duration--base);
@@ -1026,11 +1018,6 @@
 	// Node error
 	--node--error-output--color--text: var(--color--danger);
 
-	// MFA Recovery codes
-	--mfa--recovery-code--color--background: var(--color--background--light-3);
-	--mfa--recovery-code--color: var(--color--text--shade-1);
-	--mfa--lose-access--color--text: var(--color--danger);
-
 	// Text highlight
 	--text-highlight--color--background: var(--color--yellow-700);
 
@@ -1236,10 +1223,6 @@
 
 	/* Ag Grid */
 	--grid--row--color--background--selected: var(--color--purple-900);
-
-	--command-bar-item--color--background--hover: var(--color--background--light-1);
-	--command-bar--shadow:
-		0 15px 45px 0 var(--color--black-alpha-400), 0 5px 10px 0 var(--color--black-alpha-200);
 }
 
 :root {

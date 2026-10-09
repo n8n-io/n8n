@@ -1,4 +1,8 @@
-import { assertSubAgentTaskPath, type SerializableAgentState } from '@n8n/agents';
+import {
+	assertSubAgentTaskPath,
+	type ApprovalResumePayload,
+	type SerializableAgentState,
+} from '@n8n/agents';
 import { SUB_AGENT_TASK_DIFFICULTIES } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -7,15 +11,19 @@ import type { IntegrationMessageContext } from '../integrations/integration-tool
 
 export const BACKGROUND_SUB_AGENT_METADATA_KEY = 'n8nBackgroundSubAgent';
 export const BACKGROUND_APPROVAL_RUN_PREFIX = 'background-job-';
+export const BACKGROUND_PAUSE_USER_TURN_KEY = 'n8nBackgroundPauseUserTurn';
 export const PARENT_TASK_CANCELLED_REASON = new DOMException('Parent task cancelled', 'AbortError');
 
 export function parseBackgroundApprovalAction(actionId: string) {
-	const match = /^bg:([a-f\d-]{36}):([\w-]{22}):([01])$/i.exec(actionId);
+	const match = /^bg:([a-f\d-]{36}):([\w-]{22}):([01s])$/i.exec(actionId);
 	if (!match) return undefined;
+	const decision = match[3].toLowerCase();
+	const resumeData: ApprovalResumePayload = { approved: decision !== '0' };
+	if (decision === 's') resumeData.scope = 'session';
 	return {
 		runId: `${BACKGROUND_APPROVAL_RUN_PREFIX}${match[1]}`,
 		toolCallId: match[2],
-		resumeData: { approved: match[3] === '1' },
+		resumeData,
 	};
 }
 
@@ -23,6 +31,7 @@ const backgroundStateSchema = z.object({
 	jobId: z.string().min(1),
 	taskPath: z.string(),
 	resumeContext: z.object({ agentId: z.string().min(1), versionId: z.string().min(1).optional() }),
+	runtimeSnapshot: z.string().optional(),
 	difficulty: z.enum(SUB_AGENT_TASK_DIFFICULTIES).optional(),
 	sharedWorkspace: z.boolean(),
 	messageContext: z.custom<IntegrationMessageContext>(isIntegrationMessageContext).nullable(),

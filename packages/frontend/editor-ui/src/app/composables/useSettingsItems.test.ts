@@ -3,13 +3,17 @@ import { computed, ref } from 'vue';
 import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
 import { useSettingsItems } from './useSettingsItems';
 import { VIEWS } from '../constants';
+import { hasPermission } from '../utils/rbac/permissions';
 
 const isAiGatewayCloudUbbEnabled = ref(false);
 const isAiGatewayEnabled = ref(true);
+const isAiAssistantEnabled = ref(false);
+const isPublicApiEnabled = ref(false);
+const isQueueModeEnabled = ref(false);
 const balance = ref<number>();
 const moduleSettings = ref<Record<string, unknown>>({});
 // `ui.store` stamps `available: true` onto every module item before exposing it.
-const settingsSidebarItems = ref<Array<{ id: string; available: boolean }>>([]);
+const settingsSidebarItems = ref<Array<{ id: string; available: boolean; order?: number }>>([]);
 const activeModules = ref<string[]>([]);
 const promotionsFlag = ref('false');
 const canUserAccessRouteByName = vi.hoisted(() => vi.fn<(name: string) => boolean>(() => true));
@@ -39,15 +43,21 @@ vi.mock('../stores/ui.store', () => ({
 }));
 vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
-		isAiAssistantEnabled: false,
+		get isAiAssistantEnabled() {
+			return isAiAssistantEnabled.value;
+		},
 		get isAiGatewayEnabled() {
 			return isAiGatewayEnabled.value;
 		},
 		get isAiGatewayCloudUbbEnabled() {
 			return isAiGatewayCloudUbbEnabled.value;
 		},
-		isPublicApiEnabled: false,
-		isQueueModeEnabled: false,
+		get isPublicApiEnabled() {
+			return isPublicApiEnabled.value;
+		},
+		get isQueueModeEnabled() {
+			return isQueueModeEnabled.value;
+		},
 		isModuleActive: (name: string) => activeModules.value.includes(name),
 		get settings() {
 			return { envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: promotionsFlag.value } };
@@ -64,6 +74,9 @@ describe('useSettingsItems', () => {
 		vi.clearAllMocks();
 		isAiGatewayEnabled.value = true;
 		isAiGatewayCloudUbbEnabled.value = false;
+		isAiAssistantEnabled.value = false;
+		isPublicApiEnabled.value = false;
+		isQueueModeEnabled.value = false;
 		balance.value = undefined;
 		moduleSettings.value = {};
 		settingsSidebarItems.value = [];
@@ -73,19 +86,102 @@ describe('useSettingsItems', () => {
 		contextPreferencesEnabled.value = true;
 	});
 
+	describe('sidebar order', () => {
+		it('lists every link in the established order when all are available', () => {
+			isAiAssistantEnabled.value = true;
+			isPublicApiEnabled.value = true;
+			isQueueModeEnabled.value = true;
+			moduleSettings.value = { 'encryption-key-manager': { rotationEnabled: true } };
+			activeModules.value = ['promotions'];
+			promotionsFlag.value = 'true';
+			vi.mocked(hasPermission).mockReturnValue(true);
+			// Module items in registration order, with the orders the real modules set.
+			settingsSidebarItems.value = [
+				{ id: 'settings-mcp', available: true, order: 200 },
+				{ id: 'settings-chat-hub', available: true, order: 220 },
+				{ id: 'settings-instance-ai', available: true, order: 230 },
+				{ id: 'settings-agents', available: true, order: 240 },
+				{ id: 'settings-opentelemetry', available: true },
+			];
+
+			const ids = useSettingsItems().settingsItems.value.map(({ id }) => id);
+
+			expect(ids).toEqual([
+				'settings-usage-and-plan',
+				'settings-personal',
+				'settings-users',
+				'settings-ai',
+				'settings-n8n-connect',
+				'settings-roles',
+				'settings-api',
+				'settings-external-secrets',
+				'settings-credential-resolvers',
+				'settings-source-control',
+				'settings-promotions',
+				'settings-sso',
+				'settings-encryption-keys',
+				'settings-security',
+				'settings-ldap',
+				'settings-workersview',
+				'settings-log-streaming',
+				'settings-community-nodes',
+				'settings-migration-report',
+				'settings-mcp',
+				'settings-context',
+				'settings-chat-hub',
+				'settings-instance-ai',
+				'settings-agents',
+				'settings-opentelemetry',
+			]);
+		});
+	});
+
+	describe('module item order', () => {
+		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
+
+		it('places a module item between the shell items with the nearest orders', () => {
+			settingsSidebarItems.value = [{ id: 'settings-module', available: true, order: 25 }];
+
+			const ids = idsOf();
+
+			expect(ids.indexOf('settings-module')).toBe(ids.indexOf('settings-personal') + 1);
+			expect(ids.indexOf('settings-module')).toBe(ids.indexOf('settings-users') - 1);
+		});
+
+		it('places a module item without order last', () => {
+			settingsSidebarItems.value = [{ id: 'settings-module', available: true }];
+
+			expect(idsOf().at(-1)).toBe('settings-module');
+		});
+
+		it('keeps registration order for equal orders', () => {
+			settingsSidebarItems.value = [
+				{ id: 'settings-first', available: true, order: 25 },
+				{ id: 'settings-second', available: true, order: 25 },
+				{ id: 'settings-third', available: true },
+				{ id: 'settings-fourth', available: true },
+			];
+
+			const ids = idsOf();
+
+			expect(ids.indexOf('settings-second')).toBe(ids.indexOf('settings-first') + 1);
+			expect(ids.indexOf('settings-fourth')).toBe(ids.indexOf('settings-third') + 1);
+		});
+	});
+
 	describe('the Context item', () => {
 		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
 
-		it('sits directly after the module-registered MCP item', () => {
+		it('sorts between module items with a lower and a higher order', () => {
 			settingsSidebarItems.value = [
-				{ id: 'settings-mcp', available: true },
-				{ id: 'settings-chat', available: true },
+				{ id: 'settings-mcp', available: true, order: 200 },
+				{ id: 'settings-chat-hub', available: true, order: 220 },
 			];
 
 			const ids = idsOf();
 
 			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-mcp') + 1);
-			expect(ids.indexOf('settings-context')).toBeLessThan(ids.indexOf('settings-chat'));
+			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-chat-hub') - 1);
 		});
 
 		it('is hidden when the flag is off, because the route guard does not run here', () => {
@@ -94,13 +190,10 @@ describe('useSettingsItems', () => {
 			expect(idsOf()).not.toContain('settings-context');
 		});
 
-		it('falls back to the end when the MCP module is inactive', () => {
+		it('is last when no module item is registered', () => {
 			settingsSidebarItems.value = [];
 
-			const ids = idsOf();
-
-			expect(ids).not.toContain('settings-mcp');
-			expect(ids.at(-1)).toBe('settings-context');
+			expect(idsOf().at(-1)).toBe('settings-context');
 		});
 
 		it('carries the preview label', () => {

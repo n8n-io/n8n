@@ -20,6 +20,7 @@ import {
 	resolveSubAgentName,
 } from '../utils/delegate-tool';
 import { getToolCallDetails } from '../utils/tool-call-details';
+import { isRecoverablePlanError } from '../utils/agent-plan';
 import {
 	countIncompleteTodos,
 	isWriteTodosTool,
@@ -33,6 +34,7 @@ const props = defineProps<{
 	toolCalls: ToolCall[];
 	projectId?: string;
 	canFixWithAssistant?: boolean;
+	dismissedToolCallIds?: string[];
 	executionId?: string;
 }>();
 
@@ -44,12 +46,17 @@ const i18n = useI18n();
 
 const showFix = computed(() => Boolean(props.canFixWithAssistant && props.executionId));
 
+const dismissedToolCallIds = computed(() => new Set(props.dismissedToolCallIds ?? []));
+
 const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 	if (!showFix.value) return [];
 
+	const dismissed = dismissedToolCallIds.value;
 	const failures: AgentFixWithAssistantFailure[] = [];
 	for (const toolCall of props.toolCalls) {
+		if (dismissed.has(toolCall.toolCallId)) continue;
 		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
+		if (isRecoverablePlanError(toolCall)) continue;
 
 		const error = toolStepError(toolCall)?.trim();
 		if (!error) continue;
@@ -168,11 +175,16 @@ function toolStepView(tc: ToolCall): ToolStepDisplay {
 }
 
 function toolStepError(tc: ToolCall): string | undefined {
+	if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
 	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
 	if (isEmptyToolErrorPayload(tc.output)) {
 		return i18n.baseText('agents.chat.toolError.generic');
 	}
 	return formatToolData(tc.output);
+}
+
+function hideToolErrorCallout(tc: ToolCall): boolean {
+	return isRecoverablePlanError(tc) || (showFix.value && tc.state === TOOL_CALL_STATE.ERROR);
 }
 
 function emitFixWithAssistant() {
@@ -213,7 +225,7 @@ function hasActiveToolCall(): boolean {
 						:label="view.label"
 						:loading="isToolStepLoading(tc)"
 						:error="toolStepError(tc)"
-						:hide-error-callout="showFix && tc.state === TOOL_CALL_STATE.ERROR"
+						:hide-error-callout="hideToolErrorCallout(tc)"
 						:has-content="view.expandable"
 					>
 						<div
@@ -276,7 +288,7 @@ function hasActiveToolCall(): boolean {
 					:label="toolStepView(tc).label"
 					:loading="isToolStepLoading(tc)"
 					:error="toolStepError(tc)"
-					:hide-error-callout="showFix && tc.state === TOOL_CALL_STATE.ERROR"
+					:hide-error-callout="hideToolErrorCallout(tc)"
 					:has-content="toolStepView(tc).expandable"
 				>
 					<template v-for="view in [toolStepView(tc)]" :key="view.label">
@@ -334,35 +346,59 @@ function hasActiveToolCall(): boolean {
 			</template>
 		</template>
 
-		<N8nCallout
-			v-if="fixableErrorTexts.length > 0"
-			theme="danger"
-			data-test-id="agent-chat-tool-fix-with-assistant-callout"
-		>
-			<template v-if="fixableErrorTexts.length === 1">
-				{{ fixableErrorTexts[0] }}
-			</template>
-			<ul v-else :class="$style.errorList">
-				<li v-for="error in fixableErrorTexts" :key="error">{{ error }}</li>
-			</ul>
-			<template #trailingContent>
-				<N8nButton
-					size="small"
-					variant="subtle"
-					data-test-id="agent-chat-tool-fix-with-assistant"
-					@click="emitFixWithAssistant"
-				>
-					<template #icon><N8nIcon icon="sparkles" size="small" /></template>
-					{{ i18n.baseText('agents.builder.preview.fixWithAssistant') }}
-				</N8nButton>
-			</template>
-		</N8nCallout>
+		<Transition name="fix-callout">
+			<N8nCallout
+				v-if="fixableErrorTexts.length > 0"
+				theme="danger"
+				:class="$style.fixCallout"
+				data-test-id="agent-chat-tool-fix-with-assistant-callout"
+			>
+				<template v-if="fixableErrorTexts.length === 1">
+					{{ fixableErrorTexts[0] }}
+				</template>
+				<ul v-else :class="$style.errorList">
+					<li v-for="error in fixableErrorTexts" :key="error">{{ error }}</li>
+				</ul>
+				<template #trailingContent>
+					<N8nButton
+						size="small"
+						variant="subtle"
+						:class="$style.fixCalloutButton"
+						data-test-id="agent-chat-tool-fix-with-assistant"
+						@click="emitFixWithAssistant"
+					>
+						<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+						{{ i18n.baseText('agents.builder.preview.fixWithAssistant') }}
+					</N8nButton>
+				</template>
+			</N8nCallout>
+		</Transition>
 	</div>
 </template>
 
 <style module>
 .toolSteps {
 	margin: 0 0 var(--spacing--sm);
+}
+
+.fixCallout {
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+
+.fixCallout > :first-child {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.fixCallout :global(.n8n-text) {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.fixCalloutButton {
+	flex-shrink: 0;
+	margin-left: auto;
 }
 
 .errorList {
@@ -430,5 +466,15 @@ function hasActiveToolCall(): boolean {
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 	user-select: text;
+}
+</style>
+
+<style lang="scss">
+.fix-callout-leave-active {
+	transition: opacity var(--duration--snappy) var(--easing--ease-in);
+}
+
+.fix-callout-leave-to {
+	opacity: 0;
 }
 </style>

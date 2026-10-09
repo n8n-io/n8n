@@ -56,6 +56,27 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		envVar: 'EVAL_GOOGLE_SHEETS_ACCESS_TOKEN',
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
 	},
+	googleCalendarOAuth2Api: {
+		defaultName: '[eval] Google Calendar',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	hubspotAppToken: {
+		defaultName: '[eval] HubSpot',
+		buildData: (token) => ({ appToken: token }),
+	},
+	// Instagram accounts connect through the Facebook Graph API.
+	facebookGraphApi: {
+		defaultName: '[eval] Facebook Graph',
+		buildData: (token) => ({ accessToken: token }),
+	},
+	linkedInOAuth2Api: {
+		defaultName: '[eval] LinkedIn',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	highLevelOAuth2Api: {
+		defaultName: '[eval] HighLevel',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
 	// MCP-registry-synthesized credential types (agent MCP servers). Creating
 	// them requires the backend to run with the `mcp-registry` module enabled;
 	// placeholder tokens are fine — agent eval runs mock the MCP wire.
@@ -144,6 +165,8 @@ export async function createOneCredential(
 		description?: string | null;
 		/** Seed with no field values, modelling a credential the user saved empty. */
 		blank?: boolean;
+		/** The build's project. Absent: the caller's personal project. */
+		projectId?: string;
 	},
 ): Promise<CreatedCredential> {
 	if (credentialType === 'httpTemplatedCustomAuth') {
@@ -173,6 +196,7 @@ export async function createOneCredential(
 		credentialType,
 		options?.blank ? {} : template.buildData(token),
 		options?.description,
+		options?.projectId,
 	);
 	return { id, name: resolvedName, type: credentialType };
 }
@@ -192,6 +216,7 @@ async function createTemplatedCustomAuthCredential(
 		logger?: EvalLogger;
 		setupHint?: InstanceAiCredentialSetupHint;
 		description?: string | null;
+		projectId?: string;
 	},
 ): Promise<CreatedCredential> {
 	const hint = options?.setupHint;
@@ -238,6 +263,7 @@ async function createTemplatedCustomAuthCredential(
 			acceptedStatusCodes: hint.acceptedStatusCodes ? JSON.stringify(hint.acceptedStatusCodes) : '',
 		},
 		options?.description,
+		options?.projectId,
 	);
 	return { id, name: resolvedName, type: 'httpTemplatedCustomAuth' };
 }
@@ -265,6 +291,8 @@ export async function createDeclaredCredentials(
 		onCreated?: (id: string) => void;
 		logger?: EvalLogger;
 		nameCounts?: Map<string, number>;
+		/** The build's project. Absent: the caller's personal project. */
+		projectId?: string;
 	},
 ): Promise<CreatedCredential[]> {
 	const logger = options?.logger;
@@ -276,6 +304,7 @@ export async function createDeclaredCredentials(
 			logger,
 			...(decl.description !== undefined ? { description: decl.description } : {}),
 			...(decl.blank ? { blank: true } : {}),
+			...(options?.projectId !== undefined ? { projectId: options.projectId } : {}),
 		});
 		options?.onCreated?.(cred.id);
 		created.push(cred);

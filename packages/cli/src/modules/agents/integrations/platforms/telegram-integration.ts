@@ -265,6 +265,10 @@ export class TelegramIntegration extends AgentChatIntegration {
 	}
 
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
+		// No `context` param: Telegram only ever expands selects into buttons,
+		// never folds buttons the other way, so it never needs to wrap a
+		// resume value or build a `resume:` id itself (see
+		// `NormalizeComponentsContext`).
 		const normalized: SuspendComponent[] = [];
 		for (const c of components) {
 			switch (c.type) {

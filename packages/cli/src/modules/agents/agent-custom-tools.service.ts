@@ -10,13 +10,12 @@ import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
 import {
-	AgentModificationTelemetryService,
 	type AgentMutationTelemetryContext,
+	type AgentMutationSnapshot,
 	buildAgentMutationEvent,
 	captureAgentMutation,
 } from './agent-modification-telemetry.service';
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
+import { AgentSaveCompletionService } from './agent-save-completion.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
@@ -29,9 +28,7 @@ export class AgentCustomToolsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly modificationTelemetry: AgentModificationTelemetryService,
-		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly saveCompletion: AgentSaveCompletionService,
 	) {}
 
 	/**
@@ -73,12 +70,7 @@ export class AgentCustomToolsService {
 			[toolId]: nextEntry,
 		};
 
-		const saved = await this.saveToolChanges(entity, projectId, context);
-		if (options.recordTelemetry !== false) {
-			this.modificationTelemetry.record(
-				buildAgentMutationEvent(saved, projectId, context, previous, { tools: true }),
-			);
-		}
+		await this.saveToolChanges(entity, projectId, context, previous, options.recordTelemetry);
 
 		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
 
@@ -114,10 +106,7 @@ export class AgentCustomToolsService {
 			);
 		}
 
-		const saved = await this.saveToolChanges(entity, projectId, context);
-		this.modificationTelemetry.record(
-			buildAgentMutationEvent(saved, projectId, context, previous, { tools: true }),
-		);
+		await this.saveToolChanges(entity, projectId, context, previous);
 
 		this.logger.debug('Deleted custom tool', { agentId, projectId, toolId });
 	}
@@ -133,6 +122,7 @@ export class AgentCustomToolsService {
 		const missing: string[] = [];
 
 		for (const ref of refs) {
+			if (ref.enabled === false) continue;
 			if (seen.has(ref.id)) continue;
 			seen.add(ref.id);
 			if (!tools[ref.id]) missing.push(ref.id);
@@ -163,14 +153,15 @@ export class AgentCustomToolsService {
 		entity: Agent,
 		projectId: string,
 		context: AgentMutationTelemetryContext,
-	): Promise<Agent> {
+		previous: AgentMutationSnapshot,
+		recordTelemetry = true,
+	): Promise<void> {
 		markAgentDraftDirty(entity);
-		this.runtimeCacheService.clearRuntimes(entity.id);
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		this.agentUpdateBroadcaster.notify(
-			{ projectId, agentId: entity.id, source: context.modifiedBy },
+		await this.saveCompletion.bodySaved(
+			buildAgentMutationEvent(saved, projectId, context, previous, { tools: true }),
 			context.pushRef,
+			recordTelemetry,
 		);
-		return saved;
 	}
 }

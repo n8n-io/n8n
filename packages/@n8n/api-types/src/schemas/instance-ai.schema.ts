@@ -10,6 +10,7 @@ import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { clientMintedAgentIdSchema } from '../agents/dto';
 import type { McpToolPermissions } from './mcp-tool-permissions.schema';
+import { threadTitleSearchSchema } from './thread-title-search.schema';
 import { Z } from '../zod-class';
 
 // ---------------------------------------------------------------------------
@@ -836,6 +837,22 @@ export const instanceAiTargetApprovalSchema = z.object({
 });
 export type InstanceAiTargetApproval = z.infer<typeof instanceAiTargetApprovalSchema>;
 
+/** Test URL card: the assistant armed a trigger's test URL and waits for one request. */
+export const testListenerCardSchema = z.object({
+	workflowId: z.string().min(1),
+	triggers: z
+		.array(
+			z.object({
+				nodeName: z.string().min(1),
+				url: z.string().url(),
+				method: z.string().min(1),
+			}),
+		)
+		.min(1),
+	/** ISO timestamp at which the listener deregisters itself. */
+	deadlineAt: z.string().datetime(),
+});
+
 /** One question of the ask-user card (`inputType=questions`). */
 export const instanceAiQuestionSchema = z.object({
 	id: z.string(),
@@ -947,6 +964,11 @@ export const confirmationRequestPayloadSchema = z.object({
 	mcpConnectRequest: mcpConnectRequestSchema
 		.optional()
 		.describe('When present, renders the inline "Available tools" MCP connect card'),
+	testListener: testListenerCardSchema
+		.optional()
+		.describe(
+			'When present, renders the "waiting for a test request" card with the armed test URLs',
+		),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -981,6 +1003,7 @@ export function isDisplayableConfirmationRequest(
 	if (payload.domainAccess) return true;
 	if (payload.channelConfig) return true;
 	if (payload.mcpConnectRequest) return true;
+	if (payload.testListener) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -1649,9 +1672,12 @@ export const instanceAiThreadArtifactSchema = z.object({
 });
 export type InstanceAiThreadArtifact = z.infer<typeof instanceAiThreadArtifactSchema>;
 
-/** The thread view's artifact tabs, plus which tab is focused when the preview is open. */
+/**
+ * The tabs open in the thread view, plus which tab is focused when the preview is open.
+ * An empty list means no tabs are open.
+ */
 export const instanceAiThreadArtifactsContextSchema = z.object({
-	artifacts: z.array(instanceAiThreadArtifactSchema).min(1).max(20),
+	artifacts: z.array(instanceAiThreadArtifactSchema).max(20),
 	activeId: z.string().min(1).max(64).optional(),
 });
 export type InstanceAiThreadArtifactsContext = z.infer<
@@ -1696,7 +1722,10 @@ export const instanceAiThreadTabsStateSchema = z.object({
 export type InstanceAiThreadTabsState = z.infer<typeof instanceAiThreadTabsStateSchema>;
 
 export interface InstanceAiThreadTabsResponse {
-	/** `null` when the user has not changed the tabs of this thread yet. */
+	/**
+	 * `null` when no tabs are stored for this thread yet. The server stores them
+	 * when the agent changes an artifact, and the client when the user changes a tab.
+	 */
 	state: InstanceAiThreadTabsState | null;
 }
 
@@ -2143,13 +2172,7 @@ export interface InstanceAiThreadListResponse {
 
 export class InstanceAiThreadHistoryQuery extends Z.class({
 	limit: z.coerce.number().int().min(1).max(100).default(30),
-	// Postgres rejects NUL bytes in text parameters, so reject them here as a 400.
-	search: z
-		.string()
-		.trim()
-		.max(500)
-		.refine((value) => !value.includes('\u0000'))
-		.optional(),
+	search: threadTitleSearchSchema,
 	cursor: z.string().min(1).max(256).optional(),
 }) {}
 
@@ -2853,6 +2876,19 @@ export interface InstanceAiEvalRewrittenCredential {
 	field: string;
 }
 
+/** Token usage of the eval's own model calls (mocks, judges, simulated user), per agent and model. */
+export interface InstanceAiEvalLlmUsage {
+	/** Eval agent name, e.g. `eval-mock-responder`. */
+	agent: string;
+	model: string;
+	calls: number;
+	/** Prompt tokens billed at the full input price: cache reads and writes are not included. */
+	uncachedInputTokens: number;
+	cacheReadTokens: number;
+	cacheWriteTokens: number;
+	outputTokens: number;
+}
+
 export interface InstanceAiEvalExecutionResult {
 	executionId: string;
 	success: boolean;
@@ -2861,6 +2897,8 @@ export interface InstanceAiEvalExecutionResult {
 	hints: InstanceAiEvalMockHints;
 	mockedCredentials: InstanceAiEvalMockedCredential[];
 	rewrittenCredentials?: InstanceAiEvalRewrittenCredential[];
+	/** Model usage of the mocks, pin data and hints for this run. */
+	llmUsage?: InstanceAiEvalLlmUsage[];
 }
 
 export class InstanceAiEvalExecutionRequest extends Z.class({
@@ -2971,6 +3009,8 @@ export interface InstanceAiEvalAgentExecutionResult {
 	seed: InstanceAiEvalAgentScenarioSeed;
 	skippedFeatures: InstanceAiEvalAgentSkippedFeature[];
 	mockedCredentials: InstanceAiEvalMockedCredential[];
+	/** Model usage of the seed and the mocks for this run. The agent's own model call is in `usage`. */
+	llmUsage?: InstanceAiEvalLlmUsage[];
 }
 
 export class InstanceAiEvalAgentExecutionRequest extends Z.class({

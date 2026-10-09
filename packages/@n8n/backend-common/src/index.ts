@@ -5,6 +5,7 @@ export { inDevelopment, inProduction, inTest, isEnvFeatureEnabled } from './envi
 export { isObjectLiteral } from './utils/is-object-literal';
 export { Logger } from './logging/logger';
 export { ModuleRegistry } from './modules/module-registry';
+export type { PackagedModules } from './modules/module-registry';
 export type { ModuleName } from './modules/modules.config';
 export { ModulesConfig } from './modules/modules.config';
 export {

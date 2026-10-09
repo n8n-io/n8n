@@ -1,13 +1,13 @@
 import type { BuiltTool } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, OutboundHttp } from '@n8n/backend-network';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import type { ICredentialType } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { OauthService } from '@/oauth/oauth.service';
 

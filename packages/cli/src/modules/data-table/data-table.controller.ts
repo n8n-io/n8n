@@ -37,7 +37,7 @@ import {
 	InternalServerError,
 	NotFoundError,
 } from '@n8n/errors';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
+import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { assertRowReadAccessIfReturningRows } from './data-table-permissions';

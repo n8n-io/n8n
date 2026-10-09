@@ -16,6 +16,7 @@ import type {
 } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
+import { guardToolResultForModel } from '../tools/tool-result-guard';
 
 export type { ObservationLogObserveFn, ObservationLogObserverInput };
 
@@ -175,7 +176,7 @@ export function renderObserverTranscript(
 			);
 			if (toolCall.state === 'resolved') {
 				lines.push(
-					`[${timestamp}] tool_result ${toolCall.toolName} output=${wrapUntrustedObserverData(serializeForObserver(toolCall.output, options), toolCall.toolName)}`,
+					`[${timestamp}] tool_result ${toolCall.toolName} output=${wrapUntrustedObserverData(serializeForObserver(toolCall.output, options, true), toolCall.toolName)}`,
 				);
 			} else if (toolCall.state === 'rejected') {
 				lines.push(
@@ -217,7 +218,10 @@ export async function runObservationLogObserver(
 	if (observable.length === 0) return { status: 'skipped', reason: 'pending-tool-call' };
 
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
-	const transcript = renderObserverTranscript(observable);
+	const guardedMessages = await Promise.all(
+		observable.map(async (message) => await guardObserverToolResults(message, tokenCounter)),
+	);
+	const transcript = renderObserverTranscript(guardedMessages);
 	const tokenCount = await tokenCounter(transcript);
 
 	const observationLogTail = (
@@ -338,12 +342,34 @@ function isToolCallContent(content: Message['content'][number]): content is Cont
 	return content.type === 'tool-call';
 }
 
-function serializeForObserver(value: unknown, options: RenderObserverTranscriptOptions): string {
-	const compacted = compactForObserver(value, options);
+async function guardObserverToolResults(
+	message: AgentDbMessage,
+	tokenCounter: TokenCounter,
+): Promise<AgentDbMessage> {
+	if (!isLlmMessage(message)) return message;
+	const content = await Promise.all(
+		message.content.map(async (block) => {
+			if (block.type !== 'tool-call' || block.state !== 'resolved') return block;
+			// Bound the serialized result so rich media metadata cannot bypass the guard.
+			const serialized = serializeForObserver(block.output, {}, true);
+			const guarded = await guardToolResultForModel(serialized, tokenCounter);
+			if (!guarded.truncated) return block;
+			return { ...block, output: guarded.historyOutput };
+		}),
+	);
+	return { ...message, content };
+}
+
+function serializeForObserver(
+	value: unknown,
+	options: RenderObserverTranscriptOptions,
+	isToolResult = false,
+): string {
+	const compacted = compactForObserver(value, options, isToolResult);
 	const serialized = safeJsonStringify(compacted);
 	return truncateString(
 		serialized,
-		options.maxSerializedChars ?? DEFAULT_MAX_SERIALIZED_CHARS,
+		options.maxSerializedChars ?? (isToolResult ? Infinity : DEFAULT_MAX_SERIALIZED_CHARS),
 		'serialized',
 	);
 }
@@ -359,10 +385,17 @@ function serializeErrorForObserver(
 	);
 }
 
-function compactForObserver(value: unknown, options: RenderObserverTranscriptOptions): unknown {
-	const maxStringChars = options.maxStringChars ?? DEFAULT_MAX_STRING_CHARS;
-	const maxArrayItems = options.maxArrayItems ?? DEFAULT_MAX_ARRAY_ITEMS;
-	const maxObjectKeys = options.maxObjectKeys ?? DEFAULT_MAX_OBJECT_KEYS;
+function compactForObserver(
+	value: unknown,
+	options: RenderObserverTranscriptOptions,
+	isToolResult: boolean,
+): unknown {
+	const maxStringChars =
+		options.maxStringChars ?? (isToolResult ? Infinity : DEFAULT_MAX_STRING_CHARS);
+	const maxArrayItems =
+		options.maxArrayItems ?? (isToolResult ? Infinity : DEFAULT_MAX_ARRAY_ITEMS);
+	const maxObjectKeys =
+		options.maxObjectKeys ?? (isToolResult ? Infinity : DEFAULT_MAX_OBJECT_KEYS);
 
 	if (typeof value === 'string') {
 		return truncateString(redactText(value).text, maxStringChars, 'string');
@@ -372,7 +405,7 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	if (Array.isArray(value)) {
 		const compacted = value
 			.slice(0, maxArrayItems)
-			.map((item) => compactForObserver(item, options));
+			.map((item) => compactForObserver(item, options, isToolResult));
 		if (value.length > maxArrayItems) {
 			compacted.push({ __truncatedItems: value.length - maxArrayItems });
 		}
@@ -384,10 +417,10 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	for (const [key, entryValue] of entries.slice(0, maxObjectKeys)) {
 		if (isSensitiveKey(key)) {
 			result[key] = REDACTED_VALUE;
-		} else if (shouldStripBlob(key, entryValue, maxStringChars)) {
+		} else if (shouldStripBlob(key, entryValue, maxStringChars, isToolResult ? value : undefined)) {
 			result[key] = '[omitted large blob]';
 		} else {
-			result[key] = compactForObserver(entryValue, options);
+			result[key] = compactForObserver(entryValue, options, isToolResult);
 		}
 	}
 	if (entries.length > maxObjectKeys) {
@@ -396,8 +429,26 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	return result;
 }
 
-function shouldStripBlob(key: string, value: unknown, maxStringChars: number): boolean {
+function shouldStripBlob(
+	key: string,
+	value: unknown,
+	maxStringChars: number,
+	toolResult?: object,
+): boolean {
 	if (typeof value !== 'string') return false;
+	if (
+		toolResult &&
+		key === 'data' &&
+		'type' in toolResult &&
+		(toolResult.type === 'image-data' ||
+			toolResult.type === 'file-data' ||
+			toolResult.type === 'data')
+	) {
+		return true;
+	}
+	if (toolResult) {
+		return /blob|base64/i.test(key) || /^data:[^,]*;base64,/i.test(value);
+	}
 	if (value.length <= maxStringChars) return false;
 	return /blob|base64|data|file|image/i.test(key);
 }

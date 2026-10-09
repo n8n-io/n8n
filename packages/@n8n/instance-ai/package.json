@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.27.0",
+  "version": "1.28.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit && tsc -p evaluations/tsconfig.json",
@@ -11,8 +11,8 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "eval:instance-ai": "tsx evaluations/cli/index.ts",
     "eval:agents": "tsx evaluations/cli/index.ts --source langtracer --suite agents --tier agents",
     "eval:build-mcp-manifest": "tsx evaluations/cli/build-mcp-manifest.ts",
@@ -100,6 +100,7 @@
   "devDependencies": {
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/luxon": "catalog:",
@@ -109,6 +110,8 @@
     "fast-glob": "catalog:",
     "p-limit": "catalog:p-limit-v7",
     "playwright-core": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
     "undici": "catalog:undici-v7",

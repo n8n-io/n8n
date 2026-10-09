@@ -10,6 +10,7 @@ import type {
 } from 'ai';
 
 import type { FinishReason, SerializableAgentState, TokenUsage } from '../index';
+import type { GuardrailStop } from '../sdk/guardrail';
 import type { ExecutionOptions, RunOptions } from '../sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../sdk/message';
 import type { JSONObject } from '../utils/json';
@@ -74,6 +75,7 @@ export interface ModelCallContext {
 
 /** Data needed to emit a terminal suspension result. */
 export interface SuspendEmission {
+	finishReason?: 'paused';
 	suspendRunId: string;
 	list: AgentMessageList;
 	usage: TokenUsage | undefined;
@@ -87,6 +89,7 @@ export interface CompleteEmission {
 	finishReason: FinishReason;
 	usage: TokenUsage | undefined;
 	structuredOutput: unknown;
+	guardrail?: GuardrailStop;
 }
 
 /**

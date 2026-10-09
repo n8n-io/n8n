@@ -104,7 +104,9 @@ export class AgentExecutionUpdateBroadcaster {
 	}
 
 	private async getRecipients(thread: AgentExecutionThread): Promise<string[]> {
-		const userIds = await this.recipients.getProjectReaders(thread.projectId);
+		// A private thread's owner needs only the scope to use it: a chat-only member has no agent:read.
+		const scope = thread.accessScope === 'user' ? 'agent:execute' : 'agent:read';
+		const userIds = await this.recipients.getProjectUsersWithScope(thread.projectId, scope);
 		return userIds.filter((id) => threadBelongsTo(thread, thread.projectId, thread.agentId, id));
 	}
 

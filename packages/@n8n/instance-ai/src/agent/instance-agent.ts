@@ -14,7 +14,7 @@ import {
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
-import { hasRuntimeSkills } from '../skills/runtime-skills';
+import { hasRuntimeSkills, warmRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
@@ -208,6 +208,7 @@ export async function createInstanceAgent(
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 			licenseHints: context.licenseHints,
 			branchReadOnly: context.branchReadOnly,
+			parameterValuesHidden: context.allowSendingParameterValues === false,
 			projectId: context.projectId,
 			// Presence of the service IS the experiment gate — the host only wires it
 			// for flagged-in users on project-bound runs.
@@ -253,6 +254,10 @@ export async function createInstanceAgent(
 	const runtimeSkills = orchestrationContext?.runtimeSkills;
 	if (hasRuntimeSkills(runtimeSkills)) {
 		agent.skills(runtimeSkills);
+		warmRuntimeSkills(runtimeSkills, {
+			logger: orchestrationContext?.logger,
+			tracing: orchestrationContext?.tracing,
+		});
 	}
 	if (telemetry) {
 		agent.telemetry(telemetry);

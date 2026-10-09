@@ -13,6 +13,7 @@ const props = defineProps<{
 	modelValue: McpToolPermissions;
 	node: INode;
 	projectId?: string;
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -141,6 +142,7 @@ function toToolPermissions(approval: AgentApproval | undefined): McpToolPermissi
 		:hint="i18n.baseText('agents.toolConfig.mcpApproval.hint')"
 		:placeholder="i18n.baseText('agents.toolConfig.mcpApproval.tools.placeholder')"
 		:loading="isLoadingTools"
+		:disabled="props.disabled"
 		:error="loadingError ? i18n.baseText('agents.toolConfig.mcpApproval.loadError') : null"
 		test-id-prefix="agent-mcp-approval"
 		@update:model-value="emit('update:modelValue', toToolPermissions($event))"
@@ -156,6 +158,7 @@ function toToolPermissions(approval: AgentApproval | undefined): McpToolPermissi
 					variant="subtle"
 					size="small"
 					icon-only
+					:disabled="props.disabled"
 					:loading="isLoadingTools"
 					:aria-label="i18n.baseText('agents.toolConfig.mcpApproval.refresh')"
 					data-test-id="agent-mcp-approval-refresh"

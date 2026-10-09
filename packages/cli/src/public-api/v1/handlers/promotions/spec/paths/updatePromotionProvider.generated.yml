@@ -58,6 +58,7 @@ requestBody:
                   - username
                   - password
                 additionalProperties: false
+            type: object
         additionalProperties: false
         minProperties: 1
 responses:

@@ -1,6 +1,6 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { EntityManager, User, Project, Folder } from '@n8n/db';
 import {
@@ -15,7 +15,6 @@ import { Service } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
@@ -33,6 +32,7 @@ import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
+import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -75,6 +75,7 @@ export class WorkflowCreationService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	async prepareBatchContext(
@@ -169,6 +170,7 @@ export class WorkflowCreationService {
 		} = options;
 
 		// Ensure workflow is created as inactive
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
 		newWorkflow.parentFolder = null;
@@ -222,6 +224,7 @@ export class WorkflowCreationService {
 			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
 			rules,
 		);
+		this.deprecatedNodesValidationService.validateOnCreate(newWorkflow.nodes, newWorkflow.id);
 
 		if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 			if (!batchContext) {

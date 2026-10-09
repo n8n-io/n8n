@@ -211,12 +211,10 @@ describe('compareBuckets', () => {
 		// those). The unknown `-` category is dropped here with a warning.
 		expect(cats.map((c) => c.category).sort()).toEqual([
 			'build_failure',
-			'build_timeout',
 			'builder_issue',
 			'expectations_failed',
 			'framework_issue',
 			'mock_issue',
-			'timeout',
 			'verification_failure',
 			'verification_gap',
 		]);

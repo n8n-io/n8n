@@ -154,6 +154,23 @@ export type AgentSseEvent =
 			server?: string;
 	  }
 	| {
+			/**
+			 * The run ended. `finishReason` mirrors the runtime finish chunk. A
+			 * `guardrail` stop carries the code of the hook that ended the run.
+			 */
+			type: 'finish';
+			finishReason: string;
+			guardrail?: { code: string };
+	  }
+	| {
+			/**
+			 * Preview chat only. Monthly spend crossed the alert line.
+			 * The run continues.
+			 */
+			type: 'budget-notice';
+			code: 'budget.alert';
+	  }
+	| {
 			type: 'error';
 			message: string;
 			/**

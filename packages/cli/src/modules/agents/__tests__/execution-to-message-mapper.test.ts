@@ -350,8 +350,7 @@ describe('execution-to-message-mapper', () => {
 		const suspendPayload = {
 			type: 'approval',
 			toolName: 'check_ledger',
-			args: {},
-			details: { node: { parameters: { operation: 'get', returnAll: true } } },
+			args: { operation: 'get', returnAll: true },
 		};
 		const result = executionToMessagesDto(
 			execution({

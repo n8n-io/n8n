@@ -248,6 +248,7 @@ const configTitle = ref('');
 const configSession = ref(0);
 const mcpCatalog = ref<McpRegistryServerResponse[]>([]);
 const credentialPicker = ref<InstanceType<typeof AgentToolConfigCredentialPicker> | null>(null);
+const configIsRestricted = ref(false);
 
 const isCredentialModalOpen = computed(
 	() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open === true,
@@ -274,6 +275,7 @@ const configIsCustom = computed(
 const saveDisabled = computed(
 	() =>
 		isCredentialModalOpen.value ||
+		configIsRestricted.value ||
 		(configData.value?.kind === 'registryMcpServer' && (configContent.value?.saveDisabled ?? true)),
 );
 
@@ -1170,8 +1172,9 @@ function handleRowActivate(item: ToolConnectionItem) {
 	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
 	// the row's own tooltip already explains why, so activating does nothing.
 	if (item.disabled) return;
-	if (item.kind === 'node' && item.restriction) return;
 	if (item.status === 'connecting') return;
+	const isRestricted = item.kind === 'node' && Boolean(item.restriction);
+	if (isRestricted && !hasToolConnection(item.status)) return;
 	if (hasToolConnection(item.status)) {
 		if (item.id.startsWith('mcp:')) {
 			const localId = item.id.slice('mcp:'.length);
@@ -1189,7 +1192,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 			// n8n Connect managed tool must keep its managed-credential
 			// preselection, so route it through the same managed add path.
 			const { ref } = entry;
-			if (ref.type === 'node') {
+			if (ref.type === 'node' && !isRestricted) {
 				const nodeType =
 					[...availableToolTypes.value, ...communitySearchToolTypes.value].find(
 						(nt) => nt.name === ref.node.nodeType,
@@ -1241,7 +1244,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 		:step="currentStep"
 		:title="modalTitle"
 		:title-error="configContent?.titleError"
-		:editable-title="Boolean(configData) && !configIsCustom"
+		:editable-title="Boolean(configData) && !configIsCustom && !configIsRestricted"
 		:show-back="Boolean(configData)"
 		:show-footer="Boolean(configData)"
 		:busy="isCredentialModalOpen || isCreatingWorkflow"
@@ -1319,6 +1322,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 			:data="configData"
 			@credential-deleted="closeModal"
 			@update:title="configTitle = $event"
+			@update:restricted="configIsRestricted = $event"
 			@request-credential-picker="openRegistryCredentialPicker"
 		/>
 

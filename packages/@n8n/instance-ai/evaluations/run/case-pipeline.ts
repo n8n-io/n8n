@@ -14,16 +14,23 @@ import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
 import type { BuildOrchestrator } from './build-orchestrator';
 import { sentinelOutcomeFromVerdicts, type TargetOutput } from './reshape';
+import { EvalUsageMeter } from '../../src/utils/eval-usage';
 import type { CliArgs } from '../cli/args';
 import {
 	draftAgentVerdict,
+	seededAgentConfig,
 	findAgentArtifactRef,
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
 import { buildFailedOnInfra } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
-import { scenariosRequireSerialSeeding, type ScenarioSeedContext } from '../harness/seed-tables';
+import { selectScenarioWorkflowId } from '../harness/scenario-execution';
+import {
+	scenariosRequireSerialSeeding,
+	workflowDeduplicates,
+	type ScenarioSeedContext,
+} from '../harness/seed-tables';
 import {
 	classifyScenarioExecutionError,
 	extractErrorMessage,
@@ -51,6 +58,8 @@ export interface CasePipelineDeps {
 	buildExpectationsByKey: Map<string, Promise<BuildExpectationResult[]>>;
 	agentContextByKey: Map<string, Promise<AgentScenarioContext>>;
 	runDebugByThreadId: Map<string, Promise<InstanceAiRunDebugResponse[]>>;
+	/** Usage of the eval's own model calls, per `iteration:fileSlug`. Filled here. */
+	harnessUsageByKey: Map<string, EvalUsageMeter>;
 }
 
 export interface CasePipeline {
@@ -59,6 +68,16 @@ export interface CasePipeline {
 	 *  finalizes and persists every OTHER row's completed results. */
 	runRow: (inputs: ScenarioRowInputs) => Promise<TargetOutput>;
 }
+
+/** The queue decision re-runs the routing the scenario will make; only the run itself logs it. */
+const SILENT_LOGGER: EvalLogger = {
+	info() {},
+	verbose() {},
+	success() {},
+	warn() {},
+	error() {},
+	isVerbose: false,
+};
 
 export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 	const {
@@ -69,8 +88,18 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		buildExpectationsByKey,
 		agentContextByKey,
 		runDebugByThreadId,
+		harnessUsageByKey,
 	} = deps;
 	const { getOrBuild, buildCache } = orchestrator;
+
+	function usageMeterFor(key: string): EvalUsageMeter {
+		let meter = harnessUsageByKey.get(key);
+		if (!meter) {
+			meter = new EvalUsageMeter();
+			harnessUsageByKey.set(key, meter);
+		}
+		return meter;
+	}
 
 	// Rows remaining per `iteration:fileSlug` build. When the last row of a
 	// build finishes, its backend artifacts (workflow, data tables, thread — and
@@ -131,7 +160,10 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 	const runRow = async (inputs: ScenarioRowInputs): Promise<TargetOutput> => {
 		const iteration = inputs._iteration ?? 0;
 		try {
-			return await runScenarioRow(inputs, iteration);
+			// Only rows start builds, so a build and its judges count on the meter of its own case.
+			return await usageMeterFor(`${String(iteration)}:${inputs.testCaseFile}`).run(
+				async () => await runScenarioRow(inputs, iteration),
+			);
 		} catch (error: unknown) {
 			// runScenarioRow guards scenario execution internally, but a build-phase
 			// throw (getOrBuild) or a budget abort must not reject up to the driver
@@ -342,10 +374,14 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			const agentArtifactFields = capturedAgent?.artifact
 				? { agentArtifact: capturedAgent.artifact }
 				: {};
-			const declaredCredentials = testCaseByFileSlug.get(inputs.testCaseFile)?.credentials;
-			// A draft Agent throws before its first model turn; running it only produces
-			// a red the judge pins on the builder. Decide ownership here instead.
-			const draft = draftAgentVerdict(capturedAgent?.artifact, declaredCredentials);
+			const testCase = testCaseByFileSlug.get(inputs.testCaseFile);
+			// An Agent that cannot run throws before its first model turn; running it
+			// only produces a red the judge pins on the builder. Decide ownership here.
+			const draft = draftAgentVerdict(
+				capturedAgent?.artifact,
+				testCase?.credentials,
+				seededAgentConfig(testCase?.seed, build.createdAgentIds, agentRef.id),
+			);
 			if (draft) {
 				logger.warn(`    [${scenario.name}] not run: ${draft.reasoning}`);
 				return await attachExpectations({
@@ -358,7 +394,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					reasoning: draft.reasoning,
 					failureCategory: draft.attribution,
 					attribution: draft.attribution,
-					execErrors: ['Agent has no model configured'],
+					execErrors: [draft.execError],
 					buildDurationMs,
 					...buildSpendFields,
 					execDurationMs: 0,
@@ -406,6 +442,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 							),
 							testCaseName: inputs.testCaseFile,
 							seedContext,
+							projectId: agentRef.projectId,
 						});
 						break;
 					} catch (error: unknown) {
@@ -591,9 +628,30 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// Scenarios of one case share tables by name, so seeded rows must not
 		// interleave — the retired direct loop ran them at concurrency 1; rows now
 		// arrive independently, so the gate is a per-build-key chain instead.
+		// Remove Duplicates keeps its keys per WORKFLOW on the backend, and the eval
+		// resets them around every run, so a deduping scenario queues on the backend
+		// and the workflow it will actually run: a sibling entry point, or a prebuilt
+		// id that several iterations share. With no workflow JSON to read, it queues.
+		const targetWorkflowId = selectScenarioWorkflowId(
+			scenario,
+			workflowId,
+			build.workflowJsons,
+			SILENT_LOGGER,
+		);
+		const target = build.workflowJsons.find((wf) => wf?.id === targetWorkflowId);
+		const dedupes = target
+			? workflowDeduplicates(target)
+			: build.workflowJsons.length === 0 || build.workflowJsons.some(workflowDeduplicates);
+		const runQueued = dedupes
+			? async () =>
+					await withSerialSeeding(
+						`${builtOnLane.runner.baseUrl}:${targetWorkflowId}`,
+						runWorkflowScenario,
+					)
+			: runWorkflowScenario;
 		return scenariosRequireSerialSeeding(authoredScenarios)
-			? await withSerialSeeding(cacheKey, runWorkflowScenario)
-			: await runWorkflowScenario();
+			? await withSerialSeeding(cacheKey, runQueued)
+			: await runQueued();
 	};
 
 	return { runRow };

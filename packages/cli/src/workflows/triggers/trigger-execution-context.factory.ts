@@ -25,6 +25,7 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionDataProcess,
 	PollCursor,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -49,6 +50,16 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+/** What the trigger node waits on from the run it starts. A done promise outranks a response. */
+function awaitedByTrigger(
+	responsePromise: IDeferredPromise<IExecuteResponsePromiseData> | undefined,
+	donePromise: IDeferredPromise<IRun | undefined> | undefined,
+): NonNullable<IWorkflowExecutionDataProcess['callerAwaitsOutcome']> {
+	if (donePromise) return 'completion';
+	if (responsePromise) return 'response';
+	return 'none';
+}
 
 export type TriggerFailureHandler = (opts: {
 	error: Error;
@@ -123,11 +134,7 @@ export class TriggerExecutionContextFactory {
 		emit: EngineV2ActiveTriggerEmit,
 	): void {
 		try {
-			// Files first, because this check deletes what it refuses: a refusal for
-			// any other reason would otherwise leave the stored files behind, owned by
-			// no execution.
-			this.engineV2ActiveTriggers.assertPayloadSupported(data);
-			this.engineV2ActiveTriggers.assertSupported(emit);
+			this.engineV2ActiveTriggers.assertSupported(emit, data);
 		} catch (error) {
 			emit.responsePromise?.reject(ensureError(error));
 			throw error;
@@ -222,6 +229,8 @@ export class TriggerExecutionContextFactory {
 							mode,
 							responsePromise,
 							deduplicationKey,
+							// A node awaiting the run's end, or a response from it, must not get a paused segment instead.
+							awaitedByTrigger(responsePromise, donePromise),
 						);
 					})
 					.catch((error: unknown) => {
@@ -315,15 +324,12 @@ export class TriggerExecutionContextFactory {
 		prefetchedCursor?: PollerCursor,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
-			// A poll must finish inside both the handler's abandon deadline and the task
-			// lease; past either, its commits are fenced out or discarded. The margin —
-			// 20%, at least 5s, at most half the ceiling — leaves room for the trailing
-			// hand-off and cursor commit.
+			// A poll must finish inside the handler's abandon deadline; past it, its
+			// commits are discarded. The lease is renewed while the poll runs, so it
+			// does not bound the poll. The margin — 20%, at least 5s, at most half the
+			// ceiling — leaves room for the trailing hand-off and cursor commit.
 			const ceilingMs =
-				Math.min(
-					this.globalConfig.scheduler.pollTimeoutSeconds,
-					this.globalConfig.scheduler.leaseDurationSeconds,
-				) * Time.seconds.toMilliseconds;
+				this.globalConfig.scheduler.pollTimeoutSeconds * Time.seconds.toMilliseconds;
 			const marginMs = Math.min(Math.max(0.2 * ceilingMs, 5_000), ceilingMs / 2);
 			const pollBudgetMs = ceilingMs - marginMs;
 			// A poll's staged snapshot lives in an async scope entered per poll, rather
@@ -370,13 +376,6 @@ export class TriggerExecutionContextFactory {
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 
-				// Ahead of the cursor take, so a refused poll leaves its window to be
-				// retried. Reads the registration's copy of the workflow rather than the
-				// fresh one for the same reason: the fresh read comes too late.
-				if (this.engineV2ActiveTriggers.handles(workflowData, mode)) {
-					this.engineV2ActiveTriggers.assertPayloadSupported(data);
-				}
-
 				const cursor = takeStagedCursor();
 
 				// A migrated node's cursor lives in `poller_state`, not static data, so
@@ -388,19 +387,8 @@ export class TriggerExecutionContextFactory {
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) => {
-					// The registration snapshot above can be stale by the time this
-					// resolves (e.g. the workflow was just republished onto engine v2),
-					// so a payload that slipped past that check is guarded again here,
-					// against the copy that actually decides where this run goes.
+					// Decided on the fresh copy, which is the one the dispatcher decides on.
 					const routesToV2 = this.engineV2ActiveTriggers.handles(freshWorkflowData, mode);
-					if (routesToV2) {
-						try {
-							this.engineV2ActiveTriggers.assertPayloadSupported(data);
-						} catch (error) {
-							responsePromise?.reject(ensureError(error));
-							throw error;
-						}
-					}
 
 					const runAdditionalData = await this.attributeToPublisher(
 						additionalData,
@@ -415,6 +403,8 @@ export class TriggerExecutionContextFactory {
 							runAdditionalData,
 							mode,
 							responsePromise,
+							undefined,
+							awaitedByTrigger(responsePromise, donePromise),
 						);
 					}
 
@@ -438,6 +428,7 @@ export class TriggerExecutionContextFactory {
 								cursor,
 								responsePromise,
 								fence,
+								awaitedByTrigger(responsePromise, donePromise),
 							);
 				});
 
@@ -496,7 +487,7 @@ export class TriggerExecutionContextFactory {
 				__commitCursor,
 				__runPoll,
 				resolveNodeStaticData,
-				// Only a leased (durable) poll is bounded by the timeout and lease; a
+				// Only a leased (durable) poll is bounded by the timeout; a
 				// legacy in-memory poll keeps PollContext's generous default.
 				fence ? () => pollBudgetMs : undefined,
 			);

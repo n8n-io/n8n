@@ -1,3 +1,4 @@
+import type { GatewayCreditsPromotion } from '@n8n/api-types';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { paginatedRequest, type StrapiFilters } from '@/utils/strapi-utils';
@@ -21,7 +22,25 @@ export type StrapiCommunityNodeType = {
 	nodeDescription: INodeTypeDescription;
 	nodeVersions?: Array<{ npmVersion: string; checksum: string }>;
 	aiNodeSdkVersion?: number;
+	gatewayCreditsPromotion?: GatewayCreditsPromotion | null;
 };
+
+/**
+ * Picks the version to install from a vetted entry and the checksum that belongs to it.
+ * No requested version means the latest vetted one. `checksum` is undefined when the
+ * requested version is not vetted.
+ */
+export function selectVettedVersion(
+	vetted: Pick<StrapiCommunityNodeType, 'npmVersion' | 'checksum' | 'nodeVersions'>,
+	requestedVersion: string | undefined,
+): { version: string; checksum: string | undefined } {
+	const version = requestedVersion ?? vetted.npmVersion;
+	const checksum =
+		version === vetted.npmVersion
+			? vetted.checksum
+			: vetted.nodeVersions?.find((v) => v.npmVersion === version)?.checksum;
+	return { version, checksum };
+}
 
 export type CommunityNodesMetadata = Pick<
 	StrapiCommunityNodeType,

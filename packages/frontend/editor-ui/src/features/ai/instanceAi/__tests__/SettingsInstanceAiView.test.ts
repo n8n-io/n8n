@@ -248,7 +248,7 @@ describe('SettingsInstanceAiView', () => {
 		});
 
 		it('chains missing setup steps while keeping settings-style actions', async () => {
-			vi.mocked(store.fetch).mockResolvedValue(undefined);
+			vi.mocked(store.fetch).mockResolvedValue(true);
 			vi.mocked(store.verifyModel).mockResolvedValue({ ok: true });
 			vi.mocked(store.verifySandbox).mockResolvedValue({ ok: true });
 			vi.mocked(store.save).mockImplementation(async () => {
@@ -316,6 +316,38 @@ describe('SettingsInstanceAiView', () => {
 			const { getByTestId, getByText } = renderComponent();
 			expect(getByTestId('n8n-agent-status-menu')).toBeVisible();
 			expect(getByText('settings.n8nAgent.status.enabled')).toBeVisible();
+		});
+
+		it('renders a pulsing success dot when enabled and fully configured', () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					modelCredentialId: 'openai-id',
+					modelEnvConfigured: true,
+					sandboxEnabled: true,
+					sandboxEnvConfigured: true,
+					searchDisabled: true,
+				},
+			});
+			const { getByTestId } = renderComponent();
+			const dot = getByTestId('n8n-agent-status-dot');
+			expect(dot.className).toContain('success');
+			expect(dot.className).toContain('pulse');
+		});
+
+		it('renders a static warning dot when setup is required', () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					modelCredentialId: 'openai-id',
+					modelName: null,
+					sandboxEnvConfigured: true,
+				},
+			});
+			const { getByTestId } = renderComponent();
+			const dot = getByTestId('n8n-agent-status-dot');
+			expect(dot.className).toContain('warning');
+			expect(dot.className).not.toContain('pulse');
 		});
 
 		it('shows setup required for a credential-only legacy model assignment', () => {
@@ -445,9 +477,11 @@ describe('SettingsInstanceAiView', () => {
 			expect(modelInput).not.toBeDisabled();
 
 			await fireEvent.click(modelInput);
-			await fireEvent.click(await findByText('claude-opus-5 · instanceAi.onboarding.recommended'));
+			await fireEvent.click(
+				await findByText('claude-opus-5-5 · instanceAi.onboarding.recommended'),
+			);
 			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
-			await waitFor(() => expect(store.draft).toMatchObject({ modelName: 'claude-opus-5' }));
+			await waitFor(() => expect(store.draft).toMatchObject({ modelName: 'claude-opus-5-5' }));
 		});
 
 		it('shows fully environment-managed model and sandbox rows without edit affordances', async () => {
@@ -470,6 +504,9 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(store.isLoading).toBe(false));
 			expect(getByTestId('n8n-agent-model-env-value')).toBeVisible();
 			expect(getByTestId('n8n-agent-sandbox-env-value')).toBeVisible();
+			expect(getByTestId('n8n-agent-sandbox-env-value')).toHaveTextContent(
+				'instanceAi.onboarding.foundOnServer',
+			);
 
 			await fireEvent.click(getByTestId('n8n-agent-model-row'));
 			await fireEvent.click(getByTestId('n8n-agent-sandbox-row'));

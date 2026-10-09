@@ -163,6 +163,12 @@ describe('execute-workflow MCP tool', () => {
 
 				expect(result.status).toBe('started');
 				expect(result.executionId).toBe('execution-id');
+				expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+					'unpublished-workflow',
+					user,
+					['workflow:execute'],
+					{ includeActiveVersion: true, publishHistory: 'none' },
+				);
 			});
 
 			test('allows manual mode for workflows with only manual trigger', async () => {

@@ -60,6 +60,7 @@ type VerifyBuiltWorkflowOutput = {
 	nodesNotReached?: string[];
 	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	coverageNote?: string;
+	emptyOutputNote?: string;
 	liveStateNote?: string;
 	claim?: VerificationClaim;
 	data?: Record<string, unknown>;
@@ -468,6 +469,7 @@ type ExecutionRunResult = {
 	status: 'success' | 'error' | 'waiting' | 'running' | 'unknown';
 	data?: Record<string, unknown>;
 	executedNodeNames?: string[];
+	binaryOutputNodeNames?: string[];
 	lastNodeExecuted?: string;
 	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	workflowVersionId?: string | null;
@@ -770,6 +772,55 @@ describe('verify-built-workflow tool', () => {
 			}),
 		]);
 		expect(result.nodePreviews?.[1].preview.length).toBeLessThanOrEqual(43);
+	});
+
+	it('flags a real node that returns only empty items', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-empty',
+				status: 'success',
+				data: {
+					Trigger: wrapExecutionOutput([{}]),
+					'Tag Record': wrapExecutionOutput([{}]),
+				},
+			},
+			{
+				workflowConnections: {
+					Trigger: { main: [[{ node: 'Tag Record', type: 'main', index: 0 }]] },
+				},
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.emptyOutputNote).toContain('Node(s) Tag Record returned only empty items');
+	});
+
+	it('does not flag a node that outputs a file', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-file',
+				status: 'success',
+				data: {
+					Trigger: wrapExecutionOutput([{}]),
+					'Convert to File': wrapExecutionOutput([{}]),
+				},
+				binaryOutputNodeNames: ['Convert to File'],
+			},
+			{
+				workflowConnections: {
+					Trigger: { main: [[{ node: 'Convert to File', type: 'main', index: 0 }]] },
+				},
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.emptyOutputNote).toBeUndefined();
 	});
 
 	it('returns full execution data when includeData is true', async () => {
