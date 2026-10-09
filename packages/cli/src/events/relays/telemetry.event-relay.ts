@@ -321,6 +321,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 			'history-compacted': (event) => this.historyCompacted(event),
+			'migration-report-viewed': (event) => this.migrationReportViewed(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 			'execution-data-revealed': (event) => this.executionDataRevealed(event),
 			'workflow-review-requested': (event) => this.workflowReviewRequested(event),
@@ -2382,6 +2383,29 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #endregion
 	// #region workflow history compaction
+	private migrationReportViewed({
+		user,
+		targetVersion,
+		refreshed,
+		report,
+	}: RelayEventMap['migration-report-viewed']) {
+		this.telemetry.track(TELEMETRY_EVENT.MIGRATION_REPORT.USER_VIEWED_MIGRATION_REPORT, {
+			user_id: user.id,
+			target_version: targetVersion,
+			refreshed,
+			total_workflows: report.totalWorkflows,
+			affected_workflows: report.totalAffectedWorkflows,
+			// The overview lists only the instance rules that fired.
+			affected_instance_rules: report.report.instanceResults.length,
+			rules: report.report.workflowResults.map((rule) => ({
+				rule_id: rule.ruleId,
+				impact: rule.ruleImpact,
+				affected_workflows: rule.nbAffectedWorkflows,
+			})),
+			synced_at: new Date(report.report.generatedAt).toISOString(),
+		});
+	}
+
 	private historyCompacted({
 		workflowsProcessed,
 		totalVersionsSeen,

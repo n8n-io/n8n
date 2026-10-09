@@ -94,7 +94,7 @@ async function buildDataTablePackage(
 		tables.map((table) =>
 			dataTableRequirement(
 				table,
-				workflows.map(({ id }) => id),
+				workflows.map(({ id }) => ({ kind: 'workflow', id })),
 			),
 		);
 
@@ -383,7 +383,7 @@ describe('workflow package import — with data tables', () => {
 				overwriteChanges: [
 					{ kind: 'add-column', column: 'signed_up_at', type: 'date', destructive: false },
 				],
-				usedByWorkflows: ['wf-0'],
+				usedBy: [{ kind: 'workflow', id: 'wf-0' }],
 			});
 
 			expect(await workflowRepository.count()).toBe(0);
@@ -533,7 +533,7 @@ describe('workflow package import — with data tables', () => {
 					kind: 'missing',
 					sourceId: table.id,
 					name: table.name,
-					usedByWorkflows: ['wf-0'],
+					usedBy: [{ kind: 'workflow', id: 'wf-0' }],
 				},
 			);
 
@@ -551,6 +551,7 @@ describe('workflow package import — with data tables', () => {
 				await expectBlocked(importPackage({ user: owner, projectId: project.id, packageBuffer }), {
 					type: 'data-table-unresolved',
 					kind: 'module-disabled',
+					usedBy: [{ kind: 'workflow', id: 'wf-0' }],
 				});
 			} finally {
 				isActive.mockRestore();
@@ -617,7 +618,9 @@ describe('workflow package import — with data tables', () => {
 				workflows: [{ target: 'workflows/wf-0', workflow }],
 				manifestExtras: {
 					dataTables: [{ id: table.id, name: table.name, target: 'data-tables/dt-0' }],
-					requirements: { dataTables: [dataTableRequirement(table, ['wf-0'])] },
+					requirements: {
+						dataTables: [dataTableRequirement(table, [{ kind: 'workflow', id: 'wf-0' }])],
+					},
 				},
 			});
 
@@ -636,7 +639,9 @@ describe('workflow package import — with data tables', () => {
 			const packageBuffer = await buildEntityPackageBuffer({
 				workflows: [{ target: 'workflows/wf-0', workflow }],
 				manifestExtras: {
-					requirements: { dataTables: [dataTableRequirement(table, ['wf-0'])] },
+					requirements: {
+						dataTables: [dataTableRequirement(table, [{ kind: 'workflow', id: 'wf-0' }])],
+					},
 				},
 			});
 
@@ -721,7 +726,11 @@ describe('workflow package import — with data tables', () => {
 					},
 				],
 				dataTables: [{ target: 'data-tables/dt-0', dataTable: table }],
-				manifestExtras: { requirements: { dataTables: [dataTableRequirement(table, ['wf-0'])] } },
+				manifestExtras: {
+					requirements: {
+						dataTables: [dataTableRequirement(table, [{ kind: 'workflow', id: 'wf-0' }])],
+					},
+				},
 			});
 
 			const importWithKeyScopes = async (apiKeyScopes: string[]) =>
@@ -882,6 +891,7 @@ describe('workflow package import — with data tables', () => {
 				type: 'data-table-unresolved',
 				kind: 'permission-denied',
 				missingScope: 'dataTable:update',
+				usedBy: [{ kind: 'workflow', id: 'wf-0' }],
 			});
 
 			expect(await columnsOf(table.id)).toEqual([{ name: 'email', type: 'string', index: 0 }]);
@@ -1247,7 +1257,9 @@ describe('workflow package import — with data tables', () => {
 					],
 					dataTables: [{ target: 'data-tables/dt-0', dataTable: table }],
 					manifestExtras: {
-						requirements: { dataTables: [dataTableRequirement(table, ['wf-0'])] },
+						requirements: {
+							dataTables: [dataTableRequirement(table, [{ kind: 'workflow', id: 'wf-0' }])],
+						},
 					},
 				});
 			};

@@ -1,5 +1,6 @@
 import type { CredentialResolution, CredentialResolutionFailure } from './credential.types';
 import type { CredentialMissingMode } from '../../n8n-packages.types';
+import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export function canStubNotFoundFailure(failure: CredentialResolutionFailure): boolean {
@@ -38,7 +39,7 @@ export function workflowsBlockedFromPublish(
 	for (const requirement of requirements ?? []) {
 		if (!stubbedSourceIds.has(requirement.id)) continue;
 
-		for (const sourceWorkflowId of requirement.usedByWorkflows) {
+		for (const sourceWorkflowId of getWorkflowConsumerIds(requirement)) {
 			blocked.add(sourceWorkflowId);
 		}
 	}

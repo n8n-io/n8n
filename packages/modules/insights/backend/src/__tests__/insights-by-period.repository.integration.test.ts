@@ -564,6 +564,161 @@ describe('InsightsByPeriodRepository', () => {
 		});
 	});
 
+	describe('billable executions', () => {
+		let repository: InsightsByPeriodRepository;
+
+		async function truncateInsights(): Promise<void> {
+			await testDb.truncate(['InsightsByPeriod', 'InsightsMetadata', 'WorkflowEntity', 'Project']);
+		}
+
+		async function seed(
+			workflow: WorkflowEntity,
+			rows: Array<[InsightsByPeriod['type'], number, string, InsightsByPeriod['periodUnit']?]>,
+		) {
+			for (const [type, value, periodStart, periodUnit = 'hour'] of rows) {
+				await createCompactedInsightsEvent(workflow, {
+					type,
+					value,
+					periodUnit,
+					periodStart: DateTime.fromISO(periodStart, { zone: 'utc' }),
+				});
+			}
+		}
+
+		async function newWorkflow() {
+			return await createWorkflow({}, await createTeamProject());
+		}
+
+		beforeEach(async () => {
+			repository = Container.get(InsightsByPeriodRepository);
+			await truncateInsights();
+		});
+
+		afterAll(async () => {
+			await truncateInsights();
+		});
+
+		describe('getDailyBillableExecutions', () => {
+			const startDate = new Date('2026-03-20T00:00:00.000Z');
+			const endDate = new Date('2026-03-21T00:00:00.000Z');
+
+			test('sums billable executions per UTC day across workflows', async () => {
+				await seed(await newWorkflow(), [
+					['billable', 3, '2026-03-20T10:00:00'],
+					['billable', 1, '2026-03-20T11:00:00'],
+				]);
+				await seed(await newWorkflow(), [['billable', 2, '2026-03-20T15:00:00']]);
+
+				await expect(
+					repository.getDailyBillableExecutions({ startDate, endDate }),
+				).resolves.toEqual([{ day: '2026-03-20', billable: 6 }]);
+			});
+
+			test('does not count succeeded, failed, runtime and time saved rows', async () => {
+				await seed(await newWorkflow(), [
+					['success', 5, '2026-03-20T10:00:00'],
+					['failure', 2, '2026-03-20T10:00:00'],
+					['runtime_ms', 500, '2026-03-20T10:00:00'],
+					['time_saved_min', 30, '2026-03-20T10:00:00'],
+					['billable', 4, '2026-03-20T10:00:00'],
+					['success', 7, '2026-03-21T10:00:00'],
+				]);
+
+				await expect(
+					repository.getDailyBillableExecutions({ startDate, endDate }),
+				).resolves.toEqual([{ day: '2026-03-20', billable: 4 }]);
+			});
+
+			test('groups rows by UTC day and includes the whole end day but not the day after it', async () => {
+				await seed(await newWorkflow(), [
+					['billable', 100, '2026-03-19T23:00:00'],
+					['billable', 1, '2026-03-20T00:00:00'],
+					['billable', 2, '2026-03-20T23:00:00'],
+					['billable', 4, '2026-03-21T23:00:00'],
+					['billable', 8, '2026-03-22T00:00:00'],
+				]);
+
+				await expect(
+					repository.getDailyBillableExecutions({ startDate, endDate }),
+				).resolves.toEqual([
+					{ day: '2026-03-20', billable: 3 },
+					{ day: '2026-03-21', billable: 4 },
+				]);
+			});
+
+			test('counts hourly and daily period rows in their UTC day', async () => {
+				await seed(await newWorkflow(), [
+					['billable', 1, '2026-03-20T10:00:00', 'hour'],
+					['billable', 2, '2026-03-20', 'day'],
+					['billable', 5, '2026-03-21', 'day'],
+				]);
+
+				await expect(
+					repository.getDailyBillableExecutions({ startDate, endDate }),
+				).resolves.toEqual([
+					{ day: '2026-03-20', billable: 3 },
+					{ day: '2026-03-21', billable: 5 },
+				]);
+			});
+
+			test('includes the whole end day when the end date is today', async () => {
+				vi.useFakeTimers({ toFake: ['Date'] });
+				vi.setSystemTime(new Date('2026-03-21T12:00:00.000Z'));
+				onTestFinished(() => {
+					vi.useRealTimers();
+				});
+				await seed(await newWorkflow(), [
+					['billable', 1, '2026-03-20T10:00:00'],
+					['billable', 2, '2026-03-21T15:00:00'],
+				]);
+
+				await expect(
+					repository.getDailyBillableExecutions({ startDate, endDate }),
+				).resolves.toEqual([
+					{ day: '2026-03-20', billable: 1 },
+					{ day: '2026-03-21', billable: 2 },
+				]);
+			});
+
+			test('returns no row for a day without billable executions', async () => {
+				await seed(await newWorkflow(), [
+					['billable', 1, '2026-03-20T10:00:00'],
+					['success', 3, '2026-03-21T10:00:00'],
+					['billable', 2, '2026-03-22T10:00:00'],
+				]);
+
+				const days = await repository.getDailyBillableExecutions({
+					startDate,
+					endDate: new Date('2026-03-22T00:00:00.000Z'),
+				});
+
+				expect(days.map(({ day }) => day)).toEqual(['2026-03-20', '2026-03-22']);
+			});
+		});
+
+		describe('getFirstBillableDay', () => {
+			test('returns the UTC day of the earliest billable row', async () => {
+				await seed(await newWorkflow(), [
+					['success', 2, '2026-03-15T10:00:00'],
+					['success', 3, '2026-03-17T23:00:00'],
+					['billable', 2, '2026-03-17T23:00:00'],
+					['billable', 4, '2026-03-19T10:00:00', 'day'],
+				]);
+
+				await expect(repository.getFirstBillableDay()).resolves.toBe('2026-03-17');
+			});
+
+			test('returns null without billable rows', async () => {
+				await seed(await newWorkflow(), [
+					['success', 2, '2026-03-15T10:00:00'],
+					['failure', 1, '2026-03-16T10:00:00'],
+				]);
+
+				await expect(repository.getFirstBillableDay()).resolves.toBeNull();
+			});
+		});
+	});
+
 	describe('access filter', () => {
 		let member: User;
 		let accessibleProject: Project;

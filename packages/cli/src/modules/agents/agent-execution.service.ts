@@ -748,15 +748,13 @@ export class AgentExecutionService {
 	async findN8nChatThreadsForAgents(
 		userId: string,
 		agentIds: string[],
-		limit: number,
-		cursor?: string,
+		options: { limit: number; cursor?: string; search?: string },
 	): Promise<AgentN8nChatThreadsResponse> {
 		const { threads, nextCursor } =
 			await this.agentExecutionThreadRepository.findN8nChatThreadsForOwner(
 				userId,
 				agentIds,
-				limit,
-				cursor,
+				options,
 			);
 		return { data: threads.map(toN8nChatThreadSummary), nextCursor };
 	}

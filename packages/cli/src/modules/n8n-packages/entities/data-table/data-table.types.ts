@@ -48,7 +48,6 @@ export type DataTableResolutionFailure = {
 	conflictingTableId?: string;
 	/** For a rename `name-conflict`: the matched table's current name. */
 	currentName?: string;
-	usedByWorkflows: string[];
 };
 
 export function createFailure(
@@ -72,7 +71,6 @@ export function createFailure(
 		kind,
 		sourceId: requirement.id,
 		name: requirement.name,
-		usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
 		...details,
 	};
 }

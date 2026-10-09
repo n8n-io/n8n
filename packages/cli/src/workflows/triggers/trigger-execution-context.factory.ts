@@ -24,6 +24,7 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionDataProcess,
 	PollCursor,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -49,6 +50,16 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+/** What the trigger node waits on from the run it starts. A done promise outranks a response. */
+function awaitedByTrigger(
+	responsePromise: IDeferredPromise<IExecuteResponsePromiseData> | undefined,
+	donePromise: IDeferredPromise<IRun | undefined> | undefined,
+): NonNullable<IWorkflowExecutionDataProcess['callerAwaitsOutcome']> {
+	if (donePromise) return 'completion';
+	if (responsePromise) return 'response';
+	return 'none';
+}
+
 export type TriggerFailureHandler = (opts: {
 	error: Error;
 	node: INode;
@@ -61,8 +72,8 @@ export type TriggerFailureHandler = (opts: {
 export interface LeasedPoll {
 	fence: PollLeaseFence;
 	timeoutSeconds: number;
-	/** The `performance.now()` time at which the occurrence times out. */
-	deadline: number;
+	/** Milliseconds until the occurrence times out. */
+	remainingMs(): number;
 }
 
 /**
@@ -224,6 +235,8 @@ export class TriggerExecutionContextFactory {
 							mode,
 							responsePromise,
 							deduplicationKey,
+							// A node awaiting the run's end, or a response from it, must not get a paused segment instead.
+							awaitedByTrigger(responsePromise, donePromise),
 						);
 					})
 					.catch((error: unknown) => {
@@ -325,9 +338,8 @@ export class TriggerExecutionContextFactory {
 			// trailing hand-off and cursor commit.
 			const ceilingMs = (leasedPoll?.timeoutSeconds ?? 0) * Time.seconds.toMilliseconds;
 			const marginMs = Math.min(Math.max(0.2 * ceilingMs, 5_000), ceilingMs / 2);
-			// Setup before `poll()` uses part of the timeout, so the budget counts down to the deadline.
-			const pollBudgetMs = () =>
-				Math.max(0, (leasedPoll?.deadline ?? 0) - marginMs - performance.now());
+			// Setup before `poll()` uses part of the timeout, so the budget counts down with it.
+			const pollBudgetMs = () => Math.max(0, (leasedPoll?.remainingMs() ?? 0) - marginMs);
 			// A poll's staged snapshot lives in an async scope entered per poll, rather
 			// than in a variable per node: only the poll that staged it can commit it, and
 			// two overlapping polls of the same node never share a slot. An unmigrated
@@ -399,6 +411,8 @@ export class TriggerExecutionContextFactory {
 							runAdditionalData,
 							mode,
 							responsePromise,
+							undefined,
+							awaitedByTrigger(responsePromise, donePromise),
 						);
 					}
 
@@ -422,6 +436,7 @@ export class TriggerExecutionContextFactory {
 								cursor,
 								responsePromise,
 								fence,
+								awaitedByTrigger(responsePromise, donePromise),
 							);
 				});
 
