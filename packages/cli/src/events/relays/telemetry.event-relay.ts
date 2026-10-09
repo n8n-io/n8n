@@ -1834,6 +1834,7 @@ export class TelemetryEventRelay extends EventRelay {
 		const dbVersion = await this.dbConnection.getDbVersion();
 		const runtime = detectRuntime(process.env, this.instanceSettings.isDocker);
 		const memoryLimit = getMemoryLimit();
+		const cpu = getCpuLimit();
 
 		const info = {
 			version_cli: N8N_VERSION,
@@ -1855,7 +1856,8 @@ export class TelemetryEventRelay extends EventRelay {
 				},
 				is_docker: this.instanceSettings.isDocker,
 				memory_limit: memoryLimit === null ? null : memoryLimit / 1024,
-				cpu_limit: getCpuLimit(),
+				cpu_limit: cpu.limit,
+				cpu_limit_source: cpu.source,
 				runtime,
 				kubernetes_provider:
 					runtime === 'kubernetes' ? detectKubernetesProvider(os.release()) : undefined,

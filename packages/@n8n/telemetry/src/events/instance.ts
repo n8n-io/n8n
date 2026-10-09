@@ -52,6 +52,12 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					.nullable()
 					.optional()
 					.describe('CPU quota n8n was given, in CPUs, for example 0.5. Null when it has none'),
+				cpu_limit_source: z
+					.enum(['cgroup_v2', 'cgroup_v1', 'unreadable'])
+					.optional()
+					.describe(
+						'Where cpu_limit was read from. Unreadable means n8n could not read it, so a null cpu_limit is unknown, not "no limit"',
+					),
 				kubernetes_provider: z
 					.enum(['aws', 'azure', 'gcp', 'other'])
 					.optional()
