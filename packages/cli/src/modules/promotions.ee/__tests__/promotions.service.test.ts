@@ -26,6 +26,7 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import type { PromotionConfigResolver } from '../promotion-config.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
+import type { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
@@ -71,6 +72,7 @@ describe('PromotionsService', () => {
 	const bindingPreflight = mock<PromotionBindingPreflightService>();
 	const inventoryReader = mock<PackageDirectoryInventoryReader>();
 	const packageImportConfig = mock<PackageImportConfig>();
+	const reviewsService = mock<PromotionReviewsService>();
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -139,8 +141,10 @@ describe('PromotionsService', () => {
 			bindingPreflight,
 			inventoryReader,
 			packageImportConfig,
+			reviewsService,
 			logger,
 		);
+		reviewsService.openMergeRequest.mockResolvedValue({ warnings: [] });
 		providersService.decryptCredentials.mockResolvedValue({
 			authType: 'ssh-key',
 			privateKey: 'PRIV',
@@ -405,6 +409,84 @@ describe('PromotionsService', () => {
 			);
 		});
 
+		describe('review hook', () => {
+			const branched = () =>
+				operationInput({
+					direction: 'promote',
+					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+				});
+
+			it('opens a review for the pushed promotion branch and returns the merge request', async () => {
+				const input = branched();
+				resolver.resolveForConnection.mockResolvedValue(input);
+				reviewsService.openMergeRequest.mockResolvedValue({
+					mergeRequest: { reviewId: 'review1', iid: 3, webUrl: 'https://gitlab/mr/3' },
+					warnings: [],
+				});
+
+				const result = await service.promote('conn1', actor, {
+					canExportVariableValues: true,
+					commitMessage: 'first line\nsecond line',
+				});
+
+				expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(input, actor, {
+					branchName: result.git.branchName,
+					baseBranchName: 'staging',
+					commitSha: 'newsha',
+					title: 'first line',
+				});
+				expect(result.mergeRequest).toEqual({
+					reviewId: 'review1',
+					iid: 3,
+					webUrl: 'https://gitlab/mr/3',
+				});
+				expect(result.warnings).toBeUndefined();
+			});
+
+			it('does not open a review for a direct push to the base branch', async () => {
+				const result = await service.promote('conn1', actor, {
+					canExportVariableValues: true,
+					commitMessage: 'm',
+				});
+
+				expect(reviewsService.openMergeRequest).not.toHaveBeenCalled();
+				expect(result.mergeRequest).toBeUndefined();
+			});
+
+			it('returns the push with warnings when the review could not be opened', async () => {
+				resolver.resolveForConnection.mockResolvedValue(branched());
+				reviewsService.openMergeRequest.mockResolvedValue({
+					warnings: ['The branch was pushed, but no merge request was opened: GitLab is down'],
+				});
+
+				const result = await service.promote('conn1', actor, {
+					canExportVariableValues: true,
+					commitMessage: 'm',
+				});
+
+				expect(result.git.commitSha).toBe('newsha');
+				expect(result.mergeRequest).toBeUndefined();
+				expect(result.warnings).toEqual([
+					'The branch was pushed, but no merge request was opened: GitLab is down',
+				]);
+			});
+
+			it('keeps the push result when the review service throws', async () => {
+				resolver.resolveForConnection.mockResolvedValue(branched());
+				reviewsService.openMergeRequest.mockRejectedValue(new Error('unexpected'));
+
+				const result = await service.promote('conn1', actor, {
+					canExportVariableValues: true,
+					commitMessage: 'm',
+				});
+
+				expect(result.git.commitSha).toBe('newsha');
+				expect(result.warnings).toEqual([
+					`The branch ${result.git.branchName} was pushed, but no merge request was opened.`,
+				]);
+			});
+		});
+
 		it('stops before the commit when descriptor invalidation fails', async () => {
 			resolver.resolveForConnection.mockResolvedValue(
 				operationInput({
@@ -666,6 +748,42 @@ describe('PromotionsService', () => {
 			expect(gitService.commitAndPush).toHaveBeenCalledWith(
 				expect.objectContaining({ targetBranchName, branchName: 'staging', force: false }),
 			);
+		});
+
+		it('keeps the pushed selection and reports a warning when the review could not be opened', async () => {
+			const input = operationInput({
+				direction: 'promote',
+				settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+			});
+			resolver.resolveForProject.mockResolvedValue(input);
+			const files = {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			};
+			await writeExportTree(packageFolder, files);
+			mockExport(files);
+			reviewsService.openMergeRequest.mockResolvedValue({ warnings: ['no merge request'] });
+
+			ownedByP1('w1');
+			const result = await service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w1'],
+				commitMessage: 'm',
+				canExportVariableValues: true,
+			});
+
+			expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(input, actor, {
+				branchName: result.git.branchName,
+				baseBranchName: 'staging',
+				commitSha: 'selsha',
+				title: 'm',
+			});
+			expect(result.warnings).toEqual(['no merge request']);
+			// The package keeps the pushed selection. No rollback happened.
+			await expect(
+				readFile(path.join(packageFolder, 'projects/alpha/workflows/w1/workflow.json'), 'utf8'),
+			).resolves.toBe(workflowFile('w1'));
+			await expect(stat(`${packageFolder}.pre-selection`)).rejects.toThrow();
 		});
 
 		it('refuses a selection when the branch has no package', async () => {

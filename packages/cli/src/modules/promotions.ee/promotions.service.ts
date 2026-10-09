@@ -59,6 +59,8 @@ import {
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
 import { PromotionConfigResolver } from './promotion-config.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
+import { MERGE_REQUEST_TITLE_MAX_LENGTH } from './git-hosts/gitlab-merge-request.client';
+import { PromotionReviewsService } from './promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
 import {
@@ -117,6 +119,7 @@ export class PromotionsService {
 		private readonly bindingPreflight: PromotionBindingPreflightService,
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
 		private readonly packageImportConfig: PackageImportConfig,
+		private readonly reviewsService: PromotionReviewsService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -192,6 +195,7 @@ export class PromotionsService {
 		await mkdir(repositoryFolder, { recursive: true });
 		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${PACKAGE_SUBFOLDER}-`));
 
+		let pushed: { commitSha: string; counts: PromotePackageResultDto['counts'] };
 		try {
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
 				{
@@ -236,15 +240,55 @@ export class PromotionsService {
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
-
-			return {
-				connectionId: input.connectionId,
-				configId: input.configId,
-				counts: exportResult.counts,
-				git: { commitSha, branchName: targetBranchName ?? branchName },
-			};
+			pushed = { commitSha, counts: exportResult.counts };
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
+		}
+
+		return {
+			connectionId: input.connectionId,
+			configId: input.configId,
+			counts: pushed.counts,
+			git: { commitSha: pushed.commitSha, branchName: targetBranchName ?? branchName },
+			...(await this.openReview(input, actor, {
+				promotionBranchName: targetBranchName,
+				commitSha: pushed.commitSha,
+				title: request.commitMessage,
+			})),
+		};
+	}
+
+	/**
+	 * A branched push on a Git host gets a merge request, which is the Promotion
+	 * Review. A direct push to the base branch has nothing to review. The push is
+	 * already done, so this runs outside the push's error handling and never throws.
+	 */
+	private async openReview(
+		input: PromotionOperationInput,
+		actor: User,
+		push: { promotionBranchName: string | undefined; commitSha: string; title: string },
+	): Promise<Pick<PromotePackageResultDto, 'mergeRequest' | 'warnings'>> {
+		if (!push.promotionBranchName) return {};
+		try {
+			const { mergeRequest, warnings } = await this.reviewsService.openMergeRequest(input, actor, {
+				branchName: push.promotionBranchName,
+				baseBranchName: checkoutBranchName(input.config),
+				commitSha: push.commitSha,
+				title: push.title.split('\n')[0].slice(0, MERGE_REQUEST_TITLE_MAX_LENGTH),
+			});
+			return {
+				...(mergeRequest && { mergeRequest }),
+				...(warnings.length > 0 && { warnings }),
+			};
+		} catch (error) {
+			// The review service reports failures as warnings. This catch keeps the
+			// pushed promote result intact if that contract is ever broken.
+			this.logger.error('Opening the promotion review failed after the push', { error });
+			return {
+				warnings: [
+					`The branch ${push.promotionBranchName} was pushed, but no merge request was opened.`,
+				],
+			};
 		}
 	}
 
@@ -288,6 +332,7 @@ export class PromotionsService {
 		let backedUp = false;
 		let keepPrePushBackup = false;
 
+		let pushed: { commitSha: string; counts: PromotePackageResultDto['counts'] };
 		try {
 			await rm(prePushBackup, { recursive: true, force: true });
 			await cp(packageFolder, prePushBackup, { recursive: true, verbatimSymlinks: true });
@@ -342,13 +387,7 @@ export class PromotionsService {
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
-
-			return {
-				connectionId: input.connectionId,
-				configId: input.configId,
-				counts,
-				git: { commitSha, branchName: targetBranchName ?? branchName },
-			};
+			pushed = { commitSha, counts };
 		} catch (error) {
 			if (backedUp) {
 				await rm(packageFolder, { recursive: true, force: true }).catch((restoreError: unknown) => {
@@ -378,6 +417,18 @@ export class PromotionsService {
 				this.logger.warn('Failed to remove the selection staging folder', { stagingFolder, error });
 			});
 		}
+
+		return {
+			connectionId: input.connectionId,
+			configId: input.configId,
+			counts: pushed.counts,
+			git: { commitSha: pushed.commitSha, branchName: targetBranchName ?? branchName },
+			...(await this.openReview(input, actor, {
+				promotionBranchName: targetBranchName,
+				commitSha: pushed.commitSha,
+				title: request.commitMessage,
+			})),
+		};
 	}
 
 	/**
