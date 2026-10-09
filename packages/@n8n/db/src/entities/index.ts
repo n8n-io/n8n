@@ -40,6 +40,7 @@ import { FolderTagMapping } from './folder-tag-mapping';
 import {
 	IdempotencyKey,
 	idempotencyKeyStatuses,
+	idempotencyKeyTtlMs,
 	type IdempotencyKeyStatus,
 } from './idempotency-key';
 import { InstanceCredentialAssignment } from './instance-credential-assignment';
@@ -131,6 +132,7 @@ export {
 	type AgentEvalVote,
 	IdempotencyKey,
 	idempotencyKeyStatuses,
+	idempotencyKeyTtlMs,
 	type IdempotencyKeyStatus,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,

@@ -1,6 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { SystemTaskClass } from '@n8n/decorators';
 
+import { IdempotencyKeyCleanupTask } from '@/public-api/idempotency-key-cleanup.task';
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
 
 /**
@@ -29,6 +30,7 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 		WorkflowHistoryCompactionTrimTask,
 		WorkflowHistoryPruningTask,
 		PendingAuthorizationCleanupTask,
+		IdempotencyKeyCleanupTask,
 	];
 
 	if (globalConfig.executions.pruneData) {
