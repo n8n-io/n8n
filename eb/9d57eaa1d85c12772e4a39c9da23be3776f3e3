@@ -1,0 +1,27 @@
+packages/modules/otel/frontend/src/SettingsOpenTelemetryView.test.ts
+  s_4230fd43162e6f::t_f788c76dbd9d39 249
+  s_4230fd43162e6f::t_b4f42f03158511 253
+  s_4230fd43162e6f::t_e1da24ddba419e 62-63
+  s_4230fd43162e6f::t_014f4af78ce934 243-248,250-252,254-255,458-459,478-479
+packages/modules/otel/frontend/src/SettingsOpenTelemetryView.vue
+  s_4230fd43162e6f::t_e1da24ddba419e 707-728,732-737
+  s_4230fd43162e6f::t_b4f42f03158511 729-731
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4230fd43162e6f::t_e1da24ddba419e 3559-3562
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eb9d57eaa1d85c12772e4a39c9da23be3776f3e3",
+  "prompts": {},
+  "sessions": {
+    "s_4230fd43162e6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9f9fbe4-fcf6-4e4b-b120-3f1d3ab134b1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
