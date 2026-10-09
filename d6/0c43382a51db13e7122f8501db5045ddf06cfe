@@ -1,0 +1,112 @@
+packages/cli/src/modules/otel/__tests__/execution-identity.test.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 1-99
+packages/cli/test/integration/database/repositories/execution.repository.test.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 325
+packages/cli/src/modules/otel/__tests__/support/otel-integration-utils.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 21-23,129-168,170
+packages/cli/src/modules/otel/__tests__/otel-workflow-tracing.integration.test.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 2,16,159-202
+  s_e3d151ea120c8d::t_635c209d7d7eea 203
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 3,13,17,19,52,102-106,110-111,114-116,153-154,157,262-291
+  s_e3d151ea120c8d::t_cde50de4389836 292
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatPageLayout.vue
+  s_e3d151ea120c8d::t_592a5a06778d70 30-33,81-84
+  s_e3d151ea120c8d::t_da0ff90bfc3be6 85-86
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 5,8,10,1073-1324
+  s_e3d151ea120c8d::t_7eaf6ba0119f6f 1325
+packages/cli/src/modules/otel/otel.constants.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 32
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/workflowHistory.store.test.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 188-211
+packages/frontend/editor-ui/src/features/agents/components/AgentMcpPanel.vue
+  s_e3d151ea120c8d::t_592a5a06778d70 20-21,32
+packages/frontend/editor-ui/src/features/agents/components/AgentWebSearchSection.vue
+  s_e3d151ea120c8d::t_592a5a06778d70 37,337-338,347-363,373,375,389,402,404,415,428,430,443,449-450,458-472,502-509
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 3,30,114,136-163,258-300,320-335,519,652-708,745,842,1001,1017,1222,1316
+packages/cli/src/modules/otel/otel.service.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 33,172
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_e3d151ea120c8d::t_592a5a06778d70 28-35,108-112,114-115,204-205,207-211
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 18-22,46-49,68-72,74-77,90-92,99-104,178,191,194,218,221,359-379,391,394
+  s_e3d151ea120c8d::t_a5d4601ef9791a 17
+packages/cli/src/modules/otel/tracing-context.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 5-9
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 14,197-206
+  s_e3d151ea120c8d::t_6678a8f81f0add 207-208
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 86
+packages/frontend/@n8n/rest-api-client/src/api/workflows.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 53-54
+packages/@n8n/db/src/entities/types-db.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 69-73
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 97-101
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 23,201-209,222-227,242,285-289,299-302
+  s_e3d151ea120c8d::t_fa2ea7fadfbe0a 303
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryModelSetting.vue
+  s_e3d151ea120c8d::t_592a5a06778d70 170-171,179
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_e3d151ea120c8d::t_592a5a06778d70 106-107,131
+packages/cli/src/modules/otel/execution-identity.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 1-65
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_e3d151ea120c8d::t_592a5a06778d70 446-447,464-469
+  s_e3d151ea120c8d::t_d596e2374a08b3 470-471
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersSection.test.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 433-436,438,444-477
+  s_e3d151ea120c8d::t_0d52dff49826d3 478
+packages/frontend/editor-ui/src/features/agents/styles/agent-panel.module.scss
+  s_e3d151ea120c8d::t_592a5a06778d70 17-100
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.test.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 6,89-92,95-98,148-162
+  s_e3d151ea120c8d::t_2343b562618b88 163-164
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_e3d151ea120c8d::t_592a5a06778d70 249-250,265,276-281,286,302-303,315,329-330,345,351-352,367
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_e3d151ea120c8d::t_592a5a06778d70 164,166-188,247,249-250,287,292,297
+packages/cli/src/modules/otel/execution-level-tracer.types.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 5,11,28
+packages/cli/src/workflows/workflow.service.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 129-130,561,611-630,636
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 8,29,1362-1469
+  s_e3d151ea120c8d::t_35e2de98d23165 1470
+packages/cli/src/modules/otel/__tests__/support/otel-test-provider.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 11,79
+packages/cli/src/workflows/workflows.controller.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 312-320,342
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/workflowHistory.store.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 114-115
+packages/@n8n/api-types/src/dto/workflows/update-workflow.dto.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 6,8-11
+packages/frontend/editor-ui/src/features/agents/components/AgentBudgetPanel.vue
+  s_e3d151ea120c8d::t_592a5a06778d70 250,252-257,282,291,326,329
+packages/cli/src/modules/otel/README.md
+  s_e3d151ea120c8d::t_592a5a06778d70 39,43-64,97
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_e3d151ea120c8d::t_592a5a06778d70 508-572
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_e3d151ea120c8d::t_592a5a06778d70 321-322,341,347-348,359,374,377,385
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d60c43382a51db13e7122f8501db5045ddf06cfe",
+  "prompts": {},
+  "sessions": {
+    "s_e3d151ea120c8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93c870fb-5097-4a4c-bad0-36e3542d6de3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
