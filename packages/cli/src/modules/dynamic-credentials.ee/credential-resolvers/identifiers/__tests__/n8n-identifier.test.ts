@@ -159,7 +159,7 @@ describe('N8NIdentifier', () => {
 				};
 
 				await expect(identifier.resolve(context, {})).rejects.toThrow(
-					'Invalid context metadata: browserId: Expected string, received number',
+					'Invalid context metadata: browserId: Invalid input: expected string, received number',
 				);
 
 				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
@@ -429,7 +429,7 @@ describe('N8NIdentifier', () => {
 					'Invalid context metadata: grant: Invalid input: expected object, received undefined',
 				);
 				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
-				expect(mockLogger.warn).toHaveBeenCalledWith('Sealed identity metadata is invalid', {
+				expect(mockLogger.warn).toHaveBeenCalledWith('Identity metadata is invalid', {
 					error: 'grant: Invalid input: expected object, received undefined',
 				});
 			});

@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 import { ITokenIdentifier } from './identifier-interface';
 import { AuthService } from '@/auth/auth.service';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import { CredentialResolverError } from '@n8n/decorators';
 import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 import { TrustedSourceGate } from '@n8n/inbound-auth';
@@ -19,7 +19,7 @@ import { UserRepository } from '@n8n/db';
  */
 const MANUAL_EXECUTION_SOURCE = 'manual-execution';
 const REQUEST_BOUND_SOURCES = ['chat-hub-injected', 'cookie-source'] as const;
-const N8N_OAUTH_SOURCE = 'n8n-oauth';
+const N8N_OAUTH_SOURCE = 'n8n-oauth' satisfies IN8NOAuthMetadata['source'];
 
 const ManualExecutionMetadataSchema = z.object({
 	source: z.literal(MANUAL_EXECUTION_SOURCE),
@@ -33,33 +33,21 @@ const RequestBoundMetadataSchema = z.object({
 });
 
 /**
- * Only routes on `source`. The sealed shape is owned by `n8n-workflow` (zod v4), so it
- * is parsed in a second step with {@link N8NOAuthMetadataSchema}.
+ * Exported for the drift test that keeps {@link N8N_IDENTITY_SOURCES} in step with it.
+ * The `n8n-oauth` shape is owned by `n8n-workflow`, so core binds with the same schema.
  */
-const N8nOAuthSourceSchema = z.object({ source: z.literal(N8N_OAUTH_SOURCE) });
-
-/** Exported for the drift test that keeps {@link N8N_IDENTITY_SOURCES} in step with it. */
 export const N8NIdentifierMetadataSchema = z.discriminatedUnion('source', [
 	ManualExecutionMetadataSchema,
 	RequestBoundMetadataSchema,
-	N8nOAuthSourceSchema,
+	N8NOAuthMetadataSchema,
 ]);
 
-type N8NIdentifierMetadata =
-	| Exclude<z.infer<typeof N8NIdentifierMetadataSchema>, { source: typeof N8N_OAUTH_SOURCE }>
-	| IN8NOAuthMetadata;
-
 type MetadataParseResult =
-	| { success: true; data: N8NIdentifierMetadata }
+	| { success: true; data: z.output<typeof N8NIdentifierMetadataSchema> }
 	| { success: false; error: string };
 
-/**
- * One `path: message` entry for each issue, instead of zod's JSON dump. Structural, so it
- * takes errors from both the zod 3 union here and the zod v4 schema in `n8n-workflow`.
- */
-function describeIssues(error: {
-	issues: ReadonlyArray<{ path: PropertyKey[]; message: string }>;
-}): string {
+/** One `path: message` entry for each issue, instead of zod's JSON dump. */
+function describeIssues(error: z.ZodError): string {
 	return error.issues
 		.map(({ path, message }) =>
 			path.length > 0 ? `${path.map(String).join('.')}: ${message}` : message,
@@ -247,17 +235,12 @@ export class N8NIdentifier implements ITokenIdentifier {
 
 	private parseMetadata(metadata: unknown): MetadataParseResult {
 		const result = N8NIdentifierMetadataSchema.safeParse(metadata);
-		if (!result.success) return { success: false, error: describeIssues(result.error) };
-		if (result.data.source !== N8N_OAUTH_SOURCE) return { success: true, data: result.data };
+		if (result.success) return { success: true, data: result.data };
 
-		const sealed = N8NOAuthMetadataSchema.safeParse(metadata);
-		if (!sealed.success) {
-			// Only n8n writes this shape, and it is encrypted, so a parse failure is a bug upstream.
-			const error = describeIssues(sealed.error);
-			this.logger.warn('Sealed identity metadata is invalid', { error });
-			return { success: false, error };
-		}
-		return { success: true, data: sealed.data };
+		// Only n8n writes these shapes, and they are encrypted, so a parse failure is a bug upstream.
+		const error = describeIssues(result.error);
+		this.logger.warn('Identity metadata is invalid', { error });
+		return { success: false, error };
 	}
 
 	private async isSealedSubjectAuthorized(
