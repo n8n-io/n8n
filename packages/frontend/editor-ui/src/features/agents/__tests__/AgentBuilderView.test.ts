@@ -1260,6 +1260,8 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 	});
 
 	it('loads node types when the page opens', async () => {
+		loadNodeTypesIfNotLoadedMock.mockClear();
+
 		await renderView();
 
 		expect(loadNodeTypesIfNotLoadedMock).toHaveBeenCalled();
