@@ -63,15 +63,16 @@ const requestOverMcp = async (
 		},
 		{ legacy: 'stateless' },
 	);
+	const headers: Record<string, string> = {
+		'content-type': 'application/json',
+		accept: 'application/json, text/event-stream',
+		'mcp-method': method,
+	};
+	if (typeof params.name === 'string') headers['mcp-name'] = params.name;
 	const response = await handler.fetch(
 		new Request('http://n8n.local/mcp-server/http', {
 			method: 'POST',
-			headers: {
-				'content-type': 'application/json',
-				accept: 'application/json, text/event-stream',
-				'mcp-method': method,
-				...(typeof params.name === 'string' && { 'mcp-name': params.name }),
-			},
+			headers,
 			body: JSON.stringify({
 				jsonrpc: '2.0',
 				id: 1,

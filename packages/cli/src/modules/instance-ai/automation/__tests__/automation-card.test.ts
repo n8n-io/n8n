@@ -306,6 +306,7 @@ describe('buildAutomationCard', () => {
 				{ id: 'link-2', kind: 'linked' as const, label: 'Lab', status: 'offline' as const },
 			],
 			offered: ['local', 'link-1'],
+			noLinks: false,
 		};
 
 		const card = buildAutomationCard(

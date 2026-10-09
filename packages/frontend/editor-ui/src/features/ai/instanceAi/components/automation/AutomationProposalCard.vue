@@ -70,7 +70,12 @@ const links = useViewerLinks(() => hasLinkedTargets(props.proposal));
 const viewed = computed(() => withViewerLinks(props.proposal, links.value));
 
 const isInactive = computed(() => props.disabled || submitted.value);
-const workflowName = computed(() => shownWorkflowName(viewed.value));
+const workflowNameText = computed(() => {
+	const name = shownWorkflowName(viewed.value);
+	return name === undefined
+		? undefined
+		: i18n.baseText('instanceAi.automation.workflowName', { interpolate: { name } });
+});
 const steps = computed(() => visibleSteps(viewed.value));
 const hiddenSteps = computed(() => hiddenStepCount(viewed.value));
 
@@ -203,18 +208,14 @@ function answer(action: AutomationAction) {
 					{{ proposal.title }}
 				</N8nText>
 				<N8nText
-					v-if="workflowName"
+					v-if="workflowNameText"
 					tag="div"
 					size="small"
 					color="text-base"
 					:class="$style.wrap"
 					data-test-id="automation-proposal-workflow-name"
 				>
-					{{
-						i18n.baseText('instanceAi.automation.workflowName', {
-							interpolate: { name: workflowName },
-						})
-					}}
+					{{ workflowNameText }}
 				</N8nText>
 				<N8nText
 					v-if="statusKey"
