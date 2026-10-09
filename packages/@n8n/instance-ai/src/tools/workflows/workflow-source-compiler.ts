@@ -17,6 +17,7 @@ import { detectPythonCodeConstraints } from './detect-python-code-constraints';
 import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
+import { findStickyNoteWraps, rewrapStickyNotes } from './sticky-note-wrapping';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
 import { traceSandboxOperation, sandboxFileBytes } from '../../tracing/sandbox-tracing';
 import type { InstanceAiContext } from '../../types';
@@ -208,8 +209,8 @@ async function layOutWithNodeTypes(
 	);
 	if (sameSize) return;
 
-	// ponytail: sticky notes keep the sandbox position, so a moved node can leave its note
-	// behind. Lay out the notes too when the sandbox output keeps their anchor nodes.
+	// The layout leaves sticky notes out, so each note follows the nodes it wrapped.
+	const wraps = findStickyNoteWraps(json, wired);
 	const nodes = json.nodes
 		.filter((node) => !isStickyNoteType(node.type))
 		.map(({ position: _sandboxPosition, ...node }) => node as WorkflowJSON['nodes'][number]);
@@ -225,6 +226,7 @@ async function layOutWithNodeTypes(
 	for (const node of json.nodes) {
 		node.position = positions.get(node.name) ?? node.position;
 	}
+	rewrapStickyNotes(wraps, declared);
 }
 
 function parseSandboxWarnings(value: unknown): ValidationWarning[] {
