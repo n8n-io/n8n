@@ -9265,6 +9265,7 @@
 	"agents.channels.teams.setup.download.title": "Download app package",
 	"agents.channels.teams.setup.download.description": "Built from the steps above.",
 	"agents.channels.teams.setup.install.description": "Upload the zip in Teams under Apps › Manage your apps › Upload an app.",
+	"agents.channels.teams.setup.install.descriptionWithScope": "{upload} {addTo}",
 	"agents.channels.teams.setup.install.addTo.teams": "Then choose Add to a team and pick the team it should join.",
 	"agents.channels.teams.setup.install.addTo.chats": "Then choose Add to a chat and pick the chat it should join.",
 	"agents.channels.teams.setup.install.addTo.both": "Then choose Add to a team or Add to a chat, and pick where it should work.",

@@ -93,6 +93,8 @@ export class AgentTeamsIntegrationsController {
 	@ProjectScope('agent:update')
 	async listAzureSubscriptions(
 		req: AuthenticatedRequest<{ projectId: string }, {}, {}, { managerCredentialId?: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
 	): Promise<TeamsAzureSubscription[]> {
 		const managerCredentialId = req.query.managerCredentialId;
 		// An empty answer here means "no Azure subscription", which sends the user
@@ -100,10 +102,24 @@ export class AgentTeamsIntegrationsController {
 		if (typeof managerCredentialId !== 'string' || managerCredentialId.length === 0) {
 			throw new BadRequestError('Sign in with Microsoft before looking for a subscription.');
 		}
-		return await this.botProvisioningService.listSubscriptions({
+		const subscriptions = await this.botProvisioningService.listSubscriptions({
 			user: req.user,
 			managerCredentialId,
 		});
+
+		// The rung the whole ladder exists to measure. It is chosen here rather
+		// than in the browser: an empty answer is the only moment n8n knows the
+		// account cannot reach a subscription, and the browser reports no step.
+		if (subscriptions.length === 0) {
+			this.setupTelemetry.succeeded({
+				agentId,
+				projectId: req.params.projectId,
+				userId: req.user.id,
+				step: 'create_bot',
+				botRoute: 'manual',
+			});
+		}
+		return subscriptions;
 	}
 
 	@Post('/:agentId/integrations/teams/provision-bot')

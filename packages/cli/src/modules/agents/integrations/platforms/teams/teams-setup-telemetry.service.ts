@@ -11,10 +11,7 @@ export interface TeamsSetupStepReport {
 	projectId: string;
 	userId: string;
 	step: Step;
-	/**
-	 * `manual` is in the schema but not yet emitted: the no-subscription rung is
-	 * decided in the browser, which reports no step outcome.
-	 */
+	/** `manual` is the rung taken when the account reaches no subscription. */
 	botRoute?: 'provisioned' | 'manual';
 	installRoute?: 'upload';
 }
