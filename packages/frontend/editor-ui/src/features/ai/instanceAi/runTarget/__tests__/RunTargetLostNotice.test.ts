@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 
 import { renderComponent } from '@/__tests__/render';
@@ -48,13 +49,37 @@ describe('RunTargetLostNotice', () => {
 		expect(getByRole('status')).toHaveTextContent(LOST_NOTICE);
 	});
 
-	it('acknowledges the notice once, when it shows, so that the server drops it', () => {
+	it('does not acknowledge the notice when it shows, so a later read of the chat still returns it', () => {
 		const store = mockedStore(useInstanceAiStore);
 		store.threads = [summary({ lostRunTarget: { name: 'Office' } })];
 
 		renderComponent(RunTargetLostNotice);
 
+		expect(store.acknowledgeLostRunTarget).not.toHaveBeenCalled();
+	});
+
+	it('acknowledges the notice when the owner dismisses it, and asks the parent to move the focus', async () => {
+		const store = mockedStore(useInstanceAiStore);
+		store.threads = [summary({ lostRunTarget: { name: 'Office' } })];
+
+		const { getByRole, emitted } = renderComponent(RunTargetLostNotice);
+		await userEvent.click(getByRole('button', { name: 'Dismiss' }));
+
 		expect(store.acknowledgeLostRunTarget).toHaveBeenCalledTimes(1);
+		expect(store.acknowledgeLostRunTarget).toHaveBeenCalledWith(THREAD_ID);
+		expect(emitted('dismissed')).toHaveLength(1);
+	});
+
+	it('lets a keyboard user dismiss the notice', async () => {
+		const store = mockedStore(useInstanceAiStore);
+		store.threads = [summary({ lostRunTarget: { name: 'Office' } })];
+
+		const { getByTestId } = renderComponent(RunTargetLostNotice);
+		await userEvent.tab();
+
+		expect(getByTestId('instance-ai-run-target-lost-notice-dismiss')).toHaveFocus();
+		await userEvent.keyboard('{Enter}');
+
 		expect(store.acknowledgeLostRunTarget).toHaveBeenCalledWith(THREAD_ID);
 	});
 

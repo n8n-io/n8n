@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep, mock reads */
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import type { TimelineItem } from '../session-timeline.types';

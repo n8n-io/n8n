@@ -381,7 +381,9 @@ function toggleScope(scope: S, checked: boolean) {
 														:key="tool"
 														:class="[
 															$style['tool-row'],
-															{ [$style['tool-row-disabled']]: !groupEnabledTools(group).has(tool) },
+															{
+																[$style['tool-row-disabled']]: !groupEnabledTools(group).has(tool),
+															},
 														]"
 														:data-test-id="`scope-tool-${tool}`"
 														:data-enabled="groupEnabledTools(group).has(tool)"

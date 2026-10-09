@@ -60,6 +60,12 @@ function codingStepLabel(tc: ToolCall) {
 	return codingToolStepLabel(i18n, tc.tool, tc.input, isToolStepLoading(tc));
 }
 
+/** The full row label of a coding step whose path or command is shortened, for the tooltip. */
+function toolStepTitle(tc: ToolCall, metadata: string[]): string | undefined {
+	const fullLabel = codingStepLabel(tc)?.fullLabel;
+	return fullLabel ? [fullLabel, ...metadata].join(' · ') : undefined;
+}
+
 const showFix = computed(() => Boolean(props.canFixWithAssistant && props.executionId));
 
 const dismissedToolCallIds = computed(() => new Set(props.dismissedToolCallIds ?? []));
@@ -109,6 +115,8 @@ const { subAgentNameById } = useSubAgentNames(projectIdRef, () =>
 );
 
 interface ToolStepDisplay {
+	/** The tool call id, a key that stays the same when the label changes. */
+	id: string;
 	label: string;
 	/** The full label, shown as a tooltip when the label is shortened. */
 	title?: string;
@@ -192,10 +200,10 @@ function toolStepView(tc: ToolCall): ToolStepDisplay {
 	const details = isCompact ? '' : (getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '');
 	const metadata = toolStepRowMetadata(tc);
 	const hasChildProgress = Boolean(tc.childProgress);
-	const fullCodingLabel = codingStepLabel(tc)?.fullLabel;
 	return {
+		id: tc.toolCallId,
 		label: [toolStepLabel(tc, isCompact), ...metadata].join(' · '),
-		title: fullCodingLabel && [fullCodingLabel, ...metadata].join(' · '),
+		title: toolStepTitle(tc, metadata),
 		details,
 		hasRawData: !isCompact && details.length === 0 && hasToolData(tc) && !hasChildProgress,
 		expandable: !isCompact && (details.length > 0 || hasToolData(tc) || hasChildProgress),
@@ -249,7 +257,7 @@ function hasActiveToolCall(): boolean {
 				<template v-for="tc in toolCalls" :key="tc.toolCallId">
 					<N8nAiActivityStep
 						v-for="view in [toolStepView(tc)]"
-						:key="tc.toolCallId"
+						:key="view.id"
 						:label="view.label"
 						:title="view.title"
 						:loading="isToolStepLoading(tc)"
@@ -322,7 +330,7 @@ function hasActiveToolCall(): boolean {
 					:hide-error-callout="hideToolErrorCallout(tc)"
 					:has-content="toolStepView(tc).expandable"
 				>
-					<template v-for="view in [toolStepView(tc)]" :key="view.label">
+					<template v-for="view in [toolStepView(tc)]" :key="view.id">
 						<div
 							v-if="tc.childProgress"
 							:class="$style.childProgress"

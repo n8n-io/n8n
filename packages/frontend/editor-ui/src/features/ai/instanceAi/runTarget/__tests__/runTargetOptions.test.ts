@@ -2,6 +2,7 @@ import type { LinkedInstanceStatus, LinkedInstanceSummary } from '@n8n/api-types
 import { describe, expect, it } from 'vitest';
 
 import {
+	isLinkedRunTarget,
 	LINK_CLOUD_MENU_ID,
 	LOCAL_RUN_TARGET_ID,
 	optionalRunTarget,
@@ -149,6 +150,23 @@ describe('optionalRunTarget', () => {
 
 	it('sends this computer as a choice, since it is a target too', () => {
 		expect(optionalRunTarget({ kind: 'local' })).toEqual({ runTarget: { kind: 'local' } });
+	});
+});
+
+describe('isLinkedRunTarget', () => {
+	it('accepts a run target on a linked instance', () => {
+		expect(isLinkedRunTarget({ kind: 'linked', instanceId: OFFICE_ID })).toBe(true);
+	});
+
+	it.each([
+		['this computer', { kind: 'local' }],
+		['no target', undefined],
+		['a link id that is not a uuid', { kind: 'linked', instanceId: 'office' }],
+		['a link without an id', { kind: 'linked' }],
+		['an unknown kind', { kind: 'remote', instanceId: OFFICE_ID }],
+		['a string', 'linked'],
+	])('rejects %s', (_label, value) => {
+		expect(isLinkedRunTarget(value)).toBe(false);
 	});
 });
 

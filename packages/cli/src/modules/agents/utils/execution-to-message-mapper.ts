@@ -341,11 +341,21 @@ function addLocation(
 	locations.set(message, indexes);
 }
 
+/** Marks a call that never got its result, so that no later result or open suspension uses it. */
+function cancelToolCall({ message, partIndex }: PartLocation): void {
+	const part = message.content[partIndex];
+	if (isToolCallWithId(part)) message.content[partIndex] = { ...part, canceled: true };
+}
+
 /**
  * Merges the result of a resumed tool call into the part that waited for it, and removes the
  * copy. A later part continues an earlier part only when both are the same call (same id and
  * same tool) and the earlier part still waits. A settled call does not settle again, so a later
  * part with the same identity is a new call and stays in the history.
+ *
+ * A resume records the result of the call only, never the call again: only the model starts a
+ * call. So a later open part with the identity of a waiting part is a new call, and the earlier
+ * call (for example a card that the user stopped) never gets a result.
  */
 function settleResumedToolCalls(messages: AgentPersistedMessageDto[]): void {
 	const waitingByKey = new Map<string, PartLocation>();
@@ -356,12 +366,12 @@ function settleResumedToolCalls(messages: AgentPersistedMessageDto[]): void {
 			if (!isToolCallWithId(part)) continue;
 			const key = toolCallKey(part);
 			const waiting = waitingByKey.get(key);
-			if (!waiting) {
-				if (!isTerminalToolCallPart(part)) waitingByKey.set(key, { message, partIndex });
+			if (!isTerminalToolCallPart(part)) {
+				if (waiting) cancelToolCall(waiting);
+				waitingByKey.set(key, { message, partIndex });
 				continue;
 			}
-			// A second open part of a waiting call stays as it is.
-			if (!isTerminalToolCallPart(part)) continue;
+			if (!waiting) continue;
 
 			const waitingPart = waiting.message.content[waiting.partIndex];
 			if (isToolCallWithId(waitingPart)) {

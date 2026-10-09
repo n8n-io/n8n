@@ -3,6 +3,7 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import { patchThread } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
+import { OperationalError } from 'n8n-workflow';
 
 import type { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
 import { N8nMemory } from '../../agents/integrations/n8n-memory';
@@ -36,7 +37,7 @@ export class RunTargetService {
 	/**
 	 * The run target of one chat message. A shared chat runs locally. A link that the owner no
 	 * longer holds makes the chat local, and the chat keeps the lost link name until the owner
-	 * acknowledges it.
+	 * acknowledges it. Throws an `OperationalError` when the first message cannot store its target.
 	 */
 	async forChatTurn(
 		thread: AgentExecutionThread,
@@ -48,41 +49,46 @@ export class RunTargetService {
 		if (!ownerId || !this.linkedInstancesOn()) return LOCAL_RUN_TARGET;
 		const defaults = metadata?.[ASSISTANT_TURN_DEFAULTS_KEY];
 		const stored = storedRunTargetOf(defaults);
+		if (stored) return await this.checkStoredTarget(thread, ownerId, stored);
 		// Defaults without a target come from a chat that started before run targets existed.
-		if (stored === undefined && isRecord(defaults)) return LOCAL_RUN_TARGET;
-		return await this.resolveMessageTarget(thread, ownerId, stored, request);
+		if (isRecord(defaults)) return LOCAL_RUN_TARGET;
+		return await this.storeFirstTarget(thread, ownerId, request?.runTarget);
 	}
 
-	/** Resolves a message's target. A failed lookup or write keeps the stored target. */
-	private async resolveMessageTarget(
-		thread: AgentExecutionThread,
-		ownerId: string,
-		stored: InstanceAiThreadRunTarget | undefined,
-		request: ChatRequest | undefined,
-	): Promise<InstanceAiThreadRunTarget> {
-		let target = stored;
-		try {
-			target = stored ?? (await this.storeFirstTarget(thread, ownerId, request?.runTarget));
-			return await this.resolveTarget(thread, ownerId, target);
-		} catch (error) {
-			this.logger.warn('Failed to resolve the run target of a chat message', {
-				threadId: thread.id,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return target ?? LOCAL_RUN_TARGET;
-		}
-	}
-
-	/** Stores the target of the first message. Concurrent first messages keep the first write. */
+	/**
+	 * Stores the target of the first message. The chosen link was checked a moment ago, so it is
+	 * not looked up again. Concurrent first messages keep the first write.
+	 *
+	 * Only the first message carries the user's choice. So a failure fails the message, and the
+	 * user can send it again with the same choice, in place of a chat that is local for good.
+	 */
 	private async storeFirstTarget(
 		thread: AgentExecutionThread,
 		ownerId: string,
 		requested: RunTarget | undefined,
 	): Promise<InstanceAiThreadRunTarget> {
-		// A shared chat never takes a remote target, so none is stored for it.
-		const candidate = isSharedThread(thread)
-			? LOCAL_RUN_TARGET
-			: await this.chosenTarget(ownerId, requested);
+		try {
+			// A shared chat never takes a remote target, so none is stored for it.
+			const candidate = isSharedThread(thread)
+				? LOCAL_RUN_TARGET
+				: await this.chosenTarget(ownerId, requested);
+			return await this.keepFirstTarget(thread, candidate);
+		} catch (error) {
+			throw new OperationalError('Could not save where this chat runs. Send the message again.', {
+				cause: error,
+				extra: { threadId: thread.id },
+			});
+		}
+	}
+
+	/**
+	 * Writes the first target unless another message stored one first, and returns the kept one.
+	 * A shared chat runs here, whatever is kept.
+	 */
+	private async keepFirstTarget(
+		thread: AgentExecutionThread,
+		candidate: InstanceAiThreadRunTarget,
+	): Promise<InstanceAiThreadRunTarget> {
 		let kept = candidate;
 		await patchThread(this.memory.getImplementation(ASSISTANT_AGENT_ID), {
 			threadId: thread.id,
@@ -100,7 +106,7 @@ export class RunTargetService {
 				};
 			},
 		});
-		return kept;
+		return isSharedThread(thread) ? LOCAL_RUN_TARGET : kept;
 	}
 
 	/** The requested target when the owner holds its link. Anything else is local. */
@@ -113,15 +119,27 @@ export class RunTargetService {
 		return link ? { kind: 'linked', instanceId: link.id, name: link.name } : LOCAL_RUN_TARGET;
 	}
 
-	/** A shared chat and a local target run here. A link that the owner lost is dropped. */
-	private async resolveTarget(
+	/**
+	 * A later message checks the stored target. A shared chat and a local target run here. A link
+	 * that the owner lost is dropped. When the lookup or the drop fails, nothing is written: the
+	 * stored target stays, this message runs here, and the next message checks the link again.
+	 */
+	private async checkStoredTarget(
 		thread: AgentExecutionThread,
 		ownerId: string,
-		target: InstanceAiThreadRunTarget,
+		stored: InstanceAiThreadRunTarget,
 	): Promise<InstanceAiThreadRunTarget> {
-		if (target.kind === 'local' || isSharedThread(thread)) return LOCAL_RUN_TARGET;
-		if (await this.findLink(ownerId, target.instanceId)) return target;
-		return await this.dropLostLink(thread, target);
+		if (stored.kind === 'local' || isSharedThread(thread)) return LOCAL_RUN_TARGET;
+		try {
+			if (await this.findLink(ownerId, stored.instanceId)) return stored;
+			return await this.dropLostLink(thread, stored);
+		} catch (error) {
+			this.logger.warn('Failed to check the run target of a chat message', {
+				threadId: thread.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return LOCAL_RUN_TARGET;
+		}
 	}
 
 	/**
@@ -157,12 +175,14 @@ export class RunTargetService {
 		return this.moduleRegistry.isActive(LINKED_INSTANCES_MODULE);
 	}
 
-	/** The owner's link with this id, or `null`. Without the linked-instances module there are no links. */
+	/**
+	 * The owner's link with this id, or `null`. Only `forChatTurn` calls lead here, after it
+	 * checked that the linked-instances module is on.
+	 */
 	private async findLink(
 		ownerId: string,
 		instanceId: string,
 	): Promise<LinkedInstanceSummary | null> {
-		if (!this.linkedInstancesOn()) return null;
 		// Loaded on use: the linked-instances tables are needed only while the module is on.
 		const { LinkedInstanceStore } = await import('../../linked-instances/linked-instance.store.js');
 		return await Container.get(LinkedInstanceStore).getForUser(ownerId, instanceId);

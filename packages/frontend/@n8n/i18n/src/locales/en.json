@@ -7634,6 +7634,7 @@
 	"instanceAi.runTarget.chip": "Runs in {name}",
 	"instanceAi.runTarget.chip.tooltip": "Chosen when this chat started. To run a workflow somewhere else, move it.",
 	"instanceAi.runTarget.lostLink": "This chat runs in {name}, which isn't linked any more. Link it again in Settings, or start a new chat.",
+	"instanceAi.runTarget.lostLink.dismiss": "Dismiss",
 	"instanceAi.agentPreview.building": "n8n Assistant is making changes…",
 	"instanceAi.previewTabBar.expand": "Expand panel",
 	"instanceAi.previewTabBar.collapse": "Collapse panel",

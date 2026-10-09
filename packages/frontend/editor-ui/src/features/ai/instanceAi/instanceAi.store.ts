@@ -66,6 +66,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const persistedThreadIds = new Set<string>();
+	// Chats whose lost link notice the owner dismissed. A read that started before the
+	// dismissal still names the lost link, and it must not bring the notice back.
+	const dismissedLostRunTargets = new Set<string>();
 
 	// --- Instance-level state ---
 	const threads = ref<InstanceAiThreadSummary[]>([]);
@@ -210,8 +213,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			sharedWith: thread.sharedWith,
 			owner: thread.owner,
 			runTarget: thread.runTarget,
-			lostRunTarget: thread.lostRunTarget,
+			lostRunTarget: visibleLostRunTarget(thread),
 		};
+	}
+
+	function visibleLostRunTarget(thread: InstanceAiThreadInfo) {
+		return dismissedLostRunTargets.has(thread.id) ? undefined : thread.lostRunTarget;
 	}
 
 	/** Every local copy of a thread; the sidebar list and the history page can both hold one. */
@@ -267,14 +274,19 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	}
 
 	/**
-	 * The owner has seen the lost link notice. The server drops it, so the next read omits it.
-	 * The local copy keeps it for now, so the notice does not vanish under the owner's eyes.
+	 * The owner dismissed the lost link notice of a chat. The notice goes at once, and the server
+	 * drops it for good. When the request fails, the notice comes back, so the owner can try again.
 	 */
 	async function acknowledgeLostRunTarget(threadId: string): Promise<void> {
+		const entries = localThreadEntries(threadId);
+		const lost = entries.find((entry) => entry.lostRunTarget)?.lostRunTarget;
+		dismissedLostRunTargets.add(threadId);
+		for (const entry of entries) entry.lostRunTarget = undefined;
 		try {
 			await acknowledgeLostRunTargetApi(rootStore.restApiContext, threadId);
 		} catch {
-			// The notice stays on screen. The chat acknowledges it again the next time it shows it.
+			dismissedLostRunTargets.delete(threadId);
+			for (const entry of localThreadEntries(threadId)) entry.lostRunTarget ??= lost;
 		}
 	}
 
@@ -293,7 +305,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			entry.sharedWith = thread.sharedWith;
 			entry.owner = thread.owner;
 			entry.runTarget = thread.runTarget;
-			entry.lostRunTarget = thread.lostRunTarget;
+			entry.lostRunTarget = visibleLostRunTarget(thread);
 		}
 	}
 

@@ -6,7 +6,7 @@ import {
 	LOCAL_RUN_TARGET,
 	lostRunTargetOf,
 	storedRunTargetOf,
-	turnDefaultsKeepingRunTarget,
+	withTurnDefaults,
 	withoutLostRunTarget,
 	withoutServerMetadata,
 } from '../run-target';
@@ -145,32 +145,63 @@ describe('withoutServerMetadata', () => {
 	});
 });
 
-describe('turnDefaultsKeepingRunTarget', () => {
+describe('withTurnDefaults', () => {
 	const stored: InstanceAiThreadRunTarget = { kind: 'linked', instanceId: LINK_ID, name: 'Office' };
 
 	it('keeps the stored run target over the target of the new turn', () => {
-		const result = turnDefaultsKeepingRunTarget(
-			{ runTarget: stored },
+		const result = withTurnDefaults(
+			{ assistantTurnDefaults: { runTarget: stored, pushRef: 'old' } },
 			{ timeZone: 'Europe/Helsinki', runTarget: LOCAL_RUN_TARGET },
 		);
 
-		expect(result).toEqual({ timeZone: 'Europe/Helsinki', runTarget: stored });
+		expect(result).toEqual({
+			assistantTurnDefaults: { timeZone: 'Europe/Helsinki', runTarget: stored },
+		});
 	});
 
-	it('takes the target of the new turn when none is stored', () => {
-		const result = turnDefaultsKeepingRunTarget(
-			{ timeZone: 'UTC' },
-			{ timeZone: 'Europe/Helsinki', runTarget: { kind: 'local' } },
+	it('takes the target of the new turn when none is stored, and keeps the other metadata', () => {
+		const result = withTurnDefaults(
+			{ source: 'assistant_page', assistantTurnDefaults: { timeZone: 'UTC' } },
+			{ timeZone: 'Europe/Helsinki', runTarget: stored },
 		);
 
-		expect(result).toEqual({ timeZone: 'Europe/Helsinki', runTarget: { kind: 'local' } });
+		expect(result).toEqual({
+			source: 'assistant_page',
+			assistantTurnDefaults: { timeZone: 'Europe/Helsinki', runTarget: stored },
+		});
 	});
 
 	it('stores local when neither the stored defaults nor the turn has a target', () => {
-		expect(turnDefaultsKeepingRunTarget(undefined, { timeZone: 'UTC' })).toEqual({
-			timeZone: 'UTC',
-			runTarget: LOCAL_RUN_TARGET,
+		expect(withTurnDefaults(undefined, { timeZone: 'UTC' })).toEqual({
+			assistantTurnDefaults: { timeZone: 'UTC', runTarget: LOCAL_RUN_TARGET },
 		});
+	});
+
+	it('never changes a stored target and always replaces the other defaults (property)', () => {
+		const targetArb = fc.oneof(
+			fc.constant<InstanceAiThreadRunTarget>({ kind: 'local' }),
+			fc.record({ instanceId: fc.uuid(), name: fc.string({ minLength: 1, maxLength: 64 }) }).map(
+				({ instanceId, name }): InstanceAiThreadRunTarget => ({
+					kind: 'linked',
+					instanceId,
+					name,
+				}),
+			),
+		);
+		fc.assert(
+			fc.property(
+				targetArb,
+				fc.option(targetArb, { nil: undefined }),
+				fc.string(),
+				(storedTarget, turnTarget, timeZone) => {
+					const result = withTurnDefaults(
+						{ assistantTurnDefaults: { runTarget: storedTarget, pushRef: 'old' } },
+						{ timeZone, runTarget: turnTarget },
+					);
+					expect(result.assistantTurnDefaults).toEqual({ timeZone, runTarget: storedTarget });
+				},
+			),
+		);
 	});
 });
 

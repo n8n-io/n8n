@@ -3,6 +3,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
 import {
+	isLinkedRunTarget,
 	LOCAL_RUN_TARGET_ID,
 	runTargetChipName,
 	runTargetOptions,
@@ -100,6 +101,17 @@ describe('runTargetOptions (property)', () => {
 					}
 				},
 			),
+		);
+	});
+
+	it('recognises a linked target only when it names a link by a uuid', () => {
+		fc.assert(
+			fc.property(fc.uuid(), fc.string({ maxLength: 35 }), (instanceId, shortId) => {
+				expect(isLinkedRunTarget({ kind: 'linked', instanceId })).toBe(true);
+				expect(isLinkedRunTarget({ kind: 'local', instanceId })).toBe(false);
+				// A uuid has 36 characters, so a shorter id never names a link.
+				expect(isLinkedRunTarget({ kind: 'linked', instanceId: shortId })).toBe(false);
+			}),
 		);
 	});
 });

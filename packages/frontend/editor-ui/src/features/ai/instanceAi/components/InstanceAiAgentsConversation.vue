@@ -36,7 +36,7 @@ import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import { optionalRunTarget } from '../runTarget/runTargetOptions';
-import { useOpenThreadSummary } from '../runTarget/useOpenThreadSummary';
+import { useMessageRunTarget } from '../runTarget/useMessageRunTarget';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
@@ -109,7 +109,6 @@ const slots = defineSlots<{
 const TITLE_REFINE_DELAY_MS = 5_000;
 
 const store = useInstanceAiStore();
-const openThreadSummary = useOpenThreadSummary();
 const settingsStore = useInstanceAiSettingsStore();
 const thread = useThread();
 const rootStore = useRootStore();
@@ -182,6 +181,8 @@ async function refreshThreadInfo(): Promise<void> {
 	}
 }
 
+const messageRunTarget = useMessageRunTarget(refreshThreadInfo);
+
 /**
  * A turn sets the heuristic title, the builder metadata, the planned tasks and
  * the setup items while it runs, and the refined title shortly after it ends.
@@ -248,7 +249,7 @@ const composerResources = ref<InstanceAiResourceAttachment[]>([]);
 /** Text n8n wrote into the composer, to tell a pre-fill from a typed message. */
 const activePrefill = ref<InstanceAiPrefillPayload | null>(null);
 /** A programmatic send: its context replaces the composer state for one message. */
-let oneShotMessage: OneShotMessage | null = null;
+let oneShotMessage: Pick<ThreadChatMessage, 'attachments' | 'handoffContext'> | null = null;
 
 const restoredWorkflowAttachment = getPendingWorkflowAttachment(thread.id);
 if (restoredWorkflowAttachment) thread.setPendingWorkflowAttachment(restoredWorkflowAttachment);
@@ -404,25 +405,6 @@ function composerAttachments(): InstanceAiResourceAttachment[] {
 	return attachments;
 }
 
-/** The parts of a programmatic send that its message carries in place of the composer state. */
-type OneShotMessage = Pick<ThreadChatMessage, 'attachments' | 'handoffContext' | 'runTarget'>;
-
-/** The attachments, hand-off context and run target of the next message. */
-function nextMessageFields(message: OneShotMessage | null) {
-	if (!message) {
-		return {
-			attachments: composerAttachments(),
-			context: pendingComposerContext.value ?? undefined,
-			runTarget: undefined,
-		};
-	}
-	return {
-		attachments: message.attachments ?? [],
-		context: message.handoffContext,
-		runTarget: message.runTarget,
-	};
-}
-
 /**
  * The client context for one Assistant message, in the shape of the Assistant
  * send request. File attachments travel through the Agents chat attachments.
@@ -430,7 +412,8 @@ function nextMessageFields(message: OneShotMessage | null) {
 function buildHostContext(): Record<string, unknown> {
 	const message = oneShotMessage;
 	oneShotMessage = null;
-	const { attachments, context, runTarget } = nextMessageFields(message);
+	const attachments = message ? (message.attachments ?? []) : composerAttachments();
+	const context = message ? message.handoffContext : (pendingComposerContext.value ?? undefined);
 	const threadArtifacts = thread.threadArtifactsContext();
 	const hostContext: Record<string, unknown> = {
 		timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -439,7 +422,7 @@ function buildHostContext(): Record<string, unknown> {
 		...(threadArtifacts ? { threadArtifacts } : {}),
 		...(context ? { context } : {}),
 		...(attachments.length ? { attachments } : {}),
-		...optionalRunTarget(runTarget),
+		...optionalRunTarget(messageRunTarget.forNextMessage()),
 	};
 	// A programmatic send leaves the composer state alone when it is accepted.
 	if (message) programmaticHostContexts.add(hostContext);
@@ -454,18 +437,13 @@ function readHostAttachments(hostContext: Record<string, unknown>): InstanceAiAt
 }
 
 /** A message the user typed was accepted: settle the hand-off state it carried. */
-/** A message can drop the link of a linked chat. Its notice is read now, not at the turn's end. */
-function refreshLinkedChatOnAccept() {
-	if (openThreadSummary.value?.runTarget?.kind === 'linked') void refreshThreadInfo();
-}
-
 function onMessageAccepted(payload: {
 	text: string;
 	files: File[];
 	hostContext?: Record<string, unknown>;
 }) {
-	refreshLinkedChatOnAccept();
 	const hostContext = payload.hostContext ?? {};
+	messageRunTarget.accepted(hostContext);
 	const attachments = readHostAttachments(hostContext);
 	thread.recordSentAttachments(attachments);
 	if (programmaticHostContexts.has(hostContext)) return;
@@ -512,8 +490,8 @@ async function sendThroughChat(message: ThreadChatMessage): Promise<boolean> {
 	oneShotMessage = {
 		...(message.attachments ? { attachments: message.attachments } : {}),
 		...(message.handoffContext ? { handoffContext: message.handoffContext } : {}),
-		...optionalRunTarget(message.runTarget),
 	};
+	messageRunTarget.remember(message.runTarget);
 	const sent = await panel.sendMessageFromOutside(message.message, message.files);
 	if (!sent) oneShotMessage = null;
 	return sent;
@@ -676,7 +654,7 @@ onBeforeUnmount(() => {
 				</div>
 			</template>
 			<template v-if="!isTeammate" #above-input>
-				<RunTargetLostNotice />
+				<RunTargetLostNotice @dismissed="chatPanel?.focusInput()" />
 				<slot name="above-input" />
 			</template>
 			<template v-if="isTeammate" #composer>

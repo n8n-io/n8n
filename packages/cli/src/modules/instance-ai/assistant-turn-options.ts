@@ -72,6 +72,15 @@ export function readAssistantTurnOptions(value: unknown): AssistantTurnOptions {
 	return value as unknown as AssistantTurnOptions;
 }
 
+/**
+ * The options of a resumed turn, from its checkpoint. A resume carries no run target: the
+ * chat can be shared, or its link deleted, after the checkpoint. Only a chat message resolves one.
+ */
+export function readResumedTurnOptions(value: unknown): AssistantTurnOptions {
+	const { runTarget: _runTarget, ...options } = readAssistantTurnOptions(value);
+	return options;
+}
+
 export function toJsonObject(options: AssistantTurnOptions): Record<string, unknown> {
 	return JSON.parse(JSON.stringify(options)) as Record<string, unknown>;
 }

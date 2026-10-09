@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/vue';
+import { cleanup, render, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -135,7 +135,7 @@ describe('AgentCodingToolDetails', () => {
 	it('shows nothing for a step without a path or a command yet', () => {
 		const { container } = renderDetails(toolCall('workspace_execute_command', {}));
 
-		expect(within(container).queryByText('Command')).toBeNull();
+		expect(screen.queryByText('Command')).toBeNull();
 		expect(container.querySelector('pre')).toBeNull();
 	});
 });

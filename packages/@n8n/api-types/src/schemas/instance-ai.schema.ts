@@ -2198,7 +2198,7 @@ export interface InstanceAiThreadSummary extends InstanceAiThreadOverview {
 	owner?: InstanceAiThreadOwner;
 	/** Read-only. See `InstanceAiThreadInfo.runTarget`. */
 	runTarget?: InstanceAiThreadRunTarget;
-	/** Read-only, owner only. See `InstanceAiThreadInfo.lostRunTarget`. */
+	/** Read-only, owner only. Cleared on acknowledge. See `InstanceAiThreadInfo.lostRunTarget`. */
 	lostRunTarget?: { name: string };
 }
 
@@ -2240,7 +2240,8 @@ export interface InstanceAiThreadInfo extends InstanceAiThreadOverview {
 	runTarget?: InstanceAiThreadRunTarget;
 	/**
 	 * Read-only, owner only. Set once, when the linked instance of the chat is no longer linked.
-	 * The chat runs locally from then on. The owner's next message clears it.
+	 * The chat runs locally from then on. It stays until the owner dismisses the notice:
+	 * `POST /instance-ai/threads/:threadId/lost-run-target/acknowledge` clears it.
 	 */
 	lostRunTarget?: { name: string };
 }

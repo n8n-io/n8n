@@ -1,8 +1,9 @@
-import type {
-	InstanceAiThreadRunTarget,
-	LinkedInstanceStatus,
-	LinkedInstanceSummary,
-	RunTarget,
+import {
+	runTargetSchema,
+	type InstanceAiThreadRunTarget,
+	type LinkedInstanceStatus,
+	type LinkedInstanceSummary,
+	type RunTarget,
 } from '@n8n/api-types';
 
 /** Menu item id of "This computer". A link is named by its id, which is a uuid and never this value. */
@@ -117,4 +118,9 @@ export function runTargetChipName(
  */
 export function optionalRunTarget(runTarget: RunTarget | undefined): { runTarget?: RunTarget } {
 	return runTarget ? { runTarget } : {};
+}
+
+/** Whether a value is a valid run target on a linked instance, for example in a message context. */
+export function isLinkedRunTarget(value: unknown): boolean {
+	return runTargetSchema.safeParse(value).data?.kind === 'linked';
 }

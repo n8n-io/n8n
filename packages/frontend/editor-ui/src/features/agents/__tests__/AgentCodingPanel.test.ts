@@ -62,7 +62,7 @@ function byTestId(id: string): HTMLElement {
 
 function renderPanel(panelConfig: AgentCodingConfig | null = config) {
 	return render(AgentCodingPanel, {
-		props: { config: panelConfig, projectId: 'project', agentId: 'agent', canExecute: true },
+		props: { config: panelConfig, projectId: 'project', agentId: 'agent' },
 		global: { plugins: [createTestingPinia()] },
 	});
 }

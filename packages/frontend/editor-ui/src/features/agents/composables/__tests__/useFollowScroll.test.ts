@@ -2,11 +2,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { effectScope, nextTick, ref } from 'vue';
 
-import {
-	FOLLOW_SCROLL_THRESHOLD_PX,
-	isNearScrollEnd,
-	useFollowScroll,
-} from '../useFollowScroll';
+import { FOLLOW_SCROLL_THRESHOLD_PX, isNearScrollEnd, useFollowScroll } from '../useFollowScroll';
 
 /** A scrollable element with a fixed visible height; jsdom has no layout. */
 function scrollable(contentHeight: number, clientHeight = 100) {
@@ -58,7 +54,10 @@ describe('isNearScrollEnd', () => {
 				(top, height, client, threshold) => {
 					const below = height - top - client;
 					expect(
-						isNearScrollEnd({ scrollTop: top, scrollHeight: height, clientHeight: client }, threshold),
+						isNearScrollEnd(
+							{ scrollTop: top, scrollHeight: height, clientHeight: client },
+							threshold,
+						),
 					).toBe(below <= threshold);
 				},
 			),

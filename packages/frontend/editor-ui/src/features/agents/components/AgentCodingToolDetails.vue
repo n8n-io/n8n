@@ -100,7 +100,9 @@ useFollowScroll(outputElement, commandOutput);
 					size="xsmall"
 					data-testid="agent-coding-tool-exit-code"
 					>{{
-						i18n.baseText('agents.coding.tools.exitCode', { interpolate: { code: String(exitCode) } })
+						i18n.baseText('agents.coding.tools.exitCode', {
+							interpolate: { code: String(exitCode) },
+						})
 					}}</N8nBadge
 				>
 			</div>

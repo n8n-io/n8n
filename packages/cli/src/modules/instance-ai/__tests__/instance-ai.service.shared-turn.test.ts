@@ -19,6 +19,15 @@ type FollowUpInternals = {
 	startInternalFollowUpRun(user: User, threadId: string, message: string): Promise<string>;
 };
 
+type ResumeInternals = {
+	prepareAssistantTurn(turn: {
+		type: 'resume';
+		thread: { id: string };
+		resourceId: string;
+		checkpointHostMetadata: Record<string, unknown>;
+	}): Promise<unknown>;
+};
+
 type TurnInternals = {
 	prepareStartTurn(
 		turn: { user: User; message: string; thread: { id: string } },
@@ -181,5 +190,28 @@ describe('InstanceAiService — run target of a chat turn', () => {
 		];
 		expect(options.runTarget).toBeUndefined();
 		expect(options.timeZone).toBe('Europe/Helsinki');
+	});
+
+	it('does not replay the run target of a checkpoint into a resumed turn', async () => {
+		const service = Object.create(InstanceAiService.prototype) as Record<string, unknown>;
+		const prepareResumeTurn = vi.fn(async (_turn: unknown, _options: unknown) => ({}));
+		Object.assign(service, {
+			ensureMemoryThread: vi.fn(async () => {}),
+			recordLiveRun: vi.fn(async () => {}),
+			prepareResumeTurn,
+		});
+
+		await (service as unknown as ResumeInternals).prepareAssistantTurn({
+			type: 'resume',
+			thread: { id: THREAD_ID },
+			resourceId: 'owner-1',
+			checkpointHostMetadata: {
+				instanceAiTurn: { runId: 'run-1', runTarget: LINKED_TARGET, timeZone: 'Europe/Helsinki' },
+			},
+		});
+
+		const options = prepareResumeTurn.mock.calls[0]?.[1];
+		expect(options).not.toHaveProperty('runTarget');
+		expect(options).toEqual({ runId: 'run-1', timeZone: 'Europe/Helsinki' });
 	});
 });

@@ -22,14 +22,8 @@ afterEach(() => {
 
 const LONG_PATH = 'packages/frontend/editor-ui/src/features/agents/components/AgentCodingDiff.vue';
 
-function call(
-	id: string,
-	tool: string,
-	input: unknown,
-	output?: unknown,
-	state: ToolCall['state'] = TOOL_CALL_STATE.DONE,
-): ToolCall {
-	return { toolCallId: id, tool, input, output, state };
+function call(tool: string, input: unknown, overrides: Partial<ToolCall> = {}): ToolCall {
+	return { toolCallId: tool, tool, input, state: TOOL_CALL_STATE.DONE, ...overrides };
 }
 
 function renderSteps(toolCalls: ToolCall[], codingView = true) {
@@ -47,19 +41,17 @@ async function renderGroup(toolCalls: ToolCall[]) {
 }
 
 const finishedSteps = [
-	call('read', 'workspace_read_file', { path: 'AGENTS.md' }, { content: '# Rules' }),
+	call('workspace_read_file', { path: 'AGENTS.md' }, { output: { content: '# Rules' } }),
 	call(
-		'edit',
 		'workspace_str_replace_file',
 		{ path: 'src/lib/dates.ts', replacements: [{ old_str: 'a', new_str: 'b\nc' }] },
-		{ success: true },
+		{ output: { success: true } },
 	),
-	call('write', 'workspace_write_file', { path: 'src/new.ts', content: 'x\ny\n' }, {}),
+	call('workspace_write_file', { path: 'src/new.ts', content: 'x\ny\n' }, { output: {} }),
 	call(
-		'run',
 		'workspace_execute_command',
 		{ command: 'pnpm typecheck && pnpm test' },
-		{ exitCode: 0, stdout: 'ok', stderr: '' },
+		{ output: { exitCode: 0, stdout: 'ok', stderr: '' } },
 	),
 ];
 
@@ -74,7 +66,7 @@ describe('AgentChatToolSteps in the coding view', () => {
 	});
 
 	it('shortens a long path and keeps the full step name as a tooltip', () => {
-		const { container } = renderSteps([call('read', 'workspace_read_file', { path: LONG_PATH })]);
+		const { container } = renderSteps([call('workspace_read_file', { path: LONG_PATH })]);
 
 		const label = screen.getByText(/^Read packages\/.*…\/AgentCodingDiff\.vue$/);
 		expect(label).toBeVisible();
@@ -82,18 +74,16 @@ describe('AgentChatToolSteps in the coding view', () => {
 	});
 
 	it('has no tooltip for a step name that is not shortened', () => {
-		const { container } = renderSteps([call('read', 'workspace_read_file', { path: 'a.ts' })]);
+		const { container } = renderSteps([call('workspace_read_file', { path: 'a.ts' })]);
 
 		expect(container.querySelector('[title]')).toBeNull();
 	});
 
 	it('keeps an open step open when it finishes', async () => {
 		const running = call(
-			'run',
 			'workspace_execute_command',
 			{ command: 'pnpm test' },
-			undefined,
-			TOOL_CALL_STATE.RUNNING,
+			{ state: TOOL_CALL_STATE.RUNNING },
 		);
 		const { rerender } = await renderGroup([finishedSteps[0], running]);
 
@@ -101,7 +91,10 @@ describe('AgentChatToolSteps in the coding view', () => {
 		expect(screen.getByText('$ pnpm test')).toBeVisible();
 
 		await rerender({
-			toolCalls: [finishedSteps[0], { ...running, state: TOOL_CALL_STATE.DONE, output: { exitCode: 3 } }],
+			toolCalls: [
+				finishedSteps[0],
+				{ ...running, state: TOOL_CALL_STATE.DONE, output: { exitCode: 3 } },
+			],
 			projectId: 'project-1',
 		});
 

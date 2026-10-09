@@ -59,7 +59,9 @@ export class SandboxPortCapability {
 
 	async assertSupported(serviceUrl: string): Promise<void> {
 		if (!(await this.supportsPorts(serviceUrl))) {
-			throw new SandboxPreviewUnavailableError('This sandbox service cannot show app previews yet.');
+			throw new SandboxPreviewUnavailableError(
+				'This sandbox service cannot show app previews yet.',
+			);
 		}
 	}
 

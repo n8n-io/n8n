@@ -1,6 +1,7 @@
 import type { LinkedInstanceSummary, RunTarget } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { OperationalError } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { AgentExecutionThread } from '../../../agents/entities/agent-execution-thread.entity';
@@ -108,6 +109,59 @@ describe('RunTargetService', () => {
 			expect(target).toEqual(STORED_LINK);
 			expect(store.getForUser).toHaveBeenCalledWith(OWNER_ID, LINK_ID);
 			expect(defaultsOf(thread.metadata)).toEqual({ runTarget: STORED_LINK });
+		});
+
+		it('looks the chosen link up once, so a link deleted a moment later does not drop it', async () => {
+			store.getForUser.mockResolvedValueOnce(linkSummary()).mockResolvedValue(null);
+			const { memory, thread } = createMemory();
+			const service = createService(memory);
+
+			const target = await forTurn(service, chatThread(), undefined, {
+				kind: 'linked',
+				instanceId: LINK_ID,
+			});
+
+			expect(target).toEqual(STORED_LINK);
+			expect(store.getForUser).toHaveBeenCalledTimes(1);
+			expect(thread.metadata).not.toHaveProperty(ASSISTANT_RUN_TARGET_LOST_KEY);
+		});
+
+		it('keeps the other thread metadata and turn defaults when it stores the target', async () => {
+			// The message read the thread before another write added turn defaults.
+			const { memory, thread } = createMemory({
+				source: 'assistant_page',
+				[ASSISTANT_TURN_DEFAULTS_KEY]: { pushRef: 'push-1' },
+			});
+			const service = createService(memory);
+
+			await forTurn(
+				service,
+				chatThread(),
+				{ source: 'assistant_page' },
+				{
+					kind: 'linked',
+					instanceId: LINK_ID,
+				},
+			);
+
+			expect(thread.metadata).toEqual({
+				source: 'assistant_page',
+				[ASSISTANT_TURN_DEFAULTS_KEY]: { pushRef: 'push-1', runTarget: STORED_LINK },
+			});
+		});
+
+		it('runs a shared chat here, also when a racing first message stored a link', async () => {
+			const { memory } = createMemory({
+				[ASSISTANT_TURN_DEFAULTS_KEY]: { runTarget: STORED_LINK },
+			});
+			const service = createService(memory);
+
+			const target = await forTurn(service, chatThread({ accessScope: 'project' }), undefined, {
+				kind: 'linked',
+				instanceId: LINK_ID,
+			});
+
+			expect(target).toEqual({ kind: 'local' });
 		});
 
 		it('runs locally when the owner does not hold the requested link', async () => {
@@ -338,8 +392,8 @@ describe('RunTargetService', () => {
 	});
 
 	describe('a failed lookup or write', () => {
-		it('keeps the stored link for the message, without a drop', async () => {
-			store.getForUser.mockRejectedValue(new Error('connection reset'));
+		it('runs a later message here and keeps the stored link, so the next message checks again', async () => {
+			store.getForUser.mockRejectedValueOnce(new Error('connection reset'));
 			const { memory, thread, patchThread } = createMemory({
 				[ASSISTANT_TURN_DEFAULTS_KEY]: { runTarget: STORED_LINK },
 			});
@@ -347,32 +401,21 @@ describe('RunTargetService', () => {
 
 			const target = await forTurn(service, chatThread(), thread.metadata, undefined);
 
-			expect(target).toEqual(STORED_LINK);
+			expect(target).toEqual({ kind: 'local' });
 			expect(patchThread).not.toHaveBeenCalled();
 			expect(defaultsOf(thread.metadata)).toEqual({ runTarget: STORED_LINK });
 			expect(thread.metadata).not.toHaveProperty(ASSISTANT_RUN_TARGET_LOST_KEY);
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Failed to resolve the run target of a chat message',
+				'Failed to check the run target of a chat message',
 				expect.objectContaining({ threadId: THREAD_ID, error: 'connection reset' }),
 			);
+
+			const next = await forTurn(service, chatThread(), thread.metadata, undefined);
+
+			expect(next).toEqual(STORED_LINK);
 		});
 
-		it('runs locally and stores nothing when the lookup of the first message fails', async () => {
-			store.getForUser.mockRejectedValue(new Error('timeout'));
-			const { memory, thread, patchThread } = createMemory();
-			const service = createService(memory);
-
-			const target = await forTurn(service, chatThread(), undefined, {
-				kind: 'linked',
-				instanceId: LINK_ID,
-			});
-
-			expect(target).toEqual({ kind: 'local' });
-			expect(patchThread).not.toHaveBeenCalled();
-			expect(thread.metadata).toEqual({});
-		});
-
-		it('keeps the stored link when the drop cannot be written, so the chat is not made local', async () => {
+		it('runs here when the drop cannot be written, and keeps the stored link without a notice', async () => {
 			store.getForUser.mockResolvedValue(null);
 			const { memory, thread, patchThread } = createMemory({
 				[ASSISTANT_TURN_DEFAULTS_KEY]: { runTarget: STORED_LINK },
@@ -382,13 +425,43 @@ describe('RunTargetService', () => {
 
 			const target = await forTurn(service, chatThread(), thread.metadata, undefined);
 
-			expect(target).toEqual(STORED_LINK);
+			expect(target).toEqual({ kind: 'local' });
 			expect(defaultsOf(thread.metadata)).toEqual({ runTarget: STORED_LINK });
 			expect(thread.metadata).not.toHaveProperty(ASSISTANT_RUN_TARGET_LOST_KEY);
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Failed to resolve the run target of a chat message',
+				'Failed to check the run target of a chat message',
 				expect.objectContaining({ error: 'write failed' }),
 			);
+		});
+
+		it('fails the first message when its link lookup fails, and stores nothing', async () => {
+			store.getForUser.mockRejectedValue(new Error('timeout'));
+			const { memory, thread, patchThread } = createMemory();
+			const service = createService(memory);
+
+			const sending = forTurn(service, chatThread(), undefined, {
+				kind: 'linked',
+				instanceId: LINK_ID,
+			});
+
+			await expect(sending).rejects.toThrow(OperationalError);
+			await expect(sending).rejects.toThrow('Send the message again');
+			expect(patchThread).not.toHaveBeenCalled();
+			expect(thread.metadata).toEqual({});
+		});
+
+		it('fails the first message when its target cannot be stored', async () => {
+			const { memory, thread, patchThread } = createMemory();
+			patchThread.mockRejectedValueOnce(new Error('write failed'));
+			const service = createService(memory);
+
+			const sending = forTurn(service, chatThread(), undefined, {
+				kind: 'linked',
+				instanceId: LINK_ID,
+			});
+
+			await expect(sending).rejects.toThrow(OperationalError);
+			expect(thread.metadata).toEqual({});
 		});
 	});
 });

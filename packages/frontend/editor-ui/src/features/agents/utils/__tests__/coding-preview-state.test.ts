@@ -1,8 +1,11 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
+import { useI18n } from '@n8n/i18n';
+
 import {
 	CODING_PREVIEW_COPY,
+	codingPreviewCopy,
 	codingPreviewState,
 	type CodingPreviewRequest,
 } from '../coding-preview-state';
@@ -71,5 +74,30 @@ describe('CODING_PREVIEW_COPY', () => {
 		});
 		expect(CODING_PREVIEW_COPY.starting.hint).not.toBe('agents.coding.app.hint');
 		expect(CODING_PREVIEW_COPY.loading.hint).toBeUndefined();
+	});
+});
+
+describe('codingPreviewCopy', () => {
+	const i18n = useI18n();
+
+	it('offers to run a stopped app and names the session that holds the preview', () => {
+		expect(codingPreviewCopy(i18n, 'stopped', 'Add dark mode')).toEqual({
+			title: 'App stopped',
+			hint: 'The preview is running for “Add dark mode”. Run this session to replace it.',
+			offersRun: true,
+		});
+	});
+
+	it('keeps the own hint of an active state, even when another session holds the preview', () => {
+		expect(codingPreviewCopy(i18n, 'unavailable', 'Add dark mode')).toEqual({
+			title: 'Preview is not available for this sandbox yet.',
+			hint: 'The app still runs. You can follow its output in the app logs.',
+			offersRun: false,
+		});
+		expect(codingPreviewCopy(i18n, 'loading')).toEqual({
+			title: 'Opening the preview…',
+			hint: undefined,
+			offersRun: false,
+		});
 	});
 });

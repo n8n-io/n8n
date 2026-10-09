@@ -471,18 +471,33 @@ describe('withOpenSuspensions', () => {
 			expect(result.messages[1].content).toEqual([waitingRun]);
 		});
 
-		it('matches by id alone when the checkpoint entry names no tool', () => {
+		it('matches by id alone when the checkpoint entry names no tool, and still adds the waiting call', () => {
 			const result = withOpenSuspensions(history().slice(0, 3), proposalCheckpoint(null), {
 				appendInactiveCheckpointMessages: false,
 			});
 
-			// Without a tool name, the settled build call counts as the open call, as before.
+			// The settled build call has the open id, but the checkpoint holds it before the
+			// waiting call, so it is an earlier call.
 			expect(result.messages.map((m) => m.id)).toEqual([
 				'build:user',
 				'build:assistant',
 				'propose:user',
+				'sdk-propose',
 			]);
 			expect(result.messages[1].content).toEqual([buildPart]);
+			expect(result.messages[3].content).toEqual([waitingProposalPart]);
+		});
+
+		it('matches by id alone when the checkpoint entry names no tool, and keeps an answered call', () => {
+			const answered = history();
+			answered[3].content = [{ ...answered[3].content[0], state: 'resolved', output: 'kept' }];
+
+			const result = withOpenSuspensions(answered, proposalCheckpoint(null), {
+				appendInactiveCheckpointMessages: false,
+			});
+
+			expect(result.messages.map((m) => m.id)).toEqual(history().map((m) => m.id));
+			expect(result.messages[3].content[0]).toMatchObject({ state: 'resolved', output: 'kept' });
 		});
 	});
 });

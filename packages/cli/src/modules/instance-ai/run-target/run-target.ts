@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import {
 	ASSISTANT_RUN_TARGET_LOST_KEY,
+	ASSISTANT_TURN_DEFAULTS_KEY,
 	type AssistantTurnDefaults,
 } from '../assistant-turn-options';
 
@@ -34,14 +35,16 @@ export function keepFirstRunTarget(
 }
 
 /**
- * The turn defaults to save. Every turn replaces them, so a stored run target must survive
- * the replacement. The first turn decides the target.
+ * The thread metadata with new turn defaults. Every turn replaces them, so a stored run target
+ * must survive the replacement. The first turn decides the target.
  */
-export function turnDefaultsKeepingRunTarget(
-	currentDefaults: unknown,
+export function withTurnDefaults(
+	metadata: Record<string, unknown> | undefined,
 	defaults: AssistantTurnDefaults,
-): AssistantTurnDefaults {
-	return { ...defaults, runTarget: keepFirstRunTarget(currentDefaults, defaults.runTarget) };
+): Record<string, unknown> {
+	const current = metadata?.[ASSISTANT_TURN_DEFAULTS_KEY];
+	const runTarget = keepFirstRunTarget(current, defaults.runTarget);
+	return { ...metadata, [ASSISTANT_TURN_DEFAULTS_KEY]: { ...defaults, runTarget } };
 }
 
 /** The name of the linked instance that a chat lost, or `undefined` when the chat has none. */

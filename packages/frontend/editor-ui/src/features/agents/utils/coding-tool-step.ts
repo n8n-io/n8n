@@ -125,12 +125,17 @@ export function shortenStepCommand(command: string): { short: string; full: stri
 	};
 }
 
+interface PathLabelText {
+	key: BaseTextKey;
+	values?: Record<string, string | number>;
+	/** Picks the singular or plural form of the text. */
+	adjustToNumber?: number;
+}
+
 function pathLabel(
 	i18n: CodingToolStepI18n,
-	key: BaseTextKey,
 	path: string,
-	values: Record<string, string | number> = {},
-	adjustToNumber?: number,
+	{ key, values = {}, adjustToNumber }: PathLabelText,
 ): CodingToolStepLabel {
 	const short = shortenStepPath(path);
 	const text = (shown: string) =>
@@ -142,23 +147,30 @@ function writeLabel(i18n: CodingToolStepI18n, input: unknown, running: boolean) 
 	const parsed = writeInputSchema.safeParse(input);
 	if (!parsed.success) return undefined;
 	const { path, content } = parsed.data;
-	if (running) return pathLabel(i18n, 'agents.coding.tools.step.writing', path);
+	if (running) return pathLabel(i18n, path, { key: 'agents.coding.tools.step.writing' });
 	const count = countTextLines(content);
-	return pathLabel(i18n, 'agents.coding.tools.step.write', path, { count }, count);
+	return pathLabel(i18n, path, {
+		key: 'agents.coding.tools.step.write',
+		values: { count },
+		adjustToNumber: count,
+	});
 }
 
 function editLabel(i18n: CodingToolStepI18n, input: unknown, running: boolean) {
 	const edit = parseCodingEdit(input);
 	if (!edit) return undefined;
-	if (running) return pathLabel(i18n, 'agents.coding.tools.step.editing', edit.path);
-	return pathLabel(i18n, 'agents.coding.tools.step.edit', edit.path, { ...edit.stats });
+	if (running) return pathLabel(i18n, edit.path, { key: 'agents.coding.tools.step.editing' });
+	return pathLabel(i18n, edit.path, {
+		key: 'agents.coding.tools.step.edit',
+		values: { ...edit.stats },
+	});
 }
 
 function readLabel(i18n: CodingToolStepI18n, input: unknown, running: boolean) {
 	const parsed = pathInputSchema.safeParse(input);
 	if (!parsed.success) return undefined;
 	const key = running ? 'agents.coding.tools.step.reading' : 'agents.coding.tools.step.read';
-	return pathLabel(i18n, key, parsed.data.path);
+	return pathLabel(i18n, parsed.data.path, { key });
 }
 
 function commandLabel(i18n: CodingToolStepI18n, input: unknown, running: boolean) {

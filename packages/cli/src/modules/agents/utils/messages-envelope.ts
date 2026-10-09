@@ -1,4 +1,4 @@
-import { redactDeep, type SerializableAgentState } from '@n8n/agents';
+import { redactDeep, redactText, type SerializableAgentState } from '@n8n/agents';
 import type {
 	AgentBuilderOpenSuspension,
 	AgentChatMessagesResponse,
@@ -25,6 +25,36 @@ interface WithOpenSuspensionsOptions {
  */
 type OpenToolCalls = ReadonlyMap<string, string | undefined>;
 
+/** The checkpoint part of an open call that still waits. */
+interface WaitingCall {
+	/** The id of the checkpoint message that holds the part. */
+	messageId: string;
+	part: ToolCallContentPart;
+	/** How many parts with the identity of the call the checkpoint holds before this part. */
+	earlierCopies: number;
+}
+
+/** A persisted part with the identity of an open call. */
+interface PersistedCopy {
+	messageIndex: number;
+	partIndex: number;
+	terminal: boolean;
+	/**
+	 * `waiting`: the message has the id of the checkpoint message of the waiting part.
+	 * `earlier`: the checkpoint holds the message as an earlier message, so the part is an
+	 * earlier call. `unknown`: the checkpoint does not hold the message (another id scheme).
+	 */
+	place: 'waiting' | 'earlier' | 'unknown';
+}
+
+/** The waiting checkpoint part of an open call and the persisted part that is the same call. */
+interface OpenCallMatch {
+	waiting?: WaitingCall;
+	target?: PersistedCopy;
+}
+
+const REDACT_SENSITIVE = { redactSensitiveKeys: true };
+
 function openToolCallsOf(checkpoint: SerializableAgentState): OpenToolCalls {
 	const open = new Map<string, string | undefined>();
 	for (const call of Object.values(checkpoint.pendingToolCalls ?? {})) {
@@ -46,6 +76,25 @@ function openSuspensionsOf(checkpoint: SerializableAgentState): AgentBuilderOpen
 		}));
 }
 
+/**
+ * The checkpoint holds the raw tool input and output. The recorded history replaces sensitive
+ * values, and the teammates of a shared chat read this response too, so a checkpoint part that
+ * reaches the response gets the same treatment.
+ */
+function redactToolCallPart(part: MessageContentPart): MessageContentPart {
+	if (part.type !== 'tool-call') return part;
+	return {
+		...part,
+		...(part.input !== undefined && { input: redactDeep(part.input, REDACT_SENSITIVE).value }),
+		...(part.output !== undefined && { output: redactDeep(part.output, REDACT_SENSITIVE).value }),
+		...(part.error !== undefined && { error: redactText(part.error).text }),
+	};
+}
+
+function redactCheckpointMessage(message: AgentPersistedMessageDto): AgentPersistedMessageDto {
+	return { ...message, content: message.content.map(redactToolCallPart) };
+}
+
 /** Whether the part is an open call or an earlier copy of it: the same id and the same tool. */
 function isOpenToolCallPart(
 	part: MessageContentPart,
@@ -57,67 +106,131 @@ function isOpenToolCallPart(
 }
 
 /**
- * Whether a checkpoint part is an open call that still waits. The checkpoint also holds the
- * thread history, where a settled call with the same id and tool is an earlier call.
+ * The checkpoint part of each open call that still waits. The checkpoint also holds the thread
+ * history, where a settled part with the same identity is an earlier call.
  */
-function isWaitingToolCallPart(
-	part: MessageContentPart,
+function waitingCallsIn(
+	messages: AgentPersistedMessageDto[],
 	open: OpenToolCalls,
-): part is ToolCallContentPart {
-	return isOpenToolCallPart(part, open) && !isTerminalToolCallPart(part);
-}
-
-function openToolCallIdsIn(message: AgentPersistedMessageDto, open: OpenToolCalls): string[] {
-	return message.content
-		.filter((part) => isOpenToolCallPart(part, open))
-		.map((part) => part.toolCallId);
-}
-
-function waitingToolCallIdsIn(message: AgentPersistedMessageDto, open: OpenToolCalls): string[] {
-	return message.content
-		.filter((part) => isWaitingToolCallPart(part, open))
-		.map((part) => part.toolCallId);
-}
-
-function mergeOpenSuspendedToolCalls(
-	existing: AgentPersistedMessageDto,
-	checkpoint: AgentPersistedMessageDto,
-	open: OpenToolCalls,
-): AgentPersistedMessageDto {
-	const checkpointParts = new Map<string, ToolCallContentPart>();
-	for (const part of checkpoint.content) {
-		if (isWaitingToolCallPart(part, open)) checkpointParts.set(part.toolCallId, part);
+): Map<string, WaitingCall> {
+	const copies = new Map<string, number>();
+	const waiting = new Map<string, WaitingCall>();
+	for (const message of messages) {
+		for (const part of message.content) {
+			if (!isOpenToolCallPart(part, open)) continue;
+			const earlierCopies = copies.get(part.toolCallId) ?? 0;
+			if (!isTerminalToolCallPart(part)) {
+				waiting.set(part.toolCallId, { messageId: message.id, part, earlierCopies });
+			}
+			copies.set(part.toolCallId, earlierCopies + 1);
+		}
 	}
+	return waiting;
+}
 
-	let matchedAny = false;
-	const content = existing.content.map((part) => {
-		if (!isOpenToolCallPart(part, open)) return part;
-		const checkpointPart = checkpointParts.get(part.toolCallId);
-		if (!checkpointPart) return part;
+function persistedCopiesOf(
+	messages: AgentPersistedMessageDto[],
+	toolCallId: string,
+	open: OpenToolCalls,
+	placeOf: (messageId: string) => PersistedCopy['place'],
+): PersistedCopy[] {
+	return messages.flatMap((message, messageIndex) =>
+		message.content.flatMap((part, partIndex) =>
+			isOpenToolCallPart(part, open) && part.toolCallId === toolCallId
+				? [
+						{
+							messageIndex,
+							partIndex,
+							terminal: isTerminalToolCallPart(part),
+							place: placeOf(message.id),
+						},
+					]
+				: [],
+		),
+	);
+}
 
-		matchedAny = true;
-		if (isTerminalToolCallPart(part)) return part;
-		return { ...part, ...checkpointPart };
-	});
+/**
+ * The persisted part that is the open call. A message with the id of the waiting checkpoint
+ * message holds it. Otherwise the call is the latest part with its identity, when that part
+ * still waits. A settled latest part is the call only when the history holds more parts with
+ * the identity than the checkpoint holds before the waiting part: the user answered, and the
+ * checkpoint is not removed yet. Otherwise the history does not hold the call yet.
+ */
+function persistedCallOf(
+	copies: PersistedCopy[],
+	waiting: WaitingCall | undefined,
+): PersistedCopy | undefined {
+	const inWaitingMessage = copies.findLast((copy) => copy.place === 'waiting');
+	if (inWaitingMessage) return inWaitingMessage;
+	const latest = copies.at(-1);
+	if (latest?.place !== 'unknown') return undefined;
+	if (!latest.terminal) return latest;
+	return waiting !== undefined && copies.length > waiting.earlierCopies ? latest : undefined;
+}
 
-	if (!matchedAny) return checkpoint;
+function matchOpenCalls(
+	messages: AgentPersistedMessageDto[],
+	checkpointMessages: AgentPersistedMessageDto[],
+	open: OpenToolCalls,
+): Map<string, OpenCallMatch> {
+	const waitingCalls = waitingCallsIn(checkpointMessages, open);
+	const checkpointIds = new Set(checkpointMessages.map(({ id }) => id));
+	const matches = new Map<string, OpenCallMatch>();
+	for (const toolCallId of open.keys()) {
+		const waiting = waitingCalls.get(toolCallId);
+		const placeOf = (messageId: string): PersistedCopy['place'] => {
+			if (messageId === waiting?.messageId) return 'waiting';
+			return checkpointIds.has(messageId) ? 'earlier' : 'unknown';
+		};
+		const copies = persistedCopiesOf(messages, toolCallId, open, placeOf);
+		matches.set(toolCallId, { waiting, target: persistedCallOf(copies, waiting) });
+	}
+	return matches;
+}
 
+/** The checkpoint fills in the waiting call. The recorded input wins: it has sensitive values replaced. */
+function mergeWaitingPart(part: MessageContentPart, waiting: WaitingCall): MessageContentPart {
+	if (isTerminalToolCallPart(part)) return part;
 	return {
-		...existing,
-		content,
+		...part,
+		...redactToolCallPart(waiting.part),
+		...(part.input !== undefined && { input: part.input }),
 	};
 }
 
-/** Where each open call is in the persisted history. The latest message with the call wins. */
-function indexByOpenToolCallId(
+/**
+ * Fills each persisted open call from the checkpoint. Every other part with the id of an open
+ * call that has no result is an earlier call that never got one (for example a card that the
+ * user stopped, with an id that a later call uses again). It is marked as cancelled, so the
+ * chat does not show it as the open call.
+ */
+function settlePersistedCalls(
 	messages: AgentPersistedMessageDto[],
-	open: OpenToolCalls,
-): Map<string, number> {
-	const indexes = new Map<string, number>();
-	for (const [index, message] of messages.entries()) {
-		for (const toolCallId of openToolCallIdsIn(message, open)) indexes.set(toolCallId, index);
-	}
-	return indexes;
+	matches: Map<string, OpenCallMatch>,
+): AgentPersistedMessageDto[] {
+	return messages.map((message, messageIndex) => {
+		let changed = false;
+		const content = message.content.map((part, partIndex) => {
+			if (!isToolCallWithId(part) || isTerminalToolCallPart(part)) return part;
+			const match = matches.get(part.toolCallId);
+			if (!match) return part;
+			changed = true;
+			const { target, waiting } = match;
+			if (target?.messageIndex !== messageIndex || target.partIndex !== partIndex) {
+				return { ...part, canceled: true };
+			}
+			return waiting ? mergeWaitingPart(part, waiting) : part;
+		});
+		return changed ? { ...message, content } : message;
+	});
+}
+
+function waitingMatchesIn(
+	message: AgentPersistedMessageDto,
+	matches: Map<string, OpenCallMatch>,
+): OpenCallMatch[] {
+	return [...matches.values()].filter(({ waiting }) => waiting?.messageId === message.id);
 }
 
 function mergeCheckpointMessages(
@@ -126,36 +239,30 @@ function mergeCheckpointMessages(
 	open: OpenToolCalls,
 	options: WithOpenSuspensionsOptions,
 ): AgentPersistedMessageDto[] {
-	const merged = [...messages];
-	const byId = new Map(messages.map((m, index) => [m.id, index]));
-	const existingIndexByOpenToolCallId = indexByOpenToolCallId(messages, open);
-	const checkpointTurnAlreadyPersisted = checkpointMessages.some((message) =>
-		waitingToolCallIdsIn(message, open).some((id) => existingIndexByOpenToolCallId.has(id)),
+	const matches = matchOpenCalls(messages, checkpointMessages, open);
+	const merged = settlePersistedCalls(messages, matches);
+	const indexById = new Map(messages.map(({ id }, index) => [id, index]));
+	const checkpointTurnAlreadyPersisted = [...matches.values()].some(
+		({ waiting, target }) => waiting !== undefined && target !== undefined,
 	);
 	const skipInactive =
 		checkpointTurnAlreadyPersisted || options.appendInactiveCheckpointMessages === false;
 
 	for (const checkpointMessage of checkpointMessages) {
-		const waitingIds = waitingToolCallIdsIn(checkpointMessage, open);
-		const matchingId = waitingIds.find((id) => existingIndexByOpenToolCallId.has(id));
-		const targetIndex =
-			byId.get(checkpointMessage.id) ??
-			(matchingId === undefined ? undefined : existingIndexByOpenToolCallId.get(matchingId));
-
-		if (targetIndex !== undefined) {
-			if (waitingIds.length > 0) {
-				merged[targetIndex] = mergeOpenSuspendedToolCalls(
-					merged[targetIndex],
-					checkpointMessage,
-					open,
-				);
-			}
+		const waitingMatches = waitingMatchesIn(checkpointMessage, matches);
+		const existingIndex = indexById.get(checkpointMessage.id);
+		if (waitingMatches.length === 0) {
+			if (existingIndex !== undefined || skipInactive) continue;
+		} else if (waitingMatches.some(({ target }) => target !== undefined)) {
+			continue;
+		} else if (existingIndex !== undefined) {
+			// The persisted copy of the message does not hold the waiting call yet.
+			merged[existingIndex] = redactCheckpointMessage(checkpointMessage);
 			continue;
 		}
-		if (skipInactive && waitingIds.length === 0) continue;
 
-		byId.set(checkpointMessage.id, merged.length);
-		merged.push(checkpointMessage);
+		indexById.set(checkpointMessage.id, merged.length);
+		merged.push(redactCheckpointMessage(checkpointMessage));
 	}
 
 	return merged;

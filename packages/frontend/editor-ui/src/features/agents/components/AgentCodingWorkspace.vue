@@ -36,11 +36,8 @@ import {
 	formatCodingReview,
 	type CodingReviewComment,
 } from '../utils/coding-review';
-import {
-	CODING_PREVIEW_COPY,
-	codingPreviewState,
-	type CodingPreviewRequest,
-} from '../utils/coding-preview-state';
+import { codingPreviewCopy } from '../utils/coding-preview-state';
+import { useCodingPreview } from '../composables/useCodingPreview';
 import { useFollowScroll } from '../composables/useFollowScroll';
 
 interface FileTab {
@@ -165,9 +162,6 @@ const directory = ref(saved.value.directory);
 const search = ref('');
 const files = ref<AgentCodingFile[]>([]);
 const commitMessage = ref('');
-const previewUrl = ref('');
-const previewFetch = ref<CodingPreviewRequest>('idle');
-let previewRequest = 0;
 const narrow = useMediaQuery('(max-width: 48rem)');
 const mobileFiles = ref(false);
 const fileListVisible = useStorage('n8n-coding-file-list-visible', true);
@@ -205,21 +199,23 @@ const preparing = computed(
 const appActive = computed(
 	() => status.value?.app === 'starting' || status.value?.app === 'running',
 );
-const previewState = computed(() =>
-	codingPreviewState({ app: status.value?.app, url: previewUrl.value, request: previewFetch.value }),
-);
-const previewCopy = computed(() => {
-	if (previewState.value === 'ready') return undefined;
-	const copy = CODING_PREVIEW_COPY[previewState.value];
-	const offersRun = previewState.value === 'stopped' || previewState.value === 'error';
-	const hint =
-		offersRun && props.otherPreview
-			? i18n.baseText('agents.coding.app.otherPreview', {
-					interpolate: { name: props.otherPreview },
-				})
-			: copy.hint && i18n.baseText(copy.hint);
-	return { title: i18n.baseText(copy.title), hint, offersRun };
+const {
+	url: previewUrl,
+	state: previewState,
+	load: loadPreview,
+	clear: clearPreview,
+	markUnavailable: markPreviewUnavailable,
+} = useCodingPreview({
+	fetchPreview: async () => await api.value.preview(),
+	canLoad: () => previewOpen.value && appActive.value && props.canExecute,
+	app: () => status.value?.app,
+	onError: (cause) => showError(cause, i18n.baseText('agents.coding.previewFailed')),
 });
+const previewCopy = computed(() =>
+	previewState.value === 'ready'
+		? undefined
+		: codingPreviewCopy(i18n, previewState.value, props.otherPreview),
+);
 const runLabel = computed(() => {
 	if (appActive.value) return i18n.baseText('agents.coding.app.restart');
 	if (props.otherPreview) return i18n.baseText('agents.coding.app.replace');
@@ -449,7 +445,7 @@ async function openApp() {
 		if (!preview.available) {
 			// The preview panel explains this expected state. It is not an error.
 			popup?.close();
-			previewFetch.value = 'unavailable';
+			markPreviewUnavailable();
 			openPreview();
 			return;
 		}
@@ -461,35 +457,6 @@ async function openApp() {
 		popup?.close();
 		showError(cause, i18n.baseText('agents.coding.previewFailed'));
 	}
-}
-
-function clearPreview() {
-	previewRequest++;
-	previewFetch.value = 'idle';
-	previewUrl.value = '';
-}
-
-async function loadPreview() {
-	const settled = previewFetch.value === 'loading' || previewFetch.value === 'unavailable';
-	if (!previewOpen.value || !appActive.value || previewUrl.value || settled || !props.canExecute)
-		return;
-	const request = ++previewRequest;
-	previewFetch.value = 'loading';
-	try {
-		const preview = await api.value.preview();
-		if (!active || request !== previewRequest) return;
-		previewUrl.value = preview.available ? preview.url : '';
-		previewFetch.value = preview.available ? 'idle' : 'unavailable';
-	} catch (cause) {
-		if (!active || request !== previewRequest) return;
-		previewFetch.value = 'failed';
-		showError(cause, i18n.baseText('agents.coding.previewFailed'));
-	}
-}
-
-function showAppLogs() {
-	logStream.value = 'app';
-	logsOpen.value = true;
 }
 
 function markViewed(file: FileTab, value: boolean) {
@@ -817,7 +784,10 @@ onBeforeUnmount(() => {
 						<N8nButton
 							v-else-if="previewState === 'unavailable'"
 							variant="outline"
-							@click="showAppLogs"
+							@click="
+								logStream = 'app';
+								logsOpen = true;
+							"
 							>{{ i18n.baseText('agents.coding.app.showLogs') }}</N8nButton
 						>
 						<N8nButton

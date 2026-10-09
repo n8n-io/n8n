@@ -152,7 +152,7 @@ describe('tool calls that share an id across turns', () => {
 		expect(parts.map((part) => part.output)).toEqual(['one', 'two']);
 	});
 
-	it('settles the first of two waiting copies of one call and keeps the second open', () => {
+	it('cancels an open call when a later call has its id and tool, and settles the later call', () => {
 		const parts = toolParts([
 			execution('first', [toolCall('ask', REUSED_ID)]),
 			execution('second', [toolCall('ask', REUSED_ID)], null),
@@ -160,8 +160,61 @@ describe('tool calls that share an id across turns', () => {
 		]);
 
 		expect(parts).toHaveLength(2);
-		expect(parts[0]).toMatchObject({ state: 'resolved', output: 'answer' });
-		expect(parts[1]).not.toHaveProperty('state');
+		expect(parts[0]).toEqual({
+			type: 'tool-call',
+			toolName: 'ask',
+			toolCallId: REUSED_ID,
+			input: { name: 'ask' },
+			startTime: 100,
+			canceled: true,
+		});
+		expect(parts[1]).toMatchObject({ state: 'resolved', output: 'answer', endTime: 400 });
+		expect(parts[1].canceled).toBeUndefined();
+	});
+
+	it('cancels an open call when a later call with its id and tool is still open', () => {
+		const parts = toolParts([
+			execution('first', [toolCall('ask', REUSED_ID)]),
+			execution('second', [toolCall('ask', REUSED_ID), suspension('ask', REUSED_ID)]),
+		]);
+
+		expect(parts).toHaveLength(2);
+		expect(parts[0]).toMatchObject({ canceled: true });
+		expect(parts[1]).not.toHaveProperty('canceled');
+		expect(parts[1]).toMatchObject({ suspendPayload: proposal });
+	});
+
+	it('gives the answer and the result to the card that the user answered, not to a stopped card with its id', () => {
+		const card = (workflowId: string): TimelineEvent => ({
+			...toolCall('propose_automation', REUSED_ID),
+			input: { workflowId },
+		});
+		const parts = toolParts([
+			// The user stopped this card, so its call never got a result.
+			execution('stopped', [card('wf-A'), suspension('propose_automation', REUSED_ID)]),
+			execution('proposed', [card('wf-B'), suspension('propose_automation', REUSED_ID)]),
+			execution(
+				'resumed',
+				[
+					answer(REUSED_ID, true),
+					resumedResult('propose_automation', REUSED_ID, 400, { activated: 'wf-B' }),
+				],
+				null,
+			),
+		]);
+
+		expect(parts).toHaveLength(2);
+		expect(parts[0]).toMatchObject({ input: { workflowId: 'wf-A' }, canceled: true });
+		expect(parts[0]).not.toHaveProperty('state');
+		expect(parts[0]).not.toHaveProperty('output');
+		expect(parts[0]).not.toHaveProperty('approvedBy');
+		expect(parts[1]).toMatchObject({
+			input: { workflowId: 'wf-B' },
+			state: 'resolved',
+			output: { activated: 'wf-B' },
+			approvedBy: grace,
+		});
+		expect(parts[1].canceled).toBeUndefined();
 	});
 
 	it('gives the answer to the call that waited, not to a later call with the same id', () => {

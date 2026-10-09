@@ -58,7 +58,10 @@ describe('codingToolStepLabel', () => {
 		const input = {
 			path: 'src/lib/dates.ts',
 			replacements: [
-				{ old_str: 'const a = 1;\nconst b = 2;', new_str: 'const a = 1;\nconst b = 3;\nconst c = 4;' },
+				{
+					old_str: 'const a = 1;\nconst b = 2;',
+					new_str: 'const a = 1;\nconst b = 3;\nconst c = 4;',
+				},
 				{ old_str: 'old()', new_str: 'renamed()' },
 			],
 		};
@@ -107,9 +110,12 @@ describe('codingToolStepLabel', () => {
 		['workspace_str_replace_file', { path: 'a.ts', replacements: 'x' }, 'Edit file'],
 		['workspace_execute_command', { command: '   ' }, 'Run command'],
 		['workspace_execute_command', undefined, 'Run command'],
-	] as const)('falls back to the tool name when the %s input is not complete', (tool, input, label) => {
-		expect(codingToolStepLabel(i18n, tool, input)).toEqual({ label });
-	});
+	] as const)(
+		'falls back to the tool name when the %s input is not complete',
+		(tool, input, label) => {
+			expect(codingToolStepLabel(i18n, tool, input)).toEqual({ label });
+		},
+	);
 
 	it('shortens a long path in the label and keeps the full label for the tooltip', () => {
 		const path = 'packages/frontend/editor-ui/src/features/agents/components/AgentCodingDiff.vue';
@@ -137,7 +143,10 @@ describe('shortenStepPath', () => {
 	});
 
 	it('cuts one character over the limit', () => {
-		const path = `${'a'.repeat(MAX_STEP_PATH_LENGTH - 5)}/b.ts`.padStart(MAX_STEP_PATH_LENGTH + 1, 'x');
+		const path = `${'a'.repeat(MAX_STEP_PATH_LENGTH - 5)}/b.ts`.padStart(
+			MAX_STEP_PATH_LENGTH + 1,
+			'x',
+		);
 
 		const short = shortenStepPath(path);
 

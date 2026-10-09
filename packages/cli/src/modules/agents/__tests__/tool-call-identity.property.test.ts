@@ -118,6 +118,29 @@ describe('history of tool calls that share ids (property)', () => {
 		);
 	});
 
+	it('keeps one open part for each tool and id pair at most: the latest call that got no result', () => {
+		fc.assert(
+			fc.property(turnsArb, (turns) => {
+				// A result settles the open call with its tool and id. A later call replaces it.
+				const expected = new Map<string, unknown>();
+				turns.forEach((calls, turn) =>
+					calls.forEach((call, position) => {
+						const key = keyOf(call.id, call.name);
+						if (call.settled) expected.delete(key);
+						else expected.set(key, { turn, position });
+					}),
+				);
+
+				const open = outputToolParts(toExecutions(turns))
+					.filter(({ part }) => !isSettled(part) && part.canceled !== true)
+					.map(({ part }) => [keyOf(part.toolCallId ?? '', part.toolName), part.input] as const);
+
+				expect(open).toHaveLength(expected.size);
+				expect(new Map(open)).toEqual(expected);
+			}),
+		);
+	});
+
 	it('merges a resumed result into the call that waited, after settled calls with the same id', () => {
 		const settledTurnsArb = fc.array(
 			fc.array(
@@ -165,6 +188,7 @@ describe('history of tool calls that share ids (property)', () => {
 
 describe('open suspensions in a history with repeated ids (property)', () => {
 	const historyArb = fc.array(fc.array(callArb, { maxLength: 3 }), { maxLength: 5 });
+	const openKeyArb = fc.record({ openId: idArb, openName: nameArb });
 
 	const toPart = (call: Call, label: string): AgentPersistedMessageContentPart => ({
 		type: 'tool-call',
@@ -173,71 +197,133 @@ describe('open suspensions in a history with repeated ids (property)', () => {
 		...(call.settled ? { state: 'resolved', output: label } : { state: 'pending' }),
 	});
 
-	it('re-arms only the open call and never changes a part of another tool', () => {
+	const toHistory = (turns: Call[][]): AgentPersistedMessageDto[] =>
+		turns.map((calls, turn) => ({
+			id: `turn-${turn}:assistant`,
+			role: 'assistant',
+			content: calls.map((call, position) => toPart(call, `out-${turn}-${position}`)),
+		}));
+
+	const waitingPartOf = (openId: string, openName: string): AgentPersistedMessageContentPart => ({
+		type: 'tool-call',
+		toolName: openName,
+		toolCallId: openId,
+		input: { open: true },
+		state: 'pending',
+	});
+
+	/**
+	 * The checkpoint of the open turn: the thread history and the waiting call. The run settles a
+	 * call of the history that waits as rejected when it loads the history. Execution history has
+	 * other message ids than the checkpoint; memory has the same ids.
+	 */
+	function checkpointOf(
+		history: AgentPersistedMessageDto[],
+		open: { openId: string; openName: string },
+		sameIds: boolean,
+	) {
+		return {
+			status: 'suspended',
+			pendingToolCalls: {
+				[open.openId]: {
+					toolCallId: open.openId,
+					toolName: open.openName,
+					runId: 'run-open',
+					suspended: true,
+					suspendPayload: { message: 'Waiting' },
+				},
+			},
+			messageList: {
+				messages: [
+					...history.map((message) => ({
+						...message,
+						id: sameIds ? message.id : `sdk-${message.id}`,
+						content: message.content.map((part) =>
+							part.state === 'pending' ? { ...part, state: 'rejected', error: 'INTERRUPTED' } : part,
+						),
+					})),
+					{ id: 'sdk-open', role: 'assistant', content: [waitingPartOf(open.openId, open.openName)] },
+				],
+			},
+		} as unknown as SerializableAgentState;
+	}
+
+	/** The parts with the open id that have no result, no error and no cancellation. */
+	const openPartsOf = (messages: AgentPersistedMessageDto[], openId: string) =>
+		messages
+			.flatMap(({ content }) => content)
+			.filter(
+				(part) =>
+					part.type === 'tool-call' &&
+					part.toolCallId === openId &&
+					part.state === 'pending' &&
+					part.output === undefined &&
+					part.canceled !== true,
+			);
+
+	it('shows exactly one open part, the waiting call, and cancels only earlier open parts with its id', () => {
 		fc.assert(
 			fc.property(
 				historyArb,
-				idArb,
-				nameArb,
+				openKeyArb,
 				fc.boolean(),
-				(turns, openId, openName, appendInactive) => {
-					const history: AgentPersistedMessageDto[] = turns.map((calls, turn) => ({
-						id: `turn-${turn}:assistant`,
-						role: 'assistant',
-						content: calls.map((call, position) => toPart(call, `out-${turn}-${position}`)),
-					}));
-					const waitingPart = {
-						type: 'tool-call',
-						toolName: openName,
-						toolCallId: openId,
-						input: { open: true },
-						state: 'pending',
-					};
-					const checkpoint = {
-						status: 'suspended',
-						pendingToolCalls: {
-							[openId]: {
-								toolCallId: openId,
-								toolName: openName,
-								runId: 'run-open',
-								suspended: true,
-								suspendPayload: { message: 'Waiting' },
-							},
-						},
-						messageList: {
-							messages: [
-								...history.map((message) => ({ ...message, id: `sdk-${message.id}` })),
-								{ id: 'sdk-open', role: 'assistant', content: [waitingPart] },
-							],
-						},
-					} as unknown as SerializableAgentState;
+				fc.boolean(),
+				(turns, open, appendInactive, sameIds) => {
+					const history = toHistory(turns);
+					const result = withOpenSuspensions(
+						structuredClone(history),
+						checkpointOf(history, open, sameIds),
+						{ appendInactiveCheckpointMessages: appendInactive },
+					);
+					const openKey = keyOf(open.openId, open.openName);
 
-					const result = withOpenSuspensions(structuredClone(history), checkpoint, {
-						appendInactiveCheckpointMessages: appendInactive,
-					});
-
-					// Persisted messages keep their order, and parts of other tools stay as they were.
+					// Persisted messages keep their order. A part without the open id stays as it was,
+					// and so does every settled part.
 					expect(result.messages.slice(0, history.length).map(({ id }) => id)).toEqual(
 						history.map(({ id }) => id),
 					);
 					history.forEach((message, index) =>
 						message.content.forEach((part, position) => {
-							if (part.toolName === openName && part.toolCallId === openId) return;
-							expect(result.messages[index].content[position]).toEqual(part);
+							const after = result.messages[index].content[position];
+							if (part.toolCallId !== open.openId || isSettled(part)) {
+								expect(after).toEqual(part);
+							} else if (keyOf(part.toolCallId, part.toolName) !== openKey) {
+								expect(after).toEqual({ ...part, canceled: true });
+							}
 						}),
 					);
-					// With no earlier copy of the open call, the history gains the waiting call.
-					const hasCopy = history.some(({ content }) =>
-						content.some(
-							(part) => keyOf(part.toolCallId ?? '', part.toolName) === keyOf(openId, openName),
-						),
-					);
-					if (!hasCopy) expect(result.messages.at(-1)?.content).toEqual([waitingPart]);
+					// Every history call with the open identity has its part, and only the waiting
+					// call is open, with the input of the checkpoint.
+					expect(openPartsOf(result.messages, open.openId)).toEqual([
+						waitingPartOf(open.openId, open.openName),
+					]);
 					expect(result.openSuspensions).toEqual([
-						{ toolCallId: openId, runId: 'run-open', suspendPayload: { message: 'Waiting' } },
+						{ toolCallId: open.openId, runId: 'run-open', suspendPayload: { message: 'Waiting' } },
 					]);
 				},
 			),
+		);
+	});
+
+	it('does not open a call again when the history holds its answer', () => {
+		fc.assert(
+			fc.property(historyArb, openKeyArb, fc.boolean(), (turns, open, sameIds) => {
+				const history = toHistory(turns);
+				const answered: AgentPersistedMessageDto = {
+					id: sameIds ? 'sdk-open' : 'answered:assistant',
+					role: 'assistant',
+					content: [{ ...waitingPartOf(open.openId, open.openName), state: 'resolved', output: 'ok' }],
+				};
+
+				const result = withOpenSuspensions(
+					structuredClone([...history, answered]),
+					checkpointOf(history, open, sameIds),
+				);
+
+				expect(result.messages.map(({ id }) => id)).toEqual([...history, answered].map(({ id }) => id));
+				expect(result.messages.at(-1)).toEqual(answered);
+				expect(openPartsOf(result.messages, open.openId)).toEqual([]);
+			}),
 		);
 	});
 });
