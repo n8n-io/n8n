@@ -573,6 +573,7 @@ export { VersionQueryDto } from './instance-version-history/version-query.dto';
 
 export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
 export { PublishNextNodeVersionDto } from './next-nodes/publish-next-node-version.dto';
+export { ImportOpenApiDto } from './next-nodes/import-open-api.dto';
 export { TestNextNodeDraftDto } from './next-nodes/test-next-node-draft.dto';
 export { NextNodeVersionsQueryDto } from './next-nodes/next-node-versions-query.dto';
 export {

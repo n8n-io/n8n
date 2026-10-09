@@ -2,6 +2,7 @@ import type {
 	NextNodeActionConfig,
 	NextNodeActionVersion,
 	NextNodeInstanceVersion,
+	NextNodeOpenApiImport,
 	NextNodeParent,
 } from '@n8n/api-types';
 import { CredentialsFinderService } from '@n8n/backend-services';
@@ -15,6 +16,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
+import type { OpenApiCredential } from '@n8n/node-sdk/openapi';
 import type { PackedAction } from '@n8n/node-sdk/pack';
 import type { ExecutionFixture, VersionManifest } from '@n8n/node-sdk/registry';
 import { isRecord } from '@n8n/utils/is-record';
@@ -56,6 +58,18 @@ export interface DraftTestResult {
 	readonly fixture?: ExecutionFixture;
 	/** The output schema that the items show, for the form to trim. */
 	readonly outputSchema?: JsonSchema;
+}
+
+/**
+ * The generic credential type that sends the secret of an OpenAPI security scheme. An instance
+ * cannot define a credential type, and n8n's authenticated request applies only these two.
+ */
+function genericCredentialOf(
+	proposed: OpenApiCredential | undefined,
+): NextNodeOpenApiImport['credential'] {
+	if (proposed?.kind === 'header') return { type: 'httpHeaderAuth', header: proposed.key };
+	if (proposed?.kind === 'bearer') return { type: 'httpBearerAuth' };
+	return undefined;
 }
 
 /** A stored custom action version: its row and its manifest. */
@@ -162,11 +176,95 @@ export class NextNodesInstanceService {
 		fixtures: unknown,
 		options: { readonly userId: string },
 	): Promise<VersionManifest> {
+		const { row, manifest } = await this.checked(config, fixtures, await this.versions(), options);
+		await this.repository.insertNew([row]);
+		await this.reloadEverywhere();
+		return manifest;
+	}
+
+	/**
+	 * Publishes one action for each operation of an OpenAPI 3 document that a config expresses.
+	 * The import has no test runs, so the versions have no fixtures. An operation that the mapper
+	 * or the publish gate refuses is skipped with the reason.
+	 */
+	async importOpenApi(
+		text: string,
+		options: { readonly userId: string },
+	): Promise<NextNodeOpenApiImport> {
+		const [{ mapOpenApi }, { default: RefParser }, { parse }] = await Promise.all([
+			import('@n8n/node-sdk/openapi'),
+			import('@apidevtools/json-schema-ref-parser'),
+			import('yaml'),
+		]);
+		const document: unknown = (() => {
+			try {
+				// YAML is a superset of JSON, so one parser reads both.
+				return parse(text);
+			} catch (error) {
+				throw new UserError('The document is not valid JSON or YAML', { cause: error });
+			}
+		})();
+		if (!isRecord(document)) throw new UserError('The OpenAPI document must be a JSON object');
+		// Only `#/...` pointers: an external ref would make the server read a file or a URL.
+		const dereferenced = await RefParser.dereference(document, { resolve: { external: false } });
+		const mapping = mapOpenApi(dereferenced);
+		const credential = genericCredentialOf(mapping.credential);
+		const versions = await this.versions();
+		const outcomes = await Promise.all(
+			mapping.actions.map(async (action) => {
+				const { method, path } = action.list ?? action.request ?? {};
+				const operation = `${method ?? 'GET'} ${path ?? ''}`;
+				const needs = action.contract.credentials.length > 0;
+				if (needs && !credential) {
+					const kind = mapping.credential?.kind ?? 'its';
+					return { operation, reason: `n8n has no generic credential type for ${kind} auth` };
+				}
+				const config = {
+					...action,
+					contract: {
+						...action.contract,
+						credentials: credential && needs ? [credential.type] : [],
+					},
+				};
+				try {
+					return await this.checked(config, { executions: [] }, versions, options);
+				} catch (error) {
+					if (!(error instanceof UserError)) throw error;
+					return { operation, reason: error.message };
+				}
+			}),
+		);
+		const checked = outcomes.flatMap((outcome) => ('row' in outcome ? [outcome] : []));
+		if (checked.length > 0) {
+			await this.repository.insertNew(checked.map(({ row }) => row));
+			await this.reloadEverywhere();
+		}
+		return {
+			node: { id: mapping.node.id, displayName: mapping.node.displayName },
+			published: checked.map(({ manifest }) => ({
+				actionId: manifest.id,
+				semver: manifest.semver,
+				action: manifest.contract.action,
+			})),
+			skipped: [
+				...mapping.skipped,
+				...outcomes.flatMap((outcome) => ('reason' in outcome ? [outcome] : [])),
+			],
+			...(credential && checked.length > 0 ? { credential } : {}),
+		};
+	}
+
+	/** The next version of a config and its row, after the publish gate. */
+	private async checked(
+		config: unknown,
+		fixtures: unknown,
+		versions: readonly CustomVersion[],
+		options: { readonly userId: string },
+	) {
 		const [{ checkPublish }, { manifestTextOf, parseFixtures }] = await Promise.all([
 			import('@n8n/node-sdk/publish'),
 			import('@n8n/node-sdk/registry'),
 		]);
-		const versions = await this.versions();
 		const packed = await this.nextVersionOf(config, versions);
 		const { manifest } = packed;
 		// One id names one action: the AI builder and the node types resolve actions by id.
@@ -180,23 +278,20 @@ export class NextNodesInstanceService {
 		const previous = this.newestOf(versions, manifest.id, manifest.contract.version);
 		await checkPublish(previous?.manifest, packed, parseFixtures(JSON.stringify(fixtures)));
 		const manifestText = manifestTextOf(manifest);
-		await this.repository.insertNew([
-			{
-				digest: `sha256:${createHash('sha256').update(manifestText).digest('hex')}`,
-				contractId: manifest.id,
-				version: manifest.semver,
-				kind: 'action',
-				manifest: manifestText,
-				bundle: packed.bundle,
-				fixtures: JSON.stringify(fixtures),
-				signatures: [],
-				published: new Date(),
-				origin: 'private',
-				createdById: options.userId,
-			},
-		]);
-		await this.reloadEverywhere();
-		return manifest;
+		const row = {
+			digest: `sha256:${createHash('sha256').update(manifestText).digest('hex')}`,
+			contractId: manifest.id,
+			version: manifest.semver,
+			kind: 'action' as const,
+			manifest: manifestText,
+			bundle: packed.bundle,
+			fixtures: JSON.stringify(fixtures),
+			signatures: [],
+			published: new Date(),
+			origin: 'private' as const,
+			createdById: options.userId,
+		};
+		return { row, manifest };
 	}
 
 	/**
@@ -211,7 +306,12 @@ export class NextNodesInstanceService {
 		const contract = isRecord(config) && isRecord(config.contract) ? config.contract : undefined;
 		const latest =
 			typeof contract?.id === 'string' ? this.newestOf(versions, contract.id) : undefined;
-		if (!isRecord(config) || !contract || !latest) return await this.pack(config);
+		if (!isRecord(config) || !contract) return await this.pack(config);
+		// The version is in the bundle, so the first version names it as each next one does.
+		if (!latest && typeof contract.version === 'number') {
+			return await this.pack({ ...config, version: `${contract.version}.0.0` });
+		}
+		if (!latest) return await this.pack(config);
 		const { diffContracts, parseSemver } = await import('@n8n/node-sdk/registry');
 		const { major, minor, patch } = parseSemver(latest.manifest.semver);
 		const as = async (version: number, nextMinor: number, nextPatch: number) =>

@@ -497,7 +497,8 @@ function movedParametersOf(previous: FormVersion, next: FormVersion): string[] {
 /**
  * The publish gate. It refuses a bump lower than the computed change, a patch whose contract
  * hash moved, a minor or patch whose form moves stored parameters, a major that breaks old input
- * without `migrate` and a fixture pair, and fixtures that fail. `previous` is the newest published version below the new one.
+ * without `migrate` and a fixture pair, and fixtures that fail. Only an HTTP guest action may
+ * have no execution fixture. `previous` is the newest published version below the new one.
  */
 export async function checkPublish(
 	previous: VersionManifest | undefined,
@@ -507,7 +508,8 @@ export async function checkPublish(
 	const { manifest, action } = packed;
 	const at = `${manifest.id}@${manifest.semver}`;
 	const isTrigger = 'kind' in action;
-	if (fixtures.executions.length === 0 && !isTrigger) {
+	// An HTTP guest action is a config, so it can publish from an API description that has no run.
+	if (fixtures.executions.length === 0 && !isTrigger && manifest.guest !== 'http') {
 		throw new UserError(`${at} needs an execution fixture`);
 	}
 	const checked = previous && checkContractBump(previous, manifest);

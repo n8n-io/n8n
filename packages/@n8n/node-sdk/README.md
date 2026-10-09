@@ -21,6 +21,7 @@ For how the packages fit together, and how a node is installed, versioned and ru
 | `@n8n/node-sdk/registry` | registry, pack, store | manifests (`toContract`, `lintContract`, `parseManifest`), hashes, semver, `diffContracts`, the store layout (`storeReader`, `addToStore`, signatures), fixtures |
 | `@n8n/node-sdk/codegen` | instance-ai, compat | `generateNodeModule`, `toTs`, model catalog, provider connections and fields |
 | `@n8n/node-sdk/mcp` | tooling | `liftMcpTool`: an MCP tool as a derived manifest |
+| `@n8n/node-sdk/openapi` | cli | `mapOpenApi`: the HTTP guest configs of a dereferenced OpenAPI 3 document |
 | `@n8n/node-sdk/pack`, `/publish`, `/sandbox` | tooling | pack, publish and sandboxed run of bundles |
 | `@n8n/node-sdk/lint` | lint configs | the `n8n-contract` plugin for oxlint (`jsPlugins`) and ESLint (`plugins`): `no-raw-error`, and `no-redefault` (ESLint only, it reads types) |
 

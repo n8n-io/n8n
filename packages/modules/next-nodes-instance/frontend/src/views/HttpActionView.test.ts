@@ -11,6 +11,7 @@ const route = vi.hoisted(() => ({ params: {} as Record<string, string> }));
 const store = vi.hoisted(() => ({
 	test: vi.fn(),
 	publish: vi.fn(),
+	importOpenApi: vi.fn(),
 	fetchParents: vi.fn(),
 	configOf: vi.fn(),
 	parents: [
@@ -87,16 +88,13 @@ describe('HttpActionView', () => {
 		});
 	});
 
-	it('publishes after a test of the current request, for a user who may publish', async () => {
+	it('publishes with the fixture and trimmed output of a test of the current request', async () => {
 		scopes.add('nodeDefinition:publish');
 		const { getByTestId } = renderView();
-		const publish = () => getByTestId('http-action-publish');
-
-		expect(publish()).toBeDisabled();
 		await fireEvent.click(getByTestId('http-action-run-test'));
-		await waitFor(() => expect(publish()).toBeEnabled());
+		await waitFor(() => expect(store.test).toHaveBeenCalled());
 
-		await fireEvent.click(publish());
+		await fireEvent.click(getByTestId('http-action-publish'));
 		await waitFor(() => expect(store.publish).toHaveBeenCalled());
 		const [config, published] = store.publish.mock.calls[0] ?? [];
 		expect(config.contract.output).toEqual({
@@ -106,15 +104,56 @@ describe('HttpActionView', () => {
 		expect(published).toEqual(fixture);
 	});
 
-	it('asks for a new test after the request changes', async () => {
+	it('publishes without a fixture when the request changed after the test', async () => {
 		scopes.add('nodeDefinition:publish');
 		const { getByTestId } = renderView();
 		await fireEvent.click(getByTestId('http-action-run-test'));
-		await waitFor(() => expect(getByTestId('http-action-publish')).toBeEnabled());
-
+		await waitFor(() => expect(store.test).toHaveBeenCalled());
 		await fireEvent.update(getByTestId('http-action-path'), '/greet/again');
 
-		expect(getByTestId('http-action-publish')).toBeDisabled();
+		await fireEvent.click(getByTestId('http-action-publish'));
+		await waitFor(() => expect(store.publish).toHaveBeenCalled());
+		const [config, published] = store.publish.mock.calls[0] ?? [];
+		expect(config.contract.output).toEqual({ type: 'object' });
+		expect(published).toBeUndefined();
+	});
+
+	it('publishes without a test run', async () => {
+		scopes.add('nodeDefinition:publish');
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('http-action-publish'));
+
+		await waitFor(() => expect(store.publish).toHaveBeenCalledWith(expect.anything(), undefined));
+	});
+
+	it('imports an OpenAPI document and lists what it published and skipped', async () => {
+		scopes.add('nodeDefinition:publish');
+		store.importOpenApi.mockResolvedValue({
+			node: { id: 'acme', displayName: 'Acme' },
+			published: [{ actionId: 'acme.listTasks', semver: '1.0.0', action: 'List tasks' }],
+			skipped: [{ operation: 'POST /import', reason: 'the body is text/csv, not JSON' }],
+			credential: { type: 'httpHeaderAuth', header: 'X-Acme-Key' },
+		});
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('http-action-import-openapi'));
+		await fireEvent.update(getByTestId('openapi-import-document'), 'openapi: 3.0.3');
+		await fireEvent.click(getByTestId('openapi-import-submit'));
+
+		await waitFor(() => expect(getByTestId('openapi-import-result')).toBeInTheDocument());
+		expect(store.importOpenApi).toHaveBeenCalledWith('openapi: 3.0.3');
+		expect(getByTestId('openapi-import-result')).toHaveTextContent('List tasks');
+		expect(getByTestId('openapi-import-skipped')).toHaveTextContent(
+			'the body is text/csv, not JSON',
+		);
+		expect(getByTestId('openapi-import-credential')).toHaveTextContent('X-Acme-Key');
+	});
+
+	it('does not offer an OpenAPI import to a user who may not publish', () => {
+		const { queryByTestId } = renderView();
+
+		expect(queryByTestId('http-action-import-openapi')).not.toBeInTheDocument();
 	});
 
 	it('lets a user without the publish scope test, but not publish', async () => {

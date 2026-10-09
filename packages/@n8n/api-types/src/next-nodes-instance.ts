@@ -59,3 +59,21 @@ export interface NextNodeActionVersion {
 	/** Set when a yank or revoke line applies to the version. A save does not lock it. */
 	readonly withdrawn?: 'yanked' | 'revoked';
 }
+
+/** What an OpenAPI import published, and each operation that it did not, with the reason. */
+export interface NextNodeOpenApiImport {
+	/** The node that groups the actions, e.g. `searchly`. */
+	readonly node: { readonly id: string; readonly displayName: string };
+	readonly published: ReadonlyArray<{
+		readonly actionId: string;
+		readonly semver: string;
+		readonly action: string;
+	}>;
+	/** E.g. `{ operation: 'GET /files/{id}', reason: 'the body is text/csv, not JSON' }`. */
+	readonly skipped: ReadonlyArray<{ readonly operation: string; readonly reason: string }>;
+	/**
+	 * The credential type that the published actions send, and where the user puts the secret,
+	 * e.g. `{ type: 'httpHeaderAuth', header: 'X-API-Key' }`. Absent: the actions send none.
+	 */
+	readonly credential?: { readonly type: string; readonly header?: string };
+}

@@ -253,6 +253,12 @@ describe('the HTTP guest', () => {
 		).rejects.toThrow();
 	});
 
+	it('passes the publish gate without an execution fixture', async () => {
+		const { js } = await versionsOf('getUser');
+		const packed = await packHttpGuest({ contract: js.manifest.contract, ...BINDINGS.getUser });
+		await expect(checkPublish(undefined, packed, { executions: [] })).resolves.toBeUndefined();
+	});
+
 	describe('an error expression', () => {
 		const ERROR_OF = '={{ $response.body.ok === false ? $response.body.error : undefined }}';
 		const failing = { ok: false, error: 'user_not_found' };

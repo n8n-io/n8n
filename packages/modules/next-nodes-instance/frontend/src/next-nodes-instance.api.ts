@@ -2,6 +2,7 @@ import type {
 	NextNodeActionConfig,
 	NextNodeDraftTestResult,
 	NextNodeInstanceVersion,
+	NextNodeOpenApiImport,
 	NextNodeParent,
 } from '@n8n/api-types';
 import { makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
@@ -31,11 +32,16 @@ export const testDraft = async (
 export const publishVersion = async (
 	context: IRestApiContext,
 	config: HttpActionConfig,
-	fixture: Record<string, unknown>,
+	fixture?: Record<string, unknown>,
 ) =>
 	await makeRestApiRequest<{ id: string; semver: string }>(context, 'POST', `${BASE}/versions`, {
 		config: { ...config },
-		fixtures: { executions: [fixture] },
+		fixtures: { executions: fixture ? [fixture] : [] },
+	});
+
+export const importOpenApi = async (context: IRestApiContext, document: string) =>
+	await makeRestApiRequest<NextNodeOpenApiImport>(context, 'POST', `${BASE}/openapi`, {
+		document,
 	});
 
 export const actionConfig = async (context: IRestApiContext, actionId: string) =>

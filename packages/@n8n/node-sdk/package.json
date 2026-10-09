@@ -37,6 +37,10 @@
       "types": "./dist/lift/mcp.d.ts",
       "default": "./dist/lift/mcp.js"
     },
+    "./openapi": {
+      "types": "./dist/lift/openapi.d.ts",
+      "default": "./dist/lift/openapi.js"
+    },
     "./pack": {
       "types": "./dist/pack.d.ts",
       "default": "./dist/pack.js"

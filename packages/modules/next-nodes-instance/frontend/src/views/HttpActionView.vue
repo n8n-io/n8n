@@ -9,6 +9,7 @@ import {
 	N8nCheckbox,
 	N8nCollapsiblePanel,
 	N8nInput,
+	N8nIcon,
 	N8nInputLabel,
 	N8nOption,
 	N8nSegmentControl,
@@ -25,6 +26,7 @@ import { useRBACStore } from '@n8n/stores/rbac.store';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import OpenApiImportModal from '../components/OpenApiImportModal.vue';
 import RequestRows from '../components/RequestRows.vue';
 import TestPanel from '../components/TestPanel.vue';
 import {
@@ -244,22 +246,24 @@ async function runTest(values: Record<string, string>) {
 }
 
 const canPublish = computed(() => rbac.hasScope('nodeDefinition:publish'));
-const publishBlocker = computed(() => {
-	if (!canPublish.value) return i18n.baseText('settings.nodes.form.publish.needsScope');
-	if (result.value?.status !== 'success' || !result.value.fixture || outdated.value) {
-		return i18n.baseText('settings.nodes.form.publish.needsTest');
-	}
-	return undefined;
-});
+const publishBlocker = computed(() =>
+	canPublish.value ? undefined : i18n.baseText('settings.nodes.form.publish.needsScope'),
+);
 
 const publishing = ref(false);
+const importOpen = ref(false);
 
 async function publish() {
-	const fixture = result.value?.fixture;
-	if (publishBlocker.value || !fixture) return;
+	if (publishBlocker.value) return;
+	// A test run of the current request gives the fixture and the output that the user trimmed.
+	const fixture =
+		result.value?.status === 'success' && !outdated.value ? result.value.fixture : undefined;
 	publishing.value = true;
 	try {
-		const output = schema.value ? trimmedSchemaOf(schema.value, keep.value) : { type: 'object' };
+		const output =
+			fixture && schema.value
+				? trimmedSchemaOf(schema.value, keep.value)
+				: config.value.contract.output;
 		const published = await store.publish(
 			{ ...config.value, contract: { ...config.value.contract, output } },
 			fixture,
@@ -306,7 +310,19 @@ onMounted(async () => {
 		@back="goBack"
 	>
 		<div :class="$style.page">
-			<N8nSettingsPageHeader :title="title" :show-docs-link="false" />
+			<N8nSettingsPageHeader :title="title" :show-docs-link="false">
+				<template v-if="!editing && canPublish" #titleTrailing>
+					<N8nButton
+						variant="outline"
+						data-test-id="http-action-import-openapi"
+						@click="importOpen = true"
+					>
+						<template #icon><N8nIcon icon="file-import" /></template>
+						{{ i18n.baseText('settings.nodes.openApi.open') }}
+					</N8nButton>
+				</template>
+			</N8nSettingsPageHeader>
+			<OpenApiImportModal v-model:open="importOpen" @done="goBack" />
 
 			<N8nText v-if="editedSemver" size="small" color="text-light">
 				{{

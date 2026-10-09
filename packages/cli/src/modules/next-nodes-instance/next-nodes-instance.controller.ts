@@ -1,4 +1,5 @@
 import {
+	ImportOpenApiDto,
 	NextNodeVersionsQueryDto,
 	PublishNextNodeVersionDto,
 	TestNextNodeDraftDto,
@@ -24,6 +25,13 @@ export class NextNodesInstanceController {
 	@GlobalScope('nodeDefinition:publish')
 	async publish(req: AuthenticatedRequest, _res: Response, @Body dto: PublishNextNodeVersionDto) {
 		return await this.service.publish(dto.config, dto.fixtures, { userId: req.user.id });
+	}
+
+	/** Publishes an action for each operation of an OpenAPI document, without test runs. */
+	@Post('/openapi')
+	@GlobalScope('nodeDefinition:publish')
+	async importOpenApi(req: AuthenticatedRequest, _res: Response, @Body dto: ImportOpenApiDto) {
+		return await this.service.importOpenApi(dto.document, { userId: req.user.id });
 	}
 
 	/** The shipped nodes that the form can add an action to. */

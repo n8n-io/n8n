@@ -4,9 +4,13 @@ import { Z } from '../../zod-class';
 
 /**
  * A declarative HTTP action to publish on the instance. The server checks `config` and
- * `fixtures` in full: the shapes belong to the Node Contract, not to this API.
+ * `fixtures` in full: the shapes belong to the Node Contract, not to this API. A version without
+ * a test run has no execution fixture.
  */
 export class PublishNextNodeVersionDto extends Z.class({
 	config: z.record(z.unknown()),
-	fixtures: z.object({ executions: z.array(z.unknown()).min(1) }).passthrough(),
+	fixtures: z
+		.object({ executions: z.array(z.unknown()) })
+		.passthrough()
+		.default({ executions: [] }),
 }) {}

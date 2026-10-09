@@ -54,10 +54,16 @@ export const useNextNodesInstanceStore = defineStore('nextNodesInstance', () => 
 		return await api.testDraft(rootStore.restApiContext, config, params, credentialId);
 	}
 
-	async function publish(config: HttpActionConfig, fixture: Record<string, unknown>) {
+	async function publish(config: HttpActionConfig, fixture?: Record<string, unknown>) {
 		const published = await api.publishVersion(rootStore.restApiContext, config, fixture);
 		await fetchVersions();
 		return published;
+	}
+
+	async function importOpenApi(document: string) {
+		const imported = await api.importOpenApi(rootStore.restApiContext, document);
+		await fetchVersions();
+		return imported;
 	}
 
 	return {
@@ -70,5 +76,6 @@ export const useNextNodesInstanceStore = defineStore('nextNodesInstance', () => 
 		hide,
 		test,
 		publish,
+		importOpenApi,
 	};
 });
