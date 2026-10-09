@@ -60,8 +60,9 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 
 ### `delegate_subagent`
 
-- Purpose: Delegates a task to a configured sub-agent or to an inline copy of the agent. The sub-agent runs in the foreground and returns a result.
+- Purpose: Delegates a task to a configured sub-agent or to an inline copy of the agent. Foreground is the default. It waits for the child result. When background tasks are on, `mode: "background"` starts a detached job and returns a receipt.
 - Attach condition: Top-level agent.
+- Background mode requires `AgentsConfig.backgroundTasksEnabled` and a caller that permits background tasks. The runtime omits the mode input when background tasks are off.
 - Source: [`sub-agents/delegate-sub-agent-tool.ts`](./sub-agents/delegate-sub-agent-tool.ts).
 
 ### `write_todos`
@@ -76,15 +77,17 @@ See the [dedicated section](#mark_session_failed-session-outcomes).
 
 ## Background job tools
 
-Attach condition: Top-level agent and background tasks on. Background tasks are on when `AgentsConfig.backgroundTasksEnabled` is set and the caller does not pass `allowBackgroundTasks: false`. For example, scheduled task runs and published n8n Chat runs pass `false`. Human-in-the-loop resume support does not change this condition. It only controls whether workflow tools move waiting workflows to the background.
+Attach condition: Top-level agent and background tasks on. Background tasks are on when `AgentsConfig.backgroundTasksEnabled` is set and the caller does not pass `allowBackgroundTasks: false`. Scheduled and manually started task runs pass `false`. Human-in-the-loop resume support does not change this condition. It only controls whether workflow tools move waiting workflows to the background.
 
 Source: [`background/background-job-tools.ts`](./background/background-job-tools.ts).
 
 | Tool | Purpose |
 | --- | --- |
-| `spawn_background_subagent` | Starts a sub-agent as a detached background job. Returns a receipt immediately. |
 | `check_background_jobs` | Lists the background jobs of the conversation with their status and results. |
 | `cancel_background_job` | Cancels a running background job by its job id. |
+| `resume_background_jobs` | Resumes jobs from the latest user stop. |
+
+Use `delegate_subagent` with `mode: "background"` to start a background sub-agent.
 
 ## `mark_session_failed`: session outcomes
 

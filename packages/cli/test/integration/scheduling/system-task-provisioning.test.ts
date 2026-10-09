@@ -92,7 +92,8 @@ describe('system task provisioning', () => {
 	});
 
 	it('applies a changed timeout to the job and its pending occurrences, not to a running one', async () => {
-		await provision();
+		const schedule: SystemTaskSchedule = { kind: 'interval', intervalSeconds: 10 };
+		await provision({ schedule });
 		const inserted = await jobRepo.findOneByOrFail({ name: JOB_NAME });
 		expect(inserted.timeoutSeconds).toBe(Container.get(GlobalConfig).scheduler.taskTimeoutSeconds);
 		const [running, ...pending] = await taskRepo.findBy({ jobId: inserted.id });
@@ -102,7 +103,7 @@ describe('system task provisioning', () => {
 			{ status: 'running', claimedBy: 'main-a', leaseExpiresAt: new Date(Date.now() + 60_000) },
 		);
 
-		const summary = await provision({ timeoutSeconds: 600 });
+		const summary = await provision({ schedule, timeoutSeconds: 600 });
 
 		expect(summary.unchanged).toEqual([{ id: inserted.id, name: JOB_NAME }]);
 		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });

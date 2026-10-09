@@ -73,7 +73,10 @@ export class MigrationFindingQueryService {
 		this.logger = logger.scoped('breaking-changes');
 	}
 
-	/** The overview: one entry per workflow rule with its open-finding count, plus live instance results. */
+	/**
+	 * The overview: one entry per workflow rule with its open and won't fix finding counts,
+	 * plus live instance results.
+	 */
 	async getLightReport(
 		targetVersion: BreakingChangeVersion,
 		scope: ReportScope,
@@ -83,21 +86,27 @@ export class MigrationFindingQueryService {
 		const instanceRules = rules.filter(isInstanceRule);
 		const filter = workflowFilter(scope);
 
-		const [counts, wontFixRuleIds, totalAffectedWorkflows, sync, totalWorkflows, instanceResults] =
-			await Promise.all([
-				this.findingRepository.countOpenByRule(targetVersion, filter, {}),
-				this.findingRepository.listRuleIdsWithWontFix(targetVersion, filter, {}),
-				this.findingRepository.countDistinctOpenWorkflows(targetVersion, filter, {}),
-				this.syncRepository.getForVersion(targetVersion, {}),
-				scope.kind === 'instance' ? this.workflowRepository.count() : scope.workflowIds.length,
-				// Instance rules read config and environment, not workflows, so they stay live.
-				// They describe the instance, so only the instance scope sees them.
-				scope.kind === 'instance'
-					? this.breakingChangeService.getAllInstanceRulesResults(instanceRules)
-					: [],
-			]);
-		const countByRule = new Map(counts.map((row) => [row.ruleId, row.count]));
-		const hasWontFix = new Set(wontFixRuleIds);
+		const [
+			openCounts,
+			wontFixCounts,
+			totalAffectedWorkflows,
+			sync,
+			totalWorkflows,
+			instanceResults,
+		] = await Promise.all([
+			this.findingRepository.countOpenByRule(targetVersion, filter, {}),
+			this.findingRepository.countWontFixByRule(targetVersion, filter, {}),
+			this.findingRepository.countDistinctOpenWorkflows(targetVersion, filter, {}),
+			this.syncRepository.getForVersion(targetVersion, {}),
+			scope.kind === 'instance' ? this.workflowRepository.count() : scope.workflowIds.length,
+			// Instance rules read config and environment, not workflows, so they stay live.
+			// They describe the instance, so only the instance scope sees them.
+			scope.kind === 'instance'
+				? this.breakingChangeService.getAllInstanceRulesResults(instanceRules)
+				: [],
+		]);
+		const openCountByRule = new Map(openCounts.map((row) => [row.ruleId, row.count]));
+		const wontFixCountByRule = new Map(wontFixCounts.map((row) => [row.ruleId, row.count]));
 
 		// Today's scan lists only rules that affect at least one workflow. Keep
 		// that shape so the overview does not change when it reads from the table.
@@ -105,9 +114,14 @@ export class MigrationFindingQueryService {
 		// its detail page is the only place to set them back to open.
 		const workflowResults: LightWorkflowResult[] = [];
 		for (const rule of workflowRules) {
-			const nbAffectedWorkflows = countByRule.get(rule.id) ?? 0;
-			if (nbAffectedWorkflows === 0 && !hasWontFix.has(rule.id)) continue;
-			workflowResults.push({ ...(await this.describeRule(rule)), nbAffectedWorkflows });
+			const nbAffectedWorkflows = openCountByRule.get(rule.id) ?? 0;
+			const nbWontFixWorkflows = wontFixCountByRule.get(rule.id) ?? 0;
+			if (nbAffectedWorkflows === 0 && nbWontFixWorkflows === 0) continue;
+			workflowResults.push({
+				...(await this.describeRule(rule)),
+				nbAffectedWorkflows,
+				nbWontFixWorkflows,
+			});
 		}
 
 		return {

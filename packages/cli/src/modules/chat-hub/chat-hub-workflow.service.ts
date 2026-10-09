@@ -52,6 +52,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BadRequestError } from '@n8n/errors';
 import type { UserLike } from '@/types/user-like.types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
@@ -96,6 +97,7 @@ export class ChatHubWorkflowService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly cipher: Cipher,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -196,6 +198,8 @@ export class ChatHubWorkflowService {
 		projectId: string,
 		user: UserLike,
 	) {
+		this.deprecatedNodesValidationService.validateOnCreate(workflow.nodes, workflow.id);
+
 		return await this.policyEnforcementService.enforceWorkflowSave(
 			{
 				workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },

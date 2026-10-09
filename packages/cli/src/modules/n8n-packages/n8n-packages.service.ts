@@ -421,7 +421,7 @@ export class N8nPackagesService {
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
-		const manifest = await this.packageParser.getManifest(reader);
+		const manifest = await this.readImportManifest(reader);
 		const { result, scopes } = await this.dispatchImport(
 			request,
 			reader,
@@ -479,7 +479,7 @@ export class N8nPackagesService {
 		selection: ImportSelection,
 	): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
-		const manifest = await this.packageParser.getManifest(reader);
+		const manifest = await this.readImportManifest(reader);
 		if (!isProjectPackage(manifest)) {
 			throw new BadRequestError('A selection import requires a project package.');
 		}
@@ -500,13 +500,21 @@ export class N8nPackagesService {
 		return result;
 	}
 
+	private async readImportManifest(reader: PackageReader): Promise<PackageManifest> {
+		const manifest = await this.packageParser.getManifest(reader);
+		if (manifest.agents?.length) {
+			throw new BadRequestError('Importing packages that contain Agents is not supported yet.');
+		}
+		return manifest;
+	}
+
 	/** An empty working copy needs no import. Reject content without a project. */
 	private async readDirectoryProjectPackage(source: {
 		sourceDir: string;
 	}): Promise<DirectoryProjectPackage> {
 		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
 		await reader.listEntries();
-		const manifest = await this.packageParser.getManifest(reader);
+		const manifest = await this.readImportManifest(reader);
 		if (isProjectPackage(manifest)) {
 			return { status: 'project', reader, manifest };
 		}

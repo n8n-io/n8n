@@ -129,6 +129,7 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
                             additionalProperties: {}
@@ -244,6 +245,7 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
                             additionalProperties: {}
@@ -362,6 +364,7 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
                             additionalProperties: {}
@@ -480,6 +483,7 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
                             additionalProperties: {}
@@ -595,6 +599,7 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
                             additionalProperties: {}
