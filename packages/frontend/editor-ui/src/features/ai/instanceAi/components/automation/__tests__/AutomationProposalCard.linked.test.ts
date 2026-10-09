@@ -452,6 +452,16 @@ describe('AutomationProposalCard with linked instances', () => {
 
 			expect(getByTestId('automation-proposal-place')).toHaveTextContent(/^Runs on This computer/);
 		});
+
+		it('keeps a cloud recommendation in a chat that runs here, because every chat runs here until the user picks a link', async () => {
+			useExperience('power');
+			mockedStore(useInstanceAiStore).threads = [chatSummary({ runTarget: { kind: 'local' } })];
+
+			const { getByTestId } = renderCard({ proposal: makeLinkedProposal() });
+
+			await expectText(() => getByTestId('automation-proposal-place'), /^Runs on Team cloud/);
+			await waitFor(() => expect(preflightMock).toHaveBeenCalledTimes(1));
+		});
 	});
 
 	describe('a shared chat', () => {
@@ -682,6 +692,30 @@ describe('AutomationProposalCard with linked instances', () => {
 				'data-status',
 				'not-ready',
 			);
+			expect(
+				await findByRole('link', { name: /Team cloud \(opens in a new tab\)/ }),
+			).toHaveAttribute('href', REMOTE_URL);
+		});
+
+		it('says that the new version of a saved copy needs set-up, without saying that the live one cannot run', async () => {
+			// A save does not tell which version is live there: it can be an earlier one that runs.
+			const save = { ...turnOnThere, values: { target: CLOUD_LINK_ID, activate: false } };
+
+			const { getByTestId, findByRole } = renderCard({
+				proposal: makeLinkedProposal({ active: true }),
+				answer: save,
+				call: toolCall(remoteResult({ error: 'needs set-up there', problems: ['not-ready'] })),
+			});
+
+			await expectText(
+				() => getByTestId('automation-proposal-resolved-status'),
+				'Saved in Team cloud. A version of "Morning digest" is on there, but the new version needs setting up there before it can run. Open it there to set it up.',
+			);
+			expect(getByTestId('automation-proposal-resolved-status')).toHaveAttribute(
+				'data-status',
+				'saved-not-ready',
+			);
+			expect(getByTestId('automation-proposal-resolved')).toHaveClass(/warning/);
 			expect(
 				await findByRole('link', { name: /Team cloud \(opens in a new tab\)/ }),
 			).toHaveAttribute('href', REMOTE_URL);

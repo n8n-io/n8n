@@ -510,14 +510,24 @@ describe('resolvedStatus and resolvedLink for a linked instance', () => {
 	});
 
 	it('says what the copy did and adds that n8n could not keep the workflow here', () => {
-		const on = resolvedStatus('activate', makeProposal(), withProblems(true, ['not-kept-here']), true);
+		const on = resolvedStatus(
+			'activate',
+			makeProposal(),
+			withProblems(true, ['not-kept-here']),
+			true,
+		);
 		const notOn = resolvedStatus(
 			'activate',
 			makeProposal(),
 			withProblems(false, ['not-on', 'not-kept-here']),
 			true,
 		);
-		const saved = resolvedStatus('save', makeProposal(), withProblems(false, ['not-kept-here']), true);
+		const saved = resolvedStatus(
+			'save',
+			makeProposal(),
+			withProblems(false, ['not-kept-here']),
+			true,
+		);
 
 		expect(on).toMatchObject({
 			kind: 'on',
@@ -538,30 +548,44 @@ describe('resolvedStatus and resolvedLink for a linked instance', () => {
 	});
 
 	it('reads a failed live copy without problem kinds as one that needs a check there', () => {
-		const failed: AutomationToolOutcome = { kind: 'kept', active: true, failed: true, url: REMOTE_URL };
+		const failed: AutomationToolOutcome = {
+			kind: 'kept',
+			active: true,
+			failed: true,
+			url: REMOTE_URL,
+		};
 
 		expect(resolvedStatus('activate', makeProposal(), failed, true).kind).toBe('not-ready');
-		expect(resolvedStatus('save', makeProposal(), failed, true).kind).toBe('not-ready');
+		expect(resolvedStatus('save', makeProposal(), failed, true).kind).toBe('saved-not-ready');
 	});
 
 	it('warns after a save that finds a copy there that runs, or that needs set-up', () => {
 		const live = makeProposal({ active: true });
 
-		expect(
-			resolvedStatus('save', live, withProblems(true, ['still-on-here']), true),
-		).toMatchObject({
-			kind: 'still-on-here',
-			messageKey: 'instanceAi.automation.resolved.stillOnHere',
-			tone: 'warning',
-		});
-		expect(resolvedStatus('save', makeProposal(), withProblems(true, ['not-ready']), true)).toMatchObject({
-			kind: 'not-ready',
-			messageKey: 'instanceAi.automation.resolved.notReadyIn',
-			tone: 'warning',
-		});
+		expect(resolvedStatus('save', live, withProblems(true, ['still-on-here']), true)).toMatchObject(
+			{
+				kind: 'still-on-here',
+				messageKey: 'instanceAi.automation.resolved.stillOnHere',
+				tone: 'warning',
+			},
+		);
+		// A save does not tell which version is live there, so the line does not say that the live
+		// copy cannot run: it can be an earlier version that runs.
+		for (const proposal of [makeProposal(), live]) {
+			const status = resolvedStatus('save', proposal, withProblems(true, ['not-ready']), true);
+			expect(status).toMatchObject({
+				kind: 'saved-not-ready',
+				messageKey: 'instanceAi.automation.resolved.savedNotReadyIn',
+				tone: 'warning',
+			});
+			expect(resolvedLink(status, withProblems(true, ['not-ready']), OWN_LINK)).toEqual({
+				kind: 'remote',
+				url: REMOTE_URL,
+			});
+		}
 	});
 
-	it('gives a teammate no link to the copy, because the address names the owner\'s link', () => {
+	it("gives a teammate no link to the copy, because the address names the owner's link", () => {
 		const status = resolvedStatus('activate', makeProposal(), keptThere(true), true);
 
 		expect(resolvedLink(status, keptThere(true), OTHERS_LINK)).toBeUndefined();

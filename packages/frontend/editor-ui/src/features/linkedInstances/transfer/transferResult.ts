@@ -37,11 +37,17 @@ export function safeHttpUrl(value: string): string | undefined {
 	}
 }
 
-/** Opens a credential in the n8n editor at `baseUrl`, as `/home/credentials/<id>` does here. */
-export function remoteCredentialUrl(baseUrl: string, credentialId: string): string | undefined {
+/** Opens the credentials in the n8n editor at `baseUrl`, as `/home/credentials` does here. */
+export function remoteCredentialsUrl(baseUrl: string): string | undefined {
 	const base = safeHttpUrl(baseUrl);
 	if (base === undefined) return undefined;
-	return `${base.replace(/\/+$/, '')}/home/credentials/${encodeURIComponent(credentialId)}`;
+	return `${base.replace(/\/+$/, '')}/home/credentials`;
+}
+
+/** Opens a credential in the n8n editor at `baseUrl`, as `/home/credentials/<id>` does here. */
+export function remoteCredentialUrl(baseUrl: string, credentialId: string): string | undefined {
+	const list = remoteCredentialsUrl(baseUrl);
+	return list === undefined ? undefined : `${list}/${encodeURIComponent(credentialId)}`;
 }
 
 /**

@@ -46,6 +46,8 @@ export function useAutomationTarget(input: AutomationTargetInput) {
 			sharing?.view.value.isShared === true ||
 			chat.value?.sharedWith !== undefined,
 	);
+	// Every chat runs here until the user picks a link for it, so a chat that runs here states no
+	// preference: the card then keeps the recommendation.
 	const chatTargetId = computed(() => {
 		const runTarget = chat.value?.runTarget;
 		return runTarget?.kind === 'linked' ? runTarget.instanceId : undefined;

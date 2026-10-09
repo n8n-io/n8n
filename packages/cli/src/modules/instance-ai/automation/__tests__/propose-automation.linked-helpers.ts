@@ -3,12 +3,15 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { LinkedInstanceStore } from '@/modules/linked-instances/linked-instance.store';
+import { TransferLocalWorkflows } from '@/modules/linked-instances/transfer/transfer-local-workflows';
 import { TransferService } from '@/modules/linked-instances/transfer/transfer.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 /**
  * The linked instances of the acting user, on mocks that the automation placement loads from
- * the container. A test file that uses them stubs both modules with `vi.mock`, so that the large
- * import graph of the transfer stays out of the test.
+ * the container. A test file that uses them stubs the store and the transfer service with
+ * `vi.mock`, so that the large import graph of the transfer stays out of the test. The checks of
+ * the workflows here are the real ones of the move, on the finder of the test.
  */
 
 export const CLOUD_ID = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
@@ -56,17 +59,20 @@ export function pushResult(
 	};
 }
 
-export function createLinkedWorld() {
+export function createLinkedWorld(finder: ReturnType<typeof mock<WorkflowFinderService>>) {
 	const store = mock<LinkedInstanceStore>();
 	const transfer = mock<TransferService>();
 	Container.set(LinkedInstanceStore, store);
 	Container.set(TransferService, transfer);
+	Container.set(TransferLocalWorkflows, new TransferLocalWorkflows(finder, mock(), mock(), mock()));
 
 	/**
 	 * Call after `vi.resetAllMocks`. The push puts the copy live when it is asked to, and then turns
 	 * off the workflow here when it is asked to.
 	 */
 	const reset = (links: LinkedInstanceSummary[] = USER_LINKS) => {
+		// The move names each workflow that the workflow calls by ID. The user can read none.
+		finder.findWorkflowsByIdsForUser.mockResolvedValue([]);
 		store.listForUser.mockResolvedValue(links);
 		store.getForUser.mockImplementation(
 			async (_userId, id) => links.find((link) => link.id === id) ?? null,

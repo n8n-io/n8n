@@ -80,7 +80,11 @@ export class AutomationPlacement {
 	 * turns it off here, so a live workflow needs that right too. These are the checks of the move
 	 * itself, so the card offers no link that the move then refuses. Reads only.
 	 */
-	async canMove(user: User, workflowId: string, { liveHere }: { liveHere: boolean }) {
+	async canMove(
+		user: User,
+		workflowId: string,
+		{ liveHere }: { liveHere: boolean },
+	): Promise<boolean> {
 		const { TransferLocalWorkflows } = await import(
 			'../../linked-instances/transfer/transfer-local-workflows.js'
 		);

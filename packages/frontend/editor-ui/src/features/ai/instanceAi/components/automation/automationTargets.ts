@@ -1,7 +1,7 @@
 import type { AutomationRecommendationReason } from '@n8n/api-types';
 
 import type { TransferDialogState } from '@/features/linkedInstances/transfer/transferDialogState';
-import { safeHttpUrl } from '@/features/linkedInstances/transfer/transferResult';
+import { remoteCredentialsUrl } from '@/features/linkedInstances/transfer/transferResult';
 import { UNAVAILABLE_LINK, type RunTargetTranslate } from '../../runTarget/runTargetOptions';
 import { answerTargetId, chosenTargetId } from './automationProposal';
 import type { CardTarget, ViewedProposal } from './automationViewerLinks';
@@ -134,8 +134,7 @@ export function isViewerLinkAnswer(proposal: Proposal, targetId?: string): boole
  * with this id.
  */
 export function credentialsUrl(target: CardTarget): string | undefined {
-	const base = target.baseUrl === undefined ? undefined : safeHttpUrl(target.baseUrl);
-	return base === undefined ? undefined : `${base.replace(/\/+$/, '')}/home/credentials`;
+	return target.baseUrl === undefined ? undefined : remoteCredentialsUrl(target.baseUrl);
 }
 
 const OPEN_GATE: AutomationGate = { needsSetUp: [], unchecked: [], canTurnOn: true, canSave: true };

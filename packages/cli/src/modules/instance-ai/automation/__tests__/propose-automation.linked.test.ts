@@ -76,12 +76,17 @@ type Request = { permissions?: InstanceAiPermissions; sharedThread?: boolean };
 
 describe('propose_automation with linked instances on the n8n Assistant', () => {
 	const world = createAutomationWorld();
-	const linked = createLinkedWorld();
+	const linked = createLinkedWorld(world.finder);
 	const provider = new AssistantAgentProvider(mock(), mock(), mock(), mock());
 	let eventService: ReturnType<typeof mock<EventService>>;
 
+	// The Assistant says for each run whether the chat is shared. Here it is not, unless a test says.
 	const buildTool = (request: Request = {}) =>
-		toAssistantTool(proposeAutomationCapability, { user, ...request }, eventService).tool;
+		toAssistantTool(
+			proposeAutomationCapability,
+			{ user, sharedThread: false, ...request },
+			eventService,
+		).tool;
 
 	const callTool = async (tool: BuiltTool, args: unknown, ctx: InterruptibleToolContext) => {
 		if (!tool.handler) throw new Error('The tool has no handler');
@@ -206,6 +211,14 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 			expect(card.recommended.targetId).toBe('local');
 		});
 
+		it('lets an unexpected failure of the move checks fail the card, so that it reaches error reporting', async () => {
+			world.grant(storedWorkflow({ nodes: [...storedWorkflow().nodes, CALLS_WF_2] }), MOVE_SCOPES);
+			world.finder.findWorkflowsByIdsForUser.mockRejectedValue(new Error('database is down'));
+
+			await expect(firstCall()).rejects.toThrow('database is down');
+			expect(world.nothingChanged()).toBe(true);
+		});
+
 		it('recommends this computer when no link is online, and says that the cloud is offline', async () => {
 			linked.reset([linkSummary({ status: 'mcp-disabled' })]);
 
@@ -235,6 +248,8 @@ describe('propose_automation with linked instances on the n8n Assistant', () => 
 
 		it.each<[string, () => Request | undefined]>([
 			['the chat is shared', () => ({ sharedThread: true })],
+			// A caller that does not say counts as a shared chat, so that nothing leaves this instance.
+			['the run does not say whether the chat is shared', () => ({ sharedThread: undefined })],
 			[
 				'the linked-instances module is off',
 				() => {

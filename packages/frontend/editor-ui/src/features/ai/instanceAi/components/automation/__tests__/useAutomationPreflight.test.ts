@@ -119,6 +119,44 @@ describe('useAutomationPreflight', () => {
 		expect(preflightMock).toHaveBeenCalledTimes(3);
 	});
 
+	it('keeps the answer of a new check in the store when the answer of an earlier check comes late', async () => {
+		let answerFirst!: (value: LinkedInstanceTransferPreflight) => void;
+		preflightMock
+			.mockImplementationOnce(async () => await new Promise((resolve) => (answerFirst = resolve)))
+			.mockResolvedValueOnce(preflight(2));
+		const first = setup(on(CLOUD));
+
+		first.result.recheck();
+		await flushPromises();
+		expect(nodesOf(first.result.check.value)).toBe(2);
+		answerFirst(preflight(1));
+		await flushPromises();
+
+		// The card shows the new answer, and so does a card that reads the store later.
+		expect(nodesOf(first.result.check.value)).toBe(2);
+		const later = setup(on(CLOUD));
+		expect(nodesOf(later.result.check.value)).toBe(2);
+		expect(preflightMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('stores the late answer of a check that a change of link stopped, for when the link comes back', async () => {
+		let answerCloud!: (value: LinkedInstanceTransferPreflight) => void;
+		preflightMock.mockImplementation(async (_context, linkId) =>
+			linkId === CLOUD ? await new Promise((resolve) => (answerCloud = resolve)) : preflight(5),
+		);
+		const { request, result } = setup(on(CLOUD));
+
+		request.value = on(LAB);
+		await flushPromises();
+		answerCloud(preflight(1));
+		await flushPromises();
+		request.value = on(CLOUD);
+		await flushPromises();
+
+		expect(nodesOf(result.check.value)).toBe(1);
+		expect(preflightMock).toHaveBeenCalledTimes(2);
+	});
+
 	it('reuses a finished check of the same version, but not a failed one', async () => {
 		preflightMock.mockRejectedValueOnce(new Error('offline')).mockResolvedValue(preflight(4));
 		const first = setup(on(CLOUD));

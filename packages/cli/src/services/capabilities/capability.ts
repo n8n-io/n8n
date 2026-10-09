@@ -45,7 +45,8 @@ export type CapabilityContext = CapabilityRequest & {
 	permissions?: InstanceAiPermissions;
 	/**
 	 * True when the Assistant chat is shared with a project. The turn then runs as the chat owner,
-	 * and a teammate can answer its cards, so nothing leaves this instance.
+	 * and a teammate can answer its cards, so nothing leaves this instance. A capability that can
+	 * send work to another instance treats an absent value as shared.
 	 */
 	sharedThread?: boolean;
 };

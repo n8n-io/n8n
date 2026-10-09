@@ -35,6 +35,7 @@ export type AutomationResolvedKind =
 	| 'not-on'
 	| 'not-live'
 	| 'not-ready'
+	| 'saved-not-ready'
 	| 'still-on-here'
 	| 'copying'
 	| 'saved'
@@ -94,6 +95,13 @@ const RESOLVED_VIEWS: Record<AutomationResolvedKind, ResolvedView> = {
 	// Only a copy in a linked instance can be live without its set-up.
 	'not-ready': {
 		messageKey: 'instanceAi.automation.resolved.notReadyIn',
+		tone: 'warning',
+		showsLink: true,
+	},
+	// After a save, the live version there can be an earlier one, so the line does not say that
+	// the live copy cannot run.
+	'saved-not-ready': {
+		messageKey: 'instanceAi.automation.resolved.savedNotReadyIn',
 		tone: 'warning',
 		showsLink: true,
 	},
@@ -276,6 +284,8 @@ function linkedActivateKind(outcome: OpenOutcome | undefined): AutomationResolve
  * "Save" in a linked instance. `active` of the card is about the workflow here, so the state
  * waits for the result, which says if the copy there is on. A workflow that is live here keeps
  * running here. A copy there can be live from before, so a save can report its problems too.
+ * The result of a save does not say which version is live there, so a copy that needs set-up
+ * gets its own line.
  */
 function linkedSaveKind(
 	proposal: AutomationProposalCard,
@@ -284,6 +294,7 @@ function linkedSaveKind(
 	if (outcome?.kind === 'waiting') return 'copying';
 	if (outcome?.kind === 'kept') {
 		const problem = copyProblemKind(outcome);
+		if (problem === 'not-ready') return 'saved-not-ready';
 		if (problem !== undefined) return problem;
 		if (outcome.active) return 'saved-live';
 	}

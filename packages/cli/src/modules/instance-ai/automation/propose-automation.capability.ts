@@ -29,22 +29,22 @@ import type { AutomationProposal } from './automation-proposal.service';
 
 export { PROPOSE_AUTOMATION_CAPABILITY_NAME };
 
-/** A link is named by a UUID, in either case. "local" names this instance and is exact. */
-const LINK_ID_PATTERN =
-	'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+/** A link is named by a UUID, in either case: the same check as the store of linked instances. */
+const linkIdSchema = z.string().uuid();
+
+/** "local" names this instance and is exact. */
+const isTargetId = (value: string) =>
+	value === AUTOMATION_LOCAL_TARGET_ID || linkIdSchema.safeParse(value).success;
 
 /**
  * Both surfaces use a string, so that the tool has one input type. MCP clients keep automations
  * on this instance. The Assistant takes the target from the card answer, which the server checks
  * against the targets that the card offered.
  */
-const TARGET_OF_SURFACE: Record<CapabilitySurface, z.ZodOptional<z.ZodString>> = {
+const TARGET_OF_SURFACE: Record<CapabilitySurface, z.ZodOptional<z.ZodType<string>>> = {
 	assistant: z
 		.string()
-		.regex(
-			new RegExp(`^(?:${AUTOMATION_LOCAL_TARGET_ID}|${LINK_ID_PATTERN})$`),
-			'Use "local" or the id of a linked instance',
-		)
+		.refine(isTargetId, 'Use "local" or the id of a linked instance')
 		.optional()
 		.describe('Leave it out. The user chooses on the card where the automation runs.'),
 	mcp: z

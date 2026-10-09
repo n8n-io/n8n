@@ -22,16 +22,20 @@ export const MAX_STORED_PREFLIGHTS = 50;
 // The server limits these checks per user, and a chat can show the same card again (after a
 // reload or a scroll). One answer per user, version and link is enough until the user asks
 // again. The user is part of the key, so that a sign-in as another user reads nothing of this.
-const checks = new Map<string, TransferDialogState>();
+// `asked` orders the requests of all cards, so that a late answer never replaces a newer one.
+const checks = new Map<string, { state: TransferDialogState; asked: number }>();
+let lastAsked = 0;
 
 /** Clears the stored checks. Tests call this between cases. */
 export function clearAutomationPreflights() {
 	checks.clear();
 }
 
-function storeCheck(key: string, state: TransferDialogState) {
+function storeCheck(key: string, state: TransferDialogState, asked: number) {
+	const stored = checks.get(key);
+	if (stored !== undefined && stored.asked > asked) return;
 	checks.delete(key);
-	checks.set(key, state);
+	checks.set(key, { state, asked });
 	// A Map keeps the order of insertion, so the first key is the oldest.
 	for (const oldest of checks.keys()) {
 		if (checks.size <= MAX_STORED_PREFLIGHTS) break;
@@ -59,16 +63,17 @@ export function useAutomationPreflight(request: Ref<AutomationPreflightRequest |
 		const key = keyOf(wanted);
 		const stored = fresh ? undefined : checks.get(key);
 		if (stored) {
-			check.value = stored;
+			check.value = stored.state;
 			return;
 		}
 		check.value = 'checking';
+		const asked = ++lastAsked;
 		try {
 			const preflight = await fetchTransferPreflight(rootStore.restApiContext, wanted.linkId, {
 				workflowId: wanted.workflowId,
 			});
 			const state = transferDialogState(preflight);
-			storeCheck(key, state);
+			storeCheck(key, state, asked);
 			if (run === latest) check.value = state;
 		} catch {
 			if (run === latest) check.value = 'failed';

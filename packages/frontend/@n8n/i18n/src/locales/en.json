@@ -8133,6 +8133,7 @@
 	"instanceAi.automation.resolved.copyingTo": "Copying \"{title}\" to {place}…",
 	"instanceAi.automation.resolved.notOnIn": "Copied to {place}, but \"{title}\" couldn't be turned on there. Open it there to check it.",
 	"instanceAi.automation.resolved.notReadyIn": "\"{title}\" is on in {place}, but it needs setting up there before it can run. Open it there to set it up.",
+	"instanceAi.automation.resolved.savedNotReadyIn": "Saved in {place}. A version of \"{title}\" is on there, but the new version needs setting up there before it can run. Open it there to set it up.",
 	"instanceAi.automation.resolved.stillOnHere": "\"{title}\" is on in {place}, but it still runs on this computer too. Turn it off here so that it doesn't run twice.",
 	"instanceAi.automation.resolved.savedLiveIn": "Saved in {place}. A version of \"{title}\" is on there.",
 	"instanceAi.automation.resolved.savedCopyIn": "Saved a copy in {place}. \"{title}\" keeps running on this computer.",

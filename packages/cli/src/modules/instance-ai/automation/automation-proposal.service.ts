@@ -7,7 +7,6 @@ import type {
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type * as InstanceAi from '@n8n/instance-ai';
-import type { Scope } from '@n8n/permissions';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { UserError } from 'n8n-workflow';
 
@@ -58,15 +57,6 @@ const ACTION_SOURCE: Record<CapabilitySurface, WorkflowActionSource> = {
 	assistant: 'n8n-ai',
 	mcp: 'n8n-mcp',
 };
-
-/** A move reads and exports the workflow here. */
-const MOVE_SCOPES: Scope[] = ['workflow:read', 'workflow:export'];
-
-/**
- * "Turn it on" of a live workflow in a linked place also turns it off here, so the card lists
- * the links for a live workflow only when the user can turn it off.
- */
-const LIVE_MOVE_SCOPES: Scope[] = [...MOVE_SCOPES, 'workflow:unpublish'];
 
 /** Recommends where the workflow runs: this instance or an online link of the card. */
 async function recommendPlace(
@@ -274,11 +264,7 @@ export class AutomationProposalService {
 		if (liveHere && !canActivate) return LOCAL_PLACES;
 		const links = await this.placement.linksFor(context);
 		if (links.length === 0) return LOCAL_PLACES;
-		// The move refuses a workflow that calls others by ID, so the card keeps it here.
-		if (await this.placement.callsSubWorkflows(workflow)) return LOCAL_PLACES;
-		// A move exports the workflow, so it needs the export scope as well.
-		const scopes = liveHere ? LIVE_MOVE_SCOPES : MOVE_SCOPES;
-		const canMove = await this.reader.hasScope(workflow.id, context.user, scopes);
+		const canMove = await this.placement.canMove(context.user, workflow.id, { liveHere });
 		return canMove ? cardPlaces(links) : LOCAL_PLACES;
 	}
 
