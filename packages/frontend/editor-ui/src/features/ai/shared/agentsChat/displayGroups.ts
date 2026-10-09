@@ -207,11 +207,13 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 	for (const message of messages) {
 		if (message.role === 'assistant' && message.backgroundJobSignal) {
 			// Keep the signal key stable when the same turn gains text or tool calls.
-			groups.push({
-				kind: 'backgroundJobSignal',
-				id: `${message.executionId ?? message.id}:background-job-signal`,
-				signal: message.backgroundJobSignal,
-			});
+			if (message.backgroundJobSignal.tasks.length > 0) {
+				groups.push({
+					kind: 'backgroundJobSignal',
+					id: `${message.executionId ?? message.id}:background-job-signal`,
+					signal: message.backgroundJobSignal,
+				});
+			}
 			if (
 				!message.content &&
 				!message.toolCalls?.length &&

@@ -17,6 +17,7 @@ import {
 	N8nCallout,
 	N8nIcon,
 	N8nIconButton,
+	N8nInput,
 	N8nLink,
 	N8nText,
 	N8nTooltip,
@@ -74,6 +75,7 @@ import {
 	type BudgetAmountField,
 } from '../utils/budget-config';
 import { TIME } from '@/app/constants/durations';
+import { useAgentTaskCancellation } from '../composables/useAgentTaskCancellation';
 import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
 import { getChatAttachmentUrl, type AgentChatChannel } from '../composables/useAgentApi';
 import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
@@ -158,6 +160,8 @@ const {
 	steeringQueueIds,
 	canSteer,
 	steerQueuedMessage,
+	sendHeldMessage,
+	updateQueuedMessage,
 	removeQueuedMessage,
 	reorderQueuedMessage,
 	isReorderingQueue,
@@ -194,9 +198,82 @@ const {
 	budgetCards: props.budgetCards,
 });
 
-const currentPlan = computed(() => selectLatestAgentPlan(messages.value));
+const planStopActive = computed(() => props.channel === 'chat' && props.backgroundJobsActive);
+const messagePlan = computed(() => selectLatestAgentPlan(messages.value));
+const {
+	state: planStop,
+	isStopping: stoppingPlan,
+	stopAll: stopPlan,
+} = useAgentTaskCancellation({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	threadId: () => props.continueSessionId,
+	active: () => planStopActive.value,
+	planId: () => currentPlan.value?.planId ?? null,
+});
+const currentPlan = computed(() => {
+	const saved = planStopActive.value ? planStop.value?.plan : undefined;
+	const displayed = messagePlan.value;
+	return saved &&
+		(!displayed || (saved.planId === displayed.planId && saved.revision >= displayed.revision))
+		? saved
+		: displayed;
+});
+const currentPlanStop = computed(() =>
+	planStopActive.value && planStop.value?.planId === currentPlan.value?.planId
+		? planStop.value
+		: null,
+);
+const planExpanded = ref(false);
+watch(
+	[
+		() => props.projectId,
+		() => props.agentId,
+		() => props.continueSessionId,
+		() => currentPlan.value?.planId,
+	],
+	() => {
+		planExpanded.value = false;
+	},
+);
+
+const canStopPlan = computed(
+	() =>
+		planStopActive.value &&
+		!planStopped.value &&
+		(canStopBackgroundJobs.value ||
+			(!currentPlan.value?.closed &&
+				currentPlan.value?.document.items.some(
+					(item) =>
+						item.status === 'pending' ||
+						item.status === 'in_progress' ||
+						(item.kind === 'group' &&
+							item.tasks.some(
+								(task) => task.status === 'pending' || task.status === 'in_progress',
+							)),
+				))),
+);
+const showPlanStop = computed(
+	() => planStopActive.value && (canStopPlan.value || tasksStopping.value),
+);
 
 const editingQueueId = ref<string>();
+const heldQueueEdit = ref<{ id: string; text: string; saving: boolean }>();
+function isHeldQueueItem(id: string) {
+	return queuedMessages.value.some((item) => item.id === id && item.held);
+}
+async function saveHeldQueueEdit() {
+	const edit = heldQueueEdit.value;
+	if (!edit || edit.saving) return;
+	edit.saving = true;
+	try {
+		const result = await updateQueuedMessage(edit.id, edit.text);
+		if (heldQueueEdit.value === edit && result === 'updated') heldQueueEdit.value = undefined;
+	} finally {
+		edit.saving = false;
+	}
+}
+
 provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
 	getChatAttachmentUrl(
 		rootStore.restApiContext,
@@ -263,6 +340,11 @@ async function loadChatAttachmentFile(attachment: ChatMessageAttachment): Promis
 }
 
 async function startQueueEdit(item: AgentChatQueueItem) {
+	if (item.held) {
+		if (isQueueItemBusy(item)) return;
+		heldQueueEdit.value = { id: item.id, text: item.message, saving: false };
+		return;
+	}
 	if (hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) return;
 	queueExpanded.value = true;
 	const target = {
@@ -403,29 +485,143 @@ const backgroundStoppingIds = computed(
 		),
 );
 
-async function stopBackgroundJobs(event: MouseEvent) {
+const stopFailed = ref(false);
+const tasksStopping = computed(
+	() =>
+		isStopping.value ||
+		stoppingPlan.value ||
+		currentPlanStop.value?.status === 'stopping' ||
+		backgroundStoppingIds.value.size > 0,
+);
+const canRetryStop = computed(
+	() =>
+		stopFailed.value ||
+		currentPlanStop.value?.status === 'failed' ||
+		(!isStopping.value &&
+			backgroundJobs.value.some(
+				(job) => job.kind === 'workflow' && job.status === 'running' && job.pauseRequested,
+			)),
+);
+const stopDisabled = computed(() =>
+	props.channel === 'n8n-chat'
+		? isStopping.value
+		: isStopping.value || stoppingPlan.value || (tasksStopping.value && !canRetryStop.value),
+);
+const backgroundStopLabel = computed(() =>
+	locale.baseText(
+		props.channel === 'n8n-chat'
+			? 'agents.chat.backgroundTasks.stopAll'
+			: stopDisabled.value
+				? 'agents.chat.tasks.stopping'
+				: canRetryStop.value
+					? 'agents.chat.tasks.retry'
+					: 'agents.chat.tasks.stopAll',
+	),
+);
+
+const tasksStopped = computed(() => {
+	if (!planStopActive.value) return false;
+	if (tasksStopping.value || canStopBackgroundJobs.value) return false;
+	if (backgroundJobs.value.some((job) => job.status === 'paused')) return true;
+	// A job that finishes after Continue supersedes an earlier workflow stop.
+	const latest = [...backgroundJobs.value].sort((a, b) =>
+		(b.settledAt ?? '').localeCompare(a.settledAt ?? ''),
+	)[0];
+	return Boolean(latest?.pauseRequested);
+});
+const planStopped = computed(() => {
+	if (currentPlanStop.value) return currentPlanStop.value.status === 'stopped';
+	if (!planStopActive.value || !tasksStopped.value || currentPlan.value?.closed) return false;
+	const startedAt = Date.parse(currentPlan.value?.startedAt ?? '');
+	// A stop that settled before this plan started must not change its display.
+	return backgroundJobs.value.some(
+		(job) =>
+			(job.status === 'paused' || job.pauseRequested) &&
+			(!Number.isFinite(startedAt) || Date.parse(job.settledAt ?? '') >= startedAt),
+	);
+});
+watch(
+	[
+		() => props.projectId,
+		() => props.agentId,
+		() => props.continueSessionId,
+		canStopBackgroundJobs,
+	],
+	() => {
+		stopFailed.value = false;
+	},
+);
+
+async function sendHeldQueueMessage(queueId: string, event: MouseEvent) {
 	const button = event.currentTarget;
-	const restoreFocus = button === document.activeElement;
+	const restore = button === document.activeElement;
 	const threadId = props.continueSessionId;
-	try {
-		await stopAll();
-	} catch (error) {
-		toast.showError(error, locale.baseText('agents.chat.backgroundTasks.stopError'));
-	}
-	// Disabling the button can clear focus before the task rows disappear.
+	await sendHeldMessage(queueId);
 	await nextTick();
 	if (
-		!restoreFocus ||
+		restore &&
+		!disposed &&
+		props.visible &&
+		props.continueSessionId === threadId &&
+		(document.activeElement === document.body || document.activeElement === button)
+	)
+		focusInput({ preventScroll: true });
+}
+
+let taskStopFocus:
+	| { button: EventTarget | null; threadId?: string; projectId: string; agentId: string }
+	| undefined;
+async function restoreTaskStopFocus() {
+	if (stopDisabled.value || !taskStopFocus) return;
+	const target = taskStopFocus;
+	taskStopFocus = undefined;
+	await nextTick();
+	if (
 		disposed ||
 		!props.visible ||
-		props.continueSessionId !== threadId ||
+		props.continueSessionId !== target.threadId ||
+		props.projectId !== target.projectId ||
+		props.agentId !== target.agentId ||
 		hasPendingApprovals.value ||
 		document.activeElement !== document.body
 	)
 		return;
-	if (button instanceof HTMLElement && button.isConnected) button.focus({ preventScroll: true });
+	if (
+		target.button instanceof HTMLElement &&
+		target.button.isConnected &&
+		!target.button.matches(':disabled')
+	)
+		target.button.focus({ preventScroll: true });
 	else focusInput({ preventScroll: true });
 }
+watch(stopDisabled, () => {
+	void restoreTaskStopFocus();
+});
+async function stopBackgroundJobs(event: MouseEvent) {
+	const stopCurrentPlan = currentPlan.value && planStopActive.value;
+	if (stopDisabled.value || !(stopCurrentPlan ? canStopPlan.value : canStopBackgroundJobs.value))
+		return;
+	stopFailed.value = false;
+	const threadId = props.continueSessionId;
+	if (event.currentTarget === document.activeElement) {
+		taskStopFocus = {
+			button: event.currentTarget,
+			threadId: props.continueSessionId,
+			projectId: props.projectId,
+			agentId: props.agentId,
+		};
+	}
+	try {
+		if (stopCurrentPlan) await stopPlan();
+		else await stopAll();
+	} catch (error) {
+		if (disposed || props.continueSessionId !== threadId) return;
+		stopFailed.value = true;
+		toast.showError(error, locale.baseText('agents.chat.backgroundTasks.stopError'));
+	}
+	await restoreTaskStopFocus();
+}
+
 const backgroundRunningCount = computed(
 	() => backgroundJobs.value.filter((job) => job.status === 'running').length,
 );
@@ -433,6 +629,7 @@ const backgroundInProgress = computed(
 	() => backgroundRunningCount.value > 0 || backgroundStoppingIds.value.size > 0,
 );
 const backgroundTitle = computed(() => {
+	if (tasksStopped.value) return locale.baseText('agents.chat.tasks.stopped');
 	const stoppingCount = backgroundStoppingIds.value.size;
 	if (stoppingCount > 0) {
 		return locale.baseText('agents.chat.backgroundTasks.stoppingCount', {
@@ -613,7 +810,10 @@ const backgroundJobStopButton =
 	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
 const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 const showBackgroundJobs = computed(
-	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
+	() =>
+		props.backgroundJobsActive &&
+		(props.channel !== 'chat' || !currentPlan.value) &&
+		backgroundJobs.value.length > 0,
 );
 
 function focusInput(options?: FocusOptions) {
@@ -978,6 +1178,7 @@ watch(
 		queuedExternalMessage = undefined;
 		handoffPreview = undefined;
 		editingQueueId.value = undefined;
+		heldQueueEdit.value = undefined;
 		queueExpanded.value = false;
 		queueOrder.value = undefined;
 		firstMessagePreview.value = undefined;
@@ -1366,24 +1567,38 @@ onBeforeUnmount(() => {
 								</span>
 							</N8nLink>
 							<N8nButton
-								v-if="canStopBackgroundJobs"
+								v-if="canStopBackgroundJobs || tasksStopping"
 								ref="backgroundJobStopButton"
 								variant="ghost"
 								size="small"
 								:class="$style.jobStopButton"
-								:disabled="isStopping"
+								:disabled="stopDisabled"
 								data-testid="agent-background-jobs-stop"
 								@click="stopBackgroundJobs"
 							>
 								<span :class="$style.jobTraceLabel">
 									<N8nIcon icon="filled-square" size="small" aria-hidden="true" />
-									{{ locale.baseText('agents.chat.backgroundTasks.stopAll') }}
+									{{ backgroundStopLabel }}
 								</span>
 							</N8nButton>
 						</div>
 					</div>
 				</N8nAiActivityStepGroup>
 			</div>
+			<AgentChatPlan
+				v-if="hasPendingApprovals && currentPlan && planStopActive"
+				v-model:expanded="planExpanded"
+				:plan="currentPlan"
+				:trace-route="continueSessionId ? backgroundTraceRoute : undefined"
+				:show-stop="showPlanStop"
+				:can-stop="canStopPlan"
+				:stopping="planStopActive && stopDisabled"
+				:stopped="planStopped"
+				:stopped-at="currentPlanStop?.requestedAt"
+				:report-failed="currentPlanStop?.reportFailed"
+				:stop-failed="canRetryStop && canStopPlan && !isStopping"
+				@stop="stopBackgroundJobs"
+			/>
 			<div v-if="hasPendingApprovals" ref="approvalCards" data-testid="agent-chat-approvals">
 				<ApprovalCard
 					v-if="pendingApproval"
@@ -1436,11 +1651,20 @@ onBeforeUnmount(() => {
 					<template v-if="currentPlan" #header>
 						<AgentChatPlan
 							v-if="currentPlan"
+							v-model:expanded="planExpanded"
 							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
 							:plan="currentPlan"
 							:trace-route="
 								continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 							"
+							:show-stop="showPlanStop"
+							:can-stop="canStopPlan"
+							:stopping="planStopActive && stopDisabled"
+							:stopped="planStopped"
+							:stopped-at="currentPlanStop?.requestedAt"
+							:report-failed="currentPlanStop?.reportFailed"
+							:stop-failed="canRetryStop && canStopPlan && !isStopping"
+							@stop="stopBackgroundJobs"
 						/>
 					</template>
 					<template #above>
@@ -1461,7 +1685,68 @@ onBeforeUnmount(() => {
 							@steer="steerQueuedMessage"
 							@edit="editQueuedMessage"
 							@remove="removeQueuedMessage"
-						/>
+						>
+							<template #message="{ item }">
+								<N8nInput
+									v-if="heldQueueEdit && heldQueueEdit.id === item.id"
+									v-model="heldQueueEdit.text"
+									type="textarea"
+									size="small"
+									:disabled="heldQueueEdit.saving"
+									:aria-label="locale.baseText('agents.chat.queue.edit')"
+									autofocus
+									@keydown.enter.exact.prevent="saveHeldQueueEdit"
+									@keydown.esc="heldQueueEdit = undefined"
+								/>
+							</template>
+							<template #actions="{ item }">
+								<template v-if="isHeldQueueItem(item.id)">
+									<template v-if="heldQueueEdit && heldQueueEdit.id === item.id">
+										<N8nButton
+											variant="ghost"
+											size="xsmall"
+											:disabled="heldQueueEdit.saving"
+											@click="saveHeldQueueEdit"
+											>{{ locale.baseText('generic.save') }}</N8nButton
+										>
+										<N8nButton
+											variant="ghost"
+											size="xsmall"
+											:disabled="heldQueueEdit.saving"
+											@click="heldQueueEdit = undefined"
+											>{{ locale.baseText('generic.cancel') }}</N8nButton
+										>
+									</template>
+									<template v-else>
+										<N8nButton
+											variant="ghost"
+											size="xsmall"
+											:disabled="isDisplayedQueueItemBusy(item) || isStopping"
+											@click="sendHeldQueueMessage(item.id, $event)"
+											>{{ locale.baseText('agents.chat.queue.send') }}</N8nButton
+										>
+										<N8nButton
+											variant="ghost"
+											size="xsmall"
+											icon="pencil"
+											icon-only
+											:aria-label="locale.baseText('generic.edit')"
+											:disabled="isDisplayedQueueItemBusy(item)"
+											@click="editQueuedMessage(item.id)"
+										/>
+										<N8nButton
+											variant="ghost"
+											size="xsmall"
+											icon="trash-2"
+											icon-only
+											:aria-label="locale.baseText('generic.delete')"
+											:disabled="isDisplayedQueueItemBusy(item)"
+											@click="removeQueuedMessage(item.id)"
+										/>
+									</template>
+								</template>
+							</template>
+						</ChatMessageQueue>
 					</template>
 					<template v-if="attachedFiles.length > 0" #attachments>
 						<div :class="$style.attachmentsStrip">
@@ -1547,7 +1832,7 @@ onBeforeUnmount(() => {
 	--ai-activity-step--min-height: var(--height--xl);
 	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
 	--ai-activity-step--color: var(--text-color);
-	display: none;
+	display: block;
 	background: var(--background--surface);
 	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--xs);

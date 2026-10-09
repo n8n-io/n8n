@@ -60,6 +60,7 @@ vi.mock('@n8n/design-system', () => ({
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
 		translations: {
+			'agentSessions.status.cancelled': 'Canceled',
 			'agents.chat.plan.error.rejected':
 				'The plan change was rejected. Expand this step for details.',
 			'agents.chat.toolNames.webSearch': 'Web search',
@@ -115,6 +116,35 @@ function mountSteps(
 }
 
 describe('AgentChatToolSteps', () => {
+	it.each([
+		{ state: TOOL_CALL_STATE.CANCELLED, canceled: true, output: 'Tool call canceled' },
+		{
+			state: TOOL_CALL_STATE.ERROR,
+			output: 'Error: Tool call stopped by guardrail: tasks-cancelled',
+		},
+	])('shows canceled work without an error or repair action: $state', (cancellation) => {
+		const wrapper = mountSteps(
+			[{ tool: 'update_plan', toolCallId: 'tc-canceled', ...cancellation }],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+		expect(wrapper.get('[data-testid="tool-step-summary"]').text()).toBe('Canceled');
+		expect(wrapper.find('[data-testid="tool-step-warning"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+	});
+
+	it('keeps other guardrail refusals visible as tool errors', () => {
+		const error = 'Error: Tool call stopped by guardrail: tool.blocked';
+		const wrapper = mountSteps(
+			[{ tool: 'lookup', toolCallId: 'tc-error', state: TOOL_CALL_STATE.ERROR, output: error }],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+		expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(error);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
+	});
+
 	it.each([
 		{
 			tool: 'update_plan',
