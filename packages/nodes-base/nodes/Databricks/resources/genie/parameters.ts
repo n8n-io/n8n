@@ -98,4 +98,12 @@ export const genieParameters: INodeProperties[] = [
 			},
 		},
 	},
+	// The agent appends this to its reply when the node runs as a tool (ENT-527)
+	{
+		displayName: 'Tool Attribution',
+		name: 'toolAttribution',
+		type: 'hidden',
+		default: 'Powered by Databricks Genie',
+		displayOptions: { show: { resource: ['genie'] } },
+	},
 ];
