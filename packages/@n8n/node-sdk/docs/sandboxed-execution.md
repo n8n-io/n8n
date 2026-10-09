@@ -66,9 +66,10 @@ flowchart LR
   JSON-RPC stream holds only the protocol. `wasi:random` is linked to the OS random source.
   `wasi:clocks/wall-clock` and `wasi:clocks/monotonic-clock` are linked to the host clocks,
   coarsened to 1 ms, so a guest cannot measure host work more precisely. The clocks give no
-  timer: `subscribe-instant` and `subscribe-duration` stop the run. The other WASI functions that
-  the JS guest imports (`wasi:io`, `wasi:cli/stderr`) also stop the run. These WASI imports are
-  not in the Node Contract WIT, so they do not change the Node Contract version.
+  timer: `subscribe-instant` and `subscribe-duration` stop the run. The other `wasi:io` and
+  `wasi:cli` functions that a guest imports also stop the run: streams, the environment, the exit.
+  The JS guest and Rust std on `wasm32-wasip2` import them. These WASI imports are not in the
+  Node Contract WIT, so they do not change the Node Contract version.
 - `sandbox/action.ts`, `sandbox/provider.ts` and `sandbox/trigger.ts`, on the core
   `sandbox/guest.ts`: one generic guest component for each kind interface, `action.wasm`,
   `provider.wasm` and `trigger.wasm`, for every JS bundle of that kind. A WIT world cannot import and export `capabilities`, so one component cannot serve
@@ -163,7 +164,13 @@ The policy (`src/runtime-policy.ts`):
   `image`: the action spec declares `runtime: { image: '<ref>@sha256:<digest>', childProcess?,
   addons? }`. Pack refuses an image without a digest. The image is part of the contract hash,
   and the version needs Node Contract 2.7.0. Such a version runs only in `container`, in its own
-  image, with `--allow-child-process` and `--allow-addons` from the contract.
+  image, with `--allow-child-process` and `--allow-addons` from the contract. Without a loaded
+  action, `replayFixtures` replays it in `containerRuntime`, so publish fails when docker or the
+  image is missing. The first-party example is `browser.screenshot` in `@n8n/nodes-core`: it
+  renders HTML to a PNG with the headless Chromium of the Playwright image. `component`: the
+  bundle is a WASM component (`guest: 'component'`, see "Languages"). It runs only in `wasm`, and
+  `replayFixtures` replays it there. `http-guest`: the bundle is an HTTP guest config. It runs
+  only in `in-process`.
 - **Trust class**: the origin that the store recorded for the version (see the notes under "n8n configuration"):
   `first-party` (in the release, or signed by the first-party key), `community` (signed by the
   vetting key) or `private` (signed by no trusted key: local, unsigned or AI-made). Each class has
@@ -265,8 +272,8 @@ absolute numbers are noisy. Source: `.scratch/runtime-poc/RESULTS.md` of the run
   and a chunk has a count limit (1000), not a byte limit.
 - The snapshot cache has no cap: 79 bundles took 3.6 GB.
 - The pools and the reused sidecars have no cap per key, no total cap and no maximum age.
-- A container gets 64 pids by default. Chromium hangs at 64 pids; 256 work. An image manifest
-  cannot set pids yet.
+- A container gets 256 pids by default. Chromium starts about 110 and hangs at 64. An image
+  manifest cannot set pids yet.
 - The container runtime needs Docker. It is tested with colima and `runc` only. `runsc` (gVisor)
   is not tested here.
 - The n8n image does not ship the sidecar and the guests yet, so `wasm` is not available by
@@ -368,6 +375,26 @@ compiles at the same time are safe: the sidecar writes the `.cwasm` atomically.
 
 A Python or Rust action implements the same WIT world against the same JSON Schemas. The sidecar
 runs any component of the world. The same fixtures prove parity across languages.
+
+Rust is built:
+
+- `rust/` is the Rust SDK, the crate `n8n-node-sdk`: the `wit-bindgen` bindings of the
+  `action-bundle` world of `spec/wit`, `export_action!`, and helpers for JSON and `run-error`.
+- An action is a `cdylib` crate in `src/nodes/<node>/actions/<action>/Cargo.toml`. Its
+  `describe()` gives the contract document of the manifest format. The crate version is the
+  version of the action, so its major is the contract version. Example:
+  `image.resize` of `@n8n/nodes-core`. It resizes and converts images with the pure-Rust
+  `image` crate, so it needs no native library and no container.
+- `packPackage` builds each crate with `cargo build --release --target wasm32-wasip2` and runs
+  `describe()` in the sidecar, so the manifest contract comes from the component. The manifest
+  has `guest: 'component'`, and the bundle is the component as base64 text, so the stores keep
+  it as text. Without cargo, the `wasm32-wasip2` target or the sidecar, the build logs one line
+  and skips the Rust actions.
+- The host gives the component to the sidecar as `--component`, with no bundle and no SDK
+  runtime. At load, the component must describe the contract of its manifest.
+- `replayFixtures` runs a component in the sidecar of `defaultSandbox()`, also when the caller
+  gives no runtime. The runtime policy runs it only in `wasm`.
+- Publish does not take Rust actions yet.
 
 ## Risks
 

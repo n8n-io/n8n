@@ -230,8 +230,11 @@ export const versionManifestSchema = typed<VersionManifest>()(
 				.describe('The n8n expression that finds an error in a successful response.')
 				.with(SINCE_2_10)
 				.optional(),
-			guest: constant('http')
-				.describe('The generic guest of the bundle. Absent: the JS guest runs JS code.')
+			guest: t
+				.oneOf('http', 'component')
+				.describe(
+					'The guest of the bundle. `component`: the bundle is a WASM component as base64 text. Absent: the JS guest runs JS code.',
+				)
 				.with(SINCE_2_10)
 				.optional(),
 			...versionFields,

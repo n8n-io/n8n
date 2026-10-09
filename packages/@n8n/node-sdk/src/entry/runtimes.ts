@@ -4,6 +4,7 @@ export { wasmReuseRuntime } from '../runtimes/wasm-reuse';
 export { workerRuntime, type WorkerOptions } from '../runtimes/worker';
 export {
 	RUNTIME_NAMES,
+	needsOf,
 	type RuntimeAvailability,
 	type RuntimeLists,
 	type RuntimeName,

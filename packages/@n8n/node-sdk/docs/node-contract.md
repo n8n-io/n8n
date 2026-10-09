@@ -212,6 +212,10 @@ only.
   interface at 2.7.0. Pack all spike versions again.
 - A new item in the host interfaces raises the one Node Contract minor. A bundle that does not
   use the new item keeps its lower `nodeContract`.
+- A WASM component (`guest: 'component'`) states the Node Contract version of the WIT that it
+  exports. Pack writes `NODE_CONTRACT_VERSION`, because the Rust SDK binds the WIT of this
+  version. The value needs no new minor: a host from 2.10.0 that does not know `component`
+  refuses the manifest, because its schema allows only `guest: 'http'`.
 - The contract hash covers only `contract`. The manifest fields `kind`, `nodeContract`, `sdk`
   and `credentials` are outside it.
 - A manifest has no node description. The host makes the description of each version from

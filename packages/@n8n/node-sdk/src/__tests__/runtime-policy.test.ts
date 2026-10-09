@@ -61,6 +61,8 @@ describe('resolveRuntime', () => {
 		],
 		['community trigger', { kind: 'trigger' }, 'wasm'],
 		['first-party HTTP guest', { trust: 'first-party', needs: 'http-guest' }, 'in-process'],
+		['first-party WASM component', { trust: 'first-party', needs: 'component' }, 'wasm'],
+		['private WASM component', { trust: 'private', needs: 'component' }, 'wasm'],
 		[
 			'community trigger with the in-process override',
 			{ kind: 'trigger', lists: { ...LISTS, community: ['in-process', 'wasm'] } },
@@ -100,6 +102,20 @@ describe('resolveRuntime', () => {
 			'community trigger with only container',
 			{ kind: 'trigger', lists: { ...LISTS, community: ['container'] } },
 			'slack.message.send@1.2.0 (community trigger) needs one of in-process, wasm; community nodes may not use in-process or wasm',
+		],
+		[
+			'a WASM component in in-process, worker or container',
+			{
+				trust: 'first-party',
+				needs: 'component',
+				lists: { ...LISTS, 'first-party': ['in-process', 'worker', 'container'] },
+			},
+			'slack.message.send@1.2.0 (first-party, WASM component) needs wasm; first-party nodes may not use wasm',
+		],
+		[
+			'a WASM component without wasm',
+			{ needs: 'component', available: { missing: { wasm: NO_WASM } } },
+			`slack.message.send@1.2.0 (community, WASM component) needs wasm; ${NO_WASM}`,
 		],
 	])('refuses %s', (_, request, error) => {
 		expect(resolve(request)).toEqual({ error });
@@ -144,6 +160,15 @@ describe('policyExecutorLoader', () => {
 		expect(runtimeNameOf(policy(), { manifest, origin: 'private' })).toBe('in-process');
 		expect(runtimeNameOf(policy(), { manifest: head!.manifest, origin: 'private' })).toBe(
 			'container',
+		);
+	});
+
+	it('runs a WASM component only in wasm', () => {
+		const manifest = { ...head!.manifest, guest: 'component' as const };
+		const lists = { ...LISTS, 'first-party': ['in-process', 'worker', 'container'] as const };
+		expect(runtimeNameOf(policy(), { manifest, origin: 'first-party' })).toBe('wasm');
+		expect(() => runtimeNameOf(policy({ lists }), { manifest, origin: 'first-party' })).toThrow(
+			'(first-party, WASM component) needs wasm; first-party nodes may not use wasm',
 		);
 	});
 

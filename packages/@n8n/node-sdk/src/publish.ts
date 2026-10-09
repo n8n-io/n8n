@@ -1,6 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import {
@@ -42,6 +42,7 @@ import {
 	credentialOfManifests,
 	evaluateVersion,
 	executorOf,
+	hostRuntime,
 	nodeDescriptionOf,
 	type BinaryStore,
 	type Executor,
@@ -49,6 +50,8 @@ import {
 } from './runtime';
 import { parameterPathOf, toProperty } from './properties';
 import { providedKindOf, providerInputsOf, replayCapability, type ProviderKind } from './providers';
+import { needsOf } from './runtime-policy';
+import { CONTAINER_GUEST, containerRuntime } from './runtimes/container';
 import { canonicalJson, shapeOf } from './schema';
 import {
 	credentialManifestOf,
@@ -71,6 +74,7 @@ import {
 	type NpmSource,
 	type NpmVersion,
 } from './npm';
+import { defaultSandbox, sandboxedVersionOf } from './sandbox';
 import { credentialRangesOf, type SourcePackage, type StoreManifest } from './store';
 import { evaluateAlone, mockHttp, sendRequest } from './testing';
 import { validate } from './validator';
@@ -221,34 +225,90 @@ async function callResults(capability: unknown, calls: ExecutionFixture['calls']
 	}, Promise.resolve([]));
 }
 
+/** The packed version that `replayFixtures` replays. */
+type ReplayedVersion = Pick<PackedAction, 'manifest' | 'bundle' | 'sdk'> & {
+	/** The credential manifests of the types that the bundle names. */
+	readonly credentials?: readonly CredentialManifest[];
+};
+
+/** The action, its executor and its `migrate`, e.g. in the sandbox. */
+interface LoadedVersion {
+	/** The action that the bundle exports. */
+	readonly contract: Action;
+	/** The executor that runs it. */
+	readonly executor: Executor;
+	/** The `migrate` of the bundle in the same runtime. It fails when the bundle has none. */
+	readonly migrate: (
+		fromMajor: number,
+		params: Readonly<Record<string, unknown>>,
+	) => Promise<Record<string, unknown>>;
+}
+
 /**
  * Replays fixtures through the current host executor: execution fixtures against the bundle,
  * migration pairs against its `migrate`. An executor change that alters an old version fails.
  * A trigger replays only its migration pairs. The bundle gets the credential types that it names
- * from `credentials`.
+ * from `credentials`. Without `loaded`, a version with a container image (`runtime`) replays in
+ * `containerRuntime`, a WASM component in the wasm runtime, and a version that cannot start there
+ * fails with the reason.
  */
 export async function replayFixtures(
-	{
-		manifest,
-		bundle,
-		sdk,
-		credentials = [],
-	}: Pick<PackedAction, 'manifest' | 'bundle' | 'sdk'> & {
-		readonly credentials?: readonly CredentialManifest[];
-	},
+	version: ReplayedVersion,
 	fixtures: ContractFixtures,
-	/** The action, its executor and its `migrate`, e.g. in the sandbox. The default runs the bundle here. */
-	loaded?: {
-		/** The action that the bundle exports. */
-		readonly contract: Action;
-		/** The executor that runs it. */
-		readonly executor: Executor;
-		/** The `migrate` of the bundle in the same runtime. It fails when the bundle has none. */
-		readonly migrate: (
-			fromMajor: number,
-			params: Readonly<Record<string, unknown>>,
-		) => Promise<Record<string, unknown>>;
-	},
+	/** The default runs the bundle here, or in the only runtime that serves it. */
+	loaded?: LoadedVersion,
+): Promise<string[]> {
+	const needs = needsOf(version.manifest);
+	if (loaded || (needs !== 'image' && needs !== 'component')) {
+		return await replayLoaded(version, fixtures, loaded);
+	}
+	// Next to the guest, so docker shares it whenever it shares the guest. Colima shares no tmpdir.
+	const cacheRoot = path.resolve(CONTAINER_GUEST, '..', '..', '..', 'node_modules', '.cache');
+	await mkdir(cacheRoot, { recursive: true });
+	const cacheDir = await mkdtemp(path.join(cacheRoot, 'replay-'));
+	try {
+		const sandboxed = await sandboxedReplayOf(version, needs, cacheDir).catch((error: unknown) =>
+			error instanceof Error ? error : new UnexpectedError(String(error)),
+		);
+		const { id, semver } = version.manifest;
+		if (sandboxed instanceof Error) return [`${id}@${semver}: ${sandboxed.message}`];
+		return await replayLoaded(version, fixtures, sandboxed);
+	} finally {
+		await rm(cacheDir, { recursive: true, force: true });
+	}
+}
+
+/** The version in its container image, or a component in the wasm runtime. */
+async function sandboxedReplayOf(
+	{ manifest, bundle, sdk, credentials = [] }: ReplayedVersion,
+	needs: 'image' | 'component',
+	cacheDir: string,
+): Promise<LoadedVersion> {
+	const { action, executor, migrate } = await sandboxedVersionOf(
+		{
+			manifest,
+			origin: 'first-party',
+			readBundle: async () => bundle,
+			readSdk: async () => sdk ?? '',
+		},
+		{
+			...(needs === 'image'
+				? { runtime: containerRuntime({ image: manifest.contract.runtime?.image }) }
+				: defaultSandbox()),
+			cacheDir,
+			credentialType: () => undefined,
+		},
+		hostRuntime({
+			credentialManifestOf: async (name) => credentials.find((each) => each.name === name),
+		}),
+	);
+	return { contract: action, executor, migrate };
+}
+
+async function replayLoaded(
+	{ manifest, bundle, sdk, credentials = [] }: ReplayedVersion,
+	fixtures: ContractFixtures,
+	loaded?: LoadedVersion,
 ): Promise<string[]> {
 	const contract =
 		loaded?.contract ?? evaluateVersion(bundle, manifest, sdk, credentialOfManifests(credentials));

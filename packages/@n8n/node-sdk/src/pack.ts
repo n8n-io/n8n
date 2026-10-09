@@ -1,7 +1,11 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { readdirSync, readFileSync, rmSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { homedir, tmpdir } from 'node:os';
 import type { BuildOptions, BuildResult, Plugin } from 'esbuild';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { toHostname, UnexpectedError, UserError } from 'n8n-workflow';
 import { validRange } from 'semver';
 
@@ -19,6 +23,7 @@ import {
 } from './lift/http';
 import {
 	actionUiSchema,
+	contractDocumentSchema,
 	credentialManifestOf,
 	parseCredentialManifest,
 	SDK_RUNTIME_ID,
@@ -29,6 +34,7 @@ import {
 } from './manifest';
 import { DEFAULT_NPM_SCOPE, npmDigestOf, npmRegistryOf, npmStoreReader } from './npm';
 import { evaluateBundle, isHostModule, SDK_MODULES, VALIDATOR_MODULE } from './runtime';
+import { defaultSandbox, describeComponent } from './sandbox';
 import {
 	addToStore,
 	embeddedStoreDirOf,
@@ -48,6 +54,7 @@ import {
 	NODE_CONTRACT_VERSION,
 	parseManifest,
 	parseNativeManifest,
+	parseSemver,
 	requiredNodeContractOf,
 	sha256,
 	type NodeContractVersion,
@@ -500,6 +507,121 @@ export async function packHttpGuest(
 	return { manifest, bundle, action };
 }
 
+/** The Rust SDK crate. Pack maps its path out of the component bytes. */
+const RUST_SDK = path.resolve(__dirname, '..', 'rust');
+
+const COMPONENT_TARGET = 'wasm32-wasip2';
+
+const run = promisify(execFile);
+
+/** Why this host cannot pack a Rust action, or `undefined` when it can. */
+export async function rustMissingOf(sidecar = defaultSandbox().sidecar) {
+	if (
+		!(await run('cargo', ['--version']).then(
+			() => true,
+			() => false,
+		))
+	) {
+		return 'cargo is not on the PATH';
+	}
+	const { stdout } = await run('rustc', ['--print', 'target-libdir', '--target', COMPONENT_TARGET]);
+	if (!existsSync(stdout.trim())) {
+		return `the ${COMPONENT_TARGET} target is not installed (rustup target add ${COMPONENT_TARGET})`;
+	}
+	if (!existsSync(sidecar)) {
+		return `the sandbox sidecar ${sidecar} is not built (pnpm --filter @n8n/node-sdk sandbox:build)`;
+	}
+	return undefined;
+}
+
+/** The name, version and target directory of a crate, from `cargo metadata`. */
+async function crateOf(manifestPath: string) {
+	const { stdout } = await run(
+		'cargo',
+		['metadata', '--no-deps', '--format-version', '1', '--manifest-path', manifestPath],
+		{ maxBuffer: 16 * 1024 * 1024 },
+	);
+	const metadata: unknown = JSON.parse(stdout);
+	const crate =
+		isRecord(metadata) && Array.isArray(metadata.packages) ? metadata.packages[0] : undefined;
+	if (
+		!isRecord(metadata) ||
+		typeof metadata.target_directory !== 'string' ||
+		!isRecord(crate) ||
+		typeof crate.name !== 'string' ||
+		typeof crate.version !== 'string'
+	) {
+		throw new UnexpectedError(`cargo metadata gives no package for ${manifestPath}`);
+	}
+	return { name: crate.name, version: crate.version, targetDir: metadata.target_directory };
+}
+
+/**
+ * Builds the Rust crate of an action with `cargo build --release --target wasm32-wasip2` and
+ * packs the WASM component. The contract comes from its `describe()` export, which the sidecar
+ * runs, and the version from the crate. The bundle is the component as base64 text, so every
+ * store keeps it as text. Only the `wasm` runtime runs it.
+ */
+export async function packComponent(
+	crateDir: string,
+	sidecar = defaultSandbox().sidecar,
+): Promise<{ readonly manifest: VersionManifest; readonly bundle: string }> {
+	const manifestPath = path.join(crateDir, 'Cargo.toml');
+	const { name, version, targetDir } = await crateOf(manifestPath);
+	const cargoHome = process.env.CARGO_HOME ?? path.join(homedir(), '.cargo');
+	// Without the local paths in the bytes, the same source gives the same bytes on each host.
+	const remaps = [
+		[crateDir, `/${name}`],
+		[RUST_SDK, '/n8n-node-sdk'],
+		[cargoHome, '/cargo'],
+	].map(([from, to]) => `--remap-path-prefix=${from}=${to}`);
+	await run(
+		'cargo',
+		['build', '--release', '--target', COMPONENT_TARGET, '--manifest-path', manifestPath],
+		{
+			env: { ...process.env, CARGO_ENCODED_RUSTFLAGS: remaps.join('\x1f') },
+			maxBuffer: 16 * 1024 * 1024,
+		},
+	);
+	const bytes = await readFile(
+		path.join(targetDir, COMPONENT_TARGET, 'release', `${name.replaceAll('-', '_')}.wasm`),
+	);
+	const workDir = await mkdtemp(path.join(tmpdir(), 'n8n-pack-component-'));
+	const described = await writeFile(path.join(workDir, 'component.wasm'), bytes)
+		.then(
+			async () =>
+				await describeComponent(path.join(workDir, 'component.wasm'), {
+					sidecar,
+					cacheDir: workDir,
+				}),
+		)
+		.finally(async () => await rm(workDir, { recursive: true, force: true }));
+	if (!matches(contractDocumentSchema, described)) {
+		throw new UserError(`The component of ${crateDir} describes no contract document`);
+	}
+	if (manifestKindOf(described) !== 'action') {
+		throw new UserError(`${described.id} in ${crateDir} must be an action`);
+	}
+	if (parseSemver(version).major !== described.version) {
+		throw new UserError(
+			`${described.id} in ${crateDir} has the crate version ${version}, so its contract version must be ${parseSemver(version).major}`,
+		);
+	}
+	const bundle = bytes.toString('base64');
+	const manifest: VersionManifest = {
+		kind: 'action',
+		id: described.id,
+		semver: version,
+		// The component exports the action interface of the WIT of this version.
+		nodeContract: NODE_CONTRACT_VERSION,
+		contractHash: contractHash(described),
+		bundleHash: sha256(bundle),
+		guest: 'component',
+		contract: described,
+	};
+	return { manifest, bundle };
+}
+
 /**
  * The config with `contract.nodeDisplayName` from its node, e.g. of a form that names the app
  * once. A node that the config extends replaces it.
@@ -773,6 +895,8 @@ export interface PackageContracts {
 	readonly natives: ReadonlyArray<Action | Trigger>;
 	/** The entry of each credential type that a `credentials.ts` module exports, by id. */
 	readonly credentials: ReadonlyMap<string, CredentialEntry>;
+	/** The crate directory of each Rust action, `src/nodes/<node>/actions/<action>/Cargo.toml`. */
+	readonly components: readonly string[];
 }
 
 // A built contract has these fields; other exports of an action file are helpers.
@@ -784,8 +908,8 @@ const isContractExport = (value: unknown): value is Action | Trigger =>
 	isRecord(value.node);
 
 /**
- * The contracts of a package: the exports of its `src/nodes/<node>/actions/*.ts` files, and the
- * credential types of its `credentials.ts` modules. An
+ * The contracts of a package: the exports of its `src/nodes/<node>/actions/*.ts` files, the
+ * credential types of its `credentials.ts` modules, and its Rust action crates. An
  * action file without a contract export is an error, because pack would drop it without a
  * sign. Two exports of one id and major are an error, because pack would write two versions
  * for one.
@@ -842,6 +966,14 @@ export async function contractsOfPackage(
 					);
 				}),
 		),
+		components: all
+			.filter(
+				(file) =>
+					path.basename(file) === 'Cargo.toml' &&
+					path.basename(path.dirname(path.dirname(file))) === 'actions',
+			)
+			.map((file) => path.join(nodesDir, path.dirname(file)))
+			.sort(),
 	};
 }
 
@@ -959,12 +1091,19 @@ export async function packPackage(
 	outDir = embeddedStoreDirOf(pkg),
 	log: (line: string) => void = () => {},
 ): Promise<PackedPackage> {
-	const { entries, natives: sources, credentials } = await contractsOfPackage(pkg);
+	const { entries, natives: sources, credentials, components } = await contractsOfPackage(pkg);
 	const types = credentialTypesOf([...entries.map(({ action }) => action), ...sources]);
 	const sdk = await packSdkRuntime();
-	const packed = await Promise.all(
-		entries.map(async ({ entryFile, exportName }) => await packAction(entryFile, exportName, sdk)),
-	);
+	const rustMissing = components.length > 0 ? await rustMissingOf() : undefined;
+	if (rustMissing) {
+		log(`Skipped the Rust actions of ${pkg.name}: ${rustMissing}`);
+	}
+	const packed = await Promise.all([
+		...entries.map(
+			async ({ entryFile, exportName }) => await packAction(entryFile, exportName, sdk),
+		),
+		...(rustMissing ? [] : components.map(async (crateDir) => await packComponent(crateDir))),
+	]);
 	const packedCredentials = (
 		await Promise.all(
 			types.map(async (type) => await packCredential(type, credentials.get(type.id), sdk)),

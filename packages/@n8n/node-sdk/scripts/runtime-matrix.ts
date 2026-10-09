@@ -10,6 +10,7 @@ import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import {
 	firstPartyActionIds,
+	firstPartyActionIdsWithoutImage,
 	firstPartyCredentialType,
 	firstPartyVersionsOf as versionsOf,
 	fixturesFileOf,
@@ -90,10 +91,14 @@ const budgetOf = (ms: number) => {
 };
 type Budget = ReturnType<typeof budgetOf>;
 
+// Only a container serves an action with an image.
+const actionIdsOf = (name: string) =>
+	name === 'container' ? firstPartyActionIds : firstPartyActionIdsWithoutImage;
+
 /** The replay issues of every action, as in `versions.test.ts`. Stops at the end of `budget`. */
-async function replayAll({ runtime }: Runtime, budget: Budget) {
+async function replayAll({ name, runtime }: Runtime, budget: Budget) {
 	const issues: string[] = [];
-	for (const id of firstPartyActionIds) {
+	for (const id of actionIdsOf(name)) {
 		if (budget.expired()) return [...issues, TIMEOUT];
 		const [head] = versionsOf(id);
 		if (!head) {
@@ -316,7 +321,7 @@ async function main() {
 		const replay = issues.includes(TIMEOUT)
 			? `**timeout** after ${values.timeout} s`
 			: issues.length === 0
-				? `pass: ${firstPartyActionIds.length} actions`
+				? `pass: ${actionIdsOf(runtime.name).length} actions`
 				: `**FAIL**: ${issues.length} issues`;
 		const probes: string[] = [];
 		for (const { judge, stopsHost, packed } of probeRuns) {

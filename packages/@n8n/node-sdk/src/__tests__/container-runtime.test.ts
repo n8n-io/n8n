@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import path from 'node:path';
 
 import {
-	firstPartyActionIds,
+	firstPartyActionIdsWithoutImage,
+	firstPartyImageActionIds,
 	firstPartyCredentialType,
 	firstPartyRuntime,
 	firstPartyVersionsOf as versionsOf,
@@ -181,9 +182,27 @@ describe.skipIf(!runtime)('container runtime', () => {
 		);
 	});
 
-	it('replays the fixtures of every action', async () => {
+	it('replays the fixtures of every action without an image', async () => {
 		const issues: string[] = [];
-		for (const id of firstPartyActionIds) issues.push(...(await replay(id, options(runtime))));
+		for (const id of firstPartyActionIdsWithoutImage) {
+			issues.push(...(await replay(id, options(runtime))));
+		}
 		expect(issues).toEqual([]);
 	}, 900_000);
+
+	it('replays the fixtures of each image action in its own image', async ({ skip }) => {
+		const missing = firstPartyImageActionIds.flatMap((id) => {
+			try {
+				containerRuntime({ image: versionsOf(id)[0]?.manifest.contract.runtime?.image });
+				return [];
+			} catch (error) {
+				return [String(error)];
+			}
+		});
+		if (missing.length > 0) skip(missing.join('; '));
+		expect(firstPartyImageActionIds).not.toEqual([]);
+		const issues: string[] = [];
+		for (const id of firstPartyImageActionIds) issues.push(...(await replay(id, options(runtime))));
+		expect(issues).toEqual([]);
+	}, 120_000);
 });

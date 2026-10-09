@@ -7,6 +7,7 @@ import {
 	versionsOf,
 } from '../catalog';
 import { hostRuntime } from '../runtime';
+import { needsOf } from '../runtime-policy';
 import { embeddedStoreDirOf } from '../store';
 
 const FIRST_PARTY = ['nodes-core', 'nodes-integrations'].map((name) => ({
@@ -24,8 +25,22 @@ export const firstPartyVersionsOf = (id: string) => {
 export const fixturesFileOf = (id: string) =>
 	path.join(firstParty.packageOf(id)?.dir ?? '', 'fixtures', `${id}.json`);
 
-export const firstPartyActionIds = firstParty.entries.flatMap(({ manifest }) =>
-	'bundleHash' in manifest && manifest.kind !== 'trigger' ? [manifest.id] : [],
+// The JS actions. Only `wasm` runs a WASM component.
+const actionManifests = firstParty.entries.flatMap(({ manifest }) =>
+	'bundleHash' in manifest && manifest.kind !== 'trigger' && needsOf(manifest) !== 'component'
+		? [manifest]
+		: [],
+);
+
+export const firstPartyActionIds = actionManifests.map(({ id }) => id);
+
+// Only a container serves an action with an image.
+export const firstPartyImageActionIds = actionManifests
+	.filter((manifest) => needsOf(manifest) === 'image')
+	.map(({ id }) => id);
+
+export const firstPartyActionIdsWithoutImage = firstPartyActionIds.filter(
+	(id) => !firstPartyImageActionIds.includes(id),
 );
 
 const credentialManifests = new Map(

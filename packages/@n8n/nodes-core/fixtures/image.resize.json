@@ -1,0 +1,116 @@
+{
+	"executions": [
+		{
+			"name": "fits a PNG into the box and keeps PNG",
+			"params": {
+				"file": "data",
+				"width": 2,
+				"height": 2
+			},
+			"binary": {
+				"data": {
+					"data": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAFElEQVR42mP4z8DAAMb/YeR/CBMAkYgL9TytG2gAAAAASUVORK5CYII=",
+					"mimeType": "image/png",
+					"fileName": "tiles.png"
+				}
+			},
+			"output": [
+				{
+					"width": 2,
+					"height": 1,
+					"format": "png"
+				}
+			],
+			"outputBinary": [
+				{
+					"data": {
+						"data": "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAAEklEQVR4AQEHAPj/AICAmoCAgArvAxuiwE4zAAAAAElFTkSuQmCC",
+						"mimeType": "image/png",
+						"fileName": "tiles.png"
+					}
+				}
+			]
+		},
+		{
+			"name": "converts to JPEG",
+			"params": {
+				"file": "data",
+				"width": 8,
+				"height": 8,
+				"format": "jpeg"
+			},
+			"binary": {
+				"data": {
+					"data": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAFElEQVR42mP4z8DAAMb/YeR/CBMAkYgL9TytG2gAAAAASUVORK5CYII=",
+					"mimeType": "image/png",
+					"fileName": "tiles.png"
+				}
+			},
+			"output": [
+				{
+					"width": 8,
+					"height": 4,
+					"format": "jpeg"
+				}
+			],
+			"outputBinary": [
+				{
+					"data": {
+						"data": "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCAAEAAgDAREAAhEBAxEB/9sAQwAIBgYHBgUIBwcHCQkICgwUDQwLCwwZEhMPFB0aHx4dGhwcICQuJyAiLCMcHCg3KSwwMTQ0NB8nOT04MjwuMzQy/9sAQwEJCQkMCwwYDQ0YMiEcITIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIy/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwB2rRrpHhzxDq9kPKvdDMIsJOvleacPweuRXfmWXYfD4NYenG0a/wAfny7GeFqyxOAw+a1da1bm55d+V2Wm2x//2Q==",
+						"mimeType": "image/jpeg",
+						"fileName": "tiles.jpeg"
+					}
+				}
+			]
+		},
+		{
+			"name": "converts to lossless WebP",
+			"params": {
+				"file": "data",
+				"width": 2,
+				"height": 1,
+				"format": "webp"
+			},
+			"binary": {
+				"data": {
+					"data": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAFElEQVR42mP4z8DAAMb/YeR/CBMAkYgL9TytG2gAAAAASUVORK5CYII=",
+					"mimeType": "image/png",
+					"fileName": "tiles.png"
+				}
+			},
+			"output": [
+				{
+					"width": 2,
+					"height": 1,
+					"format": "webp"
+				}
+			],
+			"outputBinary": [
+				{
+					"data": {
+						"data": "UklGRm4AAABXRUJQVlA4TGEAAAAvAQAAEM1VICICHkgAAAAAAIAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAgPBAAgAAAAAAzh8AAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAIDIBAA==",
+						"mimeType": "image/webp",
+						"fileName": "tiles.webp"
+					}
+				}
+			]
+		},
+		{
+			"name": "refuses a file that is not an image",
+			"params": {
+				"file": "data",
+				"width": 2,
+				"height": 2
+			},
+			"binary": {
+				"data": {
+					"data": "bm90IGFuIGltYWdl",
+					"mimeType": "text/plain",
+					"fileName": "note.txt"
+				}
+			},
+			"output": [],
+			"error": "Cannot read the image: The image format could not be determined"
+		}
+	]
+}

@@ -2,6 +2,7 @@ import type { Action } from '@n8n/node-sdk';
 import { contractsOfPackage, packPackage } from '@n8n/node-sdk/pack';
 import { hostRuntime, type PackedVersion } from '@n8n/node-sdk/host';
 import { replayFixtures } from '@n8n/node-sdk/publish';
+import { containerRuntime, needsOf } from '@n8n/node-sdk/runtimes';
 import {
 	contractCatalogOf,
 	embeddedStoreDirOf,
@@ -29,6 +30,11 @@ beforeAll(async () => {
 });
 
 const STORE_DIR = embeddedStoreDirOf(nodesCore);
+
+// The Rust actions that the build packed. A build without cargo packs none.
+const componentIds = contractCatalogOf([nodesCore]).entries.flatMap(({ manifest }) =>
+	isVersionManifest(manifest) && manifest.guest === 'component' ? [manifest.id] : [],
+);
 
 const fixturesOf = (id: string) =>
 	parseFixtures(readFileSync(path.join(nodesCore.dir, 'fixtures', `${id}.json`), 'utf8'));
@@ -69,23 +75,46 @@ describe('bundled versions', () => {
 					.filter((file) => statSync(path.join(dir, file)).isFile())
 					.sort()
 					.map((file) => [file, readFileSync(path.join(dir, file), 'base64')]);
-			expect(manifests.map(({ id }) => id).sort()).toEqual(actions.map(({ id }) => id).sort());
+			expect(manifests.map(({ id }) => id).sort()).toEqual(
+				[...actions.map(({ id }) => id), ...componentIds].sort(),
+			);
 			expect(filesOf(copy)).toEqual(filesOf(STORE_DIR));
 		} finally {
 			rmSync(copy, { recursive: true, force: true });
 		}
 	});
 
+	// `replayFixtures` runs a component in the sandbox.
+	const headsOf = async (image: boolean) =>
+		(
+			await Promise.all(
+				[...actions.map(({ id }) => id), ...(sandboxBuilt ? componentIds : [])].map(headOf),
+			)
+		).filter(({ manifest }) => (needsOf(manifest) === 'image') === image);
+	const replay = async ({ manifest, readBundle, readSdk }: PackedVersion) => {
+		const [bundle, sdk] = await Promise.all([readBundle(), readSdk?.()]);
+		return await replayFixtures({ manifest, bundle, sdk }, fixturesOf(manifest.id));
+	};
+
 	it('replay the fixtures of the HEAD through the current executor', async () => {
-		const issues = await Promise.all(
-			actions.map(async ({ id }) => {
-				const head = await headOf(id);
-				const [bundle, sdk] = await Promise.all([head.readBundle(), head.readSdk?.()]);
-				return await replayFixtures({ manifest: head.manifest, bundle, sdk }, fixturesOf(id));
-			}),
-		);
+		const issues = await Promise.all((await headsOf(false)).map(replay));
 		expect(issues.flat()).toEqual([]);
 	});
+
+	it('replay the fixtures of the HEAD of each image action in its container', async ({ skip }) => {
+		const heads = await headsOf(true);
+		const missing = heads.flatMap(({ manifest }) => {
+			try {
+				containerRuntime({ image: manifest.contract.runtime?.image });
+				return [];
+			} catch (error) {
+				return [String(error)];
+			}
+		});
+		if (missing.length > 0) skip(missing.join('; '));
+		const issues = await Promise.all(heads.map(replay));
+		expect(issues.flat()).toEqual([]);
+	}, 120_000);
 });
 
 const SANDBOX = path.resolve(__dirname, '../../node_modules/@n8n/node-sdk/sandbox');
@@ -106,8 +135,10 @@ describe.skipIf(!sandboxBuilt)('bundled versions in the sandbox', () => {
 	it('replay the fixtures of the HEAD of each action', async () => {
 		const issues: string[] = [];
 		// One at a time: the first load compiles the guest for all.
-		for (const { id } of actions) {
+		for (const id of [...actions.map((action) => action.id), ...componentIds]) {
 			const head = await headOf(id);
+			// Only a container serves an image.
+			if (needsOf(head.manifest) === 'image') continue;
 			const loaded = await sandboxedVersionOf(head, { ...sandbox, cacheDir }, hostRuntime());
 			const bundle = await head.readBundle();
 			issues.push(

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import {
-	firstPartyActionIds,
+	firstPartyActionIdsWithoutImage,
 	firstPartyCredentialType,
 	firstPartyRuntime,
 	firstPartyVersionsOf as versionsOf,
@@ -338,7 +338,9 @@ describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 
 	it('replays the fixtures of every action', async () => {
 		const issues: string[] = [];
-		for (const id of firstPartyActionIds) issues.push(...(await replay(id, options(runtime))));
+		for (const id of firstPartyActionIdsWithoutImage) {
+			issues.push(...(await replay(id, options(runtime))));
+		}
 		expect(issues).toEqual([]);
 	}, 300_000);
 });

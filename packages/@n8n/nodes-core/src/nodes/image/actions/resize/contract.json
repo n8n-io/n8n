@@ -1,0 +1,70 @@
+{
+	"id": "image.resize",
+	"version": 1,
+	"node": "image",
+	"nodeDisplayName": "Image",
+	"action": "Resize an image",
+	"summary": "Resize the image of each item to fit a box, and convert it to PNG, JPEG or WebP. The image keeps its aspect ratio.",
+	"flow": {
+		"effect": "transform",
+		"cardinality": "per-item",
+		"passthrough": "replace"
+	},
+	"credentials": [],
+	"input": {
+		"type": "object",
+		"properties": {
+			"file": {
+				"x-n8n-binary": true,
+				"title": "Input Binary Field",
+				"x-n8n-hint": "A binary of the input item, e.g. (item) => item.binary.data"
+			},
+			"width": {
+				"type": "integer",
+				"title": "Width",
+				"minimum": 1,
+				"maximum": 10000,
+				"x-n8n-hint": "The largest width in pixels"
+			},
+			"height": {
+				"type": "integer",
+				"title": "Height",
+				"minimum": 1,
+				"maximum": 10000,
+				"x-n8n-hint": "The largest height in pixels"
+			},
+			"format": {
+				"type": "string",
+				"title": "Output Format",
+				"enum": ["png", "jpeg", "webp"],
+				"default": "png",
+				"x-n8n-hint": "WebP is lossless"
+			}
+		},
+		"required": ["file", "width", "height"],
+		"additionalProperties": false
+	},
+	"output": {
+		"type": "object",
+		"properties": {
+			"data": {
+				"x-n8n-binary": true,
+				"x-n8n-hint": "The resized image"
+			},
+			"width": {
+				"type": "integer",
+				"x-n8n-hint": "The width of the resized image in pixels"
+			},
+			"height": {
+				"type": "integer",
+				"x-n8n-hint": "The height of the resized image in pixels"
+			},
+			"format": {
+				"type": "string",
+				"enum": ["png", "jpeg", "webp"]
+			}
+		},
+		"required": ["data", "width", "height", "format"],
+		"additionalProperties": false
+	}
+}

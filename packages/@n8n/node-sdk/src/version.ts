@@ -184,10 +184,12 @@ export interface VersionManifest {
 	/** The hex SHA-256 of the bundle bytes. */
 	readonly bundleHash: string;
 	/**
-	 * The generic guest that runs the bundle. `http`: the bundle is the JSON config of the HTTP
-	 * guest (`lift/http.ts`). Absent: the bundle is the JS code of the JS guest.
+	 * The guest that runs the bundle. `http`: the bundle is the JSON config of the HTTP guest
+	 * (`lift/http.ts`). `component`: the bundle is a WASM component of the action interface, as
+	 * base64 text, which only the `wasm` runtime runs. Absent: the bundle is the JS code of the JS
+	 * guest.
 	 */
-	readonly guest?: 'http';
+	readonly guest?: 'http' | 'component';
 	/**
 	 * The n8n expression of the node that finds an error in a successful response, e.g.
 	 * `={{ $response.body.ok === false ? $response.body.error : undefined }}`. The host checks

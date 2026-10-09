@@ -52,7 +52,7 @@ import {
 	type HostRuntime,
 	type ItemOutcome,
 } from './runtime';
-import { hasBinary, Schema, shapeOf, type Binary, type JsonSchema } from './schema';
+import { canonicalJson, hasBinary, Schema, shapeOf, type Binary, type JsonSchema } from './schema';
 import {
 	provider,
 	providedKindOf,
@@ -149,6 +149,20 @@ const DEFAULT_LIMITS: SandboxLimits = {
 };
 
 const SPEC_WIT = path.resolve(__dirname, '..', 'spec', 'wit');
+
+const SANDBOX_BUILD = path.resolve(__dirname, '..', 'sandbox');
+
+/**
+ * The sidecar and guests of `N8N_NODE_CONTRACT_SANDBOX_SIDECAR` and
+ * `N8N_NODE_CONTRACT_SANDBOX_GUESTS`, else the ones that `pnpm sandbox:build` builds in this
+ * package. Pack and the fixture replay of a WASM component use them.
+ */
+export const defaultSandbox = (): WasmSidecarOptions => ({
+	sidecar:
+		process.env.N8N_NODE_CONTRACT_SANDBOX_SIDECAR ??
+		path.join(SANDBOX_BUILD, 'sidecar', 'target', 'release', 'n8n-sandbox'),
+	guests: process.env.N8N_NODE_CONTRACT_SANDBOX_GUESTS ?? path.join(SANDBOX_BUILD, 'dist'),
+});
 
 /** Outputs per `[take]`: the guest runs ahead of the host by at most this many. */
 const TAKE = 100;
@@ -321,9 +335,12 @@ interface SidecarRun {
 	readonly sdk?: { readonly file: string; readonly sha256: string };
 }
 
-async function spawnSidecar({ sidecar, guests }: WasmSidecarOptions, run: SidecarRun) {
+const guestFileOf = ({ guests }: WasmSidecarOptions, { kind }: Pick<GuestSession, 'kind'>) =>
+	path.join(guests, `${kind}.wasm`);
+
+/** Starts `sidecar` with the component `guest`: a generic JS guest, or the component of a version. */
+async function spawnSidecar(sidecar: string, guest: string, run: SidecarRun) {
 	const { kind, limits, bundle, sdk } = run;
-	const guest = path.join(guests, `${kind}.wasm`);
 	return spawn(
 		sidecar,
 		[
@@ -345,17 +362,23 @@ export function wasmSidecarRuntime(options: WasmSidecarOptions): GuestRuntime {
 		name: 'wasm-sidecar',
 		async start(session) {
 			const { manifest } = session;
-			const child = await spawnSidecar(options, {
-				...session,
-				nodeContract: manifest.nodeContract,
-				bundle: { file: session.bundleFile, sha256: manifest.bundleHash },
-			});
+			const run = { ...session, nodeContract: manifest.nodeContract };
+			// A component is the guest itself, so it needs no bundle.
+			const child =
+				manifest.guest === 'component'
+					? await spawnSidecar(options.sidecar, session.bundleFile, run)
+					: await spawnSidecar(options.sidecar, guestFileOf(options, session), {
+							...run,
+							bundle: { file: session.bundleFile, sha256: manifest.bundleHash },
+						});
 			return connectChild(child, { limits: session.limits, label: manifest.id });
 		},
-		async compiled({ kind, cacheDir }) {
-			const digest = await guestSha256Of(path.join(options.guests, `${kind}.wasm`));
+		async compiled(session) {
+			const digest = await guestSha256Of(
+				session.manifest.guest === 'component' ? session.bundleFile : guestFileOf(options, session),
+			);
 			// The sidecar names a compiled guest `<digest>-<engine>.cwasm`.
-			return (await readdir(cacheDir).catch((): string[] => [])).filter(
+			return (await readdir(session.cacheDir).catch((): string[] => [])).filter(
 				(name) => name.startsWith(`${digest}-`) && name.endsWith('.cwasm'),
 			);
 		},
@@ -2210,16 +2233,23 @@ const guestSha256Of = async (file: string) => {
 /**
  * Verified code in the cache under its hash; the guest checks the hash again. The rename
  * makes the write atomic, so a sidecar that starts at the same time never reads part of a file.
+ * A component bundle is base64 text, so its file holds the decoded bytes.
  */
-async function bundleFileOf(options: Pick<SandboxOptions, 'cacheDir'>, hex: string, code: string) {
+async function bundleFileOf(
+	options: Pick<SandboxOptions, 'cacheDir'>,
+	hex: string,
+	code: string,
+	component = false,
+) {
 	const dir = path.join(options.cacheDir, 'bundles');
 	await mkdir(dir, { recursive: true, mode: 0o700 });
-	const file = path.join(dir, `${hex}.cjs`);
+	const file = path.join(dir, `${hex}.${component ? 'wasm' : 'cjs'}`);
 	// A running container mounts the file by name, so an intact file stays in place.
-	const existing = await readFile(file, 'utf8').catch(() => undefined);
-	if (existing !== undefined && sha256(existing) === hex) return file;
+	const existing = await readFile(file).catch(() => undefined);
+	const text = existing?.toString(component ? 'base64' : 'utf8');
+	if (text !== undefined && sha256(text) === hex) return file;
 	const partial = `${file}.${randomUUID()}.partial`;
-	await writeFile(partial, code, { mode: 0o600 });
+	await writeFile(partial, component ? Buffer.from(code, 'base64') : code, { mode: 0o600 });
 	await rename(partial, file);
 	return file;
 }
@@ -2239,6 +2269,48 @@ function unsupported({ id, kind, contract }: VersionManifest): string | undefine
 		return `${id} uses more than http, log and limits, which the provider interface does not give`;
 	}
 	return undefined;
+}
+
+/**
+ * A component describes the contract document of its manifest, the WIT form of `describe`. The
+ * host takes the node from it.
+ */
+function componentDescribed({ id, semver, contract }: VersionManifest, described: unknown) {
+	if (canonicalJson(described) !== canonicalJson(contract)) {
+		throw new UserError(`The component of ${id}@${semver} describes another contract`);
+	}
+	return {
+		id,
+		node: {
+			id: contract.node,
+			displayName: contract.nodeDisplayName,
+			...(contract.baseUrl === undefined ? {} : { baseUrl: contract.baseUrl }),
+		},
+	};
+}
+
+/**
+ * The contract document that a WASM component file describes, from a sidecar that grants no
+ * import. Pack writes it into the manifest.
+ */
+export async function describeComponent(
+	file: string,
+	{ sidecar, cacheDir }: { readonly sidecar: string; readonly cacheDir: string },
+): Promise<unknown> {
+	const child = await spawnSidecar(sidecar, file, {
+		kind: 'action',
+		limits: DEFAULT_LIMITS,
+		grants: [],
+		cacheDir,
+		nodeContract: NODE_CONTRACT_VERSION,
+	});
+	const connection = connectChild(child, { limits: DEFAULT_LIMITS, label: path.basename(file) });
+	try {
+		await connection.request('[initialize]', { nodeContract: NODE_CONTRACT_VERSION });
+		return await connection.request('action.describe', {});
+	} finally {
+		connection.close();
+	}
 }
 
 /** The action of a packed version in the sandbox, the executor that runs it, and its `migrate`. */
@@ -2269,7 +2341,12 @@ export async function sandboxedVersionOf(
 		kind,
 		limits: { ...DEFAULT_LIMITS, ...options.limits },
 		manifest,
-		bundleFile: await bundleFileOf(options, manifest.bundleHash, code),
+		bundleFile: await bundleFileOf(
+			options,
+			manifest.bundleHash,
+			code,
+			manifest.guest === 'component',
+		),
 		...(sdk
 			? { sdk: { file: await bundleFileOf(options, sdk.sha256, sdk.code), sha256: sdk.sha256 } }
 			: {}),
@@ -2292,7 +2369,12 @@ export async function sandboxedVersionOf(
 	}
 	const action = sandboxedAction(
 		manifest,
-		await nodeOf(manifest, described, options.credentialType, hostRuntime.credentialManifestOf),
+		await nodeOf(
+			manifest,
+			manifest.guest === 'component' ? componentDescribed(manifest, described) : described,
+			options.credentialType,
+			hostRuntime.credentialManifestOf,
+		),
 		start,
 		chunksItems(manifest, options),
 	);
@@ -2328,7 +2410,7 @@ export async function warmSandbox(
 	const limits = { ...DEFAULT_LIMITS, ...options.limits };
 	await SANDBOX_KINDS.reduce(async (previous, kind) => {
 		await previous;
-		const child = await spawnSidecar(options, {
+		const child = await spawnSidecar(options.sidecar, guestFileOf(options, { kind }), {
 			kind,
 			limits,
 			grants: [],

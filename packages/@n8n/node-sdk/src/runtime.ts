@@ -2867,6 +2867,11 @@ export function evaluateVersion(
 	credentialOf?: CredentialOf,
 ): Action | Trigger {
 	if (manifest.guest === 'http') return evaluateHttpGuestConfig(code, manifest);
+	if (manifest.guest === 'component') {
+		throw new UserError(
+			`${manifest.id}@${manifest.semver} is a WASM component, so only the wasm runtime runs it`,
+		);
+	}
 	return evaluateBundle(code, manifest.nodeContract, sdk, credentialOf);
 }
 

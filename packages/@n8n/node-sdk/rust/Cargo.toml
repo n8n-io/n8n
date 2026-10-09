@@ -1,0 +1,11 @@
+[package]
+name = "n8n-node-sdk"
+version = "0.1.0"
+edition = "2021"
+description = "Write an n8n node contract action in Rust, as a WASM component of the Node Contract WIT"
+publish = false
+
+[dependencies]
+serde = "1"
+serde_json = "1"
+wit-bindgen = "0.62"

@@ -16,12 +16,20 @@ export type TrustClass = ContractOrigin;
 
 /**
  * `web`: web APIs and host imports only. `image`: the container image of the contract.
- * `http-guest`: a JSON config for the HTTP guest, which only this process runs.
+ * `http-guest`: a JSON config for the HTTP guest, which only this process runs. `component`: a
+ * WASM component, which only the `wasm` runtime runs.
  */
-export type Needs = 'web' | 'image' | 'http-guest';
+export type Needs = 'web' | 'image' | 'http-guest' | 'component';
 
+/** What a version needs from its runtime, from its contract and its guest. */
 export const needsOf = ({ contract, guest }: Pick<VersionManifest, 'contract' | 'guest'>): Needs =>
-	guest === 'http' ? 'http-guest' : contract.runtime ? 'image' : 'web';
+	guest === 'http'
+		? 'http-guest'
+		: guest === 'component'
+			? 'component'
+			: contract.runtime
+				? 'image'
+				: 'web';
 
 /** The allowed runtimes of each trust class, the preferred one first. */
 export type RuntimeLists = Readonly<Record<TrustClass, readonly RuntimeName[]>>;
@@ -47,16 +55,18 @@ export interface RuntimeRequest {
 	readonly available: RuntimeAvailability;
 }
 
-// The Node guest of worker and container has no trigger world, only a container has an image,
-// and only this process runs the HTTP guest.
+// Only the sidecar runs a component, the Node guest of worker and container has no trigger world,
+// only a container has an image, and only this process runs the HTTP guest.
 const serves = (name: RuntimeName, needs: Needs, kind: VersionManifest['kind']) =>
-	kind === 'trigger'
-		? name === 'in-process' || name === 'wasm'
-		: needs === 'image'
-			? name === 'container'
-			: needs === 'http-guest'
-				? name === 'in-process'
-				: true;
+	needs === 'component'
+		? name === 'wasm'
+		: kind === 'trigger'
+			? name === 'in-process' || name === 'wasm'
+			: needs === 'image'
+				? name === 'container'
+				: needs === 'http-guest'
+					? name === 'in-process'
+					: true;
 
 const missingOf = (
 	name: RuntimeName,
@@ -91,7 +101,9 @@ export function resolveRuntime({
 				? ', image'
 				: needs === 'http-guest'
 					? ', HTTP guest'
-					: '';
+					: needs === 'component'
+						? ', WASM component'
+						: '';
 	const why =
 		candidates.length > 0
 			? candidates.map((name) => missingOf(name, trust, available)).join('; ')

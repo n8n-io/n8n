@@ -1,0 +1,22 @@
+{
+	"executions": [
+		{
+			"name": "takes a screenshot of a solid page",
+			"params": {
+				"html": "<body style=\"margin:0;background:#2a9d8f\"></body>",
+				"width": 64,
+				"height": 48
+			},
+			"output": [{}],
+			"outputBinary": [
+				{
+					"data": {
+						"data": "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAATklEQVR4nOzPAQkAIADAMBHTWNYEdjXGEbYGW/ue8bM5PidQE6gJ1ARqAjWBmkBNoCZQE6gJ1ARqAjWBmkBNoCZQE6gJ1ARqAjWBmkDtAQAA//9TtoMTAAAABklEQVQDALIIAbmkrIauAAAAAElFTkSuQmCC",
+						"mimeType": "image/png",
+						"fileName": "screenshot.png"
+					}
+				}
+			]
+		}
+	]
+}

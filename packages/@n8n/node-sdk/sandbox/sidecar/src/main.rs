@@ -7,8 +7,9 @@
 //! imports and the limits. A call to an import that is not granted stops the run. The
 //! component gets no other import, except `wasi:random` (the OS random source), the
 //! `now` functions of `wasi:clocks` (the host clocks in whole milliseconds) and, for the JS
-//! guest, the code of its bundle and of its SDK runtime. The other WASI functions that the JS
-//! guest imports stop the run: they give timers, polls and streams.
+//! guest, the code of its bundle and of its SDK runtime. The other `wasi:io` and `wasi:cli`
+//! functions that a guest imports stop the run: they give timers, polls, streams, the
+//! environment and the exit. The JS guest and Rust std on `wasm32-wasip2` import them.
 
 use base64::Engine as _;
 use serde_json::{json, Map, Value};
@@ -36,7 +37,7 @@ const BUNDLE_IMPORT: &str = "n8n:js-guest/bundle@";
 const RANDOM_IMPORT: &str = "wasi:random/";
 const WALL_CLOCK_IMPORT: &str = "wasi:clocks/wall-clock@";
 const MONOTONIC_CLOCK_IMPORT: &str = "wasi:clocks/monotonic-clock@";
-const UNAVAILABLE_WASI_IMPORTS: [&str; 2] = ["wasi:io/", "wasi:cli/stderr@"];
+const UNAVAILABLE_WASI_IMPORTS: [&str; 2] = ["wasi:io/", "wasi:cli/"];
 /// The step of both guest clocks. A coarse clock makes it harder for the guest to time host work.
 const CLOCK_STEP: Duration = Duration::from_millis(1);
 const MAX_SAFE_INTEGER: u64 = (1 << 53) - 1;
