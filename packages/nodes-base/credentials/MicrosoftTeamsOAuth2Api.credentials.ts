@@ -68,13 +68,12 @@ export class MicrosoftTeamsOAuth2Api implements ICredentialType {
 		},
 		{
 			displayName: `
-      Microsoft Teams Trigger uses these permissions, all included in the default scopes:
+      Microsoft Teams Trigger runs on the default scopes. Per event:
       <br>New Channel Message: <code>ChannelMessage.Read.All</code>
       <br>New Chat, New Chat Message: <code>Chat.ReadWrite</code>
-      <br>New Channel: <code>Group.ReadWrite.All</code>
       <br>New Team Member: <code>TeamMember.Read.All</code>
-      <br>Team and channel lists: <code>User.Read.All</code>, <code>Group.ReadWrite.All</code>
-      <br>All except <code>Chat.ReadWrite</code> need tenant admin consent.
+      <br>New Channel, team and channel lists: covered by <code>Group.ReadWrite.All</code> and <code>User.Read.All</code>. With Custom Scopes, <code>Channel.ReadBasic.All</code> and <code>Team.ReadBasic.All</code> are the least privileged alternatives.
+      <br>Admin consent is needed for <code>ChannelMessage.Read.All</code>, <code>TeamMember.Read.All</code>, <code>User.Read.All</code> and <code>Group.ReadWrite.All</code>, not for <code>Chat.ReadWrite</code>, <code>Channel.ReadBasic.All</code> or <code>Team.ReadBasic.All</code>.
     `,
 			name: 'notice',
 			type: 'notice',
