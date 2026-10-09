@@ -60,6 +60,23 @@ describe('Lakebase -> column mapping', () => {
 	});
 
 	it.each([
+		['plain names', 'app', 'public', '/app/public'],
+		['names that need escaping', 'my db', 'a/b', '/my%20db/a%2Fb'],
+	])('builds the schema URL for %s', async (_name, database, schema, path) => {
+		vi.mocked(fetchLakebaseColumns).mockResolvedValue([column()]);
+
+		await getLakebaseMappingColumns.call(
+			setup({ lakebaseDatabase: database, lakebaseSchema: schema }),
+		);
+
+		expect(fetchLakebaseColumns).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.stringContaining(path),
+			'orders',
+		);
+	});
+
+	it.each([
 		['a NOT NULL column with no default', { isRequired: true }, true],
 		['a NOT NULL column the database defaults', { isRequired: true, hasDefault: true }, false],
 		['a read-only NOT NULL column', { isRequired: true, isReadOnly: true }, false],

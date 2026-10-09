@@ -9,8 +9,10 @@ import { resolveLakebaseTableUrl } from './helpers';
  */
 function columnsPresentInTable(context: IExecuteFunctions, i: number): IDataObject {
 	const item = context.getInputData()[i].json;
+	// getNodeParameter returns the fallback only for a missing parameter. A workflow
+	// written outside the editor can save null, or a value that is not an array.
 	const schema = context.getNodeParameter('columns.schema', i, []) as Array<{ id?: string }>;
-	const known = new Set(schema.map((field) => field.id));
+	const known = new Set(Array.isArray(schema) ? schema.map((field) => field.id) : []);
 	if (known.size === 0) return item;
 
 	return Object.fromEntries(Object.entries(item).filter(([column]) => known.has(column)));

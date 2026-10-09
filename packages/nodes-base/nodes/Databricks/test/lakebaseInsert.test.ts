@@ -35,9 +35,12 @@ describe('Lakebase -> Insert', () => {
 		context.getNode.mockReturnValue(node);
 		context.getInputData.mockReturnValue(inputJson.map((json) => ({ json })));
 		context.getExecutionCancelSignal.mockReturnValue(undefined);
-		context.getNodeParameter.mockImplementation((name, index, fallback) =>
-			index === itemIndex || name === 'authentication' ? (parameters[name] ?? fallback) : fallback,
-		);
+		context.getNodeParameter.mockImplementation((name, index, fallback) => {
+			if (index !== itemIndex && name !== 'authentication') return fallback;
+			// Core takes the fallback only for a parameter it does not have, so a stored
+			// null has to arrive as null.
+			return name in parameters ? parameters[name] : fallback;
+		});
 		context.getCredentials.mockResolvedValue({ host: 'https://host.example' });
 		return context;
 	};
@@ -105,10 +108,16 @@ describe('Lakebase -> Insert', () => {
 		);
 	});
 
-	it('sends the whole item when no schema is saved', async () => {
-		const { context, result } = run([{ id: 1 }], { 'columns.mappingMode': 'autoMapInputData' }, [
-			{ sku: 'WF-1' },
-		]);
+	it.each<[string, Record<string, NodeParameterValueType | object>]>([
+		['no schema is saved', {}],
+		['the saved schema is null', { 'columns.schema': null }],
+		['the saved schema is not an array', { 'columns.schema': 'sku,price' }],
+	])('sends the whole item when %s', async (_name, overrides) => {
+		const { context, result } = run(
+			[{ id: 1 }],
+			{ 'columns.mappingMode': 'autoMapInputData', ...overrides },
+			[{ sku: 'WF-1' }],
+		);
 		await result;
 
 		expect(apiMock(context).mock.calls[0][1]).toEqual(
