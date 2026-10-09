@@ -1,0 +1,82 @@
+packages/cli/src/utils/detect-runtime.ts
+  s_1c3454caac6e1f::t_52c6f333bd8569 1-9,11-27,38-39
+  s_a1a71707d1c607::t_b17a200d1cf6fa 28,33
+  s_737c9ccda41768::t_57f724022e9bd9 10,29,32,34-37
+  s_737c9ccda41768::t_3aa3683f0db33c 30
+  s_737c9ccda41768::t_ed74a21bb03d84 31
+packages/@n8n/telemetry/src/events/instance.ts
+  s_1c3454caac6e1f::t_a748f2ff63ba26 33-44,57-58
+  s_aa5791b5056069::t_4bef1524cb837e 60
+  s_737c9ccda41768::t_1cdf399a61421f 55-56
+  s_737c9ccda41768::t_3aa3683f0db33c 59
+  s_1c3454caac6e1f::t_6d8006b5adadc6 45-54
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_1c3454caac6e1f::t_8282d541d21362 1777
+  s_1c3454caac6e1f::t_c381f01fe3cafa 1801
+  s_737c9ccda41768::t_57f724022e9bd9 64
+  s_737c9ccda41768::t_1678d2a282829d 1802-1803
+  s_1c3454caac6e1f::t_ef4e130d3092fe 63
+  s_1c3454caac6e1f::t_33d0ac2563588f 1778
+  s_1c3454caac6e1f::t_16566b6ba5b7fc 1799-1800
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_1c3454caac6e1f::t_1d7745c60b29c9 3625
+  s_1c3454caac6e1f::t_448347bd9f0a88 3540-3543,3545-3547
+  s_1c3454caac6e1f::t_5bea6dd85c9c7a 56-64
+  s_1c3454caac6e1f::t_211df8c0a091c6 3526-3539,3548-3549,3564-3569
+  s_1c3454caac6e1f::t_4d6eccebccfaef 3570-3571,3573-3574
+  s_737c9ccda41768::t_57f724022e9bd9 3544,3572
+  s_1c3454caac6e1f::t_da686cfab8ff2d 3550-3563
+  s_1c3454caac6e1f::t_0c0e6433557654 3626-3627
+  s_1c3454caac6e1f::t_4adc0c572c8a81 46-52
+packages/cli/src/utils/__tests__/detect-runtime.test.ts
+  s_1c3454caac6e1f::t_2753d017722f65 2-37,40,47,65-66
+  s_737c9ccda41768::t_1cdf399a61421f 1,38-39,41-46,48-52,54-64
+  s_737c9ccda41768::t_1678d2a282829d 53
+packages/cli/src/utils/__tests__/container-limits.test.ts
+  s_1c3454caac6e1f::t_4d11c98f82365f 1-44
+packages/cli/src/utils/container-limits.ts
+  s_1c3454caac6e1f::t_6876f4347c0222 1-46
+packages/cli/src/scaling/worker-status.service.ee.ts
+  s_1c3454caac6e1f::t_560b74f8f84179 11
+  s_1c3454caac6e1f::t_03bb5c1f51834b 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee160be759c4c285ca9d4a3dbe121f7090255ed7",
+  "prompts": {},
+  "sessions": {
+    "s_1c3454caac6e1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d254c449-dcec-42ba-b84b-c9e5c08ccf70",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_737c9ccda41768": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85336b21-8ee2-4ea5-9704-aa5f3762e6ec",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_a1a71707d1c607": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4013f92-e72f-4de6-80f2-379eef8d1096",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_aa5791b5056069": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c3ba50c-1281-4a2b-8747-60f723d98557",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
