@@ -66,6 +66,7 @@ import {
 	N8nButton,
 	N8nDialog,
 	N8nDialogBody,
+	N8nDialogClose,
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIconButton,
@@ -1615,6 +1616,7 @@ const { width } = useElementSize(credNameRef);
 			:open="modalOpen"
 			size="fit"
 			:stacked="appendToBody"
+			:show-close-button="loading"
 			:container-class="$style.dialogShell"
 			:aria-label="loading ? i18n.baseText('credentials.heading') : undefined"
 			@update:open="onDialogOpenUpdate"
@@ -1695,6 +1697,14 @@ const { width } = useElementSize(credNameRef);
 						data-test-id="credential-delete-button"
 						@click="deleteCredential"
 					/>
+					<N8nDialogClose as-child>
+						<N8nIconButton
+							variant="ghost"
+							icon="x"
+							:aria-label="i18n.baseText('generic.close')"
+							data-test-id="dialog-close-button"
+						/>
+					</N8nDialogClose>
 				</div>
 			</N8nDialogHeader>
 			<N8nDialogBody>
@@ -1870,6 +1880,7 @@ const { width } = useElementSize(credNameRef);
 	max-width: 170px;
 	min-width: 170px;
 	margin-right: var(--spacing--lg);
+	padding-inline-start: var(--spacing--lg);
 	flex-grow: 1;
 
 	ul {
