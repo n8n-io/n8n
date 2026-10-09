@@ -280,7 +280,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(row.workflowId).toBe('wf-1');
 		expect(row.status).toBe('queued');
 		expect(row.mode).toBe('production');
-		expect(row.graph).toEqual(sampleGraph);
+		expect(row.graph).toEqual({ ...sampleGraph, seeded: [] });
 		expect(row.workflow).toEqual(sampleWorkflow);
 		expect(row.triggerOutputs).toEqual([[{ json: { hello: 'world' } }]]);
 
@@ -487,10 +487,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
 			.findOneOrFail({ where: { id: body.executionId } });
-		expect(row.graph.nodes.map(({ id, seeded }) => ({ id, seeded }))).toEqual([
-			{ id: 'trigger', seeded: undefined },
-			{ id: 'a', seeded: true },
-		]);
+		expect(row.graph.seeded).toEqual(['a']);
 		const seeded = await dataSource
 			.getRepository(WorkflowSeededStep)
 			.find({ where: { executionId: body.executionId } });

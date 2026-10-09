@@ -46,7 +46,7 @@ const defaultSummaries = [
 ];
 
 function makeExecutionStore(
-	overrides: Partial<ExecutionRecord> = {},
+	overrides: Partial<Omit<ExecutionRecord, 'graph'>> & { graph?: WorkflowGraph } = {},
 	storeOverrides: Partial<ExecutionStore> = {},
 ): ExecutionStore {
 	const execution: ExecutionRecord = {
@@ -54,13 +54,13 @@ function makeExecutionStore(
 		workflowId: 'wf-1',
 		status: 'running',
 		mode: 'production',
-		graph,
 		workflow: {},
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		finishedAt: null,
 		...overrides,
+		graph: { seeded: [], ...(overrides.graph ?? graph) },
 	};
 	return {
 		createExecution: vi.fn(),
@@ -203,10 +203,7 @@ describe('StepSettledHandler', () => {
 
 	describe('a seeded successor', () => {
 		/** The same graph, with b's outputs supplied by the caller. */
-		const seededGraph: StoredWorkflowGraph = {
-			...graph,
-			nodes: graph.nodes.map((node) => (node.id === 'b' ? { ...node, seeded: true } : node)),
-		};
+		const seededGraph: StoredWorkflowGraph = { ...graph, seeded: ['b'] };
 		const seededOutputs = [[{ json: { seeded: true } }]];
 		const executionStore = () =>
 			makeExecutionStore(

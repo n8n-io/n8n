@@ -120,14 +120,14 @@ export class StepSettledHandler {
 			execution.id,
 			decisionKeys(execution.graph, loops, step, terminalIterations),
 		);
-		const { toRun, toSeed, toSkip } = decideSuccessors(
+		const { toQueue, toSeed, toSkip } = decideSuccessors(
 			execution.graph,
 			loops,
 			step,
 			steps,
 			terminalIterations,
 		);
-		if (toRun.length === 0 && toSeed.length === 0 && toSkip.length === 0) return 0;
+		if (toQueue.length === 0 && toSeed.length === 0 && toSkip.length === 0) return 0;
 
 		// Seeded steps had their outputs passed in at execution start, so we just
 		// write them to the step store and announce completion rather than
@@ -141,7 +141,7 @@ export class StepSettledHandler {
 		// the rows forever; the reconciler re-announces stale queued steps and
 		// settled steps whose decidable successors have no rows.
 		const created = await this.stepStore.createSteps(execution.id, [
-			...toRun.map((key) => ({ ...key, status: 'queued' as const })),
+			...toQueue.map((key) => ({ ...key, status: 'queued' as const })),
 			...toSeed.map((key) => ({
 				...key,
 				status: 'completed' as const,
@@ -150,7 +150,7 @@ export class StepSettledHandler {
 			...toSkip.map((key) => ({ ...key, status: 'skipped' as const })),
 		]);
 
-		return await this.announceCreatedSteps(execution.id, created, new Set(toRun.map(stepKeyId)));
+		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue.map(stepKeyId)));
 	}
 
 	/**

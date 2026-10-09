@@ -361,7 +361,7 @@ describe('workflow_execution table (integration)', () => {
 			workflowId: 'wf-5',
 			status: 'queued',
 			mode: 'manual',
-			graph: { nodes: [], edges: [] },
+			graph: { nodes: [], edges: [], seeded: [] },
 			workflow: sampleWorkflow,
 			triggerOutputs: null,
 			seededSteps: {

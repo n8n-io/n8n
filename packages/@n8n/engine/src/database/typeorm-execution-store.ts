@@ -31,8 +31,6 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		const seeded = Object.entries(seededSteps ?? {}).flatMap(([nodeId, passes]) =>
 			passes.map((outputs, iteration) => ({ executionId: record.id, nodeId, iteration, outputs })),
 		);
-		// One transaction: an execution whose graph marks a node as seeded must
-		// never exist without that node's outputs.
 		await this.repo.manager.transaction(async (manager) => {
 			// The cast is needed because the insert payload type recurses into the
 			// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.

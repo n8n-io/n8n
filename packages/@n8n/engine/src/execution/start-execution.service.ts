@@ -30,7 +30,7 @@ export interface StartExecutionRequest {
 	/** Trigger step's output slots, one entry per output. */
 	triggerOutputs?: TriggerOutputs | null;
 	/** Steps to record as completed at start, with the outputs the caller holds. */
-	seededSteps?: SeededSteps | null;
+	seededSteps?: SeededSteps;
 	mode?: ExecutionMode;
 	/** Stored with the execution and handed to every step executor. */
 	callerContext: CallerContext;
@@ -76,10 +76,10 @@ export class StartExecutionService {
 			// admitted; a worker flips this to 'running' when it starts
 			status: 'queued',
 			mode: request.mode ?? 'production',
-			graph: markSeededNodes(request.graph, request.seededSteps ?? {}),
+			graph: toStoredGraph(request.graph, request.seededSteps ?? {}),
 			workflow: request.workflow,
 			triggerOutputs: request.triggerOutputs ?? null,
-			seededSteps: request.seededSteps ?? null,
+			seededSteps: request.seededSteps,
 			callerContext: request.callerContext,
 			responseExpectation: request.responseExpectation ?? { kind: 'none' },
 		});
@@ -97,15 +97,11 @@ export class StartExecutionService {
 }
 
 /**
- * Labels the graph nodes as seeded according to the steps passed in, so we
- * know to use the seeded data during execution.
+ * Records which nodes are seeded on the stored graph, so we know to use the
+ * seeded data during execution.
  */
-function markSeededNodes(graph: WorkflowGraph, seededSteps: SeededSteps): StoredWorkflowGraph {
-	const seeded = new Set(Object.keys(seededSteps));
-	return {
-		...graph,
-		nodes: graph.nodes.map((node) => (seeded.has(node.id) ? { ...node, seeded: true } : node)),
-	};
+function toStoredGraph(graph: WorkflowGraph, seededSteps: SeededSteps): StoredWorkflowGraph {
+	return { ...graph, seeded: Object.keys(seededSteps) };
 }
 
 /**
