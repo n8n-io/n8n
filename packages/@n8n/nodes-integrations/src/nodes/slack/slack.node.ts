@@ -78,7 +78,10 @@ const channelList = {
 	}),
 	items: 'channels',
 	error: 'error',
-	item: { id: '{id}', label: '#{name}' },
+	item: {
+		id: (channel: { id: string }) => channel.id,
+		label: (channel: { name: string }) => `#${channel.name}`,
+	},
 	pages: {
 		style: 'cursor',
 		next: 'response_metadata.next_cursor',
@@ -127,7 +130,7 @@ export const slackUserId = defineResource({
 		}),
 		items: 'members',
 		error: 'error',
-		item: { id: '{id}', label: '@{name}' },
+		item: { id: (entry) => entry.id, label: (entry) => `@${entry.name}` },
 		pages: {
 			style: 'cursor',
 			next: 'response_metadata.next_cursor',

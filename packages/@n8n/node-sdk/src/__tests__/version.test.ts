@@ -202,7 +202,7 @@ describe('diffContracts', () => {
 				list: {
 					request: { path },
 					response: t.arr(t.obj({ id: t.str() })),
-					item: { id: '{id}', label: '{id}' },
+					item: { id: (e) => e.id, label: (e) => e.id },
 				},
 			});
 		const listed = contractOf({ input: { ...baseInput, text: ref(lookup('/items')) } });
@@ -305,7 +305,7 @@ describe('diffContracts', () => {
 						'x-n8n-fields': {
 							requests: [{ path: '/docs/{id}' }],
 							response: {},
-							item: { name: '{name}', value: '{name}' },
+							item: { name: '={{ $json.name }}', value: '={{ $json.name }}' },
 						},
 					},
 				},

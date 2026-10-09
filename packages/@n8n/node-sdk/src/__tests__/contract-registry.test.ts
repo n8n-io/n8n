@@ -1245,13 +1245,10 @@ describe('contractStore with triggers and credentials', () => {
 
 	it('takes a pinned credential with code with its bundle and the SDK runtime it pins, and exports them', async () => {
 		const entryFile = path.join(pingDir.path, 'derived-credentials.ts');
-		const derive = "derive: () => ({ scope: 'read' }),";
+		const custom = "a.custom({ reason: 'Signs.', sign: async (_data, request) => request })";
 		await writeFile(
 			entryFile,
-			pingCredentialsSource.replace(
-				"auth: (a) => a.bearer('token'),",
-				`${derive}\n\tauth: (a) => a.bearer('token'),`,
-			),
+			pingCredentialsSource.replace("auth: (a) => a.bearer('token'),", `auth: (a) => ${custom},`),
 		);
 		const sdk = await packSdkRuntime();
 		const otherBundle = `${sdk.bundle}\n`;
@@ -1260,7 +1257,10 @@ describe('contractStore with triggers and credentials', () => {
 			bundle: otherBundle,
 		};
 		const packed = await packCredential(
-			{ ...pingToken, derive: () => ({ scope: 'read' }) },
+			{
+				...pingToken,
+				scheme: { kind: 'custom', reason: 'Signs.', sign: async (_data, request) => request },
+			},
 			{ entryFile, exportName: 'pingToken' },
 			otherSdk,
 		);

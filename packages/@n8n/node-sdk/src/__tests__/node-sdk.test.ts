@@ -412,7 +412,7 @@ describe('resourceOutput', () => {
 			requests: [{ path: '/sheets/{id}/columns' }, { path: '/v1/sheets/{id}' }],
 			response: t.obj({ columns: t.record(t.obj({ title: t.str(), kind: t.str() })) }),
 			items: 'columns',
-			item: { name: '{title}', value: '{title}|{kind}' },
+			item: { name: (e) => e.title, value: (e) => `${e.title}|${e.kind}` },
 		},
 	});
 	const sheet = todo.resource('sheet', { input: { sheet: ref(columns).hint('Sheet ID or URL') } });
@@ -438,7 +438,7 @@ describe('resourceOutput', () => {
 			requests: [{ path: '/sheets/{id}/columns' }, { path: '/v1/sheets/{id}' }],
 			response: t.obj({ columns: t.record(t.obj({ title: t.str(), kind: t.str() })) }).json,
 			items: 'columns',
-			item: { name: '{title}', value: '{title}|{kind}' },
+			item: { name: '={{ $json.title }}', value: '={{ $json.title }}|{{ $json.kind }}' },
 		});
 		expect(contract.baseUrl).toBe('https://todo.test');
 		expect(toContract(listTasks).output['x-n8n-resource']).toBeUndefined();
@@ -478,7 +478,7 @@ describe('resourceOutput', () => {
 				response: t.obj({ columns: t.arr(t.obj({ title: t.str() })) }),
 				items: 'columns',
 				// @ts-expect-error a column has no `kind`
-				item: { name: '{title}', value: '{kind}' },
+				item: { name: (e) => e.title, value: (e) => e.kind },
 			},
 		});
 		defineResource({
@@ -492,7 +492,7 @@ describe('resourceOutput', () => {
 					{ path: '/owners/{owner}/lists/{id}' },
 				],
 				response: t.arr(t.obj({ title: t.str() })),
-				item: { name: '{title}', value: '{title}' },
+				item: { name: (e) => e.title, value: (e) => e.title },
 			},
 		});
 	});
@@ -561,7 +561,7 @@ describe('resourceOutput', () => {
 		const lookup = {
 			requests: [{ path: '/sheets/{id}/{owner}' }, {}],
 			response: {},
-			item: { name: '{title}', value: '{title}' },
+			item: { name: '={{ $json.title }}', value: '={{ $json.title }}' },
 		};
 		const sheetField = {
 			type: 'string' as const,
@@ -588,7 +588,7 @@ describe('resource lookups', () => {
 			request: { path: '/projects' },
 			response: t.obj({ projects: t.arr(t.obj({ id: t.str(), name: t.str() })) }),
 			items: 'projects',
-			item: { id: '{id}', label: '{name}' },
+			item: { id: (e) => e.id, label: (e) => e.name },
 		},
 	});
 	const list = project.lookup ?? { request: {}, response: {}, item: { id: '', label: '' } };
@@ -633,7 +633,7 @@ describe('resource lookups', () => {
 			list: {
 				request: { path: '/archive' },
 				response: t.arr(t.obj({ id: t.str() })),
-				item: { id: '{id}', label: '{id}' },
+				item: { id: (e) => e.id, label: (e) => e.id },
 			},
 		});
 		const move = (to: typeof project) =>
@@ -685,14 +685,14 @@ describe('resource lookups', () => {
 				}),
 				items: 'projects',
 				item: {
-					id: '{id}',
-					label: '{owner.name}',
+					id: (e) => e.id,
+					label: (e) => e.owner.name,
 					// @ts-expect-error -- an entry has no field `title`
-					url: 'https://todo.test/{title}',
+					url: (e) => `https://todo.test/${e.title}`,
 				},
 			},
 		});
-		expect(list.item).toEqual({ id: '{id}', label: '{name}' });
+		expect(list.item).toEqual({ id: '={{ $json.id }}', label: '={{ $json.name }}' });
 	});
 });
 

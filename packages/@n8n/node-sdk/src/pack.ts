@@ -10,7 +10,14 @@ import { toHostname, UnexpectedError, UserError } from 'n8n-workflow';
 import { validRange } from 'semver';
 
 import type { AnyCredentialType } from './credentials';
-import { replyContractOf, toContract, type Action, type Trigger } from './define';
+import {
+	fieldLookupsOf,
+	lookupsOf,
+	replyContractOf,
+	toContract,
+	type Action,
+	type Trigger,
+} from './define';
 import { allowsHost } from './egress';
 import {
 	credentialDataOf,
@@ -33,7 +40,13 @@ import {
 	type SdkManifest,
 } from './manifest';
 import { DEFAULT_NPM_SCOPE, npmDigestOf, npmRegistryOf, npmStoreReader } from './npm';
-import { evaluateBundle, isHostModule, SDK_MODULES, VALIDATOR_MODULE } from './runtime';
+import {
+	evaluateBundle,
+	EXPRESSION_MODULE,
+	isHostModule,
+	SDK_MODULES,
+	VALIDATOR_MODULE,
+} from './runtime';
 import { defaultSandbox, describeComponent } from './sandbox';
 import {
 	addToStore,
@@ -67,6 +80,8 @@ const SDK_SOURCE = path.resolve(__dirname, '..', 'src');
 
 /** The SDK module that the host gives each bundle as `VALIDATOR_MODULE`, with ajv. */
 const VALIDATOR_SOURCE = path.join(SDK_SOURCE, 'validator.ts');
+
+const EXPRESSION_SOURCE = path.join(SDK_SOURCE, 'expression.ts');
 
 /** The `@n8n/node-sdk` version: the version of the SDK runtime. */
 export function sdkVersion(): string {
@@ -222,6 +237,9 @@ const CREDENTIAL_RANGES_NODE_CONTRACT: NodeContractVersion = '2.12.0';
 /** The Node Contract version that added credential bundles. */
 const CREDENTIAL_BUNDLE_NODE_CONTRACT: NodeContractVersion = '2.13.0';
 
+/** The Node Contract version that made the values of a lookup item n8n expressions. */
+const LOOKUP_EXPRESSION_NODE_CONTRACT: NodeContractVersion = '2.13.0';
+
 /** The build settings of a bundle and of the SDK runtime. The same source gives the same bytes. */
 const BUILD_OPTIONS = {
 	bundle: true,
@@ -238,7 +256,11 @@ const BUILD_OPTIONS = {
 	minifyWhitespace: true,
 } as const satisfies BuildOptions;
 
-/** Keeps the SDK `validator` module out of the bytes: the host gives it as `VALIDATOR_MODULE`. */
+/**
+ * Keeps the SDK `validator` module out of the bytes: the host gives it as `VALIDATOR_MODULE`. The
+ * runtime gets `expression-guest.ts` in place of `expression.ts`: it takes the compiler from the
+ * host as `EXPRESSION_MODULE`, so it carries no JavaScript parser.
+ */
 const sdkSourcePlugin: Plugin = {
 	name: 'node-sdk-source',
 	setup(bundler) {
@@ -247,9 +269,11 @@ const sdkSourcePlugin: Plugin = {
 			if (!importer.startsWith(SDK_SOURCE) || !resolved.startsWith(SDK_SOURCE)) {
 				return undefined;
 			}
-			return resolved === VALIDATOR_SOURCE
-				? { path: VALIDATOR_MODULE, external: true, sideEffects: false }
-				: { path: resolved, sideEffects: false };
+			if (resolved === VALIDATOR_SOURCE) {
+				return { path: VALIDATOR_MODULE, external: true, sideEffects: false };
+			}
+			const guest = path.join(SDK_SOURCE, 'expression-guest.ts');
+			return { path: resolved === EXPRESSION_SOURCE ? guest : resolved, sideEffects: false };
 		});
 	},
 };
@@ -321,7 +345,7 @@ export async function packSdkRuntime(version = sdkVersion()): Promise<PackedSdkR
 			resolveDir: SDK_SOURCE,
 			loader: 'ts',
 		},
-		external: ['n8n-workflow', 'node:*'],
+		external: ['n8n-workflow', EXPRESSION_MODULE, 'node:*'],
 		plugins: [sdkSourcePlugin],
 	});
 	const bundle = result.outputFiles[0]?.text ?? '';
@@ -434,6 +458,9 @@ export async function packAction(
 		...(imported.includes(VALIDATOR_MODULE) ? ['2.9.0' as const] : []),
 		...(runtimeSdk ? [SDK_NODE_CONTRACT] : []),
 		...(credentials ? [CREDENTIAL_RANGES_NODE_CONTRACT] : []),
+		...(lookupsOf(contract.input).size > 0 || fieldLookupsOf(contract.input).size > 0
+			? [LOOKUP_EXPRESSION_NODE_CONTRACT]
+			: []),
 	];
 	const manifest: VersionManifest = {
 		kind: manifestKindOf(contract),
@@ -774,13 +801,11 @@ export interface CredentialEntry {
 
 const CUSTOM_HOOKS = ['sign', 'exchange', 'refresh'] as const;
 
-/** The functions of a `custom` scheme and `derive`, which the credential bundle exports. */
-const hooksOf = ({ scheme, derive }: AnyCredentialType): CredentialHook[] => [
-	...(scheme.kind === 'custom' && isRecord(scheme)
+/** The functions of a `custom` scheme, which the credential bundle exports. */
+const hooksOf = ({ scheme }: AnyCredentialType): CredentialHook[] =>
+	scheme.kind === 'custom' && isRecord(scheme)
 		? CUSTOM_HOOKS.filter((hook) => typeof scheme[hook] === 'function')
-		: []),
-	...(typeof derive === 'function' ? ['derive' as const] : []),
-];
+		: [];
 
 /**
  * The credential manifest of a type, with the version of its source, or none for a compat type.

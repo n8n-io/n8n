@@ -21,6 +21,7 @@ import {
 import { isHostPattern, type RunInput } from './define';
 import type { CredentialManifest } from './manifest';
 import { allowsHost, credentialHostsOf } from './egress';
+import { evaluated, expressionOf, scanExpression, withRoot, type Expression } from './expression';
 import {
 	Schema,
 	shapeOf,
@@ -31,7 +32,7 @@ import {
 	type OptionLabel,
 	type Shape,
 } from './schema';
-import { applyDefaults, matches } from './validate';
+import { applyDefaults } from './validate';
 import { validate } from './validator';
 
 type NoFields = Record<never, never>;
@@ -87,6 +88,10 @@ type SecretName<F extends Shape> = {
 	[K in keyof F]: F[K] extends Schema<Secret, boolean> ? K : never;
 }[keyof F] &
 	string;
+type BooleanName<F extends Shape> = {
+	[K in keyof F]: boolean extends Infer<F[K]> ? K : never;
+}[keyof F] &
+	string;
 type OptionName<F extends Shape> = {
 	[K in keyof F]: F[K] extends Schema<Secret, boolean>
 		? never
@@ -115,20 +120,31 @@ export type UrlTemplate<F extends Shape, T extends string> = T extends
 	? Checked<T, Exclude<FieldName<F>, SecretName<F>>, 'not a field, or a secret'>
 	: 'must start with https:// or a {field}';
 
+/**
+ * A value over the fields without secrets: a lambda, e.g. `(c) => `${c.server}/token``, or an n8n
+ * expression over `$credentials`, e.g. `'={{ $credentials.server }}/token'`. A lambda compiles to an
+ * expression, so it reads only its parameter and JavaScript globals.
+ */
+export type CredentialValue<F extends Shape> =
+	| ((fields: CredentialData<PlainShape<F>>) => string)
+	| Expression;
+
+/** An OAuth2 endpoint: an https or loopback URL, or a credential value. */
+export type Endpoint<F extends Shape, T extends string> =
+	| CredentialValue<F>
+	| (T extends Expression
+			? T
+			: T extends `${string}{${string}`
+				? 'a URL has no {field}: write (c) => … or an expression'
+				: T extends `https://${string}`
+					? T
+					: 'must start with https://');
+
 type Templates<F extends Shape, R extends Values> = { readonly [K in keyof R]: Template<F, R[K]> };
 
 /** A placement value of `exchange`: `{$token}` is the token, e.g. `Bearer {$token}`. */
 type TokenTemplates<F extends Shape, R extends Values> = {
 	readonly [K in keyof R]: Checked<R[K], FieldName<F> | '$token', 'not a field or $token'>;
-};
-
-/** A JWT claim: `{$scopes}` is the scopes the actions need. A claim never holds a secret. */
-type ClaimTemplates<F extends Shape, R extends Values> = {
-	readonly [K in keyof R]: Checked<
-		R[K],
-		Exclude<FieldName<F>, SecretName<F>> | '$scopes',
-		'not a field or $scopes, or a secret'
-	>;
 };
 
 /** One https base URL per value of an options field, e.g. a region. */
@@ -172,15 +188,18 @@ export interface Placement {
 	readonly userHeader?: true;
 }
 
-/** One placement per value of an options field. */
+/** One scheme per value of an options or boolean field. */
 export interface When {
-	/** Marks a placement per option. */
+	/** Marks a scheme per value. */
 	readonly kind: 'when';
-	/** The options field, e.g. `authType`. */
+	/** The options or boolean field, e.g. `authType`. */
 	readonly field: string;
-	/** The placement for each value of the field. */
-	readonly cases: Readonly<Record<string, Placement>>;
+	/** The scheme for each value of the field, e.g. `true` and `false` of a boolean field. */
+	readonly cases: Readonly<Record<string, WhenCase>>;
 }
+
+/** What `when` applies for one value: a placement, a JWT bearer grant, or nothing. */
+export type WhenCase = Placement | JwtBearerGrant | NoAuth;
 
 /** How the token request sends the client ID and secret (RFC 6749 §2.3.1). */
 export type ClientAuth = 'client_secret_basic' | 'client_secret_post';
@@ -191,12 +210,14 @@ export interface OAuth2Grant {
 	readonly kind: 'oauth2';
 	/** The grant type: RFC 6749 §4.1 or §4.4. */
 	readonly grant: 'authorizationCode' | 'clientCredentials';
-	/** An https URL, or a template over fields, e.g. `{server}/login/oauth/authorize`. */
+	/** An https URL, or an n8n expression over `$credentials`. */
 	readonly authorizationEndpoint?: string;
-	/** The token endpoint: an https URL or a template over fields. */
+	/** The token endpoint: an https URL, or an n8n expression over `$credentials`. */
 	readonly tokenEndpoint: string;
 	/** The provider scopes that the app asks for. */
 	readonly scope: readonly string[];
+	/** Joins `scope` in place of a space, as some providers document. */
+	readonly scopeSeparator?: ',';
 	/** How the token request sends the client ID and secret. */
 	readonly clientAuth: ClientAuth;
 	/** True when the authorization request uses PKCE with S256 (RFC 7636). */
@@ -236,7 +257,7 @@ export interface JwtBearerGrant {
 	readonly key: string;
 	/** The JWS algorithm of the signature (RFC 7518). */
 	readonly algorithm: 'RS256';
-	/** Claim templates, e.g. `{ iss: '{email}', scope: '{$scopes}' }`. */
+	/** Claims: text, or n8n expressions over `$credentials`. An empty value drops its claim. */
 	readonly claims: Values;
 	/** The provider scopes that the app asks for. */
 	readonly scope: readonly string[];
@@ -331,30 +352,6 @@ export interface CustomAuth<F extends Shape = Shape> {
 	sign(data: CredentialData<F>, request: IHttpRequestOptions): Promise<IHttpRequestOptions>;
 }
 
-/**
- * What `derive` gives from the fields without secrets. n8n runs it, e.g. the OAuth2 flow, after it
- * checks it: each URL is http or https, and each host comes from a host of the type or from the
- * value of a URL field.
- *
- * @unstable The `credential-derive` feature of Node Contract 2.13.0.
- */
-export interface Derived {
-	/** The OAuth2 authorization endpoint, e.g. `https://github.example.com/login/oauth/authorize`. */
-	readonly authorizationEndpoint?: string;
-	/** The OAuth2 token endpoint. */
-	readonly tokenEndpoint?: string;
-	/** The exact scope text that n8n sends, e.g. comma-joined for GitHub. */
-	readonly scope?: string;
-	/** The query parameters of the authorization request. */
-	readonly authorizationQuery?: Values;
-	/** The JWT claims of a JWT bearer grant. */
-	readonly claims?: Values;
-	/** The API base URL. Its host is a credential host. */
-	readonly baseUrl?: string;
-	/** More credential hosts. */
-	readonly hosts?: readonly string[];
-}
-
 /** How n8n signs a request. All kinds but `custom` are data. */
 export type CredentialScheme<F extends Shape = Shape> =
 	| Placement
@@ -374,11 +371,13 @@ export type CredentialScheme<F extends Shape = Shape> =
 
 interface AuthorizationCodeSpec<F extends Shape, A extends string, T extends string> {
 	/** The authorization endpoint (RFC 6749 §3.1), e.g. `https://example.com/oauth/authorize`. */
-	readonly authorizationEndpoint: UrlTemplate<F, A>;
+	readonly authorizationEndpoint: Endpoint<F, A>;
 	/** The token endpoint (RFC 6749 §3.2), e.g. `https://example.com/oauth/token`. */
-	readonly tokenEndpoint: UrlTemplate<F, T>;
+	readonly tokenEndpoint: Endpoint<F, T>;
 	/** The provider scopes the app asks for at consent. */
 	readonly scope?: readonly string[];
+	/** Joins `scope` with a comma in place of a space, e.g. for GitHub. */
+	readonly scopeSeparator?: ',';
 	/**
 	 * How the token request sends the client ID and secret.
 	 *
@@ -399,7 +398,7 @@ interface AuthorizationCodeSpec<F extends Shape, A extends string, T extends str
 
 interface ClientCredentialsSpec<F extends Shape, T extends string> {
 	/** The token endpoint (RFC 6749 §3.2). */
-	readonly tokenEndpoint: UrlTemplate<F, T>;
+	readonly tokenEndpoint: Endpoint<F, T>;
 	/** The provider scopes that the app asks for. */
 	readonly scope?: readonly string[];
 	/**
@@ -468,12 +467,15 @@ export interface AuthBuilders<F extends Shape> {
 		 */
 		readonly userHeader?: true;
 	}): Placement;
-	/** The placement depends on an options field. `tsc` needs one case per value. */
-	when<const K extends OptionName<F>>(
+	/**
+	 * The scheme depends on an options or boolean field. `tsc` needs one case per value, e.g.
+	 * `a.when('httpNode', { true: a.oauth2.jwtBearer(…), false: a.none() })`.
+	 */
+	when<const K extends OptionName<F> | BooleanName<F>>(
 		field: K,
-		cases: { readonly [V in Infer<F[K]> & string]: Placement },
+		cases: { readonly [V in `${Infer<F[K]> & (string | boolean)}`]: WhenCase },
 	): When;
-	/** The OAuth2 grants, named as in their RFCs. Endpoints are https URLs or templates. */
+	/** The OAuth2 grants, named as in their RFCs. Endpoints are https URLs or credential values. */
 	readonly oauth2: {
 		/** RFC 6749 §4.1, with PKCE (RFC 7636) unless `pkce: false`. */
 		authorizationCode<const A extends string, const T extends string>(
@@ -491,13 +493,18 @@ export interface AuthBuilders<F extends Shape> {
 			readonly scope?: readonly string[];
 		}): DeviceCodeGrant;
 		/** RFC 7523 §2.1, signed with RS256. */
-		jwtBearer<const T extends string, const C extends Values>(spec: {
+		jwtBearer<const T extends string>(spec: {
 			/** The token endpoint. */
-			readonly tokenEndpoint: UrlTemplate<F, T>;
+			readonly tokenEndpoint: Endpoint<F, T>;
 			/** The secret field with the PEM private key. */
 			readonly key: SecretName<F>;
-			/** Claim templates, e.g. `{ iss: '{email}', scope: '{$scopes}' }`. No secret. */
-			readonly claims: ClaimTemplates<F, C>;
+			/**
+			 * Text or credential values, e.g. `{ iss: (c) => c.email.trim() }`. A claim reads no
+			 * secret, and an empty value drops it.
+			 */
+			readonly claims: Readonly<
+				Record<string, ((fields: CredentialData<PlainShape<F>>) => string) | string>
+			>;
 			/** The provider scopes that the app asks for. */
 			readonly scope?: readonly string[];
 		}): JwtBearerGrant;
@@ -608,14 +615,6 @@ export interface CredentialType<Name extends string = string, F extends Shape = 
 	readonly fields?: F;
 	/** How n8n signs a request: what `auth` gave. */
 	readonly scheme: CredentialScheme<F>;
-	/**
-	 * Gives data that n8n runs from the fields without secrets, e.g. the OAuth2 endpoints of a
-	 * server URL. A type with it has a credential bundle. It is async when the bundle runs in a
-	 * worker.
-	 *
-	 * @unstable The `credential-derive` feature of Node Contract 2.13.0.
-	 */
-	derive?(fields: CredentialData<PlainShape<F>>): Derived | Promise<Derived>;
 	/**
 	 * The API base URL, e.g. `https://{subdomain}.zendesk.com/api/v2`. It replaces the node's, and
 	 * its host is a credential host.
@@ -806,6 +805,10 @@ const templatesOf = (scheme: Placement): string[] => [
 	...(scheme.basic ? [scheme.basic.username, scheme.basic.password] : []),
 ];
 
+/** A URL or a lambda of an endpoint or claim as text or an n8n expression over `$credentials`. */
+const credentialValueOf = (value: string | ((...args: never[]) => unknown), label: string) =>
+	expressionOf(value, '$credentials', label);
+
 function authBuilders<F extends Shape>(): AuthBuilders<F> {
 	return {
 		bearer: (field, options) =>
@@ -819,9 +822,13 @@ function authBuilders<F extends Shape>(): AuthBuilders<F> {
 			authorizationCode: (spec) => ({
 				kind: 'oauth2',
 				grant: 'authorizationCode',
-				authorizationEndpoint: spec.authorizationEndpoint,
-				tokenEndpoint: spec.tokenEndpoint,
+				authorizationEndpoint: credentialValueOf(
+					spec.authorizationEndpoint,
+					'authorizationEndpoint',
+				),
+				tokenEndpoint: credentialValueOf(spec.tokenEndpoint, 'tokenEndpoint'),
 				scope: spec.scope ?? [],
+				...(spec.scopeSeparator ? { scopeSeparator: spec.scopeSeparator } : {}),
 				clientAuth: spec.clientAuth ?? 'client_secret_basic',
 				pkce: spec.pkce ?? true,
 				authorizationQuery: spec.authorizationQuery ?? {},
@@ -830,7 +837,7 @@ function authBuilders<F extends Shape>(): AuthBuilders<F> {
 			clientCredentials: (spec) => ({
 				kind: 'oauth2',
 				grant: 'clientCredentials',
-				tokenEndpoint: spec.tokenEndpoint,
+				tokenEndpoint: credentialValueOf(spec.tokenEndpoint, 'tokenEndpoint'),
 				scope: spec.scope ?? [],
 				clientAuth: spec.clientAuth ?? 'client_secret_basic',
 				pkce: false,
@@ -847,10 +854,15 @@ function authBuilders<F extends Shape>(): AuthBuilders<F> {
 			jwtBearer: (spec) => ({
 				kind: 'oauth2',
 				grant: 'jwtBearer',
-				tokenEndpoint: spec.tokenEndpoint,
+				tokenEndpoint: credentialValueOf(spec.tokenEndpoint, 'tokenEndpoint'),
 				key: spec.key,
 				algorithm: 'RS256',
-				claims: spec.claims,
+				claims: Object.fromEntries(
+					Object.entries(spec.claims).map(([name, value]) => [
+						name,
+						credentialValueOf(value, `claims.${name}`),
+					]),
+				),
 				scope: spec.scope ?? [],
 			}),
 			tokenExchange: (spec) => ({
@@ -883,8 +895,14 @@ function authBuilders<F extends Shape>(): AuthBuilders<F> {
 	};
 }
 
+const casesOf = (scheme: CredentialScheme): readonly CredentialScheme[] =>
+	scheme.kind === 'when' ? Object.values(scheme.cases) : [scheme];
+
 const placementsOf = (scheme: CredentialScheme): readonly Placement[] =>
-	scheme.kind === 'apply' ? [scheme] : scheme.kind === 'when' ? Object.values(scheme.cases) : [];
+	casesOf(scheme).filter((each): each is Placement => each.kind === 'apply');
+
+/** What an expression over `$credentials` reads, and its problems. A template has neither. */
+const credentialScan = (value: string) => scanExpression(value, '$credentials');
 
 const isBaseUrlField = (schema: AnySchema | undefined) => schema?.json['x-n8n-base-url'] === true;
 
@@ -936,22 +954,32 @@ function testIssues(type: AnyCredentialType): string[] {
  */
 const SCOPE_TOKEN = /^(?!=)[\x21\x23-\x5B\x5D-\x7A\x7C\x7E]+$/;
 
-/** The URL templates of a scheme by name, e.g. `tokenEndpoint`. */
-const schemeUrlsOf = (scheme: CredentialScheme): Array<readonly [string, string]> => {
-	if (scheme.kind === 'exchange') return [['exchange', scheme.request.url]];
-	if (scheme.kind === 'oidc') return [['issuer', scheme.issuer]];
+/**
+ * The URLs of a scheme by name, e.g. `tokenEndpoint`, and whether each is a credential value (an
+ * URL or an expression) rather than a `{field}` template.
+ */
+const schemeUrlsOf = (scheme: CredentialScheme): Array<readonly [string, string, boolean]> => {
+	if (scheme.kind === 'when') return Object.values(scheme.cases).flatMap(schemeUrlsOf);
+	if (scheme.kind === 'exchange') return [['exchange', scheme.request.url, false]];
+	if (scheme.kind === 'oidc') return [['issuer', scheme.issuer, false]];
 	if (scheme.kind !== 'oauth2') return [];
-	const first =
-		scheme.grant === 'deviceCode'
-			? scheme.deviceAuthorizationEndpoint
-			: 'authorizationEndpoint' in scheme
-				? scheme.authorizationEndpoint
-				: undefined;
+	if (scheme.grant === 'deviceCode') {
+		return [
+			['authorization', scheme.deviceAuthorizationEndpoint, false],
+			['tokenEndpoint', scheme.tokenEndpoint, false],
+		];
+	}
+	const isValue = scheme.grant !== 'tokenExchange';
 	return [
-		...(first === undefined ? [] : [['authorization', first] as const]),
-		['tokenEndpoint', scheme.tokenEndpoint],
+		...('authorizationEndpoint' in scheme && scheme.authorizationEndpoint !== undefined
+			? [['authorization', scheme.authorizationEndpoint, isValue] as const]
+			: []),
+		['tokenEndpoint', scheme.tokenEndpoint, isValue],
 	];
 };
+
+/** The fields that a URL reads by name: of an n8n expression, or of a `{field}` template. */
+const urlReads = (url: string) => (url.startsWith('=') ? credentialScan(url).reads : varsOf(url));
 
 /** The problems of the token parts of `exchange`, `jwtBearer` and `tokenExchange`. */
 function tokenIssues(type: AnyCredentialType): string[] {
@@ -983,20 +1011,35 @@ function tokenIssues(type: AnyCredentialType): string[] {
 				.map((path) => `exchange: ${path} is not a dot path`),
 		];
 	}
-	if (scheme.kind !== 'oauth2') return [];
-	if (scheme.grant === 'jwtBearer') {
+	const claimIssues = (name: string, value: string) => {
+		if (!value.startsWith('=')) {
+			return value.includes('{')
+				? [`jwtBearer: claims.${name} has a {field}. Write (c) => … or an expression`]
+				: [];
+		}
+		const { reads, problems } = credentialScan(value);
 		return [
-			...(secret(scheme.key) ? [] : [`jwtBearer: ${scheme.key} is not a secret field`]),
-			...Object.values(scheme.claims)
-				.flatMap(varsOf)
-				.filter((name) => name !== '$scopes' && (!(name in fields) || secret(name)))
-				.map((name) => `jwtBearer: {${name}} is not a field or $scopes, or a secret`),
+			...problems.map((problem) => `jwtBearer: claims.${name} ${problem}`),
+			...reads
+				.filter((read) => !(read in fields) || secret(read))
+				.map(
+					(read) => `jwtBearer: claims.${name} reads ${read}, which is not a field, or a secret`,
+				),
 		];
-	}
-	if (scheme.grant === 'tokenExchange' && !secret(scheme.subjectToken)) {
-		return [`tokenExchange: ${scheme.subjectToken} is not a secret field`];
-	}
-	return [];
+	};
+	return casesOf(scheme).flatMap((each) => {
+		if (each.kind !== 'oauth2') return [];
+		if (each.grant === 'jwtBearer') {
+			return [
+				...(secret(each.key) ? [] : [`jwtBearer: ${each.key} is not a secret field`]),
+				...Object.entries(each.claims).flatMap(([name, value]) => claimIssues(name, value)),
+			];
+		}
+		if (each.grant === 'tokenExchange' && !secret(each.subjectToken)) {
+			return [`tokenExchange: ${each.subjectToken} is not a secret field`];
+		}
+		return [];
+	});
 }
 
 /** The problems of a definition that `tsc` does not see in plain JavaScript. */
@@ -1009,14 +1052,14 @@ function definitionIssues(type: AnyCredentialType): string[] {
 	const plainField = (name: string) =>
 		name in fields && !isSecretField(fields[name]) && !isBaseUrlField(fields[name]);
 	const hasBaseUrlField = Object.values(fields).some(isBaseUrlField);
-	const urls: Array<readonly [string, string]> = [
-		...(typeof baseUrl === 'string' ? [['baseUrl', baseUrl] as const] : []),
+	const urls: Array<readonly [string, string, boolean]> = [
+		...(typeof baseUrl === 'string' ? [['baseUrl', baseUrl, false] as const] : []),
 		...schemeUrlsOf(scheme),
 	];
 	const scopes = 'scope' in scheme ? scheme.scope : [];
 	// n8n core and `credentialBaseUrlOf` read these fields from the stored data, without `renamed`.
 	const readByName = new Set([
-		...urls.flatMap(([, url]) => varsOf(url)),
+		...urls.flatMap(([, url]) => urlReads(url)),
 		...(typeof baseUrl === 'object' ? [baseUrl.on] : []),
 		...(type.test && 'post' in type.test ? Object.values(type.test.body ?? {}) : []).flatMap(
 			varsOf,
@@ -1029,12 +1072,30 @@ function definitionIssues(type: AnyCredentialType): string[] {
 		...unknown(placements.flatMap(templatesOf), (name) => name in fields).map(
 			(name) => `{${name}} is not a field`,
 		),
-		...urls.flatMap(([label, url]) => [
-			...(/^(https:\/\/|\{)/.test(url) ? [] : [`${label} must start with https:// or a {field}`]),
-			...unknown([url], plainField).map(
-				(name) => `${label}: {${name}} is not a field, or a secret`,
-			),
-		]),
+		...urls.flatMap(([label, url, isValue]) => {
+			if (!isValue) {
+				return [
+					...(/^(https:\/\/|\{)/.test(url)
+						? []
+						: [`${label} must start with https:// or a {field}`]),
+					...unknown([url], plainField).map(
+						(name) => `${label}: {${name}} is not a field, or a secret`,
+					),
+				];
+			}
+			if (!url.startsWith('=')) {
+				return url.startsWith('https://') && !url.includes('{')
+					? []
+					: [`${label} must start with https://, or be an expression`];
+			}
+			const { reads, problems } = credentialScan(url);
+			return [
+				...problems.map((problem) => `${label}: ${problem}`),
+				...reads
+					.filter((read) => !plainField(read))
+					.map((read) => `${label}: ${read} is not a field, or a secret`),
+			];
+		}),
 		...scopes
 			.filter((scope) => !SCOPE_TOKEN.test(scope))
 			.map((scope) => `scope: "${scope}" is not one scope token`),
@@ -1139,13 +1200,6 @@ export function defineCredential<
 	 */
 	readonly auth: (a: AuthBuilders<F>) => CredentialScheme<F>;
 	/**
-	 * Gives data that n8n runs from the fields without secrets, e.g. the OAuth2 endpoints of a
-	 * server URL. Pack then makes a credential bundle of the type.
-	 *
-	 * @unstable The `credential-derive` feature of Node Contract 2.13.0.
-	 */
-	readonly derive?: (fields: CredentialData<PlainShape<F>>) => Derived;
-	/**
 	 * A GET of this path, or a POST with a body, after `baseUrl` with the credential applied. The
 	 * body may hold secrets; the path never does.
 	 */
@@ -1203,7 +1257,6 @@ export function defineCredential<
 		...(spec.docs ? { documentationUrl: spec.docs } : {}),
 		...(spec.fields ? { fields: spec.fields } : {}),
 		scheme: spec.auth(authBuilders<F>()),
-		...(spec.derive ? { derive: spec.derive } : {}),
 		...(spec.baseUrl === undefined ? {} : { baseUrl: spec.baseUrl }),
 		...(spec.hosts ? { hosts: spec.hosts } : {}),
 		...(spec.test ? { test: spec.test } : {}),
@@ -1449,7 +1502,7 @@ function placementOf(
 	type: AnyCredentialType,
 	scheme: Placement | When,
 	data: CredentialData<Shape>,
-) {
+): WhenCase {
 	if (scheme.kind === 'apply') return scheme;
 	const value = storedValue(type, data, scheme.field);
 	const chosen = scheme.cases[value];
@@ -1577,9 +1630,9 @@ const editableScopeProperties = (scope: string): INodeProperties[] => [
  */
 const oauth2Properties = (grant: OAuth2Grant, fields: Shape): INodeProperties[] => {
 	const isCode = grant.grant === 'authorizationCode';
-	const scope = grant.scope.join(' ');
+	const scope = grant.scope.join(grant.scopeSeparator ?? ' ');
 	// n8n core resolves `$self` in hidden defaults before it runs the flow.
-	const endpoint = (url: string) => toExpression(url, '$self');
+	const endpoint = (url: string) => withRoot(url, '$credentials', '$self');
 	return [
 		hidden(
 			'Grant Type',
@@ -1864,10 +1917,18 @@ export type HostHttp = (options: IHttpRequestOptions) => Promise<unknown>;
 const base64Url = (value: string | Buffer) => Buffer.from(value).toString('base64url');
 
 /**
+ * The value of a credential value (an URL or an n8n expression over `$credentials`) with the
+ * fields without secrets, each default filled in. Text that is not text is empty.
+ */
+function credentialValueText(type: AnyCredentialType, value: string, raw: unknown): string {
+	const result = evaluated(value, { $credentials: plainFieldsOf(type, raw) });
+	return typeof result === 'string' || typeof result === 'number' ? String(result) : '';
+}
+
+/**
  * The `authenticate` of `jwtBearer` (RFC 7523 §2.1). The host signs the JWT with the key and sends
  * one token request for each request, as the legacy Google service account type does, so n8n
- * stores no token. A type with `derive` signs only when `derive` gives claims; else the request
- * stays as it is. The token request goes only to the `tokenEndpoint` of the scheme.
+ * stores no token. The token request goes only to the http or https `tokenEndpoint` of the scheme.
  */
 function jwtBearerOf(
 	type: AnyCredentialType,
@@ -1875,26 +1936,27 @@ function jwtBearerOf(
 	http: HostHttp | undefined,
 ): Authenticate {
 	return async (raw, request) => {
-		const derived = type.derive ? (await derivedOf(type, raw))?.claims : {};
-		if (derived === undefined) return request;
 		if (!http) {
 			throw new UnexpectedError(
 				`Credential ${type.name}: the host gives no HTTP client for jwtBearer`,
 			);
 		}
 		const data = credentialDataOf(type, raw);
-		const scopes = scheme.scope.join(' ');
-		const templated = mapValues(scheme.claims, (template) =>
-			template.replace(PLACEHOLDER, (_, name: string) =>
-				name === '$scopes' ? scopes : storedValue(type, data, name),
-			),
-		);
+		const tokenEndpoint = credentialValueText(type, scheme.tokenEndpoint, raw);
+		if (webHostOf(tokenEndpoint) === undefined) {
+			throw new UserError(
+				`Credential ${type.name}: the token endpoint ${tokenEndpoint} is not an http or https URL`,
+			);
+		}
+		const given = Object.entries(scheme.claims).flatMap(([name, value]) => {
+			const text = credentialValueText(type, value, raw);
+			return text === '' ? [] : [[name, text] as const];
+		});
 		const now = Math.floor(Date.now() / 1000);
 		// The host sets the audience and the lifetime: a claim of the type never replaces them.
 		const claims = {
-			...templated,
-			...derived,
-			aud: scheme.tokenEndpoint,
+			...Object.fromEntries(given),
+			aud: tokenEndpoint,
 			iat: now,
 			exp: now + 3600,
 		};
@@ -1905,7 +1967,7 @@ function jwtBearerOf(
 		const signature = base64Url(sign('sha256', Buffer.from(input), key));
 		const response = await http({
 			method: 'POST',
-			url: scheme.tokenEndpoint,
+			url: tokenEndpoint,
 			body: new URLSearchParams({
 				grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
 				assertion: `${input}.${signature}`,
@@ -1985,7 +2047,10 @@ export function toCredentialType(
 		const stored = credentialDataOf(type, data);
 		if (placed) return applyPlacement(type, placed, stored, request);
 		if (scheme.kind === 'when') {
-			return applyPlacement(type, placementOf(type, scheme, stored), stored, request);
+			const chosen = placementOf(type, scheme, stored);
+			if (chosen.kind === 'none') return request;
+			if (chosen.kind === 'oauth2') return await jwtBearerOf(type, chosen, http)(data, request);
+			return applyPlacement(type, chosen, stored, request);
 		}
 		if (scheme.kind !== 'custom') throw notRunBy(type, scheme.kind);
 		const signed = await scheme.sign(stored, request);
@@ -2087,69 +2152,12 @@ export function credentialTypeOfManifest(
 	return projected;
 }
 
-// A function, so the SDK runtime bundle leaves it out: only the host checks what derive gives.
-const derivedSchema = () =>
-	t.obj({
-		authorizationEndpoint: t.str().optional(),
-		tokenEndpoint: t.str().optional(),
-		scope: t.str().optional(),
-		authorizationQuery: t.record(t.str()).optional(),
-		claims: t.record(t.str()).optional(),
-		baseUrl: t.str().optional(),
-		hosts: t.arr(t.str()).optional(),
-	});
-
-/** Whether a value has the shape of what `derive` gives. `derivedOf` also checks the URLs and hosts. */
-export const isDerived = (value: unknown): value is Derived => matches(derivedSchema(), value);
-
 /** The host of an http or https URL, or `undefined` for another scheme or no URL. */
 const webHostOf = (url: unknown) => {
 	if (typeof url !== 'string' || !URL.canParse(url)) return undefined;
 	const { protocol, hostname } = new URL(url);
 	return protocol === 'http:' || protocol === 'https:' ? hostname.toLowerCase() : undefined;
 };
-
-/**
- * Runs `derive` of a type with the stored fields without secrets, each default filled in, and
- * checks what it gives. Each URL must be http or https. A derived host and the host of a derived
- * base URL must be a host of the type or the host of the value of a URL field. `undefined` for a
- * type without `derive`.
- */
-export async function derivedOf(
-	type: AnyCredentialType,
-	raw: unknown,
-): Promise<Derived | undefined> {
-	if (!type.derive) return undefined;
-	const fields = plainFieldsOf(type, raw);
-	const derived: unknown = await type.derive(fields);
-	const fail = (problem: string) => new UserError(`Credential ${type.id}: derive ${problem}`);
-	if (!isDerived(derived)) throw fail('gave data that is not valid');
-	const { authorizationEndpoint, tokenEndpoint, baseUrl, hosts = [] } = derived;
-	const urls = [authorizationEndpoint, tokenEndpoint, baseUrl].filter((url) => url !== undefined);
-	const notWeb = urls.find((url) => webHostOf(url) === undefined);
-	if (notWeb !== undefined) throw fail(`gave ${notWeb}, which is not an http or https URL`);
-	const typeBaseUrl = type.baseUrl;
-	const allowed = [
-		...(type.hosts ?? []),
-		...[
-			...(typeof typeBaseUrl === 'object' ? Object.values(typeBaseUrl.values) : [typeBaseUrl]),
-			...Object.entries(type.fields ?? {})
-				.filter(([, schema]) => schema.json.format === 'uri' && !isSecretField(schema))
-				.map(([name]) => fields[name]),
-		]
-			.map(webHostOf)
-			.filter((host) => host !== undefined),
-	];
-	const outside = [...hosts, ...(baseUrl === undefined ? [] : [webHostOf(baseUrl) ?? ''])].filter(
-		(host) => !allowed.includes(host) && !allowsHost(allowed, host),
-	);
-	if (outside.length > 0) {
-		throw fail(
-			`gave the hosts ${outside.join(', ')}, which are not hosts of the type or of a URL field`,
-		);
-	}
-	return derived;
-}
 
 /** The endpoints of an OpenID provider, from its discovery document. */
 export interface OidcEndpoints {

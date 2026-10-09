@@ -853,17 +853,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		this.stringifyJsonLeafExpressionFields(decryptedData, parsedJsonLeafExpressionFields);
 
-		if (!Container.get(GlobalConfig).instanceAi.nodeContractsEnabled) return decryptedData;
-		// After the expressions, so that no derived value is read as an expression.
-		const { derivedCredentialDataOf } = await import('@/node-contracts-registry.js');
-		const { loaders } = this.credentialTypes;
-		const derived = (await derivedCredentialDataOf(loaders, type, decryptedData)) ?? {};
-		// An admin overwrite wins over derive.
-		const overwritten = (key: string) => dataWithOverwrites[key] !== storedData[key];
-		return {
-			...decryptedData,
-			...Object.fromEntries(Object.entries(derived).filter(([key]) => !overwritten(key))),
-		};
+		return decryptedData;
 	}
 
 	/**

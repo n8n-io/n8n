@@ -268,16 +268,33 @@ export type CredentialSchemeData =
 	  >
 	| Pick<CustomAuth, 'kind' | 'reason'>;
 
+const jwtBearer = t.obj({
+	kind: constant('oauth2'),
+	grant: constant('jwtBearer'),
+	tokenEndpoint: t.str(),
+	key: t.str(),
+	algorithm: constant('RS256'),
+	claims: values(),
+	scope: names(),
+});
+
+const noAuth = t.obj({ kind: constant('none') });
+
 const scheme = fits<CredentialSchemeData>()(
 	t.union(
 		placement,
-		t.obj({ kind: constant('when'), field: t.str(), cases: t.record(placement) }),
+		t.obj({
+			kind: constant('when'),
+			field: t.str(),
+			cases: t.record(t.union(placement, jwtBearer.with(SINCE_2_13), noAuth.with(SINCE_2_13))),
+		}),
 		t.obj({
 			kind: constant('oauth2'),
 			grant: t.oneOf('authorizationCode', 'clientCredentials'),
 			authorizationEndpoint: t.str().optional(),
 			tokenEndpoint: t.str(),
 			scope: names(),
+			scopeSeparator: constant(',').with(SINCE_2_13).optional(),
 			clientAuth: t.oneOf('client_secret_basic', 'client_secret_post'),
 			pkce: t.bool(),
 			authorizationQuery: values(),
@@ -290,15 +307,7 @@ const scheme = fits<CredentialSchemeData>()(
 			tokenEndpoint: t.str(),
 			scope: names(),
 		}),
-		t.obj({
-			kind: constant('oauth2'),
-			grant: constant('jwtBearer'),
-			tokenEndpoint: t.str(),
-			key: t.str(),
-			algorithm: constant('RS256'),
-			claims: values(),
-			scope: names(),
-		}),
+		jwtBearer,
 		t.obj({
 			kind: constant('oauth2'),
 			grant: constant('tokenExchange'),
@@ -323,7 +332,7 @@ const scheme = fits<CredentialSchemeData>()(
 			token: t.obj({ path: t.str(), field: t.str(), expiresIn: t.str().optional() }),
 			apply: placement,
 		}),
-		t.obj({ kind: constant('none') }),
+		noAuth,
 		t.obj({ kind: constant('custom'), reason: t.str() }),
 	),
 );
@@ -371,7 +380,7 @@ const fieldWhen = new Schema<CredentialManifest['when']>(
 );
 
 /** An export of a credential bundle that the host calls, see `spec/wit/credential.wit`. */
-export type CredentialHook = 'sign' | 'exchange' | 'refresh' | 'derive';
+export type CredentialHook = 'sign' | 'exchange' | 'refresh';
 
 /** The data of one version of a credential type. Only a `custom` scheme has code. */
 export interface CredentialManifest {
@@ -450,7 +459,7 @@ export const credentialManifestSchema = typed<CredentialManifest>()(
 				.with(SINCE_2_5)
 				.optional(),
 			hooks: t
-				.arr(t.oneOf('sign', 'exchange', 'refresh', 'derive'))
+				.arr(t.oneOf('sign', 'exchange', 'refresh'))
 				.with(SINCE_2_13)
 				.optional(),
 		})
@@ -626,6 +635,25 @@ export const manifestJsonSchema = (version: string) => ({
 	],
 });
 
+/**
+ * Whether a scheme needs 2.13.0: an n8n expression in an OAuth2 endpoint or a claim,
+ * `scopeSeparator`, or a grant or no auth in a `when` case.
+ */
+const usesCredentialValues = (scheme: CredentialScheme): boolean => {
+	if (scheme.kind === 'when') {
+		return Object.values(scheme.cases).some(
+			(each) => each.kind !== 'apply' || usesCredentialValues(each),
+		);
+	}
+	if (scheme.kind !== 'oauth2') return false;
+	const values = [
+		scheme.tokenEndpoint,
+		...('authorizationEndpoint' in scheme ? [scheme.authorizationEndpoint ?? ''] : []),
+		...('claims' in scheme ? Object.values(scheme.claims) : []),
+	];
+	return 'scopeSeparator' in scheme || values.some((value) => value.startsWith('='));
+};
+
 /** The credential manifest that pack writes. A compat type has none. */
 export function credentialManifestOf(type: AnyCredentialType): CredentialManifest | undefined {
 	const { scheme: typeScheme } = type;
@@ -636,7 +664,7 @@ export function credentialManifestOf(type: AnyCredentialType): CredentialManifes
 		id: type.id,
 		name: type.name,
 		semver: type.semver,
-		nodeContract: type.when ? '2.13.0' : '2.5.0',
+		nodeContract: usesCredentialValues(typeScheme) || type.when ? '2.13.0' : '2.5.0',
 		displayName: type.displayName,
 		...(type.documentationUrl ? { documentationUrl: type.documentationUrl } : {}),
 		fields: t.obj(type.fields ?? {}).json,

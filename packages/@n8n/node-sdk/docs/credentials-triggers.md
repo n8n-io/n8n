@@ -55,10 +55,10 @@ Use the first `auth` that fits:
 | `a.basic(username, password)` | HTTP basic | `a.basic('{email}/token', '{apiToken}')` (Zendesk) |
 | `a.apply({ headers, query, defaults })` | several places | Datadog, Trello |
 | `a.apply({ headers, userHeader: true })` | also one header that the user names (fields `header`, `headerName`, `headerValue`) | OpenAI, Anthropic |
-| `a.when(field, cases)` | one placement per value of an options field | an auth-type switch |
+| `a.when(field, cases)` | one placement, JWT bearer grant or `a.none()` per value of an options or boolean field | an auth-type switch; the Google service account signs only when `httpNode` is set |
 | `a.oauth2.authorizationCode(...)` | RFC 6749 §4.1. PKCE S256 is on; a port of a legacy type without PKCE sets `pkce: false` | Notion OAuth2 |
 | `a.oauth2.clientCredentials(...)` | RFC 6749 §4.4 | |
-| `a.oauth2.jwtBearer(...)` | RFC 7523 §2.1. The host signs an RS256 JWT with the key field and sends one token request for each request; it sets `aud`, `iat` and `exp`. With `derive`, the host signs only when `derive` gives `claims` | Google service account |
+| `a.oauth2.jwtBearer(...)` | RFC 7523 §2.1. The host signs an RS256 JWT with the key field and sends one token request for each request; it sets `aud`, `iat` and `exp`. A claim is text or a credential value; an empty value drops it | Google service account |
 | `a.oauth2.deviceCode`, `tokenExchange`, `a.oidc({ issuer })` | RFC 8628, RFC 8693, OIDC. Data only: n8n core does not run them yet, so `toCredentialType` refuses them | |
 | `a.exchange({ post, json, token, headers })` | a token request first, e.g. a login for a session token. `{$token}` is the token | Metabase (parity file) |
 | `a.none()` | nothing. The legacy node that uses the type reads its fields | WhatsApp and Facebook trigger apps |
@@ -74,7 +74,11 @@ Use the first `auth` that fits:
   fields, optionally only while a field has a value, or only on one kind of deployment.
 - `when: { delegatedEmail: { inpersonate: true } }` shows a field only while each named field has
   that value. A condition names no secret field. A manifest with `when` needs Node Contract 2.13.0.
-- OAuth2 endpoints are https URLs or templates over fields (`{server}/login/oauth/authorize`).
+- OAuth2 endpoints and JWT claims are https URLs or text, or credential values: a lambda over the
+  fields without secrets (`({ server }) => `${server}/login/oauth/authorize``) or an n8n expression over
+  `$credentials` (`'={{ $credentials.server }}/login/oauth/authorize'`). A lambda compiles to an
+  expression, so it reads only its parameter and JavaScript globals. `scopeSeparator: ','` joins the
+  scopes with a comma, e.g. for GitHub.
   `editableScopes: true` adds the legacy custom-scopes fields. `legacyParent: 'googleOAuth2Api'`
   projects `extends` to that type, so its sign-in button and instance overwrites apply.
 - `exchange`: n8n stores the token in a hidden field (`token.field`, a password field) and sends

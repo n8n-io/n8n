@@ -7,11 +7,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 export class CredentialTypes implements ICredentialTypes {
 	constructor(private loadNodesAndCredentials: LoadNodesAndCredentials) {}
 
-	/** The loaders of the node and credential types, e.g. to find a contract credential type. */
-	get loaders() {
-		return this.loadNodesAndCredentials.loaders;
-	}
-
 	recognizes(type: string) {
 		const { loadedCredentials, knownCredentials } = this.loadNodesAndCredentials;
 		return type in knownCredentials || type in loadedCredentials;

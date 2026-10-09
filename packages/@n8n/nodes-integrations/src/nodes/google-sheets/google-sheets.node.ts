@@ -35,7 +35,10 @@ export const googleSheet = defineResource({
 	label: 'Sheet',
 	shape: { pattern: '^(gid=)?[0-9]+$', 'x-n8n-hint': 'A numeric sheet gid' },
 	input: { spreadsheet: ref(googleSpreadsheet) },
-	list: { ...tabList, item: { id: '{properties.sheetId}', label: '{properties.title}' } },
+	list: {
+		...tabList,
+		item: { id: (entry) => entry.properties.sheetId, label: (entry) => entry.properties.title },
+	},
 });
 
 /**
@@ -47,13 +50,16 @@ export const googleSheetName = defineResource({
 	label: 'Sheet',
 	shape: { 'x-n8n-hint': 'Exact tab name the user gave' },
 	input: { spreadsheet: ref(googleSpreadsheet) },
-	list: { ...tabList, item: { id: '{properties.title}', label: '{properties.title}' } },
+	list: {
+		...tabList,
+		item: { id: (entry) => entry.properties.title, label: (entry) => entry.properties.title },
+	},
 	fields: {
 		// One entry per column, so an empty cell gives an empty entry, not a shift.
 		requests: [{ path: "/{spreadsheet}/values/'{id}'!1:1", query: { majorDimension: 'COLUMNS' } }],
 		response: t.obj({ values: t.arr(t.arr(t.str())).optional() }),
 		items: 'values',
-		item: { name: '{0}', value: '{0}' },
+		item: { name: (column) => column[0] ?? '', value: (column) => column[0] ?? '' },
 	},
 });
 

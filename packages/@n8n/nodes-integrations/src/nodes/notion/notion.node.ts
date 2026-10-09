@@ -37,7 +37,10 @@ const dataSourceList = {
 		next_cursor: t.nullable(t.str()).optional(),
 	}),
 	items: 'results',
-	item: { id: '{id}', label: '{title.0.plain_text}' },
+	item: {
+		id: (entry: { id: string }) => entry.id,
+		label: (entry: { title: ReadonlyArray<{ plain_text: string }> }) => entry.title[0]?.plain_text,
+	},
 	pages: {
 		style: 'cursor',
 		next: 'next_cursor',
@@ -60,7 +63,7 @@ export const notionDatabase = defineResource({
 		],
 		response: t.obj({ properties: t.record(t.obj({ name: t.str(), type: t.str() })) }),
 		items: 'properties',
-		item: { name: '{name}', value: '{name}|{type}' },
+		item: { name: (entry) => entry.name, value: (entry) => `${entry.name}|${entry.type}` },
 	},
 });
 
@@ -103,7 +106,7 @@ export const user = notion.resource('user', {
 						next_cursor: t.nullable(t.str()).optional(),
 					}),
 					items: 'results',
-					item: { id: '{id}', label: '{name}' },
+					item: { id: (entry) => entry.id, label: (entry) => entry.name },
 					pages: {
 						style: 'cursor',
 						next: 'next_cursor',

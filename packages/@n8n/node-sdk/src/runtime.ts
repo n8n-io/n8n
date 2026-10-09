@@ -43,7 +43,6 @@ import {
 	compat,
 	compatTypeOfManifest,
 	credentialBaseUrlOf,
-	isDerived,
 	plainFieldsOf,
 	redactedValue,
 	secretRedactorOf,
@@ -139,6 +138,7 @@ import {
 	credentialOptionsOf,
 	type Trigger,
 } from './define';
+import { evaluated, expressionOf, scanExpression, withRoot } from './expression';
 import { testPattern } from './pattern';
 import {
 	binaryKeyIssue,
@@ -2251,12 +2251,11 @@ const valueAtPath = (value: unknown, at: string | undefined): unknown =>
 			value,
 		);
 
-/** A template of a lookup item with each `{path}` filled in from one entry. */
-const filledTemplate = (template: string, entry: unknown) =>
-	template.replace(/\{([^}]+)\}/g, (_, at: string) => {
-		const value = valueAtPath(entry, at);
-		return ['string', 'number', 'boolean'].includes(typeof value) ? String(value) : '';
-	});
+/** The text of a lookup expression over one entry as `$json`. Another value than text is empty. */
+const entryText = (expression: string, entry: unknown) => {
+	const value = evaluated(expression, { $json: entry ?? null });
+	return ['string', 'number', 'boolean'].includes(typeof value) ? String(value) : '';
+};
 
 /** The entries at `items` of a page: a list, or the values of a record. */
 const entriesAt = (page: unknown, items: string | undefined): unknown[] => {
@@ -2272,9 +2271,9 @@ export function lookupEntriesOf(
 ): LookupEntry[] {
 	const text = lookup.search === 'label' ? search?.trim().toLowerCase() : undefined;
 	return entriesAt(page, lookup.items).flatMap((entry: unknown) => {
-		const id = filledTemplate(lookup.item.id, entry);
-		const label = filledTemplate(lookup.item.label, entry) || id;
-		const url = lookup.item.url === undefined ? '' : filledTemplate(lookup.item.url, entry);
+		const id = entryText(lookup.item.id, entry);
+		const label = entryText(lookup.item.label, entry) || id;
+		const url = lookup.item.url === undefined ? '' : entryText(lookup.item.url, entry);
 		if (id === '' || (text && !label.toLowerCase().includes(text))) return [];
 		// The URL can come from the service, and the editor shows it as a link.
 		return [{ id, label, ...(/^https?:\/\//i.test(url) ? { url } : {}) }];
@@ -2394,8 +2393,8 @@ const fieldEntry = t.obj({ name: t.str(), value: t.str() });
 /** The fields of one field lookup response. An entry with an empty name is no field. */
 export const fieldEntriesOf = (lookup: FieldLookupDocument, page: unknown): ResourceField[] =>
 	entriesAt(page, lookup.items).flatMap((entry) => {
-		const name = filledTemplate(lookup.item.name, entry);
-		return name === '' ? [] : [{ name, value: filledTemplate(lookup.item.value, entry) }];
+		const name = entryText(lookup.item.name, entry);
+		return name === '' ? [] : [{ name, value: entryText(lookup.item.value, entry) }];
 	});
 
 /** The service does not know the ID at this request, so the next request can know it. */
@@ -2720,6 +2719,12 @@ export interface PackedVersion {
 export const VALIDATOR_MODULE = '@n8n/node-sdk/validator';
 
 /**
+ * The host module of the lambda compiler. The SDK runtime takes it when the host evaluates a
+ * bundle, e.g. at pack; a guest has none, see `expression-guest.ts`.
+ */
+export const EXPRESSION_MODULE = '@n8n/node-sdk/expression';
+
+/**
  * Host modules a packed bundle may import. `n8n-workflow` is part of every Node Contract
  * version. A bundle tests patterns with `safeRegex.test`, so `test` is `testPattern`: the same
  * result, without a `vm` call for a pattern that it allows.
@@ -2728,6 +2733,7 @@ const HOST_MODULES: Readonly<Record<string, unknown>> = {
 	// The host classes, so the host classifies the errors that a packed bundle throws.
 	'n8n-workflow': { safeRegex: { ...safeRegex, test: testPattern }, OperationalError, UserError },
 	[VALIDATOR_MODULE]: { validate },
+	[EXPRESSION_MODULE]: { expressionOf, scanExpression, withRoot, evaluated },
 };
 
 /** The host gives a packed bundle the module of this name. */
@@ -2885,7 +2891,6 @@ export const credentialOfManifests =
 
 /** The hooks of a credential bundle, before the host checks what they give. */
 export interface CredentialHooks {
-	readonly derive?: (fields: unknown) => unknown;
 	readonly sign?: (fields: unknown, request: IHttpRequestOptions) => unknown;
 }
 
@@ -2937,7 +2942,6 @@ export function credentialTypeOfHooks(
 			}
 			return signed;
 		};
-	const derive = listed.includes('derive') ? hookOf('derive') : undefined;
 	return {
 		...manifest,
 		fields: shapeOf(manifest.fields),
@@ -2945,17 +2949,6 @@ export function credentialTypeOfHooks(
 			scheme.kind === 'custom'
 				? { kind: 'custom', reason: scheme.reason, sign: signOf(hookOf('sign')) }
 				: typeOfManifest(manifest).scheme,
-		...(derive
-			? {
-					derive: async (fields) => {
-						const derived = await derive(fields);
-						if (!isDerived(derived)) {
-							throw new UserError(`Credential ${manifest.id}: derive gave data that is not valid`);
-						}
-						return derived;
-					},
-				}
-			: {}),
 	};
 }
 
@@ -2982,7 +2975,6 @@ export function credentialTypeOfBundle(
 			: undefined;
 	};
 	return credentialTypeOfHooks(manifest, {
-		derive: own(exported, 'derive'),
 		sign: own(isRecord(exported) ? exported.scheme : undefined, 'sign'),
 	});
 }

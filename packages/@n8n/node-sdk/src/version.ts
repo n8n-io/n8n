@@ -52,7 +52,8 @@ export { parseSemver, type Semver } from './define';
  * from the host, and its manifest pins the runtime with `sdk: { version, digest }`.
  * 2.12.0 pins each credential type by a semver range: `credentials: { "notion.token": "^1.2.0" }`.
  * 2.13.0 adds credential bundles: the manifest of a credential type with code has `bundleHash`,
- * `sdk` and `hooks`, and the credential interface has the unstable `derive` export.
+ * `sdk` and `hooks`. It also makes the values of a lookup item and the OAuth2 endpoints and JWT
+ * claims of a credential n8n expressions, and adds `scopeSeparator` and grants in `when`.
  */
 export type NodeContractVersion = `${number}.${number}.${number}`;
 

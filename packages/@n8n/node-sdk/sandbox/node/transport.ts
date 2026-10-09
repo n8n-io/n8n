@@ -248,18 +248,6 @@ const pairsOfRecord = (record: unknown) =>
 		(Array.isArray(value) ? value : [value]).map((each: unknown) => [key, each]),
 	);
 
-/** The `derived` record of `credential.wit` from what `derive` gives. The host checks it. */
-function derivedJson(derived: unknown) {
-	if (!isRecord(derived)) return derived;
-	const { authorizationQuery, claims, hosts, ...rest } = derived;
-	return {
-		...rest,
-		authorizationQuery: pairsOfRecord(authorizationQuery),
-		claims: pairsOfRecord(claims),
-		hosts: hosts ?? [],
-	};
-}
-
 /** `sign` with a `signed-request` of `credential.wit`, in the form that the SDK reads. */
 async function signedJson(fields: unknown, request: unknown) {
 	const { query, headers, ...rest } = isRecord(request) ? request : {};
@@ -346,8 +334,6 @@ export async function runGuest(transport: SyncTransport, args: GuestArgs): Promi
 				return inline(action.describe());
 			case 'provider.describe':
 				return inline(provider.describe());
-			case 'credential.derive':
-				return derivedJson(await credentialHookOf('derive')(params.fields));
 			case 'credential.sign':
 				return await signedJson(params.fields, params.request);
 			case 'action.migrate': {

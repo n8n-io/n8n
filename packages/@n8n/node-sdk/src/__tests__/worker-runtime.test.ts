@@ -196,17 +196,9 @@ describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 		expect(await replay('items.set', options(runtime))).toEqual([]);
 	});
 
-	it('runs the derive and sign hooks of a credential bundle in the worker', async () => {
+	it('runs the sign hook of a credential bundle in the worker', async () => {
 		// As `packCredential` writes it: the default export is the credential type.
 		const bundle = `module.exports = { default: {
-	derive: (fields) => {
-		if (fields.server === 'fail') throw new Error('derive needs a server URL');
-		return {
-			authorizationEndpoint: new URL(fields.server).origin + '/login/oauth/authorize',
-			scope: ['repo', 'user'].join(','),
-			authorizationQuery: { allow_signup: 'false' },
-		};
-	},
 	scheme: { sign: async (fields, request) => ({
 		...request,
 		qs: { ...request.qs, sig: fields.key },
@@ -223,17 +215,11 @@ describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 			fields: { type: 'object', properties: {} },
 			scheme: { kind: 'custom', reason: 'The API signs each request with HMAC.' },
 			bundleHash: sha256(bundle),
-			hooks: ['sign', 'derive'],
+			hooks: ['sign'],
 		};
 		const type = await sandboxedCredentialTypeOf(manifest, { bundle }, { cacheDir, runtime });
 		if (type.scheme.kind !== 'custom') throw new Error('not a custom scheme');
 
-		await expect(type.derive?.({ server: 'https://ghe.acme.test/api/v3' })).resolves.toEqual({
-			authorizationEndpoint: 'https://ghe.acme.test/login/oauth/authorize',
-			scope: 'repo,user',
-			authorizationQuery: { allow_signup: 'false' },
-		});
-		await expect(type.derive?.({ server: 'fail' })).rejects.toThrow('derive needs a server URL');
 		await expect(
 			type.scheme.sign(
 				{ key: 'k-1' },

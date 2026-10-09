@@ -45,22 +45,17 @@ export const githubOAuth2 = defineCredential({
 	docs: 'github',
 	fields: { server },
 	baseUrl: '{server}',
+	// The OAuth endpoints are on the web host of the server, not on its API host. A lambda compiles
+	// to an n8n expression, so each one names the host again.
 	auth: (a) =>
 		a.oauth2.authorizationCode({
-			authorizationEndpoint: 'https://github.com/login/oauth/authorize',
-			tokenEndpoint: 'https://github.com/login/oauth/access_token',
+			authorizationEndpoint: ({ server: url }) =>
+				`${url === 'https://api.github.com' ? 'https://github.com' : `${url.split('://')[0]}://${url.split('://')[1].split('/')[0]}`}/login/oauth/authorize`,
+			tokenEndpoint: ({ server: url }) =>
+				`${url === 'https://api.github.com' ? 'https://github.com' : `${url.split('://')[0]}://${url.split('://')[1].split('/')[0]}`}/login/oauth/access_token`,
 			scope: OAUTH_SCOPES,
+			// GitHub documents the comma-separated form, which the legacy type sends.
+			scopeSeparator: ',',
 			pkce: false,
 		}),
-	// The OAuth endpoints are on the web host of the server, not on its API host.
-	derive: ({ server: url }) => {
-		const { host, origin } = new URL(url);
-		const web = host === 'api.github.com' ? 'https://github.com' : origin;
-		return {
-			authorizationEndpoint: `${web}/login/oauth/authorize`,
-			tokenEndpoint: `${web}/login/oauth/access_token`,
-			// GitHub documents the comma-separated form, which the legacy type sends.
-			scope: OAUTH_SCOPES.join(','),
-		};
-	},
 });

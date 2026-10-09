@@ -551,16 +551,10 @@ describe('the credential interface', () => {
 		expect(wit.world('credential-bundle').imports).toEqual(['http']);
 	});
 
-	it('exports derive as unstable, and each export is a manifest hook', () => {
+	it('makes each export a manifest hook', () => {
 		expect(wit.world('credential-bundle').exports).toEqual(['credential']);
-		expect(
-			wit
-				.iface('credential')
-				.funcs.filter(({ unstable }) => unstable === 'credential-derive')
-				.map(({ name }) => name),
-		).toEqual(['derive']);
 		expect(sorted(wit.iface('credential').funcs.map(({ name }) => name))).toEqual(
-			sorted(membersOf<CredentialHook>()(['sign', 'exchange', 'refresh', 'derive'])),
+			sorted(membersOf<CredentialHook>()(['sign', 'exchange', 'refresh'])),
 		);
 	});
 });

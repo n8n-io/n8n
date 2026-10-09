@@ -114,6 +114,8 @@ async function bundleGuest(name: string, guest: string) {
 	const source = path.join(ROOT, 'src');
 	const hostValidator = path.join(source, 'validator.ts');
 	const guestValidator = path.join(SANDBOX, 'validator.ts');
+	const hostExpression = path.join(source, 'expression.ts');
+	const guestExpression = path.join(source, 'expression-guest.ts');
 	await build({
 		entryPoints: [path.join(SANDBOX, `${name}.ts`)],
 		outfile: guest,
@@ -122,7 +124,8 @@ async function bundleGuest(name: string, guest: string) {
 		platform: 'neutral',
 		target: 'es2022',
 		charset: 'utf8',
-		external: ['node:*', 'n8n-workflow'],
+		// The guest has no lambda compiler: `expression-guest.ts` finds no host module.
+		external: ['node:*', 'n8n-workflow', '@n8n/node-sdk/expression'],
 		plugins: [
 			{
 				// As in `packAction`: an SDK module that the guest does not use drops out.
@@ -132,10 +135,13 @@ async function bundleGuest(name: string, guest: string) {
 						const resolved = path.resolve(path.dirname(importer), `${file}.ts`);
 						if (!resolved.startsWith(source)) return undefined;
 						// ajv stays in the host: the guest validates through the `schema` import.
-						return {
-							path: resolved === hostValidator ? guestValidator : resolved,
-							sideEffects: false,
-						};
+						const guestPath =
+							resolved === hostValidator
+								? guestValidator
+								: resolved === hostExpression
+									? guestExpression
+									: resolved;
+						return { path: guestPath, sideEffects: false };
 					});
 					// A world import that no kept code reads drops out, so each guest imports only
 					// what its world has.

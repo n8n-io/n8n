@@ -1,7 +1,10 @@
 import * as acorn from 'acorn';
 
-/** What a lambda's first parameter reads at runtime: the current item or the paginated response. */
-export type LambdaRoot = '$json' | '$response';
+/**
+ * What a lambda's first parameter reads at runtime: the current item, the paginated response, or
+ * the fields of a credential.
+ */
+export type LambdaRoot = '$json' | '$response' | '$credentials';
 
 /** `js` is the rewritten body, for embedding; `expression` is the n8n parameter value. */
 export type LambdaResult =

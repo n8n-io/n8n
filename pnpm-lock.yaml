@@ -3704,6 +3704,12 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
+      '@n8n/workflow-sdk':
+        specifier: workspace:*
+        version: link:../workflow-sdk
+      acorn:
+        specifier: 8.14.0
+        version: 8.14.0
       ajv:
         specifier: 8.20.0
         version: 8.20.0

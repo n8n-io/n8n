@@ -209,7 +209,7 @@ describe('the runtime of a credential bundle', () => {
 	afterAll(() => rmSync(cacheDir, { recursive: true, force: true }));
 
 	const bundle =
-		'module.exports = { default: { derive: (fields) => ({ scope: fields.scope ?? "a,b" }) } };';
+		'module.exports = { default: { scheme: { sign: (fields, request) => ({ ...request, headers: { "x-key": "k" } }) } } };';
 	const manifest: CredentialManifest = {
 		kind: 'credential',
 		id: 'acme.oauth2',
@@ -218,18 +218,9 @@ describe('the runtime of a credential bundle', () => {
 		nodeContract: '2.13.0',
 		displayName: 'Acme OAuth2 API',
 		fields: { type: 'object', properties: {} },
-		scheme: {
-			kind: 'oauth2',
-			grant: 'authorizationCode',
-			authorizationEndpoint: 'https://acme.test/authorize',
-			tokenEndpoint: 'https://acme.test/token',
-			scope: [],
-			clientAuth: 'client_secret_basic',
-			pkce: true,
-			authorizationQuery: {},
-		},
+		scheme: { kind: 'custom', reason: 'The API signs each request.' },
 		bundleHash: sha256(bundle),
-		hooks: ['derive'],
+		hooks: ['sign'],
 	};
 	const runtimeOf = (lists: Partial<RuntimeLists>, origin: ContractOrigin) =>
 		credentialRuntimeNameOf({ lists: { ...LISTS, ...lists } }, { manifest, origin });
@@ -267,10 +258,16 @@ describe('the runtime of a credential bundle', () => {
 			},
 			{ cacheDir },
 		);
-		const firstParty = await loader(manifest, { origin: 'first-party', bundle });
-		await expect(firstParty.derive?.({})).resolves.toEqual({ scope: 'a,b' });
-		const community = await loader(manifest, { origin: 'community', bundle });
-		await expect(community.derive?.({})).rejects.toThrow('started worker');
+		const signOf = async (origin: ContractOrigin) => {
+			const { scheme } = await loader(manifest, { origin, bundle });
+			if (scheme.kind !== 'custom') throw new Error('no custom scheme');
+			return await scheme.sign({}, { url: 'https://acme.test/x' });
+		};
+		await expect(signOf('first-party')).resolves.toEqual({
+			url: 'https://acme.test/x',
+			headers: { 'x-key': 'k' },
+		});
+		await expect(signOf('community')).rejects.toThrow('started worker');
 		expect(log.mock.calls).toEqual([
 			['acme.oauth2@1.0.0 (first-party credential) runs in in-process'],
 			['acme.oauth2@1.0.0 (community credential) runs in worker'],

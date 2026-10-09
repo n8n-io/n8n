@@ -1608,7 +1608,11 @@ describe('resource lookups', () => {
 				meta: t.obj({ next: t.str().optional() }).optional(),
 			}),
 			items: 'channels',
-			item: { id: '{id}', label: '#{name}', url: 'https://directory.test/c/{id}' },
+			item: {
+				id: (e) => e.id,
+				label: (e) => `#${e.name}`,
+				url: (e) => `https://directory.test/c/${e.id}`,
+			},
 			pages: {
 				style: 'cursor',
 				next: 'meta.next',
@@ -1632,7 +1636,7 @@ describe('resource lookups', () => {
 				results: t.arr(t.obj({ id: t.str(), title: t.arr(t.obj({ text: t.str() })) })),
 			}),
 			items: 'results',
-			item: { id: '{id}', label: '{title.0.text}' },
+			item: { id: (e) => e.id, label: (e) => e.title[0].text },
 			search: 'service',
 		},
 	});
@@ -1644,7 +1648,7 @@ describe('resource lookups', () => {
 		list: {
 			request: { path: '/databases/{database}/tables' },
 			response: t.arr(t.obj({ position: t.int(), name: t.str() })),
-			item: { id: '{position}', label: '{name}' },
+			item: { id: (e) => e.position, label: (e) => e.name },
 		},
 	});
 	const readRow = directory.resource('row').action('read', {
@@ -1719,7 +1723,10 @@ describe('resource lookups', () => {
 	});
 
 	it('keeps only an http or https entry URL', async () => {
-		const linked = { ...lookupOf('channel'), item: { id: '{id}', label: '{name}', url: '{link}' } };
+		const linked = {
+			...lookupOf('channel'),
+			item: { id: '={{ $json.id }}', label: '={{ $json.name }}', url: '={{ $json.link }}' },
+		};
 		const action = lookupActionOf(readRow, 'directory.channel', linked);
 		const page = {
 			channels: [
@@ -1744,7 +1751,7 @@ describe('resource lookups', () => {
 				request: { path: '/teams' },
 				response: t.obj({ teams: t.arr(t.obj({ id: t.str() })), error: t.str().optional() }),
 				items: 'teams',
-				item: { id: '{id}', label: '{id}' },
+				item: { id: (e) => e.id, label: (e) => e.id },
 				error: 'error',
 			},
 		});
@@ -1837,7 +1844,7 @@ describe('resource lookups', () => {
 				],
 				response: t.obj({ columns: t.record(t.obj({ title: t.str(), kind: t.str() })) }),
 				items: 'columns',
-				item: { name: '{title}', value: '{title}|{kind}' },
+				item: { name: (e) => e.title, value: (e) => `${e.title}|${e.kind}` },
 			},
 		});
 		const readCells = directory.resource('cell').action('read', {

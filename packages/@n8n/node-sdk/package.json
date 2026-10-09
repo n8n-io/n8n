@@ -87,6 +87,8 @@
   },
   "dependencies": {
     "@n8n/utils": "workspace:*",
+    "@n8n/workflow-sdk": "workspace:*",
+    "acorn": "8.14.0",
     "ajv": "^8.18.0",
     "esbuild": "catalog:",
     "n8n-workflow": "workspace:*",

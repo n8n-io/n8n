@@ -46,7 +46,7 @@ export {
 	type EgressHost,
 	type Emit,
 	type EncodedPath,
-	type EntryTemplate,
+	type EntryValue,
 	type FieldLookupDocument,
 	type FieldLookupInput,
 	type FileCell,
@@ -166,6 +166,7 @@ export type {
 	WebhookEndpoint,
 	WebhookRequest,
 } from './triggers';
+export type { Expression } from './expression';
 export type { ActionUi, FieldUi, Widgets } from './properties';
 export { list, matches, parse, readAllAs, readAs } from './validate';
 export { validate } from './validator';

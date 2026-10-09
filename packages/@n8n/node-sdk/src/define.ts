@@ -34,6 +34,7 @@ import type {
 	WebhookRequest,
 } from './triggers';
 import type { ActionUi } from './properties';
+import { expressionOf, scanExpression, type Expression } from './expression';
 import { firstGroupOf, firstMatchOf } from './pattern';
 import { exampleOf, outputBinaryKeys, readAs } from './validate';
 import { validate } from './validator';
@@ -1455,8 +1456,13 @@ type EntryOf<Page, Items extends string> = NonNullable<
 	EntriesOf<[Items] extends [''] ? Page : ValueAtPath<Page, Items>>
 >;
 
-/** Text with one `{path}` or more into a list entry, e.g. `#{name}` or `{title.0.plain_text}`. */
-export type EntryTemplate<Entry> = `${string}{${PathOf<Entry>}}${string}`;
+/**
+ * A value of one list entry: a lambda, e.g. `(entry) => `#${entry.name}``, or an n8n expression
+ * over the entry as `$json`, e.g. `'=#{{ $json.name }}'`. A value that is not text is empty.
+ */
+export type EntryValue<Entry> =
+	| ((entry: Entry) => string | number | boolean | null | undefined)
+	| Expression;
 
 /** The input of a resource lookup: the search text, and the input fields that the request reads. */
 export type LookupInput<In extends Shape> = RunInput<In> & {
@@ -1542,14 +1548,14 @@ export interface ResourceList<
 	 * the page is the list.
 	 */
 	readonly items?: Items & ListPathOf<Infer<R>>;
-	/** What the n8n form shows for one entry, e.g. `{ id: '{id}', label: '#{name}' }`. */
+	/** What the n8n form shows for one entry, e.g. `{ id: (c) => c.id, label: (c) => `#${c.name}` }`. */
 	readonly item: {
 		/** The ID that the field stores. */
-		readonly id: EntryTemplate<EntryOf<Infer<R>, Items>>;
+		readonly id: EntryValue<EntryOf<Infer<R>, Items>>;
 		/** The name in the list. */
-		readonly label: EntryTemplate<EntryOf<Infer<R>, Items>>;
+		readonly label: EntryValue<EntryOf<Infer<R>, Items>>;
 		/** A link to the resource. */
-		readonly url?: EntryTemplate<EntryOf<Infer<R>, Items>>;
+		readonly url?: EntryValue<EntryOf<Infer<R>, Items>>;
 	};
 	/** Without it, the lookup is one request. */
 	readonly pages?: LookupPages<PathOf<Infer<R>>>;
@@ -1586,7 +1592,7 @@ export interface LookupDocument {
 	readonly response: JsonSchema;
 	/** The path of the entry list in the page. Absent: the page is the list. */
 	readonly items?: string;
-	/** The templates of one entry over its fields, e.g. `#{name}`. */
+	/** The n8n expressions of one entry over the entry as `$json`, e.g. `=#{{ $json.name }}`. */
 	readonly item: {
 		/** The ID that the field stores. */
 		readonly id: string;
@@ -1635,12 +1641,12 @@ export interface ResourceFieldList<
 	readonly response: R;
 	/** The path of the field list or record, e.g. `properties`. Absent: the response is the list. */
 	readonly items?: Items & ListPathOf<Infer<R>>;
-	/** One field, as templates over one entry. An entry with an empty name is no field. */
+	/** One field, as values of one entry. An entry with an empty name is no field. */
 	readonly item: {
-		/** The field name, e.g. `{name}`. */
-		readonly name: EntryTemplate<EntryOf<Infer<R>, Items>>;
-		/** What the action reads of the field, e.g. `{name}|{type}`. */
-		readonly value: EntryTemplate<EntryOf<Infer<R>, Items>>;
+		/** The field name, e.g. `(entry) => entry.name`. */
+		readonly name: EntryValue<EntryOf<Infer<R>, Items>>;
+		/** What the action reads of the field, e.g. `(entry) => `${entry.name}|${entry.type}``. */
+		readonly value: EntryValue<EntryOf<Infer<R>, Items>>;
 	};
 	/** The path of the error text in a response, as in `ResourceList`. */
 	readonly error?: PathOf<Infer<R>>;
@@ -1657,7 +1663,7 @@ export interface FieldLookupDocument {
 	readonly response: JsonSchema;
 	/** The path of the field list or record. Absent: the response is the list. */
 	readonly items?: string;
-	/** The templates of one field over one entry. */
+	/** The n8n expressions of one field over the entry as `$json`. */
 	readonly item: {
 		/** The field name. */
 		readonly name: string;
@@ -1687,6 +1693,22 @@ export interface Resource {
 }
 
 /**
+ * The n8n expression of a lookup value. A string must be an expression, so the text of an old
+ * `{name}` template does not become a constant ID.
+ */
+function entryExpressionOf(value: EntryValue<never>, label: string): string {
+	if (typeof value === 'string' && !value.startsWith('=')) {
+		throw new UserError(
+			`${label}: ${value} is not an n8n expression. Write (entry) => entry.name or '={{ $json.name }}'.`,
+		);
+	}
+	const expression = expressionOf(value, '$json', label);
+	const { problems } = scanExpression(expression, '$json');
+	if (problems.length > 0) throw new UserError(`${label}: ${problems.join('; ')}`);
+	return expression;
+}
+
+/**
  * Defines a resource type that `ref` fields point to, e.g. a Slack channel. With `list`, the n8n
  * form shows a searchable list for each `ref` field, and agents list the resources by the
  * resource id (`nodes explore-resources`). A dependent resource names the input fields that its
@@ -1703,7 +1725,7 @@ export interface Resource {
  *     request: { path: '/conversations.list', query: { exclude_archived: true } },
  *     response: t.obj({ channels: t.arr(t.obj({ id: t.str(), name: t.str() })) }),
  *     items: 'channels',
- *     item: { id: '{id}', label: '#{name}' },
+ *     item: { id: (channel) => channel.id, label: (channel) => `#${channel.name}` },
  *     search: 'label',
  *   },
  * });
@@ -1744,10 +1766,33 @@ export function defineResource<
 		response: response.json,
 		...(input ? { input: Object.keys(input) } : {}),
 	});
+	const entry = (key: string, value: EntryValue<never>) =>
+		entryExpressionOf(value, `Resource ${spec.id}: item.${key}`);
 	return {
 		...resource,
-		...(list ? { lookup: documentOf(list) } : {}),
-		...(fields ? { fields: documentOf(fields) } : {}),
+		...(list
+			? {
+					lookup: {
+						...documentOf(list),
+						item: {
+							id: entry('id', list.item.id),
+							label: entry('label', list.item.label),
+							...(list.item.url === undefined ? {} : { url: entry('url', list.item.url) }),
+						},
+					},
+				}
+			: {}),
+		...(fields
+			? {
+					fields: {
+						...documentOf(fields),
+						item: {
+							name: entry('name', fields.item.name),
+							value: entry('value', fields.item.value),
+						},
+					},
+				}
+			: {}),
 	};
 }
 

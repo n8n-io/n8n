@@ -21,7 +21,7 @@ export const gmailLabel = defineResource({
 		request: { path: '/labels' },
 		response: t.obj({ labels: t.arr(t.obj({ id: t.str(), name: t.str() })) }),
 		items: 'labels',
-		item: { id: '{id}', label: '{name}' },
+		item: { id: (entry) => entry.id, label: (entry) => entry.name },
 		search: 'label',
 	},
 });

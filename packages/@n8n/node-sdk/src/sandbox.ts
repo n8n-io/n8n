@@ -2531,21 +2531,6 @@ const isJsonBody = (body: unknown) =>
 	Array.isArray(body) ||
 	(isRecord(body) && Object.getPrototypeOf(body) === Object.prototype);
 
-/** What a `credential.derive` answer gives in the form of `Derived`. `isDerived` checks it. */
-function derivedOfAnswer(answer: unknown): unknown {
-	if (!isRecord(answer)) return answer;
-	const { authorizationQuery = [], claims = [], hosts = [], ...rest } = answer;
-	if (!isPairs(authorizationQuery) || !isPairs(claims) || !Array.isArray(hosts)) return answer;
-	return {
-		...rest,
-		...(authorizationQuery.length > 0
-			? { authorizationQuery: Object.fromEntries(authorizationQuery) }
-			: {}),
-		...(claims.length > 0 ? { claims: Object.fromEntries(claims) } : {}),
-		...(hosts.length > 0 ? { hosts } : {}),
-	};
-}
-
 /**
  * The credential type of a credential manifest with a bundle, with its hooks in a guest of
  * `options.runtime`, after `assertCredentialCode`. Each hook call starts a session. The data comes
@@ -2603,10 +2588,7 @@ export async function sandboxedCredentialTypeOf(
 			...(isRecord(answer) && 'body' in answer ? { body: answer.body } : {}),
 		};
 	};
-	return credentialTypeOfHooks(manifest, {
-		derive: async (fields) => derivedOfAnswer(await call('credential.derive', { fields })),
-		sign,
-	});
+	return credentialTypeOfHooks(manifest, { sign });
 }
 
 /**

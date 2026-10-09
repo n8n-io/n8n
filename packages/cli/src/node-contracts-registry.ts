@@ -16,13 +16,11 @@ import {
 	contractInputOf,
 	credentialTypeOfBundle,
 	credentialTypeOfManifest,
-	derivedOf,
 	fixedInputIssues,
 	hostRuntime,
 	nodeContractRangeOf,
 	nodeNameOf,
 	permissionsOf,
-	plainFieldsOf,
 	runsNodeContract,
 	toCredentialType,
 	toVersionedNodeType,
@@ -30,7 +28,6 @@ import {
 	toolUiOf,
 	toVersionedTriggerType,
 	verifiedBundleOf,
-	type AnyCredentialType,
 	type PackedVersion,
 	type HostRuntime,
 	type PermissionRefusal,
@@ -38,7 +35,6 @@ import {
 import {
 	bundledCredentialsOf,
 	bundledIdsOf,
-	canonicalJson,
 	compareSemver,
 	deniedPermissionClassOf,
 	embeddedContractsOf,
@@ -75,7 +71,6 @@ import {
 	jsonParse,
 	UserError,
 	type VersionedNodeType,
-	type ICredentialDataDecryptedObject,
 	type ICredentialType,
 	type ICredentialTypeData,
 	type IHttpRequestOptions,
@@ -489,15 +484,6 @@ export class ContractNodeLoader implements NodeLoader {
 
 	private credentialTypes: ICredentialTypeData = {};
 
-	/** The credential types with `derive` and their bundle hashes, by name. */
-	private derivingTypes: ReadonlyMap<
-		string,
-		{ readonly type: AnyCredentialType; readonly bundleHash: string }
-	> = new Map();
-
-	/** What `derive` gave, by bundle hash and the fields without secrets. */
-	private derived = new Map<string, ICredentialDataDecryptedObject>();
-
 	private typesReleased = false;
 
 	/**
@@ -592,14 +578,6 @@ export class ContractNodeLoader implements NodeLoader {
 			};
 			return { id: manifest.id, sourcePath: file, type, withCode, manifest };
 		});
-		this.derivingTypes = new Map(
-			credentials.flatMap(({ withCode, manifest }) =>
-				withCode?.derive && manifest.bundleHash
-					? [[withCode.name, { type: withCode, bundleHash: manifest.bundleHash }]]
-					: [],
-			),
-		);
-		this.derived = new Map();
 		this.credentialTypes = Object.fromEntries(
 			credentials.map(({ sourcePath, type }) => [type.name, { type, sourcePath }]),
 		);
@@ -661,36 +639,6 @@ export class ContractNodeLoader implements NodeLoader {
 		const node = this.nodes.get(nodeType);
 		if (!node) throw new UnrecognizedNodeTypeError(this.packageName, nodeType);
 		return node;
-	}
-
-	/**
-	 * The OAuth2 data that `derive` of a credential type gives from the stored data, by n8n field
-	 * name. `undefined` for a type without `derive`. It stays by bundle hash and the fields
-	 * without secrets.
-	 */
-	async derivedCredentialData(
-		credentialType: string,
-		data: ICredentialDataDecryptedObject,
-	): Promise<ICredentialDataDecryptedObject | undefined> {
-		const deriving = this.derivingTypes.get(credentialType);
-		if (!deriving) return undefined;
-		const { type, bundleHash } = deriving;
-		const fields = createHash('sha256').update(canonicalJson(plainFieldsOf(type, data)));
-		const key = `${bundleHash}:${fields.digest('hex')}`;
-		const known = this.derived.get(key);
-		if (known) return known;
-		const derived = (await derivedOf(type, data)) ?? {};
-		const { authorizationEndpoint, tokenEndpoint, scope, authorizationQuery } = derived;
-		const values: ICredentialDataDecryptedObject = {
-			...(authorizationEndpoint === undefined ? {} : { authUrl: authorizationEndpoint }),
-			...(tokenEndpoint === undefined ? {} : { accessTokenUrl: tokenEndpoint }),
-			...(scope === undefined ? {} : { scope }),
-			...(authorizationQuery === undefined
-				? {}
-				: { authQueryParameters: new URLSearchParams(authorizationQuery).toString() }),
-		};
-		this.derived.set(key, values);
-		return values;
 	}
 
 	getCredential(credentialType: string) {
@@ -1168,22 +1116,6 @@ export const contractImportsOf = (
 	loaders: Readonly<Record<string, NodeLoader>>,
 	node: Pick<INode, 'type' | 'typeVersion'>,
 ): readonly string[] => contractPermissionsOf(loaders, node)?.imports ?? [];
-
-/**
- * The OAuth2 data that `derive` of a contract credential type gives from the stored data, see
- * `ContractNodeLoader.derivedCredentialData`. `undefined` for any other type.
- */
-export async function derivedCredentialDataOf(
-	loaders: Readonly<Record<string, NodeLoader>>,
-	credentialType: string,
-	data: ICredentialDataDecryptedObject,
-) {
-	const loader = Object.values(loaders).find(
-		(each): each is ContractNodeLoader =>
-			each instanceof ContractNodeLoader && credentialType in each.known.credentials,
-	);
-	return await loader?.derivedCredentialData(credentialType, data);
-}
 
 /** The contract loader of the package of an id, when n8n loads it. */
 function contractLoaderOf(loaders: Readonly<Record<string, NodeLoader>>, id: string) {

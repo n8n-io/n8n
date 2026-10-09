@@ -18,11 +18,9 @@ export {
 } from '../define';
 export {
 	credentialTypeOfManifest,
-	derivedOf,
 	plainFieldsOf,
 	toCredentialType,
 	type AnyCredentialType,
-	type Derived,
 } from '../credentials';
 export type { FileExtractor } from '../host-imports';
 export {

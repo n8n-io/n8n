@@ -228,14 +228,21 @@ describe('bundled versions', () => {
 			packed.manifests.map(({ id, nodeContract }) => [id, nodeContract]),
 		);
 		// Each bundle imports the SDK runtime from the host, which has it since 2.11.0. A version
-		// that pins a credential range needs 2.12.0.
+		// that pins a credential range needs 2.12.0, and one with a resource lookup 2.13.0.
 		const pinning = new Set(
 			packed.manifests.flatMap(({ id, credentials }) => (credentials ? [id] : [])),
 		);
-		expect(versions).toEqual(
-			Object.fromEntries(
-				source.contracts.map(({ id }) => [id, pinning.has(id) ? '2.12.0' : '2.11.0']),
+		const looking = new Set(
+			packed.manifests.flatMap(({ id, contract }) =>
+				host.lookupsOf(contract.input).size + host.fieldLookupsOf(contract.input).size > 0
+					? [id]
+					: [],
 			),
+		);
+		const floorOf = (id: string) =>
+			looking.has(id) ? '2.13.0' : pinning.has(id) ? '2.12.0' : '2.11.0';
+		expect(versions).toEqual(
+			Object.fromEntries(source.contracts.map(({ id }) => [id, floorOf(id)])),
 		);
 	});
 

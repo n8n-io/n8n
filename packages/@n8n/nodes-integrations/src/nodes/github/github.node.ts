@@ -42,7 +42,11 @@ export const githubRepository = defineResource({
 	list: {
 		request: { path: '/users/{owner}/repos', query: { sort: 'updated' } },
 		response: t.arr(t.obj({ name: t.str(), html_url: t.str() })),
-		item: { id: '{name}', label: '{name}', url: '{html_url}' },
+		item: {
+			id: (entry) => entry.name,
+			label: (entry) => entry.name,
+			url: (entry) => entry.html_url,
+		},
 		pages: { style: 'link', size: { query: 'per_page', max: 100 } },
 		search: 'label',
 	},

@@ -51,18 +51,14 @@ export const microsoftTeamsOAuth2 = defineCredential({
 	baseUrl: '{graphApiBaseUrl}',
 	auth: (a) =>
 		a.oauth2.authorizationCode({
-			authorizationEndpoint: AUTH_URL,
-			tokenEndpoint: TOKEN_URL,
+			authorizationEndpoint: ({ authUrl }) => authUrl,
+			tokenEndpoint: ({ accessTokenUrl }) => accessTokenUrl,
 			scope: SCOPES,
 			clientAuth: 'client_secret_post',
 			pkce: false,
 			authorizationQuery: { response_mode: 'query', prompt: 'select_account' },
 			editableScopes: true,
 		}),
-	derive: ({ authUrl, accessTokenUrl }) => ({
-		authorizationEndpoint: authUrl,
-		tokenEndpoint: accessTokenUrl,
-	}),
 	notice: {
 		text: `
       Microsoft Teams Trigger requires the following permissions:

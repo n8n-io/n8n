@@ -1,24 +1,18 @@
 import type { ICredentialType, IHttpRequestHelper, IHttpRequestOptions } from 'n8n-workflow';
 import { generateKeyPairSync, verify } from 'node:crypto';
 
-import {
-	compat,
-	defineCredential,
-	field,
-	type AnyCredentialType,
-	type Derived,
-} from '../entry/credentials';
+import { compat, defineCredential, field, type AnyCredentialType } from '../entry/credentials';
 import { credentialTypeOfManifest, toCredentialType } from '../entry/host';
 import { checkCredentialType, parseCredentialManifest } from '../entry/registry';
 import { t } from '../index';
 import {
 	credentialBaseUrlOf,
 	credentialDataOf,
-	derivedOf,
 	discoverOidc,
 	secretRedactorOf,
 	type HostHttp,
 } from '../credentials';
+import { evaluated } from '../expression';
 import { credentialManifestOf } from '../manifest';
 
 const projected = (type: AnyCredentialType): ICredentialType => {
@@ -579,9 +573,22 @@ describe('credential types in tsc', () => {
 			version: '1.0.0',
 			displayName: 'Probe',
 			fields,
-			auth: (a) => a.bearer('apiKey'),
-			// @ts-expect-error derive never reads a secret
-			derive: ({ apiKey }) => ({ scope: apiKey }),
+			auth: (a) =>
+				a.oauth2.clientCredentials({
+					// @ts-expect-error an endpoint never reads a secret
+					tokenEndpoint: (c) => `https://${c.apiKey}.test/token`,
+				}),
+		});
+		defineCredential({
+			id: 'probe.oauth2',
+			version: '1.0.0',
+			displayName: 'Probe',
+			fields,
+			auth: (a) =>
+				a.oauth2.clientCredentials({
+					// @ts-expect-error a URL has no {field}
+					tokenEndpoint: '{region}/token',
+				}),
 		});
 		defineCredential({
 			id: 'probe.custom',
@@ -699,8 +706,8 @@ describe('credential types in tsc', () => {
 				a.exchange({
 					post: 'https://probe.test/login',
 					token: { path: 'id' },
-					// @ts-expect-error `{$scopes}` exists only in `jwtBearer` claims
-					headers: { 'X-Session': '{$scopes}' },
+					// @ts-expect-error `{$scope}` is not a field or `$token`
+					headers: { 'X-Session': '{$scope}' },
 				}),
 		});
 		defineCredential({
@@ -713,8 +720,8 @@ describe('credential types in tsc', () => {
 					tokenEndpoint: 'https://probe.test/token',
 					// @ts-expect-error the key is a secret field
 					key: 'region',
-					// @ts-expect-error a claim never holds a secret
-					claims: { sub: '{apiKey}' },
+					// @ts-expect-error a claim never reads a secret
+					claims: { sub: (c) => c.apiKey },
 				}),
 		});
 		defineCredential({
@@ -918,7 +925,7 @@ describe('exchange', () => {
 });
 
 describe('OAuth2 grants and OIDC', () => {
-	it('projects endpoint templates over fields, editable scopes and a legacy parent', () => {
+	it('projects endpoint expressions over fields, editable scopes and a legacy parent', () => {
 		const type = projected(
 			defineCredential({
 				id: 'acme.oauth2',
@@ -929,8 +936,8 @@ describe('OAuth2 grants and OIDC', () => {
 				fields: { server: field.url('Server').default('https://acme.test') },
 				auth: (a) =>
 					a.oauth2.authorizationCode({
-						authorizationEndpoint: '{server}/oauth/authorize',
-						tokenEndpoint: '{server}/oauth/token',
+						authorizationEndpoint: (c) => `${c.server}/oauth/authorize`,
+						tokenEndpoint: '={{ $credentials.server }}/oauth/token',
 						scope: ['read', 'write'],
 						pkce: false,
 						editableScopes: true,
@@ -939,8 +946,8 @@ describe('OAuth2 grants and OIDC', () => {
 		);
 		expect(type.extends).toEqual(['acmeBaseOAuth2Api']);
 		const byName = Object.fromEntries(type.properties.map((property) => [property.name, property]));
-		expect(byName.authUrl?.default).toBe('={{$self.server}}/oauth/authorize');
-		expect(byName.accessTokenUrl?.default).toBe('={{$self.server}}/oauth/token');
+		expect(byName.authUrl?.default).toBe('={{ $self.server }}/oauth/authorize');
+		expect(byName.accessTokenUrl?.default).toBe('={{ $self.server }}/oauth/token');
 		expect(byName.enabledScopes).toMatchObject({ type: 'string', default: 'read write' });
 		expect(byName.scope?.default).toBe(
 			'={{$self["customScopes"] ? $self["enabledScopes"] : "read write"}}',
@@ -1058,10 +1065,22 @@ describe('OAuth2 grants and OIDC', () => {
 				a.oauth2.jwtBearer({
 					tokenEndpoint: 'https://acme.test/token',
 					key: 'key',
-					claims: { sub: '{key}' } as never,
+					claims: { sub: '={{ $credentials.key }}', iss: '{key}' },
 				}),
 			),
-		).toThrow('jwtBearer: {key} is not a field or $scopes, or a secret');
+		).toThrow(
+			'jwtBearer: claims.sub reads key, which is not a field, or a secret; jwtBearer: claims.iss has a {field}. Write (c) => … or an expression',
+		);
+		expect(
+			make((a) =>
+				a.oauth2.authorizationCode({
+					authorizationEndpoint: '={{ $credentials.key }}/authorize',
+					tokenEndpoint: '={{ $env.TOKEN_URL }}',
+				}),
+			),
+		).toThrow(
+			'authorization: key is not a field, or a secret; tokenEndpoint: reads $env, which is not $credentials or a JavaScript global',
+		);
 		expect(
 			make((a) =>
 				a.oauth2.tokenExchange({
@@ -1073,7 +1092,7 @@ describe('OAuth2 grants and OIDC', () => {
 		).toThrow('tokenExchange: email is not a secret field');
 		expect(
 			make((a) => a.oauth2.clientCredentials({ tokenEndpoint: 'http://acme.test/token' as never })),
-		).toThrow('tokenEndpoint must start with https:// or a {field}');
+		).toThrow('tokenEndpoint must start with https://, or be an expression');
 	});
 
 	it('reads the endpoints from the discovery document of the issuer', async () => {
@@ -1276,8 +1295,8 @@ describe('credentialTypeOfManifest', () => {
 			fields: { server: field.url('Server').default('https://acme.test') },
 			auth: (a) =>
 				a.oauth2.authorizationCode({
-					authorizationEndpoint: '{server}/oauth/authorize',
-					tokenEndpoint: '{server}/oauth/token',
+					authorizationEndpoint: '={{ $credentials.server }}/oauth/authorize',
+					tokenEndpoint: '={{ $credentials.server }}/oauth/token',
 					scope: ['read'],
 					pkce: true,
 				}),
@@ -1338,86 +1357,36 @@ describe('credentialTypeOfManifest', () => {
 	});
 });
 
-describe('derivedOf', () => {
-	const serverOAuth2 = (derive: (fields: { server: string }) => Derived) =>
-		defineCredential({
-			id: 'acme.oauth2',
-			version: '1.0.0',
-			displayName: 'Acme OAuth2',
-			fields: {
-				server: field.url('Server').default('https://api.acme.test'),
-				note: field.text('Note').optional(),
-				clientSecret: field.secret('Client Secret').optional(),
-			},
-			hosts: ['*.acme-cdn.test'],
-			auth: (a) =>
-				a.oauth2.authorizationCode({
-					authorizationEndpoint: 'https://acme.test/authorize',
-					tokenEndpoint: 'https://acme.test/token',
-				}),
-			derive,
-		});
-
-	it('gives derive the fields without secrets, each default filled in', async () => {
-		const seen: unknown[] = [];
-		const type = serverOAuth2((fields) => {
-			seen.push(fields);
-			return { authorizationEndpoint: `${new URL(fields.server).origin}/login/oauth/authorize` };
-		});
-		await expect(derivedOf(type, { clientSecret: 's', note: 'n' })).resolves.toEqual({
-			authorizationEndpoint: 'https://api.acme.test/login/oauth/authorize',
-		});
-		expect(seen).toEqual([{ server: 'https://api.acme.test', note: 'n' }]);
+describe('credential values', () => {
+	const github = defineCredential({
+		id: 'acme.github',
+		version: '1.0.0',
+		displayName: 'Acme GitHub',
+		fields: { server: field.url('Server').default('https://api.github.com') },
+		auth: (a) =>
+			a.oauth2.authorizationCode({
+				authorizationEndpoint: ({ server }) =>
+					`${server === 'https://api.github.com' ? 'https://github.com' : server.replace(/\/api\/v3\/?$/, '')}/login/oauth/authorize`,
+				tokenEndpoint: 'https://github.com/login/oauth/access_token',
+				scope: ['repo', 'user'],
+				scopeSeparator: ',',
+			}),
 	});
 
-	it('takes http and https URLs, and hosts of the type or of a URL field value', async () => {
-		const type = serverOAuth2(({ server }) => ({
-			authorizationEndpoint: 'http://ghe.internal/login/oauth/authorize',
-			tokenEndpoint: 'https://ghe.internal/login/oauth/access_token',
-			baseUrl: `${server}/api/v3`,
-			hosts: ['ghe.internal', 'files.acme-cdn.test'],
-		}));
-		await expect(derivedOf(type, { server: 'http://ghe.internal' })).resolves.toMatchObject({
-			baseUrl: 'http://ghe.internal/api/v3',
-		});
-	});
-
-	it('refuses another URL scheme, another host and data that is not valid', async () => {
-		const at = 'Credential acme.oauth2: derive';
-		await expect(
-			derivedOf(
-				serverOAuth2(() => ({ tokenEndpoint: 'javascript:alert(1)' })),
-				{},
-			),
-		).rejects.toThrow(`${at} gave javascript:alert(1), which is not an http or https URL`);
-		await expect(
-			derivedOf(
-				serverOAuth2(() => ({ hosts: ['evil.test'] })),
-				{},
-			),
-		).rejects.toThrow(
-			`${at} gave the hosts evil.test, which are not hosts of the type or of a URL field`,
+	it('compiles an endpoint lambda to an expression that n8n core resolves with $self', () => {
+		const { scheme } = github;
+		if (scheme.kind !== 'oauth2' || scheme.grant !== 'authorizationCode')
+			throw new Error('no grant');
+		expect(scheme.authorizationEndpoint).toMatch(/^=\{\{ \$credentials\.server/);
+		const authUrl = projected(github).properties.find(({ name }) => name === 'authUrl')?.default;
+		const resolved = (server: string) => evaluated(String(authUrl), { $self: { server } as never });
+		expect(resolved('https://api.github.com')).toBe('https://github.com/login/oauth/authorize');
+		expect(resolved('https://ghe.acme.test/api/v3')).toBe(
+			'https://ghe.acme.test/login/oauth/authorize',
 		);
-		// The note is not a URL field.
-		await expect(
-			derivedOf(
-				serverOAuth2(() => ({ baseUrl: 'https://note.test' })),
-				{ note: 'https://note.test' },
-			),
-		).rejects.toThrow(`${at} gave the hosts note.test`);
-		const loose = serverOAuth2(() => ({ scope: ['a', 'b'] }) as unknown as Derived);
-		await expect(derivedOf(loose, {})).rejects.toThrow(`${at} gave data that is not valid`);
-	});
-
-	it('gives undefined for a type without derive', async () => {
-		await expect(
-			derivedOf(
-				serverOAuth2(() => ({})),
-				{},
-			),
-		).resolves.toEqual({});
-		const { derive: _, ...plain } = serverOAuth2(() => ({}));
-		await expect(derivedOf(plain, {})).resolves.toBeUndefined();
+		expect(projected(github).properties.find(({ name }) => name === 'scope')?.default).toBe(
+			'repo,user',
+		);
 	});
 });
 
@@ -1427,9 +1396,10 @@ describe('jwtBearer', () => {
 	const fields = {
 		privateKey: field.secret('Private Key'),
 		email: field.text('Email'),
+		note: field.text('Note').optional(),
 		httpNode: t.bool().default(false),
 	};
-	const serviceAccount = (derive?: (fields: { email: string; httpNode: boolean }) => Derived) =>
+	const serviceAccount = () =>
 		defineCredential({
 			id: 'acme.serviceAccount',
 			version: '1.0.0',
@@ -1439,10 +1409,9 @@ describe('jwtBearer', () => {
 				a.oauth2.jwtBearer({
 					tokenEndpoint: 'https://oauth2.acme.test/token',
 					key: 'privateKey',
-					claims: { iss: '{email}', scope: '{$scopes}' },
+					claims: { iss: (c) => c.email, scope: 'read write' },
 					scope: ['read', 'write'],
 				}),
-			...(derive ? { derive } : {}),
 		});
 	const tokenRequests = () => {
 		const sent: IHttpRequestOptions[] = [];
@@ -1496,34 +1465,64 @@ describe('jwtBearer', () => {
 		});
 	});
 
-	it('takes the claims of derive, but never the token endpoint, audience or lifetime', async () => {
+	it('drops an empty claim, and never takes the audience or lifetime from a claim', async () => {
 		const { sent, http } = tokenRequests();
-		const type = serviceAccount(({ email }) => ({
-			tokenEndpoint: 'https://other.test/token',
-			claims: { sub: `user+${email}`, aud: 'https://other.test', exp: '9999999999' },
-		}));
-		await authenticateOf(type, http)({ privateKey: pem, email: 'sa@acme.test' }, { url: '/x' });
+		const type = defineCredential({
+			id: 'acme.serviceAccount',
+			version: '1.0.0',
+			displayName: 'Acme',
+			fields,
+			auth: (a) =>
+				a.oauth2.jwtBearer({
+					tokenEndpoint: '={{ "https://oauth2.acme.test/token" }}',
+					key: 'privateKey',
+					claims: {
+						iss: '={{ $credentials.email.trim() }}',
+						sub: (c) => c.note ?? '',
+						aud: 'https://other.test',
+						exp: '9999999999',
+					},
+				}),
+		});
+		await authenticateOf(type, http)({ privateKey: pem, email: ' sa@acme.test ' }, { url: '/x' });
 
 		expect(sent.map(({ url }) => url)).toEqual(['https://oauth2.acme.test/token']);
 		const { claims } = jwtOf(sent[0] ?? {});
-		expect(claims).toMatchObject({
-			iss: 'sa@acme.test',
-			sub: 'user+sa@acme.test',
-			aud: 'https://oauth2.acme.test/token',
-		});
+		expect(claims).toMatchObject({ iss: 'sa@acme.test', aud: 'https://oauth2.acme.test/token' });
+		expect(claims).not.toHaveProperty('sub');
 		const { exp, iat } = claims as { exp: number; iat: number };
 		expect(exp - iat).toBe(3600);
 	});
 
-	it('leaves the request as it is and sends no token request when derive gives no claims', async () => {
+	it('signs only in the `when` case that has the grant', async () => {
 		const { sent, http } = tokenRequests();
-		const type = serviceAccount(({ httpNode }) => (httpNode ? { claims: {} } : {}));
+		const type = defineCredential({
+			id: 'acme.serviceAccount',
+			version: '1.0.0',
+			displayName: 'Acme',
+			fields,
+			auth: (a) =>
+				a.when('httpNode', {
+					true: a.oauth2.jwtBearer({
+						tokenEndpoint: 'https://oauth2.acme.test/token',
+						key: 'privateKey',
+						claims: { iss: (c) => c.email },
+					}),
+					false: a.none(),
+				}),
+		});
 		const request = { url: '/x', headers: { Authorization: 'Bearer own' } };
 
 		await expect(
 			authenticateOf(type, http)({ privateKey: pem, email: 'sa@acme.test' }, request),
 		).resolves.toEqual(request);
 		expect(sent).toEqual([]);
+		const signed = await authenticateOf(type, http)(
+			{ privateKey: pem, email: 'sa@acme.test', httpNode: true },
+			{ url: '/x' },
+		);
+		expect(signed.headers).toEqual({ Authorization: 'Bearer at-1' });
+		expect(credentialManifestOf(type)?.nodeContract).toBe('2.13.0');
 	});
 
 	it('refuses to sign without the HTTP client of the host', async () => {

@@ -211,7 +211,7 @@ const spreadsheet = defineResource({
 		request: { path: '/files', query: { q: { input: 'search' } } },
 		response: t.obj({ files: t.arr(t.obj({ id: t.str(), name: t.str() })) }),
 		items: 'files',
-		item: { id: '{id}', label: '{name}' },
+		item: { id: (e) => e.id, label: (e) => e.name },
 		search: 'service',
 	},
 });
@@ -226,7 +226,7 @@ const sheet = defineResource({
 			sheets: t.arr(t.obj({ properties: t.obj({ sheetId: t.int(), title: t.str() }) })),
 		}),
 		items: 'sheets',
-		item: { id: '{properties.sheetId}', label: '{properties.title}' },
+		item: { id: (e) => e.properties.sheetId, label: (e) => e.properties.title },
 	},
 });
 const owner = defineResource({ id: 'sheets.owner', label: 'Owner', shape: { minLength: 1 } });

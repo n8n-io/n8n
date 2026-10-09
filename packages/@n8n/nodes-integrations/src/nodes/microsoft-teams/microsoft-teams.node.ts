@@ -56,7 +56,7 @@ export const teamsTeam = defineResource({
 		request: { path: '/v1.0/me/joinedTeams' },
 		response: t.obj({ value: t.arr(t.obj({ id: t.str(), displayName: t.str() })) }),
 		items: 'value',
-		item: { id: '{id}', label: '{displayName}' },
+		item: { id: (entry) => entry.id, label: (entry) => entry.displayName },
 		search: 'label',
 	},
 });
@@ -78,7 +78,11 @@ export const teamsChannel = defineResource({
 			value: t.arr(t.obj({ id: t.str(), displayName: t.str(), webUrl: t.str().optional() })),
 		}),
 		items: 'value',
-		item: { id: '{id}', label: '{displayName}', url: '{webUrl}' },
+		item: {
+			id: (entry) => entry.id,
+			label: (entry) => entry.displayName,
+			url: (entry) => entry.webUrl,
+		},
 		search: 'label',
 	},
 });
@@ -105,7 +109,7 @@ export const teamsChat = defineResource({
 			),
 		}),
 		items: 'value',
-		item: { id: '{id}', label: '{topic}', url: '{webUrl}' },
+		item: { id: (entry) => entry.id, label: (entry) => entry.topic, url: (entry) => entry.webUrl },
 		search: 'label',
 	},
 });

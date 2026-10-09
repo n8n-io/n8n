@@ -539,56 +539,116 @@
 								"cases": {
 									"type": "object",
 									"additionalProperties": {
-										"type": "object",
-										"properties": {
-											"kind": {
-												"const": "apply"
-											},
-											"headers": {
-												"type": "object",
-												"additionalProperties": {
-													"type": "string"
-												}
-											},
-											"query": {
-												"type": "object",
-												"additionalProperties": {
-													"type": "string"
-												}
-											},
-											"defaults": {
-												"type": "object",
-												"additionalProperties": {
-													"type": "string"
-												}
-											},
-											"basic": {
+										"anyOf": [
+											{
 												"type": "object",
 												"properties": {
-													"username": {
-														"type": "string"
+													"kind": {
+														"const": "apply"
 													},
-													"password": {
-														"type": "string"
+													"headers": {
+														"type": "object",
+														"additionalProperties": {
+															"type": "string"
+														}
+													},
+													"query": {
+														"type": "object",
+														"additionalProperties": {
+															"type": "string"
+														}
+													},
+													"defaults": {
+														"type": "object",
+														"additionalProperties": {
+															"type": "string"
+														}
+													},
+													"basic": {
+														"type": "object",
+														"properties": {
+															"username": {
+																"type": "string"
+															},
+															"password": {
+																"type": "string"
+															}
+														},
+														"required": [
+															"username",
+															"password"
+														],
+														"additionalProperties": false
+													},
+													"userHeader": {
+														"const": true
 													}
 												},
 												"required": [
-													"username",
-													"password"
+													"kind",
+													"headers",
+													"query",
+													"defaults"
 												],
 												"additionalProperties": false
 											},
-											"userHeader": {
-												"const": true
+											{
+												"type": "object",
+												"properties": {
+													"kind": {
+														"const": "oauth2"
+													},
+													"grant": {
+														"const": "jwtBearer"
+													},
+													"tokenEndpoint": {
+														"type": "string"
+													},
+													"key": {
+														"type": "string"
+													},
+													"algorithm": {
+														"const": "RS256"
+													},
+													"claims": {
+														"type": "object",
+														"additionalProperties": {
+															"type": "string"
+														}
+													},
+													"scope": {
+														"type": "array",
+														"items": {
+															"type": "string"
+														}
+													}
+												},
+												"required": [
+													"kind",
+													"grant",
+													"tokenEndpoint",
+													"key",
+													"algorithm",
+													"claims",
+													"scope"
+												],
+												"additionalProperties": false,
+												"x-n8n-since": "2.13.0"
+											},
+											{
+												"type": "object",
+												"properties": {
+													"kind": {
+														"const": "none"
+													}
+												},
+												"required": [
+													"kind"
+												],
+												"additionalProperties": false,
+												"x-n8n-since": "2.13.0"
 											}
-										},
-										"required": [
-											"kind",
-											"headers",
-											"query",
-											"defaults"
-										],
-										"additionalProperties": false
+										]
 									}
 								}
 							},
@@ -622,6 +682,10 @@
 									"items": {
 										"type": "string"
 									}
+								},
+								"scopeSeparator": {
+									"const": ",",
+									"x-n8n-since": "2.13.0"
 								},
 								"clientAuth": {
 									"enum": [
@@ -1174,8 +1238,7 @@
 						"enum": [
 							"sign",
 							"exchange",
-							"refresh",
-							"derive"
+							"refresh"
 						]
 					},
 					"x-n8n-since": "2.13.0"

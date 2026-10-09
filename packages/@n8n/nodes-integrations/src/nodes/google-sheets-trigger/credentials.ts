@@ -111,27 +111,25 @@ export const googleServiceAccount = defineCredential({
 			),
 	},
 	when: { delegatedEmail: { inpersonate: true }, scopes: { httpNode: true } },
-	auth: (a) =>
-		a.oauth2.jwtBearer({
-			tokenEndpoint: 'https://oauth2.googleapis.com/token',
-			key: 'privateKey',
-			claims: { iss: '{email}', sub: '{email}' },
-		}),
 	// Legacy nodes add their own scopes and token. n8n signs only for the HTTP Request node.
-	derive: ({ email, delegatedEmail, httpNode, scopes = '' }) =>
-		httpNode
-			? {
-					claims: {
-						iss: email.trim(),
-						sub: delegatedEmail || email.trim(),
-						scope: scopes
+	auth: (a) =>
+		a.when('httpNode', {
+			true: a.oauth2.jwtBearer({
+				tokenEndpoint: 'https://oauth2.googleapis.com/token',
+				key: 'privateKey',
+				claims: {
+					iss: ({ email }) => email.trim(),
+					sub: ({ email, delegatedEmail }) => delegatedEmail || email.trim(),
+					scope: ({ scopes }) =>
+						(scopes ?? '')
 							.replace(/\\n/g, '\n')
 							.split(/[,\s]+/)
 							.filter((scope) => scope !== '')
 							.join(' '),
-					},
-				}
-			: {},
+				},
+			}),
+			false: a.none(),
+		}),
 	notice: {
 		text: "When using the HTTP Request node, you must specify the scopes you want to send. In other nodes, they're added automatically",
 		when: { httpNode: true },

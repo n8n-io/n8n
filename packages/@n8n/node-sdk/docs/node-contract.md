@@ -76,7 +76,7 @@ What each minor added (`@since` in the WIT, `x-n8n-since` in the schema):
 | 2.11.0 | the SDK runtime: a bundle imports `@n8n/node-sdk` and `@n8n/node-sdk/credentials` from the host, and its manifest pins the runtime with `sdk: { version, digest }`. The runtime is a store version of kind `sdk` (id `sdkRuntime`). Credential and native manifests have no `sdk` |
 | 2.12.0 | credential pins by semver range: `credentials: { "notion.token": "^1.2.0" }`. A host reads an older pin `<id>@<major>` as `^<major>` |
 | 2.13.0 | credential bundles: the manifest of a credential type with code has `bundleHash`, `sdk: { version, digest }` and `hooks` (the exports of the bundle that the host calls). A credential type without code keeps a manifest without them |
-| unstable | `credential.exchange`, `credential.refresh` (`credential-exchange`); `credential.derive` (`credential-derive`); the lookup interface (`lookup`) |
+| unstable | `credential.exchange`, `credential.refresh` (`credential-exchange`); the lookup interface (`lookup`) |
 
 The host reads only manifests with `nodeContract`. It refuses a manifest without it, such as
 one packed before 2.5.0, and a bundle of Node Contract 1.x. Pack such a version again. The
@@ -337,8 +337,8 @@ example in a URL.
 
 Field lookups: `fields` is data as a `list` lookup: `requests` in order (the host sends the next
 one when a request gets a 400 or 404 response), `{id}` for the resource ID, the `response`
-fields it reads, the path of the field list or record (`items`), and templates for each field
-(`item: { name, value }`).
+fields it reads, the path of the field list or record (`items`), and values for each field
+(`item: { name, value }`), as for a `list` lookup.
 `ref()` writes it into the field as `x-n8n-fields`, outside the contract hash. The host gives
 each field lookup as a `loadOptions` method named by the resource id, and a migrated node
 version keeps the methods of its slot actions. A resource with `extract` also gets a URL mode in
@@ -346,7 +346,9 @@ the resource locator; the field stores the URL, so the ID `shape` must take it.
 
 Resource lookups: `defineResource({ list })` declares a lookup as data: a request (`path` or
 an absolute `url`, `query`, `headers`, a JSON `body`), the `response` fields it reads, the path
-of the entry list (`items`), templates for each entry (`item: { id: '{id}', label: '#{name}' }`),
+of the entry list (`items`), values for each entry (`item: { id: (c) => c.id, label: (c) => `#${c.name}` }`:
+a lambda, or an n8n expression over the entry as `$json`, e.g. `'=#{{ $json.name }}'`; pack writes
+both as expressions),
 optional `pages` (the `list` styles, with the cursor as a path), `search` (`service`: the
 request sends the `search` input; `label`: the host filters the labels) and `error` (the path of
 an error text in a page, for a service that answers an error with status 200, e.g. Slack

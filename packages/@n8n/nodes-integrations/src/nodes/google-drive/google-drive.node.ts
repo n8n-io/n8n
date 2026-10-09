@@ -50,7 +50,11 @@ const driveList = (query: string) =>
 			nextPageToken: t.str().optional(),
 		}),
 		items: 'files',
-		item: { id: '{id}', label: '{name}', url: '{webViewLink}' },
+		item: {
+			id: (entry: { id: string }) => entry.id,
+			label: (entry: { name: string }) => entry.name,
+			url: (entry: { webViewLink?: string }) => entry.webViewLink,
+		},
 		pages: {
 			style: 'cursor',
 			next: 'nextPageToken',

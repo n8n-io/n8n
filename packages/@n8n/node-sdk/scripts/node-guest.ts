@@ -35,6 +35,7 @@ void (async () => {
 		platform: 'node',
 		target: 'node22',
 		charset: 'utf8',
+		external: ['@n8n/node-sdk/expression'],
 		plugins: [
 			{
 				name: 'guest-modules',
@@ -53,10 +54,14 @@ void (async () => {
 						const resolved = path.resolve(path.dirname(importer), `${file}.ts`);
 						if (!resolved.startsWith(SOURCE)) return undefined;
 						// ajv stays in the host: the guest validates through the `schema` import.
-						return {
-							path: resolved === path.join(SOURCE, 'validator.ts') ? GUEST_VALIDATOR : resolved,
-							sideEffects: false,
-						};
+						// The guest has no lambda compiler: `expression-guest.ts` finds no host module.
+						const guestPath =
+							resolved === path.join(SOURCE, 'validator.ts')
+								? GUEST_VALIDATOR
+								: resolved === path.join(SOURCE, 'expression.ts')
+									? path.join(SOURCE, 'expression-guest.ts')
+									: resolved;
+						return { path: guestPath, sideEffects: false };
 					});
 				},
 			},

@@ -11,6 +11,10 @@
       "types": "./dist/next/index.d.ts",
       "default": "./dist/next/index.js"
     },
+    "./lambda": {
+      "types": "./dist/next/lambda.d.ts",
+      "default": "./dist/next/lambda.js"
+    },
     "./package.json": "./package.json",
     "./scripts/generate-types": {
       "types": "./dist/generate-types/generate-types.d.ts",
