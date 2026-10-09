@@ -39,10 +39,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * upsert, so an id minted by the client that already names a row would
 	 * update that row instead of colliding on the primary key.
 	 */
-	async insertNew(agent: Agent): Promise<void> {
+	async insertNew(agent: Agent, ctx: OperationContext = {}): Promise<void> {
 		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
 		// cannot express, so cast at this boundary.
-		await this.insert(agent as QueryDeepPartialEntity<Agent>);
+		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
 	}
 
 	async hasRevision(id: string, revision: number): Promise<boolean> {
@@ -186,6 +186,9 @@ export class AgentRepository extends BaseRepository<Agent> {
 	): void {
 		if (filter?.query) {
 			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${filter.query}%` });
+		}
+		if (filter?.ids) {
+			query.andWhere('agent.id IN (:...ids)', { ids: filter.ids });
 		}
 		if (filter?.availableInMCP !== undefined) {
 			query.andWhere('agent.availableInMCP = :availableInMCP', {
@@ -370,10 +373,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findByIdsAndProjectId(
 		ids: string[],
 		projectId: string,
-	): Promise<Array<Pick<Agent, 'id' | 'activeVersionId'>>> {
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'activeVersionId'>>> {
 		if (ids.length === 0) return [];
 		return await this.find({
-			select: ['id', 'activeVersionId'],
+			select: ['id', 'name', 'activeVersionId'],
 			where: { id: In(ids), projectId },
 		});
 	}
@@ -639,5 +642,23 @@ export class AgentRepository extends BaseRepository<Agent> {
 			where: { id: In(ids) },
 			select: ['id', 'projectId'],
 		});
+	}
+
+	/**
+	 * Write the `schema` column of a draft. Write `updatedAt` too, with the value
+	 * from the fenced save: without it, TypeORM sets `CURRENT_TIMESTAMP`. This
+	 * write does not check `revision`: call it only in the same transaction as a
+	 * won `saveDraftFenced`.
+	 */
+	async updateDraftSchema(
+		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ schema: agent.schema, updatedAt: agent.updatedAt })
+			.where('id = :id', { id: agent.id })
+			.execute();
 	}
 }

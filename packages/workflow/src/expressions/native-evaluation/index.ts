@@ -12,9 +12,11 @@ export { CALLABLE_METHODS, MAX_RESULT_LENGTH } from './grammar';
 // Fast native evaluation: an in-process interpreter for a closed subset of
 // the expression grammar.
 //
-// The subset is data path access on `$json` and `$parameter`, literals, a
-// fixed set of operators, and calls to a closed allowlist of native
-// string/number/array methods. Such expressions cannot loop, reach
+// The subset is data path access on the data roots (`$json`, `$parameter`,
+// `$vars`, `$binary`, `$itemIndex`, `$runIndex`) and on node references
+// (`$('Name').item`, `$('Name').first()`, `$input.item`, `$node['Name'].json`),
+// literals, a fixed set of operators, and calls to a closed allowlist of
+// native string/number/array methods. Such expressions cannot loop, reach
 // prototypes, or touch anything outside the data proxy, so they are
 // interpreted here without the sandbox AST hooks, the global-context setup,
 // or an engine (isolate) evaluation. Anything that does not fit the subset

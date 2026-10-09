@@ -59,6 +59,10 @@ describe('Expression - fast native evaluation parity', () => {
 	const expression = workflow.expression;
 
 	const makeItem = () => ({
+		pairedItem: { item: 0 },
+		binary: {
+			file: { data: 'aGVsbG8=', mimeType: 'text/plain', fileName: 'hello.txt', fileSize: '5 B' },
+		},
 		json: {
 			item: {
 				name: 'foo',
@@ -98,6 +102,14 @@ describe('Expression - fast native evaluation parity', () => {
 			},
 		});
 	const runExecutionData = runDataFor([item]);
+	// `$vars` comes in through additionalKeys; `$('Source').item` resolves the
+	// paired item through executeData.source.
+	const additionalKeys = { $vars: { region: 'eu' } };
+	const executeDataFor = (items: Array<ReturnType<typeof makeItem>>) => ({
+		node: workflow.getNode('Current')!,
+		data: { main: [items] },
+		source: { main: [{ previousNode: 'Source' }] },
+	});
 
 	beforeAll(async () => {
 		await expression.acquireIsolate();
@@ -117,7 +129,17 @@ describe('Expression - fast native evaluation parity', () => {
 	) => {
 		Expression.setNativeEvaluation(native);
 		try {
-			return expression.getParameterValue(expr, data, 0, 0, 'Current', items, 'manual', {});
+			return expression.getParameterValue(
+				expr,
+				data,
+				0,
+				0,
+				'Current',
+				items,
+				'manual',
+				additionalKeys,
+				executeDataFor(items),
+			);
 		} finally {
 			Expression.setNativeEvaluation(false);
 		}
@@ -138,7 +160,8 @@ describe('Expression - fast native evaluation parity', () => {
 			[item],
 			node?.parameters ?? {},
 			'manual',
-			{},
+			additionalKeys,
+			executeDataFor([item]),
 		).getDataProxy();
 
 		Expression.setNativeEvaluation(true);

@@ -1,8 +1,4 @@
-import {
-	ExportPackageRequestDto,
-	ImportPackageRequestDto,
-	ImportPackageSelectionRequestDto,
-} from '@n8n/api-types';
+import { ExportPackageRequestDto } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -18,12 +14,7 @@ import {
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import type { ExportPackageResult } from '@/modules/n8n-packages/n8n-packages.types';
 import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-classifier';
-import {
-	IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
-	resolveImportPackageUpload,
-} from '@/modules/n8n-packages/utils/import-package-upload';
 
-import type { PackageRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiCompositeScope } from '../../shared/middlewares/global.middleware';
 
@@ -52,18 +43,8 @@ type ExportPackageRequest = AuthenticatedRequest<
 	}
 >;
 
-type ImportPackageRequest = PackageRequest.Import & {
-	files?: Express.Multer.File[];
-};
-
-type ImportPackageSelectionRequest = PackageRequest.ImportSelection & {
-	files?: Express.Multer.File[];
-};
-
 type N8nPackagesHandlers = {
 	exportPackage: PublicAPIEndpoint<ExportPackageRequest>;
-	importPackage: PublicAPIEndpoint<ImportPackageRequest>;
-	importPackageSelection: PublicAPIEndpoint<ImportPackageSelectionRequest>;
 };
 
 function assertPackageExportApiKeyScopes(
@@ -93,13 +74,6 @@ function assertPackageExportApiKeyScopes(
 	}
 
 	return apiKeyScopes;
-}
-
-function assertPackageImportApiKeyScopes(req: AuthenticatedRequest) {
-	const apiKeyScopes = req.tokenGrant?.apiKeyScopes;
-	if (!apiKeyScopes?.includes('workflow:import')) {
-		throw new ForbiddenError('Forbidden');
-	}
 }
 
 async function streamPackageExport(
@@ -189,107 +163,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				) {
 					throw new UserError(error.message, { description: error.description });
 				}
-				throw error;
-			}
-		},
-	],
-	importPackage: [
-		publicApiCompositeScope('workflow:import'),
-		async (req, res) => {
-			let projectId: string | undefined;
-			let folderId: string | undefined;
-
-			try {
-				const payload = ImportPackageRequestDto.safeParse(req.body ?? {});
-				if (!payload.success) {
-					throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
-				}
-
-				projectId = payload.data.projectId;
-				folderId = payload.data.folderId;
-
-				assertPackageImportApiKeyScopes(req);
-
-				const packageFile = resolveImportPackageUpload(req);
-
-				const result = await Container.get(N8nPackagesService).importPackage({
-					user: req.user,
-					apiKeyScopes: req.tokenGrant?.apiKeyScopes,
-					projectId,
-					folderId,
-					credentialMatchingMode: payload.data.credentialMatchingMode,
-					credentialMissingMode: payload.data.credentialMissingMode,
-					bindings: {
-						credentials: new Map(Object.entries(payload.data.bindings.credentials ?? {})),
-					},
-					workflowConflictPolicy: payload.data.workflowConflictPolicy,
-					workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
-					workflowIdPolicy: payload.data.workflowIdPolicy,
-					missingNodeTypeMode: payload.data.missingNodeTypeMode,
-					projectConflictPolicy: payload.data.projectConflictPolicy,
-					folderConflictPolicy: payload.data.folderConflictPolicy,
-					overwriteDeletionPolicy: payload.data.overwriteDeletionPolicy,
-					dataTableMatchingMode: payload.data.dataTableMatchingMode,
-					dataTableMissingMode: payload.data.dataTableMissingMode,
-					dataTableSchemaConflictPolicy: payload.data.dataTableSchemaConflictPolicy,
-					variableMissingMode: payload.data.variableMissingMode,
-					variableConflictPolicy: payload.data.variableConflictPolicy,
-					variableParentPolicy: payload.data.variableParentPolicy,
-					tagMissingMode: payload.data.tagMissingMode,
-					tagConflictPolicy: payload.data.tagConflictPolicy,
-					packageBuffer: packageFile.buffer,
-				});
-				return res.status(200).json(result);
-			} catch (error) {
-				Container.get(EventService).emit('n8n-package-import-failed', {
-					user: req.user,
-					reason: classifyPackageFailure(error),
-					...(projectId ? { projectId } : {}),
-					...(folderId ? { folderId } : {}),
-				});
-				throw error;
-			}
-		},
-	],
-	importPackageSelection: [
-		publicApiCompositeScope('workflow:import'),
-		async (req, res) => {
-			try {
-				const payload = ImportPackageSelectionRequestDto.safeParse(req.body ?? {});
-				if (!payload.success) {
-					throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
-				}
-
-				assertPackageImportApiKeyScopes(req);
-
-				const packageFile = resolveImportPackageUpload(
-					req,
-					IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
-				);
-
-				const result = await Container.get(N8nPackagesService).importPackageSelection(
-					{
-						user: req.user,
-						apiKeyScopes: req.tokenGrant?.apiKeyScopes,
-						workflowConflictPolicy: payload.data.workflowConflictPolicy,
-						workflowIdPolicy: payload.data.workflowIdPolicy,
-						overwriteDeletionPolicy: payload.data.overwriteDeletionPolicy,
-						packageBuffer: packageFile.buffer,
-					},
-					{
-						selectedProjectId: payload.data.selectedProjectId,
-						selectedWorkflowIds: payload.data.selectedWorkflowIds,
-						...(payload.data.deletedWorkflowIds !== undefined
-							? { deletedWorkflowIds: payload.data.deletedWorkflowIds }
-							: {}),
-					},
-				);
-				return res.status(200).json(result);
-			} catch (error) {
-				Container.get(EventService).emit('n8n-package-import-failed', {
-					user: req.user,
-					reason: classifyPackageFailure(error),
-				});
 				throw error;
 			}
 		},

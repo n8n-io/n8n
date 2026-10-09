@@ -35,6 +35,7 @@ import type { StartExecutionParams } from './agent-execution.service';
 import { AgentRunTracingService } from './agent-run-tracing.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentsSettingsService } from './agents-settings.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	type AgentSandboxPrincipalHash,
@@ -46,7 +47,6 @@ import {
 } from './agent-telemetry';
 import { AgentTurnExecutionService } from './agent-turn-execution.service';
 import { withBudgetGuardrail } from './budget-guardrail';
-import type { Agent } from './entities/agent.entity';
 import type { ExecutionRecorder, MessageRecord } from './execution-recorder';
 import { encodeIntegrationMessageContext } from './integrations/integration-message-context';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
@@ -57,7 +57,7 @@ import { createInputDataTool } from './tools/input-data-tool';
 import { createWorkflowContextTool } from './tools/workflow-context-tool';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
-import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
+import { resolveAgentRunSource, type AgentRunSource } from './utils/agent-published-snapshot';
 import { streamAgentChunks } from './utils/agent-stream';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { describeStructuredOutputError } from './utils/structured-output-error';
@@ -174,6 +174,7 @@ export class AgentWorkflowExecutionService {
 		private readonly aiConfig: AiConfig,
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
 		private readonly settingsService: AgentsSettingsService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -234,14 +235,14 @@ export class AgentWorkflowExecutionService {
 	 * are not affected.
 	 */
 	async compileIsolated(
-		agentEntity: Agent,
+		runSource: AgentRunSource,
 		credentialProvider: CredentialProvider,
 		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; budget?: BudgetGuardrailConfig; error?: string }> {
-		if (!agentEntity.schema) {
+		if (!runSource.agent.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
 		}
 
@@ -254,7 +255,7 @@ export class AgentWorkflowExecutionService {
 			// runtime also isn't cached (see the docstring above), so there's no
 			// cache-key concern here either — just no per-user tool filtering.
 			const reconstructed = await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
-				agentEntity,
+				runSource,
 				credentialProvider,
 				runType,
 				undefined,
@@ -678,8 +679,9 @@ export class AgentWorkflowExecutionService {
 		} = params;
 		// Keep the original intent if deletion happens during preparation.
 		const sessionMode = await this.turnExecutionService.getSessionMode(threadId);
-		const { agentData, credentialProvider } = await this.loadWorkflowAgent(params);
-		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
+		const { runSource, credentialProvider } = await this.loadWorkflowAgent(params);
+		const agentData = runSource.agent;
+		const telemetryConfiguration = buildAgentConfigurationTelemetry(runSource);
 		const runType: AgentRunTelemetryType = useDraftVersion ? 'test' : 'production';
 
 		const recordingParams: StartExecutionParams = {
@@ -697,7 +699,7 @@ export class AgentWorkflowExecutionService {
 
 		const extraTools = this.buildWorkflowExtraTools(workflowContext);
 		const compiled = await this.compileIsolated(
-			agentData,
+			runSource,
 			credentialProvider,
 			runType,
 			outputSchema,
@@ -728,12 +730,13 @@ export class AgentWorkflowExecutionService {
 			agentId,
 		);
 
-		let agentData: Agent = agentEntity;
-
-		if (!useDraftVersion) {
-			agentData = getPublishedAgentSnapshot(agentEntity);
-		}
-		return { agentData, credentialProvider };
+		const runSource = await resolveAgentRunSource(
+			agentEntity,
+			!useDraftVersion,
+			this.agentSkillRefs,
+			{},
+		);
+		return { runSource, credentialProvider };
 	}
 
 	private async streamCompiledWorkflowAgent(

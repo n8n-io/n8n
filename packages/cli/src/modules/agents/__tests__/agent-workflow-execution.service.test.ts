@@ -37,6 +37,7 @@ import type { IntegrationMessageContextService } from '../integrations/integrati
 import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
 import type { ToolRegistry } from '../tool-registry';
 import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const aiConfigMock = mock<AiConfig>();
 
@@ -172,6 +173,7 @@ function makeService() {
 		aiConfigMock,
 		integrationMessageContextService,
 		settingsService,
+		createAgentSkillRefsService(agentRepository),
 	);
 
 	return {

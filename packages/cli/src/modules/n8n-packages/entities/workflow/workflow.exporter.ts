@@ -93,7 +93,7 @@ export class WorkflowExporter {
 				),
 			);
 
-			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
+			credentials.push(...this.credentialRequirementsExtractor.extractFromWorkflow(workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(workflow));
 			tags.push(...this.tagRequirementsExtractor.extract(workflow));

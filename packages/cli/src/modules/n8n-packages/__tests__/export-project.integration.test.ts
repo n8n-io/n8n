@@ -285,7 +285,7 @@ describe('project package export', () => {
 
 		expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual([parent.id, child.id].sort());
 		expect(manifest.requirements?.workflows).toEqual([
-			{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+			{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
 		]);
 	});
 
@@ -431,14 +431,18 @@ describe('project package export — with folders / workflows', () => {
 		).toBeDefined();
 		expect(manifest.requirements).toEqual({
 			nodeTypes: [
-				{ type: 'n8n-nodes-base.httpRequest', typeVersion: 1, usedByWorkflows: [workflow.id] },
+				{
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
+				},
 			],
 			credentials: [
 				{
 					id: credential.id,
 					name: credential.name,
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			],
 		});
@@ -468,7 +472,7 @@ describe('project package export — with folders / workflows', () => {
 		expect(entries.find((e) => e.name === `${variableEntry.target}/variable.json`)).toBeDefined();
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
+			variables: [{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: workflow.id }] }],
 		});
 
 		const events = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-exported');
@@ -525,10 +529,14 @@ describe('project package export — with folders / workflows', () => {
 		expect(manifest.credentials![0].target).toMatch(
 			new RegExp(`^${projectAEntry.target}/credentials/[^/]+$`),
 		);
-		const usedByWorkflows = (manifest.requirements?.credentials ?? []).flatMap(
-			(c) => c.usedByWorkflows,
+		const usedBy = (manifest.requirements?.credentials ?? []).flatMap((c) => c.usedBy);
+		expect(usedBy).toHaveLength(2);
+		expect(usedBy).toEqual(
+			expect.arrayContaining([
+				{ kind: 'workflow', id: workflowA.id },
+				{ kind: 'workflow', id: workflowB.id },
+			]),
 		);
-		expect(usedByWorkflows.sort()).toEqual([workflowA.id, workflowB.id].sort());
 	});
 
 	it('exports a root workflow shared across two projects only under its owner', async () => {
@@ -729,7 +737,10 @@ describe('project package export — workflow selection', () => {
 		expect(manifest.folders!.map(({ id }) => id).sort()).toEqual([inProgress.id, nested.id].sort());
 		expect(manifest.credentials!.map(({ id }) => id)).toEqual([selectedCredential.id]);
 		expect(manifest.requirements?.credentials).toEqual([
-			expect.objectContaining({ id: selectedCredential.id, usedByWorkflows: [selected.id] }),
+			expect.objectContaining({
+				id: selectedCredential.id,
+				usedBy: [{ kind: 'workflow', id: selected.id }],
+			}),
 		]);
 
 		const projectTarget = manifest.projects![0].target;
@@ -773,7 +784,7 @@ describe('project package export — workflow selection', () => {
 
 		expect(manifest.workflows!.map(({ id }) => id)).toEqual([parent.id]);
 		expect(manifest.requirements?.workflows).toEqual([
-			expect.objectContaining({ id: child.id, usedByWorkflows: [parent.id] }),
+			expect.objectContaining({ id: child.id, usedBy: [{ kind: 'workflow', id: parent.id }] }),
 		]);
 	});
 

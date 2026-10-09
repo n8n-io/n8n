@@ -1,4 +1,8 @@
-import { applyPackageResultSchema } from '@n8n/api-types';
+import {
+	applyPackageResultSchema,
+	type ApplyPackageResultDto,
+	type ContinueApplyPackageDto,
+} from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
@@ -1454,6 +1458,15 @@ describe('Apply a project selection', () => {
 
 		expect(result.status).toBe('applied');
 		expect(await dataTableService.getColumns(orders.id, project.id)).toEqual(columnsBefore);
+
+		const confirmed = await service.continueApplyProjectSelection(project.id, owner, {
+			workflowIds: [plainWorkflow.id],
+			expectedSource: { configId: result.configId, ...result.git },
+			confirmDestructiveChanges: true,
+		});
+
+		expect(confirmed.status).toBe('applied');
+		expect(await dataTableService.getColumns(orders.id, project.id)).toEqual(columnsBefore);
 	});
 
 	it('returns source-changed for a stale commit without importing workflows', async () => {
@@ -1727,6 +1740,62 @@ describe('Apply data table changes', () => {
 			const { data } = await dataTableService.getManyRowsAndCount(orders.id, project.id, {});
 			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com', extra: 'keep me' })]);
 			expect(applyPackageResultSchema.parse(result)).toEqual(result);
+		},
+	);
+
+	it.each([{ flow: 'full' as const }, { flow: 'selection' as const }])(
+		'applies a $flow column removal only after Continue confirms it and keeps the rows',
+		async ({ flow }) => {
+			const promoted = await promoteDataTableWorkflows();
+			const { connection, project, workflow, orders, dataTableService } = promoted;
+			await dataTableService.addColumn(orders.id, project.id, { name: 'extra', type: 'string' });
+			await dataTableService.insertRows(orders.id, project.id, [
+				{ email: 'a@example.com', extra: 'keep me' },
+			]);
+			await dataTableService.updateDataTable(orders.id, project.id, { name: 'Local orders' });
+			const continueFlow = async (
+				expectedSource: ContinueApplyPackageDto['expectedSource'],
+				confirmDestructiveChanges?: boolean,
+			): Promise<ApplyPackageResultDto> =>
+				flow === 'full'
+					? (
+							await testServer
+								.publicApiAgentFor(owner)
+								.post(`/promotions/connections/${connection.id}/apply/continue`)
+								.send({ expectedSource, confirmDestructiveChanges })
+								.expect(200)
+						).body
+					: await service.continueApplyProjectSelection(project.id, owner, {
+							workflowIds: [workflow.id],
+							expectedSource,
+							confirmDestructiveChanges,
+						});
+
+			const blocked = await applyFlow(flow, promoted);
+			assert(blocked.status === 'blocked');
+			const expectedSource = { configId: blocked.configId, ...blocked.git };
+
+			expect(await continueFlow(expectedSource)).toEqual(blocked);
+			const { data: rowsBefore } = await dataTableService.getManyRowsAndCount(
+				orders.id,
+				project.id,
+				{},
+			);
+			expect(rowsBefore).toEqual([expect.objectContaining({ extra: 'keep me' })]);
+
+			const result = await continueFlow(expectedSource, true);
+
+			assert(result.status === 'applied', JSON.stringify(result));
+			expect(result.counts.dataTables.updated).toBe(1);
+			expect(await dataTableService.getOne(orders.id, project.id)).toMatchObject({
+				name: 'Orders',
+			});
+			expect(
+				(await dataTableService.getColumns(orders.id, project.id)).map(({ name }) => name),
+			).toEqual(['email', 'note']);
+			const { data } = await dataTableService.getManyRowsAndCount(orders.id, project.id, {});
+			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com' })]);
+			expect(data[0]).not.toHaveProperty('extra');
 		},
 	);
 
@@ -2039,7 +2108,7 @@ describe('Promote a project selection — branch effects', () => {
 		expect(onBranch).toHaveLength(2);
 	});
 
-	it('leaves a renamed folder alone, so unselected workflows keep their place', async () => {
+	it('moves a renamed folder, so unselected workflows ride along unchanged', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
 		await service.clone(connection.id, 'promote');
@@ -2078,16 +2147,12 @@ describe('Promote a project selection — branch effects', () => {
 		const selectedEntry = workflows.find((w) => w.id === selected.id)!;
 		const unselectedEntry = workflows.find((w) => w.id === unselected.id)!;
 
-		expect(folderEntry).toMatchObject({ name: 'Sales', target: folderBefore.target });
-		expect(selectedEntry.target).toBe(`${folderEntry.target}/workflows/selected-${selected.id}`);
-		expect(unselectedEntry.target).toBe(
-			`${folderEntry.target}/workflows/unselected-${unselected.id}`,
-		);
-		await expect(
-			stat(path.join(dir, 'n8n-export', unselectedEntry.target, 'workflow.json')),
-		).resolves.toBeDefined();
-		const renamedTarget = folderEntry.target.replace(/[^/]+$/, `revenue-${folder.id}`);
-		await expect(stat(path.join(dir, 'n8n-export', renamedTarget))).rejects.toThrow();
+		const renamedTarget = folderBefore.target.replace(/[^/]+$/, `revenue-${folder.id}`);
+		expect(folderEntry).toMatchObject({ name: 'Revenue', target: renamedTarget });
+		expect(selectedEntry.target).toBe(`${renamedTarget}/workflows/selected-${selected.id}`);
+		expect(unselectedEntry.target).toBe(`${renamedTarget}/workflows/unselected-${unselected.id}`);
+		expect(unselectedEntry).toMatchObject({ name: 'Unselected' });
+		await expect(stat(path.join(dir, 'n8n-export', folderBefore.target))).rejects.toThrow();
 
 		const workflowRepository = Container.get(WorkflowRepository);
 		await workflowRepository.delete(unselected.id);

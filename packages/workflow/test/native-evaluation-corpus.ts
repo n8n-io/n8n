@@ -157,6 +157,37 @@ export const HANDLED_CORPUS: string[] = [
 	// "null".
 	"={{ $json.item.big.replaceAll('y') }}",
 	'={{ $json.item.manyEmpty.join(null) }}',
+	// Data roots beyond $json/$parameter. $binary is the proxy's stripped
+	// view, so a whole-value read and a leaf read both stay native.
+	'={{ $itemIndex }}',
+	'={{ $runIndex + 1 }}',
+	'={{ $vars.region }}',
+	"={{ $vars.missing ?? 'default' }}",
+	'={{ $binary }}',
+	'={{ $binary.file.fileName }}',
+	'={{ $binary.file.data }}',
+	"={{ $binary.missing?.fileName ?? 'none' }}",
+	// Node references through the host proxy: paired item, first/last/all,
+	// the legacy item-level form, and $input.
+	'={{ $("Source").item.json.item.name }}',
+	"={{ $('Source').item.json.item.count + 1 }}",
+	"={{ $('Source').item.binary.file.fileName }}",
+	"={{ $('Source').first().json.item.name }}",
+	"={{ $('Source').last().json.item.names[0] }}",
+	"={{ $('Source').all().length }}",
+	"={{ $('Source').all()[0].json.item.name }}",
+	"={{ $('Source').item.json.item.missing ?? 'fallback' }}",
+	"={{ $('Source').first()?.json.item.name }}",
+	"=Name: {{ $('Source').item.json.item.name }}",
+	'={{ $node["Source"].json["item"]["name"] }}',
+	"={{ $node['Source'].json.item.count }}",
+	'={{ $node.Source.json.item.name }}',
+	'={{ $node["Source"].binary.file.mimeType }}',
+	'={{ $input.item.json.item.name }}',
+	'={{ $input.first().json.item.name }}',
+	'={{ $input.last().json.item.count }}',
+	'={{ $input.all().length }}',
+	'={{ $input.all()[0].json.item.name }}',
 ];
 
 // Fits the subset, but a runtime value falls outside what the parse proved:
@@ -202,16 +233,60 @@ export const RUNTIME_BAILOUT_CORPUS: string[] = [
 	'={{ $json.item.names.includes($json.item.my_object) }}',
 	'={{ $json.item.names.concat($json.item.my_object) }}',
 	'={{ $json.item.names.slice($json.item.my_object) }}',
+	// Items are objects: an operator on one hands off like any object operand.
+	"={{ $('Source').item === $input.item }}",
+	"=item: {{ $('Source').item }}",
 ];
 
 export const DECLINED_CORPUS: string[] = [
 	// BigInt literals are not part of the subset.
 	'={{ 1n }}',
+	// Node references stand only under .item / first() / last() / all() (or
+	// .json / .binary for the legacy form): bare references, other members,
+	// arguments, dynamic names and other roots stay on the engine.
+	"={{ $('Source') }}",
+	'={{ $input }}',
+	'={{ $node["Source"] }}',
+	"={{ $('Source') ?? 'x' }}",
+	"={{ $('Source').params }}",
+	"={{ $('Source').context.counter }}",
+	"={{ $('Source').isExecuted }}",
+	"={{ $('Source').itemMatching(0) }}",
+	"={{ $('Source').pairedItem }}",
+	"={{ $('Source').first(1) }}",
+	"={{ $('Source').all(0, 0) }}",
+	"={{ $('Source').item() }}",
+	"={{ $('Source', true).item }}",
+	'={{ $() }}',
+	'={{ $($json.item.name).item.json }}',
+	'={{ $(name).item.json }}',
+	'={{ $(`Source`).item.json }}',
+	'={{ $node[$json.item.name].json }}',
+	'={{ $node[name].json }}',
+	'={{ $node[`Source`].json }}',
+	"={{ $node?.['Source'].json }}",
+	'={{ $node["Source"].parameter }}',
+	'={{ $node["Source"].runIndex }}',
+	'={{ $node["Source"].context }}',
+	'={{ $node["Source"].first() }}',
+	'={{ $input.params }}',
+	'={{ $input.first().json.item.names.first() }}',
+	"={{ $('__proto__').item.json }}",
+	'={{ $node.constructor.json }}',
+	// Roots outside the data set.
+	'={{ $now }}',
+	'={{ $today }}',
+	'={{ $env.HOME }}',
+	'={{ $execution.id }}',
+	'={{ $prevNode.name }}',
+	'={{ $workflow.id }}',
+	'={{ $position }}',
+	'={{ $items() }}',
+	'={{ $item(0).$json.item.name }}',
 	"={{ $json.item.names.filter((n) => n.includes('bar')) }}",
 	'={{ $json.item.names.first() }}',
 	'={{ Object.keys($json.item) }}',
 	'={{ $json.item[$json.item.name] }}',
-	'={{ $now }}',
 	"={{ $json.item['__proto__'] }}",
 	'={{ $json.item.name.constructor }}',
 	// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
@@ -246,6 +321,11 @@ export const ERROR_CORPUS: string[] = [
 	'={{ $json.item.name }}',
 	'=Name: {{ $json.item.name }}',
 	'={{ $parameter.value2 }}',
+	'={{ $binary.file.fileName }}',
+	"={{ $('Source').item.json.item.name }}",
+	'={{ $node["Source"].json.item.name }}',
+	'={{ $input.item.json.item.name }}',
+	'={{ $input.all().length }}',
 ];
 
 // Function and symbol values hand the expression to the engine, so the

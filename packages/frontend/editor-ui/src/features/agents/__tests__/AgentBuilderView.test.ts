@@ -16,6 +16,10 @@ import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
 import { agentsEventBus, type AgentCredentialHelpRequest } from '../agents.eventBus';
 import { AGENT_TEMPLATES, AGENT_TEMPLATE_SUGGESTIONS_VERSION } from '../agentTemplates';
 import {
+	AGENT_CONFIG_WRITE_KEY,
+	type AgentConfigWrite,
+} from '../components/agentBuilderInjectionKeys';
+import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
@@ -1051,6 +1055,58 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		});
 		expect(createAgentMock).not.toHaveBeenCalled();
 		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
+	});
+
+	describe('applying an eval suggestion', () => {
+		// The evals tab reaches the builder through this injected hook.
+		async function renderWithConfigWrite() {
+			const wrapper = await renderView();
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			const { provides } = editor.vm.$ as unknown as { provides: Record<symbol, unknown> };
+			const runConfigWrite = provides[AGENT_CONFIG_WRITE_KEY as symbol] as AgentConfigWrite;
+			fetchConfigMock.mockClear();
+			return { editor, runConfigWrite };
+		}
+
+		it('locks editing while the write runs, then reloads the config', async () => {
+			const { editor, runConfigWrite } = await renderWithConfigWrite();
+			expect(editor.props('canEditAgent')).toBe(true);
+			const gate = Promise.withResolvers<string>();
+
+			const run = runConfigWrite(async () => await gate.promise);
+			await flushPromises();
+
+			expect(editor.props('canEditAgent')).toBe(false);
+			expect(fetchConfigMock).not.toHaveBeenCalled();
+
+			gate.resolve('done');
+			await expect(run).resolves.toBe('done');
+
+			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+			expect(editor.props('canEditAgent')).toBe(true);
+		});
+
+		it('still reloads the config and unlocks when the write throws after the server saved', async () => {
+			const { editor, runConfigWrite } = await renderWithConfigWrite();
+
+			await expect(
+				runConfigWrite(async () => {
+					throw new Error('rerun failed');
+				}),
+			).rejects.toThrow('rerun failed');
+
+			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+			expect(editor.props('canEditAgent')).toBe(true);
+		});
+
+		it('unlocks even when reloading the config fails', async () => {
+			const { editor, runConfigWrite } = await renderWithConfigWrite();
+			fetchConfigMock.mockRejectedValueOnce(new Error('offline'));
+
+			await expect(runConfigWrite(async () => 'ok')).resolves.toBe('ok');
+
+			expect(editor.props('canEditAgent')).toBe(true);
+		});
 	});
 
 	it('marks a route-pending agent persisted once the embedded assistant builds it externally', async () => {
@@ -3313,6 +3369,96 @@ describe('AgentBuilderView — three-column shell', () => {
 		await vi.waitFor(() =>
 			expect(wrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(false),
 		);
+	});
+
+	it('stashes a list-view prompt as the assistant first message', async () => {
+		history.replaceState(
+			{
+				instanceAiPendingAgentId: 'a1',
+				instanceAiPendingAgentStarter: { kind: 'prompt', text: 'Summarize my inbox' },
+			},
+			'',
+		);
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true),
+		);
+		await flushPromises();
+
+		await wrapper.get('[data-testid="ai-panel-emit-thread-id"]').trigger('click');
+
+		const raw = localStorage.getItem('n8n-instance-ai-first-message:thread-99');
+		expect(JSON.parse(raw ?? '')).toEqual({
+			message: 'Summarize my inbox',
+			authorship: { kind: 'user_typed' },
+		});
+		expect(history.state.instanceAiPendingAgentStarter).toBeUndefined();
+		localStorage.removeItem('n8n-instance-ai-first-message:thread-99');
+	});
+
+	it('applies a list-view template before the assistant thread is minted and stashes the prompt', async () => {
+		let releaseCreate: (value: ReturnType<typeof makeAgentResponse>) => void = () => {};
+		createAgentMock.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					releaseCreate = resolve;
+				}),
+		);
+		history.replaceState(
+			{
+				instanceAiPendingAgentId: 'a1',
+				instanceAiPendingAgentStarter: {
+					kind: 'template',
+					templateId: 'qualify-new-leads',
+				},
+			},
+			'',
+		);
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		await vi.waitFor(() => {
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			expect(createAgentMock).toHaveBeenCalled();
+		});
+
+		let settled = false;
+		const beforeNewThread = wrapper
+			.findComponent({ name: 'InstanceAiChatPanel' })
+			.props('beforeNewThread') as () => Promise<void>;
+		const pending = beforeNewThread().then(() => {
+			settled = true;
+		});
+		await flushPromises();
+		expect(settled).toBe(false);
+		expect(submitSuggestionMock).not.toHaveBeenCalled();
+
+		releaseCreate(makeAgentResponse());
+		await pending;
+		expect(settled).toBe(true);
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({
+				instructions: expect.stringContaining('lead qualification'),
+			}),
+			expect.anything(),
+		);
+
+		await wrapper.get('[data-testid="ai-panel-emit-thread-id"]').trigger('click');
+		const stashed = JSON.parse(
+			localStorage.getItem('n8n-instance-ai-first-message:thread-99') ?? '',
+		) as { message: string; authorship: { kind: string; prefillType: string; prefillId: string } };
+		expect(stashed.message).toContain('Qualify new leads');
+		expect(stashed.authorship).toEqual({
+			kind: 'prefill',
+			prefillType: 'template_adjustment',
+			prefillId: 'qualify-new-leads',
+		});
+		expect(history.state.instanceAiPendingAgentStarter).toBeUndefined();
+		localStorage.removeItem('n8n-instance-ai-first-message:thread-99');
 	});
 
 	it('reports a non-first template position as one-based', async () => {

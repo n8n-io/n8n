@@ -385,11 +385,8 @@ export class StreamSink implements RunOutputSink<void> {
 
 		const aiFinishReason = await settle(result.finishReason);
 		const usage = await settle(result.usage);
-		// oxlint-disable-next-line typescript/no-deprecated
-		const providerMetadata = await settle(result.providerMetadata);
-		// oxlint-disable-next-line typescript/no-deprecated
-		const response = await settle(result.response);
-		const newMessages = fromAiMessages(response.messages);
+		const finalStep = await settle(result.finalStep);
+		const newMessages = fromAiMessages(await settle(result.responseMessages));
 		const errorReason = classifyModelTurnError({
 			aiFinishReason,
 			newMessages,
@@ -399,7 +396,7 @@ export class StreamSink implements RunOutputSink<void> {
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
-			usage: toTokenUsage(usage, providerMetadata),
+			usage: toTokenUsage(usage, finalStep.providerMetadata),
 			newMessages,
 			toolCalls: await settle(result.toolCalls),
 			structuredOutput:

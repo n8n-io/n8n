@@ -31,7 +31,9 @@ import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtim
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
+import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-composition';
+import { fromAgentDocument, toAgentDocument } from '@/modules/agents/json-config/agent-document';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -148,7 +150,11 @@ export class EvalAgentExecutionService {
 			return this.errorResult(`Agent ${agentId} has no JSON config to run.`);
 		}
 
-		const { config, skippedFeatures } = pruneConfigForEval(agentEntity.schema);
+		const skillRefs = await Container.get(AgentSkillRefsService).refsForDraft(agentEntity, {});
+		const { config, skippedFeatures } = pruneConfigForEval(
+			toAgentDocument(agentEntity.schema, skillRefs),
+		);
+		const pruned = fromAgentDocument(config);
 		if ((agentEntity.integrations ?? []).length > 0) {
 			skippedFeatures.push({
 				feature: 'integrations',
@@ -158,7 +164,7 @@ export class EvalAgentExecutionService {
 		}
 		// The entity is detached (never saved back); mutate the copy the
 		// runtime is built from so pruning applies to reconstruction too.
-		agentEntity.schema = config;
+		agentEntity.schema = pruned.config;
 		agentEntity.integrations = [];
 
 		const toolSummaries = summarizeTools(config, agentEntity.tools ?? {}, sanitizeToolName);
@@ -295,7 +301,7 @@ export class EvalAgentExecutionService {
 		let agent: RuntimeAgent;
 		try {
 			({ agent } = await reconstruction.reconstructFromAgentEntity(
-				agentEntity,
+				{ agent: agentEntity, skillRefs: pruned.skillRefs },
 				credentialProvider,
 				'test',
 				undefined,

@@ -78,6 +78,8 @@ import {
 	readIntegrationMessageContext,
 } from '../integrations/integration-message-context';
 import type { ToolRegistry } from '../tool-registry';
+import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const aiConfigMock = mock<AiConfig>({
 	modelStreamIdleTimeoutMs: 90_000,
@@ -293,6 +295,7 @@ function makeService(sandboxEnabled = false) {
 		backgroundJobRepository,
 		backgroundJobs,
 		settingsService,
+		createAgentSkillRefsService(agentRepository),
 	);
 
 	return {
@@ -763,7 +766,8 @@ describe('background approvals', () => {
 					chatSurface: 'n8n-chat',
 				}),
 			),
-		).rejects.toThrow('This agent is not available in n8n Chat');
+		).rejects.toBeInstanceOf(AgentN8nChatUnavailableError);
+		expect(backgroundJobs.getApproval).not.toHaveBeenCalled();
 	});
 });
 

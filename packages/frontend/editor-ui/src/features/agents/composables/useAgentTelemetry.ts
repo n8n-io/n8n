@@ -7,7 +7,14 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useAgentsN8nChatFlag } from './useAgentsN8nChatFlag';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
-export type AgentCreateSource = 'button' | 'dropdown' | 'card';
+export type AgentCreateSource =
+	| 'button'
+	| 'dropdown'
+	| 'card'
+	| 'empty_state_blank'
+	| 'empty_state_prompt'
+	| 'empty_state_template'
+	| 'command_bar';
 export type N8nChatAgentSource = 'card' | 'library' | 'dropdown';
 
 export function useAgentTelemetry() {
@@ -34,10 +41,11 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function trackClickedNewAgent(source: AgentCreateSource, agentId: string) {
+	function trackClickedNewAgent(source: AgentCreateSource, agentId: string, templateId?: string) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
 			source,
 			agent_id: agentId,
+			...(templateId ? { template_id: templateId } : {}),
 			...common(),
 		});
 	}

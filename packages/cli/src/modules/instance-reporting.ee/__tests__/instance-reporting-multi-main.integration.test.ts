@@ -70,6 +70,7 @@ describe('instance reporting across mains', () => {
 		config.instanceReportingBaseUrl = 'https://receiver.test';
 		const insights = mock<InsightsService>();
 		insights.getDailyExecutionTotals.mockResolvedValue(new Map([[REPORT_DAY, 5]]));
+		insights.getFirstBillableDay.mockResolvedValue(null);
 		const metrics = mock<LicenseMetricsRepository>();
 		metrics.getLicenseRenewalMetrics.mockResolvedValue(
 			mock<Awaited<ReturnType<LicenseMetricsRepository['getLicenseRenewalMetrics']>>>({
