@@ -126,7 +126,7 @@ export class TeamsManifestService {
 					botId: options.botId,
 					scopes: this.buildScopes(options.settings),
 					isNotificationOnly: false,
-					supportsFiles: false,
+					supportsFiles: true,
 				},
 			],
 			permissions: ['identity', 'messageTeamMembers'],

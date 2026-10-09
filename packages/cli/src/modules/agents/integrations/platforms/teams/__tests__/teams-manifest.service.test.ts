@@ -96,6 +96,10 @@ describe('TeamsManifestService', () => {
 			expect(service.buildManifest(options()).bots[0].botId).toBe(BOT_ID);
 		});
 
+		it('lets users attach files in direct messages', () => {
+			expect(service.buildManifest(options()).bots[0].supportsFiles).toBe(true);
+		});
+
 		it('scopes the bot to direct messages when nothing else is turned on', () => {
 			expect(service.buildManifest(options()).bots[0].scopes).toEqual(['personal']);
 		});
