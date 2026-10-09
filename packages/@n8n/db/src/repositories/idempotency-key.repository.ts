@@ -11,13 +11,6 @@ export class IdempotencyKeyRepository extends BaseRepository<IdempotencyKey> {
 		super(IdempotencyKey, dataSource.manager, transactionRunner);
 	}
 
-	/**
-	 * Deletes up to `limit` keys created before `cutoff`.
-	 * Returns how many rows went.
-	 *
-	 * The limit sits on the inner SELECT.
-	 * Postgres has no DELETE LIMIT, and this SQLite build rejects one.
-	 */
 	async deleteOlderThan(cutoff: Date, limit: number): Promise<number> {
 		if (!Number.isInteger(limit) || limit <= 0) return 0;
 

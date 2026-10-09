@@ -6,26 +6,17 @@ import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from 
 
 import { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
 
-/** One hour is enough. Keys stay readable for 12 hours, and the table grows only on keyed writes. */
-const cleanupIntervalSeconds = Time.hours.toSeconds;
-
-/**
- * Deletes idempotency keys older than 12 hours.
- * The table would otherwise keep every keyed Public API write.
- */
 @SystemTask()
 export class IdempotencyKeyCleanupTask implements SystemTask {
 	readonly name = 'idempotency-key-cleanup';
 
-	readonly schedule: SystemTaskSchedule = intervalFromSeconds(cleanupIntervalSeconds);
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(Time.hours.toSeconds);
 
-	/** Deleting a row that is already gone is a no-op, so a repeated run is harmless. */
 	readonly effects: SystemTaskEffects = 'idempotent';
 
 	readonly placement: SystemTaskPlacement = {
 		scope: 'cluster',
 		durable: false,
-		/** A new leader clears keys that expired while no leader was sweeping. */
 		runOnTakeover: true,
 	};
 

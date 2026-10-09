@@ -6,10 +6,7 @@ import type { User } from './user';
 
 export const idempotencyKeyStatuses = ['processing', 'completed'] as const;
 
-/**
- * A key expires this long after `createdAt`.
- * A new value applies to rows that already exist.
- */
+/** Changing this TTL applies to rows that already exist. */
 export const idempotencyKeyTtlMs = 12 * Time.hours.toMilliseconds;
 
 export type IdempotencyKeyStatus = (typeof idempotencyKeyStatuses)[number];
