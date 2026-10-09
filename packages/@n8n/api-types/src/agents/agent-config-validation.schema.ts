@@ -58,8 +58,24 @@ export const agentConfigValidationIssueSchema = z.object({
 });
 export type AgentConfigValidationIssue = z.infer<typeof agentConfigValidationIssueSchema>;
 
+/** Stable, i18n-free code for a validation warning. A warning does not make a config invalid. */
+export const agentConfigValidationWarningCodeSchema = z.enum(['similar_skill_names']);
+export type AgentConfigValidationWarningCode = z.infer<
+	typeof agentConfigValidationWarningCodeSchema
+>;
+
+export const agentConfigValidationWarningSchema = z.object({
+	code: agentConfigValidationWarningCodeSchema,
+	capability: agentConfigValidationCapabilityRefSchema,
+	/** For `similar_skill_names`: the skill names that are hard to tell apart. */
+	names: z.array(z.string()).optional(),
+});
+export type AgentConfigValidationWarning = z.infer<typeof agentConfigValidationWarningSchema>;
+
 export const agentConfigValidationResponseSchema = z.object({
 	status: z.enum(['valid', 'invalid']),
 	issues: z.array(agentConfigValidationIssueSchema),
+	/** Absent when there are no warnings. */
+	warnings: z.array(agentConfigValidationWarningSchema).optional(),
 });
 export type AgentConfigValidationResponse = z.infer<typeof agentConfigValidationResponseSchema>;

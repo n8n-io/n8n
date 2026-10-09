@@ -208,7 +208,6 @@ describe('SkillsController', () => {
 					projectId: project.id,
 					integrations: [],
 					tools: {},
-					skills: {},
 					versionId: randomUUID(),
 				}),
 			);

@@ -1,5 +1,5 @@
 import type { ToolDescriptor } from '@n8n/agents';
-import type { AgentIntegrationConfig, AgentSkill, StoredAgentConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig, StoredAgentConfig } from '@n8n/api-types';
 import { DateTimeColumn, JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
@@ -32,8 +32,8 @@ export class Agent extends WithTimestampsAndStringId {
 		}
 	>;
 
-	@JsonColumn({ default: '{}' })
-	skills: Record<string, AgentSkill>;
+	// The `skills` column is not mapped. Skill refs live in `agent_skill_dependency`
+	// and skill bodies in the skills hub. CONTEXT-232 drops the column.
 
 	/** Whether MCP clients granted agent scopes may operate on this agent. */
 	@Column({ default: false })

@@ -22,7 +22,6 @@ import { AgentPolicyService } from './agent-policy.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
-import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
@@ -63,7 +62,6 @@ export class AgentConfigService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentTaskRepository: AgentTaskRepository,
-		private readonly agentSkillsService: AgentSkillsService,
 		private readonly configPreparation: AgentConfigPreparationService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly transactionRunner: TransactionRunner,
@@ -260,9 +258,6 @@ export class AgentConfigService {
 		if (writesField(config, 'tools', clearOmitted)) {
 			this.removeUnreferencedCustomTools(entity, config);
 		}
-		if (writesField(config, 'skills', clearOmitted)) {
-			this.agentSkillsService.removeUnreferencedSkills(entity, config);
-		}
 	}
 
 	private removeUnreferencedCustomTools(entity: Agent, config: AgentJsonConfig): void {
@@ -359,7 +354,6 @@ export class AgentConfigService {
 			: [];
 		pruneMissingConfigReferences(config, previousSchema, {
 			tools: entity.tools ?? {},
-			skills: entity.skills ?? {},
 			taskIds: new Set(existingTaskIds),
 		});
 		const resolvedSubAgents = await this.reconcileSubAgentReferences(config, entity);

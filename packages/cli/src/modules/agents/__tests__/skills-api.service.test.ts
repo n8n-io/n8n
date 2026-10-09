@@ -308,9 +308,11 @@ describe('SkillsApiService', () => {
 			version: 3,
 			created: true,
 			skill: { name: 'Brand voice', description: 'd', instructions: 'New.' },
+			followingAgentIds: [],
 		};
 
 		it('saves the update for a user who may edit the skill', async () => {
+			const { followingAgentIds: _following, ...response } = saved;
 			skillService.save.mockResolvedValue(saved);
 
 			const result = await service.update(
@@ -327,7 +329,7 @@ describe('SkillsApiService', () => {
 			expect(skillService.canAccess).toHaveBeenCalledWith(user, visible[0], 'update');
 			expect(result).toEqual({
 				id: 'skill_a',
-				...saved,
+				...response,
 				skillHash: getAgentSkillHash(saved.skill),
 			});
 		});

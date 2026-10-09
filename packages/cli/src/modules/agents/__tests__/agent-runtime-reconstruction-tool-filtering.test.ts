@@ -130,7 +130,7 @@ function makeAgentEntity(tools: AgentJsonToolConfig[]): AgentRunSource {
 		schema,
 		tools: { custom_tool: { descriptor: { name: 'custom_tool' }, code: '' } },
 	} as unknown as Agent;
-	return { agent, skillRefs: undefined };
+	return { agent, skillRefs: undefined, skills: {} };
 }
 
 function makeService(overrides: {

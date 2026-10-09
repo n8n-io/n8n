@@ -405,7 +405,6 @@ function getConfiguredSkillSource(
 			name: skill.name,
 			description: skill.description,
 			instructions: skill.instructions,
-			...(skill.allowedTools ? { allowedTools: skill.allowedTools } : {}),
 			linkedFiles,
 		});
 	}

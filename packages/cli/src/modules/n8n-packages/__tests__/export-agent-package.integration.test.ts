@@ -14,6 +14,9 @@ import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-hist
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
+import { withoutLegacySkillRefs } from '@/modules/agents/json-config/agent-document';
+import { toSkillContent } from '@/modules/agents/skills/skill.service';
 import type { NodeTypes } from '@/node-types';
 
 import { N8nPackageParser } from '../engine/n8n-package-parser';
@@ -40,6 +43,7 @@ let agentRepository: AgentRepository;
 let historyRepository: AgentHistoryRepository;
 let taskRepository: AgentTaskRepository;
 let taskSnapshotRepository: AgentTaskSnapshotRepository;
+let skillRepository: SkillRepository;
 let directory: string;
 
 async function readSourceRecords() {
@@ -56,6 +60,7 @@ beforeAll(async () => {
 	await testDb.init();
 	agentRepository = Container.get(AgentRepository);
 	historyRepository = Container.get(AgentHistoryRepository);
+	skillRepository = Container.get(SkillRepository);
 	taskRepository = Container.get(AgentTaskRepository);
 	taskSnapshotRepository = Container.get(AgentTaskSnapshotRepository);
 	exporter = Container.get(AgentExporter);
@@ -63,13 +68,32 @@ beforeAll(async () => {
 	const fixture = looseAgentsFixture();
 	for (const entry of fixture.manifest.agents) {
 		const draft = serializedAgentSchema.parse(fixture.files[`${entry.target}/agent.json`]);
+		// A skill of a saved agent is a skills hub skill: it has its own id, no
+		// `enabled` flag on the ref, and no `allowedTools`.
+		const skillId = `${draft.id}_skill`;
+		const { allowedTools: _dropped, ...draftSkill } = draft.skills['shared-skill'];
+		draft.skills = { [skillId]: draftSkill };
+		draft.config = { ...AgentJsonConfigSchema.parse(draft.config), skills: [{ type: 'skill', id: skillId }] };
 		const published = structuredClone(draft);
 		published.config = {
 			...AgentJsonConfigSchema.parse(published.config),
 			instructions: 'Published configuration',
 			integrations: [{ type: 'n8n_chat', credentialId: '' }],
 		};
-		published.skills['shared-skill'].instructions = 'Published skill';
+		published.skills[skillId].instructions = 'Published skill';
+		// v1 is the published text, v2 the text the draft follows.
+		await skillRepository.createSkill(
+			{
+				id: skillId,
+				target: { userId: null, projectId: project.id },
+				source: 'upload',
+				createdById: null,
+			},
+			toSkillContent(published.skills[skillId]),
+		);
+		const publishedSkillVersionId = (await skillRepository.findLatestSaved([skillId])).get(skillId)!
+			.version.id;
+		await skillRepository.insertSavedVersion(skillId, 2, toSkillContent(draftSkill), null);
 		published.tools.shared_tool.code = 'throw new Error("Published tool must not run");';
 		published.tasks[`${entry.id}_task`] = {
 			name: 'Published schedule',
@@ -81,8 +105,7 @@ beforeAll(async () => {
 			id: draft.id,
 			name: draft.name,
 			projectId: project.id,
-			schema: draft.config && storedAgentConfig(draft.config),
-			skills: draft.skills,
+			schema: draft.config && withoutLegacySkillRefs(storedAgentConfig(draft.config)),
 			tools: draft.tools,
 			availableInMCP: draft.availableInMCP,
 			integrations: [{ type: 'slack', credentialId: 'current-slack' }],
@@ -96,11 +119,14 @@ beforeAll(async () => {
 		const history = await historyRepository.saveVersion({
 			versionId: `${agent.id}_published`,
 			agentId: agent.id,
-			schema: storedAgentConfig(published.config),
-			skills: published.skills,
+			schema: withoutLegacySkillRefs(storedAgentConfig(published.config)),
 			tools: published.tools,
 			publishedBy: 'Package test',
 		});
+		await skillRepository.replaceDependencies(agent.id, [{ skillId }]);
+		await skillRepository.insertPins([
+			{ agentVersionId: history.versionId, skillId, skillVersionId: publishedSkillVersionId },
+		]);
 		await taskSnapshotRepository.saveForVersion(
 			Object.entries(published.tasks).map(([taskId, task]) => ({
 				versionId: history.versionId,

@@ -102,7 +102,7 @@ function setup(options: SetupOptions = {}) {
 			new AgentModificationTelemetryService(telemetry),
 			credentialsService,
 			setupCompletionService,
-			createAgentSkillRefsService(agentRepository),
+			createAgentSkillRefsService(),
 		),
 		agent,
 		row,

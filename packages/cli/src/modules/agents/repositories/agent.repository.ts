@@ -591,7 +591,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 				schema: agent.schema,
 				integrations: agent.integrations,
 				tools: agent.tools,
-				skills: agent.skills,
 				versionId: agent.versionId,
 				updatedAt,
 				revision: () => 'revision + 1',
@@ -642,23 +641,5 @@ export class AgentRepository extends BaseRepository<Agent> {
 			where: { id: In(ids) },
 			select: ['id', 'projectId'],
 		});
-	}
-
-	/**
-	 * Write the `schema` column of a draft. Write `updatedAt` too, with the value
-	 * from the fenced save: without it, TypeORM sets `CURRENT_TIMESTAMP`. This
-	 * write does not check `revision`: call it only in the same transaction as a
-	 * won `saveDraftFenced`.
-	 */
-	async updateDraftSchema(
-		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,
-		ctx: OperationContext,
-	): Promise<void> {
-		await this.managerFor(ctx)
-			.createQueryBuilder()
-			.update(Agent)
-			.set({ schema: agent.schema, updatedAt: agent.updatedAt })
-			.where('id = :id', { id: agent.id })
-			.execute();
 	}
 }

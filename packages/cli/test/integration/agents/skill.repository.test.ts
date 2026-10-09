@@ -79,7 +79,6 @@ describe('SkillRepository', () => {
 				projectId: project.id,
 				integrations: [],
 				tools: {},
-				skills: {},
 				versionId,
 			}),
 		);

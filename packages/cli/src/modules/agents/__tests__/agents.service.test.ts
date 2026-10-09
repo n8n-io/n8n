@@ -26,7 +26,7 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentPolicyService } from '../agent-policy.service';
-import { createAgentSkillRefsService, storedSkillRefs } from './test-utils/stored-agent-config';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const actor = { kind: 'user', user: { id: 'user-1' } } as const;
@@ -56,6 +56,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 }
 
 function makeService() {
+	const skillRefs = createAgentSkillRefsService();
 	const agentRepository = mock<AgentRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
@@ -104,12 +105,13 @@ function makeService() {
 		projectScopeService,
 		agentsSettingsService,
 		agentPolicyService,
-		createAgentSkillRefsService(agentRepository),
+		skillRefs,
 		transactionRunner,
 	);
 
 	return {
 		service,
+		skillRefs,
 		agentPolicyService,
 		agentRepository,
 		projectRelationRepository,
@@ -139,7 +141,7 @@ describe('AgentsService', () => {
 	});
 
 	it('creates a draft agent without a default model or credential', async () => {
-		const { service, agentRepository } = makeService();
+		const { service, agentRepository, skillRefs } = makeService();
 		const saved = makeAgent();
 
 		mockCreateReturning(agentRepository, saved);
@@ -164,8 +166,13 @@ describe('AgentsService', () => {
 			availableInMCP: false,
 		});
 		// The skill refs of the new draft go through the skill refs seam.
-		expect(storedSkillRefs(saved)).toEqual([]);
-		expect(agentRepository.updateDraftSchema).toHaveBeenCalledWith(saved, expect.anything());
+		expect(skillRefs.createDraftRefs).toHaveBeenCalledWith(
+			saved,
+			[],
+			{},
+			'user-1',
+			expect.anything(),
+		);
 	});
 
 	it('creates an agent with a resolved default model and credential', async () => {
@@ -257,8 +264,8 @@ describe('AgentsService', () => {
 		});
 	});
 
-	it('seeds skill bodies onto the entity alongside their schema refs', async () => {
-		const { service, agentRepository } = makeService();
+	it('passes seeded skill bodies to the skill refs seam, not to the entity', async () => {
+		const { service, agentRepository, skillRefs } = makeService();
 		const saved = makeAgent();
 		mockCreateReturning(agentRepository, saved);
 		const skills = {
@@ -277,11 +284,18 @@ describe('AgentsService', () => {
 		});
 
 		const [entity] = agentRepository.create.mock.calls[0];
-		expect(entity.skills).toEqual(skills);
+		expect(entity).not.toHaveProperty('skills');
+		expect(skillRefs.createDraftRefs).toHaveBeenCalledWith(
+			saved,
+			[{ type: 'skill', id: 'skill_abc' }],
+			skills,
+			'user-1',
+			expect.anything(),
+		);
 	});
 
-	it('stores the skill refs of a seeded config in order, with the enabled flags', async () => {
-		const { service, agentRepository } = makeService();
+	it('stores the skill refs of a seeded config in order', async () => {
+		const { service, agentRepository, skillRefs: refsService } = makeService();
 		const saved = makeAgent();
 		mockCreateReturning(agentRepository, saved);
 		const skillRefs = [
@@ -302,10 +316,14 @@ describe('AgentsService', () => {
 
 		const [entity] = agentRepository.create.mock.calls[0];
 		expect(entity.schema).not.toHaveProperty('skills');
-		expect(storedSkillRefs(saved)).toEqual(skillRefs);
+		// A ref with `enabled: false` is not attached.
+		await expect(refsService.refsForDraft(saved, {})).resolves.toEqual([
+			{ type: 'skill', id: 'zeta' },
+			{ type: 'skill', id: 'mid' },
+		]);
 		// The insert and the skill refs write share one transaction.
 		const [[, insertCtx]] = agentRepository.insertNew.mock.calls;
-		const [[, refsCtx]] = agentRepository.updateDraftSchema.mock.calls;
+		const [[, , , , refsCtx]] = refsService.createDraftRefs.mock.calls;
 		expect(refsCtx).toBe(insertCtx);
 	});
 
@@ -1160,7 +1178,8 @@ describe('AgentsService', () => {
 
 	describe('getCapabilitySummary', () => {
 		it('projects model, channels, tools, skills and tasks into per-item labels', async () => {
-			const { service, agentRepository, agentTaskRepository } = makeService();
+			const { service, agentRepository, agentTaskRepository, skillRefs } = makeService();
+			skillRefs.bodies.s1 = { name: 'Triage', description: '', instructions: '' };
 			agentRepository.findByIdAndProjectId.mockResolvedValue(
 				makeAgent({
 					name: 'Support Agent',
@@ -1193,7 +1212,6 @@ describe('AgentsService', () => {
 						{ type: 'telegram', credentialId: 'cred-2' },
 					],
 					tools: { c1: { code: '', descriptor: { name: 'Refund tool' } } },
-					skills: { s1: { name: 'Triage', description: '', instructions: '' } },
 				} as unknown as Partial<Agent>),
 			);
 			agentTaskRepository.findByAgentId.mockResolvedValue([

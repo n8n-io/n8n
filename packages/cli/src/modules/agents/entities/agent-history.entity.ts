@@ -1,4 +1,4 @@
-import { type AgentSkill, type StoredAgentConfig } from '@n8n/api-types';
+import { type StoredAgentConfig } from '@n8n/api-types';
 import { JsonColumn, WithTimestamps } from '@n8n/db';
 import {
 	Column,
@@ -36,8 +36,8 @@ export class AgentHistory extends WithTimestamps {
 	@JsonColumn({ nullable: true, default: null })
 	tools: Agent['tools'] | null;
 
-	@JsonColumn({ nullable: true, default: null })
-	skills: Record<string, AgentSkill> | null;
+	// The `skills` column is not mapped. Published skill pins live in
+	// `agent_history_skill`. CONTEXT-232 drops the column.
 
 	/**
 	 * Runtime pointer to the publishing user. Auto-nulls when the user is

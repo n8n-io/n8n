@@ -165,7 +165,8 @@ export class InstanceAiAgentContextAdapterService {
 
 		const agent = await this.agentsService.findById(input.agentId, projectId);
 		if (!agent) throw new UserError('Agent not found.');
-		const config = composeJsonConfig(agent, await this.agentSkillRefs.refsForDraft(agent, {}));
+		const { skillRefs, skills } = await this.agentSkillRefs.readDraft(agent, {});
+		const config = composeJsonConfig(agent, skillRefs);
 
 		switch (input.type) {
 			case 'config':
@@ -183,12 +184,13 @@ export class InstanceAiAgentContextAdapterService {
 					configHash: getAgentConfigHash(config),
 				};
 			case 'skills': {
+				// The skills hub keeps no skill on an agent that is not attached.
 				return {
-					skills: Object.entries(agent.skills ?? {}).map(([id, skill]) => ({
+					skills: Object.entries(skills).map(([id, skill]) => ({
 						id,
 						name: skill.name,
 						description: skill.description,
-						attached: (config?.skills ?? []).some((ref) => ref.id === id),
+						attached: true,
 					})),
 				};
 			}

@@ -187,9 +187,17 @@ export const NodeConfigSchema = z.object({
 	credentials: z.record(NodeToolCredentialSchema).optional(),
 });
 
+/**
+ * A ref to a skill. For a saved agent the skill is in the skills hub, and the
+ * ref is attached or it is not: a ref with `enabled: false` is dropped on save.
+ * Only inline agents, which embed their skills, still read `enabled`.
+ * `versionId` pins the ref of a saved agent to one saved version of the skill.
+ * Without it, the agent draft runs the latest saved version.
+ */
 const AgentJsonSkillConfigSchema = z.object({
 	type: z.literal('skill'),
 	enabled: z.boolean().optional(),
+	versionId: z.string().uuid().optional(),
 	id: z
 		.string()
 		.min(1)
@@ -590,8 +598,9 @@ export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 declare const storedSkillRefsBrand: unique symbol;
 
 /**
- * Opaque type of the legacy `skills` key in a stored config. Only the skill
- * refs seam reads or writes this key.
+ * Opaque type of the legacy `skills` key in a stored config. Nothing reads
+ * or writes this key: the skill refs live in the skills hub tables. The data
+ * migration removes the key from stored configs.
  */
 export interface OpaqueStoredSkillRefs {
 	readonly [storedSkillRefsBrand]: true;
@@ -599,8 +608,8 @@ export interface OpaqueStoredSkillRefs {
 
 /**
  * Agent config as the backend stores it on the agent draft and on each
- * published version. Its `skills` key is opaque: read and write skill refs
- * through `AgentSkillRefsService`. `AgentJsonConfig` (with `skills`) stays the
+ * published version. It holds no skill refs: read and write them through
+ * `AgentSkillRefsService`. `AgentJsonConfig` (with `skills`) stays the
  * document format of REST, MCP and the agent builder.
  *
  * Because the `skills` key is opaque, a stored config is not assignable to
