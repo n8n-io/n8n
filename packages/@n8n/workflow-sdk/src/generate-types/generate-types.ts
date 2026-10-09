@@ -3076,6 +3076,11 @@ function resolveParameterVariants(
 		return undefined;
 	}
 
+	const suffixes = [defaultValue, ...others.map((entry) => entry.value)].map((value) =>
+		parameterValueSuffix(valueType, value),
+	);
+	if (new Set(suffixes).size !== suffixes.length) return undefined;
+
 	return {
 		param,
 		valueType,
@@ -3084,14 +3089,25 @@ function resolveParameterVariants(
 	};
 }
 
-/** The value type of a boolean parameter, or of an options parameter whose default is a string or number. */
+/** The value type of a boolean parameter, or of an options parameter whose default is a string, number or boolean. */
 function getParameterValueType(property: NodeProperty): ParameterValueType | undefined {
 	if (property.type === 'boolean') {
 		return typeof property.default === 'boolean' ? 'boolean' : undefined;
 	}
 	if (property.type !== 'options') return undefined;
 	if (typeof property.default === 'number') return 'number';
+	if (typeof property.default === 'boolean') return 'boolean';
 	return typeof property.default === 'string' ? 'string' : undefined;
+}
+
+/**
+ * The part of a type name that stands for a parameter value. Signs and decimal
+ * points get words, because `toPascalCase` drops them and `-1` and `1` would
+ * share a name.
+ */
+function parameterValueSuffix(valueType: ParameterValueType, value: string): string {
+	if (valueType === 'number') return value.replace('-', 'Minus').replace('.', 'Point');
+	return toPascalCase(value);
 }
 
 /** A value comes from a file name, so it must be a valid literal of its type and safe to emit. */
@@ -3118,7 +3134,8 @@ function generateParameterVariantTypes(
 	nodeBody: (typeName: string, paramsConstraint: string, outputType: string) => string[],
 ): string[] {
 	const { param, defaultValue, others } = variants;
-	const suffixOf = (value: string) => `${toPascalCase(param)}${toPascalCase(value)}`;
+	const suffixOf = (value: string) =>
+		`${toPascalCase(param)}${parameterValueSuffix(variants.valueType, value)}`;
 	const outputOf = (value: string) => `${names.base}${suffixOf(value)}Output`;
 	const nodeOf = (value: string) => `${names.base}${suffixOf(value)}Node`;
 	const lines: string[] = [];

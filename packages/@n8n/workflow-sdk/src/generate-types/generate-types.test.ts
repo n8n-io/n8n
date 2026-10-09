@@ -4559,7 +4559,9 @@ describe('generate-types', () => {
 				});
 
 				describe('options parameters', () => {
-					const nodeWithOptions = (values: Array<number | string>): NodeTypeDescription => ({
+					const nodeWithOptions = (
+						values: Array<number | string | boolean>,
+					): NodeTypeDescription => ({
 						...mockFreshserviceNode,
 						properties: [
 							...mockFreshserviceNode.properties,
@@ -4606,6 +4608,37 @@ describe('generate-types', () => {
 						const content = generate([modeVariant("x'y")], nodeWithOptions(['fast', "x'y"]));
 
 						expect(content).toContain('export type FreshserviceV1TicketGetNode = {');
+					});
+
+					it('gives negative and positive numeric values different type names', () => {
+						const content = generate(
+							[modeVariant('-1'), modeVariant('1')],
+							nodeWithOptions([0, -1, 1]),
+						);
+
+						expect(content).toContain('{ format: -1 }');
+						expect(content).toContain('{ format: 1 }');
+						expect(content.match(/export type FreshserviceV1TicketGetFormat1Node =/g)).toHaveLength(
+							1,
+						);
+						expect(content).toContain('export type FreshserviceV1TicketGetFormatMinus1Node =');
+					});
+
+					it('ignores the variants when two values would get the same type name', () => {
+						const content = generate(
+							[modeVariant('a-b'), modeVariant('a_b')],
+							nodeWithOptions(['fast', 'a-b', 'a_b']),
+						);
+
+						expect(content).toContain('export type FreshserviceV1TicketGetNode = {');
+					});
+
+					it('types the variants of a boolean-valued options parameter', () => {
+						const content = generate([modeVariant('false')], nodeWithOptions([true, false]));
+
+						expect(content).toContain('{ format?: true }');
+						expect(content).toContain('{ format: false }');
+						expect(content).toContain('{ format: Expression<boolean> }');
 					});
 				});
 			});
