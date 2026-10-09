@@ -102,6 +102,7 @@ describe('SkillsApiService', () => {
 		repository.findProjectNames.mockResolvedValue(new Map());
 		repository.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 0 });
 		skillService.canAccess.mockResolvedValue(true);
+		skillService.accessCheck.mockResolvedValue(() => true);
 	});
 
 	describe('list', () => {
@@ -183,7 +184,7 @@ describe('SkillsApiService', () => {
 			visible = [skill('skill_a', { projectId: 'project-1' })];
 			repository.countUsingAgents.mockResolvedValue(new Map([['skill_a', 2]]));
 			repository.findProjectNames.mockResolvedValue(new Map([['project-1', 'Team']]));
-			skillService.canAccess.mockImplementation(async (_user, _skill, op) => op === 'update');
+			skillService.accessCheck.mockImplementation(async (_user, op) => () => op === 'update');
 
 			const [item] = (await service.list(user, query())).data;
 
@@ -203,6 +204,15 @@ describe('SkillsApiService', () => {
 				createdAt: DATE.toISOString(),
 				updatedAt: DATE.toISOString(),
 			});
+		});
+
+		it('checks edit and delete once for the page, not once per skill', async () => {
+			await service.list(user, query());
+
+			expect(skillService.accessCheck).toHaveBeenCalledTimes(2);
+			expect(skillService.accessCheck).toHaveBeenCalledWith(user, 'update');
+			expect(skillService.accessCheck).toHaveBeenCalledWith(user, 'delete');
+			expect(skillService.canAccess).not.toHaveBeenCalled();
 		});
 	});
 
@@ -268,6 +278,7 @@ describe('SkillsApiService', () => {
 		it('returns the new skill to a creator who may not read it afterwards', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 			skillService.canAccess.mockResolvedValue(false);
+			skillService.accessCheck.mockResolvedValue(() => false);
 
 			const detail = await service.create(
 				user,

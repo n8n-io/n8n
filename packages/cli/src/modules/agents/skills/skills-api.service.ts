@@ -166,12 +166,14 @@ export class SkillsApiService {
 
 	private async toListItems(user: User, skills: Skill[]): Promise<SkillListItem[]> {
 		const ids = skills.map((skill) => skill.id);
-		const [latest, usage, projects] = await Promise.all([
+		const [latest, usage, projects, canEdit, canDelete] = await Promise.all([
 			this.skillRepository.findLatestSummaries(ids),
 			this.skillRepository.countUsingAgents(ids),
 			this.skillRepository.findProjectNames(
 				skills.flatMap((skill) => (skill.projectId ? [skill.projectId] : [])),
 			),
+			this.skillService.accessCheck(user, 'update'),
+			this.skillService.accessCheck(user, 'delete'),
 		]);
 		const items: SkillListItem[] = [];
 		for (const skill of skills) {
@@ -188,8 +190,8 @@ export class SkillsApiService {
 				source: skill.source,
 				latestVersion: summary.version,
 				usedByAgents: usage.get(skill.id) ?? 0,
-				canEdit: await this.skillService.canAccess(user, skill, 'update'),
-				canDelete: await this.skillService.canAccess(user, skill, 'delete'),
+				canEdit: canEdit(skill),
+				canDelete: canDelete(skill),
 				createdAt: skill.createdAt.toISOString(),
 				updatedAt: skill.updatedAt.toISOString(),
 			});
