@@ -1,4 +1,5 @@
 import { BLOCK_ACCESS_ASSIGNMENT } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
 import { CacheService, EventService } from '@n8n/backend-services';
 import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n8n/db';
@@ -26,6 +27,7 @@ import { RoleResolverService } from '@/modules/provisioning.ee/role-resolver.ser
 import { UserService } from '@/services/user.service';
 
 import { createAdmin, createMember, createOwner, createUser } from '../shared/db/users';
+import { LicenseMocker } from '../shared/license';
 
 const RESOURCE = 'https://n8n.example/mcp';
 
@@ -129,6 +131,11 @@ const secondsAgo = (seconds: number) => new Date(Math.floor(Date.now() / 1000 - 
 beforeAll(async () => {
 	await testModules.loadModules(['inbound-auth-core']);
 	await testDb.init();
+
+	// Role licensing reads the license state, which only boot installs.
+	const license = new LicenseMocker();
+	license.mockLicenseState(Container.get(LicenseState));
+	license.enable('feat:advancedPermissions');
 
 	cipher = Container.get(Cipher);
 	cacheService = Container.get(CacheService);
