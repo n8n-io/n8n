@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import { WorkflowProjectService, type EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	Project,
@@ -36,6 +36,7 @@ describe('OwnershipService', () => {
 	const logger = mockInstance(Logger);
 	const eventService = mock<EventService>();
 	const settingsRepository = mock<SettingsRepository>();
+	const workflowProjectService = new WorkflowProjectService(cacheService, sharedWorkflowRepository);
 
 	const ownershipService = new OwnershipService(
 		cacheService,
@@ -44,7 +45,7 @@ describe('OwnershipService', () => {
 		passwordUtility,
 		projectRelationRepository,
 		projectRepository,
-		sharedWorkflowRepository,
+		workflowProjectService,
 		userRepository,
 		settingsRepository,
 	);
