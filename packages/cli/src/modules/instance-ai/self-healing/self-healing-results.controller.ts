@@ -1,5 +1,7 @@
+import { selfHealingContinueRequestSchema } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { BadRequestError } from '@n8n/errors';
 
 import { SelfHealingResultService } from './self-healing-result.service';
 
@@ -53,5 +55,21 @@ export class SelfHealingResultsController {
 	async dismiss(req: ResultRequest) {
 		const { projectId, workflowId, resultId } = req.params;
 		return await this.results.dismiss(req.user, projectId, workflowId, resultId);
+	}
+
+	@Post('/:resultId/continue')
+	@ProjectScope('workflow:update')
+	async continueResult(req: ResultRequest) {
+		const parsed = selfHealingContinueRequestSchema.safeParse(req.body);
+		if (!parsed.success) throw new BadRequestError('Choose the editor or chat to continue.');
+		const { projectId, workflowId, resultId } = req.params;
+		return await this.results.continueResult(
+			req.user,
+			projectId,
+			workflowId,
+			resultId,
+			parsed.data.destination,
+			req.headers['push-ref'],
+		);
 	}
 }

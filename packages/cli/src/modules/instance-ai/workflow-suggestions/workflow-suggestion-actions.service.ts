@@ -142,8 +142,8 @@ export class WorkflowSuggestionActionsService {
 		if (!target.workflow || target.projectId !== projectId)
 			throw new NotFoundError('Suggestion not found.');
 		if (suggestion.state !== 'pending') return undefined;
-		if (suggestion.resultKind !== 'fix_ready') {
-			throw new ConflictError('Only a Fix ready suggestion can be applied.');
+		if (action === 'approve-and-publish' && suggestion.resultKind !== 'fix_ready') {
+			throw new ConflictError('Only a Fix ready suggestion can be approved and published.');
 		}
 		await this.collaboration.validateWriteLock(
 			user.id,

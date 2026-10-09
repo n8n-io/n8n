@@ -81,15 +81,16 @@ describe('SelfHealingResultContent', () => {
 		expect(queryByRole('tab', { name: 'Trace' })).not.toBeInTheDocument();
 	});
 
-	it('emits the three supported fix decisions', async () => {
+	it('offers publishing, both continuation destinations, and discard', async () => {
 		const user = userEvent.setup();
 		const { getByRole, emitted } = renderContent();
 
 		await user.click(getByRole('button', { name: 'Approve and publish' }));
 		await user.click(getByRole('button', { name: 'Apply and open in editor' }));
+		await user.click(getByRole('button', { name: 'Apply and open in chat' }));
 		await user.click(getByRole('button', { name: 'Discard' }));
 
-		expect(emitted('action')).toEqual([['approve-and-publish'], ['apply'], ['dismiss']]);
+		expect(emitted('action')).toEqual([['approve-and-publish'], ['editor'], ['chat'], ['dismiss']]);
 	});
 
 	it('keeps editing available when publication is not allowed', async () => {
@@ -99,13 +100,18 @@ describe('SelfHealingResultContent', () => {
 		expect(getByRole('button', { name: 'Approve and publish' })).toBeDisabled();
 		expect(getByText('Publish permission is required')).toBeInTheDocument();
 		await user.click(getByRole('button', { name: 'Apply and open in editor' }));
-		expect(emitted('action')).toEqual([['apply']]);
+		expect(emitted('action')).toEqual([['editor']]);
 	});
 
 	it('disables every fix decision while a decision is pending', async () => {
-		const { getByRole, emitted } = renderContent({ pendingAction: 'apply' });
+		const { getByRole, emitted } = renderContent({ pendingAction: 'editor' });
 
-		for (const name of ['Approve and publish', 'Apply and open in editor', 'Discard']) {
+		for (const name of [
+			'Approve and publish',
+			'Apply and open in editor',
+			'Apply and open in chat',
+			'Discard',
+		]) {
 			expect(getByRole('button', { name })).toBeDisabled();
 		}
 		await userEvent.click(getByRole('button', { name: 'Discard' }));
@@ -117,7 +123,7 @@ describe('SelfHealingResultContent', () => {
 		{ outcome: 'needs_you', proposal: suggestion({ resultKind: 'needs_you' }) },
 		{ outcome: 'could_not_fix', proposal: null },
 	] as const)(
-		'offers chat and dismissal for $outcome, with optional changes',
+		'offers both destinations for $outcome and labels pending changes explicitly',
 		async ({ outcome, proposal }) => {
 			const { getByRole, queryByRole, getByTestId, emitted } = renderContent({
 				detail: result({ outcome, suggestion: proposal }),
@@ -125,11 +131,15 @@ describe('SelfHealingResultContent', () => {
 
 			expect(getByTestId('self-healing-outcome-notice')).toBeInTheDocument();
 			expect(queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
-			expect(queryByRole('button', { name: 'Open in editor' })).not.toBeInTheDocument();
 			expect(queryByRole('tab', { name: 'Changes' }) !== null).toBe(proposal !== null);
-			await userEvent.click(getByRole('button', { name: 'Continue in chat' }));
+			await userEvent.click(
+				getByRole('button', { name: proposal ? 'Apply and open in editor' : 'Open in editor' }),
+			);
+			await userEvent.click(
+				getByRole('button', { name: proposal ? 'Apply and open in chat' : 'Open in chat' }),
+			);
 			await userEvent.click(getByRole('button', { name: 'Dismiss' }));
-			expect(emitted('action')).toEqual([['chat'], ['dismiss']]);
+			expect(emitted('action')).toEqual([['editor'], ['chat'], ['dismiss']]);
 		},
 	);
 
@@ -146,7 +156,7 @@ describe('SelfHealingResultContent', () => {
 
 		expect(getByTestId('self-healing-report')).toBeInTheDocument();
 		expect(queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
-		await userEvent.click(getByRole('button', { name: 'Continue in chat' }));
+		await userEvent.click(getByRole('button', { name: 'Open in chat' }));
 		expect(emitted('action')).toEqual([['chat']]);
 		expect(getByTestId('self-healing-activity')).toHaveTextContent('Completed the investigation');
 		expect(getByTestId('self-healing-activity')).toHaveTextContent(
@@ -160,7 +170,7 @@ describe('SelfHealingResultContent', () => {
 			canChat: false,
 		});
 
-		expect(getByRole('button', { name: 'Continue in chat' })).toBeDisabled();
+		expect(getByRole('button', { name: 'Open in chat' })).toBeDisabled();
 		expect(getByRole('button', { name: 'Dismiss' })).toBeEnabled();
 		expect(getByText('Chat is unavailable. You can still review the report.')).toBeInTheDocument();
 	});
@@ -177,17 +187,18 @@ describe('SelfHealingResultContent', () => {
 		expect(queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
 		expect(queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
 		await userEvent.click(getByRole('button', { name: 'Open in editor' }));
-		expect(emitted('openEditor')).toEqual([[]]);
-		expect(emitted('action')).toBeUndefined();
+		expect(emitted('action')).toEqual([['editor']]);
 	});
 
 	it.each(['outdated', 'discarded'] as const)(
-		'renders %s suggestions without mutation controls',
+		'keeps navigation available for %s suggestions without applying changes',
 		(reviewState) => {
 			const { getByTestId, queryByRole } = renderContent({ detail: result({ reviewState }) });
 
 			expect(getByTestId('self-healing-closed-notice')).toBeInTheDocument();
-			expect(queryByRole('button', { name: 'Open in editor' })).not.toBeInTheDocument();
+			expect(queryByRole('button', { name: 'Open in editor' })).toBeInTheDocument();
+			expect(queryByRole('button', { name: 'Open in chat' })).toBeInTheDocument();
+			expect(queryByRole('button', { name: 'Apply and open in editor' })).not.toBeInTheDocument();
 			expect(queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
 		},
 	);
@@ -211,6 +222,18 @@ describe('SelfHealingResultContent', () => {
 		});
 		expect(diffProps?.sourceSnapshot).not.toHaveProperty('versionId');
 		expect(diffProps?.targetSnapshot).not.toHaveProperty('createdAt');
+	});
+
+	it('keeps partial-apply actions available while reviewing the saved changes', async () => {
+		const { getByRole, queryByTestId, emitted } = renderContent({
+			detail: result({ outcome: 'needs_you', suggestion: suggestion({ resultKind: 'needs_you' }) }),
+			tab: 'changes',
+		});
+
+		expect(queryByTestId('self-healing-activity-panel')).not.toBeInTheDocument();
+		await userEvent.click(getByRole('button', { name: 'Apply and open in editor' }));
+		await userEvent.click(getByRole('button', { name: 'Apply and open in chat' }));
+		expect(emitted('action')).toEqual([['editor'], ['chat']]);
 	});
 
 	it('falls back to Activity when a linked Changes tab has no proposal', () => {
@@ -291,6 +314,28 @@ describe('SelfHealingResultContent', () => {
 		expect(entries[2]).toHaveTextContent(/A user\s*\|\s*Discarded the suggested changes/);
 		expect(getByTestId('self-healing-activity')).not.toHaveTextContent('human-private-id');
 	});
+
+	it.each(['editor', 'chat'] as const)(
+		'shows the saved %s continuation in activity',
+		(destination) => {
+			const { getByTestId } = renderContent({
+				detail: result({
+					suggestion: null,
+					outcome: 'could_not_fix',
+					reviewState: 'continued',
+					continuedAt: '2026-10-09T10:00:00.000Z',
+					continuedById: 'private-user-id',
+					continuationDestination: destination,
+				}),
+			});
+
+			expect(getByTestId('self-healing-status-card')).toHaveTextContent('Closed | Continued');
+			expect(getByTestId('self-healing-activity')).toHaveTextContent(
+				destination === 'editor' ? 'Continued in the editor' : 'Continued in chat',
+			);
+			expect(getByTestId('self-healing-activity')).not.toHaveTextContent('private-user-id');
+		},
+	);
 
 	it('emits tab changes without selecting a new item', async () => {
 		const { getByRole, emitted } = renderContent();

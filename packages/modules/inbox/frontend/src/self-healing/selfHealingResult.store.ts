@@ -6,7 +6,7 @@ import { ref } from 'vue';
 import {
 	fetchResultWorkflow,
 	fetchSelfHealingResult,
-	type SelfHealingReviewAction,
+	type SelfHealingResultAction,
 	type SelfHealingSelection,
 } from './selfHealingResults.api';
 
@@ -18,7 +18,7 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 	const loading = ref(false);
 	const error = ref<unknown>(null);
 	const workflowError = ref<unknown>(null);
-	const pendingAction = ref<SelfHealingReviewAction | 'chat' | null>(null);
+	const pendingAction = ref<SelfHealingResultAction | null>(null);
 	let detailRequest = 0;
 	let workflowRequest = 0;
 

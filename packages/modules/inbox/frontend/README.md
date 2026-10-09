@@ -11,9 +11,12 @@ review opens the Closed tab, as before.
 
 Assistant details live in `src/self-healing`. They show saved reports, workflow
 changes, review activity, and usage. Result actions use the existing self-healing
-API. Continue in chat opens a new private chat in the current user's personal
-project. After the chat opens, it closes the result through the dismissal API.
-If the chat cannot open, the result stays open. Self-healing remains off by default.
+API. Editor and chat actions use the same continuation endpoint. Pending suggestions,
+including partial changes, are saved to the real workflow draft first. The backend
+records continuation before the frontend updates the Inbox and navigates.
+Chat opens the caller's saved private thread. Retries reuse that thread.
+Navigation failure does not reopen the result or undo saved changes.
+Publishing remains a separate action. Self-healing remains off by default.
 
 Frontend feature module. Consumed from source by the editor-ui shell through
 `src/app/modules.manifest.ts`; there is no build step and no `dist`.

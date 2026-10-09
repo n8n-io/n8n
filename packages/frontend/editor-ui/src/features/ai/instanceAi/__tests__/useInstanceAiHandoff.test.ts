@@ -1,6 +1,5 @@
 import { INSTANCE_AI_PREFILL_TYPE_FALLBACK } from '../prefills';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 const mocks = vi.hoisted(() => ({
 	instanceAiReady: { value: true },
@@ -82,8 +81,6 @@ describe('useInstanceAiHandoff', () => {
 		mocks.updateThreadMetadata.mockResolvedValue(undefined);
 		mocks.deleteThread.mockResolvedValue(true);
 		mocks.getOrCreateRuntime.mockReturnValue({ sendMessage: mocks.sendMessage });
-		mocks.sendMessage.mockResolvedValue(true);
-		mocks.routerPush.mockResolvedValue(undefined);
 	});
 
 	it('builds credential modal handoff context without empty optional fields', () => {
@@ -524,76 +521,6 @@ describe('useInstanceAiHandoff', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
-	describe('startThread', () => {
-		const start = () =>
-			useInstanceAiHandoff().startThread(
-				'project-1',
-				'Fix my workflow',
-				{ kind: 'prefill', prefillType: 'handoff_self_healing_result' },
-				{ source: 'self_healing_result', origin: 'internal' },
-			);
-
-		it('navigates while sending and waits for the opening message to be accepted', async () => {
-			const message = createDeferredPromise<boolean>();
-			mocks.sendMessage.mockReturnValue(message.promise);
-			const pending = start();
-			const settled = vi.fn();
-			void pending.then(settled);
-			await vi.waitFor(() => expect(mocks.routerPush).toHaveBeenCalledOnce());
-			expect(settled).not.toHaveBeenCalled();
-
-			message.resolve(true);
-
-			await expect(pending).resolves.toBe(true);
-		});
-
-		it('returns false when the opening message is not accepted', async () => {
-			mocks.sendMessage.mockResolvedValue(false);
-
-			await expect(start()).resolves.toBe(false);
-
-			expect(mocks.routerPush).toHaveBeenCalledOnce();
-			expect(mocks.showError).not.toHaveBeenCalled();
-		});
-
-		it('returns false and shows an error when thread creation fails', async () => {
-			mocks.syncThread.mockRejectedValue(new Error('Could not create the chat.'));
-
-			await expect(start()).resolves.toBe(false);
-
-			expect(mocks.showError).toHaveBeenCalledOnce();
-			expect(mocks.sendMessage).not.toHaveBeenCalled();
-			expect(mocks.routerPush).not.toHaveBeenCalled();
-		});
-
-		it('returns false and shows an error when navigation is aborted', async () => {
-			mocks.routerPush.mockResolvedValue(new Error('Navigation aborted.'));
-
-			await expect(start()).resolves.toBe(false);
-
-			expect(mocks.showError).toHaveBeenCalledOnce();
-		});
-
-		it('passes thrown navigation errors to its caller', async () => {
-			const error = new Error('Navigation failed.');
-			mocks.routerPush.mockRejectedValue(error);
-
-			await expect(start()).rejects.toBe(error);
-		});
-
-		it('returns false for another handoff while the first is pending', async () => {
-			const message = createDeferredPromise<boolean>();
-			mocks.sendMessage.mockReturnValue(message.promise);
-			const pending = start();
-			await vi.waitFor(() => expect(mocks.sendMessage).toHaveBeenCalledOnce());
-
-			await expect(start()).resolves.toBe(false);
-			expect(mocks.syncThread).toHaveBeenCalledOnce();
-			message.resolve(true);
-			await expect(pending).resolves.toBe(true);
-		});
-	});
-
 	describe('before setup is finished', () => {
 		beforeEach(() => {
 			mocks.instanceAiReady.value = false;
@@ -602,14 +529,13 @@ describe('useInstanceAiHandoff', () => {
 		it('routes startThread to the assistant instead of sending the opening turn', async () => {
 			const { startThread } = useInstanceAiHandoff();
 
-			const opened = await startThread(
+			await startThread(
 				'project-1',
 				'Fix my workflow',
 				{ kind: 'prefill', prefillType: 'handoff_execution_error' },
 				{ source: 'canvas_action_button', origin: 'internal' },
 			);
 
-			expect(opened).toBe(false);
 			expect(mocks.syncThread).not.toHaveBeenCalled();
 			expect(mocks.sendMessage).not.toHaveBeenCalled();
 			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });

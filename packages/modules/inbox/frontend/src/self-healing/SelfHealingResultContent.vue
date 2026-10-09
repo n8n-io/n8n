@@ -14,21 +14,20 @@ import { computed } from 'vue';
 
 import SelfHealingResultActivity from './SelfHealingResultActivity.vue';
 import SelfHealingResultMetadata from './SelfHealingResultMetadata.vue';
+import type { SelfHealingResultAction } from './selfHealingResults.api';
 
 type DetailTab = 'activity' | 'changes';
-type ResultAction = 'approve-and-publish' | 'apply' | 'dismiss' | 'chat';
 
 const props = defineProps<{
 	detail: SelfHealingResultDetail;
 	workflowName: string;
 	tab: DetailTab;
-	pendingAction: ResultAction | null;
+	pendingAction: SelfHealingResultAction | null;
 	canPublish: boolean;
 	canChat: boolean;
 }>();
 const emit = defineEmits<{
-	action: [action: ResultAction];
-	openEditor: [];
+	action: [action: SelfHealingResultAction];
 	'update:tab': [tab: DetailTab];
 }>();
 
@@ -43,6 +42,23 @@ const WorkflowDiffView = computed(() => componentRegistry.get('workflow-diff'));
 const isOpen = computed(() => props.detail.reviewState === 'open');
 const isInformational = computed(() => props.detail.outcome !== 'fix_ready');
 const hasSuggestion = computed(() => props.detail.suggestion !== null);
+const hasPendingSuggestion = computed(
+	() => isOpen.value && props.detail.suggestion?.state === 'pending',
+);
+const editorLabel = computed(() =>
+	i18n.baseText(
+		hasPendingSuggestion.value
+			? 'inbox.selfHealing.action.applyAndOpenInEditor'
+			: 'inbox.selfHealing.action.openInEditor',
+	),
+);
+const chatLabel = computed(() =>
+	i18n.baseText(
+		hasPendingSuggestion.value
+			? 'inbox.selfHealing.action.applyAndOpenInChat'
+			: 'inbox.selfHealing.action.openInChat',
+	),
+);
 const activeTab = computed(() =>
 	props.tab === 'changes' && hasSuggestion.value ? 'changes' : 'activity',
 );
@@ -107,8 +123,9 @@ function onTabChange(tab: string) {
 					data-test-id="self-healing-result-tabs"
 					@update:model-value="onTabChange"
 				/>
-				<div v-if="!isInformational && isOpen" :class="$style.decisionActions">
+				<div :class="$style.decisionActions">
 					<N8nButton
+						v-if="!isInformational && isOpen"
 						size="medium"
 						:label="i18n.baseText('inbox.selfHealing.action.approveAndPublish')"
 						:disabled="pending || !canPublish"
@@ -118,28 +135,36 @@ function onTabChange(tab: string) {
 					<N8nButton
 						variant="outline"
 						size="medium"
-						:label="i18n.baseText('inbox.selfHealing.action.applyAndOpenInEditor')"
+						:label="editorLabel"
 						:disabled="pending"
-						:loading="pendingAction === 'apply'"
-						@click="emit('action', 'apply')"
+						:loading="pendingAction === 'editor'"
+						@click="emit('action', 'editor')"
 					/>
 					<N8nButton
+						variant="outline"
+						size="medium"
+						icon="message-circle"
+						:label="chatLabel"
+						:disabled="pending || !canChat"
+						:loading="pendingAction === 'chat'"
+						@click="emit('action', 'chat')"
+					/>
+					<N8nButton
+						v-if="isOpen"
 						variant="ghost"
 						size="medium"
-						:label="i18n.baseText('inbox.selfHealing.action.discard')"
+						:label="
+							i18n.baseText(
+								isInformational
+									? 'inbox.selfHealing.action.dismiss'
+									: 'inbox.selfHealing.action.discard',
+							)
+						"
 						:disabled="pending"
 						:loading="pendingAction === 'dismiss'"
 						@click="emit('action', 'dismiss')"
 					/>
 				</div>
-				<N8nButton
-					v-else-if="detail.reviewState === 'applied'"
-					variant="outline"
-					size="medium"
-					:label="i18n.baseText('inbox.selfHealing.action.openInEditor')"
-					:disabled="pending"
-					@click="emit('openEditor')"
-				/>
 			</div>
 			<N8nText
 				v-if="!isInformational && isOpen && !canPublish"
@@ -148,6 +173,9 @@ function onTabChange(tab: string) {
 				:class="$style.permissionHint"
 			>
 				{{ i18n.baseText('inbox.selfHealing.action.publishUnavailable') }}
+			</N8nText>
+			<N8nText v-if="!canChat" size="small" color="text-light" :class="$style.permissionHint">
+				{{ i18n.baseText('inbox.selfHealing.action.chatUnavailable') }}
 			</N8nText>
 			<div :class="$style.detailBody">
 				<div
@@ -173,32 +201,7 @@ function onTabChange(tab: string) {
 										: 'inbox.selfHealing.outcome.couldNotFix',
 								)
 							}}
-							<template #trailingContent>
-								<div :class="$style.outcomeActions">
-									<N8nButton
-										variant="outline"
-										size="medium"
-										icon="message-circle"
-										:label="i18n.baseText('inbox.selfHealing.action.continueInChat')"
-										:disabled="pending || !canChat"
-										:loading="pendingAction === 'chat'"
-										@click="emit('action', 'chat')"
-									/>
-									<N8nButton
-										v-if="isOpen"
-										variant="ghost"
-										size="medium"
-										:label="i18n.baseText('inbox.selfHealing.action.dismiss')"
-										:disabled="pending"
-										:loading="pendingAction === 'dismiss'"
-										@click="emit('action', 'dismiss')"
-									/>
-								</div>
-							</template>
 						</N8nCallout>
-						<N8nText v-if="isInformational && !canChat" size="small" color="text-light">
-							{{ i18n.baseText('inbox.selfHealing.action.chatUnavailable') }}
-						</N8nText>
 						<N8nCallout
 							v-if="detail.reviewState !== 'open'"
 							theme="secondary"
@@ -308,6 +311,7 @@ function onTabChange(tab: string) {
 .tabRow {
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 
@@ -316,12 +320,12 @@ function onTabChange(tab: string) {
 	}
 }
 
-.decisionActions,
-.outcomeActions {
+.decisionActions {
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-	flex-shrink: 0;
+	max-width: 100%;
 }
 
 .permissionHint {
@@ -438,12 +442,6 @@ function onTabChange(tab: string) {
 @container assistant-detail (max-width: 44rem) {
 	.tabRow {
 		align-items: flex-start;
-		flex-wrap: wrap;
-	}
-
-	.decisionActions,
-	.outcomeActions {
-		flex-wrap: wrap;
 	}
 
 	.detailBody {

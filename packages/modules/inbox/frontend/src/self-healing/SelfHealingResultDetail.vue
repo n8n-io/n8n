@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { SelfHealingResultDetail, SelfHealingResultActionResponse } from '@n8n/api-types';
+import type {
+	SelfHealingResultDetail,
+	SelfHealingResultActionResponse,
+	SelfHealingResultContinuationResponse,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nCallout, N8nEmptyState, N8nLoading } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
@@ -15,9 +19,10 @@ import type { InboxItemChange } from '../inbox.constants';
 import SelfHealingResultContent from './SelfHealingResultContent.vue';
 import { useSelfHealingResultStore } from './selfHealingResult.store';
 import {
+	continueSelfHealingResult,
 	fetchSelfHealingResult,
 	reviewSelfHealingResult,
-	type SelfHealingReviewAction,
+	type SelfHealingResultAction,
 	type SelfHealingSelection,
 } from './selfHealingResults.api';
 
@@ -38,7 +43,7 @@ const { showError, showMessage } = useToast();
 const chat = capabilityRegistry.tryUse(capabilities.createSelfHealingChatHandoff)?.();
 const unresolvedAction = ref<{
 	before: SelfHealingResultDetail;
-	action: SelfHealingReviewAction;
+	action: SelfHealingResultAction;
 } | null>(null);
 const workflowName = computed(
 	() =>
@@ -91,17 +96,42 @@ async function openEditor(workflowId = props.selection.workflowId) {
 async function finishAction(
 	before: SelfHealingResultDetail,
 	result: SelfHealingResultActionResponse,
-	action: SelfHealingReviewAction,
+	action: SelfHealingResultAction,
+	onItemChange: (change: InboxItemChange) => void,
+	isSelected: (id: string) => boolean,
 	recovered = false,
-) {
+	continuation?: Pick<SelfHealingResultContinuationResponse, 'chatThreadId' | 'chatStartError'>,
+): Promise<boolean> {
 	store.acceptResult(result);
-	reconcile(before, result);
-	if (
-		!props.isSelected(result.resultId) ||
-		action === 'dismiss' ||
-		result.reviewState !== 'applied'
-	)
-		return;
+	reconcile(before, result, onItemChange);
+	if (action === 'dismiss') return result.reviewState !== 'open';
+	if (action === 'chat') {
+		const threadId = recovered ? result.continuationThreadId : continuation?.chatThreadId;
+		if (!threadId) return false;
+		if (isSelected(result.resultId)) {
+			try {
+				const opened = await chat?.start({ threadId });
+				if (opened && continuation?.chatStartError) {
+					showMessage({
+						type: 'warning',
+						duration: 0,
+						title: i18n.baseText('inbox.selfHealing.action.chatStartError'),
+						message: continuation.chatStartError,
+					});
+				}
+			} catch (cause) {
+				showError(cause, i18n.baseText('inbox.selfHealing.action.chatError'));
+			}
+		}
+		return true;
+	}
+	if (action === 'editor') {
+		if (recovered && !result.continuedAt && before.reviewState === 'open') return false;
+		if (isSelected(result.resultId)) await openEditor(result.workflowId);
+		return true;
+	}
+	if (result.reviewState !== 'applied') return false;
+	if (!isSelected(result.resultId)) return true;
 	if (result.publishError !== undefined || recovered) {
 		showMessage({
 			type: 'warning',
@@ -115,6 +145,7 @@ async function finishAction(
 		});
 	}
 	await openEditor(result.workflowId);
+	return true;
 }
 
 async function retryDetail() {
@@ -125,10 +156,19 @@ async function retryDetail() {
 	}
 	if (pendingAction.value) return;
 	const target = { ...props.selection };
+	const onItemChange = props.onItemChange;
+	const isSelected = props.isSelected;
 	pendingAction.value = unresolved.action;
 	try {
 		const result = await fetchSelfHealingResult(rootStore.restApiContext, target);
-		await finishAction(unresolved.before, result, unresolved.action, true);
+		await finishAction(
+			unresolved.before,
+			result,
+			unresolved.action,
+			onItemChange,
+			isSelected,
+			true,
+		);
 		if (store.isSelected(target)) unresolvedAction.value = null;
 	} catch (cause) {
 		store.setError(target, cause);
@@ -137,89 +177,31 @@ async function retryDetail() {
 	}
 }
 
-async function closeAfterChat(
-	before: SelfHealingResultDetail,
-	target: SelfHealingSelection,
-	onItemChange: (change: InboxItemChange) => void,
-) {
-	let current: SelfHealingResultDetail | undefined;
-	try {
-		current = await reviewSelfHealingResult(rootStore.restApiContext, target, 'dismiss');
-	} catch {
-		// Chat has already opened. Recover a lost close response without starting it again.
-		try {
-			current = await fetchSelfHealingResult(rootStore.restApiContext, target);
-		} catch (readError) {
-			store.setError(target, readError);
-			if (props.isSelected(target.id)) unresolvedAction.value = { before, action: 'dismiss' };
-		}
-	}
-	if (current) {
-		store.acceptResult(current);
-		reconcile(before, current, onItemChange);
-		if (current.reviewState !== 'open') return;
-	}
-	showMessage({
-		type: 'warning',
-		duration: 0,
-		title: i18n.baseText('inbox.selfHealing.action.chatCloseError'),
-	});
-}
-
-async function onAction(action: SelfHealingReviewAction | 'chat') {
+async function onAction(action: SelfHealingResultAction) {
 	const before = detail.value;
 	if (!before || pendingAction.value || !store.isSelected(props.selection)) return;
-	if (action !== 'chat' && before.reviewState !== 'open') return;
-	if (action === 'approve-and-publish' && !canPublish.value) return;
-	if ((action === 'apply' || action === 'approve-and-publish') && before.outcome !== 'fix_ready')
+	if (action !== 'chat' && action !== 'editor' && before.reviewState !== 'open') return;
+	if (action === 'approve-and-publish' && (!canPublish.value || before.outcome !== 'fix_ready'))
 		return;
-	if (action === 'chat' && (!chat?.available.value || before.outcome === 'fix_ready')) return;
+	if (action === 'chat' && !chat?.available.value) return;
 
 	const target = { ...props.selection };
 	const isSelected = props.isSelected;
 	const onItemChange = props.onItemChange;
 	pendingAction.value = action;
 	try {
-		if (action === 'chat') {
-			const fresh = await fetchSelfHealingResult(rootStore.restApiContext, target);
-			store.acceptResult(fresh);
-			reconcile(before, fresh);
-			if (!isSelected(target.id) || fresh.outcome === 'fix_ready') return;
-			const opened = await chat?.start({
-				resultId: fresh.resultId,
-				outcome: fresh.outcome,
-				report: fresh.report,
-				workflowId: fresh.workflowId,
-				workflowName: workflowName.value,
-				...(fresh.execution.status === 'available' ? { executionId: fresh.execution.id } : {}),
-			});
-			if (opened && fresh.reviewState === 'open') await closeAfterChat(fresh, target, onItemChange);
-			return;
+		if (action === 'editor' || action === 'chat') {
+			const result = await continueSelfHealingResult(rootStore.restApiContext, target, action);
+			await finishAction(before, result, action, onItemChange, isSelected, false, result);
+		} else {
+			const result = await reviewSelfHealingResult(rootStore.restApiContext, target, action);
+			await finishAction(before, result, action, onItemChange, isSelected);
 		}
-
-		const result = await reviewSelfHealingResult(rootStore.restApiContext, target, action);
-		await finishAction(before, result, action);
 	} catch (cause) {
-		if (action === 'chat') {
-			if (cause instanceof ResponseError && [403, 404].includes(cause.httpStatusCode ?? 0)) {
-				store.setError(target, cause);
-			}
-			if (isSelected(target.id))
-				showError(cause, i18n.baseText('inbox.selfHealing.action.chatError'));
-			return;
-		}
-
-		// The save can commit before a response is lost. Read its receipt before offering another action.
+		// Read a saved receipt before offering another request after a lost response.
 		try {
 			const current = await fetchSelfHealingResult(rootStore.restApiContext, target);
-			await finishAction(before, current, action, true);
-			if (!isSelected(target.id)) return;
-			if (action !== 'dismiss' && current.reviewState === 'applied') return;
-			if (
-				action === 'dismiss' &&
-				(current.reviewState === 'discarded' || current.reviewState === 'dismissed')
-			)
-				return;
+			if (await finishAction(before, current, action, onItemChange, isSelected, true)) return;
 			void store.refreshWorkflow();
 		} catch (readError) {
 			store.setError(target, readError);
@@ -274,7 +256,6 @@ async function onAction(action: SelfHealingReviewAction | 'chat') {
 				:can-chat="chat?.available.value ?? false"
 				@update:tab="emit('update:tab', $event)"
 				@action="onAction"
-				@open-editor="openEditor()"
 			>
 				<template v-if="workflowError" #notice>
 					<N8nCallout theme="warning">

@@ -623,13 +623,13 @@ export function useInstanceAiHandoff() {
 			newTab?: boolean;
 			context?: InstanceAiHandoffContext;
 		},
-	): Promise<boolean> {
+	): Promise<void> {
 		if (!instanceAiReady.value) {
 			await routeToSetup();
-			return false;
+			return;
 		}
 		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
-		if (handoffInFlight) return false;
+		if (handoffInFlight) return;
 		handoffInFlight = true;
 		const responseStartedAtEpochMs = instanceAiResponseNow();
 		try {
@@ -646,15 +646,12 @@ export function useInstanceAiHandoff() {
 				if (!threadId) {
 					tab?.close();
 					showOpenFailed();
-					return false;
+					return;
 				}
 				const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
 				if (tab) tab.location.href = router.resolve(route).href;
-				else if (await router.push(route)) {
-					showOpenFailed();
-					return false;
-				}
-				return true;
+				else await router.push(route); // popup blocked → same tab; it consumes the message
+				return;
 			}
 			// Same tab: send through a runtime seeded here, which survives the navigation.
 			const threadId = uuidv4();
@@ -662,26 +659,18 @@ export function useInstanceAiHandoff() {
 				await instanceAiStore.syncThread(threadId, projectId, launch);
 			} catch {
 				showOpenFailed();
-				return false;
+				return;
 			}
 			const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 			prepare?.(threadId);
-			const messageSent = thread.sendMessage(message, {
+			void thread.sendMessage(message, {
 				authorship,
 				attachments,
 				pushRef: rootStore.pushRef,
 				handoffContext: options?.context,
 				responseStartedAtEpochMs,
 			});
-			const [sent, navigationFailure] = await Promise.all([
-				messageSent,
-				router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } }),
-			]);
-			if (navigationFailure) {
-				showOpenFailed();
-				return false;
-			}
-			return sent;
+			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 		} finally {
 			handoffInFlight = false;
 		}
