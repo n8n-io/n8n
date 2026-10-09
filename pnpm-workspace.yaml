@@ -160,7 +160,6 @@ catalog:
   '@types/mime-types': 3.0.1
   '@types/ms': 2.1.0
   '@types/node': 24.10.1
-  '@types/nodemailer': 8.0.1
   '@types/oracledb': 6.10.3
   '@types/proxy-from-env': ^1.0.4
   '@types/qs': 6.9.15
@@ -242,7 +241,7 @@ catalog:
   mysql2: 3.23.1
   nanoid: 3.3.18
   nock: 14.0.14
-  nodemailer: 8.0.10
+  nodemailer: 10.0.14
   openai: 6.46.0
   oracledb: 6.10.0
   oxlint: 1.78.0
@@ -397,7 +396,7 @@ overrides:
   pdf-parse: 'catalog:'
   pdfjs-dist: 'catalog:'
   tmp: 0.2.7
-  nodemailer: 8.0.10
+  nodemailer: 10.0.14
   validator: 'catalog:'
   zod: 3.25.76
   # Scoped to knip so the repo-wide zod 3 pin stays for everything else.
