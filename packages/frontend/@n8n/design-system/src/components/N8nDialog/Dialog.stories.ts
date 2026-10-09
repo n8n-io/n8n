@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import {
 	N8nDialog,
@@ -845,6 +845,99 @@ export const CustomHeader: Story = {
 					</N8nDialogClose>
 					<N8nButton label="Save" />
 				</N8nDialogFooter>
+			</N8nDialog>
+		</div>
+		`,
+	}),
+	args: {},
+} satisfies Story;
+
+/**
+ * The search stays in the header. The dialog has a max height. The body scrolls.
+ */
+export const SearchHeader: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Put the search in the header. Set a max height on the dialog. Zero the body padding so the scrollbar sits on the dialog edge. The list padding keeps the rows in line with the search.',
+			},
+		},
+	},
+	render: () => ({
+		components: {
+			N8nDialog,
+			N8nDialogBody,
+			N8nDialogHeader,
+			N8nDialogTitle,
+			N8nButton,
+			N8nIcon,
+			N8nInput,
+		},
+		setup() {
+			const isOpen = ref(false);
+			const query = ref('');
+			const projects = [
+				'Alpha',
+				'Beta',
+				'Northwind onboarding workspace',
+				'Delta',
+				'Echo',
+				'Foxtrot',
+				'Gamma',
+				'Hotel',
+				'India',
+				'Juliet',
+				'Kilo',
+				'Lima',
+				'Mike',
+				'November',
+				'Oscar',
+				'Papa',
+				'Quebec',
+				'Romeo',
+			];
+			const visibleProjects = computed(() => {
+				const term = query.value.trim().toLowerCase();
+				if (!term) return projects;
+				return projects.filter((project) => project.toLowerCase().includes(term));
+			});
+			return { isOpen, query, visibleProjects };
+		},
+		template: `
+		<div>
+			<N8nButton variant="solid" label="Open Dialog" @click="isOpen = true" />
+
+			<N8nDialog v-model:open="isOpen" size="medium" style="max-height: 50vh;">
+				<N8nDialogHeader style="flex-direction: column; align-items: stretch; padding-inline-end: var(--n8n-dialog-region--padding, var(--spacing--md)); gap: var(--spacing--sm);">
+					<N8nDialogTitle style="padding-inline-end: calc(var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs));">
+						Projects
+					</N8nDialogTitle>
+					<N8nInput v-model="query" placeholder="Search projects" clearable>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+				</N8nDialogHeader>
+				<N8nDialogBody style="padding: 0;">
+					<div style="padding-inline: var(--n8n-dialog-region--padding, var(--spacing--md)); padding-block-end: var(--n8n-dialog-region--padding, var(--spacing--md));">
+						<p
+							v-if="visibleProjects.length === 0"
+							style="margin: 0; padding: var(--spacing--sm) 0; text-align: center; color: var(--color--text--tint-1); font-size: var(--font-size--sm);"
+						>
+							No projects match your search.
+						</p>
+						<div
+							v-for="(project, index) in visibleProjects"
+							:key="project"
+							:style="index < visibleProjects.length - 1
+								? 'padding: var(--spacing--xs) 0; border-bottom: var(--border);'
+								: 'padding: var(--spacing--xs) 0;'"
+						>
+							{{ project }}
+						</div>
+					</div>
+				</N8nDialogBody>
 			</N8nDialog>
 		</div>
 		`,
