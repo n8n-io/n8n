@@ -37,7 +37,6 @@ function makeMcpClient(overrides: Partial<McpClient> = {}): McpClient {
 		listTools: vi.fn().mockResolvedValue([]),
 		getConnectionFailures: vi.fn().mockReturnValue([]),
 		close: vi.fn().mockResolvedValue(undefined),
-		getConnectionFailures: vi.fn().mockReturnValue([]),
 		...overrides,
 	} as unknown as McpClient;
 }
