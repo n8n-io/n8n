@@ -678,6 +678,27 @@ describe('withPassThroughFloor', () => {
 		expect(result.Hold).toEqual([{ email: 'ada@example.com' }]);
 	});
 
+	// Same node, the other way round: with confidence scores on it adds one key,
+	// so the floor has to keep that key and drop everything else the model invented.
+	it('keeps the classification object when the classifier was asked for scores', () => {
+		const workflow = chain('@n8n/n8n-nodes-langchain.textClassifier');
+		const classifier = workflow.nodes.find((node) => node.name === 'Hold');
+		if (classifier) classifier.parameters = { options: { includeConfidenceScores: true } };
+
+		const result = withPassThroughFloor(
+			{
+				'Get Contact': [{ email: 'ada@example.com' }],
+				Hold: [{ classification: { category: 'Billing', confidence: 0.9 }, invented: true }],
+			},
+			workflow,
+			{ outputSchemaLookup: lookupBrevoOnly },
+		);
+
+		expect(result.Hold).toEqual([
+			{ email: 'ada@example.com', classification: { category: 'Billing', confidence: 0.9 } },
+		]);
+	});
+
 	it('keeps the marker object a partial pass-through adds on top', () => {
 		const result = withPassThroughFloor(
 			{

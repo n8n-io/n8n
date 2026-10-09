@@ -747,6 +747,37 @@ describe('ai-root shapes', () => {
 		);
 	});
 
+	// The classifier adds a key only when it was asked for confidence scores, and
+	// the prompt has to say which of the two it is.
+	it('describes the classifier by what its options ask for', async () => {
+		const { describeAiRootShape } = await import('./ai-root-shapes.js');
+		const classifier = '@n8n/n8n-nodes-langchain.textClassifier';
+
+		expect(describeAiRootShape(classifier, { classifierReportsConfidence: true })).toContain(
+			'classification',
+		);
+		expect(describeAiRootShape(classifier, { classifierReportsConfidence: false })).toBe(
+			describeAiRootShape(classifier),
+		);
+	});
+
+	it('reads the confidence option off the classifier node', async () => {
+		const { buildSchemaContexts } = await import('./context.js');
+		const node = (options: Record<string, unknown>) => ({
+			name: 'Classifier',
+			type: '@n8n/n8n-nodes-langchain.textClassifier',
+			typeVersion: 1.1,
+			position: [0, 0] as [number, number],
+			parameters: { options },
+		});
+
+		const [on] = buildSchemaContexts([node({ includeConfidenceScores: true })]);
+		const [off] = buildSchemaContexts([node({})]);
+
+		expect(on.classifierReportsConfidence).toBe(true);
+		expect(off.classifierReportsConfidence).toBe(false);
+	});
+
 	it('derives the structured envelope key from a with-parser schema', async () => {
 		const { findEnvelopeKey } = await import('./ai-root-shapes.js');
 

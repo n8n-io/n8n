@@ -48,10 +48,19 @@ export function isAiRootNodeType(nodeType: string): boolean {
  * embeds those via the schema lookup and only falls back to this prose when
  * no schema resolves (missing/stale package build).
  */
-export function describeAiRootShape(nodeType: string): string {
+export const TEXT_CLASSIFIER_NODE_TYPE = '@n8n/n8n-nodes-langchain.textClassifier';
+
+export interface AiRootShapeOptions {
+	/** The classifier was asked for confidence scores, so it adds one key. */
+	classifierReportsConfidence?: boolean;
+}
+
+export function describeAiRootShape(nodeType: string, options?: AiRootShapeOptions): string {
 	switch (nodeType) {
-		case '@n8n/n8n-nodes-langchain.textClassifier':
-			return 'the INPUT item passed through UNCHANGED (this node routes items to a category branch without reshaping them) — emit a plausible input item, no classification wrapper key.';
+		case TEXT_CLASSIFIER_NODE_TYPE:
+			return options?.classifierReportsConfidence
+				? 'the INPUT item passed through unchanged, plus a `classification` object holding `category` (the branch name), `confidence` (0-1), and `scores` (0-1 for every category) — the node routes items and adds only that one key.'
+				: 'the INPUT item passed through UNCHANGED (this node routes items to a category branch without reshaping them) — emit a plausible input item, no classification wrapper key.';
 		default:
 			if (VENDOR_AI_ROOT_NODE_TYPES.has(nodeType)) {
 				return "a plausible vendor API response for the node's configured resource and operation — there is NO `output` wrapper key; mirror the vendor's response fields.";
