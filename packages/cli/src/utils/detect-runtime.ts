@@ -7,7 +7,7 @@ export type Runtime =
 	| 'docker'
 	| 'other';
 
-export type KubernetesKind = 'eks' | 'aks' | 'gke' | 'other';
+export type KubernetesProvider = 'aws' | 'azure' | 'gcp' | 'other';
 
 /**
  * Names the platform n8n runs on. Reads only whether well-known platform
@@ -26,13 +26,15 @@ export function detectRuntime(env: NodeJS.ProcessEnv, isDocker: boolean): Runtim
 }
 
 /**
- * Best-effort guess of the cloud from the kernel release string, for example `5.10.0-1234-azure`.
- * Container-Optimized OS, the default GKE image, ends in `+`. Other node images, such as
- * Bottlerocket, carry no cloud name and give `other`.
+ * Names the cloud the node runs on, from vendor tags in the kernel release string, for example
+ * `6.8.0-1067-azure`. It does not say who runs the cluster: a self-managed cluster on a cloud VM gives
+ * the same answer as the managed service. Only tags a cloud sets on purpose count. A trailing `+` does
+ * not, because any kernel built from a modified source tree has one, Raspberry Pi kernels included.
+ * Container-Optimized OS, the default GKE image, has no cloud tag and gives `other`.
  */
-export function detectKubernetesKind(osRelease: string): KubernetesKind {
-	if (osRelease.includes('-azure')) return 'aks';
-	if (osRelease.includes('-gke') || /\d\+$/.test(osRelease)) return 'gke';
-	if (osRelease.includes('amzn2')) return 'eks';
+export function detectKubernetesProvider(osRelease: string): KubernetesProvider {
+	if (osRelease.includes('-azure')) return 'azure';
+	if (osRelease.includes('-gke') || osRelease.includes('-gcp')) return 'gcp';
+	if (osRelease.includes('amzn2') || osRelease.includes('-aws')) return 'aws';
 	return 'other';
 }

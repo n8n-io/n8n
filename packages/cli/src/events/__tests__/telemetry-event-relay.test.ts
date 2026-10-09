@@ -3856,7 +3856,7 @@ describe('TelemetryEventRelay', () => {
 				expect.objectContaining({
 					system_info: expect.objectContaining({
 						runtime: 'kubernetes',
-						kubernetes_kind: expect.any(String),
+						kubernetes_provider: expect.any(String),
 					}),
 				}),
 			);
@@ -3870,7 +3870,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.identify).toHaveBeenCalledWith(
 				expect.objectContaining({
-					system_info: expect.objectContaining({ runtime: 'ecs', kubernetes_kind: undefined }),
+					system_info: expect.objectContaining({ runtime: 'ecs', kubernetes_provider: undefined }),
 				}),
 			);
 		});
