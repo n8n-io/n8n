@@ -180,7 +180,8 @@ export const lakebaseParameters: INodeProperties[] = [
 		},
 		placeholder: 'Add Condition',
 		default: {},
-		description: 'Which rows to act on',
+		description:
+			'Which rows to act on. Get Many returns rows from the full table if you set no conditions. Delete needs at least one condition.',
 		displayOptions: {
 			show: showForFilter,
 		},
