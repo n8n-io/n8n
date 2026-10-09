@@ -247,6 +247,7 @@ packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integrati
   s_71ad2034164515::t_59e28df9bbbe9e 113,141,144,154,156-182,184,190,367-368,370-377,380-382,384-386,390,420
   s_71ad2034164515::t_2c739a093cd920 192-195
   s_2397c9db9d923f::t_f15b78efa1e488 186
+  s_2397c9db9d923f::t_e39c9bcccc55e0 187-189,383,387-389
 packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
   s_2397c9db9d923f::t_3689c74d86e973 6
   s_2397c9db9d923f::t_4141c5cb560e99 6
@@ -424,6 +425,7 @@ packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
   s_2397c9db9d923f::t_47b6a1c7d579b9 502,560,581-588,595
   s_2397c9db9d923f::t_6a593458810dbd 14,82,148,159,208,219-224,286,294,305,330,332,371,380,386,406,418,482-488,489-499,689,697,700
   s_2397c9db9d923f::t_5a52191c5e0f88 209-213,427-481
+  s_2397c9db9d923f::t_e39c9bcccc55e0 230-237,244,248,256,270-273,325,353
 packages/cli/src/modules/n8n-packages/spec/serialized/agent.schema.ts
   s_71ad2034164515::t_562bd6c982bafb 1-71
   s_2397c9db9d923f::t_47b6a1c7d579b9 1-2,4-12,18-36,37-43,44-47,67-68,70-71
@@ -479,6 +481,7 @@ packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.hand
 packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
   s_2397c9db9d923f::t_b4f02d24d14408 575-585
   s_2397c9db9d923f::t_6690e7a2dfd342 15,47,94,137,657
+  s_2397c9db9d923f::t_957b13b21801d6 2
 ---
 {
   "schema_version": "authorship/3.0.0",
