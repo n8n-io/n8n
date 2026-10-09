@@ -1,9 +1,7 @@
 import type {
-	AgentSkill,
 	CreateSkillDto,
 	ListSkillsQueryDto,
 	SkillDetail,
-	SkillDraftResponse,
 	SkillListItem,
 	SkillListResponse,
 	SkillSaveResponse,
@@ -13,9 +11,8 @@ import type {
 import { ProjectScopeService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
-import isEqual from 'lodash/isEqual';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -31,7 +28,7 @@ function scopeOf(skill: Pick<Skill, 'userId' | 'projectId'>): SkillScope {
 }
 
 /**
- * Skills as the settings page sees them: list, read, create, edit, save and delete. The
+ * Skills as the settings page sees them: list, read, create, save and delete. The
  * permission comes from each skill's own scope (see `SkillService.canAccess`), so the
  * routes carry no scope decorator.
  */
@@ -76,17 +73,7 @@ export class SkillsApiService {
 	}
 
 	async get(user: User, skillId: string): Promise<SkillDetail> {
-		const skill = await this.requireAccess(user, skillId, 'read');
-		const [item] = await this.toListItems(user, [skill]);
-		const draft = (await this.skillRepository.findDrafts([skillId])).get(skillId);
-		if (!item || !draft) throw new NotFoundError('Skill not found');
-		const editable = toAgentSkill(draft);
-		return {
-			...item,
-			skill: editable,
-			skillHash: getAgentSkillHash(editable),
-			usedBy: await this.skillRepository.findUsage(skillId),
-		};
+		return await this.toDetail(user, await this.requireAccess(user, skillId, 'read'));
 	}
 
 	async create(user: User, payload: CreateSkillDto): Promise<SkillDetail> {
@@ -97,41 +84,39 @@ export class SkillsApiService {
 			source: 'ui',
 			createdById: user.id,
 		});
-		return await this.get(user, id);
+		// No second access check: a custom role can create skills it cannot read later.
+		const [skill] = await this.skillRepository.findByIds([id]);
+		if (!skill) throw new NotFoundError('Skill not found');
+		return await this.toDetail(user, skill);
 	}
 
-	/** Autosave: overwrites the draft row. Agents keep running the saved version. */
-	async updateDraft(
+	/** Saves the changes as the next version. Unchanged content creates nothing. */
+	async update(
 		user: User,
 		skillId: string,
 		payload: UpdateAgentSkillDto,
-	): Promise<SkillDraftResponse> {
+	): Promise<SkillSaveResponse> {
 		await this.requireAccess(user, skillId, 'update');
-		const draft = (await this.skillRepository.findDrafts([skillId])).get(skillId);
-		if (!draft) throw new NotFoundError('Skill not found');
-		const existing = toAgentSkill(draft);
-		const { baseSkillHash, ...updates } = payload;
-		if (baseSkillHash !== undefined && baseSkillHash !== getAgentSkillHash(existing)) {
-			throw new ConflictError(
-				'The skill was changed somewhere else. Reload to get the latest version.',
-			);
-		}
-		const updated: AgentSkill = { ...existing, ...updates };
-		if (!updated.allowedTools?.length) delete updated.allowedTools;
-		if (!updated.references?.length) delete updated.references;
-		if (!updated.instructions.trim()) throw new UserError('Skill instructions are required.');
-		if (!isEqual(existing, updated)) await this.skillService.writeDraft(skillId, updated);
-		return { skill: updated, skillHash: getAgentSkillHash(updated) };
-	}
-
-	async save(user: User, skillId: string): Promise<SkillSaveResponse> {
-		await this.requireAccess(user, skillId, 'update');
-		return { id: skillId, ...(await this.skillService.save(skillId, user.id)) };
+		const saved = await this.skillService.save(skillId, { ...payload }, user.id);
+		return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
 	}
 
 	async delete(user: User, skillId: string): Promise<void> {
 		await this.requireAccess(user, skillId, 'delete');
 		await this.skillService.deleteSkill(skillId);
+	}
+
+	private async toDetail(user: User, skill: Skill): Promise<SkillDetail> {
+		const [item] = await this.toListItems(user, [skill]);
+		const latest = (await this.skillRepository.findLatestSaved([skill.id])).get(skill.id);
+		if (!item || !latest) throw new NotFoundError('Skill not found');
+		const content = toAgentSkill(latest);
+		return {
+			...item,
+			skill: content,
+			skillHash: getAgentSkillHash(content),
+			usedBy: await this.skillRepository.findUsage(skill.id),
+		};
 	}
 
 	/** A skill the user cannot see answers like a missing one. */
@@ -179,9 +164,8 @@ export class SkillsApiService {
 
 	private async toListItems(user: User, skills: Skill[]): Promise<SkillListItem[]> {
 		const ids = skills.map((skill) => skill.id);
-		const [latest, drafts, usage, projects] = await Promise.all([
+		const [latest, usage, projects] = await Promise.all([
 			this.skillRepository.findLatestSaved(ids),
-			this.skillRepository.findDrafts(ids),
 			this.skillRepository.countUsingAgents(ids),
 			this.skillRepository.findProjectNames(
 				skills.flatMap((skill) => (skill.projectId ? [skill.projectId] : [])),
@@ -189,24 +173,18 @@ export class SkillsApiService {
 		]);
 		const items: SkillListItem[] = [];
 		for (const skill of skills) {
-			const saved = latest.get(skill.id);
-			const draft = drafts.get(skill.id);
-			const shown = saved ?? draft;
-			if (!shown) continue;
+			const row = latest.get(skill.id);
+			if (!row) continue;
 			items.push({
 				id: skill.id,
-				name: shown.version.name,
-				description: shown.version.description,
+				name: row.version.name,
+				description: row.version.description,
 				scope: scopeOf(skill),
 				projectId: skill.projectId,
 				projectName: skill.projectId ? (projects.get(skill.projectId) ?? null) : null,
 				userId: skill.userId,
 				source: skill.source,
-				latestVersion: saved?.version.version ?? 0,
-				hasUnsavedChanges:
-					saved !== undefined &&
-					draft !== undefined &&
-					draft.version.contentHash !== saved.version.contentHash,
+				latestVersion: row.version.version,
 				usedByAgents: usage.get(skill.id) ?? 0,
 				canEdit: await this.skillService.canAccess(user, skill, 'update'),
 				canDelete: await this.skillService.canAccess(user, skill, 'delete'),

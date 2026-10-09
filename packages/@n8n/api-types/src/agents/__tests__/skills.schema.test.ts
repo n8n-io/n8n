@@ -33,9 +33,12 @@ describe('ListSkillsQueryDto', () => {
 describe('CreateSkillDto', () => {
 	const skill = { name: 'Brand voice', description: 'How we write', instructions: 'Be brief.' };
 
-	it.each([['user'], ['project'], ['instance']])('accepts the %s scope', (scope) => {
-		expect(CreateSkillDto.safeParse({ scope, projectId: 'p1', skill }).success).toBe(true);
-	});
+	it.each([[{ scope: 'user' }], [{ scope: 'project', projectId: 'p1' }], [{ scope: 'instance' }]])(
+		'accepts %o',
+		(target) => {
+			expect(CreateSkillDto.safeParse({ ...target, skill }).success).toBe(true);
+		},
+	);
 
 	it('rejects a skill without instructions', () => {
 		expect(
