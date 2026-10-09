@@ -46,6 +46,7 @@ import { PACKAGE_SUBFOLDER } from './constants';
 import { diffPackageFiles } from './diff-package-files';
 import { PromotionsService } from './promotions.service';
 import type { BranchPackage } from './promotions.types';
+import { normalizeWorkflowHashes } from './workflow-diff-normalize';
 
 const DEPENDENCY_COLLECTIONS = {
 	credentials: 'credentials',
@@ -66,7 +67,10 @@ type DesiredPackage = {
 	manifest: PackageManifest;
 };
 
-type InstancePackage = DesiredPackage & { archiveState: ReadonlyMap<string, boolean> };
+type InstancePackage = DesiredPackage & {
+	archiveState: ReadonlyMap<string, boolean>;
+	workflowContent: ReadonlyMap<string, string>;
+};
 
 type PackageDiff = {
 	changedIds: Set<string>;
@@ -135,10 +139,21 @@ export class PromotionChangeService {
 								usageScope === 'project' && (isGlobal || projectIds.includes(projectId)),
 						)
 						.map(({ id }) => id);
+		// A workflow node stores a credential name next to its id. The name is a
+		// display cache that drifts after a rename, so re-hash every workflow file
+		// with those names blanked on both sides before the diff compares them.
+		const branchWorkflowPaths = branch.files
+			.filter((file) => file.type === 'workflow')
+			.map((file) => file.path);
+		const branchWorkflowContent = branchWorkflowPaths.length
+			? await branch.readFiles(branchWorkflowPaths)
+			: new Map<string, string>();
+		const branchFiles = normalizeWorkflowHashes(branch.files, branchWorkflowContent);
+		const instanceFiles = normalizeWorkflowHashes(instance.files, instance.workflowContent);
 		const { base, desired } =
 			branchDesired === null
-				? { base: branch.files, desired: instance }
-				: { base: instance.files, desired: branchDesired };
+				? { base: branchFiles, desired: { ...instance, files: instanceFiles } }
+				: { base: instanceFiles, desired: { ...branchDesired, files: branchFiles } };
 		const diff = this.diffPackages({
 			projectId,
 			direction,
@@ -266,6 +281,7 @@ export class PromotionChangeService {
 	private async exportInstancePackage(user: User, projectId: string): Promise<InstancePackage> {
 		const writer = new HashingPackageWriter();
 		const archiveState = new Map<string, boolean>();
+		const workflowContent = new Map<string, string>();
 		const { manifest } = await this.packagesService.exportPackageToWriter(
 			{
 				user,
@@ -281,8 +297,10 @@ export class PromotionChangeService {
 				writeFile(path, content) {
 					writer.writeFile(path, content);
 					if (path.endsWith(`/${PACKAGE_ENTITY_LAYOUT.workflows.fileName}`)) {
-						const workflow = jsonParse<SerializedWorkflow>(String(content));
-						archiveState.set(`${PACKAGE_SUBFOLDER}/${path}`, workflow.isArchived);
+						const packagePath = `${PACKAGE_SUBFOLDER}/${path}`;
+						const serialized = String(content);
+						workflowContent.set(packagePath, serialized);
+						archiveState.set(packagePath, jsonParse<SerializedWorkflow>(serialized).isArchived);
 					}
 				},
 			},
@@ -294,7 +312,7 @@ export class PromotionChangeService {
 			})),
 			{ exportRoot: PACKAGE_SUBFOLDER, projectId },
 		);
-		return { files, manifest, archiveState };
+		return { files, manifest, archiveState, workflowContent };
 	}
 
 	private async readBranchDesired(

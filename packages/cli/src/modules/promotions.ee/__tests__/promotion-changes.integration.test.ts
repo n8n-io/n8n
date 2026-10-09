@@ -674,6 +674,64 @@ it('counts a credential on apply only when this instance lacks it by id', async 
 	]);
 }, 30_000);
 
+it('ignores a renamed credential name embedded in a workflow node on apply', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Destination', owner);
+	const credential = await saveCredential(
+		{ name: 'Slack account', type: 'slackApi', data: { accessToken: 'token' } },
+		{ project, role: 'credential:owner' },
+	);
+	const workflow = await buildWorkflowReferencingCredential({
+		name: 'Dependent',
+		project,
+		credential,
+	});
+	const connection = await createConnection(['promote', 'apply']);
+	await Container.get(PromotionsService).promote(connection.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	const agent = server.authAgentFor(owner);
+	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
+
+	// The credential is renamed, so this instance's node now embeds the new name
+	// while the branch copy keeps the old one. The binding is by id, so the
+	// workflow has not really changed and must not keep showing as incoming.
+	await Container.get(WorkflowRepository).update(workflow.id, {
+		nodes: [
+			{
+				id: 'n1',
+				name: 'HTTP',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: { slackApi: { id: credential.id, name: 'Slack account renamed' } },
+			},
+		],
+	});
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
+
+	// A real node edit still shows, so the normalization does not hide content changes.
+	await Container.get(WorkflowRepository).update(workflow.id, {
+		nodes: [
+			{
+				id: 'n1',
+				name: 'HTTP',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { url: 'https://example.test' },
+				credentials: { slackApi: { id: credential.id, name: 'Slack account renamed' } },
+			},
+		],
+	});
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([
+		expect.objectContaining({ id: workflow.id, status: 'modified' }),
+	]);
+}, 30_000);
+
 it('counts a credential on apply when the matching id belongs to another project', async () => {
 	const owner = await createOwner();
 	const project = await createTeamProject('Destination', owner);
