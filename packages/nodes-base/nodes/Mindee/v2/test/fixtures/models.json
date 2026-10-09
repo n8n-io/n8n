@@ -1,0 +1,22 @@
+{
+	"models": [
+		{
+			"id": "124e14b0-063b-4b63-a7f7-a034d72b5bdb",
+			"name": "International ID"
+		},
+		{
+			"id": "94d50ee9-15ca-49ef-92ed-66b6588aa25f",
+			"name": "Business Card"
+		},
+		{
+			"id": "20055874-9293-4378-adde-bd7601fa6fd4",
+			"name": "Bank Statement"
+		}
+	],
+	"pagination": {
+		"per_page": 3,
+		"page": 2,
+		"total_items": 7,
+		"total_pages": 3
+	}
+}

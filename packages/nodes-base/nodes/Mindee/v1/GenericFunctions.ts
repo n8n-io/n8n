@@ -12,10 +12,10 @@ export async function mindeeApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	path: string,
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
-	option = {},
-): Promise<any> {
+	option: IDataObject = {},
+): Promise<IDataObject> {
 	const resource = this.getNodeParameter('resource', 0);
 
 	let service;
@@ -27,7 +27,6 @@ export async function mindeeApiRequest(
 	}
 
 	const version = this.getNodeParameter('apiVersion', 0) as number;
-	// V1 of mindee is deprecated, we are keeping it for now but now V3 is active
 	const url =
 		version === 1
 			? `https://api.mindee.net/products${path}`
@@ -42,7 +41,7 @@ export async function mindeeApiRequest(
 		json: true,
 	};
 	try {
-		if (Object.keys(body as IDataObject).length === 0) {
+		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
 		if (Object.keys(qs).length === 0) {
@@ -52,7 +51,11 @@ export async function mindeeApiRequest(
 			Object.assign(options, option);
 		}
 
-		return await this.helpers.requestWithAuthentication.call(this, service, options);
+		return (await this.helpers.requestWithAuthentication.call(
+			this,
+			service,
+			options,
+		)) as IDataObject;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -64,20 +67,20 @@ export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
 	for (const key of Object.keys(predictions[0])) {
 		const data = predictions[0][key] as IDataObject | IDataObject[];
 
-		if (key === 'taxes' && data.length) {
+		if (key === 'taxes' && Array.isArray(data) && data.length) {
 			newData[key] = {
-				amount: (data as IDataObject[])[0].amount,
-				rate: (data as IDataObject[])[0].rate,
+				amount: data[0].amount,
+				rate: data[0].rate,
 			};
 		} else if (key === 'locale') {
-			//@ts-ignore
-			newData.currency = data.currency;
-			//@ts-ignore
-			newData.locale = data.value;
+			const locale = data as IDataObject;
+			newData.currency = locale.currency;
+			newData.locale = locale.value;
 		} else {
+			const field = data as IDataObject;
 			newData[key] =
-				//@ts-ignore
-				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+				field.value || field.name || field.raw || field.degrees || field.amount || field.iban;
 		}
 	}
 
@@ -85,8 +88,7 @@ export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
 }
 
 export function cleanData(document: IDataObject) {
-	// @ts-ignore
-	const prediction = document.inference.prediction as IDataObject;
+	const prediction = (document.inference as IDataObject).prediction as IDataObject;
 	const newData: IDataObject = {};
 	newData.id = document.id;
 	newData.name = document.name;
@@ -94,16 +96,15 @@ export function cleanData(document: IDataObject) {
 	for (const key of Object.keys(prediction)) {
 		const data = prediction[key] as IDataObject | IDataObject[];
 
-		if (key === 'taxes' && data.length) {
+		if (key === 'taxes' && Array.isArray(data) && data.length) {
 			newData[key] = {
-				amount: (data as IDataObject[])[0].amount,
-				rate: (data as IDataObject[])[0].rate,
+				amount: data[0].amount,
+				rate: data[0].rate,
 			};
 		} else if (key === 'locale') {
-			//@ts-ignore
-			newData.currency = data.currency;
-			//@ts-ignore
-			newData.locale = data.value;
+			const locale = data as IDataObject;
+			newData.currency = locale.currency;
+			newData.locale = locale.value;
 		} else if (key === 'line_items') {
 			const lineItems: IDataObject[] = [];
 			for (const lineItem of data as IDataObject[]) {
@@ -119,9 +120,10 @@ export function cleanData(document: IDataObject) {
 			}
 			newData[key] = lineItems;
 		} else {
+			const field = data as IDataObject;
 			newData[key] =
-				//@ts-ignore
-				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+				field.value || field.name || field.raw || field.degrees || field.amount || field.iban;
 		}
 	}
 

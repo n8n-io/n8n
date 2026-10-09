@@ -1,0 +1,131 @@
+{
+	"type": "object",
+	"properties": {
+		"inference": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "string",
+					"description": "ID of the inference"
+				},
+				"job": {
+					"type": "object",
+					"description": "Job the inference belongs to",
+					"properties": {
+						"id": {
+							"type": "string",
+							"description": "UUID of the Job"
+						}
+					}
+				},
+				"model": {
+					"type": "object",
+					"description": "Model info for the inference",
+					"properties": {
+						"id": {
+							"type": "string",
+							"description": "ID of the model"
+						}
+					}
+				},
+				"file": {
+					"type": "object",
+					"description": "File info for the inference",
+					"properties": {
+						"name": {
+							"type": "string",
+							"description": "Name of the file"
+						},
+						"alias": {
+							"type": "string",
+							"description": "Optional alias for the file"
+						},
+						"page_count": {
+							"type": "integer",
+							"description": "Page count"
+						},
+						"mime_type": {
+							"type": "string",
+							"description": "MIME type"
+						}
+					}
+				},
+				"result": {
+					"type": "object",
+					"description": "Result of the inference",
+					"properties": {
+						"fields": {
+							"type": "object",
+							"description": "Fields contained in the inference"
+						},
+						"raw_text": {
+							"type": "object",
+							"description": "Raw text extracted from all pages",
+							"properties": {
+								"pages": {
+									"type": "array",
+									"description": "List of pages with their extracted text content",
+									"items": {
+										"type": "object",
+										"properties": {
+											"content": {
+												"type": "string",
+												"description": "The text content found on the page"
+											}
+										}
+									}
+								}
+							}
+						},
+						"rag": {
+							"type": "object",
+							"description": "RAG metadata",
+							"properties": {
+								"retrieved_document_id": {
+									"type": "string",
+									"description": "The UUID of the matched document used during the RAG operation"
+								}
+							}
+						}
+					}
+				},
+				"active_options": {
+					"type": "object",
+					"description": "Active options for the inference",
+					"properties": {
+						"raw_text": {
+							"type": "boolean",
+							"description": "Whether the Raw Text feature was activated"
+						},
+						"rag": {
+							"type": "boolean",
+							"description": "Whether the RAG feature was activated"
+						},
+						"polygon": {
+							"type": "boolean",
+							"description": "Whether the polygon feature was activated"
+						},
+						"confidence": {
+							"type": "boolean",
+							"description": "Whether the confidence feature was activated"
+						},
+						"text_context": {
+							"type": "boolean",
+							"description": "Whether the text context feature was activated"
+						},
+						"data_schema": {
+							"type": "object",
+							"description": "Data schema options provided for the inference",
+							"properties": {
+								"replace": {
+									"type": "boolean",
+									"description": "Whether to replace the data schema"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
