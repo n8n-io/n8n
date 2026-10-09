@@ -4,9 +4,6 @@ tags:
 summary: Update a custom role
 description: Replaces a custom role's display name, description, and scopes. System roles cannot be updated.
 x-required-scope: role:manage,role:manageProject
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

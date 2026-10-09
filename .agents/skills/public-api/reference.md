@@ -122,11 +122,10 @@ app-wide `bodyParser` before the registry sees it. Declaring
 - An unknown field (one the DTO doesn't declare, on a `{ strict: true }` DTO)
   fails with `Unexpected form field "<name>"` — not the default "unrecognized
   keys" wording.
-- Multer's own parsing errors map to the same statuses express-openapi-validator
-  used: `413` for a size/count limit, `400` for any other multer error, `500`
-  — unmasked, since this is a `ResponseError` — for anything else (a
-  malformed body; a missing boundary gives `400` with `multipart file(s)
-  required`).
+- Multer parsing errors map to these statuses: `413` for a size or count limit,
+  `400` for any other multer error, and `500` for anything else (a malformed
+  body). The `500` is not masked, because it is a `ResponseError`. A missing
+  boundary gives `400` with `multipart file(s) required`.
 - The body is parsed **after** every auth/scope/license/quota gate and
   **before** controller/route middlewares — a caller those gates would reject
   never has their (possibly huge) body read off the socket, and a middleware
@@ -180,58 +179,6 @@ those types.
 
 The runtime part is `runBinaryResponseRoute` in
 `packages/cli/src/public-api/media-types/binary-response.ts`.
-
-## Migrating legacy EOV endpoints
-
-Legacy `express-openapi-validator` endpoints live under
-`v1/handlers/`, wired through `openapi.yml` with `x-eov-operation-*` and request
-types in `packages/cli/src/public-api/types.ts`. Treat these as migration targets,
-not templates.
-
-- Prefer migrating to `@PublicApiController` over extending the handler.
-- Preserve the public contract: path, method, scopes, status codes, response
-  shape, and pagination.
-- Move HTTP concerns into the controller and business orchestration into the
-  shared service; keep the controller a thin HTTP boundary. If the legacy
-  handler was itself already just a thin wrapper around an internal
-  `@RestController` (calling its methods directly, e.g.
-  `Container.get(SomeController).createThing(req, res, payload)`), the new
-  public controller can call that same internal controller directly — no need
-  to duplicate its validation/business logic.
-- A route must be served by either the EOV handler or a controller, not both —
-  the build's `mergeDecoratorDocument` (`v1/openapi-gen/generate.ts`) throws on
-  a path+method declared by both sides. Remove the legacy wiring (its path's
-  `$ref` entry in `openapi.yml`, the `x-eov-operation-*` handler, and its
-  `handler.ts`) only after the new controller is registered, `pnpm build`
-  regenerates the spec cleanly, and tests are updated.
-- Fully delete the migrated legacy files: the handler's `.ts`, its
-	`spec/paths/*.yml` and `spec/schemas/*.yml`, and any now-dead request type
-	in `packages/cli/src/public-api/types.ts`. Then check
-  `v1/shared/spec/schemas/_index.yml` and `v1/shared/spec/parameters/_index.yml`
-  for entries that `$ref` one of the deleted schema/parameter files — those are
-  separate from the path's own `$ref` in `openapi.yml` and are easy to miss;
-  left dangling, the next bundle fails on a broken `$ref`.
-- If the legacy handler gated on a license (`isLicensed('feat:x')` middleware),
-  `@Licensed('feat:x')` now replicates that for a controller route (see the
-  decorator table in [SKILL.md](SKILL.md#declaring-a-controller)) — but only for
-  a single feature. If the legacy check was an any-of/all-of over several flags
-  (e.g. `LicenseState.isProvisioningLicensed()`), `@Licensed` can't express
-  that; replicate it manually in the controller instead, don't drop it - this
-  is exactly what the internal `provisioning.controller.ee.ts` and
-  `role-mapping-rule.controller.ee.ts` already do, since neither uses
-  `@Licensed` for that reason.
-- As a legacy file drops repository access / the `export =` tuple, remove its
-  entry from the `off` allowlists for `no-repository-in-public-api-handler` and
-  `require-public-api-controller` in `packages/cli/eslint.config.mjs` (shrink-only
-  — never extend them).
-- A `multipart/form-data` legacy endpoint migrates onto `@Body({ mediaType:
-  'multipart/form-data', uploadLimits })` — see
-  [Request body media types](#request-body-media-types). For any other
-  non-standard endpoint, study the nearest existing handler first.
-- Keep each field in its original position when you extract a request shape shared
-  by two routes, and destructure out the ones a route doesn't take. The generator
-  emits properties in shape order, so a moved field rewrites the `*.generated.yml`
-  of a route the PR wasn't changing.
 
 ## Verifying a migration
 

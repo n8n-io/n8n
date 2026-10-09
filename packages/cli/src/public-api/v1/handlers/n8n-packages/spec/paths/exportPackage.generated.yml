@@ -15,9 +15,6 @@ description: |
 
   API key scopes: `workflow:export` is required when exporting workflows or folders, and `project:export` is required when exporting projects. When `includeVariableValues` is true (the default) and the exported workflows reference variables, `variable:list` is also required; exports that reference no variables never need it.
 x-required-scope: project:export,workflow:export
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

@@ -7,9 +7,6 @@ x-required-scope: gitConnection:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
   - $ref: ../../../../shared/spec/parameters/cursor.yml
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.

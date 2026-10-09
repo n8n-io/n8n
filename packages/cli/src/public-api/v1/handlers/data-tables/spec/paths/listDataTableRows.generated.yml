@@ -36,9 +36,6 @@ parameters:
     description: Search text across all string columns
     name: search
     in: query
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.

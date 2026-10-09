@@ -3,9 +3,6 @@ tags:
   - NodeTypePolicy
 summary: Retrieve a node type policy document
 x-required-scope: nodeTypePolicy:manage
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

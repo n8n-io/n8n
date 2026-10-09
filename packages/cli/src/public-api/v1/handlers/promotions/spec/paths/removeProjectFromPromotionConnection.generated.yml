@@ -3,9 +3,6 @@ tags:
   - Promotions
 summary: Unlink a project from a promotion connection
 x-required-scope: gitConnection:manageProjects
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

@@ -4,9 +4,6 @@ tags:
 summary: Get folder details
 description: Get folder details including sub-folder and workflow counts.
 x-required-scope: folder:read
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

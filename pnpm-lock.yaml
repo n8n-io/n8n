@@ -1868,9 +1868,6 @@ importers:
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
-      express-openapi-validator:
-        specifier: 5.5.3
-        version: 5.5.3(express@5.2.1(supports-color@8.1.1))
       ioredis:
         specifier: 5.3.2
         version: 5.3.2(supports-color@8.1.1)
@@ -4724,9 +4721,6 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: 'catalog:'
         version: 3.0.44(zod@3.25.76)
-      '@apidevtools/json-schema-ref-parser':
-        specifier: 12.0.2
-        version: 12.0.2
       '@asteasolutions/zod-to-openapi':
         specifier: 'catalog:'
         version: 7.3.4(zod@3.25.76)
@@ -4985,9 +4979,6 @@ importers:
       express-handlebars:
         specifier: 8.0.1
         version: 8.0.1
-      express-openapi-validator:
-        specifier: 5.5.3
-        version: 5.5.3(express@5.1.0(supports-color@8.1.1))
       express-prom-bundle:
         specifier: 8.0.0
         version: 8.0.0(prom-client@15.1.3)
@@ -8871,10 +8862,6 @@ packages:
       zod:
         optional: true
 
-  '@apidevtools/json-schema-ref-parser@12.0.2':
-    resolution: {integrity: sha512-SoZWqQz4YMKdw4kEMfG5w6QAy+rntjsoAT1FtvZAnVEnCR4uy9YSuDBNoVAFHgzSz0dJbISLLCSrGR2Zd7bcvA==}
-    engines: {node: '>= 16'}
-
   '@apm-js-collab/code-transformer-bundler-plugins@0.7.4':
     resolution: {integrity: sha512-nAfOeZPSUAQvJa1iFT/5oCrTm5YQhMMrfCNthNnaXHZiOQhu1KGuLoIx7HtbAi3wfwaBYLaICPIeenIaEwcXIg==}
     engines: {node: '>=18.0.0'}
@@ -10741,9 +10728,6 @@ packages:
   '@jsdevtools/ez-spawn@3.0.4':
     resolution: {integrity: sha512-f5DRIOZf7wxogefH03RjMPMdBF7ADTWUMoOs9kaJo06EfwF+aFhMZMDZxHg/Xe12hptN9xoZjGso2fdjapBRIA==}
     engines: {node: '>=10'}
-
-  '@jsdevtools/ono@7.1.3':
-    resolution: {integrity: sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg==}
 
   '@jsep-plugin/assignment@1.3.0':
     resolution: {integrity: sha512-VVgV+CXrhbMI3aSusQyclHkenWSAm95WaiKrMxRFam3JSUiIaQjoMIw2sEs/OX4XifnqeQUN4DYbJjlA8EfktQ==}
@@ -14987,9 +14971,6 @@ packages:
   '@types/mssql@9.1.5':
     resolution: {integrity: sha512-Q9EsgXwuRoX5wvUSu24YfbKMbFChv7pZ/jeCzPkj47ehcuXYsBcfogwrtVFosSjinD4Q/MY2YPGk9Yy1cM2Ywg==}
 
-  '@types/multer@1.4.12':
-    resolution: {integrity: sha512-pQ2hoqvXiJt2FP9WQVLPRO+AmiIm/ZYkavPlIQnx282u4ZrVdztx0pkh3jjpQt0Kz+YI0YhSG264y08UJKoUQg==}
-
   '@types/multer@2.1.0':
     resolution: {integrity: sha512-zYZb0+nJhOHtPpGDb3vqPjwpdeGlGC157VpkqNQL+UU2qwoacoQ7MpsAmUptI/0Oa127X32JzWDqQVEXp2RcIA==}
 
@@ -18396,11 +18377,6 @@ packages:
     resolution: {integrity: sha512-mdas0PTbgQnwSyAjcYM7OMaftM8nJ3Kqz6yAyK4iCFvMOGGvh6pv42IHwcE5PBpS6ffYeZRSsgAdYUMG4CSjhQ==}
     engines: {node: '>=20'}
 
-  express-openapi-validator@5.5.3:
-    resolution: {integrity: sha512-G3PxXXE8Y3aZ2s1OW9k79lyqmNWmj8/QWNWqF9qVPjJ8YON8JQ39c4CgSXemPfbRCuD58ynoHrG3WCetU937dg==}
-    peerDependencies:
-      express: '*'
-
   express-prom-bundle@8.0.0:
     resolution: {integrity: sha512-UHdpaMks6Z/tvxQsNzhsE7nkdXb4/zEh/jwN0tfZSZOEF+aD0dlfl085EU4jveOq09v01c5sIUfjV4kJODZ2eQ==}
     engines: {node: '>=18'}
@@ -20242,10 +20218,6 @@ packages:
   lodash.flatten@4.4.0:
     resolution: {integrity: sha512-C5N2Z3DgnnKr0LOpv/hKCgKdb7ZZwafIrsesve6lmzvZIRZRGaZ/l6Q8+2W7NaT+ZwO3fFlSCzCzrDCFdJfZ4g==}
 
-  lodash.get@4.4.2:
-    resolution: {integrity: sha512-z+Uw/vLuy6gQe8cfaFWD7p0wVv8fJl3mbzXh33RS+0oW2wvUqiRXiQ69gLWSLpgB5/6sU+r6BlQR0MBILadqTQ==}
-    deprecated: This package is deprecated. Use the optional chaining (?.) operator instead.
-
   lodash.groupby@4.6.0:
     resolution: {integrity: sha512-5dcWxm23+VAoz+awKmBaiBvzox8+RqMgFhi7UvX9DHZr2HdxHXM/Wrf8cfKpsW37RNrvtPn6hSwNqurSILbmJw==}
 
@@ -21565,9 +21537,6 @@ packages:
   onetime@5.1.2:
     resolution: {integrity: sha512-kbpaSSGJTWdAY5KPVeMOKXSrPtr8C8C7wodJbcsd51jRnmD+GZu8Y0VoU6Dm5Z4vWr0Ig/1NKuWRKf7j5aaYSg==}
     engines: {node: '>=6'}
-
-  ono@7.1.3:
-    resolution: {integrity: sha512-9jnfVriq7uJM4o5ganUY54ntUm+5EK21EGaQ5NWnkWg3zz5ywbbonlBguRcnmF1/HDiIe3zxNxXcO1YPBmPcQQ==}
 
   open@10.2.0:
     resolution: {integrity: sha512-YgBpdJHPyQ2UE5x+hlSXcnejzAvD0b22U2OuAP+8OnlJT+PjWPxtgmGqKKc+RgTM63U9gN0YzrYc71R2WT/hTA==}
@@ -25446,12 +25415,6 @@ snapshots:
     optionalDependencies:
       zod: 3.25.76
 
-  '@apidevtools/json-schema-ref-parser@12.0.2':
-    dependencies:
-      '@jsdevtools/ono': 7.1.3
-      '@types/json-schema': 7.0.15
-      js-yaml: 4.3.2
-
   '@apm-js-collab/code-transformer-bundler-plugins@0.7.4':
     dependencies:
       '@apm-js-collab/code-transformer': 0.18.1
@@ -28855,8 +28818,6 @@ snapshots:
       cross-spawn: 7.0.6
       string-argv: 0.3.1
       type-detect: 4.1.0
-
-  '@jsdevtools/ono@7.1.3': {}
 
   '@jsep-plugin/assignment@1.3.0(jsep@1.4.0)':
     dependencies:
@@ -33165,10 +33126,6 @@ snapshots:
       '@types/tedious': 4.0.14
       tarn: 3.0.2
 
-  '@types/multer@1.4.12':
-    dependencies:
-      '@types/express': 5.0.1
-
   '@types/multer@2.1.0':
     dependencies:
       '@types/express': 5.0.1
@@ -37262,42 +37219,6 @@ snapshots:
       graceful-fs: 4.2.11
       handlebars: 4.7.9
 
-  express-openapi-validator@5.5.3(express@5.1.0(supports-color@8.1.1)):
-    dependencies:
-      '@apidevtools/json-schema-ref-parser': 12.0.2
-      '@types/multer': 1.4.12
-      ajv: 8.20.0
-      ajv-draft-04: 1.0.0(ajv@8.20.0)
-      ajv-formats: 3.0.1(ajv@8.20.0)
-      content-type: 1.0.5
-      express: 5.1.0(supports-color@8.1.1)
-      json-schema-traverse: 1.0.0
-      lodash.clonedeep: 4.5.0
-      lodash.get: 4.4.2
-      media-typer: 1.1.0
-      multer: 2.3.0
-      ono: 7.1.3
-      path-to-regexp: 8.4.0
-      qs: 6.15.2
-
-  express-openapi-validator@5.5.3(express@5.2.1(supports-color@8.1.1)):
-    dependencies:
-      '@apidevtools/json-schema-ref-parser': 12.0.2
-      '@types/multer': 1.4.12
-      ajv: 8.20.0
-      ajv-draft-04: 1.0.0(ajv@8.20.0)
-      ajv-formats: 3.0.1(ajv@8.20.0)
-      content-type: 1.0.5
-      express: 5.2.1(supports-color@8.1.1)
-      json-schema-traverse: 1.0.0
-      lodash.clonedeep: 4.5.0
-      lodash.get: 4.4.2
-      media-typer: 1.1.0
-      multer: 2.3.0
-      ono: 7.1.3
-      path-to-regexp: 8.4.0
-      qs: 6.15.2
-
   express-prom-bundle@8.0.0(prom-client@15.1.3):
     dependencies:
       '@types/express': 5.0.1
@@ -39397,8 +39318,6 @@ snapshots:
 
   lodash.flatten@4.4.0: {}
 
-  lodash.get@4.4.2: {}
-
   lodash.groupby@4.6.0: {}
 
   lodash.includes@4.3.0: {}
@@ -41103,10 +41022,6 @@ snapshots:
   onetime@5.1.2:
     dependencies:
       mimic-fn: 2.1.0
-
-  ono@7.1.3:
-    dependencies:
-      '@jsdevtools/ono': 7.1.3
 
   open@10.2.0:
     dependencies:

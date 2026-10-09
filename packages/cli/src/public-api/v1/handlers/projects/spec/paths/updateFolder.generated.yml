@@ -4,9 +4,6 @@ tags:
 summary: Update a folder
 description: Update folder name or parent folder.
 x-required-scope: folder:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

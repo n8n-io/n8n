@@ -172,7 +172,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(params?.shape.widgetId).toBeInstanceOf(z.ZodString);
 	});
 
-	it('bare route: omits every optional field, but always adds success/auth responses and eov routing headers', () => {
+	it('bare route: omits every optional field, but always adds success/auth responses', () => {
 		class WidgetsPublicController {
 			@Get('/')
 			@ApiResponse(200)
@@ -194,11 +194,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.responses[401]).toEqual({
 			$ref: '../../../../shared/spec/responses/unauthorized.yml',
 		});
-		expect(operation.config['x-eov-operation-id']).toBe('unreachable');
-		expect(operation.config['x-eov-operation-handler']).toBe(
-			'v1/handlers/decorator-routed.handler',
-		);
-		expect(operation.config['x-decorator-routed']).toBe(true);
+		expect(Object.keys(operation.config).filter((key) => key.startsWith('x-'))).toEqual([]);
 	});
 
 	it('documents a bare-array response DTO as an array schema, not an object envelope', () => {

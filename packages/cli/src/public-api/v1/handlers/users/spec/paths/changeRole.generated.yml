@@ -4,9 +4,6 @@ tags:
 summary: Change a user's global role
 description: Change a user's global role
 x-required-scope: user:changeRole
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

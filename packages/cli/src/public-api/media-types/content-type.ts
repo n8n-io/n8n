@@ -10,8 +10,8 @@ function readMediaType(header: string): { mediaType: string; reported: string } 
 	const mediaType = rawMediaType.trim().toLowerCase();
 	const parameters = new Map<string, string>();
 
-	// Parameter sorting and returning of the reported string is kept only for parity with the
-	// EOV handler — we may be able to remove and simplify this method in future.
+	// Sorts the parameters and rebuilds the reported string, so the reported media type stays
+	// unchanged. This method may be simplified in future.
 	for (const part of parameterParts) {
 		const separator = part.indexOf('=');
 		if (separator === -1) {
