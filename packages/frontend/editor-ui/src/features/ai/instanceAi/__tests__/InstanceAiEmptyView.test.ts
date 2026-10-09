@@ -496,11 +496,11 @@ const InstanceAiInputStub = defineComponent({
 					{ 'data-test-id': 'instance-ai-input-out-of-credits' },
 					String(Boolean(props.isOutOfCredits)),
 				),
-        h(
-				  'span',
-          { 'data-test-id': 'instance-ai-input-attach-only' },
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-attach-only' },
 					props.attachOnlyMimeTypes ?? 'unset',
-        ),
+				),
 				h(
 					'button',
 					{
