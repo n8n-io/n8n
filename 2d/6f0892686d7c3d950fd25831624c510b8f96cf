@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Splunk/v2/actions/router.ts
+  s_2e1fa95fc44f8f::t_8a185381090f45 45
+  s_2e1fa95fc44f8f::t_2f092787ded905 46-48
+packages/nodes-base/nodes/Splunk/test/v2/node/router.test.ts
+  s_2e1fa95fc44f8f::t_3b088ec40d9333 16-17
+  s_2e1fa95fc44f8f::t_af741f18555b8c 1-15,18-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d6f0892686d7c3d950fd25831624c510b8f96cf",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
