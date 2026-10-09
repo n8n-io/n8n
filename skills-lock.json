@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "n8n-slides": {
+      "source": "n8n-io/slidev-theme",
+      "sourceType": "github",
+      "skillPath": "packages/slidev-theme-n8n/skills/n8n-slides/SKILL.md",
+      "computedHash": "634f9980f997818f4f8f98cf29dd8dc8e99222d92a4d48cfe3961a4d4d7d30b3"
+    }
+  }
+}
