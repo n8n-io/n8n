@@ -3232,9 +3232,11 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `n8n-package-exported` event with entity counts only, not ids', () => {
 			const event: RelayEventMap['n8n-package-exported'] = {
 				user: { id: 'user123' },
+				agentIds: ['agent1', 'agent2'],
 				workflowIds: ['wf1', 'wf2', 'wf3'],
 				projectIds: ['proj1'],
 				counts: {
+					agents: 2,
 					workflows: 3,
 					folders: 1,
 					credentials: 2,
@@ -3250,6 +3252,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User exported n8n package', {
 				user_id: 'user123',
+				agent_count: 2,
 				workflow_count: 3,
 				folder_count: 1,
 				credential_count: 2,
@@ -3264,6 +3267,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `n8n-package-export-failed` event with entity counts and reason only, not ids', () => {
 			const event: RelayEventMap['n8n-package-export-failed'] = {
 				user: { id: 'user123' },
+				agentIds: ['agent1', 'agent2'],
 				reason: 'access-denied',
 				workflowIds: ['wf1', 'wf2'],
 			};
@@ -3272,6 +3276,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User package export failed', {
 				user_id: 'user123',
+				agent_count: 2,
 				reason: 'access-denied',
 				workflow_count: 2,
 				folder_count: 0,
