@@ -170,6 +170,25 @@ describe('NodeContractVersionRepository', () => {
 		);
 	});
 
+	it('keeps an sdk runtime row that a registry version pins', async () => {
+		const manifestText = '{"kind":"sdk","id":"sdkRuntime","semver":"0.1.0"}\n';
+		const sdk: StoredVersion = {
+			id: 'sdkRuntime',
+			version: '0.1.0',
+			kind: 'sdk',
+			manifest: digestOf(manifestText),
+			manifestText,
+			bundle: 'module.exports = {};\n',
+			signatures: [],
+			origin: 'private',
+		};
+		const { rows } = Container.get(NodeContractsStore);
+
+		await rows.insert([sdk]);
+
+		expect(await rows.bundle(sdk.manifest)).toBe(sdk.bundle);
+	});
+
 	it('exports the same layout bytes that it imported', async () => {
 		const source = path.join(state.dir, 'source');
 		await addToStore(source, await versions());

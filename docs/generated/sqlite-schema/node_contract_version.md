@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "node_contract_version" ("digest" varchar(71) PRIMARY KEY NOT NULL, "contractId" varchar(255) NOT NULL, "version" varchar(32) NOT NULL, "kind" varchar(16) NOT NULL, "manifest" text NOT NULL, "bundle" text, "fixtures" text, "signatures" text NOT NULL, "published" datetime(3), "origin" varchar(16) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "createdById" varchar, CONSTRAINT "CHK_node_contract_version_kind" CHECK (("kind" IN ('action', 'trigger', 'provider', 'credential'))), CONSTRAINT "CHK_node_contract_version_origin" CHECK (("origin" IN ('first-party', 'community', 'private'))), CONSTRAINT "FK_842ea5efdd7093aa855e6327831" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "node_contract_version" ("digest" varchar(71) PRIMARY KEY NOT NULL, "contractId" varchar(255) NOT NULL, "version" varchar(32) NOT NULL, "kind" varchar(16) NOT NULL, "manifest" text NOT NULL, "bundle" text, "fixtures" text, "signatures" text NOT NULL, "published" datetime(3), "origin" varchar(16) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "createdById" varchar, CONSTRAINT "CHK_node_contract_version_origin" CHECK (("origin" IN ('first-party', 'community', 'private'))), CONSTRAINT "CHK_node_contract_version_kind" CHECK ("kind" IN ('action', 'trigger', 'provider', 'credential', 'sdk')), CONSTRAINT "FK_842ea5efdd7093aa855e6327831" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -32,8 +32,8 @@ CREATE TABLE "node_contract_version" ("digest" varchar(71) PRIMARY KEY NOT NULL,
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK (("kind" IN ('action', 'trigger', 'provider', 'credential'))) |
 | - | CHECK | CHECK (("origin" IN ('first-party', 'community', 'private'))) |
+| - | CHECK | CHECK ("kind" IN ('action', 'trigger', 'provider', 'credential', 'sdk')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | digest | PRIMARY KEY | PRIMARY KEY (digest) |
 | sqlite_autoindex_node_contract_version_1 | PRIMARY KEY | PRIMARY KEY (digest) |
