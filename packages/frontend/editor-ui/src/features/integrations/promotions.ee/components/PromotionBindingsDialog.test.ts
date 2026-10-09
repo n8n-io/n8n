@@ -146,7 +146,8 @@ it('blocks dismissal and repeated form submissions while Continue is pending', a
 	});
 	const button = getByRole('button', { name: 'Continue' });
 	await userEvent.click(button);
-	const form = button.closest('form');
+	// The action sits in the footer and submits the body form through the form attribute.
+	const form = button instanceof HTMLButtonElement ? button.form : null;
 	expect(form).not.toBeNull();
 	await fireEvent.submit(form!);
 	await userEvent.keyboard('{Escape}');
