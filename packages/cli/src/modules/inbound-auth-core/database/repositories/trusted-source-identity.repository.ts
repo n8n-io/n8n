@@ -1,4 +1,11 @@
-import { BaseRepository, OperationContext, TransactionRunner, User, UserRepository } from '@n8n/db';
+import {
+	BaseRepository,
+	OperationContext,
+	Role,
+	TransactionRunner,
+	User,
+	UserRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, type DeepPartial } from '@n8n/typeorm';
 
@@ -66,6 +73,17 @@ export class TrustedSourceIdentityRepository {
 				},
 			},
 		});
+	}
+
+	/** Reads inside the identity transaction must reuse its connection: the pool may hold one. */
+	async findUserByEmail(email: string, ctx: OperationContext = {}): Promise<User | null> {
+		return await this.store
+			.managerFor(ctx)
+			.findOne(User, { where: { email }, relations: { role: true } });
+	}
+
+	async globalRoleExists(slug: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.store.managerFor(ctx).exists(Role, { where: { slug, roleType: 'global' } });
 	}
 
 	async touchLastSeen(

@@ -10,7 +10,6 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError } from '@n8n/errors';
 import {
 	type ExternalIdentity,
 	IdentityService,
@@ -160,7 +159,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 			return { ok: false, reason: 'provision-refused' };
 
 		const role = roleMapping.fallbackInstanceRole;
-		if (role === undefined || !(await this.isAssignableInstanceRole(role)))
+		if (role === undefined || !(await this.isAssignableInstanceRole(role, ctx)))
 			return { ok: false, reason: 'no-role' };
 
 		const [firstName = '', ...rest] = (external.displayName ?? '').trim().split(/\s+/);
@@ -201,14 +200,9 @@ export class TrustedSourceIdentityService extends IdentityService {
 		};
 	}
 
-	private async isAssignableInstanceRole(slug: string): Promise<boolean> {
+	private async isAssignableInstanceRole(slug: string, ctx: OperationContext): Promise<boolean> {
 		if (slug === GLOBAL_OWNER_ROLE_SLUG) return false;
-		try {
-			await this.roleService.checkRolesExist([slug], 'global');
-		} catch (error) {
-			if (error instanceof BadRequestError) return false;
-			throw error;
-		}
+		if (!(await this.identities.globalRoleExists(slug, ctx))) return false;
 		return this.roleService.isRoleLicensed(slug);
 	}
 
@@ -226,7 +220,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 			linkByEmail === 'any' || (linkByEmail === 'verified-only' && external.emailVerified === true);
 
 		if (mayLookUp && email !== undefined) {
-			const user = await this.users.findByEmailWithRole(email);
+			const user = await this.identities.findUserByEmail(email, ctx);
 			if (user !== null) {
 				if (user.disabled) return { ok: false, reason: 'user-disabled' };
 				if (user.role.slug === GLOBAL_OWNER_ROLE_SLUG) return { ok: false, reason: 'link-refused' };
