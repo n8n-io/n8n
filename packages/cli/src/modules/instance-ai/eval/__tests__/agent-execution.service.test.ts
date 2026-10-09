@@ -490,6 +490,23 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(rebuiltEntity.schema?.subAgents).toEqual({ agents: [{ agentId: 'child-1' }] });
 	});
 
+	it('keeps the draft skill refs through pruning', async () => {
+		const skillRefs = [
+			{ type: 'skill' as const, id: 'zeta' },
+			{ type: 'skill' as const, id: 'alpha', enabled: false },
+		];
+		findByIdAndProjectId.mockResolvedValue(makeEntity({ ...baseConfig, skills: skillRefs }));
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate: vi.fn().mockResolvedValue(makeGenerateResult()), close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		await buildService().executeWithLlmMock('agent-1', user, request);
+
+		const runSource = reconstructFromAgentEntity.mock.calls[0][0] as AgentRunSource;
+		expect(runSource.skillRefs).toEqual(skillRefs);
+	});
+
 	it('serves fallback web search and configured sub-agents through the instrumentation', async () => {
 		const fullConfig = {
 			...baseConfig,

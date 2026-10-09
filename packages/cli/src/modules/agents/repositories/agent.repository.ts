@@ -606,9 +606,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 	}
 
 	/**
-	 * Write only the `schema` column of a draft. Keep `updatedAt` and `revision`
-	 * as they are. This write does not check `revision`: call it only in the
-	 * same transaction as a won `saveDraftFenced`.
+	 * Write the `schema` column of a draft. Write `updatedAt` too, with the value
+	 * from the fenced save: without it, TypeORM sets `CURRENT_TIMESTAMP`. This
+	 * write does not check `revision`: call it only in the same transaction as a
+	 * won `saveDraftFenced`.
 	 */
 	async updateDraftSchema(
 		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,

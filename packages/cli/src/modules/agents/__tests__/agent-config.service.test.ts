@@ -1365,6 +1365,37 @@ describe('AgentConfigService', () => {
 			);
 		});
 
+		it('counts the stored skill refs in the modification event', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			const skillBody = { name: 'Skill', description: 'A skill', instructions: 'Do it.' };
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					skills: [
+						{ type: 'skill', id: 'refunds' },
+						{ type: 'skill', id: 'billing' },
+					],
+				},
+				skills: { refunds: skillBody, billing: skillBody },
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			const config = composeStoredJsonConfig(agent);
+			if (!config) throw new Error('Expected the agent to have a config');
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...config, instructions: 'Escalate billing questions' },
+				user,
+				fencedOn(agent),
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				skill_count: 2,
+				changed_parts: ['instructions'],
+			});
+		});
+
 		it('reports a save to an already-configured agent as a modification, not a second creation', async () => {
 			const { service, agentRepository, telemetry } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());

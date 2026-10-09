@@ -599,15 +599,15 @@ export interface OpaqueStoredSkillRefs {
 
 /**
  * Agent config as the backend stores it on the agent draft and on each
- * published version. Skill refs are not part of it: read and write them through
- * the skill refs seam. `AgentJsonConfig` (with `skills`) stays the document
- * format of REST, MCP and the agent builder.
+ * published version. Its `skills` key is opaque: read and write skill refs
+ * through `AgentSkillRefsService`. `AgentJsonConfig` (with `skills`) stays the
+ * document format of REST, MCP and the agent builder.
  *
- * The `skills` key is opaque, so a stored config is not assignable to
+ * Because the `skills` key is opaque, a stored config is not assignable to
  * `AgentJsonConfig`. To get a document, compose one with the skill refs.
  */
 export type StoredAgentConfig = Omit<AgentJsonConfig, 'skills'> & {
-	skills?: OpaqueStoredSkillRefs;
+	readonly skills?: OpaqueStoredSkillRefs;
 };
 export type BudgetGuardrailConfig = z.infer<typeof BudgetGuardrailConfigSchema>;
 
