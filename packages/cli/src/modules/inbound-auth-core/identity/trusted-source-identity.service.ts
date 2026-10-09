@@ -267,6 +267,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 		if (email === undefined || !isValidEmail(email))
 			return { ok: false, reason: 'provision-refused' };
 
+		// The config schema rejects jit provisioning without a role-mapping mode. This guards the type only.
 		if (mappedRoles === undefined) return { ok: false, reason: 'no-role' };
 
 		const role = mappedRoles.instanceRole;
