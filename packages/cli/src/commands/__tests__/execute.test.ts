@@ -275,7 +275,7 @@ test('exitWithCrash logs the crash message to the console', async () => {
 	expect(exitSpy).toHaveBeenCalledWith(1);
 });
 
-test('execute needs the expression engine', () => {
+test('execute needs the expression and regex engines', () => {
 	expect(new Execute().needsExpressionEngine).toBe(true);
 	expect(new Execute().needsRegexEngine).toBe(true);
 });

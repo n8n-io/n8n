@@ -154,7 +154,7 @@ describe('Webhook', () => {
 	});
 });
 
-test('webhook needs the expression engine', () => {
+test('webhook needs the expression and regex engines', () => {
 	expect(new Webhook().needsExpressionEngine).toBe(true);
 	expect(new Webhook().needsRegexEngine).toBe(true);
 });

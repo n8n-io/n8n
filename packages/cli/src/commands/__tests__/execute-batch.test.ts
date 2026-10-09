@@ -121,7 +121,7 @@ test('should start a task runner and the policy modules', async () => {
 	]);
 });
 
-test('execute:batch needs the expression engine', () => {
+test('execute:batch needs the expression and regex engines', () => {
 	expect(new ExecuteBatch().needsExpressionEngine).toBe(true);
 	expect(new ExecuteBatch().needsRegexEngine).toBe(true);
 });

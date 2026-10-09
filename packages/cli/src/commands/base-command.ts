@@ -113,10 +113,8 @@ export abstract class BaseCommand<F = never> {
 	protected needsExpressionEngine = false;
 
 	/**
-	 * Whether to init the regex engine. Defaults to `needsExpressionEngine`: a command
-	 * that evaluates workflow expressions also evaluates a user's regexes. Override only
-	 * where the two genuinely diverge, and as a getter (`override get needsRegexEngine()`):
-	 * unlike the other `needs*` flags, this one can't be overridden as a field.
+	 * Whether to init the regex engine. A command that evaluates workflow expressions also
+	 * evaluates a user's regexes. A getter, so it reads the `needsExpressionEngine` a subclass sets.
 	 */
 	get needsRegexEngine(): boolean {
 		return this.needsExpressionEngine;
@@ -326,10 +324,7 @@ export abstract class BaseCommand<F = never> {
 		} else if (this.needsExpressionEngine) {
 			const configuredEngine: string = this.globalConfig.regexEngine.engine;
 			if (configuredEngine !== 'js') {
-				// This command evaluates expressions, so it can reach a user's regexes, but it
-				// diverges from needsExpressionEngine by declaring it does not need the regex
-				// engine. An instance configured for a non-default one must fail loudly here
-				// instead of silently evaluating a user's regexes on the built-in engine.
+				// Expressions can run a user's regexes, which must not fall back to the built-in engine.
 				await this.exitWithCrash(
 					`This command does not support the "${configuredEngine}" regular expression engine. Set N8N_REGEX_ENGINE=js, or run a command that initializes it.`,
 					new UnexpectedError('Regex engine not initialized for a non-default configuration'),

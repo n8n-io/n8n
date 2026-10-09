@@ -365,7 +365,7 @@ describe('Worker', () => {
 	});
 });
 
-test('worker needs the expression engine', () => {
+test('worker needs the expression and regex engines', () => {
 	expect(new Worker().needsExpressionEngine).toBe(true);
 	expect(new Worker().needsRegexEngine).toBe(true);
 });

@@ -75,7 +75,7 @@ describe('ImportWorkflowsCommand', () => {
 		});
 	});
 
-	test('needs the expression engine', () => {
+	test('needs the expression and regex engines', () => {
 		expect(new ImportWorkflowsCommand().needsExpressionEngine).toBe(true);
 		expect(new ImportWorkflowsCommand().needsRegexEngine).toBe(true);
 	});

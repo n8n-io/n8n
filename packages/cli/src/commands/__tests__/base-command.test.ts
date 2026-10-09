@@ -126,19 +126,19 @@ describe('needsRegexEngine', () => {
 		regexEngineService.init.mockResolvedValue(undefined);
 	});
 
-	it('initializes the engine for a command that opts in', async () => {
+	it('should init the regex engine for a command that needs it', async () => {
 		await new RegexEngineCommand().init();
 
 		expect(regexEngineService.init).toHaveBeenCalled();
 	});
 
-	it('does not initialize the engine for a command that does not', async () => {
+	it('should not init the regex engine for a command that does not need it', async () => {
 		await new PlainCommand().init();
 
 		expect(regexEngineService.init).not.toHaveBeenCalled();
 	});
 
-	it('crashes the process when the engine cannot start', async () => {
+	it('should exit with a crash when regex engine init fails', async () => {
 		const exitSpy = vi
 			.spyOn(BaseCommand.prototype, 'exitWithCrash')
 			.mockResolvedValue(undefined as never);
@@ -152,7 +152,7 @@ describe('needsRegexEngine', () => {
 		);
 	});
 
-	it('shuts the engine down on a successful exit', async () => {
+	it('should shut the regex engine down on a successful exit', async () => {
 		const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 		const cmd = new RegexEngineCommand();
 		await cmd.init();
@@ -164,7 +164,7 @@ describe('needsRegexEngine', () => {
 		expect(exitSpy).toHaveBeenCalled();
 	});
 
-	it('does not crash a command that never evaluates expressions or regexes when a non-default engine is configured', async () => {
+	it('should not crash a command that needs neither engine when a non-default regex engine is configured', async () => {
 		Container.set(
 			GlobalConfig,
 			mock<GlobalConfig>({
@@ -185,7 +185,7 @@ describe('needsRegexEngine', () => {
 		expect(regexEngineService.init).not.toHaveBeenCalled();
 	});
 
-	it('crashes a command that evaluates expressions but diverges on regex-engine support when a non-default engine is configured', async () => {
+	it('should crash a command that needs only the expression engine when a non-default regex engine is configured', async () => {
 		Container.set(
 			GlobalConfig,
 			mock<GlobalConfig>({
