@@ -33,6 +33,28 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		super(SharedWorkflow, dataSource.manager, transactionRunner);
 	}
 
+	async findScopeAccess(
+		workflowId: string,
+		projectIds: string[],
+		roles: string[],
+		ctx: OperationContext = {},
+	): Promise<{ exists: boolean; hasAccess: boolean }> {
+		const manager = this.managerFor(ctx);
+		const exists = await manager.existsBy(SharedWorkflow, { workflowId });
+		if (!exists || projectIds.length === 0 || roles.length === 0) {
+			return { exists, hasAccess: false };
+		}
+
+		return {
+			exists,
+			hasAccess: await manager.existsBy(SharedWorkflow, {
+				workflowId,
+				projectId: In(projectIds),
+				role: In(roles),
+			}),
+		};
+	}
+
 	async findWorkflowIdsForGlobalAccess(projectId?: string): Promise<string[]> {
 		const rows = await this.find({
 			select: ['workflowId'],

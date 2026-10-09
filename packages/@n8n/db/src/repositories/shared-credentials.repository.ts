@@ -2,16 +2,41 @@ import { Service } from '@n8n/di';
 import type { CredentialSharingRole, Scope } from '@n8n/permissions';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In, Not, Repository } from '@n8n/typeorm';
+import { DataSource, In, Not } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import type { CredentialsEntity, User } from '../entities';
 import { Project, ProjectRelation, SharedCredentials } from '../entities';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
-export class SharedCredentialsRepository extends Repository<SharedCredentials> {
-	constructor(dataSource: DataSource) {
-		super(SharedCredentials, dataSource.manager);
+export class SharedCredentialsRepository extends BaseRepository<SharedCredentials> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(SharedCredentials, dataSource.manager, transactionRunner);
+	}
+
+	async findScopeAccess(
+		credentialId: string,
+		projectIds: string[],
+		roles: string[],
+		ctx: OperationContext = {},
+	): Promise<{ exists: boolean; hasAccess: boolean }> {
+		const manager = this.managerFor(ctx);
+		const exists = await manager.existsBy(SharedCredentials, { credentialsId: credentialId });
+		if (!exists || projectIds.length === 0 || roles.length === 0) {
+			return { exists, hasAccess: false };
+		}
+
+		return {
+			exists,
+			hasAccess: await manager.existsBy(SharedCredentials, {
+				credentialsId: credentialId,
+				projectId: In(projectIds),
+				role: In(roles),
+			}),
+		};
 	}
 
 	async findByCredentialIds(credentialIds: string[], role: CredentialSharingRole) {

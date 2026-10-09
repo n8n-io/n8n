@@ -624,6 +624,7 @@ describe('CredentialsFinderService', () => {
 			expect(accessRepository.findGlobalProjectCredentialById).toHaveBeenCalledWith(
 				'credential-1',
 				true,
+				{},
 			);
 		});
 

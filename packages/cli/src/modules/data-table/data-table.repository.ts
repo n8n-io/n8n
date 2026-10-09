@@ -35,6 +35,11 @@ export class DataTableRepository extends Repository<DataTable> {
 		super(DataTable, dataSource.manager);
 	}
 
+	async findProjectId(dataTableId: string): Promise<string | null> {
+		const dataTable = await this.findOne({ where: { id: dataTableId }, select: ['projectId'] });
+		return dataTable?.projectId ?? null;
+	}
+
 	/**
 	 * Updates the updatedAt timestamp for a data table without modifying any other fields.
 	 * This is used to track when the table's content (rows/columns) has changed.

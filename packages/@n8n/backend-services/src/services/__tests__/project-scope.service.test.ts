@@ -1,4 +1,4 @@
-import { ProjectRelationRepository, User } from '@n8n/db';
+import { type OperationContext, ProjectRelationRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ProjectScopeService } from '../project-scope.service';
@@ -29,17 +29,21 @@ describe('ProjectScopeService', () => {
 			]);
 
 			expect(result).toBeNull();
-			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			expect(roleService.rolesWithScopeInContext).not.toHaveBeenCalled();
 			expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
 		});
 
 		it('resolves project roles that grant the scope', async () => {
-			roleService.rolesWithScope.mockResolvedValue(['project:admin', 'project:editor']);
+			roleService.rolesWithScopeInContext.mockResolvedValue(['project:admin', 'project:editor']);
 
 			const result = await service.getProjectRoleSlugs(makeUser(), ['agent:update']);
 
-			expect(roleService.rolesWithScope).toHaveBeenCalledOnce();
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:update']);
+			expect(roleService.rolesWithScopeInContext).toHaveBeenCalledOnce();
+			expect(roleService.rolesWithScopeInContext).toHaveBeenCalledWith(
+				'project',
+				['agent:update'],
+				{},
+			);
 			expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
 			expect(result).toEqual(['project:admin', 'project:editor']);
 		});
@@ -49,12 +53,12 @@ describe('ProjectScopeService', () => {
 		const result = await service.getProjectIds(makeUser(['agent:update']), ['agent:update']);
 
 		expect(result).toBeNull();
-		expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+		expect(roleService.rolesWithScopeInContext).not.toHaveBeenCalled();
 		expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
 	});
 
 	it('resolves scoped project access with one project-relation query', async () => {
-		roleService.rolesWithScope.mockResolvedValue(['project:admin', 'project:editor']);
+		roleService.rolesWithScopeInContext.mockResolvedValue(['project:admin', 'project:editor']);
 		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([
 			'project-1',
 			'project-2',
@@ -62,13 +66,52 @@ describe('ProjectScopeService', () => {
 
 		const result = await service.getProjectIds(makeUser(), ['agent:update']);
 
-		expect(roleService.rolesWithScope).toHaveBeenCalledOnce();
-		expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:update']);
+		expect(roleService.rolesWithScopeInContext).toHaveBeenCalledOnce();
+		expect(roleService.rolesWithScopeInContext).toHaveBeenCalledWith(
+			'project',
+			['agent:update'],
+			{},
+		);
 		expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledOnce();
-		expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith('user-1', [
-			'project:admin',
-			'project:editor',
-		]);
+		expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+			'user-1',
+			['project:admin', 'project:editor'],
+			{},
+		);
 		expect(result).toEqual(['project-1', 'project-2']);
+	});
+
+	it('forwards a transaction context through role and project relation queries', async () => {
+		const context = mock<OperationContext>();
+		roleService.rolesWithScopeInContext.mockResolvedValue(['project:editor']);
+		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['project-1']);
+
+		await service.getProjectIds(makeUser(), ['agent:update'], context);
+
+		expect(roleService.rolesWithScopeInContext).toHaveBeenCalledWith(
+			'project',
+			['agent:update'],
+			context,
+		);
+		expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+			'user-1',
+			['project:editor'],
+			context,
+		);
+	});
+
+	it('resolves project roles when the global scope must not bypass sharing', async () => {
+		roleService.rolesWithScopeInContext.mockResolvedValue(['project:editor']);
+
+		await expect(
+			service.getProjectRoleSlugs(
+				makeUser(['credential:read']),
+				['credential:read'],
+				{},
+				{
+					ignoreGlobalScope: true,
+				},
+			),
+		).resolves.toEqual(['project:editor']);
 	});
 });

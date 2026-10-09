@@ -5,6 +5,7 @@ import type {
 	ListDataTableContentQueryDto,
 } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { ProjectOwnedResourceScopeResolverRegistry } from '@n8n/backend-services';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataTableRow } from 'n8n-workflow';
@@ -12,6 +13,7 @@ import type { DataTableRow } from 'n8n-workflow';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
+import { registerScopeResolver } from '../register-scope-resolver';
 import { mockDataTableSizeValidator } from './test-helpers';
 import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error';
 import { DataTableSystemColumnNameConflictError } from '../errors/data-table-system-column-name-conflict.error';
@@ -56,6 +58,23 @@ describe('dataTable', () => {
 
 	afterEach(async () => {
 		await dataTableService.deleteDataTableAll();
+	});
+
+	describe('scope access resolver', () => {
+		it('resolves the owning project and returns null for a missing table', async () => {
+			const dataTable = await dataTableService.createDataTable(project1.id, {
+				name: 'scope-access-table',
+				columns: [],
+			});
+			registerScopeResolver();
+			const resolver = Container.get(ProjectOwnedResourceScopeResolverRegistry).get('dataTable');
+
+			expect(resolver).toBeDefined();
+			await expect(dataTableRepository.findProjectId(dataTable.id)).resolves.toBe(project1.id);
+			await expect(resolver?.findProjectId(dataTable.id)).resolves.toBe(project1.id);
+			await expect(dataTableRepository.findProjectId('missing')).resolves.toBeNull();
+			await expect(resolver?.findProjectId('missing')).resolves.toBeNull();
+		});
 	});
 
 	describe('createDataTable', () => {
