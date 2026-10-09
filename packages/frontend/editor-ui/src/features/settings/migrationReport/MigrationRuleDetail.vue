@@ -7,9 +7,11 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type {
 	BreakingChangeRuleDetailResult,
 	BreakingChangeRuleDetailWorkflow,
+	BreakingChangeWorkflowOwner,
 	MigrationFindingTriageStatus,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
+import { getUsers } from '@n8n/rest-api-client/api/users';
 import {
 	N8nBadge,
 	N8nButton,
@@ -23,8 +25,9 @@ import {
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nText,
+	N8nUserSelect,
 } from '@n8n/design-system';
-import type { TableHeader } from '@n8n/design-system';
+import type { IUser, TableHeader } from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -33,7 +36,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useAsyncState, useDebounceFn } from '@vueuse/core';
 import orderBy from 'lodash/orderBy';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import FindingStateSelect from './components/FindingStateSelect.vue';
 import ImpactTag from './components/ImpactTag.vue';
@@ -50,8 +53,8 @@ const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
 
-// The page needs only `breakingChanges:list`, but a migration or a state change
-// needs `breakingChanges:migrate`.
+// The page needs only `breakingChanges:list`. A migration, a state change or
+// an owner choice needs `breakingChanges:migrate`.
 const canMigrate = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
 
 const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
@@ -76,12 +79,134 @@ const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 
 type AffectedWorkflow = BreakingChangeRuleDetailWorkflow;
 
+// The picker searches the members of the focused row's project. One result list
+// serves every row, since only one picker is open at a time.
+const isLoadingUsers = ref(false);
+const activeProjectId = ref<string | undefined>();
+const memberOptions = ref<IUser[]>([]);
+
+function userOption(user: {
+	id: string;
+	firstName?: string | null;
+	lastName?: string | null;
+	email?: string | null;
+}): IUser {
+	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+	return {
+		id: user.id,
+		firstName: user.firstName,
+		lastName: user.lastName,
+		email: user.email,
+		fullName: fullName || undefined,
+	};
+}
+
+// An owner that just came back from the server, registered as an option one
+// tick before the row takes it as its value, so the picker can resolve the label.
+const incomingOwners = ref(new Map<string, BreakingChangeWorkflowOwner>());
+
+/** The members found for the row's project, plus the row's owner so the picker never shows a bare id. */
+function ownerOptionsFor(workflow: AffectedWorkflow): IUser[] {
+	const options = workflow.homeProjectId === activeProjectId.value ? [...memberOptions.value] : [];
+	for (const owner of [workflow.owner, incomingOwners.value.get(workflow.id)]) {
+		// The picker needs an email on every option; an owner without one is left out.
+		if (owner?.email && !options.some((option) => option.id === owner.id)) {
+			options.push(userOption(owner));
+		}
+	}
+	return options;
+}
+
+// A focus or a keystroke can start a new search before the last one answered;
+// only the latest answer may fill the list.
+let memberRequestSequence = 0;
+
+async function loadMembers(projectId: string | undefined, query = '') {
+	const sequence = ++memberRequestSequence;
+	isLoadingUsers.value = true;
+	try {
+		const { items } = await getUsers(rootStore.restApiContext, {
+			skip: 0,
+			take: 50,
+			filter: {
+				...(projectId ? { projectId } : {}),
+				...(query.trim() ? { fullText: query.trim() } : {}),
+			},
+		});
+		if (sequence !== memberRequestSequence) return;
+		memberOptions.value = items.map(userOption);
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('settings.migrationReport.detail.owner.search.error.title'),
+		);
+	} finally {
+		if (sequence === memberRequestSequence) isLoadingUsers.value = false;
+	}
+}
+
+function onOwnerPickerFocus(workflow: AffectedWorkflow) {
+	if (activeProjectId.value === workflow.homeProjectId && memberOptions.value.length > 0) return;
+	activeProjectId.value = workflow.homeProjectId;
+	memberOptions.value = [];
+	void loadMembers(workflow.homeProjectId);
+}
+
+const searchMembers = useDebounceFn(
+	async (query: string) => await loadMembers(activeProjectId.value, query),
+	getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
+);
+
+// A quick second change can answer before the first; only the latest answer may land.
+const ownerRequestSequence = new Map<string, number>();
+
+async function onOwnerChange(workflow: AffectedWorkflow, userId: string) {
+	const sequence = (ownerRequestSequence.get(workflow.id) ?? 0) + 1;
+	ownerRequestSequence.set(workflow.id, sequence);
+	try {
+		const { owner } = userId
+			? await breakingChangesApi.assignWorkflowOwner(rootStore.restApiContext, workflow.id, userId)
+			: await breakingChangesApi.unassignWorkflowOwner(rootStore.restApiContext, workflow.id);
+		if (ownerRequestSequence.get(workflow.id) !== sequence) return;
+		if (owner) {
+			incomingOwners.value = new Map(incomingOwners.value).set(workflow.id, owner);
+			await nextTick();
+		}
+		// The async state is shallow, so the list is replaced rather than mutated.
+		state.value = {
+			...state.value,
+			affectedWorkflows: state.value.affectedWorkflows.map((row) =>
+				row.id === workflow.id ? { ...row, owner: owner ?? undefined } : row,
+			),
+		};
+		const remaining = new Map(incomingOwners.value);
+		remaining.delete(workflow.id);
+		incomingOwners.value = remaining;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.migrationReport.detail.owner.error.title'));
+	}
+}
+
+function ownerLabel(workflow: AffectedWorkflow): string {
+	const owner = workflow.owner;
+	const fullName = [owner?.firstName, owner?.lastName].filter(Boolean).join(' ');
+	return (
+		fullName || owner?.email || i18n.baseText('settings.migrationReport.detail.table.unassigned')
+	);
+}
+
 const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 	const headers: Array<TableHeader<AffectedWorkflow>> = [
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.name'),
 			key: 'name',
 			width: 240,
+		},
+		{
+			title: i18n.baseText('settings.migrationReport.detail.table.owner'),
+			key: 'owner',
+			value: ownerLabel,
+			width: 160,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.status'),
@@ -291,10 +416,12 @@ const filteredWorkflows = computed(() => {
 const sortedWorkflows = computed(() => {
 	if (!sortBy.value.length) return filteredWorkflows.value;
 
+	const { id, desc } = sortBy.value[0];
+	// The owner cell shows a label, so it sorts by that label and not by the owner object.
 	return orderBy(
 		filteredWorkflows.value,
-		[sortBy.value[0].id],
-		[sortBy.value[0].desc ? 'desc' : 'asc'],
+		[id === 'owner' ? ownerLabel : id],
+		[desc ? 'desc' : 'asc'],
 	);
 });
 </script>
@@ -424,6 +551,24 @@ const sortedWorkflows = computed(() => {
 						<template v-if="index < item.issues.length - 1">, </template>
 					</template>
 				</div>
+			</template>
+			<template #[`item.owner`]="{ item }">
+				<div v-if="canMigrate" @click.stop>
+					<N8nUserSelect
+						size="small"
+						:users="ownerOptionsFor(item)"
+						:model-value="item.owner?.id ?? ''"
+						:placeholder="i18n.baseText('settings.migrationReport.detail.table.unassigned')"
+						remote
+						:remote-method="searchMembers"
+						:loading="isLoadingUsers"
+						clearable
+						data-test-id="migration-owner-select"
+						@focus="onOwnerPickerFocus(item)"
+						@update:model-value="(userId: string) => onOwnerChange(item, userId)"
+					/>
+				</div>
+				<span v-else>{{ ownerLabel(item) }}</span>
 			</template>
 			<template #[`item.lastExecutedAt`]="{ item }">
 				<TimeAgo v-if="item.lastExecutedAt" :date="item.lastExecutedAt.toString()" />

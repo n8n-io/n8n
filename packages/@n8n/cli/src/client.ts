@@ -50,8 +50,8 @@ export interface ExportPackageFields {
 	projectIds?: string[];
 	includeVariableValues?: boolean;
 	includeTags?: boolean;
-	missingWorkflowDependencyPolicy?: string;
-	workflowVersionPolicy?: string;
+	dependencyPolicy?: string;
+	versionPolicy?: string;
 	credentialExportPolicy?: string;
 	includeArchivedWorkflows?: boolean;
 }
@@ -753,8 +753,8 @@ export class N8nClient {
 			projectIds?: string[];
 			includeVariableValues?: boolean;
 			includeTags?: boolean;
-			missingWorkflowDependencyPolicy?: string;
-			workflowVersionPolicy?: string;
+			dependencyPolicy?: string;
+			versionPolicy?: string;
 			credentialExportPolicy?: string;
 			includeArchivedWorkflows?: boolean;
 		} = {};
@@ -764,9 +764,8 @@ export class N8nClient {
 		// `undefined` is dropped by JSON serialization, so the API's default applies.
 		body.includeVariableValues = fields.includeVariableValues;
 		body.includeTags = fields.includeTags;
-		if (fields.missingWorkflowDependencyPolicy)
-			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
-		if (fields.workflowVersionPolicy) body.workflowVersionPolicy = fields.workflowVersionPolicy;
+		if (fields.dependencyPolicy) body.dependencyPolicy = fields.dependencyPolicy;
+		if (fields.versionPolicy) body.versionPolicy = fields.versionPolicy;
 		// Only sent when set, so an older server without this field in its schema never sees it.
 		if (fields.credentialExportPolicy) body.credentialExportPolicy = fields.credentialExportPolicy;
 		if (fields.includeArchivedWorkflows) body.includeArchivedWorkflows = true;

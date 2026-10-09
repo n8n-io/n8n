@@ -308,6 +308,7 @@ describe('AgentWorkflowExecutionService', () => {
 			agent_id: agentId,
 			user_id: userId,
 			run_type: 'production',
+			source: 'workflow',
 			message_count: 1,
 		});
 		expect(executionService.recordTimelineSnapshot).toHaveBeenCalledWith(
@@ -976,6 +977,7 @@ describe('AgentWorkflowExecutionService', () => {
 					agent_id: 'inline:wf-1:Message an Agent',
 					agent_type: 'inline',
 					run_type: 'production',
+					source: 'workflow',
 					turn_status: 'succeeded',
 					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
 				}),

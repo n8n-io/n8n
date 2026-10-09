@@ -144,6 +144,24 @@ describe('CreditWarningBanner', () => {
 		});
 
 		// The tooltip promises credits renew next month. A locked trial quota does not.
+		it('uses an override message and hides dismiss when the state is not dismissible', () => {
+			const wrapper = mount(CreditWarningBanner, {
+				props: {
+					creditsRemaining: 0,
+					creditsQuota: 800,
+					message: "You've run out of AI credits",
+					dismissible: false,
+				},
+			});
+
+			const text = wrapper.get('[data-test-id="credit-warning-banner"]').text();
+			expect(text).toContain("You've run out of AI credits");
+			expect(text).not.toContain('remaining');
+			expect(wrapper.find('[data-test-id="credit-banner-dismiss"]').exists()).toBe(false);
+			expect(wrapper.find('[data-test-id="credit-banner-renewal-info"]').exists()).toBe(false);
+			expect(wrapper.find('[data-test-id="credit-banner-get-more"]').exists()).toBe(true);
+		});
+
 		it('drops the renewal tooltip', () => {
 			const withAmounts = mount(CreditWarningBanner, {
 				props: { creditsRemaining: 0, creditsQuota: 800 },

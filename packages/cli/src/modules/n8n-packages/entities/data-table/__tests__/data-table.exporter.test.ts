@@ -48,6 +48,28 @@ function makeExporter() {
 }
 
 describe('DataTableExporter', () => {
+	it('keeps Agent and workflow consumers separate when their IDs match', async () => {
+		const { exporter, dataTableService } = makeExporter();
+		dataTableService.findDataTablesByIdsForUser.mockResolvedValue([makeDataTable()]);
+		const agent = { agentId: 'wf-1', projectId: 'proj-1', dataTableId: 'dt1' };
+		const result = await exporter.export({
+			user,
+			writer: new CapturingWriter(),
+			requirements: [agent, makeRequirement(), agent],
+		});
+		expect(result.entries).toHaveLength(1);
+		expect(result.requirements).toEqual([
+			{
+				id: 'dt1',
+				name: 'Customers',
+				usedBy: [
+					{ kind: 'agent', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-1' },
+				],
+			},
+		]);
+	});
+
 	describe('empty input', () => {
 		it('returns empty result and writes nothing when given no requirements', async () => {
 			const { exporter, dataTableService } = makeExporter();

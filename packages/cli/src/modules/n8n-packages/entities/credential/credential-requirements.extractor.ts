@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 
 import { extractAgentCredentialIds } from '@/modules/agents/utils/extract-agent-credential-ids';
 
-import type { AgentCredentialRequirement, WorkflowCredentialRequirement } from './credential.types';
+import type { CredentialReference, WorkflowCredentialRequirement } from './credential.types';
 import { visitWorkflowCredentials } from './workflow-credential-references';
 
 @Service()
@@ -27,8 +27,8 @@ export class CredentialRequirementsExtractor {
 		return [...byId.values()];
 	}
 
-	extractFromAgent(config: AgentJsonConfig | null): AgentCredentialRequirement[] {
-		const credentials = new Map<string, AgentCredentialRequirement>(
+	extractFromAgent(config: AgentJsonConfig | null): CredentialReference[] {
+		const credentials = new Map<string, CredentialReference>(
 			[...extractAgentCredentialIds(config)].map((id) => [id, { credentialId: id }]),
 		);
 		const nodeCredentials = (config?.tools ?? [])
