@@ -1,5 +1,6 @@
 import type {
 	DecideWorkflowReviewRequestResponse,
+	InboxSelfHealingItem,
 	InboxWorkflowReviewItem,
 	WorkflowReviewRequestDetail,
 } from '@n8n/api-types';
@@ -54,6 +55,7 @@ const renderOptions = {
      <button data-test-id="retry-waiting" @click="$emit('retry', 'waiting')" />
      <button data-test-id="select-review" @click="$emit('select', { type: 'workflow_review', id: 'req-1' })" />
      <button data-test-id="select-other-review" @click="$emit('select', { type: 'workflow_review', id: 'req-2' })" />
+     <button data-test-id="select-result" @click="$emit('select', { type: 'self_healing_result', id: 'req-1', projectId: 'p1', workflowId: 'w1' })" />
      <button data-test-id="clear-review" @click="$emit('clear')" />
      <button data-test-id="select-closed-tab" @click="$emit('update:active-tab', 'closed')" />
     </div>`,
@@ -79,6 +81,10 @@ const renderOptions = {
     <slot v-if="!listItem" />
     </div>`,
 			}),
+			SelfHealingResultDetail: {
+				props: ['selection'],
+				template: '<div data-test-id="result-detail" :data-id="selection.id" />',
+			},
 		},
 	},
 };
@@ -93,7 +99,7 @@ beforeEach(async () => {
 	await router.isReady();
 	mockedStore(useSettingsStore).settings.inbox = {
 		enabled: true,
-		availableTypes: ['workflow_review'],
+		availableTypes: ['workflow_review', 'self_healing_result'],
 		failedTypes: [],
 	};
 	store = mockedStore(useInboxStore);
@@ -113,17 +119,18 @@ it('refreshes the list and summary on mount', async () => {
 it('keeps the loaded list when navigating between Inbox routes', async () => {
 	const { getByTestId, queryByTestId } = renderRoutedComponent();
 	await waitAllPromises();
-	store.lists.waiting.items = [reviewItem(), { ...reviewItem(), id: 'req-2' }];
+	store.lists.waiting.items = [reviewItem(), resultItem()];
 	store.lists.waiting.nextCursor = 'next-page';
-	for (const button of ['select-review', 'select-other-review', 'clear-review']) {
+	for (const button of ['select-review', 'select-result', 'clear-review']) {
 		getByTestId(button).click();
 		await waitAllPromises();
 	}
 	expect(router.currentRoute.value.fullPath).toBe('/inbox');
 	expect(queryByTestId('review-detail')).not.toBeInTheDocument();
+	expect(queryByTestId('result-detail')).not.toBeInTheDocument();
 	expect(store.reset).toHaveBeenCalledOnce();
 	expect(store.refreshListAndSummary).toHaveBeenCalledOnce();
-	expect(store.lists.waiting.items).toEqual([reviewItem(), { ...reviewItem(), id: 'req-2' }]);
+	expect(store.lists.waiting.items).toEqual([reviewItem(), resultItem()]);
 	expect(store.lists.waiting.nextCursor).toBe('next-page');
 });
 
@@ -135,8 +142,24 @@ it('passes the selected review and list fallback to its detail entry', async () 
 	expect(getByTestId('review-detail')).toHaveAttribute('data-title', 'List review');
 });
 
-it('clears selection and keeps the current state and tab', async () => {
-	await router.replace('/inbox/reviews/req-1?state=closed&tab=changes');
+it('selects a result with the same ID without rendering the review entry', async () => {
+	await router.replace('/inbox/reviews/req-1');
+	const { getByTestId, queryByTestId } = renderComponent();
+	getByTestId('select-result').click();
+	await waitAllPromises();
+	expect(router.currentRoute.value.query).toEqual({
+		projectId: 'p1',
+		workflowId: 'w1',
+	});
+	expect(router.currentRoute.value.path).toBe('/inbox/assistant-results/req-1');
+	expect(getByTestId('result-detail')).toHaveAttribute('data-id', 'req-1');
+	expect(queryByTestId('review-detail')).not.toBeInTheDocument();
+});
+
+it('clears source context and keeps the current state and tab', async () => {
+	await router.replace(
+		'/inbox/assistant-results/r1?projectId=p1&workflowId=w1&state=closed&tab=changes',
+	);
 	const { getByTestId } = renderComponent();
 	getByTestId('clear-review').click();
 	await waitAllPromises();
@@ -236,7 +259,7 @@ it('does not replace the URL when already on Closed', async () => {
 	expect(replace).not.toHaveBeenCalled();
 });
 
-it.each(['select-other-review'])(
+it.each(['select-other-review', 'select-result'])(
 	'reconciles a late decision without following it after %s',
 	async (target) => {
 		await router.replace('/inbox/reviews/req-1');
@@ -279,6 +302,7 @@ it.each([
 	['/inbox/reviews/req-1', false],
 	['/inbox/reviews/req-1', true],
 	['/inbox/reviews/req-2', false],
+	['/inbox/assistant-results/result-1?projectId=p1&workflowId=w1', false],
 	['/other', false],
 ])(
 	'reconciles approval after leaving the page for %s (pending detail: %s)',
@@ -398,6 +422,22 @@ function reviewItem(): InboxWorkflowReviewItem {
 		updatedAt: '2024-01-01T00:00:00.000Z',
 	};
 }
+function resultItem(): InboxSelfHealingItem {
+	return {
+		type: 'self_healing_result',
+		id: 'req-1',
+		projectId: 'p1',
+		workflowId: 'w1',
+		workflowName: 'Workflow',
+		state: 'open',
+		outcome: 'fix_ready',
+		summary: 'Fix ready',
+		createdAt: '2024-01-01T00:00:00.000Z',
+		updatedAt: '2024-01-01T00:00:00.000Z',
+		completedAt: '2024-01-01T00:00:00.000Z',
+	};
+}
+
 it('routes group pagination and retry to the named slice', async () => {
 	const loadAuthored = vi.spyOn(store.lists.authored, 'loadMore').mockResolvedValue(undefined);
 	const retryWaiting = vi.spyOn(store.lists.waiting, 'retry').mockResolvedValue(undefined);
@@ -473,7 +513,7 @@ it('restarts a partial group after a page failure while retaining exact page ret
 	const request = vi
 		.fn()
 		.mockResolvedValueOnce({
-			data: [reviewItem()],
+			data: [resultItem()],
 			nextCursor: 'partial-next',
 			hasMore: true,
 			partial: true,
@@ -483,7 +523,7 @@ it('restarts a partial group after a page failure while retaining exact page ret
 		.mockRejectedValueOnce(new Error('Page failed'))
 		.mockRejectedValueOnce(new Error('Page still failed'))
 		.mockResolvedValueOnce({
-			data: [reviewItem(), { ...reviewItem(), id: 'req-2' }],
+			data: [reviewItem(), resultItem()],
 			nextCursor: null,
 			hasMore: false,
 			partial: false,
@@ -502,7 +542,10 @@ it('restarts a partial group after a page failure while retaining exact page ret
 	getByTestId('refresh-waiting').click();
 	await waitAllPromises();
 	expect(request).toHaveBeenLastCalledWith();
-	expect(waiting.items.map((item) => item.type)).toEqual(['workflow_review', 'workflow_review']);
+	expect(waiting.items.map((item) => item.type)).toEqual([
+		'workflow_review',
+		'self_healing_result',
+	]);
 	expect(waiting.partial).toBe(false);
 	expect(waiting.error).toBeNull();
 	expect(waiting.nextCursor).toBeNull();

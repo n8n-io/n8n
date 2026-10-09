@@ -1,4 +1,4 @@
-import type { InboxWorkflowReviewItem } from '@n8n/api-types';
+import type { InboxSelfHealingItem, InboxWorkflowReviewItem } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { fireEvent, within } from '@testing-library/vue';
@@ -25,6 +25,22 @@ function section(
 		error: null,
 		failedRequest: null,
 		partial: false,
+		...props,
+	};
+}
+function result(props: Partial<InboxSelfHealingItem> = {}): InboxSelfHealingItem {
+	return {
+		type: 'self_healing_result',
+		id: 'result',
+		state: 'open',
+		projectId: 'project',
+		workflowId: 'workflow',
+		workflowName: 'My workflow',
+		summary: 'Fix the workflow',
+		outcome: 'fix_ready',
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z',
+		completedAt: '2026-01-01T00:00:00.000Z',
 		...props,
 	};
 }
@@ -106,12 +122,12 @@ it('keeps healthy rows visible beside a failed group', () => {
 	const { queryByRole, getByRole, emitted } = renderComponent({
 		props: {
 			sections: [
-				section('waiting', { items: [review()] }),
+				section('waiting', { items: [result()] }),
 				section('authored', { error: new Error('Request failed') }),
 			],
 		},
 	});
-	expect(getByRole('option')).toHaveTextContent('Review my workflow');
+	expect(getByRole('option')).toHaveTextContent('Fix the workflow');
 	getByRole('button', { name: 'Retry' }).click();
 	expect(emitted('retry')).toEqual([['authored']]);
 	expect(queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
@@ -130,14 +146,14 @@ it('keeps a partial empty group visible with its own retry', () => {
 });
 it('collapses groups without requesting more data', async () => {
 	const { getByRole, queryByRole, emitted } = renderComponent({
-		props: { sections: [section('waiting', { items: [review()] })] },
+		props: { sections: [section('waiting', { items: [result()] })] },
 	});
 	const header = getByRole('button', { name: 'Waiting for your review' });
 	await fireEvent.click(header);
 	expect(header).toHaveAttribute('aria-expanded', 'false');
 	expect(queryByRole('option')).not.toBeInTheDocument();
 	await fireEvent.click(header);
-	expect(getByRole('option')).toHaveTextContent('Review my workflow');
+	expect(getByRole('option')).toHaveTextContent('Fix the workflow');
 	expect(emitted('loadMore')).toBeUndefined();
 });
 it('uses the impersonal waiting label for administrators', () => {
@@ -198,6 +214,34 @@ it('rearms the Closed sentinel after a failed page and removes it on Open', asyn
 	await rerender({ activeTab: 'open', sections: [section('waiting')] });
 	expect(target).toHaveProperty('value', null);
 });
+it('renders compact rows with an Assistant avatar and no source subtitle', () => {
+	const { getAllByRole, queryByText } = renderComponent({
+		props: { sections: [section('waiting', { items: [result(), review()] })] },
+	});
+	const [assistantRow, reviewRow] = getAllByRole('option');
+	expect(within(assistantRow).getByTestId('inbox-assistant-avatar')).toBeInTheDocument();
+	expect(within(reviewRow).queryByTestId('inbox-assistant-avatar')).not.toBeInTheDocument();
+	expect(within(assistantRow).getByText('My workflow')).toBeInTheDocument();
+	expect(queryByText('Workflow review')).not.toBeInTheDocument();
+	expect(queryByText('Fix ready')).not.toBeInTheDocument();
+});
+it.each([
+	['fix_ready', 'open', 'Open | Fix ready', 'fixReady'],
+	['needs_you', 'open', 'Open | Needs attention', 'needsAttention'],
+	['could_not_fix', 'open', 'Open | Could not fix', 'needsAttention'],
+	['fix_ready', 'closed', 'Closed | Fix ready', 'closed'],
+] as const)(
+	'labels Assistant %s/%s without implying review approval',
+	(outcome, state, label, color) => {
+		const { getByRole } = renderComponent({
+			props: { sections: [section('waiting', { items: [result({ outcome, state })] })] },
+		});
+		const dot = getByRole('img', { name: label });
+		expect(dot.className).toContain(color);
+		expect(dot).not.toHaveAccessibleName(/approved/i);
+	},
+);
+
 it('separates partial-source recovery from a failed page retry', () => {
 	const { getByTestId, emitted } = renderComponent({
 		props: { sections: [section('waiting', { partial: true, error: new Error('Page failed') })] },
