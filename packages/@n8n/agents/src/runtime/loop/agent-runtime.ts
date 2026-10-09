@@ -539,9 +539,11 @@ export class AgentRuntime {
 
 		const list = await this.restoreCheckpointMessages(state);
 
-		const tool = this.context
-			.getCurrentTools(state.persistence)
-			.find((t) => t.name === toolCall.toolName);
+		// A skill dependency loads a deferred tool without a `load_tool` record, and
+		// skills restore only when the loop starts. Accept any registered deferred tool.
+		const tool =
+			this.context.getCurrentTools(state.persistence).find((t) => t.name === toolCall.toolName) ??
+			this.deferredToolManager?.getTool(toolCall.toolName);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;

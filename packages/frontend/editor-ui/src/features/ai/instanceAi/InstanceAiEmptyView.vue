@@ -153,7 +153,7 @@ const canSelectProject = computed(
 	() => projectsStore.isTeamProjectFeatureEnabled && projectsStore.myProjects.length > 1,
 );
 const settingsStore = useInstanceAiSettingsStore();
-const { showCreditWarning, quotaLocked } = storeToRefs(store);
+const { showCreditWarning, quotaLocked, isOutOfCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
@@ -164,6 +164,14 @@ const mentionsEnabled = useIsAssistantAtMentionsEnabled();
 useDocumentTitle().set(i18n.baseText('instanceAi.view.title'));
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(showCreditWarning);
+const outOfCreditsMessage = computed(() => {
+	if (!isOutOfCredits.value) return undefined;
+	return i18n.baseText(
+		appSettingsStore.moduleSettings?.['instance-ai']?.activationCapped
+			? 'instanceAi.error.outOfCredits.trialTitle'
+			: 'instanceAi.error.outOfCredits.title',
+	);
+});
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
@@ -777,10 +785,12 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				</div>
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
-						v-if="creditBanner.visible.value"
+						v-if="isOutOfCredits || creditBanner.visible.value"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
 						:amounts-hidden="quotaLocked"
+						:message="outOfCreditsMessage"
+						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
@@ -789,6 +799,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
+						:is-out-of-credits="isOutOfCredits"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						:mentions-enabled="mentionsEnabled"
 						:mention-project-id="selectedProject"
@@ -818,10 +829,12 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				<template #input>
 					<div :class="$style.centeredInput">
 						<CreditWarningBanner
-							v-if="creditBanner.visible.value"
+							v-if="isOutOfCredits || creditBanner.visible.value"
 							:credits-remaining="store.creditsRemaining"
 							:credits-quota="store.creditsQuota"
 							:amounts-hidden="quotaLocked"
+							:message="outOfCreditsMessage"
+							:dismissible="!isOutOfCredits"
 							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 							@dismiss="creditBanner.dismiss()"
 						/>
@@ -830,6 +843,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						<InstanceAiInput
 							ref="chatInputRef"
 							:is-submitting="isStartingThread"
+							:is-out-of-credits="isOutOfCredits"
 							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 							:mentions-enabled="mentionsEnabled"
 							:mention-project-id="selectedProject"
@@ -863,15 +877,18 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					<InstanceAiFreeNudge
 						:eligible="
 							store.creditsQuota !== undefined &&
+							!isOutOfCredits &&
 							!creditBanner.visible.value &&
 							settingsStore.isWorkflowBuilderAvailable
 						"
 					/>
 					<CreditWarningBanner
-						v-if="creditBanner.visible.value"
+						v-if="isOutOfCredits || creditBanner.visible.value"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
 						:amounts-hidden="quotaLocked"
+						:message="outOfCreditsMessage"
+						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
@@ -880,6 +897,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
+						:is-out-of-credits="isOutOfCredits"
 						:is-workflow-builder-available="isComposerAvailable"
 						:mentions-enabled="inputMentionsEnabled"
 						:mention-project-id="selectedProject"

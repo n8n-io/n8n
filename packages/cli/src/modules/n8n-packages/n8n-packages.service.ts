@@ -24,7 +24,10 @@ import { TagExporter } from './entities/tag/tag.exporter';
 import { VariableExporter } from './entities/variable/variable.exporter';
 import { collectNodeTypeUsage } from './entities/workflow/node-type-usage';
 import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
-import { AutoIncludedWorkflowResolver } from './entities/workflow/auto-included-workflow-resolver';
+import {
+	AutoIncludedWorkflowResolver,
+	type WorkflowExportSeed,
+} from './entities/workflow/auto-included-workflow-resolver';
 import {
 	AutoIncludedWorkflowExporter,
 	type AutoIncludedWorkflowExportResult,
@@ -269,9 +272,21 @@ export class N8nPackagesService {
 			const autoIncludedWorkflowResolution = await this.autoIncludedWorkflowResolver.resolve({
 				user: request.user,
 				requirements: workflowRequirements,
-				topLevelWorkflowIds: workflowExportResult?.entries.map(({ id }) => id) ?? [],
-				folderWorkflowIds: folderExportResult?.workflowEntries.map(({ id }) => id) ?? [],
-				projectWorkflowIds: projectExportResult?.workflowEntries.map(({ id }) => id) ?? [],
+				exportedWorkflowIds: allWorkflowsBeforeAutoInclude.map(({ id }) => id),
+				workflowSeeds: [
+					...(workflowExportResult?.entries ?? []).map<WorkflowExportSeed>(({ id }) => ({
+						workflowId: id,
+						origin: 'top-level',
+					})),
+					...(folderExportResult?.workflowEntries ?? []).map<WorkflowExportSeed>(({ id }) => ({
+						workflowId: id,
+						origin: 'folder',
+					})),
+					...(projectExportResult?.workflowEntries ?? []).map<WorkflowExportSeed>(({ id }) => ({
+						workflowId: id,
+						origin: 'project',
+					})),
+				],
 				includeTags,
 				workflowVersionPolicy,
 			});
@@ -421,7 +436,7 @@ export class N8nPackagesService {
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
-		const manifest = await this.packageParser.getManifest(reader);
+		const manifest = await this.readImportManifest(reader);
 		const { result, scopes } = await this.dispatchImport(
 			request,
 			reader,
@@ -479,7 +494,7 @@ export class N8nPackagesService {
 		selection: ImportSelection,
 	): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
-		const manifest = await this.packageParser.getManifest(reader);
+		const manifest = await this.readImportManifest(reader);
 		if (!isProjectPackage(manifest)) {
 			throw new BadRequestError('A selection import requires a project package.');
 		}
@@ -500,13 +515,21 @@ export class N8nPackagesService {
 		return result;
 	}
 
+	private async readImportManifest(reader: PackageReader): Promise<PackageManifest> {
+		const manifest = await this.packageParser.getManifest(reader);
+		if (manifest.agents?.length) {
+			throw new BadRequestError('Importing packages that contain Agents is not supported yet.');
+		}
+		return manifest;
+	}
+
 	/** An empty working copy needs no import. Reject content without a project. */
 	private async readDirectoryProjectPackage(source: {
 		sourceDir: string;
 	}): Promise<DirectoryProjectPackage> {
 		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
 		await reader.listEntries();
-		const manifest = await this.packageParser.getManifest(reader);
+		const manifest = await this.readImportManifest(reader);
 		if (isProjectPackage(manifest)) {
 			return { status: 'project', reader, manifest };
 		}
