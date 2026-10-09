@@ -172,19 +172,21 @@ const sessionValue = computed(() => {
 					</N8nText>
 				</span>
 				<span :class="$style.rowValue">
-					<N8nText size="small">{{ monthlyValue }}</N8nText>
-					<N8nText
-						v-if="monthlyBudget !== undefined && budget?.alertThresholdPercent !== undefined"
-						size="small"
-						:class="shared.dataEntrySubLabel"
-						data-testid="agent-budget-alert-value"
-					>
-						{{
-							i18n.baseText('agents.builder.budget.monthly.alert', {
-								interpolate: { percent: budget.alertThresholdPercent },
-							})
-						}}
-					</N8nText>
+					<div :class="$style.rowValueStack">
+						<N8nText size="small">{{ monthlyValue }}</N8nText>
+						<N8nText
+							v-if="monthlyBudget !== undefined && budget?.alertThresholdPercent !== undefined"
+							size="small"
+							:class="shared.dataEntrySubLabel"
+							data-testid="agent-budget-alert-value"
+						>
+							{{
+								i18n.baseText('agents.builder.budget.monthly.alert', {
+									interpolate: { percent: budget.alertThresholdPercent },
+								})
+							}}
+						</N8nText>
+					</div>
 					<N8nIcon icon="chevron-right" />
 				</span>
 			</button>
@@ -205,7 +207,9 @@ const sessionValue = computed(() => {
 					</N8nText>
 				</span>
 				<span :class="$style.rowValue">
-					<N8nText size="small">{{ sessionValue }}</N8nText>
+					<div :class="$style.rowValueStack">
+						<N8nText size="small">{{ sessionValue }}</N8nText>
+					</div>
 					<N8nIcon icon="chevron-right" />
 				</span>
 			</button>
@@ -243,7 +247,14 @@ const sessionValue = computed(() => {
 
 .usageHeader {
 	display: flex;
+	align-items: flex-start;
 	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.usageHeader > :last-child {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .spent {
@@ -267,9 +278,17 @@ const sessionValue = computed(() => {
 
 .rowValue {
 	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	gap: var(--spacing--xs);
+}
+
+.rowValueStack {
+	display: flex;
 	flex-direction: column;
 	align-items: flex-end;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--4xs);
+	white-space: nowrap;
 }
 
 .track {
@@ -286,7 +305,7 @@ const sessionValue = computed(() => {
 
 .row {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	width: 100%;
@@ -302,8 +321,11 @@ const sessionValue = computed(() => {
 }
 
 .rowLabel {
+	opacity: var(--agent-row-label-opacity, 1);
 	display: flex;
+	flex: 1 1 auto;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+	min-width: 0;
 }
 </style>

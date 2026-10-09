@@ -378,16 +378,23 @@ const CustomToolJsonConfigSchema = z.object({
 
 /**
  * Per-field binding for a workflow tool's Execute Workflow Trigger inputs.
- * - `ai`: field is advertised to the LLM and must be supplied at call time.
+ * - `ai`: field is advertised to the LLM with optional input guidance.
  * - `fixed`: field is omitted from the LLM schema and injected at invoke time.
+ * - `expression`: field is omitted from the LLM schema and resolved at invoke time.
  */
 export const WorkflowToolInputFieldSchema = z.discriminatedUnion('mode', [
-	z.object({ mode: z.literal('ai') }).strict(),
+	z.object({ mode: z.literal('ai'), description: z.string().optional() }).strict(),
 	z
 		.object({
 			mode: z.literal('fixed'),
 			// Reject missing/undefined — fixed bindings must pin a concrete value.
 			value: jsonValueSchema,
+		})
+		.strict(),
+	z
+		.object({
+			mode: z.literal('expression'),
+			value: z.string().regex(/^=\s*\S/, 'Enter an expression that starts with ='),
 		})
 		.strict(),
 ]);

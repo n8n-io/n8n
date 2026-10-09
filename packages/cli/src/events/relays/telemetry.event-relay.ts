@@ -322,6 +322,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 			'history-compacted': (event) => this.historyCompacted(event),
+			'migration-report-viewed': (event) => this.migrationReportViewed(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 			'execution-data-revealed': (event) => this.executionDataRevealed(event),
 			'workflow-review-requested': (event) => this.workflowReviewRequested(event),
@@ -1376,6 +1377,7 @@ export class TelemetryEventRelay extends EventRelay {
 			credentials_required: counts.credentials.requirements,
 			data_tables_matched: counts.dataTables.matched,
 			data_tables_created: counts.dataTables.created,
+			data_tables_updated: counts.dataTables.updated,
 			data_tables_required: counts.dataTables.requirements,
 			variables_matched: counts.variables.matched,
 			variables_missing: counts.variables.missing,
@@ -1400,6 +1402,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
+			agent_count: counts.agents,
 			workflow_count: counts.workflows,
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
@@ -1414,6 +1417,7 @@ export class TelemetryEventRelay extends EventRelay {
 	private packageExportFailed({
 		user,
 		reason,
+		agentIds,
 		workflowIds,
 		folderIds,
 		projectIds,
@@ -1421,6 +1425,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User package export failed', {
 			user_id: user.id,
 			reason,
+			agent_count: agentIds?.length ?? 0,
 			workflow_count: workflowIds?.length ?? 0,
 			folder_count: folderIds?.length ?? 0,
 			project_count: projectIds?.length ?? 0,
@@ -2388,6 +2393,29 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #endregion
 	// #region workflow history compaction
+	private migrationReportViewed({
+		user,
+		targetVersion,
+		refreshed,
+		report,
+	}: RelayEventMap['migration-report-viewed']) {
+		this.telemetry.track(TELEMETRY_EVENT.MIGRATION_REPORT.USER_VIEWED_MIGRATION_REPORT, {
+			user_id: user.id,
+			target_version: targetVersion,
+			refreshed,
+			total_workflows: report.totalWorkflows,
+			affected_workflows: report.totalAffectedWorkflows,
+			// The overview lists only the instance rules that fired.
+			affected_instance_rules: report.report.instanceResults.length,
+			rules: report.report.workflowResults.map((rule) => ({
+				rule_id: rule.ruleId,
+				impact: rule.ruleImpact,
+				affected_workflows: rule.nbAffectedWorkflows,
+			})),
+			synced_at: new Date(report.report.generatedAt).toISOString(),
+		});
+	}
+
 	private historyCompacted({
 		workflowsProcessed,
 		totalVersionsSeen,

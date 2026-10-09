@@ -11,6 +11,7 @@ import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useNdvAgentConfig, type UseNdvAgentConfigReturn } from '../useNdvAgentConfig';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 // The API layer is the seam under our control; `useAgentConfig` is the REAL
 // composable so its stale-fetch drop is exercised authentically.
@@ -136,6 +137,7 @@ function mountComposable(activeNode: Ref<INodeUi | null>) {
 describe('useNdvAgentConfig', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
+		vi.spyOn(useSettingsStore(), 'isAgentsEnabled', 'get').mockReturnValue(true);
 		getAgentMock.mockReset().mockResolvedValue(makeAgent());
 		getAgentConfigMock.mockReset().mockResolvedValue(makeConfigResponse());
 	});
@@ -175,6 +177,19 @@ describe('useNdvAgentConfig', () => {
 				expect.objectContaining({ instructions: 'Fetched instructions.' }),
 			);
 			expect(api.referenced.isPublished.value).toBe(true);
+		});
+
+		it('does not fetch, or mark the agent unavailable, while agents are disabled', async () => {
+			vi.spyOn(useSettingsStore(), 'isAgentsEnabled', 'get').mockReturnValue(false);
+
+			const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
+			const { api } = mountComposable(node);
+			await flushPromises();
+
+			expect(api.referenced.agentsDisabled.value).toBe(true);
+			expect(api.referenced.isUnavailable.value).toBe(false);
+			expect(getAgentConfigMock).not.toHaveBeenCalled();
+			expect(getAgentMock).not.toHaveBeenCalled();
 		});
 
 		it('short-circuits when no agent is referenced (agentId === "")', async () => {

@@ -17,8 +17,8 @@ const i18n = useI18n();
 
 <template>
 	<div :class="$style.mcpPanel">
-		<div :class="$style.settingRow">
-			<div :class="$style.settingLabel">
+		<div :class="shared.settingRow">
+			<div :class="shared.settingLabel">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.mcp.availableInMCP.label') }}
 				</N8nText>
@@ -29,6 +29,7 @@ const i18n = useI18n();
 			<N8nSwitch2
 				:model-value="availableInMcp"
 				:disabled="disabled"
+				:class="shared.settingControl"
 				data-testid="agent-available-in-mcp-toggle"
 				@update:model-value="(value: boolean) => emit('toggle-mcp-access', value)"
 			/>
@@ -42,22 +43,5 @@ const i18n = useI18n();
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
-}
-
-.settingRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	min-height: var(--spacing--xl);
-	width: 100%;
-}
-
-.settingLabel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
 }
 </style>

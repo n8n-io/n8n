@@ -97,6 +97,7 @@ export {
 	UnregisteredOwnerTypeError,
 	InvalidOwnerIdError,
 	InvalidOwnerMemberIdError,
+	LeaseLostError,
 } from './errors';
 export type { RetentionOptions, RetentionSummary } from './retention';
 

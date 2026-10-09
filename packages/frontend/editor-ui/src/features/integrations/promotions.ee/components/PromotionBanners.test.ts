@@ -153,15 +153,36 @@ describe('PromotionBanners', () => {
 		await userEvent.click(await findByTestId('promotion-incoming-banner-link'));
 		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 			name: 'promotionSelect',
-			data: {
-				projectId: 'project-1',
-				direction: 'apply',
-				apply: { connectionId: 'connection-1', configId: 'config-1', branchName: 'main' },
-			},
+			data: { projectId: 'project-1', direction: 'apply' },
 		});
 
 		usersStore.currentUser = mock<IUser>({ globalScopes: ['gitConnection:list'] });
 		await waitFor(() => expect(queryByTestId('promotion-incoming-banner')).not.toBeInTheDocument());
+	});
+
+	it('refetches only the promote count after a selective promote', async () => {
+		const promoteChanges = vi.fn(() => oneChange('Outgoing workflow', 'modified'));
+		const applyChanges = vi.fn(() => oneChange('Incoming workflow', 'new'));
+		server.get('/api/v1/promotions/connections', () =>
+			connections({
+				promote: { id: 'config-1' },
+				apply: { id: 'config-2', settings: { branchName: 'main' } },
+			}),
+		);
+		server.get('/rest/promotions/project-1/changes/promote', promoteChanges);
+		server.get('/rest/promotions/project-1/changes/apply', applyChanges);
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:push', 'gitConnection:pull'],
+		});
+		const { findByTestId } = renderComponent();
+		await findByTestId('promotion-banner');
+		await findByTestId('promotion-incoming-banner');
+
+		promotionEventBus.emit('promoted', { projectId: 'project-1' });
+
+		await waitFor(() => expect(promoteChanges).toHaveBeenCalledTimes(2));
+		expect(applyChanges).toHaveBeenCalledTimes(1);
+		expect(projectsStore.setCurrentProject).not.toHaveBeenCalled();
 	});
 
 	it('refetches both counts after a package was applied', async () => {

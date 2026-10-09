@@ -455,6 +455,63 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
+	it('starts preparing runtime skills in the background without waiting for them', async () => {
+		let finishPrepare: () => void = () => {};
+		const prepare = vi.fn(
+			async () =>
+				await new Promise<void>((resolve) => {
+					finishPrepare = resolve;
+				}),
+		);
+		const runtimeSkills = {
+			registry: {
+				schemaVersion: 1,
+				skillsHash: 'skills-hash',
+				skills: [{ id: 'data-table-manager', name: 'data-table-manager', description: 'x' }],
+			},
+			prepare,
+			loadSkill: vi.fn(),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {},
+			orchestrationContext: { runId: 'skills-test', runtimeSkills },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(prepare).toHaveBeenCalledTimes(1);
+		finishPrepare();
+	});
+
+	it('logs a background skill preparation failure instead of rejecting', async () => {
+		const logger = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() };
+		const runtimeSkills = {
+			registry: {
+				schemaVersion: 1,
+				skillsHash: 'skills-hash',
+				skills: [{ id: 'data-table-manager', name: 'data-table-manager', description: 'x' }],
+			},
+			prepare: vi.fn(async () => await Promise.reject(new Error('sandbox unavailable'))),
+			loadSkill: vi.fn(),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {},
+			orchestrationContext: { runId: 'skills-test', runtimeSkills, logger },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		await vi.waitFor(() =>
+			expect(logger.warn).toHaveBeenCalledWith('Failed to warm runtime skills in the background', {
+				error: 'sandbox unavailable',
+			}),
+		);
+	});
+
 	it('passes the selected catalog to domain tools before workspace materialization', async () => {
 		const runtimeSkillCatalog = {
 			registry: { schemaVersion: 1, skillsHash: 'selected-skills', skills: [] },

@@ -4,10 +4,12 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { type EventService, ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
-import { User, type WorkflowRepository } from '@n8n/db';
+import { User, type WorkflowRepository, type TransactionRunner } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { OperationalError } from 'n8n-workflow';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
+import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
@@ -35,7 +38,8 @@ import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integ
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
 import { AgentModificationTelemetryService } from '@/modules/agents/agent-modification-telemetry.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
-import type { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
+import { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
+import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import type { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
@@ -66,6 +70,8 @@ import { AGENT_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { McpAgentSlackSetup } from '../tools/agents/agent-slack-setup';
 import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 
 const userHasScopesMock = userHasScopes as Mock;
 
@@ -229,26 +235,33 @@ describe('McpAgentToolsService', () => {
 		agentsService.findByIdForUser.mockResolvedValue(agent);
 
 		const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
+		const saveCompletion = new AgentSaveCompletionService(
+			mock<EventService>(),
+			agentUpdateBroadcaster,
+			modificationTelemetry,
+		);
+		const transactionRunner = mock<TransactionRunner>();
+		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const customToolsService = new AgentCustomToolsService(
 			mockLogger(),
 			agentRepository,
-			runtimeCacheService,
-			modificationTelemetry,
-			agentUpdateBroadcaster,
+			saveCompletion,
 		);
 		const configService = new AgentConfigService(
 			mockLogger(),
 			agentRepository,
 			agentTaskRepository,
 			mock<AgentSkillsService>(),
-			runtimeCacheService,
-			localCredentialsService,
-			workflowRepository,
-			mock<NodeToolAiGatewayService>(),
-			mock<EventService>(),
+			new AgentConfigPreparationService(
+				localCredentialsService,
+				workflowRepository,
+				mock<NodeToolAiGatewayService>(),
+			),
 			mock<AgentSetupCompletionService>(),
-			modificationTelemetry,
-			agentUpdateBroadcaster,
+			transactionRunner,
+			saveCompletion,
+			new AgentPolicyService(new PolicyEnforcementService()),
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>
@@ -892,6 +905,7 @@ describe('McpAgentToolsService', () => {
 				name: 'My Agent',
 			});
 			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'My Agent', {
+				actor: { kind: 'user', user },
 				availableInMCP: true,
 			});
 			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
@@ -1189,6 +1203,66 @@ describe('McpAgentToolsService', () => {
 	});
 
 	describe('call_agent', () => {
+		it('starts a new session when the sessionId is not found', async () => {
+			userHasScopesMock.mockImplementation(async (_user, scopes) =>
+				scopes.includes('agent:execute'),
+			);
+			agentTestRunService.executeDraftRun
+				.mockResolvedValueOnce({ status: 'session_not_found' })
+				.mockResolvedValueOnce({
+					status: 'completed',
+					response: 'Hello',
+					sessionId: 'session-new',
+					executionId: 'execution-1',
+				});
+
+			const result = await callTool('call_agent', {
+				agentId: 'agent-1',
+				request: { type: 'message', message: 'Hi', sessionId: 'new' },
+			});
+
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledTimes(2);
+			expect(agentTestRunService.executeDraftRun).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ sessionId: 'new' }),
+			);
+			expect(agentTestRunService.executeDraftRun).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ sessionId: undefined }),
+			);
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				status: 'completed',
+				response: 'Hello',
+				sessionId: 'session-new',
+				executionId: 'execution-1',
+				sessionNote: expect.stringContaining('started a new conversation'),
+			});
+		});
+
+		it('treats a blank sessionId as a new session', async () => {
+			userHasScopesMock.mockImplementation(async (_user, scopes) =>
+				scopes.includes('agent:execute'),
+			);
+			agentTestRunService.executeDraftRun.mockResolvedValueOnce({
+				status: 'completed',
+				response: 'Hello',
+				sessionId: 'session-new',
+				executionId: 'execution-1',
+			});
+
+			const result = await callTool('call_agent', {
+				agentId: 'agent-1',
+				request: { type: 'message', message: 'Hi', sessionId: ' ' },
+			});
+
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledTimes(1);
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith(
+				expect.objectContaining({ sessionId: undefined }),
+			);
+			expect(result.structuredContent).not.toHaveProperty('sessionNote');
+		});
+
 		it('starts and continues a draft session with MCP execution context', async () => {
 			userHasScopesMock.mockImplementation(async (_user, scopes) =>
 				scopes.includes('agent:execute'),
@@ -1767,6 +1841,21 @@ describe('McpAgentToolsService', () => {
 			authentication: 'none',
 		};
 
+		it('returns ok: false when the MCP connection fails', async () => {
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
+			listMcpServerToolsMock.mockRejectedValue(
+				new OperationalError('MCP server "srv" connection failed: fetch failed'),
+			);
+
+			const result = await callTool('verify_agent_mcp_server', input);
+
+			expect(result.structuredContent).toEqual({
+				ok: false,
+				error: 'MCP server "srv" connection failed: fetch failed',
+			});
+			expect(result.isError).toBe(true);
+		});
+
 		it('connects and returns the server tool list', async () => {
 			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
 			listMcpServerToolsMock.mockResolvedValue([{ name: 'echo', description: 'Echo' }]);
@@ -1916,22 +2005,26 @@ describe('McpAgentToolsService', () => {
 					agentId: 'agent-1',
 					author: 'Ada Lovelace',
 					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+				},
+				definition: {
 					schema: {
 						...baseConfig,
+						tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 						integrations: [{ type: 'slack', credentialId: 'cred-1' }],
 					},
 					tools: { my_tool: { code: 'code', descriptor: { name: 'my_tool' } } },
 					skills: { 'skill-1': { name: 'Skill' } },
+					tasks: new Map([
+						[
+							'task-1',
+							{
+								name: 'Daily',
+								objective: 'Summarize',
+								cronExpression: '0 9 * * *',
+							},
+						],
+					]),
 				},
-				tasks: [
-					{
-						taskId: 'task-1',
-						name: 'Daily',
-						objective: 'Summarize',
-						cronExpression: '0 9 * * *',
-						enabled: true,
-					},
-				],
 			} as never);
 
 			const result = await callTool('get_agent', { agentId: 'agent-1', versionId: 'v0' });

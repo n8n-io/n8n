@@ -5,7 +5,7 @@ import type {
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
-import type { ErrorReporter, InstanceSettings } from 'n8n-core';
+import type { ErrorReporter } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
@@ -18,6 +18,8 @@ import type { MigrationFinding } from '../../database/entities/migration-finding
 import type { MigrationFindingSync } from '../../database/entities/migration-finding-sync.entity';
 import type { MigrationFindingSyncRepository } from '../../database/repositories/migration-finding-sync.repository';
 import type { MigrationFindingRepository } from '../../database/repositories/migration-finding.repository';
+import type { MigrationWorkflowOwnerRepository } from '../../database/repositories/migration-workflow-owner.repository';
+import type { MigrationOwnerSuggestionService } from '../../owners/migration-owner-suggestion.service';
 import type { IBreakingChangeRule } from '../../types';
 import type { MigrationFindingHit } from '../migration-finding-diff';
 import {
@@ -86,17 +88,11 @@ describe('MigrationFindingSyncService', () => {
 	let workflowRepository: MockProxy<WorkflowRepository>;
 	let findingRepository: MockProxy<MigrationFindingRepository>;
 	let syncRepository: MockProxy<MigrationFindingSyncRepository>;
+	let ownerSuggestionService: MockProxy<MigrationOwnerSuggestionService>;
+	let ownerRepository: MockProxy<MigrationWorkflowOwnerRepository>;
 	let txRunner: MockProxy<TransactionRunner>;
 	let errorReporter: MockProxy<ErrorReporter>;
-	let isLeader: boolean;
 	let service: MigrationFindingSyncService;
-
-	// A getter, so a test can take leadership away while a sync is running.
-	const instanceSettings = {
-		get isLeader() {
-			return isLeader;
-		},
-	} as InstanceSettings;
 
 	/** Feeds `getIdsAfter` from a mutable list, so a test can remove a workflow between pages. */
 	function givenWorkflows(count: number) {
@@ -116,15 +112,18 @@ describe('MigrationFindingSyncService', () => {
 		workflowRepository = mock<WorkflowRepository>();
 		findingRepository = mock<MigrationFindingRepository>();
 		syncRepository = mock<MigrationFindingSyncRepository>();
+		ownerSuggestionService = mock<MigrationOwnerSuggestionService>();
+		ownerRepository = mock<MigrationWorkflowOwnerRepository>();
 		txRunner = mock<TransactionRunner>();
 		errorReporter = mock<ErrorReporter>();
-		isLeader = true;
 
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		// By default every paged id still exists when the batch re-checks it.
 		workflowRepository.findExistingIds.mockImplementation(async (ids) => ids);
 		ruleRegistry.getRules.mockReturnValue(rules('rule-a', 'rule-b'));
 		findingRepository.listForWorkflows.mockResolvedValue([]);
+		findingRepository.listWorkflowIdsWithOpenFindings.mockResolvedValue([]);
+		ownerSuggestionService.suggestOwners.mockResolvedValue([]);
 		breakingChangeService.detect.mockResolvedValue(detectionResult([]));
 
 		service = new MigrationFindingSyncService(
@@ -133,8 +132,9 @@ describe('MigrationFindingSyncService', () => {
 			workflowRepository,
 			findingRepository,
 			syncRepository,
+			ownerSuggestionService,
+			ownerRepository,
 			txRunner,
-			instanceSettings,
 			mockLogger(),
 			errorReporter,
 		);
@@ -211,6 +211,18 @@ describe('MigrationFindingSyncService', () => {
 			expect.anything(),
 		);
 		expect(findingRepository.insertMany).not.toHaveBeenCalled();
+	});
+
+	it('marks a wont_fix finding fixed when the scan no longer detects it', async () => {
+		givenWorkflows(1);
+		findingRepository.listForWorkflows.mockResolvedValue([
+			findingRow(1, 'rule-a', 'wf-0000', 'wont_fix'),
+		]);
+
+		await service.sync(TARGET_VERSION);
+
+		expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([1], expect.anything());
+		expect(findingRepository.updateStatusForIds).not.toHaveBeenCalled();
 	});
 
 	it('leaves the finding of a rule check that threw untouched', async () => {
@@ -407,25 +419,6 @@ describe('MigrationFindingSyncService', () => {
 			expect(breakingChangeService.detect).toHaveBeenCalledTimes(2);
 			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).not.toBeNull();
 		});
-
-		it('leaves no record after a leadership loss, so the next read on the leader syncs again', async () => {
-			givenWorkflows(250);
-			givenPersistedSyncRecord();
-			txRunner.run.mockImplementationOnce(async (ctx, fn) => {
-				const result = await fn(ctx);
-				isLeader = false;
-				return result;
-			});
-
-			await service.sync(TARGET_VERSION);
-			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).toBeNull();
-
-			isLeader = true;
-			await service.syncIfStale(TARGET_VERSION);
-
-			expect(breakingChangeService.detect).toHaveBeenCalledTimes(2);
-			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).not.toBeNull();
-		});
 	});
 
 	describe('rule set fingerprint', () => {
@@ -458,32 +451,6 @@ describe('MigrationFindingSyncService', () => {
 		});
 	});
 
-	it('computes and writes nothing when the instance is not the leader', async () => {
-		isLeader = false;
-		givenWorkflows(3);
-
-		await service.sync(TARGET_VERSION);
-
-		expect(breakingChangeService.detect).not.toHaveBeenCalled();
-		expect(workflowRepository.getIdsAfter).not.toHaveBeenCalled();
-		expect(txRunner.run).not.toHaveBeenCalled();
-		expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
-	});
-
-	it('stops writing and records no sync when leadership is lost between batches', async () => {
-		givenWorkflows(250);
-		txRunner.run.mockImplementation(async (ctx, fn) => {
-			const result = await fn(ctx);
-			isLeader = false;
-			return result;
-		});
-
-		await service.sync(TARGET_VERSION);
-
-		expect(txRunner.run).toHaveBeenCalledTimes(1);
-		expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
-	});
-
 	it('shares one run between two concurrent calls for the same version', async () => {
 		givenWorkflows(3);
 
@@ -500,6 +467,76 @@ describe('MigrationFindingSyncService', () => {
 		await service.sync(TARGET_VERSION);
 
 		expect(breakingChangeService.detect).toHaveBeenCalledTimes(2);
+	});
+
+	describe('suggested owners', () => {
+		it('stores a suggestion for each workflow in the batch with an open finding and clears the rest', async () => {
+			givenWorkflows(3);
+			findingRepository.listWorkflowIdsWithOpenFindings.mockResolvedValue(['wf-0000', 'wf-0002']);
+			ownerSuggestionService.suggestOwners.mockResolvedValue([
+				{ workflowId: 'wf-0000', userId: 'user-1' },
+			]);
+
+			await service.sync(TARGET_VERSION);
+
+			expect(findingRepository.listWorkflowIdsWithOpenFindings).toHaveBeenCalledWith(
+				TARGET_VERSION,
+				['wf-0000', 'wf-0001', 'wf-0002'],
+				expect.anything(),
+			);
+			expect(ownerSuggestionService.suggestOwners).toHaveBeenCalledWith(['wf-0000', 'wf-0002']);
+			expect(ownerRepository.replaceSuggestions).toHaveBeenCalledWith(
+				['wf-0000', 'wf-0001', 'wf-0002'],
+				[{ workflowId: 'wf-0000', userId: 'user-1' }],
+				expect.anything(),
+			);
+		});
+
+		it('skips the heuristic when no workflow in the batch has an open finding, and still clears old suggestions', async () => {
+			givenWorkflows(2);
+
+			await service.sync(TARGET_VERSION);
+
+			expect(ownerSuggestionService.suggestOwners).not.toHaveBeenCalled();
+			expect(ownerRepository.replaceSuggestions).toHaveBeenCalledWith(
+				['wf-0000', 'wf-0001'],
+				[],
+				expect.anything(),
+			);
+		});
+
+		it('refreshes owners once per batch, after the findings of that batch were written', async () => {
+			givenWorkflows(150);
+
+			await service.sync(TARGET_VERSION);
+
+			expect(ownerRepository.replaceSuggestions).toHaveBeenCalledTimes(2);
+			expect(ownerRepository.replaceSuggestions.mock.calls[0][0]).toHaveLength(100);
+			expect(ownerRepository.replaceSuggestions.mock.calls[1][0]).toHaveLength(50);
+			expect(txRunner.run.mock.invocationCallOrder[0]).toBeLessThan(
+				ownerRepository.replaceSuggestions.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('reports a failed owner refresh and still records the sync', async () => {
+			givenWorkflows(1);
+			const failure = new Error('owner write failed');
+			ownerRepository.replaceSuggestions.mockRejectedValue(failure);
+
+			await service.sync(TARGET_VERSION);
+
+			expect(errorReporter.error).toHaveBeenCalledWith(failure, expect.anything());
+			expect(syncRepository.upsertForVersion).toHaveBeenCalled();
+		});
+
+		it('does not refresh owners for a batch whose finding write failed', async () => {
+			givenWorkflows(1);
+			txRunner.run.mockRejectedValueOnce(new Error('batch failed'));
+
+			await service.sync(TARGET_VERSION);
+
+			expect(ownerRepository.replaceSuggestions).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('syncWorkflow()', () => {
@@ -525,8 +562,7 @@ describe('MigrationFindingSyncService', () => {
 			expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
 		});
 
-		it('inserts an open finding for a workflow that now trips a rule, on any main', async () => {
-			isLeader = false;
+		it('inserts an open finding for a workflow that now trips a rule', async () => {
 			breakingChangeService.detectWorkflowHits.mockResolvedValue({
 				hits: [{ ruleId: 'rule-a', workflowId: WORKFLOW_ID }],
 				failedChecks: [],
@@ -651,6 +687,26 @@ describe('MigrationFindingSyncService', () => {
 
 			expect(breakingChangeService.detectWorkflowHits).toHaveBeenCalledTimes(2);
 			expect(txRunner.run).toHaveBeenCalledTimes(2);
+		});
+
+		it('refreshes the suggested owner of that workflow', async () => {
+			findingRepository.listWorkflowIdsWithOpenFindings.mockResolvedValue([WORKFLOW_ID]);
+			ownerSuggestionService.suggestOwners.mockResolvedValue([
+				{ workflowId: WORKFLOW_ID, userId: 'user-1' },
+			]);
+
+			await service.syncWorkflow(WORKFLOW_ID);
+
+			expect(findingRepository.listWorkflowIdsWithOpenFindings).toHaveBeenCalledWith(
+				REPORT_VERSION,
+				[WORKFLOW_ID],
+				expect.anything(),
+			);
+			expect(ownerRepository.replaceSuggestions).toHaveBeenCalledWith(
+				[WORKFLOW_ID],
+				[{ workflowId: WORKFLOW_ID, userId: 'user-1' }],
+				expect.anything(),
+			);
 		});
 
 		it('does nothing when there is no report target version', async () => {

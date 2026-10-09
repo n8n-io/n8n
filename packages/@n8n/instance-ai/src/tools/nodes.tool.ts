@@ -391,6 +391,7 @@ async function resolveNodeTypeDefinitions(
 				content: result.content,
 				...(result.builderHint ? { builderHint: result.builderHint } : {}),
 				...(result.deprecated ? { deprecated: true } : {}),
+				...(result.unavailable ? { unavailable: result.unavailable } : {}),
 			};
 		}),
 	);

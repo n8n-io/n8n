@@ -17,6 +17,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { DataTableRow } from '@/features/core/dataTable/dataTable.types';
 
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
@@ -127,6 +128,44 @@ describe('useDataTableOperations', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('column editing lock', () => {
+		it('blocks column mutations after editing is locked', async () => {
+			const readOnly = ref(false);
+			params.colDefs.value = [{ colId: 'name-column', field: 'name', headerName: 'name' }];
+			const operations = useDataTableOperations({ ...params, readOnly });
+			readOnly.value = true;
+
+			expect(await operations.onAddColumn({ name: 'description', type: 'string' })).toEqual({
+				success: false,
+			});
+			await operations.onRenameColumn('name-column', 'title');
+			await operations.onDeleteColumn('name-column');
+
+			expect(dataTableStore.addDataTableColumn).not.toHaveBeenCalled();
+			expect(dataTableStore.renameDataTableColumn).not.toHaveBeenCalled();
+			expect(dataTableStore.deleteDataTableColumn).not.toHaveBeenCalled();
+			expect(confirmMock).not.toHaveBeenCalled();
+			expect(params.setGridData).not.toHaveBeenCalled();
+		});
+
+		it('blocks column deletion when editing is locked during confirmation', async () => {
+			const readOnly = ref(false);
+			params.colDefs.value = [{ colId: 'name-column', field: 'name', headerName: 'name' }];
+			const confirmation = createDeferredPromise<typeof MODAL_CONFIRM>();
+			confirmMock.mockReturnValue(confirmation.promise);
+			const operations = useDataTableOperations({ ...params, readOnly });
+
+			const deletion = operations.onDeleteColumn('name-column');
+			expect(confirmMock).toHaveBeenCalled();
+			readOnly.value = true;
+			confirmation.resolve(MODAL_CONFIRM);
+			await deletion;
+
+			expect(dataTableStore.deleteDataTableColumn).not.toHaveBeenCalled();
+			expect(params.deleteGridColumn).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('onAddColumn', () => {
@@ -299,6 +338,62 @@ describe('useDataTableOperations', () => {
 		const createMockColumn = (colId: string) => ({
 			getColId: () => colId,
 		});
+
+		it('ignores queued move events after editing is locked', async () => {
+			const readOnly = ref(false);
+			const { onColumnMoved } = useDataTableOperations({ ...params, readOnly });
+			readOnly.value = true;
+
+			await onColumnMoved({
+				finished: true,
+				source: 'uiColumnMoved',
+				toIndex: 4,
+				column: createMockColumn('col1'),
+			} as unknown as ColumnMovedEvent);
+
+			expect(dataTableStore.moveDataTableColumn).not.toHaveBeenCalled();
+			expect(params.moveGridColumn).not.toHaveBeenCalled();
+		});
+
+		it.each(['success', 'failure'])(
+			'reconciles a move started before editing was locked: %s',
+			async (result) => {
+				const readOnly = ref(false);
+				const response = createDeferredPromise<boolean>();
+				vi.mocked(dataTableStore.moveDataTableColumn).mockReturnValue(response.promise);
+				const moveColumnByIndex = vi.fn();
+				params.gridApi.value = { moveColumnByIndex } as unknown as GridApi;
+				params.colDefs.value = [{ colId: 'col1', field: 'name' }];
+				const { onColumnMoved } = useDataTableOperations({ ...params, readOnly });
+
+				const move = onColumnMoved({
+					finished: true,
+					source: 'uiColumnMoved',
+					toIndex: 4,
+					column: createMockColumn('col1'),
+				} as unknown as ColumnMovedEvent);
+				expect(dataTableStore.moveDataTableColumn).toHaveBeenCalled();
+				readOnly.value = true;
+				if (result === 'success') {
+					response.resolve(true);
+				} else {
+					response.reject(new Error('Move failed'));
+				}
+				await move;
+
+				if (result === 'success') {
+					expect(params.moveGridColumn).toHaveBeenCalledWith(0, 2);
+					expect(moveColumnByIndex).not.toHaveBeenCalled();
+				} else {
+					expect(params.moveGridColumn).not.toHaveBeenCalled();
+					expect(moveColumnByIndex).toHaveBeenCalledWith(4, 1);
+					expect(showErrorMock).toHaveBeenCalledWith(
+						expect.any(Error),
+						'dataTable.moveColumn.error',
+					);
+				}
+			},
+		);
 
 		it('should return early when event is not finished', async () => {
 			const { onColumnMoved } = useDataTableOperations(params);
@@ -711,7 +806,7 @@ describe('useDataTableOperations', () => {
 				currentFilterJSON,
 			});
 
-			await fetchDataTableRows();
+			expect(await fetchDataTableRows()).toBe(true);
 
 			expect(fetchDataTableContentMock).toHaveBeenCalledWith(
 				'test',
@@ -778,7 +873,7 @@ describe('useDataTableOperations', () => {
 
 			const { fetchDataTableRows } = useDataTableOperations({ ...params, rowData });
 
-			await fetchDataTableRows();
+			expect(await fetchDataTableRows()).toBe(false);
 
 			expect(showErrorMock).toHaveBeenCalledWith(fetchError, 'dataTable.fetchContent.error');
 			expect(rowData.value).toEqual([{ id: 1 }]);

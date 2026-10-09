@@ -18,6 +18,7 @@
 
 import { getParsedExpression } from '@n8n/tournament';
 import { isNativelyEvaluable } from '../src/expressions/native-evaluation';
+import { RESERVED_NAMES } from '../src/expressions/native-evaluation/grammar';
 import { ALL_CORPORA } from './native-evaluation-corpus';
 
 // ── Shape tokenization ────────────────────────────────────────────────────
@@ -71,7 +72,7 @@ function walk(node: unknown, feats: Set<string>): void {
 	switch (o.type) {
 		case 'Identifier':
 			// Grammar-level identifiers only; member names are data, not shape.
-			if (o.name === '$json' || o.name === '$parameter' || o.name === 'undefined') {
+			if (RESERVED_NAMES.has(String(o.name))) {
 				feats.add(`id:${String(o.name)}`);
 			}
 			break;
@@ -95,6 +96,12 @@ function walk(node: unknown, feats: Set<string>): void {
 			break;
 		case 'CallExpression':
 			feats.add(callFeature(o));
+			break;
+		case 'ArrayExpression':
+			feats.add(Array.isArray(o.elements) && o.elements.length === 0 ? 'array:empty' : 'array');
+			break;
+		case 'ArrowFunctionExpression':
+			feats.add('arrow');
 			break;
 		default:
 			break;
@@ -169,6 +176,23 @@ const CANDIDATES = [
 	// roots and member forms
 	'={{ $json.item.name }}',
 	'={{ $parameter.value1 }}',
+	'={{ $vars.region }}',
+	'={{ $binary.file.fileName }}',
+	'={{ $itemIndex }}',
+	'={{ $runIndex }}',
+	// node references
+	"={{ $('Source').item.json.item.name }}",
+	"={{ $('Source').first().json.item.name }}",
+	"={{ $('Source').last().json.item.name }}",
+	"={{ $('Source').all().length }}",
+	"={{ $('Source').first()?.json.item.name }}",
+	'={{ $input.item.json.item.name }}',
+	'={{ $input.first().json.item.name }}',
+	'={{ $input.last().json.item.name }}',
+	'={{ $input.all().length }}',
+	'={{ $node["Source"].json.item.name }}',
+	'={{ $node.Source.json.item.name }}',
+	'={{ $node["Source"].binary.file.mimeType }}',
 	'={{ $json.item?.name }}',
 	'={{ $json.item.my_object?.addresses }}',
 	"={{ $json.item['name'] }}",
@@ -221,6 +245,19 @@ const CANDIDATES = [
 	'={{ $json.item.names.flat(2) }}',
 	'={{ $json.item.names.toSorted() }}',
 	'={{ $json.item.names.toReversed() }}',
+	// array literals
+	'={{ [1, "a", true, null] }}',
+	'={{ [] }}',
+	'={{ ["bar"].includes($json.item.name) }}',
+	// iterator methods with a callback
+	'={{ $json.item.names.some(n => n === "bar") }}',
+	'={{ $json.item.names.every(n => n === "bar") }}',
+	'={{ $json.item.names.find(n => n === "bar") }}',
+	'={{ $json.item.names.filter(n => n === "bar") }}',
+	'={{ $json.item.names.map(n => n.length) }}',
+	'={{ $json.item.names?.map(n => n) }}',
+	'={{ $json.item.names.map(n => $json.item.count) }}',
+	'={{ $json.item.names.map(n => n.missing?.deep ?? "d") }}',
 	// compound shapes
 	'={{ $json.item.name.trim().toUpperCase() }}',
 	'={{ $json.item.name.toUpperCase().length }}',

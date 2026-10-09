@@ -338,6 +338,29 @@ describe('workflows tool', () => {
 	});
 
 	describe('version actions', () => {
+		it('reports a restored workflow as changed, and a failed restore as not changed', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { restoreWorkflowVersion: 'always_allow' },
+			});
+			context.workflowService.restoreVersion = vi
+				.fn()
+				.mockResolvedValueOnce({ versionId: 'v1', activeVersionId: null })
+				.mockRejectedValueOnce(new Error('Version not found'));
+			const tool = createWorkflowsTool(context, 'full');
+			const input = { action: 'restore-version', workflowId: 'wf1', versionId: 'v1' } as never;
+
+			await executeTool(tool, input, {} as never);
+			expect(onArtifactChanged).toHaveBeenCalledWith({ type: 'workflow', id: 'wf1' });
+
+			onArtifactChanged.mockClear();
+			await expect(executeTool(tool, input, {} as never)).resolves.toMatchObject({
+				success: false,
+			});
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
 		it('should support version actions when listVersions exists', async () => {
 			const context = createMockContext();
 			const versions = [{ id: 'v1', versionId: 1 }];

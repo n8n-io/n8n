@@ -47,6 +47,7 @@ Same contract as `N8nInput`, so `ParameterInput` can programmatically focus, blu
 
 **Slots**
 
+- `prefix` - Content shown before the number, e.g. a currency symbol.
 - `increment` - Fully custom increment control. Scope: `{ ui: { class } }`. Default: button with plus/chevron icon.
 - `decrement` - Fully custom decrement control. Scope: `{ ui: { class } }`. Default: button with minus/chevron icon.
 

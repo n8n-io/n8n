@@ -28,6 +28,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 	}> = [];
 	const resumeCalls: Array<{ options: Record<string, unknown> }> = [];
 	const instructionsCalls: string[] = [];
+	const volatileInstructionsProviders: Array<() => Promise<string | undefined>> = [];
 	const registeredToolNames: string[] = [];
 	const modelCalls: unknown[] = [];
 	const configurationCalls: Array<{ maxIterations?: number }> = [];
@@ -64,6 +65,10 @@ const agentsSdkMocks = vi.hoisted(() => {
 		}
 		instructions(text: string) {
 			instructionsCalls.push(text);
+			return this;
+		}
+		volatileInstructionsProvider(provider: () => Promise<string | undefined>) {
+			volatileInstructionsProviders.push(provider);
 			return this;
 		}
 		skills(_skills: unknown) {
@@ -129,6 +134,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		streamCalls,
 		resumeCalls,
 		instructionsCalls,
+		volatileInstructionsProviders,
 		registeredToolNames,
 		modelCalls,
 		configurationCalls,
@@ -238,6 +244,7 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.streamCalls.length = 0;
 		agentsSdkMocks.resumeCalls.length = 0;
 		agentsSdkMocks.instructionsCalls.length = 0;
+		agentsSdkMocks.volatileInstructionsProviders.length = 0;
 		agentsSdkMocks.registeredToolNames.length = 0;
 		agentsSdkMocks.modelCalls.length = 0;
 		agentsSdkMocks.configurationCalls.length = 0;
@@ -522,6 +529,29 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		expect(agentsSdkMocks.configurationCalls).toEqual([{ maxIterations: 100 }]);
+	});
+
+	it('keeps the per-agent Preview path out of the cached instructions', async () => {
+		const { service, user, credentialProvider, credentialService } = setup();
+
+		await drain(
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
+		);
+
+		expect(agentsSdkMocks.instructionsCalls[0]).not.toContain('/projects/project-1/agents/agent-1');
+		expect(agentsSdkMocks.volatileInstructionsProviders).toHaveLength(1);
+		const sessionContext = await agentsSdkMocks.volatileInstructionsProviders[0]?.();
+		expect(sessionContext).toContain(
+			'[Preview](/projects/project-1/agents/agent-1?openPreview=true)',
+		);
 	});
 
 	it('enables prompt caching with a 5m Anthropic TTL for the builder agent', async () => {

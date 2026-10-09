@@ -79,6 +79,11 @@ interface WorkflowAgentStreamParams {
 	message: string;
 	threadId: string;
 	telemetryAgentId: string;
+	/**
+	 * Saved agent this run spends against. Set when a workflow node targets a
+	 * saved agent. Inline runs leave it unset.
+	 */
+	savedAgentId?: string;
 	telemetryUserId?: string;
 	runType: AgentRunTelemetryType;
 	outputSchema?: JSONSchema7;
@@ -395,6 +400,7 @@ export class AgentWorkflowExecutionService {
 	) {
 		const {
 			telemetryAgentId,
+			savedAgentId,
 			telemetryUserId,
 			runType,
 			tracing,
@@ -441,11 +447,19 @@ export class AgentWorkflowExecutionService {
 					agentId: telemetryAgentId,
 					userId: telemetryUserId,
 					runType,
+					source: AGENT_WORKFLOW_TRIGGER_TYPE,
 				}),
 				...modelStreamStallOptions(this.aiConfig),
 				...(telemetry ? { telemetry } : {}),
 			},
-			{ budget, sessionId: threadId, agentId: telemetryAgentId },
+			{
+				budget,
+				sessionId: threadId,
+				// Spend stays on the telemetry id so an inline run still has a
+				// month bucket. The email uses the saved agent the node targets.
+				agentId: telemetryAgentId,
+				...(savedAgentId ? { alertAgentId: savedAgentId } : {}),
+			},
 		);
 	}
 
@@ -634,6 +648,7 @@ export class AgentWorkflowExecutionService {
 			await this.prepareStoredWorkflowRun(params);
 		const run = await this.streamCompiledWorkflowAgent(agentInstance, params, {
 			telemetryAgentId: agentId,
+			savedAgentId: agentId,
 			runType,
 			budget,
 			recordingParams: { ...recordingParams, agentName: agentInstance.name },
@@ -727,7 +742,12 @@ export class AgentWorkflowExecutionService {
 		params: WorkflowExecutionContext,
 		run: Pick<
 			WorkflowAgentStreamParams,
-			'telemetryAgentId' | 'runType' | 'recordingParams' | 'sandboxScope' | 'budget'
+			| 'telemetryAgentId'
+			| 'savedAgentId'
+			| 'runType'
+			| 'recordingParams'
+			| 'sandboxScope'
+			| 'budget'
 		>,
 	): Promise<WorkflowAgentRunOutcome> {
 		const {
@@ -883,6 +903,7 @@ export class AgentWorkflowExecutionService {
 				user_id: telemetryUserId,
 				thread_id: threadId,
 				run_type: runType,
+				source: AGENT_WORKFLOW_TRIGGER_TYPE,
 				agent_type: 'inline',
 				turn_status:
 					run.messageRecord.error !== null || run.messageRecord.finishReason === 'error'

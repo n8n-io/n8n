@@ -25,6 +25,14 @@ the chip text before the action moves outside the panel.
 Show session details on separate lines when the session list is narrow. Keep the
 title, origin, date, token count, and actions visible without overlap.
 
+Stack a setting label above its control when the row is narrow. Give the label
+the full row width. Give a wide control, such as a model picker, the full row
+width. Keep a short control at its natural width. Keep the control inside the
+row. The model menu uses the control width, so the menu stays inside the editor
+column.
+
+Reduce the editor column side padding when the column is narrow.
+
 ## Preview history
 
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.
@@ -33,6 +41,19 @@ the icon to open history. Show only “Chat history” when no chat title exists
 not show “New session” before the Preview session starts. Truncate long titles
 inside the shared button. Keep the header actions visible.
 Use the `x` icon for the Preview close action, as the Assistant does.
+
+## Fix with Assistant
+
+In the standalone Agents UI, open or reuse the Assistant in the left panel.
+Keep the current Agent configuration available. Pass the relevant credential,
+error, or session context and the fix prompt to that panel. Close configuration
+dialogs only after the panel accepts the request. Preserve a refused request.
+Show these actions only after Assistant setup is complete.
+
+Keep the test error and its fix action inside the callout. Move the action below
+the error when the row does not fit the panel. Wrap long URLs and error text.
+
+Agent artifacts inside an Assistant chat keep the handoff in that chat.
 
 ## Item context menus
 
@@ -84,14 +105,14 @@ design work.
 
 ### Layout contract
 
-| Area       | Rule                                                                                                                         |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                      |
-| Header     | Keep the header's bottom divider. Put Back on the left and Close on the right.                                               |
-| Title      | Use an editable local name when the asset supports one. Do not add an asset icon.                                            |
+| Area       | Rule                                                                                                                                                                                                                                                                                |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                                                                                                                                                                             |
+| Header     | Keep the header's bottom divider. Put Back on the left and Close on the right.                                                                                                                                                                                                      |
+| Title      | Use an editable local name when the asset supports one. Do not add an asset icon.                                                                                                                                                                                                   |
 | Body       | Let `AgentModal` own the outer body inset. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
-| Footer     | Do not add a divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                       |
-| Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                              |
+| Footer     | Do not add a divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                                                                                                                                                                              |
+| Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                                                                                                                                                                                     |
 
 Use CSS variables for all sizes, spacing, colors, and motion. Do not add a new
 global dialog primitive.
@@ -109,8 +130,10 @@ Do not add top padding or a top margin to a modal's first content wrapper. The
 shell supplies that space. Use the flush body only for a full-bleed workspace.
 The workspace must then own all of its edge spacing.
 
-When a nested credential dialog is open, release the parent focus trap and
-block parent dismissal. The nested dialog owns Escape until it closes.
+When a nested credential or parameter editor dialog is open, release the parent
+focus trap and block parent dismissal. The nested dialog owns Escape until it
+closes. Render expanded parameter editors in the body portal above the Agent
+modal.
 
 ### Title contract
 
@@ -178,14 +201,14 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 
 ### Exceptions
 
-| Case                      | Exception                                                                                                                                                                            |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Case                      | Exception                                                                                                                                                                                                      |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Skills                    | Use `fit` with a 52rem content width. Keep it narrower than `full`. Use the flush Agent body so the file workspace does not get double padding. Keep the file navigation and editor inside the scrolling body. |
-| Dangerous confirmation    | Keep its explicit Cancel and primary actions. Examples are Agent, file, and session deletion; unpublish; revert; eval regeneration; LangSmith export; and managed Slack app removal. |
-| Managed Slack app removal | Keep the stacked confirmation because it can delete an external resource.                                                                                                            |
-| Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                     |
-| Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                             |
-| Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                              |
+| Dangerous confirmation    | Keep its explicit Cancel and primary actions. Examples are Agent, file, and session deletion; unpublish; revert; eval regeneration; LangSmith export; and managed Slack app removal.                           |
+| Managed Slack app removal | Keep the stacked confirmation because it can delete an external resource.                                                                                                                                      |
+| Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                                               |
+| Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                                                       |
+| Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
 
 New skills start with an upload screen. Make `Upload folder` the primary
 action. Support a single `SKILL.md` file and folder drops. Put `Add manually`
@@ -213,11 +236,29 @@ skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
 - Confirm UI text uses i18n.
 - Confirm the layout works at 375 by 667 pixels in light and dark themes.
 
+## Recoverable plan errors
+
+Show rejected plan input and revision conflicts in the normal tool-call row.
+Keep the warning icon and use a short tooltip. Do not show a separate error
+callout or a Fix with Assistant action for these errors. Keep the full input
+and output in the collapsed details and the trace. Keep earlier failed calls
+visible after a successful retry. Unexpected failures keep the existing error
+treatment.
+
 ## Extend this document
 
 Add a section when an Agent-specific pattern applies to two or more Agent
 surfaces. Keep implementation details with the owning pattern. Do not duplicate
 global Design System guidance.
+
+## Model-defined inputs
+
+Use `ParameterInputFull` for workflow inputs and node tool parameters.
+It owns the field label, Fixed/Expression controls, AI button, model chip,
+and hover and focus behavior. Use its controlled input mode for workflow
+bindings. Keep binding conversion and optional input guidance in the caller.
+Hide the Edit value action in read-only forms. Keep input issues visible
+beside the model label.
 
 ## Tool approvals
 
@@ -249,17 +290,26 @@ the top of the composer. Use `--background--subtle` for the queue background.
 Use `--color--neutral-600` for queue text and the Steer label in light mode.
 Use `--text-color--subtler` in dark mode. Use `--color--neutral-400` for all queue
 icons. Use `--border-color--subtle` for the dividers.
-Use `2xs` text and `large` icons. Keep the action targets at least 24 by 24 pixels.
-Keep the first two messages visible.
-Put the third and later messages in a collapsed activity group. Show the number
-of additional pending messages in its header. Keep messages in queue order when
-expanded.
+Use `xs` text and `medium` icons. Keep the action targets at least 24 by 24 pixels.
+Show a single queued message without a toggle or drag handle.
+Collapse the full list when the queue has two or more messages. Show the total
+message count in the header. Keep messages in queue order when expanded.
 Keep pending messages out of the conversation until processing starts. Give each
 message a Remove action. Hide an empty queue section. Removal discards the
 message. It does not restore the composer draft.
 
-Edit queued text in place. Use compact Save and Cancel icon actions. Enter saves, Shift+Enter adds a line, and Escape cancels. Keep attachments unchanged. Do not pause the queue during editing. If the message starts, disable Save and retain the draft until the user dismisses it.
+Edit removes the pending message from the queue and restores its text and attachments in the composer. Restore the draft only after removal succeeds. Disable Edit while the composer has a draft. Alt/Option+ArrowUp in the composer edits the last queued message. Ignore the shortcut if that message is busy or the composer has a draft. Send uses the normal message path and adds the message to the end of the queue if a turn is still running. Do not pause the queue.
 
-Put a six-dot drag handle on the left of each pending message. Drag the handle to move the message. Support the Up and Down arrow keys on the handle. Expand the queue when a drag starts or a message moves. Keep keyboard focus on the moved message. Show the new order during saving. Disable queue actions while the order saves. Messages reserved for steering cannot move. If the move no longer applies, refresh the queue and show an error.
+Show drag handles only when the queue has two or more messages. Put a six-dot drag handle on the left of each pending message in that queue. Drag the handle to move the message. Support the Up and Down arrow keys on the handle. Expand the queue when a drag starts or a message moves. Keep keyboard focus on the moved message. Show the new order during saving. Disable queue actions while the order saves. Messages reserved for steering cannot move. If the move no longer applies, refresh the queue and show an error.
 
-Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary queue processing. Preserve an open edit draft if another client reserves the message, and disable Save. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.
+Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary queue processing. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.
+
+## Preview retries
+
+Show Resend message inside the latest error callout only for errors that explicitly
+support retry. Use the subtle button style, as Fix with Assistant does. Support the
+saved empty-answer error and the stream-stall error. Do not offer resend for other
+failures. Send the original message and its attachments through the normal send
+action. Keep the failed turn visible. Move the button below the text when needed.
+Disable resend while a draft, queued message, active turn, or blocked send exists.
+Keep the message unchanged if an attachment cannot load.

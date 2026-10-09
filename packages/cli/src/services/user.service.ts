@@ -605,6 +605,11 @@ export class UserService {
 			transfereeId = transferee.id;
 
 			const ownershipTransferService = await this.getOwnershipTransferService();
+			await ownershipTransferService.enforceTransferPolicy(
+				personalProjectToDelete.id,
+				transfereeProject.id,
+				{ kind: 'user', user: actor },
+			);
 			await ownershipTransferService.transferAllResources(
 				[personalProjectToDelete.id],
 				transfereeProject.id,

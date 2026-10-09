@@ -295,6 +295,13 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					{ ...context },
 				);
 			},
+			onLeaseShorterThanRenewalInterval: (context) => {
+				emit(
+					'warn',
+					'Scheduler lease is too short to be renewed. A task that runs longer than the lease may be stopped and run again',
+					{ ...context },
+				);
+			},
 			onMissingHandler: (task) => {
 				emit('warn', 'Scheduler claimed a task with no registered handler; claim released', {
 					taskId: task.id,
@@ -311,6 +318,19 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 				emit('error', 'Scheduler failed to release a claimed task; left for the reaper', {
 					taskId,
 					error: described(error),
+				});
+			},
+			onLeaseRenewalError: (task, error) => {
+				emit('warn', 'Scheduler could not renew the lease of a running task; retrying', {
+					taskId: task.id,
+					error: described(error),
+				});
+			},
+			onLongRunningTask: (task, runningSeconds) => {
+				emit('warn', 'Scheduler task is still running after many leases; it may be stuck', {
+					taskId: task.id,
+					taskType: task.taskType,
+					runningSeconds,
 				});
 			},
 			onDispatch: (taskType, lagSeconds) => {
@@ -339,6 +359,23 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					'Scheduler task finished after losing its lease; another instance may have run the same occurrence concurrently',
 					{ taskType },
 				);
+			},
+			onLeaseRenewal: (task, result) => {
+				recordMetric(() => metrics.recordLeaseRenewal(task.taskType, result));
+				if (result === 'lost') {
+					emit(
+						'warn',
+						'Scheduler lost the claim of a running task; another instance may run it unless it was already dispatched',
+						{ taskId: task.id, taskType: task.taskType },
+					);
+				}
+				if (result === 'expired') {
+					emit(
+						'warn',
+						'Scheduler could not renew the lease of a running task in time; another instance may run it unless it was already dispatched',
+						{ taskId: task.id, taskType: task.taskType },
+					);
+				}
 			},
 		},
 		createExecutorTracing(tracer),

@@ -27,7 +27,7 @@ import { AgentMessageRepository } from '../repositories/agent-message.repository
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isApprovalSuspendPayload } from '../integrations/agent-chat-suspension-cards';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import { formatPauseHandoff } from './background-job-messages';
+import { formatPauseHandoff, REPLACED_PAUSE_GROUP_NOTICE } from './background-job-messages';
 import {
 	BACKGROUND_APPROVAL_RUN_PREFIX,
 	readBackgroundSubAgentState,
@@ -39,8 +39,6 @@ export const SUB_AGENT_BACKGROUND_TIMEOUT_MS = 30 * Time.minutes.toMilliseconds;
 export const SETTLED_JOB_RETENTION_MS = 30 * Time.days.toMilliseconds;
 export const EXPIRED_BACKGROUND_CHECKPOINT_ERROR =
 	'This background task checkpoint has expired and cannot be resumed';
-export const REPLACED_PAUSE_GROUP_NOTICE =
-	'This stopped group replaced the previous stopped group. The previous tasks can no longer be resumed.';
 
 export type BackgroundJobReceipt =
 	| { status: 'started'; jobId: string }
@@ -132,6 +130,8 @@ export function serializeWorkflowJobResult(
 }
 
 function latestStopGroup(jobs: AgentBackgroundJob[]): AgentBackgroundJob[] {
+	// UUIDv7 IDs sort by creation time. Index 14 holds the UUID version.
+	// Prefer v7 IDs, then sort descending to select the latest stop group.
 	const latestId = jobs
 		.flatMap((job) => (job.pauseRequestId ? [job.pauseRequestId] : []))
 		.sort((a, b) => Number(b[14] === '7') - Number(a[14] === '7') || b.localeCompare(a))[0];
@@ -238,7 +238,7 @@ export class AgentBackgroundJobService {
 			if (job && job.status !== 'running' && job.status !== 'suspended' && job.status !== 'paused')
 				await this.clearChildCheckpoint(job);
 			if (!settled || !job) return settled;
-			if (job.pauseRequestId) await this.retainPausedGroup(job);
+			if (job.pauseRequestId) await this.retainLatestStopGroup(job);
 			this.notifyJobUpdate(job);
 			await this.requestWakeSafely(job.parentThreadId);
 			return true;
@@ -376,7 +376,8 @@ export class AgentBackgroundJobService {
 		) {
 			return { status: 'stopping' as const, jobs: [] };
 		}
-		const workflowsToRestart = latestStopGroup(jobs)
+		const stoppedGroup = latestStopGroup(jobs);
+		const workflowsToRestart = stoppedGroup
 			.filter((job) => job.kind === 'workflow' && job.status === 'cancelled')
 			.map((job) => ({
 				jobId: job.id,
@@ -384,15 +385,13 @@ export class AgentBackgroundJobService {
 				workflowId: job.workflowId,
 				previousExecutionId: job.childExecutionId,
 			}));
-		const paused = latestStopGroup(
-			jobs.filter((job) => job.kind === 'subagent' && job.status === 'paused'),
-		);
+		const paused = stoppedGroup.filter((job) => job.kind === 'subagent' && job.status === 'paused');
 		const latestId = paused[0]?.pauseRequestId;
 		const timeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
 		if (!latestId) {
 			if (
 				workflowsToRestart.length === 0 &&
-				jobs.some((job) => job.error === EXPIRED_BACKGROUND_CHECKPOINT_ERROR)
+				stoppedGroup.some((job) => job.error === EXPIRED_BACKGROUND_CHECKPOINT_ERROR)
 			)
 				return { status: 'expired' as const, jobs: [] };
 			return { status: 'ready' as const, jobs: [], timeoutAt, workflowsToRestart };
@@ -464,8 +463,8 @@ export class AgentBackgroundJobService {
 		}
 	}
 
-	private async retainPausedGroup(job: AgentBackgroundJob): Promise<void> {
-		const replaced = await this.jobRepository.retainLatestPausedGroup(
+	async retainLatestStopGroup(job: AgentBackgroundJob): Promise<void> {
+		const replaced = await this.jobRepository.retainLatestStopGroup(
 			job.parentAgentId,
 			job.parentThreadId,
 			job.parentResourceId,
@@ -504,7 +503,7 @@ export class AgentBackgroundJobService {
 			suspension.serializedState,
 		);
 		if (paused) {
-			await this.retainPausedGroup(job);
+			await this.retainLatestStopGroup(job);
 			this.notifyJobUpdate(job);
 			await this.requestWakeSafely(job.parentThreadId);
 		}
@@ -826,36 +825,48 @@ export class AgentBackgroundJobService {
 	 * interrupted-execution sweep; every write goes through the guarded settle,
 	 * so overlapping sweeps on multiple mains converge on the first writer.
 	 */
-	async reconcile(): Promise<void> {
+	async reconcile(signal?: AbortSignal): Promise<void> {
+		if (signal?.aborted) return;
 		for (const job of await this.jobRepository.findSettledSubAgentsWithCheckpoints()) {
+			if (signal?.aborted) return;
 			await this.clearChildCheckpoint(job);
 		}
 		for (const job of await this.jobRepository.findRequestedPauses()) {
+			if (signal?.aborted) return;
 			if (job.status === 'suspended' && job.notifiedAt && job.timeoutAt) {
 				if (
 					(await this.executionRepository.findRunningByThread(job.parentThreadId, {})).length === 0
 				)
 					await this.releaseResumeReservations([job], job.timeoutAt);
 			} else if (job.status === 'paused') {
-				await this.retainPausedGroup(job);
+				await this.retainLatestStopGroup(job);
 			} else {
 				await this.pause(job.id);
 			}
 		}
-		await this.failJobsPastTimeout();
+		if (signal?.aborted) return;
+		await this.failJobsPastTimeout(signal);
+		if (signal?.aborted) return;
 		await this.pruneExpiredPausedJobs();
-		await this.failOrphanedSubAgentJobs(await this.jobRepository.findRunningJobs('subagent'));
-		await this.reconcileWorkflowJobs();
+		if (signal?.aborted) return;
+		await this.failOrphanedSubAgentJobs(
+			await this.jobRepository.findRunningJobs('subagent'),
+			signal,
+		);
+		if (signal?.aborted) return;
+		await this.reconcileWorkflowJobs(signal);
 	}
 
 	/**
 	 * Reconcile workflow outcomes and pending stops even when the feature flag
 	 * is off. Jobs created while the flag was on must still settle.
 	 */
-	async reconcileWorkflowJobs(): Promise<void> {
+	async reconcileWorkflowJobs(signal?: AbortSignal): Promise<void> {
+		if (signal?.aborted) return;
 		const jobs = await this.jobRepository.findRunningJobs('workflow');
-		await this.settleFinishedWorkflowJobs(jobs);
+		await this.settleFinishedWorkflowJobs(jobs, signal);
 		for (const job of jobs) {
+			if (signal?.aborted) return;
 			if (!job.pauseRequestId) continue;
 			try {
 				await this.cancelWorkflowJob(job);
@@ -864,6 +875,7 @@ export class AgentBackgroundJobService {
 			}
 		}
 
+		if (signal?.aborted) return;
 		await this.jobRepository.deleteSettledBefore(new Date(Date.now() - SETTLED_JOB_RETENTION_MS));
 	}
 
@@ -924,7 +936,10 @@ export class AgentBackgroundJobService {
 	 * which seals the outcome as unknowable — the job fails with wording that
 	 * says so. Returns whether any row was settled.
 	 */
-	private async settleFinishedWorkflowJobs(jobs: AgentBackgroundJob[]): Promise<boolean> {
+	private async settleFinishedWorkflowJobs(
+		jobs: AgentBackgroundJob[],
+		signal?: AbortSignal,
+	): Promise<boolean> {
 		const candidates = jobs.filter(
 			(job): job is AgentBackgroundJob & { childExecutionId: string } =>
 				job.kind === 'workflow' && job.status === 'running' && job.childExecutionId !== null,
@@ -946,6 +961,7 @@ export class AgentBackgroundJobService {
 
 		let settledAny = false;
 		for (const job of candidates) {
+			if (signal?.aborted) break;
 			settledAny =
 				(await this.settleFinishedWorkflowJob(job, statuses.get(job.childExecutionId))) ||
 				settledAny;
@@ -980,9 +996,10 @@ export class AgentBackgroundJobService {
 		}
 	}
 
-	private async failJobsPastTimeout(): Promise<void> {
+	private async failJobsPastTimeout(signal?: AbortSignal): Promise<void> {
 		const timedOut = await this.jobRepository.findActivePastTimeout(new Date());
 		for (const job of timedOut) {
+			if (signal?.aborted) return;
 			if (job.status !== 'running' && job.status !== 'suspended') continue;
 			if (job.status === 'suspended' && job.pauseRequestId && job.notifiedAt && job.timeoutAt) {
 				await this.releaseResumeReservations([job], job.timeoutAt);
@@ -1030,7 +1047,10 @@ export class AgentBackgroundJobService {
 	 * the spawning process died before settling. Early detection; the timeout
 	 * would also catch these. Returns whether any row was settled.
 	 */
-	private async failOrphanedSubAgentJobs(jobs: AgentBackgroundJob[]): Promise<boolean> {
+	private async failOrphanedSubAgentJobs(
+		jobs: AgentBackgroundJob[],
+		signal?: AbortSignal,
+	): Promise<boolean> {
 		const orphans = jobs.flatMap((job) =>
 			job.kind === 'subagent' &&
 			job.status === 'running' &&
@@ -1046,6 +1066,7 @@ export class AgentBackgroundJobService {
 		);
 		let settledAny = false;
 		for (const { job, childThreadId } of orphans) {
+			if (signal?.aborted) break;
 			const childStatus = statuses.get(childThreadId);
 			if (childStatus !== 'running' && (await this.suspend(job.id))) {
 				settledAny = true;

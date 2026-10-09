@@ -1,0 +1,33 @@
+operationId: getLogStreamingEventTypes
+tags:
+  - LogStreaming
+summary: List streamable event types
+description: List the event types that can be streamed to a log streaming destination. Requires the `eventBusDestination:list` scope and the Log Streaming feature to be licensed.
+x-required-scope: eventBusDestination:list
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: string
+              description: Event names that can be streamed to a destination.
+              example:
+                - n8n.workflow.started
+                - n8n.workflow.success
+                - n8n.workflow.failed
+          required:
+            - data
+          additionalProperties: false
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

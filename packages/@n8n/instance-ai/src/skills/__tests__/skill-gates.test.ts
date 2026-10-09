@@ -1,4 +1,5 @@
 import {
+	CONFIG_EVAL_PLAYBOOK_SKILL_ID,
 	CONFIG_EVALS_SKILL_ID,
 	INSTANCE_AWARENESS_SKILL_ID,
 	disabledInstanceAiSkillIds,
@@ -19,6 +20,7 @@ describe('disabledInstanceAiSkillIds', () => {
 			instanceContextEnabled: true,
 		});
 		expect(disabled.includes(CONFIG_EVALS_SKILL_ID)).toBe(!enabled);
+		expect(disabled.includes(CONFIG_EVAL_PLAYBOOK_SKILL_ID)).toBe(!enabled);
 	});
 
 	it('hides the instance-awareness skill when the reader is off', () => {

@@ -15,6 +15,34 @@ const agentRunType = z
 	.enum(['test', 'production'])
 	.describe('production means the run executed the published snapshot; test means it ran a draft');
 
+const agentRunSource = z
+	.string()
+	.describe(
+		'Run source: instance-ai, mcp, chat, n8n_chat, n8n_chat_production, workflow, task, subagent, or a chat integration (slack, telegram, linear, discord, whatsapp, teams). Preserve the runtime source value. unknown means the source was unavailable.',
+	);
+
+const agentExecutionCounts = {
+	message_count: z.number().describe('Fresh top-level user turns; delegated child runs excluded'),
+	token_count: z
+		.number()
+		.describe(
+			'Includes LLM calls belonging to no turn (title generation, memory, embeddings), so runs higher than "Agent session metrics".token_count_sum',
+		),
+	tool_call_count: z.number(),
+};
+
+const agentSessionMetrics = {
+	session_count: z.number(),
+	turn_count: z.number(),
+	latency_ms_sum: z.number(),
+	cost_sum: z.number(),
+	token_count_sum: z
+		.number()
+		.describe('Recorded-turn tokens only; reconciles with cost_sum, unlike token_count'),
+	tool_call_count_sum: z.number(),
+	num_skills_sum: z.number(),
+};
+
 // Spread into the session-metrics payload, matching `IAgentConfigurationTelemetryProperties`.
 const agentConfigurationTelemetry = {
 	model: z.string().nullable(),
@@ -152,6 +180,11 @@ const agentPublishTrigger = z
 		'What caused the publish, as opposed to who performed it. channel_connect and slack_setup are historical values only.',
 	);
 
+const n8nChatVariant = z
+	.string()
+	.nullable()
+	.describe('The 125_agents_n8n_chat PostHog variant; null when the user has no flag value');
+
 const agentPublish = {
 	...agentActorIdentity,
 	...agentCapabilityProfile,
@@ -170,6 +203,10 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			run_type: agentRunType,
 			approved: z.boolean(),
 			scope: z.enum(['once', 'session']),
+			counts_by_source: z
+				.record(agentRunSource, z.object({ count: z.literal(1) }))
+				.optional()
+				.describe('One entry for the run source, with count 1 for this approval response'),
 		}),
 	},
 	AGENT_SETUP_COMPLETED: {
@@ -209,15 +246,13 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.optional()
 				.describe('Present only for runs with an n8n user — absent for chat integrations and cron'),
 			run_type: agentRunType,
-			message_count: z
-				.number()
-				.describe('Fresh top-level user turns; delegated child runs excluded'),
-			token_count: z
-				.number()
+			...agentExecutionCounts,
+			counts_by_source: z
+				.record(agentRunSource, z.object(agentExecutionCounts))
+				.optional()
 				.describe(
-					'Includes LLM calls belonging to no turn (title generation, memory, embeddings), so runs higher than "Agent session metrics".token_count_sum',
+					'Counters by run source. Each counter sums to its top-level total. Delegated token and tool usage stays with the parent run source.',
 				),
-			tool_call_count: z.number(),
 		}),
 	},
 	AGENT_SESSION_METRICS: {
@@ -231,15 +266,13 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_type: z.literal('inline').optional(),
 			run_type: agentRunType,
 			turn_status: z.enum(['succeeded', 'failed']),
-			session_count: z.number(),
-			turn_count: z.number(),
-			latency_ms_sum: z.number(),
-			cost_sum: z.number(),
-			token_count_sum: z
-				.number()
-				.describe('Recorded-turn tokens only; reconciles with cost_sum, unlike token_count'),
-			tool_call_count_sum: z.number(),
-			num_skills_sum: z.number(),
+			...agentSessionMetrics,
+			counts_by_source: z
+				.record(agentRunSource, z.object(agentSessionMetrics))
+				.optional()
+				.describe(
+					'Metrics by run source. Turn metrics sum to the top-level totals. session_count and num_skills_sum count each session once per source, so they can overlap across sources.',
+				),
 			...agentConfigurationTelemetry,
 		}),
 	},
@@ -456,10 +489,22 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_CLICKED_NEW_AGENT: {
 		name: 'User clicked new agent',
 		description:
-			'The user clicked a new-agent entry point (button, dropdown, or card). No agent exists at this point — `agent_id` is the id minted for the click, which whichever path later persists the agent creates it under, so this joins to the eventual creation event. Clicks with no matching creation are abandoned new-agent flows.',
+			'The user clicked a new-agent entry point (button, dropdown, card, command bar, or an Agents empty-state action: create blank, a typed prompt, or a starter template). No agent exists at this point — `agent_id` is the id minted for the click, which whichever path later persists the agent creates it under, so this joins to the eventual creation event. Clicks with no matching creation are abandoned new-agent flows.',
 		properties: z.object({
-			source: z.enum(['button', 'dropdown', 'card']),
+			source: z.enum([
+				'button',
+				'dropdown',
+				'card',
+				'empty_state_blank',
+				'empty_state_prompt',
+				'empty_state_template',
+				'command_bar',
+			]),
 			agent_id: z.string().describe('Minted at the click; no agent row exists yet'),
+			template_id: z
+				.string()
+				.optional()
+				.describe('Starter template chosen in the Agents empty state'),
 			manual: z
 				.boolean()
 				.optional()
@@ -656,5 +701,45 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			status: z.enum(['success', 'error']),
 			session_id: sessionId,
 		}),
+	},
+	USER_SELECTED_N8N_CHAT_AGENT: {
+		name: 'User selected n8n chat agent',
+		description:
+			'The user picked a published agent to chat with over n8n Chat, from a card, the agents library, or the chat-page agent picker dropdown.',
+		properties: z.object({
+			agent_id: z.string(),
+			source: z.enum(['card', 'library', 'dropdown']),
+			variant: n8nChatVariant,
+			session_id: sessionId,
+		}),
+	},
+	USER_SENT_MESSAGE_TO_N8N_CHAT_AGENT: {
+		name: 'User sent message to n8n chat agent',
+		description: 'The user sent a chat message to a published agent over n8n Chat.',
+		properties: z.object({
+			agent_id: z.string(),
+			thread_id: z.string(),
+			is_new_thread: z.boolean(),
+			variant: n8nChatVariant,
+			session_id: sessionId,
+		}),
+	},
+	USER_CLICKED_N8N_CHAT_SIDEBAR_ITEM: {
+		name: 'User clicked n8n chat sidebar item',
+		description:
+			'The user clicked a "New chat" or existing-chat item in the sidebar\'s n8n Chat section.',
+		properties: z.discriminatedUnion('item', [
+			z.object({
+				item: z.literal('new_chat'),
+				variant: n8nChatVariant,
+				session_id: sessionId,
+			}),
+			z.object({
+				item: z.literal('chat'),
+				chat_type: z.enum(['assistant', 'agent']),
+				variant: n8nChatVariant,
+				session_id: sessionId,
+			}),
+		]),
 	},
 });

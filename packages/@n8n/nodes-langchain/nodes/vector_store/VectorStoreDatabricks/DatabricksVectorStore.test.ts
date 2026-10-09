@@ -264,6 +264,24 @@ describe('DatabricksVectorStore', () => {
 			expect(embeddings.embedQuery).not.toHaveBeenCalled();
 		});
 
+		// The retriever calls similaritySearch without a filter, so the configured one must apply
+		it('applies the configured search mode and filter to a retriever search', async () => {
+			const store = await managedStore({ queryType: 'HYBRID', filter: { source: 'hr' } });
+			fetchMock.mockResolvedValue(json(queryReply));
+
+			const docs = await store.similaritySearch('hello', 3);
+
+			expect(bodyOf(0)).toEqual({
+				columns: ['id', 'text', 'source'],
+				num_results: 3,
+				query_type: 'HYBRID',
+				query_text: 'hello',
+				filters_json: '{"source":"hr"}',
+			});
+			expect(docs.map((doc) => doc.pageContent)).toEqual(['hello', 'world']);
+			expect(embeddings.embedQuery).not.toHaveBeenCalled();
+		});
+
 		it('rejects a vector query without a request', async () => {
 			const store = await managedStore();
 
@@ -460,16 +478,38 @@ describe('DatabricksVectorStore', () => {
 			).rejects.toThrow('Failed primary keys: row-7');
 		});
 
-		it('rejects the primary key as the content column without a request', async () => {
-			const store = await createStore(directDescribe, { contentColumn: 'id' });
+		it.each([
+			['txet', 'Index cat.sch.idx has no column txet. Select a Content Column from: text, source'],
+			['id', 'Column id is the primary key of cat.sch.idx. Select another Content Column'],
+			[
+				'embedding',
+				'Column embedding holds the embedding vector of cat.sch.idx. Select another Content Column',
+			],
+		])('rejects %s as the content column before embedding anything', async (column, message) => {
+			const store = await createStore(directDescribe, { contentColumn: column });
 
 			await expect(store.addDocuments([{ pageContent: 'hello', metadata: {} }])).rejects.toThrow(
-				'primary key',
+				message,
 			);
-			expect(fetchMock).not.toHaveBeenCalledWith(
-				expect.stringContaining('upsert-data'),
-				expect.anything(),
+			expect(embeddings.embedDocuments).not.toHaveBeenCalled();
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it('rejects an index that declares an empty schema, rather than letting Databricks reject it', async () => {
+			const emptySchema = {
+				...directDescribe,
+				direct_access_index_spec: {
+					...directDescribe.direct_access_index_spec,
+					schema_json: '{}',
+				},
+			};
+			const store = await createStore(emptySchema, { contentColumn: 'text' });
+
+			await expect(store.addDocuments([{ pageContent: 'hello', metadata: {} }])).rejects.toThrow(
+				'Index cat.sch.idx has no column text, and declares no other column to select',
 			);
+			expect(embeddings.embedDocuments).not.toHaveBeenCalled();
+			expect(fetchMock).not.toHaveBeenCalled();
 		});
 
 		it('rejects a managed Delta Sync index without a request', async () => {

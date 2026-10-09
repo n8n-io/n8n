@@ -49,7 +49,10 @@ export class AgentCredentialDependencyRepository extends BaseRepository<AgentCre
 					: await manager.findOne(AgentHistory, {
 							where: { versionId: agent.activeVersionId, agentId },
 						});
-			const draftCredentialIds = extractAgentCredentialIds([agent.schema, agent.integrations]);
+			const draftCredentialIds = extractAgentCredentialIds({
+				...agent.schema,
+				integrations: agent.integrations,
+			});
 			const publishedCredentialIds = extractAgentCredentialIds(publishedVersion?.schema);
 			const referencedCredentialIds = new Set([...draftCredentialIds, ...publishedCredentialIds]);
 

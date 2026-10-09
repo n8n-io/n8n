@@ -138,9 +138,10 @@ export class AuthService {
 
 			// Agent chat attachments render via <img> tags, which can't send the
 			// browser-id header. The controller prefix carries a resolved
-			// :projectId in req.baseUrl, so this one needs a pattern.
+			// :projectId in req.baseUrl, so this one needs a pattern. It covers
+			// both the agent preview chat and n8n Chat routes.
 			new RegExp(
-				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/chat/attachments/:attachmentId$`,
+				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/(?:n8n-)?chat/attachments/:attachmentId$`,
 			),
 		];
 	}

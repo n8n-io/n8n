@@ -438,6 +438,39 @@ describe('createBuildWorkflowTool', () => {
 			expect(result).toMatchObject({ success: true, workflowId: 'wf-1', folder });
 		});
 
+		it('reports a saved workflow as changed', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const { context, filePath } = makeContext({ overrides: { onArtifactChanged } });
+			vi.mocked(context.workflowService.createFromWorkflowJSON).mockResolvedValue({
+				id: 'wf-1',
+				versionId: 'v-1',
+				checksum: 'checksum',
+			} as never);
+
+			await executeTool(createBuildWorkflowTool(context), { filePath, name: 'Reported workflow' });
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'Reported workflow',
+			});
+		});
+
+		it('reports nothing when the save fails', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const { context, filePath } = makeContext({ overrides: { onArtifactChanged } });
+			vi.mocked(context.workflowService.createFromWorkflowJSON).mockRejectedValue(
+				new Error('Save failed'),
+			);
+
+			await executeTool(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Reported workflow',
+			}).catch(() => {});
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
 		it('fails the build before saving when the folder does not resolve', async () => {
 			const { context, filePath } = makeContext({ overrides: { folderExplorationEnabled: true } });
 			vi.mocked(context.workflowService.createFromWorkflowJSON).mockRejectedValue(
@@ -474,6 +507,40 @@ describe('createBuildWorkflowTool', () => {
 			expect(result.success).toBe(false);
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 			expect(result.errors?.join(' ')).toContain('move-workflow-to-folder');
+		});
+
+		it.each(['', ' ', '/'])(
+			'creates at the project root when folderPath is %j',
+			async (folderPath) => {
+				const { context, filePath } = makeContext({
+					overrides: { folderExplorationEnabled: true },
+				});
+
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					name: 'Root workflow',
+					folderPath,
+				});
+
+				expect(result.success).toBe(true);
+				expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+					expect.objectContaining({ name: 'Root workflow' }),
+					{ markAsAiTemporary: true },
+				);
+			},
+		);
+
+		it('updates an existing workflow when folderPath is blank', async () => {
+			const { context, filePath } = makeContext({ overrides: { folderExplorationEnabled: true } });
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-1',
+				folderPath: '',
+			});
+
+			expect(result.success).toBe(true);
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalled();
 		});
 	});
 
@@ -681,6 +748,80 @@ describe('createBuildWorkflowTool', () => {
 				warning_count: 1,
 			}),
 		);
+	});
+
+	it('places added nodes without the invalid node groups it drops', async () => {
+		const start = {
+			id: 'start',
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
+		const notify = {
+			id: 'notify',
+			name: 'Notify',
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [400, -160] as [number, number],
+			parameters: {},
+		};
+		const existingWorkflow = { name: 'Grouped workflow', nodes: [start, notify], connections: {} };
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				name: 'Grouped workflow',
+				nodes: [
+					start,
+					notify,
+					{
+						id: 'set',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: { Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] } },
+				// The chip of this group would land on Notify and push Set down.
+				nodeGroups: [{ id: 'group-1', name: 'Broken group', nodeIds: ['set', 'missing-node'] }],
+			},
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				workflowService: {
+					updateFromWorkflowJSON: vi.fn(
+						async (workflowId: string) =>
+							await Promise.resolve({ id: workflowId, versionId: 'v-next' }),
+					),
+					get: vi.fn(
+						async (workflowId: string) =>
+							await Promise.resolve({
+								id: workflowId,
+								versionId: 'v-current',
+								checksum: 'checksum-current',
+							}),
+					),
+					getAsWorkflowJSON: vi.fn(async () => await Promise.resolve(existingWorkflow)),
+					clearAiTemporary: vi.fn(async () => await Promise.resolve()),
+				} as unknown as InstanceAiContext['workflowService'],
+			},
+		});
+
+		await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-existing',
+		});
+
+		const savedWorkflow = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock
+			.calls[0]?.[1];
+		expect(savedWorkflow?.nodeGroups).toEqual([]);
+		expect(savedWorkflow?.nodes.find((node) => node.name === 'Set')?.position).toEqual([224, 0]);
 	});
 
 	describe('grouping decision check', () => {
