@@ -1,0 +1,65 @@
+packages/nodes-base/nodes/Magento/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_f82263c2a4446c 1-25
+packages/nodes-base/nodes/LoneScale/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_a02ee32f4ad7d5 1-27
+packages/nodes-base/nodes/LingvaNex/GenericFunctions.ts
+  s_01cb885e0ad060::t_492b7e72c8719b 9-10,12,17,24,31
+packages/nodes-base/nodes/LoneScale/GenericFunctions.ts
+  s_01cb885e0ad060::t_13967261e71eeb 10-12,20,25,33
+packages/nodes-base/nodes/LoneScale/LoneScale.node.ts
+  s_4de36876c2d7be::t_e19c3b5c57cf3c 9,99
+packages/nodes-base/nodes/LoneScale/LoneScaleTrigger.node.ts
+  s_4de36876c2d7be::t_54adc97160ed13 11,65,83,102,114
+packages/nodes-base/nodes/LoneScale/actions/company.ts
+  s_4de36876c2d7be::t_82c6f1c8df4b26 2,33
+packages/nodes-base/nodes/LoneScale/actions/contact.ts
+  s_4de36876c2d7be::t_0511ebf6ca2827 2,43,106
+packages/nodes-base/nodes/LoneScale/actions/list.ts
+  s_4de36876c2d7be::t_3f005cd07e10fb 2,14
+packages/nodes-base/nodes/Magento/GenericFunctions.ts
+  s_01cb885e0ad060::t_2aed7610f4f1c3 12-13,15,22,31-37,51,995
+packages/nodes-base/nodes/Mailcheck/GenericFunctions.ts
+  s_01cb885e0ad060::t_7be26b2f19e916 9-10,12,17,25,33
+packages/nodes-base/nodes/LingvaNex/LingvaNex.node.ts
+  s_2e1fa95fc44f8f::t_a6d01833212ed6 10,136,171-176
+packages/nodes-base/nodes/LoneScale/actions/item.ts
+  s_2e1fa95fc44f8f::t_37639910da0840 2,69-74
+packages/nodes-base/nodes/LoneScale/test/LoneScale.node.test.ts
+  s_2e1fa95fc44f8f::t_b539d32aa1751e 2,68,104,151-168,189-196,229,253
+packages/nodes-base/nodes/Magento/Magento2.node.ts
+  s_2e1fa95fc44f8f::t_f05b0c10280711 11,101,118,133,150,168,189,209,226,259,374-379,389,402,446,456,526,540,555,568,579,624,634,678,690,703,746,756,793
+packages/nodes-base/nodes/Mailcheck/Mailcheck.node.ts
+  s_2e1fa95fc44f8f::t_c8ce070c0d4447 8,96-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f7cd130c8110eb3d22e7a61bde88ee261be2904",
+  "prompts": {},
+  "sessions": {
+    "s_01cb885e0ad060": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7ddd85cc749261b8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_4de36876c2d7be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-acab3e3b4ca422544",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
