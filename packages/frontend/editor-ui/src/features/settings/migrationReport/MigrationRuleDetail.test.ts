@@ -626,6 +626,28 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
 			});
 		});
+
+		it('should clear the search on review so the unused workflows show', async () => {
+			const user = userEvent.setup({ delay: null });
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ affectedWorkflows: [recentWorkflow, unusedWorkflow] }),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			const searchInput = await screen.findByPlaceholderText('Search workflows...');
+
+			await user.type(searchInput, 'workflow 2');
+			await vi.waitFor(
+				() => expect(screen.queryByText('Test Workflow 1')).not.toBeInTheDocument(),
+				{ timeout: 1000 },
+			);
+
+			await user.click(screen.getByTestId('migration-rule-unused-review'));
+
+			await waitFor(() => {
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
+			});
+			expect(searchInput).toHaveValue('');
+		});
 	});
 
 	describe('migration', () => {

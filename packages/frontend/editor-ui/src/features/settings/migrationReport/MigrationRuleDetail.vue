@@ -410,8 +410,12 @@ const unusedOpenWorkflows = computed(() =>
 	),
 );
 
-// Oldest runs first, so the unused workflows are at the top of the table.
+// The callout counts every row, so clear the search and the filter to show
+// all of them. Oldest runs first puts the unused workflows at the top.
 function reviewUnusedWorkflows() {
+	searchInput.value = '';
+	searchQuery.value = '';
+	statusFilter.value = '';
 	sortBy.value = [{ id: 'lastExecutedAt', desc: false }];
 }
 
