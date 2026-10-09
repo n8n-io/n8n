@@ -6,7 +6,7 @@ ARG N8N_VERSION=snapshot
 # digest together. Node 26.11.1 has no runtime change over the base's 26.11.0;
 # the official image skipped 26.11.0.
 ARG BUILDER_IMAGE=node:26.11.1-trixie-slim@sha256:193fe51b64e77981119c98c2002c9e32a70e2f006fb4d25068ce0558998917f0
-ARG RUNTIME_IMAGE=n8nio/base:26.10.0-debian@sha256:99164edce67b089c06fc5f88bf0f2f1ffc1700f7b7020086c14a75b30f59f1d9
+ARG RUNTIME_IMAGE=n8nio/base:26.11.0-debian@sha256:f91725f154cdf8601e1fa9b237ab9fc78e7e391e873294d4c3cfa40c95d58743
 
 # The runtime base has no compiler, so this stage supplies one. Everything
 # after g++ is for the librdkafka build below.
