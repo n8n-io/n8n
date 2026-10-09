@@ -973,7 +973,12 @@ export class EvalExecutionService {
 		const item: INodeExecutionData = { json: triggerContent as IDataObject };
 		const binary: IBinaryKeyData = {};
 
-		if (binaryRequirement) {
+		// The embedded files are what the trigger emits; the requirement only fills in when they name none.
+		const embeddedKeys = Object.keys(embedded);
+		if (
+			binaryRequirement &&
+			(embeddedKeys.length === 0 || embeddedKeys.includes(binaryRequirement.propertyName))
+		) {
 			// Requirement wins for its key, except embedded meta beats the generic fallback.
 			const embeddedMeta = embedded[binaryRequirement.propertyName];
 			const isGenericFallback =
@@ -982,6 +987,7 @@ export class EvalExecutionService {
 			binary[binaryRequirement.propertyName] = synthesizeBinaryEntry(
 				(isGenericFallback && embeddedMeta?.mimeType) || binaryRequirement.contentType,
 				(isGenericFallback && embeddedMeta?.fileName) || binaryRequirement.filename,
+				embeddedMeta?.text,
 			);
 		}
 
@@ -990,6 +996,7 @@ export class EvalExecutionService {
 			binary[key] = synthesizeBinaryEntry(
 				meta.mimeType ?? 'application/octet-stream',
 				meta.fileName ?? 'input.bin',
+				meta.text,
 			);
 		}
 
@@ -1538,8 +1545,8 @@ function withInterceptionGaps(
 }
 
 /** Synthesize a structurally valid binary entry (real bytes, base64-inlined). */
-function synthesizeBinaryEntry(contentType: string, filename: string): IBinaryData {
-	const bytes = synthesizeBinaryFixture(contentType, filename);
+function synthesizeBinaryEntry(contentType: string, filename: string, text?: string): IBinaryData {
+	const bytes = synthesizeBinaryFixture(contentType, filename, { text });
 	const extension = filename.includes('.') ? filename.slice(filename.lastIndexOf('.') + 1) : 'bin';
 	return {
 		mimeType: contentType,
@@ -1553,6 +1560,8 @@ function synthesizeBinaryEntry(contentType: string, filename: string): IBinaryDa
 interface EmbeddedBinaryMeta {
 	mimeType?: string;
 	fileName?: string;
+	/** The document's text, written into the synthesized file. */
+	text?: string;
 }
 
 function nonEmptyString(value: unknown): string | undefined {
@@ -1587,6 +1596,7 @@ function readEmbeddedBinaryMeta(
 			mimeType,
 			// `name` is a fileName fallback, not qualification evidence.
 			fileName: strictFileName ?? nonEmptyString(v.name),
+			text: nonEmptyString(v.text),
 		};
 	}
 
