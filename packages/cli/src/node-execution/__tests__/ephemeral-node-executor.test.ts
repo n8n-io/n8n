@@ -1,12 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { DynamicTool } from '@langchain/core/tools';
-import {
-	CredentialsRepository,
-	SharedCredentialsRepository,
-	type CredentialsEntity,
-	type SharedCredentials,
-} from '@n8n/db';
+import { CredentialsRepository, type CredentialsEntity } from '@n8n/db';
 import { StructuredToolkit } from 'n8n-core';
 import {
 	Expression,
@@ -97,7 +92,6 @@ describe('isAgentProviderNode', () => {
 describe('EphemeralNodeExecutor', () => {
 	const nodeTypes = mockInstance(NodeTypes);
 	const credentialsRepository = mockInstance(CredentialsRepository);
-	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
 	const logger = mockInstance(Logger);
 	const policyEnforcementService = mockInstance(PolicyEnforcementService);
 	// Node execution constructs `SSHClientsManager` via DI, whose constructor does
@@ -109,7 +103,6 @@ describe('EphemeralNodeExecutor', () => {
 	const executor = new EphemeralNodeExecutor(
 		nodeTypes,
 		credentialsRepository,
-		sharedCredentialsRepository,
 		logger,
 		policyEnforcementService,
 	);
@@ -315,7 +308,7 @@ describe('EphemeralNodeExecutor', () => {
 
 		it('throws when no matching credential is found for the project', async () => {
 			mockToolNodeWithSupplyData();
-			credentialsRepository.findAllCredentialsForProject.mockResolvedValue([]);
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([]);
 
 			await expect(
 				executor.executeInline({
@@ -331,7 +324,7 @@ describe('EphemeralNodeExecutor', () => {
 
 		it('throws when multiple credentials match the same type + name (case-insensitive)', async () => {
 			mockToolNodeWithSupplyData();
-			credentialsRepository.findAllCredentialsForProject.mockResolvedValue([
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([
 				mock<CredentialsEntity>({ id: 'c1', name: 'Prod Slack', type: 'slackApi' }),
 				mock<CredentialsEntity>({ id: 'c2', name: 'prod slack', type: 'slackApi' }),
 			]);
@@ -348,6 +341,33 @@ describe('EphemeralNodeExecutor', () => {
 			).rejects.toThrow(/Multiple credentials match/);
 		});
 
+		it('resolves a usable credential by type and name', async () => {
+			let observedCredentials: Record<string, INodeCredentialsDetails> | undefined;
+			const supplyData = vi.fn(function (this: ISupplyDataFunctions) {
+				observedCredentials = this.getNode().credentials;
+				return { response: { invoke: vi.fn().mockResolvedValue('ok') } };
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([
+				{ id: 'c1', name: 'Global Slack', type: 'slackApi' },
+			]);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentials: { slackApi: 'global slack' },
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('success');
+			expect(credentialsRepository.findCredentialsUsableInProject).toHaveBeenCalledWith('p-1');
+			expect(observedCredentials).toEqual({ slackApi: { id: 'c1', name: 'Global Slack' } });
+		});
+
 		it('skips resolution when no credentials are requested', async () => {
 			mockToolNodeWithSupplyData();
 
@@ -359,7 +379,7 @@ describe('EphemeralNodeExecutor', () => {
 				projectId: 'p-1',
 			});
 
-			expect(credentialsRepository.findAllCredentialsForProject).not.toHaveBeenCalled();
+			expect(credentialsRepository.findCredentialsUsableInProject).not.toHaveBeenCalled();
 		});
 	});
 
@@ -374,6 +394,35 @@ describe('EphemeralNodeExecutor', () => {
 				}),
 			);
 		}
+
+		it('executes an accessible credential by ID and uses its current name', async () => {
+			let observedCredentials: Record<string, INodeCredentialsDetails> | undefined;
+			const supplyData = vi.fn(function (this: ISupplyDataFunctions) {
+				observedCredentials = this.getNode().credentials;
+				return { response: { invoke: vi.fn().mockResolvedValue('ok') } };
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([
+				{ id: 'c1', name: 'Current Slack', type: 'slackApi' },
+			]);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentialDetails: { slackApi: { id: 'c1', name: 'Old Slack' } },
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('success');
+			expect(credentialsRepository.findCredentialsUsableInProject).toHaveBeenCalledWith('p-1', [
+				'c1',
+			]);
+			expect(observedCredentials).toEqual({ slackApi: { id: 'c1', name: 'Current Slack' } });
+		});
 
 		it('throws when credentialDetails are missing an id', async () => {
 			mockToolNodeWithSupplyData();
@@ -391,9 +440,9 @@ describe('EphemeralNodeExecutor', () => {
 			).rejects.toThrow(/missing an id/);
 		});
 
-		it('throws when the credential is not shared with the project', async () => {
+		it('reports the credential ID when it is not accessible', async () => {
 			mockToolNodeWithSupplyData();
-			sharedCredentialsRepository.findOne.mockResolvedValue(null);
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([]);
 
 			await expect(
 				executor.executeInline({
@@ -404,20 +453,18 @@ describe('EphemeralNodeExecutor', () => {
 					inputData: [],
 					projectId: 'p-1',
 				}),
-			).rejects.toThrow(/not accessible or does not exist/);
+			).rejects.toThrow('Credential with ID "c1" is not accessible or does not exist.');
 		});
 
 		it('throws when the resolved credential has a different type than the slot', async () => {
 			mockToolNodeWithSupplyData();
-			sharedCredentialsRepository.findOne.mockResolvedValue(
-				mock<SharedCredentials>({
-					credentials: mock<CredentialsEntity>({
-						id: 'c1',
-						name: 'Prod Slack',
-						type: 'gmailOAuth2', // wrong type for slackApi slot
-					}),
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([
+				mock<CredentialsEntity>({
+					id: 'c1',
+					name: 'Prod Slack',
+					type: 'gmailOAuth2', // wrong type for slackApi slot
 				}),
-			);
+			]);
 
 			await expect(
 				executor.executeInline({
@@ -448,7 +495,7 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result.status).toBe('success');
 			// Managed credentials are minted per execution (CredentialsHelper.getDecrypted),
 			// so there is no stored row to resolve — the project lookup must be skipped.
-			expect(sharedCredentialsRepository.findOne).not.toHaveBeenCalled();
+			expect(credentialsRepository.findCredentialsUsableInProject).not.toHaveBeenCalled();
 		});
 	});
 
@@ -860,7 +907,7 @@ describe('EphemeralNodeExecutor', () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mockNodeType({ description: toolDescription, supplyData }),
 			);
-			sharedCredentialsRepository.findOne.mockResolvedValue(null);
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([]);
 
 			const result = await executor.introspectSupplyDataToolSchema({
 				projectId: 'p-1',
@@ -879,7 +926,7 @@ describe('EphemeralNodeExecutor', () => {
 		});
 
 		it('logs a non-Error credential lookup failure during introspection', async () => {
-			sharedCredentialsRepository.findOne.mockRejectedValue('lookup failed');
+			credentialsRepository.findCredentialsUsableInProject.mockRejectedValue('lookup failed');
 
 			const result = await executor.introspectSupplyDataToolSchema({
 				projectId: 'p-1',
@@ -906,15 +953,13 @@ describe('EphemeralNodeExecutor', () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mockNodeType({ description: toolDescription, supplyData }),
 			);
-			sharedCredentialsRepository.findOne.mockResolvedValue(
-				mock<SharedCredentials>({
-					credentials: mock<CredentialsEntity>({
-						id: 'c1',
-						name: 'Prod Slack',
-						type: 'slackApi',
-					}),
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([
+				mock<CredentialsEntity>({
+					id: 'c1',
+					name: 'Prod Slack',
+					type: 'slackApi',
 				}),
-			);
+			]);
 
 			const result = await executor.introspectSupplyDataToolSchema({
 				projectId: 'p-1',

@@ -609,6 +609,27 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return await this.findBy({ usageScope: 'project', shared: { projectId } });
 	}
 
+	/** Read execution metadata for credentials shared with this project or all projects. */
+	async findCredentialsUsableInProject(
+		projectId: string,
+		credentialIds?: string[],
+	): Promise<Array<Pick<CredentialsEntity, 'id' | 'name' | 'type'>>> {
+		if (credentialIds?.length === 0) return [];
+
+		const filter = this.excludePendingAuthorization({
+			usageScope: 'project',
+			...(credentialIds ? { id: In(credentialIds) } : {}),
+		});
+
+		return await this.find({
+			where: [
+				{ ...filter, shared: { projectId } },
+				{ ...filter, isGlobal: true },
+			],
+			select: ['id', 'name', 'type'],
+		});
+	}
+
 	/**
 	 * Find credentials by name and type, scoped to a specific project.
 	 * Used by replaceInvalidCredentials to prevent cross-project credential resolution.
