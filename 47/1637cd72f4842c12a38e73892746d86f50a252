@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/ActiveCampaign/__tests__/workflow/workflow.json
+  s_008233a0ea3b73::t_45db87c7f5e4bc 1-1030
+packages/nodes-base/nodes/ActiveCampaign/__tests__/workflow/workflow.test.ts
+  s_008233a0ea3b73::t_9aa2b4e7ba5c79 1-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "471637cd72f4842c12a38e73892746d86f50a252",
+  "prompts": {},
+  "sessions": {
+    "s_008233a0ea3b73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a12a4384876359286",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
