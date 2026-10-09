@@ -80,6 +80,7 @@ import { PromotionProviderRepository } from '../database/repositories/promotion-
 import { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import { PromotionConfigResolver } from '../promotion-config.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
+import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
@@ -189,6 +190,7 @@ beforeEach(async () => {
 		Container.get(PromotionBindingPreflightService),
 		Container.get(PackageDirectoryInventoryReader),
 		Container.get(PackageImportConfig),
+		Container.get(PromotionReviewsService),
 		logger,
 	);
 	Container.set(PromotionsService, service);
