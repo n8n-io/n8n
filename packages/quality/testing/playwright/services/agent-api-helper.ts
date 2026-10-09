@@ -3,6 +3,7 @@ import type {
 	AgentChatMessageDto,
 	AgentChatMessagesResponse,
 	AgentChatQueueResponse,
+	AgentChatResumeDto,
 	AgentConfigResponse,
 	AgentJsonConfig,
 	AgentSseEvent,
@@ -210,6 +211,15 @@ export class AgentApiHelper {
 		);
 		if (!response.ok()) throw new TestError(`Failed to stop chat: ${await response.text()}`);
 		return (await response.json()).data;
+	}
+
+	/** Answers a tool call that a chat run suspended, as the buttons of its card do. */
+	async resumeChat(projectId: string, agentId: string, payload: AgentChatResumeDto): Promise<void> {
+		const response = await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/resume`,
+			{ data: payload },
+		);
+		if (!response.ok()) throw new TestError(`Failed to resume chat: ${await response.text()}`);
 	}
 
 	/** Fetch exposes SSE before the response ends. Playwright buffers the response. */

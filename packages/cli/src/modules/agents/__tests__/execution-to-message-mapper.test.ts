@@ -632,6 +632,11 @@ describe('who answered a suspended tool call', () => {
 		endTime,
 		success: endTime > 0,
 	});
+	/** The result of a resumed call. The recorder stores it without the input of the call. */
+	const resumedResult = (toolCallId: string, endTime: number) => ({
+		...toolCall(toolCallId, endTime),
+		input: undefined,
+	});
 	const suspension = (toolCallId: string) => ({
 		type: 'suspension' as const,
 		toolName: 'deploy_workflow',
@@ -658,7 +663,7 @@ describe('who answered a suspended tool call', () => {
 		execution({
 			id: 'resumed',
 			userMessage: null,
-			timeline: [answer('tc-1', response, respondedBy), toolCall('tc-1', 400)],
+			timeline: [answer('tc-1', response, respondedBy), resumedResult('tc-1', 400)],
 		}),
 	];
 
@@ -725,7 +730,7 @@ describe('who answered a suspended tool call', () => {
 			execution({
 				id: 'resumed',
 				userMessage: null,
-				timeline: [answer('tc-1', { approved: true }, grace), toolCall('tc-1', 400)],
+				timeline: [answer('tc-1', { approved: true }, grace), resumedResult('tc-1', 400)],
 			}),
 		];
 

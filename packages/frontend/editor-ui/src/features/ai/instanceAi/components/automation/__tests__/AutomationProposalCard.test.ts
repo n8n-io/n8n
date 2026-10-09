@@ -381,7 +381,11 @@ const InChat = defineComponent({
 		if (call) {
 			provideThread({
 				id: 'thread-1',
-				findToolCall: (id: string) => (id === 'tc-1' ? call.value : undefined),
+				// Like the thread runtime: a tool name skips the calls of other tools.
+				findToolCall: (id: string, toolName?: string) =>
+					id === 'tc-1' && (toolName === undefined || call.value?.toolName === toolName)
+						? call.value
+						: undefined,
 			} as unknown as ThreadRuntime);
 		}
 		// The chat resolves the card with the answer that the card sends.
@@ -539,6 +543,20 @@ describe('AutomationProposalCard after the answer', () => {
 
 		expect(status).toHaveTextContent(`It's on. "Morning digest" runs at 08:00`);
 		expect(iconOf()).toHaveAttribute('data-icon', 'circle-check');
+	});
+
+	it('shows what the answer asked for when only a call of another tool has its id', () => {
+		// A model can use a tool call id again, so the build call before the card can have its id.
+		// AutomationProposalResolved.repeatedIds.test.ts reads the card's own call in a real chat.
+		const call = ref(
+			toolCall({ toolName: 'build-workflow', result: { workflowId: 'wf-1', saved: true } }),
+		);
+		const { getByTestId } = renderAnswered(TURN_ON, { call });
+
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveAttribute('data-status', 'on');
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+			`It's on. "Morning digest" runs at 08:00`,
+		);
 	});
 
 	it('says that the workflow was saved but is off when the result is not active', async () => {

@@ -1,0 +1,665 @@
+import type { InstanceAiThreadInfo } from '@n8n/api-types';
+import type { IWorkflowBase } from 'n8n-workflow';
+
+import { INSTANCE_OWNER_CREDENTIALS } from '../../../config/test-users';
+import type { A11yChecker } from '../../../fixtures/a11y';
+import type { n8nPage } from '../../../pages/n8nPage';
+import type { ApiHelpers } from '../../../services/api-helper';
+import type { ScriptedLlm } from '../../../services/scripted-llm/scripted-llm.server';
+import type { ScriptInput } from '../../../services/scripted-llm/scripted-llm.types';
+import { TestError } from '../../../Types';
+import {
+	blockingNodes,
+	describeNode,
+	isDesignSystemMenuItem,
+} from '../../../utils/a11y-blocking-nodes';
+import {
+	ASSISTANT_AGENT_ID,
+	expect,
+	requireLinkedInstances,
+	test,
+	type AssistantRun,
+} from './fixtures';
+
+type Mode = 'simple' | 'power';
+
+const MODE_LABELS = { simple: 'Simple', power: 'Power' } as const;
+// The system prompt of the Assistant agent starts with this text. The scripted rules use it
+// to skip title and memory calls.
+const AGENT_PROMPT = 'n8n Instance Agent';
+const TEAM_PROJECT_NAME = 'Simple mode team';
+const AUTOMATION_WORKFLOW_NAME = 'Simple mode daily digest';
+const LIVE_CHAT_TITLE = 'Live digest chat';
+// The target that the proposal offers: this n8n instance (AUTOMATION_LOCAL_TARGET_ID).
+const AUTOMATION_TARGET = 'local';
+// The a11y bucket of the Simple sidebar parts and the Power groups (fixtures/a11y.ts).
+const EXPERIENCE_MODES_BUCKET = 'experience-modes';
+// The blocking elements of the sidebar that exist today, outside the parts above. Each entry
+// names one element, and its owner fixes it (BACKLOG Q03). The list may only shrink: an element
+// with a new violation fails the scan, and so does a fixed one, until the list is updated.
+const KNOWN_SIDEBAR_VIOLATIONS = [
+	// The help and settings triggers of the bottom menu (BottomMenu.vue) carry aria-expanded.
+	'aria-allowed-attr (critical): main-sidebar-help',
+	'aria-allowed-attr (critical): main-sidebar-settings',
+	// The logo link of the sidebar header (MainSidebarHeader.vue) has no accessible name.
+	'link-name (serious): <a href="/home">',
+];
+// Chats wait for the scripted model and for the chat list to refresh, so they take a while.
+const CHAT_TIMEOUT_MS = 60_000;
+const PLAIN_REPLY = 'Plain answer.';
+const PROPOSAL_REPLY = 'I can keep the digest and turn it on.';
+
+/** A chat with a known title. The rename comes before the first run, so the title stays. */
+async function createNamedChat(api: ApiHelpers, title: string): Promise<InstanceAiThreadInfo> {
+	const thread = await api.createInstanceAiThread();
+	return await api.renameInstanceAiThread(thread.id, title);
+}
+
+/** Saves the mode for the signed-in user, then opens the Assistant. The sidebar reads the mode on load. */
+async function openInMode(n8n: n8nPage, mode: Mode): Promise<void> {
+	await n8n.api.users.setExperienceMode(mode);
+	await n8n.navigate.toInstanceAi();
+}
+
+function manualTriggerWorkflow(): Partial<IWorkflowBase> {
+	return {
+		name: 'Simple mode approval target',
+		active: false,
+		nodes: [
+			{
+				id: 'manual',
+				name: 'Manual Trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+		],
+		connections: {},
+		settings: {},
+	};
+}
+
+/**
+ * The script of the chat-state test. The plain rule ends its run with text. The
+ * approval rule calls `executions run`, which waits for the user to approve it.
+ */
+function chatStatesScript(workflowId: string): ScriptInput {
+	return {
+		rules: [
+			{
+				id: 'plain-answer',
+				when: { systemIncludes: AGENT_PROMPT, userText: 'Plain question' },
+				reply: { text: PLAIN_REPLY },
+			},
+			{
+				id: 'run-needs-approval',
+				when: {
+					systemIncludes: AGENT_PROMPT,
+					userText: 'Approval question',
+					toolAvailable: 'executions',
+				},
+				reply: {
+					text: 'I will run the workflow.',
+					toolCalls: [{ name: 'executions', input: { action: 'run', workflowId } }],
+				},
+			},
+		],
+		fallback: { text: 'Scripted fallback.' },
+	};
+}
+
+/** The id of the workflow with this name. Throws when no such workflow exists. */
+async function getWorkflowIdByName(api: ApiHelpers, name: string): Promise<string> {
+	const workflows: Array<{ id: string; name: string }> = await api.workflows.getWorkflows();
+	const match = workflows.find((workflow) => workflow.name === name);
+	if (!match) throw new TestError(`No workflow named "${name}"`);
+	return match.id;
+}
+
+/** The workflow that the Assistant builds in the automation test: a daily Schedule Trigger. */
+function digestWorkflowJson() {
+	return {
+		name: AUTOMATION_WORKFLOW_NAME,
+		nodes: [
+			{
+				id: 'schedule',
+				name: 'Schedule Trigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: { rule: { interval: [{ field: 'days', daysInterval: 1, triggerAtHour: 8 }] } },
+			},
+			{
+				id: 'noop',
+				name: 'No Operation',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				position: [240, 0],
+				parameters: {},
+			},
+		],
+		connections: {
+			'Schedule Trigger': { main: [[{ node: 'No Operation', type: 'main', index: 0 }]] },
+		},
+		settings: {},
+	};
+}
+
+/** Builds the digest. The Assistant saves it as a workflow that it created, which can be kept. */
+function buildDigestScript(): ScriptInput {
+	return {
+		rules: [
+			{
+				id: 'build-digest',
+				when: {
+					systemIncludes: AGENT_PROMPT,
+					userText: 'Build the digest',
+					toolAvailable: 'build-workflow',
+				},
+				reply: {
+					text: 'I will build the digest.',
+					toolCalls: [
+						{
+							name: 'build-workflow',
+							input: {
+								filePath: 'workflows/simple-mode-digest.json',
+								sourceCode: JSON.stringify(digestWorkflowJson()),
+								name: AUTOMATION_WORKFLOW_NAME,
+							},
+						},
+					],
+				},
+			},
+		],
+		fallback: { text: 'Scripted fallback.' },
+	};
+}
+
+/** Proposes the built workflow. The user then turns it on in the card. */
+function proposeDigestScript(workflowId: string): ScriptInput {
+	return {
+		rules: [
+			{
+				id: 'propose-digest',
+				when: {
+					systemIncludes: AGENT_PROMPT,
+					userText: 'Turn it into an automation',
+					toolAvailable: 'propose_automation',
+				},
+				reply: {
+					text: PROPOSAL_REPLY,
+					toolCalls: [
+						{
+							name: 'propose_automation',
+							input: {
+								workflowId,
+								title: AUTOMATION_WORKFLOW_NAME,
+								why: ['It should run every morning.'],
+							},
+						},
+					],
+				},
+			},
+		],
+		fallback: { text: 'Scripted fallback.' },
+	};
+}
+
+type StartLlm = (script: ScriptInput) => Promise<ScriptedLlm>;
+type StartRun = (threadId: string, message: string) => Promise<AssistantRun>;
+
+/** The tool calls that the run suspended for an answer, read from its stream. */
+function suspensionsOf(run: AssistantRun) {
+	return run.events.flatMap((event) =>
+		event.type === 'tool-call-suspended' ? [event.payload] : [],
+	);
+}
+
+/** Waits until the run suspends for an answer, then returns its first suspended tool call. */
+async function awaitSuspension(run: AssistantRun) {
+	await expect
+		.poll(() => suspensionsOf(run).length, { timeout: CHAT_TIMEOUT_MS })
+		.toBeGreaterThan(0);
+	const [suspension] = suspensionsOf(run);
+	if (!suspension) throw new TestError('The run did not suspend for an answer');
+	return suspension;
+}
+
+/**
+ * Builds the digest in a chat and returns the id of the built workflow. The model that builds
+ * it stops: the proposal needs a model with a rule for that id.
+ */
+async function buildDigestInChat(
+	n8n: n8nPage,
+	startLlm: StartLlm,
+	startRun: StartRun,
+	chatId: string,
+): Promise<string> {
+	const buildLlm = await startLlm(buildDigestScript());
+	const build = await startRun(chatId, 'Build the digest');
+	await expect
+		.poll(() => build.events.map((event) => event.type), { timeout: CHAT_TIMEOUT_MS })
+		.toContain('done');
+	build.disconnect();
+	expect(buildLlm.requests().map((request) => request.ruleId)).toContain('build-digest');
+	const digestId = await getWorkflowIdByName(n8n.api, AUTOMATION_WORKFLOW_NAME);
+	await buildLlm.stop();
+	return digestId;
+}
+
+/**
+ * Builds the digest in a new chat, then asks for the automation proposal. The proposal
+ * waits for the user, so the run stays suspended until the answer.
+ */
+async function buildDigestAndPropose(n8n: n8nPage, startLlm: StartLlm, startRun: StartRun) {
+	const chat = await createNamedChat(n8n.api, 'Digest chat');
+	const digestId = await buildDigestInChat(n8n, startLlm, startRun, chat.id);
+	const proposeLlm = await startLlm(proposeDigestScript(digestId));
+	const proposal = await startRun(chat.id, 'Turn it into an automation');
+	const suspension = await awaitSuspension(proposal);
+	proposal.disconnect();
+	expect(proposeLlm.requests().map((request) => request.ruleId)).toContain('propose-digest');
+	return { chat, digestId, suspension };
+}
+
+/** Answers the proposal through the resume route, with the answer of its "Turn it on" button. */
+async function turnOnProposal(
+	n8n: n8nPage,
+	suspension: { runId: string; toolCallId: string },
+): Promise<void> {
+	const project = await n8n.api.projects.getMyPersonalProject();
+	await n8n.api.agents.resumeChat(project.id, ASSISTANT_AGENT_ID, {
+		runId: suspension.runId,
+		toolCallId: suspension.toolCallId,
+		resumeData: {
+			kind: 'capabilityDecision',
+			approved: true,
+			values: { target: AUTOMATION_TARGET, activate: true },
+		},
+	});
+}
+
+/**
+ * Clicks "Turn it on" on the card. The card then shows its answered state, and the workflow
+ * must be active and listed as On.
+ */
+async function turnOnFromCard(n8n: n8nPage, digestId: string): Promise<void> {
+	await n8n.experienceModes.getProposalTurnOnButton().click();
+	await expect(n8n.experienceModes.getProposalResolved()).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
+	await expect(n8n.experienceModes.getProposalCard()).toBeHidden();
+	await expect(n8n.experienceModes.getProposalResolvedStatus()).toHaveAttribute(
+		'data-status',
+		'on',
+		{
+			timeout: CHAT_TIMEOUT_MS,
+		},
+	);
+	// The answer resumes the run, which turns the workflow on.
+	await expect
+		.poll(async () => (await n8n.api.workflows.getWorkflow(digestId)).active, {
+			timeout: CHAT_TIMEOUT_MS,
+		})
+		.toBe(true);
+	await n8n.navigate.toInstanceAi();
+	await expect(n8n.experienceModes.getAutomationRow(`${AUTOMATION_WORKFLOW_NAME}, On`)).toBeVisible(
+		{ timeout: CHAT_TIMEOUT_MS },
+	);
+}
+
+/**
+ * Waits for a read of the chat history that holds the proposal call. The chat does not read
+ * its history while a turn streams, so the first such read is the read after the turn ended.
+ * The page applies that read to the chat, so the card must stay after it.
+ */
+async function waitForHistoryWithProposal(n8n: n8nPage, threadId: string): Promise<void> {
+	await n8n.page.waitForResponse(
+		async (response) =>
+			response.request().method() === 'GET' &&
+			response.url().includes(`/chat/${threadId}/messages`) &&
+			(await response.text()).includes('"toolName":"propose_automation"'),
+		{ timeout: CHAT_TIMEOUT_MS },
+	);
+}
+
+/** Fails when a blocking element of the sidebar is not on the known list. */
+async function expectKnownSidebarViolations(a11y: A11yChecker): Promise<void> {
+	const violations = await a11y.check('sidebar');
+	const labels = blockingNodes(violations)
+		.filter((node) => !isDesignSystemMenuItem(node))
+		.map(describeNode);
+	expect([...new Set(labels)].sort()).toEqual(KNOWN_SIDEBAR_VIOLATIONS);
+}
+
+/** Fails on any blocking node in the parts that the experience modes add. */
+async function expectNoBlockingViolationsInNewParts(a11y: A11yChecker): Promise<void> {
+	const violations = await a11y.check(EXPERIENCE_MODES_BUCKET);
+	const unexpected = blockingNodes(violations)
+		.filter((node) => !isDesignSystemMenuItem(node))
+		.map(describeNode);
+	expect(unexpected).toEqual([]);
+}
+
+// The linked-instance runner starts both instances. Skip when it is not running.
+requireLinkedInstances();
+
+test.describe(
+	'Simple and Power modes',
+	{ annotation: [{ type: 'owner', description: 'instanceAI' }] },
+	() => {
+		test.describe.configure({ mode: 'serial' });
+
+		test(
+			'a new user lands in Simple: Assistant, Chats, Automations and a collapsed Workspace',
+			{ tag: '@auth:none' },
+			async ({ n8n, api }) => {
+				// The browser sign-in binds its session to the browser, so seed through the API
+				// helper of its own context before the form sign-in.
+				await n8n.start.withProjectFeatures();
+				await api.signin('owner');
+				await createNamedChat(api, 'Simple mode chat');
+				const project = await api.projects.createProject(TEAM_PROJECT_NAME);
+				await api.projects.addFavorite(project.id);
+
+				// Signed out, so the owner signs in through the form. The features are server
+				// settings, so the sign-in page and the Assistant both see them.
+				await n8n.signIn.loginWithEmailAndPassword(
+					INSTANCE_OWNER_CREDENTIALS.email,
+					INSTANCE_OWNER_CREDENTIALS.password,
+				);
+				await expect(n8n.page).toHaveURL(/\/assistant$/);
+
+				await n8n.navigate.toInstanceAi();
+				await expect(n8n.instanceAi.getNewThreadButton()).toBeVisible();
+				await expect(n8n.experienceModes.getOverviewEntry()).toBeVisible();
+				await expect(n8n.experienceModes.getChatsSection()).toContainText('Simple mode chat');
+				// The Automations list loads after the chats, so it can take a moment.
+				await expect(n8n.experienceModes.getAutomationsSection()).toBeVisible({ timeout: 15_000 });
+
+				// Personal and Shared are hidden until the Workspace opens.
+				await expect(n8n.experienceModes.getWorkspaceToggle()).toHaveAttribute(
+					'aria-expanded',
+					'false',
+				);
+				await expect(n8n.experienceModes.getPersonalEntry()).toBeHidden();
+				await expect(n8n.experienceModes.getSharedEntry()).toBeHidden();
+
+				await n8n.experienceModes.getWorkspaceToggle().click();
+				await expect(n8n.experienceModes.getWorkspaceToggle()).toHaveAttribute(
+					'aria-expanded',
+					'true',
+				);
+				await expect(n8n.experienceModes.getPersonalEntry()).toBeVisible();
+				await expect(n8n.experienceModes.getSharedEntry()).toBeVisible();
+				await expect(n8n.experienceModes.getSidebarButton('Favorites')).toBeVisible();
+				await expect(n8n.experienceModes.getSidebarButton('Projects')).toBeVisible();
+				await expect(n8n.experienceModes.getProjectRow(TEAM_PROJECT_NAME)).toBeVisible();
+			},
+		);
+
+		test('Power shows the hidden items, keeps the choice on reload, and the command bar switches back', async ({
+			n8n,
+		}) => {
+			await n8n.navigate.toInstanceAi();
+			await expect(n8n.experienceModes.getModeOption(MODE_LABELS.simple)).toBeChecked();
+			await expect(n8n.experienceModes.getPersonalEntry()).toBeHidden();
+
+			await n8n.experienceModes.getModeOption(MODE_LABELS.power).click();
+			await expect(n8n.experienceModes.getModeOption(MODE_LABELS.power)).toBeChecked();
+			await expect(n8n.experienceModes.getPersonalEntry()).toBeVisible();
+			await expect(n8n.experienceModes.getSharedEntry()).toBeVisible();
+			// The radio shows the choice before the save ends, so poll the saved value.
+			await expect.poll(async () => await n8n.api.users.getExperienceMode()).toBe('power');
+
+			await n8n.page.reload();
+			await expect(n8n.experienceModes.getModeOption(MODE_LABELS.power)).toBeChecked();
+			await expect(n8n.experienceModes.getPersonalEntry()).toBeVisible();
+
+			await n8n.commandBar.search('Switch to Simple mode');
+			await expect(n8n.commandBar.getItem('Switch to Simple mode')).toBeVisible();
+			await n8n.commandBar.getInput().press('Enter');
+			await expect(n8n.experienceModes.getModeOption(MODE_LABELS.simple)).toBeChecked();
+			await expect(n8n.experienceModes.getPersonalEntry()).toBeHidden();
+			await expect.poll(async () => await n8n.api.users.getExperienceMode()).toBe('simple');
+		});
+
+		test('the collapsed sidebar has one mode button that names the mode and switches it', async ({
+			n8n,
+		}) => {
+			await n8n.navigate.toInstanceAi();
+			await n8n.sideBar.collapse();
+
+			const modeToggle = n8n.experienceModes.getCollapsedModeToggle();
+			await expect(modeToggle).toHaveAccessibleName('Interface: Simple. Switch to Power');
+			await modeToggle.click();
+			await expect(modeToggle).toHaveAccessibleName('Interface: Power. Switch to Simple');
+			await expect(
+				n8n.notifications.getNotificationByTitle('Switched to Power mode'),
+			).toBeVisible();
+			await expect.poll(async () => await n8n.api.users.getExperienceMode()).toBe('power');
+
+			await n8n.sideBar.expand();
+			await expect(n8n.experienceModes.getModeOption(MODE_LABELS.power)).toBeChecked();
+		});
+
+		test('chats show the state they need: Waiting for you, Ready to review and Done in Power, and the mark in Simple', async ({
+			n8n,
+			startLlm,
+			startAssistantRun,
+		}) => {
+			const workflow: { id: string } = await n8n.api.workflows.createWorkflow(
+				manualTriggerWorkflow(),
+			);
+			const llm = await startLlm(chatStatesScript(workflow.id));
+			await n8n.api.setInstanceAiPermissions({ runWorkflow: 'require_approval' });
+
+			const readyChat = await createNamedChat(n8n.api, 'Ready chat');
+			const waitingChat = await createNamedChat(n8n.api, 'Approval chat');
+			// A chat that the user never opened is ready to review. Open it once, so that it is
+			// done, and the Ready state below comes from its run.
+			await n8n.start.fromInstanceAiThread(readyChat.id);
+			await openInMode(n8n, 'power');
+			await expect(n8n.experienceModes.getChatGroupItem('done', 'Ready chat')).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+
+			// Both runs start while no page shows their chat. A chat that the user views while
+			// it works counts as done, not as ready to review.
+			const readyRun = await startAssistantRun(readyChat.id, 'Plain question about the weather');
+			const waitingRun = await startAssistantRun(
+				waitingChat.id,
+				'Approval question: run the workflow',
+			);
+			const eventTypes = (run: AssistantRun) => run.events.map((event) => event.type);
+			const runTimeout = { timeout: CHAT_TIMEOUT_MS };
+			await expect.poll(() => eventTypes(readyRun), runTimeout).toContain('message-queued');
+			await expect.poll(() => eventTypes(waitingRun), runTimeout).toContain('message-queued');
+			await expect.poll(() => eventTypes(readyRun), runTimeout).toContain('done');
+			readyRun.disconnect();
+			waitingRun.disconnect();
+
+			await openInMode(n8n, 'power');
+			await expect(
+				n8n.experienceModes.getChatGroupItem('needs-you', 'Approval chat, Waiting for you'),
+			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
+			await expect(n8n.experienceModes.getChatGroupHeading('needs-you')).toContainText('Needs you');
+			await expect(
+				n8n.experienceModes.getChatGroupItem('ready', 'Ready chat, Ready to review'),
+			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
+			expect(llm.requests().map((request) => request.ruleId)).toEqual(
+				expect.arrayContaining(['plain-answer', 'run-needs-approval']),
+			);
+
+			await openInMode(n8n, 'simple');
+			await expect(
+				n8n.experienceModes.getSidebarMenuItem('Ready chat, Ready to review'),
+			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
+			await expect(n8n.experienceModes.getChatStateMark(readyChat.id)).toBeVisible();
+			await expect(
+				n8n.experienceModes.getSidebarMenuItem('Approval chat, Waiting for you'),
+			).toBeVisible();
+
+			// Opening the chat marks it as seen. The row loses its state, and Power lists it as Done.
+			await n8n.start.fromInstanceAiThread(readyChat.id);
+			// The state alone does not show that the run ended with its reply.
+			await expect(n8n.instanceAi.getPanelText(PLAIN_REPLY)).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+			await expect(n8n.experienceModes.getSidebarMenuItem('Ready chat')).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+			await expect(n8n.experienceModes.getChatStateMark(readyChat.id)).toBeHidden();
+			await openInMode(n8n, 'power');
+			await expect(n8n.experienceModes.getChatGroupItem('done', 'Ready chat')).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+
+			await n8n.start.fromInstanceAiThread(waitingChat.id);
+			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+		});
+
+		test('the Simple + menu offers four items and New workflow opens the editor in the personal project', async ({
+			n8n,
+			setupRequirements,
+		}) => {
+			// "Connect local computer" needs two switches: the computer-use experiment and an admin
+			// setting that enables the local gateway. The e2e runner turns the gateway off.
+			await setupRequirements({
+				storage: {
+					N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '091_instance_ai_computer_use': 'variant' }),
+				},
+			});
+			await n8n.api.updateInstanceAiSettings({ localGatewayDisabled: false });
+			const personalProject = await n8n.api.projects.getMyPersonalProject();
+
+			await n8n.navigate.toInstanceAi();
+			const trigger = n8n.experienceModes.getInputMenuTrigger();
+			await trigger.focus();
+			await trigger.press('Enter');
+
+			await expect(n8n.experienceModes.getInputMenuItems()).toHaveText([
+				'Attach files',
+				'Connect local computer',
+				'Connect browser',
+				'New workflow',
+			]);
+
+			const newWorkflow = n8n.experienceModes.getInputMenuItem('New workflow');
+			await expect(newWorkflow).toBeEnabled();
+			await newWorkflow.focus();
+			await newWorkflow.press('Enter');
+			// The editor opens the new workflow with the query of the menu: the personal project.
+			await expect(n8n.page).toHaveURL(/\/workflow\/[^/?]+\?(?=.*new=true)(?=.*projectId=)/);
+			const target = new URL(n8n.page.url());
+			expect(target.searchParams.get('projectId')).toBe(personalProject.id);
+		});
+
+		test('a workflow that the user turns on from a proposal shows in Automations as On', async ({
+			n8n,
+			startLlm,
+			startAssistantRun,
+		}) => {
+			const { digestId, suspension } = await buildDigestAndPropose(
+				n8n,
+				startLlm,
+				startAssistantRun,
+			);
+
+			await turnOnProposal(n8n, suspension);
+			await expect
+				.poll(async () => (await n8n.api.workflows.getWorkflow(digestId)).active, {
+					timeout: CHAT_TIMEOUT_MS,
+				})
+				.toBe(true);
+			await n8n.navigate.toInstanceAi();
+			await expect(
+				n8n.experienceModes.getAutomationRow(`${AUTOMATION_WORKFLOW_NAME}, On`),
+			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
+		});
+
+		test('the proposal card is still in the chat until the user answers it', async ({
+			n8n,
+			startLlm,
+			startAssistantRun,
+		}) => {
+			const { chat, digestId } = await buildDigestAndPropose(n8n, startLlm, startAssistantRun);
+
+			// The turn ended before the page opened, so the card comes from the thread history.
+			await n8n.start.fromInstanceAiThread(chat.id);
+			await expect(n8n.instanceAi.getPanelText(PROPOSAL_REPLY)).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+			await expect(n8n.experienceModes.getProposalCard()).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+			await turnOnFromCard(n8n, digestId);
+		});
+
+		test('the proposal card shows for a request that the user sends in the open chat', async ({
+			n8n,
+			startLlm,
+			startAssistantRun,
+		}) => {
+			const chat = await createNamedChat(n8n.api, LIVE_CHAT_TITLE);
+			const digestId = await buildDigestInChat(n8n, startLlm, startAssistantRun, chat.id);
+			const proposeLlm = await startLlm(proposeDigestScript(digestId));
+
+			await n8n.start.fromInstanceAiThread(chat.id);
+			// When the turn ends, the chat reads its history again. Check the card after that read.
+			const historyAfterTurn = waitForHistoryWithProposal(n8n, chat.id);
+			await n8n.instanceAi.sendMessage('Turn it into an automation');
+			await expect(n8n.instanceAi.getPanelText(PROPOSAL_REPLY)).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+			expect(proposeLlm.requests().map((request) => request.ruleId)).toContain('propose-digest');
+			await expect(
+				n8n.experienceModes.getSidebarMenuItem(`${LIVE_CHAT_TITLE}, Waiting for you`),
+			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
+			await historyAfterTurn;
+			await expect(n8n.experienceModes.getProposalCard()).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+
+			// A reload shows the same card.
+			await n8n.page.reload();
+			await expect(n8n.experienceModes.getProposalCard()).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+			await turnOnFromCard(n8n, digestId);
+		});
+
+		test('the Simple sidebar and the Power groups have no serious or critical accessibility violations', async ({
+			n8n,
+			a11y,
+		}) => {
+			await createNamedChat(n8n.api, 'Accessibility chat');
+			await n8n.navigate.toInstanceAi();
+			await n8n.experienceModes.getWorkspaceToggle().click();
+			await expect(n8n.experienceModes.getPersonalEntry()).toBeVisible();
+			await expect(n8n.experienceModes.getChatsSection()).toContainText('Accessibility chat');
+			// An empty part would pass the scan with no violations, so each part is checked on screen.
+			await expect(n8n.experienceModes.getModeOption(MODE_LABELS.power)).toBeVisible();
+			await expect(n8n.experienceModes.getAutomationsSection()).toBeVisible();
+			await expectKnownSidebarViolations(a11y);
+			await expectNoBlockingViolationsInNewParts(a11y);
+
+			await openInMode(n8n, 'power');
+			await expect(
+				n8n.experienceModes.getChatGroupItem('ready', 'Accessibility chat, Ready to review'),
+			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
+			await expect(n8n.experienceModes.getModeOption(MODE_LABELS.simple)).toBeVisible();
+			await expect(n8n.experienceModes.getAutomationsSection()).toBeVisible();
+			await expectKnownSidebarViolations(a11y);
+			await expectNoBlockingViolationsInNewParts(a11y);
+			// A scan that did not run adds no scan, so the buckets show which scans ran.
+			expect(a11y.scans.map((scan) => scan.bucket)).toEqual([
+				'sidebar',
+				EXPERIENCE_MODES_BUCKET,
+				'sidebar',
+				EXPERIENCE_MODES_BUCKET,
+			]);
+		});
+	},
+);

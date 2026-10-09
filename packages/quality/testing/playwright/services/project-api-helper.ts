@@ -47,6 +47,23 @@ export class ProjectApiHelper {
 	}
 
 	/**
+	 * Add a project to the favorites of the signed-in user. The sidebar shows the
+	 * favorites in the Workspace of Simple mode and at the top of Power mode.
+	 * @param projectId The ID of the project to favorite
+	 */
+	async addFavorite(projectId: string): Promise<void> {
+		const response = await this.api.request.post('/rest/favorites', {
+			data: { resourceId: projectId, resourceType: 'project' },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to favorite the project (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
+	/**
 	 * Delete a project
 	 * @param projectId The ID of the project to delete
 	 * @returns True if deletion was successful

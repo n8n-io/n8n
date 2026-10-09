@@ -21,6 +21,9 @@ export const A11Y_BUCKETS = {
 	ndv: '[data-test-id="ndv"]',
 	'node-creator': '[data-test-id="node-creator"]',
 	sidebar: '#side-menu',
+	// The parts of the Simple and Power sidebar that the experience modes add.
+	'experience-modes':
+		':is([data-test-id="experience-mode-switch"], [data-test-id="experience-mode-toggle"], [data-test-id="simple-workspace"], [data-test-id="instance-ai-sidebar-chats"], [data-test-id^="assistant-chat-group-"], [data-test-id="assistant-automations"])',
 	modal: '[role="dialog"]',
 	'instance-ai':
 		':is([data-test-id="instance-ai-container"], [data-test-id="instance-ai-mention-menu-content"])',

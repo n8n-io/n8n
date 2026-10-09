@@ -12,7 +12,12 @@ import {
 	triggerLineKey,
 	type AutomationAction,
 } from '../automationProposal';
-import { resolvedStatus, toolOutcome, type AutomationToolOutcome } from '../automationResolved';
+import {
+	proposalOutcome,
+	resolvedStatus,
+	toolOutcome,
+	type AutomationToolOutcome,
+} from '../automationResolved';
 import { makeManualProposal, makeProposal } from './automationProposalFixtures';
 
 const RESULT = { workflowId: 'wf-1', url: 'http://localhost:5678/workflow/wf-1', kept: true };
@@ -107,6 +112,26 @@ describe('toolOutcome', () => {
 		// The error wins: a failed call has no result to trust.
 		expect(toolOutcome({ result: ON, error: 'Tool call failed' })).toEqual(FAILED);
 		expect(toolOutcome({ result: DENIED, error: '' })).toEqual(FAILED);
+	});
+});
+
+describe('proposalOutcome', () => {
+	it('reads the outcome of a propose_automation call', () => {
+		expect(proposalOutcome({ toolName: 'propose_automation', result: ON })).toEqual(kept(true));
+		expect(proposalOutcome({ toolName: 'propose_automation', error: 'x' })).toEqual(FAILED);
+	});
+
+	it('reads nothing from a call of another tool with the id of the card', () => {
+		// A model can use a tool call id again: an earlier build call can have the card's id.
+		expect(proposalOutcome({ toolName: 'build-workflow', result: { workflowId: 'wf-1' } })).toBe(
+			undefined,
+		);
+		expect(proposalOutcome({ toolName: 'build-workflow', error: 'x' })).toBeUndefined();
+		expect(proposalOutcome({ result: ON })).toBeUndefined();
+	});
+
+	it('reads nothing without a call', () => {
+		expect(proposalOutcome(undefined)).toBeUndefined();
 	});
 });
 

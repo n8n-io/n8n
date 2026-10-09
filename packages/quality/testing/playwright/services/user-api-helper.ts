@@ -1,11 +1,31 @@
-import type { User } from '@n8n/api-types';
+import { experienceModeSchema, type ExperienceMode, type User } from '@n8n/api-types';
 import type { APIResponse } from '@playwright/test';
 import { customAlphabet } from 'nanoid';
+import { z } from 'zod';
 
 import type { ApiHelpers } from './api-helper';
 import { TestError } from '../Types';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8);
+
+/** Fills the fields that the caller did not set. */
+function withUserDefaults(options: Partial<TestUser>): Omit<TestUser, 'id'> {
+	return {
+		email: options.email?.toLowerCase() ?? `testuser${nanoid()}@test.com`,
+		password: options.password ?? 'PlaywrightTest123',
+		firstName: options.firstName ?? 'Test',
+		lastName: options.lastName ?? `User${nanoid()}`,
+		role: options.role ?? 'global:member',
+	};
+}
+
+// Only the settings field that the experience-mode helpers read. A user without saved
+// settings has `null` there, not a missing field.
+const currentUserResponseSchema = z.object({
+	data: z.object({
+		settings: z.object({ experienceMode: experienceModeSchema.nullish() }).passthrough().nullish(),
+	}),
+});
 
 export interface TestUser {
 	id: string;
@@ -27,13 +47,7 @@ export class UserApiHelper {
 	 * Create and activate a test user
 	 */
 	async create(options: Partial<TestUser> = {}): Promise<TestUser> {
-		const user = {
-			email: options.email?.toLowerCase() ?? `testuser${nanoid()}@test.com`,
-			password: options.password ?? 'PlaywrightTest123',
-			firstName: options.firstName ?? 'Test',
-			lastName: options.lastName ?? `User${nanoid()}`,
-			role: options.role ?? 'global:member',
-		};
+		const user = withUserDefaults(options);
 
 		// Invite user
 		const inviteResponse = await this.api.request.post('/rest/invitations', {
@@ -76,6 +90,31 @@ export class UserApiHelper {
 		return await this.api.request.post('/rest/forgot-password', {
 			data: { email },
 		});
+	}
+
+	/**
+	 * The Simple or Power mode that the signed-in user saved. Undefined when the user
+	 * has not chosen one, so the instance default applies.
+	 */
+	async getExperienceMode(): Promise<ExperienceMode | undefined> {
+		const response = await this.api.request.get('/rest/login');
+		if (!response.ok()) {
+			throw new TestError(`Failed to read the current user (${response.status()})`);
+		}
+		const body = currentUserResponseSchema.parse(await response.json());
+		return body.data.settings?.experienceMode ?? undefined;
+	}
+
+	/** Saves the Simple or Power mode for the signed-in user, as the sidebar switch does. */
+	async setExperienceMode(mode: ExperienceMode): Promise<void> {
+		const response = await this.api.request.patch('/rest/me/settings', {
+			data: { experienceMode: mode },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to save the experience mode (${response.status()}): ${await response.text()}`,
+			);
+		}
 	}
 
 	/**

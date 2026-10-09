@@ -23,6 +23,14 @@ const DEFAULT_SANDBOX_SERVICE_PORT = 5798;
 // time than the defaults of the e2e project (10 s navigation, 60 s test).
 const NAVIGATION_TIMEOUT_MS = 30_000;
 const TEST_TIMEOUT_MS = 120_000;
+// An unpublish runs in the background. It must finish before the next reset.
+const UNPUBLISH_TIMEOUT_MS = 30_000;
+
+// The agent id of the Assistant in the editor (agentsChatMode.ts).
+export const ASSISTANT_AGENT_ID = 'n8n-assistant';
+
+/** One Assistant run, as the chat client opens it: its events, its end and `disconnect()`. */
+export type AssistantRun = Awaited<ReturnType<ApiHelpers['agents']['openChat']>>;
 
 export const LINKED_INSTANCES_SKIP_REASON =
 	'Needs the two n8n instances of `pnpm test:future-poc` (CLOUD_BASE_URL is not set)';
@@ -78,8 +86,37 @@ async function withApi(baseURL: string, run: (api: ApiHelpers) => Promise<void>)
 	}
 }
 
+/**
+ * Deactivates the active workflows of "This computer" and waits until they are unpublished.
+ * The database reset cannot delete a workflow that still has a published version, and the
+ * unpublish removes that version in the background.
+ */
+async function deactivateActiveWorkflows(api: ApiHelpers): Promise<void> {
+	try {
+		await api.signin('owner');
+	} catch {
+		// No owner yet, for example after the runner's probe reset failed. The reset below creates one.
+		return;
+	}
+	const workflows: Array<{ id: string; active: boolean }> = await api.workflows.getWorkflows();
+	const active = workflows.filter((candidate) => candidate.active);
+	for (const workflow of active) {
+		await api.workflows.deactivate(workflow.id);
+	}
+	// A workflow is not_published once its unpublish has completed, not while it is in progress.
+	for (const workflow of active) {
+		await expect
+			.poll(async () => (await api.workflows.getPublicationStatus(workflow.id)).status, {
+				timeout: UNPUBLISH_TIMEOUT_MS,
+			})
+			.toBe('not_published');
+	}
+}
+
 async function resetLocal(baseURL: string): Promise<void> {
 	await withApi(baseURL, async (api) => {
+		// An active workflow that an earlier test left on would block the reset below.
+		await deactivateActiveWorkflows(api);
 		// Clear the in-memory Assistant runs. A database reset does not clear them.
 		const response = await api.request.post('/rest/instance-ai/test/reset');
 		if (!response.ok()) {
@@ -89,8 +126,9 @@ async function resetLocal(baseURL: string): Promise<void> {
 		}
 		await api.resetDatabase();
 		await api.signin('owner');
-		// The test has no web search provider, so turn search off.
-		await api.updateInstanceAiSettings({ searchDisabled: true });
+		// The test has no web search provider, so turn search off. The runner turns the local
+		// gateway off too. A test that turns it on must not leave it on for the next test.
+		await api.updateInstanceAiSettings({ searchDisabled: true, localGatewayDisabled: true });
 	});
 }
 
@@ -108,6 +146,12 @@ type LinkedInstancesFixtures = {
 	 * created. Do not use it together with `llm`: both bind SCRIPTED_LLM_PORT.
 	 */
 	startLlm: (script: ScriptInput) => Promise<ScriptedLlm>;
+	/**
+	 * Start an Assistant run in a chat as the user of `n8n`, and read its event stream. The run
+	 * goes on after the stream closes. At teardown, the fixture closes every stream that the test
+	 * opened, also when the test fails before it closes the stream itself.
+	 */
+	startAssistantRun: (threadId: string, message: string) => Promise<AssistantRun>;
 	/** Origin of "Cloud", for example `http://127.0.0.1:5680`. */
 	cloudUrl: string;
 	/** API helpers for "Cloud", signed in as its owner after the reset. */
@@ -156,8 +200,26 @@ export const test = base.extend<LinkedInstancesFixtures, LinkedInstancesWorkerFi
 		{ auto: true },
 	],
 
+	// The Assistant home animates. Reduced motion keeps its frames still in every browser
+	// context of the future-poc specs. An override here reaches every spec file, while
+	// `test.use` at module scope reaches only the file that loads this module first.
+	contextOptions: async ({ contextOptions }, use) => {
+		await use({ ...contextOptions, reducedMotion: 'reduce' });
+	},
+
 	context: async ({ context }, use) => {
 		context.setDefaultNavigationTimeout(NAVIGATION_TIMEOUT_MS);
+		// The sidebar experiment has no PostHog variant in e2e, so the control group starts the
+		// sidebar collapsed. Expand it before the first load. A stored choice stays as it is.
+		await context.addInitScript(() => {
+			try {
+				if (window.localStorage.getItem('sidebar.collapsed') === null) {
+					window.localStorage.setItem('sidebar.collapsed', 'false');
+				}
+			} catch {
+				// Blocked storage: the sidebar keeps its default.
+			}
+		});
 		await use(context);
 	},
 
@@ -169,6 +231,20 @@ export const test = base.extend<LinkedInstancesFixtures, LinkedInstancesWorkerFi
 			return llm;
 		});
 		await Promise.all(started.map(async (llm) => await llm.stop()));
+	},
+
+	startAssistantRun: async ({ n8n, backendUrl }, use) => {
+		const runs: AssistantRun[] = [];
+		await use(async (threadId, message) => {
+			const project = await n8n.api.projects.getMyPersonalProject();
+			const run = await n8n.api.agents.openChat(backendUrl, project.id, ASSISTANT_AGENT_ID, {
+				message,
+				sessionId: threadId,
+			});
+			runs.push(run);
+			return run;
+		});
+		for (const run of runs) run.disconnect();
 	},
 
 	llm: async ({ script, startLlm }, use) => {

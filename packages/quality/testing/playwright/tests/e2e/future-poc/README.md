@@ -126,8 +126,24 @@ test.describe('My journey', () => {
 });
 ```
 
-Before each test, the fixtures reset both instances, sign in the owner of
-"This computer" and turn off web search there.
+Before each test, the fixtures deactivate the active workflows of "This
+computer", reset both instances, sign in the owner of "This computer" and turn
+off web search and the local gateway there. The local gateway setting goes back
+to the value of the runner, so a test that turns it on does not change the
+tests after it.
+
+The browser context of the `n8n` and `page` fixtures uses reduced motion, so
+animations keep still. It also starts with the sidebar expanded: the sidebar
+experiment has no PostHog variant in e2e, and its control group starts
+collapsed. A test that stores a choice in `sidebar.collapsed` keeps it.
+A page from `n8n.start.withUser()` gets neither, because that helper opens a new
+context with `browser.newContext()`. For such a page, call
+`page.emulateMedia({ reducedMotion: 'reduce' })`, and add the sidebar init
+script of `fixtures.ts` to its context before the first load.
+
+A published workflow cannot be deleted by a database reset. Before each reset, the
+fixtures deactivate the active workflows and wait until they are unpublished. A
+test that stops early therefore cannot make the next reset fail.
 
 | Fixture | Purpose |
 |---|---|
@@ -137,12 +153,20 @@ Before each test, the fixtures reset both instances, sign in the owner of
 | `script` | The script of `llm`. Set it with `test.use({ script })`. |
 | `llm` | The scripted LLM, started from `script` for each test and stopped after it. |
 | `startLlm(script)` | Starts the scripted LLM in the test, for a script that holds ids that the test created. Do not use it together with `llm`: both use the same port. |
+| `startAssistantRun(threadId, message)` | Starts an Assistant run in a chat as the user of `n8n` and reads its event stream. At teardown, it closes every stream that the test opened, also after a failure. |
 | `sandbox` | The fake sandbox service (one for each worker). It keeps files in memory and answers every command with exit code 0. |
+
+Each scripted LLM counts its tool call ids from 1 (`toolu_scripted_1`, ...).
+Two `startLlm` servers in one chat therefore give two calls the same id. Keep
+this: real models can do the same, and the chat must keep both calls.
 
 Guard each rule for the agent turn with `systemIncludes: 'n8n Instance Agent'`,
 so that title and memory calls get the fallback text. See the
 [scripted LLM guide](../../../services/scripted-llm/README.md#guard-the-rules-for-the-assistant).
 
-The fake sandbox cannot run commands, so the Assistant cannot build workflows.
-Create workflows with the API helpers in the test, then start the scripted LLM
-with their ids (`startLlm`).
+The fake sandbox answers every command with exit code 0, so the Assistant cannot
+run real commands. A rule can still ask the Assistant to build a workflow with
+the `build-workflow` tool. The rule passes the workflow JSON as `sourceCode`. The
+Simple and Power spec does this for its digest workflow. For other workflows,
+create them with the API helpers in the test, then start the scripted LLM with
+their ids (`startLlm`).

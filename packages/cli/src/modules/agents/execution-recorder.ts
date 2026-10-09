@@ -171,7 +171,8 @@ function normaliseStreamError(error: unknown): string {
 const REDACTED_VALUE = '[REDACTED]';
 const CIRCULAR_VALUE = '[Circular]';
 
-function sanitizeExecutionLogValue(value: unknown, seen = new WeakSet<object>()): unknown {
+/** The form in which the recorder stores tool input and output: sensitive keys and text replaced. */
+export function sanitizeExecutionLogValue(value: unknown, seen = new WeakSet<object>()): unknown {
 	if (typeof value === 'string') return scrubSecretsInText(value);
 
 	if (Array.isArray(value)) {

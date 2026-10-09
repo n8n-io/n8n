@@ -194,4 +194,15 @@ export class SidebarPage extends BasePage {
 			await collapseButton.click();
 		}
 	}
+
+	/** Collapses the sidebar. A sidebar that is already collapsed stays as it is. */
+	async collapse() {
+		await expect(this.getSettings()).toBeVisible();
+
+		const logo = this.container.getByTestId('n8n-logo');
+		if (await logo.isVisible()) {
+			await this.container.locator('#toggle-sidebar-button').click();
+		}
+		await expect(logo).toBeHidden();
+	}
 }
